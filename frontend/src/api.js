@@ -16,6 +16,11 @@ export const getImage = (path) => {
     : path;
 };
 
+// Helper for auth header
+const authHeader = () => ({
+  Authorization: "Bearer " + localStorage.getItem("token")
+});
+
 /* ================= AUTH ================= */
 
 export function login(email, password) {
@@ -26,7 +31,7 @@ export function login(email, password) {
   }).then((r) => r.json());
 }
 
-// 🔥 UPDATED — supports profile photo upload
+// Supports profile photo upload
 export function register(formData) {
   return fetch(`${API}/api/auth/register`, {
     method: "POST",
@@ -38,9 +43,7 @@ export function register(formData) {
 
 export function getProfile() {
   return fetch(`${API}/api/users/me`, {
-    headers: {
-      Authorization: localStorage.getItem("token")
-    }
+    headers: authHeader()
   }).then((r) => r.json());
 }
 
@@ -49,7 +52,7 @@ export function updateProfile(data) {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      Authorization: localStorage.getItem("token")
+      ...authHeader()
     },
     body: JSON.stringify(data)
   }).then((r) => r.json());
@@ -59,9 +62,7 @@ export function updateProfile(data) {
 
 export function getFeed() {
   return fetch(`${API}/api/posts`, {
-    headers: {
-      Authorization: localStorage.getItem("token")
-    }
+    headers: authHeader()
   }).then((r) => r.json());
 }
 
@@ -72,9 +73,7 @@ export function createPost(text, file) {
 
   return fetch(`${API}/api/posts`, {
     method: "POST",
-    headers: {
-      Authorization: localStorage.getItem("token")
-    },
+    headers: authHeader(),
     body: form
   }).then((r) => r.json());
 }
@@ -82,9 +81,7 @@ export function createPost(text, file) {
 export function likePost(id) {
   return fetch(`${API}/api/posts/${id}/like`, {
     method: "POST",
-    headers: {
-      Authorization: localStorage.getItem("token")
-    }
+    headers: authHeader()
   }).then((r) => r.json());
 }
 
@@ -92,18 +89,14 @@ export function likePost(id) {
 
 export function getStories() {
   return fetch(`${API}/api/stories`, {
-    headers: {
-      Authorization: localStorage.getItem("token")
-    }
+    headers: authHeader()
   }).then((r) => r.json());
 }
 
 export function createStory(form) {
   return fetch(`${API}/api/stories`, {
     method: "POST",
-    headers: {
-      Authorization: localStorage.getItem("token")
-    },
+    headers: authHeader(),
     body: form
   }).then((r) => r.json());
 }
@@ -113,18 +106,14 @@ export function createStory(form) {
 export function sendFriendRequest(id) {
   return fetch(`${API}/api/users/${id}/request`, {
     method: "POST",
-    headers: {
-      Authorization: localStorage.getItem("token")
-    }
+    headers: authHeader()
   }).then((r) => r.json());
 }
 
 export function acceptFriendRequest(id) {
   return fetch(`${API}/api/users/${id}/accept`, {
     method: "POST",
-    headers: {
-      Authorization: localStorage.getItem("token")
-    }
+    headers: authHeader()
   }).then((r) => r.json());
 }
 
@@ -132,9 +121,7 @@ export function acceptFriendRequest(id) {
 
 export function getMessages(otherUserId) {
   return fetch(`${API}/api/messages/${otherUserId}`, {
-    headers: {
-      Authorization: localStorage.getItem("token")
-    }
+    headers: authHeader()
   }).then((r) => r.json());
 }
 
@@ -146,9 +133,7 @@ export function uploadAvatar(file) {
 
   return fetch(`${API}/api/users/me/avatar`, {
     method: "POST",
-    headers: {
-      Authorization: localStorage.getItem("token")
-    },
+    headers: authHeader(),
     body: form
   }).then((r) => r.json());
 }
@@ -159,9 +144,7 @@ export function uploadCover(file) {
 
   return fetch(`${API}/api/users/me/cover`, {
     method: "POST",
-    headers: {
-      Authorization: localStorage.getItem("token")
-    },
+    headers: authHeader(),
     body: form
   }).then((r) => r.json());
 }

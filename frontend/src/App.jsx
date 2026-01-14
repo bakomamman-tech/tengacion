@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
 import Watch from "./Watch";
 import CreatePostModal from "./CreatePostModal";
+import StoriesBar from "./stories/StoriesBar";
 
 import {
   login,
   getProfile,
   getFeed,
   createPost,
-  likePost,
-  getStories,
-  createStory
+  likePost
 } from "./api";
 
 import Layout from "./Layout";
@@ -18,7 +17,6 @@ import Sidebar from "./Sidebar";
 import Messenger from "./Messenger";
 import Register from "./Register";
 import ProfileEditor from "./ProfileEditor";
-import StoryModal from "./StoryModal";
 
 export default function App() {
   const [mode, setMode] = useState("login");
@@ -34,17 +32,11 @@ export default function App() {
   const [profile, setProfile] = useState(null);
 
   const [posts, setPosts] = useState([]);
-  const [stories, setStories] = useState([]);
-  const [storyText, setStoryText] = useState("");
-
-  const [storyOpen, setStoryOpen] = useState(false);
-  const [storyIndex, setStoryIndex] = useState(0);
 
   const loadAll = async () => {
     const p = await getProfile();
     setProfile(p);
     setPosts(await getFeed());
-    setStories(await getStories());
   };
 
   useEffect(() => {
@@ -62,17 +54,17 @@ export default function App() {
 
   if (!user) {
     return (
-      <div style={{ display:"flex", justifyContent:"center", alignItems:"center", height:"100vh" }}>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
         <div className="card" style={{ width: 420 }}>
           {mode === "login" ? (
             <>
               <h2>🔥 Tengacion</h2>
-              <input placeholder="Email" onChange={e=>setEmail(e.target.value)} />
-              <input type="password" placeholder="Password" onChange={e=>setPassword(e.target.value)} />
+              <input placeholder="Email" onChange={e => setEmail(e.target.value)} />
+              <input type="password" placeholder="Password" onChange={e => setPassword(e.target.value)} />
 
-              <button onClick={async ()=>{
-                const d = await login(email,password);
-                if(d.token){
+              <button onClick={async () => {
+                const d = await login(email, password);
+                if (d.token) {
                   localStorage.setItem("token", d.token);
                   localStorage.setItem("user", JSON.stringify(d.user));
                   setUser(d.user);
@@ -81,9 +73,9 @@ export default function App() {
                 }
               }}>Login</button>
 
-              <p>No account? <button onClick={()=>setMode("register")}>Create one</button></p>
+              <p>No account? <button onClick={() => setMode("register")}>Create one</button></p>
             </>
-          ) : <Register onBack={()=>setMode("login")} />}
+          ) : <Register onBack={() => setMode("login")} />}
         </div>
       </div>
     );
@@ -113,53 +105,20 @@ export default function App() {
           </div>
         )}
 
-        {/* STORIES */}
-        <div className="card">
-          <div className="stories-bar">
-            <div className="story add-story">
-              <div className="plus">+</div>
-              <span>Add Story</span>
-            </div>
+        {/* FACEBOOK-STYLE STORIES */}
+        <StoriesBar />
 
-            {stories.map((s, i) => (
-              <div key={s._id} className="story" onClick={()=>{
-                setStoryIndex(i);
-                setStoryOpen(true);
-              }}>
-                <div className="story-avatar">
-                  <img src={s.avatar || `https://ui-avatars.com/api/?name=${s.username}`} />
-                </div>
-                <span>{s.username}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex">
-            <input
-              value={storyText}
-              onChange={e=>setStoryText(e.target.value)}
-              placeholder="Share a story..."
-            />
-            <button onClick={async ()=>{
-              if(!storyText) return;
-              await createStory(storyText);
-              setStoryText("");
-              loadAll();
-            }}>Post</button>
-          </div>
-        </div>
-
-        {/* CREATE POST TRIGGER */}
-        <div className="card" onClick={()=>setShowPostModal(true)} style={{ cursor:"pointer" }}>
+        {/* CREATE POST */}
+        <div className="card" onClick={() => setShowPostModal(true)} style={{ cursor: "pointer" }}>
           <input placeholder="What's on your mind?" />
         </div>
 
         {/* FEED */}
-        {posts.map(p=>(
+        {posts.map(p => (
           <div key={p._id} className="card">
             <b>{p.name}</b> @{p.username}
             <p>{p.text}</p>
-            <button onClick={()=>likePost(p._id).then(loadAll)}>❤️ {p.likes.length}</button>
+            <button onClick={() => likePost(p._id).then(loadAll)}>❤️ {p.likes.length}</button>
           </div>
         ))}
       </>
@@ -174,27 +133,18 @@ export default function App() {
         left={
           <Sidebar
             user={profile}
-            openChat={()=>setChatOpen(true)}
-            openProfile={()=>setShowProfileEditor(true)}
+            openChat={() => setChatOpen(true)}
+            openProfile={() => setShowProfileEditor(true)}
           />
         }
         center={renderCenter()}
-        right={chatOpen ? <Messenger user={profile} onClose={()=>setChatOpen(false)} /> : null}
+        right={chatOpen ? <Messenger user={profile} onClose={() => setChatOpen(false)} /> : null}
       />
-
-      {storyOpen && (
-        <StoryModal
-          stories={stories}
-          index={storyIndex}
-          onClose={()=>setStoryOpen(false)}
-          user={profile}
-        />
-      )}
 
       {showPostModal && (
         <CreatePostModal
-          onClose={()=>setShowPostModal(false)}
-          onPost={async ({ text, file })=>{
+          onClose={() => setShowPostModal(false)}
+          onPost={async ({ text, file }) => {
             await createPost(text, file);
             setShowPostModal(false);
             loadAll();

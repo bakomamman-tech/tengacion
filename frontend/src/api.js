@@ -1,4 +1,17 @@
-const API = "http://localhost:5000";
+// Smart API base (works on localhost + Render)
+export const API =
+  window.location.hostname === "localhost"
+    ? "http://localhost:5000"
+    : "";
+
+// Smart image resolver
+export const getImage = path => {
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  return window.location.hostname === "localhost"
+    ? "http://localhost:5000" + path
+    : path;
+};
 
 /* ================= AUTH ================= */
 
@@ -49,13 +62,6 @@ export function getFeed() {
   }).then(r => r.json());
 }
 
-/*
-  Supports:
-  - text
-  - image
-  - video
-  - audio
-*/
 export function createPost(text, file) {
   const form = new FormData();
   form.append("text", text || "");
@@ -79,17 +85,6 @@ export function likePost(id) {
   }).then(r => r.json());
 }
 
-export function commentPost(id, text) {
-  return fetch(`${API}/api/posts/${id}/comment`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: localStorage.getItem("token")
-    },
-    body: JSON.stringify({ text })
-  }).then(r => r.json());
-}
-
 /* ================= STORIES ================= */
 
 export function getStories() {
@@ -100,14 +95,7 @@ export function getStories() {
   }).then(r => r.json());
 }
 
-/*
-  Supports text + image stories
-*/
-export function createStory(text, image) {
-  const form = new FormData();
-  if (text) form.append("text", text);
-  if (image) form.append("image", image);
-
+export function createStory(form) {
   return fetch(`${API}/api/stories`, {
     method: "POST",
     headers: {
@@ -115,15 +103,6 @@ export function createStory(text, image) {
     },
     body: form
   }).then(r => r.json());
-}
-
-export function markStorySeen(id) {
-  return fetch(`${API}/api/stories/${id}/seen`, {
-    method: "POST",
-    headers: {
-      Authorization: localStorage.getItem("token")
-    }
-  });
 }
 
 /* ================= FRIENDS ================= */
@@ -146,23 +125,6 @@ export function acceptFriendRequest(id) {
   }).then(r => r.json());
 }
 
-export function rejectFriendRequest(id) {
-  return fetch(`${API}/api/users/${id}/reject`, {
-    method: "POST",
-    headers: {
-      Authorization: localStorage.getItem("token")
-    }
-  }).then(r => r.json());
-}
-
-export function getFriendRequests() {
-  return fetch(`${API}/api/users/requests`, {
-    headers: {
-      Authorization: localStorage.getItem("token")
-    }
-  }).then(r => r.json());
-}
-
 /* ================= MESSAGES ================= */
 
 export function getMessages(otherUserId) {
@@ -173,11 +135,13 @@ export function getMessages(otherUserId) {
   }).then(r => r.json());
 }
 
+/* ================= MEDIA ================= */
+
 export function uploadAvatar(file) {
   const form = new FormData();
   form.append("image", file);
 
-  return fetch("http://localhost:5000/api/users/me/avatar", {
+  return fetch(`${API}/api/users/me/avatar`, {
     method: "POST",
     headers: {
       Authorization: localStorage.getItem("token")
@@ -190,7 +154,7 @@ export function uploadCover(file) {
   const form = new FormData();
   form.append("image", file);
 
-  return fetch("http://localhost:5000/api/users/me/cover", {
+  return fetch(`${API}/api/users/me/cover`, {
     method: "POST",
     headers: {
       Authorization: localStorage.getItem("token")

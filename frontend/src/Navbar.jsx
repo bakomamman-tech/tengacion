@@ -2,7 +2,7 @@ import { useState } from "react";
 import AppLauncher from "./AppLauncher";
 import "./index.css";
 
-export default function Navbar({ user, page, setPage }) {
+export default function Navbar({ user, page, setPage, onLogout }) {
   const [showApps, setShowApps] = useState(false);
 
   return (
@@ -33,6 +33,15 @@ export default function Navbar({ user, page, setPage }) {
           src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`}
           className="nav-avatar"
         />
+
+        {/* LOGOUT */}
+        <button
+          onClick={onLogout}
+          className="nav-logout"
+          title="Logout"
+        >
+          ⎋
+        </button>
       </div>
 
       {showApps && <AppLauncher />}

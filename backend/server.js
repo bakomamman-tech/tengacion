@@ -105,9 +105,13 @@ app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/messages", require("./routes/messages"));
 app.use("/api/videos", require("./routes/videos"));
 
-/* ================= FRONTEND (PRODUCTION) ================= */
+/* ================= FRONTEND (PRODUCTION SAFE) ================= */
+/*
+Render only keeps files inside the backend folder at runtime.
+So we copy frontend/dist into backend/frontend during build.
+*/
 
-const frontendPath = path.resolve(__dirname, "../frontend/dist");
+const frontendPath = path.resolve(__dirname, "frontend");
 
 app.use(express.static(frontendPath));
 

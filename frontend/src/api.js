@@ -2,7 +2,7 @@
 export const API =
   window.location.hostname === "localhost"
     ? "http://localhost:5000"
-    : "";
+    : "https://pyrexxbook.onrender.com";
 
 // Export default for Register.jsx
 export default API;

@@ -1,25 +1,10 @@
 const express = require("express");
 const User = require("../models/User");
-const jwt = require("jsonwebtoken");
 const upload = require("../utils/upload");
 const Post = require("../models/Post");
+const auth = require("../middleware/auth");
 
 const router = express.Router();
-
-/* ================= AUTH ================= */
-
-function auth(req, res, next) {
-  const token = req.headers.authorization;
-  if (!token) return res.status(401).json({ error: "No token" });
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
-    next();
-  } catch {
-    return res.status(401).json({ error: "Invalid token" });
-  }
-}
 
 /* ================= MY PROFILE ================= */
 
@@ -101,7 +86,9 @@ router.post("/:id/accept", auth, async (req, res) => {
 
     if (!me || !user) return res.status(404).json({ error: "User not found" });
 
-    me.friendRequests = me.friendRequests.filter(id => id !== user._id.toString());
+    me.friendRequests = me.friendRequests.filter(
+      (id) => id !== user._id.toString()
+    );
 
     if (!me.friends.includes(user._id.toString())) {
       me.friends.push(user._id.toString());
@@ -127,7 +114,9 @@ router.post("/:id/reject", auth, async (req, res) => {
   try {
     const me = await User.findById(req.userId);
 
-    me.friendRequests = me.friendRequests.filter(id => id !== req.params.id);
+    me.friendRequests = me.friendRequests.filter(
+      (id) => id !== req.params.id
+    );
     await me.save();
 
     res.json({ rejected: true });
@@ -153,6 +142,8 @@ router.get("/requests", auth, async (req, res) => {
   }
 });
 
+/* ================= UPLOAD AVATAR ================= */
+
 router.post("/me/avatar", auth, upload.single("image"), async (req, res) => {
   try {
     const user = await User.findById(req.userId);
@@ -161,7 +152,6 @@ router.post("/me/avatar", auth, upload.single("image"), async (req, res) => {
     user.avatar = `/uploads/${req.file.filename}`;
     await user.save();
 
-    // Create feed post
     await Post.create({
       userId: user._id,
       name: user.name,
@@ -180,6 +170,8 @@ router.post("/me/avatar", auth, upload.single("image"), async (req, res) => {
     res.status(500).json({ error: "Avatar upload failed" });
   }
 });
+
+/* ================= UPLOAD COVER ================= */
 
 router.post("/me/cover", auth, upload.single("image"), async (req, res) => {
   try {

@@ -4,8 +4,11 @@ export const API =
     ? "http://localhost:5000"
     : "";
 
+// Export default for Register.jsx
+export default API;
+
 // Smart image resolver
-export const getImage = path => {
+export const getImage = (path) => {
   if (!path) return "";
   if (path.startsWith("http")) return path;
   return window.location.hostname === "localhost"
@@ -20,15 +23,15 @@ export function login(email, password) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password })
-  }).then(r => r.json());
+  }).then((r) => r.json());
 }
 
-export function register(data) {
+// 🔥 UPDATED — supports profile photo upload
+export function register(formData) {
   return fetch(`${API}/api/auth/register`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  }).then(r => r.json());
+    body: formData
+  }).then((r) => r.json());
 }
 
 /* ================= PROFILE ================= */
@@ -38,7 +41,7 @@ export function getProfile() {
     headers: {
       Authorization: localStorage.getItem("token")
     }
-  }).then(r => r.json());
+  }).then((r) => r.json());
 }
 
 export function updateProfile(data) {
@@ -49,7 +52,7 @@ export function updateProfile(data) {
       Authorization: localStorage.getItem("token")
     },
     body: JSON.stringify(data)
-  }).then(r => r.json());
+  }).then((r) => r.json());
 }
 
 /* ================= POSTS ================= */
@@ -59,7 +62,7 @@ export function getFeed() {
     headers: {
       Authorization: localStorage.getItem("token")
     }
-  }).then(r => r.json());
+  }).then((r) => r.json());
 }
 
 export function createPost(text, file) {
@@ -73,7 +76,7 @@ export function createPost(text, file) {
       Authorization: localStorage.getItem("token")
     },
     body: form
-  }).then(r => r.json());
+  }).then((r) => r.json());
 }
 
 export function likePost(id) {
@@ -82,7 +85,7 @@ export function likePost(id) {
     headers: {
       Authorization: localStorage.getItem("token")
     }
-  }).then(r => r.json());
+  }).then((r) => r.json());
 }
 
 /* ================= STORIES ================= */
@@ -92,7 +95,7 @@ export function getStories() {
     headers: {
       Authorization: localStorage.getItem("token")
     }
-  }).then(r => r.json());
+  }).then((r) => r.json());
 }
 
 export function createStory(form) {
@@ -102,7 +105,7 @@ export function createStory(form) {
       Authorization: localStorage.getItem("token")
     },
     body: form
-  }).then(r => r.json());
+  }).then((r) => r.json());
 }
 
 /* ================= FRIENDS ================= */
@@ -113,7 +116,7 @@ export function sendFriendRequest(id) {
     headers: {
       Authorization: localStorage.getItem("token")
     }
-  }).then(r => r.json());
+  }).then((r) => r.json());
 }
 
 export function acceptFriendRequest(id) {
@@ -122,7 +125,7 @@ export function acceptFriendRequest(id) {
     headers: {
       Authorization: localStorage.getItem("token")
     }
-  }).then(r => r.json());
+  }).then((r) => r.json());
 }
 
 /* ================= MESSAGES ================= */
@@ -132,7 +135,7 @@ export function getMessages(otherUserId) {
     headers: {
       Authorization: localStorage.getItem("token")
     }
-  }).then(r => r.json());
+  }).then((r) => r.json());
 }
 
 /* ================= MEDIA ================= */
@@ -147,7 +150,7 @@ export function uploadAvatar(file) {
       Authorization: localStorage.getItem("token")
     },
     body: form
-  }).then(r => r.json());
+  }).then((r) => r.json());
 }
 
 export function uploadCover(file) {
@@ -160,5 +163,5 @@ export function uploadCover(file) {
       Authorization: localStorage.getItem("token")
     },
     body: form
-  }).then(r => r.json());
+  }).then((r) => r.json());
 }

@@ -111,7 +111,8 @@ Render only keeps files inside the backend folder at runtime.
 So we copy frontend/dist into backend/frontend during build.
 */
 
-const frontendPath = path.resolve(__dirname, "frontend");
+const frontendPath = path.join(process.cwd(), "backend", "frontend");
+
 
 app.use(express.static(frontendPath));
 

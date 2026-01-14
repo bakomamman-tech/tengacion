@@ -1,0 +1,34 @@
+{
+  "name": "tengacion",
+  "version": "0.1.0",
+  "description": "Tengacion \u2014 The Social OS for the Next Billion People",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "nodemon backend/server.js",
+    "client": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "start": "node backend/server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "4.18.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.1.2",
+    "multer": "^2.0.2",
+    "socket.io": "^4.8.3"
+  },
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

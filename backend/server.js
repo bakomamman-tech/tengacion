@@ -117,7 +117,8 @@ app.use("/api/videos", require("./routes/videos"));
 const frontendPath = path.join(process.cwd(), "backend", "frontend");
 app.use(express.static(frontendPath));
 
-app.get("*", (req, res) => {
+// 🚨 CRITICAL FIX: do NOT let React override /api routes
+app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(frontendPath, "index.html"));
 });
 

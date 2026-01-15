@@ -114,10 +114,11 @@ app.use("/api/videos", require("./routes/videos"));
 
 /* ================= FRONTEND (Render) ================= */
 
-const frontendPath = path.join(process.cwd(), "backend", "frontend");
+// Serve the REAL Vite build
+const frontendPath = path.join(process.cwd(), "frontend", "dist");
 app.use(express.static(frontendPath));
 
-// 🚨 CRITICAL FIX: do NOT let React override /api routes
+// Do NOT let React override API routes
 app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(frontendPath, "index.html"));
 });

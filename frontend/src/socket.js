@@ -1,13 +1,10 @@
 import { io } from "socket.io-client";
 
-const SOCKET_URL =
-  window.location.hostname === "localhost"
-    ? "http://localhost:5000"
-    : "https://pyrexxbook.onrender.com";
-
-const socket = io(SOCKET_URL, {
+// Same-origin WebSocket (Render + Vercel friendly)
+const socket = io("/", {
   transports: ["websocket"],
-  withCredentials: true
+  withCredentials: true,
+  path: "/socket.io"
 });
 
 export default socket;

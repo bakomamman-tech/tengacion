@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import socket from "./socket";
+import { socket } from "./socket";
 
 export default function Messenger({ user, onClose }) {
   const [text, setText] = useState("");
@@ -9,24 +9,27 @@ export default function Messenger({ user, onClose }) {
   useEffect(() => {
     if (!user) return;
 
+    // Join socket room
     socket.emit("join", user._id);
 
-    // Auto-pick first friend
+    // Auto pick first friend
     if (user.friends && user.friends.length > 0) {
       setReceiverId(user.friends[0]);
     }
 
-    socket.on("newMessage", msg => {
+    const handleNewMessage = msg => {
       setMessages(m => [...m, msg]);
-    });
+    };
+
+    socket.on("newMessage", handleNewMessage);
 
     return () => {
-      socket.off("newMessage");
+      socket.off("newMessage", handleNewMessage);
     };
   }, [user]);
 
   const send = () => {
-    if (!text || !receiverId) return;
+    if (!text.trim() || !receiverId) return;
 
     socket.emit("sendMessage", {
       senderId: user._id,

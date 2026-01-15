@@ -1,19 +1,13 @@
-// Smart API base (works on localhost + Render)
-export const API =
-  window.location.hostname === "localhost"
-    ? "http://localhost:5000"
-    : "https://pyrexxbook.onrender.com";
-
-// Export default for Register.jsx
-export default API;
+// Tengacion now runs inside PyrexxBook.
+// We use SAME-ORIGIN API calls.
+export const API = "";
+export default "";
 
 // Smart image resolver
 export const getImage = (path) => {
   if (!path) return "";
   if (path.startsWith("http")) return path;
-  return window.location.hostname === "localhost"
-    ? "http://localhost:5000" + path
-    : path;
+  return path; // same-origin
 };
 
 // Helper for auth header
@@ -24,16 +18,15 @@ const authHeader = () => ({
 /* ================= AUTH ================= */
 
 export function login(email, password) {
-  return fetch(`${API}/api/auth/login`, {
+  return fetch(`/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password })
   }).then((r) => r.json());
 }
 
-// Supports profile photo upload
 export function register(formData) {
-  return fetch(`${API}/api/auth/register`, {
+  return fetch(`/api/auth/register`, {
     method: "POST",
     body: formData
   }).then((r) => r.json());
@@ -42,13 +35,13 @@ export function register(formData) {
 /* ================= PROFILE ================= */
 
 export function getProfile() {
-  return fetch(`${API}/api/users/me`, {
+  return fetch(`/api/users/me`, {
     headers: authHeader()
   }).then((r) => r.json());
 }
 
 export function updateProfile(data) {
-  return fetch(`${API}/api/users/me`, {
+  return fetch(`/api/users/me`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -61,7 +54,7 @@ export function updateProfile(data) {
 /* ================= POSTS ================= */
 
 export function getFeed() {
-  return fetch(`${API}/api/posts`, {
+  return fetch(`/api/posts`, {
     headers: authHeader()
   }).then((r) => r.json());
 }
@@ -71,7 +64,7 @@ export function createPost(text, file) {
   form.append("text", text || "");
   if (file) form.append("file", file);
 
-  return fetch(`${API}/api/posts`, {
+  return fetch(`/api/posts`, {
     method: "POST",
     headers: authHeader(),
     body: form
@@ -79,7 +72,7 @@ export function createPost(text, file) {
 }
 
 export function likePost(id) {
-  return fetch(`${API}/api/posts/${id}/like`, {
+  return fetch(`/api/posts/${id}/like`, {
     method: "POST",
     headers: authHeader()
   }).then((r) => r.json());
@@ -88,13 +81,13 @@ export function likePost(id) {
 /* ================= STORIES ================= */
 
 export function getStories() {
-  return fetch(`${API}/api/stories`, {
+  return fetch(`/api/stories`, {
     headers: authHeader()
   }).then((r) => r.json());
 }
 
 export function createStory(form) {
-  return fetch(`${API}/api/stories`, {
+  return fetch(`/api/stories`, {
     method: "POST",
     headers: authHeader(),
     body: form
@@ -104,14 +97,14 @@ export function createStory(form) {
 /* ================= FRIENDS ================= */
 
 export function sendFriendRequest(id) {
-  return fetch(`${API}/api/users/${id}/request`, {
+  return fetch(`/api/users/${id}/request`, {
     method: "POST",
     headers: authHeader()
   }).then((r) => r.json());
 }
 
 export function acceptFriendRequest(id) {
-  return fetch(`${API}/api/users/${id}/accept`, {
+  return fetch(`/api/users/${id}/accept`, {
     method: "POST",
     headers: authHeader()
   }).then((r) => r.json());
@@ -120,7 +113,7 @@ export function acceptFriendRequest(id) {
 /* ================= MESSAGES ================= */
 
 export function getMessages(otherUserId) {
-  return fetch(`${API}/api/messages/${otherUserId}`, {
+  return fetch(`/api/messages/${otherUserId}`, {
     headers: authHeader()
   }).then((r) => r.json());
 }
@@ -131,7 +124,7 @@ export function uploadAvatar(file) {
   const form = new FormData();
   form.append("image", file);
 
-  return fetch(`${API}/api/users/me/avatar`, {
+  return fetch(`/api/users/me/avatar`, {
     method: "POST",
     headers: authHeader(),
     body: form
@@ -142,7 +135,7 @@ export function uploadCover(file) {
   const form = new FormData();
   form.append("image", file);
 
-  return fetch(`${API}/api/users/me/cover`, {
+  return fetch(`/api/users/me/cover`, {
     method: "POST",
     headers: authHeader(),
     body: form

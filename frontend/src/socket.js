@@ -1,15 +1,13 @@
 import { io } from "socket.io-client";
 
-// Connect DIRECTLY to backend service
-const socket = io("https://tengacion-api.onrender.com", {
+const URL = "https://tengacion-api.onrender.com";
+
+const socket = io(URL, {
   transports: ["websocket", "polling"],
   withCredentials: true,
-  path: "/socket.io",
-  autoConnect: true
-});
-
-socket.on("connect_error", (err) => {
-  console.log("❌ Socket error:", err.message);
+  reconnection: true,
+  reconnectionAttempts: 10,
+  path: "/socket.io"
 });
 
 export default socket;

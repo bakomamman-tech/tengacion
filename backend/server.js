@@ -13,7 +13,7 @@ const server = http.createServer(app);
 
 app.use(
   cors({
-    origin: true,
+    origin: "*",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"]
   })
@@ -42,9 +42,17 @@ mongoose
 
 const io = new Server(server, {
   cors: {
-    origin: true,
+    origin: "*",
+    methods: ["GET", "POST"],
     credentials: true
-  }
+  },
+  transports: ["polling", "websocket"],
+  allowEIO3: true
+});
+
+/* --- Health endpoint for Render WebSocket upgrade --- */
+app.get("/socket.io", (req, res) => {
+  res.status(200).send("socket ok");
 });
 
 const onlineUsers = new Map();
@@ -53,8 +61,11 @@ io.on("connection", (socket) => {
   console.log("🔌 Socket connected:", socket.id);
 
   socket.on("join", (userId) => {
+    if (!userId) return;
+
     socket.userId = userId;
     onlineUsers.set(userId, socket.id);
+
     io.emit("onlineUsers", Array.from(onlineUsers.keys()));
   });
 
@@ -64,7 +75,10 @@ io.on("connection", (socket) => {
       const User = require("./models/User");
 
       const conversationId = [senderId, receiverId].sort().join("_");
-      const sender = await User.findById(senderId).select("name username avatar");
+
+      const sender = await User.findById(senderId).select(
+        "name username avatar"
+      );
 
       if (!sender) return;
 
@@ -89,6 +103,7 @@ io.on("connection", (socket) => {
       };
 
       const receiverSocket = onlineUsers.get(receiverId);
+
       if (receiverSocket) {
         io.to(receiverSocket).emit("newMessage", payload);
       }
@@ -106,6 +121,7 @@ io.on("connection", (socket) => {
         break;
       }
     }
+
     io.emit("onlineUsers", Array.from(onlineUsers.keys()));
   });
 });
@@ -120,7 +136,7 @@ app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/messages", require("./routes/messages"));
 app.use("/api/videos", require("./routes/videos"));
 
-/* ================= FRONTEND SERVING (FIXED) ================= */
+/* ================= FRONTEND SERVING ================= */
 
 // Works on Render + Local
 const frontendPath = path.join(process.cwd(), "frontend", "dist");

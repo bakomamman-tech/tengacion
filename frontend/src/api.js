@@ -1,6 +1,10 @@
 // ================= BASE =================
-// Same-origin with backend (Render)
-export const API = "/api";
+
+// Use environment variable if provided, otherwise production backend
+export const API =
+  import.meta.env.VITE_API_URL ||
+  "https://tengacion-api.onrender.com/api";
+
 const BASE = API;
 
 // ================= HELPERS =================
@@ -31,33 +35,41 @@ export const login = (email, password) =>
   fetch(`${BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({ email, password })
   }).then(json);
 
 export const register = (form) =>
   fetch(`${BASE}/auth/register`, {
     method: "POST",
+    credentials: "include",
     body: form
   }).then(json);
 
 // ================= USER =================
 
 export const getProfile = () =>
-  fetch(`${BASE}/users/me`, { headers: auth() }).then(json);
+  fetch(`${BASE}/users/me`, {
+    headers: auth(),
+    credentials: "include"
+  }).then(json);
 
 export const updateMe = (data) =>
   fetch(`${BASE}/users/me`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", ...auth() },
+    credentials: "include",
     body: JSON.stringify(data)
   }).then(json);
 
 export const uploadAvatar = (file) => {
   const f = new FormData();
   f.append("image", file);
+
   return fetch(`${BASE}/users/me/avatar`, {
     method: "POST",
     headers: auth(),
+    credentials: "include",
     body: f
   }).then(json);
 };
@@ -65,9 +77,11 @@ export const uploadAvatar = (file) => {
 export const uploadCover = (file) => {
   const f = new FormData();
   f.append("image", file);
+
   return fetch(`${BASE}/users/me/cover`, {
     method: "POST",
     headers: auth(),
+    credentials: "include",
     body: f
   }).then(json);
 };
@@ -75,7 +89,10 @@ export const uploadCover = (file) => {
 // ================= POSTS =================
 
 export const getFeed = () =>
-  fetch(`${BASE}/posts`, { headers: auth() }).then(json);
+  fetch(`${BASE}/posts`, {
+    headers: auth(),
+    credentials: "include"
+  }).then(json);
 
 export const createPost = (text, file) => {
   const f = new FormData();
@@ -85,6 +102,7 @@ export const createPost = (text, file) => {
   return fetch(`${BASE}/posts`, {
     method: "POST",
     headers: auth(),
+    credentials: "include",
     body: f
   }).then(json);
 };
@@ -92,29 +110,38 @@ export const createPost = (text, file) => {
 export const likePost = (id) =>
   fetch(`${BASE}/posts/${id}/like`, {
     method: "POST",
-    headers: auth()
+    headers: auth(),
+    credentials: "include"
   }).then(json);
 
 // ================= STORIES =================
 
 export const getStories = () =>
-  fetch(`${BASE}/stories`, { headers: auth() }).then(json);
+  fetch(`${BASE}/stories`, {
+    headers: auth(),
+    credentials: "include"
+  }).then(json);
 
 export const createStory = (form) =>
   fetch(`${BASE}/stories`, {
     method: "POST",
     headers: auth(),
+    credentials: "include",
     body: form
   }).then(json);
 
 // ================= WATCH =================
 
 export const getVideos = () =>
-  fetch(`${BASE}/videos`, { headers: auth() }).then(json);
+  fetch(`${BASE}/videos`, {
+    headers: auth(),
+    credentials: "include"
+  }).then(json);
 
 export const uploadVideo = (videoUrl, caption) =>
   fetch(`${BASE}/videos`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...auth() },
+    credentials: "include",
     body: JSON.stringify({ videoUrl, caption })
   }).then(json);

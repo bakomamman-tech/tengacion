@@ -10,11 +10,12 @@ const app = express();
 const server = http.createServer(app);
 
 /* ================= CORS ================= */
-// Same-origin first. No hardcoded frontend URL.
+
 app.use(
   cors({
     origin: true,
-    credentials: true
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"]
   })
 );
 
@@ -25,10 +26,17 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* ================= DATABASE ================= */
 
+if (!process.env.MONGO_URI) {
+  console.error("❌ MONGO_URI not found in environment variables");
+  process.exit(1);
+}
+
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("🗄 MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB error:", err));
+  .catch((err) => {
+    console.error("❌ MongoDB connection error:", err.message);
+  });
 
 /* ================= SOCKET.IO ================= */
 
@@ -56,9 +64,7 @@ io.on("connection", (socket) => {
       const User = require("./models/User");
 
       const conversationId = [senderId, receiverId].sort().join("_");
-      const sender = await User.findById(senderId).select(
-        "name username avatar"
-      );
+      const sender = await User.findById(senderId).select("name username avatar");
 
       if (!sender) return;
 
@@ -114,20 +120,33 @@ app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/messages", require("./routes/messages"));
 app.use("/api/videos", require("./routes/videos"));
 
-/* ================= FRONTEND (RENDER) ================= */
+/* ================= FRONTEND SERVING (FIXED) ================= */
 
-// Serve Vite build
+// Works on Render + Local
 const frontendPath = path.join(process.cwd(), "frontend", "dist");
+
+// Serve static files only if dist exists
 app.use(express.static(frontendPath));
 
-// React Router catch-all (DO NOT override API)
-app.get(/^\/(?!api).*/, (req, res) => {
-  res.sendFile(path.join(frontendPath, "index.html"));
+// SPA fallback – must be AFTER API routes
+app.get("*", (req, res) => {
+  // Skip API routes
+  if (req.path.startsWith("/api")) {
+    return res.status(404).json({ message: "API route not found" });
+  }
+
+  res.sendFile(path.join(frontendPath, "index.html"), (err) => {
+    if (err) {
+      console.log("⚠ Frontend not built – API mode only");
+      res.status(200).send("Tengacion API Running");
+    }
+  });
 });
 
 /* ================= SERVER ================= */
 
 const PORT = process.env.PORT || 5000;
+
 server.listen(PORT, () => {
-  console.log(`🚀 PyrexxBook running on port ${PORT}`);
+  console.log(`🚀 Tengacion API running on port ${PORT}`);
 });

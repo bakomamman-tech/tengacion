@@ -10,95 +10,120 @@ const auth = () => ({
   Authorization: "Bearer " + (localStorage.getItem("token") || "")
 });
 
+const handleAuthFail = () => {
+  localStorage.clear();
+  window.location.href = "/";
+};
+
 const json = async (res) => {
   const text = await res.text();
+
+  // Handle empty body
+  if (!text) {
+    if (res.ok) return {};
+    throw new Error("Empty server response");
+  }
 
   try {
     const data = JSON.parse(text);
 
-    // Auto logout if token expired
+    // Auto logout if token expired / invalid
     if (res.status === 401) {
-      localStorage.clear();
-      window.location.reload();
+      handleAuthFail();
       return;
     }
 
+    // Backend sent structured error
+    if (!res.ok) {
+      throw new Error(data?.error || data?.message || "Request failed");
+    }
+
     return data;
-  } catch {
+  } catch (err) {
     console.error("❌ API returned non-JSON:", text);
-    throw new Error(text || "Server error");
+    throw new Error(err.message || text || "Server error");
   }
 };
 
+// Normalize image / upload paths
 export const getImage = (path) => {
   if (!path) return "";
   if (path.startsWith("http")) return path;
-
-  // for future uploads path
-  return `https://tengacion-api.onrender.com${path}`;
+  if (path.startsWith("/")) {
+    return `https://tengacion-api.onrender.com${path}`;
+  }
+  return `https://tengacion-api.onrender.com/${path}`;
 };
+
+// Safe fetch wrapper
+const safeFetch = (url, options = {}) =>
+  fetch(url, options)
+    .catch(() => {
+      throw new Error("Network connection failed");
+    })
+    .then(json);
 
 // ================= AUTH =================
 
 export const login = (email, password) =>
-  fetch(`${BASE}/auth/login`, {
+  safeFetch(`${BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password })
-  }).then(json);
+  });
 
 export const register = (data) =>
-  fetch(`${BASE}/auth/register`, {
+  safeFetch(`${BASE}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)
-  }).then(json);
+  });
 
 // ================= USER =================
 
 export const getProfile = () =>
-  fetch(`${BASE}/users/me`, {
+  safeFetch(`${BASE}/users/me`, {
     headers: auth()
-  }).then(json);
+  });
 
 export const updateMe = (data) =>
-  fetch(`${BASE}/users/me`, {
+  safeFetch(`${BASE}/users/me`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
       ...auth()
     },
     body: JSON.stringify(data)
-  }).then(json);
+  });
 
 export const uploadAvatar = (file) => {
   const f = new FormData();
   f.append("image", file);
 
-  return fetch(`${BASE}/users/me/avatar`, {
+  return safeFetch(`${BASE}/users/me/avatar`, {
     method: "POST",
     headers: auth(),
     body: f
-  }).then(json);
+  });
 };
 
 export const uploadCover = (file) => {
   const f = new FormData();
   f.append("image", file);
 
-  return fetch(`${BASE}/users/me/cover`, {
+  return safeFetch(`${BASE}/users/me/cover`, {
     method: "POST",
     headers: auth(),
     body: f
-  }).then(json);
+  });
 };
 
 // ================= POSTS =================
 
 export const getFeed = () =>
-  fetch(`${BASE}/posts`, {
+  safeFetch(`${BASE}/posts`, {
     headers: auth()
-  }).then(json);
+  });
 
 export const createPost = (text, file) => {
   const f = new FormData();
@@ -106,46 +131,46 @@ export const createPost = (text, file) => {
 
   if (file) f.append("file", file);
 
-  return fetch(`${BASE}/posts`, {
+  return safeFetch(`${BASE}/posts`, {
     method: "POST",
     headers: auth(),
     body: f
-  }).then(json);
+  });
 };
 
 export const likePost = (id) =>
-  fetch(`${BASE}/posts/${id}/like`, {
+  safeFetch(`${BASE}/posts/${id}/like`, {
     method: "POST",
     headers: auth()
-  }).then(json);
+  });
 
 // ================= STORIES =================
 
 export const getStories = () =>
-  fetch(`${BASE}/stories`, {
+  safeFetch(`${BASE}/stories`, {
     headers: auth()
-  }).then(json);
+  });
 
 export const createStory = (form) =>
-  fetch(`${BASE}/stories`, {
+  safeFetch(`${BASE}/stories`, {
     method: "POST",
     headers: auth(),
     body: form
-  }).then(json);
+  });
 
 // ================= VIDEOS =================
 
 export const getVideos = () =>
-  fetch(`${BASE}/videos`, {
+  safeFetch(`${BASE}/videos`, {
     headers: auth()
-  }).then(json);
+  });
 
 export const uploadVideo = (videoUrl, caption) =>
-  fetch(`${BASE}/videos`, {
+  safeFetch(`${BASE}/videos`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...auth()
     },
     body: JSON.stringify({ videoUrl, caption })
-  }).then(json);
+  });

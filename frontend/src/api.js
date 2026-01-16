@@ -1,8 +1,7 @@
 // ================= BASE =================
 
-export const API =
-  import.meta.env.VITE_API_URL ||
-  "https://tengacion-api.onrender.com/api";
+// FORCE use of backend API – ignore relative paths
+export const API = "https://tengacion-api.onrender.com/api";
 
 const BASE = API;
 
@@ -37,10 +36,11 @@ export const login = (email, password) =>
     body: JSON.stringify({ email, password })
   }).then(json);
 
-export const register = (form) =>
+export const register = (data) =>
   fetch(`${BASE}/auth/register`, {
     method: "POST",
-    body: form
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
   }).then(json);
 
 // ================= USER =================
@@ -58,6 +58,7 @@ export const updateMe = (data) =>
 export const uploadAvatar = (file) => {
   const f = new FormData();
   f.append("image", file);
+
   return fetch(`${BASE}/users/me/avatar`, {
     method: "POST",
     headers: auth(),
@@ -68,6 +69,7 @@ export const uploadAvatar = (file) => {
 export const uploadCover = (file) => {
   const f = new FormData();
   f.append("image", file);
+
   return fetch(`${BASE}/users/me/cover`, {
     method: "POST",
     headers: auth(),
@@ -110,7 +112,7 @@ export const createStory = (form) =>
     body: form
   }).then(json);
 
-// ================= VIDEOS (FIXED) =================
+// ================= VIDEOS =================
 
 export const getVideos = () =>
   fetch(`${BASE}/videos`, { headers: auth() }).then(json);

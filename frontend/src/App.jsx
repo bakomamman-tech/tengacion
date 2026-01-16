@@ -28,6 +28,7 @@ export default function App() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   const [user, setUser] = useState(() => {
     try {
@@ -41,9 +42,13 @@ export default function App() {
   const [posts, setPosts] = useState([]);
 
   const loadAll = async () => {
-    const p = await getProfile();
-    setProfile(p);
-    setPosts(await getFeed());
+    try {
+      const p = await getProfile();
+      setProfile(p);
+      setPosts(await getFeed());
+    } catch (e) {
+      logout();
+    }
   };
 
   useEffect(() => {
@@ -57,18 +62,9 @@ export default function App() {
     setMode("login");
   };
 
-  /* ================= AUTH ================= */
-
   if (!user) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh"
-        }}
-      >
+      <div className="auth-wrapper">
         <div className="card" style={{ width: 420 }}>
           {mode === "login" ? (
             <>
@@ -87,15 +83,24 @@ export default function App() {
                 onChange={(e) => setPassword(e.target.value)}
               />
 
+              {error && <p style={{ color: "red" }}>{error}</p>}
+
               <button
                 onClick={async () => {
-                  const d = await login(email, password);
-                  if (d?.token && d?.user) {
-                    localStorage.setItem("token", d.token);
-                    localStorage.setItem("user", JSON.stringify(d.user));
-                    setUser(d.user);
-                  } else {
-                    alert("Invalid login");
+                  setError("");
+
+                  try {
+                    const d = await login(email, password);
+
+                    if (d?.token && d?.user) {
+                      localStorage.setItem("token", d.token);
+                      localStorage.setItem("user", JSON.stringify(d.user));
+                      setUser(d.user);
+                    } else {
+                      setError(d?.error || "Invalid login");
+                    }
+                  } catch (err) {
+                    setError("Cannot connect to server");
                   }
                 }}
               >
@@ -119,28 +124,11 @@ export default function App() {
 
   if (!profile) return <div>Loading…</div>;
 
-  /* ================= CENTER ================= */
-
   const renderCenter = () => {
     if (page === "watch") return <Watch />;
-    if (page === "groups") return <div className="card"><h2>👥 Groups</h2></div>;
-    if (page === "market") return <div className="card"><h2>🛒 Marketplace</h2></div>;
-    if (page === "games") return <div className="card"><h2>🎮 Gaming</h2></div>;
 
     return (
       <>
-        {showProfileEditor && (
-          <div className="card">
-            <ProfileEditor
-              user={profile}
-              onSaved={(u) => {
-                setProfile(u);
-                setShowProfileEditor(false);
-              }}
-            />
-          </div>
-        )}
-
         <StoriesBar />
 
         <div
@@ -166,12 +154,7 @@ export default function App() {
 
   return (
     <>
-      <Navbar
-        user={profile}
-        page={page}
-        setPage={setPage}
-        onLogout={logout}
-      />
+      <Navbar user={profile} page={page} setPage={setPage} onLogout={logout} />
 
       <Layout
         left={
@@ -184,10 +167,7 @@ export default function App() {
         center={renderCenter()}
         right={
           chatOpen ? (
-            <Messenger
-              user={profile}
-              onClose={() => setChatOpen(false)}
-            />
+            <Messenger user={profile} onClose={() => setChatOpen(false)} />
           ) : null
         }
       />

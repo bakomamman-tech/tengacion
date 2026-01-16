@@ -1,8 +1,6 @@
 // ================= BASE =================
-// Tengacion is same-origin with backend on Render
+// Same-origin with backend (Render)
 export const API = "/api";
-
-// If Render ever serves frontend separately, this still works
 const BASE = API;
 
 // ================= HELPERS =================
@@ -16,7 +14,7 @@ const json = async (res) => {
   try {
     return JSON.parse(text);
   } catch {
-    console.error("API returned non-JSON:", text);
+    console.error("❌ API returned non-JSON:", text);
     throw new Error("Server error");
   }
 };
@@ -24,7 +22,7 @@ const json = async (res) => {
 export const getImage = (path) => {
   if (!path) return "";
   if (path.startsWith("http")) return path;
-  return path; // /uploads/...
+  return path;
 };
 
 // ================= AUTH =================
@@ -44,7 +42,7 @@ export const register = (form) =>
 
 // ================= USER =================
 
-export const getMe = () =>
+export const getProfile = () =>
   fetch(`${BASE}/users/me`, { headers: auth() }).then(json);
 
 export const updateMe = (data) =>

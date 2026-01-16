@@ -28,9 +28,16 @@ export default function App() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem("user")));
-  const [profile, setProfile] = useState(null);
 
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user"));
+    } catch {
+      return null;
+    }
+  });
+
+  const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
 
   const loadAll = async () => {
@@ -54,28 +61,57 @@ export default function App() {
 
   if (!user) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh"
+        }}
+      >
         <div className="card" style={{ width: 420 }}>
           {mode === "login" ? (
             <>
               <h2>🔥 Tengacion</h2>
-              <input placeholder="Email" onChange={e => setEmail(e.target.value)} />
-              <input type="password" placeholder="Password" onChange={e => setPassword(e.target.value)} />
 
-              <button onClick={async () => {
-                const d = await login(email, password);
-                if (d.token) {
-                  localStorage.setItem("token", d.token);
-                  localStorage.setItem("user", JSON.stringify(d.user));
-                  setUser(d.user);
-                } else {
-                  alert("Invalid login");
-                }
-              }}>Login</button>
+              <input
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
 
-              <p>No account? <button onClick={() => setMode("register")}>Create one</button></p>
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+
+              <button
+                onClick={async () => {
+                  const d = await login(email, password);
+                  if (d?.token && d?.user) {
+                    localStorage.setItem("token", d.token);
+                    localStorage.setItem("user", JSON.stringify(d.user));
+                    setUser(d.user);
+                  } else {
+                    alert("Invalid login");
+                  }
+                }}
+              >
+                Login
+              </button>
+
+              <p>
+                No account?{" "}
+                <button onClick={() => setMode("register")}>
+                  Create one
+                </button>
+              </p>
             </>
-          ) : <Register onBack={() => setMode("login")} />}
+          ) : (
+            <Register onBack={() => setMode("login")} />
+          )}
         </div>
       </div>
     );
@@ -97,7 +133,7 @@ export default function App() {
           <div className="card">
             <ProfileEditor
               user={profile}
-              onSaved={u => {
+              onSaved={(u) => {
                 setProfile(u);
                 setShowProfileEditor(false);
               }}
@@ -105,20 +141,23 @@ export default function App() {
           </div>
         )}
 
-        {/* FACEBOOK-STYLE STORIES */}
         <StoriesBar />
 
-        {/* CREATE POST */}
-        <div className="card" onClick={() => setShowPostModal(true)} style={{ cursor: "pointer" }}>
-          <input placeholder="What's on your mind?" />
+        <div
+          className="card"
+          onClick={() => setShowPostModal(true)}
+          style={{ cursor: "pointer" }}
+        >
+          <input placeholder="What's on your mind?" readOnly />
         </div>
 
-        {/* FEED */}
-        {posts.map(p => (
+        {posts.map((p) => (
           <div key={p._id} className="card">
             <b>{p.name}</b> @{p.username}
             <p>{p.text}</p>
-            <button onClick={() => likePost(p._id).then(loadAll)}>❤️ {p.likes.length}</button>
+            <button onClick={() => likePost(p._id).then(loadAll)}>
+              ❤️ {p.likes.length}
+            </button>
           </div>
         ))}
       </>
@@ -127,7 +166,12 @@ export default function App() {
 
   return (
     <>
-      <Navbar user={profile} page={page} setPage={setPage} onLogout={logout} />
+      <Navbar
+        user={profile}
+        page={page}
+        setPage={setPage}
+        onLogout={logout}
+      />
 
       <Layout
         left={
@@ -138,7 +182,14 @@ export default function App() {
           />
         }
         center={renderCenter()}
-        right={chatOpen ? <Messenger user={profile} onClose={() => setChatOpen(false)} /> : null}
+        right={
+          chatOpen ? (
+            <Messenger
+              user={profile}
+              onClose={() => setChatOpen(false)}
+            />
+          ) : null
+        }
       />
 
       {showPostModal && (

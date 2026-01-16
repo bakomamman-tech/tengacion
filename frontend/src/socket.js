@@ -1,10 +1,10 @@
 import { io } from "socket.io-client";
 
-// Same-origin WebSocket (Render + Vercel friendly)
-const socket = io("/", {
-  transports: ["websocket"],
+// Canonical Socket.IO connection (single source of truth)
+const socket = io({
+  path: "/socket.io",
   withCredentials: true,
-  path: "/socket.io"
+  transports: ["polling", "websocket"]
 });
 
 export default socket;

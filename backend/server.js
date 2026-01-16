@@ -9,13 +9,11 @@ const { Server } = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 
-const FRONTEND_URL = "https://tengacion.onrender.com";
-
 /* ================= CORS ================= */
-
+// Same-origin first. No hardcoded frontend URL.
 app.use(
   cors({
-    origin: [FRONTEND_URL, "http://localhost:5173"],
+    origin: true,
     credentials: true
   })
 );
@@ -30,13 +28,13 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("🗄 MongoDB connected"))
-  .catch((err) => console.error("MongoDB error:", err));
+  .catch((err) => console.error("❌ MongoDB error:", err));
 
 /* ================= SOCKET.IO ================= */
 
 const io = new Server(server, {
   cors: {
-    origin: [FRONTEND_URL, "http://localhost:5173"],
+    origin: true,
     credentials: true
   }
 });
@@ -58,7 +56,11 @@ io.on("connection", (socket) => {
       const User = require("./models/User");
 
       const conversationId = [senderId, receiverId].sort().join("_");
-      const sender = await User.findById(senderId).select("name username avatar");
+      const sender = await User.findById(senderId).select(
+        "name username avatar"
+      );
+
+      if (!sender) return;
 
       const msg = await Message.create({
         conversationId,
@@ -87,7 +89,7 @@ io.on("connection", (socket) => {
 
       socket.emit("newMessage", payload);
     } catch (err) {
-      console.error("Socket message error:", err);
+      console.error("❌ Socket message error:", err);
     }
   });
 
@@ -112,13 +114,13 @@ app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/messages", require("./routes/messages"));
 app.use("/api/videos", require("./routes/videos"));
 
-/* ================= FRONTEND (Render) ================= */
+/* ================= FRONTEND (RENDER) ================= */
 
-// Serve the REAL Vite build
+// Serve Vite build
 const frontendPath = path.join(process.cwd(), "frontend", "dist");
 app.use(express.static(frontendPath));
 
-// Do NOT let React override API routes
+// React Router catch-all (DO NOT override API)
 app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(frontendPath, "index.html"));
 });
@@ -127,5 +129,5 @@ app.get(/^\/(?!api).*/, (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log("🚀 Tengacion running on port " + PORT);
+  console.log(`🚀 PyrexxBook running on port ${PORT}`);
 });

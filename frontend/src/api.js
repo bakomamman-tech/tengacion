@@ -1,4 +1,5 @@
 // ================= BASE =================
+
 export const API =
   import.meta.env.VITE_API_URL ||
   "https://tengacion-api.onrender.com/api";
@@ -13,19 +14,18 @@ const auth = () => ({
 
 const json = async (res) => {
   const text = await res.text();
-
   try {
     return JSON.parse(text);
   } catch {
     console.error("❌ API returned non-JSON:", text);
-    throw new Error("Server error - not hitting backend");
+    throw new Error("Server error");
   }
 };
 
 export const getImage = (path) => {
   if (!path) return "";
   if (path.startsWith("http")) return path;
-  return `https://tengacion-api.onrender.com${path}`;
+  return path;
 };
 
 // ================= AUTH =================
@@ -65,6 +65,16 @@ export const uploadAvatar = (file) => {
   }).then(json);
 };
 
+export const uploadCover = (file) => {
+  const f = new FormData();
+  f.append("image", file);
+  return fetch(`${BASE}/users/me/cover`, {
+    method: "POST",
+    headers: auth(),
+    body: f
+  }).then(json);
+};
+
 // ================= POSTS =================
 
 export const getFeed = () =>
@@ -86,4 +96,31 @@ export const likePost = (id) =>
   fetch(`${BASE}/posts/${id}/like`, {
     method: "POST",
     headers: auth()
+  }).then(json);
+
+// ================= STORIES =================
+
+export const getStories = () =>
+  fetch(`${BASE}/stories`, { headers: auth() }).then(json);
+
+export const createStory = (form) =>
+  fetch(`${BASE}/stories`, {
+    method: "POST",
+    headers: auth(),
+    body: form
+  }).then(json);
+
+// ================= VIDEOS (FIXED) =================
+
+export const getVideos = () =>
+  fetch(`${BASE}/videos`, { headers: auth() }).then(json);
+
+export const uploadVideo = (videoUrl, caption) =>
+  fetch(`${BASE}/videos`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...auth()
+    },
+    body: JSON.stringify({ videoUrl, caption })
   }).then(json);

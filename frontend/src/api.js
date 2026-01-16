@@ -11,6 +11,7 @@ const auth = () => ({
 });
 
 const handleAuthFail = () => {
+  console.warn("🔐 Authentication expired — logging out");
   localStorage.clear();
   window.location.href = "/";
 };
@@ -49,9 +50,11 @@ const json = async (res) => {
 export const getImage = (path) => {
   if (!path) return "";
   if (path.startsWith("http")) return path;
+
   if (path.startsWith("/")) {
     return `https://tengacion-api.onrender.com${path}`;
   }
+
   return `https://tengacion-api.onrender.com/${path}`;
 };
 

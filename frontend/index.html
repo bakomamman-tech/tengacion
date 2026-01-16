@@ -1,30 +1,39 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+  <meta charset="UTF-8" />
 
-    <!-- Tengacion Favicon -->
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="apple-touch-icon" href="/favicon.png" />
+  <!-- Primary Favicon -->
+  <link rel="icon" type="image/png" href="/favicon.png" />
 
-    <!-- Android / Chrome -->
-    <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
-    <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
+  <!-- PWA / Mobile Support (Modern Standard) -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Tengacion" />
 
-    <!-- iOS PWA support -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Tengacion" />
+  <!-- App Icons -->
+  <link rel="apple-touch-icon" href="/favicon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
 
-    <!-- App Identity -->
-    <meta name="theme-color" content="#0a0a0a" />
-    <meta name="description" content="Tengacion — The future of social networking" />
+  <!-- App Identity -->
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="description" content="Tengacion — The future of social networking" />
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tengacion</title>
-  </head>
+  <!-- Open Graph (for sharing links) -->
+  <meta property="og:title" content="Tengacion" />
+  <meta property="og:description" content="The future of social networking" />
+  <meta property="og:image" content="/favicon.png" />
+  <meta property="og:type" content="website" />
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+  <!-- Viewport -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Tengacion</title>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
 </html>

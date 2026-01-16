@@ -22,20 +22,28 @@
   background: #222;
   transition: transform .2s;
 }
+
 .story-card:not(.create) {
   box-shadow: 0 4px 10px rgba(0,0,0,.25);
 }
-
 
 .story-card:hover {
   transform: scale(1.03);
 }
 
-/* STORY IMAGE */
+/* STORY IMAGE — SCOPED ONLY TO STORIES */
 .story-card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+}
+
+/* 🛡 PROTECT OTHER MODULES (LIKE MESSENGER) */
+:not(.story-card) > img {
+  object-fit: initial;
+  width: auto;
+  height: auto;
 }
 
 /* DARK OVERLAY */
@@ -87,7 +95,6 @@
   justify-content: center;
   flex-direction: column;
 }
-
 
 .story-card.create span {
   width: 42px;

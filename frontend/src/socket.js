@@ -1,10 +1,15 @@
 import { io } from "socket.io-client";
 
-// Canonical Socket.IO connection (single source of truth)
-const socket = io({
-  path: "/socket.io",
+// Use backend directly in development
+const URL =
+  import.meta.env.DEV
+    ? "http://localhost:5000"
+    : "/";   // production = same origin
+
+const socket = io(URL, {
+  transports: ["websocket", "polling"],
   withCredentials: true,
-  transports: ["polling", "websocket"]
+  path: "/socket.io"
 });
 
 export default socket;

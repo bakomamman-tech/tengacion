@@ -1,5 +1,5 @@
 import { useState } from "react";
-import API_BASE from "./api";
+import { register } from "./api";
 
 export default function Register({ onBack }) {
   const [form, setForm] = useState({
@@ -12,8 +12,6 @@ export default function Register({ onBack }) {
     dob: ""
   });
 
-  const [avatar, setAvatar] = useState(null);
-  const [preview, setPreview] = useState(null);
   const [error, setError] = useState("");
 
   const handleChange = (e) => {
@@ -22,27 +20,14 @@ export default function Register({ onBack }) {
 
   const submit = async () => {
     try {
-      const data = new FormData();
+      const result = await register(form);
 
-      Object.entries(form).forEach(([key, value]) => {
-        data.append(key, value);
-      });
-
-      if (avatar) data.append("avatar", avatar);
-
-      const res = await fetch(API_BASE + "/api/auth/register", {
-        method: "POST",
-        body: data
-      });
-
-      const result = await res.json();
-
-      if (result.token) {
+      if (result?.token && result?.user) {
         localStorage.setItem("token", result.token);
         localStorage.setItem("user", JSON.stringify(result.user));
         window.location.reload();
       } else {
-        setError(result.error || "Registration failed");
+        setError(result?.error || "Registration failed");
       }
     } catch (err) {
       console.error(err);
@@ -52,35 +37,7 @@ export default function Register({ onBack }) {
 
   return (
     <div className="auth-card">
-      <h2>Create your Tengacion account</h2>
-
-      {/* Profile Photo */}
-      <div style={{ textAlign: "center", marginBottom: 15 }}>
-        <label style={{ cursor: "pointer" }}>
-          <img
-            src={preview || "/default-avatar.png"}
-            alt="avatar"
-            style={{
-              width: 100,
-              height: 100,
-              borderRadius: "50%",
-              objectFit: "cover",
-              border: "2px solid #ddd"
-            }}
-          />
-          <input
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={(e) => {
-              const file = e.target.files[0];
-              setAvatar(file);
-              setPreview(URL.createObjectURL(file));
-            }}
-          />
-        </label>
-        <p style={{ fontSize: 12 }}>Click image to upload profile photo</p>
-      </div>
+      <h2>Create your account</h2>
 
       <input name="name" placeholder="Full Name" onChange={handleChange} />
       <input name="username" placeholder="Username" onChange={handleChange} />

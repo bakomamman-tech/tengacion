@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { socket } from "./socket";
+import socket from "./socket";
 
 export default function Messenger({ user, onClose }) {
   const [text, setText] = useState("");
@@ -9,16 +9,14 @@ export default function Messenger({ user, onClose }) {
   useEffect(() => {
     if (!user) return;
 
-    // Join socket room
     socket.emit("join", user._id);
 
-    // Auto pick first friend
     if (user.friends && user.friends.length > 0) {
       setReceiverId(user.friends[0]);
     }
 
-    const handleNewMessage = msg => {
-      setMessages(m => [...m, msg]);
+    const handleNewMessage = (msg) => {
+      setMessages((m) => [...m, msg]);
     };
 
     socket.on("newMessage", handleNewMessage);
@@ -42,7 +40,6 @@ export default function Messenger({ user, onClose }) {
 
   return (
     <div className="messenger">
-      {/* ===== HEADER ===== */}
       <div className="messenger-header">
         <span>💬 Messenger</span>
         <button
@@ -59,7 +56,6 @@ export default function Messenger({ user, onClose }) {
         </button>
       </div>
 
-      {/* ===== MESSAGES ===== */}
       <div className="messenger-messages">
         {messages.map((m, i) => (
           <div
@@ -72,12 +68,11 @@ export default function Messenger({ user, onClose }) {
         ))}
       </div>
 
-      {/* ===== INPUT ===== */}
       <div className="messenger-input">
         <input
           value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && send()}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && send()}
           placeholder="Type a message..."
         />
         <button onClick={send}>Send</button>

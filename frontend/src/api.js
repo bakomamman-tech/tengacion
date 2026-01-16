@@ -1,30 +1,41 @@
 // ================= BASE =================
 
-// FORCE use of backend API – ignore relative paths
+// FORCE use of backend API
 export const API = "https://tengacion-api.onrender.com/api";
-
 const BASE = API;
 
 // ================= HELPERS =================
 
 const auth = () => ({
-  Authorization: "Bearer " + localStorage.getItem("token")
+  Authorization: "Bearer " + (localStorage.getItem("token") || "")
 });
 
 const json = async (res) => {
   const text = await res.text();
+
   try {
-    return JSON.parse(text);
+    const data = JSON.parse(text);
+
+    // Auto logout if token expired
+    if (res.status === 401) {
+      localStorage.clear();
+      window.location.reload();
+      return;
+    }
+
+    return data;
   } catch {
     console.error("❌ API returned non-JSON:", text);
-    throw new Error("Server error");
+    throw new Error(text || "Server error");
   }
 };
 
 export const getImage = (path) => {
   if (!path) return "";
   if (path.startsWith("http")) return path;
-  return path;
+
+  // for future uploads path
+  return `https://tengacion-api.onrender.com${path}`;
 };
 
 // ================= AUTH =================
@@ -46,12 +57,17 @@ export const register = (data) =>
 // ================= USER =================
 
 export const getProfile = () =>
-  fetch(`${BASE}/users/me`, { headers: auth() }).then(json);
+  fetch(`${BASE}/users/me`, {
+    headers: auth()
+  }).then(json);
 
 export const updateMe = (data) =>
   fetch(`${BASE}/users/me`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", ...auth() },
+    headers: {
+      "Content-Type": "application/json",
+      ...auth()
+    },
     body: JSON.stringify(data)
   }).then(json);
 
@@ -80,11 +96,14 @@ export const uploadCover = (file) => {
 // ================= POSTS =================
 
 export const getFeed = () =>
-  fetch(`${BASE}/posts`, { headers: auth() }).then(json);
+  fetch(`${BASE}/posts`, {
+    headers: auth()
+  }).then(json);
 
 export const createPost = (text, file) => {
   const f = new FormData();
   f.append("text", text || "");
+
   if (file) f.append("file", file);
 
   return fetch(`${BASE}/posts`, {
@@ -103,7 +122,9 @@ export const likePost = (id) =>
 // ================= STORIES =================
 
 export const getStories = () =>
-  fetch(`${BASE}/stories`, { headers: auth() }).then(json);
+  fetch(`${BASE}/stories`, {
+    headers: auth()
+  }).then(json);
 
 export const createStory = (form) =>
   fetch(`${BASE}/stories`, {
@@ -115,7 +136,9 @@ export const createStory = (form) =>
 // ================= VIDEOS =================
 
 export const getVideos = () =>
-  fetch(`${BASE}/videos`, { headers: auth() }).then(json);
+  fetch(`${BASE}/videos`, {
+    headers: auth()
+  }).then(json);
 
 export const uploadVideo = (videoUrl, caption) =>
   fetch(`${BASE}/videos`, {

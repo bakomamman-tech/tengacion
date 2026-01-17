@@ -5,7 +5,14 @@ const User = require("../models/User");
 
 const router = express.Router();
 
-/* ================= REGISTER (JSON ONLY) ================= */
+/* ============ HELPER: SAFE USER OBJECT ============ */
+const sanitizeUser = (user) => {
+  const u = user.toObject ? user.toObject() : user;
+  delete u.password;
+  return u;
+};
+
+/* ================= REGISTER ================= */
 
 router.post("/register", async (req, res) => {
   try {
@@ -45,7 +52,10 @@ router.post("/register", async (req, res) => {
       { expiresIn: "30d" }
     );
 
-    res.json({ token, user });
+    res.json({
+      token,
+      user: sanitizeUser(user)
+    });
   } catch (err) {
     console.error("Register error:", err);
     res.status(500).json({ error: "Registration failed" });
@@ -78,10 +88,46 @@ router.post("/login", async (req, res) => {
       { expiresIn: "30d" }
     );
 
-    res.json({ token, user });
+    res.json({
+      token,
+      user: sanitizeUser(user)
+    });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Login failed" });
+  }
+});
+
+/* ================= GET CURRENT USER ================= */
+
+router.get("/me", async (req, res) => {
+  try {
+    // Read token from header:  Authorization: Bearer <token>
+    const authHeader = req.headers.authorization;
+    let token = null;
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    }
+
+    // Fallback: ?token= or cookie in future
+    token = token || req.query.token || req.cookies?.token;
+
+    if (!token) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(sanitizeUser(user));
+  } catch (err) {
+    console.error("ME endpoint error:", err.message);
+    res.status(401).json({ message: "Invalid session" });
   }
 });
 

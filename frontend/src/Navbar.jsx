@@ -1,15 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLauncher from "./AppLauncher";
-import "./index.css";
 
 export default function Navbar({ user, page, setPage, onLogout }) {
 
-  console.log("🔥 NAVBAR FILE LOADED FROM src/Navbar.jsx");
-
   const [showApps, setShowApps] = useState(false);
 
-  // 🔍 SEARCH
+  // SEARCH
   const [query, setQuery] = useState("");
   const [results, setResults] = useState({ users: [], posts: [] });
   const [open, setOpen] = useState(false);
@@ -17,6 +14,7 @@ export default function Navbar({ user, page, setPage, onLogout }) {
 
   const navigate = useNavigate();
 
+  /* ===== Close dropdown on outside click ===== */
   useEffect(() => {
     const close = (e) => {
       if (boxRef.current && !boxRef.current.contains(e.target)) {
@@ -28,6 +26,7 @@ export default function Navbar({ user, page, setPage, onLogout }) {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
+  /* ===== Live search ===== */
   useEffect(() => {
     if (!query.trim()) {
       setResults({ users: [], posts: [] });
@@ -44,10 +43,13 @@ export default function Navbar({ user, page, setPage, onLogout }) {
           headers: { Authorization: "Bearer " + localStorage.getItem("token") }
         }).then((r) => r.json())
       ]).then(([u, p]) => {
-        setResults({ users: u.slice(0, 5), posts: p.slice(0, 5) });
+        setResults({
+          users: Array.isArray(u) ? u.slice(0, 5) : [],
+          posts: Array.isArray(p) ? p.slice(0, 5) : []
+        });
         setOpen(true);
       });
-    }, 300);
+    }, 280);
 
     return () => clearTimeout(t);
   }, [query]);
@@ -65,7 +67,21 @@ export default function Navbar({ user, page, setPage, onLogout }) {
 
       {/* ===== LEFT ===== */}
       <div className="nav-left" ref={boxRef}>
-        <img src="/tengacion_logo_64.png" className="nav-logo" alt="Tengacion" />
+
+        {/* LOGO – FIXED SIZE SO IT CAN NEVER EXPLODE */}
+        <img
+          src="/tengacion_logo_64.png"
+          className="nav-logo"
+          alt="Tengacion"
+          style={{
+            width: 38,
+            height: 38,
+            minWidth: 38,
+            maxWidth: 38,
+            objectFit: "contain"
+          }}
+          onClick={() => navigate("/")}
+        />
 
         <form onSubmit={goFullSearch} style={{ position: "relative" }}>
           <input
@@ -78,6 +94,7 @@ export default function Navbar({ user, page, setPage, onLogout }) {
 
           {open && (results.users.length > 0 || results.posts.length > 0) && (
             <div className="search-dropdown">
+
               {results.users.length > 0 && (
                 <>
                   <div className="sd-title">People</div>
@@ -98,6 +115,7 @@ export default function Navbar({ user, page, setPage, onLogout }) {
                             u.name
                           )}`
                         }
+                        alt="avatar"
                       />
                       <span>
                         {u.name} <small>@{u.username}</small>
@@ -134,31 +152,69 @@ export default function Navbar({ user, page, setPage, onLogout }) {
         </form>
       </div>
 
-      {/* ===== CENTER ===== */}
+      {/* ===== CENTER – FACEBOOK STYLE NAV ===== */}
       <div className="nav-center">
-        <button className={page === "home" ? "nav-active" : ""} onClick={() => setPage("home")}>🏠</button>
-        <button className={page === "watch" ? "nav-active" : ""} onClick={() => setPage("watch")}>🎥</button>
-        <button className={page === "groups" ? "nav-active" : ""} onClick={() => setPage("groups")}>👥</button>
-        <button className={page === "market" ? "nav-active" : ""} onClick={() => setPage("market")}>🛒</button>
-        <button className={page === "games" ? "nav-active" : ""} onClick={() => setPage("games")}>🎮</button>
+        <button
+          className={page === "home" ? "nav-active" : ""}
+          onClick={() => setPage("home")}
+          title="Home"
+        >🏠</button>
+
+        <button
+          className={page === "watch" ? "nav-active" : ""}
+          onClick={() => setPage("watch")}
+          title="Watch"
+        >🎥</button>
+
+        <button
+          className={page === "groups" ? "nav-active" : ""}
+          onClick={() => setPage("groups")}
+          title="Groups"
+        >👥</button>
+
+        <button
+          className={page === "market" ? "nav-active" : ""}
+          onClick={() => setPage("market")}
+          title="Marketplace"
+        >🛒</button>
+
+        <button
+          className={page === "games" ? "nav-active" : ""}
+          onClick={() => setPage("games")}
+          title="Gaming"
+        >🎮</button>
       </div>
 
       {/* ===== RIGHT ===== */}
       <div className="nav-right">
-        <button className="nav-icon" onClick={() => setShowApps(!showApps)}>⬛</button>
-        <button className="nav-icon">💬</button>
-        <button className="nav-icon">🔔</button>
 
+        <button
+          className="nav-icon"
+          onClick={() => setShowApps(!showApps)}
+          title="Apps"
+        >⬛</button>
+
+        <button className="nav-icon" title="Messages">💬</button>
+        <button className="nav-icon" title="Notifications">🔔</button>
+
+        {/* USER AVATAR */}
         <img
           src={
-            user.avatar ||
-            `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&size=64`
+            user?.avatar ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              user?.name || "User"
+            )}&size=64`
           }
           className="nav-avatar"
           alt="avatar"
+          onClick={() => navigate(`/profile/${user?.username}`)}
         />
 
-        <button onClick={onLogout} className="nav-logout">⎋</button>
+        <button
+          onClick={onLogout}
+          className="nav-logout"
+          title="Logout"
+        >⎋</button>
       </div>
 
       {showApps && <AppLauncher />}

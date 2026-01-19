@@ -68,18 +68,11 @@ export default function Navbar({ user, page, setPage, onLogout }) {
       {/* ===== LEFT ===== */}
       <div className="nav-left" ref={boxRef}>
 
-        {/* LOGO – FIXED SIZE SO IT CAN NEVER EXPLODE */}
+        {/* ✅ HARD LOCKED LOGO – IMPOSSIBLE TO EXPLODE */}
         <img
           src="/tengacion_logo_64.png"
           className="nav-logo"
           alt="Tengacion"
-          style={{
-            width: 38,
-            height: 38,
-            minWidth: 38,
-            maxWidth: 38,
-            objectFit: "contain"
-          }}
           onClick={() => navigate("/")}
         />
 
@@ -152,52 +145,22 @@ export default function Navbar({ user, page, setPage, onLogout }) {
         </form>
       </div>
 
-      {/* ===== CENTER – FACEBOOK STYLE NAV ===== */}
+      {/* ===== CENTER ===== */}
       <div className="nav-center">
-        <button
-          className={page === "home" ? "nav-active" : ""}
-          onClick={() => setPage("home")}
-          title="Home"
-        >🏠</button>
-
-        <button
-          className={page === "watch" ? "nav-active" : ""}
-          onClick={() => setPage("watch")}
-          title="Watch"
-        >🎥</button>
-
-        <button
-          className={page === "groups" ? "nav-active" : ""}
-          onClick={() => setPage("groups")}
-          title="Groups"
-        >👥</button>
-
-        <button
-          className={page === "market" ? "nav-active" : ""}
-          onClick={() => setPage("market")}
-          title="Marketplace"
-        >🛒</button>
-
-        <button
-          className={page === "games" ? "nav-active" : ""}
-          onClick={() => setPage("games")}
-          title="Gaming"
-        >🎮</button>
+        <button className={page === "home" ? "nav-active" : ""} onClick={() => setPage("home")}>🏠</button>
+        <button className={page === "watch" ? "nav-active" : ""} onClick={() => setPage("watch")}>🎥</button>
+        <button className={page === "groups" ? "nav-active" : ""} onClick={() => setPage("groups")}>👥</button>
+        <button className={page === "market" ? "nav-active" : ""} onClick={() => setPage("market")}>🛒</button>
+        <button className={page === "games" ? "nav-active" : ""} onClick={() => setPage("games")}>🎮</button>
       </div>
 
       {/* ===== RIGHT ===== */}
       <div className="nav-right">
 
-        <button
-          className="nav-icon"
-          onClick={() => setShowApps(!showApps)}
-          title="Apps"
-        >⬛</button>
+        <button className="nav-icon" onClick={() => setShowApps(!showApps)}>⬛</button>
+        <button className="nav-icon">💬</button>
+        <button className="nav-icon">🔔</button>
 
-        <button className="nav-icon" title="Messages">💬</button>
-        <button className="nav-icon" title="Notifications">🔔</button>
-
-        {/* USER AVATAR */}
         <img
           src={
             user?.avatar ||
@@ -210,11 +173,7 @@ export default function Navbar({ user, page, setPage, onLogout }) {
           onClick={() => navigate(`/profile/${user?.username}`)}
         />
 
-        <button
-          onClick={onLogout}
-          className="nav-logout"
-          title="Logout"
-        >⎋</button>
+        <button onClick={onLogout} className="nav-logout">⎋</button>
       </div>
 
       {showApps && <AppLauncher />}

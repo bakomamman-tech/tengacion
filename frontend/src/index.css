@@ -1,9 +1,9 @@
 /* ======================================================
-   TENGACION DESIGN SYSTEM – FACEBOOK INSPIRED (FINAL)
+   TENGACION DESIGN SYSTEM – FACEBOOK INSPIRED (FINAL FIX)
 ====================================================== */
 
 :root {
-  --bg: #f0f2f5;                 /* facebook-like background */
+  --bg: #f0f2f5;
   --panel: #ffffff;
   --card: #ffffff;
 
@@ -31,61 +31,35 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  -webkit-font-smoothing: antialiased;
-}
-
-img {
-  max-width: 100%;
-  height: auto;
-}
-
-/* ================= INPUTS ================= */
-
-input, textarea {
-  background: #f0f2f5;
-  border: 1px solid var(--border);
-  padding: 10px 14px;
-  border-radius: 20px;
-  font-size: 15px;
-  transition: all .15s;
-}
-
-input:focus {
-  border-color: var(--primary);
-  background: #fff;
-  outline: none;
-}
-
-/* ================= BUTTONS ================= */
-
-button {
-  background: var(--primary);
-  color: white;
-  border: none;
-  padding: 9px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all .15s;
-}
-
-button:hover {
-  background: var(--primary-hover);
-}
-
-/* ================= CARDS ================= */
-
-.card {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 12px;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
 }
 
 /* ======================================================
-   NAVBAR – FACEBOOK PROPORTIONS
+   🚨 ANTI–GIANT LOGO CORE FIX (STRONGEST POSSIBLE)
 ====================================================== */
+
+.nav-logo {
+  width: 38px !important;
+  height: 38px !important;
+  max-width: 38px !important;
+  max-height: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px !important;
+  object-fit: contain !important;
+  border-radius: 50% !important;
+}
+
+/* Kill any stray huge image from browser */
+body > img,
+#root > img,
+img[src*="1024"],
+img[src*="512"],
+img[src*="favicon"] {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* ================= NAVBAR ================= */
 
 .navbar {
   height: 56px;
@@ -102,23 +76,14 @@ button:hover {
   z-index: 100;
 }
 
-/* LEFT */
 .nav-left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.nav-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-}
-
 .nav-search {
   width: 200px;
-  background: #f0f2f5;
-  padding-left: 16px;
 }
 
 /* CENTER */
@@ -133,17 +98,11 @@ button:hover {
   color: var(--muted);
   width: 90px;
   height: 44px;
-  border-radius: 8px;
-}
-
-.nav-center button:hover {
-  background: #f0f2f5;
 }
 
 .nav-active {
   color: var(--primary) !important;
   border-bottom: 3px solid var(--primary);
-  border-radius: 0;
 }
 
 /* RIGHT */
@@ -154,171 +113,21 @@ button:hover {
   gap: 8px;
 }
 
-.nav-icon {
-  background: #e4e6eb;
-  border-radius: 50%;
-  padding: 10px;
-}
-
-.nav-icon:hover {
-  background: #d8dadf;
-}
-
 .nav-avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
 }
 
-.nav-logout {
-  background: #e4e6eb;
-  color: #050505;
-}
-
-/* ======================================================
-   APP SHELL – REAL FACEBOOK GRID
-====================================================== */
+/* ================= LAYOUT ================= */
 
 .app-shell {
   height: calc(100vh - 56px);
   display: grid;
   grid-template-columns: 300px 1fr 320px;
-  overflow: hidden;
 }
 
-/* LEFT SIDEBAR */
-.sidebar {
-  background: var(--bg);
-  padding: 12px 8px;
-  overflow-y: auto;
-}
-
-.sidebar-user {
-  padding: 10px;
-  border-radius: 8px;
-}
-
-.sidebar-user:hover {
-  background: #e4e6eb;
-}
-
-.sidebar-btn {
-  width: 100%;
-  background: transparent;
-  color: var(--text);
-  text-align: left;
-  padding: 10px;
-  margin-top: 4px;
-}
-
-.sidebar-btn:hover {
-  background: #e4e6eb;
-}
-
-/* CENTER FEED */
-.main-feed {
-  padding: 16px 32px;
-  overflow-y: auto;
-
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-
-  max-width: 680px;
-  margin: 0 auto;
-}
-
-/* RIGHT MESSENGER */
-.messenger {
-  background: var(--panel);
-  border-left: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-}
-
-/* ======================================================
-   STORIES – FACEBOOK STYLE
-====================================================== */
-
-.stories-bar {
-  display: flex;
-  gap: 8px;
-  padding: 4px 0;
-  overflow-x: auto;
-}
-
-.story-card {
-  min-width: 112px;
-  height: 200px;
-  border-radius: 12px;
-  background: #e4e6eb;
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-
-  font-weight: 600;
-}
-
-.story-card.create {
-  background: linear-gradient(135deg,#d6c4a5,#8b5e34);
-  color: white;
-}
-
-/* ======================================================
-   FEED POSTS
-====================================================== */
-
-.tengacion-feed {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.feed-posts .card {
-  padding: 14px 16px;
-}
-
-.feed-posts b {
-  font-size: 14px;
-}
-
-.feed-posts p {
-  margin: 6px 0 0 0;
-  line-height: 1.4;
-}
-
-/* ======================================================
-   SEARCH DROPDOWN
-====================================================== */
-
-.search-dropdown {
-  position: absolute;
-  top: 46px;
-  left: 0;
-  width: 340px;
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  z-index: 999;
-}
-
-.sd-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-}
-
-.sd-item:hover {
-  background: #f0f2f5;
-}
-
-/* ======================================================
-   MOBILE
-====================================================== */
+/* ================= MOBILE ================= */
 
 @media (max-width: 1100px) {
   .app-shell {
@@ -328,10 +137,6 @@ button:hover {
   .sidebar,
   .messenger {
     display: none;
-  }
-
-  .main-feed {
-    padding: 12px;
   }
 
   .nav-search {

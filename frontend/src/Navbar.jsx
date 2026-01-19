@@ -153,6 +153,7 @@ export default function Navbar({ user, page, setPage, onLogout }) {
         <button className={page === "market" ? "nav-active" : ""} onClick={() => setPage("market")}>🛒</button>
         <button className={page === "games" ? "nav-active" : ""} onClick={() => setPage("games")}>🎮</button>
       </div>
+<h1 style={{background:"red"}}>TEST FROM STEPHEN</h1>
 
       {/* ===== RIGHT ===== */}
       <div className="nav-right">

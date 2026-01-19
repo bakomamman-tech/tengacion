@@ -1,7 +1,8 @@
 // ================= BASE =================
 
-// FORCE use of backend API
-export const API = "https://tengacion-api.onrender.com/api";
+// ✅ MONOLITHIC MODE – SAME ORIGIN
+// No domain, no localhost, no port
+export const API = "/api";
 const BASE = API;
 
 // ================= HELPERS =================
@@ -16,10 +17,10 @@ const handleAuthFail = () => {
   window.location.href = "/";
 };
 
+// ---- FIXED JSON PARSER ----
 const json = async (res) => {
   const text = await res.text();
 
-  // Handle empty body
   if (!text) {
     if (res.ok) return {};
     throw new Error("Empty server response");
@@ -28,13 +29,11 @@ const json = async (res) => {
   try {
     const data = JSON.parse(text);
 
-    // Auto logout if token expired / invalid
     if (res.status === 401) {
       handleAuthFail();
-      return;
+      throw new Error("Unauthorized");
     }
 
-    // Backend sent structured error
     if (!res.ok) {
       throw new Error(data?.error || data?.message || "Request failed");
     }
@@ -46,21 +45,22 @@ const json = async (res) => {
   }
 };
 
-// Normalize image / upload paths
+// Normalize image paths (same domain)
 export const getImage = (path) => {
   if (!path) return "";
   if (path.startsWith("http")) return path;
 
-  if (path.startsWith("/")) {
-    return `https://tengacion-api.onrender.com${path}`;
-  }
-
-  return `https://tengacion-api.onrender.com/${path}`;
+  return path.startsWith("/") ? path : `/${path}`;
 };
 
-// Safe fetch wrapper
+// Safe fetch wrapper with timeout
 const safeFetch = (url, options = {}) =>
-  fetch(url, options)
+  Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Request timeout")), 15000)
+    )
+  ])
     .catch(() => {
       throw new Error("Network connection failed");
     })

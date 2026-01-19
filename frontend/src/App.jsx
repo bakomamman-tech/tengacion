@@ -1,61 +1,83 @@
 import { useEffect, useState } from "react";
-import Watch from "./Watch";
-import CreatePostModal from "./CreatePostModal";
-import StoriesBar from "./stories/StoriesBar";
+import { Routes, Route, Navigate } from "react-router-dom";
 
-import {
-  login,
-  getProfile,
-  getFeed,
-  createPost,
-  likePost
-} from "./api";
-
-import Layout from "./Layout";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import Messenger from "./Messenger";
-import Register from "./Register";
-import ProfileEditor from "./ProfileEditor";
+import StoriesBar from "./stories/StoriesBar";
+import Search from "./pages/Search";
+
+import { getProfile, getFeed } from "./api";
 
 export default function App() {
-  const [mode, setMode] = useState("login");
-  const [page, setPage] = useState("home");
-
-  const [chatOpen, setChatOpen] = useState(false);
-  const [showProfileEditor, setShowProfileEditor] = useState(false);
-  const [showPostModal, setShowPostModal] = useState(false);
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  const [user, setUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user"));
-    } catch {
-      return null;
-    }
-  });
-
+  const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
 
-  /* ================= LOAD DATA ================= */
+  const [booting, setBooting] = useState(true);
+  const [page, setPage] = useState("home");
+
+  const [chatOpen, setChatOpen] = useState(false);
+  const [error, setError] = useState(null);
+
+  /* ======================================================
+     AUTH RESTORE – FACEBOOK STYLE
+  ====================================================== */
+
+  useEffect(() => {
+    const restore = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setBooting(false);
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/users/me", {
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+        });
+
+        const me = await res.json();
+
+        if (me?.error) throw new Error(me.error);
+
+        setUser(me);
+        setProfile(me);
+
+        // expose for debugging
+        window.__PROFILE__ = me;
+
+      } catch (err) {
+        console.warn("Session expired");
+        localStorage.clear();
+        setError("Session expired, please login again");
+      } finally {
+        setBooting(false);
+      }
+    };
+
+    restore();
+  }, []);
+
+  /* ======================================================
+     LOAD FEED + PROFILE
+  ====================================================== */
 
   const loadAll = async () => {
     try {
-      console.log("🔁 Loading profile + feed");
-
       const p = await getProfile();
       setProfile(p);
 
       const feed = await getFeed();
-      setPosts(feed);
+      setPosts(Array.isArray(feed) ? feed : []);
 
+      window.__POSTS__ = feed;
     } catch (e) {
-      console.error("❌ Session expired or API error:", e);
-      logout();
+      console.error("Feed error:", e);
+      setError("Could not load feed");
     }
   };
 
@@ -63,131 +85,42 @@ export default function App() {
     if (user) loadAll();
   }, [user]);
 
-  /* ================= LOGOUT ================= */
+  /* ======================================================
+     UI STATES
+  ====================================================== */
 
-  const logout = () => {
-    localStorage.clear();
-    setUser(null);
-    setProfile(null);
-    setMode("login");
-  };
-
-  /* ================= AUTH SCREEN ================= */
-
-  if (!user) {
+  if (booting) {
     return (
-      <div className="auth-wrapper">
-        <div className="card" style={{ width: 420 }}>
-
-          {mode === "login" ? (
-            <>
-              <h2>🔥 Tengacion</h2>
-
-              <input
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-
-              {error && <p style={{ color: "red" }}>{error}</p>}
-
-              <button
-                onClick={async () => {
-                  setError("");
-
-                  try {
-                    console.log("🔐 Attempting login...");
-
-                    const d = await login(email, password);
-
-                    console.log("🔑 Login response:", d);
-
-                    if (d?.token && d?.user) {
-                      localStorage.setItem("token", d.token);
-                      localStorage.setItem("user", JSON.stringify(d.user));
-
-                      setUser(d.user);
-
-                      console.log("✅ Login success");
-                    } else {
-                      setError(d?.error || "Invalid login");
-                    }
-
-                  } catch (err) {
-                    console.error("❌ Login error:", err);
-                    setError("Cannot connect to server");
-                  }
-                }}
-              >
-                Login
-              </button>
-
-              <p>
-                No account?{" "}
-                <button onClick={() => setMode("register")}>
-                  Create one
-                </button>
-              </p>
-            </>
-          ) : (
-            <Register onBack={() => setMode("login")} />
-          )}
-
-        </div>
+      <div className="card" style={{ margin: 40 }}>
+        <h3>🚀 Booting Tengacion...</h3>
+        <p>Connecting to your world</p>
       </div>
     );
   }
 
-  /* ================= LOADING STATE ================= */
-
-  if (!profile) {
-    return <div>Loading…</div>;
-  }
-
-  /* ================= CENTER RENDER ================= */
-
-  const renderCenter = () => {
-    if (page === "watch") return <Watch />;
-
+  if (!user) {
     return (
       <>
-        <StoriesBar />
+        <Navbar user={null} />
 
-        <div
-          className="card"
-          onClick={() => setShowPostModal(true)}
-          style={{ cursor: "pointer" }}
-        >
-          <input placeholder="What's on your mind?" readOnly />
+        <div className="card" style={{ margin: 40 }}>
+          <h3>Welcome to Tengacion</h3>
+
+          {error && (
+            <div style={{ color: "crimson", marginBottom: 10 }}>
+              {error}
+            </div>
+          )}
+
+          <p>Please login to continue</p>
         </div>
-
-        {posts.map((p) => (
-          <div key={p._id} className="card">
-            <b>{p.name}</b> @{p.username}
-
-            <p>{p.text}</p>
-
-            <button
-              onClick={() =>
-                likePost(p._id).then(() => loadAll())
-              }
-            >
-              ❤️ {p.likes?.length || 0}
-            </button>
-          </div>
-        ))}
       </>
     );
-  };
+  }
 
-  /* ================= MAIN APP ================= */
+  /* ======================================================
+     MAIN APP SHELL
+  ====================================================== */
 
   return (
     <>
@@ -195,38 +128,77 @@ export default function App() {
         user={profile}
         page={page}
         setPage={setPage}
-        onLogout={logout}
+        onLogout={() => {
+          localStorage.clear();
+          setUser(null);
+        }}
       />
 
-      <Layout
-        left={
-          <Sidebar
-            user={profile}
-            openChat={() => setChatOpen(true)}
-            openProfile={() => setShowProfileEditor(true)}
-          />
-        }
-        center={renderCenter()}
-        right={
-          chatOpen ? (
-            <Messenger
-              user={profile}
-              onClose={() => setChatOpen(false)}
-            />
-          ) : null
-        }
-      />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <div className="app-shell">
 
-      {showPostModal && (
-        <CreatePostModal
-          onClose={() => setShowPostModal(false)}
-          onPost={async ({ text, file }) => {
-            await createPost(text, file);
-            setShowPostModal(false);
-            loadAll();
-          }}
+              {/* LEFT – FACEBOOK SIDEBAR */}
+              <aside className="sidebar">
+                <Sidebar
+                  user={profile}
+                  openChat={() => setChatOpen(true)}
+                />
+              </aside>
+
+              {/* CENTER – FEED */}
+              <main className="main-feed">
+
+                <StoriesBar />
+
+                {/* CREATE POST CARD (UI ONLY FOR NOW) */}
+                <div className="card" style={{ marginBottom: 12 }}>
+                  <input
+                    placeholder="What's on your mind?"
+                    readOnly
+                    style={{ width: "100%" }}
+                  />
+                </div>
+
+                {/* FEED */}
+                <div className="tengacion-feed">
+                  <div className="feed-posts">
+
+                    {posts.length === 0 && (
+                      <div className="card">
+                        No posts yet. Be the first to share something!
+                      </div>
+                    )}
+
+                    {posts.map((p) => (
+                      <div key={p._id} className="card">
+                        <b>@{p.username}</b>
+                        <p>{p.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </main>
+
+              {/* RIGHT – MESSENGER */}
+              <section className="messenger">
+                {chatOpen && (
+                  <Messenger
+                    user={profile}
+                    onClose={() => setChatOpen(false)}
+                  />
+                )}
+              </section>
+
+            </div>
+          }
         />
-      )}
+
+        <Route path="/search" element={<Search />} />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
     </>
   );
 }

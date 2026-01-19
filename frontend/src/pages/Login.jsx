@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { login } from "./api";
+import { login as loginApi } from "./api";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
+  const { login } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -10,13 +13,14 @@ export default function Login() {
     setError("");
 
     try {
-      const res = await login(email, password);
+      const res = await loginApi(email, password);
 
       if (res.token) {
-        localStorage.setItem("token", res.token);
-        localStorage.setItem("user", JSON.stringify(res.user));
+        // ✅ Use global auth instead of raw localStorage
+        login(res.token, res.user);
 
-        window.location.href = "/";
+        // Navigate without full reload
+        window.location.replace("/");
       } else {
         setError(res.error || "Invalid credentials");
       }

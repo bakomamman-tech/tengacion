@@ -9,19 +9,32 @@ const { Server } = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 
-/* ================= CORS ================= */
+/* =====================================================
+   ✅ BULLET-PROOF CORS (Local + Render + DevTools)
+===================================================== */
+
+// Allow Chrome private network requests
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Private-Network", "true");
+  next();
+});
 
 app.use(
   cors({
-    origin: "*",
+    origin: true,                     // reflect request origin
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"]
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Content-Length"]
   })
 );
 
+// Preflight MUST return 200 always
+app.options("*", (req, res) => res.sendStatus(200));
+
 /* ================= BODY ================= */
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* ================= DATABASE ================= */
@@ -42,15 +55,19 @@ mongoose
 
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-    credentials: true
+    origin: true,
+    credentials: true,
+    methods: ["GET", "POST"]
   },
+
+  // 🔥 Stability improvements for Render sleep & mobile networks
   transports: ["polling", "websocket"],
-  allowEIO3: true
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
-/* --- Health endpoint for Render WebSocket upgrade --- */
+// Health check for Render
 app.get("/socket.io", (req, res) => {
   res.status(200).send("socket ok");
 });
@@ -58,7 +75,16 @@ app.get("/socket.io", (req, res) => {
 const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
-  console.log("🔌 Socket connected:", socket.id);
+  const token =
+    socket.handshake.auth?.token ||
+    socket.handshake.headers?.authorization;
+
+  console.log(
+    "🔌 Socket connected:",
+    socket.id,
+    "| token:",
+    token ? "present" : "missing"
+  );
 
   socket.on("join", (userId) => {
     if (!userId) return;
@@ -138,22 +164,19 @@ app.use("/api/videos", require("./routes/videos"));
 
 /* ================= FRONTEND SERVING ================= */
 
-// Works on Render + Local
 const frontendPath = path.join(process.cwd(), "frontend", "dist");
 
-// Serve static files only if dist exists
 app.use(express.static(frontendPath));
 
-// SPA fallback – must be AFTER API routes
+// SPA fallback – MUST BE LAST
 app.get("*", (req, res) => {
-  // Skip API routes
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ message: "API route not found" });
   }
 
   res.sendFile(path.join(frontendPath, "index.html"), (err) => {
     if (err) {
-      console.log("⚠ Frontend not built – API mode only");
+      console.log("⚠ Frontend not built – running API mode only");
       res.status(200).send("Tengacion API Running");
     }
   });

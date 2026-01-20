@@ -1,18 +1,22 @@
 /* ======================================================
-   TENGACION DESIGN SYSTEM – FACEBOOK INSPIRED (FINAL FIX)
+   TENGACION DESIGN SYSTEM – FACEBOOK STANDARD (MERGED)
 ====================================================== */
 
 :root {
-  --bg: #f0f2f5;
-  --panel: #ffffff;
-  --card: #ffffff;
+  /* Facebook Tokens */
+  --fb-blue: #1877f2;
+  --fb-green: #42b72a;
+  --fb-bg: #f0f2f5;
 
+  /* Your Brand */
   --primary: #8b5e34;
   --primary-hover: #744c2b;
 
+  --panel: #ffffff;
+  --card: #ffffff;
+
   --text: #050505;
   --muted: #65676b;
-
   --border: #e4e6eb;
 
   --radius: 10px;
@@ -29,7 +33,7 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--fb-bg);
   color: var(--text);
 }
 
@@ -46,6 +50,7 @@ body {
   min-height: 38px !important;
   object-fit: contain !important;
   border-radius: 50% !important;
+  cursor: pointer;
 }
 
 /* ================= NAVBAR ================= */
@@ -65,6 +70,7 @@ body {
   z-index: 100;
 }
 
+/* LEFT */
 .nav-left {
   display: flex;
   align-items: center;
@@ -73,6 +79,13 @@ body {
 
 .nav-search {
   width: 200px;
+  height: 38px;
+
+  border-radius: 20px;
+  border: 1px solid var(--border);
+
+  padding: 0 12px;
+  background: #f0f2f5;
 }
 
 /* CENTER */
@@ -85,10 +98,13 @@ body {
 .nav-center button {
   background: transparent;
   color: var(--muted);
+
   width: 90px;
   height: 44px;
+
   border: none;
   border-radius: 8px;
+
   cursor: pointer;
 }
 
@@ -97,8 +113,7 @@ body {
 }
 
 .nav-active {
-  color: var(--primary) !important;
-  border-bottom: 3px solid var(--primary);
+  border-bottom: 3px solid var(--fb-blue);
 }
 
 /* RIGHT */
@@ -109,11 +124,84 @@ body {
   gap: 8px;
 }
 
+/* ================= ICON BUTTONS ================= */
+
+.nav-icon {
+  width: 40px;
+  height: 40px;
+
+  border-radius: 50%;
+  background: #e4e6eb;
+  border: none;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  position: relative;
+  cursor: pointer;
+}
+
+.nav-icon:hover {
+  background: #d8dadf;
+}
+
+/* BADGE */
+.badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+
+  background: #e41e3f;
+  color: white;
+
+  border-radius: 20px;
+  font-size: 11px;
+  padding: 2px 5px;
+}
+
+/* AVATAR */
 .nav-avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
   cursor: pointer;
+}
+
+/* ======================================================
+   🌟 GUEST BUTTONS (LOGIN / CREATE ACCOUNT)
+====================================================== */
+
+.fb-login-btn {
+  background: transparent;
+  border: 1px solid var(--fb-blue);
+  color: var(--fb-blue);
+
+  padding: 8px 14px;
+  border-radius: 6px;
+
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fb-login-btn:hover {
+  background: #eef3ff;
+}
+
+.fb-signup-btn {
+  background: var(--fb-green);
+  border: none;
+  color: white;
+
+  padding: 8px 14px;
+  border-radius: 6px;
+
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fb-signup-btn:hover {
+  background: #36a420;
 }
 
 /* ======================================================
@@ -170,6 +258,7 @@ body {
   display: flex;
   gap: 10px;
   padding: 10px;
+
   cursor: pointer;
   border-radius: 10px;
   align-items: center;
@@ -198,6 +287,7 @@ body {
 .pm-item {
   padding: 10px 12px;
   border-radius: 8px;
+
   cursor: pointer;
   font-size: 14px;
 
@@ -232,13 +322,12 @@ body {
 
 /* ================= MOBILE ================= */
 
-@media (max-width: 1100px) {
-  .app-shell {
-    grid-template-columns: 1fr;
+@media (max-width: 900px) {
+  .navbar {
+    grid-template-columns: 1fr auto;
   }
 
-  .sidebar,
-  .messenger {
+  .nav-center {
     display: none;
   }
 

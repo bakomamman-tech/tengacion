@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLauncher from "./AppLauncher";
+import { Icon } from "./Icon";   // ← NEW ICON SYSTEM
 
 export default function Navbar({ user, page, setPage, onLogout }) {
   const navigate = useNavigate();
@@ -166,22 +167,22 @@ export default function Navbar({ user, page, setPage, onLogout }) {
         </form>
       </div>
 
-      {/* ===== CENTER ===== */}
+      {/* ===== CENTER WITH NEW ICON SYSTEM ===== */}
       <nav className="nav-center">
         {[
-          ["home", "🏠", "Home"],
-          ["watch", "🎥", "Watch"],
-          ["groups", "👥", "Groups"],
-          ["market", "🛒", "Marketplace"],
-          ["games", "🎮", "Games"],
-        ].map(([id, icon, label]) => (
+          ["home", "Home"],
+          ["watch", "Watch"],
+          ["groups", "Groups"],
+          ["market", "Marketplace"],
+          ["games", "Games"],
+        ].map(([id, label]) => (
           <button
             key={id}
             className={page === id ? "nav-active" : ""}
             onClick={() => setPage(id)}
             aria-label={label}
           >
-            {icon}
+            <Icon name={id} active={page === id} />
           </button>
         ))}
       </nav>
@@ -193,15 +194,17 @@ export default function Navbar({ user, page, setPage, onLogout }) {
           onClick={() => setShowApps(!showApps)}
           aria-label="Apps"
         >
-          ⬛
+          <Icon name="groups" />
         </button>
 
         <button className="nav-icon" aria-label="Messages">
-          💬
+          <Icon name="message" />
+          <span className="badge">2</span>
         </button>
 
         <button className="nav-icon" aria-label="Notifications">
-          🔔
+          <Icon name="bell" />
+          <span className="badge">5</span>
         </button>
 
         {/* ===== PROFILE MENU ===== */}

@@ -1,24 +1,31 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLauncher from "./AppLauncher";
 
 export default function Navbar({ user, page, setPage, onLogout }) {
+  const navigate = useNavigate();
 
   const [showApps, setShowApps] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
-  // SEARCH
+  // ===== SEARCH STATE =====
   const [query, setQuery] = useState("");
   const [results, setResults] = useState({ users: [], posts: [] });
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const boxRef = useRef(null);
+  const menuRef = useRef(null);
 
-  const navigate = useNavigate();
-
-  /* ===== Close dropdown on outside click ===== */
+  /* ===== Close dropdowns on outside click ===== */
   useEffect(() => {
     const close = (e) => {
       if (boxRef.current && !boxRef.current.contains(e.target)) {
         setOpen(false);
+      }
+
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowMenu(false);
       }
     };
 
@@ -26,33 +33,45 @@ export default function Navbar({ user, page, setPage, onLogout }) {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  /* ===== Live search ===== */
-  useEffect(() => {
-    if (!query.trim()) {
+  /* ===== SEARCH ===== */
+  const performSearch = useCallback(async (q) => {
+    if (!q.trim()) {
       setResults({ users: [], posts: [] });
       return;
     }
 
-    const t = setTimeout(() => {
-      Promise.all([
-        fetch(`/api/users?search=${encodeURIComponent(query)}`, {
-          headers: { Authorization: "Bearer " + localStorage.getItem("token") }
-        }).then((r) => r.json()),
+    try {
+      setLoading(true);
 
-        fetch(`/api/posts?search=${encodeURIComponent(query)}`, {
-          headers: { Authorization: "Bearer " + localStorage.getItem("token") }
-        }).then((r) => r.json())
-      ]).then(([u, p]) => {
-        setResults({
-          users: Array.isArray(u) ? u.slice(0, 5) : [],
-          posts: Array.isArray(p) ? p.slice(0, 5) : []
-        });
-        setOpen(true);
+      const headers = {
+        Authorization: "Bearer " + localStorage.getItem("token"),
+      };
+
+      const [uRes, pRes] = await Promise.all([
+        fetch(`/api/users?search=${encodeURIComponent(q)}`, { headers }),
+        fetch(`/api/posts?search=${encodeURIComponent(q)}`, { headers }),
+      ]);
+
+      const u = await uRes.json();
+      const p = await pRes.json();
+
+      setResults({
+        users: Array.isArray(u) ? u.slice(0, 5) : [],
+        posts: Array.isArray(p) ? p.slice(0, 5) : [],
       });
-    }, 280);
 
+      setOpen(true);
+    } catch (err) {
+      console.error("Search failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => performSearch(query), 300);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, performSearch]);
 
   const goFullSearch = (e) => {
     e.preventDefault();
@@ -62,13 +81,16 @@ export default function Navbar({ user, page, setPage, onLogout }) {
     setOpen(false);
   };
 
-  return (
-    <div className="navbar">
+  const avatarUrl =
+    user?.avatar ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      user?.name || "User"
+    )}&size=64&background=0D8ABC&color=fff`;
 
+  return (
+    <header className="navbar">
       {/* ===== LEFT ===== */}
       <div className="nav-left" ref={boxRef}>
-
-        {/* ✅ HARD LOCKED LOGO – IMPOSSIBLE TO EXPLODE */}
         <img
           src="/tengacion_logo_64.png"
           className="nav-logo"
@@ -76,7 +98,7 @@ export default function Navbar({ user, page, setPage, onLogout }) {
           onClick={() => navigate("/")}
         />
 
-        <form onSubmit={goFullSearch} style={{ position: "relative" }}>
+        <form onSubmit={goFullSearch} className="nav-search-box">
           <input
             className="nav-search"
             placeholder="Search Tengacion"
@@ -85,57 +107,55 @@ export default function Navbar({ user, page, setPage, onLogout }) {
             onFocus={() => query && setOpen(true)}
           />
 
-          {open && (results.users.length > 0 || results.posts.length > 0) && (
+          {open && (
             <div className="search-dropdown">
-
-              {results.users.length > 0 && (
-                <>
-                  <div className="sd-title">People</div>
-
-                  {results.users.map((u) => (
-                    <div
-                      key={u._id}
-                      className="sd-item"
-                      onClick={() => {
-                        navigate(`/profile/${u.username}`);
-                        setOpen(false);
-                      }}
-                    >
-                      <img
-                        src={
-                          u.avatar ||
-                          `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                            u.name
-                          )}`
-                        }
-                        alt="avatar"
-                      />
-                      <span>
-                        {u.name} <small>@{u.username}</small>
-                      </span>
-                    </div>
-                  ))}
-                </>
+              {loading && (
+                <div className="sd-loading">Searching...</div>
               )}
 
-              {results.posts.length > 0 && (
-                <>
-                  <div className="sd-title">Posts</div>
+              {results.users.map((u) => (
+                <div
+                  key={u._id}
+                  className="sd-item"
+                  onClick={() => {
+                    navigate(`/profile/${u.username}`);
+                    setOpen(false);
+                  }}
+                >
+                  <img
+                    src={
+                      u.avatar ||
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                        u.name
+                      )}`
+                    }
+                    alt="avatar"
+                  />
+                  <span>
+                    {u.name}
+                    <small>@{u.username}</small>
+                  </span>
+                </div>
+              ))}
 
-                  {results.posts.map((p) => (
-                    <div
-                      key={p._id}
-                      className="sd-item"
-                      onClick={() => {
-                        navigate(`/post/${p._id}`);
-                        setOpen(false);
-                      }}
-                    >
-                      <span>{p.text?.slice(0, 60)}…</span>
-                    </div>
-                  ))}
-                </>
-              )}
+              {results.posts.map((p) => (
+                <div
+                  key={p._id}
+                  className="sd-item"
+                  onClick={() => {
+                    navigate(`/post/${p._id}`);
+                    setOpen(false);
+                  }}
+                >
+                  <span>{p.text?.slice(0, 60)}…</span>
+                </div>
+              ))}
+
+              {!loading &&
+                results.users.length === 0 &&
+                results.posts.length === 0 && (
+                  <div className="sd-empty">No results found</div>
+                )}
 
               <div className="sd-footer" onClick={goFullSearch}>
                 See all results →
@@ -146,38 +166,94 @@ export default function Navbar({ user, page, setPage, onLogout }) {
       </div>
 
       {/* ===== CENTER ===== */}
-      <div className="nav-center">
-        <button className={page === "home" ? "nav-active" : ""} onClick={() => setPage("home")}>🏠</button>
-        <button className={page === "watch" ? "nav-active" : ""} onClick={() => setPage("watch")}>🎥</button>
-        <button className={page === "groups" ? "nav-active" : ""} onClick={() => setPage("groups")}>👥</button>
-        <button className={page === "market" ? "nav-active" : ""} onClick={() => setPage("market")}>🛒</button>
-        <button className={page === "games" ? "nav-active" : ""} onClick={() => setPage("games")}>🎮</button>
-      </div>
-<h1 style={{background:"red"}}>TEST FROM STEPHEN</h1>
+      <nav className="nav-center">
+        {[
+          ["home", "🏠"],
+          ["watch", "🎥"],
+          ["groups", "👥"],
+          ["market", "🛒"],
+          ["games", "🎮"],
+        ].map(([id, icon]) => (
+          <button
+            key={id}
+            className={page === id ? "nav-active" : ""}
+            onClick={() => setPage(id)}
+          >
+            {icon}
+          </button>
+        ))}
+      </nav>
 
       {/* ===== RIGHT ===== */}
       <div className="nav-right">
+        <button
+          className="nav-icon"
+          onClick={() => setShowApps(!showApps)}
+        >
+          ⬛
+        </button>
 
-        <button className="nav-icon" onClick={() => setShowApps(!showApps)}>⬛</button>
         <button className="nav-icon">💬</button>
         <button className="nav-icon">🔔</button>
 
-        <img
-          src={
-            user?.avatar ||
-            `https://ui-avatars.com/api/?name=${encodeURIComponent(
-              user?.name || "User"
-            )}&size=64`
-          }
-          className="nav-avatar"
-          alt="avatar"
-          onClick={() => navigate(`/profile/${user?.username}`)}
-        />
+        {/* ===== PROFILE MENU (FACEBOOK STYLE) ===== */}
+        <div className="profile-area" ref={menuRef}>
+          <img
+            src={avatarUrl}
+            className="nav-avatar"
+            alt="avatar"
+            onClick={() => setShowMenu(!showMenu)}
+          />
 
-        <button onClick={onLogout} className="nav-logout">⎋</button>
+          {showMenu && (
+            <div className="profile-menu">
+              <div
+                className="pm-user"
+                onClick={() =>
+                  navigate(`/profile/${user?.username}`)
+                }
+              >
+                <img src={avatarUrl} alt="me" />
+                <div>
+                  <div className="pm-name">
+                    {user?.name}
+                  </div>
+                  <div className="pm-view">
+                    See your profile
+                  </div>
+                </div>
+              </div>
+
+              <div className="pm-divider" />
+
+              <div
+                className="pm-item"
+                onClick={() =>
+                  navigate(`/profile/${user?.username}`)
+                }
+              >
+                👤 Profile
+              </div>
+
+              <div
+                className="pm-item"
+                onClick={() => navigate("/settings")}
+              >
+                ⚙ Settings
+              </div>
+
+              <div className="pm-divider" />
+
+              {/* ✅ BEAUTIFUL LOGOUT */}
+              <div className="pm-item logout" onClick={onLogout}>
+                🚪 Log out
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {showApps && <AppLauncher />}
-    </div>
+    </header>
   );
 }

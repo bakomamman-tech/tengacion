@@ -33,7 +33,7 @@ export default function Navbar({ user, page, setPage, onLogout }) {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  /* ===== SEARCH ===== */
+  /* ===== SEARCH LOGIC ===== */
   const performSearch = useCallback(async (q) => {
     if (!q.trim()) {
       setResults({ users: [], posts: [] });
@@ -69,7 +69,7 @@ export default function Navbar({ user, page, setPage, onLogout }) {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => performSearch(query), 300);
+    const t = setTimeout(() => performSearch(query), 280);
     return () => clearTimeout(t);
   }, [query, performSearch]);
 
@@ -105,6 +105,7 @@ export default function Navbar({ user, page, setPage, onLogout }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => query && setOpen(true)}
+            aria-label="Search Tengacion"
           />
 
           {open && (
@@ -168,16 +169,17 @@ export default function Navbar({ user, page, setPage, onLogout }) {
       {/* ===== CENTER ===== */}
       <nav className="nav-center">
         {[
-          ["home", "🏠"],
-          ["watch", "🎥"],
-          ["groups", "👥"],
-          ["market", "🛒"],
-          ["games", "🎮"],
-        ].map(([id, icon]) => (
+          ["home", "🏠", "Home"],
+          ["watch", "🎥", "Watch"],
+          ["groups", "👥", "Groups"],
+          ["market", "🛒", "Marketplace"],
+          ["games", "🎮", "Games"],
+        ].map(([id, icon, label]) => (
           <button
             key={id}
             className={page === id ? "nav-active" : ""}
             onClick={() => setPage(id)}
+            aria-label={label}
           >
             {icon}
           </button>
@@ -189,14 +191,20 @@ export default function Navbar({ user, page, setPage, onLogout }) {
         <button
           className="nav-icon"
           onClick={() => setShowApps(!showApps)}
+          aria-label="Apps"
         >
           ⬛
         </button>
 
-        <button className="nav-icon">💬</button>
-        <button className="nav-icon">🔔</button>
+        <button className="nav-icon" aria-label="Messages">
+          💬
+        </button>
 
-        {/* ===== PROFILE MENU (FACEBOOK STYLE) ===== */}
+        <button className="nav-icon" aria-label="Notifications">
+          🔔
+        </button>
+
+        {/* ===== PROFILE MENU ===== */}
         <div className="profile-area" ref={menuRef}>
           <img
             src={avatarUrl}
@@ -215,12 +223,8 @@ export default function Navbar({ user, page, setPage, onLogout }) {
               >
                 <img src={avatarUrl} alt="me" />
                 <div>
-                  <div className="pm-name">
-                    {user?.name}
-                  </div>
-                  <div className="pm-view">
-                    See your profile
-                  </div>
+                  <div className="pm-name">{user?.name}</div>
+                  <div className="pm-view">See your profile</div>
                 </div>
               </div>
 
@@ -244,8 +248,10 @@ export default function Navbar({ user, page, setPage, onLogout }) {
 
               <div className="pm-divider" />
 
-              {/* ✅ BEAUTIFUL LOGOUT */}
-              <div className="pm-item logout" onClick={onLogout}>
+              <div
+                className="pm-item logout"
+                onClick={onLogout}
+              >
                 🚪 Log out
               </div>
             </div>

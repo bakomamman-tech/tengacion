@@ -18,6 +18,7 @@ export default function Navbar({ user, page, setPage, onLogout }) {
   const boxRef = useRef(null);
   const menuRef = useRef(null);
 
+  /* ===== CLOSE DROPDOWNS ===== */
   useEffect(() => {
     const close = (e) => {
       if (boxRef.current && !boxRef.current.contains(e.target)) {
@@ -30,11 +31,24 @@ export default function Navbar({ user, page, setPage, onLogout }) {
     };
 
     document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        setShowMenu(false);
+      }
+    });
+
+    return () => {
+      document.removeEventListener("mousedown", close);
+    };
   }, []);
 
+  /* ===== SEARCH LOGIC ===== */
   const performSearch = useCallback(async (q) => {
-    if (!q.trim()) return;
+    if (!q.trim()) {
+      setResults({ users: [], posts: [] });
+      return;
+    }
 
     try {
       setLoading(true);
@@ -57,13 +71,15 @@ export default function Navbar({ user, page, setPage, onLogout }) {
       });
 
       setOpen(true);
+    } catch {
+      setResults({ users: [], posts: [] });
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => performSearch(query), 280);
+    const t = setTimeout(() => performSearch(query), 260);
     return () => clearTimeout(t);
   }, [query, performSearch]);
 
@@ -74,28 +90,93 @@ export default function Navbar({ user, page, setPage, onLogout }) {
     )}&size=64`;
 
   return (
-    <header className="navbar">
-      {/* ===== LEFT ===== */}
+    <header className="navbar" role="navigation">
+      {/* ===== LEFT SECTION ===== */}
       <div className="nav-left">
-        <img
-          src="/tengacion_logo_64.png"
-          className="nav-logo"
-          alt="Tengacion"
+        <div
+          className="logo-area"
           onClick={() => navigate("/")}
-        />
-
-        {/* SEARCH ONLY WHEN LOGGED IN */}
-        {user && (
-          <input
-            className="nav-search"
-            placeholder="Search Tengacion"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+          role="button"
+        >
+          <img
+            src="/tengacion_logo_64.png"
+            className="nav-logo"
+            alt="Tengacion"
           />
+          <span className="brand-text">Tengacion</span>
+        </div>
+
+        {user && (
+          <div className="search-box" ref={boxRef}>
+            <Icon name="search" className="search-icon" />
+
+            <input
+              className="nav-search"
+              placeholder="Search Tengacion"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+
+            {open && (
+              <div className="search-dropdown">
+                {loading && (
+                  <div className="sd-loading">
+                    Searching...
+                  </div>
+                )}
+
+                {!loading &&
+                  results.users.map((u) => (
+                    <div
+                      key={u._id}
+                      className="sd-item"
+                      onClick={() => {
+                        navigate(`/profile/${u.username}`);
+                        setOpen(false);
+                      }}
+                    >
+                      <img
+                        src={
+                          u.avatar ||
+                          `https://ui-avatars.com/api/?name=${u.name}`
+                        }
+                        className="sd-avatar"
+                      />
+                      <span>{u.name}</span>
+                    </div>
+                  ))}
+
+                {!loading &&
+                  results.posts.map((p) => (
+                    <div
+                      key={p._id}
+                      className="sd-item"
+                      onClick={() => {
+                        navigate(`/post/${p._id}`);
+                        setOpen(false);
+                      }}
+                    >
+                      <Icon name="post" />
+                      <span>
+                        {p.text?.slice(0, 40) || "View post"}
+                      </span>
+                    </div>
+                  ))}
+
+                {!loading &&
+                  !results.users.length &&
+                  !results.posts.length && (
+                    <div className="sd-empty">
+                      No results found
+                    </div>
+                  )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
-      {/* ===== CENTER ===== */}
+      {/* ===== CENTER NAV ===== */}
       {user && (
         <nav className="nav-center">
           {[
@@ -107,8 +188,11 @@ export default function Navbar({ user, page, setPage, onLogout }) {
           ].map(([id, label]) => (
             <button
               key={id}
-              className={page === id ? "nav-active" : ""}
+              className={
+                "nav-tab " + (page === id ? "nav-active" : "")
+              }
               onClick={() => setPage(id)}
+              title={label}
             >
               <Icon name={id} active={page === id} />
             </button>
@@ -116,12 +200,10 @@ export default function Navbar({ user, page, setPage, onLogout }) {
         </nav>
       )}
 
-      {/* ===== RIGHT ===== */}
+      {/* ===== RIGHT SECTION ===== */}
       <div className="nav-right">
-
-        {/* 🔐 GUEST MODE */}
         {!user && (
-          <>
+          <div className="guest-actions">
             <button
               className="fb-login-btn"
               onClick={() => navigate("/login")}
@@ -135,10 +217,9 @@ export default function Navbar({ user, page, setPage, onLogout }) {
             >
               Create Account
             </button>
-          </>
+          </div>
         )}
 
-        {/* 🔓 AUTH MODE */}
         {user && (
           <>
             <button className="nav-icon">
@@ -151,11 +232,12 @@ export default function Navbar({ user, page, setPage, onLogout }) {
               <span className="badge">5</span>
             </button>
 
-            <div ref={menuRef}>
+            <div className="avatar-wrapper" ref={menuRef}>
               <img
                 src={avatarUrl}
                 className="nav-avatar"
                 onClick={() => setShowMenu(!showMenu)}
+                alt="profile"
               />
 
               {showMenu && (
@@ -178,6 +260,13 @@ export default function Navbar({ user, page, setPage, onLogout }) {
                   </div>
 
                   <div className="pm-divider" />
+
+                  <div
+                    className="pm-item"
+                    onClick={() => navigate("/settings")}
+                  >
+                    ⚙ Settings
+                  </div>
 
                   <div
                     className="pm-item logout"

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import socket from "./socket";
 
 export default function Messenger({ user, onClose }) {
@@ -6,12 +6,21 @@ export default function Messenger({ user, onClose }) {
   const [messages, setMessages] = useState([]);
   const [receiverId, setReceiverId] = useState(null);
 
+  const endRef = useRef(null);
+
+  /* ===== AUTO SCROLL ===== */
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  /* ===== SOCKET SETUP ===== */
   useEffect(() => {
     if (!user) return;
 
     socket.emit("join", user._id);
 
-    if (user.friends && user.friends.length > 0) {
+    // choose first friend if available
+    if (Array.isArray(user.friends) && user.friends.length > 0) {
       setReceiverId(user.friends[0]);
     }
 
@@ -32,42 +41,92 @@ export default function Messenger({ user, onClose }) {
     socket.emit("sendMessage", {
       senderId: user._id,
       receiverId,
-      text
+      text,
     });
+
+    // optimistic UI
+    setMessages((m) => [
+      ...m,
+      {
+        senderId: user._id,
+        text,
+        senderName: user.name,
+        time: Date.now(),
+      },
+    ]);
 
     setText("");
   };
 
+  const avatar = (name) =>
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      name || "User"
+    )}`;
+
   return (
     <div className="messenger">
+      {/* ===== HEADER ===== */}
       <div className="messenger-header">
-        <span>💬 Messenger</span>
-        <button
-          onClick={onClose}
-          style={{
-            background: "transparent",
-            color: "inherit",
-            fontSize: 18,
-            border: "none",
-            cursor: "pointer"
-          }}
-        >
+        <div className="mh-left">
+          💬 <b>Messenger</b>
+        </div>
+
+        <button className="mh-close" onClick={onClose}>
           ✖
         </button>
       </div>
 
+      {/* ===== BODY ===== */}
       <div className="messenger-messages">
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            className={m.senderId === user._id ? "message-me" : "message-them"}
-          >
-            <b>{m.senderName || "User"}</b>
-            <div>{m.text}</div>
+        {messages.length === 0 && (
+          <div className="ms-empty">
+            Start a conversation
           </div>
-        ))}
+        )}
+
+        {messages.map((m, i) => {
+          const isMe = m.senderId === user._id;
+
+          return (
+            <div
+              key={i}
+              className={
+                isMe ? "message-row me" : "message-row them"
+              }
+            >
+              {!isMe && (
+                <img
+                  src={avatar(m.senderName)}
+                  className="msg-avatar"
+                />
+              )}
+
+              <div className="msg-bubble">
+                {!isMe && (
+                  <div className="msg-name">
+                    {m.senderName || "User"}
+                  </div>
+                )}
+
+                <div className="msg-text">{m.text}</div>
+
+                <div className="msg-time">
+                  {m.time
+                    ? new Date(m.time).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : ""}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        <div ref={endRef} />
       </div>
 
+      {/* ===== INPUT ===== */}
       <div className="messenger-input">
         <input
           value={text}
@@ -75,7 +134,13 @@ export default function Messenger({ user, onClose }) {
           onKeyDown={(e) => e.key === "Enter" && send()}
           placeholder="Type a message..."
         />
-        <button onClick={send}>Send</button>
+
+        <button
+          onClick={send}
+          disabled={!text.trim()}
+        >
+          Send
+        </button>
       </div>
     </div>
   );

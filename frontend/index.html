@@ -3,6 +3,15 @@
 <head>
   <meta charset="UTF-8" />
 
+  <!-- ===== CORE ===== -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1877f2" />
+  <meta name="color-scheme" content="light dark" />
+
+  <!-- ===== PERFORMANCE ===== -->
+  <link rel="preconnect" href="https://ui-avatars.com" />
+  <link rel="dns-prefetch" href="https://ui-avatars.com" />
+
   <!-- ===== PRIMARY ICONS ===== -->
   <link rel="icon" type="image/png" sizes="64x64" href="/tengacion_logo_64.png" />
   <link rel="icon" type="image/png" sizes="128x128" href="/tengacion_logo_128.png" />
@@ -12,39 +21,78 @@
   <!-- SVG Best Quality -->
   <link rel="icon" type="image/svg+xml" href="/tengacion_logo.svg" />
 
-  <!-- Apple / PWA -->
+  <!-- ===== APPLE / IOS ===== -->
   <link rel="apple-touch-icon" href="/tengacion_logo_512.png" />
   <meta name="apple-mobile-web-app-title" content="Tengacion" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
-  <!-- Android / PWA -->
+  <!-- ===== ANDROID / PWA ===== -->
   <meta name="mobile-web-app-capable" content="yes" />
   <link rel="manifest" href="/manifest.json" />
 
-  <!-- Theme -->
-  <meta name="theme-color" content="#0a0a0a" />
+  <!-- ===== SEO ===== -->
+  <title>Tengacion – Connect with friends and the world around you</title>
 
-  <!-- SEO -->
-  <meta name="description" content="Tengacion — The future of social networking" />
+  <meta
+    name="description"
+    content="Tengacion — A social platform to connect, share moments, chat with friends and build communities."
+  />
 
-  <!-- Open Graph -->
+  <meta name="application-name" content="Tengacion" />
+  <meta name="author" content="Tengacion" />
+
+  <!-- ===== OPEN GRAPH ===== -->
+  <meta property="og:site_name" content="Tengacion" />
   <meta property="og:title" content="Tengacion" />
-  <meta property="og:description" content="The future of social networking" />
+  <meta
+    property="og:description"
+    content="Connect with friends, share posts, chat and explore communities on Tengacion."
+  />
   <meta property="og:image" content="/tengacion_logo_1024.png" />
   <meta property="og:type" content="website" />
+  <meta property="og:locale" content="en_US" />
 
-  <!-- Twitter -->
+  <!-- ===== TWITTER ===== -->
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Tengacion" />
+  <meta
+    name="twitter:description"
+    content="Connect with friends and the world around you on Tengacion."
+  />
   <meta name="twitter:image" content="/tengacion_logo_1024.png" />
 
-  <!-- Viewport -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- ===== ACCESSIBILITY ===== -->
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="robots" content="index, follow" />
 
-  <title>Tengacion</title>
+  <!-- ===== BASIC LOADER STYLE ===== -->
+  <style>
+    html, body {
+      margin: 0;
+      background: #f0f2f5;
+    }
+
+    #boot-loader {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: #65676b;
+    }
+  </style>
 </head>
 
 <body>
-  <div id="root"></div>
+  <noscript>
+    Tengacion requires JavaScript to run. Please enable JavaScript in your browser.
+  </noscript>
+
+  <div id="root">
+    <div id="boot-loader">Loading Tengacion…</div>
+  </div>
+
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

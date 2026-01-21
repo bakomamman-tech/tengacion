@@ -5,25 +5,64 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // Ignore build artifacts
+  globalIgnores(['dist', 'node_modules']),
+
   {
     files: ['**/*.{js,jsx}'],
+
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
     ],
+
     languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+
+      globals: {
+        ...globals.browser,
+        process: 'readonly',
+        console: 'readonly',
+      },
+
       parserOptions: {
-        ecmaVersion: 'latest',
         ecmaFeatures: { jsx: true },
-        sourceType: 'module',
       },
     },
+
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      /* ===== CORE QUALITY ===== */
+      'no-unused-vars': [
+        'warn',
+        {
+          varsIgnorePattern: '^[A-Z_]',
+          argsIgnorePattern: '^_',
+        },
+      ],
+
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-debugger': 'warn',
+
+      /* ===== REACT / HOOKS ===== */
+      'react-hooks/exhaustive-deps': 'warn',
+
+      /* ===== STYLE (FACEBOOK-LIKE) ===== */
+      'eqeqeq': ['error', 'always'],
+      'curly': ['error', 'all'],
+      'prefer-const': 'error',
+
+      'arrow-body-style': ['warn', 'as-needed'],
+      'object-shorthand': 'warn',
+
+      /* ===== SAFETY ===== */
+      'no-unsafe-optional-chaining': 'error',
+      'no-duplicate-imports': 'error',
+
+      /* ===== ACCESSIBILITY HINTS ===== */
+      'jsx-a11y/alt-text': 'warn',
+      'jsx-a11y/anchor-has-content': 'warn',
     },
   },
 ])

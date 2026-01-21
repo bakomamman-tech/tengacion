@@ -11,9 +11,7 @@ export const API_BASE = "/api";
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
-  return token
-    ? { Authorization: `Bearer ${token}` }
-    : {};
+  return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
 const handleAuthFailure = (error = "Unauthorized") => {
@@ -27,6 +25,14 @@ const handleAuthFailure = (error = "Unauthorized") => {
 };
 
 // ---------------- RESPONSE HANDLER ----------------
+
+const safeJSON = (text) => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error("Invalid server response");
+  }
+};
 
 const parseResponse = async (response) => {
   const raw = await response.text();
@@ -46,14 +52,6 @@ const parseResponse = async (response) => {
   }
 
   return data;
-};
-
-const safeJSON = (text) => {
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error("Invalid server response");
-  }
 };
 
 // ---------------- FETCH WRAPPER ----------------
@@ -108,14 +106,18 @@ export const getProfile = () =>
     headers: getAuthHeaders(),
   });
 
-export const updateProfile = (payload) =>
+/**
+ * ✅ REQUIRED BY ProfileEditor.jsx
+ * Update logged-in user's profile
+ */
+export const updateMe = (data) =>
   request(`${API_BASE}/users/me`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeaders(),
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(data),
   });
 
 export const uploadAvatar = (file) => {

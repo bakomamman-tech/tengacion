@@ -1,33 +1,27 @@
 import React from "react";
-import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import { Toaster } from "react-hot-toast";
 
-import App from "./App";
-import { AuthProvider } from "./context/AuthContext";
-import ErrorBoundary from "./components/ErrorBoundary";
+export default class ErrorBoundary extends React.Component {
+  state = { hasError: false };
 
-import "./index.css";
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <AuthProvider>
-        <BrowserRouter>
-          <App />
+  componentDidCatch(error, info) {
+    console.error("UI Crash:", error, info);
+  }
 
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 3500,
-              style: {
-                background: "#111",
-                color: "#fff",
-              },
-            }}
-          />
-        </BrowserRouter>
-      </AuthProvider>
-    </ErrorBoundary>
-  </React.StrictMode>
-);
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 40, textAlign: "center" }}>
+          <h2>Something went wrong 😕</h2>
+          <p>Please refresh the page.</p>
+        </div>
+      );
+    }
+
+    // ✅ Correct: render children, not App
+    return this.props.children;
+  }
+}

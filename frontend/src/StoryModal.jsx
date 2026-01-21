@@ -1,29 +1,51 @@
-import { getImage } from "./api";
 import { useEffect, useState } from "react";
-import { markStorySeen } from "./api";
+import { resolveImage, markStorySeen } from "./api";
 
 export default function StoryModal({ stories, index, onClose }) {
   const [i, setI] = useState(index);
-  const story = stories[i];
+  const story = stories?.[i];
 
   useEffect(() => {
-    story && markStorySeen(story._id);
-  }, [i]);
+    if (story?._id) {
+      markStorySeen(story._id);
+    }
+  }, [i, story]);
 
   if (!story) return null;
 
   return (
     <div className="story-modal" onClick={onClose}>
-      <div className="story-content" onClick={e => e.stopPropagation()}>
+      <div
+        className="story-content"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="story-header">
-          <img src={getImage(story.avatar)} />
-          <b>{story.username}</b>
+          <img
+            src={
+              story?.avatar
+                ? resolveImage(story.avatar)
+                : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    story?.username || "User"
+                  )}`
+            }
+            alt={story?.username || "User"}
+          />
+          <b>{story?.username}</b>
         </div>
 
-        {story.image && <img src={getImage(story.image)} />}
-        {story.text && <p>{story.text}</p>}
+        {story?.image && (
+          <img
+            src={resolveImage(story.image)}
+            alt="Story"
+          />
+        )}
 
-        <div className="story-progress" onClick={() => setI(i + 1)} />
+        {story?.text && <p>{story.text}</p>}
+
+        <div
+          className="story-progress"
+          onClick={() => setI(i + 1)}
+        />
       </div>
     </div>
   );

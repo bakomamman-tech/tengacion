@@ -1,31 +1,29 @@
 const jwt = require("jsonwebtoken");
 
+/**
+ * Authentication middleware
+ * Verifies JWT access token and attaches user context to request
+ */
 module.exports = function auth(req, res, next) {
-  const header = req.headers.authorization;
+  const authHeader = req.headers.authorization;
 
-  if (!header) {
+  // Enforce Bearer token standard
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({
       error: "Authentication required",
       code: "NO_TOKEN",
     });
   }
 
-  const token = header.startsWith("Bearer ")
-    ? header.split(" ")[1]
-    : header;
+  const token = authHeader.split(" ")[1];
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Normalize user object
+    // Attach minimal, trusted identity
     req.user = {
       id: decoded.id,
-      email: decoded.email || null,
-      username: decoded.username || null,
-      role: decoded.role || "user",
     };
-
-    req.userId = decoded.id;
 
     next();
   } catch (err) {

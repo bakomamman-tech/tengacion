@@ -11,7 +11,7 @@ import { getProfile, getFeed } from "./api";
 import { useAuth } from "./context/AuthContext";
 
 /* ======================================================
-   FACEBOOK-STYLE GUEST LANDING
+   GUEST LANDING — CLEAN, SINGLE SOURCE
 ====================================================== */
 function GuestLanding({ error }) {
   const navigate = useNavigate();
@@ -19,7 +19,7 @@ function GuestLanding({ error }) {
   return (
     <div className="guest-landing">
       <div className="guest-hero">
-        <h1>Tengacion</h1>
+        <h1 className="guest-logo">Tengacion</h1>
 
         <p className="guest-tag">
           Connect with friends and the world around you.
@@ -48,7 +48,7 @@ function GuestLanding({ error }) {
 }
 
 /* ======================================================
-   INLINE POST COMPOSER (NO EXTRA COMPONENTS)
+   POST COMPOSER — SELF CONTAINED & SAFE
 ====================================================== */
 function PostComposerModal({ user, onClose, onPosted }) {
   const [text, setText] = useState("");
@@ -59,14 +59,15 @@ function PostComposerModal({ user, onClose, onPosted }) {
   const boxRef = useRef(null);
 
   useEffect(() => {
-    const close = (e) => {
+    const handleOutside = (e) => {
       if (boxRef.current && !boxRef.current.contains(e.target)) {
         onClose();
       }
     };
 
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
+    document.addEventListener("mousedown", handleOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleOutside);
   }, [onClose]);
 
   const pickImage = (e) => {
@@ -118,9 +119,7 @@ function PostComposerModal({ user, onClose, onPosted }) {
       <div className="pc-modal" ref={boxRef}>
         <header className="pc-header">
           <h3>Create Post</h3>
-          <button className="pc-close" onClick={onClose}>
-            ✕
-          </button>
+          <button className="pc-close" onClick={onClose}>✕</button>
         </header>
 
         <div className="pc-user">
@@ -167,7 +166,7 @@ function PostComposerModal({ user, onClose, onPosted }) {
 }
 
 /* ======================================================
-   APP ROOT — AUTH CONTEXT DRIVEN
+   APP ROOT — PRODUCTION GRADE
 ====================================================== */
 export default function App() {
   const { user, loading, logout } = useAuth();
@@ -180,26 +179,31 @@ export default function App() {
   const [composer, setComposer] = useState(false);
   const [error, setError] = useState(null);
 
-  /* ===== LOAD FEED ===== */
+  /* ===== LOAD PROFILE + FEED ===== */
   useEffect(() => {
     if (!user) return;
+
+    let alive = true;
 
     const load = async () => {
       try {
         const p = await getProfile();
-        setProfile(p);
-
         const feed = await getFeed();
+
+        if (!alive) return;
+
+        setProfile(p);
         setPosts(Array.isArray(feed) ? feed : []);
       } catch {
-        setError("Could not load feed");
+        if (alive) setError("Could not load feed");
       }
     };
 
     load();
+    return () => (alive = false);
   }, [user]);
 
-  /* ===== BOOT ===== */
+  /* ===== BOOT SCREEN ===== */
   if (loading) {
     return (
       <div className="boot-screen">
@@ -210,7 +214,7 @@ export default function App() {
     );
   }
 
-  /* ===== GUEST ===== */
+  /* ===== GUEST MODE ===== */
   if (!user) {
     return (
       <>
@@ -248,7 +252,6 @@ export default function App() {
                 <div
                   className="card create-post"
                   onClick={() => setComposer(true)}
-                  style={{ cursor: "pointer" }}
                 >
                   <input
                     placeholder="What's on your mind?"
@@ -257,34 +260,31 @@ export default function App() {
                 </div>
 
                 <div className="tengacion-feed">
-                  <div className="feed-posts">
-                    {posts.length === 0 && (
-                      <div className="card empty-feed">
-                        No posts yet. Be the first to share something!
-                      </div>
-                    )}
-
-                    {posts.map((p) => (
+                  {posts.length === 0 ? (
+                    <div className="card empty-feed">
+                      No posts yet. Be the first to share something!
+                    </div>
+                  ) : (
+                    posts.map((p) => (
                       <article key={p._id} className="card post">
                         <header className="post-header">
                           <b>@{p.username}</b>
                         </header>
-
                         <p className="post-body">{p.text}</p>
                       </article>
-                    ))}
-                  </div>
+                    ))
+                  )}
                 </div>
               </main>
 
-              <section className="messenger">
-                {chatOpen && (
+              {chatOpen && (
+                <section className="messenger">
                   <Messenger
                     user={profile || user}
                     onClose={() => setChatOpen(false)}
                   />
-                )}
-              </section>
+                </section>
+              )}
             </div>
           }
         />

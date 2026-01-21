@@ -1,17 +1,21 @@
 /* ======================================================
-   TENGACION – FACEBOOK WORLD STANDARD UI v1.0
+   TENGACION – WORLD CLASS SOCIAL UI SYSTEM
+   Inspired by Facebook / Instagram / Threads
 ====================================================== */
 
-:root {
-  /* Facebook Core */
-  --fb-blue: #1877f2;
-  --fb-green: #42b72a;
-  --fb-bg: #f0f2f5;
+/* ================= DESIGN TOKENS ================= */
 
-  /* Tengacion Brand */
+:root {
+  /* Core Brand */
   --primary: #8b5e34;
   --primary-hover: #744c2b;
 
+  /* Facebook Proven Colors */
+  --fb-blue: #1877f2;
+  --fb-green: #42b72a;
+
+  /* Neutrals */
+  --bg: #f0f2f5;
   --panel: #ffffff;
   --card: #ffffff;
 
@@ -19,13 +23,23 @@
   --muted: #65676b;
   --border: #e4e6eb;
 
-  --radius: 10px;
-  --shadow: 0 2px 6px rgba(0,0,0,0.08);
+  /* Geometry */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 
+  /* Depth */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.12);
+  --shadow-lg: 0 12px 28px rgba(0,0,0,.20);
+
+  /* Motion */
   --ease: cubic-bezier(.08,.52,.52,1);
+  --fast: 120ms var(--ease);
+  --slow: 220ms var(--ease);
 }
 
-/* ================= BASE ================= */
+/* ================= RESET ================= */
 
 * {
   box-sizing: border-box;
@@ -35,31 +49,14 @@
 
 body {
   margin: 0;
-  background: var(--fb-bg);
+  background: var(--bg);
   color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* ======================================================
-   🛡️ ANTI GIANT LOGO – ABSOLUTE LAW
+   NAVBAR
 ====================================================== */
-
-.nav-logo {
-  width: 38px !important;
-  height: 38px !important;
-  min-width: 38px !important;
-  min-height: 38px !important;
-
-  object-fit: contain !important;
-  border-radius: 50% !important;
-
-  transition: transform .1s var(--ease);
-}
-
-.nav-logo:hover {
-  transform: scale(1.04);
-}
-
-/* ================= NAVBAR LAYOUT ================= */
 
 .navbar {
   height: 56px;
@@ -76,29 +73,40 @@ body {
   z-index: 1000;
 }
 
-/* ========== LEFT ========== */
+/* ---------- LEFT ---------- */
 
 .nav-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .logo-area {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   cursor: pointer;
 }
 
-.brand-text {
-  font-weight: 700;
-  color: var(--primary);
-  font-size: 18px;
-  letter-spacing: -.2px;
+.nav-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: contain;
+  transition: transform var(--fast);
 }
 
-/* SEARCH */
+.nav-logo:hover {
+  transform: scale(1.05);
+}
+
+.brand-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* ---------- SEARCH ---------- */
 
 .search-box {
   position: relative;
@@ -108,13 +116,13 @@ body {
   width: 220px;
   height: 38px;
 
-  border-radius: 20px;
+  border-radius: 999px;
   border: 1px solid var(--border);
 
-  padding: 0 14px 0 34px;
+  padding: 0 14px 0 36px;
   background: #f0f2f5;
 
-  transition: all .12s var(--ease);
+  transition: all var(--fast);
 }
 
 .nav-search:focus {
@@ -125,12 +133,12 @@ body {
 
 .search-icon {
   position: absolute;
-  left: 10px;
+  left: 12px;
   top: 9px;
   opacity: .6;
 }
 
-/* SEARCH DROPDOWN */
+/* ---------- SEARCH DROPDOWN ---------- */
 
 .search-dropdown {
   position: absolute;
@@ -139,13 +147,11 @@ body {
 
   width: 340px;
   background: white;
+  border-radius: var(--radius-md);
 
-  border-radius: 12px;
-  box-shadow: 0 12px 28px rgba(0,0,0,.20),
-              0 2px 4px rgba(0,0,0,.10);
-
+  box-shadow: var(--shadow-lg);
   padding: 6px;
-  animation: fade .12s var(--ease);
+  animation: fadeIn var(--fast);
   z-index: 2000;
 }
 
@@ -155,8 +161,7 @@ body {
   gap: 10px;
 
   padding: 8px;
-  border-radius: 8px;
-
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
@@ -177,7 +182,7 @@ body {
   color: var(--muted);
 }
 
-/* ========== CENTER ========== */
+/* ---------- CENTER ---------- */
 
 .nav-center {
   display: flex;
@@ -186,17 +191,16 @@ body {
 }
 
 .nav-tab {
-  background: transparent;
-  color: var(--muted);
-
   width: 96px;
   height: 46px;
 
+  border-radius: var(--radius-sm);
   border: none;
-  border-radius: 8px;
+  background: transparent;
 
+  color: var(--muted);
   cursor: pointer;
-  transition: background .1s;
+  transition: background var(--fast);
 }
 
 .nav-tab:hover {
@@ -204,11 +208,11 @@ body {
 }
 
 .nav-active {
-  border-bottom: 3px solid var(--fb-blue);
   color: var(--fb-blue);
+  border-bottom: 3px solid var(--fb-blue);
 }
 
-/* ========== RIGHT ========== */
+/* ---------- RIGHT ---------- */
 
 .nav-right {
   display: flex;
@@ -216,8 +220,6 @@ body {
   align-items: center;
   gap: 8px;
 }
-
-/* ICONS */
 
 .nav-icon {
   width: 40px;
@@ -231,110 +233,66 @@ body {
   align-items: center;
   justify-content: center;
 
-  position: relative;
   cursor: pointer;
-
-  transition: background .1s;
+  transition: background var(--fast);
 }
 
 .nav-icon:hover {
   background: #d8dadf;
 }
 
-/* BADGE */
-
 .badge {
   position: absolute;
-  top: -2px;
-  right: -2px;
+  top: -4px;
+  right: -4px;
 
   background: #e41e3f;
   color: white;
-
-  border-radius: 20px;
   font-size: 11px;
-  padding: 2px 5px;
+  padding: 2px 6px;
+  border-radius: 20px;
 }
 
-/* AVATAR */
+/* ---------- AVATAR ---------- */
 
 .nav-avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-
   cursor: pointer;
-  transition: transform .1s;
+  transition: transform var(--fast);
 }
 
 .nav-avatar:hover {
-  transform: scale(1.05);
+  transform: scale(1.06);
 }
 
-/* ========== GUEST BUTTONS ========== */
-
-.fb-login-btn {
-  background: transparent;
-  border: 1px solid var(--fb-blue);
-  color: var(--fb-blue);
-
-  padding: 8px 14px;
-  border-radius: 6px;
-
-  font-weight: 600;
-  cursor: pointer;
-
-  transition: all .12s;
-}
-
-.fb-login-btn:hover {
-  background: #eef3ff;
-}
-
-.fb-signup-btn {
-  background: var(--fb-green);
-  border: none;
-  color: white;
-
-  padding: 8px 14px;
-  border-radius: 6px;
-
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.fb-signup-btn:hover {
-  background: #36a420;
-}
-
-/* ========== PROFILE MENU ========== */
+/* ======================================================
+   PROFILE MENU
+====================================================== */
 
 .profile-menu {
   position: absolute;
   right: 10px;
   top: 60px;
 
-  background: white;
-  border-radius: 12px;
   width: 280px;
-
-  box-shadow: 0 12px 28px rgba(0,0,0,.20),
-              0 2px 4px rgba(0,0,0,.10);
+  background: white;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
 
   padding: 8px;
-  z-index: 2000;
-
-  animation: fade .12s var(--ease);
+  animation: fadeIn var(--fast);
 }
 
 .pm-user {
   display: flex;
-  gap: 10px;
-  padding: 10px;
-
-  cursor: pointer;
-  border-radius: 10px;
   align-items: center;
+  gap: 10px;
+
+  padding: 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
 }
 
 .pm-user:hover {
@@ -352,14 +310,8 @@ body {
 
 .pm-item {
   padding: 10px 12px;
-  border-radius: 8px;
-
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 14px;
-
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 
 .pm-item:hover {
@@ -373,207 +325,36 @@ body {
 
 .pm-divider {
   height: 1px;
-  background: #e4e6eb;
-  margin: 6px 4px;
-}
-
-/* ========== ANIMATIONS ========== */
-
-@keyframes fade {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ========== MOBILE ========== */
-
-@media (max-width: 900px) {
-  .navbar {
-    grid-template-columns: 1fr auto;
-  }
-
-  .nav-center {
-    display: none;
-  }
-
-  .nav-search {
-    display: none;
-  }
-
-  .search-dropdown {
-    width: 96vw;
-    left: 2vw;
-  }
-
-  .profile-menu {
-    right: 4px;
-    width: 96%;
-  }
-}
-
-/* ===== SIDEBAR ===== */
-
-.sidebar {
-  padding: 8px;
-}
-
-/* USER HEADER */
-
-.sidebar-user {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  padding: 10px;
-  border-radius: 10px;
-
-  cursor: pointer;
-}
-
-.sidebar-user:hover {
-  background: #f0f2f5;
-}
-
-.sb-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-}
-
-.sb-meta span {
-  display: block;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-/* BUTTONS */
-
-.sidebar-btn {
-  width: 100%;
-
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  padding: 10px;
-  margin: 2px 0;
-
-  border: none;
-  background: transparent;
-
-  border-radius: 10px;
-  cursor: pointer;
-
-  font-size: 14px;
-  text-align: left;
-
-  position: relative;
-}
-
-.sidebar-btn:hover {
-  background: #f0f2f5;
-}
-
-.sb-icon {
-  width: 22px;
-  display: inline-flex;
-  justify-content: center;
-}
-
-/* BADGE */
-
-.sb-badge {
-  margin-left: auto;
-
-  background: #e41e3f;
-  color: white;
-
-  border-radius: 20px;
-  font-size: 11px;
-
-  padding: 2px 6px;
-}
-
-/* DIVIDER */
-
-.sb-divider {
-  height: 1px;
   background: var(--border);
   margin: 6px 4px;
 }
 
-/* SECTION TITLE */
-
-.sb-section-title {
-  font-size: 12px;
-  color: var(--muted);
-
-  padding: 8px 10px 4px;
-}
-
-/* MOBILE */
-
-@media (max-width: 900px) {
-  .sidebar {
-    display: none;
-  }
-}
-
-/* ===== MESSENGER ===== */
+/* ======================================================
+   MESSENGER
+====================================================== */
 
 .messenger {
   background: white;
-  border-radius: 12px;
-
-  display: flex;
-  flex-direction: column;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
 
   height: 520px;
-  box-shadow: 0 12px 28px rgba(0,0,0,.12);
+  display: flex;
+  flex-direction: column;
 }
-
-/* HEADER */
 
 .messenger-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
   padding: 10px;
   border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
 }
-
-.mh-close {
-  border: none;
-  background: #e4e6eb;
-
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-
-  cursor: pointer;
-}
-
-/* BODY */
 
 .messenger-messages {
   flex: 1;
   overflow-y: auto;
   padding: 10px;
 }
-
-.ms-empty {
-  text-align: center;
-  color: var(--muted);
-  margin-top: 40px;
-}
-
-/* ROWS */
 
 .message-row {
   display: flex;
@@ -585,21 +366,11 @@ body {
   justify-content: flex-end;
 }
 
-.msg-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-}
-
-/* BUBBLES */
-
 .msg-bubble {
   max-width: 70%;
-
   background: #f0f2f5;
+  padding: 8px 12px;
   border-radius: 16px;
-
-  padding: 8px 10px;
 }
 
 .message-row.me .msg-bubble {
@@ -607,52 +378,37 @@ body {
   color: white;
 }
 
-.msg-name {
-  font-size: 12px;
-  font-weight: 600;
+/* ======================================================
+   ANIMATIONS
+====================================================== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.msg-text {
-  margin-top: 2px;
-}
+/* ======================================================
+   MOBILE
+====================================================== */
 
-.msg-time {
-  font-size: 10px;
-  opacity: .7;
-  margin-top: 2px;
-  text-align: right;
-}
+@media (max-width: 900px) {
+  .navbar {
+    grid-template-columns: 1fr auto;
+  }
 
-/* INPUT */
+  .nav-center,
+  .nav-search {
+    display: none;
+  }
 
-.messenger-input {
-  display: flex;
-  gap: 8px;
-
-  padding: 8px;
-  border-top: 1px solid var(--border);
-}
-
-.messenger-input input {
-  flex: 1;
-  height: 38px;
-
-  border-radius: 20px;
-  border: 1px solid var(--border);
-
-  padding: 0 12px;
-}
-
-.messenger-input button {
-  background: var(--fb-blue);
-  color: white;
-
-  border: none;
-  border-radius: 20px;
-
-  padding: 0 14px;
-}
-
-.messenger-input button:disabled {
-  opacity: .6;
+  .search-dropdown {
+    width: 96vw;
+    left: 2vw;
+  }
 }

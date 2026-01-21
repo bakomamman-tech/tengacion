@@ -1,16 +1,63 @@
+/* =====================================================
+   🌱 ENV
+===================================================== */
 require("dotenv").config();
+
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const http = require("http");
 const { Server } = require("socket.io");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+
+/* =====================================================
+   🔐 FAIL FAST — REQUIRED SECRETS
+===================================================== */
+
+if (!process.env.JWT_SECRET) {
+  console.error("❌ JWT_SECRET is not set");
+  process.exit(1);
+}
+
+if (!process.env.MONGO_URI) {
+  console.error("❌ MONGO_URI not found in environment variables");
+  process.exit(1);
+}
+
+/* =====================================================
+   🚀 APP INIT
+===================================================== */
 
 const app = express();
 const server = http.createServer(app);
 
 /* =====================================================
-   🌍 PRODUCTION GRADE CORS & SECURITY
+   🛡 SECURITY HEADERS
+===================================================== */
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false, // allow images/uploads
+  })
+);
+
+/* =====================================================
+   🚦 RATE LIMITING (API ONLY)
+===================================================== */
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300,               // requests per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use("/api", apiLimiter);
+
+/* =====================================================
+   🌍 CORS
 ===================================================== */
 
 // Allow Chrome private network requests (DevTools + Mobile)
@@ -21,7 +68,7 @@ app.use((req, res, next) => {
 
 app.use(
   cors({
-    origin: true,                // reflect caller origin (Render + Local)
+    origin: true, // reflect caller origin (Render + Local)
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -43,23 +90,19 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* =====================================================
-   🗄 DATABASE CONNECTION
+   🗄 DATABASE
 ===================================================== */
-
-if (!process.env.MONGO_URI) {
-  console.error("❌ MONGO_URI not found in environment variables");
-  process.exit(1);
-}
 
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("🗄 MongoDB connected"))
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);
+    process.exit(1);
   });
 
 /* =====================================================
-   ⚡ SOCKET.IO — REALTIME CORE
+   ⚡ SOCKET.IO
 ===================================================== */
 
 const io = new Server(server, {
@@ -68,8 +111,6 @@ const io = new Server(server, {
     credentials: true,
     methods: ["GET", "POST"],
   },
-
-  // Stability for Render sleep + mobile networks
   transports: ["polling", "websocket"],
   allowEIO3: true,
   pingTimeout: 60000,
@@ -138,7 +179,6 @@ io.on("connection", (socket) => {
       };
 
       const receiverSocket = onlineUsers.get(receiverId);
-
       if (receiverSocket) {
         io.to(receiverSocket).emit("newMessage", payload);
       }
@@ -156,7 +196,6 @@ io.on("connection", (socket) => {
         break;
       }
     }
-
     io.emit("onlineUsers", Array.from(onlineUsers.keys()));
   });
 });
@@ -182,11 +221,10 @@ app.use("/api/messages", require("./routes/messages"));
 app.use("/api/videos", require("./routes/videos"));
 
 /* =====================================================
-   🌐 SERVE FRONTEND (VITE BUILD)
+   🌐 FRONTEND (VITE BUILD)
 ===================================================== */
 
 const frontendPath = path.join(process.cwd(), "frontend", "dist");
-
 app.use(express.static(frontendPath));
 
 // SPA fallback – ALWAYS LAST
@@ -204,7 +242,7 @@ app.get("*", (req, res) => {
 });
 
 /* =====================================================
-   🚀 START SERVER — RENDER SAFE
+   🚀 START SERVER
 ===================================================== */
 
 const PORT = process.env.PORT || 5000;
@@ -214,7 +252,7 @@ server.listen(PORT, () => {
 });
 
 /* =====================================================
-   GLOBAL ERROR HANDLER
+   ☠️ GLOBAL ERROR HANDLING
 ===================================================== */
 
 process.on("unhandledRejection", (err) => {

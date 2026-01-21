@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
@@ -8,130 +8,224 @@ import StoriesBar from "./stories/StoriesBar";
 import Search from "./pages/Search";
 
 import { getProfile, getFeed } from "./api";
+import { useAuth } from "./AuthContext";
 
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [posts, setPosts] = useState([]);
+/* ======================================================
+   FACEBOOK-STYLE GUEST LANDING
+====================================================== */
+function GuestLanding({ error }) {
+  const navigate = useNavigate();
 
-  const [booting, setBooting] = useState(true);
-  const [page, setPage] = useState("home");
+  return (
+    <div className="guest-landing">
+      <div className="guest-hero">
+        <h1>Tengacion</h1>
 
-  const [chatOpen, setChatOpen] = useState(false);
-  const [error, setError] = useState(null);
+        <p className="guest-tag">
+          Connect with friends and the world around you.
+        </p>
 
-  /* ======================================================
-     AUTH RESTORE – FACEBOOK STYLE
-  ====================================================== */
+        {error && <div className="guest-error">{error}</div>}
+
+        <div className="guest-actions">
+          <button
+            className="fb-login-btn"
+            onClick={() => navigate("/login")}
+          >
+            Log In
+          </button>
+
+          <button
+            className="fb-signup-btn"
+            onClick={() => navigate("/register")}
+          >
+            Create Account
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ======================================================
+   INLINE POST COMPOSER (NO COMPONENT DEPENDENCY)
+====================================================== */
+function PostComposerModal({ user, onClose, onPosted }) {
+  const [text, setText] = useState("");
+  const [image, setImage] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const boxRef = useRef();
 
   useEffect(() => {
-    const restore = async () => {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        setBooting(false);
-        return;
-      }
-
-      try {
-        const res = await fetch("/api/users/me", {
-          headers: {
-            Authorization: "Bearer " + token,
-          },
-        });
-
-        const me = await res.json();
-
-        if (me?.error) throw new Error(me.error);
-
-        setUser(me);
-        setProfile(me);
-
-        // expose for debugging
-        window.__PROFILE__ = me;
-
-      } catch (err) {
-        console.warn("Session expired");
-        localStorage.clear();
-        setError("Session expired, please login again");
-      } finally {
-        setBooting(false);
+    const close = (e) => {
+      if (boxRef.current && !boxRef.current.contains(e.target)) {
+        onClose();
       }
     };
 
-    restore();
-  }, []);
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [onClose]);
 
-  /* ======================================================
-     LOAD FEED + PROFILE
-  ====================================================== */
+  const pickImage = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  const loadAll = async () => {
+    setImage(file);
+    setPreview(URL.createObjectURL(file));
+  };
+
+  const submit = async () => {
+    if (!text.trim() && !image) return;
+
     try {
-      const p = await getProfile();
-      setProfile(p);
+      setLoading(true);
 
-      const feed = await getFeed();
-      setPosts(Array.isArray(feed) ? feed : []);
+      const form = new FormData();
+      form.append("text", text);
+      if (image) form.append("image", image);
 
-      window.__POSTS__ = feed;
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+        body: form,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Post failed");
+
+      onPosted(data);
+      onClose();
     } catch (e) {
-      console.error("Feed error:", e);
-      setError("Could not load feed");
+      alert(e.message);
+    } finally {
+      setLoading(false);
     }
   };
 
+  const avatar =
+    user?.avatar ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      user?.name || "User"
+    )}`;
+
+  return (
+    <div className="pc-overlay">
+      <div className="pc-modal" ref={boxRef}>
+        <header className="pc-header">
+          <h3>Create Post</h3>
+          <button className="pc-close" onClick={onClose}>✕</button>
+        </header>
+
+        <div className="pc-user">
+          <img src={avatar} />
+          <b>{user?.name}</b>
+        </div>
+
+        <textarea
+          className="pc-input"
+          placeholder="What's on your mind?"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+
+        {preview && (
+          <div className="pc-preview">
+            <img src={preview} />
+            <span onClick={() => setPreview(null)}>Remove</span>
+          </div>
+        )}
+
+        <div className="pc-actions">
+          <label className="pc-add">
+            📷 Photo
+            <input
+              type="file"
+              hidden
+              accept="image/*"
+              onChange={pickImage}
+            />
+          </label>
+
+          <button
+            className="pc-post"
+            disabled={loading}
+            onClick={submit}
+          >
+            {loading ? "Posting..." : "Post"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ======================================================
+   APP ROOT – NOW USING AUTH CONTEXT
+====================================================== */
+export default function App() {
+  const { user, loading, logout } = useAuth();
+
+  const [profile, setProfile] = useState(null);
+  const [posts, setPosts] = useState([]);
+
+  const [page, setPage] = useState("home");
+  const [chatOpen, setChatOpen] = useState(false);
+  const [error, setError] = useState(null);
+
+  const [composer, setComposer] = useState(false);
+
+  /* ===== LOAD FEED WHEN AUTH USER CHANGES ===== */
   useEffect(() => {
-    if (user) loadAll();
+    const loadAll = async () => {
+      if (!user) return;
+
+      try {
+        const p = await getProfile();
+        setProfile(p);
+
+        const feed = await getFeed();
+        setPosts(Array.isArray(feed) ? feed : []);
+      } catch (e) {
+        setError("Could not load feed");
+      }
+    };
+
+    loadAll();
   }, [user]);
 
-  /* ======================================================
-     UI STATES
-  ====================================================== */
-
-  if (booting) {
+  if (loading) {
     return (
-      <div className="card" style={{ margin: 40 }}>
-        <h3>🚀 Booting Tengacion...</h3>
-        <p>Connecting to your world</p>
+      <div className="boot-screen">
+        <div className="boot-card">
+          <h3>🚀 Booting Tengacion...</h3>
+        </div>
       </div>
     );
   }
 
+  /* ===== GUEST MODE ===== */
   if (!user) {
     return (
       <>
         <Navbar user={null} />
-
-        <div className="card" style={{ margin: 40 }}>
-          <h3>Welcome to Tengacion</h3>
-
-          {error && (
-            <div style={{ color: "crimson", marginBottom: 10 }}>
-              {error}
-            </div>
-          )}
-
-          <p>Please login to continue</p>
-        </div>
+        <GuestLanding error={error} />
       </>
     );
   }
 
-  /* ======================================================
-     MAIN APP SHELL
-  ====================================================== */
-
+  /* ===== AUTH APP ===== */
   return (
     <>
       <Navbar
-        user={profile}
+        user={profile || user}
         page={page}
         setPage={setPage}
-        onLogout={() => {
-          localStorage.clear();
-          setUser(null);
-        }}
+        onLogout={logout}
       />
 
       <Routes>
@@ -139,59 +233,56 @@ export default function App() {
           path="/"
           element={
             <div className="app-shell">
-
-              {/* LEFT – FACEBOOK SIDEBAR */}
               <aside className="sidebar">
                 <Sidebar
-                  user={profile}
+                  user={profile || user}
                   openChat={() => setChatOpen(true)}
                 />
               </aside>
 
-              {/* CENTER – FEED */}
               <main className="main-feed">
-
                 <StoriesBar />
 
-                {/* CREATE POST CARD (UI ONLY FOR NOW) */}
-                <div className="card" style={{ marginBottom: 12 }}>
+                <div
+                  className="card create-post"
+                  onClick={() => setComposer(true)}
+                  style={{ cursor: "pointer" }}
+                >
                   <input
                     placeholder="What's on your mind?"
                     readOnly
-                    style={{ width: "100%" }}
                   />
                 </div>
 
-                {/* FEED */}
                 <div className="tengacion-feed">
                   <div className="feed-posts">
-
                     {posts.length === 0 && (
-                      <div className="card">
+                      <div className="card empty-feed">
                         No posts yet. Be the first to share something!
                       </div>
                     )}
 
                     {posts.map((p) => (
-                      <div key={p._id} className="card">
-                        <b>@{p.username}</b>
-                        <p>{p.text}</p>
-                      </div>
+                      <article key={p._id} className="card post">
+                        <header className="post-header">
+                          <b>@{p.username}</b>
+                        </header>
+
+                        <p className="post-body">{p.text}</p>
+                      </article>
                     ))}
                   </div>
                 </div>
               </main>
 
-              {/* RIGHT – MESSENGER */}
               <section className="messenger">
                 {chatOpen && (
                   <Messenger
-                    user={profile}
+                    user={profile || user}
                     onClose={() => setChatOpen(false)}
                   />
                 )}
               </section>
-
             </div>
           }
         />
@@ -199,6 +290,16 @@ export default function App() {
         <Route path="/search" element={<Search />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+
+      {composer && (
+        <PostComposerModal
+          user={profile || user}
+          onClose={() => setComposer(false)}
+          onPosted={(newPost) =>
+            setPosts([newPost, ...posts])
+          }
+        />
+      )}
     </>
   );
 }

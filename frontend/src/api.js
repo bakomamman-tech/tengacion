@@ -1,92 +1,110 @@
 // ================= BASE =================
 
-// ✅ MONOLITHIC MODE – SAME ORIGIN
-// No domain, no localhost, no port
+// MONOLITHIC MODE – SAME ORIGIN
 export const API = "/api";
 const BASE = API;
 
-// ================= HELPERS =================
+// ================= AUTH HELPERS =================
 
-const auth = () => ({
-  Authorization: "Bearer " + (localStorage.getItem("token") || "")
-});
-
-const handleAuthFail = () => {
-  console.warn("🔐 Authentication expired — logging out");
-  localStorage.clear();
-  window.location.href = "/";
+const authHeaders = () => {
+  const token = localStorage.getItem("token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-// ---- FIXED JSON PARSER ----
-const json = async (res) => {
+const handleAuthFail = (reason = "") => {
+  console.warn("🔐 Auth failed:", reason);
+
+  // Prevent infinite redirect loops
+  if (window.location.pathname !== "/") {
+    localStorage.clear();
+    window.location.href = "/";
+  }
+};
+
+// ================= RESPONSE PARSER =================
+
+const parseJSON = async (res) => {
   const text = await res.text();
 
-  if (!text) {
-    if (res.ok) return {};
-    throw new Error("Empty server response");
-  }
+  // Empty body but OK
+  if (!text && res.ok) return {};
 
+  let data;
   try {
-    const data = JSON.parse(text);
-
-    if (res.status === 401) {
-      handleAuthFail();
-      throw new Error("Unauthorized");
-    }
-
-    if (!res.ok) {
-      throw new Error(data?.error || data?.message || "Request failed");
-    }
-
-    return data;
-  } catch (err) {
-    console.error("❌ API returned non-JSON:", text);
-    throw new Error(err.message || text || "Server error");
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error("Server returned invalid JSON");
   }
+
+  // ---- AUTH HANDLING ----
+  if (res.status === 401) {
+    handleAuthFail(data?.error || "Unauthorized");
+    throw new Error(data?.error || "Unauthorized");
+  }
+
+  if (!res.ok) {
+    throw new Error(
+      data?.error ||
+      data?.message ||
+      `Request failed with ${res.status}`
+    );
+  }
+
+  return data;
 };
 
-// Normalize image paths (same domain)
-export const getImage = (path) => {
-  if (!path) return "";
-  if (path.startsWith("http")) return path;
+// ================= SAFE FETCH =================
 
-  return path.startsWith("/") ? path : `/${path}`;
-};
+const safeFetch = (url, options = {}) => {
+  if (!navigator.onLine) {
+    return Promise.reject(new Error("You are offline"));
+  }
 
-// Safe fetch wrapper with timeout
-const safeFetch = (url, options = {}) =>
-  Promise.race([
+  return Promise.race([
     fetch(url, options),
     new Promise((_, reject) =>
       setTimeout(() => reject(new Error("Request timeout")), 15000)
-    )
+    ),
   ])
     .catch(() => {
       throw new Error("Network connection failed");
     })
-    .then(json);
+    .then(parseJSON);
+};
 
-// ================= AUTH =================
+// ================= IMAGE HELPERS =================
+
+export const getImage = (path) => {
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  return path.startsWith("/") ? path : `/${path}`;
+};
+
+// =================================================
+// 🟢 AUTH
+// =================================================
 
 export const login = (email, password) =>
   safeFetch(`${BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ email, password }),
   });
 
 export const register = (data) =>
   safeFetch(`${BASE}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
   });
 
-// ================= USER =================
+// =================================================
+// 🟢 USER
+// =================================================
 
 export const getProfile = () =>
   safeFetch(`${BASE}/users/me`, {
-    headers: auth()
+    headers: authHeaders(),
   });
 
 export const updateMe = (data) =>
@@ -94,9 +112,9 @@ export const updateMe = (data) =>
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      ...auth()
+      ...authHeaders(),
     },
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
   });
 
 export const uploadAvatar = (file) => {
@@ -105,8 +123,8 @@ export const uploadAvatar = (file) => {
 
   return safeFetch(`${BASE}/users/me/avatar`, {
     method: "POST",
-    headers: auth(),
-    body: f
+    headers: authHeaders(),
+    body: f,
   });
 };
 
@@ -116,16 +134,18 @@ export const uploadCover = (file) => {
 
   return safeFetch(`${BASE}/users/me/cover`, {
     method: "POST",
-    headers: auth(),
-    body: f
+    headers: authHeaders(),
+    body: f,
   });
 };
 
-// ================= POSTS =================
+// =================================================
+// 🟢 POSTS
+// =================================================
 
 export const getFeed = () =>
   safeFetch(`${BASE}/posts`, {
-    headers: auth()
+    headers: authHeaders(),
   });
 
 export const createPost = (text, file) => {
@@ -136,36 +156,40 @@ export const createPost = (text, file) => {
 
   return safeFetch(`${BASE}/posts`, {
     method: "POST",
-    headers: auth(),
-    body: f
+    headers: authHeaders(),
+    body: f,
   });
 };
 
 export const likePost = (id) =>
   safeFetch(`${BASE}/posts/${id}/like`, {
     method: "POST",
-    headers: auth()
+    headers: authHeaders(),
   });
 
-// ================= STORIES =================
+// =================================================
+// 🟢 STORIES
+// =================================================
 
 export const getStories = () =>
   safeFetch(`${BASE}/stories`, {
-    headers: auth()
+    headers: authHeaders(),
   });
 
 export const createStory = (form) =>
   safeFetch(`${BASE}/stories`, {
     method: "POST",
-    headers: auth(),
-    body: form
+    headers: authHeaders(),
+    body: form,
   });
 
-// ================= VIDEOS =================
+// =================================================
+// 🟢 VIDEOS
+// =================================================
 
 export const getVideos = () =>
   safeFetch(`${BASE}/videos`, {
-    headers: auth()
+    headers: authHeaders(),
   });
 
 export const uploadVideo = (videoUrl, caption) =>
@@ -173,7 +197,7 @@ export const uploadVideo = (videoUrl, caption) =>
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...auth()
+      ...authHeaders(),
     },
-    body: JSON.stringify({ videoUrl, caption })
+    body: JSON.stringify({ videoUrl, caption }),
   });

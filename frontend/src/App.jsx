@@ -5,7 +5,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login from "./pages/Login";
 import Home from "./pages/Home";
-import Profile from "./pages/Profile";
+import ProfileEditor from "./ProfileEditor";
 import Search from "./pages/Search";
 
 import { restoreSession } from "./context/auth";
@@ -34,7 +34,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* PUBLIC */}
-        <Route path="/" element={<Login setUser={setUser} />} />
+        <Route path="/" element={<Login />} />
 
         {/* PROTECTED */}
         <Route
@@ -50,7 +50,7 @@ export default function App() {
           path="/profile/:username"
           element={
             <ProtectedRoute user={user}>
-              <Profile user={user} />
+              <ProfileEditor user={user} onSaved={setUser} />
             </ProtectedRoute>
           }
         />

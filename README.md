@@ -1,27 +1,37 @@
-# Tengacion — The Social OS for the Next Billion People
-Tengacion is a next-generation social platform that merges
-real-time communication, creator monetization, AI-driven discovery,
-and community ownership into one seamless digital ecosystem.
+=# Tengacion  
+### The Social OS for the Next Billion People
 
-Unlike Facebook, Twitter, or Instagram, Tengacionis built as a
-modular, open, and intelligence-driven social operating system.
+Tengacion is a next-generation social platform designed as a **Social Operating System** — not just another social network.
 
-## Core Principles
-- People own their audience
-- Creators own their monetization
-- AI serves users, not advertisers
-- Communities govern themselves
+It combines real-time communication, creator monetization, AI-driven discovery, and community governance into one unified, modular ecosystem.
 
-## Architecture
-Tengacion is built as a multi-platform, service-oriented system:
+Unlike traditional platforms such as Facebook, Twitter, or Instagram, **Tengacion is built to be open, extensible, and intelligence-driven**, where users and creators retain ownership and control.
 
-- frontend/ → Web experience
-- backend/ → API, auth, social graph
-- mobile/ → iOS & Android apps
-- ai/ → Feed ranking, moderation, discovery
-- infra/ → Cloud, scaling, deployment
-- docs/ → Specs, RFCs, vision
+---
 
-## Status
-Tengacion is in active development.
-This repository is the single source of truth for all Tengacion systems.
+## 🌍 Vision
+
+To build the foundational social infrastructure for the next billion internet users — especially emerging markets — where identity, community, and creativity are first-class citizens.
+
+---
+
+## 🧭 Core Principles
+
+- **People own their audience**  
+  No algorithmic lock-in or platform capture.
+
+- **Creators own their monetization**  
+  Direct value exchange without exploitative intermediaries.
+
+- **AI serves users, not advertisers**  
+  Discovery and moderation exist to empower people, not manipulate them.
+
+- **Communities govern themselves**  
+  Social spaces should be shaped by their members, not corporations.
+
+---
+
+## 🏗 Architecture Overview
+
+Tengacion is designed as a **multi-platform, service-oriented system**:
+

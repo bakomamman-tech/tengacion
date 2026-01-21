@@ -1,13 +1,12 @@
 const jwt = require("jsonwebtoken");
 
 module.exports = function auth(req, res, next) {
-
   const header = req.headers.authorization;
 
   if (!header) {
     return res.status(401).json({
       error: "Authentication required",
-      code: "NO_TOKEN"
+      code: "NO_TOKEN",
     });
   }
 
@@ -18,29 +17,28 @@ module.exports = function auth(req, res, next) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Standard user object
+    // Normalize user object
     req.user = {
       id: decoded.id,
       email: decoded.email || null,
-      username: decoded.username || null
+      username: decoded.username || null,
+      role: decoded.role || "user",
     };
 
     req.userId = decoded.id;
 
     next();
-
   } catch (err) {
-
     if (err.name === "TokenExpiredError") {
       return res.status(401).json({
         error: "Session expired",
-        code: "TOKEN_EXPIRED"
+        code: "TOKEN_EXPIRED",
       });
     }
 
     return res.status(401).json({
-      error: "Invalid token",
-      code: "INVALID_TOKEN"
+      error: "Invalid authentication token",
+      code: "INVALID_TOKEN",
     });
   }
 };

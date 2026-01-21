@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -15,9 +15,11 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    restoreSession(setUser).finally(() => {
-      setAuthLoading(false);
-    });
+    restoreSession(setUser)
+      .catch(() => {})
+      .finally(() => {
+        setAuthLoading(false);
+      });
   }, []);
 
   if (authLoading) {
@@ -31,39 +33,37 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* PUBLIC */}
-        <Route path="/" element={<Login />} />
+    <Routes>
+      {/* PUBLIC */}
+      <Route path="/" element={<Login setUser={setUser} />} />
 
-        {/* PROTECTED */}
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute user={user}>
-              <Home user={user} />
-            </ProtectedRoute>
-          }
-        />
+      {/* PROTECTED */}
+      <Route
+        path="/home"
+        element={
+          <ProtectedRoute user={user}>
+            <Home user={user} />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path="/profile/:username"
-          element={
-            <ProtectedRoute user={user}>
-              <ProfileEditor user={user} onSaved={setUser} />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path="/profile/:username"
+        element={
+          <ProtectedRoute user={user}>
+            <ProfileEditor user={user} onSaved={setUser} />
+          </ProtectedRoute>
+        }
+      />
 
-        <Route
-          path="/search"
-          element={
-            <ProtectedRoute user={user}>
-              <Search />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+      <Route
+        path="/search"
+        element={
+          <ProtectedRoute user={user}>
+            <Search />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 }

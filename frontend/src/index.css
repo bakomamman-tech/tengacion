@@ -20,7 +20,10 @@
   --border: #e4e6eb;
 
   --radius: 10px;
-  --shadow: 0 2px 6px rgba(0,0,0,0.08);
+ --shadow-sm: 0 1px 2px rgba(0,0,0,.08);
+--shadow-md: 0 4px 12px rgba(0,0,0,.12);
+--shadow-lg: 0 12px 28px rgba(0,0,0,.20),
+             0 2px 4px rgba(0,0,0,.10);
 
   --ease: cubic-bezier(.08,.52,.52,1);
 }
@@ -38,7 +41,16 @@ body {
   background: var(--fb-bg);
   color: var(--text);
 }
+/* ===== GLOBAL BUTTON INTERACTIONS ===== */
 
+button {
+  transition: background .12s var(--ease),
+              transform .08s var(--ease);
+}
+
+button:active {
+  transform: scale(.96);
+}
 /* ======================================================
    🛡️ ANTI GIANT LOGO – ABSOLUTE LAW
 ====================================================== */
@@ -203,10 +215,7 @@ body {
   background: #f0f2f5;
 }
 
-.nav-active {
-  border-bottom: 3px solid var(--fb-blue);
-  color: var(--fb-blue);
-}
+.nav-active
 
 /* ========== RIGHT ========== */
 
@@ -265,6 +274,14 @@ body {
 
   cursor: pointer;
   transition: transform .1s;
+}
+/* ================= STORY CARD ================= */
+/* SHADOW SYSTEM UPDATE */
+
+.story-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .nav-avatar:hover {
@@ -478,6 +495,11 @@ body {
 .sidebar-btn:hover {
   background: #f0f2f5;
 }
+.sidebar-btn.active {
+  background: #e7f3ff;
+  color: var(--fb-blue);
+  font-weight: 600;
+}
 
 .sb-icon {
   width: 22px;
@@ -525,6 +547,13 @@ body {
 }
 
 /* ===== MESSENGER ===== */
+.msg-bubble {
+  box-shadow: var(--shadow-sm);
+  line-height: 1.4;
+}
+.message-row.me .msg-bubble {
+  border-bottom-right-radius: 4px;
+}
 
 .messenger {
   background: white;
@@ -664,4 +693,16 @@ body {
   100% {
     background-position: -100% 0;
   }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #e4e6eb 25%,
+    #f0f2f5 37%,
+    #e4e6eb 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton 1.4s ease infinite;
+  border-radius: 8px;
 }

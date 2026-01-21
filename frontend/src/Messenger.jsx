@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from "react";
-import socket from "./socket";
+import { connectSocket, disconnectSocket } from "./socket";
 
 export default function Messenger({ user, onClose }) {
   const [text, setText] = useState("");
   const [messages, setMessages] = useState([]);
   const [receiverId, setReceiverId] = useState(null);
 
+  const socketRef = useRef(null);
   const endRef = useRef(null);
 
   /* ===== AUTO SCROLL ===== */
@@ -13,55 +14,58 @@ export default function Messenger({ user, onClose }) {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /* ===== SOCKET SETUP ===== */
+  /* ===== SOCKET LIFECYCLE (FACEBOOK STYLE) ===== */
   useEffect(() => {
-    if (!user) return;
+    if (!user?._id) return;
 
-    socket.emit("join", user._id);
+    const socket = connectSocket({
+      token: localStorage.getItem("token"),
+      userId: user._id,
+    });
 
-    // choose first friend if available
+    socketRef.current = socket;
+
+    // Choose first friend (temporary until chat list exists)
     if (Array.isArray(user.friends) && user.friends.length > 0) {
       setReceiverId(user.friends[0]);
     }
 
-    const handleNewMessage = (msg) => {
-      setMessages((m) => [...m, msg]);
+    const handleMessage = (msg) => {
+      setMessages((prev) => [...prev, msg]);
     };
 
-    socket.on("newMessage", handleNewMessage);
+    socket?.on("newMessage", handleMessage);
 
     return () => {
-      socket.off("newMessage", handleNewMessage);
+      socket?.off("newMessage", handleMessage);
+      disconnectSocket();
+      socketRef.current = null;
     };
   }, [user]);
 
+  /* ===== SEND MESSAGE ===== */
   const send = () => {
-    if (!text.trim() || !receiverId) return;
+    if (!text.trim() || !receiverId || !socketRef.current) return;
 
-    socket.emit("sendMessage", {
+    const payload = {
       senderId: user._id,
       receiverId,
       text,
-    });
+      time: Date.now(),
+      senderName: user.name,
+    };
 
-    // optimistic UI
-    setMessages((m) => [
-      ...m,
-      {
-        senderId: user._id,
-        text,
-        senderName: user.name,
-        time: Date.now(),
-      },
-    ]);
+    socketRef.current.emit("sendMessage", payload);
 
+    // Optimistic UI (Facebook-style)
+    setMessages((prev) => [...prev, payload]);
     setText("");
   };
 
   const avatar = (name) =>
     `https://ui-avatars.com/api/?name=${encodeURIComponent(
       name || "User"
-    )}`;
+    )}&size=48`;
 
   return (
     <div className="messenger">
@@ -76,7 +80,7 @@ export default function Messenger({ user, onClose }) {
         </button>
       </div>
 
-      {/* ===== BODY ===== */}
+      {/* ===== MESSAGES ===== */}
       <div className="messenger-messages">
         {messages.length === 0 && (
           <div className="ms-empty">
@@ -90,14 +94,13 @@ export default function Messenger({ user, onClose }) {
           return (
             <div
               key={i}
-              className={
-                isMe ? "message-row me" : "message-row them"
-              }
+              className={`message-row ${isMe ? "me" : "them"}`}
             >
               {!isMe && (
                 <img
                   src={avatar(m.senderName)}
                   className="msg-avatar"
+                  alt=""
                 />
               )}
 
@@ -111,12 +114,10 @@ export default function Messenger({ user, onClose }) {
                 <div className="msg-text">{m.text}</div>
 
                 <div className="msg-time">
-                  {m.time
-                    ? new Date(m.time).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : ""}
+                  {new Date(m.time).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </div>
               </div>
             </div>
@@ -132,7 +133,7 @@ export default function Messenger({ user, onClose }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Type a message..."
+          placeholder="Type a message…"
         />
 
         <button

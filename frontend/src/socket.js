@@ -1,57 +1,60 @@
 import { io } from "socket.io-client";
 
-// ALWAYS connect to API backend
+/* ======================================================
+   FACEBOOK-GRADE SOCKET MANAGER
+====================================================== */
+
 const URL = "https://tengacion-api.onrender.com";
 
-const socket = io(URL, {
-  path: "/socket.io",
+let socket = null;
 
-  transports: ["websocket", "polling"],
-  secure: true,
-  withCredentials: true,
+/**
+ * Connect socket AFTER authentication
+ */
+export function connectSocket({ token, userId }) {
+  if (socket || !token || !userId) return socket;
 
-  autoConnect: true,
+  socket = io(URL, {
+    path: "/socket.io",
+    transports: ["websocket"],
+    secure: true,
 
-  // AUTH IS DYNAMIC – evaluated on each connect
-  auth: (cb) => {
-    try {
-      const token = localStorage.getItem("token");
-      const user = JSON.parse(localStorage.getItem("user") || "null");
+    autoConnect: false,
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 2000,
+    timeout: 8000,
 
-      cb({
-        token,
-        user: user?._id || null
-      });
-    } catch {
-      cb({ token: null, user: null });
-    }
-  },
+    auth: {
+      token,
+      userId,
+    },
+  });
 
-  reconnection: true,
-  reconnectionAttempts: 15,
-  reconnectionDelay: 2000,
-  reconnectionDelayMax: 10000,
-  timeout: 20000
-});
+  socket.connect();
 
-// Auto join after connect
-socket.on("connect", () => {
-  try {
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    if (user?._id) {
-      socket.emit("join", user._id);
-    }
-  } catch {}
-});
+  socket.on("connect", () => {
+    console.log("🔌 Socket connected");
+    socket.emit("join", userId);
+  });
 
-// Debug helpers
-socket.on("connect_error", (err) => {
-  console.warn("⚠ Socket connect error:", err.message);
-});
+  socket.on("connect_error", (err) => {
+    console.warn("⚠ Socket error:", err.message);
+  });
 
-socket.on("disconnect", (reason) => {
-  console.log("🔌 Socket disconnected:", reason);
-});
+  socket.on("disconnect", (reason) => {
+    console.log("🔌 Socket disconnected:", reason);
+  });
 
-export default socket;
+  return socket;
+}
 
+/**
+ * Disconnect socket on logout / unmount
+ */
+export function disconnectSocket() {
+  if (!socket) return;
+
+  socket.disconnect();
+  socket = null;
+}

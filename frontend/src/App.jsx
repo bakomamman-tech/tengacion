@@ -1,3 +1,4 @@
+import ProtectedRoute from "./components/ProtectedRoute";
 import { useEffect, useState, useRef } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 

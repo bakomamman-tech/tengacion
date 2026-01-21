@@ -1,45 +1,45 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { login as loginApi } from "../api";
-import { useAuth } from "../context/AuthContext";
+import toast from "react-hot-toast";
 
-export default function Login() {
-  const { user, login } = useAuth();
+import { login as loginApi } from "../api";
+
+export default function Login({ setUser }) {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   // 🔐 Already logged in → go home
-  if (user) {
+  const token = localStorage.getItem("token");
+  if (token) {
     return <Navigate to="/home" replace />;
   }
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setError("Email and password are required");
+      toast.error("Email and password are required");
       return;
     }
 
-    setError("");
     setLoading(true);
 
     try {
       const res = await loginApi(email, password);
 
       if (res?.token && res?.user) {
-        // ✅ Centralized auth handling
-        login(res.token, res.user);
+        toast.success("Welcome back 👋");
 
-        // ✅ SPA navigation (no reload)
+        localStorage.setItem("token", res.token);
+        setUser(res.user);
+
         navigate("/home", { replace: true });
       } else {
-        setError(res?.error || "Invalid credentials");
+        toast.error(res?.error || "Invalid credentials");
       }
-    } catch (err) {
-      setError("Unable to connect to server");
+    } catch {
+      toast.error("Server connection failed");
     } finally {
       setLoading(false);
     }
@@ -48,12 +48,6 @@ export default function Login() {
   return (
     <div style={{ maxWidth: 400, margin: "40px auto" }}>
       <h2>Login to Tengacion</h2>
-
-      {error && (
-        <p style={{ color: "red", marginBottom: 10 }}>
-          {error}
-        </p>
-      )}
 
       <input
         type="email"

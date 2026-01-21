@@ -1,25 +1,33 @@
 import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 
-export default class ErrorBoundary extends React.Component {
-  state = { hasError: false };
+import App from "./App";
+import { AuthProvider } from "./context/AuthContext";
+import ErrorBoundary from "./components/ErrorBoundary";
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
+import "./index.css";
 
-  componentDidCatch(error, info) {
-    console.error("UI Crash:", error, info);
-  }
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <ErrorBoundary>
+      <AuthProvider>
+        <BrowserRouter>
+          <App />
 
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: 40, textAlign: "center" }}>
-          <h2>Something went wrong 😕</h2>
-          <p>Please refresh the page.</p>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3500,
+              style: {
+                background: "#111",
+                color: "#fff",
+              },
+            }}
+          />
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
+  </React.StrictMode>
+);

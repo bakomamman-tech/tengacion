@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+
 import { updateMe, uploadAvatar, uploadCover } from "./api";
 
 export default function ProfileEditor({ user, onSaved }) {
@@ -27,9 +29,10 @@ export default function ProfileEditor({ user, onSaved }) {
 
     try {
       const updated = await updateMe({ name, bio });
+      toast.success("Profile updated");
       onSaved(updated);
     } catch {
-      setError("Failed to save profile");
+      toast.error("Failed to update profile");
     } finally {
       setSaving(false);
     }

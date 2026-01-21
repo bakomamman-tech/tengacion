@@ -1,203 +1,213 @@
-// ================= BASE =================
+// ======================================================
+// TENGACION API CLIENT – WORLD STANDARD (FETCH-BASED)
+// ======================================================
 
-// MONOLITHIC MODE – SAME ORIGIN
-export const API = "/api";
-const BASE = API;
+// ---------------- BASE CONFIG ----------------
 
-// ================= AUTH HELPERS =================
+// Same-origin API (works locally, on Render, and behind proxies)
+export const API_BASE = "/api";
 
-const authHeaders = () => {
+// ---------------- AUTH HELPERS ----------------
+
+const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
 };
 
-const handleAuthFail = (reason = "") => {
-  console.warn("🔐 Auth failed:", reason);
+const handleAuthFailure = (error = "Unauthorized") => {
+  console.warn("🔐 Authentication failure:", error);
 
-  // Prevent infinite redirect loops
+  // Prevent redirect loops
   if (window.location.pathname !== "/") {
     localStorage.clear();
-    window.location.href = "/";
+    window.location.replace("/");
   }
 };
 
-// ================= RESPONSE PARSER =================
+// ---------------- RESPONSE HANDLER ----------------
 
-const parseJSON = async (res) => {
-  const text = await res.text();
+const parseResponse = async (response) => {
+  const raw = await response.text();
+  const data = raw ? safeJSON(raw) : {};
 
-  // Empty body but OK
-  if (!text && res.ok) return {};
-
-  let data;
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    throw new Error("Server returned invalid JSON");
-  }
-
-  // ---- AUTH HANDLING ----
-  if (res.status === 401) {
-    handleAuthFail(data?.error || "Unauthorized");
+  if (response.status === 401) {
+    handleAuthFailure(data?.error);
     throw new Error(data?.error || "Unauthorized");
   }
 
-  if (!res.ok) {
+  if (!response.ok) {
     throw new Error(
       data?.error ||
       data?.message ||
-      `Request failed with ${res.status}`
+      `Request failed (${response.status})`
     );
   }
 
   return data;
 };
 
-// ================= SAFE FETCH =================
+const safeJSON = (text) => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error("Invalid server response");
+  }
+};
 
-const safeFetch = (url, options = {}) => {
+// ---------------- FETCH WRAPPER ----------------
+
+const withTimeout = (promise, ms = 15000) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Request timeout")), ms)
+    ),
+  ]);
+
+const request = async (url, options = {}) => {
   if (!navigator.onLine) {
-    return Promise.reject(new Error("You are offline"));
+    throw new Error("No internet connection");
   }
 
-  return Promise.race([
-    fetch(url, options),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Request timeout")), 15000)
-    ),
-  ])
-    .catch(() => {
-      throw new Error("Network connection failed");
+  const response = await withTimeout(
+    fetch(url, {
+      credentials: "same-origin",
+      ...options,
     })
-    .then(parseJSON);
+  );
+
+  return parseResponse(response);
 };
 
-// ================= IMAGE HELPERS =================
-
-export const getImage = (path) => {
-  if (!path) return "";
-  if (path.startsWith("http")) return path;
-  return path.startsWith("/") ? path : `/${path}`;
-};
-
-// =================================================
+// ======================================================
 // 🟢 AUTH
-// =================================================
+// ======================================================
 
 export const login = (email, password) =>
-  safeFetch(`${BASE}/auth/login`, {
+  request(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
 
-export const register = (data) =>
-  safeFetch(`${BASE}/auth/register`, {
+export const register = (payload) =>
+  request(`${API_BASE}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
-// =================================================
+// ======================================================
 // 🟢 USER
-// =================================================
+// ======================================================
 
 export const getProfile = () =>
-  safeFetch(`${BASE}/users/me`, {
-    headers: authHeaders(),
+  request(`${API_BASE}/auth/me`, {
+    headers: getAuthHeaders(),
   });
 
-export const updateMe = (data) =>
-  safeFetch(`${BASE}/users/me`, {
+export const updateProfile = (payload) =>
+  request(`${API_BASE}/users/me`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      ...authHeaders(),
+      ...getAuthHeaders(),
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
 export const uploadAvatar = (file) => {
-  const f = new FormData();
-  f.append("image", file);
+  const form = new FormData();
+  form.append("image", file);
 
-  return safeFetch(`${BASE}/users/me/avatar`, {
+  return request(`${API_BASE}/users/me/avatar`, {
     method: "POST",
-    headers: authHeaders(),
-    body: f,
+    headers: getAuthHeaders(),
+    body: form,
   });
 };
 
 export const uploadCover = (file) => {
-  const f = new FormData();
-  f.append("image", file);
+  const form = new FormData();
+  form.append("image", file);
 
-  return safeFetch(`${BASE}/users/me/cover`, {
+  return request(`${API_BASE}/users/me/cover`, {
     method: "POST",
-    headers: authHeaders(),
-    body: f,
+    headers: getAuthHeaders(),
+    body: form,
   });
 };
 
-// =================================================
+// ======================================================
 // 🟢 POSTS
-// =================================================
+// ======================================================
 
 export const getFeed = () =>
-  safeFetch(`${BASE}/posts`, {
-    headers: authHeaders(),
+  request(`${API_BASE}/posts`, {
+    headers: getAuthHeaders(),
   });
 
 export const createPost = (text, file) => {
-  const f = new FormData();
-  f.append("text", text || "");
+  const form = new FormData();
+  form.append("text", text || "");
+  if (file) form.append("file", file);
 
-  if (file) f.append("file", file);
-
-  return safeFetch(`${BASE}/posts`, {
+  return request(`${API_BASE}/posts`, {
     method: "POST",
-    headers: authHeaders(),
-    body: f,
+    headers: getAuthHeaders(),
+    body: form,
   });
 };
 
 export const likePost = (id) =>
-  safeFetch(`${BASE}/posts/${id}/like`, {
+  request(`${API_BASE}/posts/${id}/like`, {
     method: "POST",
-    headers: authHeaders(),
+    headers: getAuthHeaders(),
   });
 
-// =================================================
+// ======================================================
 // 🟢 STORIES
-// =================================================
+// ======================================================
 
 export const getStories = () =>
-  safeFetch(`${BASE}/stories`, {
-    headers: authHeaders(),
+  request(`${API_BASE}/stories`, {
+    headers: getAuthHeaders(),
   });
 
-export const createStory = (form) =>
-  safeFetch(`${BASE}/stories`, {
+export const createStory = (formData) =>
+  request(`${API_BASE}/stories`, {
     method: "POST",
-    headers: authHeaders(),
-    body: form,
+    headers: getAuthHeaders(),
+    body: formData,
   });
 
-// =================================================
+// ======================================================
 // 🟢 VIDEOS
-// =================================================
+// ======================================================
 
 export const getVideos = () =>
-  safeFetch(`${BASE}/videos`, {
-    headers: authHeaders(),
+  request(`${API_BASE}/videos`, {
+    headers: getAuthHeaders(),
   });
 
 export const uploadVideo = (videoUrl, caption) =>
-  safeFetch(`${BASE}/videos`, {
+  request(`${API_BASE}/videos`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...authHeaders(),
+      ...getAuthHeaders(),
     },
     body: JSON.stringify({ videoUrl, caption }),
   });
+
+// ======================================================
+// 🟢 UTIL
+// ======================================================
+
+export const resolveImage = (path) => {
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  return path.startsWith("/") ? path : `/${path}`;
+};

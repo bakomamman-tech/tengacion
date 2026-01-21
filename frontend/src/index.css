@@ -656,3 +656,12 @@ body {
 .messenger-input button:disabled {
   opacity: .6;
 }
+
+@keyframes skeleton {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}

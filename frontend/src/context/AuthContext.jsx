@@ -1,35 +1,34 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
 
-export const AuthContext = createContext();
+const AuthContext = createContext(null);
+
 export const useAuth = () => useContext(AuthContext);
 
 /* ======================================================
-   FACEBOOK-LEVEL AUTH PROVIDER
+   FACEBOOK-GRADE AUTH PROVIDER (FAILSAFE)
 ====================================================== */
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  /* ===== AXIOS GLOBAL INTERCEPTOR ===== */
+  /* ===== AXIOS INTERCEPTORS ===== */
   useEffect(() => {
     const req = axios.interceptors.request.use((config) => {
       const token = localStorage.getItem("token");
       if (token) {
-        config.headers.Authorization = "Bearer " + token;
+        config.headers.Authorization = `Bearer ${token}`;
       }
       return config;
     });
 
     const res = axios.interceptors.response.use(
-      (response) => response,
+      (r) => r,
       (err) => {
-        // Auto logout on 401 – Facebook style
-        if (err.response?.status === 401) {
-          logout();
-          window.dispatchEvent(new Event("session-expired"));
+        if (err?.response?.status === 401) {
+          hardLogout();
         }
         return Promise.reject(err);
       }
@@ -41,29 +40,48 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  /* ===== RESTORE SESSION ON START ===== */
+  /* ===== RESTORE SESSION (NON-BLOCKING) ===== */
   useEffect(() => {
+    let alive = true;
+
     const token = localStorage.getItem("token");
 
+    // Guest: never block UI
     if (!token) {
       setLoading(false);
       return;
     }
 
+    const controller = new AbortController();
+
     axios
-      .get("/api/auth/me")
+      .get("/api/auth/me", { signal: controller.signal })
       .then((res) => {
-        setUser(res.data);
-        window.__USER__ = res.data; // debug helper
+        if (!alive) return;
+        setUser(res.data || null);
       })
       .catch(() => {
+        if (!alive) return;
         localStorage.removeItem("token");
         setUser(null);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+
+    // 🔒 HARD FAILSAFE (prevents infinite loading)
+    const timeout = setTimeout(() => {
+      if (alive) setLoading(false);
+    }, 4000);
+
+    return () => {
+      alive = false;
+      controller.abort();
+      clearTimeout(timeout);
+    };
   }, []);
 
-  /* ===== MULTI TAB SYNC ===== */
+  /* ===== MULTI-TAB SYNC ===== */
   useEffect(() => {
     const sync = (e) => {
       if (e.key === "token" && !e.newValue) {
@@ -75,23 +93,23 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener("storage", sync);
   }, []);
 
-  /* ===== AUTH ACTIONS ===== */
+  /* ===== ACTIONS ===== */
 
   const login = (token, userData) => {
     if (!token || !userData) return;
-
     localStorage.setItem("token", token);
     setUser(userData);
     setError(null);
   };
 
-  const logout = () => {
+  const hardLogout = () => {
     localStorage.removeItem("token");
     setUser(null);
+    setLoading(false);
   };
 
   const updateUser = (data) => {
-    setUser((u) => ({ ...u, ...data }));
+    setUser((u) => (u ? { ...u, ...data } : u));
   };
 
   return (
@@ -102,13 +120,13 @@ export const AuthProvider = ({ children }) => {
         error,
 
         login,
-        logout,
+        logout: hardLogout,
         updateUser,
 
-        isAuthenticated: !!user,
+        isAuthenticated: Boolean(user),
       }}
     >
       {children}
     </AuthContext.Provider>
   );
-};
+}

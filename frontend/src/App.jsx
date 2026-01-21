@@ -8,7 +8,7 @@ import StoriesBar from "./stories/StoriesBar";
 import Search from "./pages/Search";
 
 import { getProfile, getFeed } from "./api";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "./context/AuthContext";
 
 /* ======================================================
    FACEBOOK-STYLE GUEST LANDING
@@ -48,7 +48,7 @@ function GuestLanding({ error }) {
 }
 
 /* ======================================================
-   INLINE POST COMPOSER (NO COMPONENT DEPENDENCY)
+   INLINE POST COMPOSER (NO EXTRA COMPONENTS)
 ====================================================== */
 function PostComposerModal({ user, onClose, onPosted }) {
   const [text, setText] = useState("");
@@ -56,7 +56,7 @@ function PostComposerModal({ user, onClose, onPosted }) {
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const boxRef = useRef();
+  const boxRef = useRef(null);
 
   useEffect(() => {
     const close = (e) => {
@@ -70,7 +70,7 @@ function PostComposerModal({ user, onClose, onPosted }) {
   }, [onClose]);
 
   const pickImage = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
     setImage(file);
@@ -96,12 +96,12 @@ function PostComposerModal({ user, onClose, onPosted }) {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Post failed");
+      if (!res.ok) throw new Error(data?.error || "Post failed");
 
       onPosted(data);
       onClose();
-    } catch (e) {
-      alert(e.message);
+    } catch (err) {
+      alert(err.message);
     } finally {
       setLoading(false);
     }
@@ -118,11 +118,13 @@ function PostComposerModal({ user, onClose, onPosted }) {
       <div className="pc-modal" ref={boxRef}>
         <header className="pc-header">
           <h3>Create Post</h3>
-          <button className="pc-close" onClick={onClose}>✕</button>
+          <button className="pc-close" onClick={onClose}>
+            ✕
+          </button>
         </header>
 
         <div className="pc-user">
-          <img src={avatar} />
+          <img src={avatar} alt="" />
           <b>{user?.name}</b>
         </div>
 
@@ -135,7 +137,7 @@ function PostComposerModal({ user, onClose, onPosted }) {
 
         {preview && (
           <div className="pc-preview">
-            <img src={preview} />
+            <img src={preview} alt="" />
             <span onClick={() => setPreview(null)}>Remove</span>
           </div>
         )}
@@ -156,7 +158,7 @@ function PostComposerModal({ user, onClose, onPosted }) {
             disabled={loading}
             onClick={submit}
           >
-            {loading ? "Posting..." : "Post"}
+            {loading ? "Posting…" : "Post"}
           </button>
         </div>
       </div>
@@ -165,7 +167,7 @@ function PostComposerModal({ user, onClose, onPosted }) {
 }
 
 /* ======================================================
-   APP ROOT – NOW USING AUTH CONTEXT
+   APP ROOT — AUTH CONTEXT DRIVEN
 ====================================================== */
 export default function App() {
   const { user, loading, logout } = useAuth();
@@ -175,40 +177,40 @@ export default function App() {
 
   const [page, setPage] = useState("home");
   const [chatOpen, setChatOpen] = useState(false);
+  const [composer, setComposer] = useState(false);
   const [error, setError] = useState(null);
 
-  const [composer, setComposer] = useState(false);
-
-  /* ===== LOAD FEED WHEN AUTH USER CHANGES ===== */
+  /* ===== LOAD FEED ===== */
   useEffect(() => {
-    const loadAll = async () => {
-      if (!user) return;
+    if (!user) return;
 
+    const load = async () => {
       try {
         const p = await getProfile();
         setProfile(p);
 
         const feed = await getFeed();
         setPosts(Array.isArray(feed) ? feed : []);
-      } catch (e) {
+      } catch {
         setError("Could not load feed");
       }
     };
 
-    loadAll();
+    load();
   }, [user]);
 
+  /* ===== BOOT ===== */
   if (loading) {
     return (
       <div className="boot-screen">
         <div className="boot-card">
-          <h3>🚀 Booting Tengacion...</h3>
+          <h3>🚀 Booting Tengacion…</h3>
         </div>
       </div>
     );
   }
 
-  /* ===== GUEST MODE ===== */
+  /* ===== GUEST ===== */
   if (!user) {
     return (
       <>
@@ -218,7 +220,7 @@ export default function App() {
     );
   }
 
-  /* ===== AUTH APP ===== */
+  /* ===== AUTHENTICATED APP ===== */
   return (
     <>
       <Navbar
@@ -296,7 +298,7 @@ export default function App() {
           user={profile || user}
           onClose={() => setComposer(false)}
           onPosted={(newPost) =>
-            setPosts([newPost, ...posts])
+            setPosts((prev) => [newPost, ...prev])
           }
         />
       )}

@@ -1,11 +1,13 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+
 import PostSkeleton from "../components/PostSkeleton";
+import PostCard from "../components/PostCard";
+
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
 import Messenger from "../Messenger";
 import Stories from "../stories/StoriesBar";
-import PostCard from "../components/PostCard";
 
 import { getProfile, getFeed } from "../api";
 
@@ -57,15 +59,54 @@ function PostComposerModal({ user, onClose, onPosted }) {
   return (
     <div className="pc-overlay">
       <div className="pc-modal" ref={boxRef}>
-        <h3>Create Post</h3>
+        {/* HEADER */}
+        <div className="pc-header">
+          <h3>Create post</h3>
+          <button className="pc-close" onClick={onClose}>
+            ×
+          </button>
+        </div>
 
+        {/* USER ROW */}
+        <div className="pc-user">
+          <img
+            src={user?.avatar || "/avatar.png"}
+            className="pc-avatar"
+            alt={user?.username}
+          />
+          <div>
+            <div className="pc-name">{user?.username}</div>
+            <button className="pc-privacy">🌍 Public</button>
+          </div>
+        </div>
+
+        {/* TEXTAREA */}
         <textarea
-          placeholder="What's on your mind?"
+          className="pc-textarea"
+          placeholder={`What's on your mind, ${user?.username || ""}?`}
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
 
-        <button onClick={submit} disabled={loading}>
+        {/* ADD TO POST */}
+        <div className="pc-add">
+          <span>Add to your post</span>
+          <div className="pc-actions">
+            <button title="Photo/Video">🖼️</button>
+            <button title="Tag people">👥</button>
+            <button title="Feeling">😊</button>
+            <button title="Location">📍</button>
+            <button title="Music">🎵</button>
+            <button title="More">⋯</button>
+          </div>
+        </div>
+
+        {/* POST BUTTON */}
+        <button
+          className={`pc-submit ${text.trim() ? "active" : ""}`}
+          disabled={!text.trim() || loading}
+          onClick={submit}
+        >
           {loading ? "Posting…" : "Post"}
         </button>
       </div>
@@ -116,9 +157,6 @@ export default function Home({ user }) {
     navigate("/");
   };
 
-  /* ===== LOADING ===== */
- 
-
   return (
     <>
       <Navbar user={profile || user} onLogout={logout} />
@@ -132,8 +170,7 @@ export default function Home({ user }) {
         </aside>
 
         <main className="feed">
-  <Stories loading={loading} />
-
+          <Stories loading={loading} />
 
           <div
             className="card create-post"
@@ -143,24 +180,22 @@ export default function Home({ user }) {
           </div>
 
           <div className="tengacion-feed">
-  {loading ? (
-    <>
-      <PostSkeleton />
-      <PostSkeleton />
-      <PostSkeleton />
-    </>
-  ) : posts.length === 0 ? (
-    <div className="card empty-feed">
-      No posts yet. Be the first to share!
-    </div>
-  ) : (
-    posts.map((p) => (
-  <PostCard key={p._id} post={p} />
-))
-
-  )}
-</div>
-
+            {loading ? (
+              <>
+                <PostSkeleton />
+                <PostSkeleton />
+                <PostSkeleton />
+              </>
+            ) : posts.length === 0 ? (
+              <div className="card empty-feed">
+                No posts yet. Be the first to share!
+              </div>
+            ) : (
+              posts.map((p) => (
+                <PostCard key={p._id} post={p} />
+              ))
+            )}
+          </div>
         </main>
 
         {chatOpen && (

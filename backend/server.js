@@ -34,6 +34,13 @@ const app = express();
 const server = http.createServer(app);
 
 /* =====================================================
+   🧠 TRUST PROXY (RENDER / CLOUD HOSTING FIX)
+===================================================== */
+
+// REQUIRED for Render / Heroku / Vercel when using rate-limit
+app.set("trust proxy", 1);
+
+/* =====================================================
    🛡 SECURITY HEADERS
 ===================================================== */
 

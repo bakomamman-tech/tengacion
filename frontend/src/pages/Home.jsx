@@ -14,10 +14,19 @@ import { getProfile, getFeed } from "../api";
 /* ======================================================
    POST COMPOSER (LOCAL TO HOME)
 ====================================================== */
+/* ======================================================
+   POST COMPOSER (FACEBOOK-LEVEL UX)
+====================================================== */
 function PostComposerModal({ user, onClose, onPosted }) {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const boxRef = useRef(null);
+
+  /* Lock background scroll */
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => (document.body.style.overflow = "");
+  }, []);
 
   /* Close on outside click */
   useEffect(() => {
@@ -30,11 +39,9 @@ function PostComposerModal({ user, onClose, onPosted }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [onClose]);
 
-  /* Close on ESC key */
+  /* Close on ESC */
   useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose();
-    };
+    const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
@@ -44,7 +51,6 @@ function PostComposerModal({ user, onClose, onPosted }) {
 
     try {
       setLoading(true);
-
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: {
@@ -68,11 +74,11 @@ function PostComposerModal({ user, onClose, onPosted }) {
 
   return (
     <div className="pc-overlay">
-      <div className="pc-modal" ref={boxRef}>
+      <div className="pc-modal" ref={boxRef} role="dialog" aria-modal="true">
         {/* HEADER */}
         <div className="pc-header">
           <h3>Create post</h3>
-          <button className="pc-close" onClick={onClose}>
+          <button className="pc-close" onClick={onClose} aria-label="Close">
             ×
           </button>
         </div>
@@ -84,9 +90,9 @@ function PostComposerModal({ user, onClose, onPosted }) {
             className="pc-avatar"
             alt={user?.username}
           />
-          <div>
+          <div className="pc-user-meta">
             <div className="pc-name">{user?.username}</div>
-            <button className="pc-privacy">🌍 Public</button>
+            <button className="pc-privacy">🌍 Public ▾</button>
           </div>
         </div>
 
@@ -96,14 +102,19 @@ function PostComposerModal({ user, onClose, onPosted }) {
           placeholder={`What's on your mind, ${user?.username || ""}?`}
           value={text}
           onChange={(e) => setText(e.target.value)}
+          autoFocus
         />
+
+        {/* DIVIDER */}
+        <div className="pc-divider" />
 
         {/* ADD TO POST */}
         <div className="pc-add">
           <span>Add to your post</span>
+
           <div className="pc-actions">
-            <button title="Photo/Video">🖼️</button>
-            <button title="Tag people">👥</button>
+            <button title="Photo or Video">🖼️</button>
+            <button title="Tag People">👥</button>
             <button title="Feeling">😊</button>
             <button title="Location">📍</button>
             <button title="Music">🎵</button>

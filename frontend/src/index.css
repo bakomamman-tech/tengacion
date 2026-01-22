@@ -897,3 +897,21 @@ button:active {
 .post-action.like.active {
   color: var(--fb-blue);
 }
+/* ===== CREATE POST OVERLAY ===== */
+
+.pc-overlay {
+  position: fixed;
+  inset: 0;
+
+  background: rgba(255, 255, 255, 0.7);
+
+  /* Safari / iOS support */
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 3000;
+}

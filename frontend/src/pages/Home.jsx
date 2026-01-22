@@ -4,7 +4,7 @@ import PostSkeleton from "../components/PostSkeleton";
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
 import Messenger from "../Messenger";
-import Stories from "../stories/Stories";
+import Stories from "../stories/StoriesBar";
 import PostCard from "../components/PostCard";
 
 import { getProfile, getFeed } from "../api";

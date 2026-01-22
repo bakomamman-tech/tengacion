@@ -1,118 +1,16 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-import PostSkeleton from "../components/PostSkeleton";
-import PostCard from "../components/PostCard";
 
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
 import Messenger from "../Messenger";
 import Stories from "../stories/StoriesBar";
 
+import PostSkeleton from "../components/PostSkeleton";
+import PostCard from "../components/PostCard";
+import PostModal from "../components/PostModal";
+
 import { getProfile, getFeed } from "../api";
-
-/* ======================================================
-   POST COMPOSER (LOCAL TO HOME)
-====================================================== */
-function PostComposerModal({ user, onClose, onPosted }) {
-  const [text, setText] = useState("");
-  const [loading, setLoading] = useState(false);
-  const boxRef = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (boxRef.current && !boxRef.current.contains(e.target)) {
-        onClose();
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [onClose]);
-
-  const submit = async () => {
-    if (!text.trim()) return;
-
-    try {
-      setLoading(true);
-
-      const res = await fetch("/api/posts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + localStorage.getItem("token"),
-        },
-        body: JSON.stringify({ text }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Post failed");
-
-      onPosted(data);
-      onClose();
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="pc-overlay">
-      <div className="pc-modal" ref={boxRef}>
-        {/* HEADER */}
-        <div className="pc-header">
-          <h3>Create post</h3>
-          <button className="pc-close" onClick={onClose}>
-            ×
-          </button>
-        </div>
-
-        {/* USER ROW */}
-        <div className="pc-user">
-          <img
-            src={user?.avatar || "/avatar.png"}
-            className="pc-avatar"
-            alt={user?.username}
-          />
-          <div>
-            <div className="pc-name">{user?.username}</div>
-            <button className="pc-privacy">🌍 Public</button>
-          </div>
-        </div>
-
-        {/* TEXTAREA */}
-        <textarea
-          className="pc-textarea"
-          placeholder={`What's on your mind, ${user?.username || ""}?`}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-
-        {/* ADD TO POST */}
-        <div className="pc-add">
-          <span>Add to your post</span>
-          <div className="pc-actions">
-            <button title="Photo/Video">🖼️</button>
-            <button title="Tag people">👥</button>
-            <button title="Feeling">😊</button>
-            <button title="Location">📍</button>
-            <button title="Music">🎵</button>
-            <button title="More">⋯</button>
-          </div>
-        </div>
-
-        {/* POST BUTTON */}
-        <button
-          className={`pc-submit ${text.trim() ? "active" : ""}`}
-          disabled={!text.trim() || loading}
-          onClick={submit}
-        >
-          {loading ? "Posting…" : "Post"}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 /* ======================================================
    HOME PAGE
@@ -126,6 +24,10 @@ export default function Home({ user }) {
 
   const [chatOpen, setChatOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
+
+  // composer state (moved here, clean architecture)
+  const [text, setText] = useState("");
+  const [posting, setPosting] = useState(false);
 
   /* ===== LOAD PROFILE + FEED ===== */
   useEffect(() => {
@@ -157,6 +59,35 @@ export default function Home({ user }) {
     navigate("/");
   };
 
+  /* ===== SUBMIT POST ===== */
+  const submitPost = async () => {
+    if (!text.trim()) return;
+
+    try {
+      setPosting(true);
+
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Post failed");
+
+      setPosts((prev) => [data, ...prev]);
+      setText("");
+      setComposerOpen(false);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setPosting(false);
+    }
+  };
+
   return (
     <>
       <Navbar user={profile || user} onLogout={logout} />
@@ -172,6 +103,7 @@ export default function Home({ user }) {
         <main className="feed">
           <Stories loading={loading} />
 
+          {/* CREATE POST CARD */}
           <div
             className="card create-post"
             onClick={() => setComposerOpen(true)}
@@ -179,6 +111,7 @@ export default function Home({ user }) {
             <input placeholder="What's on your mind?" readOnly />
           </div>
 
+          {/* FEED */}
           <div className="tengacion-feed">
             {loading ? (
               <>
@@ -198,6 +131,7 @@ export default function Home({ user }) {
           </div>
         </main>
 
+        {/* MESSENGER */}
         {chatOpen && (
           <section className="messenger">
             <Messenger
@@ -208,13 +142,15 @@ export default function Home({ user }) {
         )}
       </div>
 
+      {/* POST MODAL */}
       {composerOpen && (
-        <PostComposerModal
+        <PostModal
           user={profile || user}
+          text={text}
+          setText={setText}
+          loading={posting}
           onClose={() => setComposerOpen(false)}
-          onPosted={(post) =>
-            setPosts((prev) => [post, ...prev])
-          }
+          submit={submitPost}
         />
       )}
     </>

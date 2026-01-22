@@ -153,12 +153,19 @@ button:active {
   background: white;
 
   border-radius: 12px;
-  box-shadow: 0 12px 28px rgba(0,0,0,.20),
-              0 2px 4px rgba(0,0,0,.10);
+  box-shadow: var(--shadow-lg);
+
 
   padding: 6px;
   animation: fade .12s var(--ease);
   z-index: 2000;
+}
+
+.fade-in {
+  animation: fade .2s ease;
+}
+.fade-in {
+  animation: fade .2s var(--ease);
 }
 
 .sd-item {
@@ -215,7 +222,12 @@ button:active {
   background: #f0f2f5;
 }
 
-.nav-active
+.nav-tab.active {
+  background: #e7f3ff;
+  color: var(--fb-blue);
+  font-weight: 600;
+}
+
 
 /* ========== RIGHT ========== */
 
@@ -705,4 +717,77 @@ button:active {
   background-size: 400% 100%;
   animation: skeleton 1.4s ease infinite;
   border-radius: 8px;
+}
+
+/* ===== APP BOOT SCREEN ===== */
+
+.boot-screen {
+  height: 100vh;
+  background: var(--fb-bg);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.boot-card {
+  background: white;
+  padding: 24px 32px;
+
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+
+  font-weight: 600;
+}
+
+/* ===== MAIN LAYOUT CONTAINERS ===== */
+
+.app-shell {
+  display: flex;
+  justify-content: center;
+}
+
+.feed {
+  width: 100%;
+  max-width: 680px;
+  padding: 12px;
+}
+
+/* ===== POST SKELETON ===== */
+
+.post-header {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.avatar-skel {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.post-meta {
+  flex: 1;
+}
+
+.line {
+  height: 12px;
+  margin-bottom: 8px;
+}
+
+.line.short {
+  width: 40%;
+}
+
+.line.medium {
+  width: 70%;
+}
+
+.line.tiny {
+  width: 25%;
+}
+
+.post-body .line {
+  margin-bottom: 10px;
 }

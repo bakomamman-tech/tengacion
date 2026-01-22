@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-
+import PostSkeleton from "../components/PostSkeleton";
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
 import Messenger from "../Messenger";
-import StoriesBar from "../stories/StoriesBar";
+import Stories from "../stories/Stories";
+import PostCard from "../components/PostCard";
 
 import { getProfile, getFeed } from "../api";
 
@@ -116,15 +117,7 @@ export default function Home({ user }) {
   };
 
   /* ===== LOADING ===== */
-  if (loading) {
-    return (
-      <div className="boot-screen">
-        <div className="boot-card">
-          <h3>Loading your feed…</h3>
-        </div>
-      </div>
-    );
-  }
+ 
 
   return (
     <>
@@ -138,8 +131,9 @@ export default function Home({ user }) {
           />
         </aside>
 
-        <main className="main-feed">
-          <StoriesBar />
+        <main className="feed">
+  <Stories loading={loading} />
+
 
           <div
             className="card create-post"
@@ -149,19 +143,24 @@ export default function Home({ user }) {
           </div>
 
           <div className="tengacion-feed">
-            {posts.length === 0 ? (
-              <div className="card empty-feed">
-                No posts yet. Be the first to share!
-              </div>
-            ) : (
-              posts.map((p) => (
-                <article key={p._id} className="card post">
-                  <b>@{p.username}</b>
-                  <p>{p.text}</p>
-                </article>
-              ))
-            )}
-          </div>
+  {loading ? (
+    <>
+      <PostSkeleton />
+      <PostSkeleton />
+      <PostSkeleton />
+    </>
+  ) : posts.length === 0 ? (
+    <div className="card empty-feed">
+      No posts yet. Be the first to share!
+    </div>
+  ) : (
+    posts.map((p) => (
+  <PostCard key={p._id} post={p} />
+))
+
+  )}
+</div>
+
         </main>
 
         {chatOpen && (

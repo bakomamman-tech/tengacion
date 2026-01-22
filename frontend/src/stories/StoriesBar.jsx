@@ -4,7 +4,7 @@ import StoryCard from "./StoryCard";
 import CreateStory from "./CreateStory";
 import "./stories.css";
 
-export default function StoriesBar() {
+export default function StoriesBar({ loading }) {
   const [stories, setStories] = useState([]);
 
   useEffect(() => {

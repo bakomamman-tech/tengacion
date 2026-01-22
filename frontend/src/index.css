@@ -791,3 +791,109 @@ button:active {
 .post-body .line {
   margin-bottom: 10px;
 }
+
+/* ===== POST CARD (WORLD-CLASS) ===== */
+
+.post {
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  transition: box-shadow .15s var(--ease), transform .12s var(--ease);
+}
+
+.post:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* HEADER */
+
+.post-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.post-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.post-user {
+  flex: 1;
+}
+
+.post-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.post-time {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.post-menu {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.post-menu:hover {
+  background: #f0f2f5;
+}
+
+/* CONTENT */
+
+.post-content {
+  margin-top: 10px;
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* DIVIDER */
+
+.post-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 12px 0 8px;
+}
+
+/* ACTIONS */
+
+.post-actions {
+  display: flex;
+  justify-content: space-around;
+}
+
+.post-action {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--muted);
+  transition: background .12s, color .12s, transform .08s;
+}
+
+.post-action:hover {
+  background: #f0f2f5;
+  color: var(--text);
+}
+
+.post-action:active {
+  transform: scale(.96);
+}
+
+/* LIKE ACTIVE (future-ready) */
+.post-action.like.active {
+  color: var(--fb-blue);
+}

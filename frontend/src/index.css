@@ -1039,3 +1039,42 @@ button:active {
     transform: translateY(0) scale(1);
   }
 }
+
+/* ===== COMMENTS ===== */
+
+.comments {
+  margin-top: 6px;
+}
+
+.comment {
+  background: #f0f2f5;
+  padding: 6px 10px;
+  border-radius: 16px;
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.comment-input {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.comment-input img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.comment-input input {
+  flex: 1;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #f0f2f5;
+}
+
+.comment-input input:focus {
+  outline: none;
+  background: #e4e6eb;
+}

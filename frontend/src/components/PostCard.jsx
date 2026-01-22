@@ -1,4 +1,5 @@
 import { useState } from "react";
+import PostComments from "./PostComments";
 
 const REACTIONS = [
   { key: "like", label: "👍", name: "Like" },
@@ -12,9 +13,10 @@ const REACTIONS = [
 export default function PostCard({ post }) {
   const [reaction, setReaction] = useState(null);
   const [showReactions, setShowReactions] = useState(false);
+  const [showComments, setShowComments] = useState(false);
 
   return (
-    <article className="card post">
+    <article className="card post fade-in">
       {/* HEADER */}
       <div className="post-header">
         <img
@@ -25,7 +27,9 @@ export default function PostCard({ post }) {
         <div>
           <div className="post-user">@{post.username}</div>
           <div className="post-time">
-            {new Date(post.createdAt).toLocaleString()}
+            {post.createdAt
+              ? new Date(post.createdAt).toLocaleString()
+              : "Just now"}
           </div>
         </div>
       </div>
@@ -35,12 +39,12 @@ export default function PostCard({ post }) {
 
       {/* ACTIONS */}
       <div className="post-actions">
+        {/* LIKE / REACTION */}
         <div
           className="reaction-wrapper"
           onMouseEnter={() => setShowReactions(true)}
           onMouseLeave={() => setShowReactions(false)}
         >
-          {/* REACTION BAR */}
           {showReactions && (
             <div className="reaction-bar">
               {REACTIONS.map((r) => (
@@ -59,13 +63,25 @@ export default function PostCard({ post }) {
           )}
 
           <button className="action-btn">
-            {reaction ? reaction.label : "👍"} {reaction?.name || "Like"}
+            {reaction ? reaction.label : "👍"}{" "}
+            {reaction?.name || "Like"}
           </button>
         </div>
 
-        <button className="action-btn">💬 Comment</button>
+        {/* COMMENT */}
+        <button
+          className="action-btn"
+          onClick={() => setShowComments((s) => !s)}
+        >
+          💬 Comment
+        </button>
+
+        {/* SHARE */}
         <button className="action-btn">↗ Share</button>
       </div>
+
+      {/* COMMENTS */}
+      {showComments && <PostComments postId={post._id} />}
     </article>
   );
 }

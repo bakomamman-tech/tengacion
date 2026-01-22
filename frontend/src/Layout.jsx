@@ -15,3 +15,4 @@ export default function Layout({ left, center, right }) {
     </div>
   );
 }
+

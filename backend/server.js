@@ -11,6 +11,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const jwt = require("jsonwebtoken");
 
 /* =====================================================
    🔐 FAIL FAST — REQUIRED SECRETS
@@ -123,6 +124,7 @@ const io = new Server(server, {
   pingTimeout: 60000,
   pingInterval: 25000,
 });
+
 
 // Render health check
 app.get("/socket.io", (req, res) => {

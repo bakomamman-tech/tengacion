@@ -100,3 +100,11 @@ export default function PostCard({ post }) {
     </article>
   );
 }
+
+<button
+  className={`action-btn ${reaction ? "active-like" : ""}`}
+  onClick={() => setReaction((r) => (r ? null : REACTIONS[0]))}
+>
+  <span className="btn-emoji">{reaction ? reaction.label : "👍"}</span>
+  <span>{reaction?.name || "Like"}</span>
+</button>

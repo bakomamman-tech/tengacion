@@ -15,27 +15,38 @@ export default function PostCard({ post }) {
   const [showReactions, setShowReactions] = useState(false);
   const [showComments, setShowComments] = useState(false);
 
+  const timeLabel = post.createdAt
+    ? new Date(post.createdAt).toLocaleString()
+    : "Just now";
+
   return (
-    <article className="card post fade-in">
+    <article className="post-card fade-in">
       {/* HEADER */}
-      <div className="post-header">
+      <div className="post-top">
         <img
           src={post.avatar || "/avatar.png"}
           className="post-avatar"
           alt={post.username}
         />
-        <div>
-          <div className="post-user">@{post.username}</div>
-          <div className="post-time">
-            {post.createdAt
-              ? new Date(post.createdAt).toLocaleString()
-              : "Just now"}
+
+        <div className="post-meta">
+          <div className="post-name-row">
+            <span className="post-name">@{post.username}</span>
+            <span className="post-dot">·</span>
+            <span className="post-time">{timeLabel}</span>
           </div>
+          <div className="post-visibility">🌍 Public</div>
         </div>
+
+        <button className="post-more" title="More">
+          ⋯
+        </button>
       </div>
 
       {/* BODY */}
-      <p className="post-text">{post.text}</p>
+      <div className="post-body">
+        <p className="post-text">{post.text}</p>
+      </div>
 
       {/* ACTIONS */}
       <div className="post-actions">
@@ -62,15 +73,15 @@ export default function PostCard({ post }) {
             </div>
           )}
 
-          <button className="action-btn">
-            {reaction ? reaction.label : "👍"}{" "}
-            {reaction?.name || "Like"}
+          <button className={`action-btn ${reaction ? "active-like" : ""}`}>
+            <span className="btn-emoji">{reaction ? reaction.label : "👍"}</span>
+            <span>{reaction?.name || "Like"}</span>
           </button>
         </div>
 
         {/* COMMENT */}
         <button
-          className="action-btn"
+          className={`action-btn ${showComments ? "active" : ""}`}
           onClick={() => setShowComments((s) => !s)}
         >
           💬 Comment
@@ -81,7 +92,11 @@ export default function PostCard({ post }) {
       </div>
 
       {/* COMMENTS */}
-      {showComments && <PostComments postId={post._id} />}
+      {showComments && (
+        <div className="post-comments">
+          <PostComments postId={post._id} />
+        </div>
+      )}
     </article>
   );
 }

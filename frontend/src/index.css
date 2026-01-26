@@ -1392,3 +1392,166 @@ button:active {
 .empty-feed-btn:hover {
   opacity: 0.9;
 }
+
+/* ===========================
+   POST CARD (WORLD STANDARD)
+=========================== */
+
+.post-fade {
+  animation: postFade 0.25s ease;
+}
+@keyframes postFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.post-user-meta p {
+  margin: 0;
+}
+
+.post-body {
+  margin-top: 8px;
+}
+
+.post-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.post-media {
+  margin-top: 10px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f0f2f5;
+}
+
+.post-image {
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Actions */
+.post-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.action-btn {
+  flex: 1;
+  border: none;
+  background: #f0f2f5;
+  border-radius: 10px;
+  padding: 10px 10px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: 0.15s ease;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+}
+
+.action-btn.active,
+.action-btn.active-like {
+  background: rgba(24, 119, 242, 0.15);
+}
+
+/* Reaction hover */
+.reaction-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.reaction-bar {
+  position: absolute;
+  left: 0;
+  bottom: 48px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 6px;
+  display: flex;
+  gap: 6px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+}
+
+.reaction-bar button {
+  border: none;
+  background: #f0f2f5;
+  border-radius: 12px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 18px;
+  transition: 0.12s ease;
+}
+
+.reaction-bar button:hover {
+  transform: translateY(-2px) scale(1.07);
+}
+
+/* Menu */
+.post-menu {
+  position: relative;
+}
+
+.post-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: 35px;
+  width: 190px;
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+  z-index: 30;
+}
+
+.post-menu-dropdown button {
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.post-menu-dropdown button:hover {
+  background: #f0f2f5;
+}
+
+.post-menu-dropdown .danger {
+  color: #e53935;
+}
+
+/* Comments Smooth Toggle */
+.post-comments-wrap {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.25s ease;
+}
+
+.post-comments-wrap.open {
+  max-height: 600px; /* enough to reveal comments */
+}
+
+.post-comments {
+  margin-top: 10px;
+}

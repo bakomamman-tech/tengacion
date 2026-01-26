@@ -227,7 +227,22 @@ export default function Home({ user }) {
                 </button>
               </div>
             ) : (
-              posts.map((p) => <PostCard key={p._id} post={p} />)
+              posts.map((p) => (
+                <PostCard
+                  key={p._id}
+                  post={p}
+                  onDelete={(id) =>
+                    setPosts((prev) => prev.filter((x) => x._id !== id))
+                  }
+                  onEdit={(updatedPost) =>
+                    setPosts((prev) =>
+                      prev.map((x) =>
+                        x._id === updatedPost._id ? updatedPost : x
+                      )
+                    )
+                  }
+                />
+              ))
             )}
           </div>
         </main>
@@ -235,7 +250,10 @@ export default function Home({ user }) {
         {/* Messenger */}
         {chatOpen && (
           <section className="messenger">
-            <Messenger user={profile || user} onClose={() => setChatOpen(false)} />
+            <Messenger
+              user={profile || user}
+              onClose={() => setChatOpen(false)}
+            />
           </section>
         )}
       </div>

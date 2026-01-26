@@ -12,23 +12,20 @@ import Stories from "../stories/StoriesBar";
 import { getProfile, getFeed } from "../api";
 
 /* ======================================================
-   POST COMPOSER (LOCAL TO HOME)
-====================================================== */
-/* ======================================================
-   POST COMPOSER (FACEBOOK-LEVEL UX)
+   POST COMPOSER MODAL (FACEBOOK-LEVEL UX)
 ====================================================== */
 function PostComposerModal({ user, onClose, onPosted }) {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const boxRef = useRef(null);
 
-  /* Lock background scroll */
+  // Lock background scroll
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => (document.body.style.overflow = "");
   }, []);
 
-  /* Close on outside click */
+  // Close on outside click
   useEffect(() => {
     const handler = (e) => {
       if (boxRef.current && !boxRef.current.contains(e.target)) {
@@ -39,7 +36,7 @@ function PostComposerModal({ user, onClose, onPosted }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [onClose]);
 
-  /* Close on ESC */
+  // Close on ESC
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -51,6 +48,7 @@ function PostComposerModal({ user, onClose, onPosted }) {
 
     try {
       setLoading(true);
+
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: {
@@ -105,7 +103,6 @@ function PostComposerModal({ user, onClose, onPosted }) {
           autoFocus
         />
 
-        {/* DIVIDER */}
         <div className="pc-divider" />
 
         {/* ADD TO POST */}
@@ -136,7 +133,7 @@ function PostComposerModal({ user, onClose, onPosted }) {
 }
 
 /* ======================================================
-   HOME PAGE
+   HOME PAGE (FINAL FEED PAGE)
 ====================================================== */
 export default function Home({ user }) {
   const navigate = useNavigate();
@@ -154,10 +151,9 @@ export default function Home({ user }) {
 
     const load = async () => {
       try {
-        const [p, feed] = await Promise.all([
-          getProfile(),
-          getFeed(),
-        ]);
+        setLoading(true);
+
+        const [p, feed] = await Promise.all([getProfile(), getFeed()]);
 
         if (!alive) return;
 
@@ -180,28 +176,37 @@ export default function Home({ user }) {
     navigate("/");
   };
 
+  /* ===== ADD NEW POST TO TOP ===== */
+  const onPosted = (post) => {
+    setPosts((prev) => [post, ...prev]);
+  };
+
   return (
     <>
       <Navbar user={profile || user} onLogout={logout} />
 
       <div className="app-shell">
         <aside className="sidebar">
-          <Sidebar
-            user={profile || user}
-            openChat={() => setChatOpen(true)}
-          />
+          <Sidebar user={profile || user} openChat={() => setChatOpen(true)} />
         </aside>
 
         <main className="feed">
+          {/* Stories should not show skeleton if loading */}
           {!loading && <Stories />}
 
-          <div
-            className="card create-post"
-            onClick={() => setComposerOpen(true)}
-          >
-            <input placeholder="What's on your mind?" readOnly />
+          {/* Create Post */}
+          <div className="card create-post" onClick={() => setComposerOpen(true)}>
+            <div className="create-post-row">
+              <img
+                className="create-post-avatar"
+                src={(profile || user)?.avatar || "/avatar.png"}
+                alt="me"
+              />
+              <input placeholder="What's on your mind?" readOnly />
+            </div>
           </div>
 
+          {/* POSTS */}
           <div className="tengacion-feed">
             {loading ? (
               <>
@@ -211,33 +216,36 @@ export default function Home({ user }) {
               </>
             ) : posts.length === 0 ? (
               <div className="card empty-feed">
-                No posts yet. Be the first to share!
+                <div className="empty-feed-icon">📰</div>
+                <h3>No posts yet</h3>
+                <p>Be the first to share something with your friends ✨</p>
+                <button
+                  className="empty-feed-btn"
+                  onClick={() => setComposerOpen(true)}
+                >
+                  Create a post
+                </button>
               </div>
             ) : (
-              posts.map((p) => (
-                <PostCard key={p._id} post={p} />
-              ))
+              posts.map((p) => <PostCard key={p._id} post={p} />)
             )}
           </div>
         </main>
 
+        {/* Messenger */}
         {chatOpen && (
           <section className="messenger">
-            <Messenger
-              user={profile || user}
-              onClose={() => setChatOpen(false)}
-            />
+            <Messenger user={profile || user} onClose={() => setChatOpen(false)} />
           </section>
         )}
       </div>
 
+      {/* Composer Modal */}
       {composerOpen && (
         <PostComposerModal
           user={profile || user}
           onClose={() => setComposerOpen(false)}
-          onPosted={(post) =>
-            setPosts((prev) => [post, ...prev])
-          }
+          onPosted={onPosted}
         />
       )}
     </>

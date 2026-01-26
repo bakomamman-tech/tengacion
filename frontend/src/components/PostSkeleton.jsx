@@ -1,19 +1,19 @@
 export default function PostSkeleton() {
   return (
-    <article className="card post">
-      <div className="post-header">
-        <div className="skeleton avatar-skel" />
-        <div className="post-meta">
-          <div className="skeleton line short" />
-          <div className="skeleton line tiny" />
+    <div className="post-card skeleton-card">
+      <div className="skeleton-top">
+        <div className="skel-avatar"></div>
+        <div className="skel-lines">
+          <div className="skel-line skel-short"></div>
+          <div className="skel-line"></div>
         </div>
       </div>
 
-      <div className="post-body">
-        <div className="skeleton line" />
-        <div className="skeleton line" />
-        <div className="skeleton line medium" />
+      <div className="skel-body">
+        <div className="skel-line"></div>
+        <div className="skel-line skel-mid"></div>
+        <div className="skel-image"></div>
       </div>
-    </article>
+    </div>
   );
 }

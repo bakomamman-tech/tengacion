@@ -1221,3 +1221,174 @@ button:active {
   margin-top: 10px;
 }
 
+/* ===========================
+   FEED + POST UI UPGRADE
+=========================== */
+
+.post-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  transition: 0.2s ease;
+  text-align: left;
+}
+
+.post-card:hover {
+  transform: translateY(-2px);
+}
+
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.post-user {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.post-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #eee;
+}
+
+.post-name {
+  font-weight: 700;
+  margin: 0;
+}
+
+.post-time {
+  font-size: 12px;
+  opacity: 0.6;
+  margin: 0;
+}
+
+.post-menu-btn {
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.post-menu-btn:hover {
+  opacity: 1;
+}
+
+/* Empty Feed */
+.empty-feed {
+  background: #fff;
+  border-radius: 14px;
+  padding: 30px 18px;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+
+.empty-icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+/* Skeleton */
+.skeleton-card {
+  overflow: hidden;
+}
+
+.skel-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #eaeaea;
+}
+
+.skel-lines {
+  flex: 1;
+}
+
+.skel-line {
+  height: 10px;
+  margin: 6px 0;
+  border-radius: 10px;
+  background: #eaeaea;
+}
+
+.skel-short {
+  width: 40%;
+}
+
+.skel-mid {
+  width: 70%;
+}
+
+.skel-image {
+  height: 180px;
+  border-radius: 12px;
+  background: #eaeaea;
+  margin-top: 12px;
+}
+
+.skeleton-top {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ======================================================
+   FEED + POST COMPOSER UPGRADE (HOME PAGE)
+====================================================== */
+
+.create-post-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.create-post-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Empty Feed Upgrade */
+.empty-feed {
+  text-align: center;
+  padding: 28px 18px;
+}
+
+.empty-feed-icon {
+  font-size: 45px;
+  margin-bottom: 10px;
+}
+
+.empty-feed h3 {
+  margin: 5px 0;
+  font-size: 18px;
+}
+
+.empty-feed p {
+  opacity: 0.7;
+  margin-bottom: 12px;
+}
+
+.empty-feed-btn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  background: #1877f2;
+  color: white;
+}
+
+.empty-feed-btn:hover {
+  opacity: 0.9;
+}

@@ -15,37 +15,36 @@ export default function PostCard({ post }) {
   const [showReactions, setShowReactions] = useState(false);
   const [showComments, setShowComments] = useState(false);
 
-  const timeLabel = post.createdAt
+  const timeLabel = post?.createdAt
     ? new Date(post.createdAt).toLocaleString()
     : "Just now";
 
+  const username =
+    post?.user?.name || post?.username || "Unknown User";
+
+  const avatar =
+    post?.user?.profilePic || post?.avatar || "/avatar.png";
+
   return (
     <article className="post-card fade-in">
-      {/* HEADER */}
-      <div className="post-top">
-        <img
-          src={post.avatar || "/avatar.png"}
-          className="post-avatar"
-          alt={post.username}
-        />
-
-        <div className="post-meta">
-          <div className="post-name-row">
-            <span className="post-name">@{post.username}</span>
-            <span className="post-dot">·</span>
-            <span className="post-time">{timeLabel}</span>
+      {/* ✅ UPDATED HEADER (NEW STYLE + MENU UI) */}
+      <div className="post-header">
+        <div className="post-user">
+          <img className="post-avatar" src={avatar} alt="user" />
+          <div>
+            <p className="post-name">{username}</p>
+            <p className="post-time">{timeLabel}</p>
           </div>
-          <div className="post-visibility">🌍 Public</div>
         </div>
 
-        <button className="post-more" title="More">
+        <button className="post-menu-btn" title="More">
           ⋯
         </button>
       </div>
 
       {/* BODY */}
       <div className="post-body">
-        <p className="post-text">{post.text}</p>
+        <p className="post-text">{post?.text}</p>
       </div>
 
       {/* ACTIONS */}
@@ -74,7 +73,9 @@ export default function PostCard({ post }) {
           )}
 
           <button className={`action-btn ${reaction ? "active-like" : ""}`}>
-            <span className="btn-emoji">{reaction ? reaction.label : "👍"}</span>
+            <span className="btn-emoji">
+              {reaction ? reaction.label : "👍"}
+            </span>
             <span>{reaction?.name || "Like"}</span>
           </button>
         </div>
@@ -94,10 +95,9 @@ export default function PostCard({ post }) {
       {/* COMMENTS */}
       {showComments && (
         <div className="post-comments">
-          <PostComments postId={post._id} />
+          <PostComments postId={post?._id} />
         </div>
       )}
     </article>
   );
 }
-

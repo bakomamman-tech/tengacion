@@ -1,54 +1,8 @@
 {
-  "name": "tengacion",
-  "version": "0.1.0",
-  "description": "Tengacion — The Social OS for the Next Billion People",
-  "private": true,
-  "type": "commonjs",
-  "main": "backend/server.js",
-  "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "nodemon backend/server.js",
-    "client": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend run build",
-    "start": "node backend/server.js",
-    "lint": "echo \"Add ESLint later\"",
-    "logs": "node backend/server.js --trace-warnings"
-  },
   "dependencies": {
-    "axios": "^1.7.9",
-    "bcryptjs": "^3.0.3",
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
-    "express": "^4.22.1",
-    "express-rate-limit": "^7.5.1",
-    "helmet": "^7.2.0",
-    "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.1.2",
-    "morgan": "^1.10.0",
+    "cloudinary": "^2.9.0",
     "multer": "^2.0.2",
-    "socket.io": "^4.8.3"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.2",
-    "concurrently": "^9.2.1",
-    "eslint": "^9.39.2",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.26",
-    "globals": "^17.0.0",
-    "nodemon": "^3.1.0"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "keywords": [
-    "social",
-    "tengacion",
-    "network",
-    "africa",
-    "community",
-    "koro",
-    "kurah"
-  ],
-  "author": "Tengacion Team/Stephen Daniel Kurah",
-  "license": "ISC"
+    "multer-storage-cloudinary": "^2.2.1",
+    "nodemailer": "^7.0.13"
+  }
 }

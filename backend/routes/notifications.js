@@ -1,32 +1,29 @@
 const express = require("express");
-const jwt = require("jsonwebtoken");
-const Notification = require("../models/Notification");
-
 const router = express.Router();
 
-function auth(req, res, next) {
-  const token = req.headers.authorization;
-  if (!token) return res.status(401).json({ error: "No token" });
+const auth = require("../middleware/auth");
+const {
+  getNotifications,
+  markAsRead,
+  markAllAsRead,
+} = require("../controllers/notificationsController");
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
-    next();
-  } catch {
-    res.status(401).json({ error: "Invalid token" });
-  }
-}
+/**
+ * GET /api/notifications
+ * Get paginated notifications for logged-in user
+ */
+router.get("/", auth, getNotifications);
 
-/* GET MY NOTIFICATIONS */
-router.get("/", auth, async (req, res) => {
-  const notes = await Notification.find({ userId: req.userId }).sort({ time: -1 });
-  res.json(notes);
-});
+/**
+ * POST /api/notifications/read-all
+ * Mark all notifications as read
+ */
+router.post("/read-all", auth, markAllAsRead);
 
-/* MARK AS READ */
-router.post("/:id/read", auth, async (req, res) => {
-  await Notification.findByIdAndUpdate(req.params.id, { read: true });
-  res.json({ success: true });
-});
+/**
+ * POST /api/notifications/:id/read
+ * Mark a single notification as read
+ */
+router.post("/:id/read", auth, markAsRead);
 
 module.exports = router;

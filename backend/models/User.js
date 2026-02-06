@@ -2,77 +2,127 @@ const mongoose = require("mongoose");
 
 const UserSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
+    /* ================= IDENTITY ================= */
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
 
-    username: { type: String, required: true, unique: true, trim: true },
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+      index: true,
+    },
 
-    email: { type: String, required: true, unique: true, lowercase: true },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      index: true,
+    },
 
-    password: { type: String, required: true },
+    password: {
+      type: String,
+      required: true,
+      select: false, // 🔐 never return password by default
+    },
 
+    /* ================= PROFILE ================= */
     phone: { type: String, default: "" },
 
     country: { type: String, default: "" },
 
-    dob: { type: String, default: "" },
-
-    /* ================= PROFILE ================= */
+    dob: {
+      type: Date,
+      default: null,
+    },
 
     avatar: {
       type: String,
-      default: "" // /uploads/filename.jpg
+      default: "",
     },
 
     cover: {
       type: String,
-      default: ""
+      default: "",
     },
 
     bio: {
       type: String,
-      default: ""
+      default: "",
+      maxlength: 300,
     },
 
     gender: {
       type: String,
-      default: ""
+      default: "",
     },
 
     pronouns: {
       type: String,
-      default: ""
+      default: "",
     },
 
     joined: {
       type: Date,
-      default: Date.now
+      default: Date.now,
     },
 
     /* ================= SOCIAL ================= */
+    followers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
 
-    followers: {
-      type: [String],
-      default: []
-    },
+    following: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
 
-    following: {
-      type: [String],
-      default: []
-    },
+    friends: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
 
-    friends: {
-      type: [String],
-      default: []
-    },
-
-    friendRequests: {
-      type: [String],
-      default: []
-    }
+    friendRequests: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
   },
   {
-    timestamps: true
+    timestamps: true,
   }
 );
+
+/* ================= INDEXES ================= */
+
+// Fast search
+UserSchema.index({ username: "text", name: "text" });
+
+// Clean JSON output
+UserSchema.methods.toJSON = function () {
+  const obj = this.toObject();
+  delete obj.password;
+  delete obj.__v;
+  return obj;
+};
 
 module.exports = mongoose.model("User", UserSchema);

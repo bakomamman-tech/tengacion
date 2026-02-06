@@ -1,50 +1,42 @@
 /* =====================================================
-   🌱 ENV
+   🌱 ENV & CONFIG
 ===================================================== */
 require("dotenv").config();
 
+const connectDB = require("./config/db");
+require("./config/env");
+
+/* =====================================================
+   📦 IMPORTS
+===================================================== */
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
-const mongoose = require("mongoose");
 const http = require("http");
 const { Server } = require("socket.io");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const jwt = require("jsonwebtoken");
-
-/* =====================================================
-   🔐 FAIL FAST — REQUIRED SECRETS
-===================================================== */
-
-if (!process.env.JWT_SECRET) {
-  console.error("❌ JWT_SECRET is not set");
-  process.exit(1);
-}
-
-if (!process.env.MONGO_URI) {
-  console.error("❌ MONGO_URI not found in environment variables");
-  process.exit(1);
-}
+const errorHandler = require("./middleware/errorHandler");
 
 /* =====================================================
    🚀 APP INIT
 ===================================================== */
-
 const app = express();
 const server = http.createServer(app);
 
 /* =====================================================
+   🗄 DATABASE
+===================================================== */
+connectDB();
+
+/* =====================================================
    🧠 TRUST PROXY (RENDER / CLOUD HOSTING FIX)
 ===================================================== */
-
-// REQUIRED for Render / Heroku / Vercel when using rate-limit
 app.set("trust proxy", 1);
 
 /* =====================================================
    🛡 SECURITY HEADERS
 ===================================================== */
-
 app.use(
   helmet({
     crossOriginResourcePolicy: false, // allow images/uploads
@@ -54,10 +46,9 @@ app.use(
 /* =====================================================
    🚦 RATE LIMITING (API ONLY)
 ===================================================== */
-
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300,               // requests per IP
+  max: 300, // requests per IP
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -85,12 +76,14 @@ app.use(
 );
 
 // Preflight safety
-app.options("*", (req, res) => res.sendStatus(200));
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+});
 
 /* =====================================================
    🧱 CORE MIDDLEWARE
 ===================================================== */
-
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -98,21 +91,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* =====================================================
-   🗄 DATABASE
-===================================================== */
-
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("🗄 MongoDB connected"))
-  .catch((err) => {
-    console.error("❌ MongoDB connection error:", err.message);
-    process.exit(1);
-  });
-
-/* =====================================================
    ⚡ SOCKET.IO
 ===================================================== */
-
 const io = new Server(server, {
   cors: {
     origin: true,
@@ -124,7 +104,6 @@ const io = new Server(server, {
   pingTimeout: 60000,
   pingInterval: 25000,
 });
-
 
 // Render health check
 app.get("/socket.io", (req, res) => {
@@ -212,7 +191,6 @@ io.on("connection", (socket) => {
 /* =====================================================
    🧩 API ROUTES
 ===================================================== */
-
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
@@ -232,11 +210,10 @@ app.use("/api/videos", require("./routes/videos"));
 /* =====================================================
    🌐 FRONTEND (VITE BUILD)
 ===================================================== */
-
 const frontendPath = path.join(process.cwd(), "frontend", "dist");
 app.use(express.static(frontendPath));
 
-// SPA fallback – ALWAYS LAST
+// SPA fallback – ALWAYS LAST ROUTE
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ message: "API route not found" });
@@ -251,9 +228,13 @@ app.get("*", (req, res) => {
 });
 
 /* =====================================================
+   ❗ GLOBAL ERROR HANDLER (MUST BE LAST)
+===================================================== */
+app.use(errorHandler);
+
+/* =====================================================
    🚀 START SERVER
 ===================================================== */
-
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
@@ -261,9 +242,8 @@ server.listen(PORT, () => {
 });
 
 /* =====================================================
-   ☠️ GLOBAL ERROR HANDLING
+   ☠️ PROCESS-LEVEL ERROR LOGGING
 ===================================================== */
-
 process.on("unhandledRejection", (err) => {
   console.error("❌ Unhandled Rejection:", err.message);
 });

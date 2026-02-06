@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "cloudinary": "^2.9.0",
+    "express-validator": "^7.3.1",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^2.2.1",
     "nodemailer": "^7.0.13"

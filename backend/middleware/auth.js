@@ -1,42 +1,47 @@
 const jwt = require("jsonwebtoken");
+const User = require("../models/User");
+const asyncHandler = require("./asyncHandler");
 
 /**
  * Authentication middleware
  * Verifies JWT access token and attaches user context to request
  */
-module.exports = function auth(req, res, next) {
+const auth = asyncHandler(async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   // Enforce Bearer token standard
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({
-      error: "Authentication required",
-      code: "NO_TOKEN",
-    });
+    res.status(401);
+    throw new Error("Authentication required");
   }
 
   const token = authHeader.split(" ")[1];
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Attach minimal, trusted identity
-    req.user = {
-      id: decoded.id,
-    };
-
-    next();
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
   } catch (err) {
+    res.status(401);
     if (err.name === "TokenExpiredError") {
-      return res.status(401).json({
-        error: "Session expired",
-        code: "TOKEN_EXPIRED",
-      });
+      throw new Error("Session expired");
     }
-
-    return res.status(401).json({
-      error: "Invalid authentication token",
-      code: "INVALID_TOKEN",
-    });
+    throw new Error("Invalid authentication token");
   }
-};
+
+  // Ensure user still exists
+  const user = await User.findById(decoded.id).select("_id");
+
+  if (!user) {
+    res.status(401);
+    throw new Error("User no longer exists");
+  }
+
+  // Attach trusted identity
+  req.user = {
+    id: user._id,
+  };
+
+  next();
+});
+
+module.exports = auth;

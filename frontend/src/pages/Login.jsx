@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { login as loginApi } from "../api";
@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, user } = useAuth();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,16 +14,9 @@ export default function Login() {
 
   // 🔐 Already logged in → go home
   const token = localStorage.getItem("token");
-  if (token && user) {
+  if (token) {
     return <Navigate to="/home" replace />;
   }
-
-  // Navigate to home after user state updates
-  useEffect(() => {
-    if (user && !loading) {
-      navigate("/home", { replace: true });
-    }
-  }, [user, loading, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -40,13 +33,14 @@ export default function Login() {
       if (res?.token && res?.user) {
         toast.success("Welcome back 👋");
         login(res.token, res.user);
-        // Don't navigate here - let useEffect handle it after state updates
+        // Navigate immediately after login succeeds
+        navigate("/home", { replace: true });
       } else {
         toast.error(res?.error || "Invalid credentials");
+        setLoading(false);
       }
-    } catch {
+    } catch (err) {
       toast.error("Server connection failed");
-    } finally {
       setLoading(false);
     }
   };

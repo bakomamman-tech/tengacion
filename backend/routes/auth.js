@@ -8,6 +8,7 @@ const {
   verifyOtp,
   registerUser,
   loginUser,
+  createAdminUser,
 } = require("../controllers/authController");
 
 // ✅ Test route (to confirm auth routes are working)
@@ -26,5 +27,8 @@ router.post("/verify-otp", verifyOtp);
 // ✅ Register + Login
 router.post("/register", registerUser);
 router.post("/login", loginUser);
+
+// ✅ CREATE ADMIN (TEMPORARY - FOR TESTING ONLY)
+router.post("/create-admin", createAdminUser);
 
 module.exports = router;

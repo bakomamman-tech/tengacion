@@ -258,6 +258,60 @@ const loginUser = async (req, res) => {
   }
 };
 
+/* ✅ 7) CREATE ADMIN USER (TEMPORARY - FOR TESTING ONLY) */
+const createAdminUser = async (req, res) => {
+  try {
+    const { name, username, email, password } = req.body;
+
+    // Validate input
+    if (!name || !username || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Check if user already exists
+    const existingEmail = await User.findOne({ email: email.toLowerCase() });
+    if (existingEmail) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    const existingUsername = await User.findOne({ 
+      username: username.toLowerCase() 
+    });
+    if (existingUsername) {
+      return res.status(400).json({ message: "Username already exists" });
+    }
+
+    // Hash password
+    const hashed = await bcrypt.hash(password, 10);
+
+    // Create user
+    const user = await User.create({
+      name,
+      username: username.toLowerCase(),
+      email: email.toLowerCase(),
+      password: hashed,
+      isVerified: true,
+    });
+
+    const token = generateToken(user._id);
+
+    return res.status(201).json({
+      message: "Admin user created successfully",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar || "",
+      },
+    });
+  } catch (err) {
+    console.error("createAdminUser error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   checkUsername,
   requestOtp,
@@ -265,4 +319,5 @@ module.exports = {
   verifyOtp,
   registerUser,
   loginUser,
+  createAdminUser,
 };

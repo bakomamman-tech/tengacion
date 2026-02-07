@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "./Icon";
+import { useTheme } from "./context/ThemeContext";
 
 export default function Navbar({ user, page, setPage, onLogout }) {
   const navigate = useNavigate();
+  const { isDark, toggleTheme } = useTheme();
 
   const [showMenu, setShowMenu] = useState(false);
   const [query, setQuery] = useState("");
@@ -160,28 +162,49 @@ export default function Navbar({ user, page, setPage, onLogout }) {
       {/* ================= CENTER ================= */}
       {user && (
         <nav className="nav-center" aria-label="Main navigation">
-          {["home", "watch", "groups", "market", "games"].map((id) => (
-            <button
-              key={id}
-              className={`nav-tab ${page === id ? "nav-active" : ""}`}
-              onClick={() => setPage(id)}
-              aria-current={page === id ? "page" : undefined}
-            >
-              <Icon name={id} active={page === id} />
-            </button>
-          ))}
+          <button
+            className="nav-tab"
+            onClick={() => navigate("/home")}
+            title="Feed"
+          >
+            🏠 Home
+          </button>
+          <button
+            className="nav-tab"
+            onClick={() => navigate("/trending")}
+            title="Trending"
+          >
+            🔥 Trending
+          </button>
+          <button
+            className="nav-tab"
+            onClick={() => navigate("/creator")}
+            title="Creator Dashboard"
+          >
+            📊 Creator
+          </button>
         </nav>
       )}
 
       {/* ================= RIGHT ================= */}
       {user && (
         <div className="nav-right">
-          <button className="nav-icon" aria-label="Messages">
-            <Icon name="message" />
+          <button 
+            className="nav-icon" 
+            onClick={() => navigate("/notifications")}
+            aria-label="Notifications"
+            title="Notifications"
+          >
+            🔔
           </button>
 
-          <button className="nav-icon" aria-label="Notifications">
-            <Icon name="bell" />
+          <button
+            className="nav-icon"
+            onClick={toggleTheme}
+            aria-label="Toggle dark mode"
+            title={isDark ? "Light mode" : "Dark mode"}
+          >
+            {isDark ? "☀️" : "🌙"}
           </button>
 
           <div className="avatar-wrapper" ref={menuRef}>

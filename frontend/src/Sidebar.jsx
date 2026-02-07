@@ -27,14 +27,39 @@ export default function Sidebar({ user, openChat, openProfile }) {
 
       <div className="sb-divider" />
 
-      {/* ===== NAV ITEMS ===== */}
+      {/* ===== PRIMARY NAV ===== */}
 
       <button
         className="sidebar-btn"
-        onClick={() => navigate("/")}
+        onClick={() => navigate("/home")}
       >
         <span className="sb-icon">🏠</span>
         <span>Home</span>
+      </button>
+
+      <button
+        className="sidebar-btn"
+        onClick={() => navigate("/trending")}
+      >
+        <span className="sb-icon">🔥</span>
+        <span>Trending</span>
+      </button>
+
+      <button
+        className="sidebar-btn"
+        onClick={() => navigate("/creator")}
+      >
+        <span className="sb-icon">📊</span>
+        <span>Creator Dashboard</span>
+      </button>
+
+      <button
+        className="sidebar-btn"
+        onClick={() => navigate("/notifications")}
+      >
+        <span className="sb-icon">🔔</span>
+        <span>Notifications</span>
+        <span className="sb-badge">3</span>
       </button>
 
       <button
@@ -43,7 +68,6 @@ export default function Sidebar({ user, openChat, openProfile }) {
       >
         <span className="sb-icon">💬</span>
         <span>Messages</span>
-
         <span className="sb-badge">2</span>
       </button>
 
@@ -55,29 +79,26 @@ export default function Sidebar({ user, openChat, openProfile }) {
         <span>Profile</span>
       </button>
 
-      <button
-        className="sidebar-btn"
-        onClick={() => navigate("/settings")}
-      >
-        <span className="sb-icon">⚙️</span>
-        <span>Settings</span>
-      </button>
-
       <div className="sb-divider" />
 
       {/* ===== SHORTCUTS ===== */}
       <div className="sb-section-title">
-        Your shortcuts
+        Discover
       </div>
 
       <button className="sidebar-btn">
         <span className="sb-icon">👥</span>
-        <span>Groups</span>
+        <span>Communities</span>
       </button>
 
       <button className="sidebar-btn">
-        <span className="sb-icon">🎮</span>
-        <span>Games</span>
+        <span className="sb-icon">⭐</span>
+        <span>Recommended</span>
+      </button>
+
+      <button className="sidebar-btn">
+        <span className="sb-icon">🎬</span>
+        <span>Creators</span>
       </button>
 
       <button className="sidebar-btn">

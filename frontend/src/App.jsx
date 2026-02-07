@@ -8,11 +8,16 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import ProfileEditor from "./ProfileEditor";
 import Search from "./pages/Search";
+import Trending from "./pages/Trending";
+import CreatorDashboard from "./pages/CreatorDashboard";
+import Notifications from "./pages/Notifications";
 
 import { useAuth } from "./context/AuthContext";
+import { useTheme } from "./context/ThemeContext";
 
 export default function App() {
   const { user, loading: authLoading } = useAuth();
+  const { isDark } = useTheme();
 
   if (authLoading) {
     return (
@@ -36,6 +41,33 @@ export default function App() {
         element={
           <ProtectedRoute user={user}>
             <Home user={user} />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/trending"
+        element={
+          <ProtectedRoute user={user}>
+            <Trending user={user} />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/creator"
+        element={
+          <ProtectedRoute user={user}>
+            <CreatorDashboard user={user} />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/notifications"
+        element={
+          <ProtectedRoute user={user}>
+            <Notifications user={user} />
           </ProtectedRoute>
         }
       />

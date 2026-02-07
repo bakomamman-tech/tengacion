@@ -6,29 +6,20 @@ const {
   requestOtp,
   resendOtp,
   verifyOtp,
-  registerUser,
-  loginUser,
-  createAdminUser,
+  register,
+  login,
 } = require("../controllers/authController");
 
-// ✅ Test route (to confirm auth routes are working)
-router.get("/ping", (req, res) => {
-  res.json({ message: "auth route working ✅" });
-});
-
-// ✅ Username check
+// Username
 router.get("/check-username", checkUsername);
 
-// ✅ OTP
+// OTP
 router.post("/request-otp", requestOtp);
 router.post("/resend-otp", resendOtp);
 router.post("/verify-otp", verifyOtp);
 
-// ✅ Register + Login
-router.post("/register", registerUser);
-router.post("/login", loginUser);
-
-// ✅ CREATE ADMIN (TEMPORARY - FOR TESTING ONLY)
-router.post("/create-admin", createAdminUser);
+// Auth
+router.post("/register", register);
+router.post("/login", login);
 
 module.exports = router;

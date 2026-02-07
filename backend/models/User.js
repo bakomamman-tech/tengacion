@@ -74,6 +74,11 @@ const UserSchema = new mongoose.Schema(
       default: Date.now,
     },
 
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+
     /* ================= SOCIAL ================= */
     followers: [
       {

@@ -218,10 +218,10 @@ const loginUser = async (req, res) => {
 
     const input = emailOrUsername.trim().toLowerCase();
 
-    // login via email OR username
+    // login via email OR username (with password field explicitly selected)
     const user = await User.findOne({
       $or: [{ email: input }, { username: input }],
-    });
+    }).select("+password");
 
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });

@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import { updateMe, uploadAvatar, uploadCover } from "./api";
+import { useAuth } from "./context/AuthContext";
 
 export default function ProfileEditor({ user, onSaved }) {
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const { updateUser } = useAuth();
 
   // Sync local state when user loads or changes
   useEffect(() => {
@@ -30,7 +32,8 @@ export default function ProfileEditor({ user, onSaved }) {
     try {
       const updated = await updateMe({ name, bio });
       toast.success("Profile updated");
-      onSaved(updated);
+      if (onSaved) onSaved(updated);
+      else updateUser(updated);
     } catch {
       toast.error("Failed to update profile");
     } finally {
@@ -42,7 +45,8 @@ export default function ProfileEditor({ user, onSaved }) {
     if (!file) return;
     try {
       const updated = await uploadAvatar(file);
-      onSaved(updated);
+      if (onSaved) onSaved(updated);
+      else updateUser(updated);
     } catch {
       setError("Failed to upload avatar");
     }
@@ -52,7 +56,8 @@ export default function ProfileEditor({ user, onSaved }) {
     if (!file) return;
     try {
       const updated = await uploadCover(file);
-      onSaved(updated);
+      if (onSaved) onSaved(updated);
+      else updateUser(updated);
     } catch {
       setError("Failed to upload cover photo");
     }

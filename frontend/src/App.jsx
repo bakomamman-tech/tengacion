@@ -1,26 +1,18 @@
-import { useEffect, useState } from "react";
+import React from "react";
 import { Routes, Route } from "react-router-dom";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Home from "./pages/Home";
 import ProfileEditor from "./ProfileEditor";
 import Search from "./pages/Search";
 
-import { restoreSession } from "./context/auth";
+import { useAuth } from "./context/AuthContext";
 
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
-  useEffect(() => {
-    restoreSession(setUser)
-      .catch(() => {})
-      .finally(() => {
-        setAuthLoading(false);
-      });
-  }, []);
+  const { user, loading: authLoading } = useAuth();
 
   if (authLoading) {
     return (
@@ -35,7 +27,8 @@ export default function App() {
   return (
     <Routes>
       {/* PUBLIC */}
-      <Route path="/" element={<Login setUser={setUser} />} />
+      <Route path="/" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
       {/* PROTECTED */}
       <Route
@@ -51,7 +44,7 @@ export default function App() {
         path="/profile/:username"
         element={
           <ProtectedRoute user={user}>
-            <ProfileEditor user={user} onSaved={setUser} />
+            <ProfileEditor user={user} />
           </ProtectedRoute>
         }
       />

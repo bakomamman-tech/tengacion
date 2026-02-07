@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 const UserSchema = new mongoose.Schema(
   {
@@ -16,6 +17,8 @@ const UserSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       lowercase: true,
+      minlength: 3,
+      maxlength: 30,
       index: true,
     },
 
@@ -24,13 +27,16 @@ const UserSchema = new mongoose.Schema(
       required: true,
       unique: true,
       lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, "Please use a valid email address"],
       index: true,
     },
 
     password: {
       type: String,
       required: true,
-      select: false, // 🔐 never return password by default
+      minlength: 8,
+      select: false, // never return password
     },
 
     /* ================= PROFILE ================= */
@@ -43,41 +49,46 @@ const UserSchema = new mongoose.Schema(
       default: null,
     },
 
-    avatar: {
+    bio: {
       type: String,
+      maxlength: 300,
       default: "",
+    },
+
+    gender: { type: String, default: "" },
+
+    pronouns: { type: String, default: "" },
+
+    avatar: {
+      public_id: { type: String, default: "" },
+      url: { type: String, default: "" },
     },
 
     cover: {
-      type: String,
-      default: "",
+      public_id: { type: String, default: "" },
+      url: { type: String, default: "" },
     },
 
-    bio: {
+    /* ================= ACCOUNT ================= */
+    role: {
       type: String,
-      default: "",
-      maxlength: 300,
-    },
-
-    gender: {
-      type: String,
-      default: "",
-    },
-
-    pronouns: {
-      type: String,
-      default: "",
-    },
-
-    joined: {
-      type: Date,
-      default: Date.now,
+      enum: ["user", "admin", "moderator"],
+      default: "user",
     },
 
     isVerified: {
       type: Boolean,
       default: false,
     },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+
+    lastLogin: Date,
+
+    passwordChangedAt: Date,
 
     /* ================= SOCIAL ================= */
     followers: [
@@ -113,16 +124,27 @@ const UserSchema = new mongoose.Schema(
     ],
   },
   {
-    timestamps: true,
+    timestamps: true, // replaces joined
   }
 );
 
 /* ================= INDEXES ================= */
-
-// Fast search
 UserSchema.index({ username: "text", name: "text" });
 
-// Clean JSON output
+/* ================= HOOKS ================= */
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+
+  this.password = await bcrypt.hash(this.password, 12);
+  this.passwordChangedAt = Date.now() - 1000;
+  next();
+});
+
+/* ================= METHODS ================= */
+UserSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
 UserSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;

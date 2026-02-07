@@ -1,16 +1,17 @@
-const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
 const User = require("../models/User");
 const Otp = require("../models/Otp");
 const sendOtpEmail = require("../utils/sendOtpEmail");
 
+/* ================= HELPERS ================= */
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+  });
 };
 
-/* ✅ 1) Check Username Availability */
-const checkUsername = async (req, res) => {
+/* ================= 1️⃣ CHECK USERNAME ================= */
+exports.checkUsername = async (req, res) => {
   try {
     const username = (req.query.username || "").trim().toLowerCase();
 
@@ -20,44 +21,33 @@ const checkUsername = async (req, res) => {
         .json({ available: false, message: "Username too short" });
     }
 
-    const valid = /^[a-zA-Z0-9._]+$/.test(username);
-    if (!valid) {
+    if (!/^[a-zA-Z0-9._]+$/.test(username)) {
       return res.status(400).json({
         available: false,
-        message: "Only letters, numbers, dots and underscores are allowed",
+        message: "Only letters, numbers, dots and underscores allowed",
       });
     }
 
     const exists = await User.findOne({ username });
-    if (exists) {
-      return res
-        .status(200)
-        .json({ available: false, message: "Username is taken" });
-    }
-
-    return res
-      .status(200)
-      .json({ available: true, message: "Username is available" });
+    return res.status(200).json({
+      available: !exists,
+      message: exists ? "Username is taken" : "Username is available",
+    });
   } catch (err) {
     return res.status(500).json({ available: false, message: "Server error" });
   }
 };
 
-/* ✅ 2) Request OTP */
-const requestOtp = async (req, res) => {
+/* ================= 2️⃣ REQUEST OTP ================= */
+exports.requestOtp = async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: "Email is required" });
 
     const cleanEmail = email.trim().toLowerCase();
-
-    // generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // expire in 10 mins
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // delete previous OTP for this email
     await Otp.deleteMany({ email: cleanEmail });
 
     await Otp.create({
@@ -71,27 +61,25 @@ const requestOtp = async (req, res) => {
 
     return res.status(200).json({ message: "OTP sent successfully" });
   } catch (err) {
-    console.error("requestOtp error:", err);
+    console.error("requestOtp:", err);
     return res.status(500).json({ message: "Failed to send OTP" });
   }
 };
 
-/* ✅ 3) Verify OTP */
-const verifyOtp = async (req, res) => {
+/* ================= 3️⃣ VERIFY OTP ================= */
+exports.verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
-
     if (!email || !otp) {
-      return res.status(400).json({ message: "Email and OTP are required" });
+      return res.status(400).json({ message: "Email and OTP required" });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
-    const code = otp.trim();
-
-    const record = await Otp.findOne({ email: cleanEmail, otp: code });
+    const record = await Otp.findOne({
+      email: email.trim().toLowerCase(),
+      otp: otp.trim(),
+    });
 
     if (!record) return res.status(400).json({ message: "Invalid OTP" });
-
     if (record.expiresAt < new Date()) {
       return res.status(400).json({ message: "OTP expired" });
     }
@@ -101,13 +89,13 @@ const verifyOtp = async (req, res) => {
 
     return res.status(200).json({ message: "OTP verified successfully" });
   } catch (err) {
-    console.error("verifyOtp error:", err);
+    console.error("verifyOtp:", err);
     return res.status(500).json({ message: "OTP verification failed" });
   }
 };
 
-/* ✅ 4) Register (Only allow if OTP verified) */
-const registerUser = async (req, res) => {
+/* ================= 4️⃣ REGISTER ================= */
+exports.register = async (req, res) => {
   try {
     const { name, username, email, password, phone, country, dob, gender } =
       req.body;
@@ -119,205 +107,99 @@ const registerUser = async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanUsername = username.trim().toLowerCase();
 
-    // ✅ OTP must be verified
-    const verifiedOtp = await Otp.findOne({ email: cleanEmail, verified: true });
-    if (!verifiedOtp) {
+    const otpVerified = await Otp.findOne({
+      email: cleanEmail,
+      verified: true,
+    });
+
+    if (!otpVerified) {
       return res
         .status(401)
-        .json({ message: "Email not verified. Please verify OTP." });
+        .json({ message: "Email not verified. Verify OTP first." });
     }
 
-    // prevent duplicates
-    const existsEmail = await User.findOne({ email: cleanEmail });
-    if (existsEmail)
-      return res.status(400).json({ message: "Email already exists" });
+    const exists = await User.findOne({
+      $or: [{ email: cleanEmail }, { username: cleanUsername }],
+    });
 
-    const existsUser = await User.findOne({ username: cleanUsername });
-    if (existsUser)
-      return res.status(400).json({ message: "Username already exists" });
-
-    const hashed = await bcrypt.hash(password, 10);
+    if (exists) {
+      return res
+        .status(400)
+        .json({ message: "Email or username already exists" });
+    }
 
     const user = await User.create({
       name,
       username: cleanUsername,
       email: cleanEmail,
+      password, // 🔐 hashed by model hook
       phone,
       country,
       dob,
       gender,
-      password: hashed,
       isVerified: true,
     });
 
-    // clean OTP after success
     await Otp.deleteMany({ email: cleanEmail });
 
     const token = generateToken(user._id);
 
     return res.status(201).json({
-      message: "Registered successfully",
+      message: "Registration successful",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar?.url || "",
-      },
+      user,
     });
   } catch (err) {
-    console.error("registerUser error:", err);
+    console.error("register:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
 
-/* ✅ 5) Resend OTP */
-const resendOtp = async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ message: "Email is required" });
-
-    const cleanEmail = email.trim().toLowerCase();
-
-    // generate OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // expire in 10 mins
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-    // delete previous OTP for this email
-    await Otp.deleteMany({ email: cleanEmail });
-
-    await Otp.create({
-      email: cleanEmail,
-      otp,
-      expiresAt,
-      verified: false,
-    });
-
-    await sendOtpEmail({ email: cleanEmail, otp });
-
-    return res.status(200).json({ message: "OTP resent successfully" });
-  } catch (err) {
-    console.error("resendOtp error:", err);
-    return res.status(500).json({ message: "Failed to resend OTP" });
-  }
-};
-
-/* ✅ 6) Login User */
-const loginUser = async (req, res) => {
+/* ================= 5️⃣ LOGIN ================= */
+exports.login = async (req, res) => {
   try {
     const { emailOrUsername, password } = req.body;
 
     if (!emailOrUsername || !password) {
-      return res.status(400).json({
-        message: "Email/Username and password are required",
-      });
+      return res
+        .status(400)
+        .json({ message: "Email/Username and password required" });
     }
 
     const input = emailOrUsername.trim().toLowerCase();
 
-    // login via email OR username (with password field explicitly selected)
     const user = await User.findOne({
       $or: [{ email: input }, { username: input }],
     }).select("+password");
 
-    if (!user) {
+    if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // if you want to block login until verified:
     if (!user.isVerified) {
-      return res.status(401).json({
-        message: "Account not verified. Please verify OTP first.",
+      return res.status(403).json({
+        message: "Account not verified",
       });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
+    if (!user.isActive) {
+      return res.status(403).json({
+        message: "Account suspended",
+      });
     }
+
+    user.lastLogin = new Date();
+    await user.save();
 
     const token = generateToken(user._id);
 
     return res.status(200).json({
-      message: "Login successful ✅",
+      message: "Login successful",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar?.url || "",
-      },
+      user,
     });
   } catch (err) {
-    console.error("loginUser error:", err);
+    console.error("login:", err);
     return res.status(500).json({ message: "Server error" });
   }
-};
-
-/* ✅ 7) CREATE ADMIN USER (TEMPORARY - FOR TESTING ONLY) */
-const createAdminUser = async (req, res) => {
-  try {
-    const { name, username, email, password } = req.body;
-
-    // Validate input
-    if (!name || !username || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
-    // Check if user already exists
-    const existingEmail = await User.findOne({ email: email.toLowerCase() });
-    if (existingEmail) {
-      return res.status(400).json({ message: "Email already exists" });
-    }
-
-    const existingUsername = await User.findOne({ 
-      username: username.toLowerCase() 
-    });
-    if (existingUsername) {
-      return res.status(400).json({ message: "Username already exists" });
-    }
-
-    // Hash password
-    const hashed = await bcrypt.hash(password, 10);
-
-    // Create user
-    const user = await User.create({
-      name,
-      username: username.toLowerCase(),
-      email: email.toLowerCase(),
-      password: hashed,
-      isVerified: true,
-    });
-
-    const token = generateToken(user._id);
-
-    return res.status(201).json({
-      message: "Admin user created successfully",
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar || "",
-      },
-    });
-  } catch (err) {
-    console.error("createAdminUser error:", err);
-    return res.status(500).json({ message: "Server error" });
-  }
-};
-
-module.exports = {
-  checkUsername,
-  requestOtp,
-  resendOtp,
-  verifyOtp,
-  registerUser,
-  loginUser,
-  createAdminUser,
 };

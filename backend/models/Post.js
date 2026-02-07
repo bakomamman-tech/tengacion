@@ -1,118 +1,127 @@
 const mongoose = require("mongoose");
 
-// ----- Comment Schema -----
-const CommentSchema = new mongoose.Schema(
+/* ================= COMMENT SCHEMA ================= */
+const ReplySchema = new mongoose.Schema(
   {
-    userId: {
+    author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true
     },
 
     text: {
       type: String,
-      required: true,
       trim: true,
-      maxlength: 2000
+      maxlength: 1000,
     },
-
-    likes: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User"
-      }
-    ],
-
-    // Reply system like Facebook
-    replies: [
-      {
-        userId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User"
-        },
-        text: {
-          type: String,
-          maxlength: 1000
-        },
-        createdAt: {
-          type: Date,
-          default: Date.now
-        }
-      }
-    ]
   },
   { timestamps: true }
 );
 
-// ----- Post Schema -----
-const PostSchema = new mongoose.Schema(
+const CommentSchema = new mongoose.Schema(
   {
-    userId: {
+    author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true
+      index: true,
+    },
+
+    text: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 2000,
+    },
+
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+
+    replies: {
+      type: [ReplySchema],
+      default: [],
+    },
+  },
+  { timestamps: true }
+);
+
+/* ================= POST SCHEMA ================= */
+const PostSchema = new mongoose.Schema(
+  {
+    author: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
     },
 
     text: {
       type: String,
       trim: true,
-      maxlength: 5000
+      maxlength: 5000,
     },
 
-    // Media like Facebook
     media: [
       {
+        public_id: String, // Cloudinary
         url: String,
         type: {
           type: String,
-          enum: ["image", "video", "gif"]
-        }
-      }
+          enum: ["image", "video", "gif"],
+        },
+      },
     ],
 
-    // Engagement
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-        index: true
-      }
+        index: true,
+      },
     ],
 
-    comments: [CommentSchema],
+    comments: {
+      type: [CommentSchema],
+      default: [],
+    },
 
-    // Privacy like Facebook audience selector
+    commentsCount: {
+      type: Number,
+      default: 0,
+    },
+
     privacy: {
       type: String,
       enum: ["public", "friends", "private"],
       default: "public",
-      index: true
+      index: true,
     },
 
     edited: {
       type: Boolean,
-      default: false
+      default: false,
     },
 
     shareCount: {
       type: Number,
-      default: 0
-    }
+      default: 0,
+    },
   },
-
   {
-    timestamps: true
+    timestamps: true,
   }
 );
 
-// ---- INDEXES FOR FEED PERFORMANCE ----
+/* ================= INDEXES ================= */
 PostSchema.index({ createdAt: -1 });
-PostSchema.index({ userId: 1, createdAt: -1 });
+PostSchema.index({ author: 1, createdAt: -1 });
 PostSchema.index({ privacy: 1, createdAt: -1 });
 
-// Clean JSON for frontend
+/* ================= CLEAN JSON ================= */
 PostSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.__v;

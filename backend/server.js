@@ -2,9 +2,9 @@
    🌱 ENV & CONFIG
 ===================================================== */
 require("dotenv").config();
+require("./config/env");
 
 const connectDB = require("./config/db");
-require("./config/env");
 
 /* =====================================================
    📦 IMPORTS
@@ -13,9 +13,10 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
-const { Server } = require("socket.io");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const { Server } = require("socket.io");
+
 const errorHandler = require("./middleware/errorHandler");
 
 /* =====================================================
@@ -47,8 +48,8 @@ app.use(
    🚦 RATE LIMITING (API ONLY)
 ===================================================== */
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // requests per IP
+  windowMs: 15 * 60 * 1000,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -59,7 +60,7 @@ app.use("/api", apiLimiter);
    🌍 CORS
 ===================================================== */
 
-// Allow Chrome private network requests (DevTools + Mobile)
+// Allow Chrome private network requests
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Private-Network", "true");
   next();
@@ -67,7 +68,7 @@ app.use((req, res, next) => {
 
 app.use(
   cors({
-    origin: true, // reflect caller origin (Render + Local)
+    origin: true, // Render + Local
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -105,7 +106,7 @@ const io = new Server(server, {
   pingInterval: 25000,
 });
 
-// Render health check
+// Health check for Render
 app.get("/socket.io", (req, res) => {
   res.status(200).send("socket ok");
 });
@@ -202,6 +203,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/users", require("./routes/users"));
 app.use("/api/posts", require("./routes/posts"));
+app.use("/api/comments", require("./routes/comments")); // ✅ ADDED
 app.use("/api/stories", require("./routes/stories"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/messages", require("./routes/messages"));
@@ -213,7 +215,7 @@ app.use("/api/videos", require("./routes/videos"));
 const frontendPath = path.join(process.cwd(), "frontend", "dist");
 app.use(express.static(frontendPath));
 
-// SPA fallback – ALWAYS LAST ROUTE
+// SPA fallback – MUST BE LAST ROUTE
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ message: "API route not found" });
@@ -221,14 +223,14 @@ app.get("*", (req, res) => {
 
   res.sendFile(path.join(frontendPath, "index.html"), (err) => {
     if (err) {
-      console.log("⚠ Frontend not built – running API mode only");
+      console.log("⚠ Frontend not built – API mode only");
       res.status(200).send("Tengacion API Running");
     }
   });
 });
 
 /* =====================================================
-   ❗ GLOBAL ERROR HANDLER (MUST BE LAST)
+   ❗ GLOBAL ERROR HANDLER
 ===================================================== */
 app.use(errorHandler);
 

@@ -31,16 +31,16 @@ const server = http.createServer(app);
 connectDB();
 
 /* =====================================================
-   🧠 TRUST PROXY (RENDER / CLOUD HOSTING FIX)
+   🧠 TRUST PROXY (RENDER)
 ===================================================== */
 app.set("trust proxy", 1);
 
 /* =====================================================
-   🛡 SECURITY HEADERS
+   🛡 SECURITY
 ===================================================== */
 app.use(
   helmet({
-    crossOriginResourcePolicy: false, // allow images/uploads
+    crossOriginResourcePolicy: false,
   })
 );
 
@@ -59,8 +59,6 @@ app.use("/api", apiLimiter);
 /* =====================================================
    🌍 CORS
 ===================================================== */
-
-// Allow Chrome private network requests
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Private-Network", "true");
   next();
@@ -68,15 +66,13 @@ app.use((req, res, next) => {
 
 app.use(
   cors({
-    origin: true, // Render + Local
+    origin: true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    exposedHeaders: ["Content-Length"],
   })
 );
 
-// Preflight safety
 app.use((req, res, next) => {
   if (req.method === "OPTIONS") return res.sendStatus(200);
   next();
@@ -88,7 +84,6 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Static uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* =====================================================
@@ -98,94 +93,27 @@ const io = new Server(server, {
   cors: {
     origin: true,
     credentials: true,
-    methods: ["GET", "POST"],
   },
   transports: ["polling", "websocket"],
-  allowEIO3: true,
-  pingTimeout: 60000,
-  pingInterval: 25000,
 });
 
-// Health check for Render
-app.get("/socket.io", (req, res) => {
-  res.status(200).send("socket ok");
-});
+app.get("/socket.io", (_, res) => res.send("socket ok"));
 
 const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
-  const token =
-    socket.handshake.auth?.token ||
-    socket.handshake.headers?.authorization;
-
-  console.log(
-    "🔌 Socket connected:",
-    socket.id,
-    "| token:",
-    token ? "present" : "missing"
-  );
-
   socket.on("join", (userId) => {
     if (!userId) return;
-
     socket.userId = userId;
     onlineUsers.set(userId, socket.id);
-
-    io.emit("onlineUsers", Array.from(onlineUsers.keys()));
-  });
-
-  socket.on("sendMessage", async ({ senderId, receiverId, text }) => {
-    try {
-      const Message = require("./models/Message");
-      const User = require("./models/User");
-
-      const conversationId = [senderId, receiverId].sort().join("_");
-
-      const sender = await User.findById(senderId).select(
-        "name username avatar"
-      );
-
-      if (!sender) return;
-
-      const msg = await Message.create({
-        conversationId,
-        senderId,
-        receiverId,
-        text,
-        time: new Date().toISOString(),
-      });
-
-      const payload = {
-        _id: msg._id,
-        conversationId,
-        senderId: sender._id.toString(),
-        receiverId,
-        text: msg.text,
-        senderName: sender.name,
-        senderUsername: sender.username,
-        senderAvatar: sender.avatar,
-        time: msg.time,
-      };
-
-      const receiverSocket = onlineUsers.get(receiverId);
-      if (receiverSocket) {
-        io.to(receiverSocket).emit("newMessage", payload);
-      }
-
-      socket.emit("newMessage", payload);
-    } catch (err) {
-      console.error("❌ Socket message error:", err);
-    }
+    io.emit("onlineUsers", [...onlineUsers.keys()]);
   });
 
   socket.on("disconnect", () => {
-    for (const [userId, socketId] of onlineUsers.entries()) {
-      if (socketId === socket.id) {
-        onlineUsers.delete(userId);
-        break;
-      }
+    for (const [uid, sid] of onlineUsers.entries()) {
+      if (sid === socket.id) onlineUsers.delete(uid);
     }
-    io.emit("onlineUsers", Array.from(onlineUsers.keys()));
+    io.emit("onlineUsers", [...onlineUsers.keys()]);
   });
 });
 
@@ -193,29 +121,24 @@ io.on("connection", (socket) => {
    🧩 API ROUTES
 ===================================================== */
 app.get("/api/health", (req, res) => {
-  res.json({
-    status: "ok",
-    time: new Date(),
-    env: process.env.NODE_ENV || "development",
-  });
+  res.json({ status: "ok", time: new Date() });
 });
 
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/users", require("./routes/users"));
 app.use("/api/posts", require("./routes/posts"));
-app.use("/api/comments", require("./routes/comments")); // ✅ ADDED
+app.use("/api/comments", require("./routes/comments"));
 app.use("/api/stories", require("./routes/stories"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/messages", require("./routes/messages"));
 app.use("/api/videos", require("./routes/videos"));
 
 /* =====================================================
-   🌐 FRONTEND (VITE BUILD)
+   🌐 FRONTEND (VITE – SAME DOMAIN)
 ===================================================== */
-const frontendPath = path.join(process.cwd(), "frontend", "dist");
+const frontendPath = path.join(__dirname, "../frontend/dist");
 app.use(express.static(frontendPath));
 
-// SPA fallback – MUST BE LAST ROUTE
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ message: "API route not found" });
@@ -224,13 +147,13 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(frontendPath, "index.html"), (err) => {
     if (err) {
       console.log("⚠ Frontend not built – API mode only");
-      res.status(200).send("Tengacion API Running");
+      res.send("Tengacion API Running");
     }
   });
 });
 
 /* =====================================================
-   ❗ GLOBAL ERROR HANDLER
+   ❗ ERROR HANDLER
 ===================================================== */
 app.use(errorHandler);
 
@@ -240,16 +163,5 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-  console.log(`🚀 Tengacion API running on port ${PORT}`);
-});
-
-/* =====================================================
-   ☠️ PROCESS-LEVEL ERROR LOGGING
-===================================================== */
-process.on("unhandledRejection", (err) => {
-  console.error("❌ Unhandled Rejection:", err.message);
-});
-
-process.on("uncaughtException", (err) => {
-  console.error("❌ Uncaught Exception:", err.message);
+  console.log(`🚀 Tengacion running on port ${PORT}`);
 });

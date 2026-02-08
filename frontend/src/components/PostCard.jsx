@@ -1,6 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import PostComments from "./PostComments";
 
+/* ======================================================
+   SYSTEM / STARTER POST HANDLING
+   ====================================================== */
+
+function SystemPost({ text }) {
+  return (
+    <article className="post-card system-post">
+      <p className="system-text">{text}</p>
+    </article>
+  );
+}
+
+/* ======================================================
+   REACTIONS
+   ====================================================== */
+
 const REACTIONS = [
   { key: "like", label: "👍", name: "Like" },
   { key: "love", label: "❤️", name: "Love" },
@@ -9,6 +25,10 @@ const REACTIONS = [
   { key: "sad", label: "😢", name: "Sad" },
   { key: "angry", label: "😡", name: "Angry" },
 ];
+
+/* ======================================================
+   EDIT MODAL
+   ====================================================== */
 
 function EditPostModal({ post, onClose, onSave }) {
   const [text, setText] = useState(post?.text || "");
@@ -90,7 +110,18 @@ function EditPostModal({ post, onClose, onSave }) {
   );
 }
 
-export default function PostCard({ post, onDelete, onEdit }) {
+/* ======================================================
+   MAIN POST CARD
+   ====================================================== */
+
+export default function PostCard({ post, isSystem, onDelete, onEdit }) {
+  /* 🔵 SYSTEM POST SHORT-CIRCUIT */
+  if (isSystem || post?.system) {
+    return <SystemPost text={post.text} />;
+  }
+
+  /* -------------------------------------------------- */
+
   const [reaction, setReaction] = useState(null);
   const [showReactions, setShowReactions] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -107,11 +138,8 @@ export default function PostCard({ post, onDelete, onEdit }) {
 
   const username = post?.user?.name || post?.username || "Unknown User";
   const avatar = post?.user?.profilePic || post?.avatar || "/avatar.png";
-
   const postImage = post?.image || post?.photo || post?.media || null;
 
-  // ✅ owner detection: if backend returns post.user._id and profileId in post.viewerId
-  // For now still supports post.isOwner
   const isOwner = !!post?.isOwner;
 
   useEffect(() => {
@@ -233,7 +261,6 @@ export default function PostCard({ post, onDelete, onEdit }) {
 
         {/* ACTIONS */}
         <div className="post-actions">
-          {/* LIKE / REACTION */}
           <div
             className="reaction-wrapper"
             onMouseEnter={() => setShowReactions(true)}
@@ -257,12 +284,13 @@ export default function PostCard({ post, onDelete, onEdit }) {
             )}
 
             <button className={`action-btn ${reaction ? "active-like" : ""}`}>
-              <span className="btn-emoji">{reaction ? reaction.label : "👍"}</span>
+              <span className="btn-emoji">
+                {reaction ? reaction.label : "👍"}
+              </span>
               <span>{likeBtnLabel}</span>
             </button>
           </div>
 
-          {/* COMMENT */}
           <button
             className={`action-btn ${showComments ? "active" : ""}`}
             onClick={() => setShowComments((s) => !s)}
@@ -270,7 +298,6 @@ export default function PostCard({ post, onDelete, onEdit }) {
             💬 Comment
           </button>
 
-          {/* SHARE */}
           <button className="action-btn" onClick={copyLink}>
             ↗ Share
           </button>
@@ -286,7 +313,6 @@ export default function PostCard({ post, onDelete, onEdit }) {
         </div>
       </article>
 
-      {/* EDIT MODAL */}
       {editOpen && (
         <EditPostModal
           post={post}

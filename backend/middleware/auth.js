@@ -4,42 +4,41 @@ const asyncHandler = require("./asyncHandler");
 
 /**
  * Authentication middleware
- * Verifies JWT access token and attaches user context to request
+ * - Enforces Bearer token format
+ * - Verifies JWT
+ * - Confirms user still exists
+ * - Attaches trusted user identity to request
  */
 const auth = asyncHandler(async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
-  // Enforce Bearer token standard
+  // 1️⃣ Require Authorization header
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    res.status(401);
-    throw new Error("Authentication required");
+    return res.status(401).json({ error: "No token" });
   }
 
+  // 2️⃣ Extract token
   const token = authHeader.split(" ")[1];
 
   let decoded;
   try {
     decoded = jwt.verify(token, process.env.JWT_SECRET);
   } catch (err) {
-    res.status(401);
     if (err.name === "TokenExpiredError") {
-      throw new Error("Session expired");
+      return res.status(401).json({ error: "Session expired" });
     }
-    throw new Error("Invalid authentication token");
+    return res.status(401).json({ error: "Invalid token" });
   }
 
-  // Ensure user still exists
+  // 3️⃣ Ensure user still exists
   const user = await User.findById(decoded.id).select("_id");
 
   if (!user) {
-    res.status(401);
-    throw new Error("User no longer exists");
+    return res.status(401).json({ error: "User no longer exists" });
   }
 
-  // Attach trusted identity
-  req.user = {
-    id: user._id,
-  };
+  // 4️⃣ Attach trusted identity
+  req.user = { id: user._id };
 
   next();
 });

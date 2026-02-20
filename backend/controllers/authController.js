@@ -7,6 +7,8 @@ const sendOtpEmail = require("../utils/sendOtpEmail");
 const generateToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
+const isOtpRequired = () => process.env.REQUIRE_EMAIL_OTP === "true";
+
 /* ================= CHECK USERNAME ================= */
 exports.checkUsername = async (req, res) => {
   const username = (req.query.username || "").toLowerCase().trim();
@@ -20,19 +22,32 @@ exports.checkUsername = async (req, res) => {
 
 /* ================= REQUEST OTP ================= */
 exports.requestOtp = async (req, res) => {
-  const email = (req.body.email || "").trim().toLowerCase();
-  if (!email) {
-    return res.status(400).json({ message: "Email required" });
+  try {
+    const email = (req.body.email || "").trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ message: "Email required" });
+    }
+
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      return res.status(503).json({
+        message: "Email verification is not configured",
+      });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await Otp.deleteMany({ email });
+    await Otp.create({ email, otp, expiresAt, verified: false });
+    await sendOtpEmail({ email, otp });
+
+    return res.json({ message: "OTP sent" });
+  } catch (err) {
+    console.error("Request OTP error:", err);
+    return res.status(503).json({
+      message: "Email verification is temporarily unavailable",
+    });
   }
-
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-  await Otp.deleteMany({ email });
-  await Otp.create({ email, otp, expiresAt, verified: false });
-
-  await sendOtpEmail({ email, otp });
-  res.json({ message: "OTP sent" });
 };
 
 /* ================= VERIFY OTP ================= */
@@ -82,9 +97,18 @@ exports.register = async (req, res) => {
       return res.status(409).json({ message: "Email already registered" });
     }
 
-    const requireOtp = process.env.REQUIRE_EMAIL_OTP === "true";
+    const requireOtp = isOtpRequired();
     if (requireOtp) {
-      const verified = await Otp.findOne({ email, verified: true });
+      let verified;
+      try {
+        verified = await Otp.findOne({ email, verified: true });
+      } catch (otpErr) {
+        console.error("Register OTP lookup error:", otpErr);
+        return res.status(503).json({
+          message: "Email verification service unavailable",
+        });
+      }
+
       if (!verified) {
         return res.status(401).json({ message: "Email not verified" });
       }
@@ -101,13 +125,37 @@ exports.register = async (req, res) => {
       isVerified: true,
     });
 
-    await Otp.deleteMany({ email });
+    if (requireOtp) {
+      try {
+        await Otp.deleteMany({ email });
+      } catch (otpCleanupErr) {
+        console.warn("Register OTP cleanup failed:", otpCleanupErr.message);
+      }
+    }
 
     return res.status(201).json({
       token: generateToken(user._id),
       user,
     });
   } catch (err) {
+    if (err?.code === 11000 && err?.keyPattern) {
+      const field = Object.keys(err.keyPattern)[0];
+      if (field === "email") {
+        return res.status(409).json({ message: "Email already registered" });
+      }
+      if (field === "username") {
+        return res.status(409).json({ message: "Username already taken" });
+      }
+      return res.status(409).json({ message: "Duplicate value" });
+    }
+
+    if (err?.name === "ValidationError") {
+      const firstError = Object.values(err.errors || {})[0];
+      return res.status(400).json({
+        message: firstError?.message || "Invalid registration data",
+      });
+    }
+
     console.error("Register error:", err);
     return res.status(500).json({ message: "Registration failed" });
   }

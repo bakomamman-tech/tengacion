@@ -36,6 +36,17 @@ const legacyFallbackValue = (field) => {
   return null;
 };
 
+const summarizeMongoDetails = (err) => {
+  const details = err?.errInfo?.details;
+  if (!details) return "";
+  try {
+    const raw = JSON.stringify(details);
+    return raw.length > 600 ? `${raw.slice(0, 600)}...` : raw;
+  } catch {
+    return "";
+  }
+};
+
 /* ================= CHECK USERNAME ================= */
 exports.checkUsername = async (req, res) => {
   const username = (req.query.username || "").toLowerCase().trim();
@@ -211,6 +222,23 @@ exports.register = async (req, res) => {
       const firstError = Object.values(err.errors || {})[0];
       return res.status(400).json({
         message: firstError?.message || "Invalid registration data",
+      });
+    }
+
+    if (err?.name === "MongoServerError") {
+      const code = err.code || 0;
+
+      if (code === 121) {
+        return res.status(400).json({
+          message: "Registration rejected by database validation",
+          code,
+          detail: summarizeMongoDetails(err),
+        });
+      }
+
+      return res.status(500).json({
+        message: "Registration database write failed",
+        code,
       });
     }
 

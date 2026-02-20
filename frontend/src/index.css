@@ -981,13 +981,48 @@ textarea {
 }
 
 .messenger-header {
-  height: 56px;
+  min-height: 56px;
   border-bottom: 1px solid var(--border);
   background: linear-gradient(135deg, var(--brand-soft), transparent);
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0 14px;
+}
+
+.messenger-header-main {
+  min-height: 56px;
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px;
+}
+
+.messenger-drag-handle {
+  display: none;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 8px 0 2px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.messenger-drag-handle::before {
+  content: "";
+  display: block;
+  width: 44px;
+  height: 5px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-strong) 78%, transparent);
+}
+
+.messenger.dragging {
+  user-select: none;
+}
+
+.messenger.dragging .messenger-drag-handle {
+  cursor: grabbing;
 }
 
 .mh-close {
@@ -1821,11 +1856,38 @@ textarea {
     left: 0;
     bottom: 0;
     width: 100%;
+    display: flex;
+    align-items: flex-end;
+    padding: 0 6px env(safe-area-inset-bottom, 0);
   }
 
   .messenger {
     border-radius: 14px 14px 0 0;
     min-height: 70vh;
+  }
+
+  .messenger.mobile-sheet {
+    width: 100%;
+    min-height: 0;
+    max-height: calc(100dvh - 8px);
+    transition: height 0.22s ease;
+    overscroll-behavior: contain;
+  }
+
+  .messenger.mobile-sheet.dragging {
+    transition: none;
+  }
+
+  .messenger.mobile-sheet .messenger-header {
+    padding: 0 12px 4px;
+  }
+
+  .messenger.mobile-sheet .messenger-header-main {
+    min-height: 46px;
+  }
+
+  .messenger.mobile-sheet .messenger-drag-handle {
+    display: block;
   }
 
   .messenger-body {

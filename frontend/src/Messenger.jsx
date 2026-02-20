@@ -7,12 +7,21 @@ import {
 } from "./api";
 import { connectSocket, disconnectSocket } from "./socket";
 
+const MOBILE_SHEET_QUERY = "(max-width: 640px)";
+
 const toIdString = (value) => {
   if (!value) return "";
   if (typeof value === "string") return value;
   if (value._id) return value._id.toString();
   return value.toString();
 };
+
+const getViewportHeight = () => {
+  if (typeof window === "undefined") return 0;
+  return window.innerHeight || document.documentElement.clientHeight || 0;
+};
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -37,10 +46,7 @@ const normalizeMessage = (message) => ({
 const isForConversation = (message, meId, otherId) => {
   const a = toIdString(message.senderId);
   const b = toIdString(message.receiverId);
-  return (
-    (a === meId && b === otherId) ||
-    (a === otherId && b === meId)
-  );
+  return (a === meId && b === otherId) || (a === otherId && b === meId);
 };
 
 export default function Messenger({ user, onClose }) {
@@ -56,13 +62,159 @@ export default function Messenger({ user, onClose }) {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState("");
 
+  const [isMobileSheet, setIsMobileSheet] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(MOBILE_SHEET_QUERY).matches;
+  });
+  const [sheetHeight, setSheetHeight] = useState(() => {
+    const vh = getViewportHeight();
+    return vh ? Math.round(vh * 0.72) : 560;
+  });
+  const [isDraggingSheet, setIsDraggingSheet] = useState(false);
+
   const socketRef = useRef(null);
   const selectedIdRef = useRef("");
   const endRef = useRef(null);
+  const sheetHeightRef = useRef(sheetHeight);
+  const dragRef = useRef({
+    active: false,
+    startY: 0,
+    startHeight: 0,
+    downwardDelta: 0,
+  });
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
+
+  useEffect(() => {
+    sheetHeightRef.current = sheetHeight;
+  }, [sheetHeight]);
+
+  const getMobileBounds = useCallback(() => {
+    const vh = getViewportHeight();
+    return {
+      min: Math.round(vh * 0.46),
+      max: Math.round(vh * 0.92),
+    };
+  }, []);
+
+  const getMobileSnapPoints = useCallback(() => {
+    const { min, max } = getMobileBounds();
+    const mid = Math.round((min + max) / 2);
+    return [min, mid, max];
+  }, [getMobileBounds]);
+
+  const clampSheetHeight = useCallback(
+    (height) => {
+      const { min, max } = getMobileBounds();
+      return clamp(height, min, max);
+    },
+    [getMobileBounds]
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const media = window.matchMedia(MOBILE_SHEET_QUERY);
+
+    const syncViewport = () => {
+      const mobile = media.matches;
+      setIsMobileSheet(mobile);
+
+      if (mobile) {
+        setSheetHeight((prev) => {
+          const base = prev || Math.round(getViewportHeight() * 0.72);
+          return clampSheetHeight(base);
+        });
+      }
+    };
+
+    syncViewport();
+
+    if (media.addEventListener) {
+      media.addEventListener("change", syncViewport);
+    } else {
+      media.addListener(syncViewport);
+    }
+    window.addEventListener("resize", syncViewport);
+
+    return () => {
+      if (media.removeEventListener) {
+        media.removeEventListener("change", syncViewport);
+      } else {
+        media.removeListener(syncViewport);
+      }
+      window.removeEventListener("resize", syncViewport);
+    };
+  }, [clampSheetHeight]);
+
+  useEffect(() => {
+    if (!isDraggingSheet) return undefined;
+
+    const onPointerMove = (event) => {
+      const drag = dragRef.current;
+      if (!drag.active) return;
+
+      const deltaY = event.clientY - drag.startY;
+      drag.downwardDelta = Math.max(0, deltaY);
+      setSheetHeight(clampSheetHeight(drag.startHeight - deltaY));
+    };
+
+    const onPointerEnd = () => {
+      const drag = dragRef.current;
+      if (!drag.active) return;
+
+      drag.active = false;
+      setIsDraggingSheet(false);
+
+      const { min } = getMobileBounds();
+      const closeThreshold = Math.max(76, Math.round(getViewportHeight() * 0.16));
+      const nearCollapsed = sheetHeightRef.current <= min + 34;
+
+      if (drag.downwardDelta > closeThreshold && nearCollapsed) {
+        onClose?.();
+        return;
+      }
+
+      const currentHeight = sheetHeightRef.current;
+      const snapPoints = getMobileSnapPoints();
+      const nearest = snapPoints.reduce((closest, point) =>
+        Math.abs(point - currentHeight) < Math.abs(closest - currentHeight)
+          ? point
+          : closest
+      );
+      setSheetHeight(nearest);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerEnd);
+    window.addEventListener("pointercancel", onPointerEnd);
+
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerEnd);
+      window.removeEventListener("pointercancel", onPointerEnd);
+    };
+  }, [clampSheetHeight, getMobileBounds, isDraggingSheet, onClose]);
+
+  const onSheetHandlePointerDown = useCallback(
+    (event) => {
+      if (!isMobileSheet) return;
+      if (event.button !== undefined && event.button !== 0) return;
+
+      dragRef.current = {
+        active: true,
+        startY: event.clientY,
+        startHeight: sheetHeightRef.current,
+        downwardDelta: 0,
+      };
+      setIsDraggingSheet(true);
+      event.preventDefault();
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    },
+    [isMobileSheet]
+  );
 
   const selectedContact = useMemo(
     () => contacts.find((c) => c._id === selectedId) || null,
@@ -78,6 +230,7 @@ export default function Messenger({ user, onClose }) {
     setContacts((prev) => {
       const idx = prev.findIndex((c) => c._id === contactId);
       if (idx === -1) return prev;
+
       const copy = [...prev];
       const updated = {
         ...copy[idx],
@@ -177,10 +330,9 @@ export default function Messenger({ user, onClose }) {
             message._id && prev.some((m) => m._id && m._id === message._id);
           if (byServerId) return prev;
 
-          const optimisticIndex =
-            message.clientId
-              ? prev.findIndex((m) => m.clientId === message.clientId)
-              : -1;
+          const optimisticIndex = message.clientId
+            ? prev.findIndex((m) => m.clientId === message.clientId)
+            : -1;
 
           if (optimisticIndex >= 0) {
             const next = [...prev];
@@ -208,14 +360,10 @@ export default function Messenger({ user, onClose }) {
       disconnectSocket();
       socketRef.current = null;
     };
-  }, [meId, token, moveContactToTop]);
+  }, [meId, moveContactToTop, token]);
 
   const replaceMessageByClientId = useCallback((clientId, patch) => {
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.clientId === clientId ? { ...m, ...patch } : m
-      )
-    );
+    setMessages((prev) => prev.map((m) => (m.clientId === clientId ? { ...m, ...patch } : m)));
   }, []);
 
   const sendViaSocket = useCallback(
@@ -287,7 +435,7 @@ export default function Messenger({ user, onClose }) {
       });
       return;
     } catch {
-      // Fallback to REST if socket delivery fails.
+      // REST fallback remains.
     }
 
     try {
@@ -306,15 +454,38 @@ export default function Messenger({ user, onClose }) {
     }
   };
 
+  const sheetStyle =
+    isMobileSheet && sheetHeight
+      ? {
+          height: `${sheetHeight}px`,
+          minHeight: `${sheetHeight}px`,
+          maxHeight: `${sheetHeight}px`,
+        }
+      : undefined;
+
   return (
-    <div className="messenger">
+    <div
+      className={`messenger ${isMobileSheet ? "mobile-sheet" : ""} ${
+        isDraggingSheet ? "dragging" : ""
+      }`}
+      style={sheetStyle}
+    >
       <div className="messenger-header">
-        <div className="mh-left">
-          <strong>Messenger</strong>
+        <button
+          className="messenger-drag-handle"
+          type="button"
+          onPointerDown={onSheetHandlePointerDown}
+          aria-label="Drag messenger panel"
+        />
+
+        <div className="messenger-header-main">
+          <div className="mh-left">
+            <strong>Messenger</strong>
+          </div>
+          <button className="mh-close" onClick={onClose} aria-label="Close chat">
+            x
+          </button>
         </div>
-        <button className="mh-close" onClick={onClose} aria-label="Close chat">
-          x
-        </button>
       </div>
 
       <div className="messenger-body">
@@ -401,8 +572,8 @@ export default function Messenger({ user, onClose }) {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
-                            {m.pending ? " • Sending" : ""}
-                            {m.failed ? " • Failed" : ""}
+                            {m.pending ? " - Sending" : ""}
+                            {m.failed ? " - Failed" : ""}
                           </div>
                         </div>
                       </div>

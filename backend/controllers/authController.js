@@ -27,15 +27,6 @@ const extractDuplicateField = (err) => {
   return "";
 };
 
-const legacyFallbackValue = (field) => {
-  const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-  if (field === "phone") return `tmp_${stamp}`;
-  if (field === "country") return `tmp_${stamp}`;
-  if (field === "joined") return new Date();
-  return null;
-};
-
 const summarizeMongoDetails = (err) => {
   const details = err?.errInfo?.details;
   if (!details) return "";
@@ -45,6 +36,160 @@ const summarizeMongoDetails = (err) => {
   } catch {
     return "";
   }
+};
+
+const setByPath = (target, path, value) => {
+  if (!path) return;
+
+  if (!path.includes(".")) {
+    target[path] = value;
+    return;
+  }
+
+  const keys = path.split(".");
+  let cursor = target;
+
+  for (let i = 0; i < keys.length - 1; i += 1) {
+    const key = keys[i];
+    if (!cursor[key] || typeof cursor[key] !== "object") {
+      cursor[key] = {};
+    }
+    cursor = cursor[key];
+  }
+
+  cursor[keys[keys.length - 1]] = value;
+};
+
+const buildFieldFallback = (field) => {
+  const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+  if (field === "phone") return `tmp_phone_${stamp}`;
+  if (field === "country") return `tmp_country_${stamp}`;
+  if (field === "joined") return new Date(Date.now() + Math.floor(Math.random() * 1000));
+  if (field === "dob") return new Date(Date.now() - Math.floor(Math.random() * 1000000000));
+  if (field === "avatar") return `tmp_avatar_${stamp}`;
+  if (field === "cover") return `tmp_cover_${stamp}`;
+  if (field === "avatar.url") return `/uploads/tmp_avatar_${stamp}.png`;
+  if (field === "cover.url") return `/uploads/tmp_cover_${stamp}.png`;
+  if (field === "gender") return `unspecified_${stamp}`;
+  if (field === "pronouns") return `n/a_${stamp}`;
+
+  return null;
+};
+
+const tryCreateWithFallbacks = async (baseData) => {
+  const draft = { ...baseData };
+
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try {
+      return await User.create(draft);
+    } catch (err) {
+      if (err?.code !== 11000) {
+        throw err;
+      }
+
+      const duplicateField = extractDuplicateField(err);
+      if (!duplicateField) {
+        throw err;
+      }
+
+      const hasExplicitValue = Object.prototype.hasOwnProperty.call(
+        baseData,
+        duplicateField
+      );
+      const fallback = buildFieldFallback(duplicateField);
+
+      if (hasExplicitValue || fallback === null) {
+        throw err;
+      }
+
+      setByPath(draft, duplicateField, fallback);
+    }
+  }
+
+  throw new Error("Registration retries exceeded");
+};
+
+const tryLegacyInsertFallback = async ({
+  displayName,
+  username,
+  email,
+  password,
+  phone,
+  country,
+  dob,
+  gender,
+}) => {
+  const passwordHash = await bcrypt.hash(password, 12);
+  const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const now = new Date();
+
+  const shared = {
+    name: displayName,
+    username,
+    email,
+    password: passwordHash,
+    phone: phone || `tmp_phone_${stamp}`,
+    country: country || `tmp_country_${stamp}`,
+    bio: "",
+    gender: (gender || "").trim(),
+    pronouns: "",
+    role: "user",
+    isVerified: true,
+    isActive: true,
+    joined: now,
+    followers: [],
+    following: [],
+    friends: [],
+    friendRequests: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const modernDoc = {
+    ...shared,
+    dob: dob ? new Date(dob) : null,
+    avatar: { public_id: "", url: "" },
+    cover: { public_id: "", url: "" },
+  };
+
+  const legacyDoc = {
+    ...shared,
+    dob: dob || "",
+    avatar: "",
+    cover: "",
+  };
+
+  const variants = [modernDoc, legacyDoc];
+  let lastError = null;
+
+  for (const variant of variants) {
+    const draft = { ...variant };
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      try {
+        const inserted = await User.collection.insertOne(draft);
+        return await User.findById(inserted.insertedId);
+      } catch (err) {
+        lastError = err;
+
+        if (err?.code !== 11000) {
+          break;
+        }
+
+        const duplicateField = extractDuplicateField(err);
+        const fallback = buildFieldFallback(duplicateField);
+
+        if (!duplicateField || fallback === null) {
+          break;
+        }
+
+        setByPath(draft, duplicateField, fallback);
+      }
+    }
+  }
+
+  throw lastError || new Error("Legacy registration fallback failed");
 };
 
 /* ================= CHECK USERNAME ================= */
@@ -153,6 +298,11 @@ exports.register = async (req, res) => {
     }
 
     const displayName = rawName || username;
+    const phone = (req.body.phone || "").trim();
+    const country = (req.body.country || "").trim();
+    const dob = req.body.dob || "";
+    const gender = req.body.gender || "";
+
     const baseUserData = {
       name: displayName,
       username,
@@ -160,36 +310,33 @@ exports.register = async (req, res) => {
       password,
       isVerified: true,
       joined: new Date(),
+      phone: phone || undefined,
+      country: country || undefined,
+      dob: dob ? new Date(dob) : undefined,
+      gender: gender || undefined,
     };
 
-    const phone = (req.body.phone || "").trim();
-    const country = (req.body.country || "").trim();
-    if (phone) baseUserData.phone = phone;
-    if (country) baseUserData.country = country;
+    Object.keys(baseUserData).forEach((key) => {
+      if (baseUserData[key] === undefined) {
+        delete baseUserData[key];
+      }
+    });
 
     let user;
     try {
       // Password is hashed by the User model pre-save hook.
-      user = await User.create(baseUserData);
+      user = await tryCreateWithFallbacks(baseUserData);
     } catch (createErr) {
-      const duplicateField = extractDuplicateField(createErr);
-      const hasExplicitValue =
-        Object.prototype.hasOwnProperty.call(baseUserData, duplicateField);
-      const fallback = legacyFallbackValue(duplicateField);
-
-      if (
-        createErr?.code === 11000 &&
-        duplicateField &&
-        !hasExplicitValue &&
-        fallback !== null
-      ) {
-        user = await User.create({
-          ...baseUserData,
-          [duplicateField]: fallback,
-        });
-      } else {
-        throw createErr;
-      }
+      user = await tryLegacyInsertFallback({
+        displayName,
+        username,
+        email,
+        password,
+        phone,
+        country,
+        dob,
+        gender,
+      });
     }
 
     if (requireOtp) {
@@ -239,11 +386,15 @@ exports.register = async (req, res) => {
       return res.status(500).json({
         message: "Registration database write failed",
         code,
+        detail: err.message || "",
       });
     }
 
     console.error("Register error:", err);
-    return res.status(500).json({ message: "Registration failed" });
+    return res.status(500).json({
+      message: "Registration failed",
+      detail: err?.message || "",
+    });
   }
 };
 

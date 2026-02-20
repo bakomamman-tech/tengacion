@@ -1,9 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Icon } from "./Icon";
+import { resolveImage } from "./api";
 import { useTheme } from "./context/ThemeContext";
 
-export default function Navbar({ user, page, setPage, onLogout }) {
+const fallbackAvatar = (name) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    name || "User"
+  )}&size=96&background=DFE8F6&color=1D3A6D`;
+
+export default function Navbar({ user, onLogout }) {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
 
@@ -16,27 +21,33 @@ export default function Navbar({ user, page, setPage, onLogout }) {
   const searchRef = useRef(null);
   const menuRef = useRef(null);
 
-  /* ================= CLOSE POPUPS ================= */
   useEffect(() => {
-    const close = (e) => {
-      if (searchRef.current && !searchRef.current.contains(e.target)) {
+    const close = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
         setSearchOpen(false);
       }
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
         setShowMenu(false);
       }
     };
 
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", (e) => e.key === "Escape" && close(e));
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") close(event);
+    };
 
-    return () => document.removeEventListener("mousedown", close);
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
-  /* ================= SEARCH ================= */
-  const performSearch = useCallback(async (q) => {
-    if (!q.trim()) {
+  const performSearch = useCallback(async (value) => {
+    if (!value.trim()) {
       setResults({ users: [], posts: [] });
+      setSearchOpen(false);
       return;
     }
 
@@ -44,16 +55,16 @@ export default function Navbar({ user, page, setPage, onLogout }) {
       setLoading(true);
 
       const headers = {
-        Authorization: "Bearer " + localStorage.getItem("token"),
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
       };
 
-      const [uRes, pRes] = await Promise.all([
-        fetch(`/api/users?search=${encodeURIComponent(q)}`, { headers }),
-        fetch(`/api/posts?search=${encodeURIComponent(q)}`, { headers }),
+      const [usersResponse, postsResponse] = await Promise.all([
+        fetch(`/api/users?search=${encodeURIComponent(value)}`, { headers }),
+        fetch(`/api/posts?search=${encodeURIComponent(value)}`, { headers }),
       ]);
 
-      const users = await uRes.json();
-      const posts = await pRes.json();
+      const users = await usersResponse.json();
+      const posts = await postsResponse.json();
 
       setResults({
         users: Array.isArray(users) ? users.slice(0, 5) : [],
@@ -69,82 +80,68 @@ export default function Navbar({ user, page, setPage, onLogout }) {
   }, []);
 
   useEffect(() => {
-    const delay = setTimeout(() => performSearch(query), 300);
-    return () => clearTimeout(delay);
+    const timeout = setTimeout(() => performSearch(query), 250);
+    return () => clearTimeout(timeout);
   }, [query, performSearch]);
 
-  const avatar =
-    user?.avatar ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      user?.name || "User"
-    )}`;
+  const avatar = resolveImage(user?.avatar) || fallbackAvatar(user?.name);
 
   return (
     <header className="navbar" role="navigation">
-      {/* ================= LEFT ================= */}
       <div className="nav-left">
         <button
           className="logo-area"
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/home")}
           aria-label="Go home"
         >
-          <img
-            src="/tengacion_logo_64.png"
-            className="nav-logo"
-            alt="Tengacion"
-          />
+          <img src="/tengacion_logo_64.png" className="nav-logo" alt="Tengacion" />
           <span className="brand-text">Tengacion</span>
         </button>
 
         {user && (
           <div className="search-box" ref={searchRef}>
-            <Icon name="search" />
             <input
               className="nav-search"
               placeholder="Search Tengacion"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(event) => setQuery(event.target.value)}
               aria-label="Search"
             />
 
             {searchOpen && (
               <div className="search-dropdown">
-                {loading && <div className="sd-loading">Searching…</div>}
+                {loading && <div className="sd-loading">Searching...</div>}
 
                 {!loading &&
-                  results.users.map((u) => (
+                  results.users.map((entry) => (
                     <button
-                      key={u._id}
+                      key={entry._id}
                       className="sd-item"
                       onClick={() => {
-                        navigate(`/profile/${u.username}`);
+                        navigate(`/profile/${entry.username}`);
                         setSearchOpen(false);
                       }}
                     >
                       <img
-                        src={
-                          u.avatar ||
-                          `https://ui-avatars.com/api/?name=${u.name}`
-                        }
+                        src={resolveImage(entry.avatar) || fallbackAvatar(entry.name)}
                         className="sd-avatar"
                         alt=""
                       />
-                      <span>{u.name}</span>
+                      <span>{entry.name}</span>
                     </button>
                   ))}
 
                 {!loading &&
-                  results.posts.map((p) => (
+                  results.posts.map((entry) => (
                     <button
-                      key={p._id}
+                      key={entry._id}
                       className="sd-item"
                       onClick={() => {
-                        navigate(`/post/${p._id}`);
+                        navigate(`/home`);
                         setSearchOpen(false);
                       }}
                     >
-                      <Icon name="post" />
-                      <span>{p.text?.slice(0, 40) || "View post"}</span>
+                      <span>{entry.text?.slice(0, 50) || "View post"}</span>
                     </button>
                   ))}
 
@@ -159,43 +156,29 @@ export default function Navbar({ user, page, setPage, onLogout }) {
         )}
       </div>
 
-      {/* ================= CENTER ================= */}
       {user && (
         <nav className="nav-center" aria-label="Main navigation">
-          <button
-            className="nav-tab"
-            onClick={() => navigate("/home")}
-            title="Feed"
-          >
-            🏠 Home
+          <button className="nav-tab" onClick={() => navigate("/home")}>
+            Home
           </button>
-          <button
-            className="nav-tab"
-            onClick={() => navigate("/trending")}
-            title="Trending"
-          >
-            🔥 Trending
+          <button className="nav-tab" onClick={() => navigate("/trending")}>
+            Trending
           </button>
-          <button
-            className="nav-tab"
-            onClick={() => navigate("/creator")}
-            title="Creator Dashboard"
-          >
-            📊 Creator
+          <button className="nav-tab" onClick={() => navigate("/creator")}>
+            Creator
           </button>
         </nav>
       )}
 
-      {/* ================= RIGHT ================= */}
       {user && (
         <div className="nav-right">
-          <button 
-            className="nav-icon" 
+          <button
+            className="nav-icon"
             onClick={() => navigate("/notifications")}
             aria-label="Notifications"
             title="Notifications"
           >
-            🔔
+            Alerts
           </button>
 
           <button
@@ -204,13 +187,13 @@ export default function Navbar({ user, page, setPage, onLogout }) {
             aria-label="Toggle dark mode"
             title={isDark ? "Light mode" : "Dark mode"}
           >
-            {isDark ? "☀️" : "🌙"}
+            {isDark ? "Light" : "Dark"}
           </button>
 
           <div className="avatar-wrapper" ref={menuRef}>
             <button
               className="avatar-btn"
-              onClick={() => setShowMenu((v) => !v)}
+              onClick={() => setShowMenu((open) => !open)}
               aria-label="Account menu"
             >
               <img src={avatar} className="nav-avatar" alt="" />
@@ -232,7 +215,7 @@ export default function Navbar({ user, page, setPage, onLogout }) {
                 <div className="pm-divider" />
 
                 <button className="pm-item logout" onClick={onLogout}>
-                  🚪 Log out
+                  Log out
                 </button>
               </div>
             )}

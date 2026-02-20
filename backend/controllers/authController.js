@@ -20,8 +20,10 @@ exports.checkUsername = async (req, res) => {
 
 /* ================= REQUEST OTP ================= */
 exports.requestOtp = async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ message: "Email required" });
+  const email = (req.body.email || "").trim().toLowerCase();
+  if (!email) {
+    return res.status(400).json({ message: "Email required" });
+  }
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -35,7 +37,8 @@ exports.requestOtp = async (req, res) => {
 
 /* ================= VERIFY OTP ================= */
 exports.verifyOtp = async (req, res) => {
-  const { email, otp } = req.body;
+  const email = (req.body.email || "").trim().toLowerCase();
+  const otp = (req.body.otp || "").trim();
 
   const record = await Otp.findOne({ email, otp });
   if (!record || record.expiresAt < new Date()) {
@@ -50,37 +53,73 @@ exports.verifyOtp = async (req, res) => {
 
 /* ================= REGISTER ================= */
 exports.register = async (req, res) => {
-  const { name, username, email, password } = req.body;
+  try {
+    const rawName = (req.body.name || "").trim();
+    const username = (req.body.username || "").trim().toLowerCase();
+    const email = (req.body.email || "").trim().toLowerCase();
+    const password = req.body.password || "";
 
-  const verified = await Otp.findOne({ email, verified: true });
-  if (!verified) {
-    return res.status(401).json({ message: "Email not verified" });
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    if (password.length < 8) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 8 characters" });
+    }
+
+    const [usernameExists, emailExists] = await Promise.all([
+      User.exists({ username }),
+      User.exists({ email }),
+    ]);
+
+    if (usernameExists) {
+      return res.status(409).json({ message: "Username already taken" });
+    }
+
+    if (emailExists) {
+      return res.status(409).json({ message: "Email already registered" });
+    }
+
+    const requireOtp = process.env.REQUIRE_EMAIL_OTP === "true";
+    if (requireOtp) {
+      const verified = await Otp.findOne({ email, verified: true });
+      if (!verified) {
+        return res.status(401).json({ message: "Email not verified" });
+      }
+    }
+
+    const displayName = rawName || username;
+
+    // Password is hashed by the User model pre-save hook.
+    const user = await User.create({
+      name: displayName,
+      username,
+      email,
+      password,
+      isVerified: true,
+    });
+
+    await Otp.deleteMany({ email });
+
+    return res.status(201).json({
+      token: generateToken(user._id),
+      user,
+    });
+  } catch (err) {
+    console.error("Register error:", err);
+    return res.status(500).json({ message: "Registration failed" });
   }
-
-  const hashed = await bcrypt.hash(password, 10);
-
-  const user = await User.create({
-    name,
-    username,
-    email,
-    password: hashed,
-    isVerified: true,
-  });
-
-  await Otp.deleteMany({ email });
-
-  res.status(201).json({
-    token: generateToken(user._id),
-    user,
-  });
 };
 
 /* ================= LOGIN ================= */
 exports.login = async (req, res) => {
-  const { emailOrUsername, password } = req.body;
+  const identifier = (req.body.emailOrUsername || "").trim().toLowerCase();
+  const password = req.body.password || "";
 
   const user = await User.findOne({
-    $or: [{ email: emailOrUsername }, { username: emailOrUsername }],
+    $or: [{ email: identifier }, { username: identifier }],
   }).select("+password");
 
   if (!user || !(await bcrypt.compare(password, user.password))) {

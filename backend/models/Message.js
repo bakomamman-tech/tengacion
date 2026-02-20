@@ -3,9 +3,9 @@ const mongoose = require("mongoose");
 const MessageSchema = new mongoose.Schema(
   {
     conversationId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Conversation",
+      type: String,
       required: true,
+      trim: true,
       index: true
     },
 
@@ -27,7 +27,26 @@ const MessageSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      maxlength: 5000
+      maxlength: 2000
+    },
+
+    senderName: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+
+    clientId: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+
+    // Keep a numeric timestamp for frontend compatibility.
+    time: {
+      type: Number,
+      default: () => Date.now(),
+      index: true
     },
 
     // Facebook-style features

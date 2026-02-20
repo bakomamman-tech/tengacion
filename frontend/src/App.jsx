@@ -13,11 +13,9 @@ import CreatorDashboard from "./pages/CreatorDashboard";
 import Notifications from "./pages/Notifications";
 
 import { useAuth } from "./context/AuthContext";
-import { useTheme } from "./context/ThemeContext";
 
 export default function App() {
   const { user, loading: authLoading } = useAuth();
-  const { isDark } = useTheme();
 
   if (authLoading) {
     return (

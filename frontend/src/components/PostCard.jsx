@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import PostComments from "./PostComments";
+import { resolveImage } from "../api";
 
 /* ======================================================
    SYSTEM / STARTER POST HANDLING
@@ -116,9 +117,7 @@ function EditPostModal({ post, onClose, onSave }) {
 
 export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   /* 🔵 SYSTEM POST SHORT-CIRCUIT */
-  if (isSystem || post?.system) {
-    return <SystemPost text={post.text} />;
-  }
+  const isSystemPost = isSystem || post?.system;
 
   /* -------------------------------------------------- */
 
@@ -137,8 +136,12 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
     : "Just now";
 
   const username = post?.user?.name || post?.username || "Unknown User";
-  const avatar = post?.user?.profilePic || post?.avatar || "/avatar.png";
-  const postImage = post?.image || post?.photo || post?.media || null;
+  const avatar =
+    resolveImage(post?.user?.profilePic || post?.avatar) || "/avatar.png";
+  const mediaCandidate = Array.isArray(post?.media)
+    ? post?.media?.[0]?.url || post?.media?.[0]
+    : post?.media;
+  const postImage = resolveImage(post?.image || post?.photo || mediaCandidate);
 
   const isOwner = !!post?.isOwner;
 
@@ -199,6 +202,10 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
       setDeleting(false);
     }
   };
+
+  if (isSystemPost) {
+    return <SystemPost text={post?.text} />;
+  }
 
   return (
     <>

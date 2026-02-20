@@ -1,109 +1,61 @@
 import { useNavigate } from "react-router-dom";
+import { resolveImage } from "./api";
+
+const fallbackAvatar = (name) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    name || "User"
+  )}&size=96&background=DFE8F6&color=1D3A6D`;
 
 export default function Sidebar({ user, openChat, openProfile }) {
   const navigate = useNavigate();
 
-  const avatar =
-    user?.avatar ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      user?.name || "User"
-    )}&size=64`;
+  const avatar = resolveImage(user?.avatar) || fallbackAvatar(user?.name);
+
+  const goProfile = () => {
+    if (typeof openProfile === "function") {
+      openProfile();
+      return;
+    }
+
+    if (user?.username) {
+      navigate(`/profile/${user.username}`);
+    }
+  };
 
   return (
-    <aside className="card sidebar" role="navigation">
-      {/* ===== USER HEADER ===== */}
-      <div
-        className="sidebar-user"
-        onClick={openProfile}
-        role="button"
-      >
-        <img src={avatar} className="sb-avatar" />
-
+    <aside className="card sidebar-nav" role="navigation">
+      <button className="sidebar-user" onClick={goProfile}>
+        <img src={avatar} className="sb-avatar" alt="" />
         <div className="sb-meta">
-          <b>{user.name}</b>
-          <span>@{user.username}</span>
+          <b>{user?.name || "User"}</b>
+          <span>@{user?.username || "username"}</span>
         </div>
-      </div>
-
-      <div className="sb-divider" />
-
-      {/* ===== PRIMARY NAV ===== */}
-
-      <button
-        className="sidebar-btn"
-        onClick={() => navigate("/home")}
-      >
-        <span className="sb-icon">🏠</span>
-        <span>Home</span>
-      </button>
-
-      <button
-        className="sidebar-btn"
-        onClick={() => navigate("/trending")}
-      >
-        <span className="sb-icon">🔥</span>
-        <span>Trending</span>
-      </button>
-
-      <button
-        className="sidebar-btn"
-        onClick={() => navigate("/creator")}
-      >
-        <span className="sb-icon">📊</span>
-        <span>Creator Dashboard</span>
-      </button>
-
-      <button
-        className="sidebar-btn"
-        onClick={() => navigate("/notifications")}
-      >
-        <span className="sb-icon">🔔</span>
-        <span>Notifications</span>
-        <span className="sb-badge">3</span>
-      </button>
-
-      <button
-        className="sidebar-btn"
-        onClick={openChat}
-      >
-        <span className="sb-icon">💬</span>
-        <span>Messages</span>
-        <span className="sb-badge">2</span>
-      </button>
-
-      <button
-        className="sidebar-btn"
-        onClick={openProfile}
-      >
-        <span className="sb-icon">👤</span>
-        <span>Profile</span>
       </button>
 
       <div className="sb-divider" />
 
-      {/* ===== SHORTCUTS ===== */}
-      <div className="sb-section-title">
-        Discover
-      </div>
-
-      <button className="sidebar-btn">
-        <span className="sb-icon">👥</span>
-        <span>Communities</span>
+      <button className="sidebar-btn" onClick={() => navigate("/home")}>
+        Home
       </button>
 
-      <button className="sidebar-btn">
-        <span className="sb-icon">⭐</span>
-        <span>Recommended</span>
+      <button className="sidebar-btn" onClick={() => navigate("/trending")}>
+        Trending
       </button>
 
-      <button className="sidebar-btn">
-        <span className="sb-icon">🎬</span>
-        <span>Creators</span>
+      <button className="sidebar-btn" onClick={() => navigate("/creator")}>
+        Creator Dashboard
       </button>
 
-      <button className="sidebar-btn">
-        <span className="sb-icon">🛒</span>
-        <span>Marketplace</span>
+      <button className="sidebar-btn" onClick={() => navigate("/notifications")}>
+        Notifications
+      </button>
+
+      <button className="sidebar-btn" onClick={openChat}>
+        Messages
+      </button>
+
+      <button className="sidebar-btn" onClick={goProfile}>
+        Profile
       </button>
     </aside>
   );

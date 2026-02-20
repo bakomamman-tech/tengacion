@@ -102,7 +102,7 @@ export default function Search() {
               borderBottom: "1px solid #ddd",
               cursor: "pointer",
             }}
-            onClick={() => navigate(`/post/${p._id}`)}
+            onClick={() => navigate("/home")}
           >
             <div style={{ marginBottom: 6 }}>
               <b>{p.name}</b>{" "}

@@ -38,7 +38,8 @@ const auth = asyncHandler(async (req, res, next) => {
   }
 
   // 4️⃣ Attach trusted identity
-  req.user = { id: user._id };
+  req.user = { id: user._id.toString(), _id: user._id };
+  req.userId = user._id.toString();
 
   next();
 });

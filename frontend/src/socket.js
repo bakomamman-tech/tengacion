@@ -1,30 +1,48 @@
 import { io } from "socket.io-client";
 
-/* ======================================================
-   FACEBOOK-GRADE SOCKET MANAGER
-====================================================== */
-
-const URL = "https://tengacion-api.onrender.com";
+const getSocketUrl = () => {
+  if (import.meta.env.VITE_SOCKET_URL) {
+    return import.meta.env.VITE_SOCKET_URL;
+  }
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return "http://localhost:5000";
+};
 
 let socket = null;
+let activeToken = "";
+let activeUserId = "";
 
-/**
- * Connect socket AFTER authentication
- */
 export function connectSocket({ token, userId }) {
-  if (socket || !token || !userId) return socket;
+  if (!token || !userId) return null;
 
-  socket = io(URL, {
+  if (
+    socket &&
+    socket.connected &&
+    activeToken === token &&
+    activeUserId === userId
+  ) {
+    return socket;
+  }
+
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+
+  activeToken = token;
+  activeUserId = userId;
+
+  socket = io(getSocketUrl(), {
     path: "/socket.io",
-    transports: ["websocket"],
-    secure: true,
-
+    transports: ["websocket", "polling"],
+    withCredentials: true,
     autoConnect: false,
     reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 2000,
-    timeout: 8000,
-
+    reconnectionAttempts: 10,
+    reconnectionDelay: 1200,
+    timeout: 10000,
     auth: {
       token,
       userId,
@@ -34,27 +52,26 @@ export function connectSocket({ token, userId }) {
   socket.connect();
 
   socket.on("connect", () => {
-    console.log("🔌 Socket connected");
     socket.emit("join", userId);
   });
 
-  socket.on("connect_error", (err) => {
-    console.warn("⚠ Socket error:", err.message);
-  });
-
-  socket.on("disconnect", (reason) => {
-    console.log("🔌 Socket disconnected:", reason);
+  socket.on("reconnect", () => {
+    socket.emit("join", userId);
   });
 
   return socket;
 }
 
-/**
- * Disconnect socket on logout / unmount
- */
+export function getSocket() {
+  return socket;
+}
+
 export function disconnectSocket() {
   if (!socket) return;
 
+  socket.removeAllListeners();
   socket.disconnect();
   socket = null;
+  activeToken = "";
+  activeUserId = "";
 }

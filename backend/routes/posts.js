@@ -1,142 +1,282 @@
 const express = require("express");
-const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const Post = require("../models/Post");
 const User = require("../models/User");
-const Notification = require("../models/Notification");
+const auth = require("../middleware/auth");
 const upload = require("../utils/upload");
+const { createNotification } = require("../services/notificationService");
 
 const router = express.Router();
 
-/* ================= AUTH ================= */
+const avatarToUrl = (avatar) => {
+  if (!avatar) return "";
+  if (typeof avatar === "string") return avatar;
+  return avatar.url || "";
+};
 
-function auth(req, res, next) {
-  const header = req.headers.authorization;
-  if (!header) return res.status(401).json({ error: "No token" });
+const toPostPayload = (post, viewerId) => {
+  const author = post.author || {};
+  const firstMedia = Array.isArray(post.media) && post.media.length > 0
+    ? post.media[0]
+    : null;
+  const likes = Array.isArray(post.likes) ? post.likes : [];
+  const comments = Array.isArray(post.comments) ? post.comments : [];
+  const authorId = author?._id ? author._id.toString() : "";
 
-  const token = header.startsWith("Bearer ")
-    ? header.split(" ")[1]
-    : header;
+  return {
+    _id: post._id.toString(),
+    text: post.text || "",
+    image: firstMedia?.url || "",
+    media: Array.isArray(post.media) ? post.media : [],
+    name: author.name || "",
+    username: author.username || "",
+    avatar: avatarToUrl(author.avatar),
+    likes: likes.length,
+    likesCount: likes.length,
+    comments,
+    commentsCount: post.commentsCount ?? comments.length,
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
+    edited: Boolean(post.edited),
+    isOwner: Boolean(viewerId && authorId && authorId === viewerId.toString()),
+    user: {
+      _id: authorId,
+      name: author.name || "",
+      username: author.username || "",
+      profilePic: avatarToUrl(author.avatar),
+    },
+  };
+};
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
-    next();
-  } catch {
-    return res.status(401).json({ error: "Invalid token" });
-  }
-}
+const withPostAuthor = (query) =>
+  query.populate("author", "name username avatar");
 
 /* ================= CREATE POST ================= */
+router.post(
+  "/",
+  auth,
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "file", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const viewerId = req.user.id;
+      const text = (req.body?.text || "").trim();
+      const uploadFile =
+        req.files?.image?.[0] || req.files?.file?.[0] || null;
 
-router.post("/", auth, upload.single("image"), async (req, res) => {
-  try {
-    const user = await User.findById(req.userId);
-    if (!user) return res.status(401).json({ error: "User not found" });
+      if (!text && !uploadFile) {
+        return res.status(400).json({ error: "Post cannot be empty" });
+      }
 
-    const post = await Post.create({
-      userId: user._id,
-      name: user.name,
-      username: user.username,
-      avatar: user.avatar || "",
-      text: req.body.text || "",
-      image: req.file ? `/uploads/${req.file.filename}` : "",
-      time: new Date().toISOString(),
-      likes: [],
-      comments: []
-    });
-
-    res.json(post);
-  } catch (err) {
-    console.error("Create post error:", err);
-    res.status(500).json({ error: "Failed to create post" });
-  }
-});
-
-/* ================= FEED ================= */
-
-router.get("/", auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.userId);
-    if (!user) return res.status(401).json({ error: "User not found" });
-
-    const ids = [
-      user._id.toString(),
-      ...(user.following || []).map((id) => id.toString())
-    ];
-
-    const posts = await Post.find({
-      userId: { $in: ids }
-    }).sort({ time: -1 });
-
-    res.json(posts);
-  } catch (err) {
-    console.error("Feed error:", err);
-    res.status(500).json({ error: "Failed to load feed" });
-  }
-});
-
-/* ================= LIKE ================= */
-
-router.post("/:id/like", auth, async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ error: "Post not found" });
-
-    if (!post.likes.includes(req.userId)) {
-      post.likes.push(req.userId);
-
-      // 🔔 notify post owner
-      if (post.userId.toString() !== req.userId) {
-        await Notification.create({
-          userId: post.userId,
-          fromId: req.userId,
-          type: "like",
-          text: "Someone liked your post"
+      const media = [];
+      if (uploadFile) {
+        media.push({
+          url: `/uploads/${uploadFile.filename}`,
+          type: uploadFile.mimetype.startsWith("video/") ? "video" : "image",
         });
       }
 
-      await post.save();
+      const created = await Post.create({
+        author: viewerId,
+        text,
+        media,
+        privacy: "public",
+      });
+
+      const post = await withPostAuthor(Post.findById(created._id)).lean();
+      return res.status(201).json(toPostPayload(post, viewerId));
+    } catch (err) {
+      console.error("Create post error:", err);
+      return res.status(500).json({ error: "Failed to create post" });
+    }
+  }
+);
+
+/* ================= FEED ================= */
+router.get("/", auth, async (req, res) => {
+  try {
+    const viewerId = req.user.id;
+    const search = (req.query.search || "").trim();
+
+    const viewer = await User.findById(viewerId).select("following");
+    if (!viewer) {
+      return res.status(401).json({ error: "User not found" });
     }
 
-    res.json(post);
+    const authorIds = [
+      viewerId,
+      ...(viewer.following || []).map((id) => id.toString()),
+    ];
+
+    const query = { author: { $in: authorIds } };
+    if (search) {
+      query.text = { $regex: search, $options: "i" };
+    }
+
+    const posts = await withPostAuthor(
+      Post.find(query).sort({ createdAt: -1 })
+    ).lean();
+
+    return res.json(posts.map((post) => toPostPayload(post, viewerId)));
   } catch (err) {
-    console.error("Like error:", err);
-    res.status(500).json({ error: "Failed to like post" });
+    console.error("Feed error:", err);
+    return res.status(500).json({ error: "Failed to load feed" });
   }
 });
 
-/* ================= COMMENT ================= */
-
-router.post("/:id/comment", auth, async (req, res) => {
+/* ================= UPDATE POST ================= */
+router.put("/:id", auth, async (req, res) => {
   try {
-    const user = await User.findById(req.userId);
-    if (!user) return res.status(401).json({ error: "User not found" });
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: "Invalid post id" });
+    }
 
-    const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ error: "Post not found" });
+    const viewerId = req.user.id;
+    const text = (req.body?.text || "").trim();
+    if (!text) {
+      return res.status(400).json({ error: "Post text is required" });
+    }
 
-    post.comments.push({
-      userId: user._id,
-      name: user.name,
-      username: user.username,
-      text: req.body.text
+    const post = await Post.findOne({
+      _id: req.params.id,
+      author: viewerId,
     });
 
-    // 🔔 notify post owner
-    if (post.userId.toString() !== req.userId) {
-      await Notification.create({
-        userId: post.userId,
-        fromId: req.userId,
-        type: "comment",
-        text: `${user.username} commented on your post`
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    post.text = text;
+    post.edited = true;
+    await post.save();
+
+    const updated = await withPostAuthor(Post.findById(post._id)).lean();
+    return res.json(toPostPayload(updated, viewerId));
+  } catch (err) {
+    console.error("Update post error:", err);
+    return res.status(500).json({ error: "Failed to update post" });
+  }
+});
+
+/* ================= DELETE POST ================= */
+router.delete("/:id", auth, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: "Invalid post id" });
+    }
+
+    const deleted = await Post.findOneAndDelete({
+      _id: req.params.id,
+      author: req.user.id,
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Delete post error:", err);
+    return res.status(500).json({ error: "Failed to delete post" });
+  }
+});
+
+/* ================= LIKE / UNLIKE ================= */
+router.post("/:id/like", auth, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: "Invalid post id" });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    const viewerId = req.user.id.toString();
+    const liked = post.likes.some((id) => id.toString() === viewerId);
+
+    if (liked) {
+      post.likes.pull(viewerId);
+    } else {
+      post.likes.addToSet(viewerId);
+
+      await createNotification({
+        recipient: post.author,
+        sender: viewerId,
+        type: "like",
+        text: "liked your post",
+        entity: {
+          id: post._id,
+          model: "Post",
+        },
+        io: req.app.get("io"),
+        onlineUsers: req.app.get("onlineUsers"),
       });
     }
 
     await post.save();
-    res.json(post);
+
+    return res.json({
+      success: true,
+      liked: !liked,
+      likesCount: post.likes.length,
+    });
+  } catch (err) {
+    console.error("Like error:", err);
+    return res.status(500).json({ error: "Failed to update like" });
+  }
+});
+
+/* ================= COMMENT ================= */
+router.post("/:id/comment", auth, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: "Invalid post id" });
+    }
+
+    const viewerId = req.user.id;
+    const text = (req.body?.text || "").trim();
+    if (!text) {
+      return res.status(400).json({ error: "Comment text is required" });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    post.comments.push({
+      author: viewerId,
+      text,
+    });
+    post.commentsCount = post.comments.length;
+    await post.save();
+
+    await createNotification({
+      recipient: post.author,
+      sender: viewerId,
+      type: "comment",
+      text: "commented on your post",
+      entity: {
+        id: post._id,
+        model: "Post",
+      },
+      io: req.app.get("io"),
+      onlineUsers: req.app.get("onlineUsers"),
+    });
+
+    const latestComment = post.comments[post.comments.length - 1];
+    return res.status(201).json({
+      success: true,
+      comment: latestComment,
+      commentsCount: post.commentsCount,
+    });
   } catch (err) {
     console.error("Comment error:", err);
-    res.status(500).json({ error: "Failed to comment" });
+    return res.status(500).json({ error: "Failed to add comment" });
   }
 });
 

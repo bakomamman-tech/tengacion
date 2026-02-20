@@ -149,6 +149,12 @@ UserSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
   delete obj.__v;
+  if (obj.avatar && typeof obj.avatar === "object") {
+    obj.avatar = obj.avatar.url || "";
+  }
+  if (obj.cover && typeof obj.cover === "object") {
+    obj.cover = obj.cover.url || "";
+  }
   return obj;
 };
 

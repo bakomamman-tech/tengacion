@@ -10,7 +10,7 @@ const paginate = require("../utils/paginate");
 exports.getNotifications = asyncHandler(async (req, res) => {
   const { page, limit, skip } = paginate(req);
 
-  const query = { userId: req.user.id };
+  const query = { recipient: req.user.id };
 
   const [items, total] = await Promise.all([
     Notification.find(query)
@@ -42,7 +42,7 @@ exports.markAsRead = asyncHandler(async (req, res) => {
   const notification = await Notification.findOneAndUpdate(
     {
       _id: req.params.id,
-      userId: req.user.id, // 🔐 ownership check
+      recipient: req.user.id,
     },
     { read: true },
     { new: true }
@@ -66,7 +66,7 @@ exports.markAsRead = asyncHandler(async (req, res) => {
  */
 exports.markAllAsRead = asyncHandler(async (req, res) => {
   await Notification.updateMany(
-    { userId: req.user.id, read: false },
+    { recipient: req.user.id, read: false },
     { read: true }
   );
 

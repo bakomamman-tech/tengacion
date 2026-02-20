@@ -13,7 +13,7 @@ export default defineConfig([
 
     extends: [
       js.configs.recommended,
-      reactHooks.configs.flat.recommended,
+      reactHooks.configs['recommended-latest'],
       reactRefresh.configs.vite,
     ],
 
@@ -60,9 +60,6 @@ export default defineConfig([
       'no-unsafe-optional-chaining': 'error',
       'no-duplicate-imports': 'error',
 
-      /* ===== ACCESSIBILITY HINTS ===== */
-      'jsx-a11y/alt-text': 'warn',
-      'jsx-a11y/anchor-has-content': 'warn',
     },
   },
 ])

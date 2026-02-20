@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import PostSkeleton from "../components/PostSkeleton";
@@ -9,26 +9,23 @@ import Sidebar from "../Sidebar";
 import Messenger from "../Messenger";
 import Stories from "../stories/StoriesBar";
 
-import { getProfile, getFeed } from "../api";
+import { getFeed, getProfile, resolveImage } from "../api";
 
-/* ======================================================
-   POST COMPOSER MODAL (FACEBOOK-LEVEL UX)
-====================================================== */
 function PostComposerModal({ user, onClose, onPosted }) {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const boxRef = useRef(null);
 
-  // Lock background scroll
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => (document.body.style.overflow = "");
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
-  // Close on outside click
   useEffect(() => {
-    const handler = (e) => {
-      if (boxRef.current && !boxRef.current.contains(e.target)) {
+    const handler = (event) => {
+      if (boxRef.current && !boxRef.current.contains(event.target)) {
         onClose();
       }
     };
@@ -36,9 +33,10 @@ function PostComposerModal({ user, onClose, onPosted }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [onClose]);
 
-  // Close on ESC
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
+    const onKey = (event) => {
+      if (event.key === "Escape") onClose();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
@@ -49,17 +47,19 @@ function PostComposerModal({ user, onClose, onPosted }) {
     try {
       setLoading(true);
 
-      const res = await fetch("/api/posts", {
+      const response = await fetch("/api/posts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer " + localStorage.getItem("token"),
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({ text }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Post failed");
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to create post");
+      }
 
       onPosted(data);
       onClose();
@@ -73,28 +73,27 @@ function PostComposerModal({ user, onClose, onPosted }) {
   return (
     <div className="pc-overlay">
       <div className="pc-modal" ref={boxRef} role="dialog" aria-modal="true">
-        {/* HEADER */}
         <div className="pc-header">
           <h3>Create post</h3>
           <button className="pc-close" onClick={onClose} aria-label="Close">
-            ×
+            x
           </button>
         </div>
 
-        {/* USER ROW */}
         <div className="pc-user">
           <img
-            src={user?.avatar || "/avatar.png"}
+            src={resolveImage(user?.avatar) || "/avatar.png"}
             className="pc-avatar"
-            alt={user?.username}
+            alt={user?.username || "You"}
           />
           <div className="pc-user-meta">
             <div className="pc-name">{user?.username}</div>
-            <button className="pc-privacy">🌍 Public ▾</button>
+            <button className="pc-privacy" type="button">
+              Public
+            </button>
           </div>
         </div>
 
-        {/* TEXTAREA */}
         <textarea
           className="pc-textarea"
           placeholder={`What's on your mind, ${user?.username || ""}?`}
@@ -105,59 +104,57 @@ function PostComposerModal({ user, onClose, onPosted }) {
 
         <div className="pc-divider" />
 
-        {/* ADD TO POST */}
         <div className="pc-add">
           <span>Add to your post</span>
 
           <div className="pc-actions">
-            <button title="Photo or Video">🖼️</button>
-            <button title="Tag People">👥</button>
-            <button title="Feeling">😊</button>
-            <button title="Location">📍</button>
-            <button title="Music">🎵</button>
-            <button title="More">⋯</button>
+            <button type="button" title="Photo or Video">
+              Media
+            </button>
+            <button type="button" title="Tag People">
+              Tag
+            </button>
+            <button type="button" title="Location">
+              Place
+            </button>
+            <button type="button" title="More">
+              More
+            </button>
           </div>
         </div>
 
-        {/* POST BUTTON */}
         <button
           className={`pc-submit ${text.trim() ? "active" : ""}`}
           disabled={!text.trim() || loading}
           onClick={submit}
         >
-          {loading ? "Posting…" : "Post"}
+          {loading ? "Posting..." : "Post"}
         </button>
       </div>
     </div>
   );
 }
 
-/* ======================================================
-   HOME PAGE (FINAL FEED PAGE)
-====================================================== */
 export default function Home({ user }) {
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [chatOpen, setChatOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
 
-  /* ===== LOAD PROFILE + FEED (PARALLEL) ===== */
   useEffect(() => {
     let alive = true;
 
     const load = async () => {
       try {
         setLoading(true);
-
-        const [p, feed] = await Promise.all([getProfile(), getFeed()]);
+        const [me, feed] = await Promise.all([getProfile(), getFeed()]);
 
         if (!alive) return;
 
-        setProfile(p);
+        setProfile(me);
         setPosts(Array.isArray(feed) ? feed : []);
       } catch {
         if (alive) alert("Failed to load feed");
@@ -167,46 +164,45 @@ export default function Home({ user }) {
     };
 
     load();
-    return () => (alive = false);
+    return () => {
+      alive = false;
+    };
   }, []);
 
-  /* ===== LOGOUT ===== */
   const logout = () => {
     localStorage.removeItem("token");
     navigate("/");
   };
 
-  /* ===== ADD NEW POST TO TOP ===== */
-  const onPosted = (post) => {
-    setPosts((prev) => [post, ...prev]);
-  };
+  const currentUser = profile || user;
 
   return (
     <>
-      <Navbar user={profile || user} onLogout={logout} />
+      <Navbar user={currentUser} onLogout={logout} />
 
       <div className="app-shell">
         <aside className="sidebar">
-          <Sidebar user={profile || user} openChat={() => setChatOpen(true)} />
+          <Sidebar
+            user={currentUser}
+            openChat={() => setChatOpen(true)}
+            openProfile={() => navigate(`/profile/${currentUser?.username}`)}
+          />
         </aside>
 
         <main className="feed">
-          {/* Stories should not show skeleton if loading */}
           {!loading && <Stories />}
 
-          {/* Create Post */}
           <div className="card create-post" onClick={() => setComposerOpen(true)}>
             <div className="create-post-row">
               <img
                 className="create-post-avatar"
-                src={(profile || user)?.avatar || "/avatar.png"}
+                src={resolveImage(currentUser?.avatar) || "/avatar.png"}
                 alt="me"
               />
               <input placeholder="What's on your mind?" readOnly />
             </div>
           </div>
 
-          {/* POSTS */}
           <div className="tengacion-feed">
             {loading ? (
               <>
@@ -216,9 +212,9 @@ export default function Home({ user }) {
               </>
             ) : posts.length === 0 ? (
               <div className="card empty-feed">
-                <div className="empty-feed-icon">📰</div>
+                <div className="empty-feed-icon">News</div>
                 <h3>No posts yet</h3>
-                <p>Be the first to share something with your friends ✨</p>
+                <p>Be the first to share something with your friends.</p>
                 <button
                   className="empty-feed-btn"
                   onClick={() => setComposerOpen(true)}
@@ -227,17 +223,17 @@ export default function Home({ user }) {
                 </button>
               </div>
             ) : (
-              posts.map((p) => (
+              posts.map((post) => (
                 <PostCard
-                  key={p._id}
-                  post={p}
+                  key={post._id}
+                  post={post}
                   onDelete={(id) =>
-                    setPosts((prev) => prev.filter((x) => x._id !== id))
+                    setPosts((prev) => prev.filter((entry) => entry._id !== id))
                   }
                   onEdit={(updatedPost) =>
                     setPosts((prev) =>
-                      prev.map((x) =>
-                        x._id === updatedPost._id ? updatedPost : x
+                      prev.map((entry) =>
+                        entry._id === updatedPost._id ? updatedPost : entry
                       )
                     )
                   }
@@ -247,23 +243,18 @@ export default function Home({ user }) {
           </div>
         </main>
 
-        {/* Messenger */}
         {chatOpen && (
-          <section className="messenger">
-            <Messenger
-              user={profile || user}
-              onClose={() => setChatOpen(false)}
-            />
+          <section className="messenger-panel">
+            <Messenger user={currentUser} onClose={() => setChatOpen(false)} />
           </section>
         )}
       </div>
 
-      {/* Composer Modal */}
       {composerOpen && (
         <PostComposerModal
-          user={profile || user}
+          user={currentUser}
           onClose={() => setComposerOpen(false)}
-          onPosted={onPosted}
+          onPosted={(post) => setPosts((prev) => [post, ...prev])}
         />
       )}
     </>

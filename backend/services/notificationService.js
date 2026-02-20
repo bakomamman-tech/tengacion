@@ -28,9 +28,11 @@ exports.createNotification = async ({
 
     // 🔔 Realtime delivery
     if (io && onlineUsers) {
-      const socketId = onlineUsers.get(recipient.toString());
-      if (socketId) {
-        io.to(socketId).emit("notification", notification);
+      const sockets = onlineUsers.get(recipient.toString());
+      if (sockets instanceof Set && sockets.size > 0) {
+        for (const socketId of sockets) {
+          io.to(socketId).emit("notification", notification);
+        }
       }
     }
 

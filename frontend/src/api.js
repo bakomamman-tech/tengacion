@@ -205,11 +205,39 @@ export const uploadVideo = (videoUrl, caption) =>
   });
 
 // ======================================================
+// MESSAGES
+// ======================================================
+
+export const getChatContacts = () =>
+  request(`${API_BASE}/messages/contacts`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getConversationMessages = (otherUserId) =>
+  request(`${API_BASE}/messages/${otherUserId}`, {
+    headers: getAuthHeaders(),
+  });
+
+export const sendChatMessage = (otherUserId, text, clientId) =>
+  request(`${API_BASE}/messages/${otherUserId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ text, clientId }),
+  });
+
+// ======================================================
 // 🟢 UTIL
 // ======================================================
 
 export const resolveImage = (path) => {
   if (!path) return "";
+  if (typeof path === "object") {
+    return resolveImage(path.url || "");
+  }
   if (path.startsWith("http")) return path;
+  if (path.startsWith("data:")) return path;
   return path.startsWith("/") ? path : `/${path}`;
 };

@@ -15,7 +15,10 @@ const cors = require("cors");
 const http = require("http");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const jwt = require("jsonwebtoken");
 const { Server } = require("socket.io");
+const Message = require("./models/Message");
+const User = require("./models/User");
 
 const errorHandler = require("./middleware/errorHandler");
 
@@ -99,21 +102,188 @@ const io = new Server(server, {
 
 app.get("/socket.io", (_, res) => res.send("socket ok"));
 
-const onlineUsers = new Map();
+const onlineUsers = new Map(); // userId -> Set(socketId)
+
+const toIdString = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (value._id) return value._id.toString();
+  return value.toString();
+};
+
+const buildConversationId = (a, b) =>
+  [toIdString(a), toIdString(b)].sort().join("_");
+
+const avatarToUrl = (avatar) => {
+  if (!avatar) return "";
+  if (typeof avatar === "string") return avatar;
+  return avatar.url || "";
+};
+
+const normalizeMessage = (message) => {
+  const senderDoc =
+    message?.senderId && typeof message.senderId === "object"
+      ? message.senderId
+      : null;
+
+  return {
+    _id: toIdString(message._id),
+    conversationId: message.conversationId,
+    senderId: toIdString(message.senderId),
+    receiverId: toIdString(message.receiverId),
+    senderName: message.senderName || senderDoc?.name || "",
+    senderAvatar: avatarToUrl(senderDoc?.avatar),
+    text: message.text,
+    status: message.status || "sent",
+    time:
+      message.time ||
+      (message.createdAt ? new Date(message.createdAt).getTime() : Date.now()),
+    createdAt: message.createdAt,
+    updatedAt: message.updatedAt,
+    clientId: message.clientId || null,
+  };
+};
+
+const emitOnlineUsers = () => {
+  io.emit("onlineUsers", [...onlineUsers.keys()]);
+};
+
+const addOnlineUserSocket = (userId, socketId) => {
+  const id = toIdString(userId);
+  if (!id) return;
+  if (!onlineUsers.has(id)) {
+    onlineUsers.set(id, new Set());
+  }
+  onlineUsers.get(id).add(socketId);
+};
+
+const removeOnlineUserSocket = (userId, socketId) => {
+  const id = toIdString(userId);
+  if (!id || !onlineUsers.has(id)) return;
+  const sockets = onlineUsers.get(id);
+  sockets.delete(socketId);
+  if (sockets.size === 0) {
+    onlineUsers.delete(id);
+  }
+};
+
+const authenticateSocketUser = (socket) => {
+  const token = socket.handshake?.auth?.token;
+  const fallbackUserId = toIdString(socket.handshake?.auth?.userId);
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      return toIdString(decoded.id);
+    } catch {
+      return "";
+    }
+  }
+
+  return fallbackUserId;
+};
+
+const attachUserToSocket = (socket, userId) => {
+  const id = toIdString(userId);
+  if (!id) return;
+  socket.userId = id;
+  socket.join(id);
+  addOnlineUserSocket(id, socket.id);
+  emitOnlineUsers();
+};
+
+app.set("io", io);
+app.set("onlineUsers", onlineUsers);
 
 io.on("connection", (socket) => {
+  const initialUserId = authenticateSocketUser(socket);
+  if (initialUserId) {
+    attachUserToSocket(socket, initialUserId);
+  }
+
   socket.on("join", (userId) => {
-    if (!userId) return;
-    socket.userId = userId;
-    onlineUsers.set(userId, socket.id);
-    io.emit("onlineUsers", [...onlineUsers.keys()]);
+    const trustedUserId = initialUserId || authenticateSocketUser(socket);
+    const requestedUserId = toIdString(userId);
+    if (!trustedUserId || requestedUserId !== trustedUserId) return;
+    attachUserToSocket(socket, trustedUserId);
+  });
+
+  socket.on("sendMessage", async (payload = {}, ack) => {
+    try {
+      const senderId = socket.userId || authenticateSocketUser(socket);
+      const receiverId = toIdString(payload.receiverId);
+      const text = (payload.text || "").trim();
+      const clientId = (payload.clientId || "").trim();
+
+      if (!senderId) {
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "Unauthorized socket user" });
+        }
+        return;
+      }
+
+      if (!receiverId || !text || senderId === receiverId) {
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "Invalid message payload" });
+        }
+        return;
+      }
+
+      const sender = await User.findById(senderId).select("name");
+      if (!sender) {
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "Sender not found" });
+        }
+        return;
+      }
+
+      const conversationId = buildConversationId(senderId, receiverId);
+      if (clientId) {
+        const existing = await Message.findOne({
+          conversationId,
+          senderId,
+          clientId,
+        }).populate("senderId", "name username avatar");
+
+        if (existing) {
+          const normalizedExisting = normalizeMessage(existing.toObject());
+          io.to(senderId).to(receiverId).emit("newMessage", normalizedExisting);
+          if (typeof ack === "function") {
+            ack({ ok: true, message: normalizedExisting });
+          }
+          return;
+        }
+      }
+
+      const message = await Message.create({
+        conversationId,
+        senderId,
+        receiverId,
+        senderName: sender.name || "",
+        text,
+        time: Date.now(),
+        clientId: clientId || undefined,
+      });
+
+      await message.populate("senderId", "name username avatar");
+      const normalized = normalizeMessage(message.toObject());
+
+      io.to(senderId).to(receiverId).emit("newMessage", normalized);
+
+      if (typeof ack === "function") {
+        ack({ ok: true, message: normalized });
+      }
+    } catch (err) {
+      console.error("Socket sendMessage error:", err);
+      if (typeof ack === "function") {
+        ack({ ok: false, error: "Failed to send message" });
+      }
+    }
   });
 
   socket.on("disconnect", () => {
-    for (const [uid, sid] of onlineUsers.entries()) {
-      if (sid === socket.id) onlineUsers.delete(uid);
-    }
-    io.emit("onlineUsers", [...onlineUsers.keys()]);
+    removeOnlineUserSocket(socket.userId, socket.id);
+    emitOnlineUsers();
   });
 });
 

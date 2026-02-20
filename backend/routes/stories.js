@@ -6,6 +6,12 @@ const upload = require("../utils/upload");
 
 const router = express.Router();
 
+const avatarToUrl = (avatar) => {
+  if (!avatar) return "";
+  if (typeof avatar === "string") return avatar;
+  return avatar.url || "";
+};
+
 /* ================= AUTH ================= */
 
 function auth(req, res, next) {
@@ -36,7 +42,7 @@ router.post("/", auth, upload.single("image"), async (req, res) => {
       userId: user._id,
       name: user.name,
       username: user.username,
-      avatar: user.avatar || "",
+      avatar: avatarToUrl(user.avatar),
       text: req.body.text || "",
       image: req.file ? `/uploads/${req.file.filename}` : "",
       time: new Date(),

@@ -90,6 +90,11 @@ const UserSchema = new mongoose.Schema(
 
     passwordChangedAt: Date,
 
+    joined: {
+      type: Date,
+      default: Date.now,
+    },
+
     /* ================= SOCIAL ================= */
     followers: [
       {

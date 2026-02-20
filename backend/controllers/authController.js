@@ -9,6 +9,33 @@ const generateToken = (id) =>
 
 const isOtpRequired = () => process.env.REQUIRE_EMAIL_OTP === "true";
 
+const extractDuplicateField = (err) => {
+  if (!err) return "";
+
+  const keyPatternField = err.keyPattern ? Object.keys(err.keyPattern)[0] : "";
+  if (keyPatternField) return keyPatternField;
+
+  const keyValueField = err.keyValue ? Object.keys(err.keyValue)[0] : "";
+  if (keyValueField) return keyValueField;
+
+  const message = err.message || "";
+  const match = message.match(/dup key:\s*\{\s*([^:]+)\s*:/i);
+  if (match && match[1]) {
+    return String(match[1]).replace(/["'`]/g, "").trim();
+  }
+
+  return "";
+};
+
+const legacyFallbackValue = (field) => {
+  const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+  if (field === "phone") return `tmp_${stamp}`;
+  if (field === "country") return `tmp_${stamp}`;
+  if (field === "joined") return new Date();
+  return null;
+};
+
 /* ================= CHECK USERNAME ================= */
 exports.checkUsername = async (req, res) => {
   const username = (req.query.username || "").toLowerCase().trim();
@@ -115,15 +142,44 @@ exports.register = async (req, res) => {
     }
 
     const displayName = rawName || username;
-
-    // Password is hashed by the User model pre-save hook.
-    const user = await User.create({
+    const baseUserData = {
       name: displayName,
       username,
       email,
       password,
       isVerified: true,
-    });
+      joined: new Date(),
+    };
+
+    const phone = (req.body.phone || "").trim();
+    const country = (req.body.country || "").trim();
+    if (phone) baseUserData.phone = phone;
+    if (country) baseUserData.country = country;
+
+    let user;
+    try {
+      // Password is hashed by the User model pre-save hook.
+      user = await User.create(baseUserData);
+    } catch (createErr) {
+      const duplicateField = extractDuplicateField(createErr);
+      const hasExplicitValue =
+        Object.prototype.hasOwnProperty.call(baseUserData, duplicateField);
+      const fallback = legacyFallbackValue(duplicateField);
+
+      if (
+        createErr?.code === 11000 &&
+        duplicateField &&
+        !hasExplicitValue &&
+        fallback !== null
+      ) {
+        user = await User.create({
+          ...baseUserData,
+          [duplicateField]: fallback,
+        });
+      } else {
+        throw createErr;
+      }
+    }
 
     if (requireOtp) {
       try {
@@ -138,15 +194,17 @@ exports.register = async (req, res) => {
       user,
     });
   } catch (err) {
-    if (err?.code === 11000 && err?.keyPattern) {
-      const field = Object.keys(err.keyPattern)[0];
+    if (err?.code === 11000) {
+      const field = extractDuplicateField(err);
       if (field === "email") {
         return res.status(409).json({ message: "Email already registered" });
       }
       if (field === "username") {
         return res.status(409).json({ message: "Username already taken" });
       }
-      return res.status(409).json({ message: "Duplicate value" });
+      return res.status(409).json({
+        message: field ? `Duplicate ${field} value` : "Duplicate value",
+      });
     }
 
     if (err?.name === "ValidationError") {

@@ -154,6 +154,12 @@ UserSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
   delete obj.__v;
+  if (typeof obj.phone === "string" && obj.phone.startsWith("tmp_phone_")) {
+    obj.phone = "";
+  }
+  if (typeof obj.country === "string" && obj.country.startsWith("tmp_country_")) {
+    obj.country = "";
+  }
   if (obj.avatar && typeof obj.avatar === "object") {
     obj.avatar = obj.avatar.url || "";
   }

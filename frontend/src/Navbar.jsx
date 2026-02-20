@@ -2,13 +2,34 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { resolveImage } from "./api";
 import { useTheme } from "./context/ThemeContext";
+import { Icon } from "./Icon";
 
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "User"
   )}&size=96&background=DFE8F6&color=1D3A6D`;
 
-export default function Navbar({ user, onLogout }) {
+const GridIcon = ({ size = 18 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+  >
+    <circle cx="5" cy="5" r="2" />
+    <circle cx="12" cy="5" r="2" />
+    <circle cx="19" cy="5" r="2" />
+    <circle cx="5" cy="12" r="2" />
+    <circle cx="12" cy="12" r="2" />
+    <circle cx="19" cy="12" r="2" />
+    <circle cx="5" cy="19" r="2" />
+    <circle cx="12" cy="19" r="2" />
+    <circle cx="19" cy="19" r="2" />
+  </svg>
+);
+
+export default function Navbar({ user, onLogout, onOpenMessenger }) {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
 
@@ -85,6 +106,15 @@ export default function Navbar({ user, onLogout }) {
   }, [query, performSearch]);
 
   const avatar = resolveImage(user?.avatar) || fallbackAvatar(user?.name);
+
+  const openMessenger = () => {
+    if (typeof onOpenMessenger === "function") {
+      onOpenMessenger();
+      return;
+    }
+
+    navigate("/home", { state: { openMessenger: true } });
+  };
 
   return (
     <header className="navbar" role="navigation">
@@ -172,31 +202,46 @@ export default function Navbar({ user, onLogout }) {
 
       {user && (
         <div className="nav-right">
-          <button
-            className="nav-icon"
-            onClick={() => navigate("/notifications")}
-            aria-label="Notifications"
-            title="Notifications"
-          >
-            Alerts
-          </button>
+          <div className="nav-actions-shell" aria-label="Quick actions">
+            <button
+              className="nav-circle-btn"
+              onClick={() => navigate("/home")}
+              aria-label="Apps"
+              title="Apps"
+            >
+              <GridIcon />
+            </button>
 
-          <button
-            className="nav-icon"
-            onClick={toggleTheme}
-            aria-label="Toggle dark mode"
-            title={isDark ? "Light mode" : "Dark mode"}
-          >
-            {isDark ? "Light" : "Dark"}
-          </button>
+            <button
+              className="nav-circle-btn"
+              onClick={openMessenger}
+              aria-label="Messages"
+              title="Messages"
+            >
+              <Icon name="message" size={18} />
+            </button>
+
+            <button
+              className="nav-circle-btn has-badge"
+              onClick={() => navigate("/notifications")}
+              aria-label="Notifications"
+              title="Notifications"
+            >
+              <Icon name="bell" size={18} />
+              <span className="nav-badge">1</span>
+            </button>
+          </div>
 
           <div className="avatar-wrapper" ref={menuRef}>
             <button
-              className="avatar-btn"
+              className="avatar-btn nav-avatar-chip"
               onClick={() => setShowMenu((open) => !open)}
               aria-label="Account menu"
             >
-              <img src={avatar} className="nav-avatar" alt="" />
+              <img src={avatar} className="nav-avatar" alt="Profile" />
+              <span className="nav-avatar-caret" aria-hidden="true">
+                v
+              </span>
             </button>
 
             {showMenu && (
@@ -214,6 +259,10 @@ export default function Navbar({ user, onLogout }) {
 
                 <div className="pm-divider" />
 
+                <button className="pm-item" onClick={toggleTheme}>
+                  {isDark ? "Switch to light mode" : "Switch to dark mode"}
+                </button>
+
                 <button className="pm-item logout" onClick={onLogout}>
                   Log out
                 </button>
@@ -225,3 +274,4 @@ export default function Navbar({ user, onLogout }) {
     </header>
   );
 }
+

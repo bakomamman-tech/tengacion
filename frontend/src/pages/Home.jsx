@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import PostSkeleton from "../components/PostSkeleton";
 import PostCard from "../components/PostCard";
@@ -137,6 +137,7 @@ function PostComposerModal({ user, onClose, onPosted }) {
 
 export default function Home({ user }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
@@ -169,6 +170,15 @@ export default function Home({ user }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!location.state?.openMessenger) {
+      return;
+    }
+
+    setChatOpen(true);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.pathname, location.state, navigate]);
+
   const logout = () => {
     localStorage.removeItem("token");
     navigate("/");
@@ -178,7 +188,11 @@ export default function Home({ user }) {
 
   return (
     <>
-      <Navbar user={currentUser} onLogout={logout} />
+      <Navbar
+        user={currentUser}
+        onLogout={logout}
+        onOpenMessenger={() => setChatOpen(true)}
+      />
 
       <div className="app-shell">
         <aside className="sidebar">

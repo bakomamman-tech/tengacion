@@ -1,5 +1,5 @@
 export const Icon = ({ name, size = 22, active }) => {
-  const color = active ? "#1877f2" : "#65676b";
+  const color = active ? "#1877f2" : "currentColor";
 
   const icons = {
     home: (

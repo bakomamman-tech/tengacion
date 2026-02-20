@@ -8,6 +8,8 @@ const generateToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
 const isOtpRequired = () => process.env.REQUIRE_EMAIL_OTP === "true";
+const USERNAME_REGEX = /^[a-zA-Z0-9._]{3,30}$/;
+const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 
 const extractDuplicateField = (err) => {
   if (!err) return "";
@@ -265,6 +267,17 @@ exports.register = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Password must be at least 8 characters" });
+    }
+
+    if (!USERNAME_REGEX.test(username)) {
+      return res.status(400).json({
+        message:
+          "Username can only contain letters, numbers, dots and underscores (3-30 chars)",
+      });
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ message: "Please use a valid email address" });
     }
 
     const [usernameExists, emailExists] = await Promise.all([

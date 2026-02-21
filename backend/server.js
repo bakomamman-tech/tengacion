@@ -65,7 +65,12 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-app.use("/api", apiLimiter);
+app.use("/api", (req, res, next) => {
+  if (req.path.startsWith("/media")) {
+    return next();
+  }
+  return apiLimiter(req, res, next);
+});
 
 /* =====================================================
    🌍 CORS

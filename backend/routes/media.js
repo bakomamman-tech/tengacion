@@ -10,9 +10,30 @@ const parseRange = (rangeHeader, fileSize) => {
   }
 
   const value = rangeHeader.replace("bytes=", "");
+  if (value.includes(",")) {
+    return null;
+  }
+
   const [startRaw, endRaw] = value.split("-");
-  const start = Number.parseInt(startRaw, 10);
-  const end = endRaw ? Number.parseInt(endRaw, 10) : fileSize - 1;
+  const hasStart = startRaw !== undefined && startRaw !== "";
+  const hasEnd = endRaw !== undefined && endRaw !== "";
+
+  let start = 0;
+  let end = fileSize - 1;
+
+  if (hasStart) {
+    start = Number.parseInt(startRaw, 10);
+    end = hasEnd ? Number.parseInt(endRaw, 10) : fileSize - 1;
+  } else if (hasEnd) {
+    const suffixLength = Number.parseInt(endRaw, 10);
+    if (!Number.isFinite(suffixLength) || suffixLength <= 0) {
+      return null;
+    }
+    start = Math.max(fileSize - suffixLength, 0);
+    end = fileSize - 1;
+  } else {
+    return null;
+  }
 
   if (!Number.isFinite(start) || !Number.isFinite(end)) {
     return null;
@@ -63,6 +84,12 @@ router.get("/:id", async (req, res) => {
       stream.on("error", () => res.end());
       stream.pipe(res);
       return;
+    }
+
+    if (req.headers.range) {
+      res.status(416);
+      res.setHeader("Content-Range", `bytes */${fileSize}`);
+      return res.end();
     }
 
     res.setHeader("Content-Length", fileSize);

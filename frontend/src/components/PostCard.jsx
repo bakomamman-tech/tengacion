@@ -169,9 +169,10 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   );
   const explicitVideo = mediaTypeCandidate === "video" || hasVideoExtension;
   const explicitImage = mediaTypeCandidate === "image" || hasImageExtension;
-  const inferredMediaType = explicitVideo ? "video" : explicitImage ? "image" : "video";
-  const [mediaRenderType, setMediaRenderType] = useState(inferredMediaType);
-  const [mediaFallbackUsed, setMediaFallbackUsed] = useState(false);
+  const shouldRenderVideo = explicitVideo;
+  const shouldRenderImage = explicitImage || !explicitVideo;
+  const [videoPlaybackError, setVideoPlaybackError] = useState(false);
+  const videoRef = useRef(null);
   const tags = Array.isArray(post?.tags) ? post.tags.filter(Boolean) : [];
   const feeling = typeof post?.feeling === "string" ? post.feeling.trim() : "";
   const checkInLocation =
@@ -239,9 +240,17 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   }, [post?._id, post?.shareCount]);
 
   useEffect(() => {
-    setMediaRenderType(inferredMediaType);
-    setMediaFallbackUsed(false);
-  }, [inferredMediaType, post?._id, postMediaUrl]);
+    setVideoPlaybackError(false);
+  }, [post?._id, postMediaUrl, mediaTypeCandidate]);
+
+  const retryVideoPlayback = () => {
+    const current = videoRef.current;
+    if (!current) {
+      return;
+    }
+    setVideoPlaybackError(false);
+    current.load();
+  };
 
   const likeBtnLabel = useMemo(() => {
     if (!likedByViewer) {
@@ -465,32 +474,34 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
 
           {postMediaUrl && (
             <div className="post-media">
-              {mediaRenderType === "video" ? (
-                <video
-                  src={postMediaUrl}
-                  className="post-video"
-                  controls
-                  preload="metadata"
-                  onError={() => {
-                    if (!mediaFallbackUsed) {
-                      setMediaFallbackUsed(true);
-                      setMediaRenderType("image");
-                    }
-                  }}
-                />
-              ) : (
+              {shouldRenderVideo ? (
+                <>
+                  <video
+                    ref={videoRef}
+                    src={postMediaUrl}
+                    className="post-video"
+                    controls
+                    playsInline
+                    preload="metadata"
+                    onLoadedData={() => setVideoPlaybackError(false)}
+                    onError={() => setVideoPlaybackError(true)}
+                  />
+                  {videoPlaybackError && (
+                    <div className="post-video-error">
+                      Video playback failed.{" "}
+                      <button type="button" onClick={retryVideoPlayback}>
+                        Retry
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : shouldRenderImage ? (
                 <img
                   src={postMediaUrl}
                   alt="post"
                   className="post-image"
-                  onError={() => {
-                    if (!mediaFallbackUsed) {
-                      setMediaFallbackUsed(true);
-                      setMediaRenderType("video");
-                    }
-                  }}
                 />
-              )}
+              ) : null}
             </div>
           )}
 

@@ -1639,6 +1639,23 @@ html.dark-mode .nav-notification-btn:hover {
   background: #000;
 }
 
+.post-video-error {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+  background: var(--surface-soft);
+}
+
+.post-video-error button {
+  border: none;
+  background: transparent;
+  color: var(--brand);
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0;
+}
+
 .post-engagement-summary {
   margin-top: 8px;
   padding-top: 7px;

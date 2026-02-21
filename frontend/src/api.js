@@ -306,6 +306,10 @@ export const resolveImage = (path) => {
     return path;
   }
 
+  if (path.startsWith("blob:")) {
+    return path;
+  }
+
   if (path.startsWith("data:")) {
     return path;
   }

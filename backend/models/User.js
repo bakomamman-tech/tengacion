@@ -55,6 +55,41 @@ const UserSchema = new mongoose.Schema(
       default: "",
     },
 
+    currentCity: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
+
+    hometown: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
+
+    workplace: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 160,
+    },
+
+    education: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 160,
+    },
+
+    website: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 220,
+    },
+
     gender: { type: String, default: "" },
 
     pronouns: { type: String, default: "" },

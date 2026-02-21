@@ -211,6 +211,31 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
+/* ================= POSTS BY USERNAME ================= */
+router.get("/user/:username", auth, async (req, res) => {
+  try {
+    const viewerId = req.user.id;
+    const username = (req.params.username || "").trim().toLowerCase();
+    if (!username) {
+      return res.status(400).json({ error: "Username is required" });
+    }
+
+    const profileUser = await User.findOne({ username }).select("_id");
+    if (!profileUser) {
+      return res.status(404).json({ error: "Profile not found" });
+    }
+
+    const posts = await withPostAuthor(
+      Post.find({ author: profileUser._id }).sort({ createdAt: -1 })
+    ).lean();
+
+    return res.json(posts.map((post) => toPostPayload(post, viewerId)));
+  } catch (err) {
+    console.error("User posts error:", err);
+    return res.status(500).json({ error: "Failed to load profile posts" });
+  }
+});
+
 /* ================= UPDATE POST ================= */
 router.put("/:id", auth, async (req, res) => {
   try {

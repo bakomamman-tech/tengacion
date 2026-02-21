@@ -106,6 +106,11 @@ export const getProfile = () =>
     headers: getAuthHeaders(),
   });
 
+export const getUserProfile = (username) =>
+  request(`${API_BASE}/users/profile/${encodeURIComponent(username || "")}`, {
+    headers: getAuthHeaders(),
+  });
+
 /**
  * ✅ REQUIRED BY ProfileEditor.jsx
  * Update logged-in user's profile
@@ -148,6 +153,11 @@ export const uploadCover = (file) => {
 
 export const getFeed = () =>
   request(`${API_BASE}/posts`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getPostsByUsername = (username) =>
+  request(`${API_BASE}/posts/user/${encodeURIComponent(username || "")}`, {
     headers: getAuthHeaders(),
   });
 

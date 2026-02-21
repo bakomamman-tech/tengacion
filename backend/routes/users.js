@@ -40,11 +40,27 @@ router.put("/me", auth, async (req, res) => {
       return res.status(401).json({ error: "User not found" });
     }
 
-    const { bio, gender, pronouns, avatar, cover } = req.body;
+    const {
+      bio,
+      gender,
+      pronouns,
+      avatar,
+      cover,
+      currentCity,
+      hometown,
+      workplace,
+      education,
+      website,
+    } = req.body;
 
     if (bio !== undefined) user.bio = bio;
     if (gender !== undefined) user.gender = gender;
     if (pronouns !== undefined) user.pronouns = pronouns;
+    if (currentCity !== undefined) user.currentCity = currentCity;
+    if (hometown !== undefined) user.hometown = hometown;
+    if (workplace !== undefined) user.workplace = workplace;
+    if (education !== undefined) user.education = education;
+    if (website !== undefined) user.website = website;
     if (avatar !== undefined) {
       user.avatar =
         typeof avatar === "string"
@@ -65,6 +81,68 @@ router.put("/me", auth, async (req, res) => {
   } catch (err) {
     console.error("Profile update error:", err);
     return res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+/* ================= PUBLIC PROFILE BY USERNAME ================= */
+router.get("/profile/:username", auth, async (req, res) => {
+  try {
+    const username = (req.params.username || "").trim().toLowerCase();
+    if (!username) {
+      return res.status(400).json({ error: "Username is required" });
+    }
+
+    const user = await User.findOne({ username })
+      .select("-password")
+      .populate("friends", "_id name username avatar")
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ error: "Profile not found" });
+    }
+
+    const viewerId = req.user.id?.toString();
+    const followers = Array.isArray(user.followers) ? user.followers : [];
+    const following = Array.isArray(user.following) ? user.following : [];
+    const friends = Array.isArray(user.friends) ? user.friends : [];
+
+    const friendsPreview = friends
+      .slice(0, 9)
+      .map((friend) => ({
+        _id: friend?._id?.toString() || "",
+        name: friend?.name || "",
+        username: friend?.username || "",
+        avatar: avatarToUrl(friend?.avatar),
+      }))
+      .filter((friend) => friend._id);
+
+    return res.json({
+      _id: user._id.toString(),
+      name: user.name || "",
+      username: user.username || "",
+      bio: user.bio || "",
+      gender: user.gender || "",
+      pronouns: user.pronouns || "",
+      country: user.country || "",
+      currentCity: user.currentCity || "",
+      hometown: user.hometown || "",
+      workplace: user.workplace || "",
+      education: user.education || "",
+      website: user.website || "",
+      phone: user.phone || "",
+      dob: user.dob || null,
+      avatar: avatarToUrl(user.avatar),
+      cover: avatarToUrl(user.cover),
+      followersCount: followers.length,
+      followingCount: following.length,
+      friendsCount: friends.length,
+      friendsPreview,
+      joinedAt: user.createdAt || user.joined || null,
+      isOwner: Boolean(viewerId && user._id.toString() === viewerId),
+    });
+  } catch (err) {
+    console.error("Profile fetch error:", err);
+    return res.status(500).json({ error: "Failed to load profile" });
   }
 });
 

@@ -8,7 +8,7 @@ const errorHandler = (err, req, res, next) => {
   if (err?.name === "MulterError") {
     const message =
       err.code === "LIMIT_FILE_SIZE"
-        ? "File is too large. Maximum allowed size is 25MB."
+        ? "File is too large. Maximum allowed size is 100MB."
         : err.message || "Upload failed";
 
     return res.status(400).json({

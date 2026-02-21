@@ -38,10 +38,7 @@ router.post("/", auth, upload.single("image"), async (req, res) => {
   try {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: "User not found" });
-    const fallbackUrl = req.file ? `/uploads/${req.file.filename}` : "";
-    const storyImageUrl = req.file
-      ? await saveUploadedFile(req.file, { fallbackUrl })
-      : "";
+    const storyImageUrl = req.file ? await saveUploadedFile(req.file) : "";
 
     const story = await Story.create({
       userId: user._id,

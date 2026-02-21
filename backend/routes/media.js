@@ -75,4 +75,32 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+router.head("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(404).end();
+    }
+
+    const objectId = new mongoose.Types.ObjectId(id);
+    const filesCollection = mongoose.connection.db.collection(`${bucketName}.files`);
+    const fileDoc = await filesCollection.findOne({ _id: objectId });
+
+    if (!fileDoc) {
+      return res.status(404).end();
+    }
+
+    const fileSize = Number(fileDoc.length) || 0;
+    const mimeType = fileDoc.contentType || "application/octet-stream";
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Content-Type", mimeType);
+    res.setHeader("Content-Length", fileSize);
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    return res.status(200).end();
+  } catch (err) {
+    console.error("Media head error:", err);
+    return res.status(500).end();
+  }
+});
+
 module.exports = router;

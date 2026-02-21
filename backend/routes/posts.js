@@ -148,10 +148,9 @@ router.post(
 
       const media = [];
       if (uploadFile) {
-        const fallbackUrl = `/uploads/${uploadFile.filename}`;
-        const persistedUrl = await saveUploadedFile(uploadFile, { fallbackUrl });
+        const persistedUrl = await saveUploadedFile(uploadFile);
         media.push({
-          url: persistedUrl || fallbackUrl,
+          url: persistedUrl,
           type: uploadFile.mimetype.startsWith("video/") ? "video" : "image",
         });
       }

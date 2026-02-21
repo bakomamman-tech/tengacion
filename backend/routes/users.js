@@ -302,8 +302,7 @@ router.post(
         return res.status(400).json({ error: "Only image files are allowed" });
       }
 
-      const fallbackUrl = `/uploads/${selectedFile.filename}`;
-      const imageUrl = await saveUploadedFile(selectedFile, { fallbackUrl });
+      const imageUrl = await saveUploadedFile(selectedFile);
       user.avatar = { public_id: "", url: imageUrl };
       await user.save();
 
@@ -351,8 +350,7 @@ router.post(
         return res.status(400).json({ error: "Only image files are allowed" });
       }
 
-      const fallbackUrl = `/uploads/${selectedFile.filename}`;
-      const imageUrl = await saveUploadedFile(selectedFile, { fallbackUrl });
+      const imageUrl = await saveUploadedFile(selectedFile);
       user.cover = { public_id: "", url: imageUrl };
       await user.save();
 

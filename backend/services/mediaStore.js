@@ -19,14 +19,14 @@ const toSafeFilename = (value = "") => {
   return safe || `upload_${Date.now()}`;
 };
 
-const saveUploadedFile = async (file, { fallbackUrl = "" } = {}) => {
+const saveUploadedFile = async (file) => {
   if (!file) {
     return "";
   }
 
   const sourcePath = file.path || "";
   if (!sourcePath || !fs.existsSync(sourcePath)) {
-    return fallbackUrl || "";
+    throw new Error("Uploaded file could not be read from temporary storage");
   }
 
   const bucket = getBucket();

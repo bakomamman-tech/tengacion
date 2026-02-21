@@ -3,9 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import {
+  acceptFriendRequest,
+  cancelFriendRequest,
   getPostsByUsername,
   getUserProfile,
+  rejectFriendRequest,
   resolveImage,
+  sendFriendRequest,
+  unfriend,
   updateMe,
   uploadAvatar,
   uploadCover,
@@ -175,6 +180,7 @@ export default function ProfileEditor({ user }) {
   const [postFilter, setPostFilter] = useState("all");
   const [avatarPreview, setAvatarPreview] = useState("");
   const [coverPreview, setCoverPreview] = useState("");
+  const [relationshipBusy, setRelationshipBusy] = useState("");
 
   const [bio, setBio] = useState("");
   const [country, setCountry] = useState("");
@@ -191,6 +197,7 @@ export default function ProfileEditor({ user }) {
   const tabsRef = useRef(null);
 
   const isOwner = Boolean(profile?.isOwner);
+  const relationshipStatus = profile?.relationship?.status || "none";
   const displayAvatar =
     avatarPreview ||
     resolveImage(profile?.avatar) ||
@@ -474,6 +481,35 @@ export default function ProfileEditor({ user }) {
     }
   };
 
+  const handleFriendAction = async (action) => {
+    if (isOwner || !profile?._id || relationshipBusy) {
+      return;
+    }
+
+    try {
+      setRelationshipBusy(action);
+      setError("");
+
+      if (action === "request") {
+        await sendFriendRequest(profile._id);
+      } else if (action === "cancel") {
+        await cancelFriendRequest(profile._id);
+      } else if (action === "accept") {
+        await acceptFriendRequest(profile._id);
+      } else if (action === "reject") {
+        await rejectFriendRequest(profile._id);
+      } else if (action === "unfriend") {
+        await unfriend(profile._id);
+      }
+
+      await loadAll(targetUsername);
+    } catch (err) {
+      setError(err?.message || "Failed to update friendship");
+    } finally {
+      setRelationshipBusy("");
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem("token");
     navigate("/");
@@ -596,8 +632,54 @@ export default function ProfileEditor({ user }) {
                 </>
               ) : (
                 <>
-                  <button className="profile-head-btn primary">Follow</button>
-                  <button className="profile-head-btn">Message</button>
+                  {relationshipStatus === "request_received" ? (
+                    <>
+                      <button
+                        className="profile-head-btn primary"
+                        onClick={() => handleFriendAction("accept")}
+                        disabled={Boolean(relationshipBusy)}
+                      >
+                        {relationshipBusy === "accept" ? "Confirming..." : "Confirm"}
+                      </button>
+                      <button
+                        className="profile-head-btn"
+                        onClick={() => handleFriendAction("reject")}
+                        disabled={Boolean(relationshipBusy)}
+                      >
+                        {relationshipBusy === "reject" ? "Deleting..." : "Delete"}
+                      </button>
+                    </>
+                  ) : relationshipStatus === "request_sent" ? (
+                    <button
+                      className="profile-head-btn"
+                      onClick={() => handleFriendAction("cancel")}
+                      disabled={Boolean(relationshipBusy)}
+                    >
+                      {relationshipBusy === "cancel" ? "Cancelling..." : "Cancel request"}
+                    </button>
+                  ) : relationshipStatus === "friends" ? (
+                    <button
+                      className="profile-head-btn"
+                      onClick={() => handleFriendAction("unfriend")}
+                      disabled={Boolean(relationshipBusy)}
+                    >
+                      {relationshipBusy === "unfriend" ? "Updating..." : "Friends"}
+                    </button>
+                  ) : (
+                    <button
+                      className="profile-head-btn primary"
+                      onClick={() => handleFriendAction("request")}
+                      disabled={Boolean(relationshipBusy)}
+                    >
+                      {relationshipBusy === "request" ? "Sending..." : "Add friend"}
+                    </button>
+                  )}
+                  <button
+                    className="profile-head-btn"
+                    onClick={() => navigate("/home", { state: { openMessenger: true } })}
+                  >
+                    Message
+                  </button>
                 </>
               )}
             </div>

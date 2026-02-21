@@ -1363,6 +1363,16 @@ html.dark-mode .nav-notification-btn:hover {
   gap: 14px;
 }
 
+.home-right-rail {
+  position: sticky;
+  top: 90px;
+  align-self: start;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .sidebar-nav {
   padding: 14px;
 }
@@ -1423,6 +1433,114 @@ html.dark-mode .nav-notification-btn:hover {
   background: var(--surface-soft);
 }
 
+.friend-requests-card {
+  padding: 14px;
+  border-radius: 14px;
+}
+
+.friend-requests-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.friend-requests-head h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.friend-requests-state {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.friend-requests-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.friend-request-item {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.friend-request-item:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.friend-request-profile {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.friend-request-profile img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.friend-request-profile strong {
+  display: block;
+  font-size: 14px;
+}
+
+.friend-request-profile span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.friend-request-actions {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.friend-request-btn {
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.friend-request-btn.confirm {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  color: #fff;
+}
+
+.friend-request-btn.delete {
+  border-color: var(--border-strong);
+}
+
+.friend-request-btn:disabled,
+.search-person-btn:disabled,
+.profile-head-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 /* Feed + posts */
 .create-post {
   padding: 12px;
@@ -1454,6 +1572,68 @@ html.dark-mode .nav-notification-btn:hover {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.search-person-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.search-person-row:hover {
+  background: var(--surface-soft);
+}
+
+.search-person-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.search-person-meta {
+  min-width: 0;
+}
+
+.search-person-meta b {
+  display: block;
+}
+
+.search-person-meta div {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.search-person-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+
+.search-person-btn {
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
+  min-height: 34px;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.search-person-btn.primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  color: #fff;
+}
+
+.search-person-btn.subtle {
+  border-color: var(--border-strong);
+  background: color-mix(in srgb, var(--surface-soft) 85%, var(--brand-soft));
 }
 
 .post-card {
@@ -4510,6 +4690,10 @@ html.dark-mode .nav-notification-btn:hover {
     position: static;
   }
 
+  .home-right-rail {
+    position: static;
+  }
+
   .messenger-panel {
     position: fixed;
     right: 10px;
@@ -4627,6 +4811,19 @@ html.dark-mode .nav-notification-btn:hover {
 
   .app-shell {
     padding: 0 10px;
+  }
+
+  .search-person-row {
+    flex-wrap: wrap;
+  }
+
+  .search-person-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .search-person-btn {
+    flex: 1 1 0;
   }
 
   .messenger-panel {

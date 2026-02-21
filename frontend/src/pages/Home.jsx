@@ -7,6 +7,7 @@ import PostCard from "../components/PostCard";
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
 import Messenger from "../Messenger";
+import FriendRequests from "../FriendRequests";
 import Stories from "../stories/StoriesBar";
 
 import { createPost, getFeed, getProfile, resolveImage } from "../api";
@@ -655,11 +656,14 @@ export default function Home({ user }) {
           </div>
         </main>
 
-        {chatOpen && (
-          <section className="messenger-panel">
-            <Messenger user={currentUser} onClose={() => setChatOpen(false)} />
-          </section>
-        )}
+        <aside className="home-right-rail">
+          <FriendRequests />
+          {chatOpen && (
+            <section className="messenger-panel">
+              <Messenger user={currentUser} onClose={() => setChatOpen(false)} />
+            </section>
+          )}
+        </aside>
       </div>
 
       {composerOpen && (

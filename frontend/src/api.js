@@ -120,6 +120,14 @@ export const getUserProfile = (username) =>
     headers: getAuthHeaders(),
   });
 
+export const getUsers = (search = "") =>
+  request(
+    `${API_BASE}/users${search ? `?search=${encodeURIComponent(search)}` : ""}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+
 /**
  * ✅ REQUIRED BY ProfileEditor.jsx
  * Update logged-in user's profile
@@ -157,6 +165,41 @@ export const uploadCover = (file) => {
     timeoutMs: 60000,
   });
 };
+
+export const getFriendRequests = () =>
+  request(`${API_BASE}/users/requests`, {
+    headers: getAuthHeaders(),
+  });
+
+export const sendFriendRequest = (userId) =>
+  request(`${API_BASE}/users/${encodeURIComponent(userId || "")}/request`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+export const cancelFriendRequest = (userId) =>
+  request(`${API_BASE}/users/${encodeURIComponent(userId || "")}/request`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+export const acceptFriendRequest = (userId) =>
+  request(`${API_BASE}/users/${encodeURIComponent(userId || "")}/accept`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+export const rejectFriendRequest = (userId) =>
+  request(`${API_BASE}/users/${encodeURIComponent(userId || "")}/reject`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+export const unfriend = (userId) =>
+  request(`${API_BASE}/users/${encodeURIComponent(userId || "")}/friend`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
 
 // ======================================================
 // 🟢 POSTS

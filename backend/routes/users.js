@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const upload = require("../utils/upload");
 const Post = require("../models/Post");
@@ -11,6 +12,57 @@ const avatarToUrl = (avatar) => {
   if (!avatar) return "";
   if (typeof avatar === "string") return avatar;
   return avatar.url || "";
+};
+
+const toIdString = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (value._id) return value._id.toString();
+  return value.toString();
+};
+
+const isValidId = (value) => mongoose.Types.ObjectId.isValid(value);
+
+const includesId = (list, id) =>
+  Array.isArray(list) && list.some((entry) => toIdString(entry) === id);
+
+const buildRelationship = ({
+  viewerId,
+  viewerFriendIds = [],
+  viewerIncomingRequestIds = [],
+  targetId,
+  targetFriendIds = [],
+  targetIncomingRequestIds = [],
+}) => {
+  const isSelf = Boolean(viewerId && targetId && viewerId === targetId);
+  const isFriend =
+    !isSelf &&
+    (includesId(viewerFriendIds, targetId) || includesId(targetFriendIds, viewerId));
+  const hasSentRequest = !isSelf && includesId(targetIncomingRequestIds, viewerId);
+  const hasIncomingRequest = !isSelf && includesId(viewerIncomingRequestIds, targetId);
+
+  let status = "none";
+  if (isSelf) {
+    status = "self";
+  } else if (isFriend) {
+    status = "friends";
+  } else if (hasIncomingRequest) {
+    status = "request_received";
+  } else if (hasSentRequest) {
+    status = "request_sent";
+  }
+
+  return {
+    status,
+    isFriend,
+    hasSentRequest,
+    hasIncomingRequest,
+    canRequest: status === "none",
+    canCancelRequest: status === "request_sent",
+    canAcceptRequest: status === "request_received",
+    canRejectRequest: status === "request_received",
+    canUnfriend: status === "friends",
+  };
 };
 
 const userListPayload = (user) => ({
@@ -106,9 +158,18 @@ router.get("/profile/:username", auth, async (req, res) => {
     }
 
     const viewerId = req.user.id?.toString();
+    const viewer = await User.findById(viewerId).select("friends friendRequests").lean();
     const followers = Array.isArray(user.followers) ? user.followers : [];
     const following = Array.isArray(user.following) ? user.following : [];
     const friends = Array.isArray(user.friends) ? user.friends : [];
+    const relationship = buildRelationship({
+      viewerId,
+      viewerFriendIds: viewer?.friends || [],
+      viewerIncomingRequestIds: viewer?.friendRequests || [],
+      targetId: user._id.toString(),
+      targetFriendIds: user.friends || [],
+      targetIncomingRequestIds: user.friendRequests || [],
+    });
 
     const friendsPreview = friends
       .slice(0, 9)
@@ -141,6 +202,7 @@ router.get("/profile/:username", auth, async (req, res) => {
       followingCount: following.length,
       friendsCount: friends.length,
       friendsPreview,
+      relationship,
       joinedAt: user.createdAt || user.joined || null,
       isOwner: Boolean(viewerId && user._id.toString() === viewerId),
     });
@@ -163,15 +225,28 @@ router.get("/", auth, async (req, res) => {
       ];
     }
 
+    const me = await User.findById(req.user.id).select("friends friendRequests").lean();
+
     const users = await User.find(query)
-      .select("_id name username avatar")
+      .select("_id name username avatar friendRequests friends")
       .sort({ name: 1 })
       .limit(50)
       .lean();
 
+    const viewerId = req.user.id.toString();
     const payload = users
-      .filter((u) => u._id.toString() !== req.user.id.toString())
-      .map(userListPayload);
+      .filter((u) => u._id.toString() !== viewerId)
+      .map((entry) => ({
+        ...userListPayload(entry),
+        relationship: buildRelationship({
+          viewerId,
+          viewerFriendIds: me?.friends || [],
+          viewerIncomingRequestIds: me?.friendRequests || [],
+          targetId: entry._id.toString(),
+          targetFriendIds: entry.friends || [],
+          targetIncomingRequestIds: entry.friendRequests || [],
+        }),
+      }));
 
     return res.json(payload);
   } catch {
@@ -182,6 +257,10 @@ router.get("/", auth, async (req, res) => {
 /* ================= SEND FRIEND REQUEST ================= */
 router.post("/:id/request", auth, async (req, res) => {
   try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+
     const me = await User.findById(req.user.id);
     const user = await User.findById(req.params.id);
 
@@ -190,6 +269,17 @@ router.post("/:id/request", auth, async (req, res) => {
     }
 
     const meId = me._id.toString();
+    if (user._id.toString() === meId) {
+      return res.status(400).json({ error: "Cannot friend yourself" });
+    }
+
+    const hasIncomingFromUser = (me.friendRequests || []).some(
+      (id) => id.toString() === user._id.toString()
+    );
+    if (hasIncomingFromUser) {
+      return res.status(409).json({ error: "This user already sent you a request" });
+    }
+
     const alreadyRequested = (user.friendRequests || []).some(
       (id) => id.toString() === meId
     );
@@ -208,9 +298,13 @@ router.post("/:id/request", auth, async (req, res) => {
   }
 });
 
-/* ================= ACCEPT FRIEND REQUEST ================= */
-router.post("/:id/accept", auth, async (req, res) => {
+/* ================= CANCEL SENT REQUEST ================= */
+router.delete("/:id/request", auth, async (req, res) => {
   try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+
     const me = await User.findById(req.user.id);
     const user = await User.findById(req.params.id);
 
@@ -218,7 +312,43 @@ router.post("/:id/accept", auth, async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
+    const meId = me._id.toString();
+    user.friendRequests = (user.friendRequests || []).filter(
+      (id) => id.toString() !== meId
+    );
+    await user.save();
+
+    return res.json({ cancelled: true });
+  } catch {
+    return res.status(500).json({ error: "Cancel failed" });
+  }
+});
+
+/* ================= ACCEPT FRIEND REQUEST ================= */
+router.post("/:id/accept", auth, async (req, res) => {
+  try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+
+    const me = await User.findById(req.user.id);
+    const user = await User.findById(req.params.id);
+
+    if (!me || !user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (me._id.toString() === user._id.toString()) {
+      return res.status(400).json({ error: "Cannot friend yourself" });
+    }
+
     const requesterId = user._id.toString();
+    const hasPendingRequest = (me.friendRequests || []).some(
+      (id) => id.toString() === requesterId
+    );
+    if (!hasPendingRequest) {
+      return res.status(400).json({ error: "No pending request from this user" });
+    }
 
     me.friendRequests = (me.friendRequests || []).filter(
       (id) => id.toString() !== requesterId
@@ -233,6 +363,10 @@ router.post("/:id/accept", auth, async (req, res) => {
       user.friends.push(me._id);
     }
 
+    user.friendRequests = (user.friendRequests || []).filter(
+      (id) => id.toString() !== myId
+    );
+
     await Promise.all([me.save(), user.save()]);
 
     return res.json({ friends: true });
@@ -245,9 +379,17 @@ router.post("/:id/accept", auth, async (req, res) => {
 /* ================= REJECT FRIEND REQUEST ================= */
 router.post("/:id/reject", auth, async (req, res) => {
   try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+
     const me = await User.findById(req.user.id);
     if (!me) {
       return res.status(404).json({ error: "User not found" });
+    }
+
+    if (me._id.toString() === req.params.id) {
+      return res.status(400).json({ error: "Cannot reject yourself" });
     }
 
     me.friendRequests = (me.friendRequests || []).filter(
@@ -258,6 +400,36 @@ router.post("/:id/reject", auth, async (req, res) => {
     return res.json({ rejected: true });
   } catch {
     return res.status(500).json({ error: "Reject failed" });
+  }
+});
+
+/* ================= UNFRIEND ================= */
+router.delete("/:id/friend", auth, async (req, res) => {
+  try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+
+    const me = await User.findById(req.user.id);
+    const user = await User.findById(req.params.id);
+
+    if (!me || !user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const myId = me._id.toString();
+    const targetId = user._id.toString();
+    if (myId === targetId) {
+      return res.status(400).json({ error: "Cannot unfriend yourself" });
+    }
+
+    me.friends = (me.friends || []).filter((id) => id.toString() !== targetId);
+    user.friends = (user.friends || []).filter((id) => id.toString() !== myId);
+
+    await Promise.all([me.save(), user.save()]);
+    return res.json({ unfriended: true });
+  } catch {
+    return res.status(500).json({ error: "Unfriend failed" });
   }
 });
 

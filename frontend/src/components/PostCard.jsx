@@ -146,10 +146,26 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   const username = post?.user?.name || post?.username || "Unknown User";
   const avatar =
     resolveImage(post?.user?.profilePic || post?.avatar) || "/avatar.png";
-  const mediaCandidate = Array.isArray(post?.media)
-    ? post?.media?.[0]?.url || post?.media?.[0]
+  const firstMediaEntry = Array.isArray(post?.media)
+    ? post.media?.[0]
     : post?.media;
-  const postImage = resolveImage(post?.image || post?.photo || mediaCandidate);
+  const mediaUrlCandidate =
+    firstMediaEntry && typeof firstMediaEntry === "object"
+      ? firstMediaEntry.url || ""
+      : typeof firstMediaEntry === "string"
+        ? firstMediaEntry
+        : "";
+  const mediaTypeCandidate =
+    firstMediaEntry && typeof firstMediaEntry === "object"
+      ? (firstMediaEntry.type || "").toLowerCase()
+      : "";
+  const legacyMediaUrl = post?.image || post?.photo || "";
+  const postMediaUrl = resolveImage(mediaUrlCandidate || legacyMediaUrl);
+  const isVideoMedia = Boolean(
+    postMediaUrl &&
+      (mediaTypeCandidate === "video" ||
+        /\.(mp4|webm|ogg|mov|m4v)(?:\?.*)?$/i.test(postMediaUrl))
+  );
   const tags = Array.isArray(post?.tags) ? post.tags.filter(Boolean) : [];
   const feeling = typeof post?.feeling === "string" ? post.feeling.trim() : "";
   const checkInLocation =
@@ -436,9 +452,18 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
             </div>
           )}
 
-          {postImage && (
+          {postMediaUrl && (
             <div className="post-media">
-              <img src={postImage} alt="post" className="post-image" />
+              {isVideoMedia ? (
+                <video
+                  src={postMediaUrl}
+                  className="post-video"
+                  controls
+                  preload="metadata"
+                />
+              ) : (
+                <img src={postMediaUrl} alt="post" className="post-image" />
+              )}
             </div>
           )}
 

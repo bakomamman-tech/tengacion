@@ -5,6 +5,7 @@ const User = require("../models/User");
 const auth = require("../middleware/auth");
 const upload = require("../utils/upload");
 const { createNotification } = require("../services/notificationService");
+const { saveUploadedFile } = require("../services/mediaStore");
 
 const router = express.Router();
 
@@ -147,8 +148,10 @@ router.post(
 
       const media = [];
       if (uploadFile) {
+        const fallbackUrl = `/uploads/${uploadFile.filename}`;
+        const persistedUrl = await saveUploadedFile(uploadFile, { fallbackUrl });
         media.push({
-          url: `/uploads/${uploadFile.filename}`,
+          url: persistedUrl || fallbackUrl,
           type: uploadFile.mimetype.startsWith("video/") ? "video" : "image",
         });
       }

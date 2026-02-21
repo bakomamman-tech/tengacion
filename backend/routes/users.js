@@ -3,6 +3,7 @@ const User = require("../models/User");
 const upload = require("../utils/upload");
 const Post = require("../models/Post");
 const auth = require("../middleware/auth");
+const { saveUploadedFile } = require("../services/mediaStore");
 
 const router = express.Router();
 
@@ -301,7 +302,8 @@ router.post(
         return res.status(400).json({ error: "Only image files are allowed" });
       }
 
-      const imageUrl = `/uploads/${selectedFile.filename}`;
+      const fallbackUrl = `/uploads/${selectedFile.filename}`;
+      const imageUrl = await saveUploadedFile(selectedFile, { fallbackUrl });
       user.avatar = { public_id: "", url: imageUrl };
       await user.save();
 
@@ -349,7 +351,8 @@ router.post(
         return res.status(400).json({ error: "Only image files are allowed" });
       }
 
-      const imageUrl = `/uploads/${selectedFile.filename}`;
+      const fallbackUrl = `/uploads/${selectedFile.filename}`;
+      const imageUrl = await saveUploadedFile(selectedFile, { fallbackUrl });
       user.cover = { public_id: "", url: imageUrl };
       await user.save();
 

@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const Story = require("../models/Story");
 const User = require("../models/User");
 const upload = require("../utils/upload");
+const { saveUploadedFile } = require("../services/mediaStore");
 
 const router = express.Router();
 
@@ -37,6 +38,10 @@ router.post("/", auth, upload.single("image"), async (req, res) => {
   try {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: "User not found" });
+    const fallbackUrl = req.file ? `/uploads/${req.file.filename}` : "";
+    const storyImageUrl = req.file
+      ? await saveUploadedFile(req.file, { fallbackUrl })
+      : "";
 
     const story = await Story.create({
       userId: user._id,
@@ -44,7 +49,7 @@ router.post("/", auth, upload.single("image"), async (req, res) => {
       username: user.username,
       avatar: avatarToUrl(user.avatar),
       text: req.body.text || "",
-      image: req.file ? `/uploads/${req.file.filename}` : "",
+      image: storyImageUrl,
       time: new Date(),
       seenBy: []
     });

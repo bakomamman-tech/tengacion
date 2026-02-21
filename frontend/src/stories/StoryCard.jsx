@@ -2,7 +2,13 @@ import { useState } from "react";
 import StoryViewer from "./StoryViewer";
 import { resolveImage } from "../api";
 
-export default function StoryCard({ story }) {
+export default function StoryCard({
+  story,
+  stories = [],
+  hasUnseen = false,
+  isOwner = false,
+  onSeen,
+}) {
   const [open, setOpen] = useState(false);
 
   const avatarSrc = story?.avatar
@@ -11,13 +17,24 @@ export default function StoryCard({ story }) {
         story?.username || "User"
       )}`;
 
+  const wrapperClass = [
+    "story-card",
+    hasUnseen && !isOwner ? "updated" : "seen",
+  ].join(" ");
+
   return (
     <>
-      <div className="story-card" onClick={() => setOpen(true)}>
-        <img
-          src={resolveImage(story?.image)}
-          alt="Story"
-        />
+      <div className={wrapperClass} onClick={() => setOpen(true)}>
+        {story?.image ? (
+          <img
+            src={resolveImage(story?.image)}
+            alt="Story"
+          />
+        ) : (
+          <div className="story-card-text-fallback">
+            {story?.text || "New story"}
+          </div>
+        )}
 
         <div className="story-avatar">
           <img src={avatarSrc} alt={story?.username || "User"} />
@@ -26,12 +43,18 @@ export default function StoryCard({ story }) {
         <div className="story-name">
           {story?.username}
         </div>
+
+        {hasUnseen && !isOwner && (
+          <span className="story-updated-pill">Updated</span>
+        )}
       </div>
 
       {open && (
         <StoryViewer
           story={story}
+          stories={stories}
           onClose={() => setOpen(false)}
+          onSeen={onSeen}
         />
       )}
     </>

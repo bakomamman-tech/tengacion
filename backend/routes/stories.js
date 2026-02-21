@@ -13,6 +13,13 @@ const avatarToUrl = (avatar) => {
   return avatar.url || "";
 };
 
+const toIdString = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (value._id) return value._id.toString();
+  return value.toString();
+};
+
 /* ================= AUTH ================= */
 
 function auth(req, res, next) {
@@ -41,14 +48,14 @@ router.post("/", auth, upload.single("image"), async (req, res) => {
     const storyImageUrl = req.file ? await saveUploadedFile(req.file) : "";
 
     const story = await Story.create({
-      userId: user._id,
+      userId: user._id.toString(),
       name: user.name,
       username: user.username,
       avatar: avatarToUrl(user.avatar),
       text: req.body.text || "",
       image: storyImageUrl,
       time: new Date(),
-      seenBy: []
+      seenBy: [],
     });
 
     res.json(story);
@@ -62,16 +69,32 @@ router.post("/", auth, upload.single("image"), async (req, res) => {
 
 router.get("/", auth, async (req, res) => {
   try {
+    const viewerId = toIdString(req.userId);
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    const ids = [req.userId, ...(user.friends || [])];
+    const ids = [...new Set([viewerId, ...(user.friends || []).map((id) => toIdString(id))])];
 
     const stories = await Story.find({
-      userId: { $in: ids }
-    }).sort({ time: -1 });
+      userId: { $in: ids },
+      expiresAt: { $gt: new Date() },
+    })
+      .sort({ time: -1 })
+      .lean();
 
-    res.json(stories);
+    const payload = stories.map((story) => {
+      const seenBy = Array.isArray(story.seenBy)
+        ? story.seenBy.map((id) => toIdString(id))
+        : [];
+      return {
+        ...story,
+        userId: toIdString(story.userId),
+        seenBy,
+        viewerSeen: seenBy.includes(viewerId),
+      };
+    });
+
+    res.json(payload);
   } catch (err) {
     console.error("Story fetch error:", err);
     res.status(500).json({ error: "Failed to load stories" });
@@ -85,8 +108,13 @@ router.post("/:id/seen", auth, async (req, res) => {
     const story = await Story.findById(req.params.id);
     if (!story) return res.status(404).json({ error: "Story not found" });
 
-    if (!story.seenBy.includes(req.userId)) {
-      story.seenBy.push(req.userId);
+    const viewerId = toIdString(req.userId);
+    const seenBy = Array.isArray(story.seenBy)
+      ? story.seenBy.map((id) => toIdString(id))
+      : [];
+
+    if (!seenBy.includes(viewerId)) {
+      story.seenBy.push(viewerId);
       await story.save();
     }
 

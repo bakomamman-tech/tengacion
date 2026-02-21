@@ -603,7 +603,7 @@ export default function Home({ user }) {
         </aside>
 
         <main className="feed">
-          {!loading && <Stories />}
+          {!loading && <Stories user={currentUser} />}
 
           <div className="card create-post" onClick={() => setComposerOpen(true)}>
             <div className="create-post-row">

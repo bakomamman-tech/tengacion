@@ -289,6 +289,12 @@ export const createStory = (formData) =>
     body: formData,
   });
 
+export const markStorySeen = (storyId) =>
+  request(`${API_BASE}/stories/${encodeURIComponent(storyId || "")}/seen`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
 // ======================================================
 // 🟢 VIDEOS
 // ======================================================

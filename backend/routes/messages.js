@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Message = require("../models/Message");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
+const { createNotification } = require("../services/notificationService");
 
 const router = express.Router();
 
@@ -226,6 +227,23 @@ router.post("/:otherUserId", auth, async (req, res) => {
     if (io) {
       io.to(toIdString(me)).to(toIdString(other)).emit("newMessage", payload);
     }
+
+    await createNotification({
+      recipient: other,
+      sender: me,
+      type: "message",
+      text: "sent you a message",
+      entity: {
+        id: message._id,
+        model: "Message",
+      },
+      metadata: {
+        previewText: text.slice(0, 120),
+        link: "/home",
+      },
+      io: req.app.get("io"),
+      onlineUsers: req.app.get("onlineUsers"),
+    });
 
     res.status(201).json(payload);
   } catch (err) {

@@ -11,19 +11,23 @@ exports.getNotifications = asyncHandler(async (req, res) => {
   const { page, limit, skip } = paginate(req);
 
   const query = { recipient: req.user.id };
+  const unreadQuery = { recipient: req.user.id, read: false };
 
-  const [items, total] = await Promise.all([
+  const [items, total, unreadCount] = await Promise.all([
     Notification.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
+      .populate("sender", "_id name username avatar")
       .lean(),
     Notification.countDocuments(query),
+    Notification.countDocuments(unreadQuery),
   ]);
 
   res.json({
     success: true,
     data: items,
+    unreadCount,
     pagination: {
       page,
       limit,
@@ -46,7 +50,7 @@ exports.markAsRead = asyncHandler(async (req, res) => {
     },
     { read: true },
     { new: true }
-  );
+  ).populate("sender", "_id name username avatar");
 
   if (!notification) {
     res.status(404);
@@ -73,5 +77,22 @@ exports.markAllAsRead = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: "All notifications marked as read",
+  });
+});
+
+/**
+ * @desc    Get unread notifications count
+ * @route   GET /api/notifications/unread-count
+ * @access  Private
+ */
+exports.getUnreadCount = asyncHandler(async (req, res) => {
+  const unreadCount = await Notification.countDocuments({
+    recipient: req.user.id,
+    read: false,
+  });
+
+  res.json({
+    success: true,
+    unreadCount,
   });
 });

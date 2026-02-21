@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { resolveImage } from "./api";
+import { getUnreadNotificationsCount, resolveImage } from "./api";
 import { useTheme } from "./context/ThemeContext";
 import { Icon } from "./Icon";
 
@@ -59,6 +59,7 @@ export default function Navbar({ user, onLogout, onOpenMessenger }) {
   const [results, setResults] = useState({ users: [], posts: [] });
   const [searchOpen, setSearchOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const searchRef = useRef(null);
   const menuRef = useRef(null);
@@ -125,6 +126,42 @@ export default function Navbar({ user, onLogout, onOpenMessenger }) {
     const timeout = setTimeout(() => performSearch(query), 250);
     return () => clearTimeout(timeout);
   }, [query, performSearch]);
+
+  useEffect(() => {
+    if (!user?._id) {
+      setUnreadNotifications(0);
+      return undefined;
+    }
+
+    let alive = true;
+
+    const loadUnread = async () => {
+      try {
+        const payload = await getUnreadNotificationsCount();
+        if (!alive) {return;}
+        setUnreadNotifications(Number(payload?.unreadCount) || 0);
+      } catch {
+        if (!alive) {return;}
+        setUnreadNotifications(0);
+      }
+    };
+
+    loadUnread();
+    const timer = window.setInterval(loadUnread, 20000);
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        loadUnread();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [user?._id]);
 
   const avatar = resolveImage(user?.avatar) || fallbackAvatar(user?.name);
 
@@ -243,13 +280,19 @@ export default function Navbar({ user, onLogout, onOpenMessenger }) {
             </button>
 
             <button
-              className="nav-circle-btn nav-notification-btn has-badge"
+              className={`nav-circle-btn nav-notification-btn ${
+                unreadNotifications > 0 ? "has-badge" : ""
+              }`}
               onClick={() => navigate("/notifications")}
               aria-label="Notifications"
               title="Notifications"
             >
               <NotificationBellIcon />
-              <span className="nav-badge">1</span>
+              {unreadNotifications > 0 && (
+                <span className="nav-badge">
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </span>
+              )}
             </button>
           </div>
 

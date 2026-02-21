@@ -1,65 +1,88 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
-import { resolveImage } from "../api";
+import {
+  getNotifications,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+  resolveImage,
+} from "../api";
 
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "User"
   )}&size=96&background=DFE8F6&color=1D3A6D`;
 
-const NOTIFICATIONS = [
-  {
-    id: "n1",
-    actor: "Auta Emmanuel",
-    message: 'likes your comment: "Boss".',
-    time: "1h",
-    meta: "1 Reaction",
-    type: "like",
-    section: "new",
-    read: false,
-  },
-  {
-    id: "n2",
-    actor: "Bayero Theophilus Atakuwa",
-    message: "commented on a reel that you're tagged in.",
-    time: "2h",
-    meta: "",
-    type: "comment",
-    section: "new",
-    read: false,
-  },
-  {
-    id: "n3",
-    actor: "Threads",
-    message: "You have new followers on Threads.",
-    time: "3h",
-    meta: "",
-    type: "follow",
-    section: "earlier",
-    read: false,
-  },
-  {
-    id: "n4",
-    actor: "Loveth Jonathan",
-    message: "and 4 others have birthdays today. Wish them the best!",
-    time: "4h",
-    meta: "",
-    type: "birthday",
-    section: "earlier",
-    read: false,
-  },
-  {
-    id: "n5",
-    actor: "D'dam Il-ya Ajey",
-    message: 'and Naomi Shuaibu like a reel you shared: "Keep up the good work bro!"',
-    time: "10h",
-    meta: "",
-    type: "like",
-    section: "earlier",
-    read: false,
-  },
-];
+const getRelativeTime = (value) => {
+  const stamp = new Date(value || "").getTime();
+  if (!Number.isFinite(stamp)) {
+    return "now";
+  }
+
+  const diffSec = Math.max(1, Math.floor((Date.now() - stamp) / 1000));
+  if (diffSec < 60) {
+    return `${diffSec}s`;
+  }
+
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) {
+    return `${diffMin}m`;
+  }
+
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) {
+    return `${diffHours}h`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d`;
+};
+
+const normalizeNotification = (entry) => {
+  const sender = entry?.sender && typeof entry.sender === "object" ? entry.sender : null;
+  const actorName = sender?.name || "Someone";
+  const senderId = sender?._id || "";
+  const senderUsername = sender?.username || "";
+  const actorAvatar = resolveImage(sender?.avatar) || fallbackAvatar(actorName);
+  const type = entry?.type || "system";
+  const createdAt = entry?.createdAt || null;
+  const previewText = entry?.metadata?.previewText || "";
+
+  let messageText = entry?.text || "";
+
+  if (!messageText) {
+    if (type === "message") {
+      messageText = "sent you a message.";
+    } else if (type === "like") {
+      messageText = "liked your post.";
+    } else if (type === "comment") {
+      messageText = "commented on your post.";
+    } else if (type === "friend_request") {
+      messageText = "sent you a friend request.";
+    } else {
+      messageText = "sent you a notification.";
+    }
+  }
+
+  if (!/[.!?]$/.test(messageText)) {
+    messageText = `${messageText}.`;
+  }
+
+  return {
+    _id: entry?._id || "",
+    read: Boolean(entry?.read),
+    type,
+    actorName,
+    senderId,
+    senderUsername,
+    actorAvatar,
+    messageText,
+    previewText,
+    createdAt,
+    timeLabel: getRelativeTime(createdAt),
+  };
+};
 
 function NotificationActionIcon({ type }) {
   if (type === "comment") {
@@ -70,7 +93,7 @@ function NotificationActionIcon({ type }) {
     );
   }
 
-  if (type === "follow") {
+  if (type === "follow" || type === "friend_request") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M12 3.6a7.5 7.5 0 1 0 0 15 7.5 7.5 0 1 0 0-15zm0 2.7a4.8 4.8 0 1 1 0 9.6 4.8 4.8 0 0 1 0-9.6z" />
@@ -78,10 +101,10 @@ function NotificationActionIcon({ type }) {
     );
   }
 
-  if (type === "birthday") {
+  if (type === "message") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M6 10h12v9H6zM4.5 10h15v2.4h-15zM12 10V6.6M8.8 7c.8 0 1.4-.6 1.4-1.4S9.6 4.2 8.8 4.2c-1.2 0-2.1 1.3-2 2.5V7h2zm6.4 0h2v-.3c.1-1.2-.8-2.5-2-2.5-.8 0-1.4.6-1.4 1.4s.6 1.4 1.4 1.4z" />
+        <path d="M4 5.5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9.2L5.1 19v-3.5H6a2 2 0 0 1-2-2z" />
       </svg>
     );
   }
@@ -119,10 +142,35 @@ function MenuItemIcon({ name }) {
 }
 
 export default function Notifications({ user }) {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState("all");
-  const [notifications, setNotifications] = useState(NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const menuRef = useRef(null);
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const payload = await getNotifications(1, 100);
+      const items = Array.isArray(payload?.data) ? payload.data : [];
+      setNotifications(items.map(normalizeNotification));
+    } catch (err) {
+      setNotifications([]);
+      setError(err?.message || "Failed to load notifications");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNotifications();
+
+    const timer = window.setInterval(loadNotifications, 20000);
+    return () => window.clearInterval(timer);
+  }, [loadNotifications]);
 
   useEffect(() => {
     const onMouseDown = (event) => {
@@ -157,17 +205,34 @@ export default function Notifications({ user }) {
     return notifications;
   }, [filter, notifications]);
 
-  const newItems = filtered.filter((item) => item.section === "new");
-  const earlierItems = filtered.filter((item) => item.section === "earlier");
+  const newItems = filtered.filter((item) => {
+    const createdAt = new Date(item.createdAt || "").getTime();
+    return Number.isFinite(createdAt) && Date.now() - createdAt < 24 * 60 * 60 * 1000;
+  });
+  const earlierItems = filtered.filter((item) => !newItems.includes(item));
 
-  const markAsRead = (id) => {
+  const markAsReadLocal = (id) => {
     setNotifications((current) =>
-      current.map((item) => (item.id === id ? { ...item, read: true } : item))
+      current.map((item) => (item._id === id ? { ...item, read: true } : item))
     );
   };
 
-  const markAllAsRead = () => {
+  const markAsRead = async (id) => {
+    markAsReadLocal(id);
+    try {
+      await markNotificationAsRead(id);
+    } catch {
+      // Keep optimistic read state to avoid flicker.
+    }
+  };
+
+  const markAllAsRead = async () => {
     setNotifications((current) => current.map((item) => ({ ...item, read: true })));
+    try {
+      await markAllNotificationsAsRead();
+    } catch {
+      // Keep optimistic read state.
+    }
   };
 
   const openSettings = () => {
@@ -180,40 +245,48 @@ export default function Notifications({ user }) {
     setMenuOpen(false);
   };
 
-  const renderRow = (item) => {
-    const avatarSource = resolveImage(item.avatar) || fallbackAvatar(item.actor);
-    return (
-      <button
-        key={item.id}
-        className={`notif-row ${item.read ? "" : "unread"}`}
-        onClick={() => markAsRead(item.id)}
-      >
-        <div className="notif-avatar-wrap">
-          <img src={avatarSource} alt={item.actor} className="notif-avatar" />
-          <span className={`notif-action-badge ${item.type}`}>
-            <NotificationActionIcon type={item.type} />
-          </span>
-        </div>
-
-        <div className="notif-copy">
-          <p className="notif-text">
-            <strong>{item.actor}</strong> {item.message}
-          </p>
-          <div className="notif-meta">
-            <span className="notif-time">{item.time}</span>
-            {item.meta && (
-              <>
-                <span className="notif-meta-sep">.</span>
-                <span className="notif-extra">{item.meta}</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {!item.read && <span className="notif-unread-dot" />}
-      </button>
-    );
+  const handleNotificationClick = (item) => {
+    markAsRead(item._id);
+    if (item.type === "message") {
+      navigate("/home", { state: { openMessenger: true } });
+      return;
+    }
+    if (item.senderUsername) {
+      navigate(`/profile/${item.senderUsername}`);
+    }
   };
+
+  const renderRow = (item) => (
+    <button
+      key={item._id}
+      className={`notif-row ${item.read ? "" : "unread"}`}
+      onClick={() => handleNotificationClick(item)}
+    >
+      <div className="notif-avatar-wrap">
+        <img src={item.actorAvatar} alt={item.actorName} className="notif-avatar" />
+        <span className={`notif-action-badge ${item.type}`}>
+          <NotificationActionIcon type={item.type} />
+        </span>
+      </div>
+
+      <div className="notif-copy">
+        <p className="notif-text">
+          <strong>{item.actorName}</strong> {item.messageText}
+        </p>
+        <div className="notif-meta">
+          <span className="notif-time">{item.timeLabel}</span>
+          {item.previewText && (
+            <>
+              <span className="notif-meta-sep">.</span>
+              <span className="notif-extra">{item.previewText.slice(0, 60)}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {!item.read && <span className="notif-unread-dot" />}
+    </button>
+  );
 
   return (
     <>
@@ -292,17 +365,22 @@ export default function Notifications({ user }) {
               )}
             </div>
 
-            {newItems.length > 0 && (
+            {loading && <div className="notif-empty">Loading notifications...</div>}
+            {!loading && error && <div className="notif-empty">{error}</div>}
+
+            {!loading && !error && newItems.length > 0 && (
               <section className="notif-section">
                 <div className="notif-section-header">
                   <h3>New</h3>
-                  <button className="notif-link-btn">See all</button>
+                  <button className="notif-link-btn" onClick={() => setFilter("all")}>
+                    See all
+                  </button>
                 </div>
                 <div className="notif-list">{newItems.map(renderRow)}</div>
               </section>
             )}
 
-            {earlierItems.length > 0 && (
+            {!loading && !error && earlierItems.length > 0 && (
               <section className="notif-section">
                 <div className="notif-section-header">
                   <h3>Earlier</h3>
@@ -311,7 +389,7 @@ export default function Notifications({ user }) {
               </section>
             )}
 
-            {!newItems.length && !earlierItems.length && (
+            {!loading && !error && !newItems.length && !earlierItems.length && (
               <div className="notif-empty">No notifications in this view.</div>
             )}
 

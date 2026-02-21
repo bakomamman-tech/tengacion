@@ -20,6 +20,7 @@ const { Server } = require("socket.io");
 const Message = require("./models/Message");
 const User = require("./models/User");
 const upload = require("./utils/upload");
+const { createNotification } = require("./services/notificationService");
 
 const errorHandler = require("./middleware/errorHandler");
 
@@ -282,6 +283,23 @@ io.on("connection", (socket) => {
       const normalized = normalizeMessage(message.toObject());
 
       io.to(senderId).to(receiverId).emit("newMessage", normalized);
+
+      await createNotification({
+        recipient: receiverId,
+        sender: senderId,
+        type: "message",
+        text: "sent you a message",
+        entity: {
+          id: message._id,
+          model: "Message",
+        },
+        metadata: {
+          previewText: text.slice(0, 120),
+          link: "/home",
+        },
+        io,
+        onlineUsers,
+      });
 
       if (typeof ack === "function") {
         ack({ ok: true, message: normalized });

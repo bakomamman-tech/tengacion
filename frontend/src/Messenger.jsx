@@ -28,6 +28,42 @@ const fallbackAvatar = (name) =>
     name || "User"
   )}&size=96&background=DFE8F6&color=1D3A6D`;
 
+let messageBeepContext = null;
+const playIncomingMessageBeep = () => {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) {return;}
+
+    if (!messageBeepContext) {
+      messageBeepContext = new AudioCtx();
+    }
+
+    const ctx = messageBeepContext;
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => null);
+    }
+
+    const now = ctx.currentTime;
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    oscillator.type = "square";
+    oscillator.frequency.setValueAtTime(1600, now);
+    oscillator.frequency.exponentialRampToValueAtTime(1120, now + 0.09);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.125);
+  } catch {
+    // Ignore browser audio restrictions silently.
+  }
+};
+
 const normalizeMessage = (message) => ({
   _id: toIdString(message?._id),
   senderId: toIdString(message?.senderId),
@@ -323,6 +359,11 @@ export default function Messenger({ user, onClose }) {
     const handleIncomingMessage = (rawMessage) => {
       const message = normalizeMessage(rawMessage);
       const activeContactId = selectedIdRef.current;
+      const isIncoming = toIdString(message.senderId) !== meId;
+
+      if (isIncoming) {
+        playIncomingMessageBeep();
+      }
 
       if (isForConversation(message, meId, activeContactId)) {
         setMessages((prev) => {

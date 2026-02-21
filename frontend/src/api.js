@@ -202,6 +202,32 @@ export const unfriend = (userId) =>
   });
 
 // ======================================================
+// NOTIFICATIONS
+// ======================================================
+
+export const getNotifications = (page = 1, limit = 50) =>
+  request(`${API_BASE}/notifications?page=${page}&limit=${limit}`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getUnreadNotificationsCount = () =>
+  request(`${API_BASE}/notifications/unread-count`, {
+    headers: getAuthHeaders(),
+  });
+
+export const markNotificationAsRead = (notificationId) =>
+  request(`${API_BASE}/notifications/${encodeURIComponent(notificationId || "")}/read`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+export const markAllNotificationsAsRead = () =>
+  request(`${API_BASE}/notifications/read-all`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+// ======================================================
 // 🟢 POSTS
 // ======================================================
 

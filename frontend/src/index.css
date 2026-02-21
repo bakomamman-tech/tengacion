@@ -3838,6 +3838,14 @@ html.dark-mode .nav-notification-btn:hover {
   background: #6b7280;
 }
 
+.notif-action-badge.friend_request {
+  background: #6b7280;
+}
+
+.notif-action-badge.message {
+  background: #0f7fd9;
+}
+
 .notif-action-badge.birthday {
   background: #d946ef;
 }

@@ -2927,6 +2927,7 @@ html.dark-mode .nav-notification-btn:hover {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
 }
 
 .chat-empty {
@@ -2959,7 +2960,8 @@ html.dark-mode .nav-notification-btn:hover {
 }
 
 .messenger-messages {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   padding: 12px;
   display: flex;
@@ -3024,6 +3026,11 @@ html.dark-mode .nav-notification-btn:hover {
   display: flex;
   gap: 8px;
   padding: 10px;
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--surface);
 }
 
 .messenger-input input {

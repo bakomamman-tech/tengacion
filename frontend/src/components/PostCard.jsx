@@ -127,7 +127,9 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
 
   /* -------------------------------------------------- */
 
-  const [reaction, setReaction] = useState(null);
+  const [reaction, setReaction] = useState(
+    post?.likedByViewer ? REACTIONS[0] : null
+  );
   const [showReactions, setShowReactions] = useState(false);
   const [showComments, setShowComments] = useState(false);
 
@@ -170,10 +172,14 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   const baseCommentsCount =
     Number(post?.commentsCount) ||
     (Array.isArray(post?.comments) ? post.comments.length : 0);
+  const [likesCount, setLikesCount] = useState(baseLikesCount);
+  const [likedByViewer, setLikedByViewer] = useState(Boolean(post?.likedByViewer));
   const [liveCommentsCount, setLiveCommentsCount] = useState(baseCommentsCount);
   const [shareCount, setShareCount] = useState(Number(post?.shareCount) || 0);
+  const [liking, setLiking] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
-  const reactionsCount = baseLikesCount + (reaction ? 1 : 0);
+  const reactionsCount = likesCount;
   const commentsLabel = liveCommentsCount === 1 ? "comment" : "comments";
   const sharesLabel = shareCount === 1 ? "share" : "shares";
 
@@ -200,24 +206,117 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   }, [baseCommentsCount, post?._id]);
 
   useEffect(() => {
+    setLikesCount(baseLikesCount);
+    const nextLiked = Boolean(post?.likedByViewer);
+    setLikedByViewer(nextLiked);
+    setReaction(nextLiked ? REACTIONS[0] : null);
+  }, [baseLikesCount, post?._id, post?.likedByViewer]);
+
+  useEffect(() => {
     setShareCount(Number(post?.shareCount) || 0);
   }, [post?._id, post?.shareCount]);
 
   const likeBtnLabel = useMemo(() => {
-    if (!reaction) {
+    if (!likedByViewer) {
       return "Like";
     }
 
-    return reaction.name;
-  }, [reaction]);
+    return reaction?.name || "Like";
+  }, [likedByViewer, reaction]);
 
-  const copyLink = async () => {
+  const copyCurrentLink = async () => {
+    await navigator.clipboard.writeText(window.location.href);
+  };
+
+  const copyLinkOnly = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
-      setShareCount((current) => current + 1);
+      await copyCurrentLink();
       alert("Post link copied");
     } catch {
       alert("Copy failed");
+    }
+  };
+
+  const syncLike = async (shouldLike, selectedReaction = null) => {
+    if (liking) {
+      return;
+    }
+
+    if (likedByViewer === shouldLike) {
+      setReaction(shouldLike ? selectedReaction || reaction || REACTIONS[0] : null);
+      return;
+    }
+
+    try {
+      setLiking(true);
+
+      const res = await fetch(`/api/posts/${post._id}/like`, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to update like");
+      }
+
+      const nextLiked = Boolean(data?.liked);
+      setLikedByViewer(nextLiked);
+      setLikesCount((current) => {
+        const nextCount = Number(data?.likesCount);
+        if (Number.isFinite(nextCount) && nextCount >= 0) {
+          return nextCount;
+        }
+        return Math.max(0, current + (nextLiked ? 1 : -1));
+      });
+      setReaction(nextLiked ? selectedReaction || reaction || REACTIONS[0] : null);
+    } catch (err) {
+      alert(err.message || "Failed to update like");
+    } finally {
+      setLiking(false);
+    }
+  };
+
+  const sharePost = async () => {
+    if (sharing) {
+      return;
+    }
+
+    try {
+      setSharing(true);
+
+      const res = await fetch(`/api/posts/${post._id}/share`, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to share post");
+      }
+
+      setShareCount((current) => {
+        const nextCount = Number(data?.shareCount);
+        if (Number.isFinite(nextCount) && nextCount >= 0) {
+          return nextCount;
+        }
+        return current + 1;
+      });
+
+      try {
+        await copyCurrentLink();
+        alert("Post shared");
+      } catch {
+        alert("Post shared");
+      }
+    } catch (err) {
+      alert(err.message || "Failed to share post");
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -284,7 +383,7 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
 
             {menuOpen && (
               <div className="post-menu-dropdown">
-                <button onClick={copyLink}>Copy link</button>
+                <button onClick={copyLinkOnly}>Copy link</button>
 
                 {isOwner && (
                   <>
@@ -387,8 +486,8 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
                     key={nextReaction.key}
                     title={nextReaction.name}
                     onClick={() => {
-                      setReaction(nextReaction);
                       setShowReactions(false);
+                      syncLike(true, nextReaction);
                     }}
                   >
                     {nextReaction.label}
@@ -397,9 +496,13 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
               </div>
             )}
 
-            <button className={`action-btn ${reaction ? "active-like" : ""}`}>
+            <button
+              className={`action-btn ${likedByViewer ? "active-like" : ""}`}
+              onClick={() => syncLike(!likedByViewer, likedByViewer ? null : REACTIONS[0])}
+              disabled={liking}
+            >
               <span className="btn-emoji">
-                {reaction ? reaction.label : "\u{1F44D}"}
+                {likedByViewer ? reaction?.label || "\u{1F44D}" : "\u{1F44D}"}
               </span>
               <span>{likeBtnLabel}</span>
             </button>
@@ -413,9 +516,9 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
             <span>Comment</span>
           </button>
 
-          <button className="action-btn" onClick={copyLink}>
+          <button className="action-btn" onClick={sharePost} disabled={sharing}>
             <span className="btn-emoji">{"\u{21AA}"}</span>
-            <span>Share</span>
+            <span>{sharing ? "Sharing..." : "Share"}</span>
           </button>
         </div>
 

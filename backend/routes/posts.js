@@ -69,6 +69,10 @@ const toPostPayload = (post, viewerId) => {
   const moreOptions = Array.isArray(post.moreOptions) ? post.moreOptions : [];
   const callToAction = post.callToAction || {};
   const authorId = author?._id ? author._id.toString() : "";
+  const viewerIdString = viewerId ? viewerId.toString() : "";
+  const likedByViewer = Boolean(
+    viewerIdString && likes.some((id) => id.toString() === viewerIdString)
+  );
 
   return {
     _id: post._id.toString(),
@@ -80,6 +84,7 @@ const toPostPayload = (post, viewerId) => {
     avatar: avatarToUrl(author.avatar),
     likes: likes.length,
     likesCount: likes.length,
+    likedByViewer,
     shareCount: Number(post.shareCount) || 0,
     comments,
     commentsCount: post.commentsCount ?? comments.length,
@@ -307,6 +312,32 @@ router.post("/:id/like", auth, async (req, res) => {
   } catch (err) {
     console.error("Like error:", err);
     return res.status(500).json({ error: "Failed to update like" });
+  }
+});
+
+/* ================= SHARE ================= */
+router.post("/:id/share", auth, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ error: "Invalid post id" });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    const current = Number(post.shareCount) || 0;
+    post.shareCount = current + 1;
+    await post.save();
+
+    return res.json({
+      success: true,
+      shareCount: post.shareCount,
+    });
+  } catch (err) {
+    console.error("Share error:", err);
+    return res.status(500).json({ error: "Failed to share post" });
   }
 });
 

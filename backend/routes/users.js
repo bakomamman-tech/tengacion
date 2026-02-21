@@ -215,7 +215,8 @@ router.get("/profile/:username", auth, async (req, res) => {
 /* ================= LIST USERS ================= */
 router.get("/", auth, async (req, res) => {
   try {
-    const search = (req.query.search || "").trim();
+    const rawSearch = (req.query.search || "").trim();
+    const search = rawSearch.replace(/^@+/, "");
     const query = {};
 
     if (search) {

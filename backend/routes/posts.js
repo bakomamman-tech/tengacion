@@ -9,6 +9,15 @@ const { saveUploadedFile } = require("../services/mediaStore");
 
 const router = express.Router();
 
+const toIdString = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (value._id) return value._id.toString();
+  return value.toString();
+};
+
+const uniqueIds = (values) => [...new Set(values.filter(Boolean))];
+
 const inferMediaKind = (file) => {
   const mime = String(file?.mimetype || "").toLowerCase();
   if (mime.startsWith("video/")) {
@@ -201,21 +210,56 @@ router.post(
 router.get("/", auth, async (req, res) => {
   try {
     const viewerId = req.user.id;
-    const search = (req.query.search || "").trim();
+    const rawSearch = (req.query.search || "").trim();
+    const search = rawSearch.replace(/^@+/, "");
 
-    const viewer = await User.findById(viewerId).select("following");
+    const viewer = await User.findById(viewerId).select("following friends");
     if (!viewer) {
       return res.status(401).json({ error: "User not found" });
     }
 
-    const authorIds = [
-      viewerId,
-      ...(viewer.following || []).map((id) => id.toString()),
+    const followingIds = uniqueIds(
+      (viewer.following || []).map((id) => toIdString(id))
+    ).filter((id) => id && id !== viewerId);
+    const friendIds = uniqueIds((viewer.friends || []).map((id) => toIdString(id))).filter(
+      (id) => id && id !== viewerId
+    );
+    const followingOnlyIds = followingIds.filter((id) => !friendIds.includes(id));
+
+    const visibilityScopes = [
+      { author: viewerId },
+      { author: { $in: friendIds }, privacy: { $in: ["public", "friends"] } },
+      { author: { $in: followingOnlyIds }, privacy: "public" },
     ];
 
-    const query = { author: { $in: authorIds } };
+    let matchedAuthorIds = [];
     if (search) {
-      query.text = { $regex: search, $options: "i" };
+      const matchingUsers = await User.find(
+        {
+          $or: [
+            { username: { $regex: search, $options: "i" } },
+            { name: { $regex: search, $options: "i" } },
+          ],
+        },
+        "_id"
+      ).lean();
+      matchedAuthorIds = matchingUsers.map((entry) => entry._id);
+
+      if (matchedAuthorIds.length > 0) {
+        visibilityScopes.push({
+          author: { $in: matchedAuthorIds },
+          privacy: "public",
+        });
+      }
+    }
+
+    const query = { $or: visibilityScopes };
+    if (search) {
+      const searchFilters = [{ text: { $regex: search, $options: "i" } }];
+      if (matchedAuthorIds.length > 0) {
+        searchFilters.push({ author: { $in: matchedAuthorIds } });
+      }
+      query.$and = [{ $or: searchFilters }];
     }
 
     const posts = await withPostAuthor(
@@ -238,13 +282,31 @@ router.get("/user/:username", auth, async (req, res) => {
       return res.status(400).json({ error: "Username is required" });
     }
 
-    const profileUser = await User.findOne({ username }).select("_id");
+    const profileUser = await User.findOne({ username }).select("_id friends");
     if (!profileUser) {
       return res.status(404).json({ error: "Profile not found" });
     }
 
+    const viewer = await User.findById(viewerId).select("_id");
+    if (!viewer) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    const profileId = profileUser._id.toString();
+    const isOwner = profileId === viewerId.toString();
+    const isFriend = (profileUser.friends || []).some(
+      (id) => id.toString() === viewerId.toString()
+    );
+
+    let privacyFilter = { privacy: "public" };
+    if (isOwner) {
+      privacyFilter = {};
+    } else if (isFriend) {
+      privacyFilter = { privacy: { $in: ["public", "friends"] } };
+    }
+
     const posts = await withPostAuthor(
-      Post.find({ author: profileUser._id }).sort({ createdAt: -1 })
+      Post.find({ author: profileUser._id, ...privacyFilter }).sort({ createdAt: -1 })
     ).lean();
 
     return res.json(posts.map((post) => toPostPayload(post, viewerId)));

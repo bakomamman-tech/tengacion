@@ -29,70 +29,66 @@ const MORE_OPTIONS = [
 ];
 
 function ComposerIcon({ name }) {
-  if (name === "media") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <rect x="3.5" y="5" width="17" height="14" rx="2.5" />
-        <circle cx="9.1" cy="10" r="1.8" />
-        <path d="M5.8 16.2l4.5-4.2 3.2 2.8 2.3-2.1 2.4 3.5" />
+  const icons = {
+    media: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="1.2" y="1.2" width="21.6" height="21.6" rx="5.4" fill="#38c976" />
+        <rect x="4.8" y="5.8" width="14.4" height="12" rx="2.2" fill="#defce8" />
+        <circle cx="9.2" cy="9.7" r="1.5" fill="#3ab368" />
+        <path d="M5.8 17.1l3.8-3.5 2.7 2.3 2-1.7 2.9 2.9H5.8z" fill="#239153" />
       </svg>
-    );
-  }
-
-  if (name === "tag") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="8.7" cy="8.1" r="2.7" />
-        <path d="M3.6 18.5c.8-2.7 2.8-4.3 5.1-4.3s4.4 1.6 5.2 4.3" />
-        <circle cx="16.9" cy="9.3" r="2.2" />
-        <path d="M14.1 16.4c.6-1.9 1.9-3.1 3.6-3.1 1.1 0 2.2.5 3.1 1.5" />
+    ),
+    tag: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10.8" fill="#e7f0ff" />
+        <circle cx="9.7" cy="9.1" r="2.6" fill="#2f88ff" />
+        <circle cx="15.2" cy="10" r="2.1" fill="#5ba3ff" />
+        <path d="M5.6 17.8c.8-2.5 2.8-4 5-4 2.2 0 4.1 1.5 5 4v.4h-10z" fill="#2f88ff" />
+        <path d="M13.2 18c.6-1.8 1.8-2.9 3.4-2.9 1 0 1.9.4 2.7 1.2v1.7z" fill="#5ba3ff" />
       </svg>
-    );
-  }
-
-  if (name === "feeling") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="8.5" />
-        <circle cx="9" cy="10" r="1" />
-        <circle cx="15" cy="10" r="1" />
-        <path d="M8.4 14.2c1 .9 2.1 1.4 3.6 1.4s2.6-.5 3.6-1.4" />
+    ),
+    feeling: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10.6" fill="#ffc93f" />
+        <circle cx="8.8" cy="10" r="1.2" fill="#9f6500" />
+        <circle cx="15.2" cy="10" r="1.2" fill="#9f6500" />
+        <circle cx="7.2" cy="13.2" r="1.3" fill="#ffb25f" />
+        <circle cx="16.8" cy="13.2" r="1.3" fill="#ffb25f" />
+        <path
+          d="M8.2 14.5c1 1.2 2.3 1.8 3.8 1.8s2.8-.6 3.8-1.8"
+          stroke="#9f6500"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          fill="none"
+        />
       </svg>
-    );
-  }
-
-  if (name === "location") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M12 20.2s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10z" />
-        <circle cx="12" cy="10.2" r="2.1" />
+    ),
+    location: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 22s6.4-5.6 6.4-11a6.4 6.4 0 1 0-12.8 0c0 5.4 6.4 11 6.4 11z" fill="#ff5f58" />
+        <circle cx="12" cy="11" r="2.3" fill="#fff" />
       </svg>
-    );
-  }
-
-  if (name === "call") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M6 4.8h3.2l1.5 4-2 1.9a12.4 12.4 0 0 0 4.6 4.6l1.9-2 4 1.5V18a2 2 0 0 1-2.1 2c-7.1-.4-12.7-6-13.1-13.1A2 2 0 0 1 6 4.8z" />
+    ),
+    call: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10.8" fill="#3f8dff" />
+        <path
+          d="M8 7h2.5l1.1 2.9-1.4 1.3a8.8 8.8 0 0 0 2.6 2.6l1.3-1.4 2.9 1.1V16c0 .8-.7 1.5-1.5 1.5a9.7 9.7 0 0 1-9-9A1.5 1.5 0 0 1 8 7z"
+          fill="#fff"
+        />
       </svg>
-    );
-  }
-
-  if (name === "more") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="6.5" cy="12" r="1.5" />
-        <circle cx="12" cy="12" r="1.5" />
-        <circle cx="17.5" cy="12" r="1.5" />
+    ),
+    more: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10.8" fill="#eef2f7" />
+        <circle cx="8" cy="12" r="1.5" fill="#5d6675" />
+        <circle cx="12" cy="12" r="1.5" fill="#5d6675" />
+        <circle cx="16" cy="12" r="1.5" fill="#5d6675" />
       </svg>
-    );
-  }
+    ),
+  };
 
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="8" />
-    </svg>
-  );
+  return <span className="composer-icon">{icons[name] || icons.more}</span>;
 }
 
 function PostComposerModal({ user, onClose, onPosted }) {

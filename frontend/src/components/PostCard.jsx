@@ -161,11 +161,17 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
       : "";
   const legacyMediaUrl = post?.image || post?.photo || "";
   const postMediaUrl = resolveImage(mediaUrlCandidate || legacyMediaUrl);
-  const isVideoMedia = Boolean(
-    postMediaUrl &&
-      (mediaTypeCandidate === "video" ||
-        /\.(mp4|webm|ogg|mov|m4v)(?:\?.*)?$/i.test(postMediaUrl))
+  const hasVideoExtension = /\.(mp4|webm|ogg|mov|m4v)(?:\?.*)?$/i.test(
+    postMediaUrl || ""
   );
+  const hasImageExtension = /\.(png|jpe?g|gif|webp|bmp|svg|avif)(?:\?.*)?$/i.test(
+    postMediaUrl || ""
+  );
+  const explicitVideo = mediaTypeCandidate === "video" || hasVideoExtension;
+  const explicitImage = mediaTypeCandidate === "image" || hasImageExtension;
+  const inferredMediaType = explicitVideo ? "video" : explicitImage ? "image" : "video";
+  const [mediaRenderType, setMediaRenderType] = useState(inferredMediaType);
+  const [mediaFallbackUsed, setMediaFallbackUsed] = useState(false);
   const tags = Array.isArray(post?.tags) ? post.tags.filter(Boolean) : [];
   const feeling = typeof post?.feeling === "string" ? post.feeling.trim() : "";
   const checkInLocation =
@@ -231,6 +237,11 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   useEffect(() => {
     setShareCount(Number(post?.shareCount) || 0);
   }, [post?._id, post?.shareCount]);
+
+  useEffect(() => {
+    setMediaRenderType(inferredMediaType);
+    setMediaFallbackUsed(false);
+  }, [inferredMediaType, post?._id, postMediaUrl]);
 
   const likeBtnLabel = useMemo(() => {
     if (!likedByViewer) {
@@ -454,15 +465,31 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
 
           {postMediaUrl && (
             <div className="post-media">
-              {isVideoMedia ? (
+              {mediaRenderType === "video" ? (
                 <video
                   src={postMediaUrl}
                   className="post-video"
                   controls
                   preload="metadata"
+                  onError={() => {
+                    if (!mediaFallbackUsed) {
+                      setMediaFallbackUsed(true);
+                      setMediaRenderType("image");
+                    }
+                  }}
                 />
               ) : (
-                <img src={postMediaUrl} alt="post" className="post-image" />
+                <img
+                  src={postMediaUrl}
+                  alt="post"
+                  className="post-image"
+                  onError={() => {
+                    if (!mediaFallbackUsed) {
+                      setMediaFallbackUsed(true);
+                      setMediaRenderType("video");
+                    }
+                  }}
+                />
               )}
             </div>
           )}

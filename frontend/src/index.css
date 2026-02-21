@@ -2460,14 +2460,19 @@ html.dark-mode .nav-notification-btn:hover {
 .composer-modal {
   width: min(660px, 100%);
   padding: 0;
-  overflow: hidden;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .composer-header {
   min-height: 64px;
   border-bottom: 1px solid var(--border);
   padding: 10px 16px;
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 5;
   justify-content: flex-end;
   background:
     linear-gradient(110deg, rgba(24, 119, 242, 0.08), transparent 38%),
@@ -2521,11 +2526,14 @@ html.dark-mode .nav-notification-btn:hover {
   border: none;
   border-radius: 0;
   background: transparent;
-  min-height: 180px;
+  min-height: clamp(110px, 18vh, 180px);
+  max-height: 34vh;
   padding: 0 16px 8px;
   font-size: clamp(26px, 2.2vw, 38px);
   line-height: 1.23;
   color: #1f2937;
+  overflow-y: auto;
+  resize: none;
 }
 
 .composer-textarea:focus {
@@ -2566,8 +2574,9 @@ html.dark-mode .nav-notification-btn:hover {
 .composer-preview img,
 .composer-preview video {
   width: 100%;
-  max-height: 360px;
-  object-fit: cover;
+  max-height: min(42vh, 360px);
+  object-fit: contain;
+  background: #0c1726;
   border-radius: 12px;
   display: block;
 }
@@ -2743,6 +2752,10 @@ html.dark-mode .nav-notification-btn:hover {
   background: #dce0e7;
   color: #7f8793;
   font-size: 18px;
+  position: sticky;
+  bottom: 10px;
+  z-index: 4;
+  box-shadow: 0 8px 20px rgba(15, 31, 56, 0.15);
 }
 
 .composer-modal .pc-submit.active {

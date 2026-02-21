@@ -43,7 +43,9 @@ function EditPostModal({ post, onClose, onSave }) {
 
   useEffect(() => {
     const handler = (e) => {
-      if (boxRef.current && !boxRef.current.contains(e.target)) onClose();
+      if (boxRef.current && !boxRef.current.contains(e.target)) {
+        onClose();
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -56,7 +58,9 @@ function EditPostModal({ post, onClose, onSave }) {
   }, [onClose]);
 
   const submit = async () => {
-    if (!text.trim() || loading) return;
+    if (!text.trim() || loading) {
+      return;
+    }
 
     try {
       setLoading(true);
@@ -71,7 +75,9 @@ function EditPostModal({ post, onClose, onSave }) {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to update post");
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to update post");
+      }
 
       onSave(data);
       onClose();
@@ -142,6 +148,23 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
     ? post?.media?.[0]?.url || post?.media?.[0]
     : post?.media;
   const postImage = resolveImage(post?.image || post?.photo || mediaCandidate);
+  const tags = Array.isArray(post?.tags) ? post.tags.filter(Boolean) : [];
+  const feeling = typeof post?.feeling === "string" ? post.feeling.trim() : "";
+  const checkInLocation =
+    typeof post?.location === "string" ? post.location.trim() : "";
+  const callToAction =
+    post?.callToAction && typeof post.callToAction === "object"
+      ? post.callToAction
+      : {};
+  const moreOptions = Array.isArray(post?.moreOptions)
+    ? post.moreOptions.filter(Boolean)
+    : [];
+  const callValue =
+    typeof callToAction?.value === "string" ? callToAction.value.trim() : "";
+  const hasCallCta =
+    callToAction?.type === "call" &&
+    Boolean(callToAction?.enabled) &&
+    Boolean(callValue);
 
   const isOwner = !!post?.isOwner;
 
@@ -162,7 +185,10 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   }, []);
 
   const likeBtnLabel = useMemo(() => {
-    if (!reaction) return "Like";
+    if (!reaction) {
+      return "Like";
+    }
+
     return reaction.name;
   }, [reaction]);
 
@@ -176,10 +202,14 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   };
 
   const deletePost = async () => {
-    if (deleting) return;
+    if (deleting) {
+      return;
+    }
 
     const ok = confirm("Delete this post?");
-    if (!ok) return;
+    if (!ok) {
+      return;
+    }
 
     try {
       setDeleting(true);
@@ -192,7 +222,9 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
       });
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Failed to delete post");
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to delete post");
+      }
 
       onDelete?.(post._id);
       setMenuOpen(false);
@@ -259,10 +291,45 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
         <div className="post-body">
           {post?.text && <p className="post-text">{post.text}</p>}
 
+          {(tags.length > 0 || feeling || checkInLocation || moreOptions.length > 0) && (
+            <div className="post-meta-row">
+              {tags.map((person) => (
+                <span key={`tag-${person}`} className="post-meta-chip tag">
+                  @{person}
+                </span>
+              ))}
+
+              {feeling && (
+                <span className="post-meta-chip feeling">Feeling {feeling}</span>
+              )}
+
+              {checkInLocation && (
+                <span className="post-meta-chip location">
+                  Check-in {checkInLocation}
+                </span>
+              )}
+
+              {moreOptions.map((option) => (
+                <span key={`more-${option}`} className="post-meta-chip more">
+                  {option}
+                </span>
+              ))}
+            </div>
+          )}
+
           {postImage && (
             <div className="post-media">
               <img src={postImage} alt="post" className="post-image" />
             </div>
+          )}
+
+          {hasCallCta && (
+            <a
+              className="post-call-cta"
+              href={`tel:${callValue.replace(/\s+/g, "")}`}
+            >
+              Call {callValue}
+            </a>
           )}
         </div>
 

@@ -14,6 +14,50 @@ const avatarToUrl = (avatar) => {
   return avatar.url || "";
 };
 
+const normalizeText = (value, maxLength = 160) => {
+  if (typeof value !== "string") return "";
+  return value.trim().slice(0, maxLength);
+};
+
+const toBool = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value !== "string") return false;
+
+  const normalized = value.trim().toLowerCase();
+  return ["true", "1", "yes", "on"].includes(normalized);
+};
+
+const toStringArray = (value, maxItems = 8, maxLength = 60, stripAt = false) => {
+  if (value == null) return [];
+
+  let source = value;
+  if (typeof source === "string") {
+    const trimmed = source.trim();
+    if (!trimmed) return [];
+
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        source = JSON.parse(trimmed);
+      } catch {
+        source = [trimmed];
+      }
+    } else {
+      source = [trimmed];
+    }
+  }
+
+  if (!Array.isArray(source)) {
+    source = [source];
+  }
+
+  return source
+    .map((entry) => normalizeText(String(entry || ""), maxLength))
+    .map((entry) => (stripAt ? entry.replace(/^@+/, "") : entry))
+    .filter(Boolean)
+    .slice(0, maxItems);
+};
+
 const toPostPayload = (post, viewerId) => {
   const author = post.author || {};
   const firstMedia = Array.isArray(post.media) && post.media.length > 0
@@ -21,6 +65,9 @@ const toPostPayload = (post, viewerId) => {
     : null;
   const likes = Array.isArray(post.likes) ? post.likes : [];
   const comments = Array.isArray(post.comments) ? post.comments : [];
+  const tags = Array.isArray(post.tags) ? post.tags : [];
+  const moreOptions = Array.isArray(post.moreOptions) ? post.moreOptions : [];
+  const callToAction = post.callToAction || {};
   const authorId = author?._id ? author._id.toString() : "";
 
   return {
@@ -35,6 +82,15 @@ const toPostPayload = (post, viewerId) => {
     likesCount: likes.length,
     comments,
     commentsCount: post.commentsCount ?? comments.length,
+    tags,
+    feeling: post.feeling || "",
+    location: post.location || "",
+    callToAction: {
+      type: callToAction.type || "none",
+      enabled: Boolean(callToAction.enabled),
+      value: callToAction.value || "",
+    },
+    moreOptions,
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,
     edited: Boolean(post.edited),
@@ -63,10 +119,23 @@ router.post(
     try {
       const viewerId = req.user.id;
       const text = (req.body?.text || "").trim();
+      const tags = toStringArray(req.body?.tags, 12, 40, true);
+      const feeling = normalizeText(req.body?.feeling, 60);
+      const location = normalizeText(req.body?.location, 140);
+      const callsEnabled = toBool(req.body?.callsEnabled);
+      const callNumber = normalizeText(req.body?.callNumber, 36);
+      const moreOptions = toStringArray(req.body?.moreOptions, 8, 60, false);
       const uploadFile =
         req.files?.image?.[0] || req.files?.file?.[0] || null;
+      const hasMetadata = Boolean(
+        tags.length ||
+        feeling ||
+        location ||
+        moreOptions.length ||
+        (callsEnabled && callNumber)
+      );
 
-      if (!text && !uploadFile) {
+      if (!text && !uploadFile && !hasMetadata) {
         return res.status(400).json({ error: "Post cannot be empty" });
       }
 
@@ -78,9 +147,19 @@ router.post(
         });
       }
 
+      const callToAction =
+        callsEnabled && callNumber
+          ? { type: "call", enabled: true, value: callNumber }
+          : { type: "none", enabled: false, value: "" };
+
       const created = await Post.create({
         author: viewerId,
         text,
+        tags,
+        feeling,
+        location,
+        callToAction,
+        moreOptions,
         media,
         privacy: "public",
       });

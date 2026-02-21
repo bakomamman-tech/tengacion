@@ -65,6 +65,48 @@ const PostSchema = new mongoose.Schema(
       maxlength: 5000,
     },
 
+    tags: {
+      type: [String],
+      default: [],
+    },
+
+    feeling: {
+      type: String,
+      trim: true,
+      maxlength: 60,
+      default: "",
+    },
+
+    location: {
+      type: String,
+      trim: true,
+      maxlength: 140,
+      default: "",
+    },
+
+    callToAction: {
+      type: {
+        type: String,
+        enum: ["none", "call"],
+        default: "none",
+      },
+      enabled: {
+        type: Boolean,
+        default: false,
+      },
+      value: {
+        type: String,
+        trim: true,
+        maxlength: 36,
+        default: "",
+      },
+    },
+
+    moreOptions: {
+      type: [String],
+      default: [],
+    },
+
     media: [
       {
         public_id: String, // Cloudinary

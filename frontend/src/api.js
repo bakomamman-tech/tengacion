@@ -151,10 +151,50 @@ export const getFeed = () =>
     headers: getAuthHeaders(),
   });
 
-export const createPost = (text, file) => {
+export const createPost = (input, maybeFile = null) => {
+  const payload =
+    input && typeof input === "object" && !Array.isArray(input)
+      ? input
+      : { text: input, file: maybeFile };
+
+  const {
+    text = "",
+    file = null,
+    tags = [],
+    feeling = "",
+    location = "",
+    callsEnabled = false,
+    callNumber = "",
+    moreOptions = [],
+  } = payload;
+
   const form = new FormData();
   form.append("text", text || "");
-  if (file) form.append("file", file);
+  if (file) {
+    form.append("file", file);
+  }
+
+  if (Array.isArray(tags) && tags.length > 0) {
+    form.append("tags", JSON.stringify(tags));
+  }
+
+  if (feeling) {
+    form.append("feeling", feeling);
+  }
+
+  if (location) {
+    form.append("location", location);
+  }
+
+  form.append("callsEnabled", String(Boolean(callsEnabled)));
+
+  if (callNumber) {
+    form.append("callNumber", callNumber);
+  }
+
+  if (Array.isArray(moreOptions) && moreOptions.length > 0) {
+    form.append("moreOptions", JSON.stringify(moreOptions));
+  }
 
   return request(`${API_BASE}/posts`, {
     method: "POST",
@@ -233,11 +273,21 @@ export const sendChatMessage = (otherUserId, text, clientId) =>
 // ======================================================
 
 export const resolveImage = (path) => {
-  if (!path) return "";
+  if (!path) {
+    return "";
+  }
+
   if (typeof path === "object") {
     return resolveImage(path.url || "");
   }
-  if (path.startsWith("http")) return path;
-  if (path.startsWith("data:")) return path;
+
+  if (path.startsWith("http")) {
+    return path;
+  }
+
+  if (path.startsWith("data:")) {
+    return path;
+  }
+
   return path.startsWith("/") ? path : `/${path}`;
 };

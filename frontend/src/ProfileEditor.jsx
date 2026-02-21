@@ -437,7 +437,7 @@ export default function ProfileEditor({ user }) {
     } catch (err) {
       setAvatarPreview("");
       setError(err.message || "Failed to upload profile photo");
-      toast.error("Upload failed");
+      toast.error(err.message || "Upload failed");
     } finally {
       setAvatarUploading(false);
     }
@@ -468,7 +468,7 @@ export default function ProfileEditor({ user }) {
     } catch (err) {
       setCoverPreview("");
       setError(err.message || "Failed to upload cover photo");
-      toast.error("Upload failed");
+      toast.error(err.message || "Upload failed");
     } finally {
       setCoverUploading(false);
     }

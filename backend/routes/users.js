@@ -319,8 +319,10 @@ router.post(
       const safeUser = await User.findById(req.user.id).select("-password");
       return res.json(safeUser);
     } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Avatar upload failed" });
+      console.error("Avatar upload failed:", err);
+      return res.status(500).json({
+        error: err?.message || "Avatar upload failed",
+      });
     }
   }
 );
@@ -365,8 +367,10 @@ router.post(
       const safeUser = await User.findById(req.user.id).select("-password");
       return res.json(safeUser);
     } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Cover upload failed" });
+      console.error("Cover upload failed:", err);
+      return res.status(500).json({
+        error: err?.message || "Cover upload failed",
+      });
     }
   }
 );

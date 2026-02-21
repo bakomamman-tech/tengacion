@@ -19,6 +19,9 @@ const userListPayload = (user) => ({
   avatar: avatarToUrl(user.avatar),
 });
 
+const getUploadedFile = (req) =>
+  req.file || req.files?.image?.[0] || req.files?.file?.[0] || null;
+
 /* ================= MY PROFILE ================= */
 router.get("/me", auth, async (req, res) => {
   try {
@@ -277,61 +280,79 @@ router.get("/requests", auth, async (req, res) => {
 });
 
 /* ================= UPLOAD AVATAR ================= */
-router.post("/me/avatar", auth, upload.single("image"), async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+router.post(
+  "/me/avatar",
+  auth,
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "file", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const user = await User.findById(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      const selectedFile = getUploadedFile(req);
+      if (!selectedFile) {
+        return res.status(400).json({ error: "No image" });
+      }
+
+      const imageUrl = `/uploads/${selectedFile.filename}`;
+      user.avatar = { public_id: "", url: imageUrl };
+      await user.save();
+
+      await Post.create({
+        author: user._id,
+        text: "Updated profile picture",
+        media: [{ url: imageUrl, type: "image" }],
+        privacy: "public",
+      });
+
+      return res.json(user);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Avatar upload failed" });
     }
-    if (!req.file) {
-      return res.status(400).json({ error: "No image" });
-    }
-
-    const imageUrl = `/uploads/${req.file.filename}`;
-    user.avatar = { public_id: "", url: imageUrl };
-    await user.save();
-
-    await Post.create({
-      author: user._id,
-      text: "Updated profile picture",
-      media: [{ url: imageUrl, type: "image" }],
-      privacy: "public",
-    });
-
-    return res.json(user);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Avatar upload failed" });
   }
-});
+);
 
 /* ================= UPLOAD COVER ================= */
-router.post("/me/cover", auth, upload.single("image"), async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+router.post(
+  "/me/cover",
+  auth,
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "file", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const user = await User.findById(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      const selectedFile = getUploadedFile(req);
+      if (!selectedFile) {
+        return res.status(400).json({ error: "No image" });
+      }
+
+      const imageUrl = `/uploads/${selectedFile.filename}`;
+      user.cover = { public_id: "", url: imageUrl };
+      await user.save();
+
+      await Post.create({
+        author: user._id,
+        text: "Updated cover photo",
+        media: [{ url: imageUrl, type: "image" }],
+        privacy: "public",
+      });
+
+      return res.json(user);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Cover upload failed" });
     }
-    if (!req.file) {
-      return res.status(400).json({ error: "No image" });
-    }
-
-    const imageUrl = `/uploads/${req.file.filename}`;
-    user.cover = { public_id: "", url: imageUrl };
-    await user.save();
-
-    await Post.create({
-      author: user._id,
-      text: "Updated cover photo",
-      media: [{ url: imageUrl, type: "image" }],
-      privacy: "public",
-    });
-
-    return res.json(user);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Cover upload failed" });
   }
-});
+);
 
 module.exports = router;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -81,6 +81,34 @@ const toWebsiteLabel = (value) => {
   return raw.replace(/^https?:\/\//i, "");
 };
 
+const POST_FILTERS = [
+  { id: "all", label: "All posts" },
+  { id: "photos", label: "Photos" },
+  { id: "videos", label: "Videos" },
+  { id: "text", label: "Text only" },
+];
+
+const getPostMediaKind = (post) => {
+  const mediaList = Array.isArray(post?.media) ? post.media : [];
+  if (!mediaList.length) {
+    return "text";
+  }
+
+  const hasVideo = mediaList.some((entry) => {
+    const rawUrl =
+      entry && typeof entry === "object"
+        ? entry.url || ""
+        : typeof entry === "string"
+          ? entry
+          : "";
+    return isVideoMedia(entry, rawUrl);
+  });
+
+  return hasVideo ? "videos" : "photos";
+};
+
+const isImageFile = (file) => Boolean(file?.type?.startsWith("image/"));
+
 function Glyph({ name, className = "" }) {
   const path = iconPathByName[name] || "";
   return (
@@ -141,6 +169,12 @@ export default function ProfileEditor({ user }) {
   const [coverUploading, setCoverUploading] = useState(false);
   const [showTipCard, setShowTipCard] = useState(true);
   const [postViewMode, setPostViewMode] = useState("list");
+  const [activeTab, setActiveTab] = useState("all");
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [showAllPhotos, setShowAllPhotos] = useState(false);
+  const [postFilter, setPostFilter] = useState("all");
+  const [avatarPreview, setAvatarPreview] = useState("");
+  const [coverPreview, setCoverPreview] = useState("");
 
   const [bio, setBio] = useState("");
   const [country, setCountry] = useState("");
@@ -150,10 +184,19 @@ export default function ProfileEditor({ user }) {
   const [education, setEducation] = useState("");
   const [website, setWebsite] = useState("");
 
+  const aboutRef = useRef(null);
+  const photosRef = useRef(null);
+  const friendsRef = useRef(null);
+  const postsRef = useRef(null);
+  const tabsRef = useRef(null);
+
   const isOwner = Boolean(profile?.isOwner);
   const displayAvatar =
-    resolveImage(profile?.avatar) || resolveImage(user?.avatar) || fallbackAvatar(profile?.name);
-  const displayCover = resolveImage(profile?.cover);
+    avatarPreview ||
+    resolveImage(profile?.avatar) ||
+    resolveImage(user?.avatar) ||
+    fallbackAvatar(profile?.name);
+  const displayCover = coverPreview || resolveImage(profile?.cover);
   const websiteHref = toWebsiteUrl(website || profile?.website);
   const websiteLabel = toWebsiteLabel(website || profile?.website);
 
@@ -183,8 +226,21 @@ export default function ProfileEditor({ user }) {
 
   const photoItems = mediaItems.filter((item) => !item.isVideo);
   const highlightItems = mediaItems.slice(0, 2);
+  const photoList = showAllPhotos ? photoItems : photoItems.slice(0, 9);
 
-  const syncEditableFields = (nextProfile) => {
+  const filteredPosts = useMemo(() => {
+    if (postFilter === "all") {
+      return posts;
+    }
+
+    if (postFilter === "text") {
+      return posts.filter((post) => getPostMediaKind(post) === "text");
+    }
+
+    return posts.filter((post) => getPostMediaKind(post) === postFilter);
+  }, [postFilter, posts]);
+
+  const syncEditableFields = useCallback((nextProfile) => {
     setBio(nextProfile?.bio || "");
     setCountry(nextProfile?.country || "");
     setCurrentCity(nextProfile?.currentCity || "");
@@ -192,35 +248,48 @@ export default function ProfileEditor({ user }) {
     setWorkplace(nextProfile?.workplace || "");
     setEducation(nextProfile?.education || "");
     setWebsite(nextProfile?.website || "");
-  };
+  }, []);
 
-  const loadAll = async (username, { showLoader = false } = {}) => {
-    if (!username) {
-      return;
-    }
-
-    try {
-      if (showLoader) {
-        setLoading(true);
+  const loadAll = useCallback(
+    async (username, { showLoader = false } = {}) => {
+      if (!username) {
+        return;
       }
-      setError("");
 
-      const [profileData, userPosts] = await Promise.all([
-        getUserProfile(username),
-        getPostsByUsername(username),
-      ]);
+      try {
+        if (showLoader) {
+          setLoading(true);
+        }
+        setError("");
 
-      setProfile(profileData || null);
-      setPosts(Array.isArray(userPosts) ? userPosts : []);
-      syncEditableFields(profileData || {});
-    } catch (err) {
-      setError(err.message || "Failed to load profile");
-    } finally {
-      if (showLoader) {
-        setLoading(false);
+        const [profileResult, postsResult] = await Promise.allSettled([
+          getUserProfile(username),
+          getPostsByUsername(username),
+        ]);
+
+        if (profileResult.status === "fulfilled") {
+          setProfile(profileResult.value || null);
+          syncEditableFields(profileResult.value || {});
+        } else {
+          setProfile(null);
+          setError(profileResult.reason?.message || "Failed to load profile");
+        }
+
+        if (postsResult.status === "fulfilled") {
+          setPosts(Array.isArray(postsResult.value) ? postsResult.value : []);
+        } else {
+          setPosts([]);
+        }
+      } catch (err) {
+        setError(err?.message || "Failed to load profile");
+      } finally {
+        if (showLoader) {
+          setLoading(false);
+        }
       }
-    }
-  };
+    },
+    [syncEditableFields]
+  );
 
   useEffect(() => {
     let alive = true;
@@ -229,31 +298,9 @@ export default function ProfileEditor({ user }) {
       if (!targetUsername) {
         return;
       }
-      try {
-        setLoading(true);
-        setError("");
-
-        const [profileData, userPosts] = await Promise.all([
-          getUserProfile(targetUsername),
-          getPostsByUsername(targetUsername),
-        ]);
-
-        if (!alive) {
-          return;
-        }
-
-        setProfile(profileData || null);
-        setPosts(Array.isArray(userPosts) ? userPosts : []);
-        syncEditableFields(profileData || {});
-      } catch (err) {
-        if (!alive) {
-          return;
-        }
-        setError(err.message || "Failed to load profile");
-      } finally {
-        if (alive) {
-          setLoading(false);
-        }
+      await loadAll(targetUsername, { showLoader: true });
+      if (!alive) {
+        return;
       }
     };
 
@@ -261,7 +308,78 @@ export default function ProfileEditor({ user }) {
     return () => {
       alive = false;
     };
-  }, [targetUsername]);
+  }, [targetUsername, loadAll]);
+
+  useEffect(
+    () => () => {
+      if (avatarPreview && avatarPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    },
+    [avatarPreview]
+  );
+
+  useEffect(
+    () => () => {
+      if (coverPreview && coverPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(coverPreview);
+      }
+    },
+    [coverPreview]
+  );
+
+  useEffect(() => {
+    if (!moreMenuOpen) {
+      return undefined;
+    }
+
+    const onDocClick = (event) => {
+      if (tabsRef.current && !tabsRef.current.contains(event.target)) {
+        setMoreMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [moreMenuOpen]);
+
+  const jumpTo = (ref) => {
+    if (!ref?.current) {
+      return;
+    }
+    ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleTabSelect = (tabId) => {
+    setActiveTab(tabId);
+    setMoreMenuOpen(false);
+
+    if (tabId === "about") {
+      jumpTo(aboutRef);
+      return;
+    }
+    if (tabId === "photos") {
+      jumpTo(photosRef);
+      return;
+    }
+    if (tabId === "friends") {
+      jumpTo(friendsRef);
+      return;
+    }
+    if (tabId === "reels") {
+      setPostFilter("videos");
+      jumpTo(postsRef);
+      return;
+    }
+    if (tabId === "all") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const openEditDetails = () => {
+    setEditingDetails(true);
+    setTimeout(() => jumpTo(aboutRef), 50);
+  };
 
   const saveDetails = async () => {
     if (!isOwner || saving) {
@@ -298,13 +416,26 @@ export default function ProfileEditor({ user }) {
     if (!file || !isOwner || avatarUploading) {
       return;
     }
+    if (!isImageFile(file)) {
+      toast.error("Please select a valid image file");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("Image is too large (max 15MB)");
+      return;
+    }
+    const nextPreview = URL.createObjectURL(file);
+    setAvatarPreview(nextPreview);
+
     try {
       setAvatarUploading(true);
       const updated = await uploadAvatar(file);
       updateUser(updated);
       await loadAll(targetUsername);
+      setAvatarPreview("");
       toast.success("Profile photo updated");
     } catch (err) {
+      setAvatarPreview("");
       setError(err.message || "Failed to upload profile photo");
       toast.error("Upload failed");
     } finally {
@@ -316,13 +447,26 @@ export default function ProfileEditor({ user }) {
     if (!file || !isOwner || coverUploading) {
       return;
     }
+    if (!isImageFile(file)) {
+      toast.error("Please select a valid image file");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("Image is too large (max 15MB)");
+      return;
+    }
+    const nextPreview = URL.createObjectURL(file);
+    setCoverPreview(nextPreview);
+
     try {
       setCoverUploading(true);
       const updated = await uploadCover(file);
       updateUser(updated);
       await loadAll(targetUsername);
+      setCoverPreview("");
       toast.success("Cover photo updated");
     } catch (err) {
+      setCoverPreview("");
       setError(err.message || "Failed to upload cover photo");
       toast.error("Upload failed");
     } finally {
@@ -376,7 +520,11 @@ export default function ProfileEditor({ user }) {
                   type="file"
                   accept="image/*"
                   hidden
-                  onChange={(event) => changeCover(event.target.files?.[0])}
+                  onChange={(event) => {
+                    const nextFile = event.target.files?.[0];
+                    changeCover(nextFile);
+                    event.target.value = "";
+                  }}
                 />
                 {coverUploading ? "Updating..." : "Edit cover photo"}
               </label>
@@ -392,7 +540,11 @@ export default function ProfileEditor({ user }) {
                     type="file"
                     accept="image/*"
                     hidden
-                    onChange={(event) => changeAvatar(event.target.files?.[0])}
+                    onChange={(event) => {
+                      const nextFile = event.target.files?.[0];
+                      changeAvatar(nextFile);
+                      event.target.value = "";
+                    }}
                   />
                   {avatarUploading ? "..." : "Edit"}
                 </label>
@@ -451,16 +603,54 @@ export default function ProfileEditor({ user }) {
             </div>
           </div>
 
-          <div className="profile-tabs-shell">
+          <div className="profile-tabs-shell" ref={tabsRef}>
             <div className="profile-tabs-v2">
-              <button className="profile-tab-btn active">All</button>
-              <button className="profile-tab-btn">About</button>
-              <button className="profile-tab-btn">Photos</button>
-              <button className="profile-tab-btn">Friends</button>
-              <button className="profile-tab-btn">Reels</button>
-              <button className="profile-tab-btn">More</button>
+              <button
+                className={`profile-tab-btn ${activeTab === "all" ? "active" : ""}`}
+                onClick={() => handleTabSelect("all")}
+              >
+                All
+              </button>
+              <button
+                className={`profile-tab-btn ${activeTab === "about" ? "active" : ""}`}
+                onClick={() => handleTabSelect("about")}
+              >
+                About
+              </button>
+              <button
+                className={`profile-tab-btn ${activeTab === "photos" ? "active" : ""}`}
+                onClick={() => handleTabSelect("photos")}
+              >
+                Photos
+              </button>
+              <button
+                className={`profile-tab-btn ${activeTab === "friends" ? "active" : ""}`}
+                onClick={() => handleTabSelect("friends")}
+              >
+                Friends
+              </button>
+              <button
+                className={`profile-tab-btn ${activeTab === "reels" ? "active" : ""}`}
+                onClick={() => handleTabSelect("reels")}
+              >
+                Reels
+              </button>
+              <button className="profile-tab-btn" onClick={() => setMoreMenuOpen((v) => !v)}>
+                More
+              </button>
             </div>
-            <button className="profile-tabs-more">...</button>
+            <button className="profile-tabs-more" onClick={() => setMoreMenuOpen((v) => !v)}>
+              ...
+            </button>
+            {moreMenuOpen && (
+              <div className="profile-more-menu">
+                <button onClick={() => handleTabSelect("about")}>About</button>
+                <button onClick={() => handleTabSelect("photos")}>Photos</button>
+                <button onClick={() => handleTabSelect("friends")}>Friends</button>
+                <button onClick={() => handleTabSelect("reels")}>Reels</button>
+                <button onClick={() => jumpTo(postsRef)}>Posts</button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -482,11 +672,13 @@ export default function ProfileEditor({ user }) {
                   <h3>Get more out of your profile</h3>
                   <p>Adding interests gives people a better sense of what you are about.</p>
                 </div>
-                <button className="profile-primary-action">Update your profile</button>
+                <button className="profile-primary-action" onClick={openEditDetails}>
+                  Update your profile
+                </button>
               </article>
             )}
 
-            <article className="card profile-panel">
+            <article className="card profile-panel" ref={aboutRef}>
               <div className="profile-panel-head">
                 <h3>Personal details</h3>
                 {isOwner && (
@@ -641,21 +833,43 @@ export default function ProfileEditor({ user }) {
                   {highlightItems.map((item, index) => (
                     <ProfileMediaTile key={item.id} item={item} alt={`Highlight ${index + 1}`} />
                   ))}
-                  <button className="profile-highlight-add">Add highlights</button>
+                  <button
+                    className="profile-highlight-add"
+                    onClick={() => {
+                      if (!photoItems.length) {
+                        toast("Add photos first to create highlights");
+                        return;
+                      }
+                      setShowAllPhotos(true);
+                      jumpTo(photosRef);
+                    }}
+                  >
+                    Add highlights
+                  </button>
                 </div>
               ) : (
-                <button className="profile-primary-action soft">Add highlights</button>
+                <button
+                  className="profile-primary-action soft"
+                  onClick={() => {
+                    setShowAllPhotos(true);
+                    jumpTo(photosRef);
+                  }}
+                >
+                  Add highlights
+                </button>
               )}
             </article>
 
-            <article className="card profile-panel">
+            <article className="card profile-panel" ref={photosRef}>
               <div className="profile-panel-head">
                 <h3>Photos</h3>
-                <button className="btn-link">See all photos</button>
+                <button className="btn-link" onClick={() => setShowAllPhotos((current) => !current)}>
+                  {showAllPhotos ? "Show less" : "See all photos"}
+                </button>
               </div>
               {photoItems.length ? (
                 <div className="profile-media-grid photos">
-                  {photoItems.slice(0, 9).map((item, index) => (
+                  {photoList.map((item, index) => (
                     <ProfileMediaTile key={item.id} item={item} alt={`Photo ${index + 1}`} />
                   ))}
                 </div>
@@ -664,10 +878,15 @@ export default function ProfileEditor({ user }) {
               )}
             </article>
 
-            <article className="card profile-panel">
+            <article className="card profile-panel" ref={friendsRef}>
               <div className="profile-panel-head">
                 <h3>Friends</h3>
-                <button className="btn-link">See all friends</button>
+                <button
+                  className="btn-link"
+                  onClick={() => navigate("/search")}
+                >
+                  Find friends
+                </button>
               </div>
               <p className="profile-friends-count">{formatLargeCount(profile.friendsCount)} friends</p>
               {Array.isArray(profile.friendsPreview) && profile.friendsPreview.length > 0 ? (
@@ -715,12 +934,23 @@ export default function ProfileEditor({ user }) {
               </article>
             )}
 
-            <article className="card profile-posts-toolbar">
+            <article className="card profile-posts-toolbar" ref={postsRef}>
               <div className="profile-panel-head">
                 <h3>Posts</h3>
                 <div className="profile-posts-tools">
-                  <button className="profile-pill-btn">Filters</button>
-                  <button className="profile-pill-btn">Manage posts</button>
+                  <button
+                    className="profile-pill-btn"
+                    onClick={() => {
+                      const currentIndex = POST_FILTERS.findIndex((entry) => entry.id === postFilter);
+                      const nextFilter = POST_FILTERS[(currentIndex + 1) % POST_FILTERS.length];
+                      setPostFilter(nextFilter.id);
+                    }}
+                  >
+                    Filter: {POST_FILTERS.find((entry) => entry.id === postFilter)?.label || "All"}
+                  </button>
+                  <button className="profile-pill-btn" onClick={() => navigate("/creator")}>
+                    Manage posts
+                  </button>
                 </div>
               </div>
               <div className="profile-posts-views">
@@ -740,8 +970,8 @@ export default function ProfileEditor({ user }) {
             </article>
 
             <div className={`profile-posts-list ${postViewMode === "grid" ? "grid" : ""}`}>
-              {posts.length > 0 ? (
-                posts.map((post) => (
+              {filteredPosts.length > 0 ? (
+                filteredPosts.map((post) => (
                   <PostCard
                     key={post._id}
                     post={post}
@@ -758,7 +988,9 @@ export default function ProfileEditor({ user }) {
                   />
                 ))
               ) : (
-                <article className="card profile-empty-posts">No posts to show yet.</article>
+                <article className="card profile-empty-posts">
+                  No posts match this filter yet.
+                </article>
               )}
             </div>
           </section>

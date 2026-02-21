@@ -210,6 +210,7 @@
 }
 
 .profile-tabs-shell {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -262,6 +263,36 @@
   border-radius: 9px;
   font-weight: 900;
   cursor: pointer;
+}
+
+.profile-more-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 10px;
+  width: min(230px, 68vw);
+  border: 1px solid #dde4ed;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 14px 28px rgba(17, 24, 39, 0.14);
+  padding: 6px;
+  z-index: 7;
+}
+
+.profile-more-menu button {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  min-height: 38px;
+  border-radius: 8px;
+  color: #1f2937;
+  font-weight: 700;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.profile-more-menu button:hover {
+  background: #f2f3f5;
 }
 
 .profile-body-v2 {

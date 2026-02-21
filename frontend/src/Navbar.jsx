@@ -29,6 +29,27 @@ const GridIcon = ({ size = 18 }) => (
   </svg>
 );
 
+const NotificationBellIcon = ({ size = 20 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      d="M12 3.2a5 5 0 0 0-5 5v2.1c0 .8-.2 1.6-.7 2.3l-1 1.5a1.2 1.2 0 0 0 1 1.9h11.4a1.2 1.2 0 0 0 1-1.9l-1-1.5a4.1 4.1 0 0 1-.7-2.3V8.2a5 5 0 0 0-5-5Z"
+      fill="currentColor"
+    />
+    <path
+      d="M9.4 17.4a2.6 2.6 0 0 0 5.2 0"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 export default function Navbar({ user, onLogout, onOpenMessenger }) {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
@@ -222,12 +243,12 @@ export default function Navbar({ user, onLogout, onOpenMessenger }) {
             </button>
 
             <button
-              className="nav-circle-btn has-badge"
+              className="nav-circle-btn nav-notification-btn has-badge"
               onClick={() => navigate("/notifications")}
               aria-label="Notifications"
               title="Notifications"
             >
-              <Icon name="bell" size={18} />
+              <NotificationBellIcon />
               <span className="nav-badge">1</span>
             </button>
           </div>

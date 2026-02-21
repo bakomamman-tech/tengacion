@@ -9,6 +9,22 @@ const { saveUploadedFile } = require("../services/mediaStore");
 
 const router = express.Router();
 
+const inferMediaKind = (file) => {
+  const mime = String(file?.mimetype || "").toLowerCase();
+  if (mime.startsWith("video/")) {
+    return "video";
+  }
+  if (mime.startsWith("image/")) {
+    return "image";
+  }
+
+  const filename = String(file?.originalname || file?.filename || "").toLowerCase();
+  if (/\.(mp4|webm|ogg|mov|m4v|avi|mkv)$/i.test(filename)) {
+    return "video";
+  }
+  return "image";
+};
+
 const avatarToUrl = (avatar) => {
   if (!avatar) return "";
   if (typeof avatar === "string") return avatar;
@@ -151,7 +167,7 @@ router.post(
         const persistedUrl = await saveUploadedFile(uploadFile);
         media.push({
           url: persistedUrl,
-          type: uploadFile.mimetype.startsWith("video/") ? "video" : "image",
+          type: inferMediaKind(uploadFile),
         });
       }
 

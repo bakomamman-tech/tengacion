@@ -169,7 +169,8 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   );
   const explicitVideo = mediaTypeCandidate === "video" || hasVideoExtension;
   const explicitImage = mediaTypeCandidate === "image" || hasImageExtension;
-  const shouldRenderVideo = explicitVideo;
+  const [forceVideoRender, setForceVideoRender] = useState(false);
+  const shouldRenderVideo = explicitVideo || forceVideoRender;
   const shouldRenderImage = explicitImage || !explicitVideo;
   const [videoPlaybackError, setVideoPlaybackError] = useState(false);
   const videoRef = useRef(null);
@@ -241,6 +242,7 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
 
   useEffect(() => {
     setVideoPlaybackError(false);
+    setForceVideoRender(false);
   }, [post?._id, postMediaUrl, mediaTypeCandidate]);
 
   const retryVideoPlayback = () => {
@@ -500,6 +502,7 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
                   src={postMediaUrl}
                   alt="post"
                   className="post-image"
+                  onError={() => setForceVideoRender(true)}
                 />
               ) : null}
             </div>

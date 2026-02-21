@@ -19,6 +19,37 @@ const toSafeFilename = (value = "") => {
   return safe || `upload_${Date.now()}`;
 };
 
+const inferContentTypeFromName = (filename = "") => {
+  const lower = String(filename || "").toLowerCase();
+  if (/\.(mp4|m4v)$/i.test(lower)) return "video/mp4";
+  if (/\.webm$/i.test(lower)) return "video/webm";
+  if (/\.ogg$/i.test(lower)) return "video/ogg";
+  if (/\.mov$/i.test(lower)) return "video/quicktime";
+  if (/\.avi$/i.test(lower)) return "video/x-msvideo";
+  if (/\.mkv$/i.test(lower)) return "video/x-matroska";
+  if (/\.png$/i.test(lower)) return "image/png";
+  if (/\.(jpg|jpeg)$/i.test(lower)) return "image/jpeg";
+  if (/\.gif$/i.test(lower)) return "image/gif";
+  if (/\.webp$/i.test(lower)) return "image/webp";
+  if (/\.bmp$/i.test(lower)) return "image/bmp";
+  if (/\.svg$/i.test(lower)) return "image/svg+xml";
+  if (/\.avif$/i.test(lower)) return "image/avif";
+  return "";
+};
+
+const resolveContentType = (file) => {
+  const mime = String(file?.mimetype || "").toLowerCase();
+  if (mime && mime !== "application/octet-stream") {
+    return mime;
+  }
+
+  return (
+    inferContentTypeFromName(file?.originalname || "") ||
+    inferContentTypeFromName(file?.filename || "") ||
+    "application/octet-stream"
+  );
+};
+
 const saveUploadedFile = async (file) => {
   if (!file) {
     return "";
@@ -31,7 +62,7 @@ const saveUploadedFile = async (file) => {
 
   const bucket = getBucket();
   const filename = toSafeFilename(file.originalname || path.basename(sourcePath));
-  const contentType = file.mimetype || "application/octet-stream";
+  const contentType = resolveContentType(file);
   const uploadStream = bucket.openUploadStream(filename, {
     contentType,
     metadata: {

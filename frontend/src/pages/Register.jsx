@@ -173,17 +173,6 @@ export default function Register() {
   return (
     <div className="register-fb-page">
       <main className="register-fb-shell">
-        <button
-          type="button"
-          className="register-fb-back"
-          onClick={() => navigate("/")}
-          aria-label="Back to login"
-        >
-          &#8592;
-        </button>
-
-        <div className="register-fb-meta">Meta</div>
-
         <h1 className="register-fb-title">Get started on Tengacion</h1>
         <p className="register-fb-subtitle">
           Create an account to connect with friends, family and communities of

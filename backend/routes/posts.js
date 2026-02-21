@@ -80,6 +80,7 @@ const toPostPayload = (post, viewerId) => {
     avatar: avatarToUrl(author.avatar),
     likes: likes.length,
     likesCount: likes.length,
+    shareCount: Number(post.shareCount) || 0,
     comments,
     commentsCount: post.commentsCount ?? comments.length,
     tags,

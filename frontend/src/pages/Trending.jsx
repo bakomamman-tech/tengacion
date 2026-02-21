@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
 import PostCard from "../components/PostCard";
@@ -10,11 +10,7 @@ export default function Trending({ user }) {
   const [category, setCategory] = useState("all"); // all, tech, design, business, etc
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadTrendingPosts();
-  }, [filter, category]);
-
-  const loadTrendingPosts = async () => {
+  const loadTrendingPosts = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getFeed();
@@ -36,7 +32,11 @@ export default function Trending({ user }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]);
+
+  useEffect(() => {
+    loadTrendingPosts();
+  }, [category, loadTrendingPosts]);
 
   const categories = [
     { id: "all", label: "🌍 All", icon: "🌍" },

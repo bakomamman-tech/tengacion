@@ -1,7 +1,7 @@
 import StoriesSkeleton from "./components/StoriesSkeleton";
 
 export default function Stories({ loading }) {
-  if (loading) return <StoriesSkeleton />;
+  if (loading) {return <StoriesSkeleton />;}
 
   const stories = [
     { name: "Daniel", image: "/story1.jpg", avatar: "/me.jpg" },

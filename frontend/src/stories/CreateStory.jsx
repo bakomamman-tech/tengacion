@@ -6,7 +6,7 @@ export default function CreateStory({ onCreated }) {
 
   const uploadStory = async e => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file) {return;}
 
     const form = new FormData();
     form.append("image", file);

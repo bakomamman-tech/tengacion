@@ -4,6 +4,7 @@ import { register as registerApi } from "./api";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 
 /**
@@ -31,12 +32,12 @@ function debounce(fn, delay = 500) {
 function calcPasswordStrength(password) {
   let score = 0;
 
-  if (!password) return { score: 0, label: "Weak" };
+  if (!password) {return { score: 0, label: "Weak" };}
 
-  if (password.length >= 6) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
+  if (password.length >= 6) {score++;}
+  if (/[A-Z]/.test(password)) {score++;}
+  if (/[0-9]/.test(password)) {score++;}
+  if (/[^A-Za-z0-9]/.test(password)) {score++;}
 
   const labels = ["Weak", "Fair", "Good", "Strong", "Very Strong"];
   return { score, label: labels[score] || "Weak" };
@@ -45,11 +46,11 @@ function calcPasswordStrength(password) {
 function calcAge(dob) {
   const birth = new Date(dob);
   const today = new Date();
-  if (isNaN(birth.getTime())) return NaN;
+  if (isNaN(birth.getTime())) {return NaN;}
 
   let age = today.getFullYear() - birth.getFullYear();
   const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {age--;}
 
   return age;
 }
@@ -189,7 +190,7 @@ export default function Register({ onBack }) {
    */
   useEffect(() => {
     const onKeyDown = (e) => {
-      if (e.key === "Escape") onBack?.();
+      if (e.key === "Escape") {onBack?.();}
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -252,7 +253,7 @@ export default function Register({ onBack }) {
             setUsernameStatus("bad");
             setUsernameMsg(json?.message || "Username is taken ❌");
           }
-        } catch (e) {
+        } catch {
           setUsernameStatus("bad");
           setUsernameMsg("Network error while checking username");
         } finally {
@@ -274,7 +275,7 @@ export default function Register({ onBack }) {
 
     if (step === 1) {
       const ok = await trigger(["name", "username"]);
-      if (!ok) return;
+      if (!ok) {return;}
 
       if (usernameStatus === "bad") {
         setServerError("Please choose a different username.");
@@ -288,17 +289,17 @@ export default function Register({ onBack }) {
 
     if (step === 2) {
       const ok = await trigger(["email", "phone", "country"]);
-      if (!ok) return;
+      if (!ok) {return;}
     }
 
     if (step === 3) {
       const ok = await trigger(["dob", "gender", "customGender"]);
-      if (!ok) return;
+      if (!ok) {return;}
     }
 
     if (step === 4) {
       const ok = await trigger(["password"]);
-      if (!ok) return;
+      if (!ok) {return;}
     }
 
     setStep((s) => Math.min(5, s + 1));
@@ -335,7 +336,7 @@ export default function Register({ onBack }) {
 
       setOtpSentTo(emailToSend);
       return true;
-    } catch (e) {
+    } catch {
       setOtpError("Network error while sending OTP.");
       return false;
     } finally {
@@ -362,7 +363,7 @@ export default function Register({ onBack }) {
       }
 
       return true;
-    } catch (e) {
+    } catch {
       setOtpError("Network error while verifying OTP.");
       return false;
     } finally {
@@ -418,7 +419,7 @@ export default function Register({ onBack }) {
 
       // Done ✅
       window.location.reload();
-    } catch (e) {
+    } catch {
       setPhotoError("Network error while uploading photo.");
     } finally {
       setPhotoLoading(false);
@@ -443,7 +444,7 @@ export default function Register({ onBack }) {
     setOtpOpen(true);
 
     const sent = await requestOtp(emailToSend);
-    if (!sent) return;
+    if (!sent) {return;}
   };
 
   const finalRegisterAfterOtp = async () => {
@@ -496,7 +497,7 @@ export default function Register({ onBack }) {
   const onPickPhoto = (e) => {
     setPhotoError("");
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {return;}
 
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
@@ -982,7 +983,7 @@ export default function Register({ onBack }) {
                     type="button"
                     onClick={async () => {
                       const ok = await requestOtp(getValues("email"));
-                      if (ok) setOtpCode("");
+                      if (ok) {setOtpCode("");}
                     }}
                     disabled={otpLoading}
                     className="flex-1 p-3 rounded-xl bg-slate-800 hover:bg-slate-700 transition font-semibold disabled:opacity-60"
@@ -1000,7 +1001,7 @@ export default function Register({ onBack }) {
                       }
 
                       const verified = await verifyOtp();
-                      if (!verified) return;
+                      if (!verified) {return;}
 
                       await finalRegisterAfterOtp();
                     }}

@@ -14,7 +14,7 @@ export default function Search() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!q) return;
+    if (!q) {return;}
 
     setLoading(true);
 

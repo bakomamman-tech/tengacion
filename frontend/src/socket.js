@@ -15,7 +15,7 @@ let activeToken = "";
 let activeUserId = "";
 
 export function connectSocket({ token, userId }) {
-  if (!token || !userId) return null;
+  if (!token || !userId) {return null;}
 
   if (
     socket &&
@@ -67,7 +67,7 @@ export function getSocket() {
 }
 
 export function disconnectSocket() {
-  if (!socket) return;
+  if (!socket) {return;}
 
   socket.removeAllListeners();
   socket.disconnect();

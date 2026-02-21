@@ -10,14 +10,14 @@ import { connectSocket, disconnectSocket } from "./socket";
 const MOBILE_SHEET_QUERY = "(max-width: 640px)";
 
 const toIdString = (value) => {
-  if (!value) return "";
-  if (typeof value === "string") return value;
-  if (value._id) return value._id.toString();
+  if (!value) {return "";}
+  if (typeof value === "string") {return value;}
+  if (value._id) {return value._id.toString();}
   return value.toString();
 };
 
 const getViewportHeight = () => {
-  if (typeof window === "undefined") return 0;
+  if (typeof window === "undefined") {return 0;}
   return window.innerHeight || document.documentElement.clientHeight || 0;
 };
 
@@ -63,7 +63,7 @@ export default function Messenger({ user, onClose }) {
   const [error, setError] = useState("");
 
   const [isMobileSheet, setIsMobileSheet] = useState(() => {
-    if (typeof window === "undefined") return false;
+    if (typeof window === "undefined") {return false;}
     return window.matchMedia(MOBILE_SHEET_QUERY).matches;
   });
   const [sheetHeight, setSheetHeight] = useState(() => {
@@ -114,7 +114,7 @@ export default function Messenger({ user, onClose }) {
   );
 
   useEffect(() => {
-    if (typeof window === "undefined") return undefined;
+    if (typeof window === "undefined") {return undefined;}
 
     const media = window.matchMedia(MOBILE_SHEET_QUERY);
 
@@ -150,11 +150,11 @@ export default function Messenger({ user, onClose }) {
   }, [clampSheetHeight]);
 
   useEffect(() => {
-    if (!isDraggingSheet) return undefined;
+    if (!isDraggingSheet) {return undefined;}
 
     const onPointerMove = (event) => {
       const drag = dragRef.current;
-      if (!drag.active) return;
+      if (!drag.active) {return;}
 
       const deltaY = event.clientY - drag.startY;
       drag.downwardDelta = Math.max(0, deltaY);
@@ -163,7 +163,7 @@ export default function Messenger({ user, onClose }) {
 
     const onPointerEnd = () => {
       const drag = dragRef.current;
-      if (!drag.active) return;
+      if (!drag.active) {return;}
 
       drag.active = false;
       setIsDraggingSheet(false);
@@ -196,12 +196,12 @@ export default function Messenger({ user, onClose }) {
       window.removeEventListener("pointerup", onPointerEnd);
       window.removeEventListener("pointercancel", onPointerEnd);
     };
-  }, [clampSheetHeight, getMobileBounds, isDraggingSheet, onClose]);
+  }, [clampSheetHeight, getMobileBounds, getMobileSnapPoints, isDraggingSheet, onClose]);
 
   const onSheetHandlePointerDown = useCallback(
     (event) => {
-      if (!isMobileSheet) return;
-      if (event.button !== undefined && event.button !== 0) return;
+      if (!isMobileSheet) {return;}
+      if (event.button !== undefined && event.button !== 0) {return;}
 
       dragRef.current = {
         active: true,
@@ -229,7 +229,7 @@ export default function Messenger({ user, onClose }) {
   const moveContactToTop = useCallback((contactId, lastMessage, lastMessageAt) => {
     setContacts((prev) => {
       const idx = prev.findIndex((c) => c._id === contactId);
-      if (idx === -1) return prev;
+      if (idx === -1) {return prev;}
 
       const copy = [...prev];
       const updated = {
@@ -246,22 +246,22 @@ export default function Messenger({ user, onClose }) {
     let alive = true;
 
     const loadContacts = async () => {
-      if (!meId) return;
+      if (!meId) {return;}
       setLoadingContacts(true);
       setError("");
 
       try {
         const data = await getChatContacts();
-        if (!alive) return;
+        if (!alive) {return;}
         const list = Array.isArray(data) ? data : [];
         setContacts(list);
         setSelectedId((prev) => prev || list[0]?._id || "");
       } catch (err) {
-        if (!alive) return;
+        if (!alive) {return;}
         setContacts([]);
         setError(err.message || "Failed to load contacts");
       } finally {
-        if (alive) setLoadingContacts(false);
+        if (alive) {setLoadingContacts(false);}
       }
     };
 
@@ -286,15 +286,15 @@ export default function Messenger({ user, onClose }) {
 
       try {
         const data = await getConversationMessages(selectedId);
-        if (!alive) return;
+        if (!alive) {return;}
         const next = Array.isArray(data) ? data.map(normalizeMessage) : [];
         setMessages(next);
       } catch (err) {
-        if (!alive) return;
+        if (!alive) {return;}
         setMessages([]);
         setError(err.message || "Failed to load messages");
       } finally {
-        if (alive) setLoadingMessages(false);
+        if (alive) {setLoadingMessages(false);}
       }
     };
 
@@ -310,10 +310,10 @@ export default function Messenger({ user, onClose }) {
   }, [messages]);
 
   useEffect(() => {
-    if (!meId || !token) return undefined;
+    if (!meId || !token) {return undefined;}
 
     const socket = connectSocket({ token, userId: meId });
-    if (!socket) return undefined;
+    if (!socket) {return undefined;}
     socketRef.current = socket;
 
     const handleOnlineUsers = (ids = []) => {
@@ -328,7 +328,7 @@ export default function Messenger({ user, onClose }) {
         setMessages((prev) => {
           const byServerId =
             message._id && prev.some((m) => m._id && m._id === message._id);
-          if (byServerId) return prev;
+          if (byServerId) {return prev;}
 
           const optimisticIndex = message.clientId
             ? prev.findIndex((m) => m.clientId === message.clientId)
@@ -387,7 +387,7 @@ export default function Messenger({ user, onClose }) {
           "sendMessage",
           { receiverId, text: textValue, clientId },
           (ack) => {
-            if (settled) return;
+            if (settled) {return;}
             settled = true;
             clearTimeout(timer);
 
@@ -405,7 +405,7 @@ export default function Messenger({ user, onClose }) {
 
   const send = async () => {
     const value = text.trim();
-    if (!value || !selectedId || !meId) return;
+    if (!value || !selectedId || !meId) {return;}
 
     const now = Date.now();
     const clientId = `c_${now}_${Math.random().toString(36).slice(2, 8)}`;

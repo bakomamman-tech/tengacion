@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 
 export default function RichPostEditor({ value, onChange, placeholder, autoFocus }) {
   const [showEmojis, setShowEmojis] = useState(false);
-  const [showMentions, setShowMentions] = useState(false);
   const [showHashtags, setShowHashtags] = useState(false);
   const editorRef = useRef(null);
 

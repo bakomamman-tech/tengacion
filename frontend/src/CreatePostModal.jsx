@@ -8,7 +8,7 @@ export default function CreatePostModal({ onClose, onPost }) {
 
   const handleFile = e => {
     const f = e.target.files[0];
-    if (!f) return;
+    if (!f) {return;}
     setFile(f);
     setPreview(URL.createObjectURL(f));
   };

@@ -53,7 +53,7 @@ export default function Navbar({ user, onLogout, onOpenMessenger }) {
     };
 
     const onKeyDown = (event) => {
-      if (event.key === "Escape") close(event);
+      if (event.key === "Escape") {close(event);}
     };
 
     document.addEventListener("mousedown", close);

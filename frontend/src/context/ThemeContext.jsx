@@ -6,7 +6,7 @@ export function ThemeProvider({ children }) {
   const [isDark, setIsDark] = useState(() => {
     // Check localStorage first
     const saved = localStorage.getItem("tengacion-theme");
-    if (saved) return saved === "dark";
+    if (saved) {return saved === "dark";}
     
     // Check system preference
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -35,6 +35,7 @@ export function ThemeProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (!context) {

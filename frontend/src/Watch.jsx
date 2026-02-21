@@ -11,7 +11,7 @@ export default function Watch() {
   useEffect(load, []);
 
   const upload = async () => {
-    if (!url) return;
+    if (!url) {return;}
     await uploadVideo(url, caption);
     setUrl("");
     setCaption("");

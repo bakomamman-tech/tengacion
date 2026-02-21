@@ -37,7 +37,7 @@ export default function ProfileEditor({ user, onSaved }) {
   }
 
   const save = async () => {
-    if (saving) return;
+    if (saving) {return;}
 
     setSaving(true);
     setError("");
@@ -45,8 +45,8 @@ export default function ProfileEditor({ user, onSaved }) {
     try {
       const updated = await updateMe({ name, bio });
       toast.success("✅ Profile updated successfully!");
-      if (onSaved) onSaved(updated);
-      else updateUser(updated);
+      if (onSaved) {onSaved(updated);}
+      else {updateUser(updated);}
     } catch (err) {
       setError(err.response?.data?.error || "Failed to update profile");
       toast.error("Failed to update profile");
@@ -56,12 +56,12 @@ export default function ProfileEditor({ user, onSaved }) {
   };
 
   const handleAvatar = async (file) => {
-    if (!file) return;
+    if (!file) {return;}
     try {
       setAvatarPreview(URL.createObjectURL(file));
       const updated = await uploadAvatar(file);
-      if (onSaved) onSaved(updated);
-      else updateUser(updated);
+      if (onSaved) {onSaved(updated);}
+      else {updateUser(updated);}
       toast.success("✅ Avatar updated!");
     } catch (err) {
       setError(err.response?.data?.error || "Failed to upload avatar");
@@ -70,12 +70,12 @@ export default function ProfileEditor({ user, onSaved }) {
   };
 
   const handleCover = async (file) => {
-    if (!file) return;
+    if (!file) {return;}
     try {
       setCoverPreview(URL.createObjectURL(file));
       const updated = await uploadCover(file);
-      if (onSaved) onSaved(updated);
-      else updateUser(updated);
+      if (onSaved) {onSaved(updated);}
+      else {updateUser(updated);}
       toast.success("✅ Cover photo updated!");
     } catch (err) {
       setError(err.response?.data?.error || "Failed to upload cover photo");

@@ -5,7 +5,7 @@ import { getProfile } from "../api";
  */
 export async function restoreSession(setUser) {
   const token = localStorage.getItem("token");
-  if (!token) return null;
+  if (!token) {return null;}
 
   try {
     const user = await getProfile();

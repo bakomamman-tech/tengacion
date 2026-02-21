@@ -11,7 +11,7 @@ export default function StoryModal({ stories, index, onClose }) {
     }
   }, [i, story]);
 
-  if (!story) return null;
+  if (!story) {return null;}
 
   return (
     <div className="story-modal" onClick={onClose}>

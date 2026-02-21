@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
 
@@ -66,8 +66,8 @@ export default function Notifications({ user }) {
   };
 
   const filteredNotifications = notifications.filter(n => {
-    if (filter === "all") return true;
-    if (filter === "unread") return !n.read;
+    if (filter === "all") {return true;}
+    if (filter === "unread") {return !n.read;}
     return n.type === filter;
   });
 

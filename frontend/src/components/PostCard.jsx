@@ -19,12 +19,12 @@ function SystemPost({ text }) {
    ====================================================== */
 
 const REACTIONS = [
-  { key: "like", label: "👍", name: "Like" },
-  { key: "love", label: "❤️", name: "Love" },
-  { key: "haha", label: "😂", name: "Haha" },
-  { key: "wow", label: "😮", name: "Wow" },
-  { key: "sad", label: "😢", name: "Sad" },
-  { key: "angry", label: "😡", name: "Angry" },
+  { key: "like", label: "\u{1F44D}", name: "Like" },
+  { key: "love", label: "\u{2764}\u{FE0F}", name: "Love" },
+  { key: "haha", label: "\u{1F602}", name: "Haha" },
+  { key: "wow", label: "\u{1F62E}", name: "Wow" },
+  { key: "sad", label: "\u{1F622}", name: "Sad" },
+  { key: "angry", label: "\u{1F621}", name: "Angry" },
 ];
 
 /* ======================================================
@@ -42,8 +42,8 @@ function EditPostModal({ post, onClose, onSave }) {
   }, []);
 
   useEffect(() => {
-    const handler = (e) => {
-      if (boxRef.current && !boxRef.current.contains(e.target)) {
+    const handler = (event) => {
+      if (boxRef.current && !boxRef.current.contains(event.target)) {
         onClose();
       }
     };
@@ -52,7 +52,7 @@ function EditPostModal({ post, onClose, onSave }) {
   }, [onClose]);
 
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
+    const onKey = (event) => event.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
@@ -94,14 +94,14 @@ function EditPostModal({ post, onClose, onSave }) {
         <div className="pc-header">
           <h3>Edit post</h3>
           <button className="pc-close" onClick={onClose} aria-label="Close">
-            ×
+            &times;
           </button>
         </div>
 
         <textarea
           className="pc-textarea"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(event) => setText(event.target.value)}
           autoFocus
         />
 
@@ -110,7 +110,7 @@ function EditPostModal({ post, onClose, onSave }) {
           disabled={!text.trim() || loading}
           onClick={submit}
         >
-          {loading ? "Saving…" : "Save changes"}
+          {loading ? "Saving..." : "Save changes"}
         </button>
       </div>
     </div>
@@ -122,7 +122,7 @@ function EditPostModal({ post, onClose, onSave }) {
    ====================================================== */
 
 export default function PostCard({ post, isSystem, onDelete, onEdit }) {
-  /* 🔵 SYSTEM POST SHORT-CIRCUIT */
+  /* SYSTEM POST SHORT-CIRCUIT */
   const isSystemPost = isSystem || post?.system;
 
   /* -------------------------------------------------- */
@@ -166,11 +166,22 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
     Boolean(callToAction?.enabled) &&
     Boolean(callValue);
 
+  const baseLikesCount = Number(post?.likesCount ?? post?.likes ?? 0) || 0;
+  const baseCommentsCount =
+    Number(post?.commentsCount) ||
+    (Array.isArray(post?.comments) ? post.comments.length : 0);
+  const [liveCommentsCount, setLiveCommentsCount] = useState(baseCommentsCount);
+  const [shareCount, setShareCount] = useState(Number(post?.shareCount) || 0);
+
+  const reactionsCount = baseLikesCount + (reaction ? 1 : 0);
+  const commentsLabel = liveCommentsCount === 1 ? "comment" : "comments";
+  const sharesLabel = shareCount === 1 ? "share" : "shares";
+
   const isOwner = !!post?.isOwner;
 
   useEffect(() => {
-    const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
+    const handler = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
         setMenuOpen(false);
       }
     };
@@ -179,10 +190,18 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   }, []);
 
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && setMenuOpen(false);
+    const onKey = (event) => event.key === "Escape" && setMenuOpen(false);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    setLiveCommentsCount(baseCommentsCount);
+  }, [baseCommentsCount, post?._id]);
+
+  useEffect(() => {
+    setShareCount(Number(post?.shareCount) || 0);
+  }, [post?._id, post?.shareCount]);
 
   const likeBtnLabel = useMemo(() => {
     if (!reaction) {
@@ -195,9 +214,10 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      alert("Post link copied ✅");
+      setShareCount((current) => current + 1);
+      alert("Post link copied");
     } catch {
-      alert("Copy failed ❌");
+      alert("Copy failed");
     }
   };
 
@@ -257,14 +277,14 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
             <button
               className="post-menu-btn"
               title="More"
-              onClick={() => setMenuOpen((s) => !s)}
+              onClick={() => setMenuOpen((state) => !state)}
             >
-              ⋯
+              {"\u22EF"}
             </button>
 
             {menuOpen && (
               <div className="post-menu-dropdown">
-                <button onClick={copyLink}>🔗 Copy link</button>
+                <button onClick={copyLink}>Copy link</button>
 
                 {isOwner && (
                   <>
@@ -274,11 +294,11 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
                         setMenuOpen(false);
                       }}
                     >
-                      ✏️ Edit post
+                      Edit post
                     </button>
 
                     <button className="danger" onClick={deletePost}>
-                      {deleting ? "Deleting…" : "🗑 Delete post"}
+                      {deleting ? "Deleting..." : "Delete post"}
                     </button>
                   </>
                 )}
@@ -333,6 +353,26 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
           )}
         </div>
 
+        <div className="post-engagement-summary">
+          <div className="post-engagement-left">
+            <div className="post-reaction-icons" aria-hidden="true">
+              <span className="post-reaction-dot like">{"\u{1F44D}"}</span>
+              <span className="post-reaction-dot wow">{"\u{1F62E}"}</span>
+              <span className="post-reaction-dot love">{"\u{2764}\u{FE0F}"}</span>
+            </div>
+            <span className="post-engagement-count">{reactionsCount}</span>
+          </div>
+
+          <div className="post-engagement-right">
+            <span>
+              {liveCommentsCount} {commentsLabel}
+            </span>
+            <span>
+              {shareCount} {sharesLabel}
+            </span>
+          </div>
+        </div>
+
         {/* ACTIONS */}
         <div className="post-actions">
           <div
@@ -342,16 +382,16 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
           >
             {showReactions && (
               <div className="reaction-bar">
-                {REACTIONS.map((r) => (
+                {REACTIONS.map((nextReaction) => (
                   <button
-                    key={r.key}
-                    title={r.name}
+                    key={nextReaction.key}
+                    title={nextReaction.name}
                     onClick={() => {
-                      setReaction(r);
+                      setReaction(nextReaction);
                       setShowReactions(false);
                     }}
                   >
-                    {r.label}
+                    {nextReaction.label}
                   </button>
                 ))}
               </div>
@@ -359,7 +399,7 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
 
             <button className={`action-btn ${reaction ? "active-like" : ""}`}>
               <span className="btn-emoji">
-                {reaction ? reaction.label : "👍"}
+                {reaction ? reaction.label : "\u{1F44D}"}
               </span>
               <span>{likeBtnLabel}</span>
             </button>
@@ -367,13 +407,15 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
 
           <button
             className={`action-btn ${showComments ? "active" : ""}`}
-            onClick={() => setShowComments((s) => !s)}
+            onClick={() => setShowComments((state) => !state)}
           >
-            💬 Comment
+            <span className="btn-emoji">{"\u{1F4AC}"}</span>
+            <span>Comment</span>
           </button>
 
           <button className="action-btn" onClick={copyLink}>
-            ↗ Share
+            <span className="btn-emoji">{"\u{21AA}"}</span>
+            <span>Share</span>
           </button>
         </div>
 
@@ -381,7 +423,12 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
         <div className={`post-comments-wrap ${showComments ? "open" : ""}`}>
           {showComments && (
             <div className="post-comments">
-              <PostComments postId={post?._id} />
+              <PostComments
+                postId={post?._id}
+                initialComments={post?.comments}
+                initialCount={baseCommentsCount}
+                onCountChange={setLiveCommentsCount}
+              />
             </div>
           )}
         </div>

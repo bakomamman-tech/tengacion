@@ -39,7 +39,7 @@ export default function Login() {
         toast.error(res?.error || "Invalid credentials");
         setLoading(false);
       }
-    } catch (err) {
+    } catch {
       toast.error("Server connection failed");
       setLoading(false);
     }

@@ -5,9 +5,7 @@ export const API_BASE = "";
 export const SOCKET_BASE = "";
 
 // Helper to build URLs safely
-export const apiUrl = (path) => {
-  return `${API_BASE}${path}`;
-};
+export const apiUrl = (path) => `${API_BASE}${path}`;
 
 // App-wide constants (we’ll expand later)
 export const APP_NAME = "Tengacion";

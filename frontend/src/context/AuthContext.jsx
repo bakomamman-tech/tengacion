@@ -3,6 +3,7 @@ import axios from "axios";
 
 const AuthContext = createContext(null);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);
 
 /* ======================================================
@@ -57,21 +58,21 @@ export function AuthProvider({ children }) {
     axios
       .get("/api/auth/me", { signal: controller.signal })
       .then((res) => {
-        if (!alive) return;
+        if (!alive) {return;}
         setUser(res.data || null);
       })
       .catch(() => {
-        if (!alive) return;
+        if (!alive) {return;}
         localStorage.removeItem("token");
         setUser(null);
       })
       .finally(() => {
-        if (alive) setLoading(false);
+        if (alive) {setLoading(false);}
       });
 
     // 🔒 HARD FAILSAFE (prevents infinite loading)
     const timeout = setTimeout(() => {
-      if (alive) setLoading(false);
+      if (alive) {setLoading(false);}
     }, 4000);
 
     return () => {
@@ -96,7 +97,7 @@ export function AuthProvider({ children }) {
   /* ===== ACTIONS ===== */
 
   const login = (token, userData) => {
-    if (!token || !userData) return;
+    if (!token || !userData) {return;}
     localStorage.setItem("token", token);
     setUser(userData);
     setError(null);

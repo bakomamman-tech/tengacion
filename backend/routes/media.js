@@ -4,6 +4,45 @@ const { getBucket, bucketName } = require("../services/mediaStore");
 
 const router = express.Router();
 
+const toSafeLength = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "bigint") {
+    return Number(value);
+  }
+
+  if (value && typeof value === "object" && typeof value.toNumber === "function") {
+    const converted = value.toNumber();
+    if (Number.isFinite(converted)) {
+      return converted;
+    }
+  }
+
+  const raw = value && typeof value.toString === "function" ? value.toString() : "";
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const inferContentTypeFromFilename = (filename = "") => {
+  const lower = String(filename || "").toLowerCase();
+  if (/\.(mp4|m4v)$/i.test(lower)) return "video/mp4";
+  if (/\.webm$/i.test(lower)) return "video/webm";
+  if (/\.ogg$/i.test(lower)) return "video/ogg";
+  if (/\.mov$/i.test(lower)) return "video/quicktime";
+  if (/\.avi$/i.test(lower)) return "video/x-msvideo";
+  if (/\.mkv$/i.test(lower)) return "video/x-matroska";
+  if (/\.png$/i.test(lower)) return "image/png";
+  if (/\.(jpg|jpeg)$/i.test(lower)) return "image/jpeg";
+  if (/\.gif$/i.test(lower)) return "image/gif";
+  if (/\.webp$/i.test(lower)) return "image/webp";
+  if (/\.bmp$/i.test(lower)) return "image/bmp";
+  if (/\.svg$/i.test(lower)) return "image/svg+xml";
+  if (/\.avif$/i.test(lower)) return "image/avif";
+  return "application/octet-stream";
+};
+
 const parseRange = (rangeHeader, fileSize) => {
   if (!rangeHeader || !rangeHeader.startsWith("bytes=")) {
     return null;
@@ -60,8 +99,11 @@ router.get("/:id", async (req, res) => {
       return res.status(404).send("Media not found");
     }
 
-    const fileSize = Number(fileDoc.length) || 0;
-    const mimeType = fileDoc.contentType || "application/octet-stream";
+    const fileSize = toSafeLength(fileDoc.length);
+    const mimeType =
+      fileDoc.contentType ||
+      inferContentTypeFromFilename(fileDoc.filename || "") ||
+      "application/octet-stream";
     const bucket = getBucket();
     const range = parseRange(req.headers.range, fileSize);
 
@@ -117,8 +159,11 @@ router.head("/:id", async (req, res) => {
       return res.status(404).end();
     }
 
-    const fileSize = Number(fileDoc.length) || 0;
-    const mimeType = fileDoc.contentType || "application/octet-stream";
+    const fileSize = toSafeLength(fileDoc.length);
+    const mimeType =
+      fileDoc.contentType ||
+      inferContentTypeFromFilename(fileDoc.filename || "") ||
+      "application/octet-stream";
     res.setHeader("Accept-Ranges", "bytes");
     res.setHeader("Content-Type", mimeType);
     res.setHeader("Content-Length", fileSize);

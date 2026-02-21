@@ -2765,9 +2765,12 @@ html.dark-mode .nav-notification-btn:hover {
 
 /* Messenger */
 .messenger-panel {
-  position: sticky;
-  top: 90px;
-  align-self: start;
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  top: auto;
+  width: min(92vw, 620px);
+  z-index: 60;
 }
 
 .messenger {
@@ -2778,7 +2781,9 @@ html.dark-mode .nav-notification-btn:hover {
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  min-height: 640px;
+  min-height: 420px;
+  height: clamp(420px, 64vh, 560px);
+  max-height: calc(100vh - 96px);
 }
 
 .messenger-header {
@@ -3027,9 +3032,6 @@ html.dark-mode .nav-notification-btn:hover {
   gap: 8px;
   padding: 10px;
   flex-shrink: 0;
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
   background: var(--surface);
 }
 
@@ -4920,16 +4922,17 @@ html.dark-mode .nav-notification-btn:hover {
 
   .messenger-panel {
     position: fixed;
-    right: 10px;
-    bottom: 10px;
+    right: 12px;
+    bottom: 12px;
     top: auto;
-    width: min(96vw, 720px);
+    width: min(96vw, 620px);
     z-index: 60;
   }
 
   .messenger {
-    min-height: 520px;
-    max-height: min(80vh, 680px);
+    min-height: 380px;
+    height: min(80vh, 540px);
+    max-height: 80vh;
   }
 
   .nav-center {

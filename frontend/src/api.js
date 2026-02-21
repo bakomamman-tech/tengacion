@@ -36,7 +36,13 @@ const safeJSON = (text) => {
 
 const parseResponse = async (response) => {
   const raw = await response.text();
-  const data = raw ? safeJSON(raw) : {};
+  const contentType = response.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+  const data = raw
+    ? isJson
+      ? safeJSON(raw)
+      : { error: raw }
+    : {};
 
   if (response.status === 401) {
     handleAuthFailure(data?.error);
@@ -65,6 +71,8 @@ const withTimeout = (promise, ms = 15000) =>
   ]);
 
 const request = async (url, options = {}) => {
+  const { timeoutMs = 15000, ...fetchOptions } = options;
+
   if (!navigator.onLine) {
     throw new Error("No internet connection");
   }
@@ -72,8 +80,9 @@ const request = async (url, options = {}) => {
   const response = await withTimeout(
     fetch(url, {
       credentials: "same-origin",
-      ...options,
-    })
+      ...fetchOptions,
+    }),
+    timeoutMs
   );
 
   return parseResponse(response);
@@ -133,6 +142,7 @@ export const uploadAvatar = (file) => {
     method: "POST",
     headers: getAuthHeaders(),
     body: form,
+    timeoutMs: 60000,
   });
 };
 
@@ -144,6 +154,7 @@ export const uploadCover = (file) => {
     method: "POST",
     headers: getAuthHeaders(),
     body: form,
+    timeoutMs: 60000,
   });
 };
 

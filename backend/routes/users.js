@@ -297,19 +297,27 @@ router.post(
       if (!selectedFile) {
         return res.status(400).json({ error: "No image" });
       }
+      if (!selectedFile.mimetype?.startsWith("image/")) {
+        return res.status(400).json({ error: "Only image files are allowed" });
+      }
 
       const imageUrl = `/uploads/${selectedFile.filename}`;
       user.avatar = { public_id: "", url: imageUrl };
       await user.save();
 
-      await Post.create({
-        author: user._id,
-        text: "Updated profile picture",
-        media: [{ url: imageUrl, type: "image" }],
-        privacy: "public",
-      });
+      try {
+        await Post.create({
+          author: user._id,
+          text: "Updated profile picture",
+          media: [{ url: imageUrl, type: "image" }],
+          privacy: "public",
+        });
+      } catch (postErr) {
+        console.error("Avatar update post creation failed:", postErr);
+      }
 
-      return res.json(user);
+      const safeUser = await User.findById(req.user.id).select("-password");
+      return res.json(safeUser);
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: "Avatar upload failed" });
@@ -335,19 +343,27 @@ router.post(
       if (!selectedFile) {
         return res.status(400).json({ error: "No image" });
       }
+      if (!selectedFile.mimetype?.startsWith("image/")) {
+        return res.status(400).json({ error: "Only image files are allowed" });
+      }
 
       const imageUrl = `/uploads/${selectedFile.filename}`;
       user.cover = { public_id: "", url: imageUrl };
       await user.save();
 
-      await Post.create({
-        author: user._id,
-        text: "Updated cover photo",
-        media: [{ url: imageUrl, type: "image" }],
-        privacy: "public",
-      });
+      try {
+        await Post.create({
+          author: user._id,
+          text: "Updated cover photo",
+          media: [{ url: imageUrl, type: "image" }],
+          privacy: "public",
+        });
+      } catch (postErr) {
+        console.error("Cover update post creation failed:", postErr);
+      }
 
-      return res.json(user);
+      const safeUser = await User.findById(req.user.id).select("-password");
+      return res.json(safeUser);
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: "Cover upload failed" });

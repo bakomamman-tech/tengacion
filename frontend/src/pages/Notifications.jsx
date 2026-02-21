@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
 import { resolveImage } from "../api";
@@ -93,9 +93,57 @@ function NotificationActionIcon({ type }) {
   );
 }
 
+function MenuItemIcon({ name }) {
+  if (name === "check") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4.5 12.5l4.2 4.3L19.5 6.8" />
+      </svg>
+    );
+  }
+
+  if (name === "settings") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" />
+        <path d="M19.5 13.1V11l-2-.6a6 6 0 0 0-.6-1.5l1-1.8-1.4-1.4-1.8 1a6 6 0 0 0-1.5-.6L13 3.8h-2l-.6 2.1a6 6 0 0 0-1.5.6l-1.8-1-1.4 1.4 1 1.8a6 6 0 0 0-.6 1.5L3.8 11v2l2.1.6a6 6 0 0 0 .6 1.5l-1 1.8 1.4 1.4 1.8-1a6 6 0 0 0 1.5.6l.6 2.1h2l.6-2.1a6 6 0 0 0 1.5-.6l1.8 1 1.4-1.4-1-1.8a6 6 0 0 0 .6-1.5l2.1-.6z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 5h16v11H4zM8 20h8M12 16v4" />
+    </svg>
+  );
+}
+
 export default function Notifications({ user }) {
   const [filter, setFilter] = useState("all");
   const [notifications, setNotifications] = useState(NOTIFICATIONS);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const onMouseDown = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
 
   const unreadCount = useMemo(
     () => notifications.filter((item) => !item.read).length,
@@ -120,6 +168,16 @@ export default function Notifications({ user }) {
 
   const markAllAsRead = () => {
     setNotifications((current) => current.map((item) => ({ ...item, read: true })));
+  };
+
+  const openSettings = () => {
+    setFilter("all");
+    setMenuOpen(false);
+  };
+
+  const openNotificationsList = () => {
+    setFilter("all");
+    setMenuOpen(false);
   };
 
   const renderRow = (item) => {
@@ -172,9 +230,46 @@ export default function Notifications({ user }) {
               <div>
                 <h2>Notifications</h2>
               </div>
-              <button className="notif-more-btn" title="More">
-                {"\u22EF"}
-              </button>
+              <div className="notif-menu-wrap" ref={menuRef}>
+                <button
+                  className="notif-more-btn"
+                  title="More"
+                  onClick={() => setMenuOpen((current) => !current)}
+                >
+                  {"\u22EF"}
+                </button>
+
+                {menuOpen && (
+                  <div className="notif-popover-menu">
+                    <button
+                      className="notif-popover-item"
+                      onClick={() => {
+                        markAllAsRead();
+                        setMenuOpen(false);
+                      }}
+                    >
+                      <span className="notif-popover-icon">
+                        <MenuItemIcon name="check" />
+                      </span>
+                      <span>Mark all as read</span>
+                    </button>
+
+                    <button className="notif-popover-item" onClick={openSettings}>
+                      <span className="notif-popover-icon">
+                        <MenuItemIcon name="settings" />
+                      </span>
+                      <span>Notification settings</span>
+                    </button>
+
+                    <button className="notif-popover-item" onClick={openNotificationsList}>
+                      <span className="notif-popover-icon">
+                        <MenuItemIcon name="open" />
+                      </span>
+                      <span>Open Notifications</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </header>
 
             <div className="notifications-tabs">
@@ -220,7 +315,9 @@ export default function Notifications({ user }) {
               <div className="notif-empty">No notifications in this view.</div>
             )}
 
-            <button className="notif-previous-btn">See previous notifications</button>
+            <button className="notif-previous-btn" onClick={() => setFilter("all")}>
+              See previous notifications
+            </button>
           </section>
         </main>
       </div>

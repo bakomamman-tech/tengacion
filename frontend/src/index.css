@@ -2368,6 +2368,65 @@ html.dark-mode .nav-notification-btn:hover {
   background: #e2e6ec;
 }
 
+.notif-menu-wrap {
+  position: relative;
+}
+
+.notif-popover-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(410px, calc(100vw - 34px));
+  background: #fff;
+  border: 1px solid #d9dee7;
+  border-radius: 14px;
+  box-shadow: 0 16px 28px rgba(15, 31, 56, 0.2);
+  padding: 8px;
+  z-index: 20;
+  animation: dropdownIn 0.16s ease both;
+}
+
+.notif-popover-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  min-height: 52px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  color: #1c1e21;
+  font-size: 34px;
+  font-size: clamp(15px, 1.05vw, 26px);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.notif-popover-item:hover {
+  background: #edf3ff;
+}
+
+.notif-popover-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  color: #6b7280;
+  display: grid;
+  place-items: center;
+}
+
+.notif-popover-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .notifications-tabs {
   margin-top: 10px;
   display: flex;
@@ -3853,6 +3912,25 @@ html.dark-mode .nav-notification-btn:hover {
   .notif-action-badge svg {
     width: 13px;
     height: 13px;
+  }
+
+  .notif-popover-menu {
+    width: min(350px, calc(100vw - 24px));
+    right: -2px;
+  }
+
+  .notif-popover-item {
+    min-height: 48px;
+  }
+
+  .notif-popover-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .notif-popover-icon svg {
+    width: 19px;
+    height: 19px;
   }
 
   .notif-unread-dot {

@@ -1,11 +1,29 @@
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 
-const uploadDir = path.join(__dirname, "..", "uploads");
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 
-// Ensure uploads folder exists
-if (!fs.existsSync(uploadDir)) {
+const tryEnsureWritableDir = (targetDir) => {
+  try {
+    fs.mkdirSync(targetDir, { recursive: true });
+    fs.accessSync(targetDir, fs.constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const candidateDirs = [
+  process.env.UPLOAD_DIR ? path.resolve(process.env.UPLOAD_DIR) : "",
+  path.join(__dirname, "..", "uploads"),
+  path.join(os.tmpdir(), "tengacion-uploads"),
+].filter(Boolean);
+
+let uploadDir = candidateDirs.find((dir) => tryEnsureWritableDir(dir));
+if (!uploadDir) {
+  uploadDir = path.join(os.tmpdir(), "tengacion-uploads");
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
@@ -20,4 +38,10 @@ const storage = multer.diskStorage({
   }
 });
 
-module.exports = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: MAX_FILE_SIZE_BYTES },
+});
+
+upload.uploadDir = uploadDir;
+module.exports = upload;

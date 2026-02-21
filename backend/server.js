@@ -19,6 +19,7 @@ const jwt = require("jsonwebtoken");
 const { Server } = require("socket.io");
 const Message = require("./models/Message");
 const User = require("./models/User");
+const upload = require("./utils/upload");
 
 const errorHandler = require("./middleware/errorHandler");
 
@@ -44,6 +45,13 @@ app.set("trust proxy", 1);
 app.use(
   helmet({
     crossOriginResourcePolicy: false,
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        imgSrc: ["'self'", "data:", "blob:", "https://ui-avatars.com"],
+        mediaSrc: ["'self'", "data:", "blob:"],
+      },
+    },
   })
 );
 
@@ -87,7 +95,7 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(upload.uploadDir));
 
 /* =====================================================
    ⚡ SOCKET.IO

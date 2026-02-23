@@ -17,10 +17,12 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const jwt = require("jsonwebtoken");
 const { Server } = require("socket.io");
-const Message = require("./models/Message");
 const User = require("./models/User");
 const upload = require("./utils/upload");
 const { createNotification } = require("./services/notificationService");
+const { persistChatMessage } = require("./services/chatService");
+const { toIdString } = require("./utils/messagePayload");
+const auth = require("./middleware/auth");
 
 const errorHandler = require("./middleware/errorHandler");
 
@@ -67,7 +69,7 @@ const apiLimiter = rateLimit({
 });
 
 app.use("/api", (req, res, next) => {
-  if (req.path.startsWith("/media")) {
+  if (req.path.startsWith("/media") || req.path.startsWith("/payments/webhook")) {
     return next();
   }
   return apiLimiter(req, res, next);
@@ -98,7 +100,16 @@ app.use((req, res, next) => {
 /* =====================================================
    🧱 CORE MIDDLEWARE
 ===================================================== */
-app.use(express.json({ limit: "10mb" }));
+app.use(
+  express.json({
+    limit: "10mb",
+    verify: (req, _res, buf) => {
+      if (req.originalUrl === "/api/payments/webhook/paystack") {
+        req.rawBody = buf.toString("utf8");
+      }
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/uploads", express.static(upload.uploadDir));
@@ -117,46 +128,6 @@ const io = new Server(server, {
 app.get("/socket.io", (_, res) => res.send("socket ok"));
 
 const onlineUsers = new Map(); // userId -> Set(socketId)
-
-const toIdString = (value) => {
-  if (!value) return "";
-  if (typeof value === "string") return value;
-  if (value._id) return value._id.toString();
-  return value.toString();
-};
-
-const buildConversationId = (a, b) =>
-  [toIdString(a), toIdString(b)].sort().join("_");
-
-const avatarToUrl = (avatar) => {
-  if (!avatar) return "";
-  if (typeof avatar === "string") return avatar;
-  return avatar.url || "";
-};
-
-const normalizeMessage = (message) => {
-  const senderDoc =
-    message?.senderId && typeof message.senderId === "object"
-      ? message.senderId
-      : null;
-
-  return {
-    _id: toIdString(message._id),
-    conversationId: message.conversationId,
-    senderId: toIdString(message.senderId),
-    receiverId: toIdString(message.receiverId),
-    senderName: message.senderName || senderDoc?.name || "",
-    senderAvatar: avatarToUrl(senderDoc?.avatar),
-    text: message.text,
-    status: message.status || "sent",
-    time:
-      message.time ||
-      (message.createdAt ? new Date(message.createdAt).getTime() : Date.now()),
-    createdAt: message.createdAt,
-    updatedAt: message.updatedAt,
-    clientId: message.clientId || null,
-  };
-};
 
 const emitOnlineUsers = () => {
   io.emit("onlineUsers", [...onlineUsers.keys()]);
@@ -226,8 +197,6 @@ io.on("connection", (socket) => {
     try {
       const senderId = socket.userId || authenticateSocketUser(socket);
       const receiverId = toIdString(payload.receiverId);
-      const text = (payload.text || "").trim();
-      const clientId = (payload.clientId || "").trim();
 
       if (!senderId) {
         if (typeof ack === "function") {
@@ -236,78 +205,57 @@ io.on("connection", (socket) => {
         return;
       }
 
-      if (!receiverId || !text || senderId === receiverId) {
+      if (!receiverId || senderId === receiverId) {
         if (typeof ack === "function") {
           ack({ ok: false, error: "Invalid message payload" });
         }
         return;
       }
 
-      const sender = await User.findById(senderId).select("name");
-      if (!sender) {
-        if (typeof ack === "function") {
-          ack({ ok: false, error: "Sender not found" });
-        }
-        return;
-      }
-
-      const conversationId = buildConversationId(senderId, receiverId);
-      if (clientId) {
-        const existing = await Message.findOne({
-          conversationId,
-          senderId,
-          clientId,
-        }).populate("senderId", "name username avatar");
-
-        if (existing) {
-          const normalizedExisting = normalizeMessage(existing.toObject());
-          io.to(senderId).to(receiverId).emit("newMessage", normalizedExisting);
-          if (typeof ack === "function") {
-            ack({ ok: true, message: normalizedExisting });
-          }
-          return;
-        }
-      }
-
-      const message = await Message.create({
-        conversationId,
+      const result = await persistChatMessage({
         senderId,
         receiverId,
-        senderName: sender.name || "",
-        text,
-        time: Date.now(),
-        clientId: clientId || undefined,
+        payload: {
+          text: payload.text,
+          type: payload.type,
+          metadata: payload.metadata,
+          clientId: payload.clientId,
+        },
       });
 
-      await message.populate("senderId", "name username avatar");
-      const normalized = normalizeMessage(message.toObject());
+      io.to(senderId).to(receiverId).emit("newMessage", result.message);
 
-      io.to(senderId).to(receiverId).emit("newMessage", normalized);
+      if (!result.existed) {
+        const previewText =
+          result.message.type === "contentCard"
+            ? `shared: ${result.message.metadata?.title || result.message.metadata?.itemType || "content"}`
+            : String(result.message.text || "").slice(0, 120);
 
-      await createNotification({
-        recipient: receiverId,
-        sender: senderId,
-        type: "message",
-        text: "sent you a message",
-        entity: {
-          id: message._id,
-          model: "Message",
-        },
-        metadata: {
-          previewText: text.slice(0, 120),
-          link: "/home",
-        },
-        io,
-        onlineUsers,
-      });
+        await createNotification({
+          recipient: receiverId,
+          sender: senderId,
+          type: "message",
+          text: "sent you a message",
+          entity: {
+            id: result.message._id,
+            model: "Message",
+          },
+          metadata: {
+            previewText,
+            link: "/home",
+          },
+          io,
+          onlineUsers,
+        });
+      }
 
       if (typeof ack === "function") {
-        ack({ ok: true, message: normalized });
+        ack({ ok: true, message: result.message });
       }
     } catch (err) {
       console.error("Socket sendMessage error:", err);
       if (typeof ack === "function") {
-        ack({ ok: false, error: "Failed to send message" });
+        ack({ ok: false, error: err?.message || "Failed to send message" });
       }
     }
   });
@@ -324,6 +272,13 @@ io.on("connection", (socket) => {
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", time: new Date() });
 });
+app.get("/api/me", auth, async (req, res) => {
+  const user = await User.findById(req.user.id).select("-password");
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+  return res.json(user);
+});
 
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/users", require("./routes/users"));
@@ -334,6 +289,13 @@ app.use("/api/media", require("./routes/media"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/messages", require("./routes/messages"));
 app.use("/api/videos", require("./routes/videos"));
+app.use("/api/creators", require("./routes/creators"));
+app.use("/api/tracks", require("./routes/tracks"));
+app.use("/api/books", require("./routes/books"));
+app.use("/api/payments", require("./routes/payments"));
+app.use("/api/purchases", require("./routes/purchases"));
+app.use("/api/entitlements", require("./routes/entitlements"));
+app.use("/api/chat", require("./routes/chat"));
 
 /* =====================================================
    🌐 FRONTEND (VITE – SAME DOMAIN)

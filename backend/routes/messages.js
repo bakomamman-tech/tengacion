@@ -3,49 +3,16 @@ const mongoose = require("mongoose");
 const Message = require("../models/Message");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
+const { persistChatMessage } = require("../services/chatService");
 const { createNotification } = require("../services/notificationService");
+const {
+  toIdString,
+  avatarToUrl,
+  buildConversationId,
+  normalizeMessage,
+} = require("../utils/messagePayload");
 
 const router = express.Router();
-
-const toIdString = (value) => {
-  if (!value) return "";
-  if (typeof value === "string") return value;
-  if (value._id) return value._id.toString();
-  return value.toString();
-};
-
-const avatarToUrl = (avatar) => {
-  if (!avatar) return "";
-  if (typeof avatar === "string") return avatar;
-  return avatar.url || "";
-};
-
-const buildConversationId = (a, b) =>
-  [toIdString(a), toIdString(b)].sort().join("_");
-
-const normalizeMessage = (message) => {
-  const senderDoc =
-    message?.senderId && typeof message.senderId === "object"
-      ? message.senderId
-      : null;
-
-  return {
-    _id: toIdString(message._id),
-    conversationId: message.conversationId,
-    senderId: toIdString(message.senderId),
-    receiverId: toIdString(message.receiverId),
-    senderName: message.senderName || senderDoc?.name || "",
-    senderAvatar: avatarToUrl(senderDoc?.avatar),
-    text: message.text,
-    status: message.status || "sent",
-    time:
-      message.time ||
-      (message.createdAt ? new Date(message.createdAt).getTime() : Date.now()),
-    createdAt: message.createdAt,
-    updatedAt: message.updatedAt,
-    clientId: message.clientId || null,
-  };
-};
 
 /*
   Chat contacts for logged-in user (friends + latest message)
@@ -104,8 +71,12 @@ router.get("/contacts", auth, async (req, res) => {
       const senderId = toIdString(msg.senderId);
       const receiverId = toIdString(msg.receiverId);
       const otherId = senderId === meId ? receiverId : senderId;
+      const preview =
+        msg.type === "contentCard"
+          ? `shared: ${msg.metadata?.title || msg.metadata?.itemType || "content"}`
+          : msg.text;
       latestByUserId.set(otherId, {
-        text: msg.text,
+        text: preview,
         time: msg.time || new Date(msg.createdAt).getTime(),
       });
     }
@@ -167,85 +138,65 @@ router.get("/:otherUserId", auth, async (req, res) => {
 
 /*
   Send message via REST fallback (socket remains primary)
+  Supports text and contentCard payloads.
 */
 router.post("/:otherUserId", auth, async (req, res) => {
   try {
     const me = req.user.id;
     const other = req.params.otherUserId;
-    const text = (req.body?.text || "").trim();
-    const clientId = (req.body?.clientId || "").trim();
 
     if (!mongoose.Types.ObjectId.isValid(other)) {
       return res.status(400).json({ error: "Invalid user id" });
     }
 
-    if (!text) {
-      return res.status(400).json({ error: "Message text is required" });
-    }
-
-    if (toIdString(me) === toIdString(other)) {
-      return res.status(400).json({ error: "Cannot message yourself" });
-    }
-
-    const [sender, receiver] = await Promise.all([
-      User.findById(me).select("name"),
-      User.findById(other).select("_id"),
-    ]);
-
-    if (!sender || !receiver) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const conversationId = buildConversationId(me, other);
-
-    if (clientId) {
-      const existing = await Message.findOne({
-        conversationId,
+    let result;
+    try {
+      result = await persistChatMessage({
         senderId: me,
-        clientId,
-      }).populate("senderId", "name username avatar");
-
-      if (existing) {
-        return res.status(201).json(normalizeMessage(existing.toObject()));
-      }
+        receiverId: other,
+        payload: {
+          text: req.body?.text,
+          type: req.body?.type,
+          metadata: req.body?.metadata,
+          clientId: req.body?.clientId,
+        },
+      });
+    } catch (error) {
+      return res.status(400).json({ error: error.message || "Invalid message payload" });
     }
 
-    const message = await Message.create({
-      conversationId,
-      senderId: me,
-      receiverId: other,
-      senderName: sender.name || "",
-      text,
-      time: Date.now(),
-      clientId: clientId || undefined,
-    });
-
-    await message.populate("senderId", "name username avatar");
-    const payload = normalizeMessage(message.toObject());
+    const payload = result.message;
 
     const io = req.app.get("io");
     if (io) {
       io.to(toIdString(me)).to(toIdString(other)).emit("newMessage", payload);
     }
 
-    await createNotification({
-      recipient: other,
-      sender: me,
-      type: "message",
-      text: "sent you a message",
-      entity: {
-        id: message._id,
-        model: "Message",
-      },
-      metadata: {
-        previewText: text.slice(0, 120),
-        link: "/home",
-      },
-      io: req.app.get("io"),
-      onlineUsers: req.app.get("onlineUsers"),
-    });
+    if (!result.existed) {
+      const previewText =
+        payload.type === "contentCard"
+          ? `shared: ${payload.metadata?.title || payload.metadata?.itemType || "content"}`
+          : String(payload.text || "").slice(0, 120);
 
-    res.status(201).json(payload);
+      await createNotification({
+        recipient: other,
+        sender: me,
+        type: "message",
+        text: "sent you a message",
+        entity: {
+          id: payload._id,
+          model: "Message",
+        },
+        metadata: {
+          previewText,
+          link: "/home",
+        },
+        io: req.app.get("io"),
+        onlineUsers: req.app.get("onlineUsers"),
+      });
+    }
+
+    res.status(result.existed ? 200 : 201).json(payload);
   } catch (err) {
     console.error("Send message error:", err);
     res.status(500).json({ error: "Failed to send message" });

@@ -1,37 +1,151 @@
-=# Tengacion  
-### The Social OS for the Next Billion People
+# Tengacion: Chat + Creator Marketplace MVP
 
-Tengacion is a next-generation social platform designed as a **Social Operating System** — not just another social network.
+This repo now supports an MVP where users can:
+- Chat in real time and share monetized content cards (`track` / `book`)
+- Browse public creator pages
+- Preview tracks/books and pay to unlock full access
+- Let creators upload tracks, create books/chapters, and view basic sales
 
-It combines real-time communication, creator monetization, AI-driven discovery, and community governance into one unified, modular ecosystem.
+## Stack
+- Frontend: React + Vite + Tailwind CSS
+- Backend: Node.js + Express + Socket.io
+- Database: MongoDB + Mongoose
+- Auth: JWT
+- Payments: Paystack (provider abstraction ready for Stripe later)
+- Media: URL-based storage + signed media redirect URLs
 
-Unlike traditional platforms such as Facebook, Twitter, or Instagram, **Tengacion is built to be open, extensible, and intelligence-driven**, where users and creators retain ownership and control.
+## Project Layout
+- `backend/` Express API, sockets, models, routes, controllers
+- `frontend/` React app (Vite)
+- `.env.example` env template
 
----
+## MVP Features Implemented
+- Creator Profiles:
+  - `CreatorProfile` model linked to `User`
+  - Public creator page with cover, bio, Music/Books tabs
+- Music:
+  - Creator track creation (`audioUrl` + `previewUrl` for paid tracks)
+  - Track detail with player + preview paywall
+  - Signed stream URL endpoint (`/api/tracks/:trackId/stream`)
+- Books:
+  - Book + chapter creation
+  - Free chapter previews and locked paid chapters
+- Payments + Entitlements:
+  - Paystack initialize endpoint
+  - Secure webhook signature verification + server-side verification
+  - Purchase status persistence and entitlement check endpoint
+- Chat Content Cards:
+  - `Message.type` supports `text` and `contentCard`
+  - Metadata includes `itemType`, `itemId`, `previewType`
+  - Socket + REST chat both support content cards
+  - Messenger UI “Share” flow for content cards
+- Creator Dashboard MVP:
+  - Create creator profile
+  - Publish tracks/books/chapters
+  - View sales count + revenue summary
 
-## 🌍 Vision
+## 1) Setup
+1. Install dependencies:
+```bash
+npm install
+npm install --prefix backend
+npm install --prefix frontend
+```
+2. Create env file:
+```bash
+cp .env.example .env
+```
+3. Fill required values:
+- `MONGO_URI`
+- `JWT_SECRET`
+- `PAYSTACK_SECRET_KEY`
+- `PAYSTACK_CALLBACK_URL` (example: `http://localhost:5173/home`)
 
-To build the foundational social infrastructure for the next billion internet users — especially emerging markets — where identity, community, and creativity are first-class citizens.
+## 2) Run Locally
+1. Start backend:
+```bash
+npm run dev --prefix backend
+```
+2. Start frontend:
+```bash
+npm run dev --prefix frontend
+```
+3. Open:
+- Frontend: `http://localhost:5173`
+- Backend health: `http://localhost:5000/api/health`
 
----
+## 3) Seed Dev Data
+Creates:
+- one creator user
+- creator profile
+- sample paid track
+- sample paid book with free + locked chapters
 
-## 🧭 Core Principles
+```bash
+npm run seed:marketplace --prefix backend
+```
 
-- **People own their audience**  
-  No algorithmic lock-in or platform capture.
+## 4) Paystack Webhook (Dev)
+Use a tunnel (e.g. ngrok / cloudflared) to expose backend.
 
-- **Creators own their monetization**  
-  Direct value exchange without exploitative intermediaries.
+Set Paystack webhook URL to:
+`https://<your-public-backend>/api/payments/webhook/paystack`
 
-- **AI serves users, not advertisers**  
-  Discovery and moderation exist to empower people, not manipulate them.
+Backend verifies:
+- `x-paystack-signature`
+- transaction status via Paystack verify API
+- amount/currency before marking purchase as `paid`
 
-- **Communities govern themselves**  
-  Social spaces should be shaped by their members, not corporations.
+## 5) Useful Endpoints
+- Auth:
+  - `GET /api/me`
+- Creators:
+  - `GET /api/creators/:creatorId`
+  - `GET /api/creators/:creatorId/tracks`
+  - `GET /api/creators/:creatorId/books`
+- Tracks:
+  - `POST /api/tracks` (creator)
+  - `GET /api/tracks/:trackId`
+  - `GET /api/tracks/:trackId/stream`
+- Books:
+  - `POST /api/books` (creator)
+  - `POST /api/books/:bookId/chapters` (creator)
+  - `GET /api/books/:bookId`
+  - `GET /api/books/:bookId/chapters`
+  - `GET /api/books/:bookId/chapters/:chapterId`
+- Payments:
+  - `POST /api/payments/init`
+  - `POST /api/payments/webhook/paystack`
+- Purchases / Entitlements:
+  - `GET /api/purchases/my`
+  - `GET /api/purchases/creator/sales`
+  - `GET /api/entitlements/check?itemType=track&itemId=<id>`
+- Chat:
+  - `POST /api/chat/messages`
+  - Existing `/api/messages/*` routes still supported
 
----
+## Frontend Routes
+- `/creators/:creatorId`
+- `/tracks/:trackId`
+- `/books/:bookId`
+- `/dashboard/creator`
+- Chat UI supports shareable content cards
 
-## 🏗 Architecture Overview
+## Notes
+- For paid tracks, preview URL is required (to avoid leaking full audio URL).
+- Signed media links are generated by backend tokenized redirect endpoint (`/api/media/signed`).
+- Keep secrets in env variables only.
 
-Tengacion is designed as a **multi-platform, service-oriented system**:
+## Phase 2 (Outline)
+- Fan Pass subscriptions
+- Gifting (“buy for partner”)
+- Referral rewards
+- Creator marketplace onboarding + platform commission
+- Audiobooks
 
+## Phase 3 (Outline)
+- Multi-creator discovery ranking + editorial collections
+- Advanced analytics (retention, conversion funnels, cohort revenue)
+- AI recommendations for creators/content cards
+- Multi-provider payments (Stripe + regional providers)
+- Fraud/risk engine and payout rails

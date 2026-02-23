@@ -9,8 +9,11 @@ import Home from "./pages/Home";
 import ProfileEditor from "./ProfileEditor";
 import Search from "./pages/Search";
 import Trending from "./pages/Trending";
-import CreatorDashboard from "./pages/CreatorDashboard";
+import CreatorDashboardMVP from "./pages/CreatorDashboardMVP";
 import Notifications from "./pages/Notifications";
+import CreatorPage from "./pages/CreatorPage";
+import TrackDetail from "./pages/TrackDetail";
+import BookDetail from "./pages/BookDetail";
 
 import { useAuth } from "./context/AuthContext";
 
@@ -32,6 +35,9 @@ export default function App() {
       {/* PUBLIC */}
       <Route path="/" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/creators/:creatorId" element={<CreatorPage />} />
+      <Route path="/tracks/:trackId" element={<TrackDetail />} />
+      <Route path="/books/:bookId" element={<BookDetail />} />
 
       {/* PROTECTED */}
       <Route
@@ -53,10 +59,19 @@ export default function App() {
       />
 
       <Route
+        path="/dashboard/creator"
+        element={
+          <ProtectedRoute user={user}>
+            <CreatorDashboardMVP user={user} />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/creator"
         element={
           <ProtectedRoute user={user}>
-            <CreatorDashboard user={user} />
+            <CreatorDashboardMVP user={user} />
           </ProtectedRoute>
         }
       />

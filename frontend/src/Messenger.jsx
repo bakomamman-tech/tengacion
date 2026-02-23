@@ -6,6 +6,8 @@ import {
   sendChatMessage,
 } from "./api";
 import { connectSocket, disconnectSocket } from "./socket";
+import ContentCardMessage from "./components/ContentCardMessage";
+import ShareContentModal from "./components/ShareContentModal";
 
 const MOBILE_SHEET_QUERY = "(max-width: 640px)";
 
@@ -71,6 +73,18 @@ const normalizeMessage = (message) => ({
   senderName: message?.senderName || "",
   senderAvatar: resolveImage(message?.senderAvatar || ""),
   text: message?.text || "",
+  type: message?.type === "contentCard" ? "contentCard" : "text",
+  metadata: message?.metadata
+    ? {
+        itemType: message.metadata.itemType || "",
+        itemId: toIdString(message.metadata.itemId),
+        previewType: message.metadata.previewType || "",
+        title: message.metadata.title || "",
+        description: message.metadata.description || "",
+        price: Number(message.metadata.price) || 0,
+        coverImageUrl: resolveImage(message.metadata.coverImageUrl || ""),
+      }
+    : null,
   time:
     message?.time ||
     (message?.createdAt ? new Date(message.createdAt).getTime() : Date.now()),
@@ -78,6 +92,13 @@ const normalizeMessage = (message) => ({
   pending: Boolean(message?.pending),
   failed: Boolean(message?.failed),
 });
+
+const getMessagePreviewText = (message) => {
+  if (message?.type === "contentCard") {
+    return `shared: ${message?.metadata?.title || message?.metadata?.itemType || "content"}`;
+  }
+  return message?.text || "";
+};
 
 const isForConversation = (message, meId, otherId) => {
   const a = toIdString(message.senderId);
@@ -97,6 +118,7 @@ export default function Messenger({ user, onClose }) {
   const [loadingContacts, setLoadingContacts] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
 
   const [isMobileSheet, setIsMobileSheet] = useState(() => {
     if (typeof window === "undefined") {return false;}
@@ -389,7 +411,7 @@ export default function Messenger({ user, onClose }) {
         toIdString(message.senderId) === meId
           ? toIdString(message.receiverId)
           : toIdString(message.senderId);
-      moveContactToTop(otherId, message.text, message.time);
+      moveContactToTop(otherId, getMessagePreviewText(message), message.time);
     };
 
     socket.on("onlineUsers", handleOnlineUsers);
@@ -408,7 +430,7 @@ export default function Messenger({ user, onClose }) {
   }, []);
 
   const sendViaSocket = useCallback(
-    (receiverId, textValue, clientId) =>
+    (receiverId, payload) =>
       new Promise((resolve, reject) => {
         const socket = socketRef.current;
         if (!socket || !socket.connected) {
@@ -426,7 +448,7 @@ export default function Messenger({ user, onClose }) {
 
         socket.emit(
           "sendMessage",
-          { receiverId, text: textValue, clientId },
+          { receiverId, ...payload },
           (ack) => {
             if (settled) {return;}
             settled = true;
@@ -444,31 +466,44 @@ export default function Messenger({ user, onClose }) {
     []
   );
 
-  const send = async () => {
-    const value = text.trim();
-    if (!value || !selectedId || !meId) {return;}
-
+  const sendPayload = useCallback(async (payloadInput) => {
+    if (!selectedId || !meId) {return;}
     const now = Date.now();
     const clientId = `c_${now}_${Math.random().toString(36).slice(2, 8)}`;
+    const payload =
+      payloadInput && typeof payloadInput === "object"
+        ? { ...payloadInput, clientId }
+        : { text: String(payloadInput || ""), type: "text", clientId };
+
+    const normalizedType = payload.type === "contentCard" ? "contentCard" : "text";
+    const previewText =
+      normalizedType === "contentCard"
+        ? `shared: ${payload?.metadata?.title || payload?.metadata?.itemType || "content"}`
+        : String(payload.text || "").trim();
+
+    if (!previewText) {
+      return;
+    }
 
     const optimistic = normalizeMessage({
       _id: clientId,
       senderId: meId,
       receiverId: selectedId,
       senderName: user?.name || "",
-      text: value,
+      text: normalizedType === "text" ? previewText : "",
+      type: normalizedType,
+      metadata: normalizedType === "contentCard" ? payload.metadata : null,
       time: now,
       clientId,
       pending: true,
     });
 
     setMessages((prev) => [...prev, optimistic]);
-    moveContactToTop(selectedId, value, now);
-    setText("");
+    moveContactToTop(selectedId, getMessagePreviewText(optimistic), now);
     setError("");
 
     try {
-      const persisted = await sendViaSocket(selectedId, value, clientId);
+      const persisted = await sendViaSocket(selectedId, payload);
       replaceMessageByClientId(clientId, {
         ...persisted,
         pending: false,
@@ -480,7 +515,7 @@ export default function Messenger({ user, onClose }) {
     }
 
     try {
-      const persisted = await sendChatMessage(selectedId, value, clientId);
+      const persisted = await sendChatMessage(selectedId, payload);
       replaceMessageByClientId(clientId, {
         ...normalizeMessage(persisted),
         pending: false,
@@ -493,6 +528,18 @@ export default function Messenger({ user, onClose }) {
       });
       setError(err.message || "Failed to send message");
     }
+  }, [meId, moveContactToTop, replaceMessageByClientId, selectedId, sendViaSocket, user?.name]);
+
+  const send = async () => {
+    const value = text.trim();
+    if (!value) {return;}
+    setText("");
+    await sendPayload({ text: value, type: "text" });
+  };
+
+  const shareContent = async (payload) => {
+    await sendPayload(payload);
+    setShareOpen(false);
   };
 
   const sheetStyle =
@@ -607,7 +654,11 @@ export default function Messenger({ user, onClose }) {
                         )}
 
                         <div className="msg-bubble">
-                          <div className="msg-text">{m.text}</div>
+                          {m.type === "contentCard" ? (
+                            <ContentCardMessage metadata={m.metadata} />
+                          ) : (
+                            <div className="msg-text">{m.text}</div>
+                          )}
                           <div className="msg-time">
                             {new Date(m.time).toLocaleTimeString([], {
                               hour: "2-digit",
@@ -632,6 +683,10 @@ export default function Messenger({ user, onClose }) {
                   placeholder="Type a message..."
                 />
 
+                <button type="button" onClick={() => setShareOpen(true)} disabled={!selectedId}>
+                  Share
+                </button>
+
                 <button onClick={send} disabled={!text.trim()}>
                   Send
                 </button>
@@ -642,6 +697,12 @@ export default function Messenger({ user, onClose }) {
       </div>
 
       {error && <div className="messenger-error">{error}</div>}
+
+      <ShareContentModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        onSubmit={shareContent}
+      />
     </div>
   );
 }

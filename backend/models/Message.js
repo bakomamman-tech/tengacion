@@ -25,7 +25,7 @@ const MessageSchema = new mongoose.Schema(
 
     text: {
       type: String,
-      required: true,
+      default: "",
       trim: true,
       maxlength: 2000
     },
@@ -40,6 +40,46 @@ const MessageSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: ""
+    },
+
+    type: {
+      type: String,
+      enum: ["text", "contentCard"],
+      default: "text",
+      index: true
+    },
+
+    metadata: {
+      itemType: {
+        type: String,
+        enum: ["track", "book"],
+        default: ""
+      },
+      itemId: {
+        type: mongoose.Schema.Types.ObjectId,
+        default: null
+      },
+      previewType: {
+        type: String,
+        enum: ["play", "read", ""],
+        default: ""
+      },
+      title: {
+        type: String,
+        default: ""
+      },
+      description: {
+        type: String,
+        default: ""
+      },
+      price: {
+        type: Number,
+        default: 0
+      },
+      coverImageUrl: {
+        type: String,
+        default: ""
+      }
     },
 
     // Keep a numeric timestamp for frontend compatibility.
@@ -90,6 +130,28 @@ const MessageSchema = new mongoose.Schema(
 // Indexes for fast chat loading
 MessageSchema.index({ conversationId: 1, createdAt: -1 });
 MessageSchema.index({ senderId: 1, receiverId: 1 });
+
+MessageSchema.pre("validate", function (next) {
+  if (this.type === "text") {
+    const clean = String(this.text || "").trim();
+    if (!clean) {
+      return next(new Error("Text message cannot be empty"));
+    }
+    this.text = clean;
+  }
+
+  if (this.type === "contentCard") {
+    const hasCard =
+      this.metadata &&
+      ["track", "book"].includes(this.metadata.itemType) &&
+      this.metadata.itemId;
+    if (!hasCard) {
+      return next(new Error("Content card metadata is required"));
+    }
+  }
+
+  return next();
+});
 
 // Hide internal fields when sending to frontend
 MessageSchema.methods.toJSON = function () {

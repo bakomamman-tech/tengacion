@@ -252,7 +252,7 @@ export default function Navbar({ user, onLogout, onOpenMessenger }) {
           <button className="nav-tab" onClick={() => navigate("/trending")}>
             Trending
           </button>
-          <button className="nav-tab" onClick={() => navigate("/creator")}>
+          <button className="nav-tab" onClick={() => navigate("/dashboard/creator")}>
             Creator
           </button>
         </nav>

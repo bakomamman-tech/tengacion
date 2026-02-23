@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   --bg: #f0f2f5;
   --bg-layer: radial-gradient(circle at 10% 20%, #ffffff 0%, #f0f2f5 45%);

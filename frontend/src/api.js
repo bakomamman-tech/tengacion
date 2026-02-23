@@ -202,6 +202,132 @@ export const unfriend = (userId) =>
   });
 
 // ======================================================
+// CREATORS
+// ======================================================
+
+export const getMyCreatorProfile = () =>
+  request(`${API_BASE}/creators/me`, {
+    headers: getAuthHeaders(),
+  });
+
+export const upsertCreatorProfile = (payload) =>
+  request(`${API_BASE}/creators/me`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const getCreator = (creatorId) =>
+  request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}`);
+
+export const getCreatorTracks = (creatorId) =>
+  request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/tracks`);
+
+export const getCreatorBooks = (creatorId) =>
+  request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/books`);
+
+// ======================================================
+// TRACKS
+// ======================================================
+
+export const createTrack = (payload) =>
+  request(`${API_BASE}/tracks`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const getTrack = (trackId) =>
+  request(`${API_BASE}/tracks/${encodeURIComponent(trackId || "")}`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getTrackStream = (trackId) =>
+  request(`${API_BASE}/tracks/${encodeURIComponent(trackId || "")}/stream`, {
+    headers: getAuthHeaders(),
+  });
+
+// ======================================================
+// BOOKS
+// ======================================================
+
+export const createBook = (payload) =>
+  request(`${API_BASE}/books`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const createBookChapter = (bookId, payload) =>
+  request(`${API_BASE}/books/${encodeURIComponent(bookId || "")}/chapters`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const getBook = (bookId) =>
+  request(`${API_BASE}/books/${encodeURIComponent(bookId || "")}`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getBookChapters = (bookId) =>
+  request(`${API_BASE}/books/${encodeURIComponent(bookId || "")}/chapters`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getBookChapter = (bookId, chapterId) =>
+  request(
+    `${API_BASE}/books/${encodeURIComponent(bookId || "")}/chapters/${encodeURIComponent(chapterId || "")}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+
+// ======================================================
+// PAYMENTS + PURCHASES
+// ======================================================
+
+export const initPayment = ({ itemType, itemId, returnUrl }) =>
+  request(`${API_BASE}/payments/init`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ itemType, itemId, returnUrl }),
+  });
+
+export const getMyPurchases = () =>
+  request(`${API_BASE}/purchases/my`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getCreatorSales = () =>
+  request(`${API_BASE}/purchases/creator/sales`, {
+    headers: getAuthHeaders(),
+  });
+
+export const checkEntitlement = ({ itemType, itemId }) =>
+  request(
+    `${API_BASE}/entitlements/check?itemType=${encodeURIComponent(itemType || "")}&itemId=${encodeURIComponent(itemId || "")}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+
+// ======================================================
 // NOTIFICATIONS
 // ======================================================
 
@@ -354,14 +480,30 @@ export const getConversationMessages = (otherUserId) =>
     headers: getAuthHeaders(),
   });
 
-export const sendChatMessage = (otherUserId, text, clientId) =>
-  request(`${API_BASE}/messages/${otherUserId}`, {
+export const sendChatMessage = (otherUserId, input, clientId) => {
+  const payload =
+    input && typeof input === "object" && !Array.isArray(input)
+      ? input
+      : { text: input, clientId };
+
+  return request(`${API_BASE}/messages/${otherUserId}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeaders(),
     },
-    body: JSON.stringify({ text, clientId }),
+    body: JSON.stringify(payload),
+  });
+};
+
+export const sendChatMessageDirect = (payload) =>
+  request(`${API_BASE}/chat/messages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
   });
 
 // ======================================================

@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const { getBucket, bucketName } = require("../services/mediaStore");
+const { verifySignedMediaToken } = require("../services/mediaSigner");
 
 const router = express.Router();
 
@@ -83,6 +84,26 @@ const parseRange = (rangeHeader, fileSize) => {
 
   return { start, end: Math.min(end, fileSize - 1) };
 };
+
+router.get("/signed", async (req, res) => {
+  try {
+    const token = String(req.query?.token || "");
+    if (!token) {
+      return res.status(400).json({ error: "Missing token" });
+    }
+
+    const payload = verifySignedMediaToken(token);
+    const sourceUrl = String(payload?.src || "").trim();
+    if (!sourceUrl) {
+      return res.status(400).json({ error: "Invalid media token" });
+    }
+
+    res.setHeader("Cache-Control", "no-store");
+    return res.redirect(sourceUrl);
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired media token" });
+  }
+});
 
 router.get("/:id", async (req, res) => {
   try {

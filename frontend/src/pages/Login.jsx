@@ -1,21 +1,24 @@
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { login as loginApi } from "../api";
 import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const returnToRaw = new URLSearchParams(location.search).get("returnTo") || "";
+  const returnTo = returnToRaw.startsWith("/") ? returnToRaw : "/home";
 
   // 🔐 Already logged in → go home
   const token = localStorage.getItem("token");
   if (token) {
-    return <Navigate to="/home" replace />;
+    return <Navigate to={returnTo} replace />;
   }
 
   const handleLogin = async (e) => {
@@ -34,7 +37,7 @@ export default function Login() {
         toast.success("Welcome back 👋");
         login(res.token, res.user);
         // Navigate immediately after login succeeds
-        navigate("/home", { replace: true });
+        navigate(returnTo, { replace: true });
       } else {
         toast.error(res?.error || "Invalid credentials");
         setLoading(false);

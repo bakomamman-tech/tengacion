@@ -1,5 +1,3 @@
-const { config } = require("../apps/api/config/env");
-const connectDB = require("./config/db");
 const http = require("http");
 const jwt = require("jsonwebtoken");
 const { Server } = require("socket.io");
@@ -11,6 +9,8 @@ const app = require("./app");
 const server = http.createServer(app);
 
 if (process.env.NODE_ENV !== "test") {
+  const connectDB = require("./config/db");
+  const { config } = require("../apps/api/config/env");
   connectDB();
 
   const io = new Server(server, {
@@ -21,7 +21,7 @@ if (process.env.NODE_ENV !== "test") {
     transports: ["polling", "websocket"],
   });
 
-  const onlineUsers = new Map(); // userId -> Set(socketId)
+  const onlineUsers = new Map();
 
   const emitOnlineUsers = () => {
     io.emit("onlineUsers", [...onlineUsers.keys()]);
@@ -160,8 +160,37 @@ if (process.env.NODE_ENV !== "test") {
     });
   });
 
+  const handleServerError = (error) => {
+    if (!error || !error.code) {
+      console.error("Server error:", error);
+      process.exit(1);
+    }
+
+    const port = config?.PORT || 5000;
+    switch (error.code) {
+      case "EADDRINUSE":
+        console.error(
+          `Port ${port} is already in use. Please stop the process using that port or update PORT in your environment.`,
+          `Try \`npx kill-port ${port}\` or pick a different port.`
+        );
+        process.exit(1);
+        break;
+      case "EACCES":
+        console.error(`Insufficient permissions to bind to port ${port}. Try running with elevated privileges or choose a higher port.`);
+        process.exit(1);
+        break;
+      default:
+        console.error("Server error:", error);
+        process.exit(1);
+    }
+  };
+
+  server.on("error", handleServerError);
+
   const PORT = config.PORT || 5000;
   server.listen(PORT, () => {
     console.log(`🚀 Tengacion running on port ${PORT}`);
   });
+}
+
 module.exports = server;

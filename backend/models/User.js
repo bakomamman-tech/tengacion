@@ -107,8 +107,13 @@ const UserSchema = new mongoose.Schema(
     /* ================= ACCOUNT ================= */
     role: {
       type: String,
-      enum: ["user", "admin", "moderator"],
+      enum: ["user", "artist", "admin", "moderator"],
       default: "user",
+    },
+
+    isArtist: {
+      type: Boolean,
+      default: false,
     },
 
     isVerified: {

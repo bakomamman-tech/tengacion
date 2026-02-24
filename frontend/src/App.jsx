@@ -12,6 +12,7 @@ import Trending from "./pages/Trending";
 import CreatorDashboardMVP from "./pages/CreatorDashboardMVP";
 import Notifications from "./pages/Notifications";
 import CreatorPage from "./pages/CreatorPage";
+import ArtistProfileRoute from "@web/features/creator/ArtistPage";
 import TrackDetail from "./pages/TrackDetail";
 import BookDetail from "./pages/BookDetail";
 
@@ -38,6 +39,14 @@ export default function App() {
       <Route path="/creators/:creatorId" element={<CreatorPage />} />
       <Route path="/tracks/:trackId" element={<TrackDetail />} />
       <Route path="/books/:bookId" element={<BookDetail />} />
+      <Route
+        path="/artist/:username"
+        element={
+          <ProtectedRoute user={user}>
+            <ArtistProfileRoute />
+          </ProtectedRoute>
+        }
+      />
 
       {/* PROTECTED */}
       <Route

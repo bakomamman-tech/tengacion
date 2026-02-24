@@ -2,16 +2,16 @@
   "name": "tengacion",
   "version": "1.0.0",
   "private": true,
-
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
     "build": "npm run build:frontend",
     "build:frontend": "cd ../frontend && npm install --include=dev --no-save && npm run build",
-    "seed:marketplace": "node scripts/seedMarketplace.js"
+    "seed:marketplace": "node scripts/seedMarketplace.js",
+    "test": "cross-env NODE_PATH=./node_modules jest --runInBand"
   },
-
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.996.0",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
     "cors": "^2.8.6",
@@ -25,13 +25,17 @@
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^2.2.1",
     "nodemailer": "^7.0.13",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "stripe": "^20.3.1",
+    "zod": "^4.3.6"
   },
-
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "cross-env": "^10.1.0",
+    "jest": "^30.2.0",
+    "mongodb-memory-server": "^11.0.1",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.2.2"
   },
-
   "engines": {
     "node": ">=20 <23"
   }

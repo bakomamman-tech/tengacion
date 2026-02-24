@@ -1,8 +1,7 @@
 /* =====================================================
    🌱 ENV & CONFIG
 ===================================================== */
-require("dotenv").config();
-require("./config/env");
+const { config } = require("../apps/api/config/env");
 
 const connectDB = require("./config/db");
 
@@ -24,7 +23,7 @@ const { persistChatMessage } = require("./services/chatService");
 const { toIdString } = require("./utils/messagePayload");
 const auth = require("./middleware/auth");
 
-const errorHandler = require("./middleware/errorHandler");
+const errorHandler = require("../apps/api/middleware/errorHandler");
 
 /* =====================================================
    🚀 APP INIT
@@ -296,6 +295,9 @@ app.use("/api/payments", require("./routes/payments"));
 app.use("/api/purchases", require("./routes/purchases"));
 app.use("/api/entitlements", require("./routes/entitlements"));
 app.use("/api/chat", require("./routes/chat"));
+app.use("/api/artist", require("./routes/artist"));
+app.use("/api/music", require("./routes/music"));
+app.use("/api/billing", require("./routes/billing"));
 
 /* =====================================================
    🌐 FRONTEND (VITE – SAME DOMAIN)
@@ -324,7 +326,7 @@ app.use(errorHandler);
 /* =====================================================
    🚀 START SERVER
 ===================================================== */
-const PORT = process.env.PORT || 5000;
+const PORT = config.PORT;
 
 server.listen(PORT, () => {
   console.log(`🚀 Tengacion running on port ${PORT}`);

@@ -1,5 +1,5 @@
-# ENV
 .env
+.env.test
 
 # Node
 node_modules
@@ -17,3 +17,4 @@ backend/uploads
 # OS files
 .DS_Store
 Thumbs.db
+desktop.ini

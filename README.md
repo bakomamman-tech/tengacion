@@ -11,38 +11,21 @@ This repo now supports an MVP where users can:
 - Backend: Node.js + Express + Socket.io
 - Database: MongoDB + Mongoose
 - Auth: JWT
-- Payments: Paystack (provider abstraction ready for Stripe later)
-- Media: URL-based storage + signed media redirect URLs
+- Payments: Paystack (NGN) + Stripe (USD) abstractions
+- Media: AWS S3 (audio storage) + URL-based signed redirects
 
 ## Project Layout
-- `backend/` Express API, sockets, models, routes, controllers
-- `frontend/` React app (Vite)
-- `.env.example` env template
+- `backend/` (desktop-friendly entrypoint that proxies to `apps/api` layered folders)
+- `frontend/` (Vite app importing new shared modules in `apps/web`)
+- `apps/api/` (new layered controllers/services/repositories)
+- `apps/web/` (feature-based React modules, shared API client)
+- `.env.example` / `.env.test` env templates
 
-## MVP Features Implemented
-- Creator Profiles:
-  - `CreatorProfile` model linked to `User`
-  - Public creator page with cover, bio, Music/Books tabs
-- Music:
-  - Creator track creation (`audioUrl` + `previewUrl` for paid tracks)
-  - Track detail with player + preview paywall
-  - Signed stream URL endpoint (`/api/tracks/:trackId/stream`)
-- Books:
-  - Book + chapter creation
-  - Free chapter previews and locked paid chapters
-- Payments + Entitlements:
-  - Paystack initialize endpoint
-  - Secure webhook signature verification + server-side verification
-  - Purchase status persistence and entitlement check endpoint
-- Chat Content Cards:
-  - `Message.type` supports `text` and `contentCard`
-  - Metadata includes `itemType`, `itemId`, `previewType`
-  - Socket + REST chat both support content cards
-  - Messenger UI “Share” flow for content cards
-- Creator Dashboard MVP:
-  - Create creator profile
-  - Publish tracks/books/chapters
-  - View sales count + revenue summary
+## Creator + Artist Enhancements
+- Artist profile now exposes `links` (Spotify, Instagram, Facebook, TikTok, YouTube, Apple Music, Audiomack, Boomplay, Website) plus a `customLinks` array.
+- New protected endpoint `GET /api/artist/:username` and `PUT /api/artist/me` for artists to edit their presence.
+- Frontend adds `GET /artist/:username` route backed by `apps/web/features/creator/ArtistPage`.
+- Storage/payment services scaffolded for AWS S3 + Paystack/Stripe; music/billing endpoints currently return "Not Implemented" responses for future wiring.
 
 ## 1) Setup
 1. Install dependencies:
@@ -51,101 +34,75 @@ npm install
 npm install --prefix backend
 npm install --prefix frontend
 ```
-2. Create env file:
+2. Create `.env` from the template:
 ```bash
 cp .env.example .env
 ```
-3. Fill required values:
-- `MONGO_URI`
-- `JWT_SECRET`
-- `PAYSTACK_SECRET_KEY`
-- `PAYSTACK_CALLBACK_URL` (example: `http://localhost:5173/home`)
+3. Set required secrets:
+- `MONGO_URI`, `JWT_SECRET`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_CALLBACK_URL`
+- `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `AWS_S3_BUCKET`, `AWS_S3_MEDIA_URL`
 
-## 2) Run Locally
-1. Start backend:
+## 2) Running Apps Locally
+1. Start the API (serves `apps/api` layered routes via the existing backend entrypoint):
 ```bash
 npm run dev --prefix backend
 ```
-2. Start frontend:
+2. Start the frontend (Vite):
 ```bash
 npm run dev --prefix frontend
 ```
-3. Open:
-- Frontend: `http://localhost:5173`
-- Backend health: `http://localhost:5000/api/health`
+3. Visit:
+- UI: `http://localhost:5173`
+- API health: `http://localhost:5000/api/health`
 
-## 3) Seed Dev Data
+## 3) Testing
+- Run backend unit/integration tests: `npm test --prefix backend`
+- Tests use `jest` + `supertest` + `mongodb-memory-server` to exercise protected auth/artist endpoints.
+
+## 4) Seed Dev Data
 Creates:
-- one creator user
-- creator profile
-- sample paid track
-- sample paid book with free + locked chapters
+- one creator user + artist profile
+- sample paid track + book
 
 ```bash
 npm run seed:marketplace --prefix backend
 ```
 
-## 4) Paystack Webhook (Dev)
-Use a tunnel (e.g. ngrok / cloudflared) to expose backend.
-
-Set Paystack webhook URL to:
-`https://<your-public-backend>/api/payments/webhook/paystack`
-
-Backend verifies:
-- `x-paystack-signature`
-- transaction status via Paystack verify API
-- amount/currency before marking purchase as `paid`
-
 ## 5) Useful Endpoints
-- Auth:
-  - `GET /api/me`
-- Creators:
-  - `GET /api/creators/:creatorId`
-  - `GET /api/creators/:creatorId/tracks`
-  - `GET /api/creators/:creatorId/books`
-- Tracks:
-  - `POST /api/tracks` (creator)
-  - `GET /api/tracks/:trackId`
-  - `GET /api/tracks/:trackId/stream`
-- Books:
-  - `POST /api/books` (creator)
-  - `POST /api/books/:bookId/chapters` (creator)
-  - `GET /api/books/:bookId`
-  - `GET /api/books/:bookId/chapters`
-  - `GET /api/books/:bookId/chapters/:chapterId`
-- Payments:
-  - `POST /api/payments/init`
-  - `POST /api/payments/webhook/paystack`
-- Purchases / Entitlements:
-  - `GET /api/purchases/my`
-  - `GET /api/purchases/creator/sales`
-  - `GET /api/entitlements/check?itemType=track&itemId=<id>`
-- Chat:
-  - `POST /api/chat/messages`
-  - Existing `/api/messages/*` routes still supported
+- **Auth:** `GET /api/me`
+- **Artist:** `GET /api/artist/:username`, `PUT /api/artist/me`
+- **Creators:** `GET /api/creators/:creatorId`, `/tracks`, `/books`
+- **Tracks:** `POST /api/tracks`, `GET /api/tracks/:trackId`, `/track stream preview`
+- **Books:** CRUD endpoints for books + chapters
+- **Payments:** `POST /api/payments/init`, `/webhook/paystack`
+- **Billing stubs:** `POST /api/billing/subscribe`, `/api/billing/purchase` (501 responses until wired)
+- **Music stubs:** `POST /api/music/tracks`, `/api/music/tracks/:id/preview`, `/stream`
+- **Purchases / Entitlements:** `GET /api/purchases/my`, `GET /api/purchases/creator/sales`, `GET /api/entitlements/check`
+- **Chat:** `POST /api/chat/messages` (and legacy `/api/messages/*` routes)
 
 ## Frontend Routes
-- `/creators/:creatorId`
-- `/tracks/:trackId`
-- `/books/:bookId`
-- `/dashboard/creator`
-- Chat UI supports shareable content cards
+- `/` (landing/login)
+- `/register`
+- `/home`, `/search`, `/notifications`, `/dashboard/creator`
+- `/tracks/:trackId`, `/books/:bookId`
+- `/creators/:creatorId` (legacy)
+- `/artist/:username` (new artist profile builder powered by `apps/web`)
 
 ## Notes
-- For paid tracks, preview URL is required (to avoid leaking full audio URL).
-- Signed media links are generated by backend tokenized redirect endpoint (`/api/media/signed`).
-- Keep secrets in env variables only.
+- Creator-facing media now targets AWS S3 audio storage (`AWS_S3_BUCKET` + `AWS_S3_MEDIA_URL`).
+- Artist links must be HTTPS and sanitized at the backend.
+- PaymentService selects Paystack when currency is NGN and Stripe when USD, but the flows are placeholders until the next sprint.
 
 ## Phase 2 (Outline)
 - Fan Pass subscriptions
-- Gifting (“buy for partner”)
+- Creator gifting + hospitality
 - Referral rewards
 - Creator marketplace onboarding + platform commission
 - Audiobooks
 
 ## Phase 3 (Outline)
-- Multi-creator discovery ranking + editorial collections
+- Creator discovery ranking + editorial collections
 - Advanced analytics (retention, conversion funnels, cohort revenue)
-- AI recommendations for creators/content cards
-- Multi-provider payments (Stripe + regional providers)
-- Fraud/risk engine and payout rails
+- AI recommendations
+- Multi-provider payments + payouts
+- Fraud/risk detection

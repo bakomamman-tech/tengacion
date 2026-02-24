@@ -1,9 +1,9 @@
-require("dotenv").config();
-require("../config/env");
+const { config } = require("../../apps/api/config/env");
 
 const connectDB = require("../config/db");
 const User = require("../models/User");
 const CreatorProfile = require("../models/CreatorProfile");
+const ArtistProfile = require("../models/ArtistProfile");
 const Track = require("../models/Track");
 const Book = require("../models/Book");
 const Chapter = require("../models/Chapter");
@@ -28,12 +28,19 @@ const run = async () => {
       username: `${seedUsernameBase}_${suffix}`,
       email: seedEmail,
       password: seedPassword,
+      role: "artist",
+      isArtist: true,
       isVerified: true,
     });
     console.log(`Created seed user: ${user.email}`);
   } else {
     console.log(`Using existing seed user: ${user.email}`);
   }
+
+  await User.findByIdAndUpdate(user._id, {
+    role: "artist",
+    isArtist: true,
+  });
 
   const creatorProfile = await CreatorProfile.findOneAndUpdate(
     { userId: user._id },
@@ -46,6 +53,26 @@ const run = async () => {
         links: [
           { label: "Instagram", url: "https://instagram.com/tengacion" },
           { label: "YouTube", url: "https://youtube.com/@tengacion" },
+        ],
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  await ArtistProfile.findOneAndUpdate(
+    { userId: user._id },
+    {
+      $set: {
+        displayName: creatorProfile.displayName,
+        bio: creatorProfile.bio,
+        links: {
+          spotify: "https://open.spotify.com/artist/sample",
+          instagram: "https://instagram.com/tengacion",
+          youtube: "https://www.youtube.com/@tengacion",
+        },
+        customLinks: [
+          { label: "Official Site", url: "https://tengacion.dev" },
+          { label: "Audiomack", url: "https://audiomack.com/tengacion" },
         ],
       },
     },

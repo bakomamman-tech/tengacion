@@ -1,3 +1,4 @@
+import path from 'path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -27,7 +28,13 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      "@": "/src"
-    }
-  }
+      "@": "/src",
+      "@web": path.resolve(__dirname, "../apps/web/src"),
+      react: path.resolve(__dirname, "node_modules/react"),
+      "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
+      "react/jsx-runtime": path.resolve(__dirname, "node_modules/react/jsx-runtime"),
+      "react-router-dom": path.resolve(__dirname, "node_modules/react-router-dom"),
+      axios: path.resolve(__dirname, "node_modules/axios"),
+    },
+  },
 })

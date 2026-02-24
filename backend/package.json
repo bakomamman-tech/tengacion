@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node server.js",
+    "start": "cross-env NODE_PATH=./node_modules node server.js",
     "dev": "nodemon server.js",
     "build": "npm run build:frontend",
     "build:frontend": "cd ../frontend && npm install --include=dev --no-save && npm run build",

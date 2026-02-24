@@ -12,7 +12,7 @@ exports.createPost = catchAsync(async (req, res) => {
 
 exports.getFeed = catchAsync(async (req, res) => {
   const result = await PostService.getFeed({
-    userId: req.user.id,
+    userId: req.user?.id,
     search: req.query.search,
   });
   res.json(result);

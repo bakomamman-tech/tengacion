@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const Post = require("../../../backend/models/Post");
+const Post = require("../models/Post");
 const User = require("../../../backend/models/User");
 const { createNotification } = require("../../../backend/services/notificationService");
 const { saveUploadedFile } = require("../../../backend/services/mediaStore");
@@ -183,23 +183,6 @@ class PostService {
     const rawSearch = (search || "").trim();
     const searchTerm = rawSearch.replace(/^@+/, "");
 
-    const viewer = await userRepository.findById(viewerId);
-    if (!viewer) throw ApiError.unauthorized("User not found");
-
-    const followingIds = uniqueIds((viewer.following || []).map((id) => toIdString(id))).filter(
-      (id) => id && id !== viewerId
-    );
-    const friendIds = uniqueIds((viewer.friends || []).map((id) => toIdString(id))).filter(
-      (id) => id && id !== viewerId
-    );
-    const followingOnlyIds = followingIds.filter((id) => !friendIds.includes(id));
-
-    const visibilityScopes = [
-      { author: viewerId },
-      { author: { $in: friendIds }, privacy: { $in: ["public", "friends"] } },
-      { author: { $in: followingOnlyIds }, privacy: "public" },
-    ];
-
     let matchedAuthorIds = [];
     if (searchTerm) {
       const matchingUsers = await User.find(
@@ -212,7 +195,40 @@ class PostService {
         "_id"
       ).lean();
       matchedAuthorIds = matchingUsers.map((entry) => entry._id);
+    }
 
+    const visibilityScopes = [];
+
+    if (viewerId) {
+      const viewer = await userRepository.findById(viewerId);
+      if (!viewer) throw ApiError.unauthorized("User not found");
+
+      const followingIds = uniqueIds((viewer.following || []).map((id) => toIdString(id))).filter(
+        (id) => id && id !== viewerId
+      );
+      const friendIds = uniqueIds((viewer.friends || []).map((id) => toIdString(id))).filter(
+        (id) => id && id !== viewerId
+      );
+      const followingOnlyIds = followingIds.filter((id) => !friendIds.includes(id));
+
+      visibilityScopes.push({ author: viewerId });
+      visibilityScopes.push({
+        author: { $in: friendIds },
+        privacy: { $in: ["public", "friends"] },
+      });
+      visibilityScopes.push({
+        author: { $in: followingOnlyIds },
+        privacy: "public",
+      });
+
+      if (matchedAuthorIds.length > 0) {
+        visibilityScopes.push({
+          author: { $in: matchedAuthorIds },
+          privacy: "public",
+        });
+      }
+    } else {
+      visibilityScopes.push({ privacy: "public" });
       if (matchedAuthorIds.length > 0) {
         visibilityScopes.push({
           author: { $in: matchedAuthorIds },

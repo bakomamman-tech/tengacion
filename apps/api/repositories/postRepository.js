@@ -1,4 +1,4 @@
-const Post = require("../../../backend/models/Post");
+const Post = require("../models/Post");
 
 const create = (doc) => Post.create(doc);
 const findById = (id) => Post.findById(id);

@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require("../../../backend/middleware/auth");
 const upload = require("../../../backend/utils/upload");
 const postController = require("../controllers/postController");
+const optionalAuth = require("../middleware/optionalAuth");
 
 router.post(
   "/",
@@ -13,7 +14,7 @@ router.post(
   ]),
   postController.createPost
 );
-router.get("/", auth, postController.getFeed);
+router.get("/", optionalAuth, postController.getFeed);
 router.get("/user/:username", auth, postController.getUserPosts);
 router.put("/:id", auth, postController.updatePost);
 router.delete("/:id", auth, postController.deletePost);

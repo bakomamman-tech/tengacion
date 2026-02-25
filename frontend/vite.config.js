@@ -37,4 +37,11 @@ export default defineConfig({
       axios: path.resolve(__dirname, "node_modules/axios"),
     },
   },
+
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: "./src/setupTests.js",
+    include: ["src/**/*.{test,spec}.{js,jsx,ts,tsx}"],
+  },
 })

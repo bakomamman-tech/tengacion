@@ -131,11 +131,11 @@ const MessageSchema = new mongoose.Schema(
 MessageSchema.index({ conversationId: 1, createdAt: -1 });
 MessageSchema.index({ senderId: 1, receiverId: 1 });
 
-MessageSchema.pre("validate", function (next) {
+MessageSchema.pre("validate", function () {
   if (this.type === "text") {
     const clean = String(this.text || "").trim();
     if (!clean) {
-      return next(new Error("Text message cannot be empty"));
+      throw new Error("Text message cannot be empty");
     }
     this.text = clean;
   }
@@ -146,11 +146,9 @@ MessageSchema.pre("validate", function (next) {
       ["track", "book"].includes(this.metadata.itemType) &&
       this.metadata.itemId;
     if (!hasCard) {
-      return next(new Error("Content card metadata is required"));
+      throw new Error("Content card metadata is required");
     }
   }
-
-  return next();
 });
 
 // Hide internal fields when sending to frontend

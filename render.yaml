@@ -1,10 +1,11 @@
 services:
   - type: web
     name: tengacion
-    runtime: node
-    rootDir: backend
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    env: node
+    plan: free
+    rootDir: .
+    buildCommand: npm install && npm run build --prefix frontend && npm run build --prefix backend
+    startCommand: node backend/server.js
     autoDeploy: true
     envVars:
       - key: NODE_ENV

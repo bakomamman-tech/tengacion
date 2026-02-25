@@ -9,8 +9,15 @@ const app = require("./app");
 const server = http.createServer(app);
 
 if (process.env.NODE_ENV !== "test") {
+  const runPreflight = require("./scripts/preflight");
+  const { success } = runPreflight();
+  if (!success) {
+    console.error("Aborting startup due to failed preflight.");
+    process.exit(1);
+  }
+
   const connectDB = require("./config/db");
-  const { config } = require("../apps/api/config/env");
+const { config } = require("./config/env");
   connectDB();
 
   const io = new Server(server, {
@@ -166,7 +173,7 @@ if (process.env.NODE_ENV !== "test") {
       process.exit(1);
     }
 
-    const port = config?.PORT || 5000;
+  const port = process.env.PORT || config?.PORT || 5000;
     switch (error.code) {
       case "EADDRINUSE":
         console.error(
@@ -187,10 +194,12 @@ if (process.env.NODE_ENV !== "test") {
 
   server.on("error", handleServerError);
 
-  const PORT = config.PORT || 5000;
-  server.listen(PORT, () => {
-    console.log(`🚀 Tengacion running on port ${PORT}`);
-  });
-}
+const PORT = process.env.PORT || config.PORT || 5000;
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Tengacion running on port ${PORT}`);
+});
+
+} // closes the NODE_ENV !== "test" block
 
 module.exports = server;

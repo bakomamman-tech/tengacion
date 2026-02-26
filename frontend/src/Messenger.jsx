@@ -34,7 +34,9 @@ let messageBeepContext = null;
 const playIncomingMessageBeep = () => {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) {return;}
+    if (!AudioCtx) {
+      return;
+    }
 
     if (!messageBeepContext) {
       messageBeepContext = new AudioCtx();
@@ -46,21 +48,31 @@ const playIncomingMessageBeep = () => {
     }
 
     const now = ctx.currentTime;
-    const oscillator = ctx.createOscillator();
     const gain = ctx.createGain();
+    const bassOsc = ctx.createOscillator();
+    const shimmerOsc = ctx.createOscillator();
 
-    oscillator.type = "square";
-    oscillator.frequency.setValueAtTime(1600, now);
-    oscillator.frequency.exponentialRampToValueAtTime(1120, now + 0.09);
+    bassOsc.type = "triangle";
+    bassOsc.frequency.setValueAtTime(1000, now);
+    bassOsc.frequency.exponentialRampToValueAtTime(720, now + 0.16);
+
+    shimmerOsc.type = "sine";
+    shimmerOsc.frequency.setValueAtTime(1900, now);
+    shimmerOsc.frequency.exponentialRampToValueAtTime(1100, now + 0.08);
 
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.24, now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.16, now + 0.16);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
 
-    oscillator.connect(gain);
+    bassOsc.connect(gain);
+    shimmerOsc.connect(gain);
     gain.connect(ctx.destination);
-    oscillator.start(now);
-    oscillator.stop(now + 0.125);
+
+    bassOsc.start(now);
+    shimmerOsc.start(now);
+    bassOsc.stop(now + 0.3);
+    shimmerOsc.stop(now + 0.15);
   } catch {
     // Ignore browser audio restrictions silently.
   }

@@ -1,12 +1,49 @@
 const http = require("http");
+const path = require("path");
+const fs = require("fs");
+const express = require("express");
 const jwt = require("jsonwebtoken");
 const { Server } = require("socket.io");
 const { createNotification } = require("./services/notificationService");
 const { persistChatMessage } = require("./services/chatService");
 const { toIdString } = require("./utils/messagePayload");
+const { config } = require("./config/env");
 const app = require("./app");
 const server = http.createServer(app);
 console.log(`Node ${process.version} starting in ${process.cwd()}`);
+console.log(
+  `dotenv loaded for backend (NODE_ENV=${config.NODE_ENV || "unknown"}, PORT=${config.PORT || "unset"})`
+);
+
+const frontendPath = path.join(__dirname, "../frontend/dist");
+const frontendIndex = path.join(frontendPath, "index.html");
+const frontendBuilt = fs.existsSync(frontendIndex);
+
+if (frontendBuilt) {
+  console.log(`Serving built frontend from ${frontendPath}`);
+  app.use(express.static(frontendPath));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api")) {
+      return next();
+    }
+
+    res.sendFile(frontendIndex, (err) => {
+      if (err) {
+        console.error("Failed to send frontend index:", err);
+        res.status(500).send("Tengacion API Running");
+      }
+    });
+  });
+} else {
+  console.warn("⚠ Frontend not built – API mode only");
+  app.get("*", (req, res) => {
+    if (req.path.startsWith("/api")) {
+      return res.status(404).json({ message: "API route not found" });
+    }
+
+    res.status(503).send("Tengacion API Running – frontend not built");
+  });
+}
 
 if (process.env.NODE_ENV !== "test") {
   const runPreflight = require("./scripts/preflight");
@@ -17,7 +54,6 @@ if (process.env.NODE_ENV !== "test") {
   }
 
   const connectDB = require("./config/db");
-  const { config } = require("./config/env");
   connectDB();
 
   const io = new Server(server, {

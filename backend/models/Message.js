@@ -52,7 +52,7 @@ const MessageSchema = new mongoose.Schema(
     metadata: {
       itemType: {
         type: String,
-        enum: ["track", "book"],
+        enum: ["track", "book", ""],
         default: ""
       },
       itemId: {

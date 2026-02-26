@@ -1833,6 +1833,13 @@ html.dark-mode .nav-notification-btn:hover {
   cursor: not-allowed;
 }
 
+.post-audio-cover img {
+  width: 100%;
+  border-radius: 12px;
+  object-fit: cover;
+  max-height: 220px;
+}
+
 .post-media {
   margin-top: 10px;
   border-radius: 14px;

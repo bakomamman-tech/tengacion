@@ -544,6 +544,11 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
           )}
           {hasAudioPreview && (
             <div className="post-audio">
+              {audioTrack?.coverImageUrl ? (
+                <div className="post-audio-cover">
+                  <img src={audioTrack.coverImageUrl} alt="Track cover" />
+                </div>
+              ) : null}
               <audio
                 controls
                 src={audioPreviewUrl}

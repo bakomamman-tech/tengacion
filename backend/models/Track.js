@@ -34,6 +34,11 @@ const TrackSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    coverImageUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     durationSec: {
       type: Number,
       default: 0,

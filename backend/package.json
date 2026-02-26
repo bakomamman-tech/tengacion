@@ -27,6 +27,7 @@
     "nodemailer": "^7.0.13",
     "socket.io": "^4.8.3",
     "stripe": "^20.3.1",
+    "tengacion": "file:..",
     "zod": "^4.3.6"
   },
   "devDependencies": {

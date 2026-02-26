@@ -17,6 +17,7 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   description: track.description || "",
   price: Number(track.price) || 0,
   previewUrl: track.previewUrl || "",
+  coverImageUrl: track.coverImageUrl || "",
   durationSec: Number(track.durationSec) || 0,
   createdAt: track.createdAt,
   creator:
@@ -76,9 +77,11 @@ exports.createTrack = asyncHandler(async (req, res) => {
 
   let audioUrl = String(req.body?.audioUrl || "").trim();
   let previewUrl = String(req.body?.previewUrl || "").trim();
+  let coverImageUrl = String(req.body?.coverImageUrl || "").trim();
 
   const audioFile = req.files?.audio?.[0] || null;
   const previewFile = req.files?.preview?.[0] || null;
+  const coverFile = req.files?.cover?.[0] || null;
 
   if (audioFile) {
     audioUrl = await saveUploadedFile(audioFile);
@@ -87,6 +90,10 @@ exports.createTrack = asyncHandler(async (req, res) => {
   if (previewFile) {
     previewUrl = await saveUploadedFile(previewFile);
   }
+  if (coverFile) {
+    coverImageUrl = await saveUploadedFile(coverFile);
+  }
+
 
   if (!audioUrl) {
     return res.status(400).json({ error: "audioUrl or audio upload is required" });
@@ -105,6 +112,7 @@ exports.createTrack = asyncHandler(async (req, res) => {
     price,
     audioUrl,
     previewUrl,
+    coverImageUrl,
     durationSec: Number.isFinite(durationSec) && durationSec > 0 ? durationSec : 0,
   });
 
@@ -121,13 +129,14 @@ exports.createTrack = asyncHandler(async (req, res) => {
       author: req.user.id,
       text: `${track.title} is now available.`,
       tags: ["track"],
-      audio: {
-        trackId: track._id,
-        url: track.audioUrl,
-        previewUrl: track.previewUrl,
-        title: track.title,
-        durationSec: Number.isFinite(track.durationSec) ? track.durationSec : 0,
-      },
+    audio: {
+      trackId: track._id,
+      url: track.audioUrl,
+      previewUrl: track.previewUrl,
+      title: track.title,
+      durationSec: Number.isFinite(track.durationSec) ? track.durationSec : 0,
+      coverImageUrl: track.coverImageUrl,
+    },
       privacy: "public",
     });
   } catch (err) {

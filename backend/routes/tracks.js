@@ -18,6 +18,7 @@ router.post(
   upload.fields([
     { name: "audio", maxCount: 1 },
     { name: "preview", maxCount: 1 },
+    { name: "cover", maxCount: 1 },
   ]),
   createTrack
 );

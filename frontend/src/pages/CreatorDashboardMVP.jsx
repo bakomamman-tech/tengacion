@@ -9,6 +9,7 @@ import {
   getCreatorTracks,
   getMyCreatorProfile,
   initPayment,
+  resolveImage,
   upsertCreatorProfile,
 } from "../api";
 
@@ -24,6 +25,7 @@ const defaultTrackForm = {
   price: "",
   audioUrl: "",
   previewUrl: "",
+  coverImageUrl: "",
   durationSec: "",
 };
 
@@ -64,8 +66,18 @@ export default function CreatorDashboardMVP() {
   const [trackSaving, setTrackSaving] = useState(false);
   const [bookSaving, setBookSaving] = useState(false);
   const [chapterSaving, setChapterSaving] = useState(false);
-  const [trackFiles, setTrackFiles] = useState({ audio: null, preview: null });
-  const [trackFileUrls, setTrackFileUrls] = useState({ audio: "", preview: "" });
+  const [trackStatus, setTrackStatus] = useState("");
+  const trackStatusTimerRef = useRef(null);
+  const [trackFiles, setTrackFiles] = useState({
+    audio: null,
+    preview: null,
+    cover: null,
+  });
+  const [trackFileUrls, setTrackFileUrls] = useState({
+    audio: "",
+    preview: "",
+    cover: "",
+  });
   const [bookFiles, setBookFiles] = useState({ cover: null, content: null });
   const [bookFileUrls, setBookFileUrls] = useState({ cover: "", content: "" });
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -135,6 +147,24 @@ export default function CreatorDashboardMVP() {
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (trackStatusTimerRef.current) {
+        clearTimeout(trackStatusTimerRef.current);
+      }
+    };
+  }, []);
+
+  const showTrackStatus = useCallback((message) => {
+    setTrackStatus(message || "");
+    if (trackStatusTimerRef.current) {
+      clearTimeout(trackStatusTimerRef.current);
+    }
+    if (message) {
+      trackStatusTimerRef.current = setTimeout(() => setTrackStatus(""), 6000);
+    }
+  }, []);
+
   const handleTrackFileChange = (name, file) => {
     setTrackFiles((prev) => ({ ...prev, [name]: file || null }));
     setTrackFileUrls((prev) => {
@@ -147,8 +177,8 @@ export default function CreatorDashboardMVP() {
 
   const resetTrackFileUploads = () => {
     releaseObjectUrls(trackFileUrls);
-    setTrackFiles({ audio: null, preview: null });
-    setTrackFileUrls({ audio: "", preview: "" });
+    setTrackFiles({ audio: null, preview: null, cover: null });
+    setTrackFileUrls({ audio: "", preview: "", cover: "" });
   };
 
   const handleBookFileChange = (name, file) => {
@@ -216,7 +246,7 @@ export default function CreatorDashboardMVP() {
       const trimmedDescription = trackForm.description.trim();
       const price = Number(trackForm.price);
       const durationSec = Number(trackForm.durationSec || 0);
-      const needsUpload = Boolean(trackFiles.audio || trackFiles.preview);
+    const needsUpload = Boolean(trackFiles.audio || trackFiles.preview || trackFiles.cover);
 
       const payload = needsUpload
         ? (() => {
@@ -235,6 +265,11 @@ export default function CreatorDashboardMVP() {
             } else if (trackForm.previewUrl.trim()) {
               form.append("previewUrl", trackForm.previewUrl.trim());
             }
+            if (trackFiles.cover) {
+              form.append("cover", trackFiles.cover);
+            } else if (trackForm.coverImageUrl.trim()) {
+              form.append("coverImageUrl", trackForm.coverImageUrl.trim());
+            }
             return form;
           })()
         : {
@@ -244,12 +279,14 @@ export default function CreatorDashboardMVP() {
             durationSec,
             audioUrl: trackForm.audioUrl.trim(),
             previewUrl: trackForm.previewUrl.trim(),
+            coverImageUrl: trackForm.coverImageUrl.trim(),
           };
 
       await createTrack(payload);
       setTrackForm(defaultTrackForm);
       resetTrackFileUploads();
       await loadDashboard();
+      showTrackStatus("Track uploaded; preview and payment links are now live on your feed.");
     } catch (err) {
       setError(err.message || "Failed to create track");
     } finally {
@@ -479,14 +516,27 @@ export default function CreatorDashboardMVP() {
                 required={!trackFiles.audio}
               />
               <input
-                value={trackForm.previewUrl}
+                value={trackForm.coverImageUrl}
                 onChange={(event) =>
-                  setTrackForm((prev) => ({ ...prev, previewUrl: event.target.value }))
+                  setTrackForm((prev) => ({ ...prev, coverImageUrl: event.target.value }))
                 }
-                placeholder="Preview URL (required for paid tracks)"
+                placeholder="Cover image URL"
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required={!trackFiles.preview && Number(trackForm.price) > 0}
               />
+              <div className="space-y-3 rounded-lg border border-dashed border-slate-300 p-3 text-xs text-slate-600">
+                <p className="text-xs text-slate-500">
+                  Upload audio files or supply links plus a cover image to make your feed entry pop.
+                </p>
+                <input
+                  value={trackForm.previewUrl}
+                  onChange={(event) =>
+                    setTrackForm((prev) => ({ ...prev, previewUrl: event.target.value }))
+                  }
+                  placeholder="Preview URL (required for paid tracks)"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  required={!trackFiles.preview && Number(trackForm.price) > 0}
+                />
+              </div>
               <div className="space-y-3 rounded-lg border border-dashed border-slate-300 p-3 text-xs text-slate-600">
                 <p>
                   Upload audio files instead of sharing URLs. The files are stored securely on
@@ -516,6 +566,22 @@ export default function CreatorDashboardMVP() {
                 {trackFileUrls.preview ? (
                   <audio controls className="w-full" src={trackFileUrls.preview} />
                 ) : null}
+                <label className="block text-xs font-semibold text-slate-700">
+                  Cover image
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => handleTrackFileChange("cover", event.target.files?.[0])}
+                  className="text-xs"
+                />
+                {trackFileUrls.cover ? (
+                  <img
+                    src={trackFileUrls.cover}
+                    alt="Cover preview"
+                    className="mt-1 h-20 w-20 rounded shadow-sm object-cover"
+                  />
+                ) : null}
               </div>
               <input
                 value={trackForm.durationSec}
@@ -534,6 +600,9 @@ export default function CreatorDashboardMVP() {
               >
                 {trackSaving ? "Saving..." : "Publish track"}
               </button>
+              {trackStatus ? (
+                <p className="mt-2 text-xs font-medium text-green-700">{trackStatus}</p>
+              ) : null}
             </form>
           </article>
 
@@ -715,39 +784,61 @@ export default function CreatorDashboardMVP() {
             </div>
             {tracks.length ? (
               <div className="mt-4 space-y-4">
-                {tracks.map((track) => (
-                  <div
-                    key={track._id}
-                    className="rounded-xl border border-slate-200 p-4 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{track.title}</p>
-                        <p className="text-xs text-slate-500">
-                          NGN {Number(track.price || 0).toLocaleString()}
-                        </p>
+                {tracks.map((track) => {
+                  const coverImage = resolveImage(track.coverImageUrl);
+                  return (
+                    <div
+                      key={track._id}
+                      className="rounded-xl border border-slate-200 p-4 shadow-sm"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-100 shadow-inner">
+                          {coverImage ? (
+                            <img
+                              src={coverImage}
+                              alt={`${track.title} cover`}
+                              className="h-20 w-20 object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-20 w-20 items-center justify-center text-[10px] uppercase text-slate-500">
+                              No cover yet
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center justify-between gap-4">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">
+                                {track.title}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                NGN {Number(track.price || 0).toLocaleString()}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={paymentLoading}
+                              onClick={() => handlePaymentLaunch("track", track._id)}
+                              className="rounded-full border border-brand-200 px-3 py-1 text-xs font-semibold text-brand-600 disabled:opacity-60"
+                            >
+                              {paymentLoading ? "Preparing..." : "Payment link"}
+                            </button>
+                          </div>
+                          {track.description ? (
+                            <p className="text-xs text-slate-500">{track.description}</p>
+                          ) : null}
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        disabled={paymentLoading}
-                        onClick={() => handlePaymentLaunch("track", track._id)}
-                        className="rounded-full border border-brand-200 px-3 py-1 text-xs font-semibold text-brand-600 disabled:opacity-60"
-                      >
-                        {paymentLoading ? "Preparing..." : "Payment link"}
-                      </button>
+                      {(track.previewUrl || track.audioUrl) && (
+                        <audio
+                          controls
+                          src={track.previewUrl || track.audioUrl}
+                          className="mt-3 w-full"
+                        />
+                      )}
                     </div>
-                    {track.description ? (
-                      <p className="mt-2 text-xs text-slate-500">{track.description}</p>
-                    ) : null}
-                    {(track.previewUrl || track.audioUrl) && (
-                      <audio
-                        controls
-                        src={track.previewUrl || track.audioUrl}
-                        className="mt-3 w-full"
-                      />
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="mt-3 text-sm text-slate-500">No tracks published yet.</p>

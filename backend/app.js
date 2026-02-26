@@ -1,5 +1,3 @@
-const fs = require("fs");
-const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -101,34 +99,7 @@ app.use("/api/artist", require("./routes/artist"));
 app.use("/api/music", require("./routes/music"));
 app.use("/api/billing", require("./routes/billing"));
 
-const frontendPath = path.join(__dirname, "../frontend/dist");
-const frontendIndex = path.join(frontendPath, "index.html");
-const frontendBuilt = fs.existsSync(frontendIndex);
-
-if (frontendBuilt) {
-  app.use(express.static(frontendPath));
-} else {
-  console.warn("⚠ Frontend build not found; API-only mode active.");
-}
-
 app.get("/socket.io", (_, res) => res.send("socket ok"));
-
-app.get("*", (req, res) => {
-  if (req.path.startsWith("/api")) {
-    return res.status(404).json({ message: "API route not found" });
-  }
-
-  if (!frontendBuilt) {
-    return res.status(503).send("Tengacion API Running – frontend not built");
-  }
-
-  res.sendFile(frontendIndex, (err) => {
-    if (err) {
-      console.error("Failed to send frontend index:", err);
-      res.status(500).send("Tengacion API Running");
-    }
-  });
-});
 
 app.use(errorHandler);
 

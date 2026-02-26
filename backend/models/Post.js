@@ -142,6 +142,11 @@ const PostSchema = new mongoose.Schema(
         type: Number,
         default: 0,
       },
+      coverImageUrl: {
+        type: String,
+        trim: true,
+        default: "",
+      },
     },
 
     likes: [

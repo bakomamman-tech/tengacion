@@ -238,11 +238,13 @@ export const createTrack = (payload) => {
   const headers = isForm
     ? getAuthHeaders()
     : { "Content-Type": "application/json", ...getAuthHeaders() };
+  const timeoutMs = isForm ? 120000 : undefined;
 
   return request(`${API_BASE}/tracks`, {
     method: "POST",
     headers,
     body: isForm ? payload : JSON.stringify(payload || {}),
+    timeoutMs,
   });
 };
 

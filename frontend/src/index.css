@@ -1802,6 +1802,37 @@ html.dark-mode .nav-notification-btn:hover {
   filter: brightness(0.98);
 }
 
+.post-audio {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.post-audio-player {
+  width: 100%;
+}
+
+.post-audio-cta {
+  align-self: flex-start;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--brand) 60%, var(--border));
+  background: var(--surface);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brand);
+  cursor: pointer;
+}
+
+.post-audio-cta:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .post-media {
   margin-top: 10px;
   border-radius: 14px;

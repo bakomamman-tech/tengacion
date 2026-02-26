@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import PostComments from "./PostComments";
-import { resolveImage } from "../api";
+import { initPayment, resolveImage } from "../api";
 
 /* ======================================================
    SYSTEM / STARTER POST HANDLING
@@ -192,6 +192,31 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
     Boolean(callToAction?.enabled) &&
     Boolean(callValue);
 
+  const audioTrack = post?.audio;
+  const audioPreviewUrl = audioTrack?.previewUrl || audioTrack?.url;
+  const hasAudioPreview = Boolean(audioPreviewUrl);
+  const handleTrackPayment = async () => {
+    if (!audioTrack?.trackId) return;
+    setPaymentLoading(true);
+    try {
+      const payment = await initPayment({
+        itemType: "track",
+        itemId: audioTrack.trackId.toString(),
+        returnUrl: window.location.href,
+      });
+
+      if (payment?.authorization_url) {
+        window.open(payment.authorization_url, "_blank");
+      } else {
+        alert("Unable to start payment right now.");
+      }
+    } catch (err) {
+      alert(err.message || "Failed to start payment");
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
   const baseLikesCount = Number(post?.likesCount ?? post?.likes ?? 0) || 0;
   const baseCommentsCount =
     Number(post?.commentsCount) ||
@@ -202,6 +227,7 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   const [shareCount, setShareCount] = useState(Number(post?.shareCount) || 0);
   const [liking, setLiking] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
   const reactionsCount = likesCount;
   const commentsLabel = liveCommentsCount === 1 ? "comment" : "comments";
@@ -515,6 +541,26 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
             >
               Call {callValue}
             </a>
+          )}
+          {hasAudioPreview && (
+            <div className="post-audio">
+              <audio
+                controls
+                src={audioPreviewUrl}
+                className="post-audio-player"
+                preload="metadata"
+              />
+              {audioTrack?.trackId && (
+                <button
+                  type="button"
+                  className="post-audio-cta"
+                  disabled={paymentLoading}
+                  onClick={handleTrackPayment}
+                >
+                  {paymentLoading ? "Preparing..." : "Payment link"}
+                </button>
+              )}
+            </div>
           )}
         </div>
 

@@ -117,6 +117,32 @@ const PostSchema = new mongoose.Schema(
         },
       },
     ],
+    audio: {
+      trackId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Track",
+        index: true,
+      },
+      url: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      previewUrl: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      title: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      durationSec: {
+        type: Number,
+        default: 0,
+      },
+    },
 
     likes: [
       {

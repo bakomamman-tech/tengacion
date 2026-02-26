@@ -5,6 +5,7 @@ const CreatorProfile = require("../models/CreatorProfile");
 const { saveUploadedFile } = require("../services/mediaStore");
 const { hasEntitlement } = require("../services/entitlementService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
+const Post = require("../models/Post");
 
 const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   _id: track._id.toString(),
@@ -114,6 +115,24 @@ exports.createTrack = asyncHandler(async (req, res) => {
       populate: { path: "userId", select: "username" },
     })
     .lean();
+
+  try {
+    await Post.create({
+      author: req.user.id,
+      text: `${track.title} is now available.`,
+      tags: ["track"],
+      audio: {
+        trackId: track._id,
+        url: track.audioUrl,
+        previewUrl: track.previewUrl,
+        title: track.title,
+        durationSec: Number.isFinite(track.durationSec) ? track.durationSec : 0,
+      },
+      privacy: "public",
+    });
+  } catch (err) {
+    console.error("Failed to create feed post for track:", err);
+  }
 
   return res.status(201).json(toTrackPayload(hydrated, { includeAudio: true }));
 });

@@ -233,15 +233,18 @@ export const getCreatorBooks = (creatorId) =>
 // TRACKS
 // ======================================================
 
-export const createTrack = (payload) =>
-  request(`${API_BASE}/tracks`, {
+export const createTrack = (payload) => {
+  const isForm = typeof FormData !== "undefined" && payload instanceof FormData;
+  const headers = isForm
+    ? getAuthHeaders()
+    : { "Content-Type": "application/json", ...getAuthHeaders() };
+
+  return request(`${API_BASE}/tracks`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(),
-    },
-    body: JSON.stringify(payload || {}),
+    headers,
+    body: isForm ? payload : JSON.stringify(payload || {}),
   });
+};
 
 export const getTrack = (trackId) =>
   request(`${API_BASE}/tracks/${encodeURIComponent(trackId || "")}`, {
@@ -257,15 +260,18 @@ export const getTrackStream = (trackId) =>
 // BOOKS
 // ======================================================
 
-export const createBook = (payload) =>
-  request(`${API_BASE}/books`, {
+export const createBook = (payload) => {
+  const isForm = typeof FormData !== "undefined" && payload instanceof FormData;
+  const headers = isForm
+    ? getAuthHeaders()
+    : { "Content-Type": "application/json", ...getAuthHeaders() };
+
+  return request(`${API_BASE}/books`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(),
-    },
-    body: JSON.stringify(payload || {}),
+    headers,
+    body: isForm ? payload : JSON.stringify(payload || {}),
   });
+};
 
 export const createBookChapter = (bookId, payload) =>
   request(`${API_BASE}/books/${encodeURIComponent(bookId || "")}/chapters`, {

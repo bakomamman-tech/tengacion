@@ -4,13 +4,8 @@ services:
     env: node
     plan: free
     rootDir: .
-    buildCommand: |
-      npm install
-      npm install --prefix frontend
-      npm install --prefix backend
-      npm run build --prefix frontend
-      npm run build --prefix backend
-    startCommand: npm install && npm run build --prefix frontend && npm start
+    buildCommand: npm run build
+    startCommand: npm install && npm install --prefix backend && npm start
     autoDeploy: true
     envVars:
       - key: NODE_ENV

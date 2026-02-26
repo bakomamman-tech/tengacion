@@ -3,7 +3,16 @@ const dotenv = require("dotenv");
 const { z } = require("zod");
 
 const envFile = process.env.NODE_ENV === "test" ? ".env.test" : ".env";
-dotenv.config({ path: path.resolve(__dirname, "../../../", envFile) });
+const dotenvResult = dotenv.config({ path: path.resolve(__dirname, "../../../", envFile) });
+
+if (dotenvResult.error && dotenvResult.error.code !== "ENOENT") {
+  console.error("dotenv failed to load", dotenvResult.error);
+}
+
+console.log(
+  "dotenv",
+  dotenvResult.error ? "loaded via environment variables only" : `loaded from ${envFile}`
+);
 
 const parseNumber = (value) => {
   const parsed = Number(value);

@@ -3,6 +3,7 @@ const asyncHandler = require("../middleware/asyncHandler");
 const Book = require("../models/Book");
 const Chapter = require("../models/Chapter");
 const CreatorProfile = require("../models/CreatorProfile");
+const { saveUploadedFile } = require("../services/mediaStore");
 const { hasEntitlement } = require("../services/entitlementService");
 
 // TODO(phase2): add audiobook media support alongside chapter text content.
@@ -17,6 +18,7 @@ const toBookPayload = (book) => ({
   description: book.description || "",
   price: Number(book.price) || 0,
   coverImageUrl: book.coverImageUrl || "",
+  contentUrl: book.contentUrl || "",
   createdAt: book.createdAt,
   creator:
     book.creatorId && typeof book.creatorId === "object"
@@ -61,8 +63,11 @@ const canReadFullBook = async ({ book, userId }) => {
 exports.createBook = asyncHandler(async (req, res) => {
   const title = String(req.body?.title || "").trim();
   const description = String(req.body?.description || "").trim();
-  const coverImageUrl = String(req.body?.coverImageUrl || "").trim();
+  let coverImageUrl = String(req.body?.coverImageUrl || "").trim();
+  let contentUrl = String(req.body?.contentUrl || req.body?.fileUrl || "").trim();
   const price = Number(req.body?.price);
+  const coverFile = req.files?.cover?.[0] || null;
+  const contentFile = req.files?.content?.[0] || null;
 
   if (!title) {
     return res.status(400).json({ error: "title is required" });
@@ -72,11 +77,24 @@ exports.createBook = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "price must be a valid non-negative number" });
   }
 
+  if (coverFile) {
+    coverImageUrl = await saveUploadedFile(coverFile);
+  }
+
+  if (contentFile) {
+    contentUrl = await saveUploadedFile(contentFile);
+  }
+
+  if (!contentUrl) {
+    return res.status(400).json({ error: "content URL or upload is required" });
+  }
+
   const book = await Book.create({
     creatorId: req.creatorProfile._id,
     title,
     description,
     coverImageUrl,
+    contentUrl,
     price,
   });
 

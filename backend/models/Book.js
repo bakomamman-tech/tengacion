@@ -29,6 +29,11 @@ const BookSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    contentUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
   },
   {
     timestamps: true,

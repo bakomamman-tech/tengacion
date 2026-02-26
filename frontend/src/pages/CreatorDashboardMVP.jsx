@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   createBook,
@@ -8,6 +8,7 @@ import {
   getCreatorSales,
   getCreatorTracks,
   getMyCreatorProfile,
+  initPayment,
   upsertCreatorProfile,
 } from "../api";
 
@@ -31,6 +32,7 @@ const defaultBookForm = {
   description: "",
   price: "",
   coverImageUrl: "",
+  contentUrl: "",
 };
 
 const defaultChapterForm = {
@@ -59,6 +61,13 @@ export default function CreatorDashboardMVP() {
   const [bookForm, setBookForm] = useState(defaultBookForm);
   const [chapterForm, setChapterForm] = useState(defaultChapterForm);
   const [saving, setSaving] = useState(false);
+  const [trackFiles, setTrackFiles] = useState({ audio: null, preview: null });
+  const [trackFileUrls, setTrackFileUrls] = useState({ audio: "", preview: "" });
+  const [bookFiles, setBookFiles] = useState({ cover: null, content: null });
+  const [bookFileUrls, setBookFileUrls] = useState({ cover: "", content: "" });
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const trackFileUrlRef = useRef(trackFileUrls);
+  const bookFileUrlRef = useRef(bookFileUrls);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
@@ -100,6 +109,61 @@ export default function CreatorDashboardMVP() {
     loadDashboard();
   }, [loadDashboard]);
 
+  const releaseObjectUrls = (urls = {}) => {
+    Object.values(urls).forEach((value) => {
+      if (value) {
+        URL.revokeObjectURL(value);
+      }
+    });
+  };
+
+  useEffect(() => {
+    trackFileUrlRef.current = trackFileUrls;
+  }, [trackFileUrls]);
+
+  useEffect(() => {
+    bookFileUrlRef.current = bookFileUrls;
+  }, [bookFileUrls]);
+
+  useEffect(() => {
+    return () => {
+      releaseObjectUrls(trackFileUrlRef.current);
+      releaseObjectUrls(bookFileUrlRef.current);
+    };
+  }, []);
+
+  const handleTrackFileChange = (name, file) => {
+    setTrackFiles((prev) => ({ ...prev, [name]: file || null }));
+    setTrackFileUrls((prev) => {
+      if (prev[name]) {
+        URL.revokeObjectURL(prev[name]);
+      }
+      return { ...prev, [name]: file ? URL.createObjectURL(file) : "" };
+    });
+  };
+
+  const resetTrackFileUploads = () => {
+    releaseObjectUrls(trackFileUrls);
+    setTrackFiles({ audio: null, preview: null });
+    setTrackFileUrls({ audio: "", preview: "" });
+  };
+
+  const handleBookFileChange = (name, file) => {
+    setBookFiles((prev) => ({ ...prev, [name]: file || null }));
+    setBookFileUrls((prev) => {
+      if (prev[name]) {
+        URL.revokeObjectURL(prev[name]);
+      }
+      return { ...prev, [name]: file ? URL.createObjectURL(file) : "" };
+    });
+  };
+
+  const resetBookFileUploads = () => {
+    releaseObjectUrls(bookFileUrls);
+    setBookFiles({ cover: null, content: null });
+    setBookFileUrls({ cover: "", content: "" });
+  };
+
   const hasCreator = Boolean(creator?._id);
 
   const submitCreatorProfile = async (event) => {
@@ -118,17 +182,70 @@ export default function CreatorDashboardMVP() {
     }
   };
 
+  const handlePaymentLaunch = async (itemType, itemId) => {
+    setPaymentLoading(true);
+    setError("");
+    try {
+      const payment = await initPayment({
+        itemType,
+        itemId,
+        returnUrl: window.location.href,
+      });
+
+      if (payment?.authorization_url) {
+        window.open(payment.authorization_url, "_blank");
+      } else {
+        setError("Unable to start payment right now.");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to create payment link");
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
   const submitTrack = async (event) => {
     event.preventDefault();
     setSaving(true);
     setError("");
     try {
-      await createTrack({
-        ...trackForm,
-        price: Number(trackForm.price),
-        durationSec: Number(trackForm.durationSec || 0),
-      });
+      const trimmedTitle = trackForm.title.trim();
+      const trimmedDescription = trackForm.description.trim();
+      const price = Number(trackForm.price);
+      const durationSec = Number(trackForm.durationSec || 0);
+      const needsUpload = Boolean(trackFiles.audio || trackFiles.preview);
+
+      const payload = needsUpload
+        ? (() => {
+            const form = new FormData();
+            form.append("title", trimmedTitle);
+            form.append("description", trimmedDescription);
+            form.append("price", String(price));
+            form.append("durationSec", String(durationSec));
+            if (trackFiles.audio) {
+              form.append("audio", trackFiles.audio);
+            } else if (trackForm.audioUrl.trim()) {
+              form.append("audioUrl", trackForm.audioUrl.trim());
+            }
+            if (trackFiles.preview) {
+              form.append("preview", trackFiles.preview);
+            } else if (trackForm.previewUrl.trim()) {
+              form.append("previewUrl", trackForm.previewUrl.trim());
+            }
+            return form;
+          })()
+        : {
+            title: trimmedTitle,
+            description: trimmedDescription,
+            price,
+            durationSec,
+            audioUrl: trackForm.audioUrl.trim(),
+            previewUrl: trackForm.previewUrl.trim(),
+          };
+
+      await createTrack(payload);
       setTrackForm(defaultTrackForm);
+      resetTrackFileUploads();
       await loadDashboard();
     } catch (err) {
       setError(err.message || "Failed to create track");
@@ -142,11 +259,44 @@ export default function CreatorDashboardMVP() {
     setSaving(true);
     setError("");
     try {
-      const created = await createBook({
-        ...bookForm,
-        price: Number(bookForm.price),
-      });
+      const trimmedTitle = bookForm.title.trim();
+      const trimmedDescription = bookForm.description.trim();
+      const price = Number(bookForm.price);
+      const coverUrl = bookForm.coverImageUrl.trim();
+      const contentUrl = bookForm.contentUrl.trim();
+      if (!bookFiles.content && !contentUrl) {
+        throw new Error("Book content URL or upload is required");
+      }
+      const payload = bookFiles.cover || bookFiles.content
+        ? (() => {
+            const form = new FormData();
+            form.append("title", trimmedTitle);
+            form.append("description", trimmedDescription);
+            form.append("price", String(price));
+            if (coverUrl) {
+              form.append("coverImageUrl", coverUrl);
+            }
+            if (contentUrl) {
+              form.append("contentUrl", contentUrl);
+            }
+            if (bookFiles.cover) {
+              form.append("cover", bookFiles.cover);
+            }
+            if (bookFiles.content) {
+              form.append("content", bookFiles.content);
+            }
+            return form;
+          })()
+        : {
+            title: trimmedTitle,
+            description: trimmedDescription,
+            price,
+            coverImageUrl: coverUrl,
+            contentUrl,
+          };
+      const created = await createBook(payload);
       setBookForm(defaultBookForm);
+      resetBookFileUploads();
       setChapterForm((prev) => ({ ...prev, bookId: created?._id || prev.bookId }));
       await loadDashboard();
     } catch (err) {
@@ -282,7 +432,8 @@ export default function CreatorDashboardMVP() {
       ) : null}
 
       {hasCreator ? (
-        <section className="grid gap-6 lg:grid-cols-2">
+        <>
+          <section className="grid gap-6 lg:grid-cols-2">
           <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">Upload Track</h2>
             <form className="mt-4 grid gap-3" onSubmit={submitTrack}>
@@ -322,7 +473,7 @@ export default function CreatorDashboardMVP() {
                 }
                 placeholder="Full audio URL"
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required
+                required={!trackFiles.audio}
               />
               <input
                 value={trackForm.previewUrl}
@@ -331,7 +482,38 @@ export default function CreatorDashboardMVP() {
                 }
                 placeholder="Preview URL (required for paid tracks)"
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                required={!trackFiles.preview && Number(trackForm.price) > 0}
               />
+              <div className="space-y-3 rounded-lg border border-dashed border-slate-300 p-3 text-xs text-slate-600">
+                <p>
+                  Upload audio files instead of sharing URLs. The files are stored securely on
+                  Tengacion and work with the preview and payment flow.
+                </p>
+                <label className="block text-xs font-semibold text-slate-700">
+                  Full track file (MP3, WAV)
+                </label>
+                <input
+                  type="file"
+                  accept="audio/*"
+                  onChange={(event) => handleTrackFileChange("audio", event.target.files?.[0])}
+                  className="text-xs"
+                />
+                {trackFileUrls.audio ? (
+                  <audio controls className="w-full" src={trackFileUrls.audio} />
+                ) : null}
+                <label className="block text-xs font-semibold text-slate-700">
+                  Optional preview sample
+                </label>
+                <input
+                  type="file"
+                  accept="audio/*"
+                  onChange={(event) => handleTrackFileChange("preview", event.target.files?.[0])}
+                  className="text-xs"
+                />
+                {trackFileUrls.preview ? (
+                  <audio controls className="w-full" src={trackFileUrls.preview} />
+                ) : null}
+              </div>
               <input
                 value={trackForm.durationSec}
                 onChange={(event) =>
@@ -392,6 +574,52 @@ export default function CreatorDashboardMVP() {
                 placeholder="Cover image URL"
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
               />
+              <input
+                value={bookForm.contentUrl}
+                onChange={(event) =>
+                  setBookForm((prev) => ({ ...prev, contentUrl: event.target.value }))
+                }
+                placeholder="Book content URL (PDF, EPUB, etc.)"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                required={!bookFiles.content}
+              />
+              <div className="space-y-3 rounded-lg border border-dashed border-slate-300 p-3 text-xs text-slate-600">
+                <p>
+                  Upload a cover image and/or the book file to keep content within Tengacion.
+                  Uploaded files are automatically stored and ready for preview and payments.
+                </p>
+                <label className="block text-xs font-semibold text-slate-700">Cover image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => handleBookFileChange("cover", event.target.files?.[0])}
+                  className="text-xs"
+                />
+                {bookFileUrls.cover ? (
+                  <img
+                    src={bookFileUrls.cover}
+                    alt="Cover preview"
+                    className="mt-1 h-20 w-20 rounded object-cover"
+                  />
+                ) : null}
+                <label className="block text-xs font-semibold text-slate-700">Book file</label>
+                <input
+                  type="file"
+                  accept=".pdf,.epub,.mobi,.txt"
+                  onChange={(event) => handleBookFileChange("content", event.target.files?.[0])}
+                  className="text-xs"
+                />
+                {bookFileUrls.content ? (
+                  <a
+                    href={bookFileUrls.content}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-semibold text-brand-600 underline"
+                  >
+                    Preview uploaded book file
+                  </a>
+                ) : null}
+              </div>
               <button
                 type="submit"
                 disabled={saving}
@@ -470,6 +698,123 @@ export default function CreatorDashboardMVP() {
             </form>
           </article>
         </section>
+        <section className="mt-6 space-y-6">
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Your Tracks</h2>
+              <button
+                type="button"
+                className="text-xs font-medium text-slate-500"
+                onClick={loadDashboard}
+              >
+                Refresh list
+              </button>
+            </div>
+            {tracks.length ? (
+              <div className="mt-4 space-y-4">
+                {tracks.map((track) => (
+                  <div
+                    key={track._id}
+                    className="rounded-xl border border-slate-200 p-4 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{track.title}</p>
+                        <p className="text-xs text-slate-500">
+                          NGN {Number(track.price || 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={paymentLoading}
+                        onClick={() => handlePaymentLaunch("track", track._id)}
+                        className="rounded-full border border-brand-200 px-3 py-1 text-xs font-semibold text-brand-600 disabled:opacity-60"
+                      >
+                        {paymentLoading ? "Preparing..." : "Payment link"}
+                      </button>
+                    </div>
+                    {track.description ? (
+                      <p className="mt-2 text-xs text-slate-500">{track.description}</p>
+                    ) : null}
+                    {(track.previewUrl || track.audioUrl) && (
+                      <audio
+                        controls
+                        src={track.previewUrl || track.audioUrl}
+                        className="mt-3 w-full"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-slate-500">No tracks published yet.</p>
+            )}
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Published Books</h2>
+              <button
+                type="button"
+                className="text-xs font-medium text-slate-500"
+                onClick={loadDashboard}
+              >
+                Refresh list
+              </button>
+            </div>
+            {books.length ? (
+              <div className="mt-4 space-y-4">
+                {books.map((book) => (
+                  <div
+                    key={book._id}
+                    className="space-y-2 rounded-xl border border-slate-200 p-4 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-900">{book.title}</p>
+                        {book.description ? (
+                          <p className="text-xs text-slate-500">{book.description}</p>
+                        ) : null}
+                        <p className="text-xs text-slate-500">
+                          NGN {Number(book.price || 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={paymentLoading}
+                        onClick={() => handlePaymentLaunch("book", book._id)}
+                        className="rounded-full border border-brand-200 px-3 py-1 text-xs font-semibold text-brand-600 disabled:opacity-60"
+                      >
+                        {paymentLoading ? "Preparing..." : "Payment link"}
+                      </button>
+                    </div>
+                    {book.coverImageUrl ? (
+                      <img
+                        src={book.coverImageUrl}
+                        alt="Book cover"
+                        className="h-24 w-24 rounded object-cover"
+                      />
+                    ) : null}
+                    {book.contentUrl ? (
+                      <a
+                        href={book.contentUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-semibold text-brand-600 underline"
+                      >
+                        Open / preview book file
+                      </a>
+                    ) : (
+                      <p className="text-xs text-slate-500">Content URL not provided.</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-slate-500">No books published yet.</p>
+            )}
+          </article>
+        </section>
+      </>
       ) : null}
     </div>
   );

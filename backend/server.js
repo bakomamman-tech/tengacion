@@ -5,8 +5,8 @@ const { createNotification } = require("./services/notificationService");
 const { persistChatMessage } = require("./services/chatService");
 const { toIdString } = require("./utils/messagePayload");
 const app = require("./app");
-
 const server = http.createServer(app);
+console.log(`Node ${process.version} starting in ${process.cwd()}`);
 
 if (process.env.NODE_ENV !== "test") {
   const runPreflight = require("./scripts/preflight");
@@ -17,7 +17,7 @@ if (process.env.NODE_ENV !== "test") {
   }
 
   const connectDB = require("./config/db");
-const { config } = require("./config/env");
+  const { config } = require("./config/env");
   connectDB();
 
   const io = new Server(server, {
@@ -167,23 +167,24 @@ const { config } = require("./config/env");
     });
   });
 
+  const PORT = process.env.PORT || config?.PORT || 5000;
+
   const handleServerError = (error) => {
     if (!error || !error.code) {
       console.error("Server error:", error);
       process.exit(1);
     }
 
-  const port = process.env.PORT || config?.PORT || 5000;
     switch (error.code) {
       case "EADDRINUSE":
         console.error(
-          `Port ${port} is already in use. Please stop the process using that port or update PORT in your environment.`,
-          `Try \`npx kill-port ${port}\` or pick a different port.`
+          `Port ${PORT} is already in use. Please stop the process using that port or update PORT in your environment.`,
+          `Try \`npx kill-port ${PORT}\` or pick a different port.`
         );
         process.exit(1);
         break;
       case "EACCES":
-        console.error(`Insufficient permissions to bind to port ${port}. Try running with elevated privileges or choose a higher port.`);
+        console.error(`Insufficient permissions to bind to port ${PORT}. Try running with elevated privileges or choose a higher port.`);
         process.exit(1);
         break;
       default:
@@ -194,12 +195,9 @@ const { config } = require("./config/env");
 
   server.on("error", handleServerError);
 
-const PORT = process.env.PORT || config.PORT || 5000;
-
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Tengacion running on port ${PORT}`);
-});
-
-} // closes the NODE_ENV !== "test" block
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Tengacion running on port ${PORT}`);
+  });
+}
 
 module.exports = server;

@@ -49,30 +49,40 @@ const playIncomingMessageBeep = () => {
 
     const now = ctx.currentTime;
     const gain = ctx.createGain();
-    const bassOsc = ctx.createOscillator();
+    const toneOsc = ctx.createOscillator();
     const shimmerOsc = ctx.createOscillator();
+    const noise = ctx.createBufferSource();
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i += 1) {
+      data[i] = (Math.random() * 2 - 1) * 0.3;
+    }
+    noise.buffer = buffer;
 
-    bassOsc.type = "triangle";
-    bassOsc.frequency.setValueAtTime(1000, now);
-    bassOsc.frequency.exponentialRampToValueAtTime(720, now + 0.16);
+    toneOsc.type = "triangle";
+    toneOsc.frequency.setValueAtTime(2200, now);
+    toneOsc.frequency.exponentialRampToValueAtTime(950, now + 0.2);
 
     shimmerOsc.type = "sine";
-    shimmerOsc.frequency.setValueAtTime(1900, now);
-    shimmerOsc.frequency.exponentialRampToValueAtTime(1100, now + 0.08);
+    shimmerOsc.frequency.setValueAtTime(3200, now);
+    shimmerOsc.frequency.exponentialRampToValueAtTime(1600, now + 0.12);
 
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.24, now + 0.012);
-    gain.gain.exponentialRampToValueAtTime(0.16, now + 0.16);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+    gain.gain.exponentialRampToValueAtTime(0.28, now + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.18, now + 0.18);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
 
-    bassOsc.connect(gain);
+    toneOsc.connect(gain);
     shimmerOsc.connect(gain);
+    noise.connect(gain);
     gain.connect(ctx.destination);
 
-    bassOsc.start(now);
+    toneOsc.start(now);
     shimmerOsc.start(now);
-    bassOsc.stop(now + 0.3);
-    shimmerOsc.stop(now + 0.15);
+    noise.start(now);
+    toneOsc.stop(now + 0.26);
+    shimmerOsc.stop(now + 0.16);
+    noise.stop(now + 0.08);
   } catch {
     // Ignore browser audio restrictions silently.
   }

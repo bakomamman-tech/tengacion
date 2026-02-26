@@ -60,7 +60,10 @@ export default function CreatorDashboardMVP() {
   const [trackForm, setTrackForm] = useState(defaultTrackForm);
   const [bookForm, setBookForm] = useState(defaultBookForm);
   const [chapterForm, setChapterForm] = useState(defaultChapterForm);
-  const [saving, setSaving] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [trackSaving, setTrackSaving] = useState(false);
+  const [bookSaving, setBookSaving] = useState(false);
+  const [chapterSaving, setChapterSaving] = useState(false);
   const [trackFiles, setTrackFiles] = useState({ audio: null, preview: null });
   const [trackFileUrls, setTrackFileUrls] = useState({ audio: "", preview: "" });
   const [bookFiles, setBookFiles] = useState({ cover: null, content: null });
@@ -168,7 +171,7 @@ export default function CreatorDashboardMVP() {
 
   const submitCreatorProfile = async (event) => {
     event.preventDefault();
-    setSaving(true);
+    setProfileSaving(true);
     setError("");
     try {
       const profile = await upsertCreatorProfile(creatorForm);
@@ -178,7 +181,7 @@ export default function CreatorDashboardMVP() {
     } catch (err) {
       setError(err.message || "Failed to save creator profile");
     } finally {
-      setSaving(false);
+      setProfileSaving(false);
     }
   };
 
@@ -206,7 +209,7 @@ export default function CreatorDashboardMVP() {
 
   const submitTrack = async (event) => {
     event.preventDefault();
-    setSaving(true);
+    setTrackSaving(true);
     setError("");
     try {
       const trimmedTitle = trackForm.title.trim();
@@ -250,13 +253,13 @@ export default function CreatorDashboardMVP() {
     } catch (err) {
       setError(err.message || "Failed to create track");
     } finally {
-      setSaving(false);
+      setTrackSaving(false);
     }
   };
 
   const submitBook = async (event) => {
     event.preventDefault();
-    setSaving(true);
+    setBookSaving(true);
     setError("");
     try {
       const trimmedTitle = bookForm.title.trim();
@@ -302,7 +305,7 @@ export default function CreatorDashboardMVP() {
     } catch (err) {
       setError(err.message || "Failed to create book");
     } finally {
-      setSaving(false);
+      setBookSaving(false);
     }
   };
 
@@ -313,7 +316,7 @@ export default function CreatorDashboardMVP() {
       return;
     }
 
-    setSaving(true);
+    setChapterSaving(true);
     setError("");
     try {
       await createBookChapter(chapterForm.bookId, {
@@ -330,7 +333,7 @@ export default function CreatorDashboardMVP() {
     } catch (err) {
       setError(err.message || "Failed to create chapter");
     } finally {
-      setSaving(false);
+      setChapterSaving(false);
     }
   };
 
@@ -422,10 +425,10 @@ export default function CreatorDashboardMVP() {
             />
             <button
               type="submit"
-              disabled={saving}
+              disabled={profileSaving}
               className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-70"
             >
-              {saving ? "Saving..." : "Create creator profile"}
+              {profileSaving ? "Saving..." : "Create creator profile"}
             </button>
           </form>
         </section>
@@ -526,10 +529,10 @@ export default function CreatorDashboardMVP() {
               />
               <button
                 type="submit"
-                disabled={saving}
+                disabled={trackSaving}
                 className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-70"
               >
-                {saving ? "Saving..." : "Publish track"}
+                {trackSaving ? "Saving..." : "Publish track"}
               </button>
             </form>
           </article>
@@ -622,10 +625,10 @@ export default function CreatorDashboardMVP() {
               </div>
               <button
                 type="submit"
-                disabled={saving}
+                disabled={bookSaving}
                 className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-70"
               >
-                {saving ? "Saving..." : "Publish book"}
+                {bookSaving ? "Saving..." : "Publish book"}
               </button>
             </form>
           </article>
@@ -690,10 +693,10 @@ export default function CreatorDashboardMVP() {
               </label>
               <button
                 type="submit"
-                disabled={saving}
+                disabled={chapterSaving}
                 className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-70"
               >
-                {saving ? "Saving..." : "Add chapter"}
+                {chapterSaving ? "Saving..." : "Add chapter"}
               </button>
             </form>
           </article>

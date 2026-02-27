@@ -15,6 +15,7 @@ import CreatorPage from "./pages/CreatorPage";
 import ArtistProfileRoute from "@web/features/creator/ArtistPage";
 import TrackDetail from "./pages/TrackDetail";
 import BookDetail from "./pages/BookDetail";
+import Trending from "./pages/Trending";
 import LiveDirectory from "./pages/LiveDirectory";
 import GoLive from "./pages/GoLive";
 import WatchLive from "./pages/WatchLive";

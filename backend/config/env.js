@@ -48,6 +48,12 @@ const config = {
   AWS_SECRET_ACCESS_KEY: getEnv("AWS_SECRET_ACCESS_KEY", ""),
   AWS_REGION: getEnv("AWS_REGION", ""),
   AWS_S3_BUCKET: getEnv("AWS_S3_BUCKET", ""),
+  AWS_S3_MEDIA_URL: getEnv("AWS_S3_MEDIA_URL", ""),
+
+  LIVEKIT_API_KEY: getEnv("LIVEKIT_API_KEY", ""),
+  LIVEKIT_API_SECRET: getEnv("LIVEKIT_API_SECRET", ""),
+  LIVEKIT_HOST: getEnv("LIVEKIT_HOST", ""),
+  LIVEKIT_WS_URL: getEnv("LIVEKIT_WS_URL", ""),
 
   NODE_ENV: getEnv("NODE_ENV", "development"),
 

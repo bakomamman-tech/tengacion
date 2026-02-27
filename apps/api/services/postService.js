@@ -4,6 +4,10 @@ const User = require("../../../backend/models/User");
 const { createNotification } = require("../../../backend/services/notificationService");
 const { saveUploadedFile } = require("../../../backend/services/mediaStore");
 const ApiError = require("../utils/ApiError");
+const {
+  MAX_VIDEO_BYTES,
+  ALLOWED_MIME_TYPES,
+} = require("../../../backend/services/videoStorage");
 const userRepository = require("../repositories/userRepository");
 const postRepository = require("../repositories/postRepository");
 
@@ -27,6 +31,70 @@ const inferMediaKind = (file) => {
   }
 
   return "image";
+};
+
+const ALLOWED_POST_TYPES = new Set(["text", "image", "video"]);
+
+const parseVideoPayload = (value) => {
+  if (!value) return null;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof value === "object") {
+    return value;
+  }
+
+  return null;
+};
+
+const normalizeVideoUrl = (value) => {
+  if (!value) return "";
+  return value.toString().trim();
+};
+
+const buildVideoMeta = (payload) => {
+  if (!payload) {
+    return null;
+  }
+
+  const url =
+    normalizeVideoUrl(payload.url) ||
+    normalizeVideoUrl(payload.fileUrl) ||
+    normalizeVideoUrl(payload.playbackUrl);
+
+  if (!url) {
+    return null;
+  }
+
+  return {
+    url,
+    playbackUrl: normalizeVideoUrl(payload.playbackUrl || url),
+    thumbnailUrl: normalizeVideoUrl(payload.thumbnailUrl),
+    duration: Number(payload.duration) || 0,
+    width: Number(payload.width) || 0,
+    height: Number(payload.height) || 0,
+    sizeBytes: Number(payload.sizeBytes) || 0,
+    mimeType: (payload.mimeType || "").toLowerCase(),
+  };
+};
+
+const validateVideoMeta = (video) => {
+  if (!video) {
+    return;
+  }
+
+  if (video.mimeType && !ALLOWED_MIME_TYPES.has(video.mimeType)) {
+    throw ApiError.badRequest("Only MP4 and WebM videos are supported");
+  }
+
+  if (video.sizeBytes > MAX_VIDEO_BYTES) {
+    throw ApiError.badRequest("Video exceeds maximum allowed size (200MB)");
+  }
 };
 
 const normalizeText = (value, maxLength = 160) => {
@@ -86,6 +154,8 @@ const toPostPayload = (post, viewerId) => {
   const firstMedia = Array.isArray(post.media) && post.media.length > 0 ? post.media[0] : null;
   const likes = Array.isArray(post.likes) ? post.likes : [];
   const comments = Array.isArray(post.comments) ? post.comments : [];
+  const videoPayload = post.video || null;
+  const postType = post.type || (videoPayload ? "video" : "text");
   const tags = Array.isArray(post.tags) ? post.tags : [];
   const moreOptions = Array.isArray(post.moreOptions) ? post.moreOptions : [];
   const callToAction = post.callToAction || {};
@@ -98,6 +168,8 @@ const toPostPayload = (post, viewerId) => {
     text: post.text || "",
     image: firstMedia?.url || "",
     media: Array.isArray(post.media) ? post.media : [],
+    type: postType,
+    video: videoPayload,
     name: author.name || "",
     username: author.username || "",
     avatar: avatarToUrl(author.avatar),
@@ -144,8 +216,33 @@ class PostService {
       tags.length || feeling || location || moreOptions.length || (callsEnabled && callNumber)
     );
 
-    if (!text && !uploadFile && !hasMetadata) {
+    const rawVideoPayload = parseVideoPayload(body?.video);
+    const videoMeta = buildVideoMeta(rawVideoPayload);
+    validateVideoMeta(videoMeta);
+
+    const hasVideo = Boolean(videoMeta);
+    if (!text && !uploadFile && !hasMetadata && !hasVideo) {
       throw ApiError.badRequest("Post cannot be empty");
+    }
+
+    const requestedTypeCandidate =
+      typeof body?.type === "string" ? body.type.toLowerCase() : "";
+    const requestedType = ALLOWED_POST_TYPES.has(requestedTypeCandidate)
+      ? requestedTypeCandidate
+      : null;
+    let type = requestedType;
+    if (!type) {
+      if (hasVideo) {
+        type = "video";
+      } else if (uploadFile) {
+        type = "image";
+      } else {
+        type = "text";
+      }
+    }
+
+    if (type === "video" && !hasVideo) {
+      throw ApiError.badRequest("Video data is required for video posts");
     }
 
     const media = [];
@@ -154,6 +251,11 @@ class PostService {
       media.push({
         url: persistedUrl,
         type: inferMediaKind(uploadFile),
+      });
+    } else if (type === "video" && videoMeta?.playbackUrl) {
+      media.push({
+        url: videoMeta.playbackUrl,
+        type: "video",
       });
     }
 
@@ -171,6 +273,8 @@ class PostService {
       callToAction,
       moreOptions,
       media,
+      type,
+      video: type === "video" ? videoMeta : null,
       privacy: "public",
     });
 
@@ -248,6 +352,19 @@ class PostService {
 
     const posts = await withPostAuthor(Post.find(query).sort({ createdAt: -1 })).lean();
     return posts.map((post) => toPostPayload(post, viewerId));
+  }
+
+  static async getPostById({ viewerId, postId }) {
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      throw ApiError.badRequest("Invalid post id");
+    }
+
+    const post = await withPostAuthor(Post.findById(postId)).lean();
+    if (!post) {
+      throw ApiError.notFound("Post not found");
+    }
+
+    return toPostPayload(post, viewerId);
   }
 
   static async getUserPosts({ viewerId, username }) {

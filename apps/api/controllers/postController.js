@@ -18,6 +18,14 @@ exports.getFeed = catchAsync(async (req, res) => {
   res.json(result);
 });
 
+exports.getPostById = catchAsync(async (req, res) => {
+  const payload = await PostService.getPostById({
+    viewerId: req.user?.id,
+    postId: req.params.id,
+  });
+  res.json(payload);
+});
+
 exports.getUserPosts = catchAsync(async (req, res) => {
   const result = await PostService.getUserPosts({
     viewerId: req.user.id,

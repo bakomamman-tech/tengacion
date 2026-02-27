@@ -9,8 +9,16 @@ import Sidebar from "../Sidebar";
 import Messenger from "../Messenger";
 import FriendRequests from "../FriendRequests";
 import Stories from "../stories/StoriesBar";
+import { connectSocket } from "../socket";
 
-import { createPost, getFeed, getProfile, resolveImage } from "../api";
+import {
+  createPost,
+  getFeed,
+  getProfile,
+  resolveImage,
+  requestVideoUploadUrl,
+  getLiveSessions,
+} from "../api";
 
 const FEELING_OPTIONS = [
   "Blessed",
@@ -22,6 +30,37 @@ const FEELING_OPTIONS = [
   "Proud",
   "Ready",
 ];
+
+const uploadToSignedUrl = (url, file, onProgress) =>
+  new Promise((resolve, reject) => {
+    if (!url || !file) {
+      reject(new Error("Missing upload parameters"));
+      return;
+    }
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    xhr.setRequestHeader("Content-Type", file.type);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && typeof onProgress === "function") {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        onProgress(percent);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error("Upload failed"));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Upload failed"));
+    xhr.onabort = () => reject(new Error("Upload canceled"));
+    xhr.send(file);
+  });
 
 const MORE_OPTIONS = [
   { id: "audience-question", label: "Audience question" },
@@ -108,6 +147,10 @@ function PostComposerModal({ user, onClose, onPosted }) {
   );
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [videoMetadata, setVideoMetadata] = useState(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoUploadError, setVideoUploadError] = useState("");
   const boxRef = useRef(null);
   const fileRef = useRef(null);
 
@@ -196,6 +239,9 @@ function PostComposerModal({ user, onClose, onPosted }) {
     setSelectedFile(file);
     setError("");
     setActivePanel("");
+    setVideoMetadata(null);
+    setVideoUploadError("");
+    setVideoUploadProgress(0);
   };
 
   const openAction = (panel) => {
@@ -207,18 +253,37 @@ function PostComposerModal({ user, onClose, onPosted }) {
     setActivePanel((current) => (current === panel ? "" : panel));
   };
 
-  const submit = async () => {
-    if (!canSubmit || loading) {
-      return;
+  const handleVideoPost = async () => {
+    if (!selectedFile) {
+      throw new Error("Select a video before posting");
     }
 
+    setUploadingVideo(true);
+    setVideoUploadError("");
     try {
-      setLoading(true);
-      setError("");
+      const presign = await requestVideoUploadUrl({
+        filename: selectedFile.name,
+        contentType: selectedFile.type,
+        sizeBytes: selectedFile.size,
+      });
 
-      const createdPost = await createPost({
+      await uploadToSignedUrl(presign.uploadUrl, selectedFile, setVideoUploadProgress);
+
+      const videoPayload = {
+        url: presign.fileUrl,
+        playbackUrl: presign.fileUrl,
+        thumbnailUrl: "",
+        duration: videoMetadata?.duration || 0,
+        width: videoMetadata?.width || 0,
+        height: videoMetadata?.height || 0,
+        sizeBytes: selectedFile.size,
+        mimeType: selectedFile.type,
+      };
+
+      const created = await createPost({
         text: text.trim(),
-        file: selectedFile,
+        type: "video",
+        video: videoPayload,
         tags: taggedPeople,
         feeling,
         location: checkInLocation.trim(),
@@ -226,6 +291,48 @@ function PostComposerModal({ user, onClose, onPosted }) {
         callNumber: callNumber.trim(),
         moreOptions: selectedMore,
       });
+
+      setSelectedFile(null);
+      setVideoMetadata(null);
+      setVideoUploadProgress(0);
+
+      return created;
+    } catch (err) {
+      setVideoUploadError(err?.message || "Video upload failed");
+      throw err;
+    } finally {
+      setUploadingVideo(false);
+      setVideoUploadProgress(0);
+    }
+  };
+
+  const submit = async () => {
+    if (!canSubmit || loading || uploadingVideo) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+      setVideoUploadError("");
+
+      let createdPost;
+
+      if (selectedFile?.type?.startsWith("video/")) {
+        createdPost = await handleVideoPost();
+      } else {
+        createdPost = await createPost({
+          text: text.trim(),
+          file: selectedFile,
+          tags: taggedPeople,
+          feeling,
+          location: checkInLocation.trim(),
+          callsEnabled,
+          callNumber: callNumber.trim(),
+          moreOptions: selectedMore,
+        });
+      }
+
       onPosted(createdPost);
       onClose();
     } catch (err) {
@@ -425,7 +532,18 @@ function PostComposerModal({ user, onClose, onPosted }) {
         {previewUrl && (
           <div className="composer-preview">
             {selectedFile?.type?.startsWith("video/") ? (
-              <video src={previewUrl} controls />
+              <video
+                src={previewUrl}
+                controls
+                onLoadedMetadata={(event) => {
+                  const { duration, videoWidth, videoHeight } = event.target;
+                  setVideoMetadata({
+                    duration: Number(duration) || 0,
+                    width: Number(videoWidth) || 0,
+                    height: Number(videoHeight) || 0,
+                  });
+                }}
+              />
             ) : (
               <img src={previewUrl} alt="Selected media preview" />
             )}
@@ -436,6 +554,25 @@ function PostComposerModal({ user, onClose, onPosted }) {
             >
               Remove media
             </button>
+            {selectedFile?.type?.startsWith("video/") &&
+              (uploadingVideo || videoUploadProgress > 0) && (
+                <div className="composer-video-progress">
+                  <div
+                    className="composer-video-progress-bar"
+                    style={{ width: `${Math.min(videoUploadProgress, 100)}%` }}
+                  />
+                  <span>
+                    {uploadingVideo
+                      ? `Uploading video (${videoUploadProgress}%)`
+                      : "Preparing video..."}
+                  </span>
+                </div>
+              )}
+            {videoUploadError && (
+              <p className="composer-error composer-error--inline">
+                {videoUploadError}
+              </p>
+            )}
           </div>
         )}
 
@@ -535,33 +672,39 @@ export default function Home({ user }) {
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [liveSessions, setLiveSessions] = useState([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
 
-    const load = async () => {
-      try {
-        setLoading(true);
-        const [me, feed] = await Promise.all([getProfile(), getFeed()]);
+      const load = async () => {
+        try {
+          setLoading(true);
+          const [me, feed, liveResult] = await Promise.all([
+            getProfile(),
+            getFeed(),
+            getLiveSessions(),
+          ]);
 
-        if (!alive) {
-          return;
-        }
+          if (!alive) {
+            return;
+          }
 
-        setProfile(me);
-        setPosts(Array.isArray(feed) ? feed : []);
-      } catch {
-        if (alive) {
-          alert("Failed to load feed");
+          setProfile(me);
+          setPosts(Array.isArray(feed) ? feed : []);
+          setLiveSessions(Array.isArray(liveResult?.sessions) ? liveResult.sessions : []);
+        } catch {
+          if (alive) {
+            alert("Failed to load feed");
+          }
+        } finally {
+          if (alive) {
+            setLoading(false);
+          }
         }
-      } finally {
-        if (alive) {
-          setLoading(false);
-        }
-      }
-    };
+      };
 
     load();
     return () => {
@@ -577,6 +720,56 @@ export default function Home({ user }) {
     setChatOpen(true);
     navigate(location.pathname, { replace: true, state: {} });
   }, [location.pathname, location.state, navigate]);
+
+  useEffect(() => {
+    const viewer = profile || user;
+    if (!viewer?._id) {
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return;
+    }
+
+    const socket = connectSocket({ token, userId: viewer._id });
+    if (!socket) {
+      return;
+    }
+
+    const handleLiveCreated = (session) => {
+      setLiveSessions((prev) => [
+        session,
+        ...prev.filter((entry) => entry.roomName !== session.roomName),
+      ]);
+    };
+
+    const handleLiveEnded = (payload) => {
+      setLiveSessions((prev) =>
+        prev.filter((entry) => entry.roomName !== payload.roomName)
+      );
+    };
+
+    const handleLiveViewers = (payload) => {
+      setLiveSessions((prev) =>
+        prev.map((entry) =>
+          entry.roomName === payload.roomName
+            ? { ...entry, viewerCount: payload.viewerCount }
+            : entry
+        )
+      );
+    };
+
+    socket.on("live:created", handleLiveCreated);
+    socket.on("live:ended", handleLiveEnded);
+    socket.on("live:viewers", handleLiveViewers);
+
+    return () => {
+      socket.off("live:created", handleLiveCreated);
+      socket.off("live:ended", handleLiveEnded);
+      socket.off("live:viewers", handleLiveViewers);
+    };
+  }, [profile?._id, user?._id]);
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -604,6 +797,36 @@ export default function Home({ user }) {
 
         <main className="feed">
           {!loading && <Stories user={currentUser} />}
+          {!loading && liveSessions.length > 0 && (
+            <section className="live-now-bar">
+              <div className="live-now-header">
+                <h3>Live now</h3>
+                <button
+                  type="button"
+                  className="live-now-button"
+                  onClick={() => navigate("/live")}
+                >
+                  View directory
+                </button>
+              </div>
+              <div className="live-now-list">
+                {liveSessions.slice(0, 4).map((session) => (
+                  <button
+                    key={session.roomName}
+                    type="button"
+                    className="live-now-card"
+                    onClick={() => navigate(`/live/watch/${session.roomName}`)}
+                  >
+                    <div className="live-now-title">{session.title || "Live"}</div>
+                    <div className="live-now-meta">
+                      {session.host?.name || session.host?.username || "Creator"} ·{" "}
+                      {session.viewerCount || 0} viewers
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
 
           <div className="card create-post" onClick={() => setComposerOpen(true)}>
             <div className="create-post-row">

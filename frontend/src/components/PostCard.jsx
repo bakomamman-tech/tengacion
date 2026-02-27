@@ -121,7 +121,13 @@ function EditPostModal({ post, onClose, onSave }) {
    MAIN POST CARD
    ====================================================== */
 
-export default function PostCard({ post, isSystem, onDelete, onEdit }) {
+export default function PostCard({
+  post,
+  isSystem,
+  onDelete,
+  onEdit,
+  disableAutoplay = false,
+}) {
   /* SYSTEM POST SHORT-CIRCUIT */
   const isSystemPost = isSystem || post?.system;
 
@@ -160,6 +166,9 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
       ? (firstMediaEntry.type || "").toLowerCase()
       : "";
   const legacyMediaUrl = post?.image || post?.photo || "";
+  const postVideoSource = resolveImage(
+    post.video?.playbackUrl || post.video?.url || mediaUrlCandidate || legacyMediaUrl
+  );
   const postMediaUrl = resolveImage(mediaUrlCandidate || legacyMediaUrl);
   const hasVideoExtension = /\.(mp4|webm|ogg|mov|m4v)(?:\?.*)?$/i.test(
     postMediaUrl || ""
@@ -170,9 +179,17 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   const explicitVideo = mediaTypeCandidate === "video" || hasVideoExtension;
   const explicitImage = mediaTypeCandidate === "image" || hasImageExtension;
   const [forceVideoRender, setForceVideoRender] = useState(false);
-  const shouldRenderVideo = explicitVideo || forceVideoRender;
+  const videoPayload = post.video || null;
+  const hasVideoPayload = Boolean(videoPayload?.url || videoPayload?.playbackUrl);
+  const shouldRenderVideo = explicitVideo || hasVideoPayload || forceVideoRender;
   const shouldRenderImage = explicitImage || !explicitVideo;
-  const [videoPlaybackError, setVideoPlaybackError] = useState(false);
+  const videoPoster = resolveImage(videoPayload?.thumbnailUrl || "");
+  const hasAnyMedia = Boolean(postVideoSource || postMediaUrl);
+  const [isMuted, setIsMuted] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [isInView, setIsInView] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const videoRef = useRef(null);
   const tags = Array.isArray(post?.tags) ? post.tags.filter(Boolean) : [];
   const feeling = typeof post?.feeling === "string" ? post.feeling.trim() : "";
@@ -267,17 +284,99 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
   }, [post?._id, post?.shareCount]);
 
   useEffect(() => {
-    setVideoPlaybackError(false);
+    setVideoError(false);
     setForceVideoRender(false);
+    setIsPlaying(false);
+    setIsBuffering(false);
+    setIsInView(false);
   }, [post?._id, postMediaUrl, mediaTypeCandidate]);
 
+  useEffect(() => {
+    if (disableAutoplay) {
+      return undefined;
+    }
+
+    const videoElement = videoRef.current;
+    if (!videoElement) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        setIsInView(entry?.isIntersecting ?? false);
+      },
+      { threshold: 0.5 }
+    );
+
+    observer.observe(videoElement);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [disableAutoplay, post?._id, postMediaUrl]);
+
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement || disableAutoplay || videoError) {
+      return;
+    }
+
+    if (isInView) {
+      const playPromise = videoElement.play();
+      if (playPromise && typeof playPromise.then === "function") {
+        playPromise.catch(() => {});
+      }
+      setIsPlaying(true);
+    } else {
+      videoElement.pause();
+      setIsPlaying(false);
+    }
+  }, [isInView, disableAutoplay, videoError, postMediaUrl]);
+
   const retryVideoPlayback = () => {
+    setVideoError(false);
+    setIsBuffering(false);
+    setIsPlaying(false);
     const current = videoRef.current;
     if (!current) {
       return;
     }
-    setVideoPlaybackError(false);
     current.load();
+    if (!disableAutoplay) {
+      current.play().catch(() => {});
+    }
+  };
+
+  const toggleMute = (event) => {
+    event?.stopPropagation();
+    setIsMuted((prev) => !prev);
+  };
+
+  const togglePlayPause = (event) => {
+    event?.stopPropagation();
+    const current = videoRef.current;
+    if (!current) {
+      return;
+    }
+    if (current.paused) {
+      current.play().catch(() => {});
+    } else {
+      current.pause();
+    }
+  };
+
+  const enterFullscreen = (event) => {
+    event?.stopPropagation();
+    const current = videoRef.current;
+    if (!current) {
+      return;
+    }
+    if (current.requestFullscreen) {
+      current.requestFullscreen();
+    } else if (current.webkitEnterFullscreen) {
+      current.webkitEnterFullscreen();
+    }
   };
 
   const likeBtnLabel = useMemo(() => {
@@ -500,21 +599,65 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
             </div>
           )}
 
-          {postMediaUrl && (
+          {hasAnyMedia && (
             <div className="post-media">
-              {shouldRenderVideo ? (
-                <>
+              {shouldRenderVideo && postVideoSource ? (
+                <div className="post-video-wrapper">
                   <video
                     ref={videoRef}
-                    src={postMediaUrl}
+                    src={postVideoSource}
+                    poster={videoPoster || undefined}
                     className="post-video"
-                    controls
+                    muted={disableAutoplay ? false : isMuted}
+                    controls={disableAutoplay}
+                    autoPlay={!disableAutoplay}
                     playsInline
                     preload="metadata"
-                    onLoadedData={() => setVideoPlaybackError(false)}
-                    onError={() => setVideoPlaybackError(true)}
+                    onWaiting={() => setIsBuffering(true)}
+                    onPlaying={() => {
+                      setIsBuffering(false);
+                      setIsPlaying(true);
+                    }}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    onError={() => {
+                      setVideoError(true);
+                      setIsBuffering(false);
+                      setIsPlaying(false);
+                    }}
                   />
-                  {videoPlaybackError && (
+
+                  {!disableAutoplay && (
+                    <div className="post-video-controls">
+                      <button
+                        type="button"
+                        className="post-video-control"
+                        onClick={toggleMute}
+                      >
+                        {isMuted ? "Unmute" : "Mute"}
+                      </button>
+                      <button
+                        type="button"
+                        className="post-video-control"
+                        onClick={togglePlayPause}
+                      >
+                        {isPlaying ? "Pause" : "Play"}
+                      </button>
+                      <button
+                        type="button"
+                        className="post-video-control"
+                        onClick={enterFullscreen}
+                      >
+                        Full screen
+                      </button>
+                    </div>
+                  )}
+
+                  {isBuffering && (
+                    <div className="post-video-loading">Loading…</div>
+                  )}
+
+                  {videoError && (
                     <div className="post-video-error">
                       Video playback failed.{" "}
                       <button type="button" onClick={retryVideoPlayback}>
@@ -522,7 +665,7 @@ export default function PostCard({ post, isSystem, onDelete, onEdit }) {
                       </button>
                     </div>
                   )}
-                </>
+                </div>
               ) : shouldRenderImage ? (
                 <img
                   src={postMediaUrl}

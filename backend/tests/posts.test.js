@@ -102,4 +102,34 @@ describe("Posts feed", () => {
     expect(stored).toBeTruthy();
     expect(stored.author.toString()).toBe(artist._id.toString());
   });
+
+  test("POST /api/posts accepts video payload", async () => {
+    const videoPayload = {
+      type: "video",
+      video: {
+        url: "https://cdn.test/video.mp4",
+        playbackUrl: "https://cdn.test/video.mp4",
+        duration: 12.8,
+        width: 1920,
+        height: 1080,
+        sizeBytes: 1024,
+        mimeType: "video/mp4",
+      },
+    };
+
+    const response = await request(app)
+      .post("/api/posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send(videoPayload)
+      .expect(201);
+
+    expect(response.body).toMatchObject({
+      type: "video",
+      video: expect.objectContaining({ url: videoPayload.video.url }),
+    });
+
+    const stored = await Post.findOne({ _id: response.body._id });
+    expect(stored).toBeTruthy();
+    expect(stored.video.url).toBe(videoPayload.video.url);
+  });
 });

@@ -42,6 +42,14 @@ export default function Sidebar({ user, openChat, openProfile }) {
         Trending
       </button>
 
+      <button className="sidebar-btn" onClick={() => navigate("/live")}>
+        Live directory
+      </button>
+
+      <button className="sidebar-btn" onClick={() => navigate("/live/go")}>
+        Go live
+      </button>
+
       <button className="sidebar-btn" onClick={() => navigate("/creator")}>
         Creator Dashboard
       </button>

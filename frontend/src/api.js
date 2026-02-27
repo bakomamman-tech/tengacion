@@ -378,12 +378,35 @@ export const getPostsByUsername = (username) =>
 export const createPost = (input, maybeFile = null) => {
   const payload =
     input && typeof input === "object" && !Array.isArray(input)
-      ? input
+      ? { ...input }
       : { text: input, file: maybeFile };
 
+  const normalizedType =
+    typeof payload.type === "string" ? payload.type.toLowerCase() : "";
+  const text = payload.text || "";
+  const file = payload.file || null;
+  const video = payload.video;
+
+  const isVideoPost =
+    normalizedType === "video" || (video && typeof video === "object" && video.url);
+
+  if (isVideoPost) {
+    const body = {
+      ...payload,
+      type: "video",
+    };
+
+    return request(`${API_BASE}/posts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
   const {
-    text = "",
-    file = null,
     tags = [],
     feeling = "",
     location = "",
@@ -427,10 +450,70 @@ export const createPost = (input, maybeFile = null) => {
   });
 };
 
+export const requestVideoUploadUrl = ({ filename, contentType, sizeBytes }) =>
+  request(`${API_BASE}/videos/presign`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ filename, contentType, sizeBytes }),
+  });
+
+export const getPostById = (postId) =>
+  request(`${API_BASE}/posts/${encodeURIComponent(postId || "")}`, {
+    headers: getAuthHeaders(),
+  });
+
 export const likePost = (id) =>
   request(`${API_BASE}/posts/${id}/like`, {
     method: "POST",
     headers: getAuthHeaders(),
+  });
+
+export const getLiveSessions = () =>
+  request(`${API_BASE}/live/active`, {
+    headers: getAuthHeaders(),
+  });
+
+export const startLiveSession = (title) =>
+  request(`${API_BASE}/live/create`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ title }),
+  });
+
+export const requestLiveToken = ({ roomName, publish = false }) =>
+  request(`${API_BASE}/live/token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ roomName, publish: Boolean(publish) }),
+  });
+
+export const endLiveSession = (roomName) =>
+  request(`${API_BASE}/live/end`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ roomName }),
+  });
+
+export const updateLiveViewerCount = ({ roomName, delta = 1 }) =>
+  request(`${API_BASE}/live/viewers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ roomName, delta }),
   });
 
 // ======================================================

@@ -5,16 +5,19 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Home from "./pages/Home";
-import ProfileEditor from "./ProfileEditor";
 import Search from "./pages/Search";
-import Trending from "./pages/Trending";
+import Home from "./pages/Home";
+import PostDetail from "./pages/PostDetail";
+import ProfileEditor from "./ProfileEditor";
 import CreatorDashboardMVP from "./pages/CreatorDashboardMVP";
 import Notifications from "./pages/Notifications";
 import CreatorPage from "./pages/CreatorPage";
 import ArtistProfileRoute from "@web/features/creator/ArtistPage";
 import TrackDetail from "./pages/TrackDetail";
 import BookDetail from "./pages/BookDetail";
+import LiveDirectory from "./pages/LiveDirectory";
+import GoLive from "./pages/GoLive";
+import WatchLive from "./pages/WatchLive";
 
 import { useAuth } from "./context/AuthContext";
 
@@ -58,14 +61,50 @@ export default function App() {
         }
       />
 
-      <Route
-        path="/trending"
-        element={
-          <ProtectedRoute user={user}>
-            <Trending user={user} />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/trending"
+          element={
+            <ProtectedRoute user={user}>
+              <Trending user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/live"
+          element={
+            <ProtectedRoute user={user}>
+              <LiveDirectory />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/live/go"
+          element={
+            <ProtectedRoute user={user}>
+              <GoLive />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/live/watch/:roomName"
+          element={
+            <ProtectedRoute user={user}>
+              <WatchLive />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/posts/:postId"
+          element={
+            <ProtectedRoute user={user}>
+              <PostDetail />
+            </ProtectedRoute>
+          }
+        />
 
       <Route
         path="/dashboard/creator"

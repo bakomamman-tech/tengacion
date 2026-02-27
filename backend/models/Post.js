@@ -107,6 +107,13 @@ const PostSchema = new mongoose.Schema(
       default: [],
     },
 
+    type: {
+      type: String,
+      enum: ["text", "image", "video"],
+      default: "text",
+      index: true,
+    },
+
     media: [
       {
         public_id: String, // Cloudinary
@@ -117,6 +124,44 @@ const PostSchema = new mongoose.Schema(
         },
       },
     ],
+    video: {
+      url: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      playbackUrl: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      thumbnailUrl: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      duration: {
+        type: Number,
+        default: 0,
+      },
+      width: {
+        type: Number,
+        default: 0,
+      },
+      height: {
+        type: Number,
+        default: 0,
+      },
+      sizeBytes: {
+        type: Number,
+        default: 0,
+      },
+      mimeType: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+    },
     audio: {
       trackId: {
         type: mongoose.Schema.Types.ObjectId,

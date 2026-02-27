@@ -93,6 +93,24 @@ npm run seed:marketplace --prefix backend
 - Artist links must be HTTPS and sanitized at the backend.
 - PaymentService selects Paystack when currency is NGN and Stripe when USD, but the flows are placeholders until the next sprint.
 
+## Video & Live streaming
+
+### Video posts
+1. Configure an S3-compatible bucket and set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET`, and optionally `AWS_S3_MEDIA_URL` in your environment.
+2. Clients call `POST /api/videos/presign` to get a signed upload URL, upload the file directly from the browser, then call `POST /api/posts` with `type: "video"` plus the returned `fileUrl` and metadata (duration, width, height, size, MIME type).
+3. Video posts appear in `/home` with an autoplaying, muted player plus a dedicated `/posts/:postId` detail view.
+
+### Live streaming
+1. Provide LiveKit credentials and host URLs via `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_HOST`, and `LIVEKIT_WS_URL`.
+2. Broadcasters hit `/live/go`, enter a title, and the backend mints a host token via `POST /api/live/create`. The session is tracked in MongoDB and published via Socket.IO events.
+3. Viewers browse `/live` (or get notified via Socket.IO), hit `Watch live`, and the client requests `POST /api/live/token` for a viewer token. Viewer counts stay in sync using `POST /api/live/viewers`.
+4. Hosts end the session by calling `POST /api/live/end` (taken care of in the UI) and LiveKit is disconnected gracefully.
+
+### Local testing tips
+- For secure uploads, configure `AWS_S3_MEDIA_URL` to a CDN or public bucket and grant your local credentials limited write access.
+- Use a LiveKit sandbox or `livekit-server` binary to obtain API keys and hosts. Set the env vars before running `npm run dev --prefix backend` and `npm run dev --prefix frontend`.
+- Run `npm test --prefix backend` to verify the post validation and live session flows.
+
 ## Phase 2 (Outline)
 - Fan Pass subscriptions
 - Creator gifting + hospitality

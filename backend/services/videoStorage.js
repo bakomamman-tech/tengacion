@@ -7,9 +7,16 @@ const { config } = require("../config/env");
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024; // 200 MB
 const ALLOWED_MIME_TYPES = new Set(["video/mp4", "video/webm"]);
 
+const useLocalVideoMock = Boolean(config.USE_LOCAL_VIDEO_MOCK);
+const localMockFileUrl = config.LOCAL_VIDEO_MOCK_URL || "";
+
 let s3Client = null;
 
 const ensureS3Config = () => {
+  if (useLocalVideoMock) {
+    return;
+  }
+
   if (
     !config.AWS_ACCESS_KEY_ID ||
     !config.AWS_SECRET_ACCESS_KEY ||
@@ -82,6 +89,16 @@ const resolveFileUrl = (key) => {
 
 const createVideoUploadPayload = async ({ filename, contentType, sizeBytes }) => {
   validateVideoUpload({ contentType, sizeBytes });
+
+  if (useLocalVideoMock) {
+    return {
+      uploadUrl: "",
+      videoKey: `mock-${Date.now()}`,
+      fileUrl: localMockFileUrl || "https://storage.googleapis.com/free-videos/sample.mp4",
+      expiresAt: Date.now() + 60 * 1000,
+      isMockUpload: true,
+    };
+  }
 
   const key = buildKey(filename);
   const normalizedMime = normalizeMimeType(contentType);

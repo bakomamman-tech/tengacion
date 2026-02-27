@@ -267,7 +267,11 @@ function PostComposerModal({ user, onClose, onPosted }) {
         sizeBytes: selectedFile.size,
       });
 
-      await uploadToSignedUrl(presign.uploadUrl, selectedFile, setVideoUploadProgress);
+      if (!presign.isMockUpload) {
+        await uploadToSignedUrl(presign.uploadUrl, selectedFile, setVideoUploadProgress);
+      } else {
+        setVideoUploadProgress(100);
+      }
 
       const videoPayload = {
         url: presign.fileUrl,

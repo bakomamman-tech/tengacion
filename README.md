@@ -99,6 +99,7 @@ npm run seed:marketplace --prefix backend
 1. Configure an S3-compatible bucket and set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET`, and optionally `AWS_S3_MEDIA_URL` in your environment.
 2. Clients call `POST /api/videos/presign` to get a signed upload URL, upload the file directly from the browser, then call `POST /api/posts` with `type: "video"` plus the returned `fileUrl` and metadata (duration, width, height, size, MIME type).
 3. Video posts appear in `/home` with an autoplaying, muted player plus a dedicated `/posts/:postId` detail view.
+4. No bucket yet? Toggle `USE_LOCAL_VIDEO_MOCK=true` during local development to skip S3 and point `LOCAL_VIDEO_MOCK_URL` at any publicly hosted MP4. The mock presign response bypasses the upload step (the composer will accept the mock URL) while still exercising the rest of the video flow. Switch the flag back to `false` before deploying.
 
 ### Live streaming
 1. Provide LiveKit credentials and host URLs via `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_HOST`, and `LIVEKIT_WS_URL`.

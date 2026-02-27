@@ -34,6 +34,14 @@ const requireEnv = (key) => {
 const MONGO_URI = requireEnv("MONGO_URI");
 const JWT_SECRET = requireEnv("JWT_SECRET");
 
+const toBool = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+  }
+  return false;
+};
+
 // Optional / defaults
 const config = {
   MONGO_URI,
@@ -54,6 +62,11 @@ const config = {
   LIVEKIT_API_SECRET: getEnv("LIVEKIT_API_SECRET", ""),
   LIVEKIT_HOST: getEnv("LIVEKIT_HOST", ""),
   LIVEKIT_WS_URL: getEnv("LIVEKIT_WS_URL", ""),
+  USE_LOCAL_VIDEO_MOCK: toBool(getEnv("USE_LOCAL_VIDEO_MOCK", "false")),
+  LOCAL_VIDEO_MOCK_URL: getEnv(
+    "LOCAL_VIDEO_MOCK_URL",
+    "https://storage.googleapis.com/free-videos/sample.mp4"
+  ),
 
   NODE_ENV: getEnv("NODE_ENV", "development"),
 

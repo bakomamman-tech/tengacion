@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
+import { NotificationsProvider } from "./context/NotificationsContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -15,10 +16,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
-          <BrowserRouter>
-            <App />
-            <Toaster />
-          </BrowserRouter>
+          <NotificationsProvider>
+            <BrowserRouter>
+              <App />
+              <Toaster />
+            </BrowserRouter>
+          </NotificationsProvider>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

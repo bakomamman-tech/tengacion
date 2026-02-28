@@ -426,15 +426,25 @@ export const getUnreadNotificationsCount = () =>
 
 export const markNotificationAsRead = (notificationId) =>
   request(`${API_BASE}/notifications/${encodeURIComponent(notificationId || "")}/read`, {
-    method: "POST",
+    method: "PATCH",
     headers: getAuthHeaders(),
-  });
+  }).catch(() =>
+    request(`${API_BASE}/notifications/${encodeURIComponent(notificationId || "")}/read`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    })
+  );
 
 export const markAllNotificationsAsRead = () =>
-  request(`${API_BASE}/notifications/read-all`, {
-    method: "POST",
+  request(`${API_BASE}/notifications/mark-all-read`, {
+    method: "PATCH",
     headers: getAuthHeaders(),
-  });
+  }).catch(() =>
+    request(`${API_BASE}/notifications/read-all`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    })
+  );
 
 // ======================================================
 // 🟢 POSTS

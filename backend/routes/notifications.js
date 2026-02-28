@@ -22,15 +22,18 @@ router.get("/", auth, getNotifications);
 router.get("/unread-count", auth, getUnreadCount);
 
 /**
- * POST /api/notifications/read-all
+ * PATCH /api/notifications/mark-all-read
  * Mark all notifications as read
  */
+router.patch("/mark-all-read", auth, markAllAsRead);
+router.patch("/read-all", auth, markAllAsRead);
 router.post("/read-all", auth, markAllAsRead);
 
 /**
- * POST /api/notifications/:id/read
+ * PATCH /api/notifications/:id/read
  * Mark a single notification as read
  */
+router.patch("/:id/read", auth, markAsRead);
 router.post("/:id/read", auth, markAsRead);
 
 module.exports = router;

@@ -26,14 +26,31 @@ exports.createNotification = async ({
       metadata,
     });
 
-    // 🔔 Realtime delivery
+    const unreadCount = await Notification.countDocuments({
+      recipient,
+      read: false,
+    });
+
+    // Backward-compatible event + new payload event.
     if (io && onlineUsers) {
       const sockets = onlineUsers.get(recipient.toString());
       if (sockets instanceof Set && sockets.size > 0) {
         for (const socketId of sockets) {
           io.to(socketId).emit("notification", notification);
+          io.to(socketId).emit("notifications:new", {
+            notification,
+            unreadCount,
+          });
         }
       }
+    }
+
+    // Fallback room emit; socket auth joins users to their id room.
+    if (io) {
+      io.to(recipient.toString()).emit("notifications:new", {
+        notification,
+        unreadCount,
+      });
     }
 
     return notification;

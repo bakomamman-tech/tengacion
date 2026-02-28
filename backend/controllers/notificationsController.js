@@ -2,6 +2,12 @@ const Notification = require("../models/Notification");
 const asyncHandler = require("../middleware/asyncHandler");
 const paginate = require("../utils/paginate");
 
+const getUnreadCountForUser = (userId) =>
+  Notification.countDocuments({
+    recipient: userId,
+    read: false,
+  });
+
 /**
  * @desc    Get logged-in user's notifications (paginated)
  * @route   GET /api/notifications
@@ -57,9 +63,12 @@ exports.markAsRead = asyncHandler(async (req, res) => {
     throw new Error("Notification not found");
   }
 
+  const unreadCount = await getUnreadCountForUser(req.user.id);
+
   res.json({
     success: true,
     data: notification,
+    unreadCount,
   });
 });
 
@@ -77,6 +86,7 @@ exports.markAllAsRead = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: "All notifications marked as read",
+    unreadCount: 0,
   });
 });
 
@@ -86,10 +96,7 @@ exports.markAllAsRead = asyncHandler(async (req, res) => {
  * @access  Private
  */
 exports.getUnreadCount = asyncHandler(async (req, res) => {
-  const unreadCount = await Notification.countDocuments({
-    recipient: req.user.id,
-    read: false,
-  });
+  const unreadCount = await getUnreadCountForUser(req.user.id);
 
   res.json({
     success: true,

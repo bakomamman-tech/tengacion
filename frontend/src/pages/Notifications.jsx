@@ -3,11 +3,9 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
 import {
-  getNotifications,
-  markAllNotificationsAsRead,
-  markNotificationAsRead,
   resolveImage,
 } from "../api";
+import { useNotifications } from "../context/NotificationsContext";
 
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -143,27 +141,22 @@ function MenuItemIcon({ name }) {
 
 export default function Notifications({ user }) {
   const navigate = useNavigate();
+  const {
+    notifications: storeNotifications,
+    fetchNotifications,
+    markAllRead,
+    markOneRead,
+    loading,
+    error,
+  } = useNotifications();
   const [filter, setFilter] = useState("all");
-  const [notifications, setNotifications] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const menuRef = useRef(null);
+  const markedOnOpenRef = useRef(false);
 
   const loadNotifications = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
-      const payload = await getNotifications(1, 100);
-      const items = Array.isArray(payload?.data) ? payload.data : [];
-      setNotifications(items.map(normalizeNotification));
-    } catch (err) {
-      setNotifications([]);
-      setError(err?.message || "Failed to load notifications");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    await fetchNotifications({ page: 1, limit: 100 });
+  }, [fetchNotifications]);
 
   useEffect(() => {
     loadNotifications();
@@ -171,6 +164,14 @@ export default function Notifications({ user }) {
     const timer = window.setInterval(loadNotifications, 20000);
     return () => window.clearInterval(timer);
   }, [loadNotifications]);
+
+  useEffect(() => {
+    if (markedOnOpenRef.current) {
+      return;
+    }
+    markedOnOpenRef.current = true;
+    markAllRead({ optimistic: true });
+  }, [markAllRead]);
 
   useEffect(() => {
     const onMouseDown = (event) => {
@@ -194,16 +195,16 @@ export default function Notifications({ user }) {
   }, []);
 
   const unreadCount = useMemo(
-    () => notifications.filter((item) => !item.read).length,
-    [notifications]
+    () => storeNotifications.filter((item) => !item.read).length,
+    [storeNotifications]
   );
 
   const filtered = useMemo(() => {
     if (filter === "unread") {
-      return notifications.filter((item) => !item.read);
+      return storeNotifications.filter((item) => !item.read);
     }
-    return notifications;
-  }, [filter, notifications]);
+    return storeNotifications;
+  }, [filter, storeNotifications]);
 
   const newItems = filtered.filter((item) => {
     const createdAt = new Date(item.createdAt || "").getTime();
@@ -211,28 +212,12 @@ export default function Notifications({ user }) {
   });
   const earlierItems = filtered.filter((item) => !newItems.includes(item));
 
-  const markAsReadLocal = (id) => {
-    setNotifications((current) =>
-      current.map((item) => (item._id === id ? { ...item, read: true } : item))
-    );
-  };
-
   const markAsRead = async (id) => {
-    markAsReadLocal(id);
-    try {
-      await markNotificationAsRead(id);
-    } catch {
-      // Keep optimistic read state to avoid flicker.
-    }
+    await markOneRead(id);
   };
 
   const markAllAsRead = async () => {
-    setNotifications((current) => current.map((item) => ({ ...item, read: true })));
-    try {
-      await markAllNotificationsAsRead();
-    } catch {
-      // Keep optimistic read state.
-    }
+    await markAllRead({ optimistic: true });
   };
 
   const openSettings = () => {
@@ -256,7 +241,9 @@ export default function Notifications({ user }) {
     }
   };
 
-  const renderRow = (item) => (
+  const renderRow = (entry) => {
+    const item = normalizeNotification(entry);
+    return (
     <button
       key={item._id}
       className={`notif-row ${item.read ? "" : "unread"}`}
@@ -286,7 +273,8 @@ export default function Notifications({ user }) {
 
       {!item.read && <span className="notif-unread-dot" />}
     </button>
-  );
+    );
+  };
 
   return (
     <>

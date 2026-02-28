@@ -57,6 +57,11 @@ const normalizeVideoUrl = (value) => {
   return value.toString().trim();
 };
 
+const normalizeMimeType = (value) => {
+  if (!value) return "";
+  return String(value).toLowerCase().trim();
+};
+
 const buildVideoMeta = (payload) => {
   if (!payload) {
     return null;
@@ -212,12 +217,27 @@ class PostService {
     const callNumber = normalizeText(body?.callNumber, 36);
     const moreOptions = toStringArray(body?.moreOptions, 8, 60, false);
     const uploadFile = files?.image?.[0] || files?.file?.[0] || null;
+    const uploadKind = uploadFile ? inferMediaKind(uploadFile) : "";
     const hasMetadata = Boolean(
       tags.length || feeling || location || moreOptions.length || (callsEnabled && callNumber)
     );
 
     const rawVideoPayload = parseVideoPayload(body?.video);
-    const videoMeta = buildVideoMeta(rawVideoPayload);
+    let videoMeta = buildVideoMeta(rawVideoPayload);
+
+    if (!videoMeta && uploadFile && uploadKind === "video") {
+      videoMeta = {
+        url: "",
+        playbackUrl: "",
+        thumbnailUrl: "",
+        duration: 0,
+        width: 0,
+        height: 0,
+        sizeBytes: Number(uploadFile.size) || 0,
+        mimeType: normalizeMimeType(uploadFile.mimetype),
+      };
+    }
+
     validateVideoMeta(videoMeta);
 
     const hasVideo = Boolean(videoMeta);
@@ -232,7 +252,7 @@ class PostService {
       : null;
     let type = requestedType;
     if (!type) {
-      if (hasVideo) {
+      if (hasVideo || uploadKind === "video") {
         type = "video";
       } else if (uploadFile) {
         type = "image";
@@ -241,17 +261,33 @@ class PostService {
       }
     }
 
-    if (type === "video" && !hasVideo) {
+    if (type === "video" && !hasVideo && uploadKind !== "video") {
       throw ApiError.badRequest("Video data is required for video posts");
     }
 
     const media = [];
     if (uploadFile) {
       const persistedUrl = await saveUploadedFile(uploadFile);
+      const persistedKind = inferMediaKind(uploadFile);
       media.push({
         url: persistedUrl,
-        type: inferMediaKind(uploadFile),
+        type: persistedKind,
       });
+
+      if (persistedKind === "video") {
+        videoMeta = {
+          url: persistedUrl,
+          playbackUrl: persistedUrl,
+          thumbnailUrl: "",
+          duration: videoMeta?.duration || 0,
+          width: videoMeta?.width || 0,
+          height: videoMeta?.height || 0,
+          sizeBytes: Number(uploadFile.size) || videoMeta?.sizeBytes || 0,
+          mimeType:
+            normalizeMimeType(uploadFile.mimetype) ||
+            normalizeMimeType(videoMeta?.mimeType),
+        };
+      }
     } else if (type === "video" && videoMeta?.playbackUrl) {
       media.push({
         url: videoMeta.playbackUrl,

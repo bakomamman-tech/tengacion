@@ -68,6 +68,7 @@ const saveUploadedFile = async (file) => {
     metadata: {
       source: "tengacion-upload",
       originalName: file.originalname || "",
+      contentDisposition: "inline",
     },
   });
 

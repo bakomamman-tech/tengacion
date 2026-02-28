@@ -10,6 +10,14 @@ const { toIdString } = require("./utils/messagePayload");
 const { config } = require("./config/env");
 const app = require("./app");
 const server = http.createServer(app);
+const parsedRequestTimeoutMs = Number(process.env.REQUEST_TIMEOUT_MS || 10 * 60 * 1000);
+const requestTimeoutMs =
+  Number.isFinite(parsedRequestTimeoutMs) && parsedRequestTimeoutMs >= 30000
+    ? parsedRequestTimeoutMs
+    : 10 * 60 * 1000;
+server.requestTimeout = requestTimeoutMs;
+server.headersTimeout = requestTimeoutMs + 5000;
+server.keepAliveTimeout = 65000;
 console.log(`Node ${process.version} starting in ${process.cwd()}`);
 console.log(
   `dotenv loaded for backend (NODE_ENV=${config.NODE_ENV || "unknown"}, PORT=${config.PORT || "unset"})`

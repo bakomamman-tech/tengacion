@@ -125,11 +125,20 @@ router.get("/:id", async (req, res) => {
       fileDoc.contentType ||
       inferContentTypeFromFilename(fileDoc.filename || "") ||
       "application/octet-stream";
+    const originalName =
+      fileDoc?.metadata?.originalName ||
+      fileDoc?.filename ||
+      "media";
+    const disposition = fileDoc?.metadata?.contentDisposition || "inline";
     const bucket = getBucket();
     const range = parseRange(req.headers.range, fileSize);
 
     res.setHeader("Accept-Ranges", "bytes");
     res.setHeader("Content-Type", mimeType);
+    res.setHeader(
+      "Content-Disposition",
+      `${disposition}; filename=\"${String(originalName).replace(/\"/g, "")}\"`
+    );
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
 
     if (range) {
@@ -185,8 +194,17 @@ router.head("/:id", async (req, res) => {
       fileDoc.contentType ||
       inferContentTypeFromFilename(fileDoc.filename || "") ||
       "application/octet-stream";
+    const originalName =
+      fileDoc?.metadata?.originalName ||
+      fileDoc?.filename ||
+      "media";
+    const disposition = fileDoc?.metadata?.contentDisposition || "inline";
     res.setHeader("Accept-Ranges", "bytes");
     res.setHeader("Content-Type", mimeType);
+    res.setHeader(
+      "Content-Disposition",
+      `${disposition}; filename=\"${String(originalName).replace(/\"/g, "")}\"`
+    );
     res.setHeader("Content-Length", fileSize);
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     return res.status(200).end();

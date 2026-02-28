@@ -27,6 +27,20 @@ const REACTIONS = [
   { key: "angry", label: "\u{1F621}", name: "Angry" },
 ];
 
+const inferVideoMimeType = (url = "", fallback = "") => {
+  const normalizedFallback = String(fallback || "").toLowerCase();
+  if (normalizedFallback.startsWith("video/")) {
+    return normalizedFallback;
+  }
+
+  const cleanUrl = String(url || "").toLowerCase();
+  if (cleanUrl.includes(".webm")) return "video/webm";
+  if (cleanUrl.includes(".ogg")) return "video/ogg";
+  if (cleanUrl.includes(".mov")) return "video/quicktime";
+  if (cleanUrl.includes(".m4v")) return "video/mp4";
+  return "video/mp4";
+};
+
 /* ======================================================
    EDIT MODAL
    ====================================================== */
@@ -184,6 +198,7 @@ export default function PostCard({
   const shouldRenderVideo = explicitVideo || hasVideoPayload || forceVideoRender;
   const shouldRenderImage = explicitImage || !explicitVideo;
   const videoPoster = resolveImage(videoPayload?.thumbnailUrl || "");
+  const videoMimeType = inferVideoMimeType(postVideoSource, videoPayload?.mimeType || "");
   const hasAnyMedia = Boolean(postVideoSource || postMediaUrl);
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -605,7 +620,6 @@ export default function PostCard({
                 <div className="post-video-wrapper">
                   <video
                     ref={videoRef}
-                    src={postVideoSource}
                     poster={videoPoster || undefined}
                     className="post-video"
                     muted={disableAutoplay ? false : isMuted}
@@ -613,6 +627,7 @@ export default function PostCard({
                     autoPlay={!disableAutoplay}
                     playsInline
                     preload="metadata"
+                    crossOrigin="anonymous"
                     onWaiting={() => setIsBuffering(true)}
                     onPlaying={() => {
                       setIsBuffering(false);
@@ -625,7 +640,9 @@ export default function PostCard({
                       setIsBuffering(false);
                       setIsPlaying(false);
                     }}
-                  />
+                  >
+                    <source src={postVideoSource} type={videoMimeType} />
+                  </video>
 
                   {!disableAutoplay && (
                     <div className="post-video-controls">

@@ -3,7 +3,12 @@ const path = require("path");
 const fs = require("fs");
 const os = require("os");
 
-const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+const parsedMaxUploadMb = Number(process.env.MAX_UPLOAD_MB || 200);
+const MAX_UPLOAD_MB =
+  Number.isFinite(parsedMaxUploadMb) && parsedMaxUploadMb > 0
+    ? parsedMaxUploadMb
+    : 200;
+const MAX_FILE_SIZE_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 
 const tryEnsureWritableDir = (targetDir) => {
   try {

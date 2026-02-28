@@ -88,6 +88,81 @@ const request = async (url, options = {}) => {
   return parseResponse(response);
 };
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+const shouldRetryXhrUpload = ({ status, message }) => {
+  if (RETRYABLE_STATUS.has(status)) {
+    return true;
+  }
+
+  const normalized = String(message || "").toLowerCase();
+  return (
+    normalized.includes("timeout") ||
+    normalized.includes("network") ||
+    normalized.includes("failed")
+  );
+};
+
+const uploadPostFormWithProgress = ({
+  formData,
+  onProgress,
+  timeoutMs = 10 * 60 * 1000,
+}) =>
+  new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_BASE}/posts`);
+    xhr.withCredentials = true;
+    xhr.timeout = timeoutMs;
+
+    const token = localStorage.getItem("token");
+    if (token) {
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    }
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable || typeof onProgress !== "function") {
+        return;
+      }
+      onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+
+    xhr.onload = () => {
+      const raw = xhr.responseText || "";
+      let data = {};
+      if (raw) {
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          data = { error: raw };
+        }
+      }
+
+      if (xhr.status === 401) {
+        handleAuthFailure(data?.error || data?.message || "Unauthorized");
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(data);
+        return;
+      }
+
+      const err = new Error(
+        data?.error ||
+        data?.message ||
+        `Upload failed (${xhr.status || 0})`
+      );
+      err.status = xhr.status || 0;
+      reject(err);
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during upload"));
+    xhr.ontimeout = () => reject(new Error("Upload timeout"));
+    xhr.onabort = () => reject(new Error("Upload canceled"));
+    xhr.send(formData);
+  });
+
 // ======================================================
 // 🟢 AUTH
 // ======================================================
@@ -448,6 +523,75 @@ export const createPost = (input, maybeFile = null) => {
     headers: getAuthHeaders(),
     body: form,
   });
+};
+
+export const createPostWithUploadProgress = async (
+  payload,
+  { onProgress, retries = 2, timeoutMs = 10 * 60 * 1000 } = {}
+) => {
+  const {
+    text = "",
+    file = null,
+    type = "",
+    tags = [],
+    feeling = "",
+    location = "",
+    callsEnabled = false,
+    callNumber = "",
+    moreOptions = [],
+  } = payload || {};
+
+  const form = new FormData();
+  form.append("text", text || "");
+  if (file) {
+    form.append("file", file);
+  }
+  if (type) {
+    form.append("type", String(type));
+  }
+  if (Array.isArray(tags) && tags.length > 0) {
+    form.append("tags", JSON.stringify(tags));
+  }
+  if (feeling) {
+    form.append("feeling", feeling);
+  }
+  if (location) {
+    form.append("location", location);
+  }
+  form.append("callsEnabled", String(Boolean(callsEnabled)));
+  if (callNumber) {
+    form.append("callNumber", callNumber);
+  }
+  if (Array.isArray(moreOptions) && moreOptions.length > 0) {
+    form.append("moreOptions", JSON.stringify(moreOptions));
+  }
+
+  let lastError = null;
+  const attempts = Math.max(1, Number(retries) + 1);
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const result = await uploadPostFormWithProgress({
+        formData: form,
+        onProgress,
+        timeoutMs,
+      });
+      if (typeof onProgress === "function") {
+        onProgress(100);
+      }
+      return result;
+    } catch (err) {
+      lastError = err;
+      const canRetry =
+        attempt < attempts - 1 &&
+        shouldRetryXhrUpload({ status: err?.status, message: err?.message });
+      if (!canRetry) {
+        throw err;
+      }
+      await wait(500 * (attempt + 1));
+    }
+  }
+
+  throw lastError || new Error("Upload failed");
 };
 
 export const requestVideoUploadUrl = ({ filename, contentType, sizeBytes }) =>

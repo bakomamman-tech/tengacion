@@ -13,10 +13,10 @@ import { connectSocket } from "../socket";
 
 import {
   createPost,
+  createPostWithUploadProgress,
   getFeed,
   getProfile,
   resolveImage,
-  requestVideoUploadUrl,
   getLiveSessions,
 } from "../api";
 
@@ -30,37 +30,6 @@ const FEELING_OPTIONS = [
   "Proud",
   "Ready",
 ];
-
-const uploadToSignedUrl = (url, file, onProgress) =>
-  new Promise((resolve, reject) => {
-    if (!url || !file) {
-      reject(new Error("Missing upload parameters"));
-      return;
-    }
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("PUT", url);
-    xhr.setRequestHeader("Content-Type", file.type);
-
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && typeof onProgress === "function") {
-        const percent = Math.round((event.loaded / event.total) * 100);
-        onProgress(percent);
-      }
-    };
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-      } else {
-        reject(new Error("Upload failed"));
-      }
-    };
-
-    xhr.onerror = () => reject(new Error("Upload failed"));
-    xhr.onabort = () => reject(new Error("Upload canceled"));
-    xhr.send(file);
-  });
 
 const MORE_OPTIONS = [
   { id: "audience-question", label: "Audience question" },
@@ -147,7 +116,6 @@ function PostComposerModal({ user, onClose, onPosted }) {
   );
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [videoMetadata, setVideoMetadata] = useState(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoUploadError, setVideoUploadError] = useState("");
@@ -235,11 +203,23 @@ function PostComposerModal({ user, onClose, onPosted }) {
     if (!file) {
       return;
     }
+    const maxVideoBytes = 200 * 1024 * 1024;
+    if (file.type.startsWith("video/")) {
+      if (!["video/mp4", "video/webm"].includes(file.type)) {
+        setError("Only MP4 and WebM videos are supported");
+        event.target.value = "";
+        return;
+      }
+      if (file.size > maxVideoBytes) {
+        setError("Video exceeds maximum allowed size (200MB)");
+        event.target.value = "";
+        return;
+      }
+    }
 
     setSelectedFile(file);
     setError("");
     setActivePanel("");
-    setVideoMetadata(null);
     setVideoUploadError("");
     setVideoUploadProgress(0);
   };
@@ -257,47 +237,37 @@ function PostComposerModal({ user, onClose, onPosted }) {
     if (!selectedFile) {
       throw new Error("Select a video before posting");
     }
+    if (!["video/mp4", "video/webm"].includes(selectedFile.type)) {
+      throw new Error("Only MP4 and WebM videos are supported");
+    }
+    const maxVideoBytes = 200 * 1024 * 1024;
+    if (selectedFile.size > maxVideoBytes) {
+      throw new Error("Video exceeds maximum allowed size (200MB)");
+    }
 
     setUploadingVideo(true);
     setVideoUploadError("");
     try {
-      const presign = await requestVideoUploadUrl({
-        filename: selectedFile.name,
-        contentType: selectedFile.type,
-        sizeBytes: selectedFile.size,
-      });
-
-      if (!presign.isMockUpload) {
-        await uploadToSignedUrl(presign.uploadUrl, selectedFile, setVideoUploadProgress);
-      } else {
-        setVideoUploadProgress(100);
-      }
-
-      const videoPayload = {
-        url: presign.fileUrl,
-        playbackUrl: presign.fileUrl,
-        thumbnailUrl: "",
-        duration: videoMetadata?.duration || 0,
-        width: videoMetadata?.width || 0,
-        height: videoMetadata?.height || 0,
-        sizeBytes: selectedFile.size,
-        mimeType: selectedFile.type,
-      };
-
-      const created = await createPost({
-        text: text.trim(),
-        type: "video",
-        video: videoPayload,
-        tags: taggedPeople,
-        feeling,
-        location: checkInLocation.trim(),
-        callsEnabled,
-        callNumber: callNumber.trim(),
-        moreOptions: selectedMore,
-      });
+      const created = await createPostWithUploadProgress(
+        {
+          text: text.trim(),
+          type: "video",
+          file: selectedFile,
+          tags: taggedPeople,
+          feeling,
+          location: checkInLocation.trim(),
+          callsEnabled,
+          callNumber: callNumber.trim(),
+          moreOptions: selectedMore,
+        },
+        {
+          onProgress: setVideoUploadProgress,
+          retries: 2,
+          timeoutMs: 10 * 60 * 1000,
+        }
+      );
 
       setSelectedFile(null);
-      setVideoMetadata(null);
       setVideoUploadProgress(0);
 
       return created;
@@ -539,14 +509,6 @@ function PostComposerModal({ user, onClose, onPosted }) {
               <video
                 src={previewUrl}
                 controls
-                onLoadedMetadata={(event) => {
-                  const { duration, videoWidth, videoHeight } = event.target;
-                  setVideoMetadata({
-                    duration: Number(duration) || 0,
-                    width: Number(videoWidth) || 0,
-                    height: Number(videoHeight) || 0,
-                  });
-                }}
               />
             ) : (
               <img src={previewUrl} alt="Selected media preview" />
@@ -653,7 +615,7 @@ function PostComposerModal({ user, onClose, onPosted }) {
           ref={fileRef}
           type="file"
           hidden
-          accept="image/*,video/*"
+          accept="image/*,video/mp4,video/webm"
           onChange={handleFileChange}
         />
 

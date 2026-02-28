@@ -54,6 +54,10 @@ export default function Sidebar({ user, openChat, openProfile }) {
         Creator Dashboard
       </button>
 
+      <button className="sidebar-btn" onClick={() => navigate("/home")}>
+        Back to Home
+      </button>
+
       <button className="sidebar-btn" onClick={() => navigate("/notifications")}>
         Notifications
       </button>

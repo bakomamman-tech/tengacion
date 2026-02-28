@@ -29,6 +29,13 @@ const getViewportHeight = () => {
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+const formatDuration = (inputSeconds) => {
+  const total = Math.max(0, Math.floor(Number(inputSeconds) || 0));
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+};
+
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "User"
@@ -99,7 +106,12 @@ const normalizeMessage = (message) => ({
   senderName: message?.senderName || "",
   senderAvatar: resolveImage(message?.senderAvatar || ""),
   text: message?.text || "",
-  type: message?.type === "contentCard" ? "contentCard" : "text",
+  type:
+    message?.type === "contentCard"
+      ? "contentCard"
+      : message?.type === "voice"
+        ? "voice"
+        : "text",
   metadata: message?.metadata
     ? {
         itemType: message.metadata.itemType || "",
@@ -118,6 +130,7 @@ const normalizeMessage = (message) => ({
           type: file?.type || "file",
           name: file?.name || "",
           size: Number(file?.size) || 0,
+          durationSeconds: Number(file?.durationSeconds) || 0,
         }))
         .filter((file) => file.url)
     : [],
@@ -166,9 +179,20 @@ export default function Messenger({ user, onClose, onMinimize }) {
   const [gifError, setGifError] = useState("");
   const [headerNotice, setHeaderNotice] = useState("");
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [voicePreview, setVoicePreview] = useState(null);
+  const [isSendingVoice, setIsSendingVoice] = useState(false);
+  const [openVoiceMenuId, setOpenVoiceMenuId] = useState("");
+  const [voicePlaybackById, setVoicePlaybackById] = useState({});
   const recorderRef = useRef(null);
   const recorderChunksRef = useRef([]);
   const recordMimeRef = useRef("audio/webm");
+  const recordingIntervalRef = useRef(null);
+  const recordingStartRef = useRef(0);
+  const recordingStreamRef = useRef(null);
+  const recordingCancelledRef = useRef(false);
+  const voiceMenuRef = useRef(null);
+  const voiceAudioRefs = useRef(new Map());
   const mediaInputRef = useRef(null);
 
   const [isMobileSheet, setIsMobileSheet] = useState(() => {
@@ -337,6 +361,48 @@ export default function Messenger({ user, onClose, onMinimize }) {
     const timer = window.setTimeout(() => setHeaderNotice(""), 2400);
     return () => window.clearTimeout(timer);
   }, [headerNotice]);
+
+  useEffect(() => {
+    if (!openVoiceMenuId) {
+      return undefined;
+    }
+
+    const onPointerDown = (event) => {
+      if (voiceMenuRef.current?.contains(event.target)) {
+        return;
+      }
+      setOpenVoiceMenuId("");
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setOpenVoiceMenuId("");
+      }
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [openVoiceMenuId]);
+
+  useEffect(() => () => {
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+    }
+    if (recordingStreamRef.current) {
+      recordingStreamRef.current.getTracks().forEach((track) => track.stop());
+    }
+  }, []);
+
+  useEffect(() => () => {
+    if (voicePreview?.url) {
+      URL.revokeObjectURL(voicePreview.url);
+    }
+  }, [voicePreview?.url]);
 
   useEffect(() => {
     if (!gifOpen) {
@@ -596,7 +662,12 @@ export default function Messenger({ user, onClose, onMinimize }) {
         ? { ...payloadInput, clientId }
         : { text: String(payloadInput || ""), type: "text", clientId };
 
-    const normalizedType = payload.type === "contentCard" ? "contentCard" : "text";
+    const normalizedType =
+      payload.type === "contentCard"
+        ? "contentCard"
+        : payload.type === "voice"
+          ? "voice"
+          : "text";
     const previewText =
       normalizedType === "contentCard"
         ? `shared: ${payload?.metadata?.title || payload?.metadata?.itemType || "content"}`
@@ -672,14 +743,14 @@ export default function Messenger({ user, onClose, onMinimize }) {
   };
 
   const uploadAndSendAttachment = useCallback(
-    async (file) => {
+    async (file, attachmentPatch = {}, messageType = "text") => {
       if (!file) {
         return;
       }
       try {
         const uploaded = await uploadChatAttachment(file);
         await sendPayload({
-          type: "text",
+          type: messageType,
           text: "",
           attachments: [
             {
@@ -687,6 +758,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
               type: uploaded?.type || "file",
               name: uploaded?.name || file.name || "attachment",
               size: Number(uploaded?.size) || file.size || 0,
+              ...attachmentPatch,
             },
           ],
         });
@@ -697,16 +769,35 @@ export default function Messenger({ user, onClose, onMinimize }) {
     [sendPayload]
   );
 
+  const stopRecordingStream = useCallback(() => {
+    if (recordingStreamRef.current) {
+      recordingStreamRef.current.getTracks().forEach((track) => track.stop());
+      recordingStreamRef.current = null;
+    }
+  }, []);
+
+  const clearVoicePreview = useCallback(() => {
+    setVoicePreview((prev) => {
+      if (prev?.url) {
+        URL.revokeObjectURL(prev.url);
+      }
+      return null;
+    });
+  }, []);
+
   const startVoiceNote = async () => {
-    if (isRecording) {
+    if (isRecording || isSendingVoice) {
       return;
     }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
       setError("Voice notes are not supported in this browser");
       return;
     }
+    setError("");
+    clearVoicePreview();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordingStreamRef.current = stream;
       const mimeType = MediaRecorder.isTypeSupported("audio/webm")
         ? "audio/webm"
         : "audio/mp4";
@@ -714,37 +805,111 @@ export default function Messenger({ user, onClose, onMinimize }) {
       recorderChunksRef.current = [];
       recordMimeRef.current = mimeType;
       recorderRef.current = recorder;
+      recordingCancelledRef.current = false;
+      recordingStartRef.current = Date.now();
+      setRecordingSeconds(0);
+
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+      recordingIntervalRef.current = window.setInterval(() => {
+        const elapsed = Math.floor((Date.now() - recordingStartRef.current) / 1000);
+        setRecordingSeconds(Math.max(0, elapsed));
+      }, 1000);
 
       recorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           recorderChunksRef.current.push(event.data);
         }
       };
-      recorder.onstop = async () => {
-        const blob = new Blob(recorderChunksRef.current, { type: recordMimeRef.current });
-        stream.getTracks().forEach((track) => track.stop());
+      recorder.onstop = () => {
+        recorderRef.current = null;
+        if (recordingIntervalRef.current) {
+          clearInterval(recordingIntervalRef.current);
+          recordingIntervalRef.current = null;
+        }
+        stopRecordingStream();
         setIsRecording(false);
-        if (!blob.size) {
+
+        if (recordingCancelledRef.current) {
+          recorderChunksRef.current = [];
+          setRecordingSeconds(0);
           return;
         }
-        const extension = recordMimeRef.current.includes("mp4") ? "m4a" : "webm";
-        const file = new File([blob], `voice-note-${Date.now()}.${extension}`, {
-          type: recordMimeRef.current,
+
+        const elapsed = Math.max(
+          0,
+          Math.floor((Date.now() - recordingStartRef.current) / 1000)
+        );
+        setRecordingSeconds(elapsed);
+        const blob = new Blob(recorderChunksRef.current, { type: recordMimeRef.current });
+        recorderChunksRef.current = [];
+        if (!blob.size || elapsed < 1) {
+          setError("Recording too short");
+          return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        setVoicePreview({
+          blob,
+          url,
+          durationSeconds: elapsed,
+          mimeType: recordMimeRef.current,
         });
-        await uploadAndSendAttachment(file);
       };
       recorder.start();
       setIsRecording(true);
-    } catch {
-      setError("Microphone access is unavailable");
+    } catch (err) {
+      const denied = err?.name === "NotAllowedError" || err?.name === "SecurityError";
+      setError(denied ? "Microphone permission denied" : "Microphone access is unavailable");
+      stopRecordingStream();
     }
   };
 
   const stopVoiceNote = () => {
     if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      recordingCancelledRef.current = false;
       recorderRef.current.stop();
     }
   };
+
+  const cancelVoiceNote = useCallback(() => {
+    recordingCancelledRef.current = true;
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    setRecordingSeconds(0);
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      recorderRef.current.stop();
+    } else {
+      stopRecordingStream();
+      setIsRecording(false);
+    }
+    clearVoicePreview();
+  }, [clearVoicePreview, stopRecordingStream]);
+
+  const sendVoicePreview = useCallback(async () => {
+    if (!voicePreview?.blob || isSendingVoice) {
+      return;
+    }
+    setIsSendingVoice(true);
+    try {
+      const extension = voicePreview.mimeType.includes("mp4") ? "m4a" : "webm";
+      const file = new File([voicePreview.blob], `voice-note-${Date.now()}.${extension}`, {
+        type: voicePreview.mimeType,
+      });
+      await uploadAndSendAttachment(
+        file,
+        { durationSeconds: Number(voicePreview.durationSeconds) || 0 },
+        "voice"
+      );
+      clearVoicePreview();
+      setRecordingSeconds(0);
+    } finally {
+      setIsSendingVoice(false);
+    }
+  }, [clearVoicePreview, isSendingVoice, uploadAndSendAttachment, voicePreview]);
 
   const sendQuickReaction = async (emoji) => {
     if (!emoji) {
@@ -778,6 +943,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
     }
 
     const targetId = toIdString(messageId);
+    setOpenVoiceMenuId("");
     setMessages((prev) => prev.filter((message) => toIdString(message?._id) !== targetId));
 
     try {
@@ -792,6 +958,72 @@ export default function Messenger({ user, onClose, onMinimize }) {
         // Keep current view if reload fails.
       }
     }
+  }, []);
+
+  const handleVoiceAudioEvent = useCallback((audioId, patch) => {
+    if (!audioId) {
+      return;
+    }
+    setVoicePlaybackById((prev) => ({
+      ...prev,
+      [audioId]: {
+        currentTime: 0,
+        duration: 0,
+        isPlaying: false,
+        ...(prev[audioId] || {}),
+        ...patch,
+      },
+    }));
+  }, []);
+
+  const pauseOtherVoiceNotes = useCallback((activeAudioId) => {
+    voiceAudioRefs.current.forEach((audio, id) => {
+      if (id !== activeAudioId && audio && !audio.paused) {
+        audio.pause();
+      }
+    });
+  }, []);
+
+  const toggleVoiceNotePlayback = useCallback(async (audioId) => {
+    const audio = voiceAudioRefs.current.get(audioId);
+    if (!audio) {
+      return;
+    }
+    if (!audio.paused) {
+      audio.pause();
+      return;
+    }
+    pauseOtherVoiceNotes(audioId);
+    try {
+      await audio.play();
+    } catch {
+      setError("Unable to play voice note");
+    }
+  }, [pauseOtherVoiceNotes]);
+
+  const downloadVoiceNote = useCallback((url, timeValue) => {
+    const resolved = resolveImage(url);
+    if (!resolved) {
+      return;
+    }
+    const ts = new Date(timeValue || Date.now());
+    const stamp = [
+      ts.getFullYear(),
+      String(ts.getMonth() + 1).padStart(2, "0"),
+      String(ts.getDate()).padStart(2, "0"),
+      "-",
+      String(ts.getHours()).padStart(2, "0"),
+      String(ts.getMinutes()).padStart(2, "0"),
+      String(ts.getSeconds()).padStart(2, "0"),
+    ].join("");
+    const extGuess = /\.([a-z0-9]+)(?:\?|#|$)/i.exec(resolved)?.[1] || "webm";
+    const link = document.createElement("a");
+    link.href = resolved;
+    link.download = `voice-note-${stamp}.${extGuess}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setOpenVoiceMenuId("");
   }, []);
 
   const shareContent = async (shareInput) => {
@@ -1017,25 +1249,124 @@ export default function Messenger({ user, onClose, onMinimize }) {
                                     );
                                   }
                                   if (file.type === "audio") {
+                                    const messageId = toIdString(m._id || m.clientId);
+                                    const audioId = `${messageId}:${index}`;
+                                    const playback = voicePlaybackById[audioId] || {};
+                                    const currentTime = Number(playback.currentTime) || 0;
+                                    const storedDuration = Number(file.durationSeconds) || 0;
+                                    const mediaDuration = Number(playback.duration) || 0;
+                                    const duration = Math.max(storedDuration, mediaDuration, 0);
+                                    const progressPct =
+                                      duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+                                    const isPlaying = Boolean(playback.isPlaying);
+                                    const menuOpen = openVoiceMenuId === audioId;
                                     return (
-                                      <div key={key} className="msg-voice-note-row">
+                                      <div key={key} className="msg-voice-card">
                                         <audio
+                                          ref={(node) => {
+                                            if (node) {
+                                              voiceAudioRefs.current.set(audioId, node);
+                                            } else {
+                                              voiceAudioRefs.current.delete(audioId);
+                                            }
+                                          }}
                                           src={resolveImage(file.url)}
-                                          controls
-                                          className="msg-attachment-audio"
+                                          preload="metadata"
+                                          onLoadedMetadata={(event) =>
+                                            handleVoiceAudioEvent(audioId, {
+                                              duration: event.currentTarget.duration || 0,
+                                            })
+                                          }
+                                          onTimeUpdate={(event) =>
+                                            handleVoiceAudioEvent(audioId, {
+                                              currentTime: event.currentTarget.currentTime || 0,
+                                              duration:
+                                                event.currentTarget.duration ||
+                                                playback.duration ||
+                                                0,
+                                            })
+                                          }
+                                          onPlay={() => {
+                                            pauseOtherVoiceNotes(audioId);
+                                            handleVoiceAudioEvent(audioId, { isPlaying: true });
+                                          }}
+                                          onPause={() =>
+                                            handleVoiceAudioEvent(audioId, { isPlaying: false })
+                                          }
+                                          onEnded={() =>
+                                            handleVoiceAudioEvent(audioId, {
+                                              isPlaying: false,
+                                              currentTime: 0,
+                                            })
+                                          }
+                                          className="msg-voice-audio-hidden"
                                         />
                                         <button
                                           type="button"
-                                          className="msg-voice-delete-btn"
-                                          onClick={() => handleDeleteVoiceNote(m._id)}
-                                          aria-label="Delete voice note"
-                                          title="Delete for me"
-                                          disabled={!m._id || m.pending}
+                                          className="msg-voice-play-btn"
+                                          onClick={() => toggleVoiceNotePlayback(audioId)}
+                                          aria-label={isPlaying ? "Pause voice note" : "Play voice note"}
+                                          title={isPlaying ? "Pause" : "Play"}
                                         >
-                                          <svg viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M9 3h6l1 2h4v2H4V5h4l1-2zm-2 6h10l-1 11a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2L7 9zm3 2v8h2v-8h-2zm4 0v8h2v-8h-2z" />
-                                          </svg>
+                                          {isPlaying ? "Pause" : "Play"}
                                         </button>
+                                        <div className="msg-voice-meta">
+                                          <div className="msg-voice-progress-track">
+                                            <span
+                                              className="msg-voice-progress-fill"
+                                              style={{ width: `${progressPct}%` }}
+                                            />
+                                          </div>
+                                          <div className="msg-voice-time">
+                                            {formatDuration(currentTime)} / {formatDuration(duration)}
+                                          </div>
+                                        </div>
+                                        <div className="msg-voice-menu-wrap" ref={menuOpen ? voiceMenuRef : null}>
+                                          <button
+                                            type="button"
+                                            className="msg-voice-menu-trigger"
+                                            aria-label="Voice note options"
+                                            aria-haspopup="menu"
+                                            aria-expanded={menuOpen}
+                                            title="More options"
+                                            onClick={() =>
+                                              setOpenVoiceMenuId((prev) =>
+                                                prev === audioId ? "" : audioId
+                                              )
+                                            }
+                                          >
+                                            …
+                                          </button>
+                                          {menuOpen && (
+                                            <div className="msg-voice-menu" role="menu">
+                                              <button
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() => {
+                                                  toggleVoiceNotePlayback(audioId);
+                                                  setOpenVoiceMenuId("");
+                                                }}
+                                              >
+                                                {isPlaying ? "Pause" : "Play"}
+                                              </button>
+                                              <button
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() => downloadVoiceNote(file.url, m.time)}
+                                              >
+                                                Download
+                                              </button>
+                                              <button
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() => handleDeleteVoiceNote(m._id)}
+                                                disabled={!m._id || m.pending}
+                                              >
+                                                Delete
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
                                     );
                                   }
@@ -1070,6 +1401,67 @@ export default function Messenger({ user, onClose, onMinimize }) {
               </div>
 
               <div className="messenger-input">
+                {(isRecording || voicePreview) && (
+                  <div className="messenger-voice-recorder">
+                    <div className="messenger-voice-status">
+                      <span className={`messenger-voice-dot ${isRecording ? "live" : ""}`} />
+                      <strong>{isRecording ? "Recording" : "Voice preview"}</strong>
+                      <span>{formatDuration(recordingSeconds)}</span>
+                    </div>
+                    <div className="messenger-voice-controls">
+                      {isRecording ? (
+                        <>
+                          <button
+                            type="button"
+                            className="messenger-action-btn active"
+                            onClick={stopVoiceNote}
+                            aria-label="Stop recording"
+                            title="Stop recording"
+                          >
+                            Stop
+                          </button>
+                          <button
+                            type="button"
+                            className="messenger-action-btn"
+                            onClick={cancelVoiceNote}
+                            aria-label="Cancel recording"
+                            title="Cancel recording"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <audio
+                            src={voicePreview?.url || ""}
+                            controls
+                            className="messenger-voice-preview-audio"
+                          />
+                          <button
+                            type="button"
+                            className="messenger-action-btn"
+                            onClick={cancelVoiceNote}
+                            aria-label="Discard voice note"
+                            title="Discard"
+                            disabled={isSendingVoice}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="messenger-action-btn active"
+                            onClick={sendVoicePreview}
+                            aria-label="Send voice note"
+                            title="Send voice note"
+                            disabled={isSendingVoice}
+                          >
+                            {isSendingVoice ? "Sending..." : "Send voice"}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="messenger-composer-actions">
                   <button
                     type="button"
@@ -1077,6 +1469,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
                     onClick={isRecording ? stopVoiceNote : startVoiceNote}
                     title="Voice message"
                     aria-label="Voice message"
+                    disabled={Boolean(voicePreview)}
                   >
                     {isRecording ? (
                       "Stop"
@@ -1099,6 +1492,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
                     onClick={openAttachmentPicker}
                     title="Attach photo or file"
                     aria-label="Attach photo or file"
+                    disabled={isRecording || isSendingVoice}
                   >
                     Photo
                   </button>
@@ -1111,6 +1505,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
                     }}
                     title="Emoji"
                     aria-label="Emoji"
+                    disabled={isRecording || isSendingVoice}
                   >
                     Emoji
                   </button>
@@ -1123,6 +1518,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
                     }}
                     title="GIF"
                     aria-label="GIF"
+                    disabled={isRecording || isSendingVoice}
                   >
                     GIF
                   </button>
@@ -1130,9 +1526,9 @@ export default function Messenger({ user, onClose, onMinimize }) {
                     type="button"
                     className="messenger-action-btn"
                     onClick={() => setShareOpen(true)}
-                    disabled={!selectedId}
                     title="Share"
                     aria-label="Share"
+                    disabled={isRecording || isSendingVoice || !selectedId}
                   >
                     Share
                   </button>
@@ -1145,6 +1541,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
                     }}
                     title="Like"
                     aria-label="Like"
+                    disabled={isRecording || isSendingVoice}
                   >
                     👍
                   </button>
@@ -1204,9 +1601,10 @@ export default function Messenger({ user, onClose, onMinimize }) {
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && send()}
                   placeholder="Aa"
+                  disabled={isRecording}
                 />
 
-                <button onClick={send} disabled={!text.trim()}>
+                <button onClick={send} disabled={!text.trim() || isRecording || Boolean(voicePreview)}>
                   Send
                 </button>
               </div>

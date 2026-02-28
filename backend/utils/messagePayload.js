@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const MESSAGE_TYPES = ["text", "contentCard"];
+const MESSAGE_TYPES = ["text", "contentCard", "voice"];
 const CONTENT_CARD_ITEM_TYPES = ["track", "book"];
 const CONTENT_CARD_PREVIEW_TYPES = ["play", "read"];
 
@@ -65,6 +65,7 @@ const normalizeMessage = (message) => {
             type: String(file?.type || "").trim(),
             name: String(file?.name || "").trim(),
             size: Number(file?.size) || 0,
+            durationSeconds: Number(file?.durationSeconds) || 0,
           }))
           .filter((file) => file.url)
       : [],
@@ -90,6 +91,7 @@ const normalizeIncomingMessagePayload = (payload = {}) => {
             .toLowerCase(),
           name: String(file?.name || "").trim(),
           size: Number(file?.size) || 0,
+          durationSeconds: Number(file?.durationSeconds) || 0,
         }))
         .filter((file) => file.url)
     : [];
@@ -131,6 +133,13 @@ const normalizeIncomingMessagePayload = (payload = {}) => {
 
   if (type === "text" && !text && attachments.length === 0) {
     return { error: "Message text is required" };
+  }
+
+  if (type === "voice") {
+    const hasAudioAttachment = attachments.some((file) => file.type === "audio");
+    if (!hasAudioAttachment) {
+      return { error: "Voice message requires an audio attachment" };
+    }
   }
 
   return {

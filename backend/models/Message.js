@@ -44,7 +44,7 @@ const MessageSchema = new mongoose.Schema(
 
     type: {
       type: String,
-      enum: ["text", "contentCard"],
+      enum: ["text", "contentCard", "voice"],
       default: "text",
       index: true
     },
@@ -105,7 +105,8 @@ const MessageSchema = new mongoose.Schema(
           enum: ["image", "video", "file", "audio"]
         },
         name: String,
-        size: Number
+        size: Number,
+        durationSeconds: Number
       }
     ],
 

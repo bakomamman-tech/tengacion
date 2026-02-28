@@ -36,7 +36,10 @@ export function connectSocket({ token, userId }) {
 
   socket = io(getSocketUrl(), {
     path: "/socket.io",
-    transports: ["websocket", "polling"],
+    // Polling-first is more reliable on Render cold starts and proxies.
+    transports: ["polling", "websocket"],
+    upgrade: true,
+    rememberUpgrade: false,
     withCredentials: true,
     autoConnect: false,
     reconnection: true,

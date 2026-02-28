@@ -97,21 +97,30 @@ export default function CreatorPage() {
               <h1 className="text-3xl font-bold text-white">{creator.displayName}</h1>
               <p className="mt-1 max-w-2xl text-sm text-slate-100">{creator.bio || "Creator profile"}</p>
             </div>
-            {primaryBuyTarget ? (
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
-                onClick={() =>
-                  navigate(
-                    primaryBuyTarget.type === "track"
-                      ? `/tracks/${primaryBuyTarget.id}`
-                      : `/books/${primaryBuyTarget.id}`
-                  )
-                }
+                className="rounded-xl border border-white/60 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/20"
+                onClick={() => navigate(`/creators/${creatorId}/songs`)}
               >
-                Support / Buy
+                Uploaded Songs
               </button>
-            ) : null}
+              {primaryBuyTarget ? (
+                <button
+                  type="button"
+                  className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+                  onClick={() =>
+                    navigate(
+                      primaryBuyTarget.type === "track"
+                        ? `/tracks/${primaryBuyTarget.id}`
+                        : `/books/${primaryBuyTarget.id}`
+                    )
+                  }
+                >
+                  Support / Buy
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
 

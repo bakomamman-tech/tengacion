@@ -25,8 +25,18 @@ app.use(
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
+        // Required for LiveKit Cloud: region discovery fetch (/settings/regions)
+        // and RTC signaling over WebSocket (/rtc/v1).
+        connectSrc: [
+          "'self'",
+          "https://*.livekit.cloud",
+          "wss://*.livekit.cloud",
+          "https://tengacioncom-8unikgcj.livekit.cloud",
+          "wss://tengacioncom-8unikgcj.livekit.cloud",
+        ],
         imgSrc: ["'self'", "data:", "blob:", "https://ui-avatars.com"],
-        mediaSrc: ["'self'", "data:", "blob:"],
+        mediaSrc: ["'self'", "blob:"],
+        workerSrc: ["'self'", "blob:"],
       },
     },
   })

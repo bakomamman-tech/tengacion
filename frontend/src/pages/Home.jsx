@@ -640,6 +640,8 @@ export default function Home({ user }) {
   const [loading, setLoading] = useState(true);
   const [liveSessions, setLiveSessions] = useState([]);
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatMinimized, setChatMinimized] = useState(false);
+  const [chatDockMeta, setChatDockMeta] = useState(null);
   const [composerOpen, setComposerOpen] = useState(false);
 
   useEffect(() => {
@@ -684,6 +686,7 @@ export default function Home({ user }) {
     }
 
     setChatOpen(true);
+    setChatMinimized(false);
     navigate(location.pathname, { replace: true, state: {} });
   }, [location.pathname, location.state, navigate]);
 
@@ -749,14 +752,20 @@ export default function Home({ user }) {
       <Navbar
         user={currentUser}
         onLogout={logout}
-        onOpenMessenger={() => setChatOpen(true)}
+        onOpenMessenger={() => {
+          setChatOpen(true);
+          setChatMinimized(false);
+        }}
       />
 
       <div className="app-shell">
         <aside className="sidebar">
           <Sidebar
             user={currentUser}
-            openChat={() => setChatOpen(true)}
+            openChat={() => {
+              setChatOpen(true);
+              setChatMinimized(false);
+            }}
             openProfile={() => navigate(`/profile/${currentUser?.username}`)}
           />
         </aside>
@@ -849,8 +858,36 @@ export default function Home({ user }) {
           <FriendRequests />
           {chatOpen && (
             <section className="messenger-panel">
-              <Messenger user={currentUser} onClose={() => setChatOpen(false)} />
+              <Messenger
+                user={currentUser}
+                onClose={() => {
+                  setChatOpen(false);
+                  setChatMinimized(false);
+                }}
+                onMinimize={(meta) => {
+                  setChatDockMeta(meta || null);
+                  setChatOpen(false);
+                  setChatMinimized(true);
+                }}
+              />
             </section>
+          )}
+          {!chatOpen && chatMinimized && (
+            <button
+              type="button"
+              className="messenger-dock"
+              onClick={() => {
+                setChatOpen(true);
+                setChatMinimized(false);
+              }}
+              title="Restore chat"
+            >
+              <img
+                src={resolveImage(chatDockMeta?.avatar) || resolveImage(currentUser?.avatar) || "/avatar.png"}
+                alt=""
+              />
+              <span>{chatDockMeta?.name || "Messenger"}</span>
+            </button>
           )}
         </aside>
       </div>

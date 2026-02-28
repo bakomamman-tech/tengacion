@@ -58,6 +58,16 @@ const normalizeMessage = (message) => {
             coverImageUrl: message.metadata.coverImageUrl || "",
           }
         : null,
+    attachments: Array.isArray(message.attachments)
+      ? message.attachments
+          .map((file) => ({
+            url: String(file?.url || "").trim(),
+            type: String(file?.type || "").trim(),
+            name: String(file?.name || "").trim(),
+            size: Number(file?.size) || 0,
+          }))
+          .filter((file) => file.url)
+      : [],
     time:
       message.time ||
       (message.createdAt ? new Date(message.createdAt).getTime() : Date.now()),
@@ -71,6 +81,18 @@ const normalizeIncomingMessagePayload = (payload = {}) => {
   const text = String(payload.text || "").trim();
   const clientId = String(payload.clientId || "").trim();
   const type = MESSAGE_TYPES.includes(payload.type) ? payload.type : "text";
+  const attachments = Array.isArray(payload.attachments)
+    ? payload.attachments
+        .map((file) => ({
+          url: String(file?.url || "").trim(),
+          type: String(file?.type || "")
+            .trim()
+            .toLowerCase(),
+          name: String(file?.name || "").trim(),
+          size: Number(file?.size) || 0,
+        }))
+        .filter((file) => file.url)
+    : [];
 
   let metadata = null;
   if (type === "contentCard") {
@@ -107,7 +129,7 @@ const normalizeIncomingMessagePayload = (payload = {}) => {
     };
   }
 
-  if (type === "text" && !text) {
+  if (type === "text" && !text && attachments.length === 0) {
     return { error: "Message text is required" };
   }
 
@@ -116,6 +138,7 @@ const normalizeIncomingMessagePayload = (payload = {}) => {
     clientId,
     type,
     metadata,
+    attachments,
   };
 };
 

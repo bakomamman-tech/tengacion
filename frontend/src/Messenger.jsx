@@ -1,15 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getChatContacts,
   getConversationMessages,
   resolveImage,
   sendChatMessage,
+  shareMessageToFollowers,
+  uploadChatAttachment,
 } from "./api";
 import { connectSocket, disconnectSocket } from "./socket";
 import ContentCardMessage from "./components/ContentCardMessage";
 import ShareContentModal from "./components/ShareContentModal";
 
 const MOBILE_SHEET_QUERY = "(max-width: 640px)";
+const QUICK_REACTIONS = ["ðŸ‘", "â¤ï¸", "ðŸ˜‚", "ðŸ˜®", "ðŸ˜¢", "ðŸ”¥"];
 
 const toIdString = (value) => {
   if (!value) {return "";}
@@ -107,6 +110,16 @@ const normalizeMessage = (message) => ({
         coverImageUrl: resolveImage(message.metadata.coverImageUrl || ""),
       }
     : null,
+  attachments: Array.isArray(message?.attachments)
+    ? message.attachments
+        .map((file) => ({
+          url: resolveImage(file?.url || ""),
+          type: file?.type || "file",
+          name: file?.name || "",
+          size: Number(file?.size) || 0,
+        }))
+        .filter((file) => file.url)
+    : [],
   time:
     message?.time ||
     (message?.createdAt ? new Date(message.createdAt).getTime() : Date.now()),
@@ -119,6 +132,9 @@ const getMessagePreviewText = (message) => {
   if (message?.type === "contentCard") {
     return `shared: ${message?.metadata?.title || message?.metadata?.itemType || "content"}`;
   }
+  if (Array.isArray(message?.attachments) && message.attachments.length > 0) {
+    return message.attachments[0]?.type === "audio" ? "voice note" : "attachment";
+  }
   return message?.text || "";
 };
 
@@ -128,7 +144,7 @@ const isForConversation = (message, meId, otherId) => {
   return (a === meId && b === otherId) || (a === otherId && b === meId);
 };
 
-export default function Messenger({ user, onClose }) {
+export default function Messenger({ user, onClose, onMinimize }) {
   const meId = useMemo(() => toIdString(user?._id || user?.id), [user]);
   const token = localStorage.getItem("token");
 
@@ -141,6 +157,18 @@ export default function Messenger({ user, onClose }) {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showReactions, setShowReactions] = useState(false);
+  const [gifOpen, setGifOpen] = useState(false);
+  const [gifQuery, setGifQuery] = useState("");
+  const [gifResults, setGifResults] = useState([]);
+  const [gifError, setGifError] = useState("");
+  const [headerNotice, setHeaderNotice] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const recorderRef = useRef(null);
+  const recorderChunksRef = useRef([]);
+  const recordMimeRef = useRef("audio/webm");
+  const mediaInputRef = useRef(null);
 
   const [isMobileSheet, setIsMobileSheet] = useState(() => {
     if (typeof window === "undefined") {return false;}
@@ -300,6 +328,65 @@ export default function Messenger({ user, onClose }) {
     () => contacts.find((c) => c._id === selectedId) || null,
     [contacts, selectedId]
   );
+
+  useEffect(() => {
+    if (!headerNotice) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setHeaderNotice(""), 2400);
+    return () => window.clearTimeout(timer);
+  }, [headerNotice]);
+
+  useEffect(() => {
+    if (!gifOpen) {
+      return undefined;
+    }
+
+    const key = import.meta.env.VITE_GIPHY_API_KEY;
+    if (!key) {
+      setGifError("GIF search requires VITE_GIPHY_API_KEY");
+      setGifResults([]);
+      return undefined;
+    }
+
+    let alive = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        setGifError("");
+        const query = gifQuery.trim() || "reaction";
+        const endpoint =
+          `https://api.giphy.com/v1/gifs/search?api_key=${encodeURIComponent(key)}` +
+          `&q=${encodeURIComponent(query)}&limit=24&rating=pg`;
+        const response = await fetch(endpoint);
+        const payload = await response.json();
+        if (!alive) {
+          return;
+        }
+        const list = Array.isArray(payload?.data) ? payload.data : [];
+        setGifResults(
+          list
+            .map((entry) => ({
+              id: entry.id,
+              title: entry.title || "GIF",
+              url:
+                entry?.images?.fixed_height?.url ||
+                entry?.images?.original?.url ||
+                "",
+            }))
+            .filter((entry) => entry.url)
+        );
+      } catch {
+        if (alive) {
+          setGifError("Failed to load GIFs");
+        }
+      }
+    }, 260);
+
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
+  }, [gifOpen, gifQuery]);
 
   const getAvatar = useCallback(
     (entity) => resolveImage(entity?.avatar) || fallbackAvatar(entity?.name),
@@ -488,8 +575,9 @@ export default function Messenger({ user, onClose }) {
     []
   );
 
-  const sendPayload = useCallback(async (payloadInput) => {
-    if (!selectedId || !meId) {return;}
+  const sendPayload = useCallback(async (payloadInput, options = {}) => {
+    const targetId = toIdString(options.receiverId || selectedId);
+    if (!targetId || !meId) {return false;}
     const now = Date.now();
     const clientId = `c_${now}_${Math.random().toString(36).slice(2, 8)}`;
     const payload =
@@ -502,53 +590,66 @@ export default function Messenger({ user, onClose }) {
       normalizedType === "contentCard"
         ? `shared: ${payload?.metadata?.title || payload?.metadata?.itemType || "content"}`
         : String(payload.text || "").trim();
+    const hasAttachments = Array.isArray(payload.attachments) && payload.attachments.length > 0;
 
-    if (!previewText) {
-      return;
+    if (!previewText && !hasAttachments) {
+      return false;
     }
 
     const optimistic = normalizeMessage({
       _id: clientId,
       senderId: meId,
-      receiverId: selectedId,
+      receiverId: targetId,
       senderName: user?.name || "",
       text: normalizedType === "text" ? previewText : "",
       type: normalizedType,
       metadata: normalizedType === "contentCard" ? payload.metadata : null,
+      attachments: hasAttachments ? payload.attachments : [],
       time: now,
       clientId,
       pending: true,
     });
 
-    setMessages((prev) => [...prev, optimistic]);
-    moveContactToTop(selectedId, getMessagePreviewText(optimistic), now);
+    const shouldRenderOptimistic = targetId === selectedIdRef.current;
+    if (shouldRenderOptimistic) {
+      setMessages((prev) => [...prev, optimistic]);
+    }
+    moveContactToTop(targetId, getMessagePreviewText(optimistic), now);
     setError("");
 
     try {
-      const persisted = await sendViaSocket(selectedId, payload);
-      replaceMessageByClientId(clientId, {
-        ...persisted,
-        pending: false,
-        failed: false,
-      });
-      return;
+      const persisted = await sendViaSocket(targetId, payload);
+      if (shouldRenderOptimistic) {
+        replaceMessageByClientId(clientId, {
+          ...persisted,
+          pending: false,
+          failed: false,
+        });
+      }
+      return true;
     } catch {
       // REST fallback remains.
     }
 
     try {
-      const persisted = await sendChatMessage(selectedId, payload);
-      replaceMessageByClientId(clientId, {
-        ...normalizeMessage(persisted),
-        pending: false,
-        failed: false,
-      });
+      const persisted = await sendChatMessage(targetId, payload);
+      if (shouldRenderOptimistic) {
+        replaceMessageByClientId(clientId, {
+          ...normalizeMessage(persisted),
+          pending: false,
+          failed: false,
+        });
+      }
+      return true;
     } catch (err) {
-      replaceMessageByClientId(clientId, {
-        pending: false,
-        failed: true,
-      });
+      if (shouldRenderOptimistic) {
+        replaceMessageByClientId(clientId, {
+          pending: false,
+          failed: true,
+        });
+      }
       setError(err.message || "Failed to send message");
+      return false;
     }
   }, [meId, moveContactToTop, replaceMessageByClientId, selectedId, sendViaSocket, user?.name]);
 
@@ -559,9 +660,135 @@ export default function Messenger({ user, onClose }) {
     await sendPayload({ text: value, type: "text" });
   };
 
-  const shareContent = async (payload) => {
-    await sendPayload(payload);
+  const uploadAndSendAttachment = useCallback(
+    async (file) => {
+      if (!file) {
+        return;
+      }
+      try {
+        const uploaded = await uploadChatAttachment(file);
+        await sendPayload({
+          type: "text",
+          text: "",
+          attachments: [
+            {
+              url: uploaded?.url || "",
+              type: uploaded?.type || "file",
+              name: uploaded?.name || file.name || "attachment",
+              size: Number(uploaded?.size) || file.size || 0,
+            },
+          ],
+        });
+      } catch (err) {
+        setError(err?.message || "Attachment upload failed");
+      }
+    },
+    [sendPayload]
+  );
+
+  const startVoiceNote = async () => {
+    if (isRecording) {
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setError("Voice notes are not supported in this browser");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : "audio/mp4";
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recorderChunksRef.current = [];
+      recordMimeRef.current = mimeType;
+      recorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recorderChunksRef.current.push(event.data);
+        }
+      };
+      recorder.onstop = async () => {
+        const blob = new Blob(recorderChunksRef.current, { type: recordMimeRef.current });
+        stream.getTracks().forEach((track) => track.stop());
+        setIsRecording(false);
+        if (!blob.size) {
+          return;
+        }
+        const extension = recordMimeRef.current.includes("mp4") ? "m4a" : "webm";
+        const file = new File([blob], `voice-note-${Date.now()}.${extension}`, {
+          type: recordMimeRef.current,
+        });
+        await uploadAndSendAttachment(file);
+      };
+      recorder.start();
+      setIsRecording(true);
+    } catch {
+      setError("Microphone access is unavailable");
+    }
+  };
+
+  const stopVoiceNote = () => {
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      recorderRef.current.stop();
+    }
+  };
+
+  const sendQuickReaction = async (emoji) => {
+    if (!emoji) {
+      return;
+    }
+    await sendPayload({ text: emoji, type: "text" });
+    setShowReactions(false);
+  };
+
+  const sendGif = async (gifUrl) => {
+    if (!gifUrl) {
+      return;
+    }
+    await sendPayload({
+      type: "text",
+      text: "",
+      attachments: [{ url: gifUrl, type: "image", name: "gif", size: 0 }],
+    });
+    setGifOpen(false);
+  };
+
+  const shareContent = async (shareInput) => {
+    if (shareInput?.mode === "friends") {
+      const recipients = Array.isArray(shareInput.recipientIds)
+        ? shareInput.recipientIds
+        : [];
+      for (const recipientId of recipients) {
+        // sequential send to preserve ordering and prevent socket flood
+        // eslint-disable-next-line no-await-in-loop
+        await sendPayload(shareInput.payload, { receiverId: recipientId });
+      }
+      setShareOpen(false);
+      return;
+    }
+
+    await sendPayload(shareInput?.payload || shareInput);
     setShareOpen(false);
+  };
+
+  const shareToFollowers = async (payload) => {
+    const result = await shareMessageToFollowers(payload);
+    return result;
+  };
+
+  const openAttachmentPicker = () => {
+    mediaInputRef.current?.click();
+  };
+
+  const onAttachmentChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+    await uploadAndSendAttachment(file);
   };
 
   const sheetStyle =
@@ -592,10 +819,56 @@ export default function Messenger({ user, onClose }) {
           <div className="mh-left">
             <strong>Messenger</strong>
           </div>
-          <button className="mh-close" onClick={onClose} aria-label="Close chat">
-            ×
-          </button>
+          <div className="mh-actions">
+            <button
+              type="button"
+              className="mh-action-btn"
+              title="Voice call"
+              aria-label="Voice call"
+              onClick={() => setHeaderNotice("Voice calling coming soon")}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 4h4l1.8 4.2-2.2 1.9a11 11 0 0 0 4.6 4.6l1.9-2.2L20 14v4a2 2 0 0 1-2 2C10.8 20 4 13.2 4 6a2 2 0 0 1 2-2z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="mh-action-btn"
+              title="Video call"
+              aria-label="Video call"
+              onClick={() => setHeaderNotice("Video calling coming soon")}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h8A2.5 2.5 0 0 1 16 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 3 16.5z" />
+                <path d="M16 10.5l5-2.5v8l-5-2.5z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="mh-action-btn"
+              title="Minimize"
+              aria-label="Minimize chat"
+              onClick={() =>
+                onMinimize?.({
+                  name: selectedContact?.name || selectedContact?.username || "Messenger",
+                  avatar: getAvatar(selectedContact || user),
+                })
+              }
+            >
+              —
+            </button>
+            <button
+              className="mh-close"
+              onClick={onClose}
+              aria-label="Close chat"
+              title="Close"
+              type="button"
+            >
+              ×
+            </button>
+          </div>
         </div>
+        {headerNotice && <div className="messenger-header-notice">{headerNotice}</div>}
       </div>
 
       <div className="messenger-body">
@@ -679,7 +952,54 @@ export default function Messenger({ user, onClose }) {
                           {m.type === "contentCard" ? (
                             <ContentCardMessage metadata={m.metadata} />
                           ) : (
-                            <div className="msg-text">{m.text}</div>
+                            <>
+                              {m.text ? <div className="msg-text">{m.text}</div> : null}
+                              {Array.isArray(m.attachments) &&
+                                m.attachments.map((file, index) => {
+                                  const key = `${m._id || m.clientId}-att-${index}`;
+                                  if (file.type === "image") {
+                                    return (
+                                      <img
+                                        key={key}
+                                        src={resolveImage(file.url)}
+                                        alt={file.name || "attachment"}
+                                        className="msg-attachment-image"
+                                      />
+                                    );
+                                  }
+                                  if (file.type === "video") {
+                                    return (
+                                      <video
+                                        key={key}
+                                        src={resolveImage(file.url)}
+                                        controls
+                                        className="msg-attachment-video"
+                                      />
+                                    );
+                                  }
+                                  if (file.type === "audio") {
+                                    return (
+                                      <audio
+                                        key={key}
+                                        src={resolveImage(file.url)}
+                                        controls
+                                        className="msg-attachment-audio"
+                                      />
+                                    );
+                                  }
+                                  return (
+                                    <a
+                                      key={key}
+                                      href={resolveImage(file.url)}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="msg-attachment-file"
+                                    >
+                                      {file.name || "Attachment"}
+                                    </a>
+                                  );
+                                })}
+                            </>
                           )}
                           <div className="msg-time">
                             {new Date(m.time).toLocaleTimeString([], {
@@ -698,16 +1018,128 @@ export default function Messenger({ user, onClose }) {
               </div>
 
               <div className="messenger-input">
+                <div className="messenger-composer-actions">
+                  <button
+                    type="button"
+                    className={`messenger-action-btn ${isRecording ? "active" : ""}`}
+                    onClick={isRecording ? stopVoiceNote : startVoiceNote}
+                    title={isRecording ? "Stop recording" : "Voice note"}
+                    aria-label={isRecording ? "Stop recording" : "Voice note"}
+                  >
+                    {isRecording ? "Stop" : "Mic"}
+                  </button>
+                  <button
+                    type="button"
+                    className="messenger-action-btn"
+                    onClick={openAttachmentPicker}
+                    title="Attach photo or file"
+                    aria-label="Attach photo or file"
+                  >
+                    Photo
+                  </button>
+                  <button
+                    type="button"
+                    className="messenger-action-btn"
+                    onClick={() => {
+                      setShowEmojiPicker((prev) => !prev);
+                      setGifOpen(false);
+                    }}
+                    title="Emoji"
+                    aria-label="Emoji"
+                  >
+                    Emoji
+                  </button>
+                  <button
+                    type="button"
+                    className="messenger-action-btn"
+                    onClick={() => {
+                      setGifOpen((prev) => !prev);
+                      setShowEmojiPicker(false);
+                    }}
+                    title="GIF"
+                    aria-label="GIF"
+                  >
+                    GIF
+                  </button>
+                  <button
+                    type="button"
+                    className="messenger-action-btn"
+                    onClick={() => setShareOpen(true)}
+                    disabled={!selectedId}
+                    title="Share"
+                    aria-label="Share"
+                  >
+                    Share
+                  </button>
+                  <button
+                    type="button"
+                    className="messenger-action-btn"
+                    onClick={() => {
+                      sendQuickReaction("👍");
+                      setShowReactions((prev) => !prev);
+                    }}
+                    title="Like"
+                    aria-label="Like"
+                  >
+                    👍
+                  </button>
+                </div>
+                {showReactions && (
+                  <div className="messenger-reactions-row">
+                    {QUICK_REACTIONS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        className="messenger-reaction-chip"
+                        onClick={() => sendQuickReaction(emoji)}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {showEmojiPicker && (
+                  <div className="messenger-emoji-popover">
+                    {["😀", "😂", "❤️", "🔥", "🎉", "😮", "😢", "👏"].map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => sendQuickReaction(emoji)}
+                        className="messenger-emoji-btn"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {gifOpen && (
+                  <div className="messenger-gif-modal">
+                    <input
+                      value={gifQuery}
+                      onChange={(event) => setGifQuery(event.target.value)}
+                      placeholder="Search GIFs"
+                    />
+                    {gifError ? <p>{gifError}</p> : null}
+                    <div className="messenger-gif-grid">
+                      {gifResults.map((gif) => (
+                        <button
+                          type="button"
+                          key={gif.id}
+                          className="messenger-gif-item"
+                          onClick={() => sendGif(gif.url)}
+                        >
+                          <img src={gif.url} alt={gif.title} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <input
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && send()}
-                  placeholder="Type a message..."
+                  placeholder="Aa"
                 />
-
-                <button type="button" onClick={() => setShareOpen(true)} disabled={!selectedId}>
-                  Share
-                </button>
 
                 <button onClick={send} disabled={!text.trim()}>
                   Send
@@ -720,11 +1152,23 @@ export default function Messenger({ user, onClose }) {
 
       {error && <div className="messenger-error">{error}</div>}
 
+      <input
+        ref={mediaInputRef}
+        type="file"
+        hidden
+        accept="image/*,video/*,audio/*"
+        onChange={onAttachmentChange}
+      />
+
       <ShareContentModal
         open={shareOpen}
         onClose={() => setShareOpen(false)}
         onSubmit={shareContent}
+        contacts={contacts}
+        onShareFollowers={shareToFollowers}
       />
     </div>
   );
 }
+
+

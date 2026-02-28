@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const Message = require("../models/Message");
 const User = require("../models/User");
+const upload = require("../utils/upload");
 const auth = require("../middleware/auth");
 const { persistChatMessage } = require("../services/chatService");
 const { createNotification } = require("../services/notificationService");
@@ -13,6 +14,104 @@ const {
 } = require("../utils/messagePayload");
 
 const router = express.Router();
+
+const toAttachmentType = (mimetype = "") => {
+  const type = String(mimetype).toLowerCase();
+  if (type.startsWith("image/")) return "image";
+  if (type.startsWith("video/")) return "video";
+  if (type.startsWith("audio/")) return "audio";
+  return "file";
+};
+
+router.post("/upload", auth, upload.single("file"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+
+  return res.json({
+    url: `/uploads/${req.file.filename}`,
+    type: toAttachmentType(req.file.mimetype),
+    name: req.file.originalname || req.file.filename,
+    size: Number(req.file.size) || 0,
+  });
+});
+
+router.post("/share/followers", auth, async (req, res) => {
+  try {
+    const senderId = req.user.id;
+    const me = await User.findById(senderId).select("followers");
+    if (!me) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const followerIds = (me.followers || [])
+      .map((id) => toIdString(id))
+      .filter((id) => id && id !== toIdString(senderId));
+
+    if (followerIds.length === 0) {
+      return res.json({ success: true, sent: 0 });
+    }
+
+    const payload = {
+      text: req.body?.text,
+      type: req.body?.type,
+      metadata: req.body?.metadata,
+      attachments: req.body?.attachments,
+      clientId: "",
+    };
+
+    let sent = 0;
+    for (const followerId of followerIds) {
+      try {
+        const result = await persistChatMessage({
+          senderId,
+          receiverId: followerId,
+          payload: {
+            ...payload,
+            clientId: `follower_share_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          },
+        });
+
+        const io = req.app.get("io");
+        if (io) {
+          io.to(toIdString(senderId)).to(toIdString(followerId)).emit("newMessage", result.message);
+        }
+
+        if (!result.existed) {
+          const previewText =
+            result.message.type === "contentCard"
+              ? `shared: ${result.message.metadata?.title || result.message.metadata?.itemType || "content"}`
+              : String(result.message.text || "").slice(0, 120);
+
+          await createNotification({
+            recipient: followerId,
+            sender: senderId,
+            type: "message",
+            text: "shared something with you",
+            entity: {
+              id: result.message._id,
+              model: "Message",
+            },
+            metadata: {
+              previewText,
+              link: "/home",
+            },
+            io: req.app.get("io"),
+            onlineUsers: req.app.get("onlineUsers"),
+          });
+        }
+        sent += 1;
+      } catch {
+        // Skip failed recipients and continue.
+      }
+    }
+
+    return res.json({ success: true, sent });
+  } catch (err) {
+    console.error("Share to followers error:", err);
+    return res.status(500).json({ error: "Failed to share to followers" });
+  }
+});
 
 /*
   Chat contacts for logged-in user (friends + latest message)
@@ -158,6 +257,7 @@ router.post("/:otherUserId", auth, async (req, res) => {
           text: req.body?.text,
           type: req.body?.type,
           metadata: req.body?.metadata,
+          attachments: req.body?.attachments,
           clientId: req.body?.clientId,
         },
       });

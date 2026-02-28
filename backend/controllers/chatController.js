@@ -20,6 +20,7 @@ exports.sendChatMessage = asyncHandler(async (req, res) => {
         text: req.body?.text,
         type: req.body?.type,
         metadata: req.body?.metadata,
+        attachments: req.body?.attachments,
         clientId: req.body?.clientId,
       },
     });

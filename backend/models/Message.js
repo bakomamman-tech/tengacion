@@ -134,7 +134,9 @@ MessageSchema.index({ senderId: 1, receiverId: 1 });
 MessageSchema.pre("validate", function () {
   if (this.type === "text") {
     const clean = String(this.text || "").trim();
-    if (!clean) {
+    const hasAttachments =
+      Array.isArray(this.attachments) && this.attachments.length > 0;
+    if (!clean && !hasAttachments) {
       throw new Error("Text message cannot be empty");
     }
     this.text = clean;

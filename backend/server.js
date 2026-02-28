@@ -164,6 +164,7 @@ if (process.env.NODE_ENV !== "test") {
             text: payload.text,
             type: payload.type,
             metadata: payload.metadata,
+            attachments: payload.attachments,
             clientId: payload.clientId,
           },
         });

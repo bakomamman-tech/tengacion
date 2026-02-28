@@ -746,6 +746,28 @@ export const sendChatMessage = (otherUserId, input, clientId) => {
   });
 };
 
+export const uploadChatAttachment = (file) => {
+  const form = new FormData();
+  form.append("file", file);
+
+  return request(`${API_BASE}/messages/upload`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: form,
+    timeoutMs: 180000,
+  });
+};
+
+export const shareMessageToFollowers = (payload) =>
+  request(`${API_BASE}/messages/share/followers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
 export const sendChatMessageDirect = (payload) =>
   request(`${API_BASE}/chat/messages`, {
     method: "POST",

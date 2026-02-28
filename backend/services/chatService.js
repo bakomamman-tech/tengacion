@@ -85,6 +85,7 @@ const persistChatMessage = async ({ senderId, receiverId, payload }) => {
       parsed.type === "contentCard"
         ? await ensureContentCardMetadata(parsed.metadata)
         : undefined,
+    attachments: parsed.attachments || [],
     time: Date.now(),
     clientId: parsed.clientId || undefined,
   });

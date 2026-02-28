@@ -111,6 +111,7 @@ exports.getCreatorTracks = asyncHandler(async (req, res) => {
       description: track.description || "",
       price: Number(track.price) || 0,
       previewUrl: track.previewUrl || "",
+      coverImageUrl: track.coverImageUrl || "",
       durationSec: Number(track.durationSec) || 0,
       createdAt: track.createdAt,
     }))

@@ -12,6 +12,7 @@ import ProfileEditor from "./ProfileEditor";
 import CreatorDashboardMVP from "./pages/CreatorDashboardMVP";
 import Notifications from "./pages/Notifications";
 import CreatorPage from "./pages/CreatorPage";
+import CreatorSongs from "./pages/CreatorSongs";
 import ArtistProfileRoute from "@web/features/creator/ArtistPage";
 import TrackDetail from "./pages/TrackDetail";
 import BookDetail from "./pages/BookDetail";
@@ -41,6 +42,7 @@ export default function App() {
       <Route path="/" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/creators/:creatorId" element={<CreatorPage />} />
+      <Route path="/creators/:creatorId/songs" element={<CreatorSongs />} />
       <Route path="/tracks/:trackId" element={<TrackDetail />} />
       <Route path="/books/:bookId" element={<BookDetail />} />
       <Route

@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  deleteMessageForMe,
   getChatContacts,
   getConversationMessages,
   resolveImage,
@@ -525,10 +526,20 @@ export default function Messenger({ user, onClose, onMinimize }) {
 
     socket.on("onlineUsers", handleOnlineUsers);
     socket.on("newMessage", handleIncomingMessage);
+    socket.on("message:deleted_for_me", ({ messageId }) => {
+      const targetId = toIdString(messageId);
+      if (!targetId) {
+        return;
+      }
+      setMessages((prev) =>
+        prev.filter((message) => toIdString(message?._id) !== targetId)
+      );
+    });
 
     return () => {
       socket.off("onlineUsers", handleOnlineUsers);
       socket.off("newMessage", handleIncomingMessage);
+      socket.off("message:deleted_for_me");
       disconnectSocket();
       socketRef.current = null;
     };
@@ -755,6 +766,34 @@ export default function Messenger({ user, onClose, onMinimize }) {
     setGifOpen(false);
   };
 
+  const handleDeleteVoiceNote = useCallback(async (messageId) => {
+    if (!messageId) {
+      return;
+    }
+    const confirmed = window.confirm(
+      "Delete this voice note for you? The other person will still see it."
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    const targetId = toIdString(messageId);
+    setMessages((prev) => prev.filter((message) => toIdString(message?._id) !== targetId));
+
+    try {
+      await deleteMessageForMe(targetId);
+    } catch (err) {
+      setError(err?.message || "Failed to delete voice note");
+      try {
+        const data = await getConversationMessages(selectedIdRef.current);
+        const next = Array.isArray(data) ? data.map(normalizeMessage) : [];
+        setMessages(next);
+      } catch {
+        // Keep current view if reload fails.
+      }
+    }
+  }, []);
+
   const shareContent = async (shareInput) => {
     if (shareInput?.mode === "friends") {
       const recipients = Array.isArray(shareInput.recipientIds)
@@ -979,12 +1018,25 @@ export default function Messenger({ user, onClose, onMinimize }) {
                                   }
                                   if (file.type === "audio") {
                                     return (
-                                      <audio
-                                        key={key}
-                                        src={resolveImage(file.url)}
-                                        controls
-                                        className="msg-attachment-audio"
-                                      />
+                                      <div key={key} className="msg-voice-note-row">
+                                        <audio
+                                          src={resolveImage(file.url)}
+                                          controls
+                                          className="msg-attachment-audio"
+                                        />
+                                        <button
+                                          type="button"
+                                          className="msg-voice-delete-btn"
+                                          onClick={() => handleDeleteVoiceNote(m._id)}
+                                          aria-label="Delete voice note"
+                                          title="Delete for me"
+                                          disabled={!m._id || m.pending}
+                                        >
+                                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M9 3h6l1 2h4v2H4V5h4l1-2zm-2 6h10l-1 11a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2L7 9zm3 2v8h2v-8h-2zm4 0v8h2v-8h-2z" />
+                                          </svg>
+                                        </button>
+                                      </div>
                                     );
                                   }
                                   return (
@@ -1023,10 +1075,23 @@ export default function Messenger({ user, onClose, onMinimize }) {
                     type="button"
                     className={`messenger-action-btn ${isRecording ? "active" : ""}`}
                     onClick={isRecording ? stopVoiceNote : startVoiceNote}
-                    title={isRecording ? "Stop recording" : "Voice note"}
-                    aria-label={isRecording ? "Stop recording" : "Voice note"}
+                    title="Voice message"
+                    aria-label="Voice message"
                   >
-                    {isRecording ? "Stop" : "Mic"}
+                    {isRecording ? (
+                      "Stop"
+                    ) : (
+                      <svg
+                        className="messenger-mic-icon"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path d="M12 3.5a3.5 3.5 0 0 0-3.5 3.5v5a3.5 3.5 0 0 0 7 0V7A3.5 3.5 0 0 0 12 3.5Z" />
+                        <path d="M6.5 11.5a5.5 5.5 0 1 0 11 0" />
+                        <path d="M12 17v3.5" />
+                        <path d="M9 20.5h6" />
+                      </svg>
+                    )}
                   </button>
                   <button
                     type="button"

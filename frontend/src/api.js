@@ -778,6 +778,12 @@ export const sendChatMessageDirect = (payload) =>
     body: JSON.stringify(payload || {}),
   });
 
+export const deleteMessageForMe = (messageId) =>
+  request(`${API_BASE}/messages/${encodeURIComponent(messageId || "")}/delete-for-me`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+  });
+
 // ======================================================
 // 🟢 UTIL
 // ======================================================

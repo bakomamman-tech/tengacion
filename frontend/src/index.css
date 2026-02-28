@@ -3959,6 +3959,39 @@ html.dark-mode .nav-notification-btn:hover {
   width: min(240px, 100%);
 }
 
+.msg-voice-note-row {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.msg-voice-note-row .msg-attachment-audio {
+  margin-top: 0;
+}
+
+.msg-voice-delete-btn {
+  width: 30px;
+  height: 30px;
+  min-width: 30px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--border) !important;
+  background: color-mix(in srgb, var(--surface-soft) 94%, transparent) !important;
+  color: inherit !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.msg-voice-delete-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
 .msg-attachment-file {
   margin-top: 6px;
   display: inline-flex;
@@ -3996,6 +4029,17 @@ html.dark-mode .nav-notification-btn:hover {
   color: var(--text) !important;
   font-size: 12px;
   font-weight: 700 !important;
+}
+
+.messenger-mic-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .messenger-action-btn.active {

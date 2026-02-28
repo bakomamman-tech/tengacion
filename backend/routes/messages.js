@@ -153,6 +153,7 @@ router.get("/contacts", auth, async (req, res) => {
             { senderId: meObjectId, receiverId: { $in: friendObjectIds } },
             { receiverId: meObjectId, senderId: { $in: friendObjectIds } },
           ],
+          deletedFor: { $ne: meObjectId },
         },
       },
       { $sort: { createdAt: -1 } },
@@ -223,7 +224,11 @@ router.get("/:otherUserId", auth, async (req, res) => {
     }
 
     const conversationId = buildConversationId(me, other);
-    const messages = await Message.find({ conversationId })
+    const meObjectId = new mongoose.Types.ObjectId(me);
+    const messages = await Message.find({
+      conversationId,
+      deletedFor: { $ne: meObjectId },
+    })
       .sort({ createdAt: 1 })
       .populate("senderId", "name username avatar")
       .lean();
@@ -232,6 +237,47 @@ router.get("/:otherUserId", auth, async (req, res) => {
   } catch (err) {
     console.error("Load messages error:", err);
     res.status(500).json({ error: "Failed to load messages" });
+  }
+});
+
+/*
+  Delete a message only for the current user ("delete for me").
+  The message remains available for other participants.
+*/
+router.patch("/:messageId/delete-for-me", auth, async (req, res) => {
+  try {
+    const meId = req.user.id;
+    const messageId = req.params.messageId;
+
+    if (!mongoose.Types.ObjectId.isValid(messageId)) {
+      return res.status(400).json({ error: "Invalid message id" });
+    }
+
+    const message = await Message.findById(messageId).select("senderId receiverId");
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    const senderId = toIdString(message.senderId);
+    const receiverId = toIdString(message.receiverId);
+    if (meId !== senderId && meId !== receiverId) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+
+    await Message.updateOne(
+      { _id: messageId },
+      { $addToSet: { deletedFor: new mongoose.Types.ObjectId(meId) } }
+    );
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(toIdString(meId)).emit("message:deleted_for_me", { messageId });
+    }
+
+    return res.json({ success: true, messageId });
+  } catch (err) {
+    console.error("Delete-for-me error:", err);
+    return res.status(500).json({ error: "Failed to delete message for current user" });
   }
 });
 

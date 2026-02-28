@@ -66,11 +66,46 @@
   <meta name="format-detection" content="telephone=no" />
   <meta name="robots" content="index, follow" />
 
+  <script>
+    (function () {
+      var KEY = "tengacion_theme";
+      var LEGACY_KEY = "tengacion-theme";
+      var theme = "dark";
+      try {
+        var stored = localStorage.getItem(KEY) || localStorage.getItem(LEGACY_KEY);
+        if (stored === "dark" || stored === "light") {
+          theme = stored;
+        } else {
+          localStorage.setItem(KEY, theme);
+        }
+        localStorage.removeItem(LEGACY_KEY);
+      } catch (e) {}
+
+      var root = document.documentElement;
+      root.dataset.theme = theme;
+      root.style.colorScheme = theme;
+      if (theme === "dark") {
+        root.classList.add("dark-mode");
+      } else {
+        root.classList.remove("dark-mode");
+      }
+    })();
+  </script>
+
   <!-- ===== BASIC LOADER STYLE ===== -->
   <style>
     html, body {
       margin: 0;
-      background: #f0f2f5;
+    }
+
+    html.dark-mode,
+    html.dark-mode body {
+      background: #20140f;
+    }
+
+    html:not(.dark-mode),
+    html:not(.dark-mode) body {
+      background: #f6efe6;
     }
 
     #boot-loader {

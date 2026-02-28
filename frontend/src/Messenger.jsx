@@ -593,7 +593,7 @@ export default function Messenger({ user, onClose }) {
             <strong>Messenger</strong>
           </div>
           <button className="mh-close" onClick={onClose} aria-label="Close chat">
-            x
+            ×
           </button>
         </div>
       </div>

@@ -3544,13 +3544,21 @@ html.dark-mode .nav-notification-btn:hover {
 }
 
 .mh-close {
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
+  min-width: 32px;
+  min-height: 32px;
   border: 1px solid var(--border);
   border-radius: 50%;
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  line-height: 1;
+  font-size: 18px;
 }
 
 .messenger-body {

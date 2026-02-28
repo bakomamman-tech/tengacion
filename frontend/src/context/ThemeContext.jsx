@@ -1,22 +1,36 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 const ThemeContext = createContext();
+const THEME_KEY = "tengacion_theme";
+const LEGACY_THEME_KEY = "tengacion-theme";
+
+const readStoredTheme = () => {
+  try {
+    const stored = localStorage.getItem(THEME_KEY) || localStorage.getItem(LEGACY_THEME_KEY);
+    if (stored === "dark" || stored === "light") {
+      return stored;
+    }
+  } catch {
+    // Ignore storage access errors and fall back to dark.
+  }
+  return "dark";
+};
 
 export function ThemeProvider({ children }) {
   const [isDark, setIsDark] = useState(() => {
-    // Check localStorage first
-    const saved = localStorage.getItem("tengacion-theme");
-    if (saved) {return saved === "dark";}
-    
-    // Check system preference
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return readStoredTheme() === "dark";
   });
 
   useEffect(() => {
-    // Save preference
-    localStorage.setItem("tengacion-theme", isDark ? "dark" : "light");
-    
-    // Update document class
+    const nextTheme = isDark ? "dark" : "light";
+    try {
+      localStorage.setItem(THEME_KEY, nextTheme);
+      localStorage.removeItem(LEGACY_THEME_KEY);
+    } catch {
+      // Ignore storage access errors.
+    }
+
+    document.documentElement.dataset.theme = nextTheme;
     if (isDark) {
       document.documentElement.classList.add("dark-mode");
       document.documentElement.style.colorScheme = "dark";

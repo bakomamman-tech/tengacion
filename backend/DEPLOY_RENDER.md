@@ -21,6 +21,10 @@ The server now runs a preflight check (`backend/scripts/preflight.js`) before co
 | `MONGO_URI` | MongoDB connection string (Atlas cluster) | 🔴 Required |
 | `JWT_SECRET` | JWT signing secret (≥32 chars) | 🔴 Required |
 | `MEDIA_SIGNING_SECRET` | Media signing JWT secret (≥32 chars) | 🔴 Required |
+| `LIVEKIT_WS_URL` | LiveKit signaling WebSocket URL (production should be `wss://...`) | 🟠 Warning if missing |
+| `LIVEKIT_HOST` | Optional fallback if `LIVEKIT_WS_URL` is not set | 🟠 Warning if missing |
+| `LIVEKIT_API_KEY` | LiveKit server API key for token minting | 🟠 Warning if missing |
+| `LIVEKIT_API_SECRET` | LiveKit server API secret for token minting | 🟠 Warning if missing |
 | `FRONTEND_URL` | Optional, used for CORS/redirect hints | 🟠 Warning if missing |
 | `PAYSTACK_SECRET_KEY` | Paystack production secret key | 🟠 Warning if missing |
 | `STRIPE_SECRET_KEY` | Stripe secret key | 🟠 Warning if missing |

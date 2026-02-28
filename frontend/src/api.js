@@ -476,6 +476,11 @@ export const getLiveSessions = () =>
     headers: getAuthHeaders(),
   });
 
+export const getLiveConfig = () =>
+  request(`${API_BASE}/live/config`, {
+    headers: getAuthHeaders(),
+  });
+
 export const startLiveSession = (title) =>
   request(`${API_BASE}/live/create`, {
     method: "POST",

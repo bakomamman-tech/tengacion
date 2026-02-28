@@ -3,8 +3,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Room } from "livekit-client";
 
 import { useAuth } from "../context/AuthContext";
-import { requestLiveToken, updateLiveViewerCount } from "../api";
+import { requestLiveToken, updateLiveViewerCount, getLiveConfig } from "../api";
 import { connectSocket } from "../socket";
+import { resolveLivekitWsUrl } from "../livekitConfig";
 
 export default function WatchLive() {
   const { roomName } = useParams();
@@ -35,7 +36,11 @@ export default function WatchLive() {
 
         setSession(response.session);
         setViewerCount(response.session?.viewerCount || 0);
-        await connectToRoom(response.token, response.livekit);
+        const liveConfig = await getLiveConfig();
+        await connectToRoom(response.token, {
+          livekitConfig: liveConfig,
+          fallbackLivekit: response.livekit,
+        });
         joined = true;
         await updateLiveViewerCount({ roomName, delta: 1 });
       } catch (err) {
@@ -90,23 +95,25 @@ export default function WatchLive() {
     };
   }, [roomName, user?._id]);
 
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       if (room) {
         room.disconnect();
       }
-    };
-  }, [room]);
+    },
+    [room]
+  );
 
-  const connectToRoom = async (token, livekit) => {
-    if (!token || !livekit) {
+  const connectToRoom = async (token, { livekitConfig, fallbackLivekit }) => {
+    if (!token) {
       throw new Error("Missing LiveKit credentials");
     }
 
-    const targetUrl = livekit.wsUrl || livekit.url;
-    if (!targetUrl) {
-      throw new Error("LiveKit host is not configured");
-    }
+    const targetUrl = resolveLivekitWsUrl({
+      livekitConfig,
+      fallbackLivekit,
+      context: "WatchLive.connect",
+    });
 
     const nextRoom = new Room();
     await nextRoom.connect(targetUrl, token, {
@@ -119,9 +126,7 @@ export default function WatchLive() {
       }
     });
 
-    nextRoom.on("trackUnsubscribed", (track) => {
-      track.detach();
-    });
+    nextRoom.on("trackUnsubscribed", (track) => track.detach());
 
     setRoom(nextRoom);
   };

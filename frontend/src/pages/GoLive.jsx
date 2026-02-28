@@ -3,15 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { Room, createLocalAudioTrack, createLocalVideoTrack } from "livekit-client";
 
 import { useAuth } from "../context/AuthContext";
-import { startLiveSession, endLiveSession } from "../api";
+import { startLiveSession, endLiveSession, getLiveConfig } from "../api";
 import { connectSocket } from "../socket";
+import { resolveLivekitWsUrl } from "../livekitConfig";
 
 export default function GoLive() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [liveSession, setLiveSession] = useState(null);
-  const [livekitConfig, setLivekitConfig] = useState(null);
   const [viewerCount, setViewerCount] = useState(0);
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -28,10 +28,13 @@ export default function GoLive() {
     try {
       const result = await startLiveSession(title.trim());
       const { session, token, livekit } = result;
+      const liveConfig = await getLiveConfig();
       setViewerCount(session.viewerCount || 0);
       setLiveSession(session);
-      setLivekitConfig(livekit);
-      await attachLiveKit(token, livekit);
+      await attachLiveKit(token, {
+        livekitConfig: liveConfig,
+        fallbackLivekit: livekit,
+      });
     } catch (err) {
       setError(err.message || "Failed to start live broadcast");
       if (room) {
@@ -43,15 +46,16 @@ export default function GoLive() {
     }
   };
 
-  const attachLiveKit = async (token, livekit) => {
-    if (!token || !livekit) {
+  const attachLiveKit = async (token, { livekitConfig, fallbackLivekit }) => {
+    if (!token) {
       throw new Error("Missing LiveKit credentials");
     }
 
-    const targetUrl = livekit.wsUrl || livekit.url;
-    if (!targetUrl) {
-      throw new Error("LiveKit host is not configured");
-    }
+    const targetUrl = resolveLivekitWsUrl({
+      livekitConfig,
+      fallbackLivekit,
+      context: "GoLive.connect",
+    });
 
     const nextRoom = new Room();
     await nextRoom.connect(targetUrl, token);
@@ -86,7 +90,6 @@ export default function GoLive() {
       await endLiveSession(liveSession.roomName).catch(() => {});
     }
     setLiveSession(null);
-    setLivekitConfig(null);
   };
 
   useEffect(() => {

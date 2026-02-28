@@ -1,13 +1,8 @@
 const ApiError = require("../utils/ApiError");
 const catchAsync = require("../utils/catchAsync");
 const LiveService = require("../services/liveService");
+const { ensureValidLivekitConfig } = require("../services/livekitConfig");
 const User = require("../../../backend/models/User");
-const { config } = require("../../../backend/config/env");
-
-const buildLivekitConfig = () => ({
-  url: config.LIVEKIT_HOST || "",
-  wsUrl: config.LIVEKIT_WS_URL || "",
-});
 
 const emitEvent = (req, event, payload) => {
   const io = req.app.get("io");
@@ -18,6 +13,7 @@ const emitEvent = (req, event, payload) => {
 
 exports.createLiveSession = catchAsync(async (req, res) => {
   const { title } = req.body || {};
+  const livekit = ensureValidLivekitConfig();
   const session = await LiveService.createSession({
     userId: req.user.id,
     title,
@@ -34,7 +30,7 @@ exports.createLiveSession = catchAsync(async (req, res) => {
   res.status(201).json({
     session: payload,
     token,
-    livekit: buildLivekitConfig(),
+    livekit,
   });
 
   emitEvent(req, "live:created", payload);
@@ -66,6 +62,7 @@ exports.requestToken = catchAsync(async (req, res) => {
   if (!roomName) {
     throw ApiError.badRequest("Room name is required");
   }
+  const livekit = ensureValidLivekitConfig();
 
   const user = await User.findById(req.user.id);
   if (!user) {
@@ -87,8 +84,13 @@ exports.requestToken = catchAsync(async (req, res) => {
   res.json({
     token,
     session: LiveService.toPublic(session),
-    livekit: buildLivekitConfig(),
+    livekit,
   });
+});
+
+exports.getLiveConfig = catchAsync(async (_req, res) => {
+  const livekit = ensureValidLivekitConfig();
+  res.json(livekit);
 });
 
 exports.updateViewerCount = catchAsync(async (req, res) => {

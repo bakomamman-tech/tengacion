@@ -48,6 +48,23 @@ export default function ShareContentModal({
     setSelectedRecipients([]);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose?.();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose, open]);
+
   const previewType = useMemo(
     () => (itemType === "book" ? "read" : "play"),
     [itemType]
@@ -232,8 +249,17 @@ export default function ShareContentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 px-4">
-      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 px-4"
+      onMouseDown={() => onClose?.()}
+    >
+      <div
+        className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Share"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold text-slate-900">Share</h3>
@@ -241,10 +267,11 @@ export default function ShareContentModal({
           </div>
           <button
             type="button"
-            className="rounded-lg border border-slate-200 px-2.5 py-1 text-sm text-slate-600 hover:bg-slate-50"
+            className="h-9 w-9 rounded-full border border-slate-200 bg-transparent p-0 text-lg leading-none text-slate-700 hover:bg-black/10 dark:hover:bg-white/10"
             onClick={onClose}
+            aria-label="Close share"
           >
-            Close
+            ×
           </button>
         </div>
 

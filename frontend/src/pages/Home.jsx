@@ -681,12 +681,20 @@ export default function Home({ user }) {
   }, []);
 
   useEffect(() => {
-    if (!location.state?.openMessenger) {
+    const shouldOpenMessenger = Boolean(location.state?.openMessenger);
+    const shouldOpenComposer = Boolean(location.state?.openComposer);
+    if (!shouldOpenMessenger && !shouldOpenComposer) {
       return;
     }
 
-    setChatOpen(true);
-    setChatMinimized(false);
+    if (shouldOpenMessenger) {
+      setChatOpen(true);
+      setChatMinimized(false);
+    }
+    if (shouldOpenComposer) {
+      setComposerOpen(true);
+    }
+
     navigate(location.pathname, { replace: true, state: {} });
   }, [location.pathname, location.state, navigate]);
 
@@ -756,6 +764,7 @@ export default function Home({ user }) {
           setChatOpen(true);
           setChatMinimized(false);
         }}
+        onOpenCreatePost={() => setComposerOpen(true)}
       />
 
       <div className="app-shell">

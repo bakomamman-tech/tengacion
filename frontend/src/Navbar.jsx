@@ -4,6 +4,7 @@ import { resolveImage } from "./api";
 import { useTheme } from "./context/ThemeContext";
 import { useNotifications } from "./context/NotificationsContext";
 import { Icon } from "./Icon";
+import CreateMenuDropdown from "./components/CreateMenuDropdown";
 
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -51,7 +52,7 @@ const NotificationBellIcon = ({ size = 20 }) => (
   </svg>
 );
 
-export default function Navbar({ user, onLogout, onOpenMessenger }) {
+export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePost }) {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
   const { unreadCount: unreadNotifications, markAllRead } = useNotifications();
@@ -61,9 +62,14 @@ export default function Navbar({ user, onLogout, onOpenMessenger }) {
   const [results, setResults] = useState({ users: [], posts: [] });
   const [searchOpen, setSearchOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [createSearch, setCreateSearch] = useState("");
+  const [comingSoonLabel, setComingSoonLabel] = useState("");
 
   const searchRef = useRef(null);
   const menuRef = useRef(null);
+  const createMenuRef = useRef(null);
+  const createMenuButtonRef = useRef(null);
 
   useEffect(() => {
     const close = (event) => {
@@ -73,10 +79,21 @@ export default function Navbar({ user, onLogout, onOpenMessenger }) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setShowMenu(false);
       }
+      if (createMenuRef.current && !createMenuRef.current.contains(event.target)) {
+        setShowCreateMenu(false);
+      }
     };
 
     const onKeyDown = (event) => {
-      if (event.key === "Escape") {close(event);}
+      if (event.key === "Escape") {
+        setSearchOpen(false);
+        setShowMenu(false);
+        setComingSoonLabel("");
+        if (showCreateMenu) {
+          setShowCreateMenu(false);
+          createMenuButtonRef.current?.focus();
+        }
+      }
     };
 
     document.addEventListener("mousedown", close);
@@ -86,7 +103,7 @@ export default function Navbar({ user, onLogout, onOpenMessenger }) {
       document.removeEventListener("mousedown", close);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, []);
+  }, [showCreateMenu]);
 
   const performSearch = useCallback(async (value) => {
     if (!value.trim()) {
@@ -137,6 +154,146 @@ export default function Navbar({ user, onLogout, onOpenMessenger }) {
     }
 
     navigate("/home", { state: { openMessenger: true } });
+  };
+
+  const openPostComposer = () => {
+    if (typeof onOpenCreatePost === "function") {
+      onOpenCreatePost();
+      return;
+    }
+    navigate("/home", { state: { openComposer: true } });
+  };
+
+  const createActions = [
+    {
+      id: "create-post",
+      label: "Post",
+      description: "Share an update",
+      icon: "📝",
+      handler: () => openPostComposer(),
+    },
+    {
+      id: "create-story",
+      label: "Story",
+      description: "Share a story",
+      icon: "📖",
+      handler: () => setComingSoonLabel("Story"),
+    },
+    {
+      id: "create-reel",
+      label: "Reel",
+      description: "Create a short video",
+      icon: "🎬",
+      handler: () => setComingSoonLabel("Reel"),
+    },
+    {
+      id: "create-life-update",
+      label: "Life update",
+      description: "Post a life update",
+      icon: "💬",
+      handler: () => openPostComposer(),
+    },
+    {
+      id: "create-page",
+      label: "Page",
+      description: "Create a page",
+      icon: "📄",
+      handler: () => setComingSoonLabel("Page"),
+    },
+    {
+      id: "create-group",
+      label: "Group",
+      description: "Start a community",
+      icon: "👥",
+      handler: () => setComingSoonLabel("Group"),
+    },
+    {
+      id: "create-event",
+      label: "Event",
+      description: "Host an event",
+      icon: "📅",
+      handler: () => setComingSoonLabel("Event"),
+    },
+    {
+      id: "create-marketplace",
+      label: "Marketplace listing",
+      description: "Sell something",
+      icon: "🛍️",
+      handler: () => setComingSoonLabel("Marketplace listing"),
+    },
+  ];
+
+  const menuItems = [
+    {
+      id: "menu-home",
+      label: "Home",
+      description: "Main feed",
+      icon: "🏠",
+      handler: () => navigate("/home"),
+    },
+    {
+      id: "menu-trending",
+      label: "Trending",
+      description: "Hot posts and topics",
+      icon: "🔥",
+      handler: () => navigate("/trending"),
+    },
+    {
+      id: "menu-live",
+      label: "Live directory",
+      description: "Watch live sessions",
+      icon: "📡",
+      handler: () => navigate("/live"),
+    },
+    {
+      id: "menu-go-live",
+      label: "Go live",
+      description: "Start a live update",
+      icon: "🎥",
+      handler: () => navigate("/live/go"),
+    },
+    {
+      id: "menu-creator",
+      label: "Creator dashboard",
+      description: "Manage your creator tools",
+      icon: "📊",
+      handler: () => navigate("/dashboard/creator"),
+    },
+    {
+      id: "menu-notifications",
+      label: "Notifications",
+      description: "See updates",
+      icon: "🔔",
+      handler: () => navigate("/notifications"),
+    },
+    {
+      id: "menu-messages",
+      label: "Messages",
+      description: "Open Messenger",
+      icon: "💬",
+      handler: () => openMessenger(),
+    },
+  ];
+
+  const normalizeNeedle = (value) => value.trim().toLowerCase();
+  const filterItems = (items) => {
+    const needle = normalizeNeedle(createSearch);
+    if (!needle) {
+      return items;
+    }
+    return items.filter((item) => {
+      const haystack = `${item.label} ${item.description || ""}`.toLowerCase();
+      return haystack.includes(needle);
+    });
+  };
+
+  const filteredMenuItems = filterItems(menuItems);
+  const filteredCreateActions = filterItems(createActions);
+
+  const onCreateMenuItemClick = (item) => {
+    item.handler?.();
+    setShowCreateMenu(false);
+    setCreateSearch("");
   };
 
   return (
@@ -226,14 +383,37 @@ export default function Navbar({ user, onLogout, onOpenMessenger }) {
       {user && (
         <div className="nav-right">
           <div className="nav-actions-shell" aria-label="Quick actions">
-            <button
-              className="nav-circle-btn"
-              onClick={() => navigate("/home")}
-              aria-label="Apps"
-              title="Apps"
-            >
-              <GridIcon />
-            </button>
+            <div className="create-menu-anchor" ref={createMenuRef}>
+              <button
+                ref={createMenuButtonRef}
+                className="nav-circle-btn"
+                onClick={() =>
+                  setShowCreateMenu((open) => {
+                    const next = !open;
+                    if (next) {
+                      setCreateSearch("");
+                    }
+                    return next;
+                  })
+                }
+                aria-label="Apps"
+                title="Apps"
+                aria-expanded={showCreateMenu}
+                aria-controls="navbar-create-menu"
+              >
+                <GridIcon />
+              </button>
+              {showCreateMenu && (
+                <CreateMenuDropdown
+                  id="navbar-create-menu"
+                  searchValue={createSearch}
+                  onSearchChange={setCreateSearch}
+                  leftItems={filteredMenuItems}
+                  createItems={filteredCreateActions}
+                  onItemClick={onCreateMenuItemClick}
+                />
+              )}
+            </div>
 
             <button
               className="nav-circle-btn"
@@ -303,6 +483,22 @@ export default function Navbar({ user, onLogout, onOpenMessenger }) {
           </div>
         </div>
       )}
+
+      {comingSoonLabel ? (
+        <div className="create-coming-backdrop" onMouseDown={() => setComingSoonLabel("")}>
+          <div className="create-coming-card" onMouseDown={(event) => event.stopPropagation()}>
+            <h4>{comingSoonLabel}</h4>
+            <p>{comingSoonLabel} creation is coming soon.</p>
+            <button
+              type="button"
+              className="create-coming-close"
+              onClick={() => setComingSoonLabel("")}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
     </header>
   );
 }

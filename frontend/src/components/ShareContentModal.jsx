@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { getBook, getTrack } from "../api";
 
 const EXTERNAL_TARGETS = [
@@ -65,10 +66,7 @@ export default function ShareContentModal({
     };
   }, [onClose, open]);
 
-  const previewType = useMemo(
-    () => (itemType === "book" ? "read" : "play"),
-    [itemType]
-  );
+  const previewType = useMemo(() => (itemType === "book" ? "read" : "play"), [itemType]);
 
   const filteredContacts = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -113,9 +111,7 @@ export default function ShareContentModal({
 
   const toggleRecipient = (id) => {
     setSelectedRecipients((current) =>
-      current.includes(id)
-        ? current.filter((entry) => entry !== id)
-        : [...current, id]
+      current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id]
     );
   };
 
@@ -248,13 +244,13 @@ export default function ShareContentModal({
     }
   };
 
-  return (
+  const modal = (
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 px-4"
+      className="share-modal-backdrop fixed inset-0 flex items-center justify-center bg-slate-950/60 px-4"
       onMouseDown={() => onClose?.()}
     >
       <div
-        className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl"
+        className="share-modal-panel w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-label="Share"
@@ -421,4 +417,10 @@ export default function ShareContentModal({
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") {
+    return modal;
+  }
+
+  return createPortal(modal, document.body);
 }

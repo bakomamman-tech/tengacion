@@ -3482,7 +3482,8 @@ html.dark-mode .nav-notification-btn:hover {
   bottom: 16px;
   top: auto;
   width: min(92vw, 620px);
-  z-index: 60;
+  z-index: 200;
+  isolation: isolate;
 }
 
 .messenger {
@@ -3496,6 +3497,8 @@ html.dark-mode .nav-notification-btn:hover {
   min-height: 420px;
   height: clamp(420px, 64vh, 560px);
   max-height: calc(100vh - 96px);
+  position: relative;
+  z-index: 200;
 }
 
 .messenger-header {
@@ -3506,6 +3509,8 @@ html.dark-mode .nav-notification-btn:hover {
   flex-direction: column;
   align-items: stretch;
   padding: 0 14px;
+  position: relative;
+  z-index: 210;
 }
 
 .messenger-header-main {
@@ -3646,6 +3651,7 @@ html.dark-mode .nav-notification-btn:hover {
 
 .thread-avatar-wrap {
   position: relative;
+  z-index: 1;
 }
 
 .thread-avatar {
@@ -3667,6 +3673,8 @@ html.dark-mode .nav-notification-btn:hover {
 
 .thread-meta {
   min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .thread-name {
@@ -3704,6 +3712,8 @@ html.dark-mode .nav-notification-btn:hover {
   align-items: center;
   gap: 10px;
   padding: 0 12px;
+  position: relative;
+  z-index: 1;
 }
 
 .chat-top-avatar {
@@ -3938,6 +3948,17 @@ html.dark-mode .nav-notification-btn:hover {
   align-items: center;
   gap: 10px;
   padding: 8px 10px !important;
+  z-index: 200;
+  position: relative;
+}
+
+.share-modal-backdrop {
+  z-index: 1000 !important;
+}
+
+.share-modal-panel {
+  position: relative;
+  z-index: 1001;
 }
 
 .messenger-dock img {
@@ -5817,7 +5838,7 @@ html.dark-mode .nav-notification-btn:hover {
     bottom: 12px;
     top: auto;
     width: min(96vw, 620px);
-    z-index: 60;
+    z-index: 200;
   }
 
   .messenger {
@@ -5952,6 +5973,7 @@ html.dark-mode .nav-notification-btn:hover {
     display: flex;
     align-items: flex-end;
     padding: 0 6px env(safe-area-inset-bottom, 0);
+    z-index: 200;
   }
 
   .messenger {

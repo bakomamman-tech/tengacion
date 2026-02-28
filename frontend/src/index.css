@@ -101,6 +101,18 @@
   color: #6b7280;
 }
 
+.live-now-section .live-now-card {
+  color: #1a120d !important;
+}
+
+.live-now-section .live-now-card .live-now-title {
+  color: #1a120d !important;
+}
+
+.live-now-section .live-now-card .live-now-meta {
+  color: #3a2a1e !important;
+}
+
 .post-video-wrapper {
   position: relative;
 }

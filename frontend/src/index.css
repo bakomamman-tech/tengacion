@@ -244,7 +244,7 @@
   border: 1px solid #e5e7eb;
   padding: 1rem;
   background: #fff;
-  text-align: center;
+  text-align: left;
 }
 
 .go-live-video {
@@ -252,6 +252,8 @@
   border-radius: 0.75rem;
   margin-bottom: 0.75rem;
   background: #000;
+  min-height: 280px;
+  object-fit: cover;
 }
 
 .go-live-info {
@@ -266,6 +268,358 @@
   letter-spacing: 0.2em;
   font-size: 0.7rem;
   color: #6b7280;
+}
+
+.go-live-video-wrap {
+  position: relative;
+}
+
+.live-reaction-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.live-reaction-burst {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  font-size: 30px;
+  animation: floatReaction 1.6s ease forwards;
+}
+
+@keyframes floatReaction {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-90px) scale(1.2);
+  }
+}
+
+.live-controls-shell {
+  margin-top: 10px;
+  border: 1px solid #d8c2a8;
+  border-radius: 16px;
+  background: #efe2d2;
+  padding: 12px;
+  position: relative;
+}
+
+.live-controls-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.live-controls-top strong {
+  display: block;
+  color: #1a120d;
+}
+
+.live-controls-top p {
+  margin: 2px 0 0;
+  color: #3a2a1e;
+  font-size: 13px;
+}
+
+.live-controls-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  color: #1a120d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.live-controls-timer {
+  border-radius: 999px;
+  background: #e7d3bc;
+  padding: 2px 10px;
+}
+
+.live-toolbar-wrap {
+  position: relative;
+  margin-top: 10px;
+}
+
+.live-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.live-tool-btn {
+  padding: 9px 14px !important;
+  font-size: 13px;
+  border-radius: 14px !important;
+}
+
+.live-tool-btn.active {
+  outline: 2px solid rgba(255, 255, 255, 0.35);
+  outline-offset: 1px;
+}
+
+.live-tool-btn.off {
+  background: #8f5a22 !important;
+}
+
+.live-tool-btn:disabled {
+  opacity: 0.65;
+}
+
+.live-end-btn {
+  background: #7a3825 !important;
+}
+
+.live-end-btn:hover:not(:disabled) {
+  background: #642d1e !important;
+}
+
+.live-popover {
+  margin-top: 8px;
+  border-radius: 14px;
+  border: 1px solid #d8c2a8;
+  background: #f3e8dc;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.live-popover-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #1a120d;
+}
+
+.live-filter-grid,
+.live-emoji-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.live-filter-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.live-emoji-grid {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+
+.live-chip {
+  background: #b67a3a !important;
+  color: #fff !important;
+  border-radius: 12px !important;
+  padding: 8px 10px !important;
+  font-size: 12px;
+}
+
+.live-chip.active,
+.live-chip:hover {
+  background: #a66a2c !important;
+}
+
+.live-blur-chip {
+  width: fit-content;
+}
+
+.live-emoji-btn {
+  min-width: 0;
+  border-radius: 12px !important;
+  padding: 8px 0 !important;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.live-participants-total,
+.live-settings-note {
+  margin: 0;
+  font-size: 12px;
+  color: #3a2a1e;
+}
+
+.live-participants-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #1a120d;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.live-settings-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #1a120d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.live-quick-reactions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.live-quick-btn {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  font-size: 22px;
+}
+
+.live-chat-drawer {
+  margin-top: 10px;
+  border: 1px solid #d8c2a8;
+  border-radius: 14px;
+  background: #f3e8dc;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.live-chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.live-chat-head strong {
+  color: #1a120d;
+}
+
+.live-chat-close {
+  padding: 7px 11px !important;
+  font-size: 12px;
+}
+
+.live-chat-body {
+  border: 1px solid #d8c2a8;
+  border-radius: 10px;
+  background: #fff7ee;
+  padding: 8px;
+  min-height: 96px;
+  max-height: 210px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.live-chat-empty {
+  margin: 0;
+  color: #3a2a1e;
+  font-size: 13px;
+}
+
+.live-chat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.live-chat-msg b {
+  font-size: 12px;
+  color: #1a120d;
+}
+
+.live-chat-msg span {
+  font-size: 13px;
+  color: #3a2a1e;
+}
+
+.live-chat-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.live-chat-input-row input {
+  min-height: 40px;
+}
+
+.live-chat-input-row button {
+  padding: 8px 14px !important;
+}
+
+.live-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(17, 10, 6, 0.46);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.live-confirm-card {
+  width: min(430px, 100%);
+  border-radius: 16px;
+  border: 1px solid #d8c2a8;
+  background: #efe2d2;
+  padding: 16px;
+}
+
+.live-confirm-card h4 {
+  margin: 0 0 6px;
+  color: #1a120d;
+}
+
+.live-confirm-card p {
+  margin: 0;
+  color: #3a2a1e;
+  font-size: 14px;
+}
+
+.live-confirm-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .live-controls-top {
+    flex-direction: column;
+  }
+
+  .live-controls-stats {
+    align-items: flex-start;
+  }
+
+  .live-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .live-tool-btn {
+    width: 100%;
+  }
+
+  .live-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .live-emoji-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .watch-live-video {

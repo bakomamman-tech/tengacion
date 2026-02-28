@@ -34,37 +34,39 @@ export default function Sidebar({ user, openChat, openProfile }) {
 
       <div className="sb-divider" />
 
-      <button className="sidebar-btn" onClick={() => navigate("/home")}>
-        Home
-      </button>
+      <div className="sidebar-links">
+        <button className="sidebar-btn" onClick={() => navigate("/home")}>
+          Home
+        </button>
 
-      <button className="sidebar-btn" onClick={() => navigate("/trending")}>
-        Trending
-      </button>
+        <button className="sidebar-btn" onClick={() => navigate("/trending")}>
+          Trending
+        </button>
 
-      <button className="sidebar-btn" onClick={() => navigate("/live")}>
-        Live directory
-      </button>
+        <button className="sidebar-btn" onClick={() => navigate("/live")}>
+          Live directory
+        </button>
 
-      <button className="sidebar-btn" onClick={() => navigate("/live/go")}>
-        Go live
-      </button>
+        <button className="sidebar-btn" onClick={() => navigate("/live/go")}>
+          Go live
+        </button>
 
-      <button className="sidebar-btn" onClick={() => navigate("/creator")}>
-        Creator Dashboard
-      </button>
+        <button className="sidebar-btn" onClick={() => navigate("/creator")}>
+          Creator Dashboard
+        </button>
 
-      <button className="sidebar-btn" onClick={() => navigate("/notifications")}>
-        Notifications
-      </button>
+        <button className="sidebar-btn" onClick={() => navigate("/notifications")}>
+          Notifications
+        </button>
 
-      <button className="sidebar-btn" onClick={openChat}>
-        Messages
-      </button>
+        <button className="sidebar-btn" onClick={openChat}>
+          Messages
+        </button>
 
-      <button className="sidebar-btn" onClick={goProfile}>
-        Profile
-      </button>
+        <button className="sidebar-btn" onClick={goProfile}>
+          Profile
+        </button>
+      </div>
     </aside>
   );
 }

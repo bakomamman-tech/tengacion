@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import PostComments from "./PostComments";
 import { initPayment, resolveImage } from "../api";
+import VideoPlayer from "./media/VideoPlayer";
 
 /* ======================================================
    SYSTEM / STARTER POST HANDLING
@@ -206,6 +207,7 @@ export default function PostCard({
   const [isInView, setIsInView] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const videoRef = useRef(null);
+  const videoWrapperRef = useRef(null);
   const tags = Array.isArray(post?.tags) ? post.tags.filter(Boolean) : [];
   const feeling = typeof post?.feeling === "string" ? post.feeling.trim() : "";
   const checkInLocation =
@@ -360,37 +362,6 @@ export default function PostCard({
     current.load();
     if (!disableAutoplay) {
       current.play().catch(() => {});
-    }
-  };
-
-  const toggleMute = (event) => {
-    event?.stopPropagation();
-    setIsMuted((prev) => !prev);
-  };
-
-  const togglePlayPause = (event) => {
-    event?.stopPropagation();
-    const current = videoRef.current;
-    if (!current) {
-      return;
-    }
-    if (current.paused) {
-      current.play().catch(() => {});
-    } else {
-      current.pause();
-    }
-  };
-
-  const enterFullscreen = (event) => {
-    event?.stopPropagation();
-    const current = videoRef.current;
-    if (!current) {
-      return;
-    }
-    if (current.requestFullscreen) {
-      current.requestFullscreen();
-    } else if (current.webkitEnterFullscreen) {
-      current.webkitEnterFullscreen();
     }
   };
 
@@ -617,17 +588,18 @@ export default function PostCard({
           {hasAnyMedia && (
             <div className="post-media">
               {shouldRenderVideo && postVideoSource ? (
-                <div className="post-video-wrapper">
-                  <video
+                <div className="post-video-wrapper" ref={videoWrapperRef}>
+                  <VideoPlayer
                     ref={videoRef}
+                    wrapperRef={videoWrapperRef}
+                    src={postVideoSource}
+                    sourceType={videoMimeType}
                     poster={videoPoster || undefined}
-                    className="post-video"
-                    muted={disableAutoplay ? false : isMuted}
-                    controls={disableAutoplay}
-                    autoPlay={!disableAutoplay}
-                    playsInline
-                    preload="metadata"
-                    crossOrigin="anonymous"
+                    disableAutoplay={disableAutoplay}
+                    isMuted={isMuted}
+                    setIsMuted={setIsMuted}
+                    isPlaying={isPlaying}
+                    setIsPlaying={setIsPlaying}
                     onWaiting={() => setIsBuffering(true)}
                     onPlaying={() => {
                       setIsBuffering(false);
@@ -640,35 +612,7 @@ export default function PostCard({
                       setIsBuffering(false);
                       setIsPlaying(false);
                     }}
-                  >
-                    <source src={postVideoSource} type={videoMimeType} />
-                  </video>
-
-                  {!disableAutoplay && (
-                    <div className="post-video-controls">
-                      <button
-                        type="button"
-                        className="post-video-control"
-                        onClick={toggleMute}
-                      >
-                        {isMuted ? "Unmute" : "Mute"}
-                      </button>
-                      <button
-                        type="button"
-                        className="post-video-control"
-                        onClick={togglePlayPause}
-                      >
-                        {isPlaying ? "Pause" : "Play"}
-                      </button>
-                      <button
-                        type="button"
-                        className="post-video-control"
-                        onClick={enterFullscreen}
-                      >
-                        Full screen
-                      </button>
-                    </div>
-                  )}
+                  />
 
                   {isBuffering && (
                     <div className="post-video-loading">Loading…</div>

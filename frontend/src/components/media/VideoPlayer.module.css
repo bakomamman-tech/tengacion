@@ -1,0 +1,222 @@
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.58), rgba(0, 0, 0, 0.04) 58%);
+  border-radius: inherit;
+}
+
+.controls {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 10px 10px 8px;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.progressWrap {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.progress {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: transparent;
+  position: relative;
+  z-index: 2;
+  margin: 0;
+}
+
+.progress::-webkit-slider-runnable-track {
+  height: 3px;
+  background: transparent;
+}
+
+.progress::-moz-range-track {
+  height: 3px;
+  background: transparent;
+}
+
+.progress::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #f2f2f2;
+  margin-top: -4px;
+}
+
+.progress::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: #f2f2f2;
+}
+
+.progressRail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+
+.buffered,
+.played {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.buffered {
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.played {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cluster:last-child {
+  justify-content: flex-end;
+}
+
+.iconBtn {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.95);
+  background: transparent;
+  font-size: 14px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.iconBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.time {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.volume {
+  width: 72px;
+  accent-color: rgba(255, 255, 255, 0.95);
+}
+
+.settingsWrap {
+  position: relative;
+}
+
+.settingsMenu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  min-width: 110px;
+  border-radius: 10px;
+  background: rgba(12, 12, 12, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+}
+
+.settingsMenu p {
+  margin: 0 0 2px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.78);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.settingItem {
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.95);
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.settingItem:hover,
+.settingItem.active {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.settingsHint {
+  margin-top: 6px !important;
+  font-size: 10px !important;
+  color: rgba(255, 255, 255, 0.62) !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+@media (max-width: 720px) {
+  .controls {
+    padding: 8px 8px 6px;
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .time {
+    order: 3;
+    text-align: left;
+  }
+
+  .cluster:last-child {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .volume {
+    width: 64px;
+  }
+}

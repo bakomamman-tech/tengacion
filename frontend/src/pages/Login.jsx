@@ -55,7 +55,7 @@ export default function Login() {
         <div className="login-logo-section">
           <div className="login-logo">
             <img 
-              src="/tengacion_logo.svg" 
+              src="/tengacion_logo_512.png" 
               alt="Tengacion" 
               style={{ width: 60, height: 60 }}
             />

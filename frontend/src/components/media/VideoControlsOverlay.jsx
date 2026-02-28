@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./VideoPlayer.module.css";
 
 const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -34,6 +34,30 @@ export default function VideoControlsOverlay({
   const [hasCaptions, setHasCaptions] = useState(false);
   const [pipAvailable, setPipAvailable] = useState(false);
   const [inPip, setInPip] = useState(false);
+  const [hoveringControls, setHoveringControls] = useState(false);
+  const hideTimerRef = useRef(null);
+
+  const clearHideTimer = useCallback(() => {
+    if (hideTimerRef.current) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  }, []);
+
+  const startHideTimer = useCallback(() => {
+    clearHideTimer();
+    if (!isPlaying || hoveringControls || showSettings) {
+      return;
+    }
+    hideTimerRef.current = window.setTimeout(() => {
+      setVisible(false);
+    }, 2500);
+  }, [clearHideTimer, hoveringControls, isPlaying, showSettings]);
+
+  const showControls = useCallback(() => {
+    setVisible(true);
+    startHideTimer();
+  }, [startHideTimer]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -121,33 +145,48 @@ export default function VideoControlsOverlay({
       return undefined;
     }
 
-    let hideTimer = null;
-    const ping = () => {
+    const handleMoveOrTap = () => {
       setVisible(true);
-      if (hideTimer) {
-        window.clearTimeout(hideTimer);
-      }
-      if (isPlaying && !showSettings) {
-        hideTimer = window.setTimeout(() => setVisible(false), 2500);
-      }
+      startHideTimer();
     };
 
-    wrapper.addEventListener("mousemove", ping);
-    wrapper.addEventListener("mouseenter", ping);
-    wrapper.addEventListener("touchstart", ping, { passive: true });
-    wrapper.addEventListener("click", ping);
-    ping();
+    const handleEnter = () => {
+      setVisible(true);
+      clearHideTimer();
+    };
+
+    const handleLeave = () => {
+      startHideTimer();
+    };
+
+    wrapper.addEventListener("mousemove", handleMoveOrTap);
+    wrapper.addEventListener("mouseenter", handleEnter);
+    wrapper.addEventListener("mouseleave", handleLeave);
+    wrapper.addEventListener("touchstart", handleMoveOrTap, { passive: true });
+    wrapper.addEventListener("click", handleMoveOrTap);
+    showControls();
 
     return () => {
-      wrapper.removeEventListener("mousemove", ping);
-      wrapper.removeEventListener("mouseenter", ping);
-      wrapper.removeEventListener("touchstart", ping);
-      wrapper.removeEventListener("click", ping);
-      if (hideTimer) {
-        window.clearTimeout(hideTimer);
-      }
+      wrapper.removeEventListener("mousemove", handleMoveOrTap);
+      wrapper.removeEventListener("mouseenter", handleEnter);
+      wrapper.removeEventListener("mouseleave", handleLeave);
+      wrapper.removeEventListener("touchstart", handleMoveOrTap);
+      wrapper.removeEventListener("click", handleMoveOrTap);
+      clearHideTimer();
     };
-  }, [isPlaying, showSettings, wrapperRef]);
+  }, [clearHideTimer, showControls, startHideTimer, wrapperRef]);
+
+  useEffect(() => {
+    if (!isPlaying) {
+      clearHideTimer();
+      setVisible(true);
+      return undefined;
+    }
+    startHideTimer();
+    return () => {
+      clearHideTimer();
+    };
+  }, [clearHideTimer, isPlaying, startHideTimer]);
 
   const progressPct = useMemo(() => {
     if (!duration) return 0;
@@ -245,12 +284,20 @@ export default function VideoControlsOverlay({
   };
 
   return (
-    <div
-      className={`${styles.overlay} ${visible || !isPlaying ? styles.visible : ""}`}
-      aria-hidden={visible || !isPlaying ? "false" : "true"}
-    >
+    <div className={styles.overlay} aria-hidden={visible || !isPlaying ? "false" : "true"}>
       <div className={styles.gradient} />
-      <div className={styles.controls}>
+      <div
+        className={`${styles.controls} ${visible || !isPlaying ? styles.shown : styles.hidden}`}
+        onMouseEnter={() => {
+          setHoveringControls(true);
+          setVisible(true);
+          clearHideTimer();
+        }}
+        onMouseLeave={() => {
+          setHoveringControls(false);
+          startHideTimer();
+        }}
+      >
         <div className={styles.progressWrap}>
           <input
             type="range"
@@ -270,10 +317,22 @@ export default function VideoControlsOverlay({
 
         <div className={styles.row}>
           <div className={styles.cluster}>
-            <button type="button" className={styles.iconBtn} onClick={togglePlayPause} aria-label={isPlaying ? "Pause" : "Play"}>
+            <button
+              type="button"
+              className={styles.vpBtn}
+              onClick={togglePlayPause}
+              aria-label={isPlaying ? "Pause" : "Play"}
+              title={isPlaying ? "Pause" : "Play"}
+            >
               {isPlaying ? "❚❚" : "▶"}
             </button>
-            <button type="button" className={styles.iconBtn} onClick={toggleMute} aria-label={isMuted ? "Unmute" : "Mute"}>
+            <button
+              type="button"
+              className={styles.vpBtn}
+              onClick={toggleMute}
+              aria-label={isMuted ? "Unmute" : "Mute"}
+              title={isMuted ? "Unmute" : "Mute"}
+            >
               {isMuted ? "🔇" : "🔊"}
             </button>
             <input
@@ -294,16 +353,23 @@ export default function VideoControlsOverlay({
 
           <div className={styles.cluster}>
             {hasCaptions && (
-              <button type="button" className={styles.iconBtn} onClick={toggleCaptions} aria-label="Toggle captions">
+              <button
+                type="button"
+                className={styles.vpBtn}
+                onClick={toggleCaptions}
+                aria-label="Toggle captions"
+                title="Captions"
+              >
                 CC
               </button>
             )}
             <div className={styles.settingsWrap}>
               <button
                 type="button"
-                className={styles.iconBtn}
+                className={styles.vpBtn}
                 onClick={() => setShowSettings((prev) => !prev)}
                 aria-label="Settings"
+                title="Settings"
               >
                 ⚙
               </button>
@@ -314,8 +380,9 @@ export default function VideoControlsOverlay({
                     <button
                       key={rate}
                       type="button"
-                      className={`${styles.settingItem} ${playbackRate === rate ? styles.active : ""}`}
+                      className={`${styles.menuBtn} ${playbackRate === rate ? styles.active : ""}`}
                       onClick={() => applyPlaybackRate(rate)}
+                      title={`Playback speed ${rate}x`}
                     >
                       {rate}x
                     </button>
@@ -325,11 +392,23 @@ export default function VideoControlsOverlay({
               )}
             </div>
             {pipAvailable && !disableAutoplay && (
-              <button type="button" className={styles.iconBtn} onClick={togglePiP} aria-label="Picture in picture">
+              <button
+                type="button"
+                className={styles.vpBtn}
+                onClick={togglePiP}
+                aria-label="Picture in picture"
+                title="Picture in picture"
+              >
                 {inPip ? "⧉" : "▣"}
               </button>
             )}
-            <button type="button" className={styles.iconBtn} onClick={toggleFullscreen} aria-label="Fullscreen">
+            <button
+              type="button"
+              className={styles.vpBtn}
+              onClick={toggleFullscreen}
+              aria-label="Fullscreen"
+              title="Fullscreen"
+            >
               ⛶
             </button>
           </div>

@@ -3,23 +3,24 @@
 @tailwind utilities;
 
 :root {
-  --bg: #f0f2f5;
-  --bg-layer: radial-gradient(circle at 10% 20%, #ffffff 0%, #f0f2f5 45%);
-  --surface: #ffffff;
-  --surface-soft: #f8f9fb;
-  --surface-strong: #eef3fb;
-  --text: #1f2937;
-  --muted: #637184;
-  --border: #dde3ed;
-  --border-strong: #c9d3e2;
-  --brand: #1877f2;
-  --brand-strong: #145ec0;
-  --brand-soft: #e7f2ff;
+  --bg: #f6efe6;
+  --bg-layer: radial-gradient(circle at 12% 18%, #fff8ef 0%, #f6efe6 46%);
+  --surface: #efe2d2;
+  --surface-soft: #f3e8dc;
+  --surface-strong: #e7d3bc;
+  --bg-dark: #2b1a12;
+  --text: #1a120d;
+  --muted: #6b4e3a;
+  --border: #d8c2a8;
+  --border-strong: #c9ab8a;
+  --brand: #b8742a;
+  --brand-strong: #8a5a16;
+  --brand-soft: #ead7c1;
   --danger: #d93025;
   --success: #11a55b;
-  --shadow-xs: 0 1px 2px rgba(17, 24, 39, 0.08);
-  --shadow-sm: 0 8px 24px rgba(15, 31, 56, 0.08);
-  --shadow-md: 0 14px 38px rgba(15, 31, 56, 0.14);
+  --shadow-xs: 0 1px 2px rgba(43, 26, 18, 0.12);
+  --shadow-sm: 0 10px 24px rgba(43, 26, 18, 0.12);
+  --shadow-md: 0 16px 38px rgba(43, 26, 18, 0.18);
   --radius-sm: 10px;
   --radius-md: 14px;
   --radius-lg: 18px;
@@ -1128,18 +1129,19 @@
 }
 
 html.dark-mode {
-  --bg: #101923;
-  --bg-layer: radial-gradient(circle at 10% 20%, #1a2738 0%, #101923 45%);
-  --surface: #182433;
-  --surface-soft: #213245;
-  --surface-strong: #2a3a50;
-  --text: #eff6ff;
-  --muted: #b8c4d6;
-  --border: #2d4158;
-  --border-strong: #3d5470;
-  --brand: #4f9dff;
-  --brand-strong: #3a82da;
-  --brand-soft: #21354d;
+  --bg: #20140f;
+  --bg-layer: radial-gradient(circle at 12% 20%, #372319 0%, #20140f 48%);
+  --surface: #2b1a12;
+  --surface-soft: #3a2418;
+  --surface-strong: #4a2e20;
+  --bg-dark: #1f120c;
+  --text: #f7f1e8;
+  --muted: #d2bba3;
+  --border: #6f543f;
+  --border-strong: #87664b;
+  --brand: #d29652;
+  --brand-strong: #b8742a;
+  --brand-soft: #4a3526;
   --danger: #ff6b5a;
   --success: #35d089;
 }
@@ -1169,6 +1171,29 @@ button,
 input,
 textarea {
   font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand) 70%, #ffffff 30%);
+  outline-offset: 2px;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select,
+textarea {
+  background: var(--surface-soft);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+select:focus,
+textarea:focus {
+  border-color: color-mix(in srgb, var(--brand) 60%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent);
 }
 
 /* Shared */
@@ -3508,7 +3533,7 @@ html.dark-mode .nav-notification-btn:hover {
 /* Facebook-style register */
 .register-fb-page {
   min-height: 100vh;
-  background: #f0f2f5;
+  background: var(--bg);
   padding: 28px 14px 40px;
   display: flex;
   justify-content: center;
@@ -3516,7 +3541,7 @@ html.dark-mode .nav-notification-btn:hover {
 
 .register-fb-shell {
   width: min(680px, 100%);
-  color: #101828;
+  color: var(--text);
 }
 
 .register-fb-title {
@@ -3531,7 +3556,7 @@ html.dark-mode .nav-notification-btn:hover {
   font-size: 33px;
   font-size: clamp(16px, 1.65vw, 34px);
   line-height: 1.35;
-  color: #18222f;
+  color: var(--muted);
 }
 
 .register-fb-form {
@@ -3551,14 +3576,14 @@ html.dark-mode .nav-notification-btn:hover {
   font-size: clamp(17px, 1.5vw, 40px);
   font-weight: 700;
   line-height: 1.25;
-  color: #121a26;
+  color: var(--text);
 }
 
 .register-fb-help {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 2px solid #16202d;
+  border: 2px solid var(--border-strong);
   display: inline-grid;
   place-items: center;
   font-size: 18px;
@@ -3581,40 +3606,40 @@ html.dark-mode .nav-notification-btn:hover {
 .register-fb-input {
   width: 100%;
   min-height: 54px;
-  border: 1px solid #cfd8e4;
+  border: 1px solid var(--border);
   border-radius: 18px;
-  background: #f3f6fb;
-  color: #24364e;
+  background: var(--surface-soft);
+  color: var(--text);
   padding: 0 16px;
   font-size: 16px;
   outline: none;
 }
 
 .register-fb-input:focus {
-  border-color: #5f97ec;
-  box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.14);
-  background: #fff;
+  border-color: color-mix(in srgb, var(--brand) 60%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent);
+  background: var(--surface);
 }
 
 .register-fb-select {
   appearance: none;
   background:
-    linear-gradient(45deg, transparent 50%, #1f2a37 50%) calc(100% - 26px) 50% / 9px 9px no-repeat,
-    linear-gradient(135deg, #1f2a37 50%, transparent 50%) calc(100% - 20px) 50% / 9px 9px no-repeat,
-    #f3f6fb;
+    linear-gradient(45deg, transparent 50%, var(--text) 50%) calc(100% - 26px) 50% / 9px 9px no-repeat,
+    linear-gradient(135deg, var(--text) 50%, transparent 50%) calc(100% - 20px) 50% / 9px 9px no-repeat,
+    var(--surface-soft);
   padding-right: 40px;
 }
 
 .register-fb-helper-note {
   margin: 0;
-  color: #122034;
+  color: var(--muted);
   font-size: 15px;
   line-height: 1.35;
 }
 
 .register-fb-helper-note a,
 .register-fb-legal a {
-  color: #0b5ed8;
+  color: var(--brand-strong);
   text-decoration: none;
   font-weight: 700;
 }
@@ -3634,7 +3659,7 @@ html.dark-mode .nav-notification-btn:hover {
   margin: 0;
   font-size: 15px;
   line-height: 1.45;
-  color: #182435;
+  color: var(--muted);
 }
 
 .register-fb-submit,
@@ -3650,27 +3675,27 @@ html.dark-mode .nav-notification-btn:hover {
 
 .register-fb-submit {
   border: none;
-  color: #fff;
-  background: #0c67e9;
+  color: #f7f1e8;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
 }
 
 .register-fb-submit:hover {
-  background: #0a5fd7;
+  filter: brightness(1.04);
 }
 
 .register-fb-submit:disabled {
-  background: #86b4ef;
+  background: color-mix(in srgb, var(--brand) 40%, var(--surface));
   cursor: not-allowed;
 }
 
 .register-fb-secondary {
-  border: 1px solid #d7dfeb;
-  color: #182435;
-  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface);
 }
 
 .register-fb-secondary:hover {
-  background: #f6f8fb;
+  background: var(--surface-soft);
 }
 
 @media (max-width: 820px) {
@@ -5549,3 +5574,49 @@ html.dark-mode .nav-notification-btn:hover {
     font-size: 13px;
   }
 }
+
+/* Global Tailwind palette remap for brown theme */
+.bg-white { background-color: var(--surface) !important; }
+.bg-slate-50 { background-color: var(--surface-soft) !important; }
+.bg-slate-100 { background-color: var(--surface-strong) !important; }
+.bg-slate-700 { background-color: #513426 !important; }
+.bg-slate-800 { background-color: #3a2418 !important; }
+.bg-slate-900 { background-color: var(--bg-dark) !important; }
+.bg-slate-950 { background-color: #1f120c !important; }
+.bg-blue-500,
+.bg-blue-600 { background-color: var(--brand) !important; }
+.bg-blue-700 { background-color: var(--brand-strong) !important; }
+
+.border-slate-100 { border-color: color-mix(in srgb, var(--border) 72%, #ffffff 28%) !important; }
+.border-slate-200,
+.border-slate-300 { border-color: var(--border) !important; }
+.border-slate-500,
+.border-slate-600,
+.border-slate-700,
+.border-slate-800 { border-color: var(--border-strong) !important; }
+.border-blue-500 { border-color: var(--brand) !important; }
+
+.text-slate-200 { color: #f7f1e8 !important; }
+.text-slate-300 { color: #eadbc8 !important; }
+.text-slate-400 { color: #d2bba3 !important; }
+.text-slate-500 { color: var(--muted) !important; }
+.text-slate-600,
+.text-slate-700,
+.text-slate-800,
+.text-slate-900 { color: var(--text) !important; }
+.text-white { color: #f7f1e8 !important; }
+.text-blue-600,
+.text-blue-700 { color: var(--brand-strong) !important; }
+
+.hover\:bg-slate-50:hover { background-color: var(--surface-soft) !important; }
+.hover\:bg-slate-700:hover,
+.hover\:bg-slate-800:hover { background-color: #5b3a2a !important; }
+.hover\:bg-blue-700:hover { background-color: var(--brand-strong) !important; }
+.hover\:border-slate-500:hover,
+.hover\:border-slate-600:hover { border-color: var(--brand-strong) !important; }
+
+.focus\:border-blue-500:focus { border-color: var(--brand) !important; }
+
+.from-blue-100 { --tw-gradient-from: #ead7c1 var(--tw-gradient-from-position) !important; }
+.via-sky-100 { --tw-gradient-via: #e7d3bc var(--tw-gradient-via-position) !important; }
+.to-cyan-100 { --tw-gradient-to: #d8c2a8 var(--tw-gradient-to-position) !important; }

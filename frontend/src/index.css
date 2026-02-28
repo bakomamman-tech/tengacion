@@ -25,6 +25,12 @@
   --radius-md: 14px;
   --radius-lg: 18px;
   --radius-pill: 999px;
+  --btn-bg: #a66a2c;
+  --btn-bg-hover: #8b5522;
+  --btn-bg-soft: #c89a6a;
+  --btn-text: #ffffff;
+  --btn-radius: 16px;
+  --btn-focus: rgba(200, 154, 106, 0.55);
 }
 
 .composer-video-progress {
@@ -1173,12 +1179,43 @@ textarea {
   font: inherit;
 }
 
+button:not(:where(.logo-area, .nav-circle-btn, .profile-icon-btn, .post-menu-btn, .avatar-btn, .nav-avatar-chip)) {
+  border: none !important;
+  border-radius: var(--btn-radius) !important;
+  background: var(--btn-bg) !important;
+  color: var(--btn-text) !important;
+  font-weight: 700 !important;
+  padding: 12px 24px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  transition: background 150ms ease, transform 80ms ease, box-shadow 150ms ease;
+  cursor: pointer;
+}
+
+button:not(:where(.logo-area, .nav-circle-btn, .profile-icon-btn, .post-menu-btn, .avatar-btn, .nav-avatar-chip)):hover:not(:disabled) {
+  background: var(--btn-bg-hover) !important;
+}
+
+button:not(:where(.logo-area, .nav-circle-btn, .profile-icon-btn, .post-menu-btn, .avatar-btn, .nav-avatar-chip)):active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+button:not(:where(.logo-area, .nav-circle-btn, .profile-icon-btn, .post-menu-btn, .avatar-btn, .nav-avatar-chip)):disabled {
+  background: var(--btn-bg-soft) !important;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--brand) 70%, #ffffff 30%);
+  outline: 2px solid color-mix(in srgb, var(--btn-bg-soft) 75%, #ffffff 25%);
   outline-offset: 2px;
+}
+
+button:not(:where(.logo-area, .nav-circle-btn, .profile-icon-btn, .post-menu-btn, .avatar-btn, .nav-avatar-chip)):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--btn-focus);
 }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
@@ -1208,11 +1245,9 @@ textarea:focus {
 .empty-feed-btn,
 .pc-submit.active,
 .messenger-input button {
-  border: none;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-  color: #fff;
-  cursor: pointer;
+  border-radius: var(--btn-radius);
+  background: var(--btn-bg);
+  color: var(--btn-text);
   font-weight: 700;
 }
 
@@ -1220,24 +1255,23 @@ textarea:focus {
 .empty-feed-btn:hover,
 .pc-submit.active:hover,
 .messenger-input button:hover {
-  filter: brightness(1.03);
+  background: var(--btn-bg-hover);
 }
 
 .btn-secondary {
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--surface-soft);
-  color: var(--text);
-  padding: 8px 12px;
-  cursor: pointer;
+  border-radius: var(--btn-radius);
+  border: none;
+  background: color-mix(in srgb, var(--btn-bg) 88%, #ffffff 12%);
+  color: var(--btn-text);
+  padding: 12px 24px;
 }
 
 .btn-link {
-  border: none;
-  background: transparent;
-  color: var(--brand);
+  border-radius: var(--btn-radius);
+  background: color-mix(in srgb, var(--btn-bg) 94%, #ffffff 6%);
+  color: var(--btn-text);
   font-weight: 700;
-  cursor: pointer;
+  padding: 12px 24px;
 }
 
 /* Boot */

@@ -4,6 +4,9 @@ export default {
   theme: {
     extend: {
       colors: {
+        brandBrown: "#A66A2C",
+        brandBrownDark: "#8B5522",
+        brandBrownSoft: "#C89A6A",
         brand: {
           50: "#f8efe3",
           100: "#f2e3cf",

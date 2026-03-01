@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, useEffect } from "react";
 import VideoControlsOverlay from "./VideoControlsOverlay";
 
 const VideoPlayer = forwardRef(function VideoPlayer(
@@ -7,7 +7,6 @@ const VideoPlayer = forwardRef(function VideoPlayer(
     src,
     sourceType,
     poster,
-    disableAutoplay,
     isMuted,
     setIsMuted,
     isPlaying,
@@ -20,15 +19,23 @@ const VideoPlayer = forwardRef(function VideoPlayer(
   },
   videoRef
 ) {
+  useEffect(() => {
+    const video = videoRef?.current;
+    if (!video) {
+      return;
+    }
+    video.pause();
+    setIsPlaying(false);
+  }, [setIsPlaying, src, videoRef]);
+
   return (
     <div ref={wrapperRef}>
       <video
         ref={videoRef}
         poster={poster || undefined}
         className="post-video"
-        muted={disableAutoplay ? false : isMuted}
+        muted={isMuted}
         controls={false}
-        autoPlay={!disableAutoplay}
         playsInline
         preload="metadata"
         crossOrigin="anonymous"
@@ -48,7 +55,6 @@ const VideoPlayer = forwardRef(function VideoPlayer(
         setIsPlaying={setIsPlaying}
         isMuted={isMuted}
         setIsMuted={setIsMuted}
-        disableAutoplay={disableAutoplay}
       />
     </div>
   );

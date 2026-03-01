@@ -351,7 +351,7 @@ export default function GoLive() {
           <div className="go-live-video-wrap">
             <video
               ref={videoRef}
-              autoPlay
+              controls
               muted
               playsInline
               className="go-live-video"

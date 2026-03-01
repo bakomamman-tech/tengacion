@@ -141,7 +141,6 @@ export default function PostCard({
   isSystem,
   onDelete,
   onEdit,
-  disableAutoplay = false,
 }) {
   /* SYSTEM POST SHORT-CIRCUIT */
   const isSystemPost = isSystem || post?.system;
@@ -306,13 +305,12 @@ export default function PostCard({
     setIsPlaying(false);
     setIsBuffering(false);
     setIsInView(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
   }, [post?._id, postMediaUrl, mediaTypeCandidate]);
 
   useEffect(() => {
-    if (disableAutoplay) {
-      return undefined;
-    }
-
     const videoElement = videoRef.current;
     if (!videoElement) {
       return undefined;
@@ -331,25 +329,19 @@ export default function PostCard({
     return () => {
       observer.disconnect();
     };
-  }, [disableAutoplay, post?._id, postMediaUrl]);
+  }, [post?._id, postMediaUrl]);
 
   useEffect(() => {
     const videoElement = videoRef.current;
-    if (!videoElement || disableAutoplay || videoError) {
+    if (!videoElement || videoError) {
       return;
     }
 
-    if (isInView) {
-      const playPromise = videoElement.play();
-      if (playPromise && typeof playPromise.then === "function") {
-        playPromise.catch(() => {});
-      }
-      setIsPlaying(true);
-    } else {
+    if (!isInView) {
       videoElement.pause();
       setIsPlaying(false);
     }
-  }, [isInView, disableAutoplay, videoError, postMediaUrl]);
+  }, [isInView, videoError, postMediaUrl]);
 
   const retryVideoPlayback = () => {
     setVideoError(false);
@@ -360,9 +352,6 @@ export default function PostCard({
       return;
     }
     current.load();
-    if (!disableAutoplay) {
-      current.play().catch(() => {});
-    }
   };
 
   const likeBtnLabel = useMemo(() => {
@@ -595,7 +584,6 @@ export default function PostCard({
                     src={postVideoSource}
                     sourceType={videoMimeType}
                     poster={videoPoster || undefined}
-                    disableAutoplay={disableAutoplay}
                     isMuted={isMuted}
                     setIsMuted={setIsMuted}
                     isPlaying={isPlaying}

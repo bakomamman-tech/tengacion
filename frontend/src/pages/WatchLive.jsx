@@ -156,7 +156,7 @@ export default function WatchLive() {
         <section className="watch-live-video">
           <video
             ref={videoRef}
-            autoPlay
+            controls
             playsInline
             className="watch-live-preview"
           />

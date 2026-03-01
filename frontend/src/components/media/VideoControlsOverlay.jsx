@@ -21,7 +21,6 @@ export default function VideoControlsOverlay({
   setIsPlaying,
   isMuted,
   setIsMuted,
-  disableAutoplay,
 }) {
   const [visible, setVisible] = useState(true);
   const [duration, setDuration] = useState(0);
@@ -391,7 +390,7 @@ export default function VideoControlsOverlay({
                 </div>
               )}
             </div>
-            {pipAvailable && !disableAutoplay && (
+            {pipAvailable && (
               <button
                 type="button"
                 className={styles.vpBtn}

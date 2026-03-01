@@ -114,6 +114,16 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
   }, [activeStory, mediaType]);
 
   useEffect(() => {
+    if (mediaType !== "video") {
+      return;
+    }
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  }, [mediaType, index]);
+
+  useEffect(() => {
     const onKeyDown = (event) => {
       if (event.key === "Escape") {
         onClose?.();
@@ -165,7 +175,6 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
               <video
                 ref={videoRef}
                 src={mediaUrl}
-                autoPlay
                 controls
                 playsInline
                 onTimeUpdate={(event) => {
@@ -204,4 +213,3 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
     </div>
   );
 }
-

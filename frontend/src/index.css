@@ -1380,6 +1380,63 @@ html.dark-mode .live-preview-panel {
   font-size: 15px;
 }
 
+html.dark-mode .profile-page-v2 .profile-main-meta h1,
+html.dark-mode .profile-page-v2 .profile-follow-line,
+html.dark-mode .profile-page-v2 .profile-main-bio,
+html.dark-mode .profile-page-v2 .profile-badge-line span,
+html.dark-mode .profile-page-v2 .profile-panel-head h3,
+html.dark-mode .profile-page-v2 .profile-fact-value,
+html.dark-mode .profile-page-v2 .profile-friends-count,
+html.dark-mode .profile-page-v2 .profile-friend-name {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+html.dark-mode .profile-page-v2 .profile-mute,
+html.dark-mode .profile-page-v2 .profile-empty-posts,
+html.dark-mode .profile-page-v2 .profile-tip-copy p,
+html.dark-mode .profile-page-v2 .profile-edit-grid label {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+html.dark-mode .profile-page-v2 .profile-mini-ico {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+html.dark-mode .profile-page-v2 .profile-fact-icon {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.88);
+}
+
+html.dark-mode .profile-page-v2 .profile-tab-btn,
+html.dark-mode .profile-page-v2 .profile-view-btn {
+  color: rgba(255, 255, 255, 0.74);
+}
+
+html.dark-mode .profile-page-v2 .profile-tab-btn:hover,
+html.dark-mode .profile-page-v2 .profile-view-btn:hover {
+  color: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html.dark-mode .profile-page-v2 .profile-tab-btn.active,
+html.dark-mode .profile-page-v2 .profile-view-btn.active {
+  color: rgba(255, 255, 255, 0.96);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+
+html.dark-mode .profile-page-v2 .profile-tab-btn:focus,
+html.dark-mode .profile-page-v2 .profile-tab-btn:focus-visible,
+html.dark-mode .profile-page-v2 .profile-view-btn:focus,
+html.dark-mode .profile-page-v2 .profile-view-btn:focus-visible,
+html.dark-mode .profile-page-v2 .profile-pill-btn:focus,
+html.dark-mode .profile-page-v2 .profile-pill-btn:focus-visible,
+html.dark-mode .profile-page-v2 .profile-tabs-more:focus,
+html.dark-mode .profile-page-v2 .profile-tabs-more:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(200, 154, 106, 0.5);
+}
+
 @media (max-width: 1240px) {
   .profile-main-meta h1 {
     font-size: clamp(28px, 4.4vw, 42px);

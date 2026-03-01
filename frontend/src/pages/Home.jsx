@@ -828,7 +828,7 @@ export default function Home({ user }) {
         <main className="feed">
           {!loading && <Stories user={currentUser} />}
           {!loading && liveSessions.length > 0 && (
-            <section className="live-now-bar live-now-section">
+            <section className="live-now-bar live-now-section live-preview-panel">
               <div className="live-now-header">
                 <h3>Live now</h3>
                 <button

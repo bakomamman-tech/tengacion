@@ -226,7 +226,7 @@ export const uploadAvatar = (file) => {
     headers: getAuthHeaders(),
     body: form,
     timeoutMs: 60000,
-  });
+  }).then((payload) => payload?.user || payload);
 };
 
 export const uploadCover = (file) => {
@@ -238,7 +238,7 @@ export const uploadCover = (file) => {
     headers: getAuthHeaders(),
     body: form,
     timeoutMs: 60000,
-  });
+  }).then((payload) => payload?.user || payload);
 };
 
 export const getFriendRequests = () =>

@@ -62,7 +62,12 @@ if (process.env.NODE_ENV !== "test") {
   }
 
   const connectDB = require("./config/db");
-  connectDB();
+  const { repairUserMediaFields } = require("./scripts/repairUserMediaFields");
+  connectDB()
+    .then(() => repairUserMediaFields({ logger: console }))
+    .catch((err) => {
+      console.error("User media repair failed on startup:", err?.message || err);
+    });
 
   const io = new Server(server, {
     cors: {

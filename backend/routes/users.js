@@ -4,15 +4,18 @@ const User = require("../models/User");
 const upload = require("../utils/upload");
 const Post = require("../models/Post");
 const auth = require("../middleware/auth");
-const { saveUploadedFile } = require("../services/mediaStore");
+const { saveUploadedMedia } = require("../services/mediaStore");
 const { createNotification } = require("../services/notificationService");
+const {
+  normalizeMediaValue,
+  mediaToUrl,
+  normalizeUserMediaDocument,
+} = require("../utils/userMedia");
 
 const router = express.Router();
 
 const avatarToUrl = (avatar) => {
-  if (!avatar) return "";
-  if (typeof avatar === "string") return avatar;
-  return avatar.url || "";
+  return mediaToUrl(avatar);
 };
 
 const toIdString = (value) => {
@@ -127,18 +130,13 @@ router.put("/me", auth, async (req, res) => {
     if (education !== undefined) user.education = education;
     if (website !== undefined) user.website = website;
     if (avatar !== undefined) {
-      user.avatar =
-        typeof avatar === "string"
-          ? { public_id: "", url: avatar }
-          : avatar;
+      user.set("avatar", normalizeMediaValue(avatar));
     }
     if (cover !== undefined) {
-      user.cover =
-        typeof cover === "string"
-          ? { public_id: "", url: cover }
-          : cover;
+      user.set("cover", normalizeMediaValue(cover));
     }
 
+    normalizeUserMediaDocument(user);
     await user.save();
 
     const safeUser = await User.findById(req.user.id).select("-password");
@@ -567,15 +565,24 @@ router.post(
         return res.status(400).json({ error: "Only image files are allowed" });
       }
 
-      const imageUrl = await saveUploadedFile(selectedFile);
-      user.avatar = { public_id: "", url: imageUrl };
+      normalizeUserMediaDocument(user);
+      const uploaded = await saveUploadedMedia(selectedFile);
+      user.set("avatar", normalizeMediaValue(uploaded));
       await user.save();
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[UPLOAD][avatar]", {
+          userId: user._id.toString(),
+          url: uploaded.url,
+          public_id: uploaded.public_id,
+          resource_type: uploaded.resource_type,
+        });
+      }
 
       try {
         await Post.create({
           author: user._id,
           text: "Updated profile picture",
-          media: [{ url: imageUrl, type: "image" }],
+          media: [{ url: uploaded.url, type: "image" }],
           privacy: "public",
         });
       } catch (postErr) {
@@ -583,11 +590,15 @@ router.post(
       }
 
       const safeUser = await User.findById(req.user.id).select("-password");
-      return res.json(safeUser);
+      return res.json({
+        user: safeUser,
+        media: normalizeMediaValue(uploaded),
+      });
     } catch (err) {
       console.error("Avatar upload failed:", err);
       return res.status(500).json({
         error: err?.message || "Avatar upload failed",
+        message: err?.message || "Avatar upload failed",
       });
     }
   }
@@ -615,15 +626,24 @@ router.post(
         return res.status(400).json({ error: "Only image files are allowed" });
       }
 
-      const imageUrl = await saveUploadedFile(selectedFile);
-      user.cover = { public_id: "", url: imageUrl };
+      normalizeUserMediaDocument(user);
+      const uploaded = await saveUploadedMedia(selectedFile);
+      user.set("cover", normalizeMediaValue(uploaded));
       await user.save();
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[UPLOAD][cover]", {
+          userId: user._id.toString(),
+          url: uploaded.url,
+          public_id: uploaded.public_id,
+          resource_type: uploaded.resource_type,
+        });
+      }
 
       try {
         await Post.create({
           author: user._id,
           text: "Updated cover photo",
-          media: [{ url: imageUrl, type: "image" }],
+          media: [{ url: uploaded.url, type: "image" }],
           privacy: "public",
         });
       } catch (postErr) {
@@ -631,11 +651,15 @@ router.post(
       }
 
       const safeUser = await User.findById(req.user.id).select("-password");
-      return res.json(safeUser);
+      return res.json({
+        user: safeUser,
+        media: normalizeMediaValue(uploaded),
+      });
     } catch (err) {
       console.error("Cover upload failed:", err);
       return res.status(500).json({
         error: err?.message || "Cover upload failed",
+        message: err?.message || "Cover upload failed",
       });
     }
   }

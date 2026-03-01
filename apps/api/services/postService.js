@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const Post = require("../models/Post");
 const User = require("../../../backend/models/User");
 const { createNotification } = require("../../../backend/services/notificationService");
-const { saveUploadedFile } = require("../../../backend/services/mediaStore");
+const { saveUploadedMedia } = require("../../../backend/services/mediaStore");
 const ApiError = require("../utils/ApiError");
 const {
   MAX_VIDEO_BYTES,
@@ -267,17 +267,18 @@ class PostService {
 
     const media = [];
     if (uploadFile) {
-      const persistedUrl = await saveUploadedFile(uploadFile);
+      const persisted = await saveUploadedMedia(uploadFile);
       const persistedKind = inferMediaKind(uploadFile);
       media.push({
-        url: persistedUrl,
+        public_id: persisted.public_id || "",
+        url: persisted.url,
         type: persistedKind,
       });
 
       if (persistedKind === "video") {
         videoMeta = {
-          url: persistedUrl,
-          playbackUrl: persistedUrl,
+          url: persisted.url,
+          playbackUrl: persisted.url,
           thumbnailUrl: "",
           duration: videoMeta?.duration || 0,
           width: videoMeta?.width || 0,

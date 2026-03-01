@@ -69,8 +69,8 @@ const buildFieldFallback = (field) => {
   if (field === "country") return `tmp_country_${stamp}`;
   if (field === "joined") return new Date(Date.now() + Math.floor(Math.random() * 1000));
   if (field === "dob") return new Date(Date.now() - Math.floor(Math.random() * 1000000000));
-  if (field === "avatar") return `tmp_avatar_${stamp}`;
-  if (field === "cover") return `tmp_cover_${stamp}`;
+  if (field === "avatar") return { public_id: "", url: `/uploads/tmp_avatar_${stamp}.png` };
+  if (field === "cover") return { public_id: "", url: `/uploads/tmp_cover_${stamp}.png` };
   if (field === "avatar.url") return `/uploads/tmp_avatar_${stamp}.png`;
   if (field === "cover.url") return `/uploads/tmp_cover_${stamp}.png`;
   if (field === "gender") return `unspecified_${stamp}`;
@@ -155,14 +155,7 @@ const tryLegacyInsertFallback = async ({
     cover: { public_id: "", url: "" },
   };
 
-  const legacyDoc = {
-    ...shared,
-    dob: dob || "",
-    avatar: "",
-    cover: "",
-  };
-
-  const variants = [modernDoc, legacyDoc];
+  const variants = [modernDoc];
   let lastError = null;
 
   for (const variant of variants) {

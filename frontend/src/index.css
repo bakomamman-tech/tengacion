@@ -2867,6 +2867,14 @@ html.dark-mode .nav-notification-btn:hover {
   cursor: pointer;
 }
 
+html.dark-mode .create-post-row input {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html.dark-mode .create-post-row input::placeholder {
+  color: rgba(255, 255, 255, 0.62);
+}
+
 .create-post-avatar {
   width: 42px;
   height: 42px;
@@ -3923,6 +3931,14 @@ html.dark-mode .nav-notification-btn:hover {
   color: #1f2937;
   overflow-y: auto;
   resize: none;
+}
+
+html.dark-mode .composer-textarea {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+html.dark-mode .composer-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.62);
 }
 
 .composer-textarea:focus {

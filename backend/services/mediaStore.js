@@ -74,17 +74,76 @@ const saveUploadedFile = async (file) => {
 
   await pipeline(fs.createReadStream(sourcePath), uploadStream);
 
+  const resourceType = contentType.startsWith("video/")
+    ? "video"
+    : contentType.startsWith("image/")
+      ? "image"
+      : "raw";
+  const mediaPayload = {
+    url: `/api/media/${uploadStream.id.toString()}`,
+    public_id: uploadStream.id.toString(),
+    resource_type: resourceType,
+  };
+
   try {
     await fsp.unlink(sourcePath);
   } catch {
     // Non-fatal: local temp cleanup best-effort.
   }
 
-  return `/api/media/${uploadStream.id.toString()}`;
+  return mediaPayload.url;
+};
+
+const saveUploadedMedia = async (file) => {
+  if (!file) {
+    return {
+      url: "",
+      public_id: "",
+      resource_type: "raw",
+    };
+  }
+
+  const sourcePath = file.path || "";
+  if (!sourcePath || !fs.existsSync(sourcePath)) {
+    throw new Error("Uploaded file could not be read from temporary storage");
+  }
+
+  const bucket = getBucket();
+  const filename = toSafeFilename(file.originalname || path.basename(sourcePath));
+  const contentType = resolveContentType(file);
+  const uploadStream = bucket.openUploadStream(filename, {
+    contentType,
+    metadata: {
+      source: "tengacion-upload",
+      originalName: file.originalname || "",
+      contentDisposition: "inline",
+    },
+  });
+
+  await pipeline(fs.createReadStream(sourcePath), uploadStream);
+
+  try {
+    await fsp.unlink(sourcePath);
+  } catch {
+    // Non-fatal: local temp cleanup best-effort.
+  }
+
+  const resourceType = contentType.startsWith("video/")
+    ? "video"
+    : contentType.startsWith("image/")
+      ? "image"
+      : "raw";
+
+  return {
+    url: `/api/media/${uploadStream.id.toString()}`,
+    public_id: uploadStream.id.toString(),
+    resource_type: resourceType,
+  };
 };
 
 module.exports = {
   getBucket,
   saveUploadedFile,
+  saveUploadedMedia,
   bucketName,
 };

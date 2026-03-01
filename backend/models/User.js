@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { normalizeMediaValue } = require("../utils/userMedia");
 
 const UserSchema = new mongoose.Schema(
   {
@@ -247,6 +248,9 @@ UserSchema.index({ username: "text", name: "text" });
 
 /* ================= HOOKS ================= */
 UserSchema.pre("save", async function () {
+  this.avatar = normalizeMediaValue(this.avatar);
+  this.cover = normalizeMediaValue(this.cover);
+
   if (!this.isModified("password")) {
     return;
   }
@@ -270,12 +274,8 @@ UserSchema.methods.toJSON = function () {
   if (typeof obj.country === "string" && obj.country.startsWith("tmp_country_")) {
     obj.country = "";
   }
-  if (obj.avatar && typeof obj.avatar === "object") {
-    obj.avatar = obj.avatar.url || "";
-  }
-  if (obj.cover && typeof obj.cover === "object") {
-    obj.cover = obj.cover.url || "";
-  }
+  obj.avatar = normalizeMediaValue(obj.avatar);
+  obj.cover = normalizeMediaValue(obj.cover);
   return obj;
 };
 

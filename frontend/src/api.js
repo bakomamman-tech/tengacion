@@ -171,7 +171,7 @@ export const login = (email, password) =>
   request(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ emailOrUsername: email, password }),
+    body: JSON.stringify({ email, emailOrUsername: email, password }),
   });
 
 export const register = (payload) =>

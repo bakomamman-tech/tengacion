@@ -36,6 +36,53 @@ const formatDuration = (inputSeconds) => {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 };
 
+const sanitizeAttachmentUrl = (rawUrl, type) => {
+  const resolved = resolveImage(rawUrl || "");
+  if (!resolved) {
+    return "";
+  }
+
+  const normalized = String(resolved).toLowerCase();
+  if (type === "audio" && normalized.startsWith("data:audio")) {
+    return "";
+  }
+
+  return resolved;
+};
+
+const pickVoiceMimeType = () => {
+  if (typeof MediaRecorder === "undefined" || typeof MediaRecorder.isTypeSupported !== "function") {
+    return "";
+  }
+
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/ogg",
+    "audio/mp4",
+  ];
+
+  for (const candidate of candidates) {
+    if (MediaRecorder.isTypeSupported(candidate)) {
+      return candidate;
+    }
+  }
+
+  return "";
+};
+
+const inferAudioMimeFromUrl = (url = "") => {
+  const value = String(url || "").toLowerCase();
+  if (value.includes(".ogg")) {
+    return "audio/ogg";
+  }
+  if (value.includes(".m4a") || value.includes(".mp4")) {
+    return "audio/mp4";
+  }
+  return "audio/webm";
+};
+
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "User"
@@ -126,8 +173,8 @@ const normalizeMessage = (message) => ({
   attachments: Array.isArray(message?.attachments)
     ? message.attachments
         .map((file) => ({
-          url: resolveImage(file?.url || ""),
           type: file?.type || "file",
+          url: sanitizeAttachmentUrl(file?.url || "", file?.type || "file"),
           name: file?.name || "",
           size: Number(file?.size) || 0,
           durationSeconds: Number(file?.durationSeconds) || 0,
@@ -798,12 +845,12 @@ export default function Messenger({ user, onClose, onMinimize }) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       recordingStreamRef.current = stream;
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : "audio/mp4";
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const mimeType = pickVoiceMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
       recorderChunksRef.current = [];
-      recordMimeRef.current = mimeType;
+      recordMimeRef.current = mimeType || recorder.mimeType || "audio/webm";
       recorderRef.current = recorder;
       recordingCancelledRef.current = false;
       recordingStartRef.current = Date.now();
@@ -895,9 +942,14 @@ export default function Messenger({ user, onClose, onMinimize }) {
     }
     setIsSendingVoice(true);
     try {
-      const extension = voicePreview.mimeType.includes("mp4") ? "m4a" : "webm";
+      const normalizedMime = String(voicePreview.mimeType || "").toLowerCase();
+      const extension = normalizedMime.includes("ogg")
+        ? "ogg"
+        : normalizedMime.includes("mp4")
+          ? "m4a"
+          : "webm";
       const file = new File([voicePreview.blob], `voice-note-${Date.now()}.${extension}`, {
-        type: voicePreview.mimeType,
+        type: normalizedMime || "audio/webm",
       });
       await uploadAndSendAttachment(
         file,
@@ -1270,7 +1322,6 @@ export default function Messenger({ user, onClose, onMinimize }) {
                                               voiceAudioRefs.current.delete(audioId);
                                             }
                                           }}
-                                          src={resolveImage(file.url)}
                                           preload="metadata"
                                           onLoadedMetadata={(event) =>
                                             handleVoiceAudioEvent(audioId, {
@@ -1300,7 +1351,9 @@ export default function Messenger({ user, onClose, onMinimize }) {
                                             })
                                           }
                                           className="msg-voice-audio-hidden"
-                                        />
+                                        >
+                                          <source src={resolveImage(file.url)} type={inferAudioMimeFromUrl(file.url)} />
+                                        </audio>
                                         <button
                                           type="button"
                                           className="msg-voice-play-btn"
@@ -1433,10 +1486,11 @@ export default function Messenger({ user, onClose, onMinimize }) {
                       ) : (
                         <>
                           <audio
-                            src={voicePreview?.url || ""}
                             controls
                             className="messenger-voice-preview-audio"
-                          />
+                          >
+                            <source src={voicePreview?.url || ""} type={voicePreview?.mimeType || "audio/webm"} />
+                          </audio>
                           <button
                             type="button"
                             className="messenger-action-btn"

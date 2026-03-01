@@ -365,10 +365,10 @@ class AuthService {
     };
   }
 
-  static async login({ emailOrUsername, password }) {
-    const identifier = sanitizeIdentifier(emailOrUsername);
+  static async login({ emailOrUsername, email, username, password }) {
+    const identifier = sanitizeIdentifier(emailOrUsername || email || username);
     if (!identifier || !password) {
-      throw ApiError.badRequest("Identifier and password are required");
+      throw ApiError.badRequest("Email/username and password are required");
     }
 
     const user = await userRepository
@@ -380,10 +380,16 @@ class AuthService {
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw ApiError.unauthorized("Invalid credentials");
     }
-    if (!user.isActive || user.isDeleted) {
+    if (user.isDeleted) {
+      console.warn(`Login blocked: deleted account ${user._id}`);
+      throw ApiError.forbidden("Account is deleted");
+    }
+    if (!user.isActive) {
+      console.warn(`Login blocked: inactive account ${user._id}`);
       throw ApiError.forbidden("Account is inactive");
     }
     if (user.isBanned) {
+      console.warn(`Login blocked: banned account ${user._id}`);
       throw ApiError.forbidden("Your account is banned");
     }
 

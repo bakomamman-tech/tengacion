@@ -26,7 +26,7 @@ exports.register = catchAsync(async (req, res) => {
 
 exports.login = catchAsync(async (req, res) => {
   const payload = await AuthService.login({
-    emailOrUsername: req.body.emailOrUsername,
+    emailOrUsername: req.body.emailOrUsername || req.body.email || req.body.username,
     password: req.body.password,
   });
   res.json(payload);

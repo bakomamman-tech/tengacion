@@ -5,7 +5,8 @@
   "scripts": {
     "build": "npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend",
     "start": "node backend/server.js",
-    "seed:admin": "node backend/scripts/seedAdmin.js"
+    "seed:admin": "node backend/scripts/seedAdmin.js",
+    "reset:admin-password": "node backend/scripts/resetAdminPassword.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

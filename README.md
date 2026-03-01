@@ -91,6 +91,14 @@ npm run seed:admin --prefix backend
 
 Then start the app, login with `ADMIN_EMAIL` + `ADMIN_PASSWORD`, and open `/admin`.
 
+If login fails due to password drift in local dev, reset the admin password:
+
+```bash
+npm run reset:admin-password
+```
+
+For safety, `resetAdminPassword` is blocked in production unless `ALLOW_ADMIN_PASSWORD_RESET=true`.
+
 ## 5) Useful Endpoints
 - **Auth:** `GET /api/me`
 - **Artist:** `GET /api/artist/:username`, `PUT /api/artist/me`

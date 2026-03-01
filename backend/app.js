@@ -9,6 +9,7 @@ const errorHandler = require("../apps/api/middleware/errorHandler");
 const User = require("./models/User");
 
 const app = express();
+const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 
 app.set("trust proxy", 1);
 
@@ -35,8 +36,9 @@ app.use(
           "wss://tengacioncom-8unikgcj.livekit.cloud",
         ],
         imgSrc: ["'self'", "data:", "blob:", "https://ui-avatars.com"],
-        mediaSrc: ["'self'", "blob:"],
+        mediaSrc: ["'self'", "blob:", "https:"],
         workerSrc: ["'self'", "blob:"],
+        scriptSrc: isProduction ? ["'self'"] : ["'self'", "'unsafe-inline'"],
       },
     },
   })

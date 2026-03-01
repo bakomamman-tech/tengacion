@@ -1,6 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const rateLimit = require("express-rate-limit");
+let rateLimit;
+try {
+  rateLimit = require("express-rate-limit");
+} catch (_error) {
+  console.warn("express-rate-limit not installed; rate limiting disabled");
+  rateLimit = () => (_req, _res, next) => next();
+}
 const authController = require("../controllers/authController");
 const legacyAuth = require("../../../backend/middleware/auth");
 

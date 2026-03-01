@@ -4,13 +4,14 @@ const auth = require("../middleware/auth");
 const requireRole = require("../middleware/requireRole");
 const User = require("../models/User");
 const AuditLog = require("../models/AuditLog");
+const Post = require("../models/Post");
 const { writeAuditLog } = require("../services/auditLogService");
 
 const router = express.Router();
 
 const ADMIN_ROLES = ["admin", "super_admin"];
 const SUPER_ADMIN_ROLES = ["super_admin"];
-const PROTECTED_ROLES_FOR_ADMIN = new Set(["admin", "super_admin"]);
+const ADMIN_MANAGEABLE_ROLES = new Set(["user"]);
 
 const toId = (value) => {
   if (!value) return "";
@@ -21,26 +22,19 @@ const toId = (value) => {
 
 const isValidId = (value) => mongoose.Types.ObjectId.isValid(value);
 
-const toUserPayload = (user) => ({
+const toAdminUserDTO = (user, requesterRole = "admin") => ({
   _id: toId(user._id),
-  name: user.name || "",
+  displayName: user.name || "",
   username: user.username || "",
-  email: user.email || "",
+  email: ["admin", "super_admin"].includes(String(requesterRole || "").toLowerCase())
+    ? user.email || ""
+    : "",
   role: user.role || "user",
-  isActive: Boolean(user.isActive),
   isBanned: Boolean(user.isBanned),
-  banReason: user.banReason || "",
   isDeleted: Boolean(user.isDeleted),
-  forcePasswordReset: Boolean(user.forcePasswordReset),
-  twoFactor: {
-    enabled: Boolean(user?.twoFactor?.enabled),
-    method: user?.twoFactor?.method || "none",
-    setupPending: Boolean(user?.twoFactor?.setupPending),
-  },
-  bannedAt: user.bannedAt || null,
-  deletedAt: user.deletedAt || null,
+  status: user.isDeleted ? "deleted" : user.isBanned ? "banned" : "active",
   createdAt: user.createdAt,
-  updatedAt: user.updatedAt,
+  lastLoginAt: user.lastLogin || null,
 });
 
 const canManageTarget = ({ actorRole, targetRole }) => {
@@ -48,7 +42,7 @@ const canManageTarget = ({ actorRole, targetRole }) => {
   const normalizedTarget = String(targetRole || "").toLowerCase();
   if (normalizedActor === "super_admin") return true;
   if (normalizedActor !== "admin") return false;
-  return !PROTECTED_ROLES_FOR_ADMIN.has(normalizedTarget);
+  return ADMIN_MANAGEABLE_ROLES.has(normalizedTarget);
 };
 
 const assertCanManageTarget = ({ actorRole, target, res }) => {
@@ -91,13 +85,14 @@ router.get("/users", async (req, res) => {
       query.isBanned = banned === "true";
     }
 
+    const requesterRole = String(req.user?.role || "admin").toLowerCase();
     const [rows, total] = await Promise.all([
       User.find(query)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .select(
-          "_id name username email role isActive isBanned banReason isDeleted forcePasswordReset createdAt updatedAt"
+          "_id name username email role lastLogin isBanned isDeleted createdAt"
         )
         .lean(),
       User.countDocuments(query),
@@ -107,7 +102,7 @@ router.get("/users", async (req, res) => {
       page,
       limit,
       total,
-      users: rows.map(toUserPayload),
+      users: rows.map((row) => toAdminUserDTO(row, requesterRole)),
     });
   } catch (err) {
     console.error("Admin users list error:", req.requestId, err);
@@ -122,13 +117,31 @@ router.get("/users/:id", async (req, res) => {
     }
     const user = await User.findById(req.params.id)
       .select(
-        "_id name username email role isActive isBanned banReason bannedAt bannedBy isDeleted deletedAt forcePasswordReset tokenVersion createdAt updatedAt twoFactor"
+        "_id name username email role lastLogin isActive isBanned banReason bannedAt isDeleted deletedAt forcePasswordReset tokenVersion followers following createdAt updatedAt"
       )
       .lean();
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    return res.json(toUserPayload(user));
+
+    const [postsCount] = await Promise.all([
+      Post.countDocuments({ author: user._id }).catch(() => 0),
+    ]);
+
+    const requesterRole = String(req.user?.role || "admin").toLowerCase();
+    return res.json({
+      ...toAdminUserDTO(user, requesterRole),
+      isActive: Boolean(user.isActive),
+      bannedReason: user.banReason || "",
+      bannedAt: user.bannedAt || null,
+      deletedAt: user.deletedAt || null,
+      forcePasswordReset: Boolean(user.forcePasswordReset),
+      stats: {
+        postsCount: Number(postsCount) || 0,
+        followersCount: Array.isArray(user.followers) ? user.followers.length : 0,
+        followingCount: Array.isArray(user.following) ? user.following.length : 0,
+      },
+    });
   } catch (err) {
     console.error("Admin user detail error:", req.requestId, err);
     return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
@@ -181,7 +194,10 @@ router.patch("/users/:id", async (req, res) => {
       metadata: { fields: Object.keys(payload || {}) },
     });
 
-    return res.json({ success: true, user: toUserPayload(target) });
+    return res.json({
+      success: true,
+      user: toAdminUserDTO(target.toObject ? target.toObject() : target, req.user?.role),
+    });
   } catch (err) {
     console.error("Admin user update error:", req.requestId, err);
     return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });

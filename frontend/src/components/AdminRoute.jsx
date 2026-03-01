@@ -2,7 +2,7 @@ import { Navigate } from "react-router-dom";
 
 export default function AdminRoute({ user, children }) {
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   const role = String(user?.role || "").toLowerCase();

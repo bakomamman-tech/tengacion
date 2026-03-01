@@ -52,6 +52,7 @@ export default function App() {
     <Routes>
       {/* PUBLIC */}
       <Route path="/" element={<Login />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/creators/:creatorId" element={<CreatorPage />} />
       <Route path="/creators/:creatorId/songs" element={<CreatorSongs />} />
@@ -240,6 +241,24 @@ export default function App() {
 
       <Route
         path="/admin"
+        element={
+          <AdminRoute user={user}>
+            <AdminPanel user={user} />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/users"
+        element={
+          <AdminRoute user={user}>
+            <AdminPanel user={user} />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/audit-logs"
         element={
           <AdminRoute user={user}>
             <AdminPanel user={user} />

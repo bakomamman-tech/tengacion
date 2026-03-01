@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getCreator, getCreatorBooks, getCreatorTracks, resolveImage } from "../api";
+import styles from "./CreatorPage.module.css";
 
 export default function CreatorPage() {
   const { creatorId } = useParams();
@@ -58,6 +59,14 @@ export default function CreatorPage() {
     return null;
   }, [books, tracks]);
 
+  const heroAvatar =
+    resolveImage(
+      creator?.profilePhoto ||
+        creator?.avatarUrl ||
+        creator?.user?.avatar ||
+        creator?.coverImageUrl
+    ) || "/avatar.png";
+
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-5xl px-4 py-10">
@@ -79,9 +88,9 @@ export default function CreatorPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8">
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="relative h-64 w-full bg-slate-100">
+    <div className={`mx-auto w-full max-w-5xl px-4 py-8 ${styles.creatorPage}`}>
+      <section className={`overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm ${styles.creatorShell}`}>
+        <div className={`relative h-64 w-full bg-slate-100 ${styles.creatorHero}`}>
           {creator.coverImageUrl ? (
             <img
               src={resolveImage(creator.coverImageUrl)}
@@ -89,15 +98,24 @@ export default function CreatorPage() {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="h-full w-full bg-gradient-to-r from-blue-100 via-sky-100 to-cyan-100" />
+            <div className={`h-full w-full ${styles.creatorHeroFallback}`} />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-slate-900/10 to-transparent" />
-          <div className="absolute bottom-5 left-5 right-5 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-white">{creator.displayName}</h1>
-              <p className="mt-1 max-w-2xl text-sm text-slate-100">{creator.bio || "Creator profile"}</p>
+          <div className={`absolute inset-0 ${styles.creatorHeroOverlay}`} />
+          <div className={`absolute bottom-5 left-5 right-5 flex flex-wrap items-end justify-between gap-4 ${styles.creatorHeroContent}`}>
+            <div className={styles.creatorHeroIdentity}>
+              <div className={styles.creatorAvatarWrap} aria-hidden="true">
+                <img src={heroAvatar} alt="" className={styles.creatorAvatar} />
+              </div>
+              <div className={styles.creatorHeroText}>
+                <h1 className={`text-3xl font-bold text-white ${styles.creatorTitle}`}>
+                  {creator.displayName}
+                </h1>
+                <p className={`mt-1 max-w-2xl text-sm text-slate-100 ${styles.creatorBio}`}>
+                  {creator.bio || "Creator profile"}
+                </p>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className={`flex flex-wrap items-center gap-2 ${styles.creatorHeaderActions}`}>
               <button
                 type="button"
                 className="rounded-xl border border-white/60 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/20"
@@ -124,7 +142,7 @@ export default function CreatorPage() {
           </div>
         </div>
 
-        <div className="border-t border-slate-200 px-5 py-4">
+        <div className={`border-t border-slate-200 px-5 py-4 ${styles.creatorTabsWrap}`}>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -152,11 +170,14 @@ export default function CreatorPage() {
         </div>
       </section>
 
-      <section className="mt-6 grid gap-4 sm:grid-cols-2">
+      <section className={`mt-6 grid gap-4 sm:grid-cols-2 ${styles.creatorCardsGrid}`}>
         {activeTab === "music" &&
           (tracks.length ? (
             tracks.map((track) => (
-              <article key={track._id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <article
+                key={track._id}
+                className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${styles.creatorItemCard}`}
+              >
                 <h3 className="text-lg font-semibold text-slate-900">{track.title}</h3>
                 <p className="mt-1 text-sm text-slate-600">{track.description || "No description"}</p>
                 <div className="mt-3 flex items-center justify-between">
@@ -180,7 +201,10 @@ export default function CreatorPage() {
         {activeTab === "books" &&
           (books.length ? (
             books.map((book) => (
-              <article key={book._id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <article
+                key={book._id}
+                className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${styles.creatorItemCard}`}
+              >
                 <h3 className="text-lg font-semibold text-slate-900">{book.title}</h3>
                 <p className="mt-1 text-sm text-slate-600">{book.description || "No description"}</p>
                 <div className="mt-3 flex items-center justify-between">

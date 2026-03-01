@@ -691,6 +691,74 @@ export const createStory = (formData) =>
     body: formData,
   });
 
+export const createStoryWithUploadProgress = ({
+  file,
+  caption = "",
+  onProgress,
+  timeoutMs = 180000,
+}) =>
+  new Promise((resolve, reject) => {
+    if (!file) {
+      reject(new Error("Choose a story file"));
+      return;
+    }
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_BASE}/stories`);
+    xhr.withCredentials = true;
+    xhr.timeout = timeoutMs;
+
+    const token = localStorage.getItem("token");
+    if (token) {
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    }
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable || typeof onProgress !== "function") {
+        return;
+      }
+      onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+
+    xhr.onload = () => {
+      const raw = xhr.responseText || "";
+      let data = {};
+      if (raw) {
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          data = { error: raw };
+        }
+      }
+
+      if (xhr.status === 401) {
+        handleAuthFailure(data?.error || data?.message || "Unauthorized");
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(data);
+        return;
+      }
+
+      const err = new Error(
+        data?.error || data?.message || `Story upload failed (${xhr.status || 0})`
+      );
+      err.status = xhr.status || 0;
+      reject(err);
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during story upload"));
+    xhr.ontimeout = () => reject(new Error("Story upload timeout"));
+    xhr.onabort = () => reject(new Error("Story upload canceled"));
+
+    const form = new FormData();
+    form.append("media", file);
+    if (caption) {
+      form.append("caption", String(caption));
+    }
+    xhr.send(form);
+  });
+
 export const markStorySeen = (storyId) =>
   request(`${API_BASE}/stories/${encodeURIComponent(storyId || "")}/seen`, {
     method: "POST",

@@ -39,21 +39,38 @@ function auth(req, res, next) {
   }
 }
 
-/* ================= CREATE STORY (TEXT OR IMAGE) ================= */
+const inferStoryMediaType = (file = null) => {
+  const mime = String(file?.mimetype || "").toLowerCase();
+  if (mime.startsWith("video/")) {
+    return "video";
+  }
+  return "image";
+};
 
-router.post("/", auth, upload.single("image"), async (req, res) => {
+/* ================= CREATE STORY (TEXT/IMAGE/VIDEO) ================= */
+
+router.post("/", auth, upload.any(), async (req, res) => {
   try {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: "User not found" });
-    const storyImageUrl = req.file ? await saveUploadedFile(req.file) : "";
+    const files = Array.isArray(req.files) ? req.files : [];
+    const mediaFile = files.find((entry) =>
+      ["media", "image", "video"].includes(String(entry?.fieldname || "").toLowerCase())
+    ) || files[0];
+    const storyMediaUrl = mediaFile ? await saveUploadedFile(mediaFile) : "";
+    const mediaType = inferStoryMediaType(mediaFile);
+    const caption = String(req.body?.caption || req.body?.text || "").trim();
 
     const story = await Story.create({
       userId: user._id.toString(),
       name: user.name,
       username: user.username,
       avatar: avatarToUrl(user.avatar),
-      text: req.body.text || "",
-      image: storyImageUrl,
+      text: caption,
+      image: storyMediaUrl,
+      mediaUrl: storyMediaUrl,
+      mediaType,
+      thumbnailUrl: mediaType === "image" ? storyMediaUrl : "",
       time: new Date(),
       seenBy: [],
     });
@@ -86,9 +103,17 @@ router.get("/", auth, async (req, res) => {
       const seenBy = Array.isArray(story.seenBy)
         ? story.seenBy.map((id) => toIdString(id))
         : [];
+      const mediaUrl = story.mediaUrl || story.image || "";
+      const mediaType = story.mediaType || "image";
       return {
         ...story,
+        id: toIdString(story._id),
         userId: toIdString(story.userId),
+        userAvatar: story.avatar || "",
+        mediaUrl,
+        mediaType,
+        thumbnailUrl: story.thumbnailUrl || (mediaType === "image" ? mediaUrl : ""),
+        createdAt: story.time || story.createdAt,
         seenBy,
         viewerSeen: seenBy.includes(viewerId),
       };

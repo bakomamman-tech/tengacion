@@ -6,6 +6,13 @@ const StorySchema = new mongoose.Schema({
   username: String,
   avatar: String,
   image: String,
+  mediaUrl: String,
+  mediaType: {
+    type: String,
+    enum: ["image", "video"],
+    default: "image"
+  },
+  thumbnailUrl: String,
   text: String,
   time: { type: Date, default: Date.now },
 

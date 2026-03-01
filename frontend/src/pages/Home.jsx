@@ -100,7 +100,7 @@ function ComposerIcon({ name }) {
   return <span className="composer-icon">{icons[name] || icons.more}</span>;
 }
 
-function PostComposerModal({ user, onClose, onPosted }) {
+function PostComposerModal({ user, onClose, onPosted, initialFile = null, initialMode = "" }) {
   const [text, setText] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
@@ -121,6 +121,23 @@ function PostComposerModal({ user, onClose, onPosted }) {
   const [videoUploadError, setVideoUploadError] = useState("");
   const boxRef = useRef(null);
   const fileRef = useRef(null);
+
+  useEffect(() => {
+    if (!initialFile) {
+      return;
+    }
+    setSelectedFile(initialFile);
+    setError("");
+    setActivePanel("");
+  }, [initialFile]);
+
+  useEffect(() => {
+    if (initialMode !== "reel") {
+      return;
+    }
+    const timer = window.setTimeout(() => fileRef.current?.click(), 70);
+    return () => window.clearTimeout(timer);
+  }, [initialMode]);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -198,22 +215,17 @@ function PostComposerModal({ user, onClose, onPosted }) {
     setMoreOptions((current) => ({ ...current, [id]: !current[id] }));
   };
 
-  const handleFileChange = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+  const applyPickedFile = (file) => {
+    if (!file) {return false;}
     const maxVideoBytes = 200 * 1024 * 1024;
     if (file.type.startsWith("video/")) {
       if (!["video/mp4", "video/webm"].includes(file.type)) {
         setError("Only MP4 and WebM videos are supported");
-        event.target.value = "";
-        return;
+        return false;
       }
       if (file.size > maxVideoBytes) {
         setError("Video exceeds maximum allowed size (200MB)");
-        event.target.value = "";
-        return;
+        return false;
       }
     }
 
@@ -222,6 +234,13 @@ function PostComposerModal({ user, onClose, onPosted }) {
     setActivePanel("");
     setVideoUploadError("");
     setVideoUploadProgress(0);
+    return true;
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    applyPickedFile(file);
   };
 
   const openAction = (panel) => {
@@ -643,6 +662,9 @@ export default function Home({ user }) {
   const [chatMinimized, setChatMinimized] = useState(false);
   const [chatDockMeta, setChatDockMeta] = useState(null);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [composerInitialFile, setComposerInitialFile] = useState(null);
+  const [composerInitialMode, setComposerInitialMode] = useState("");
+  const quickMediaRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
@@ -692,6 +714,8 @@ export default function Home({ user }) {
       setChatMinimized(false);
     }
     if (shouldOpenComposer) {
+      setComposerInitialFile(null);
+      setComposerInitialMode("");
       setComposerOpen(true);
     }
 
@@ -753,6 +777,28 @@ export default function Home({ user }) {
     navigate("/");
   };
 
+  const openComposer = (mode = "", file = null) => {
+    setComposerInitialMode(mode || "");
+    setComposerInitialFile(file || null);
+    setComposerOpen(true);
+  };
+
+  const onQuickMediaPick = (event) => {
+    const file = event.target.files?.[0] || null;
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+    const isMedia =
+      String(file.type || "").startsWith("image/") ||
+      ["video/mp4", "video/webm"].includes(String(file.type || "").toLowerCase());
+    if (!isMedia) {
+      alert("Only images, MP4, or WebM are supported.");
+      return;
+    }
+    openComposer("", file);
+  };
+
   const currentUser = profile || user;
 
   return (
@@ -764,7 +810,7 @@ export default function Home({ user }) {
           setChatOpen(true);
           setChatMinimized(false);
         }}
-        onOpenCreatePost={() => setComposerOpen(true)}
+        onOpenCreatePost={() => openComposer()}
       />
 
       <div className="app-shell">
@@ -812,7 +858,7 @@ export default function Home({ user }) {
             </section>
           )}
 
-          <div className="card create-post" onClick={() => setComposerOpen(true)}>
+          <div className="card create-post" onClick={() => openComposer()}>
             <div className="create-post-row">
               <img
                 className="create-post-avatar"
@@ -820,7 +866,48 @@ export default function Home({ user }) {
                 alt="me"
               />
               <input placeholder="What's on your mind?" readOnly />
+              <div className="create-post-quick-actions">
+                <button
+                  type="button"
+                  className="create-post-quick-btn"
+                  title="Photo/Video"
+                  aria-label="Photo/Video"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    quickMediaRef.current?.click();
+                  }}
+                >
+                  <span className="create-post-quick-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm0 2v8.8l4.2-4 3.3 2.7 4.1-3.5L21 15.9V7H4zm3.5 2.2a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2z" />
+                    </svg>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="create-post-quick-btn"
+                  title="Reel"
+                  aria-label="Reel"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openComposer("reel");
+                  }}
+                >
+                  <span className="create-post-quick-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M4 6h11a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm14 2.3L22 6v12l-4-2.3V8.3z" />
+                    </svg>
+                  </span>
+                </button>
+              </div>
             </div>
+            <input
+              ref={quickMediaRef}
+              type="file"
+              hidden
+              accept="image/*,video/mp4,video/webm"
+              onChange={onQuickMediaPick}
+            />
           </div>
 
           <div className="tengacion-feed">
@@ -837,7 +924,7 @@ export default function Home({ user }) {
                 <p>Be the first to share something with your friends.</p>
                 <button
                   className="empty-feed-btn"
-                  onClick={() => setComposerOpen(true)}
+                  onClick={() => openComposer()}
                 >
                   Create a post
                 </button>
@@ -904,7 +991,13 @@ export default function Home({ user }) {
       {composerOpen && (
         <PostComposerModal
           user={currentUser}
-          onClose={() => setComposerOpen(false)}
+          initialFile={composerInitialFile}
+          initialMode={composerInitialMode}
+          onClose={() => {
+            setComposerOpen(false);
+            setComposerInitialFile(null);
+            setComposerInitialMode("");
+          }}
           onPosted={(post) => setPosts((prev) => [post, ...prev])}
         />
       )}

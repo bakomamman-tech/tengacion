@@ -10,6 +10,8 @@ export default function StoryCard({
   onSeen,
 }) {
   const [open, setOpen] = useState(false);
+  const cover = resolveImage(story?.thumbnailUrl || story?.mediaUrl || story?.image);
+  const mediaType = story?.mediaType || (String(story?.mediaUrl || "").includes(".mp4") ? "video" : "image");
 
   const avatarSrc = story?.avatar
     ? resolveImage(story.avatar)
@@ -25,11 +27,15 @@ export default function StoryCard({
   return (
     <>
       <div className={wrapperClass} onClick={() => setOpen(true)}>
-        {story?.image ? (
-          <img
-            src={resolveImage(story?.image)}
-            alt="Story"
-          />
+        {cover ? (
+          mediaType === "video" ? (
+            <video src={cover} muted playsInline preload="metadata" />
+          ) : (
+            <img
+              src={cover}
+              alt="Story"
+            />
+          )
         ) : (
           <div className="story-card-text-fallback">
             {story?.text || "New story"}

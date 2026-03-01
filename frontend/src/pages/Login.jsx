@@ -61,7 +61,7 @@ export default function Login() {
             />
           </div>
           <h1 className="login-title">Tengacion</h1>
-          <p className="login-subtitle">Connect with Koro Folks</p>
+          <p className="login-subtitle">Connect with friends and family members</p>
         </div>
 
         <div className="login-features">

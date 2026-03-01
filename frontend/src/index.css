@@ -1546,6 +1546,20 @@ textarea {
   font: inherit;
 }
 
+.icon-btn-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.icon-glyph-center {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 button:not(:where(.logo-area, .nav-circle-btn, .profile-icon-btn, .post-menu-btn, .avatar-btn, .nav-avatar-chip, .create-menu-item, .create-coming-close)) {
   border: none !important;
   border-radius: var(--btn-radius) !important;
@@ -3274,6 +3288,10 @@ html.dark-mode .nav-notification-btn:hover {
 .pc-close {
   width: 32px;
   height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--surface-soft);
@@ -3397,6 +3415,10 @@ html.dark-mode .nav-notification-btn:hover {
   border: none;
   width: 42px;
   height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
   background: #e8edf5;
   color: #41506a;
   font-size: 16px;

@@ -103,7 +103,7 @@ export default function CreateStory({ user, onCreated }) {
           <img src={avatar} alt="Your profile" />
         </div>
         <div className="story-create-plus" aria-hidden="true">
-          +
+          <span className="icon-glyph-center">+</span>
         </div>
         <div className="story-create-label">Create story</div>
       </div>
@@ -132,7 +132,7 @@ export default function CreateStory({ user, onCreated }) {
                 aria-label="Close story creation"
                 onClick={closeModal}
               >
-                X
+                <span className="icon-glyph-center">X</span>
               </button>
             </div>
 

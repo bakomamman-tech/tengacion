@@ -486,7 +486,7 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
         <div className="pc-header composer-header">
           <h3>Create post</h3>
           <button className="pc-close" onClick={onClose} aria-label="Close">
-            X
+            <span className="icon-glyph-center">X</span>
           </button>
         </div>
 

@@ -23,6 +23,22 @@
   justify-content: space-between;
 }
 
+.create-post-modal-close {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border-radius: 9999px;
+}
+
+.create-post-modal-close .icon-glyph-center {
+  font-size: 16px;
+  line-height: 1;
+}
+
 .modal-card textarea {
   border: none;
   font-size: 16px;

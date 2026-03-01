@@ -6,9 +6,11 @@ export default function CreatePostModal({ onClose, onPost }) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
 
-  const handleFile = e => {
+  const handleFile = (e) => {
     const f = e.target.files[0];
-    if (!f) {return;}
+    if (!f) {
+      return;
+    }
     setFile(f);
     setPreview(URL.createObjectURL(f));
   };
@@ -18,39 +20,34 @@ export default function CreatePostModal({ onClose, onPost }) {
       <div className="modal-card">
         <div className="modal-header">
           <h3>Create Post</h3>
-          <button onClick={onClose}>✖</button>
+          <button className="create-post-modal-close" onClick={onClose} aria-label="Close">
+            <span className="icon-glyph-center">X</span>
+          </button>
         </div>
 
         <textarea
           placeholder="What's on your mind?"
           value={text}
-          onChange={e => setText(e.target.value)}
+          onChange={(e) => setText(e.target.value)}
         />
 
         {preview && (
           <div className="preview">
-            {file.type.startsWith("video") ? (
-              <video src={preview} controls />
-            ) : (
-              <img src={preview} />
-            )}
+            {file.type.startsWith("video") ? <video src={preview} controls /> : <img src={preview} />}
           </div>
         )}
 
         <div className="post-tools">
           <label>
-            📷
+            ??
             <input type="file" hidden accept="image/*,video/*" onChange={handleFile} />
           </label>
-          <span>🎥</span>
-          <span>😀</span>
-          <span>🎵</span>
+          <span>??</span>
+          <span>??</span>
+          <span>??</span>
         </div>
 
-        <button
-          className="post-btn"
-          onClick={() => onPost({ text, file })}
-        >
+        <button className="post-btn" onClick={() => onPost({ text, file })}>
           Post
         </button>
       </div>

@@ -603,6 +603,12 @@ export default function Messenger({ user, onClose, onMinimize }) {
 
     const handleIncomingMessage = (rawMessage) => {
       const message = normalizeMessage(rawMessage);
+      console.log("[SOCKET DELIVER]", {
+        direction: "incoming",
+        messageId: message._id || "",
+        fromUserId: toIdString(message.senderId),
+        toUserId: toIdString(message.receiverId),
+      });
       const activeContactId = selectedIdRef.current;
       const isIncoming = toIdString(message.senderId) !== meId;
 
@@ -639,6 +645,14 @@ export default function Messenger({ user, onClose, onMinimize }) {
 
     socket.on("onlineUsers", handleOnlineUsers);
     socket.on("newMessage", handleIncomingMessage);
+    socket.on("chat:message", handleIncomingMessage);
+    socket.on("chat:sent", (payload) => {
+      console.log("[SOCKET ACK]", {
+        fromEvent: true,
+        serverMsgId: payload?.serverMsgId || "",
+        clientMsgId: payload?.clientMsgId || "",
+      });
+    });
     socket.on("message:deleted_for_me", ({ messageId }) => {
       const targetId = toIdString(messageId);
       if (!targetId) {
@@ -652,6 +666,8 @@ export default function Messenger({ user, onClose, onMinimize }) {
     return () => {
       socket.off("onlineUsers", handleOnlineUsers);
       socket.off("newMessage", handleIncomingMessage);
+      socket.off("chat:message", handleIncomingMessage);
+      socket.off("chat:sent");
       socket.off("message:deleted_for_me");
       disconnectSocket();
       socketRef.current = null;
@@ -680,12 +696,18 @@ export default function Messenger({ user, onClose, onMinimize }) {
         }, 6000);
 
         socket.emit(
-          "sendMessage",
+          "chat:send",
           { receiverId, ...payload },
           (ack) => {
             if (settled) {return;}
             settled = true;
             clearTimeout(timer);
+            console.log("[SOCKET ACK]", {
+              ok: Boolean(ack?.ok),
+              serverMsgId: ack?.serverMsgId || ack?.message?._id || "",
+              clientMsgId: payload?.clientId || "",
+              error: ack?.error || "",
+            });
 
             if (ack?.ok && ack.message) {
               resolve(normalizeMessage(ack.message));
@@ -747,6 +769,12 @@ export default function Messenger({ user, onClose, onMinimize }) {
     setError("");
 
     try {
+      console.log("[SOCKET SEND]", {
+        fromUserId: meId,
+        toUserId: targetId,
+        clientMsgId: clientId,
+        type: normalizedType,
+      });
       const persisted = await sendViaSocket(targetId, payload);
       if (shouldRenderOptimistic) {
         replaceMessageByClientId(clientId, {

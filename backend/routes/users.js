@@ -5,6 +5,7 @@ const upload = require("../utils/upload");
 const Post = require("../models/Post");
 const auth = require("../middleware/auth");
 const { saveUploadedFile } = require("../services/mediaStore");
+const { createNotification } = require("../services/notificationService");
 
 const router = express.Router();
 
@@ -74,6 +75,14 @@ const userListPayload = (user) => ({
 
 const getUploadedFile = (req) =>
   req.file || req.files?.image?.[0] || req.files?.file?.[0] || null;
+
+const emitFriendEvent = (req, userId, eventName, payload) => {
+  const io = req.app.get("io");
+  if (!io) return;
+  const id = toIdString(userId);
+  if (!id) return;
+  io.to(id).to(`user:${id}`).emit(eventName, payload);
+};
 
 /* ================= MY PROFILE ================= */
 router.get("/me", auth, async (req, res) => {
@@ -262,8 +271,8 @@ router.post("/:id/request", auth, async (req, res) => {
       return res.status(400).json({ error: "Invalid user id" });
     }
 
-    const me = await User.findById(req.user.id);
-    const user = await User.findById(req.params.id);
+    const me = await User.findById(req.user.id).select("_id name username");
+    const user = await User.findById(req.params.id).select("_id name username friends friendRequests");
 
     if (!me || !user) {
       return res.status(404).json({ error: "User not found" });
@@ -278,6 +287,12 @@ router.post("/:id/request", auth, async (req, res) => {
       (id) => id.toString() === user._id.toString()
     );
     if (hasIncomingFromUser) {
+      console.log("[FRIEND SEND]", {
+        fromUserId: meId,
+        toUserId: user._id.toString(),
+        accepted: false,
+        reason: "incoming-exists",
+      });
       return res.status(409).json({ error: "This user already sent you a request" });
     }
 
@@ -287,13 +302,57 @@ router.post("/:id/request", auth, async (req, res) => {
     const alreadyFriends = (user.friends || []).some(
       (id) => id.toString() === meId
     );
+    if (alreadyFriends) {
+      console.log("[FRIEND SEND]", {
+        fromUserId: meId,
+        toUserId: user._id.toString(),
+        accepted: false,
+        reason: "already-friends",
+      });
+      return res.status(409).json({ error: "You are already friends" });
+    }
 
+    let created = false;
     if (!alreadyRequested && !alreadyFriends) {
       user.friendRequests.push(me._id);
       await user.save();
+      created = true;
+      console.log("[FRIEND DB]", {
+        action: "request:create",
+        fromUserId: meId,
+        toUserId: user._id.toString(),
+      });
+      emitFriendEvent(req, user._id, "friend:request", {
+        fromUser: userListPayload(me),
+        createdAt: new Date().toISOString(),
+      });
+      await createNotification({
+        recipient: user._id,
+        sender: me._id,
+        type: "friend_request",
+        text: "sent you a friend request",
+        entity: { id: me._id, model: "User" },
+        metadata: { link: `/profile/${encodeURIComponent(me.username || "")}` },
+        io: req.app.get("io"),
+        onlineUsers: req.app.get("onlineUsers"),
+      });
     }
 
-    return res.json({ sent: true });
+    console.log("[FRIEND SEND]", {
+      fromUserId: meId,
+      toUserId: user._id.toString(),
+      created,
+      alreadyRequested,
+    });
+    return res.status(created ? 201 : 200).json({
+      sent: true,
+      created,
+      request: {
+        from: userListPayload(me),
+        toUserId: user._id.toString(),
+        status: "pending",
+      },
+    });
   } catch {
     return res.status(500).json({ error: "Request failed" });
   }
@@ -369,8 +428,32 @@ router.post("/:id/accept", auth, async (req, res) => {
     );
 
     await Promise.all([me.save(), user.save()]);
+    console.log("[FRIEND DB]", {
+      action: "request:accept",
+      meId: me._id.toString(),
+      requesterId,
+    });
+    emitFriendEvent(req, user._id, "friend:accepted", {
+      byUser: userListPayload(me),
+      friend: userListPayload(user),
+      acceptedAt: new Date().toISOString(),
+    });
+    emitFriendEvent(req, me._id, "friend:accepted", {
+      byUser: userListPayload(me),
+      friend: userListPayload(user),
+      acceptedAt: new Date().toISOString(),
+    });
+    console.log("[FRIEND ACCEPT]", {
+      meId: me._id.toString(),
+      requesterId,
+      friendsNow: true,
+    });
 
-    return res.json({ friends: true });
+    return res.json({
+      friends: true,
+      friend: userListPayload(user),
+      removedRequestFromUserId: requesterId,
+    });
   } catch (err) {
     console.error("Accept error:", err);
     return res.status(500).json({ error: "Accept failed" });
@@ -446,6 +529,15 @@ router.get("/requests", auth, async (req, res) => {
       { _id: { $in: me.friendRequests || [] } },
       "_id name username avatar"
     ).lean();
+    console.log("[FRIEND FETCH]", {
+      userId: req.user.id,
+      incomingCount: users.length,
+    });
+    console.log("[FRIEND DB]", {
+      action: "request:list",
+      userId: req.user.id,
+      incomingCount: users.length,
+    });
 
     return res.json(users.map(userListPayload));
   } catch {

@@ -164,6 +164,13 @@ router.get("/contacts", auth, async (req, res) => {
         },
       },
     ]);
+    console.log("[DB READ]", {
+      collection: "messages",
+      route: "GET /api/messages/contacts",
+      meId,
+      peerCount: peerIds.length,
+      latestRows: latestMessages.length,
+    });
 
     const latestByUserId = new Map();
     for (const row of latestMessages) {
@@ -232,6 +239,13 @@ router.get("/:otherUserId", auth, async (req, res) => {
       .sort({ createdAt: 1 })
       .populate("senderId", "name username avatar")
       .lean();
+    console.log("[DB READ]", {
+      collection: "messages",
+      route: "GET /api/messages/:otherUserId",
+      me,
+      other,
+      count: messages.length,
+    });
 
     res.json(messages.map(normalizeMessage));
   } catch (err) {
@@ -316,7 +330,20 @@ router.post("/:otherUserId", auth, async (req, res) => {
     const io = req.app.get("io");
     if (io) {
       io.to(toIdString(me)).to(toIdString(other)).emit("newMessage", payload);
+      io.to(`user:${toIdString(me)}`).to(`user:${toIdString(other)}`).emit("chat:message", payload);
+      io.to(`user:${toIdString(me)}`).emit("chat:sent", {
+        serverMsgId: payload?._id || null,
+        clientMsgId: payload?.clientId || null,
+        persistedAt: payload?.createdAt || new Date().toISOString(),
+        toUserId: toIdString(other),
+      });
     }
+    console.log("[SOCKET DELIVER]", {
+      route: "POST /api/messages/:otherUserId",
+      fromUserId: toIdString(me),
+      toUserId: toIdString(other),
+      serverMsgId: payload?._id || "",
+    });
 
     if (!result.existed) {
       const previewText =

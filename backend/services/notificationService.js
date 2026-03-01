@@ -51,6 +51,10 @@ exports.createNotification = async ({
         notification,
         unreadCount,
       });
+      io.to(`user:${recipient.toString()}`).emit("notifications:new", {
+        notification,
+        unreadCount,
+      });
     }
 
     return notification;

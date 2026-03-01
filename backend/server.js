@@ -73,6 +73,10 @@ if (process.env.NODE_ENV !== "test") {
   });
 
   const onlineUsers = new Map();
+  const userRoom = (userId) => `user:${toIdString(userId)}`;
+  const logSocket = (tag, payload = {}) => {
+    console.log(tag, payload);
+  };
 
   const emitOnlineUsers = () => {
     io.emit("onlineUsers", [...onlineUsers.keys()]);
@@ -99,7 +103,6 @@ if (process.env.NODE_ENV !== "test") {
 
   const authenticateSocketUser = (socket) => {
     const token = socket.handshake?.auth?.token;
-    const fallbackUserId = toIdString(socket.handshake?.auth?.userId);
 
     if (token) {
       try {
@@ -109,8 +112,7 @@ if (process.env.NODE_ENV !== "test") {
         return "";
       }
     }
-
-    return fallbackUserId;
+    return "";
   };
 
   const attachUserToSocket = (socket, userId) => {
@@ -118,18 +120,40 @@ if (process.env.NODE_ENV !== "test") {
     if (!id) return;
     socket.userId = id;
     socket.join(id);
+    socket.join(userRoom(id));
     addOnlineUserSocket(id, socket.id);
     emitOnlineUsers();
+    logSocket("[SOCKET JOIN]", {
+      socketId: socket.id,
+      userId: id,
+      rooms: [id, userRoom(id)],
+    });
   };
+
+  io.use((socket, next) => {
+    const userId = authenticateSocketUser(socket);
+    logSocket("[SOCKET AUTH]", {
+      socketId: socket.id,
+      ok: Boolean(userId),
+    });
+    if (!userId) {
+      return next(new Error("Unauthorized"));
+    }
+    socket.authenticatedUserId = userId;
+    return next();
+  });
 
   app.set("io", io);
   app.set("onlineUsers", onlineUsers);
 
   io.on("connection", (socket) => {
-    const initialUserId = authenticateSocketUser(socket);
-    if (initialUserId) {
-      attachUserToSocket(socket, initialUserId);
-    }
+    const initialUserId = socket.authenticatedUserId || authenticateSocketUser(socket);
+    attachUserToSocket(socket, initialUserId);
+    logSocket("[SOCKET CONNECT]", {
+      socketId: socket.id,
+      userId: socket.userId,
+      transport: socket.conn?.transport?.name,
+    });
 
     socket.on("join", (userId) => {
       const trustedUserId = initialUserId || authenticateSocketUser(socket);
@@ -138,10 +162,17 @@ if (process.env.NODE_ENV !== "test") {
       attachUserToSocket(socket, trustedUserId);
     });
 
-    socket.on("sendMessage", async (payload = {}, ack) => {
+    const handleSendMessage = async (payload = {}, ack) => {
       try {
         const senderId = socket.userId || authenticateSocketUser(socket);
-        const receiverId = toIdString(payload.receiverId);
+        const receiverId = toIdString(payload.receiverId || payload.toUserId);
+        const clientMsgId = String(payload.clientId || payload.clientMsgId || "").trim();
+        logSocket("[SOCKET SEND]", {
+          fromUserId: senderId,
+          toUserId: receiverId,
+          clientMsgId,
+          socketId: socket.id,
+        });
 
         if (!senderId) {
           if (typeof ack === "function") {
@@ -165,11 +196,30 @@ if (process.env.NODE_ENV !== "test") {
             type: payload.type,
             metadata: payload.metadata,
             attachments: payload.attachments,
-            clientId: payload.clientId,
+            clientId: clientMsgId,
           },
+        });
+        logSocket("[DB WRITE]", {
+          collection: "messages",
+          serverMsgId: result.message?._id,
+          existed: Boolean(result.existed),
+          fromUserId: senderId,
+          toUserId: receiverId,
         });
 
         io.to(senderId).to(receiverId).emit("newMessage", result.message);
+        io.to(userRoom(senderId)).to(userRoom(receiverId)).emit("chat:message", result.message);
+        io.to(userRoom(receiverId)).emit("chat:deliver", {
+          serverMsgId: result.message?._id,
+          fromUserId: senderId,
+          toUserId: receiverId,
+          createdAt: result.message?.createdAt || new Date().toISOString(),
+        });
+        logSocket("[SOCKET DELIVER]", {
+          serverMsgId: result.message?._id,
+          fromUserId: senderId,
+          toUserId: receiverId,
+        });
 
         if (!result.existed) {
           const previewText =
@@ -196,19 +246,41 @@ if (process.env.NODE_ENV !== "test") {
         }
 
         if (typeof ack === "function") {
-          ack({ ok: true, message: result.message });
+          const ackPayload = {
+            ok: true,
+            message: result.message,
+            serverMsgId: result.message?._id,
+            clientMsgId: clientMsgId || null,
+            persistedAt: result.message?.createdAt || new Date().toISOString(),
+          };
+          ack(ackPayload);
+          logSocket("[SOCKET ACK]", ackPayload);
         }
+        io.to(userRoom(senderId)).emit("chat:sent", {
+          serverMsgId: result.message?._id,
+          clientMsgId: clientMsgId || null,
+          persistedAt: result.message?.createdAt || new Date().toISOString(),
+          toUserId: receiverId,
+        });
       } catch (err) {
         console.error("Socket sendMessage error:", err);
         if (typeof ack === "function") {
           ack({ ok: false, error: err?.message || "Failed to send message" });
         }
       }
-    });
+    };
+
+    socket.on("sendMessage", handleSendMessage);
+    socket.on("chat:send", handleSendMessage);
 
     socket.on("disconnect", () => {
       removeOnlineUserSocket(socket.userId, socket.id);
       emitOnlineUsers();
+      logSocket("[SOCKET CONNECT]", {
+        socketId: socket.id,
+        userId: socket.userId || "",
+        disconnected: true,
+      });
     });
   });
 

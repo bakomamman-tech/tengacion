@@ -13,7 +13,8 @@
     "lint": "eslint \"src/**/*.{js,jsx}\"",
     "lint:fix": "eslint \"src/**/*.{js,jsx}\" --fix",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "repro:chat-friend": "node scripts/repro-chat-friend.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -33,7 +33,20 @@ exports.sendChatMessage = asyncHandler(async (req, res) => {
 
   if (io) {
     io.to(senderId).to(receiverId).emit("newMessage", result.message);
+    io.to(`user:${senderId}`).to(`user:${receiverId}`).emit("chat:message", result.message);
+    io.to(`user:${senderId}`).emit("chat:sent", {
+      serverMsgId: result.message?._id || null,
+      clientMsgId: result.message?.clientId || null,
+      persistedAt: result.message?.createdAt || new Date().toISOString(),
+      toUserId: receiverId,
+    });
   }
+  console.log("[SOCKET DELIVER]", {
+    route: "POST /api/chat/messages",
+    fromUserId: senderId,
+    toUserId: receiverId,
+    serverMsgId: result.message?._id || "",
+  });
 
   const previewText =
     result.message.type === "contentCard"

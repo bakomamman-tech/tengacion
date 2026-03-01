@@ -244,12 +244,25 @@ export const uploadCover = (file) => {
 export const getFriendRequests = () =>
   request(`${API_BASE}/users/requests`, {
     headers: getAuthHeaders(),
+  }).then((response) => {
+    console.log("[FRIEND FETCH]", {
+      endpoint: "/api/users/requests",
+      incomingCount: Array.isArray(response) ? response.length : 0,
+    });
+    return response;
   });
 
 export const sendFriendRequest = (userId) =>
   request(`${API_BASE}/users/${encodeURIComponent(userId || "")}/request`, {
     method: "POST",
     headers: getAuthHeaders(),
+  }).then((response) => {
+    console.log("[FRIEND SEND]", {
+      endpoint: "/api/users/:id/request",
+      toUserId: String(userId || ""),
+      created: Boolean(response?.created),
+    });
+    return response;
   });
 
 export const cancelFriendRequest = (userId) =>
@@ -262,6 +275,13 @@ export const acceptFriendRequest = (userId) =>
   request(`${API_BASE}/users/${encodeURIComponent(userId || "")}/accept`, {
     method: "POST",
     headers: getAuthHeaders(),
+  }).then((response) => {
+    console.log("[FRIEND ACCEPT]", {
+      endpoint: "/api/users/:id/accept",
+      userId: String(userId || ""),
+      friends: Boolean(response?.friends),
+    });
+    return response;
   });
 
 export const rejectFriendRequest = (userId) =>

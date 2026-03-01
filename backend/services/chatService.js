@@ -67,6 +67,14 @@ const persistChatMessage = async ({ senderId, receiverId, payload }) => {
     }).populate("senderId", "name username avatar");
 
     if (existing) {
+      console.log("[DB READ]", {
+        collection: "messages",
+        reason: "idempotency-hit",
+        conversationId,
+        senderId: senderId.toString(),
+        receiverId: receiverId.toString(),
+        clientId: parsed.clientId,
+      });
       return {
         message: normalizeMessage(existing.toObject()),
         existed: true,
@@ -91,6 +99,14 @@ const persistChatMessage = async ({ senderId, receiverId, payload }) => {
   });
 
   await message.populate("senderId", "name username avatar");
+  console.log("[DB WRITE]", {
+    collection: "messages",
+    reason: "persist-chat-message",
+    messageId: message._id.toString(),
+    conversationId,
+    senderId: senderId.toString(),
+    receiverId: receiverId.toString(),
+  });
 
   return {
     message: normalizeMessage(message.toObject()),

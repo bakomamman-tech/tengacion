@@ -55,11 +55,27 @@ export function connectSocket({ token, userId }) {
   socket.connect();
 
   socket.on("connect", () => {
+    console.log("[SOCKET CONNECT]", {
+      socketId: socket.id,
+      userId,
+      transport: socket.io?.engine?.transport?.name || "",
+    });
+    console.log("[SOCKET AUTH]", { ok: true, userId });
     socket.emit("join", userId);
+    console.log("[SOCKET JOIN]", { userId });
   });
 
   socket.on("reconnect", () => {
     socket.emit("join", userId);
+    console.log("[SOCKET JOIN]", { userId, reconnect: true });
+  });
+
+  socket.on("connect_error", (error) => {
+    console.log("[SOCKET AUTH]", {
+      ok: false,
+      userId,
+      error: error?.message || "connect_error",
+    });
   });
 
   return socket;

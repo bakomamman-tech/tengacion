@@ -131,6 +131,8 @@ const MessageSchema = new mongoose.Schema(
 // Indexes for fast chat loading
 MessageSchema.index({ conversationId: 1, createdAt: -1 });
 MessageSchema.index({ senderId: 1, receiverId: 1 });
+MessageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
+MessageSchema.index({ receiverId: 1, senderId: 1, createdAt: -1 });
 
 MessageSchema.pre("validate", function () {
   if (this.type === "text") {

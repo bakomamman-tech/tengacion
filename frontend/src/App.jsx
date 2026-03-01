@@ -2,6 +2,7 @@ import React from "react";
 import { Routes, Route } from "react-router-dom";
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -20,6 +21,7 @@ import Trending from "./pages/Trending";
 import LiveDirectory from "./pages/LiveDirectory";
 import GoLive from "./pages/GoLive";
 import WatchLive from "./pages/WatchLive";
+import AdminPanel from "./pages/AdminPanel";
 import {
   AdsManagerPage,
   BirthdaysPage,
@@ -233,6 +235,15 @@ export default function App() {
           <ProtectedRoute user={user}>
             <AdsManagerPage user={user} />
           </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute user={user}>
+            <AdminPanel user={user} />
+          </AdminRoute>
         }
       />
     </Routes>

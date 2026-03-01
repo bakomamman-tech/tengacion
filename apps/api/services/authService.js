@@ -189,8 +189,8 @@ const tryLegacyInsertFallback = async ({
   throw lastError || new Error("Legacy registration fallback failed");
 };
 
-const generateToken = (id) =>
-  jwt.sign({ id }, config.JWT_SECRET, { expiresIn: "7d" });
+const generateToken = (id, tokenVersion = 0) =>
+  jwt.sign({ id, tv: Number(tokenVersion) || 0 }, config.JWT_SECRET, { expiresIn: "7d" });
 
 const isOtpRequired = () => config.REQUIRE_EMAIL_OTP === "true";
 
@@ -361,7 +361,7 @@ class AuthService {
 
     return {
       user,
-      token: generateToken(user._id),
+      token: generateToken(user._id, user.tokenVersion),
     };
   }
 
@@ -380,10 +380,16 @@ class AuthService {
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw ApiError.unauthorized("Invalid credentials");
     }
+    if (!user.isActive || user.isDeleted) {
+      throw ApiError.forbidden("Account is inactive");
+    }
+    if (user.isBanned) {
+      throw ApiError.forbidden("Your account is banned");
+    }
 
     return {
       user,
-      token: generateToken(user._id),
+      token: generateToken(user._id, user.tokenVersion),
     };
   }
 

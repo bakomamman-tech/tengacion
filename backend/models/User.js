@@ -107,7 +107,7 @@ const UserSchema = new mongoose.Schema(
     /* ================= ACCOUNT ================= */
     role: {
       type: String,
-      enum: ["user", "artist", "admin", "moderator"],
+      enum: ["user", "artist", "admin", "moderator", "super_admin"],
       default: "user",
     },
 
@@ -124,6 +124,67 @@ const UserSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+
+    isBanned: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    banReason: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 300,
+    },
+
+    bannedAt: {
+      type: Date,
+      default: null,
+    },
+
+    bannedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+
+    forcePasswordReset: {
+      type: Boolean,
+      default: false,
+    },
+
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
+
+    twoFactor: {
+      enabled: {
+        type: Boolean,
+        default: false,
+      },
+      method: {
+        type: String,
+        enum: ["none", "totp", "email"],
+        default: "none",
+      },
+      setupPending: {
+        type: Boolean,
+        default: false,
+      },
     },
 
     lastLogin: Date,
@@ -161,6 +222,14 @@ const UserSchema = new mongoose.Schema(
     ],
 
     friendRequests: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
+
+    blockedUsers: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",

@@ -853,6 +853,98 @@ export const deleteMessageForMe = (messageId) =>
   });
 
 // ======================================================
+// ADMIN
+// ======================================================
+
+export const adminListUsers = ({ search = "", page = 1, limit = 20, role = "", banned = "" } = {}) => {
+  const params = new URLSearchParams();
+  if (search) params.set("search", String(search));
+  if (page) params.set("page", String(page));
+  if (limit) params.set("limit", String(limit));
+  if (role) params.set("role", String(role));
+  if (banned !== "") params.set("banned", String(banned));
+  return request(`${API_BASE}/admin/users?${params.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminGetUser = (userId) =>
+  request(`${API_BASE}/admin/users/${encodeURIComponent(userId || "")}`, {
+    headers: getAuthHeaders(),
+  });
+
+export const adminUpdateUser = (userId, payload = {}) =>
+  request(`${API_BASE}/admin/users/${encodeURIComponent(userId || "")}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const adminBanUser = (userId, reason) =>
+  request(`${API_BASE}/admin/users/${encodeURIComponent(userId || "")}/ban`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ reason }),
+  });
+
+export const adminUnbanUser = (userId, reason = "") =>
+  request(`${API_BASE}/admin/users/${encodeURIComponent(userId || "")}/unban`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ reason }),
+  });
+
+export const adminForceLogoutUser = (userId, reason = "") =>
+  request(`${API_BASE}/admin/users/${encodeURIComponent(userId || "")}/force-logout`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ reason }),
+  });
+
+export const adminResetPasswordUser = (userId, reason = "") =>
+  request(`${API_BASE}/admin/users/${encodeURIComponent(userId || "")}/reset-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ reason }),
+  });
+
+export const adminSoftDeleteUser = (userId, reason = "") =>
+  request(`${API_BASE}/admin/users/${encodeURIComponent(userId || "")}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ reason }),
+  });
+
+export const adminGetAuditLogs = ({ page = 1, limit = 30, action = "", targetType = "" } = {}) => {
+  const params = new URLSearchParams();
+  params.set("page", String(page));
+  params.set("limit", String(limit));
+  if (action) params.set("action", String(action));
+  if (targetType) params.set("targetType", String(targetType));
+  return request(`${API_BASE}/admin/audit-logs?${params.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+// ======================================================
 // 🟢 UTIL
 // ======================================================
 

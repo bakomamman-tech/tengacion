@@ -146,6 +146,8 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
   }, [query, performSearch]);
 
   const avatar = resolveImage(user?.avatar) || fallbackAvatar(user?.name);
+  const role = String(user?.role || "").toLowerCase();
+  const canOpenAdmin = role === "admin" || role === "super_admin";
 
   const openMessenger = () => {
     if (typeof onOpenMessenger === "function") {
@@ -474,6 +476,12 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
                 <button className="pm-item" onClick={toggleTheme}>
                   {isDark ? "Switch to light mode" : "Switch to dark mode"}
                 </button>
+
+                {canOpenAdmin ? (
+                  <button className="pm-item" onClick={() => navigate("/admin")}>
+                    Admin panel
+                  </button>
+                ) : null}
 
                 <button className="pm-item logout" onClick={onLogout}>
                   Log out

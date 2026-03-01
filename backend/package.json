@@ -8,6 +8,7 @@
     "build": "npm run build:frontend",
     "build:frontend": "cd ../frontend && npm install --include=dev --no-save && npm run build",
     "seed:marketplace": "node scripts/seedMarketplace.js",
+    "seed:admin": "node scripts/seedAdmin.js",
     "test": "cross-env NODE_PATH=./node_modules jest --runInBand"
   },
   "dependencies": {

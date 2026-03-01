@@ -68,6 +68,29 @@ Creates:
 npm run seed:marketplace --prefix backend
 ```
 
+### Seed Admin Account
+Use environment variables (no hardcoded credentials):
+
+```bash
+ADMIN_EMAIL=admin@tengacion.com
+ADMIN_PASSWORD=ChangeMe_12345
+ADMIN_DISPLAY_NAME=Tengacion Admin
+```
+
+Run:
+
+```bash
+npm run seed:admin
+```
+
+or:
+
+```bash
+npm run seed:admin --prefix backend
+```
+
+Then start the app, login with `ADMIN_EMAIL` + `ADMIN_PASSWORD`, and open `/admin`.
+
 ## 5) Useful Endpoints
 - **Auth:** `GET /api/me`
 - **Artist:** `GET /api/artist/:username`, `PUT /api/artist/me`

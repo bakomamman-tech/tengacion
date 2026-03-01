@@ -20,6 +20,16 @@ import Trending from "./pages/Trending";
 import LiveDirectory from "./pages/LiveDirectory";
 import GoLive from "./pages/GoLive";
 import WatchLive from "./pages/WatchLive";
+import {
+  AdsManagerPage,
+  BirthdaysPage,
+  EventsPage,
+  FriendsPage,
+  GroupsPage,
+  MemoriesPage,
+  ProfessionalDashboardPage,
+  SavedPage,
+} from "./pages/quickAccess/QuickAccessPages";
 
 import { useAuth } from "./context/AuthContext";
 
@@ -150,6 +160,78 @@ export default function App() {
         element={
           <ProtectedRoute user={user}>
             <Search />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/friends"
+        element={
+          <ProtectedRoute user={user}>
+            <FriendsPage user={user} />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute user={user}>
+            <ProfessionalDashboardPage user={user} />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/memories"
+        element={
+          <ProtectedRoute user={user}>
+            <MemoriesPage user={user} />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/saved"
+        element={
+          <ProtectedRoute user={user}>
+            <SavedPage user={user} />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/groups"
+        element={
+          <ProtectedRoute user={user}>
+            <GroupsPage user={user} />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/events"
+        element={
+          <ProtectedRoute user={user}>
+            <EventsPage user={user} />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/birthdays"
+        element={
+          <ProtectedRoute user={user}>
+            <BirthdaysPage user={user} />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/ads-manager"
+        element={
+          <ProtectedRoute user={user}>
+            <AdsManagerPage user={user} />
           </ProtectedRoute>
         }
       />

@@ -8,6 +8,7 @@ import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
 import Messenger from "../Messenger";
 import FriendRequests from "../FriendRequests";
+import RightQuickNav from "../components/RightQuickNav";
 import Stories from "../stories/StoriesBar";
 import { connectSocket } from "../socket";
 
@@ -951,6 +952,7 @@ export default function Home({ user }) {
         </main>
 
         <aside className="home-right-rail">
+          <RightQuickNav />
           <FriendRequests />
           {chatOpen && (
             <section className="messenger-panel">

@@ -22,9 +22,14 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (request.method !== "GET") return;
+  if (!(url.protocol === "http:" || url.protocol === "https:")) return;
 
   // Never cache API responses or auth-sensitive endpoints.
   if (url.pathname.startsWith("/api") || url.pathname.startsWith("/socket.io")) {
+    return;
+  }
+  // Skip browser extension resources and byte-range media requests.
+  if (url.protocol === "chrome-extension:" || request.headers.has("range")) {
     return;
   }
 
@@ -33,12 +38,10 @@ self.addEventListener("fetch", (event) => {
       if (cached) return cached;
       return fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            if (response.ok && request.destination !== "document") {
-              cache.put(request, clone);
-            }
-          });
+          if (response.ok && response.status === 200 && request.destination !== "document") {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone)).catch(() => null);
+          }
           return response;
         })
         .catch(() => {

@@ -451,6 +451,17 @@ export const upsertCreatorProfile = (payload) =>
 export const getCreator = (creatorId) =>
   request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}`);
 
+export const getCreatorHub = (creatorId) =>
+  request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/hub`, {
+    headers: getAuthHeaders(),
+  });
+
+export const toggleFollowCreator = (creatorId) =>
+  request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/follow`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
 export const getCreatorTracks = (creatorId) =>
   request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/tracks`);
 
@@ -545,6 +556,16 @@ export const initPayment = ({ itemType, itemId, returnUrl }) =>
     body: JSON.stringify({ itemType, itemId, returnUrl }),
   });
 
+export const createCheckout = ({ itemType, itemId, currencyMode = "NG" }) =>
+  request(`${API_BASE}/checkout/create`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ itemType, itemId, currencyMode }),
+  });
+
 export const getMyPurchases = () =>
   request(`${API_BASE}/purchases/my`, {
     headers: getAuthHeaders(),
@@ -598,6 +619,31 @@ export const markAllNotificationsAsRead = () =>
       headers: getAuthHeaders(),
     })
   );
+
+export const getMyEntitlementsForCreator = (creatorId) =>
+  request(`${API_BASE}/entitlements/me?creatorId=${encodeURIComponent(creatorId || "")}`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getDownloadUrl = (itemType, itemId) =>
+  request(`${API_BASE}/download/${encodeURIComponent(itemType || "")}/${encodeURIComponent(itemId || "")}`, {
+    headers: getAuthHeaders(),
+  });
+
+export const savePlayerProgress = (payload = {}) =>
+  request(`${API_BASE}/player/progress`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const getContinueListening = (creatorId) =>
+  request(`${API_BASE}/player/continue-listening?creatorId=${encodeURIComponent(creatorId || "")}`, {
+    headers: getAuthHeaders(),
+  });
 
 export const getNotificationPreferences = () =>
   request(`${API_BASE}/notifications/preferences/me`, {

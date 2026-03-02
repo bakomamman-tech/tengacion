@@ -7,7 +7,19 @@ const VideoSchema = new mongoose.Schema({
   avatar: String,
 
   videoUrl: String,   // uploaded OR link
+  coverImageUrl: { type: String, default: "" },
   caption: String,
+  durationSec: { type: Number, default: 0 },
+  viewsCount: { type: Number, default: 0 },
+  price: { type: Number, default: 0, min: 0 },
+  priceGlobal: { type: Number, default: 0, min: 0 },
+  isFree: { type: Boolean, default: true },
+  creatorProfileId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "CreatorProfile",
+    default: null,
+    index: true,
+  },
 
   likes: [String],
   comments: [

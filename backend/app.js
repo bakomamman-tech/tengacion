@@ -110,6 +110,7 @@ app.use("/api/books", require("./routes/books"));
 app.use("/api/payments", require("./routes/payments"));
 app.use("/api/purchases", require("./routes/purchases"));
 app.use("/api/entitlements", require("./routes/entitlements"));
+app.use("/api", require("./routes/creatorHub"));
 app.use("/api/chat", require("./routes/chat"));
 app.use("/api/artist", require("./routes/artist"));
 app.use("/api/music", require("./routes/music"));

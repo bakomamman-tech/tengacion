@@ -113,8 +113,10 @@ export default function CreatorDashboardMVP() {
         setTracks([]);
         setBooks([]);
       }
+      return profileRes || null;
     } catch (err) {
       setError(err.message || "Failed to load dashboard");
+      return null;
     } finally {
       setLoading(false);
     }
@@ -204,10 +206,16 @@ export default function CreatorDashboardMVP() {
     setProfileSaving(true);
     setError("");
     try {
-      const profile = await upsertCreatorProfile(creatorForm);
+      const profile = await upsertCreatorProfile({
+        ...creatorForm,
+        onboardingComplete: true,
+      });
       setCreator(profile);
       setCreatorForm(defaultCreatorForm);
-      await loadDashboard();
+      const refreshed = await loadDashboard();
+      if (refreshed?.creatorReady && refreshed?._id) {
+        navigate(`/creators/${refreshed._id}`);
+      }
     } catch (err) {
       setError(err.message || "Failed to save creator profile");
     } finally {
@@ -285,8 +293,11 @@ export default function CreatorDashboardMVP() {
       await createTrack(payload);
       setTrackForm(defaultTrackForm);
       resetTrackFileUploads();
-      await loadDashboard();
+      const refreshed = await loadDashboard();
       showTrackStatus("Track uploaded; preview and payment links are now live on your feed.");
+      if (refreshed?.creatorReady && refreshed?._id) {
+        navigate(`/creators/${refreshed._id}`);
+      }
     } catch (err) {
       setError(err.message || "Failed to create track");
     } finally {
@@ -338,7 +349,10 @@ export default function CreatorDashboardMVP() {
       setBookForm(defaultBookForm);
       resetBookFileUploads();
       setChapterForm((prev) => ({ ...prev, bookId: created?._id || prev.bookId }));
-      await loadDashboard();
+      const refreshed = await loadDashboard();
+      if (refreshed?.creatorReady && refreshed?._id) {
+        navigate(`/creators/${refreshed._id}`);
+      }
     } catch (err) {
       setError(err.message || "Failed to create book");
     } finally {

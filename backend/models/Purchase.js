@@ -10,7 +10,7 @@ const PurchaseSchema = new mongoose.Schema(
     },
     itemType: {
       type: String,
-      enum: ["track", "book", "subscription"],
+      enum: ["track", "book", "video", "subscription"],
       required: true,
       index: true,
     },

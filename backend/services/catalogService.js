@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Track = require("../models/Track");
 const Book = require("../models/Book");
+const Video = require("../models/Video");
 
 const toObjectId = (value) => {
   if (!mongoose.Types.ObjectId.isValid(value)) {
@@ -17,7 +18,7 @@ const resolvePurchasableItem = async (itemType, itemId) => {
     return null;
   }
 
-  if (normalizedType === "track") {
+  if (["track", "song", "podcast"].includes(normalizedType)) {
     const track = await Track.findById(objectId).lean();
     if (!track) {
       return null;
@@ -32,7 +33,7 @@ const resolvePurchasableItem = async (itemType, itemId) => {
     };
   }
 
-  if (normalizedType === "book") {
+  if (["book", "ebook"].includes(normalizedType)) {
     const book = await Book.findById(objectId).lean();
     if (!book) {
       return null;
@@ -44,6 +45,21 @@ const resolvePurchasableItem = async (itemType, itemId) => {
       price: Number(book.price) || 0,
       creatorId: book.creatorId?.toString() || "",
       payload: book,
+    };
+  }
+
+  if (["video", "comedy"].includes(normalizedType)) {
+    const video = await Video.findById(objectId).lean();
+    if (!video) {
+      return null;
+    }
+    return {
+      itemType: "video",
+      itemId: video._id,
+      title: video.caption || "Video",
+      price: Number(video.price) || 0,
+      creatorId: String(video.creatorProfileId || ""),
+      payload: video,
     };
   }
 

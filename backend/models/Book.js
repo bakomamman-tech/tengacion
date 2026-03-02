@@ -34,6 +34,15 @@ const BookSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    priceGlobal: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    isFreePreview: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,

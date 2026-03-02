@@ -7,6 +7,7 @@ import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
 import { NotificationsProvider } from "./context/NotificationsContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { CreatorPlayerProvider } from "./context/CreatorPlayerContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 import "./index.css";
@@ -50,10 +51,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <ThemeProvider>
         <AuthProvider>
           <NotificationsProvider>
-            <BrowserRouter>
-              <App />
-              <Toaster />
-            </BrowserRouter>
+            <CreatorPlayerProvider>
+              <BrowserRouter>
+                <App />
+                <Toaster />
+              </BrowserRouter>
+            </CreatorPlayerProvider>
           </NotificationsProvider>
         </AuthProvider>
       </ThemeProvider>

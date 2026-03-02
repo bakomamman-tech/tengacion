@@ -27,6 +27,7 @@ import AdminAnalyticsPage from "./pages/AdminAnalytics";
 import AdminReportsPage from "./pages/AdminReports";
 import CreatorPage from "./pages/CreatorPage";
 import CreatorSongs from "./pages/CreatorSongs";
+import CreatorHubPage from "./pages/CreatorHubPage";
 import ArtistProfileRoute from "@web/features/creator/ArtistPage";
 import TrackDetail from "./pages/TrackDetail";
 import BookDetail from "./pages/BookDetail";
@@ -77,6 +78,12 @@ export default function App() {
       <Route path="/community-guidelines" element={<CommunityGuidelinesPage />} />
       <Route path="/creators/:creatorId" element={<CreatorPage />} />
       <Route path="/creators/:creatorId/songs" element={<CreatorSongs />} />
+      <Route path="/creators/:creatorId/music" element={<CreatorHubPage />} />
+      <Route path="/creators/:creatorId/podcasts" element={<CreatorHubPage />} />
+      <Route path="/creators/:creatorId/books" element={<CreatorHubPage />} />
+      <Route path="/creators/:creatorId/comedy" element={<CreatorHubPage />} />
+      <Route path="/creators/:creatorId/store" element={<CreatorHubPage />} />
+      <Route path="/creator/:creatorId" element={<CreatorHubPage />} />
       <Route path="/tracks/:trackId" element={<TrackDetail />} />
       <Route path="/books/:bookId" element={<BookDetail />} />
       <Route

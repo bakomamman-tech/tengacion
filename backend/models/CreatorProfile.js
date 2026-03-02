@@ -31,6 +31,39 @@ const CreatorProfileSchema = new mongoose.Schema(
         url: { type: String, trim: true, maxlength: 500 },
       },
     ],
+    isCreator: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+    onboardingComplete: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    heroBannerUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    tagline: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 200,
+    },
+    genres: [
+      {
+        type: String,
+        trim: true,
+        maxlength: 60,
+      },
+    ],
+    paymentModeDefault: {
+      type: String,
+      enum: ["NG", "GLOBAL"],
+      default: "NG",
+    },
   },
   {
     timestamps: true,

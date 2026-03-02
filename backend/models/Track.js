@@ -44,6 +44,32 @@ const TrackSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    kind: {
+      type: String,
+      enum: ["music", "podcast", "comedy"],
+      default: "music",
+      index: true,
+    },
+    priceGlobal: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    isFree: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    playsCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    likesCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   {
     timestamps: true,

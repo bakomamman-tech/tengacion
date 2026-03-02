@@ -116,6 +116,16 @@ const getPostMediaKind = (post) => {
 
 const isImageFile = (file) => Boolean(file?.type?.startsWith("image/"));
 
+const toMediaUrl = (value) => {
+  if (!value) {
+    return "";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  return value.url || "";
+};
+
 function Glyph({ name, className = "" }) {
   const path = iconPathByName[name] || "";
   return (
@@ -462,6 +472,10 @@ export default function ProfileEditor({ user }) {
       setAvatarUploading(true);
       const updated = await uploadAvatar(file);
       updateUser(updated);
+      const nextAvatar = resolveImage(toMediaUrl(updated?.avatar));
+      if (nextAvatar) {
+        setProfile((prev) => (prev ? { ...prev, avatar: nextAvatar } : prev));
+      }
       await loadAll(targetUsername);
       setAvatarPreview("");
       toast.success("Profile photo updated");
@@ -493,6 +507,10 @@ export default function ProfileEditor({ user }) {
       setCoverUploading(true);
       const updated = await uploadCover(file);
       updateUser(updated);
+      const nextCover = resolveImage(toMediaUrl(updated?.cover));
+      if (nextCover) {
+        setProfile((prev) => (prev ? { ...prev, cover: nextCover } : prev));
+      }
       await loadAll(targetUsername);
       setCoverPreview("");
       toast.success("Cover photo updated");

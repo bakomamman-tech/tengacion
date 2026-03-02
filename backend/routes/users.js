@@ -108,6 +108,7 @@ const isBirthdayToday = (birthday = {}) => {
 /* ================= MY PROFILE ================= */
 router.get("/me", auth, async (req, res) => {
   try {
+    res.set("Cache-Control", "no-store");
     const user = await User.findById(req.user.id).select("-password");
     if (!user) {
       return res.status(401).json({ error: "User not found" });
@@ -185,6 +186,7 @@ router.put("/me", auth, async (req, res) => {
 /* ================= PUBLIC PROFILE BY USERNAME ================= */
 router.get("/profile/:username", auth, async (req, res) => {
   try {
+    res.set("Cache-Control", "no-store");
     const username = (req.params.username || "").trim().toLowerCase();
     if (!username) {
       return res.status(400).json({ error: "Username is required" });

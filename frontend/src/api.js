@@ -276,13 +276,15 @@ export const logoutAllSessions = () =>
 // ======================================================
 
 export const getProfile = () =>
-  request(`${API_BASE}/auth/me`, {
+  request(`${API_BASE}/auth/me?t=${Date.now()}`, {
     headers: getAuthHeaders(),
+    cache: "no-store",
   }).then((payload) => payload?.user || payload);
 
 export const getUserProfile = (username) =>
-  request(`${API_BASE}/users/profile/${encodeURIComponent(username || "")}`, {
+  request(`${API_BASE}/users/profile/${encodeURIComponent(username || "")}?t=${Date.now()}`, {
     headers: getAuthHeaders(),
+    cache: "no-store",
   });
 
 export const getUsers = (search = "") =>

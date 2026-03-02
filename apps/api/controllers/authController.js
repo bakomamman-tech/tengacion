@@ -38,6 +38,7 @@ exports.login = catchAsync(async (req, res) => {
 });
 
 exports.getProfile = catchAsync(async (req, res) => {
+  res.set("Cache-Control", "no-store");
   const user = await AuthService.getProfile(req.user.id);
   res.json({ user });
 });

@@ -57,8 +57,11 @@ const auth = asyncHandler(async (req, res, next) => {
   if (!session || session.revokedAt) {
     return res.status(401).json({ error: "Session revoked. Please login again." });
   }
-  session.lastSeenAt = new Date();
-  await user.save();
+  // Touch session lastSeenAt using atomic update to avoid saving partially selected user docs.
+  await User.updateOne(
+    { _id: user._id, "sessions.sessionId": claimSessionId },
+    { $set: { "sessions.$.lastSeenAt": new Date() } }
+  );
 
   req.user = {
     id: user._id.toString(),

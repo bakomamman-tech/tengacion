@@ -421,8 +421,22 @@ UserSchema.index({ username: "text", name: "text" });
 
 /* ================= HOOKS ================= */
 UserSchema.pre("save", async function () {
-  this.avatar = normalizeMediaValue(this.avatar);
-  this.cover = normalizeMediaValue(this.cover);
+  const canNormalizeAvatar =
+    this.isNew ||
+    this.isModified("avatar") ||
+    (typeof this.isSelected === "function" && this.isSelected("avatar"));
+  const canNormalizeCover =
+    this.isNew ||
+    this.isModified("cover") ||
+    (typeof this.isSelected === "function" && this.isSelected("cover"));
+
+  // Avoid wiping media when saving partially selected documents (e.g. auth session touch).
+  if (canNormalizeAvatar) {
+    this.avatar = normalizeMediaValue(this.avatar);
+  }
+  if (canNormalizeCover) {
+    this.cover = normalizeMediaValue(this.cover);
+  }
 
   if (!this.isModified("password")) {
     return;

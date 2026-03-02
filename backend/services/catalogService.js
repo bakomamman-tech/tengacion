@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Track = require("../models/Track");
 const Book = require("../models/Book");
+const Album = require("../models/Album");
 const Video = require("../models/Video");
 
 const toObjectId = (value) => {
@@ -45,6 +46,21 @@ const resolvePurchasableItem = async (itemType, itemId) => {
       price: Number(book.price) || 0,
       creatorId: book.creatorId?.toString() || "",
       payload: book,
+    };
+  }
+
+  if (["album"].includes(normalizedType)) {
+    const album = await Album.findById(objectId).lean();
+    if (!album) {
+      return null;
+    }
+    return {
+      itemType: "album",
+      itemId: album._id,
+      title: album.title || "Album",
+      price: Number(album.price) || 0,
+      creatorId: album.creatorId?.toString() || "",
+      payload: album,
     };
   }
 

@@ -3,6 +3,7 @@ const asyncHandler = require("../middleware/asyncHandler");
 const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const Book = require("../models/Book");
+const Album = require("../models/Album");
 const { hasEntitlement } = require("../services/entitlementService");
 
 // TODO(phase2): apply marketplace commission and referral reward splits here.
@@ -52,19 +53,22 @@ exports.checkEntitlement = asyncHandler(async (req, res) => {
 exports.getCreatorSales = asyncHandler(async (req, res) => {
   const creatorId = req.creatorProfile._id;
 
-  const [tracks, books] = await Promise.all([
+  const [tracks, books, albums] = await Promise.all([
     Track.find({ creatorId }).select("_id").lean(),
     Book.find({ creatorId }).select("_id").lean(),
+    Album.find({ creatorId, status: "published" }).select("_id").lean(),
   ]);
 
   const trackIds = tracks.map((entry) => entry._id);
   const bookIds = books.map((entry) => entry._id);
+  const albumIds = albums.map((entry) => entry._id);
 
   const paidQuery = {
     status: "paid",
     $or: [
       { itemType: "track", itemId: { $in: trackIds } },
       { itemType: "book", itemId: { $in: bookIds } },
+      { itemType: "album", itemId: { $in: albumIds } },
     ],
   };
 
@@ -90,10 +94,11 @@ exports.getCreatorSales = asyncHandler(async (req, res) => {
   const breakdown = {
     track: { count: 0, revenue: 0 },
     book: { count: 0, revenue: 0 },
+    album: { count: 0, revenue: 0 },
   };
 
   for (const row of summaryRows) {
-    const key = row._id === "book" ? "book" : "track";
+    const key = row._id === "book" ? "book" : row._id === "album" ? "album" : "track";
     const count = Number(row.count) || 0;
     const revenue = Number(row.revenue) || 0;
     breakdown[key] = { count, revenue };

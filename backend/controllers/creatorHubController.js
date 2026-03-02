@@ -3,6 +3,7 @@ const asyncHandler = require("../middleware/asyncHandler");
 const User = require("../models/User");
 const Track = require("../models/Track");
 const Book = require("../models/Book");
+const Album = require("../models/Album");
 const Video = require("../models/Video");
 const Purchase = require("../models/Purchase");
 const CreatorProfile = require("../models/CreatorProfile");
@@ -27,6 +28,10 @@ const resolveSourceUrl = (item) => {
   if (item.itemType === "book") {
     return String(item.payload.contentUrl || "");
   }
+  if (item.itemType === "album") {
+    const tracks = Array.isArray(item.payload.tracks) ? item.payload.tracks : [];
+    return String(tracks[0]?.trackUrl || "");
+  }
   if (item.itemType === "video") {
     return String(item.payload.videoUrl || "");
   }
@@ -38,7 +43,7 @@ const checkOwnerAccess = async ({ userId, item }) => {
     return false;
   }
 
-  if (item.itemType === "track" || item.itemType === "book") {
+  if (item.itemType === "track" || item.itemType === "book" || item.itemType === "album") {
     const creator = await CreatorProfile.findById(item.payload.creatorId).select("userId").lean();
     return String(creator?.userId || "") === String(userId);
   }
@@ -252,10 +257,12 @@ exports.getMyEntitlements = asyncHandler(async (req, res) => {
 
   let trackMap = new Map();
   let bookMap = new Map();
+  let albumMap = new Map();
   let videoMap = new Map();
 
   const trackIds = purchases.filter((row) => row.itemType === "track").map((row) => row.itemId);
   const bookIds = purchases.filter((row) => row.itemType === "book").map((row) => row.itemId);
+  const albumIds = purchases.filter((row) => row.itemType === "album").map((row) => row.itemId);
   const videoIds = purchases.filter((row) => row.itemType === "video").map((row) => row.itemId);
 
   if (trackIds.length) {
@@ -279,12 +286,20 @@ exports.getMyEntitlements = asyncHandler(async (req, res) => {
     videoMap = new Map(videos.map((row) => [String(row._id), String(row.creatorProfileId || "")]));
   }
 
+  if (albumIds.length) {
+    const query = { _id: { $in: albumIds } };
+    if (creatorId && isValidId(creatorId)) query.creatorId = creatorId;
+    const albums = await Album.find(query).select("_id creatorId").lean();
+    albumMap = new Map(albums.map((row) => [String(row._id), String(row.creatorId || "")]));
+  }
+
   const entitlements = purchases
     .filter((row) => {
       if (!creatorId) return true;
       const key = String(row.itemId || "");
       if (row.itemType === "track") return trackMap.has(key);
       if (row.itemType === "book") return bookMap.has(key);
+      if (row.itemType === "album") return albumMap.has(key);
       if (row.itemType === "video") return videoMap.has(key);
       return false;
     })

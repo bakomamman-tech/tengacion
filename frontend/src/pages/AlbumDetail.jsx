@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getAlbum } from "../api";
+import { createCheckout, getAlbum } from "../api";
 
 export default function AlbumDetail() {
   const { albumId } = useParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [album, setAlbum] = useState(null);
+  const [buying, setBuying] = useState(false);
 
   useEffect(() => {
     const loadAlbum = async () => {
@@ -46,6 +47,27 @@ export default function AlbumDetail() {
   }
 
   const tracks = Array.isArray(album.tracks) ? album.tracks : [];
+  const handleBuyAlbum = async () => {
+    if (!album?._id) return;
+    setBuying(true);
+    setError("");
+    try {
+      const checkout = await createCheckout({
+        itemType: "album",
+        itemId: album._id,
+        currencyMode: "NG",
+      });
+      if (checkout?.checkoutUrl) {
+        window.open(checkout.checkoutUrl, "_blank", "noopener,noreferrer");
+      } else {
+        throw new Error("Unable to create checkout");
+      }
+    } catch (err) {
+      setError(err.message || "Unable to start album checkout");
+    } finally {
+      setBuying(false);
+    }
+  };
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-8">
@@ -72,9 +94,10 @@ export default function AlbumDetail() {
               <button
                 type="button"
                 className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-                onClick={() => window.alert("Album purchase is coming soon.")}
+                disabled={buying}
+                onClick={handleBuyAlbum}
               >
-                Buy album
+                {buying ? "Preparing..." : "Buy album"}
               </button>
             ) : null}
             <div>

@@ -372,16 +372,12 @@ export default function CreatorHubPage() {
                         <button
                           type="button"
                           className={styles.buyBtn}
-                          onClick={() => {
-                            if (isAlbum) {
-                              window.alert("Album purchase is coming soon.");
-                              return;
-                            }
+                          onClick={() =>
                             openCheckout(
-                              isBook ? "ebook" : activeTab === "podcasts" ? "podcast" : isVideo ? "video" : "song",
+                              isAlbum ? "album" : isBook ? "ebook" : activeTab === "podcasts" ? "podcast" : isVideo ? "video" : "song",
                               entry.id
-                            );
-                          }}
+                            )
+                          }
                         >
                           Buy
                         </button>

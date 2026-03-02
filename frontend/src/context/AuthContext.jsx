@@ -30,6 +30,18 @@ const normalizeUserMedia = (rawUser) => {
   };
 };
 
+const persistUserSnapshot = (nextUser) => {
+  try {
+    if (!nextUser) {
+      localStorage.removeItem("user");
+      return;
+    }
+    localStorage.setItem("user", JSON.stringify(nextUser));
+  } catch {
+    // ignore storage errors
+  }
+};
+
 /* ======================================================
    FACEBOOK-GRADE AUTH PROVIDER (FAILSAFE)
 ====================================================== */
@@ -83,11 +95,14 @@ export function AuthProvider({ children }) {
       .get("/api/auth/me", { signal: controller.signal })
       .then((res) => {
         if (!alive) {return;}
-        setUser(normalizeUserMedia(res.data || null));
+        const normalized = normalizeUserMedia(res.data?.user || res.data || null);
+        setUser(normalized);
+        persistUserSnapshot(normalized);
       })
       .catch(() => {
         if (!alive) {return;}
         localStorage.removeItem("token");
+        localStorage.removeItem("user");
         setUser(null);
       })
       .finally(() => {
@@ -123,18 +138,25 @@ export function AuthProvider({ children }) {
   const login = (token, userData) => {
     if (!token || !userData) {return;}
     localStorage.setItem("token", token);
-    setUser(normalizeUserMedia(userData));
+    const normalized = normalizeUserMedia(userData);
+    setUser(normalized);
+    persistUserSnapshot(normalized);
     setError(null);
   };
 
   const hardLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
     setLoading(false);
   };
 
   const updateUser = (data) => {
-    setUser((u) => (u ? normalizeUserMedia({ ...u, ...data }) : u));
+    setUser((u) => {
+      const next = u ? normalizeUserMedia({ ...u, ...data }) : u;
+      persistUserSnapshot(next);
+      return next;
+    });
   };
 
   return (

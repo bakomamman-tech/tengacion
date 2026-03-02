@@ -39,7 +39,7 @@ exports.login = catchAsync(async (req, res) => {
 
 exports.getProfile = catchAsync(async (req, res) => {
   const user = await AuthService.getProfile(req.user.id);
-  res.json(user);
+  res.json({ user });
 });
 
 exports.requestEmailVerification = catchAsync(async (req, res) => {

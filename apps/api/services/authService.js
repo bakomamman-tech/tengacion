@@ -475,7 +475,9 @@ class AuthService {
       throw ApiError.badRequest("Missing user identifier");
     }
 
-    const user = await userRepository.findById(userId).select("-password");
+    const user = await userRepository
+      .findById(userId)
+      .select("_id name username email role avatar cover");
     if (!user) {
       throw ApiError.notFound("User not found");
     }
@@ -483,6 +485,7 @@ class AuthService {
     const avatar = normalizeMediaValue(user.avatar);
     const cover = normalizeMediaValue(user.cover);
     const payload = user.toObject ? user.toObject() : { ...user };
+    payload.displayName = payload.name || "";
     payload.avatar = avatar;
     payload.cover = cover;
     payload.avatarUrl = avatar.url;

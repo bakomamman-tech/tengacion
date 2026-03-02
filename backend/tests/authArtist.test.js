@@ -75,8 +75,8 @@ describe("Auth / Protected Artist routes", () => {
       .set("Authorization", `Bearer ${authToken}`)
       .expect(200);
 
-    expect(response.body).toHaveProperty("email", "artist@test.com");
-    expect(response.body).toHaveProperty("username", "artist_test");
+    expect(response.body).toHaveProperty("user.email", "artist@test.com");
+    expect(response.body).toHaveProperty("user.username", "artist_test");
   });
 
   test("PUT /api/artist/me saves links", async () => {

@@ -278,7 +278,7 @@ export const logoutAllSessions = () =>
 export const getProfile = () =>
   request(`${API_BASE}/auth/me`, {
     headers: getAuthHeaders(),
-  });
+  }).then((payload) => payload?.user || payload);
 
 export const getUserProfile = (username) =>
   request(`${API_BASE}/users/profile/${encodeURIComponent(username || "")}`, {

@@ -10,9 +10,15 @@ export async function restoreSession(setUser) {
   try {
     const user = await getProfile();
     setUser(user);
+    try {
+      localStorage.setItem("user", JSON.stringify(user));
+    } catch {
+      // ignore
+    }
     return user;
   } catch {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
     return null;
   }

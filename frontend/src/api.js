@@ -193,6 +193,65 @@ const uploadPostFormWithProgress = ({
     xhr.send(formData);
   });
 
+const uploadFormWithProgress = ({
+  url,
+  formData,
+  onProgress,
+  timeoutMs = 10 * 60 * 1000,
+}) =>
+  new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.withCredentials = true;
+    xhr.timeout = timeoutMs;
+
+    const token = localStorage.getItem("token");
+    if (token) {
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    }
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable || typeof onProgress !== "function") {
+        return;
+      }
+      onProgress(Math.round((event.loaded / event.total) * 100), event);
+    };
+
+    xhr.onload = () => {
+      const raw = xhr.responseText || "";
+      let data = {};
+      if (raw) {
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          data = { error: raw };
+        }
+      }
+
+      if (xhr.status === 401) {
+        handleAuthFailure(data?.error || data?.message || "Unauthorized");
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(data);
+        return;
+      }
+
+      const err = new Error(
+        data?.error ||
+        data?.message ||
+        `Upload failed (${xhr.status || 0})`
+      );
+      err.status = xhr.status || 0;
+      reject(err);
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during upload"));
+    xhr.ontimeout = () => reject(new Error("Upload timeout"));
+    xhr.onabort = () => reject(new Error("Upload canceled"));
+    xhr.send(formData);
+  });
+
 // ======================================================
 // 🟢 AUTH
 // ======================================================
@@ -470,6 +529,9 @@ export const getCreatorTracks = (creatorId) =>
 export const getCreatorBooks = (creatorId) =>
   request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/books`);
 
+export const getCreatorAlbums = (creatorId) =>
+  request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/albums`);
+
 // ======================================================
 // TRACKS
 // ======================================================
@@ -621,6 +683,23 @@ export const markAllNotificationsAsRead = () =>
       headers: getAuthHeaders(),
     })
   );
+
+// ======================================================
+// ALBUMS
+// ======================================================
+
+export const createAlbumWithUploadProgress = (formData, { onProgress } = {}) =>
+  uploadFormWithProgress({
+    url: `${API_BASE}/creator/albums`,
+    formData,
+    onProgress,
+    timeoutMs: 20 * 60 * 1000,
+  });
+
+export const getAlbum = (albumId) =>
+  request(`${API_BASE}/albums/${encodeURIComponent(albumId || "")}`, {
+    headers: getAuthHeaders(),
+  });
 
 export const getMyEntitlementsForCreator = (creatorId) =>
   request(`${API_BASE}/entitlements/me?creatorId=${encodeURIComponent(creatorId || "")}`, {

@@ -3,6 +3,7 @@ const asyncHandler = require("../middleware/asyncHandler");
 const CreatorProfile = require("../models/CreatorProfile");
 const Track = require("../models/Track");
 const Book = require("../models/Book");
+const Album = require("../models/Album");
 const Video = require("../models/Video");
 const User = require("../models/User");
 const PlayerProgress = require("../models/PlayerProgress");
@@ -42,20 +43,22 @@ const toCreatorPayload = (profile, extras = {}) => ({
 });
 
 const countCreatorContent = async ({ creatorId, userId }) => {
-  const [songsCount, podcastsCount, comedyTrackCount, booksCount, comedyVideoCount] = await Promise.all([
+  const [songsCount, podcastsCount, comedyTrackCount, booksCount, albumsCount, comedyVideoCount] = await Promise.all([
     Track.countDocuments({ creatorId, kind: { $in: ["music", null] } }),
     Track.countDocuments({ creatorId, kind: "podcast" }),
     Track.countDocuments({ creatorId, kind: "comedy" }),
     Book.countDocuments({ creatorId }),
+    Album.countDocuments({ creatorId, status: "published" }),
     Video.countDocuments({ userId: String(userId || "") }),
   ]);
 
   const comedyCount = comedyTrackCount + comedyVideoCount;
-  const totalContentCount = songsCount + podcastsCount + booksCount + comedyCount;
+  const totalContentCount = songsCount + podcastsCount + booksCount + albumsCount + comedyCount;
   return {
     songsCount,
     podcastsCount,
     booksCount,
+    albumsCount,
     comedyCount,
     totalContentCount,
     creatorReady: totalContentCount > 0,
@@ -118,6 +121,51 @@ const mapBookForHub = async ({ book, req, userId }) => {
           expiresInSec: 10 * 60,
         })
       : "",
+  };
+};
+
+const mapAlbumForHub = async ({ album, req, userId }) => {
+  const canPlayFull = Number(album.price) <= 0 || (userId
+    ? await hasEntitlement({ userId, itemType: "album", itemId: album._id })
+    : false);
+
+  const tracks = (Array.isArray(album.tracks) ? album.tracks : [])
+    .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
+    .map((track, index) => {
+      const fullUrl = String(track.trackUrl || "");
+      const previewUrl = String(track.previewUrl || "");
+      const sourceUrl = canPlayFull ? fullUrl : previewUrl;
+      return {
+        title: track.title || `Track ${index + 1}`,
+        order: Number(track.order || index + 1),
+        duration: Number(track.duration || 0),
+        streamUrl: sourceUrl
+          ? buildSignedMediaUrl({
+              sourceUrl,
+              itemType: "album",
+              itemId: album._id.toString(),
+              userId: userId || "",
+              req,
+              expiresInSec: 10 * 60,
+            })
+          : "",
+      };
+    });
+
+  return {
+    id: album._id.toString(),
+    title: album.title || "",
+    coverUrl: album.coverUrl || "",
+    description: album.description || "",
+    priceNGN: Number(album.price) || 0,
+    priceUSD: Number(album.priceGlobal || 0),
+    isFree: Number(album.price) <= 0,
+    totalTracks: Number(album.totalTracks || tracks.length || 0),
+    canStream: tracks.some((track) => Boolean(track.streamUrl)),
+    canDownload: canPlayFull,
+    canPlayFull,
+    tracks,
+    itemType: "album",
   };
 };
 
@@ -286,6 +334,29 @@ exports.getCreatorBooks = asyncHandler(async (req, res) => {
   );
 });
 
+exports.getCreatorAlbums = asyncHandler(async (req, res) => {
+  const { creatorId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(creatorId)) {
+    return res.status(400).json({ error: "Invalid creator id" });
+  }
+
+  const albums = await Album.find({ creatorId, status: "published" }).sort({ createdAt: -1 }).lean();
+  return res.json(
+    albums.map((album) => ({
+      _id: album._id.toString(),
+      creatorId: album.creatorId?.toString?.() || "",
+      title: album.title || "",
+      description: album.description || "",
+      price: Number(album.price) || 0,
+      coverUrl: album.coverUrl || "",
+      totalTracks: Number(album.totalTracks || album.tracks?.length || 0),
+      status: album.status || "published",
+      createdAt: album.createdAt,
+      updatedAt: album.updatedAt,
+    }))
+  );
+});
+
 exports.getCreatorHub = asyncHandler(async (req, res) => {
   const { creatorId } = req.params;
   if (!mongoose.Types.ObjectId.isValid(creatorId)) {
@@ -301,11 +372,12 @@ exports.getCreatorHub = asyncHandler(async (req, res) => {
     return res.status(404).json({ error: "Creator not found" });
   }
 
-  const [musicTracksRaw, podcastTracksRaw, comedyTracksRaw, booksRaw, comedyVideosRaw, continueRows] = await Promise.all([
+  const [musicTracksRaw, podcastTracksRaw, comedyTracksRaw, booksRaw, albumsRaw, comedyVideosRaw, continueRows] = await Promise.all([
     Track.find({ creatorId, kind: { $in: ["music", null] } }).sort({ playsCount: -1, createdAt: -1 }).limit(30).lean(),
     Track.find({ creatorId, kind: "podcast" }).sort({ createdAt: -1 }).limit(20).lean(),
     Track.find({ creatorId, kind: "comedy" }).sort({ createdAt: -1 }).limit(20).lean(),
     Book.find({ creatorId }).sort({ createdAt: -1 }).limit(20).lean(),
+    Album.find({ creatorId, status: "published" }).sort({ createdAt: -1 }).limit(20).lean(),
     Video.find({ $or: [{ creatorProfileId: creatorId }, { userId: String(profile.userId?._id || "") }] })
       .sort({ time: -1, createdAt: -1 })
       .limit(20)
@@ -325,6 +397,7 @@ exports.getCreatorHub = asyncHandler(async (req, res) => {
     comedyTracksRaw.map((track) => mapTrackForHub({ track, req, userId: viewerId }))
   );
   const books = await Promise.all(booksRaw.map((book) => mapBookForHub({ book, req, userId: viewerId })));
+  const albums = await Promise.all(albumsRaw.map((album) => mapAlbumForHub({ album, req, userId: viewerId })));
 
   const comedyVideos = await Promise.all(
     comedyVideosRaw.map(async (video) => {
@@ -390,7 +463,8 @@ exports.getCreatorHub = asyncHandler(async (req, res) => {
       monthlyListeners,
       bio: profile.bio || "",
       location: creatorUser.country || "",
-      creatorReady: Boolean(profile.onboardingComplete) && (musicTracks.length + podcastTracks.length + comedyTracks.length + books.length + comedyVideos.length > 0),
+      creatorReady: Boolean(profile.onboardingComplete) && (musicTracks.length + podcastTracks.length + comedyTracks.length + books.length + albums.length + comedyVideos.length > 0),
+      albumsCount: albums.length,
     },
     sections: {
       continueListening: continueListening.filter(Boolean),
@@ -398,10 +472,12 @@ exports.getCreatorHub = asyncHandler(async (req, res) => {
       latestPodcasts: podcastTracks.slice(0, 10),
       latestComedy: [...comedyTracks, ...comedyVideos].slice(0, 10),
       ebooks: books.slice(0, 10),
+      latestAlbums: albums.slice(0, 10),
       allMusic: musicTracks,
       allPodcasts: podcastTracks,
       allComedy: [...comedyTracks, ...comedyVideos],
       allBooks: books,
+      allAlbums: albums,
     },
     commerce: {
       currencyMode: profile.paymentModeDefault || "NG",

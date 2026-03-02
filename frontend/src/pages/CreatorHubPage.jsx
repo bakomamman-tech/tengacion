@@ -20,6 +20,7 @@ const CURRENCY_KEY = "creator_hub_currency_mode";
 
 const getTabFromPath = (pathname = "") => {
   if (pathname.endsWith("/music")) return "music";
+  if (pathname.endsWith("/albums")) return "albums";
   if (pathname.endsWith("/podcasts")) return "podcasts";
   if (pathname.endsWith("/books")) return "books";
   if (pathname.endsWith("/comedy")) return "comedy";
@@ -145,14 +146,16 @@ export default function CreatorHubPage() {
   const sectionItems = useMemo(() => {
     const sections = hub?.sections || {};
     if (activeTab === "music") return sections.allMusic || [];
+    if (activeTab === "albums") return sections.allAlbums || [];
     if (activeTab === "podcasts") return sections.allPodcasts || [];
     if (activeTab === "books") return sections.allBooks || [];
     if (activeTab === "comedy") return sections.allComedy || [];
     if (activeTab === "store") {
       const paidMusic = (sections.allMusic || []).filter((item) => !item.isFree);
+      const paidAlbums = (sections.allAlbums || []).filter((item) => !item.isFree);
       const paidBooks = (sections.allBooks || []).filter((item) => item.purchaseRequired);
       const paidComedy = (sections.allComedy || []).filter((item) => !item.isFree);
-      return [...paidMusic, ...paidBooks, ...paidComedy];
+      return [...paidMusic, ...paidAlbums, ...paidBooks, ...paidComedy];
     }
     return [];
   }, [activeTab, hub?.sections]);
@@ -314,15 +317,34 @@ export default function CreatorHubPage() {
               {sectionItems.length ? (
                 sectionItems.map((entry) => {
                   const isBook = activeTab === "books" || (activeTab === "store" && entry.purchaseRequired !== undefined);
+                  const isAlbum = activeTab === "albums" || (activeTab === "store" && entry.itemType === "album");
                   const isVideo = activeTab === "comedy" && !Object.prototype.hasOwnProperty.call(entry, "kind");
                   return (
                     <div key={entry.id} className={styles.trackRow}>
                       <img className={styles.trackCover} src={entry.coverUrl || "/avatar.png"} alt={entry.title} />
                       <div>
                         <span className={styles.trackName}>{entry.title}</span>
-                        <span className={styles.trackCreator}>{isBook ? "eBook" : isVideo ? "Comedy Video" : activeTab === "podcasts" ? "Podcast" : "Track"}</span>
+                        <span className={styles.trackCreator}>
+                          {isAlbum
+                            ? `${Number(entry.totalTracks || 0)} songs`
+                            : isBook
+                              ? "eBook"
+                              : isVideo
+                                ? "Comedy Video"
+                                : activeTab === "podcasts"
+                                  ? "Podcast"
+                                  : "Track"}
+                        </span>
                       </div>
-                      {isBook ? (
+                      {isAlbum ? (
+                        <button
+                          type="button"
+                          className={styles.ctaBtn}
+                          onClick={() => navigate(`/albums/${entry.id}`)}
+                        >
+                          Open album
+                        </button>
+                      ) : isBook ? (
                         <button type="button" className={styles.ctaBtn} onClick={() => openDownload("ebook", entry.id)}>Download</button>
                       ) : (
                         <button
@@ -350,12 +372,16 @@ export default function CreatorHubPage() {
                         <button
                           type="button"
                           className={styles.buyBtn}
-                          onClick={() =>
+                          onClick={() => {
+                            if (isAlbum) {
+                              window.alert("Album purchase is coming soon.");
+                              return;
+                            }
                             openCheckout(
                               isBook ? "ebook" : activeTab === "podcasts" ? "podcast" : isVideo ? "video" : "song",
                               entry.id
-                            )
-                          }
+                            );
+                          }}
                         >
                           Buy
                         </button>

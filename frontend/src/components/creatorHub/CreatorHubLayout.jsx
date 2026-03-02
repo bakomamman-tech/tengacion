@@ -4,6 +4,7 @@ import styles from "./CreatorHub.module.css";
 const TABS = [
   { key: "home", label: "HOME", suffix: "" },
   { key: "music", label: "MUSIC", suffix: "/music" },
+  { key: "albums", label: "ALBUMS", suffix: "/albums" },
   { key: "podcasts", label: "PODCASTS", suffix: "/podcasts" },
   { key: "books", label: "BOOKS", suffix: "/books" },
   { key: "comedy", label: "COMEDY", suffix: "/comedy" },

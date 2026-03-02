@@ -112,6 +112,34 @@ export default function CreatorHubHomeSections({
             onMenu={onMenu}
           />
         </div>
+
+        <div style={{ marginTop: "1rem" }} className={styles.sectionCard}>
+          <div className={styles.sectionHead}>
+            <h4>Albums</h4>
+            <button type="button" className={styles.viewAll} onClick={() => onViewTab("albums")}>
+              View all
+            </button>
+          </div>
+          {(sections.latestAlbums || []).length ? (
+            <div className={styles.rowScroller}>
+              {(sections.latestAlbums || []).map((album) => (
+                <article key={album.id} className={styles.itemCard}>
+                  <img
+                    src={album.coverUrl || "/avatar.png"}
+                    alt={album.title}
+                    className={styles.itemThumb}
+                  />
+                  <p className={styles.itemTitle}>{album.title}</p>
+                  <p className={styles.itemMeta}>
+                    {Number(album.totalTracks || 0)} songs • {currencyMode === "GLOBAL" ? `$${Number(album.priceUSD || 0).toLocaleString()}` : `NGN ${Number(album.priceNGN || 0).toLocaleString()}`}
+                  </p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className={styles.mutedText}>No albums yet.</p>
+          )}
+        </div>
       </div>
 
       <div>

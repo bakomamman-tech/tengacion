@@ -7,6 +7,7 @@ const {
   getCreatorById,
   getCreatorTracks,
   getCreatorBooks,
+  getCreatorAlbums,
   getCreatorHub,
   toggleFollowCreator,
 } = require("../controllers/creatorsController");
@@ -21,5 +22,6 @@ router.get("/:creatorId/hub", optionalAuth, getCreatorHub);
 router.put("/:creatorId/follow", auth, toggleFollowCreator);
 router.get("/:creatorId/tracks", getCreatorTracks);
 router.get("/:creatorId/books", getCreatorBooks);
+router.get("/:creatorId/albums", getCreatorAlbums);
 
 module.exports = router;

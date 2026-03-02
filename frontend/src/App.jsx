@@ -31,6 +31,7 @@ import CreatorHubPage from "./pages/CreatorHubPage";
 import ArtistProfileRoute from "@web/features/creator/ArtistPage";
 import TrackDetail from "./pages/TrackDetail";
 import BookDetail from "./pages/BookDetail";
+import AlbumDetail from "./pages/AlbumDetail";
 import Trending from "./pages/Trending";
 import Rooms from "./pages/Rooms";
 import LiveDirectory from "./pages/LiveDirectory";
@@ -79,6 +80,7 @@ export default function App() {
       <Route path="/creators/:creatorId" element={<CreatorPage />} />
       <Route path="/creators/:creatorId/songs" element={<CreatorSongs />} />
       <Route path="/creators/:creatorId/music" element={<CreatorHubPage />} />
+      <Route path="/creators/:creatorId/albums" element={<CreatorHubPage />} />
       <Route path="/creators/:creatorId/podcasts" element={<CreatorHubPage />} />
       <Route path="/creators/:creatorId/books" element={<CreatorHubPage />} />
       <Route path="/creators/:creatorId/comedy" element={<CreatorHubPage />} />
@@ -86,6 +88,7 @@ export default function App() {
       <Route path="/creator/:creatorId" element={<CreatorHubPage />} />
       <Route path="/tracks/:trackId" element={<TrackDetail />} />
       <Route path="/books/:bookId" element={<BookDetail />} />
+      <Route path="/albums/:albumId" element={<AlbumDetail />} />
       <Route
         path="/artist/:username"
         element={

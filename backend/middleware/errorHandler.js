@@ -10,8 +10,9 @@ const errorHandler = (err, req, res, next) => {
       err.code === "LIMIT_FILE_SIZE"
         ? "File is too large. Maximum allowed size is 100MB."
         : err.message || "Upload failed";
+    const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
 
-    return res.status(400).json({
+    return res.status(status).json({
       success: false,
       error: message,
       message,

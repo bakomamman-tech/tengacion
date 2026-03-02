@@ -231,6 +231,10 @@ export default function Messenger({ user, onClose, onMinimize }) {
   const [isSendingVoice, setIsSendingVoice] = useState(false);
   const [openVoiceMenuId, setOpenVoiceMenuId] = useState("");
   const [voicePlaybackById, setVoicePlaybackById] = useState({});
+  const [typingByUserId, setTypingByUserId] = useState({});
+  const [recordingByUserId, setRecordingByUserId] = useState({});
+  const [watchOpen, setWatchOpen] = useState(false);
+  const [watchUrl, setWatchUrl] = useState("");
   const recorderRef = useRef(null);
   const recorderChunksRef = useRef([]);
   const recordMimeRef = useRef("audio/webm");
@@ -241,6 +245,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
   const voiceMenuRef = useRef(null);
   const voiceAudioRefs = useRef(new Map());
   const mediaInputRef = useRef(null);
+  const watchVideoRef = useRef(null);
 
   const [isMobileSheet, setIsMobileSheet] = useState(() => {
     if (typeof window === "undefined") {return false;}
@@ -646,6 +651,50 @@ export default function Messenger({ user, onClose, onMinimize }) {
     socket.on("onlineUsers", handleOnlineUsers);
     socket.on("newMessage", handleIncomingMessage);
     socket.on("chat:message", handleIncomingMessage);
+    socket.on("chat:typing", ({ fromUserId, isTyping }) => {
+      const id = toIdString(fromUserId);
+      if (!id) return;
+      setTypingByUserId((prev) => ({ ...prev, [id]: Boolean(isTyping) }));
+    });
+    socket.on("chat:recording", ({ fromUserId, isRecording }) => {
+      const id = toIdString(fromUserId);
+      if (!id) return;
+      setRecordingByUserId((prev) => ({ ...prev, [id]: Boolean(isRecording) }));
+    });
+    socket.on("watch:state", ({ chatId, videoUrl, t, isPlaying }) => {
+      if (toIdString(chatId) !== toIdString(selectedIdRef.current)) return;
+      if (videoUrl) setWatchUrl(videoUrl);
+      const node = watchVideoRef.current;
+      if (!node) return;
+      if (Number.isFinite(Number(t))) {
+        node.currentTime = Number(t) || 0;
+      }
+      if (isPlaying) {
+        node.play().catch(() => null);
+      } else {
+        node.pause();
+      }
+    });
+    socket.on("watch:play", ({ chatId, t }) => {
+      if (toIdString(chatId) !== toIdString(selectedIdRef.current)) return;
+      const node = watchVideoRef.current;
+      if (!node) return;
+      node.currentTime = Number(t) || 0;
+      node.play().catch(() => null);
+    });
+    socket.on("watch:pause", ({ chatId, t }) => {
+      if (toIdString(chatId) !== toIdString(selectedIdRef.current)) return;
+      const node = watchVideoRef.current;
+      if (!node) return;
+      node.currentTime = Number(t) || 0;
+      node.pause();
+    });
+    socket.on("watch:seek", ({ chatId, t }) => {
+      if (toIdString(chatId) !== toIdString(selectedIdRef.current)) return;
+      const node = watchVideoRef.current;
+      if (!node) return;
+      node.currentTime = Number(t) || 0;
+    });
     socket.on("chat:sent", (payload) => {
       console.log("[SOCKET ACK]", {
         fromEvent: true,
@@ -669,10 +718,43 @@ export default function Messenger({ user, onClose, onMinimize }) {
       socket.off("chat:message", handleIncomingMessage);
       socket.off("chat:sent");
       socket.off("message:deleted_for_me");
+      socket.off("chat:typing");
+      socket.off("chat:recording");
+      socket.off("watch:state");
+      socket.off("watch:play");
+      socket.off("watch:pause");
+      socket.off("watch:seek");
       disconnectSocket();
       socketRef.current = null;
     };
   }, [meId, moveContactToTop, token]);
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !selectedId) return;
+    socket.emit("chat:typing", {
+      chatId: selectedId,
+      toUserId: selectedId,
+      isTyping: Boolean(text.trim()),
+    });
+  }, [selectedId, text]);
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !selectedId) return;
+    socket.emit("chat:recording", {
+      chatId: selectedId,
+      toUserId: selectedId,
+      isRecording: Boolean(isRecording),
+    });
+  }, [isRecording, selectedId]);
+
+  useEffect(() => {
+    if (!watchOpen || !selectedId) return;
+    const socket = socketRef.current;
+    if (!socket) return;
+    socket.emit("watch:join", { chatId: selectedId });
+  }, [watchOpen, selectedId]);
 
   const replaceMessageByClientId = useCallback((clientId, patch) => {
     setMessages((prev) => prev.map((m) => (m.clientId === clientId ? { ...m, ...patch } : m)));
@@ -1271,10 +1353,92 @@ export default function Messenger({ user, onClose, onMinimize }) {
                     {selectedContact.name || selectedContact.username}
                   </div>
                   <div className="chat-top-status">
-                    {onlineUsers.has(selectedContact._id) ? "Online" : "Offline"}
+                    {typingByUserId[selectedContact._id]
+                      ? "Typing..."
+                      : recordingByUserId[selectedContact._id]
+                        ? "Recording..."
+                        : onlineUsers.has(selectedContact._id)
+                          ? "Online"
+                          : "Offline"}
+                    {selectedContact?.status?.emoji || selectedContact?.status?.text
+                      ? ` · ${selectedContact?.status?.emoji || ""} ${selectedContact?.status?.text || ""}`
+                      : ""}
                   </div>
                 </div>
+                <button
+                  type="button"
+                  className="messenger-action-btn"
+                  onClick={() => setWatchOpen((prev) => !prev)}
+                  title="Watch Together"
+                  aria-label="Watch Together"
+                >
+                  Watch Together
+                </button>
               </div>
+
+              {watchOpen && (
+                <div className="messenger-watch-box">
+                  <div className="messenger-watch-controls">
+                    <input
+                      value={watchUrl}
+                      onChange={(event) => setWatchUrl(event.target.value)}
+                      placeholder="Paste video URL"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const socket = socketRef.current;
+                        if (!socket) return;
+                        const node = watchVideoRef.current;
+                        socket.emit("watch:state", {
+                          chatId: selectedId,
+                          videoUrl: watchUrl,
+                          t: node?.currentTime || 0,
+                          isPlaying: false,
+                        });
+                      }}
+                    >
+                      Sync
+                    </button>
+                    <button type="button" className="btn-secondary" onClick={() => setWatchOpen(false)}>
+                      Leave
+                    </button>
+                  </div>
+                  {watchUrl ? (
+                    <video
+                      ref={watchVideoRef}
+                      src={watchUrl}
+                      controls
+                      onPlay={() => {
+                        const socket = socketRef.current;
+                        if (!socket) return;
+                        socket.emit("watch:play", {
+                          chatId: selectedId,
+                          t: watchVideoRef.current?.currentTime || 0,
+                        });
+                      }}
+                      onPause={() => {
+                        const socket = socketRef.current;
+                        if (!socket) return;
+                        socket.emit("watch:pause", {
+                          chatId: selectedId,
+                          t: watchVideoRef.current?.currentTime || 0,
+                        });
+                      }}
+                      onSeeked={() => {
+                        const socket = socketRef.current;
+                        if (!socket) return;
+                        socket.emit("watch:seek", {
+                          chatId: selectedId,
+                          t: watchVideoRef.current?.currentTime || 0,
+                        });
+                      }}
+                    />
+                  ) : (
+                    <p className="messenger-watch-hint">Paste a video URL to start.</p>
+                  )}
+                </div>
+              )}
 
               <div className="messenger-messages">
                 {loadingMessages && <div className="ms-empty">Loading messages...</div>}

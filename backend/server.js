@@ -7,6 +7,7 @@ const { Server } = require("socket.io");
 const { createNotification } = require("./services/notificationService");
 const { persistChatMessage } = require("./services/chatService");
 const { toIdString } = require("./utils/messagePayload");
+const Message = require("./models/Message");
 const { config } = require("./config/env");
 const app = require("./app");
 const server = http.createServer(app);
@@ -63,8 +64,17 @@ if (process.env.NODE_ENV !== "test") {
 
   const connectDB = require("./config/db");
   const { repairUserMediaFields } = require("./scripts/repairUserMediaFields");
+  const { runBirthdayRecognition } = require("./services/birthdayService");
   connectDB()
-    .then(() => repairUserMediaFields({ logger: console }))
+    .then(async () => {
+      await repairUserMediaFields({ logger: console });
+      await runBirthdayRecognition({ logger: console });
+      setInterval(() => {
+        runBirthdayRecognition({ logger: console }).catch((err) => {
+          console.error("Birthday recognition task failed:", err?.message || err);
+        });
+      }, 60 * 60 * 1000);
+    })
     .catch((err) => {
       console.error("User media repair failed on startup:", err?.message || err);
     });
@@ -277,6 +287,99 @@ if (process.env.NODE_ENV !== "test") {
 
     socket.on("sendMessage", handleSendMessage);
     socket.on("chat:send", handleSendMessage);
+
+    socket.on("chat:typing", ({ chatId, isTyping, toUserId }) => {
+      const fromUserId = socket.userId || "";
+      if (!fromUserId) return;
+      const room = toUserId ? userRoom(toUserId) : String(chatId || "");
+      if (!room) return;
+      io.to(room).emit("chat:typing", {
+        chatId: String(chatId || ""),
+        fromUserId,
+        isTyping: Boolean(isTyping),
+      });
+    });
+
+    socket.on("chat:recording", ({ chatId, isRecording, toUserId }) => {
+      const fromUserId = socket.userId || "";
+      if (!fromUserId) return;
+      const room = toUserId ? userRoom(toUserId) : String(chatId || "");
+      if (!room) return;
+      io.to(room).emit("chat:recording", {
+        chatId: String(chatId || ""),
+        fromUserId,
+        isRecording: Boolean(isRecording),
+      });
+    });
+
+    socket.on("message:react", async ({ messageId, emoji }) => {
+      try {
+        const userId = socket.userId || "";
+        if (!userId || !messageId || !emoji) return;
+        const message = await Message.findById(messageId);
+        if (!message) return;
+
+        const idx = (message.reactions || []).findIndex(
+          (entry) => toIdString(entry.userId) === userId
+        );
+        if (idx >= 0) {
+          if (message.reactions[idx].emoji === emoji) {
+            message.reactions.splice(idx, 1);
+          } else {
+            message.reactions[idx].emoji = String(emoji).slice(0, 8);
+            message.reactions[idx].createdAt = new Date();
+          }
+        } else {
+          message.reactions.push({
+            userId,
+            emoji: String(emoji).slice(0, 8),
+            createdAt: new Date(),
+          });
+        }
+
+        await message.save();
+        io.to(userRoom(toIdString(message.senderId)))
+          .to(userRoom(toIdString(message.receiverId)))
+          .emit("message:reaction", { messageId, reactions: message.reactions });
+      } catch (err) {
+        console.error("Socket message reaction failed:", err);
+      }
+    });
+
+    socket.on("watch:join", ({ chatId }) => {
+      if (!chatId) return;
+      socket.join(`watch:${chatId}`);
+    });
+
+    socket.on("watch:state", ({ chatId, videoUrl, t, isPlaying }) => {
+      if (!chatId) return;
+      socket.to(`watch:${chatId}`).emit("watch:state", {
+        chatId,
+        videoUrl: String(videoUrl || ""),
+        t: Number(t) || 0,
+        isPlaying: Boolean(isPlaying),
+      });
+    });
+
+    socket.on("watch:play", ({ chatId, t }) => {
+      if (!chatId) return;
+      socket.to(`watch:${chatId}`).emit("watch:play", { chatId, t: Number(t) || 0 });
+    });
+
+    socket.on("watch:pause", ({ chatId, t }) => {
+      if (!chatId) return;
+      socket.to(`watch:${chatId}`).emit("watch:pause", { chatId, t: Number(t) || 0 });
+    });
+
+    socket.on("watch:seek", ({ chatId, t }) => {
+      if (!chatId) return;
+      socket.to(`watch:${chatId}`).emit("watch:seek", { chatId, t: Number(t) || 0 });
+    });
+
+    socket.on("room:join", ({ roomId }) => {
+      if (!roomId) return;
+      socket.join(`room:${roomId}`);
+    });
 
     socket.on("disconnect", () => {
       removeOnlineUserSocket(socket.userId, socket.id);

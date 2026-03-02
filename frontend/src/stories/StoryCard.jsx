@@ -53,6 +53,10 @@ export default function StoryCard({
         {hasUnseen && !isOwner && (
           <span className="story-updated-pill">Updated</span>
         )}
+
+        {story?.visibility === "close_friends" && (
+          <span className="story-privacy-pill">🔒 Close Friends</span>
+        )}
       </div>
 
       {open && (

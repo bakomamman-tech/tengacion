@@ -34,12 +34,39 @@ const CommentSchema = new mongoose.Schema(
       maxlength: 2000,
     },
 
+    parentCommentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+      index: true,
+    },
+
+    mentions: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
     ],
+
+    reactions: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
+        emoji: { type: String, default: "", maxlength: 8, trim: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+
+    reactionsCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
 
     replies: {
       type: [ReplySchema],
@@ -109,9 +136,73 @@ const PostSchema = new mongoose.Schema(
 
     type: {
       type: String,
-      enum: ["text", "image", "video"],
+      enum: ["text", "image", "video", "poll", "quiz", "checkin"],
       default: "text",
       index: true,
+    },
+
+    poll: {
+      question: { type: String, default: "", trim: true, maxlength: 280 },
+      options: [
+        {
+          id: { type: String, default: "" },
+          text: { type: String, default: "", trim: true, maxlength: 180 },
+          votesCount: { type: Number, default: 0, min: 0 },
+        },
+      ],
+      votes: [
+        {
+          userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
+          optionId: { type: String, default: "" },
+        },
+      ],
+      closesAt: { type: Date, default: null },
+    },
+
+    quiz: {
+      question: { type: String, default: "", trim: true, maxlength: 280 },
+      options: [
+        {
+          id: { type: String, default: "" },
+          text: { type: String, default: "", trim: true, maxlength: 180 },
+        },
+      ],
+      correctOptionId: { type: String, default: "" },
+      answers: [
+        {
+          userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
+          optionId: { type: String, default: "" },
+          isCorrect: { type: Boolean, default: false },
+        },
+      ],
+    },
+
+    mentions: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+
+    visibility: {
+      type: String,
+      enum: ["public", "friends", "close_friends"],
+      default: "public",
+      index: true,
+    },
+
+    reactions: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
+        emoji: { type: String, default: "", maxlength: 8, trim: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+
+    reactionsCount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
 
     media: [
@@ -227,6 +318,13 @@ const PostSchema = new mongoose.Schema(
     shareCount: {
       type: Number,
       default: 0,
+    },
+
+    roomId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Room",
+      default: null,
+      index: true,
     },
   },
   {

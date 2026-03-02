@@ -50,6 +50,15 @@ const MessageSchema = new mongoose.Schema(
     },
 
     metadata: {
+      type: {
+        type: String,
+        enum: ["", "birthday", "watchTogether"],
+        default: "",
+      },
+      payload: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {},
+      },
       itemType: {
         type: String,
         enum: ["track", "book", ""],
@@ -120,7 +129,33 @@ const MessageSchema = new mongoose.Schema(
     edited: {
       type: Boolean,
       default: false
-    }
+    },
+
+    reactions: [
+      {
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          index: true,
+        },
+        emoji: {
+          type: String,
+          default: "",
+          trim: true,
+          maxlength: 8,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
+    isSystem: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
 
   {

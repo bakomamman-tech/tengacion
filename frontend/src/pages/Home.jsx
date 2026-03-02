@@ -16,8 +16,10 @@ import {
   createPost,
   createPostWithUploadProgress,
   getFeed,
+  getMyStreaks,
   getProfile,
   resolveImage,
+  submitDailyCheckIn,
   getLiveSessions,
 } from "../api";
 
@@ -37,6 +39,14 @@ const MORE_OPTIONS = [
   { id: "highlight-post", label: "Highlight post" },
   { id: "share-to-story", label: "Share to story" },
 ];
+
+const isBirthdayToday = (birthday = {}) => {
+  const day = Number(birthday?.day) || 0;
+  const month = Number(birthday?.month) || 0;
+  if (!day || !month) return false;
+  const now = new Date();
+  return now.getDate() === day && now.getMonth() + 1 === month;
+};
 
 function ComposerIcon({ name }) {
   const icons = {
@@ -665,6 +675,9 @@ export default function Home({ user }) {
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerInitialFile, setComposerInitialFile] = useState(null);
   const [composerInitialMode, setComposerInitialMode] = useState("");
+  const [checkInText, setCheckInText] = useState("");
+  const [checkInStreak, setCheckInStreak] = useState({ count: 0, lastCheckInAt: null });
+  const [checkInBusy, setCheckInBusy] = useState(false);
   const quickMediaRef = useRef(null);
 
   useEffect(() => {
@@ -673,10 +686,11 @@ export default function Home({ user }) {
       const load = async () => {
         try {
           setLoading(true);
-          const [me, feed, liveResult] = await Promise.all([
+          const [me, feed, liveResult, streakResult] = await Promise.all([
             getProfile(),
             getFeed(),
             getLiveSessions(),
+            getMyStreaks().catch(() => ({ checkIn: { count: 0, lastCheckInAt: null } })),
           ]);
 
           if (!alive) {
@@ -686,6 +700,7 @@ export default function Home({ user }) {
           setProfile(me);
           setPosts(Array.isArray(feed) ? feed : []);
           setLiveSessions(Array.isArray(liveResult?.sessions) ? liveResult.sessions : []);
+          setCheckInStreak(streakResult?.checkIn || { count: 0, lastCheckInAt: null });
         } catch {
           if (alive) {
             alert("Failed to load feed");
@@ -802,6 +817,23 @@ export default function Home({ user }) {
 
   const currentUser = profile || user;
 
+  const runCheckIn = async () => {
+    if (checkInBusy) return;
+    try {
+      setCheckInBusy(true);
+      const payload = await submitDailyCheckIn(checkInText);
+      const nextStreak = payload?.streak || { count: 0, lastCheckInAt: null };
+      setCheckInStreak(nextStreak);
+      setCheckInText("");
+      const updatedFeed = await getFeed();
+      setPosts(Array.isArray(updatedFeed) ? updatedFeed : []);
+    } catch {
+      // Keep existing UX stable.
+    } finally {
+      setCheckInBusy(false);
+    }
+  };
+
   return (
     <>
       <Navbar
@@ -827,7 +859,35 @@ export default function Home({ user }) {
         </aside>
 
         <main className="feed">
+          {isBirthdayToday(currentUser?.birthday) && (
+            <section className="card birthday-banner">
+              <img src="/assets/birthday-cake.svg" alt="Birthday cake" />
+              <div>
+                <strong>Happy Birthday, {currentUser?.name || currentUser?.username || "Friend"} 🎉</strong>
+                <p>Wishing you joy, love, and a beautiful year ahead.</p>
+              </div>
+            </section>
+          )}
           {!loading && <Stories user={currentUser} />}
+          {!loading && (
+            <section className="card checkin-card">
+              <div className="checkin-head">
+                <strong>Daily check-in</strong>
+                <span>🔥 {Number(checkInStreak?.count) || 0}-day streak</span>
+              </div>
+              <div className="checkin-row">
+                <input
+                  value={checkInText}
+                  onChange={(event) => setCheckInText(event.target.value)}
+                  placeholder="Share today's check-in..."
+                  maxLength={180}
+                />
+                <button type="button" onClick={runCheckIn} disabled={checkInBusy}>
+                  {checkInBusy ? "Saving..." : "Check in"}
+                </button>
+              </div>
+            </section>
+          )}
           {!loading && liveSessions.length > 0 && (
             <section className="live-now-bar live-now-section live-preview-panel">
               <div className="live-now-header">

@@ -95,6 +95,23 @@ const UserSchema = new mongoose.Schema(
 
     pronouns: { type: String, default: "" },
 
+    status: {
+      text: { type: String, default: "", maxlength: 120, trim: true },
+      emoji: { type: String, default: "", maxlength: 8, trim: true },
+      updatedAt: { type: Date, default: null },
+    },
+
+    birthday: {
+      day: { type: Number, default: 0, min: 0, max: 31 },
+      month: { type: Number, default: 0, min: 0, max: 12 },
+      year: { type: Number, default: 0, min: 0, max: 9999 },
+      visibility: {
+        type: String,
+        enum: ["private", "friends", "public"],
+        default: "private",
+      },
+    },
+
     avatar: {
       public_id: { type: String, default: "" },
       url: { type: String, default: "" },
@@ -237,6 +254,36 @@ const UserSchema = new mongoose.Schema(
         index: true,
       },
     ],
+
+    closeFriends: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
+
+    badges: [
+      {
+        key: { type: String, required: true, trim: true, maxlength: 80 },
+        label: { type: String, required: true, trim: true, maxlength: 160 },
+        earnedAt: { type: Date, default: Date.now },
+      },
+    ],
+
+    streaks: {
+      checkIn: {
+        count: { type: Number, default: 0, min: 0 },
+        lastCheckInAt: { type: Date, default: null },
+      },
+    },
+
+    achievementsStats: {
+      posts: { type: Number, default: 0, min: 0 },
+      comments: { type: Number, default: 0, min: 0 },
+      reactions: { type: Number, default: 0, min: 0 },
+      followers: { type: Number, default: 0, min: 0 },
+    },
   },
   {
     timestamps: true, // replaces joined

@@ -87,6 +87,14 @@ const emitFriendEvent = (req, userId, eventName, payload) => {
   io.to(id).to(`user:${id}`).emit(eventName, payload);
 };
 
+const isBirthdayToday = (birthday = {}) => {
+  const day = Number(birthday?.day) || 0;
+  const month = Number(birthday?.month) || 0;
+  if (!day || !month) return false;
+  const now = new Date();
+  return now.getDate() === day && now.getMonth() + 1 === month;
+};
+
 /* ================= MY PROFILE ================= */
 router.get("/me", auth, async (req, res) => {
   try {
@@ -119,6 +127,7 @@ router.put("/me", auth, async (req, res) => {
       workplace,
       education,
       website,
+      birthday,
     } = req.body;
 
     if (bio !== undefined) user.bio = bio;
@@ -129,6 +138,16 @@ router.put("/me", auth, async (req, res) => {
     if (workplace !== undefined) user.workplace = workplace;
     if (education !== undefined) user.education = education;
     if (website !== undefined) user.website = website;
+    if (birthday !== undefined && birthday && typeof birthday === "object") {
+      user.birthday = {
+        day: Number(birthday.day) || 0,
+        month: Number(birthday.month) || 0,
+        year: Number(birthday.year) || 0,
+        visibility: ["private", "friends", "public"].includes(String(birthday.visibility || ""))
+          ? String(birthday.visibility)
+          : user?.birthday?.visibility || "private",
+      };
+    }
     if (avatar !== undefined) {
       user.set("avatar", normalizeMediaValue(avatar));
     }
@@ -203,6 +222,7 @@ router.get("/profile/:username", auth, async (req, res) => {
       website: user.website || "",
       phone: user.phone || "",
       dob: user.dob || null,
+      birthday: user.birthday || { day: 0, month: 0, year: 0, visibility: "private" },
       avatar: avatarToUrl(user.avatar),
       cover: avatarToUrl(user.cover),
       followersCount: followers.length,
@@ -212,6 +232,10 @@ router.get("/profile/:username", auth, async (req, res) => {
       relationship,
       joinedAt: user.createdAt || user.joined || null,
       isOwner: Boolean(viewerId && user._id.toString() === viewerId),
+      status: user.status || { text: "", emoji: "", updatedAt: null },
+      badges: Array.isArray(user.badges) ? user.badges : [],
+      streaks: user.streaks || { checkIn: { count: 0, lastCheckInAt: null } },
+      birthdayToday: isBirthdayToday(user.birthday),
     });
   } catch (err) {
     console.error("Profile fetch error:", err);
@@ -664,5 +688,112 @@ router.post(
     }
   }
 );
+
+/* ================= STATUS / MOOD ================= */
+router.put("/me/status", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const text = String(req.body?.text || "").trim().slice(0, 120);
+    const emoji = String(req.body?.emoji || "").trim().slice(0, 8);
+    user.status = {
+      text,
+      emoji,
+      updatedAt: text || emoji ? new Date() : null,
+    };
+    await user.save();
+    return res.json({ success: true, status: user.status });
+  } catch (err) {
+    console.error("Status update failed:", err);
+    return res.status(500).json({ error: "Failed to update status" });
+  }
+});
+
+router.get("/:id/status", auth, async (req, res) => {
+  try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+    const user = await User.findById(req.params.id).select("_id status").lean();
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    return res.json({
+      userId: user._id.toString(),
+      status: user.status || { text: "", emoji: "", updatedAt: null },
+    });
+  } catch (err) {
+    console.error("Status fetch failed:", err);
+    return res.status(500).json({ error: "Failed to fetch status" });
+  }
+});
+
+/* ================= CLOSE FRIENDS ================= */
+router.get("/me/close-friends", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .populate("closeFriends", "_id name username avatar")
+      .lean();
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const payload = (user.closeFriends || []).map((entry) => ({
+      _id: toIdString(entry._id),
+      name: entry.name || "",
+      username: entry.username || "",
+      avatar: avatarToUrl(entry.avatar),
+    }));
+    return res.json(payload);
+  } catch (err) {
+    console.error("Close friends fetch failed:", err);
+    return res.status(500).json({ error: "Failed to load close friends" });
+  }
+});
+
+router.put("/me/close-friends", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const add = Array.isArray(req.body?.add) ? req.body.add : [];
+    const remove = Array.isArray(req.body?.remove) ? req.body.remove : [];
+    add.forEach((id) => {
+      if (isValidId(id) && toIdString(id) !== toIdString(user._id)) {
+        user.closeFriends.addToSet(id);
+      }
+    });
+    remove.forEach((id) => {
+      if (isValidId(id)) {
+        user.closeFriends.pull(id);
+      }
+    });
+    await user.save();
+    return res.json({
+      success: true,
+      closeFriends: (user.closeFriends || []).map((id) => toIdString(id)),
+    });
+  } catch (err) {
+    console.error("Close friends update failed:", err);
+    return res.status(500).json({ error: "Failed to update close friends" });
+  }
+});
+
+/* ================= STREAK ================= */
+router.get("/me/streaks", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("streaks").lean();
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    return res.json(user.streaks || { checkIn: { count: 0, lastCheckInAt: null } });
+  } catch (err) {
+    console.error("Streak fetch failed:", err);
+    return res.status(500).json({ error: "Failed to load streaks" });
+  }
+});
 
 module.exports = router;

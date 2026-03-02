@@ -12,6 +12,7 @@ import {
   sendFriendRequest,
   unfriend,
   updateMe,
+  updateMyStatus,
   uploadAvatar,
   uploadCover,
 } from "./api";
@@ -181,6 +182,9 @@ export default function ProfileEditor({ user }) {
   const [avatarPreview, setAvatarPreview] = useState("");
   const [coverPreview, setCoverPreview] = useState("");
   const [relationshipBusy, setRelationshipBusy] = useState("");
+  const [statusText, setStatusText] = useState("");
+  const [statusEmoji, setStatusEmoji] = useState("");
+  const [statusSaving, setStatusSaving] = useState(false);
 
   const [bio, setBio] = useState("");
   const [country, setCountry] = useState("");
@@ -255,6 +259,8 @@ export default function ProfileEditor({ user }) {
     setWorkplace(nextProfile?.workplace || "");
     setEducation(nextProfile?.education || "");
     setWebsite(nextProfile?.website || "");
+    setStatusText(nextProfile?.status?.text || "");
+    setStatusEmoji(nextProfile?.status?.emoji || "");
   }, []);
 
   const loadAll = useCallback(
@@ -419,6 +425,23 @@ export default function ProfileEditor({ user }) {
     }
   };
 
+  const saveStatus = async () => {
+    if (!isOwner || statusSaving) {
+      return;
+    }
+    try {
+      setStatusSaving(true);
+      await updateMyStatus({ text: statusText, emoji: statusEmoji });
+      await loadAll(targetUsername);
+      toast.success("Status updated");
+    } catch (err) {
+      setError(err?.message || "Failed to update status");
+      toast.error("Could not update status");
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
   const changeAvatar = async (file) => {
     if (!file || !isOwner || avatarUploading) {
       return;
@@ -542,6 +565,15 @@ export default function ProfileEditor({ user }) {
       <Navbar user={user} onLogout={logout} />
 
       <main className="profile-page-v2">
+        {profile?.birthdayToday && (
+          <section className="card birthday-banner">
+            <img src="/assets/birthday-cake.svg" alt="Birthday cake" />
+            <div>
+              <strong>Happy Birthday, {profile?.name || "Friend"} 🎉</strong>
+              <p>Celebrate your day with your community.</p>
+            </div>
+          </section>
+        )}
         <section className="profile-hero-card">
           <div className="profile-cover-v2">
             {displayCover ? (
@@ -594,8 +626,20 @@ export default function ProfileEditor({ user }) {
                 {formatLargeCount(profile.followingCount)} following
               </p>
               {profile.bio && <p className="profile-main-bio">{profile.bio}</p>}
+              {(profile?.status?.text || profile?.status?.emoji || isOwner) && (
+                <p className="profile-main-status">
+                  {profile?.status?.emoji ? `${profile.status.emoji} ` : ""}
+                  {profile?.status?.text || (isOwner ? "Set a mood/status" : "")}
+                </p>
+              )}
 
               <div className="profile-badge-line">
+                {Array.isArray(profile?.badges) && profile.badges.length > 0 && (
+                  <span>
+                    <Glyph name="join" className="profile-mini-ico" />
+                    {profile.badges[0]?.label || "Badge earned"}
+                  </span>
+                )}
                 {(profile.currentCity || profile.country) && (
                   <span>
                     <Glyph name="pin" className="profile-mini-ico" />
@@ -895,11 +939,30 @@ export default function ProfileEditor({ user }) {
                     Website
                     <input value={website} onChange={(event) => setWebsite(event.target.value)} />
                   </label>
+                  <label>
+                    Status emoji
+                    <input
+                      value={statusEmoji}
+                      onChange={(event) => setStatusEmoji(event.target.value)}
+                      placeholder="e.g. 😊"
+                    />
+                  </label>
+                  <label>
+                    Status text
+                    <input
+                      value={statusText}
+                      onChange={(event) => setStatusText(event.target.value)}
+                      placeholder="What are you up to?"
+                    />
+                  </label>
                 </div>
 
                 <div className="profile-edit-actions">
                   <button className="btn-primary" onClick={saveDetails} disabled={saving}>
                     {saving ? "Saving..." : "Save profile"}
+                  </button>
+                  <button className="btn-secondary" onClick={saveStatus} disabled={statusSaving}>
+                    {statusSaving ? "Saving..." : "Save status"}
                   </button>
                 </div>
               </article>

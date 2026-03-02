@@ -18,6 +18,7 @@ import ArtistProfileRoute from "@web/features/creator/ArtistPage";
 import TrackDetail from "./pages/TrackDetail";
 import BookDetail from "./pages/BookDetail";
 import Trending from "./pages/Trending";
+import Rooms from "./pages/Rooms";
 import LiveDirectory from "./pages/LiveDirectory";
 import GoLive from "./pages/GoLive";
 import WatchLive from "./pages/WatchLive";
@@ -208,6 +209,15 @@ export default function App() {
         element={
           <ProtectedRoute user={user}>
             <GroupsPage user={user} />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/rooms"
+        element={
+          <ProtectedRoute user={user}>
+            <Rooms />
           </ProtectedRoute>
         }
       />

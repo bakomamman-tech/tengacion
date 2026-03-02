@@ -700,7 +700,7 @@ export const updateLiveViewerCount = ({ roomName, delta = 1 }) =>
 // ======================================================
 
 export const getStories = () =>
-  request(`${API_BASE}/stories`, {
+  request(`${API_BASE}/stories/feed`, {
     headers: getAuthHeaders(),
   });
 
@@ -714,6 +714,7 @@ export const createStory = (formData) =>
 export const createStoryWithUploadProgress = ({
   file,
   caption = "",
+  visibility = "friends",
   onProgress,
   timeoutMs = 180000,
 }) =>
@@ -776,11 +777,104 @@ export const createStoryWithUploadProgress = ({
     if (caption) {
       form.append("caption", String(caption));
     }
+    form.append("visibility", String(visibility || "friends"));
     xhr.send(form);
   });
 
 export const markStorySeen = (storyId) =>
   request(`${API_BASE}/stories/${encodeURIComponent(storyId || "")}/seen`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+export const reactToStory = (storyId, emoji) =>
+  request(`${API_BASE}/stories/${encodeURIComponent(storyId || "")}/react`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ emoji }),
+  });
+
+export const replyToStory = (storyId, text) =>
+  request(`${API_BASE}/stories/${encodeURIComponent(storyId || "")}/reply`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ text }),
+  });
+
+export const updateMyStatus = ({ text = "", emoji = "" }) =>
+  request(`${API_BASE}/users/me/status`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ text, emoji }),
+  });
+
+export const getUserStatus = (userId) =>
+  request(`${API_BASE}/users/${encodeURIComponent(userId || "")}/status`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getCloseFriends = () =>
+  request(`${API_BASE}/users/me/close-friends`, {
+    headers: getAuthHeaders(),
+  });
+
+export const updateCloseFriends = ({ add = [], remove = [] }) =>
+  request(`${API_BASE}/users/me/close-friends`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ add, remove }),
+  });
+
+export const getMyStreaks = () =>
+  request(`${API_BASE}/users/me/streaks`, {
+    headers: getAuthHeaders(),
+  });
+
+export const submitDailyCheckIn = (text = "") =>
+  request(`${API_BASE}/checkin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ text }),
+  });
+
+export const getRooms = () =>
+  request(`${API_BASE}/rooms`, {
+    headers: getAuthHeaders(),
+  });
+
+export const createRoom = (payload) =>
+  request(`${API_BASE}/rooms`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const joinRoom = (roomId) =>
+  request(`${API_BASE}/rooms/${encodeURIComponent(roomId || "")}/join`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+export const leaveRoom = (roomId) =>
+  request(`${API_BASE}/rooms/${encodeURIComponent(roomId || "")}/leave`, {
     method: "POST",
     headers: getAuthHeaders(),
   });

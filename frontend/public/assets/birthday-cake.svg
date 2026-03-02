@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420" viewBox="0 0 640 420" role="img" aria-label="Birthday cake">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1">
+      <stop offset="0" stop-color="#f6e0bf"/>
+      <stop offset="1" stop-color="#f0c48a"/>
+    </linearGradient>
+    <linearGradient id="cake" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#fef6ec"/>
+      <stop offset="1" stop-color="#eecfa8"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="420" fill="url(#bg)"/>
+  <rect x="140" y="230" width="360" height="110" rx="18" fill="url(#cake)" stroke="#b5793f" stroke-width="4"/>
+  <rect x="165" y="175" width="310" height="70" rx="14" fill="#fff3e4" stroke="#b5793f" stroke-width="4"/>
+  <path d="M165 210c20 10 40 10 60 0s40-10 60 0 40 10 60 0 40-10 60 0 40 10 70-1v36H165z" fill="#f7b2be"/>
+  <circle cx="230" cy="268" r="10" fill="#ff6b6b"/>
+  <circle cx="320" cy="282" r="10" fill="#ffd166"/>
+  <circle cx="410" cy="268" r="10" fill="#6bcB77"/>
+  <rect x="240" y="130" width="12" height="50" rx="6" fill="#4a90e2"/>
+  <rect x="314" y="120" width="12" height="60" rx="6" fill="#f39c12"/>
+  <rect x="388" y="130" width="12" height="50" rx="6" fill="#9b59b6"/>
+  <path d="M246 122c8-10 8-18 0-24-8 6-8 14 0 24z" fill="#ffb703"/>
+  <path d="M320 112c8-10 8-18 0-24-8 6-8 14 0 24z" fill="#ffb703"/>
+  <path d="M394 122c8-10 8-18 0-24-8 6-8 14 0 24z" fill="#ffb703"/>
+  <text x="320" y="376" text-anchor="middle" font-family="Georgia, serif" font-size="40" fill="#7a4b19">Happy Birthday</text>
+</svg>

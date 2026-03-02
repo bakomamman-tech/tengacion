@@ -775,6 +775,15 @@ html.dark-mode .live-preview-panel {
   line-height: 1.45;
 }
 
+.profile-main-status {
+  margin: 7px 0 0;
+  max-width: 960px;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
 .profile-badge-line {
   margin-top: 8px;
   display: flex;
@@ -1383,6 +1392,7 @@ html.dark-mode .live-preview-panel {
 html.dark-mode .profile-page-v2 .profile-main-meta h1,
 html.dark-mode .profile-page-v2 .profile-follow-line,
 html.dark-mode .profile-page-v2 .profile-main-bio,
+html.dark-mode .profile-page-v2 .profile-main-status,
 html.dark-mode .profile-page-v2 .profile-badge-line span,
 html.dark-mode .profile-page-v2 .profile-panel-head h3,
 html.dark-mode .profile-page-v2 .profile-fact-value,
@@ -2850,6 +2860,152 @@ html.dark-mode .nav-notification-btn:hover {
 .create-post {
   padding: 12px;
   cursor: pointer;
+}
+
+.birthday-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.birthday-banner img {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #fff6eb;
+  border: 1px solid var(--border);
+}
+
+.birthday-banner strong {
+  display: block;
+  font-size: 16px;
+}
+
+.birthday-banner p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.checkin-card {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.checkin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.checkin-head span {
+  font-weight: 800;
+  color: var(--text);
+}
+
+.checkin-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.checkin-row input {
+  min-height: 40px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0 12px;
+}
+
+.rooms-page {
+  width: min(1000px, 100%);
+  margin: 18px auto;
+  padding: 0 12px 20px;
+  display: grid;
+  gap: 12px;
+}
+
+.rooms-create {
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.rooms-create input,
+.rooms-create textarea {
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 9px 11px;
+}
+
+.rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rooms-item {
+  padding: 14px;
+}
+
+.rooms-item h3 {
+  margin: 0 0 6px;
+}
+
+.rooms-item p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.rooms-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.messenger-watch-box {
+  margin: 8px 10px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  background: var(--surface-soft);
+  display: grid;
+  gap: 8px;
+}
+
+.messenger-watch-controls {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+}
+
+.messenger-watch-controls input {
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 10px;
+}
+
+.messenger-watch-box video {
+  width: 100%;
+  max-height: 260px;
+  border-radius: 10px;
+  background: #0f1625;
+}
+
+.messenger-watch-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .create-post-row {

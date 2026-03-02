@@ -2,8 +2,10 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const Story = require("../models/Story");
 const User = require("../models/User");
+const Message = require("../models/Message");
 const upload = require("../utils/upload");
 const { saveUploadedFile } = require("../services/mediaStore");
+const { createNotification } = require("../services/notificationService");
 
 const router = express.Router();
 
@@ -47,6 +49,51 @@ const inferStoryMediaType = (file = null) => {
   return "image";
 };
 
+const loadVisibleStories = async (viewerId) => {
+  const user = await User.findById(viewerId).lean();
+  if (!user) {
+    return null;
+  }
+
+  const viewerIdString = toIdString(viewerId);
+  const friendIds = (user.friends || []).map((id) => toIdString(id));
+  const closeFriendIds = (user.closeFriends || []).map((id) => toIdString(id));
+  const ids = [...new Set([viewerIdString, ...friendIds])];
+
+  const stories = await Story.find({ userId: { $in: ids }, expiresAt: { $gt: new Date() } })
+    .sort({ time: -1 })
+    .lean();
+
+  return stories
+    .filter((story) => {
+      const ownerId = toIdString(story.userId);
+      if (ownerId === viewerIdString) return true;
+      if (story.visibility === "public") return true;
+      if (story.visibility === "friends") return friendIds.includes(ownerId);
+      if (story.visibility === "close_friends") return closeFriendIds.includes(ownerId);
+      return false;
+    })
+    .map((story) => {
+      const seenBy = Array.isArray(story.seenBy)
+        ? story.seenBy.map((id) => toIdString(id))
+        : [];
+      const mediaUrl = story.mediaUrl || story.image || "";
+      const mediaType = story.mediaType || story?.media?.type || "image";
+      return {
+        ...story,
+        id: toIdString(story._id),
+        userId: toIdString(story.userId),
+        userAvatar: story.avatar || "",
+        mediaUrl,
+        mediaType,
+        thumbnailUrl: story.thumbnailUrl || (mediaType === "image" ? mediaUrl : ""),
+        createdAt: story.time || story.createdAt,
+        seenBy,
+        viewerSeen: seenBy.includes(viewerIdString),
+      };
+    });
+};
+
 /* ================= CREATE STORY (TEXT/IMAGE/VIDEO) ================= */
 
 router.post("/", auth, upload.any(), async (req, res) => {
@@ -61,12 +108,24 @@ router.post("/", auth, upload.any(), async (req, res) => {
     const mediaType = inferStoryMediaType(mediaFile);
     const caption = String(req.body?.caption || req.body?.text || "").trim();
 
+    const visibility = String(req.body?.visibility || "friends").toLowerCase();
+    const normalizedVisibility = ["public", "friends", "close_friends"].includes(visibility)
+      ? visibility
+      : "friends";
+
     const story = await Story.create({
       userId: user._id.toString(),
+      authorId: user._id,
       name: user.name,
       username: user.username,
       avatar: avatarToUrl(user.avatar),
       text: caption,
+      visibility: normalizedVisibility,
+      media: {
+        url: storyMediaUrl,
+        public_id: "",
+        type: mediaType,
+      },
       image: storyMediaUrl,
       mediaUrl: storyMediaUrl,
       mediaType,
@@ -86,39 +145,8 @@ router.post("/", auth, upload.any(), async (req, res) => {
 
 router.get("/", auth, async (req, res) => {
   try {
-    const viewerId = toIdString(req.userId);
-    const user = await User.findById(req.userId);
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    const ids = [...new Set([viewerId, ...(user.friends || []).map((id) => toIdString(id))])];
-
-    const stories = await Story.find({
-      userId: { $in: ids },
-      expiresAt: { $gt: new Date() },
-    })
-      .sort({ time: -1 })
-      .lean();
-
-    const payload = stories.map((story) => {
-      const seenBy = Array.isArray(story.seenBy)
-        ? story.seenBy.map((id) => toIdString(id))
-        : [];
-      const mediaUrl = story.mediaUrl || story.image || "";
-      const mediaType = story.mediaType || "image";
-      return {
-        ...story,
-        id: toIdString(story._id),
-        userId: toIdString(story.userId),
-        userAvatar: story.avatar || "",
-        mediaUrl,
-        mediaType,
-        thumbnailUrl: story.thumbnailUrl || (mediaType === "image" ? mediaUrl : ""),
-        createdAt: story.time || story.createdAt,
-        seenBy,
-        viewerSeen: seenBy.includes(viewerId),
-      };
-    });
-
+    const payload = await loadVisibleStories(req.userId);
+    if (!payload) return res.status(404).json({ error: "User not found" });
     res.json(payload);
   } catch (err) {
     console.error("Story fetch error:", err);
@@ -147,6 +175,111 @@ router.post("/:id/seen", auth, async (req, res) => {
   } catch (err) {
     console.error("Story seen error:", err);
     res.status(500).json({ error: "Failed to mark as seen" });
+  }
+});
+
+/* ================= STORIES FEED ALIAS ================= */
+router.get("/feed", auth, async (req, res) => {
+  try {
+    const payload = await loadVisibleStories(req.userId);
+    if (!payload) return res.status(404).json({ error: "User not found" });
+    return res.json(payload);
+  } catch (err) {
+    console.error("Story feed error:", err);
+    return res.status(500).json({ error: "Failed to load stories" });
+  }
+});
+
+/* ================= STORY REACTIONS ================= */
+router.post("/:id/react", auth, async (req, res) => {
+  try {
+    const story = await Story.findById(req.params.id);
+    if (!story) {
+      return res.status(404).json({ error: "Story not found" });
+    }
+
+    const emoji = String(req.body?.emoji || "").trim().slice(0, 8);
+    if (!emoji) {
+      return res.status(400).json({ error: "Emoji is required" });
+    }
+
+    const userId = toIdString(req.userId);
+    const reactions = Array.isArray(story.reactions) ? story.reactions : [];
+    const existingIndex = reactions.findIndex((entry) => toIdString(entry.userId) === userId);
+
+    if (existingIndex >= 0) {
+      story.reactions[existingIndex].emoji = emoji;
+      story.reactions[existingIndex].createdAt = new Date();
+    } else {
+      story.reactions.push({
+        userId,
+        emoji,
+        createdAt: new Date(),
+      });
+    }
+
+    await story.save();
+    return res.json({ success: true, reactionsCount: story.reactions.length });
+  } catch (err) {
+    console.error("Story react error:", err);
+    return res.status(500).json({ error: "Failed to react to story" });
+  }
+});
+
+/* ================= STORY REPLY ================= */
+router.post("/:id/reply", auth, async (req, res) => {
+  try {
+    const story = await Story.findById(req.params.id);
+    if (!story) {
+      return res.status(404).json({ error: "Story not found" });
+    }
+
+    const text = String(req.body?.text || "").trim().slice(0, 600);
+    if (!text) {
+      return res.status(400).json({ error: "Reply text is required" });
+    }
+
+    const senderId = toIdString(req.userId);
+    const receiverId = toIdString(story.authorId || story.userId);
+    if (!receiverId || senderId === receiverId) {
+      return res.status(400).json({ error: "Cannot reply to this story" });
+    }
+
+    story.replies.push({
+      userId: senderId,
+      text,
+      createdAt: new Date(),
+    });
+    await story.save();
+
+    const conversationId = [senderId, receiverId].sort().join("_");
+    const message = await Message.create({
+      conversationId,
+      senderId,
+      receiverId,
+      text: `Story reply: ${text}`,
+      type: "text",
+      metadata: {
+        type: "",
+        payload: { storyId: story._id.toString() },
+      },
+    });
+
+    await createNotification({
+      recipient: receiverId,
+      sender: senderId,
+      type: "reply",
+      text: "replied to your story",
+      entity: { id: story._id, model: "Post" },
+      metadata: { link: "/home", previewText: text },
+      io: req.app.get("io"),
+      onlineUsers: req.app.get("onlineUsers"),
+    });
+
+    return res.status(201).json({ success: true, messageId: message._id.toString() });
+  } catch (err) {
+    console.error("Story reply error:", err);
+    return res.status(500).json({ error: "Failed to reply to story" });
   }
 });
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { markStorySeen, resolveImage } from "../api";
+import { markStorySeen, reactToStory, replyToStory, resolveImage } from "../api";
 
 const IMAGE_DURATION_MS = 5000;
 
@@ -41,6 +41,11 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
   const seenRef = useRef(new Set());
   const timerRef = useRef(null);
   const videoRef = useRef(null);
+  const [replyText, setReplyText] = useState("");
+  const [replyBusy, setReplyBusy] = useState(false);
+  const [reactionBusy, setReactionBusy] = useState("");
+
+  const quickReactions = ["❤️", "🔥", "😂", "😮", "🎉"];
 
   const activeStory = orderedStories[index] || story;
   const mediaType = activeStory?.mediaType || "image";
@@ -142,6 +147,32 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
     return null;
   }
 
+  const handleReact = async (emoji) => {
+    if (!activeStory?._id || reactionBusy) return;
+    try {
+      setReactionBusy(emoji);
+      await reactToStory(activeStory._id, emoji);
+    } catch {
+      // Best-effort interaction.
+    } finally {
+      setReactionBusy("");
+    }
+  };
+
+  const handleReply = async () => {
+    const text = replyText.trim();
+    if (!activeStory?._id || !text || replyBusy) return;
+    try {
+      setReplyBusy(true);
+      await replyToStory(activeStory._id, text);
+      setReplyText("");
+    } catch {
+      // Keep existing UI stable on network errors.
+    } finally {
+      setReplyBusy(false);
+    }
+  };
+
   return (
     <div className="story-viewer-overlay" onClick={onClose}>
       <div className="story-viewer" onClick={(event) => event.stopPropagation()}>
@@ -195,6 +226,32 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
         {activeStory?.text && mediaUrl && (
           <p className="story-viewer-text-caption">{activeStory.text}</p>
         )}
+
+        <div className="story-viewer-actions">
+          <div className="story-viewer-quick-reactions">
+            {quickReactions.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => handleReact(emoji)}
+                disabled={Boolean(reactionBusy)}
+              >
+                {reactionBusy === emoji ? "..." : emoji}
+              </button>
+            ))}
+          </div>
+          <div className="story-viewer-reply-row">
+            <input
+              value={replyText}
+              onChange={(event) => setReplyText(event.target.value)}
+              placeholder="Reply to story..."
+              maxLength={220}
+            />
+            <button type="button" onClick={handleReply} disabled={replyBusy || !replyText.trim()}>
+              {replyBusy ? "Sending..." : "Reply"}
+            </button>
+          </div>
+        </div>
 
         {orderedStories.length > 1 && (
           <div className="story-viewer-controls">

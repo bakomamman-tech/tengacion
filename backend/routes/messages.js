@@ -131,7 +131,7 @@ router.get("/contacts", auth, async (req, res) => {
         ? { _id: { $in: friendIds } }
         : { _id: { $ne: meId } };
 
-    const contacts = await User.find(contactQuery, "_id name username avatar")
+    const contacts = await User.find(contactQuery, "_id name username avatar status")
       .sort({ name: 1 })
       .limit(40)
       .lean();
@@ -199,6 +199,7 @@ router.get("/contacts", auth, async (req, res) => {
           name: user.name,
           username: user.username,
           avatar: avatarToUrl(user.avatar),
+          status: user.status || { text: "", emoji: "", updatedAt: null },
           lastMessage: latest?.text || "",
           lastMessageAt: latest?.time || 0,
           online: onlineUsers ? onlineUsers.has(id) : false,
@@ -292,6 +293,61 @@ router.patch("/:messageId/delete-for-me", auth, async (req, res) => {
   } catch (err) {
     console.error("Delete-for-me error:", err);
     return res.status(500).json({ error: "Failed to delete message for current user" });
+  }
+});
+
+router.post("/:messageId/react", auth, async (req, res) => {
+  try {
+    const meId = req.user.id;
+    const messageId = req.params.messageId;
+    const emoji = String(req.body?.emoji || "").trim().slice(0, 8);
+    if (!emoji) {
+      return res.status(400).json({ error: "Emoji is required" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(messageId)) {
+      return res.status(400).json({ error: "Invalid message id" });
+    }
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    const senderId = toIdString(message.senderId);
+    const receiverId = toIdString(message.receiverId);
+    if (meId !== senderId && meId !== receiverId) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+
+    const index = (message.reactions || []).findIndex(
+      (entry) => toIdString(entry.userId) === meId
+    );
+    if (index >= 0) {
+      if (message.reactions[index].emoji === emoji) {
+        message.reactions.splice(index, 1);
+      } else {
+        message.reactions[index].emoji = emoji;
+        message.reactions[index].createdAt = new Date();
+      }
+    } else {
+      message.reactions.push({ userId: meId, emoji, createdAt: new Date() });
+    }
+
+    await message.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(toIdString(senderId)).to(toIdString(receiverId)).emit("message:reaction", {
+        messageId,
+        reactions: message.reactions,
+      });
+    }
+
+    return res.json({ success: true, reactions: message.reactions });
+  } catch (err) {
+    console.error("Message react error:", err);
+    return res.status(500).json({ error: "Failed to react to message" });
   }
 });
 

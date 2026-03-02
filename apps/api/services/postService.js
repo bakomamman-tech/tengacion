@@ -10,6 +10,7 @@ const {
 } = require("../../../backend/services/videoStorage");
 const userRepository = require("../repositories/userRepository");
 const postRepository = require("../repositories/postRepository");
+const { resolveMentionUserIds } = require("../../../backend/utils/mentions");
 
 const toIdString = (value) => {
   if (!value) return "";
@@ -33,7 +34,7 @@ const inferMediaKind = (file) => {
   return "image";
 };
 
-const ALLOWED_POST_TYPES = new Set(["text", "image", "video"]);
+const ALLOWED_POST_TYPES = new Set(["text", "image", "video", "poll", "quiz", "checkin"]);
 
 const parseVideoPayload = (value) => {
   if (!value) return null;
@@ -144,6 +145,13 @@ const toStringArray = (value, maxItems = 8, maxLength = 60, stripAt = false) => 
     .map((entry) => (stripAt ? entry.replace(/^@+/, "") : entry))
     .filter(Boolean)
     .slice(0, maxItems);
+};
+
+const toVisibility = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  return ["public", "friends", "close_friends"].includes(normalized)
+    ? normalized
+    : "public";
 };
 
 const avatarToUrl = (avatar) => {
@@ -265,6 +273,72 @@ class PostService {
       throw ApiError.badRequest("Video data is required for video posts");
     }
 
+    const visibility = toVisibility(body?.visibility || body?.privacy);
+    const mentions = await resolveMentionUserIds(text);
+
+    const pollPayload = body?.poll && typeof body.poll === "string"
+      ? (() => {
+          try {
+            return JSON.parse(body.poll);
+          } catch {
+            return null;
+          }
+        })()
+      : body?.poll || null;
+
+    const quizPayload = body?.quiz && typeof body.quiz === "string"
+      ? (() => {
+          try {
+            return JSON.parse(body.quiz);
+          } catch {
+            return null;
+          }
+        })()
+      : body?.quiz || null;
+
+    let poll = { question: "", options: [], votes: [], closesAt: null };
+    let quiz = { question: "", options: [], correctOptionId: "", answers: [] };
+
+    if (type === "poll") {
+      const question = normalizeText(pollPayload?.question || text, 280);
+      const options = Array.isArray(pollPayload?.options)
+        ? pollPayload.options.map((entry, index) => ({
+            id: String(entry?.id || `opt_${index + 1}`),
+            text: normalizeText(entry?.text || entry, 180),
+            votesCount: 0,
+          })).filter((entry) => entry.text)
+        : [];
+      if (!question || options.length < 2) {
+        throw ApiError.badRequest("Poll requires a question and at least two options");
+      }
+      poll = {
+        question,
+        options,
+        votes: [],
+        closesAt: pollPayload?.closesAt ? new Date(pollPayload.closesAt) : null,
+      };
+    }
+
+    if (type === "quiz") {
+      const question = normalizeText(quizPayload?.question || text, 280);
+      const options = Array.isArray(quizPayload?.options)
+        ? quizPayload.options.map((entry, index) => ({
+            id: String(entry?.id || `opt_${index + 1}`),
+            text: normalizeText(entry?.text || entry, 180),
+          })).filter((entry) => entry.text)
+        : [];
+      const correctOptionId = String(quizPayload?.correctOptionId || "");
+      if (!question || options.length < 2 || !correctOptionId) {
+        throw ApiError.badRequest("Quiz requires question, options, and correct option");
+      }
+      quiz = {
+        question,
+        options,
+        correctOptionId,
+        answers: [],
+      };
+    }
+
     const media = [];
     if (uploadFile) {
       const persisted = await saveUploadedMedia(uploadFile);
@@ -313,6 +387,10 @@ class PostService {
       type,
       video: type === "video" ? videoMeta : null,
       privacy: "public",
+      visibility,
+      mentions,
+      poll: type === "poll" ? poll : undefined,
+      quiz: type === "quiz" ? quiz : undefined,
     });
 
     const post = await withPostAuthor(Post.findById(created._id)).lean();
@@ -351,15 +429,24 @@ class PostService {
         (id) => id && id !== viewerId
       );
       const followingOnlyIds = followingIds.filter((id) => !friendIds.includes(id));
+      const closeFriendIds = uniqueIds((viewer.closeFriends || []).map((id) => toIdString(id))).filter(
+        (id) => id && id !== viewerId
+      );
 
       visibilityScopes.push({ author: viewerId });
       visibilityScopes.push({
         author: { $in: friendIds },
         privacy: { $in: ["public", "friends"] },
+        visibility: { $in: ["public", "friends"] },
       });
       visibilityScopes.push({
         author: { $in: followingOnlyIds },
         privacy: "public",
+        visibility: "public",
+      });
+      visibilityScopes.push({
+        author: { $in: closeFriendIds },
+        visibility: { $in: ["public", "friends", "close_friends"] },
       });
 
       if (matchedAuthorIds.length > 0) {
@@ -526,17 +613,25 @@ class PostService {
       throw ApiError.badRequest("Invalid post id");
     }
 
-    const normalizedText = normalizeText(text, 500);
+    const post = await postRepository.findById(postId);
+    if (!post) throw ApiError.notFound("Post not found");
+
+    const parentCommentId = text?.parentCommentId || null;
+    const bodyText = typeof text === "object" ? text?.text : text;
+    const normalizedText = normalizeText(bodyText, 500);
     if (!normalizedText) {
       throw ApiError.badRequest("Comment text is required");
     }
 
-    const post = await postRepository.findById(postId);
-    if (!post) throw ApiError.notFound("Post not found");
+    const mentions = await resolveMentionUserIds(normalizedText);
 
     post.comments.push({
       author: userId,
       text: normalizedText,
+      parentCommentId,
+      mentions,
+      reactions: [],
+      reactionsCount: 0,
     });
     post.commentsCount = post.comments.length;
     await post.save();
@@ -555,11 +650,78 @@ class PostService {
     });
 
     const latestComment = post.comments[post.comments.length - 1];
+
+    for (const mentionedUserId of mentions) {
+      if (String(mentionedUserId) === String(userId)) continue;
+      await createNotification({
+        recipient: mentionedUserId,
+        sender: userId,
+        type: "mention",
+        text: "mentioned you in a comment",
+        entity: {
+          id: post._id,
+          model: "Post",
+        },
+        io,
+        onlineUsers,
+      });
+    }
+
     return {
       success: true,
       comment: latestComment,
       commentsCount: post.commentsCount,
     };
+  }
+
+  static async votePoll({ userId, postId, optionId }) {
+    const post = await postRepository.findById(postId);
+    if (!post) throw ApiError.notFound("Post not found");
+    if (post.type !== "poll") throw ApiError.badRequest("Post is not a poll");
+
+    const option = (post.poll?.options || []).find((entry) => String(entry.id) === String(optionId));
+    if (!option) throw ApiError.badRequest("Invalid poll option");
+
+    const votes = Array.isArray(post.poll?.votes) ? post.poll.votes : [];
+    const existing = votes.find((entry) => String(entry.userId) === String(userId));
+    if (existing) {
+      if (existing.optionId === optionId) {
+        return { success: true, poll: post.poll };
+      }
+      const prev = (post.poll.options || []).find((entry) => entry.id === existing.optionId);
+      if (prev) {
+        prev.votesCount = Math.max(0, Number(prev.votesCount) - 1);
+      }
+      existing.optionId = optionId;
+    } else {
+      post.poll.votes.push({ userId, optionId });
+    }
+
+    option.votesCount = Number(option.votesCount || 0) + 1;
+    await post.save();
+    return { success: true, poll: post.poll };
+  }
+
+  static async answerQuiz({ userId, postId, optionId }) {
+    const post = await postRepository.findById(postId);
+    if (!post) throw ApiError.notFound("Post not found");
+    if (post.type !== "quiz") throw ApiError.badRequest("Post is not a quiz");
+
+    const option = (post.quiz?.options || []).find((entry) => String(entry.id) === String(optionId));
+    if (!option) throw ApiError.badRequest("Invalid quiz option");
+    const isCorrect = String(post.quiz.correctOptionId) === String(optionId);
+
+    const answers = Array.isArray(post.quiz?.answers) ? post.quiz.answers : [];
+    const existing = answers.find((entry) => String(entry.userId) === String(userId));
+    if (existing) {
+      existing.optionId = optionId;
+      existing.isCorrect = isCorrect;
+    } else {
+      post.quiz.answers.push({ userId, optionId, isCorrect });
+    }
+
+    await post.save();
+    return { success: true, isCorrect, quiz: post.quiz };
   }
 }
 

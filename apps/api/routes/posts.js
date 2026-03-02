@@ -22,5 +22,9 @@ router.delete("/:id", auth, postController.deletePost);
 router.post("/:id/like", auth, postController.toggleLike);
 router.post("/:id/share", auth, postController.sharePost);
 router.post("/:id/comment", auth, postController.addComment);
+router.post("/:id/comments", auth, postController.addComment);
+router.get("/:id/comments", optionalAuth, postController.getComments);
+router.post("/:id/poll/vote", auth, postController.votePoll);
+router.post("/:id/quiz/answer", auth, postController.answerQuiz);
 
 module.exports = router;

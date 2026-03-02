@@ -16,6 +16,7 @@ export default function CreateStory({ user, onCreated }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
+  const [visibility, setVisibility] = useState("friends");
 
   const avatar = useMemo(
     () =>
@@ -74,6 +75,7 @@ export default function CreateStory({ user, onCreated }) {
       await createStoryWithUploadProgress({
         file,
         caption: caption.trim(),
+        visibility,
         onProgress: setProgress,
       });
       await onCreated?.();
@@ -155,6 +157,12 @@ export default function CreateStory({ user, onCreated }) {
                 placeholder="Say something about this story..."
                 maxLength={220}
               />
+
+              <select value={visibility} onChange={(event) => setVisibility(event.target.value)}>
+                <option value="public">Public</option>
+                <option value="friends">Friends</option>
+                <option value="close_friends">Close Friends</option>
+              </select>
 
               {progress > 0 && submitting && (
                 <div className="story-create-progress">

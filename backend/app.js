@@ -7,6 +7,7 @@ const auth = require("./middleware/auth");
 const upload = require("./utils/upload");
 const errorHandler = require("../apps/api/middleware/errorHandler");
 const User = require("./models/User");
+const { normalizeUserMediaDocument } = require("./utils/userMedia");
 
 const app = express();
 const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
@@ -88,6 +89,7 @@ app.get("/api/me", auth, async (req, res) => {
   if (!user) {
     return res.status(404).json({ error: "User not found" });
   }
+  normalizeUserMediaDocument(user);
   return res.json(user);
 });
 

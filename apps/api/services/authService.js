@@ -7,6 +7,7 @@ const userRepository = require("../repositories/userRepository");
 const Otp = require("../../../backend/models/Otp");
 const sendOtpEmail = require("../../../backend/utils/sendOtpEmail");
 const sendSecurityEmail = require("../../../backend/utils/sendSecurityEmail");
+const { normalizeMediaValue } = require("../../../backend/utils/userMedia");
 
 const USERNAME_REGEX = /^[a-zA-Z0-9._]{3,30}$/;
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
@@ -479,7 +480,14 @@ class AuthService {
       throw ApiError.notFound("User not found");
     }
 
-    return user;
+    const avatar = normalizeMediaValue(user.avatar);
+    const cover = normalizeMediaValue(user.cover);
+    const payload = user.toObject ? user.toObject() : { ...user };
+    payload.avatar = avatar;
+    payload.cover = cover;
+    payload.avatarUrl = avatar.url;
+    payload.coverUrl = cover.url;
+    return payload;
   }
 
   static async requestEmailVerification({ userId, email }) {

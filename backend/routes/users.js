@@ -121,7 +121,7 @@ router.get("/me", auth, async (req, res) => {
 /* ================= UPDATE PROFILE ================= */
 router.put("/me", auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.id).lean();
     if (!user) {
       return res.status(401).json({ error: "User not found" });
     }
@@ -140,16 +140,17 @@ router.put("/me", auth, async (req, res) => {
       birthday,
     } = req.body;
 
-    if (bio !== undefined) user.bio = bio;
-    if (gender !== undefined) user.gender = gender;
-    if (pronouns !== undefined) user.pronouns = pronouns;
-    if (currentCity !== undefined) user.currentCity = currentCity;
-    if (hometown !== undefined) user.hometown = hometown;
-    if (workplace !== undefined) user.workplace = workplace;
-    if (education !== undefined) user.education = education;
-    if (website !== undefined) user.website = website;
+    const updates = {};
+    if (bio !== undefined) updates.bio = bio;
+    if (gender !== undefined) updates.gender = gender;
+    if (pronouns !== undefined) updates.pronouns = pronouns;
+    if (currentCity !== undefined) updates.currentCity = currentCity;
+    if (hometown !== undefined) updates.hometown = hometown;
+    if (workplace !== undefined) updates.workplace = workplace;
+    if (education !== undefined) updates.education = education;
+    if (website !== undefined) updates.website = website;
     if (birthday !== undefined && birthday && typeof birthday === "object") {
-      user.birthday = {
+      updates.birthday = {
         day: Number(birthday.day) || 0,
         month: Number(birthday.month) || 0,
         year: Number(birthday.year) || 0,
@@ -159,16 +160,21 @@ router.put("/me", auth, async (req, res) => {
       };
     }
     if (avatar !== undefined) {
-      user.set("avatar", normalizeMediaValue(avatar));
+      updates.avatar = normalizeMediaValue(avatar);
     }
     if (cover !== undefined) {
-      user.set("cover", normalizeMediaValue(cover));
+      updates.cover = normalizeMediaValue(cover);
     }
 
-    normalizeUserMediaDocument(user);
-    await user.save();
-
-    const safeUser = await User.findById(req.user.id).select("-password");
+    const safeUser = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).select("-password");
+    if (!safeUser) {
+      return res.status(401).json({ error: "User not found" });
+    }
+    normalizeUserMediaDocument(safeUser);
     return res.json(safeUser);
   } catch (err) {
     console.error("Profile update error:", err);
@@ -608,8 +614,8 @@ router.post(
   ]),
   async (req, res) => {
     try {
-      const user = await User.findById(req.user.id);
-      if (!user) {
+      const existing = await User.findById(req.user.id).lean();
+      if (!existing) {
         return res.status(404).json({ error: "User not found" });
       }
       const selectedFile = getUploadedFile(req);
@@ -620,22 +626,29 @@ router.post(
         return res.status(400).json({ error: "Only image files are allowed" });
       }
 
-      normalizeUserMediaDocument(user);
       const uploaded = await saveUploadedMedia(selectedFile);
-      user.set("avatar", normalizeMediaValue(uploaded));
-      await user.save();
+      const avatar = normalizeMediaValue(uploaded);
+      const safeUser = await User.findByIdAndUpdate(
+        req.user.id,
+        { $set: { avatar } },
+        { new: true, runValidators: true }
+      ).select("-password");
+      if (!safeUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      normalizeUserMediaDocument(safeUser);
       if (process.env.NODE_ENV !== "production") {
         console.log("[UPLOAD][avatar]", {
-          userId: user._id.toString(),
-          url: uploaded.url,
-          public_id: uploaded.public_id,
+          userId: safeUser._id.toString(),
+          url: safeUser.avatar?.url || "",
+          public_id: safeUser.avatar?.public_id || "",
           resource_type: uploaded.resource_type,
         });
       }
 
       try {
         await Post.create({
-          author: user._id,
+          author: safeUser._id,
           text: "Updated profile picture",
           media: [{ url: uploaded.url, type: "image" }],
           privacy: "public",
@@ -644,10 +657,9 @@ router.post(
         console.error("Avatar update post creation failed:", postErr);
       }
 
-      const safeUser = await User.findById(req.user.id).select("-password");
       return res.json({
         user: safeUser,
-        media: normalizeMediaValue(uploaded),
+        media: avatar,
       });
     } catch (err) {
       console.error("Avatar upload failed:", err);
@@ -669,8 +681,8 @@ router.post(
   ]),
   async (req, res) => {
     try {
-      const user = await User.findById(req.user.id);
-      if (!user) {
+      const existing = await User.findById(req.user.id).lean();
+      if (!existing) {
         return res.status(404).json({ error: "User not found" });
       }
       const selectedFile = getUploadedFile(req);
@@ -681,22 +693,29 @@ router.post(
         return res.status(400).json({ error: "Only image files are allowed" });
       }
 
-      normalizeUserMediaDocument(user);
       const uploaded = await saveUploadedMedia(selectedFile);
-      user.set("cover", normalizeMediaValue(uploaded));
-      await user.save();
+      const cover = normalizeMediaValue(uploaded);
+      const safeUser = await User.findByIdAndUpdate(
+        req.user.id,
+        { $set: { cover } },
+        { new: true, runValidators: true }
+      ).select("-password");
+      if (!safeUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      normalizeUserMediaDocument(safeUser);
       if (process.env.NODE_ENV !== "production") {
         console.log("[UPLOAD][cover]", {
-          userId: user._id.toString(),
-          url: uploaded.url,
-          public_id: uploaded.public_id,
+          userId: safeUser._id.toString(),
+          url: safeUser.cover?.url || "",
+          public_id: safeUser.cover?.public_id || "",
           resource_type: uploaded.resource_type,
         });
       }
 
       try {
         await Post.create({
-          author: user._id,
+          author: safeUser._id,
           text: "Updated cover photo",
           media: [{ url: uploaded.url, type: "image" }],
           privacy: "public",
@@ -705,10 +724,9 @@ router.post(
         console.error("Cover update post creation failed:", postErr);
       }
 
-      const safeUser = await User.findById(req.user.id).select("-password");
       return res.json({
         user: safeUser,
-        media: normalizeMediaValue(uploaded),
+        media: cover,
       });
     } catch (err) {
       console.error("Cover upload failed:", err);

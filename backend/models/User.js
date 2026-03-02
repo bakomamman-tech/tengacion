@@ -143,13 +143,25 @@ const UserSchema = new mongoose.Schema(
     },
 
     avatar: {
-      public_id: { type: String, default: "" },
-      url: { type: String, default: "" },
+      type: new mongoose.Schema(
+        {
+          public_id: { type: String, default: "" },
+          url: { type: String, default: "" },
+        },
+        { _id: false }
+      ),
+      default: () => ({ public_id: "", url: "" }),
     },
 
     cover: {
-      public_id: { type: String, default: "" },
-      url: { type: String, default: "" },
+      type: new mongoose.Schema(
+        {
+          public_id: { type: String, default: "" },
+          url: { type: String, default: "" },
+        },
+        { _id: false }
+      ),
+      default: () => ({ public_id: "", url: "" }),
     },
 
     /* ================= ACCOUNT ================= */

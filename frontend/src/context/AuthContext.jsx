@@ -6,6 +6,30 @@ const AuthContext = createContext(null);
 // eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);
 
+const normalizeMediaField = (value) => {
+  if (!value) {
+    return { url: "", public_id: "" };
+  }
+  if (typeof value === "string") {
+    return { url: value, public_id: "" };
+  }
+  return {
+    url: String(value.url || ""),
+    public_id: String(value.public_id || ""),
+  };
+};
+
+const normalizeUserMedia = (rawUser) => {
+  if (!rawUser || typeof rawUser !== "object") {
+    return rawUser;
+  }
+  return {
+    ...rawUser,
+    avatar: normalizeMediaField(rawUser.avatar),
+    cover: normalizeMediaField(rawUser.cover),
+  };
+};
+
 /* ======================================================
    FACEBOOK-GRADE AUTH PROVIDER (FAILSAFE)
 ====================================================== */
@@ -59,7 +83,7 @@ export function AuthProvider({ children }) {
       .get("/api/auth/me", { signal: controller.signal })
       .then((res) => {
         if (!alive) {return;}
-        setUser(res.data || null);
+        setUser(normalizeUserMedia(res.data || null));
       })
       .catch(() => {
         if (!alive) {return;}
@@ -99,7 +123,7 @@ export function AuthProvider({ children }) {
   const login = (token, userData) => {
     if (!token || !userData) {return;}
     localStorage.setItem("token", token);
-    setUser(userData);
+    setUser(normalizeUserMedia(userData));
     setError(null);
   };
 
@@ -110,7 +134,7 @@ export function AuthProvider({ children }) {
   };
 
   const updateUser = (data) => {
-    setUser((u) => (u ? { ...u, ...data } : u));
+    setUser((u) => (u ? normalizeUserMedia({ ...u, ...data }) : u));
   };
 
   return (

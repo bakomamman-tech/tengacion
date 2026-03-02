@@ -5,6 +5,7 @@ const Track = require("../models/Track");
 const Book = require("../models/Book");
 const Album = require("../models/Album");
 const Video = require("../models/Video");
+const Entitlement = require("../models/Entitlement");
 const Purchase = require("../models/Purchase");
 const CreatorProfile = require("../models/CreatorProfile");
 const PlayerProgress = require("../models/PlayerProgress");
@@ -34,6 +35,24 @@ const resolveSourceUrl = (item) => {
   }
   if (item.itemType === "video") {
     return String(item.payload.videoUrl || "");
+  }
+  return "";
+};
+
+const resolvePreviewSourceUrl = (item) => {
+  if (!item || !item.payload) return "";
+  if (item.itemType === "track") {
+    return String(item.payload.previewUrl || item.payload.audioUrl || "");
+  }
+  if (item.itemType === "album") {
+    const firstTrack = Array.isArray(item.payload.tracks) ? item.payload.tracks[0] : null;
+    return String(firstTrack?.previewUrl || "");
+  }
+  if (item.itemType === "book") {
+    return String(item.payload.previewUrl || "");
+  }
+  if (item.itemType === "video") {
+    return String(item.payload.previewUrl || item.payload.videoUrl || "");
   }
   return "";
 };
@@ -201,9 +220,11 @@ exports.createCheckout = asyncHandler(async (req, res) => {
 
   const purchase = await Purchase.create({
     userId,
+    creatorId: item.creatorId || undefined,
     itemType: item.itemType,
     itemId: item.itemId,
     amount,
+    priceNGN: amount,
     currency: "NGN",
     status: "pending",
     provider: "paystack",
@@ -250,10 +271,13 @@ exports.getMyEntitlements = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const creatorId = String(req.query?.creatorId || "").trim();
 
-  const purchases = await Purchase.find({ userId, status: "paid" })
+  const [purchases, directEntitlements] = await Promise.all([
+    Purchase.find({ userId, status: "paid" })
     .select("itemType itemId paidAt")
     .sort({ paidAt: -1, createdAt: -1 })
-    .lean();
+    .lean(),
+    Entitlement.find({ buyerId: userId }).select("itemType itemId grantedAt").lean(),
+  ]);
 
   let trackMap = new Map();
   let bookMap = new Map();
@@ -293,7 +317,7 @@ exports.getMyEntitlements = asyncHandler(async (req, res) => {
     albumMap = new Map(albums.map((row) => [String(row._id), String(row.creatorId || "")]));
   }
 
-  const entitlements = purchases
+  const purchaseEntitlements = purchases
     .filter((row) => {
       if (!creatorId) return true;
       const key = String(row.itemId || "");
@@ -309,7 +333,91 @@ exports.getMyEntitlements = asyncHandler(async (req, res) => {
       paidAt: row.paidAt || null,
     }));
 
-  return res.json({ entitlements });
+  const entitlementMap = new Map(
+    purchaseEntitlements.map((row) => [`${row.itemType}:${row.itemId}`, row])
+  );
+  for (const row of directEntitlements) {
+    const key = `${row.itemType}:${String(row.itemId || "")}`;
+    if (!entitlementMap.has(key)) {
+      entitlementMap.set(key, {
+        itemType: row.itemType,
+        itemId: String(row.itemId || ""),
+        paidAt: row.grantedAt || null,
+      });
+    }
+  }
+
+  return res.json({ entitlements: Array.from(entitlementMap.values()) });
+});
+
+exports.getMyLibrary = asyncHandler(async (req, res) => {
+  const rows = await Entitlement.find({ buyerId: req.user.id })
+    .sort({ grantedAt: -1, createdAt: -1 })
+    .lean();
+
+  return res.json({
+    items: rows.map((row) => ({
+      itemType: row.itemType,
+      itemId: String(row.itemId || ""),
+      grantedAt: row.grantedAt || row.createdAt || null,
+    })),
+  });
+});
+
+exports.getProtectedStream = asyncHandler(async (req, res) => {
+  const itemType = String(req.params?.itemType || "").trim().toLowerCase();
+  const itemId = String(req.params?.itemId || "").trim();
+  if (!itemType || !itemId) {
+    return res.status(400).json({ error: "itemType and itemId are required" });
+  }
+
+  const item = await resolvePurchasableItem(itemType, itemId);
+  if (!item) {
+    return res.status(404).json({ error: "Item not found" });
+  }
+
+  const userId = req.user?.id || "";
+  const fullSourceUrl = resolveSourceUrl(item);
+  const previewSourceUrl = resolvePreviewSourceUrl(item);
+  const freeAccess = Number(item.price || 0) <= 0;
+  const ownerAccess = await checkOwnerAccess({ userId, item });
+  const paidAccess = userId
+    ? await hasEntitlement({ userId, itemType: item.itemType, itemId: item.itemId })
+    : false;
+  const canAccessFull = freeAccess || ownerAccess || paidAccess;
+  const sourceUrl = canAccessFull ? fullSourceUrl : previewSourceUrl;
+
+  if (!sourceUrl) {
+    return res.status(canAccessFull ? 404 : 402).json({
+      error: canAccessFull ? "Stream source not available" : "Preview unavailable, purchase required",
+      paywall: !canAccessFull,
+      itemType: item.itemType,
+      itemId: item.itemId.toString(),
+    });
+  }
+
+  if (item.itemType === "track") {
+    await Track.updateOne({ _id: item.itemId }, { $inc: { playsCount: 1, playCount: 1 } }).catch(() => null);
+  } else if (item.itemType === "album") {
+    await Album.updateOne({ _id: item.itemId }, { $inc: { playCount: 1 } }).catch(() => null);
+  }
+
+  const streamUrl = buildSignedMediaUrl({
+    sourceUrl,
+    itemType: item.itemType,
+    itemId: item.itemId.toString(),
+    userId: userId || "",
+    req,
+    expiresInSec: 10 * 60,
+  });
+
+  return res.json({
+    itemType: item.itemType,
+    itemId: item.itemId.toString(),
+    canAccessFull,
+    previewOnly: !canAccessFull,
+    streamUrl,
+  });
 });
 
 exports.getProtectedDownload = asyncHandler(async (req, res) => {

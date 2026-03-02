@@ -7,6 +7,7 @@ import {
   createTrack,
   getCreatorAlbums,
   getCreatorBooks,
+  getCreatorDashboard,
   getCreatorSales,
   getCreatorTracks,
   getMyCreatorProfile,
@@ -108,13 +109,18 @@ export default function CreatorDashboardMVP() {
     setError("");
 
     try {
-      const [profileRes, salesRes] = await Promise.all([
+      const [profileRes, salesRes, dashboardRes] = await Promise.all([
         getMyCreatorProfile().catch(() => null),
         getCreatorSales().catch(() => ({ totalSalesCount: 0, totalRevenue: 0, currency: "NGN" })),
+        getCreatorDashboard().catch(() => null),
       ]);
 
       setCreator(profileRes || null);
-      setSales(salesRes || { totalSalesCount: 0, totalRevenue: 0, currency: "NGN" });
+      setSales({
+        totalSalesCount: Number(dashboardRes?.totalSales ?? salesRes?.totalSalesCount ?? 0),
+        totalRevenue: Number(dashboardRes?.revenueNGN ?? salesRes?.totalRevenue ?? 0),
+        currency: "NGN",
+      });
 
       if (profileRes?._id) {
         const [tracksRes, booksRes, albumsRes] = await Promise.all([

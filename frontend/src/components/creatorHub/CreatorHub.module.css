@@ -176,6 +176,17 @@
   font-size: 0.8rem;
 }
 
+.searchInput {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  font-size: 0.82rem;
+  padding: 0.5rem 0.65rem;
+  margin-bottom: 0.6rem;
+}
+
 .viewAll {
   border: none;
   background: transparent;

@@ -8,6 +8,11 @@ const PurchaseSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    creatorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CreatorProfile",
+      index: true,
+    },
     itemType: {
       type: String,
       enum: ["track", "book", "album", "video", "subscription"],
@@ -24,6 +29,11 @@ const PurchaseSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    priceNGN: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     currency: {
       type: String,
       required: true,
@@ -34,13 +44,13 @@ const PurchaseSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "paid", "failed"],
+      enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
       index: true,
     },
     provider: {
       type: String,
-      enum: ["paystack"],
+      enum: ["paystack", "flutterwave", "stripe", "manual"],
       required: true,
       default: "paystack",
       index: true,

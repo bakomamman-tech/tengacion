@@ -108,6 +108,7 @@ app.use("/api/videos", require("./routes/videos"));
 app.use("/api/live", require("./routes/live"));
 app.use("/api/creators", require("./routes/creators"));
 app.use("/api/creator", require("./routes/creatorAlbums"));
+app.use("/api/creator", require("./routes/creatorDashboard"));
 app.use("/api/tracks", require("./routes/tracks"));
 app.use("/api/books", require("./routes/books"));
 app.use("/api/albums", require("./routes/albums"));

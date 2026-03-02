@@ -5,6 +5,7 @@ const Track = require("../models/Track");
 const Book = require("../models/Book");
 const Album = require("../models/Album");
 const Video = require("../models/Video");
+const Purchase = require("../models/Purchase");
 const User = require("../models/User");
 const PlayerProgress = require("../models/PlayerProgress");
 const { hasEntitlement } = require("../services/entitlementService");
@@ -93,6 +94,8 @@ const mapTrackForHub = async ({ track, req, userId }) => {
         })
       : "",
     kind: track.kind || "music",
+    playCount: Number(track.playCount || track.playsCount || 0),
+    purchaseCount: Number(track.purchaseCount || 0),
   };
 };
 
@@ -108,11 +111,15 @@ const mapBookForHub = async ({ book, req, userId }) => {
     priceNGN: Number(book.price) || 0,
     priceUSD: Number(book.priceGlobal || 0),
     isFreePreview: Boolean(book.isFreePreview),
-    previewPdfUrl: book.contentUrl || "",
+    previewPdfUrl: entitled
+      ? (book.contentUrl || book.fileUrl || "")
+      : (book.previewUrl || (book.isFreePreview ? (book.contentUrl || book.fileUrl || "") : "")),
     purchaseRequired: Number(book.price) > 0,
-    downloadUrl: entitled && book.contentUrl
+    canAccessFull: entitled,
+    previewUrl: book.previewUrl || "",
+    downloadUrl: entitled && (book.contentUrl || book.fileUrl)
       ? buildSignedMediaUrl({
-          sourceUrl: book.contentUrl,
+          sourceUrl: book.contentUrl || book.fileUrl,
           itemType: "book",
           itemId: book._id.toString(),
           userId: userId || "",
@@ -164,6 +171,8 @@ const mapAlbumForHub = async ({ album, req, userId }) => {
     canStream: tracks.some((track) => Boolean(track.streamUrl)),
     canDownload: canPlayFull,
     canPlayFull,
+    playCount: Number(album.playCount || 0),
+    purchaseCount: Number(album.purchaseCount || 0),
     tracks,
     itemType: "album",
   };
@@ -448,6 +457,15 @@ exports.getCreatorHub = asyncHandler(async (req, res) => {
   const creatorUser = profile.userId || {};
   const followersCount = Array.isArray(creatorUser.followers) ? creatorUser.followers.length : 0;
   const monthlyListeners = musicTracks.reduce((sum, item) => sum + Number(item.playsCount || 0), 0);
+  const totalPlays = musicTracks.reduce((sum, item) => sum + Number(item.playsCount || 0), 0)
+    + albums.reduce((sum, item) => sum + Number(item.playCount || 0), 0);
+  const paidPurchases = await Purchase.find({
+    creatorId,
+    status: "paid",
+    itemType: { $in: ["track", "book", "album"] },
+  }).select("amount").lean();
+  const totalSales = paidPurchases.length;
+  const revenueNGN = paidPurchases.reduce((sum, row) => sum + Number(row.amount || 0), 0);
 
   return res.json({
     creator: {
@@ -465,6 +483,17 @@ exports.getCreatorHub = asyncHandler(async (req, res) => {
       location: creatorUser.country || "",
       creatorReady: Boolean(profile.onboardingComplete) && (musicTracks.length + podcastTracks.length + comedyTracks.length + books.length + albums.length + comedyVideos.length > 0),
       albumsCount: albums.length,
+    },
+    tracks: musicTracks,
+    albums,
+    books,
+    podcasts: podcastTracks,
+    comedy: [...comedyTracks, ...comedyVideos],
+    stats: {
+      totalPlays,
+      totalSales,
+      followerCount: followersCount,
+      revenueNGN,
     },
     sections: {
       continueListening: continueListening.filter(Boolean),
@@ -486,6 +515,37 @@ exports.getCreatorHub = asyncHandler(async (req, res) => {
         GLOBAL: ["Card", "Apple Pay", "Google Pay", "Stripe", "PayPal"],
       },
     },
+  });
+});
+
+exports.getCreatorDashboard = asyncHandler(async (req, res) => {
+  const profile = await CreatorProfile.findOne({ userId: req.user.id }).lean();
+  if (!profile?._id) {
+    return res.status(404).json({ error: "Creator profile not found" });
+  }
+
+  const creatorId = profile._id;
+  const [tracksCount, albumsCount, booksCount, salesRows] = await Promise.all([
+    Track.countDocuments({ creatorId, kind: { $in: ["music", null] } }),
+    Album.countDocuments({ creatorId, status: "published" }),
+    Book.countDocuments({ creatorId }),
+    Purchase.find({
+      creatorId,
+      status: "paid",
+      itemType: { $in: ["track", "album", "book"] },
+    }).select("amount").lean(),
+  ]);
+
+  const totalSales = salesRows.length;
+  const revenueNGN = salesRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+
+  return res.json({
+    creatorId: creatorId.toString(),
+    tracksCount,
+    albumsCount,
+    booksCount,
+    totalSales,
+    revenueNGN,
   });
 });
 

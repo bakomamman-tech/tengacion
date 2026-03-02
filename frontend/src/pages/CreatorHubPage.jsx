@@ -4,6 +4,7 @@ import {
   createCheckout,
   getCreatorHub,
   getDownloadUrl,
+  getStreamUrl,
   getMyEntitlementsForCreator,
   getProfile,
   getContinueListening,
@@ -59,6 +60,7 @@ export default function CreatorHubPage() {
     }
   });
   const [entitlements, setEntitlements] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const activeTab = getTabFromPath(location.pathname);
 
@@ -160,6 +162,14 @@ export default function CreatorHubPage() {
     return [];
   }, [activeTab, hub?.sections]);
 
+  const filteredSectionItems = useMemo(() => {
+    const query = String(searchTerm || "").trim().toLowerCase();
+    if (!query) return sectionItems;
+    return sectionItems.filter((entry) =>
+      String(entry?.title || "").toLowerCase().includes(query)
+    );
+  }, [searchTerm, sectionItems]);
+
   const handleCurrencyMode = (mode) => {
     const next = mode === "GLOBAL" ? "GLOBAL" : "NG";
     setCurrencyMode(next);
@@ -170,12 +180,36 @@ export default function CreatorHubPage() {
     }
   };
 
+  const hydrateStream = async (item) => {
+    const itemType = item?.type === "podcast"
+      ? "podcast"
+      : item?.type === "video"
+        ? "video"
+        : "song";
+    if (!item?.id) return item;
+    try {
+      const streamPayload = await getStreamUrl(itemType, item.id);
+      if (streamPayload?.streamUrl) {
+        return {
+          ...item,
+          streamUrl: streamPayload.streamUrl,
+          lockedPreview: Boolean(streamPayload.previewOnly),
+        };
+      }
+    } catch {
+      // Non-fatal: fallback to stream URL from creator payload.
+    }
+    return item;
+  };
+
   const handlePlay = async (item, queueItems = null) => {
+    const hydratedItem = await hydrateStream(item);
     if (queueItems) {
-      await playItem(item, queueItems);
+      const hydratedQueue = await Promise.all(queueItems.map((entry) => hydrateStream(entry)));
+      await playItem(hydratedItem, hydratedQueue);
       return;
     }
-    await playItem(item);
+    await playItem(hydratedItem);
   };
 
   const openCheckout = async (itemType, itemId) => {
@@ -312,10 +346,16 @@ export default function CreatorHubPage() {
             <article className={styles.sectionCard}>
               <div className={styles.sectionHead}>
                 <h3>{activeTab.toUpperCase()}</h3>
-                <span className={styles.mutedText}>{sectionItems.length} items</span>
+                <span className={styles.mutedText}>{filteredSectionItems.length} items</span>
               </div>
-              {sectionItems.length ? (
-                sectionItems.map((entry) => {
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search tracks, albums, books..."
+                className={styles.searchInput}
+              />
+              {filteredSectionItems.length ? (
+                filteredSectionItems.map((entry) => {
                   const isBook = activeTab === "books" || (activeTab === "store" && entry.purchaseRequired !== undefined);
                   const isAlbum = activeTab === "albums" || (activeTab === "store" && entry.itemType === "album");
                   const isVideo = activeTab === "comedy" && !Object.prototype.hasOwnProperty.call(entry, "kind");
@@ -335,6 +375,11 @@ export default function CreatorHubPage() {
                                   ? "Podcast"
                                   : "Track"}
                         </span>
+                        {(Number(entry.playCount || entry.playsCount || 0) > 0 || Number(entry.purchaseCount || 0) > 0) ? (
+                          <span className={styles.trackCreator}>
+                            {Number(entry.playCount || entry.playsCount || 0).toLocaleString()} plays • {Number(entry.purchaseCount || 0).toLocaleString()} sales
+                          </span>
+                        ) : null}
                       </div>
                       {isAlbum ? (
                         <button

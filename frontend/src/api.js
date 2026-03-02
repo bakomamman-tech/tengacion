@@ -513,7 +513,12 @@ export const getCreator = (creatorId) =>
   request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}`);
 
 export const getCreatorHub = (creatorId) =>
-  request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/hub`, {
+  request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/public`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getCreatorPublicContent = (creatorId) =>
+  request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/public`, {
     headers: getAuthHeaders(),
   });
 
@@ -620,6 +625,16 @@ export const initPayment = ({ itemType, itemId, returnUrl }) =>
     body: JSON.stringify({ itemType, itemId, returnUrl }),
   });
 
+export const initiatePayment = ({ itemType, itemId, provider = "paystack", returnUrl = "" }) =>
+  request(`${API_BASE}/payments/initiate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ itemType, itemId, provider, returnUrl }),
+  });
+
 export const createCheckout = ({ itemType, itemId, currencyMode = "NG" }) =>
   request(`${API_BASE}/checkout/create`, {
     method: "POST",
@@ -637,6 +652,11 @@ export const getMyPurchases = () =>
 
 export const getCreatorSales = () =>
   request(`${API_BASE}/purchases/creator/sales`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getCreatorDashboard = () =>
+  request(`${API_BASE}/creator/dashboard`, {
     headers: getAuthHeaders(),
   });
 
@@ -708,6 +728,16 @@ export const getMyEntitlementsForCreator = (creatorId) =>
 
 export const getDownloadUrl = (itemType, itemId) =>
   request(`${API_BASE}/download/${encodeURIComponent(itemType || "")}/${encodeURIComponent(itemId || "")}`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getStreamUrl = (itemType, itemId) =>
+  request(`${API_BASE}/stream/${encodeURIComponent(itemType || "")}/${encodeURIComponent(itemId || "")}`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getMyLibrary = () =>
+  request(`${API_BASE}/library/me`, {
     headers: getAuthHeaders(),
   });
 

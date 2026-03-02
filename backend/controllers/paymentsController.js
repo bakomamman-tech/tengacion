@@ -1,5 +1,9 @@
 const asyncHandler = require("../middleware/asyncHandler");
 const Purchase = require("../models/Purchase");
+const Entitlement = require("../models/Entitlement");
+const Track = require("../models/Track");
+const Book = require("../models/Book");
+const Album = require("../models/Album");
 const User = require("../models/User");
 const { resolvePurchasableItem } = require("../services/catalogService");
 const {
@@ -23,6 +27,36 @@ const toPurchasePayload = (purchase) => ({
   paidAt: purchase.paidAt || null,
   createdAt: purchase.createdAt,
 });
+
+const markPurchasePaidAndGrantEntitlement = async (purchase) => {
+  if (!purchase) return;
+
+  purchase.status = "paid";
+  purchase.paidAt = new Date();
+  await purchase.save();
+
+  await Entitlement.findOneAndUpdate(
+    {
+      buyerId: purchase.userId,
+      itemType: purchase.itemType,
+      itemId: purchase.itemId,
+    },
+    {
+      $set: {
+        grantedAt: new Date(),
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  if (purchase.itemType === "track") {
+    await Track.updateOne({ _id: purchase.itemId }, { $inc: { purchaseCount: 1 } }).catch(() => null);
+  } else if (purchase.itemType === "book") {
+    await Book.updateOne({ _id: purchase.itemId }, { $inc: { purchaseCount: 1 } }).catch(() => null);
+  } else if (purchase.itemType === "album") {
+    await Album.updateOne({ _id: purchase.itemId }, { $inc: { purchaseCount: 1 } }).catch(() => null);
+  }
+};
 
 exports.initializePayment = asyncHandler(async (req, res) => {
   const userId = req.user.id;
@@ -60,9 +94,11 @@ exports.initializePayment = asyncHandler(async (req, res) => {
 
   const purchase = await Purchase.create({
     userId,
+    creatorId: item.creatorId || undefined,
     itemType: item.itemType,
     itemId: item.itemId,
     amount: Number(item.price),
+    priceNGN: Number(item.price),
     currency: "NGN",
     status: "pending",
     provider: "paystack",
@@ -99,7 +135,7 @@ exports.initializePayment = asyncHandler(async (req, res) => {
   }
 });
 
-exports.paystackWebhook = asyncHandler(async (req, res) => {
+const handlePaystackWebhook = async (req, res) => {
   const signature = String(req.headers["x-paystack-signature"] || "");
   const rawBody = req.rawBody || "";
 
@@ -138,9 +174,17 @@ exports.paystackWebhook = asyncHandler(async (req, res) => {
     return res.status(200).json({ received: true });
   }
 
-  purchase.status = "paid";
-  purchase.paidAt = new Date();
-  await purchase.save();
+  await markPurchasePaidAndGrantEntitlement(purchase);
 
   return res.status(200).json({ received: true });
+};
+
+exports.paystackWebhook = asyncHandler(handlePaystackWebhook);
+
+exports.providerWebhook = asyncHandler(async (req, res) => {
+  const provider = String(req.params?.provider || "").toLowerCase();
+  if (provider !== "paystack") {
+    return res.status(400).json({ error: "Unsupported provider webhook" });
+  }
+  return handlePaystackWebhook(req, res);
 });

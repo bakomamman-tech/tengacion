@@ -47,6 +47,22 @@ const CommentSchema = new mongoose.Schema(
       },
     ],
 
+    hashtags: [
+      {
+        type: String,
+        trim: true,
+        lowercase: true,
+        index: true,
+      },
+    ],
+
+    audience: {
+      type: String,
+      enum: ["public", "friends", "close_friends"],
+      default: "friends",
+      index: true,
+    },
+
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -336,6 +352,8 @@ const PostSchema = new mongoose.Schema(
 PostSchema.index({ createdAt: -1 });
 PostSchema.index({ author: 1, createdAt: -1 });
 PostSchema.index({ privacy: 1, createdAt: -1 });
+PostSchema.index({ hashtags: 1, createdAt: -1 });
+PostSchema.index({ audience: 1, createdAt: -1 });
 
 /* ================= CLEAN JSON ================= */
 PostSchema.methods.toJSON = function () {

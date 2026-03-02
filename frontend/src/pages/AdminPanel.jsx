@@ -14,6 +14,8 @@ const ADMIN_NAV = [
   { id: "overview", label: "Overview", path: "/admin" },
   { id: "users", label: "Users", path: "/admin/users" },
   { id: "logs", label: "Audit Logs", path: "/admin/audit-logs" },
+  { id: "reports", label: "Reports", path: "/admin/reports" },
+  { id: "analytics", label: "Analytics", path: "/admin/analytics" },
 ];
 
 const statusLabel = (entry) => {

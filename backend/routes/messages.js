@@ -23,6 +23,27 @@ const toAttachmentType = (mimetype = "") => {
   return "file";
 };
 
+const canSendDirectMessage = ({ sender, receiver }) => {
+  if (!sender || !receiver) return false;
+  const senderId = toIdString(sender._id);
+  const receiverId = toIdString(receiver._id);
+  if (!senderId || !receiverId || senderId === receiverId) return false;
+
+  const senderBlocksReceiver = (sender.blocks || []).some((id) => toIdString(id) === receiverId);
+  const receiverBlocksSender = (receiver.blocks || []).some((id) => toIdString(id) === senderId);
+  if (senderBlocksReceiver || receiverBlocksSender) return false;
+
+  const permission = String(receiver?.privacy?.allowMessagesFrom || "everyone");
+  if (permission === "no_one") {
+    return false;
+  }
+  if (permission === "friends") {
+    const isFriend = (receiver.friends || []).some((id) => toIdString(id) === senderId);
+    return isFriend;
+  }
+  return true;
+};
+
 router.post("/upload", auth, upload.single("file"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
@@ -362,6 +383,16 @@ router.post("/:otherUserId", auth, async (req, res) => {
 
     if (!mongoose.Types.ObjectId.isValid(other)) {
       return res.status(400).json({ error: "Invalid user id" });
+    }
+    const [sender, receiver] = await Promise.all([
+      User.findById(me).select("_id blocks friends"),
+      User.findById(other).select("_id blocks friends privacy.allowMessagesFrom"),
+    ]);
+    if (!sender || !receiver) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    if (!canSendDirectMessage({ sender, receiver })) {
+      return res.status(403).json({ error: "Messaging is restricted for this user" });
     }
 
     let result;

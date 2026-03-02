@@ -1,4 +1,5 @@
 const Notification = require("../models/Notification");
+const User = require("../models/User");
 const asyncHandler = require("../middleware/asyncHandler");
 const paginate = require("../utils/paginate");
 
@@ -101,5 +102,38 @@ exports.getUnreadCount = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     unreadCount,
+  });
+});
+
+exports.getNotificationPrefs = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user.id).select("notificationPrefs");
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+  res.json({
+    success: true,
+    notificationPrefs: user.notificationPrefs || {},
+  });
+});
+
+exports.updateNotificationPrefs = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user.id).select("notificationPrefs");
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  const allowed = ["likes", "comments", "follows", "mentions", "messages", "reports", "system"];
+  const patch = req.body && typeof req.body === "object" ? req.body : {};
+  for (const key of allowed) {
+    if (Object.prototype.hasOwnProperty.call(patch, key)) {
+      user.notificationPrefs[key] = Boolean(patch[key]);
+    }
+  }
+  await user.save();
+  res.json({
+    success: true,
+    notificationPrefs: user.notificationPrefs,
   });
 });

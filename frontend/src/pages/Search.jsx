@@ -1,256 +1,186 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
-  acceptFriendRequest,
-  cancelFriendRequest,
-  getUsers,
-  rejectFriendRequest,
+  getSearchSuggestions,
+  getTrendingHashtags,
   resolveImage,
-  sendFriendRequest,
+  searchGlobal,
 } from "../api";
-import "../index.css";
+
+const TABS = [
+  { id: "users", label: "Users" },
+  { id: "posts", label: "Posts" },
+  { id: "hashtags", label: "Hashtags" },
+  { id: "rooms", label: "Rooms" },
+];
 
 const fallbackAvatar = (name) =>
-  `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    name || "User"
-  )}&size=240&background=DFE8F6&color=1D3A6D`;
-
-const buildRelationship = (status = "none") => ({
-  status,
-  isFriend: status === "friends",
-  hasSentRequest: status === "request_sent",
-  hasIncomingRequest: status === "request_received",
-  canRequest: status === "none",
-  canCancelRequest: status === "request_sent",
-  canAcceptRequest: status === "request_received",
-  canRejectRequest: status === "request_received",
-  canUnfriend: status === "friends",
-});
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "User")}&size=240&background=DFE8F6&color=1D3A6D`;
 
 export default function Search() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
 
   const q = params.get("q") || "";
+  const tab = TABS.some((item) => item.id === params.get("type"))
+    ? params.get("type")
+    : "users";
 
-  const [users, setUsers] = useState([]);
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [actionBusy, setActionBusy] = useState({});
-
-  const setBusy = (userId, value) =>
-    setActionBusy((current) => ({ ...current, [userId]: value }));
-
-  const updateRelationship = (userId, status) => {
-    setUsers((current) =>
-      current.map((entry) =>
-        entry._id === userId
-          ? { ...entry, relationship: buildRelationship(status) }
-          : entry
-      )
-    );
-  };
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState([]);
+  const [trending, setTrending] = useState([]);
+  const [suggestions, setSuggestions] = useState({ people: [], rooms: [], hashtags: [] });
 
   useEffect(() => {
-    if (!q) {
-      setUsers([]);
-      setPosts([]);
-      setLoading(false);
+    getTrendingHashtags().then((rows) => setTrending(Array.isArray(rows) ? rows : [])).catch(() => setTrending([]));
+    getSearchSuggestions()
+      .then((rows) => setSuggestions(rows || { people: [], rooms: [], hashtags: [] }))
+      .catch(() => setSuggestions({ people: [], rooms: [], hashtags: [] }));
+  }, []);
+
+  useEffect(() => {
+    if (!q.trim()) {
+      setResults([]);
       return;
     }
-
     setLoading(true);
-
-    Promise.all([
-      getUsers(q),
-      fetch(`/api/posts?search=${encodeURIComponent(q)}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }).then((response) => response.json()),
-    ])
-      .then(([people, postResults]) => {
-        setUsers(Array.isArray(people) ? people : []);
-        setPosts(Array.isArray(postResults) ? postResults : []);
-      })
-      .catch(() => {
-        setUsers([]);
-        setPosts([]);
-      })
+    searchGlobal({ q, type: tab })
+      .then((payload) => setResults(Array.isArray(payload?.data) ? payload.data : []))
+      .catch(() => setResults([]))
       .finally(() => setLoading(false));
-  }, [q]);
+  }, [q, tab]);
 
-  const runAction = async (event, userId, action) => {
-    event.stopPropagation();
-    if (!userId || actionBusy[userId]) {
-      return;
-    }
+  const emptyLabel = useMemo(() => {
+    if (tab === "users") return "No users found";
+    if (tab === "posts") return "No posts found";
+    if (tab === "hashtags") return "No hashtags found";
+    return "No rooms found";
+  }, [tab]);
 
-    try {
-      setBusy(userId, true);
-
-      if (action === "request") {
-        await sendFriendRequest(userId);
-        updateRelationship(userId, "request_sent");
-        return;
-      }
-
-      if (action === "cancel") {
-        await cancelFriendRequest(userId);
-        updateRelationship(userId, "none");
-        return;
-      }
-
-      if (action === "accept") {
-        await acceptFriendRequest(userId);
-        updateRelationship(userId, "friends");
-        return;
-      }
-
-      if (action === "reject") {
-        await rejectFriendRequest(userId);
-        updateRelationship(userId, "none");
-      }
-    } catch {
-      // Keep UI unchanged if the server action fails.
-    } finally {
-      setBusy(userId, false);
-    }
-  };
-
-  const renderRelationshipActions = (user) => {
-    const status = user?.relationship?.status || "none";
-    const busy = Boolean(actionBusy[user._id]);
-
-    if (status === "request_received") {
-      return (
-        <div className="search-person-actions" onClick={(event) => event.stopPropagation()}>
-          <button
-            className="search-person-btn primary"
-            onClick={(event) => runAction(event, user._id, "accept")}
-            disabled={busy}
-          >
-            {busy ? "Confirming..." : "Confirm"}
-          </button>
-          <button
-            className="search-person-btn"
-            onClick={(event) => runAction(event, user._id, "reject")}
-            disabled={busy}
-          >
-            Delete
-          </button>
-        </div>
-      );
-    }
-
-    if (status === "request_sent") {
-      return (
-        <div className="search-person-actions" onClick={(event) => event.stopPropagation()}>
-          <button
-            className="search-person-btn"
-            onClick={(event) => runAction(event, user._id, "cancel")}
-            disabled={busy}
-          >
-            {busy ? "Cancelling..." : "Cancel request"}
-          </button>
-        </div>
-      );
-    }
-
-    if (status === "friends") {
-      return (
-        <div className="search-person-actions" onClick={(event) => event.stopPropagation()}>
-          <button className="search-person-btn subtle" disabled>
-            Friends
-          </button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="search-person-actions" onClick={(event) => event.stopPropagation()}>
-        <button
-          className="search-person-btn primary"
-          onClick={(event) => runAction(event, user._id, "request")}
-          disabled={busy}
-        >
-          {busy ? "Sending..." : "Add Friend"}
-        </button>
-      </div>
-    );
+  const updateTab = (nextTab) => {
+    const next = new URLSearchParams(params);
+    next.set("type", nextTab);
+    setParams(next, { replace: true });
   };
 
   return (
-    <div style={{ padding: 20, maxWidth: 900, margin: "auto" }}>
-      <h2>Search results for: "{q}"</h2>
-
-      {loading && <p>Searching Tengacion...</p>}
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <h3>People</h3>
-
-        {!loading && users.length === 0 && <p>No people found</p>}
-
-        {users.map((entry) => {
-          const avatarSrc = entry?.avatar
-            ? resolveImage(entry.avatar)
-            : fallbackAvatar(entry?.name || "User");
-
-          return (
-            <div
-              key={entry._id}
-              className="search-person-row"
-              onClick={() => navigate(`/profile/${entry.username}`)}
-            >
-              <img src={avatarSrc} alt={entry?.username || "User"} className="search-person-avatar" />
-
-              <div className="search-person-meta">
-                <b>{entry.name}</b>
-                <div>@{entry.username}</div>
-              </div>
-
-              {renderRelationshipActions(entry)}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <h3>Posts</h3>
-
-        {!loading && posts.length === 0 && <p>No posts found</p>}
-
-        {posts.map((entry) => (
-          <div
-            key={entry._id}
-            style={{
-              padding: 12,
-              borderBottom: "1px solid #ddd",
-              cursor: "pointer",
-            }}
-            onClick={() => navigate("/home")}
+    <div style={{ padding: 20, maxWidth: 980, margin: "auto", display: "grid", gap: 14 }}>
+      <h2 style={{ marginBottom: 0 }}>Search</h2>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={tab === item.id ? "search-person-btn primary" : "search-person-btn"}
+            onClick={() => updateTab(item.id)}
           >
-            <div style={{ marginBottom: 6 }}>
-              <b>{entry.name}</b>{" "}
-              <span style={{ color: "#666" }}>@{entry.username}</span>
-            </div>
-
-            <div>{entry.text}</div>
-
-            {entry.image && (
-              <img
-                src={resolveImage(entry.image)}
-                alt="Post"
-                style={{
-                  width: "100%",
-                  borderRadius: 10,
-                  marginTop: 8,
-                }}
-              />
-            )}
-          </div>
+            {item.label}
+          </button>
         ))}
       </div>
+
+      {!q.trim() ? (
+        <div className="card" style={{ padding: 12 }}>
+          <h3 style={{ marginTop: 0 }}>Suggestions</h3>
+          <div style={{ display: "grid", gap: 8 }}>
+            {(suggestions.people || []).slice(0, 6).map((entry) => (
+              <button
+                key={entry._id}
+                type="button"
+                className="search-person-row"
+                onClick={() => navigate(`/profile/${entry.username}`)}
+              >
+                <img
+                  src={resolveImage(entry.avatar) || fallbackAvatar(entry.name)}
+                  alt={entry.username || "User"}
+                  className="search-person-avatar"
+                />
+                <div className="search-person-meta">
+                  <b>{entry.name}</b>
+                  <div>@{entry.username}</div>
+                </div>
+              </button>
+            ))}
+            <h4 style={{ marginBottom: 0 }}>Trending hashtags</h4>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {trending.map((entry) => (
+                <button
+                  key={entry.tag}
+                  type="button"
+                  className="composer-chip"
+                  onClick={() => {
+                    const next = new URLSearchParams(params);
+                    next.set("q", `#${entry.tag}`);
+                    next.set("type", "hashtags");
+                    setParams(next, { replace: false });
+                  }}
+                >
+                  #{entry.tag} ({entry.count})
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {q.trim() ? (
+        <div className="card" style={{ padding: 12 }}>
+          <h3 style={{ marginTop: 0 }}>
+            Results for "{q}" ({tab})
+          </h3>
+          {loading ? <p>Searching...</p> : null}
+          {!loading && results.length === 0 ? <p>{emptyLabel}</p> : null}
+
+          {tab === "users" &&
+            results.map((entry) => (
+              <button
+                key={entry._id}
+                type="button"
+                className="search-person-row"
+                onClick={() => navigate(`/profile/${entry.username}`)}
+              >
+                <img
+                  src={resolveImage(entry.avatar) || fallbackAvatar(entry.name)}
+                  alt={entry.username || "User"}
+                  className="search-person-avatar"
+                />
+                <div className="search-person-meta">
+                  <b>{entry.name}</b>
+                  <div>@{entry.username}</div>
+                </div>
+              </button>
+            ))}
+
+          {tab === "posts" &&
+            results.map((entry) => (
+              <article key={entry._id} className="card" style={{ padding: 10, marginBottom: 8 }}>
+                <div>
+                  <b>{entry?.author?.name || "User"}</b> @{entry?.author?.username || ""}
+                </div>
+                <p style={{ margin: "8px 0" }}>{entry.text || "(no text)"}</p>
+                <button type="button" onClick={() => navigate(`/posts/${entry._id}`)}>
+                  Open post
+                </button>
+              </article>
+            ))}
+
+          {tab === "hashtags" &&
+            results.map((entry) => (
+              <div key={entry.tag} className="card" style={{ padding: 10, marginBottom: 8 }}>
+                <b>#{entry.tag}</b> <span style={{ opacity: 0.8 }}>({entry.count} posts)</span>
+              </div>
+            ))}
+
+          {tab === "rooms" &&
+            results.map((entry) => (
+              <div key={entry._id} className="card" style={{ padding: 10, marginBottom: 8 }}>
+                <b>{entry.name}</b>
+                <div>{entry.description || "No description"}</div>
+                <small>{entry.membersCount || 0} members</small>
+              </div>
+            ))}
+        </div>
+      ) : null}
     </div>
   );
 }

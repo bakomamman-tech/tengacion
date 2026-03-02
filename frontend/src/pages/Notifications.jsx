@@ -221,7 +221,7 @@ export default function Notifications({ user }) {
   };
 
   const openSettings = () => {
-    setFilter("all");
+    navigate("/settings/notifications");
     setMenuOpen(false);
   };
 

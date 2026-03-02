@@ -206,13 +206,18 @@ export function NotificationsProvider({ children }) {
     const onLegacyNotification = (notification) => {
       handleRealtimeNotification({ notification });
     };
+    const onNotificationNew = (payload) => {
+      handleRealtimeNotification(payload);
+    };
 
     socket.on("notifications:new", onNewNotification);
     socket.on("notification", onLegacyNotification);
+    socket.on("notification:new", onNotificationNew);
 
     return () => {
       socket.off("notifications:new", onNewNotification);
       socket.off("notification", onLegacyNotification);
+      socket.off("notification:new", onNotificationNew);
     };
   }, [handleRealtimeNotification, user?._id]);
 

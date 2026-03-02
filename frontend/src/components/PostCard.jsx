@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import PostComments from "./PostComments";
-import { initPayment, resolveImage } from "../api";
+import { createReport, initPayment, resolveImage } from "../api";
 import VideoPlayer from "./media/VideoPlayer";
 
 /* ======================================================
@@ -158,6 +158,7 @@ export default function PostCard({
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   const timeLabel = post?.createdAt
     ? new Date(post.createdAt).toLocaleString()
@@ -492,6 +493,30 @@ export default function PostCard({
     }
   };
 
+  const reportPost = async () => {
+    if (reporting) return;
+    const reason = window.prompt(
+      "Report reason: spam, hate_speech, violence, harassment, misinformation, nudity, other",
+      "spam"
+    );
+    if (!reason) return;
+
+    try {
+      setReporting(true);
+      await createReport({
+        targetType: "post",
+        targetId: post?._id,
+        reason: String(reason || "").trim().toLowerCase(),
+      });
+      alert("Report submitted");
+      setMenuOpen(false);
+    } catch (err) {
+      alert(err?.message || "Failed to submit report");
+    } finally {
+      setReporting(false);
+    }
+  };
+
   if (isSystemPost) {
     return <SystemPost text={post?.text} />;
   }
@@ -522,6 +547,11 @@ export default function PostCard({
             {menuOpen && (
               <div className="post-menu-dropdown">
                 <button onClick={copyLinkOnly}>Copy link</button>
+                {!isOwner && (
+                  <button className="danger" onClick={reportPost}>
+                    {reporting ? "Reporting..." : "Report post"}
+                  </button>
+                )}
 
                 {isOwner && (
                   <>

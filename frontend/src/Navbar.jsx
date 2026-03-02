@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { resolveImage } from "./api";
+import { resolveImage, searchGlobal } from "./api";
 import { useTheme } from "./context/ThemeContext";
 import { useNotifications } from "./context/NotificationsContext";
 import { Icon } from "./Icon";
@@ -115,17 +115,12 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
     try {
       setLoading(true);
 
-      const headers = {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      };
-
-      const [usersResponse, postsResponse] = await Promise.all([
-        fetch(`/api/users?search=${encodeURIComponent(value)}`, { headers }),
-        fetch(`/api/posts?search=${encodeURIComponent(value)}`, { headers }),
+      const [usersPayload, postsPayload] = await Promise.all([
+        searchGlobal({ q: value, type: "users" }),
+        searchGlobal({ q: value, type: "posts" }),
       ]);
-
-      const users = await usersResponse.json();
-      const posts = await postsResponse.json();
+      const users = usersPayload?.data || [];
+      const posts = postsPayload?.data || [];
 
       setResults({
         users: Array.isArray(users) ? users.slice(0, 5) : [],
@@ -171,56 +166,56 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
       id: "create-post",
       label: "Post",
       description: "Share an update",
-      icon: "📝",
+      icon: "ðŸ“",
       handler: () => openPostComposer(),
     },
     {
       id: "create-story",
       label: "Story",
       description: "Share a story",
-      icon: "📖",
+      icon: "ðŸ“–",
       handler: () => setComingSoonLabel("Story"),
     },
     {
       id: "create-reel",
       label: "Reel",
       description: "Create a short video",
-      icon: "🎬",
+      icon: "ðŸŽ¬",
       handler: () => setComingSoonLabel("Reel"),
     },
     {
       id: "create-life-update",
       label: "Life update",
       description: "Post a life update",
-      icon: "💬",
+      icon: "ðŸ’¬",
       handler: () => openPostComposer(),
     },
     {
       id: "create-page",
       label: "Page",
       description: "Create a page",
-      icon: "📄",
+      icon: "ðŸ“„",
       handler: () => setComingSoonLabel("Page"),
     },
     {
       id: "create-group",
       label: "Group",
       description: "Start a community",
-      icon: "👥",
+      icon: "ðŸ‘¥",
       handler: () => setComingSoonLabel("Group"),
     },
     {
       id: "create-event",
       label: "Event",
       description: "Host an event",
-      icon: "📅",
+      icon: "ðŸ“…",
       handler: () => setComingSoonLabel("Event"),
     },
     {
       id: "create-marketplace",
       label: "Marketplace listing",
       description: "Sell something",
-      icon: "🛍️",
+      icon: "ðŸ›ï¸",
       handler: () => setComingSoonLabel("Marketplace listing"),
     },
   ];
@@ -230,49 +225,63 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
       id: "menu-home",
       label: "Home",
       description: "Main feed",
-      icon: "🏠",
+      icon: "Home",
       handler: () => navigate("/home"),
     },
     {
       id: "menu-trending",
       label: "Trending",
       description: "Hot posts and topics",
-      icon: "🔥",
+      icon: "Trending",
       handler: () => navigate("/trending"),
     },
     {
       id: "menu-live",
       label: "Live directory",
       description: "Watch live sessions",
-      icon: "📡",
+      icon: "Live",
       handler: () => navigate("/live"),
     },
     {
       id: "menu-go-live",
       label: "Go live",
       description: "Start a live update",
-      icon: "🎥",
+      icon: "Broadcast",
       handler: () => navigate("/live/go"),
     },
     {
       id: "menu-creator",
       label: "Creator dashboard",
       description: "Manage your creator tools",
-      icon: "📊",
+      icon: "Creator",
       handler: () => navigate("/dashboard/creator"),
     },
     {
       id: "menu-notifications",
       label: "Notifications",
       description: "See updates",
-      icon: "🔔",
+      icon: "Alerts",
       handler: () => navigate("/notifications"),
+    },
+    {
+      id: "menu-security",
+      label: "Security settings",
+      description: "Sessions and password",
+      icon: "Security",
+      handler: () => navigate("/settings/security"),
+    },
+    {
+      id: "menu-privacy",
+      label: "Privacy settings",
+      description: "Visibility and controls",
+      icon: "Privacy",
+      handler: () => navigate("/settings/privacy"),
     },
     {
       id: "menu-messages",
       label: "Messages",
       description: "Open Messenger",
-      icon: "💬",
+      icon: "Messages",
       handler: () => openMessenger(),
     },
   ];
@@ -510,4 +519,5 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
     </header>
   );
 }
+
 

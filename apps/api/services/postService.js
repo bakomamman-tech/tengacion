@@ -11,6 +11,7 @@ const {
 const userRepository = require("../repositories/userRepository");
 const postRepository = require("../repositories/postRepository");
 const { resolveMentionUserIds } = require("../../../backend/utils/mentions");
+const { incrementDailyMetric } = require("../../../backend/services/analyticsService");
 
 const toIdString = (value) => {
   if (!value) return "";
@@ -154,6 +155,11 @@ const toVisibility = (value) => {
     : "public";
 };
 
+const extractHashtags = (text = "") => {
+  const matches = String(text || "").match(/#([a-zA-Z0-9_]{1,40})/g) || [];
+  return [...new Set(matches.map((tag) => tag.replace(/^#/, "").toLowerCase()))];
+};
+
 const avatarToUrl = (avatar) => {
   if (!avatar) return "";
   if (typeof avatar === "string") return avatar;
@@ -201,6 +207,9 @@ const toPostPayload = (post, viewerId) => {
       value: callToAction.value || "",
     },
     moreOptions,
+    audience: post.audience || post.visibility || "friends",
+    hashtags: Array.isArray(post.hashtags) ? post.hashtags : [],
+    mentions: Array.isArray(post.mentions) ? post.mentions.map((id) => toIdString(id)) : [],
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,
     edited: Boolean(post.edited),
@@ -274,7 +283,13 @@ class PostService {
     }
 
     const visibility = toVisibility(body?.visibility || body?.privacy);
+    const hashtags = extractHashtags(text);
     const mentions = await resolveMentionUserIds(text);
+    const viewer = await userRepository.findById(viewerId);
+    const defaultAudience = String(viewer?.privacy?.defaultPostAudience || "").toLowerCase();
+    const audience = ["public", "friends", "close_friends"].includes(defaultAudience)
+      ? defaultAudience
+      : visibility;
 
     const pollPayload = body?.poll && typeof body.poll === "string"
       ? (() => {
@@ -388,12 +403,15 @@ class PostService {
       video: type === "video" ? videoMeta : null,
       privacy: "public",
       visibility,
+      audience,
+      hashtags,
       mentions,
       poll: type === "poll" ? poll : undefined,
       quiz: type === "quiz" ? quiz : undefined,
     });
 
     const post = await withPostAuthor(Post.findById(created._id)).lean();
+    await incrementDailyMetric("postsCount", 1).catch(() => null);
     return toPostPayload(post, viewerId);
   }
 
@@ -417,6 +435,7 @@ class PostService {
     }
 
     const visibilityScopes = [];
+    let blockedIds = [];
 
     if (viewerId) {
       const viewer = await userRepository.findById(viewerId);
@@ -432,21 +451,28 @@ class PostService {
       const closeFriendIds = uniqueIds((viewer.closeFriends || []).map((id) => toIdString(id))).filter(
         (id) => id && id !== viewerId
       );
+      blockedIds = uniqueIds([
+        ...(viewer.blocks || []).map((id) => toIdString(id)),
+        ...(viewer.blockedUsers || []).map((id) => toIdString(id)),
+      ]);
 
       visibilityScopes.push({ author: viewerId });
       visibilityScopes.push({
         author: { $in: friendIds },
         privacy: { $in: ["public", "friends"] },
         visibility: { $in: ["public", "friends"] },
+        audience: { $in: ["public", "friends", null] },
       });
       visibilityScopes.push({
         author: { $in: followingOnlyIds },
         privacy: "public",
         visibility: "public",
+        audience: { $in: ["public", null] },
       });
       visibilityScopes.push({
         author: { $in: closeFriendIds },
         visibility: { $in: ["public", "friends", "close_friends"] },
+        audience: { $in: ["public", "friends", "close_friends", null] },
       });
 
       if (matchedAuthorIds.length > 0) {
@@ -456,16 +482,20 @@ class PostService {
         });
       }
     } else {
-      visibilityScopes.push({ privacy: "public" });
+      visibilityScopes.push({ privacy: "public", audience: { $in: ["public", null] } });
       if (matchedAuthorIds.length > 0) {
         visibilityScopes.push({
           author: { $in: matchedAuthorIds },
           privacy: "public",
+          audience: { $in: ["public", null] },
         });
       }
     }
 
     const query = { $or: visibilityScopes };
+    if (blockedIds.length > 0) {
+      query.author = { $nin: blockedIds };
+    }
     if (searchTerm) {
       const searchFilters = [{ text: { $regex: searchTerm, $options: "i" } }];
       if (matchedAuthorIds.length > 0) {
@@ -507,11 +537,14 @@ class PostService {
       (id) => id.toString() === viewerId.toString()
     );
 
-    let privacyFilter = { privacy: "public" };
+    let privacyFilter = { privacy: "public", audience: { $in: ["public", null] } };
     if (isOwner) {
       privacyFilter = {};
     } else if (isFriend) {
-      privacyFilter = { privacy: { $in: ["public", "friends"] } };
+      privacyFilter = {
+        privacy: { $in: ["public", "friends"] },
+        audience: { $in: ["public", "friends", null] },
+      };
     }
 
     const posts = await withPostAuthor(
@@ -650,6 +683,7 @@ class PostService {
     });
 
     const latestComment = post.comments[post.comments.length - 1];
+    await incrementDailyMetric("commentsCount", 1).catch(() => null);
 
     for (const mentionedUserId of mentions) {
       if (String(mentionedUserId) === String(userId)) continue;

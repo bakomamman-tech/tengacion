@@ -1,10 +1,12 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const ApiError = require("../utils/ApiError");
 const { config } = require("../config/env");
 const userRepository = require("../repositories/userRepository");
 const Otp = require("../../../backend/models/Otp");
 const sendOtpEmail = require("../../../backend/utils/sendOtpEmail");
+const sendSecurityEmail = require("../../../backend/utils/sendSecurityEmail");
 
 const USERNAME_REGEX = /^[a-zA-Z0-9._]{3,30}$/;
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
@@ -182,8 +184,29 @@ const tryLegacyInsertFallback = async ({
   throw lastError || new Error("Legacy registration fallback failed");
 };
 
-const generateToken = (id, tokenVersion = 0) =>
-  jwt.sign({ id, tv: Number(tokenVersion) || 0 }, config.JWT_SECRET, { expiresIn: "7d" });
+const makeTokenHash = (token = "") =>
+  crypto.createHash("sha256").update(String(token)).digest("hex");
+
+const makeRawToken = (size = 32) => crypto.randomBytes(size).toString("hex");
+
+const generateSessionId = () => crypto.randomUUID();
+
+const generateToken = (id, tokenVersion = 0, sessionId = "") =>
+  jwt.sign({ id, tv: Number(tokenVersion) || 0, sid: String(sessionId || "") }, config.JWT_SECRET, {
+    expiresIn: "7d",
+  });
+
+const getBaseUrl = () => process.env.APP_ORIGIN || process.env.WEB_ORIGIN || "http://localhost:5173";
+
+const formatSession = (entry) => ({
+  sessionId: entry?.sessionId || "",
+  deviceName: entry?.deviceName || "",
+  ip: entry?.ip || "",
+  userAgent: entry?.userAgent || "",
+  createdAt: entry?.createdAt || null,
+  lastSeenAt: entry?.lastSeenAt || null,
+  revokedAt: entry?.revokedAt || null,
+});
 
 const isOtpRequired = () => config.REQUIRE_EMAIL_OTP === "true";
 
@@ -352,13 +375,49 @@ class AuthService {
       });
     }
 
+    const rawVerifyToken = makeRawToken(24);
+    user.emailVerifyTokenHash = makeTokenHash(rawVerifyToken);
+    user.emailVerifyExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    const sessionId = generateSessionId();
+    user.sessions = Array.isArray(user.sessions) ? user.sessions : [];
+    user.sessions.push({
+      sessionId,
+      deviceName: "Current device",
+      ip: "",
+      userAgent: "",
+      createdAt: new Date(),
+      lastSeenAt: new Date(),
+      revokedAt: null,
+    });
+    await user.save();
+
+    try {
+      const verifyUrl = `${getBaseUrl()}/verify-email?token=${encodeURIComponent(rawVerifyToken)}`;
+      await sendSecurityEmail({
+        to: user.email,
+        subject: "Verify your Tengacion email",
+        html: `
+          <div style="font-family: Arial; padding: 12px;">
+            <h2>Verify your email</h2>
+            <p>Click the button below to verify your account.</p>
+            <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 14px;background:#b77a3b;color:#fff;text-decoration:none;border-radius:8px;">Verify email</a></p>
+            <p>This link expires in 24 hours.</p>
+          </div>
+        `,
+      });
+    } catch (err) {
+      // Non-fatal: account should still be created.
+      console.warn("verify email send failed:", err?.message || err);
+    }
+
     return {
       user,
-      token: generateToken(user._id, user.tokenVersion),
+      token: generateToken(user._id, user.tokenVersion, sessionId),
     };
   }
 
-  static async login({ emailOrUsername, email, username, password }) {
+  static async login({ emailOrUsername, email, username, password, sessionMeta = {} }) {
     const identifier = sanitizeIdentifier(emailOrUsername || email || username);
     if (!identifier || !password) {
       throw ApiError.badRequest("Email/username and password are required");
@@ -386,9 +445,27 @@ class AuthService {
       throw ApiError.forbidden("Your account is banned");
     }
 
+    const sessionId = generateSessionId();
+    user.sessions = Array.isArray(user.sessions) ? user.sessions : [];
+    user.sessions.push({
+      sessionId,
+      deviceName: String(sessionMeta.deviceName || "").slice(0, 180),
+      ip: String(sessionMeta.ip || "").slice(0, 180),
+      userAgent: String(sessionMeta.userAgent || "").slice(0, 400),
+      createdAt: new Date(),
+      lastSeenAt: new Date(),
+      revokedAt: null,
+    });
+    if (user.sessions.length > 30) {
+      user.sessions = user.sessions.slice(-30);
+    }
+    user.lastLogin = new Date();
+    await user.save();
+
     return {
       user,
-      token: generateToken(user._id, user.tokenVersion),
+      token: generateToken(user._id, user.tokenVersion, sessionId),
+      sessionId,
     };
   }
 
@@ -403,6 +480,185 @@ class AuthService {
     }
 
     return user;
+  }
+
+  static async requestEmailVerification({ userId, email }) {
+    const user = userId
+      ? await userRepository.findById(userId)
+      : await userRepository.findOne({ email: sanitizeIdentifier(email) });
+    if (!user) {
+      throw ApiError.notFound("User not found");
+    }
+
+    if (user.emailVerified) {
+      return { message: "Email already verified" };
+    }
+
+    const rawVerifyToken = makeRawToken(24);
+    user.emailVerifyTokenHash = makeTokenHash(rawVerifyToken);
+    user.emailVerifyExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await user.save();
+
+    const verifyUrl = `${getBaseUrl()}/verify-email?token=${encodeURIComponent(rawVerifyToken)}`;
+    await sendSecurityEmail({
+      to: user.email,
+      subject: "Verify your Tengacion email",
+      html: `
+        <div style="font-family: Arial; padding: 12px;">
+          <h2>Verify your email</h2>
+          <p><a href="${verifyUrl}">Click here to verify your account</a></p>
+          <p>This link expires in 24 hours.</p>
+        </div>
+      `,
+    });
+
+    return { message: "Verification email sent" };
+  }
+
+  static async confirmEmailVerification(rawToken) {
+    const token = String(rawToken || "").trim();
+    if (!token) {
+      throw ApiError.badRequest("Verification token is required");
+    }
+    const tokenHash = makeTokenHash(token);
+    const user = await userRepository
+      .findOne({
+        emailVerifyTokenHash: tokenHash,
+        emailVerifyExpiresAt: { $gt: new Date() },
+      })
+      .select("+emailVerifyTokenHash +emailVerifyExpiresAt");
+    if (!user) {
+      throw ApiError.badRequest("Verification link is invalid or expired");
+    }
+
+    user.emailVerified = true;
+    user.isVerified = true;
+    user.emailVerifyTokenHash = "";
+    user.emailVerifyExpiresAt = null;
+    await user.save();
+    return { success: true };
+  }
+
+  static async forgotPassword(email) {
+    const normalized = sanitizeIdentifier(email);
+    if (!normalized) {
+      throw ApiError.badRequest("Email required");
+    }
+    const user = await userRepository.findOne({ email: normalized }).select(
+      "+resetPasswordTokenHash +resetPasswordExpiresAt"
+    );
+    if (!user) {
+      return { message: "If this email exists, a reset link was sent." };
+    }
+
+    const rawToken = makeRawToken(24);
+    user.resetPasswordTokenHash = makeTokenHash(rawToken);
+    user.resetPasswordExpiresAt = new Date(Date.now() + 30 * 60 * 1000);
+    await user.save();
+
+    const resetUrl = `${getBaseUrl()}/reset-password?token=${encodeURIComponent(rawToken)}`;
+    await sendSecurityEmail({
+      to: user.email,
+      subject: "Reset your Tengacion password",
+      html: `
+        <div style="font-family: Arial; padding: 12px;">
+          <h2>Reset your password</h2>
+          <p><a href="${resetUrl}">Reset password</a></p>
+          <p>This link expires in 30 minutes.</p>
+        </div>
+      `,
+    });
+
+    return { message: "If this email exists, a reset link was sent." };
+  }
+
+  static async resetPassword({ token, newPassword }) {
+    const rawToken = String(token || "").trim();
+    if (!rawToken || !newPassword || String(newPassword).length < 8) {
+      throw ApiError.badRequest("Valid token and new password are required");
+    }
+    const user = await userRepository
+      .findOne({
+        resetPasswordTokenHash: makeTokenHash(rawToken),
+        resetPasswordExpiresAt: { $gt: new Date() },
+      })
+      .select("+password +resetPasswordTokenHash +resetPasswordExpiresAt");
+    if (!user) {
+      throw ApiError.badRequest("Reset token is invalid or expired");
+    }
+
+    user.password = String(newPassword);
+    user.resetPasswordTokenHash = "";
+    user.resetPasswordExpiresAt = null;
+    user.passwordChangedAt = new Date();
+    user.tokenVersion = (Number(user.tokenVersion) || 0) + 1;
+    user.sessions = [];
+    await user.save();
+
+    return { success: true };
+  }
+
+  static async changePassword({ userId, oldPassword, newPassword }) {
+    if (!oldPassword || !newPassword || String(newPassword).length < 8) {
+      throw ApiError.badRequest("Current password and a strong new password are required");
+    }
+
+    const user = await userRepository.findById(userId).select("+password");
+    if (!user) throw ApiError.notFound("User not found");
+
+    const valid = await bcrypt.compare(oldPassword, user.password);
+    if (!valid) throw ApiError.unauthorized("Current password is incorrect");
+
+    user.password = String(newPassword);
+    user.passwordChangedAt = new Date();
+    user.tokenVersion = (Number(user.tokenVersion) || 0) + 1;
+    user.sessions = [];
+    await user.save();
+    return { success: true };
+  }
+
+  static async listSessions(userId) {
+    const user = await userRepository.findById(userId).select("sessions");
+    if (!user) throw ApiError.notFound("User not found");
+    return (user.sessions || []).map(formatSession).sort((a, b) => {
+      const at = new Date(a.lastSeenAt || a.createdAt || 0).getTime();
+      const bt = new Date(b.lastSeenAt || b.createdAt || 0).getTime();
+      return bt - at;
+    });
+  }
+
+  static async revokeSession({ userId, sessionId }) {
+    const user = await userRepository.findById(userId).select("sessions");
+    if (!user) throw ApiError.notFound("User not found");
+    const session = (user.sessions || []).find((entry) => entry.sessionId === sessionId);
+    if (!session) throw ApiError.notFound("Session not found");
+    session.revokedAt = new Date();
+    await user.save();
+    return { success: true };
+  }
+
+  static async revokeAllSessions({ userId, exceptSessionId = "" }) {
+    const user = await userRepository.findById(userId).select("sessions tokenVersion");
+    if (!user) throw ApiError.notFound("User not found");
+    const now = new Date();
+    (user.sessions || []).forEach((entry) => {
+      if (!exceptSessionId || entry.sessionId !== exceptSessionId) {
+        entry.revokedAt = now;
+      }
+    });
+    user.tokenVersion = (Number(user.tokenVersion) || 0) + 1;
+    await user.save();
+    return { success: true };
+  }
+
+  static async touchSession({ userId, sessionId }) {
+    if (!sessionId) return;
+    const user = await userRepository.findById(userId).select("sessions");
+    if (!user) return;
+    const session = (user.sessions || []).find((entry) => entry.sessionId === sessionId);
+    if (!session) return;
+    session.lastSeenAt = new Date();
+    await user.save();
   }
 }
 

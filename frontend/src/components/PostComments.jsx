@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createReport } from "../api";
 
 const EMOJIS = [
   "\u{1F44D}",
@@ -258,6 +259,29 @@ export default function PostComments({
               alt="Comment attachment preview"
             />
           )}
+          <button
+            type="button"
+            className="post-menu-item danger"
+            onClick={async () => {
+              const reason = window.prompt(
+                "Report reason: spam, hate_speech, violence, harassment, misinformation, nudity, other",
+                "harassment"
+              );
+              if (!reason) return;
+              try {
+                await createReport({
+                  targetType: "comment",
+                  targetId: comment.id,
+                  reason: String(reason).trim().toLowerCase(),
+                });
+                window.alert("Comment report submitted");
+              } catch (err) {
+                window.alert(err?.message || "Failed to report comment");
+              }
+            }}
+          >
+            Report
+          </button>
         </article>
       ))}
 

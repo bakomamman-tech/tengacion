@@ -29,7 +29,7 @@ const auth = asyncHandler(async (req, res, next) => {
   }
 
   const user = await User.findById(decoded.id).select(
-    "_id role isActive isBanned isDeleted tokenVersion"
+    "_id role isActive isBanned isDeleted tokenVersion sessions"
   );
 
   if (!user) {
@@ -47,12 +47,25 @@ const auth = asyncHandler(async (req, res, next) => {
   if (claimVersion !== tokenVersion) {
     return res.status(401).json({ error: "Session revoked. Please login again." });
   }
+  const claimSessionId = String(decoded.sid || "").trim();
+  if (!claimSessionId) {
+    return res.status(401).json({ error: "Session invalid. Please login again." });
+  }
+  const session = Array.isArray(user.sessions)
+    ? user.sessions.find((entry) => String(entry?.sessionId || "") === claimSessionId)
+    : null;
+  if (!session || session.revokedAt) {
+    return res.status(401).json({ error: "Session revoked. Please login again." });
+  }
+  session.lastSeenAt = new Date();
+  await user.save();
 
   req.user = {
     id: user._id.toString(),
     _id: user._id,
     role: user.role || "user",
     tokenVersion,
+    sessionId: claimSessionId,
   };
   req.userId = user._id.toString();
 

@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import {
   acceptFriendRequest,
   cancelFriendRequest,
+  createReport,
   getPostsByUsername,
   getUserProfile,
   rejectFriendRequest,
@@ -723,6 +724,28 @@ export default function ProfileEditor({ user }) {
                     onClick={() => navigate("/home", { state: { openMessenger: true } })}
                   >
                     Message
+                  </button>
+                  <button
+                    className="profile-head-btn"
+                    onClick={async () => {
+                      const reason = window.prompt(
+                        "Report reason: spam, hate_speech, violence, harassment, misinformation, nudity, other",
+                        "harassment"
+                      );
+                      if (!reason) return;
+                      try {
+                        await createReport({
+                          targetType: "user",
+                          targetId: profile?._id,
+                          reason: String(reason).trim().toLowerCase(),
+                        });
+                        toast.success("Report submitted");
+                      } catch (err) {
+                        toast.error(err?.message || "Failed to submit report");
+                      }
+                    }}
+                  >
+                    Report
                   </button>
                 </>
               )}

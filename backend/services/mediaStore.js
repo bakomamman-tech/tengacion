@@ -3,6 +3,7 @@ const fsp = require("fs/promises");
 const path = require("path");
 const mongoose = require("mongoose");
 const { pipeline } = require("stream/promises");
+const { incrementDailyMetric } = require("./analyticsService");
 
 const bucketName = "uploads";
 
@@ -50,51 +51,7 @@ const resolveContentType = (file) => {
   );
 };
 
-const saveUploadedFile = async (file) => {
-  if (!file) {
-    return "";
-  }
-
-  const sourcePath = file.path || "";
-  if (!sourcePath || !fs.existsSync(sourcePath)) {
-    throw new Error("Uploaded file could not be read from temporary storage");
-  }
-
-  const bucket = getBucket();
-  const filename = toSafeFilename(file.originalname || path.basename(sourcePath));
-  const contentType = resolveContentType(file);
-  const uploadStream = bucket.openUploadStream(filename, {
-    contentType,
-    metadata: {
-      source: "tengacion-upload",
-      originalName: file.originalname || "",
-      contentDisposition: "inline",
-    },
-  });
-
-  await pipeline(fs.createReadStream(sourcePath), uploadStream);
-
-  const resourceType = contentType.startsWith("video/")
-    ? "video"
-    : contentType.startsWith("image/")
-      ? "image"
-      : "raw";
-  const mediaPayload = {
-    url: `/api/media/${uploadStream.id.toString()}`,
-    public_id: uploadStream.id.toString(),
-    resource_type: resourceType,
-  };
-
-  try {
-    await fsp.unlink(sourcePath);
-  } catch {
-    // Non-fatal: local temp cleanup best-effort.
-  }
-
-  return mediaPayload.url;
-};
-
-const saveUploadedMedia = async (file) => {
+const persistUpload = async (file) => {
   if (!file) {
     return {
       url: "",
@@ -139,6 +96,25 @@ const saveUploadedMedia = async (file) => {
     public_id: uploadStream.id.toString(),
     resource_type: resourceType,
   };
+};
+
+const saveUploadedFile = async (file) => {
+  try {
+    const payload = await persistUpload(file);
+    return payload.url;
+  } catch (err) {
+    await incrementDailyMetric("uploadFailuresCount", 1).catch(() => null);
+    throw err;
+  }
+};
+
+const saveUploadedMedia = async (file) => {
+  try {
+    return await persistUpload(file);
+  } catch (err) {
+    await incrementDailyMetric("uploadFailuresCount", 1).catch(() => null);
+    throw err;
+  }
 };
 
 module.exports = {

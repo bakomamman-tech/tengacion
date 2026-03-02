@@ -678,6 +678,8 @@ export default function Home({ user }) {
   const [checkInText, setCheckInText] = useState("");
   const [checkInStreak, setCheckInStreak] = useState({ count: 0, lastCheckInAt: null });
   const [checkInBusy, setCheckInBusy] = useState(false);
+  const [visiblePostCount, setVisiblePostCount] = useState(10);
+  const loadMoreRef = useRef(null);
   const quickMediaRef = useRef(null);
 
   useEffect(() => {
@@ -699,6 +701,7 @@ export default function Home({ user }) {
 
           setProfile(me);
           setPosts(Array.isArray(feed) ? feed : []);
+          setVisiblePostCount(10);
           setLiveSessions(Array.isArray(liveResult?.sessions) ? liveResult.sessions : []);
           setCheckInStreak(streakResult?.checkIn || { count: 0, lastCheckInAt: null });
         } catch {
@@ -737,6 +740,22 @@ export default function Home({ user }) {
 
     navigate(location.pathname, { replace: true, state: {} });
   }, [location.pathname, location.state, navigate]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first?.isIntersecting) {
+          setVisiblePostCount((prev) => prev + 8);
+        }
+      },
+      { threshold: 0.35 }
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [posts.length]);
 
   useEffect(() => {
     const viewer = profile || user;
@@ -816,6 +835,7 @@ export default function Home({ user }) {
   };
 
   const currentUser = profile || user;
+  const visiblePosts = Array.isArray(posts) ? posts.slice(0, visiblePostCount) : [];
 
   const runCheckIn = async () => {
     if (checkInBusy) return;
@@ -866,6 +886,33 @@ export default function Home({ user }) {
                 <strong>Happy Birthday, {currentUser?.name || currentUser?.username || "Friend"} 🎉</strong>
                 <p>Wishing you joy, love, and a beautiful year ahead.</p>
               </div>
+            </section>
+          )}
+          {!currentUser?.onboarding?.completed && (
+            <section className="card checkin-card">
+              <div className="checkin-head">
+                <strong>Complete your profile</strong>
+                <span>Checklist</span>
+              </div>
+              <p style={{ marginTop: 8 }}>
+                Add your avatar, bio, interests, and follow suggestions to unlock your profile badge.
+              </p>
+              <button type="button" onClick={() => navigate("/onboarding")}>
+                Continue onboarding
+              </button>
+            </section>
+          )}
+          {!currentUser?.emailVerified && (
+            <section className="card checkin-card">
+              <div className="checkin-head">
+                <strong>Verify your email</strong>
+              </div>
+              <p style={{ marginTop: 8 }}>
+                Verify your account to improve security and recovery options.
+              </p>
+              <button type="button" onClick={() => navigate("/settings/security")}>
+                Open security settings
+              </button>
             </section>
           )}
           {!loading && <Stories user={currentUser} />}
@@ -991,7 +1038,7 @@ export default function Home({ user }) {
                 </button>
               </div>
             ) : (
-              posts.map((post) => (
+              visiblePosts.map((post) => (
                 <PostCard
                   key={post._id}
                   post={post}
@@ -1008,6 +1055,11 @@ export default function Home({ user }) {
                 />
               ))
             )}
+            {visiblePosts.length < posts.length ? (
+              <div ref={loadMoreRef} className="card" style={{ padding: 12, textAlign: "center" }}>
+                Loading more...
+              </div>
+            ) : null}
           </div>
         </main>
 

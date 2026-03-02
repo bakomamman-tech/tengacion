@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { register as registerApi } from "../api";
 
@@ -311,9 +311,9 @@ export default function Register() {
             </p>
             <p>
               By tapping Submit, you agree to create an account and to
-              Tengacion&apos;s <a href="#terms">Terms</a>,{" "}
-              <a href="#privacy">Privacy Policy</a> and{" "}
-              <a href="#cookies">Cookies Policy</a>.
+              Tengacion&apos;s <Link to="/terms">Terms</Link>,{" "}
+              <Link to="/privacy">Privacy Policy</Link> and{" "}
+              <Link to="/community-guidelines">Community Guidelines</Link>.
             </p>
           </div>
 

@@ -89,6 +89,36 @@ const request = async (url, options = {}) => {
 };
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const compressImageFile = async (file) => {
+  if (!(file instanceof File) || !String(file.type || "").startsWith("image/")) {
+    return file;
+  }
+  const maxBytes = 1.5 * 1024 * 1024;
+  if ((Number(file.size) || 0) <= maxBytes) {
+    return file;
+  }
+  try {
+    const imageBitmap = await createImageBitmap(file);
+    const maxWidth = 1600;
+    const ratio = imageBitmap.width > maxWidth ? maxWidth / imageBitmap.width : 1;
+    const width = Math.round(imageBitmap.width * ratio);
+    const height = Math.round(imageBitmap.height * ratio);
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(imageBitmap, 0, 0, width, height);
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.82)
+    );
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.\w+$/, ".jpg"), {
+      type: "image/jpeg",
+    });
+  } catch {
+    return file;
+  }
+};
 
 const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 
@@ -181,6 +211,66 @@ export const register = (payload) =>
     body: JSON.stringify(payload),
   });
 
+export const requestVerifyEmail = () =>
+  request(`${API_BASE}/auth/verify-email/request`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({}),
+  });
+
+export const confirmVerifyEmail = (token) =>
+  request(`${API_BASE}/auth/verify-email/confirm?token=${encodeURIComponent(token || "")}`);
+
+export const forgotPassword = (email) =>
+  request(`${API_BASE}/auth/password/forgot`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+export const resetPassword = ({ token, newPassword }) =>
+  request(`${API_BASE}/auth/password/reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, newPassword }),
+  });
+
+export const changePassword = ({ oldPassword, newPassword }) =>
+  request(`${API_BASE}/auth/password/change`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ oldPassword, newPassword }),
+  });
+
+export const listSessions = () =>
+  request(`${API_BASE}/auth/sessions`, {
+    headers: getAuthHeaders(),
+  });
+
+export const revokeSession = (sessionId) =>
+  request(`${API_BASE}/auth/sessions/${encodeURIComponent(sessionId || "")}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+export const logoutCurrentSession = () =>
+  request(`${API_BASE}/auth/logout`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+export const logoutAllSessions = () =>
+  request(`${API_BASE}/auth/logout-all`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
 // ======================================================
 // 🟢 USER
 // ======================================================
@@ -216,6 +306,49 @@ export const updateMe = (data) =>
     },
     body: JSON.stringify(data),
   });
+
+export const updatePrivacy = (payload) =>
+  request(`${API_BASE}/users/me/privacy`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const updateOnboarding = (payload) =>
+  request(`${API_BASE}/users/me/onboarding`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+const updatePrivacyList = (route) =>
+  request(`${API_BASE}${route}`, {
+    method: "PUT",
+    headers: getAuthHeaders(),
+  });
+
+export const blockUser = (userId) =>
+  updatePrivacyList(`/users/me/block/${encodeURIComponent(userId || "")}`);
+export const unblockUser = (userId) =>
+  updatePrivacyList(`/users/me/unblock/${encodeURIComponent(userId || "")}`);
+export const muteUser = (userId) =>
+  updatePrivacyList(`/users/me/mute/${encodeURIComponent(userId || "")}`);
+export const unmuteUser = (userId) =>
+  updatePrivacyList(`/users/me/unmute/${encodeURIComponent(userId || "")}`);
+export const restrictUser = (userId) =>
+  updatePrivacyList(`/users/me/restrict/${encodeURIComponent(userId || "")}`);
+export const unrestrictUser = (userId) =>
+  updatePrivacyList(`/users/me/unrestrict/${encodeURIComponent(userId || "")}`);
+export const hideStoriesFromUser = (userId) =>
+  updatePrivacyList(`/users/me/hide-stories-from/${encodeURIComponent(userId || "")}`);
+export const unhideStoriesFromUser = (userId) =>
+  updatePrivacyList(`/users/me/unhide-stories-from/${encodeURIComponent(userId || "")}`);
 
 export const uploadAvatar = (file) => {
   const form = new FormData();
@@ -466,6 +599,21 @@ export const markAllNotificationsAsRead = () =>
     })
   );
 
+export const getNotificationPreferences = () =>
+  request(`${API_BASE}/notifications/preferences/me`, {
+    headers: getAuthHeaders(),
+  });
+
+export const updateNotificationPreferences = (payload) =>
+  request(`${API_BASE}/notifications/preferences/me`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
 // ======================================================
 // 🟢 POSTS
 // ======================================================
@@ -520,38 +668,40 @@ export const createPost = (input, maybeFile = null) => {
     moreOptions = [],
   } = payload;
 
-  const form = new FormData();
-  form.append("text", text || "");
-  if (file) {
-    form.append("file", file);
-  }
+  return compressImageFile(file).then((optimizedFile) => {
+    const form = new FormData();
+    form.append("text", text || "");
+    if (optimizedFile) {
+      form.append("file", optimizedFile);
+    }
 
-  if (Array.isArray(tags) && tags.length > 0) {
-    form.append("tags", JSON.stringify(tags));
-  }
+    if (Array.isArray(tags) && tags.length > 0) {
+      form.append("tags", JSON.stringify(tags));
+    }
 
-  if (feeling) {
-    form.append("feeling", feeling);
-  }
+    if (feeling) {
+      form.append("feeling", feeling);
+    }
 
-  if (location) {
-    form.append("location", location);
-  }
+    if (location) {
+      form.append("location", location);
+    }
 
-  form.append("callsEnabled", String(Boolean(callsEnabled)));
+    form.append("callsEnabled", String(Boolean(callsEnabled)));
 
-  if (callNumber) {
-    form.append("callNumber", callNumber);
-  }
+    if (callNumber) {
+      form.append("callNumber", callNumber);
+    }
 
-  if (Array.isArray(moreOptions) && moreOptions.length > 0) {
-    form.append("moreOptions", JSON.stringify(moreOptions));
-  }
+    if (Array.isArray(moreOptions) && moreOptions.length > 0) {
+      form.append("moreOptions", JSON.stringify(moreOptions));
+    }
 
-  return request(`${API_BASE}/posts`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: form,
+    return request(`${API_BASE}/posts`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: form,
+    });
   });
 };
 
@@ -571,10 +721,11 @@ export const createPostWithUploadProgress = async (
     moreOptions = [],
   } = payload || {};
 
+  const optimizedFile = await compressImageFile(file);
   const form = new FormData();
   form.append("text", text || "");
-  if (file) {
-    form.append("file", file);
+  if (optimizedFile) {
+    form.append("file", optimizedFile);
   }
   if (type) {
     form.append("type", String(type));
@@ -879,6 +1030,34 @@ export const leaveRoom = (roomId) =>
     headers: getAuthHeaders(),
   });
 
+export const searchGlobal = ({ q = "", type = "users" } = {}) =>
+  request(
+    `${API_BASE}/search?q=${encodeURIComponent(q || "")}&type=${encodeURIComponent(type || "users")}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+
+export const getTrendingHashtags = () =>
+  request(`${API_BASE}/search/trending/hashtags`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getSearchSuggestions = () =>
+  request(`${API_BASE}/search/suggestions`, {
+    headers: getAuthHeaders(),
+  });
+
+export const createReport = (payload) =>
+  request(`${API_BASE}/reports`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
 // ======================================================
 // 🟢 VIDEOS
 // ======================================================
@@ -1057,6 +1236,56 @@ export const adminGetAuditLogs = ({ page = 1, limit = 30, action = "", targetTyp
     headers: getAuthHeaders(),
   });
 };
+
+export const adminListReports = ({ page = 1, limit = 20, status = "" } = {}) => {
+  const params = new URLSearchParams();
+  params.set("page", String(page));
+  params.set("limit", String(limit));
+  if (status) params.set("status", String(status));
+  return request(`${API_BASE}/admin/reports?${params.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminGetReport = (reportId) =>
+  request(`${API_BASE}/admin/reports/${encodeURIComponent(reportId || "")}`, {
+    headers: getAuthHeaders(),
+  });
+
+export const adminUpdateReport = (reportId, payload = {}) =>
+  request(`${API_BASE}/admin/reports/${encodeURIComponent(reportId || "")}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const adminModerationAction = (payload = {}) =>
+  request(`${API_BASE}/admin/moderation/action`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const adminGetAnalyticsOverview = (range = "7d") =>
+  request(`${API_BASE}/admin/analytics/overview?range=${encodeURIComponent(range)}`, {
+    headers: getAuthHeaders(),
+  });
+
+export const adminGetRetentionAnalytics = (cohort = "weekly") =>
+  request(`${API_BASE}/admin/analytics/retention?cohort=${encodeURIComponent(cohort)}`, {
+    headers: getAuthHeaders(),
+  });
+
+export const adminGetUploadErrorAnalytics = () =>
+  request(`${API_BASE}/admin/analytics/errors/uploads`, {
+    headers: getAuthHeaders(),
+  });
 
 // ======================================================
 // 🟢 UTIL

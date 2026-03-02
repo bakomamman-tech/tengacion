@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
+import InstallPrompt from "./components/InstallPrompt";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -12,6 +13,18 @@ import PostDetail from "./pages/PostDetail";
 import ProfileEditor from "./ProfileEditor";
 import CreatorDashboardMVP from "./pages/CreatorDashboardMVP";
 import Notifications from "./pages/Notifications";
+import SecuritySettings from "./pages/SecuritySettings";
+import PrivacySettings from "./pages/PrivacySettings";
+import NotificationSettings from "./pages/NotificationSettings";
+import ForgotPasswordPage from "./pages/ForgotPassword";
+import ResetPasswordPage from "./pages/ResetPassword";
+import VerifyEmailPage from "./pages/VerifyEmail";
+import OnboardingPage from "./pages/Onboarding";
+import TermsPage from "./pages/Terms";
+import PrivacyPolicyPage from "./pages/PrivacyPolicy";
+import CommunityGuidelinesPage from "./pages/CommunityGuidelines";
+import AdminAnalyticsPage from "./pages/AdminAnalytics";
+import AdminReportsPage from "./pages/AdminReports";
 import CreatorPage from "./pages/CreatorPage";
 import CreatorSongs from "./pages/CreatorSongs";
 import ArtistProfileRoute from "@web/features/creator/ArtistPage";
@@ -50,11 +63,18 @@ export default function App() {
   }
 
   return (
+    <>
     <Routes>
       {/* PUBLIC */}
       <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+      <Route path="/community-guidelines" element={<CommunityGuidelinesPage />} />
       <Route path="/creators/:creatorId" element={<CreatorPage />} />
       <Route path="/creators/:creatorId/songs" element={<CreatorSongs />} />
       <Route path="/tracks/:trackId" element={<TrackDetail />} />
@@ -212,6 +232,38 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/settings/security"
+        element={
+          <ProtectedRoute user={user}>
+            <SecuritySettings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/privacy"
+        element={
+          <ProtectedRoute user={user}>
+            <PrivacySettings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/notifications"
+        element={
+          <ProtectedRoute user={user}>
+            <NotificationSettings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/onboarding"
+        element={
+          <ProtectedRoute user={user}>
+            <OnboardingPage />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/rooms"
@@ -275,6 +327,26 @@ export default function App() {
           </AdminRoute>
         }
       />
+
+      <Route
+        path="/admin/reports"
+        element={
+          <AdminRoute user={user}>
+            <AdminReportsPage />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/analytics"
+        element={
+          <AdminRoute user={user}>
+            <AdminAnalyticsPage />
+          </AdminRoute>
+        }
+      />
     </Routes>
+    <InstallPrompt />
+    </>
   );
 }

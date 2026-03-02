@@ -29,6 +29,9 @@ const isValidId = (value) => mongoose.Types.ObjectId.isValid(value);
 
 const includesId = (list, id) =>
   Array.isArray(list) && list.some((entry) => toIdString(entry) === id);
+const PRIVACY_VALUES = ["public", "friends", "private"];
+const MESSAGE_PERMISSION_VALUES = ["everyone", "friends", "no_one"];
+const AUDIENCE_VALUES = ["public", "friends", "close_friends"];
 
 const buildRelationship = ({
   viewerId,
@@ -75,6 +78,13 @@ const userListPayload = (user) => ({
   username: user.username,
   avatar: avatarToUrl(user.avatar),
 });
+
+const canViewProfile = ({ isOwner, relationship, profileVisibility }) => {
+  if (isOwner) return true;
+  if (profileVisibility === "public") return true;
+  if (profileVisibility === "friends") return Boolean(relationship?.isFriend);
+  return false;
+};
 
 const getUploadedFile = (req) =>
   req.file || req.files?.image?.[0] || req.files?.file?.[0] || null;
@@ -196,6 +206,22 @@ router.get("/profile/:username", auth, async (req, res) => {
       targetFriendIds: user.friends || [],
       targetIncomingRequestIds: user.friendRequests || [],
     });
+    const isOwner = Boolean(viewerId && user._id.toString() === viewerId);
+    const profileVisibility = String(user?.privacy?.profileVisibility || "public");
+    const canView = canViewProfile({ isOwner, relationship, profileVisibility });
+    if (!canView) {
+      return res.json({
+        _id: user._id.toString(),
+        name: user.name || "",
+        username: user.username || "",
+        avatar: avatarToUrl(user.avatar),
+        cover: avatarToUrl(user.cover),
+        relationship,
+        isOwner: false,
+        profileVisibility,
+        restricted: true,
+      });
+    }
 
     const friendsPreview = friends
       .slice(0, 9)
@@ -231,11 +257,16 @@ router.get("/profile/:username", auth, async (req, res) => {
       friendsPreview,
       relationship,
       joinedAt: user.createdAt || user.joined || null,
-      isOwner: Boolean(viewerId && user._id.toString() === viewerId),
+      isOwner,
       status: user.status || { text: "", emoji: "", updatedAt: null },
       badges: Array.isArray(user.badges) ? user.badges : [],
       streaks: user.streaks || { checkIn: { count: 0, lastCheckInAt: null } },
       birthdayToday: isBirthdayToday(user.birthday),
+      privacy: user.privacy || {
+        profileVisibility: "public",
+        defaultPostAudience: "friends",
+        allowMessagesFrom: "everyone",
+      },
     });
   } catch (err) {
     console.error("Profile fetch error:", err);
@@ -782,6 +813,85 @@ router.put("/me/close-friends", auth, async (req, res) => {
   }
 });
 
+/* ================= PRIVACY CONTROLS ================= */
+router.put("/me/privacy", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const profileVisibility = String(req.body?.profileVisibility || "").toLowerCase();
+    const defaultPostAudience = String(req.body?.defaultPostAudience || "").toLowerCase();
+    const allowMessagesFrom = String(req.body?.allowMessagesFrom || "").toLowerCase();
+
+    if (PRIVACY_VALUES.includes(profileVisibility)) {
+      user.privacy.profileVisibility = profileVisibility;
+    }
+    if (AUDIENCE_VALUES.includes(defaultPostAudience)) {
+      user.privacy.defaultPostAudience = defaultPostAudience;
+    }
+    if (MESSAGE_PERMISSION_VALUES.includes(allowMessagesFrom)) {
+      user.privacy.allowMessagesFrom = allowMessagesFrom;
+    }
+
+    await user.save();
+    return res.json({
+      success: true,
+      privacy: user.privacy,
+    });
+  } catch (err) {
+    console.error("Privacy update failed:", err);
+    return res.status(500).json({ error: "Failed to update privacy settings" });
+  }
+});
+
+const updateIdListField = (field, operation = "add") => async (req, res) => {
+  try {
+    if (!isValidId(req.params.userId)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+    const meId = toIdString(req.user.id);
+    const targetId = toIdString(req.params.userId);
+    if (meId === targetId) {
+      return res.status(400).json({ error: "You cannot update yourself" });
+    }
+
+    const user = await User.findById(meId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    user[field] = Array.isArray(user[field]) ? user[field] : [];
+
+    if (operation === "remove") {
+      user[field].pull(targetId);
+    } else {
+      user[field].addToSet(targetId);
+    }
+    await user.save();
+
+    return res.json({
+      success: true,
+      [field]: (user[field] || []).map((entry) => toIdString(entry)),
+    });
+  } catch (err) {
+    console.error(`Failed to update ${field}:`, err);
+    return res.status(500).json({ error: "Failed to update list" });
+  }
+};
+
+router.put("/me/block/:userId", auth, updateIdListField("blocks", "add"));
+router.put("/me/unblock/:userId", auth, updateIdListField("blocks", "remove"));
+router.put("/me/mute/:userId", auth, updateIdListField("mutes", "add"));
+router.put("/me/unmute/:userId", auth, updateIdListField("mutes", "remove"));
+router.put("/me/restrict/:userId", auth, updateIdListField("restricts", "add"));
+router.put("/me/unrestrict/:userId", auth, updateIdListField("restricts", "remove"));
+router.put("/me/hide-stories-from/:userId", auth, updateIdListField("hiddenStoriesFrom", "add"));
+router.put(
+  "/me/unhide-stories-from/:userId",
+  auth,
+  updateIdListField("hiddenStoriesFrom", "remove")
+);
+
 /* ================= STREAK ================= */
 router.get("/me/streaks", auth, async (req, res) => {
   try {
@@ -793,6 +903,74 @@ router.get("/me/streaks", auth, async (req, res) => {
   } catch (err) {
     console.error("Streak fetch failed:", err);
     return res.status(500).json({ error: "Failed to load streaks" });
+  }
+});
+
+router.get("/:id", auth, async (req, res) => {
+  try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+    const viewerId = toIdString(req.user.id);
+    const user = await User.findById(req.params.id).select("-password").lean();
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const isOwner = viewerId === toIdString(user._id);
+    const isFriend = (user.friends || []).some((id) => toIdString(id) === viewerId);
+    const profileVisibility = String(user?.privacy?.profileVisibility || "public");
+    if (!isOwner && profileVisibility === "private") {
+      return res.status(403).json({ error: "Profile is private" });
+    }
+    if (!isOwner && profileVisibility === "friends" && !isFriend) {
+      return res.status(403).json({ error: "Profile is visible to friends only" });
+    }
+    return res.json(user);
+  } catch (err) {
+    console.error("User detail failed:", err);
+    return res.status(500).json({ error: "Failed to load user" });
+  }
+});
+
+router.put("/me/onboarding", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const incomingSteps = req.body?.steps && typeof req.body.steps === "object" ? req.body.steps : {};
+    user.onboarding = user.onboarding || { completed: false, steps: {} };
+    user.onboarding.steps = user.onboarding.steps || {};
+    for (const key of ["avatar", "bio", "interests", "followSuggestions"]) {
+      if (Object.prototype.hasOwnProperty.call(incomingSteps, key)) {
+        user.onboarding.steps[key] = Boolean(incomingSteps[key]);
+      }
+    }
+    if (Array.isArray(req.body?.interests)) {
+      user.interests = req.body.interests
+        .map((value) => String(value || "").trim().toLowerCase())
+        .filter(Boolean)
+        .slice(0, 20);
+      user.onboarding.steps.interests = user.interests.length > 0;
+    }
+    if (typeof req.body?.completed === "boolean") {
+      user.onboarding.completed = req.body.completed;
+    } else {
+      const steps = user.onboarding.steps || {};
+      user.onboarding.completed =
+        Boolean(steps.avatar) &&
+        Boolean(steps.bio) &&
+        Boolean(steps.interests) &&
+        Boolean(steps.followSuggestions);
+    }
+    await user.save();
+    return res.json({
+      success: true,
+      onboarding: user.onboarding,
+      interests: user.interests || [],
+    });
+  } catch (err) {
+    console.error("Onboarding update failed:", err);
+    return res.status(500).json({ error: "Failed to update onboarding" });
   }
 });
 

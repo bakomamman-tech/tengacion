@@ -1,4 +1,16 @@
 const Notification = require("../models/Notification");
+const User = require("../models/User");
+
+const typeToPrefKey = {
+  like: "likes",
+  comment: "comments",
+  reply: "comments",
+  follow: "follows",
+  mention: "mentions",
+  message: "messages",
+  report_update: "reports",
+  system: "system",
+};
 
 /**
  * Create a notification (DB + realtime)
@@ -16,6 +28,12 @@ exports.createNotification = async ({
   try {
     // Prevent self-notifications
     if (recipient.toString() === sender.toString()) return null;
+    const recipientUser = await User.findById(recipient).select("notificationPrefs");
+    if (!recipientUser) return null;
+    const prefKey = typeToPrefKey[String(type || "").toLowerCase()] || "";
+    if (prefKey && recipientUser?.notificationPrefs?.[prefKey] === false) {
+      return null;
+    }
 
     const notification = await Notification.create({
       recipient,
@@ -37,6 +55,7 @@ exports.createNotification = async ({
       if (sockets instanceof Set && sockets.size > 0) {
         for (const socketId of sockets) {
           io.to(socketId).emit("notification", notification);
+          io.to(socketId).emit("notification:new", { notification, unreadCount });
           io.to(socketId).emit("notifications:new", {
             notification,
             unreadCount,
@@ -51,7 +70,15 @@ exports.createNotification = async ({
         notification,
         unreadCount,
       });
+      io.to(recipient.toString()).emit("notification:new", {
+        notification,
+        unreadCount,
+      });
       io.to(`user:${recipient.toString()}`).emit("notifications:new", {
+        notification,
+        unreadCount,
+      });
+      io.to(`user:${recipient.toString()}`).emit("notification:new", {
         notification,
         unreadCount,
       });

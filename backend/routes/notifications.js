@@ -7,6 +7,8 @@ const {
   markAsRead,
   markAllAsRead,
   getUnreadCount,
+  getNotificationPrefs,
+  updateNotificationPrefs,
 } = require("../controllers/notificationsController");
 
 /**
@@ -28,6 +30,7 @@ router.get("/unread-count", auth, getUnreadCount);
 router.patch("/mark-all-read", auth, markAllAsRead);
 router.patch("/read-all", auth, markAllAsRead);
 router.post("/read-all", auth, markAllAsRead);
+router.patch("/read", auth, markAllAsRead);
 
 /**
  * PATCH /api/notifications/:id/read
@@ -35,5 +38,7 @@ router.post("/read-all", auth, markAllAsRead);
  */
 router.patch("/:id/read", auth, markAsRead);
 router.post("/:id/read", auth, markAsRead);
+router.get("/preferences/me", auth, getNotificationPrefs);
+router.put("/preferences/me", auth, updateNotificationPrefs);
 
 module.exports = router;

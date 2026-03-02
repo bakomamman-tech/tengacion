@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { login as loginApi } from "../api";
 import { useAuth } from "../context/AuthContext";
@@ -141,7 +141,12 @@ export default function Login() {
             Create new account
           </button>
 
-          <a href="#" className="forgot-password">Forgot password?</a>
+          <Link to="/forgot-password" className="forgot-password">Forgot password?</Link>
+          <div style={{ marginTop: 12, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+            <Link to="/terms">Terms</Link>
+            <Link to="/privacy">Privacy</Link>
+            <Link to="/community-guidelines">Guidelines</Link>
+          </div>
         </form>
       </div>
     </div>

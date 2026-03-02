@@ -5,7 +5,12 @@ const requireRole = require("../middleware/requireRole");
 const User = require("../models/User");
 const AuditLog = require("../models/AuditLog");
 const Post = require("../models/Post");
+const Message = require("../models/Message");
+const Report = require("../models/Report");
+const UserStrike = require("../models/UserStrike");
+const DailyAnalytics = require("../models/DailyAnalytics");
 const { writeAuditLog } = require("../services/auditLogService");
+const { recomputeUserStats, formatDateKey } = require("../services/analyticsService");
 
 const router = express.Router();
 
@@ -57,6 +62,51 @@ const assertCanManageTarget = ({ actorRole, target, res }) => {
   }
 
   return true;
+};
+
+const STRIKE_RULES = {
+  temporaryMute: 3,
+  temporaryBan: 5,
+  permanentBan: 7,
+};
+
+const applyUserStrikes = async ({ targetUserId, reportId, count = 1, reason = "" }) => {
+  if (!targetUserId) return { strikeCount: 0, action: "" };
+  const strike = await UserStrike.findOneAndUpdate(
+    { userId: targetUserId },
+    {
+      $inc: { count: Number(count) || 1 },
+      $push: {
+        history: {
+          reportId,
+          count: Number(count) || 1,
+          reason: String(reason || "").slice(0, 300),
+          createdAt: new Date(),
+        },
+      },
+      $set: { lastActionAt: new Date() },
+    },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+  const target = await User.findById(targetUserId);
+  if (!target) return { strikeCount: Number(strike.count) || 0, action: "" };
+
+  const total = Number(strike.count) || 0;
+  let action = "";
+  if (total >= STRIKE_RULES.permanentBan) {
+    target.isBanned = true;
+    target.isActive = false;
+    target.banReason = "Permanent ban due to repeated policy violations";
+    action = "permanent_ban";
+  } else if (total >= STRIKE_RULES.temporaryBan) {
+    target.isBanned = true;
+    target.banReason = "Temporary ban due to policy violations";
+    action = "temporary_ban";
+  } else if (total >= STRIKE_RULES.temporaryMute) {
+    action = "temporary_mute";
+  }
+  await target.save();
+  return { strikeCount: total, action };
 };
 
 router.use(auth, requireRole(ADMIN_ROLES));
@@ -440,6 +490,272 @@ router.get("/audit-logs", async (req, res) => {
   } catch (err) {
     console.error("Admin audit logs error:", req.requestId, err);
     return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
+router.get("/reports", async (req, res) => {
+  try {
+    const status = String(req.query.status || "").trim();
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+    const query = {};
+    if (status) {
+      query.status = status;
+    }
+
+    const [rows, total] = await Promise.all([
+      Report.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("reporterId", "_id name username")
+        .populate("assignedTo", "_id name username role")
+        .lean(),
+      Report.countDocuments(query),
+    ]);
+    return res.json({
+      page,
+      limit,
+      total,
+      reports: rows,
+    });
+  } catch (err) {
+    console.error("Admin reports list error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
+router.get("/reports/:id", async (req, res) => {
+  try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: "Invalid report id" });
+    }
+    const report = await Report.findById(req.params.id)
+      .populate("reporterId", "_id name username")
+      .populate("assignedTo", "_id name username role")
+      .lean();
+    if (!report) {
+      return res.status(404).json({ error: "Report not found" });
+    }
+    return res.json(report);
+  } catch (err) {
+    console.error("Admin report detail error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
+router.patch("/reports/:id", async (req, res) => {
+  try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: "Invalid report id" });
+    }
+    const report = await Report.findById(req.params.id);
+    if (!report) {
+      return res.status(404).json({ error: "Report not found" });
+    }
+    const nextStatus = String(req.body?.status || "").trim();
+    if (nextStatus && ["open", "reviewing", "actioned", "dismissed"].includes(nextStatus)) {
+      report.status = nextStatus;
+    }
+    if (req.body?.assignedTo && isValidId(req.body.assignedTo)) {
+      report.assignedTo = req.body.assignedTo;
+    } else if (!report.assignedTo) {
+      report.assignedTo = req.user.id;
+    }
+    if (req.body?.actionTaken !== undefined) {
+      report.actionTaken = String(req.body.actionTaken || "").slice(0, 500);
+    }
+    await report.save();
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.report.update",
+      targetType: "Report",
+      targetId: toId(report._id),
+      reason: String(req.body?.reason || ""),
+      metadata: { status: report.status },
+    });
+    return res.json({ success: true, report });
+  } catch (err) {
+    console.error("Admin report update error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
+router.post("/moderation/action", async (req, res) => {
+  try {
+    const action = String(req.body?.action || "").trim().toLowerCase();
+    const targetType = String(req.body?.targetType || "").trim().toLowerCase();
+    const targetId = String(req.body?.targetId || "").trim();
+    const reportId = String(req.body?.reportId || "").trim();
+    const reason = String(req.body?.reason || "").trim();
+    const strikes = Math.max(0, Number(req.body?.strikes) || 1);
+
+    if (!action || !targetType || !targetId) {
+      return res.status(400).json({ error: "action, targetType and targetId are required" });
+    }
+
+    let targetUserId = "";
+    if (targetType === "user") {
+      targetUserId = targetId;
+    } else if (targetType === "post") {
+      const post = await Post.findById(targetId).select("author");
+      targetUserId = toId(post?.author);
+      if (action === "delete_post" && post) {
+        await Post.deleteOne({ _id: targetId });
+      }
+    } else if (targetType === "comment") {
+      const post = await Post.findOne({ "comments._id": targetId });
+      const comment = post?.comments?.find((entry) => toId(entry._id) === targetId);
+      targetUserId = toId(comment?.author);
+      if (action === "delete_comment" && post) {
+        post.comments = (post.comments || []).filter((entry) => toId(entry._id) !== targetId);
+        post.commentsCount = post.comments.length;
+        await post.save();
+      }
+    } else if (targetType === "message") {
+      const message = await Message.findById(targetId).select("senderId");
+      targetUserId = toId(message?.senderId);
+      if (action === "delete_message" && message) {
+        await Message.deleteOne({ _id: targetId });
+      }
+    }
+
+    if (["ban", "mute", "warn"].includes(action) && isValidId(targetUserId)) {
+      const user = await User.findById(targetUserId);
+      if (user) {
+        if (action === "ban") {
+          user.isBanned = true;
+          user.banReason = reason || "Moderation action";
+          user.bannedAt = new Date();
+        }
+        if (action === "mute") {
+          user.forcePasswordReset = false;
+        }
+        await user.save();
+      }
+    }
+
+    const strikeResult = isValidId(targetUserId)
+      ? await applyUserStrikes({
+          targetUserId,
+          reportId: isValidId(reportId) ? reportId : null,
+          count: strikes,
+          reason: reason || action,
+        })
+      : { strikeCount: 0, action: "" };
+
+    if (isValidId(reportId)) {
+      await Report.findByIdAndUpdate(reportId, {
+        status: "actioned",
+        actionTaken: `${action}${strikeResult.action ? ` + ${strikeResult.action}` : ""}`,
+        strikesApplied: {
+          userId: isValidId(targetUserId) ? targetUserId : null,
+          count: strikes,
+        },
+        assignedTo: req.user.id,
+      });
+    }
+
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.moderation.action",
+      targetType,
+      targetId,
+      reason,
+      metadata: {
+        action,
+        reportId: isValidId(reportId) ? reportId : "",
+        strikes,
+        strikeCount: strikeResult.strikeCount,
+      },
+    });
+
+    return res.json({
+      success: true,
+      strikeCount: strikeResult.strikeCount,
+      autoAction: strikeResult.action,
+    });
+  } catch (err) {
+    console.error("Admin moderation action error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
+router.get("/analytics/overview", async (req, res) => {
+  try {
+    const range = String(req.query.range || "7d");
+    const days = range === "30d" ? 30 : 7;
+    const end = new Date();
+    const start = new Date(Date.now() - (days - 1) * 24 * 60 * 60 * 1000);
+    const docs = await DailyAnalytics.find({
+      date: { $gte: formatDateKey(start), $lte: formatDateKey(end) },
+    })
+      .sort({ date: 1 })
+      .lean();
+    await recomputeUserStats().catch(() => null);
+    const latest = docs[docs.length - 1] || {};
+    return res.json({
+      range,
+      latest,
+      series: docs,
+    });
+  } catch (err) {
+    console.error("Admin analytics overview error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
+router.get("/analytics/retention", async (_req, res) => {
+  try {
+    const cohorts = await User.aggregate([
+      {
+        $project: {
+          signupWeek: { $dateToString: { format: "%G-W%V", date: "$createdAt" } },
+          hasLoggedInAgain: {
+            $cond: [
+              { $gt: ["$lastLogin", { $dateAdd: { startDate: "$createdAt", unit: "day", amount: 7 } }] },
+              1,
+              0,
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$signupWeek",
+          users: { $sum: 1 },
+          retained: { $sum: "$hasLoggedInAgain" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+    return res.json(
+      cohorts.map((row) => ({
+        cohort: row._id,
+        users: row.users,
+        retained: row.retained,
+        retentionRate: row.users ? row.retained / row.users : 0,
+      }))
+    );
+  } catch (err) {
+    console.error("Admin retention analytics error:", err);
+    return res.status(500).json({ error: "Failed to load retention analytics" });
+  }
+});
+
+router.get("/analytics/errors/uploads", async (_req, res) => {
+  try {
+    const docs = await DailyAnalytics.find({}, "date uploadFailuresCount")
+      .sort({ date: -1 })
+      .limit(60)
+      .lean();
+    return res.json(docs);
+  } catch (err) {
+    console.error("Admin upload error analytics failed:", err);
+    return res.status(500).json({ error: "Failed to load upload failure analytics" });
   }
 });
 

@@ -64,10 +64,12 @@ if (process.env.NODE_ENV !== "test") {
 
   const connectDB = require("./config/db");
   const { repairUserMediaFields } = require("./scripts/repairUserMediaFields");
+  const { repairUserSecurityFields } = require("./scripts/repairUserSecurityFields");
   const { runBirthdayRecognition } = require("./services/birthdayService");
   connectDB()
     .then(async () => {
       await repairUserMediaFields({ logger: console });
+      await repairUserSecurityFields({ logger: console });
       await runBirthdayRecognition({ logger: console });
       setInterval(() => {
         runBirthdayRecognition({ logger: console }).catch((err) => {

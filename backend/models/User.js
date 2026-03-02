@@ -40,6 +40,36 @@ const UserSchema = new mongoose.Schema(
       select: false, // never return password
     },
 
+    emailVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    emailVerifyTokenHash: {
+      type: String,
+      default: "",
+      select: false,
+    },
+
+    emailVerifyExpiresAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
+    resetPasswordTokenHash: {
+      type: String,
+      default: "",
+      select: false,
+    },
+
+    resetPasswordExpiresAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
     /* ================= PROFILE ================= */
     phone: { type: String, default: "" },
 
@@ -184,6 +214,18 @@ const UserSchema = new mongoose.Schema(
       default: false,
     },
 
+    sessions: [
+      {
+        sessionId: { type: String, required: true, trim: true, index: true },
+        deviceName: { type: String, default: "", trim: true, maxlength: 180 },
+        ip: { type: String, default: "", trim: true, maxlength: 180 },
+        userAgent: { type: String, default: "", trim: true, maxlength: 400 },
+        createdAt: { type: Date, default: Date.now },
+        lastSeenAt: { type: Date, default: Date.now },
+        revokedAt: { type: Date, default: null },
+      },
+    ],
+
     tokenVersion: {
       type: Number,
       default: 0,
@@ -254,6 +296,78 @@ const UserSchema = new mongoose.Schema(
         index: true,
       },
     ],
+
+    blocks: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
+
+    mutes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
+
+    restricts: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
+
+    hiddenStoriesFrom: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
+
+    privacy: {
+      profileVisibility: {
+        type: String,
+        enum: ["public", "friends", "private"],
+        default: "public",
+      },
+      defaultPostAudience: {
+        type: String,
+        enum: ["public", "friends", "close_friends"],
+        default: "friends",
+      },
+      allowMessagesFrom: {
+        type: String,
+        enum: ["everyone", "friends", "no_one"],
+        default: "everyone",
+      },
+    },
+
+    notificationPrefs: {
+      likes: { type: Boolean, default: true },
+      comments: { type: Boolean, default: true },
+      follows: { type: Boolean, default: true },
+      mentions: { type: Boolean, default: true },
+      messages: { type: Boolean, default: true },
+      reports: { type: Boolean, default: true },
+      system: { type: Boolean, default: true },
+    },
+
+    onboarding: {
+      completed: { type: Boolean, default: false },
+      steps: {
+        avatar: { type: Boolean, default: false },
+        bio: { type: Boolean, default: false },
+        interests: { type: Boolean, default: false },
+        followSuggestions: { type: Boolean, default: false },
+      },
+    },
+
+    interests: [{ type: String, default: "", trim: true, maxlength: 50 }],
 
     closeFriends: [
       {

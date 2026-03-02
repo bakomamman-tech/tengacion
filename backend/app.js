@@ -100,6 +100,8 @@ app.use("/api/stories", require("./routes/stories"));
 app.use("/api/media", require("./routes/media"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/messages", require("./routes/messages"));
+app.use("/api/reports", require("./routes/reports"));
+app.use("/api/search", require("./routes/search"));
 app.use("/api/videos", require("./routes/videos"));
 app.use("/api/live", require("./routes/live"));
 app.use("/api/creators", require("./routes/creators"));

@@ -327,8 +327,8 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
   };
 
   return (
-    <header className="navbar" role="navigation">
-      <div className="nav-left">
+    <header className="navbar topNavRow" role="navigation">
+      <div className="nav-left topNavLeft">
         <button
           className="logo-area"
           onClick={() => navigate("/home")}
@@ -397,8 +397,8 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
       </div>
 
       {user && (
-        <nav className="nav-center" aria-label="Main navigation">
-          <div className="nav-pill-group">
+        <nav className="nav-center topNavCenter" aria-label="Main navigation">
+          <div className="nav-pill-group pillGroup">
             {navTabs.map((tab) => (
               <NavLink
                 key={tab.id}
@@ -406,7 +406,7 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
                 end
                 aria-label={`${tab.label} page`}
                 className={({ isActive }) =>
-                  `nav-tab ${isNavTabActive(tab, isActive) ? "active" : ""}`
+                  `nav-tab pillLink ${isNavTabActive(tab, isActive) ? "active" : ""}`
                 }
                 onKeyDown={(event) => {
                   if (event.key === " ") {
@@ -423,7 +423,7 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
       )}
 
       {user && (
-        <div className="nav-right">
+        <div className="nav-right topNavRight">
           <div className="nav-actions-shell" aria-label="Quick actions">
             <div className="create-menu-anchor" ref={createMenuRef}>
               <button

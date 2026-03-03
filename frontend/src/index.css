@@ -1746,7 +1746,8 @@ textarea:focus {
 }
 
 /* Navbar */
-.navbar {
+.navbar,
+.topNavRow {
   position: sticky;
   top: 0;
   z-index: 50;
@@ -1765,14 +1766,18 @@ textarea:focus {
 
 .nav-left,
 .nav-right,
-.nav-center {
+.nav-center,
+.topNavLeft,
+.topNavCenter,
+.topNavRight {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.nav-left {
-  flex: 1 1 0;
+.nav-left,
+.topNavLeft {
+  flex: 0 0 auto;
   min-width: 0;
   justify-content: flex-start;
 }
@@ -1782,24 +1787,41 @@ textarea:focus {
   max-width: 360px;
 }
 
-.nav-center {
-  flex: 1 1 0;
+.nav-center,
+.topNavCenter {
+  flex: 1 1 auto;
   min-width: 0;
   justify-content: center;
 }
 
-.nav-pill-group {
+.nav-pill-group,
+.pillGroup {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 10px;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
   max-width: 100%;
+  padding: 6px 2px;
+  -webkit-overflow-scrolling: touch;
 }
 
-.nav-right {
-  flex: 1 1 0;
-  min-width: 0;
+.nav-pill-group::-webkit-scrollbar,
+.pillGroup::-webkit-scrollbar {
+  height: 0;
+}
+
+.nav-pill-group,
+.pillGroup {
+  scrollbar-width: none;
+}
+
+.nav-right,
+.topNavRight {
+  flex: 0 0 auto;
   justify-content: flex-end;
 }
 
@@ -1888,10 +1910,13 @@ textarea:focus {
 }
 
 .nav-tab,
-.nav-icon {
+.nav-icon,
+.pillLink {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
+  white-space: nowrap;
   text-decoration: none;
   border: 1px solid color-mix(in srgb, var(--btn-bg) 80%, #ffffff 20%);
   background: var(--btn-bg);
@@ -6941,12 +6966,8 @@ html.dark-mode .composer-textarea::placeholder {
 
   .nav-pill-group {
     width: 100%;
-    flex-wrap: nowrap;
     justify-content: flex-start;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
     padding-bottom: 2px;
-    scrollbar-width: thin;
   }
 }
 
@@ -7052,10 +7073,7 @@ html.dark-mode .composer-textarea::placeholder {
 
   .nav-pill-group {
     width: 100%;
-    flex-wrap: nowrap;
     justify-content: flex-start;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
     padding-bottom: 2px;
   }
 

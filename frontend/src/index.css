@@ -1960,8 +1960,14 @@ textarea:focus {
   color: var(--muted);
 }
 
+.media-page-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
 .media-page-home-link {
-  margin-top: 14px;
+  margin-top: 0;
 }
 
 .media-page-placeholder h3 {

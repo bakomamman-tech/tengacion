@@ -12,14 +12,17 @@ export default function GamingPage({ user }) {
         </aside>
 
         <main className="feed">
+          <div className="media-page-actions">
+            <Link to="/home" className="btn-secondary media-page-home-link">
+              Back to Home
+            </Link>
+          </div>
+
           <section className="card media-page-header">
             <h2>Gaming</h2>
             <p>
               Explore gaming clips, live highlights, and creator communities in one place.
             </p>
-            <Link to="/home" className="btn-secondary media-page-home-link">
-              Back to Home
-            </Link>
           </section>
 
           <section className="card media-page-placeholder">

@@ -12,14 +12,17 @@ export default function ReelsPage({ user }) {
         </aside>
 
         <main className="feed">
+          <div className="media-page-actions">
+            <Link to="/home" className="btn-secondary media-page-home-link">
+              Back to Home
+            </Link>
+          </div>
+
           <section className="card media-page-header">
             <h2>Reels</h2>
             <p>
               Watch short-form videos, discover creators, and catch quick moments that matter.
             </p>
-            <Link to="/home" className="btn-secondary media-page-home-link">
-              Back to Home
-            </Link>
           </section>
 
           <section className="card media-page-placeholder">

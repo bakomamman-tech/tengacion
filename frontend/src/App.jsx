@@ -37,6 +37,8 @@ import Rooms from "./pages/Rooms";
 import LiveDirectory from "./pages/LiveDirectory";
 import GoLive from "./pages/GoLive";
 import WatchLive from "./pages/WatchLive";
+import GamingPage from "./pages/GamingPage";
+import ReelsPage from "./pages/ReelsPage";
 import AdminPanel from "./pages/AdminPanel";
 import {
   AdsManagerPage,
@@ -113,6 +115,24 @@ export default function App() {
           element={
             <ProtectedRoute user={user}>
               <Trending user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/gaming"
+          element={
+            <ProtectedRoute user={user}>
+              <GamingPage user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reels"
+          element={
+            <ProtectedRoute user={user}>
+              <ReelsPage user={user} />
             </ProtectedRoute>
           }
         />

@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { resolveImage, searchGlobal } from "./api";
 import { useTheme } from "./context/ThemeContext";
 import { useNotifications } from "./context/NotificationsContext";
@@ -54,6 +54,7 @@ const NotificationBellIcon = ({ size = 20 }) => (
 
 export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePost }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isDark, toggleTheme } = useTheme();
   const { unreadCount: unreadNotifications, markAllRead } = useNotifications();
 
@@ -301,6 +302,24 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
   const filteredMenuItems = filterItems(menuItems);
   const filteredCreateActions = filterItems(createActions);
 
+  const navTabs = [
+    { id: "home", label: "Home", path: "/home" },
+    { id: "trending", label: "Trending", path: "/trending" },
+    { id: "creator", label: "Creator", path: "/dashboard/creator" },
+    { id: "gaming", label: "Gaming", path: "/gaming" },
+    { id: "reels", label: "Reels", path: "/reels" },
+  ];
+
+  const isNavTabActive = (tab, isActive) => {
+    if (isActive) {
+      return true;
+    }
+    if (tab.id === "creator") {
+      return location.pathname === "/creator";
+    }
+    return false;
+  };
+
   const onCreateMenuItemClick = (item) => {
     item.handler?.();
     setShowCreateMenu(false);
@@ -379,15 +398,27 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
 
       {user && (
         <nav className="nav-center" aria-label="Main navigation">
-          <button className="nav-tab" onClick={() => navigate("/home")}>
-            Home
-          </button>
-          <button className="nav-tab" onClick={() => navigate("/trending")}>
-            Trending
-          </button>
-          <button className="nav-tab" onClick={() => navigate("/dashboard/creator")}>
-            Creator
-          </button>
+          <div className="nav-pill-group">
+            {navTabs.map((tab) => (
+              <NavLink
+                key={tab.id}
+                to={tab.path}
+                end
+                aria-label={`${tab.label} page`}
+                className={({ isActive }) =>
+                  `nav-tab ${isNavTabActive(tab, isActive) ? "active" : ""}`
+                }
+                onKeyDown={(event) => {
+                  if (event.key === " ") {
+                    event.preventDefault();
+                    event.currentTarget.click();
+                  }
+                }}
+              >
+                {tab.label}
+              </NavLink>
+            ))}
+          </div>
         </nav>
       )}
 

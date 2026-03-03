@@ -1790,8 +1790,9 @@ textarea:focus {
 .nav-center,
 .topNavCenter {
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: 0 !important;
   justify-content: center;
+  overflow: hidden;
 }
 
 .nav-pill-group,
@@ -1799,11 +1800,12 @@ textarea:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: nowrap;
+  flex-wrap: nowrap !important;
   gap: 10px;
   white-space: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
+  width: fit-content;
   max-width: 100%;
   padding: 6px 2px;
   -webkit-overflow-scrolling: touch;
@@ -1915,8 +1917,8 @@ textarea:focus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 auto;
-  white-space: nowrap;
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
   text-decoration: none;
   border: 1px solid color-mix(in srgb, var(--btn-bg) 80%, #ffffff 20%);
   background: var(--btn-bg);

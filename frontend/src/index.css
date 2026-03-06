@@ -4462,6 +4462,16 @@ html.dark-mode .composer-textarea::placeholder {
   justify-content: space-between;
 }
 
+.messenger.desktop-draggable .messenger-header-main {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.messenger.desktop-dragging .messenger-header-main {
+  cursor: grabbing;
+}
+
 .messenger-drag-handle {
   display: none;
   width: 100%;
@@ -5066,6 +5076,28 @@ html.dark-mode .composer-textarea::placeholder {
 .messenger-dock span {
   font-weight: 700;
   font-size: 13px;
+}
+
+.install-prompt-btn {
+  position: fixed;
+  left: 16px;
+  right: auto;
+  bottom: 16px;
+  z-index: 70;
+  width: auto;
+  max-width: min(240px, calc(100vw - 32px));
+  border: 1px solid var(--border) !important;
+  border-radius: 999px !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  padding: 8px 14px !important;
+  font-weight: 800 !important;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+}
+
+.install-prompt-btn:hover {
+  background: var(--surface-soft) !important;
 }
 
 /* Login + register */

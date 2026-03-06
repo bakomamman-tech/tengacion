@@ -256,6 +256,8 @@ export default function Messenger({ user, onClose, onMinimize }) {
     return vh ? Math.round(vh * 0.72) : 560;
   });
   const [isDraggingSheet, setIsDraggingSheet] = useState(false);
+  const [desktopOffset, setDesktopOffset] = useState({ x: 0, y: 0 });
+  const [isDraggingDesktop, setIsDraggingDesktop] = useState(false);
 
   const socketRef = useRef(null);
   const selectedIdRef = useRef("");
@@ -266,6 +268,15 @@ export default function Messenger({ user, onClose, onMinimize }) {
     startY: 0,
     startHeight: 0,
     downwardDelta: 0,
+  });
+  const desktopDragRef = useRef({
+    active: false,
+    startX: 0,
+    startY: 0,
+    startLeft: 0,
+    startTop: 0,
+    width: 0,
+    height: 0,
   });
 
   useEffect(() => {
@@ -383,6 +394,54 @@ export default function Messenger({ user, onClose, onMinimize }) {
     };
   }, [clampSheetHeight, getMobileBounds, getMobileSnapPoints, isDraggingSheet, onClose]);
 
+  useEffect(() => {
+    if (!isDraggingDesktop) {return undefined;}
+
+    const onPointerMove = (event) => {
+      const drag = desktopDragRef.current;
+      if (!drag.active) {return;}
+
+      const nextLeft = clamp(
+        drag.startLeft + (event.clientX - drag.startX),
+        8,
+        Math.max(8, window.innerWidth - drag.width - 8)
+      );
+      const nextTop = clamp(
+        drag.startTop + (event.clientY - drag.startY),
+        8,
+        Math.max(8, window.innerHeight - drag.height - 8)
+      );
+
+      setDesktopOffset({
+        x: nextLeft - drag.startLeft,
+        y: nextTop - drag.startTop,
+      });
+    };
+
+    const onPointerEnd = () => {
+      if (!desktopDragRef.current.active) {return;}
+      desktopDragRef.current.active = false;
+      setIsDraggingDesktop(false);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerEnd);
+    window.addEventListener("pointercancel", onPointerEnd);
+
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerEnd);
+      window.removeEventListener("pointercancel", onPointerEnd);
+    };
+  }, [isDraggingDesktop]);
+
+  useEffect(() => {
+    if (!isMobileSheet) {return;}
+    setIsDraggingDesktop(false);
+    setDesktopOffset({ x: 0, y: 0 });
+    desktopDragRef.current.active = false;
+  }, [isMobileSheet]);
+
   const onSheetHandlePointerDown = useCallback(
     (event) => {
       if (!isMobileSheet) {return;}
@@ -395,6 +454,37 @@ export default function Messenger({ user, onClose, onMinimize }) {
         downwardDelta: 0,
       };
       setIsDraggingSheet(true);
+      event.preventDefault();
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    },
+    [isMobileSheet]
+  );
+
+  const onDesktopHeaderPointerDown = useCallback(
+    (event) => {
+      if (isMobileSheet) {return;}
+      if (event.button !== undefined && event.button !== 0) {return;}
+      if (
+        event.target instanceof Element &&
+        event.target.closest("button, a, input, textarea, select, [role=\"button\"]")
+      ) {
+        return;
+      }
+
+      const panel = event.currentTarget.closest(".messenger-panel");
+      if (!panel) {return;}
+
+      const rect = panel.getBoundingClientRect();
+      desktopDragRef.current = {
+        active: true,
+        startX: event.clientX,
+        startY: event.clientY,
+        startLeft: rect.left,
+        startTop: rect.top,
+        width: rect.width,
+        height: rect.height,
+      };
+      setIsDraggingDesktop(true);
       event.preventDefault();
       event.currentTarget.setPointerCapture?.(event.pointerId);
     },
@@ -1233,12 +1323,21 @@ export default function Messenger({ user, onClose, onMinimize }) {
         }
       : undefined;
 
+  const messengerStyle = {
+    ...(sheetStyle || {}),
+    ...(!isMobileSheet
+      ? {
+          transform: `translate3d(${desktopOffset.x}px, ${desktopOffset.y}px, 0)`,
+        }
+      : {}),
+  };
+
   return (
     <div
-      className={`messenger ${isMobileSheet ? "mobile-sheet" : ""} ${
-        isDraggingSheet ? "dragging" : ""
-      }`}
-      style={sheetStyle}
+      className={`messenger ${isMobileSheet ? "mobile-sheet" : "desktop-draggable"} ${
+        isDraggingSheet || isDraggingDesktop ? "dragging" : ""
+      } ${isDraggingDesktop ? "desktop-dragging" : ""}`}
+      style={messengerStyle}
     >
       <div className="messenger-header">
         <button
@@ -1248,7 +1347,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
           aria-label="Drag messenger panel"
         />
 
-        <div className="messenger-header-main">
+        <div className="messenger-header-main" onPointerDown={onDesktopHeaderPointerDown}>
           <div className="mh-left">
             <strong>Messenger</strong>
           </div>

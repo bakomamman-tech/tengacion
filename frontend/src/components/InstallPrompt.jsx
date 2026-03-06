@@ -32,8 +32,7 @@ export default function InstallPrompt() {
   return (
     <button
       type="button"
-      className="messenger-dock"
-      style={{ right: 18, left: "auto", bottom: 18, position: "fixed", zIndex: 70 }}
+      className="install-prompt-btn"
       onClick={async () => {
         promptEvent.prompt();
         await promptEvent.userChoice;

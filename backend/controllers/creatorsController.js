@@ -11,6 +11,11 @@ const PlayerProgress = require("../models/PlayerProgress");
 const { hasEntitlement } = require("../services/entitlementService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
 
+const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
+const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
+const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
+const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null };
+
 const toCreatorPayload = (profile, extras = {}) => ({
   _id: profile._id.toString(),
   userId: profile.userId?._id ? profile.userId._id.toString() : profile.userId?.toString(),
@@ -45,12 +50,12 @@ const toCreatorPayload = (profile, extras = {}) => ({
 
 const countCreatorContent = async ({ creatorId, userId }) => {
   const [songsCount, podcastsCount, comedyTrackCount, booksCount, albumsCount, comedyVideoCount] = await Promise.all([
-    Track.countDocuments({ creatorId, kind: { $in: ["music", null] } }),
-    Track.countDocuments({ creatorId, kind: "podcast" }),
-    Track.countDocuments({ creatorId, kind: "comedy" }),
-    Book.countDocuments({ creatorId }),
-    Album.countDocuments({ creatorId, status: "published" }),
-    Video.countDocuments({ userId: String(userId || "") }),
+    Track.countDocuments({ creatorId, kind: { $in: ["music", null] }, ...ACTIVE_TRACK_FILTER }),
+    Track.countDocuments({ creatorId, kind: "podcast", ...ACTIVE_TRACK_FILTER }),
+    Track.countDocuments({ creatorId, kind: "comedy", ...ACTIVE_TRACK_FILTER }),
+    Book.countDocuments({ creatorId, ...ACTIVE_BOOK_FILTER }),
+    Album.countDocuments({ creatorId, ...ACTIVE_ALBUM_FILTER }),
+    Video.countDocuments({ userId: String(userId || ""), ...ACTIVE_VIDEO_FILTER }),
   ]);
 
   const comedyCount = comedyTrackCount + comedyVideoCount;
@@ -96,6 +101,9 @@ const mapTrackForHub = async ({ track, req, userId }) => {
     kind: track.kind || "music",
     playCount: Number(track.playCount || track.playsCount || 0),
     purchaseCount: Number(track.purchaseCount || 0),
+    podcastSeries: track.podcastSeries || "",
+    seasonNumber: Number(track.seasonNumber || 0),
+    episodeNumber: Number(track.episodeNumber || 0),
   };
 };
 
@@ -298,6 +306,7 @@ exports.getCreatorTracks = asyncHandler(async (req, res) => {
   if (["music", "podcast", "comedy"].includes(kind)) {
     query.kind = kind;
   }
+  Object.assign(query, ACTIVE_TRACK_FILTER);
 
   const tracks = await Track.find(query).sort({ createdAt: -1 }).lean();
   return res.json(
@@ -313,6 +322,9 @@ exports.getCreatorTracks = asyncHandler(async (req, res) => {
       coverImageUrl: track.coverImageUrl || "",
       durationSec: Number(track.durationSec) || 0,
       kind: track.kind || "music",
+      podcastSeries: track.podcastSeries || "",
+      seasonNumber: Number(track.seasonNumber || 0),
+      episodeNumber: Number(track.episodeNumber || 0),
       playsCount: Number(track.playsCount || 0),
       likesCount: Number(track.likesCount || 0),
       createdAt: track.createdAt,
@@ -326,7 +338,7 @@ exports.getCreatorBooks = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid creator id" });
   }
 
-  const books = await Book.find({ creatorId }).sort({ createdAt: -1 }).lean();
+  const books = await Book.find({ creatorId, ...ACTIVE_BOOK_FILTER }).sort({ createdAt: -1 }).lean();
   return res.json(
     books.map((book) => ({
       _id: book._id.toString(),
@@ -349,7 +361,7 @@ exports.getCreatorAlbums = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid creator id" });
   }
 
-  const albums = await Album.find({ creatorId, status: "published" }).sort({ createdAt: -1 }).lean();
+  const albums = await Album.find({ creatorId, ...ACTIVE_ALBUM_FILTER }).sort({ createdAt: -1 }).lean();
   return res.json(
     albums.map((album) => ({
       _id: album._id.toString(),
@@ -362,6 +374,33 @@ exports.getCreatorAlbums = asyncHandler(async (req, res) => {
       status: album.status || "published",
       createdAt: album.createdAt,
       updatedAt: album.updatedAt,
+    }))
+  );
+});
+
+exports.getCreatorVideos = asyncHandler(async (req, res) => {
+  const { creatorId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(creatorId)) {
+    return res.status(400).json({ error: "Invalid creator id" });
+  }
+
+  const videos = await Video.find({ creatorProfileId: creatorId, ...ACTIVE_VIDEO_FILTER })
+    .sort({ time: -1, createdAt: -1 })
+    .lean();
+
+  return res.json(
+    videos.map((video) => ({
+      _id: video._id.toString(),
+      creatorId: video.creatorProfileId?.toString?.() || "",
+      title: video.caption || "",
+      description: video.caption || "",
+      videoUrl: video.videoUrl || "",
+      coverImageUrl: video.coverImageUrl || "",
+      previewClipUrl: video.previewClipUrl || "",
+      price: Number(video.price || 0),
+      durationSec: Number(video.durationSec || 0),
+      viewsCount: Number(video.viewsCount || 0),
+      createdAt: video.createdAt || video.time || null,
     }))
   );
 });
@@ -382,12 +421,12 @@ exports.getCreatorHub = asyncHandler(async (req, res) => {
   }
 
   const [musicTracksRaw, podcastTracksRaw, comedyTracksRaw, booksRaw, albumsRaw, comedyVideosRaw, continueRows] = await Promise.all([
-    Track.find({ creatorId, kind: { $in: ["music", null] } }).sort({ playsCount: -1, createdAt: -1 }).limit(30).lean(),
-    Track.find({ creatorId, kind: "podcast" }).sort({ createdAt: -1 }).limit(20).lean(),
-    Track.find({ creatorId, kind: "comedy" }).sort({ createdAt: -1 }).limit(20).lean(),
-    Book.find({ creatorId }).sort({ createdAt: -1 }).limit(20).lean(),
-    Album.find({ creatorId, status: "published" }).sort({ createdAt: -1 }).limit(20).lean(),
-    Video.find({ $or: [{ creatorProfileId: creatorId }, { userId: String(profile.userId?._id || "") }] })
+    Track.find({ creatorId, kind: { $in: ["music", null] }, ...ACTIVE_TRACK_FILTER }).sort({ playsCount: -1, createdAt: -1 }).limit(30).lean(),
+    Track.find({ creatorId, kind: "podcast", ...ACTIVE_TRACK_FILTER }).sort({ createdAt: -1 }).limit(20).lean(),
+    Track.find({ creatorId, kind: "comedy", ...ACTIVE_TRACK_FILTER }).sort({ createdAt: -1 }).limit(20).lean(),
+    Book.find({ creatorId, ...ACTIVE_BOOK_FILTER }).sort({ createdAt: -1 }).limit(20).lean(),
+    Album.find({ creatorId, ...ACTIVE_ALBUM_FILTER }).sort({ createdAt: -1 }).limit(20).lean(),
+    Video.find({ $or: [{ creatorProfileId: creatorId }, { userId: String(profile.userId?._id || "") }], ...ACTIVE_VIDEO_FILTER })
       .sort({ time: -1, createdAt: -1 })
       .limit(20)
       .lean(),
@@ -408,15 +447,15 @@ exports.getCreatorHub = asyncHandler(async (req, res) => {
   const books = await Promise.all(booksRaw.map((book) => mapBookForHub({ book, req, userId: viewerId })));
   const albums = await Promise.all(albumsRaw.map((album) => mapAlbumForHub({ album, req, userId: viewerId })));
 
-  const comedyVideos = await Promise.all(
+  const videos = await Promise.all(
     comedyVideosRaw.map(async (video) => {
       const entitled = Number(video.price || 0) <= 0 || (viewerId
         ? await hasEntitlement({ userId: viewerId, itemType: "video", itemId: video._id })
         : false);
-      const sourceUrl = video.videoUrl || "";
+      const sourceUrl = entitled ? (video.videoUrl || "") : (video.previewClipUrl || video.videoUrl || "");
       return {
         id: video._id.toString(),
-        title: video.caption || "Comedy video",
+        title: video.caption || "Video",
         coverUrl: video.coverImageUrl || "",
         durationSec: Number(video.durationSec || 0),
         viewsCount: Number(video.viewsCount || 0),
@@ -433,6 +472,8 @@ exports.getCreatorHub = asyncHandler(async (req, res) => {
               expiresInSec: 10 * 60,
             })
           : "",
+        previewUrl: video.previewClipUrl || "",
+        itemType: "video",
       };
     })
   );
@@ -476,19 +517,22 @@ exports.getCreatorHub = asyncHandler(async (req, res) => {
       avatarUrl: typeof creatorUser.avatar === "string" ? creatorUser.avatar : creatorUser.avatar?.url || "",
       bannerUrl: profile.heroBannerUrl || profile.coverImageUrl || "",
       tagline: profile.tagline || "",
+      genres: Array.isArray(profile.genres) ? profile.genres : [],
       verified: Boolean(creatorUser.isVerified || creatorUser.emailVerified),
       followersCount,
       monthlyListeners,
       bio: profile.bio || "",
       location: creatorUser.country || "",
-      creatorReady: Boolean(profile.onboardingComplete) && (musicTracks.length + podcastTracks.length + comedyTracks.length + books.length + albums.length + comedyVideos.length > 0),
+      creatorReady: Boolean(profile.onboardingComplete) && (musicTracks.length + podcastTracks.length + comedyTracks.length + books.length + albums.length + videos.length > 0),
       albumsCount: albums.length,
+      links: Array.isArray(profile.links) ? profile.links : [],
     },
     tracks: musicTracks,
     albums,
     books,
     podcasts: podcastTracks,
-    comedy: [...comedyTracks, ...comedyVideos],
+    videos,
+    comedy: comedyTracks,
     stats: {
       totalPlays,
       totalSales,
@@ -499,14 +543,16 @@ exports.getCreatorHub = asyncHandler(async (req, res) => {
       continueListening: continueListening.filter(Boolean),
       topTracks: musicTracks.slice(0, 12),
       latestPodcasts: podcastTracks.slice(0, 10),
-      latestComedy: [...comedyTracks, ...comedyVideos].slice(0, 10),
+      latestComedy: comedyTracks.slice(0, 10),
       ebooks: books.slice(0, 10),
       latestAlbums: albums.slice(0, 10),
+      latestVideos: videos.slice(0, 10),
       allMusic: musicTracks,
       allPodcasts: podcastTracks,
-      allComedy: [...comedyTracks, ...comedyVideos],
+      allComedy: comedyTracks,
       allBooks: books,
       allAlbums: albums,
+      allVideos: videos,
     },
     commerce: {
       currencyMode: profile.paymentModeDefault || "NG",
@@ -526,9 +572,9 @@ exports.getCreatorDashboard = asyncHandler(async (req, res) => {
 
   const creatorId = profile._id;
   const [tracksCount, albumsCount, booksCount, salesRows] = await Promise.all([
-    Track.countDocuments({ creatorId, kind: { $in: ["music", null] } }),
-    Album.countDocuments({ creatorId, status: "published" }),
-    Book.countDocuments({ creatorId }),
+    Track.countDocuments({ creatorId, kind: { $in: ["music", null] }, ...ACTIVE_TRACK_FILTER }),
+    Album.countDocuments({ creatorId, ...ACTIVE_ALBUM_FILTER }),
+    Book.countDocuments({ creatorId, ...ACTIVE_BOOK_FILTER }),
     Purchase.find({
       creatorId,
       status: "paid",
@@ -546,6 +592,50 @@ exports.getCreatorDashboard = asyncHandler(async (req, res) => {
     booksCount,
     totalSales,
     revenueNGN,
+  });
+});
+
+exports.archiveMyCreatorContent = asyncHandler(async (req, res) => {
+  const profile = await CreatorProfile.findOne({ userId: req.user.id }).lean();
+  if (!profile?._id) {
+    return res.status(404).json({ error: "Creator profile not found" });
+  }
+
+  const now = new Date();
+  const creatorId = profile._id;
+  const creatorUserId = String(req.user.id || "");
+
+  const [tracksResult, booksResult, albumsResult, videosResult] = await Promise.all([
+    Track.updateMany(
+      { creatorId, archivedAt: null },
+      { $set: { archivedAt: now, isPublished: false } }
+    ),
+    Book.updateMany(
+      { creatorId, archivedAt: null },
+      { $set: { archivedAt: now, isPublished: false } }
+    ),
+    Album.updateMany(
+      { creatorId, archivedAt: null },
+      { $set: { archivedAt: now, isPublished: false, status: "draft" } }
+    ),
+    Video.updateMany(
+      {
+        $or: [{ creatorProfileId: creatorId }, { userId: creatorUserId }],
+        archivedAt: null,
+      },
+      { $set: { archivedAt: now, isPublished: false } }
+    ),
+  ]);
+
+  return res.json({
+    success: true,
+    archivedAt: now.toISOString(),
+    archivedCounts: {
+      tracks: Number(tracksResult?.modifiedCount || 0),
+      books: Number(booksResult?.modifiedCount || 0),
+      albums: Number(albumsResult?.modifiedCount || 0),
+      videos: Number(videosResult?.modifiedCount || 0),
+    },
   });
 });
 

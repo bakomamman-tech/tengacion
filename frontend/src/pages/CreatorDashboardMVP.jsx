@@ -1,115 +1,177 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  archiveMyCreatorContent,
   createAlbumWithUploadProgress,
-  createBook,
-  createBookChapter,
-  createTrack,
+  createBookWithUploadProgress,
+  createCreatorVideoWithUploadProgress,
+  createTrackWithUploadProgress,
   getCreatorAlbums,
   getCreatorBooks,
   getCreatorDashboard,
   getCreatorSales,
   getCreatorTracks,
+  getCreatorVideos,
   getMyCreatorProfile,
-  initPayment,
   resolveImage,
   upsertCreatorProfile,
 } from "../api";
+import "./creator-redesign.css";
 
-const defaultCreatorForm = {
+const CREATOR_DEFAULTS = {
   displayName: "",
   bio: "",
-  coverImageUrl: "",
+  heroBannerUrl: "",
+  tagline: "",
+  genresRaw: "",
+  youtube: "",
+  spotify: "",
 };
 
-const defaultTrackForm = {
+const TRACK_DEFAULT = {
   title: "",
   description: "",
   price: "",
-  audioUrl: "",
-  previewUrl: "",
-  coverImageUrl: "",
-  durationSec: "",
 };
 
-const defaultBookForm = {
+const BOOK_DEFAULT = {
   title: "",
   description: "",
   price: "",
-  coverImageUrl: "",
-  contentUrl: "",
 };
 
-const defaultAlbumForm = {
+const ALBUM_DEFAULT = {
   albumTitle: "",
   description: "",
   price: "",
 };
 
-const defaultChapterForm = {
-  bookId: "",
+const VIDEO_DEFAULT = {
   title: "",
-  order: "",
-  content: "",
-  isFree: true,
+  description: "",
+  price: "",
 };
+
+const PODCAST_DEFAULT = {
+  title: "",
+  podcastSeries: "",
+  description: "",
+  seasonNumber: "",
+  episodeNumber: "",
+  accessType: "free",
+  price: "",
+};
+
+const fmtMoney = (value) => `NGN ${Number(value || 0).toLocaleString()}`;
+
+function DropZone({ label, description, accept, multiple = false, files = [], onChange }) {
+  const [dragging, setDragging] = useState(false);
+
+  const onDrop = (event) => {
+    event.preventDefault();
+    setDragging(false);
+    const list = Array.from(event.dataTransfer?.files || []);
+    if (!list.length) return;
+    onChange(multiple ? list : list[0]);
+  };
+
+  return (
+    <label
+      className={`crd-drop ${dragging ? "is-dragging" : ""}`}
+      onDragOver={(event) => {
+        event.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={onDrop}
+    >
+      <input
+        type="file"
+        accept={accept}
+        multiple={multiple}
+        onChange={(event) => {
+          const selected = Array.from(event.target.files || []);
+          onChange(multiple ? selected : selected[0] || null);
+          event.target.value = "";
+        }}
+      />
+      <strong>{label}</strong>
+      <span>{description}</span>
+      {files.length ? (
+        <ul>
+          {files.map((file, idx) => (
+            <li key={`${file.name}-${idx}`}>{file.name}</li>
+          ))}
+        </ul>
+      ) : null}
+    </label>
+  );
+}
+
+function ProgressState({ progress, status, error }) {
+  if (!progress && !status && !error) return null;
+  return (
+    <div className="crd-progress-wrap">
+      <div className="crd-progress-track">
+        <span style={{ width: `${Math.max(0, Math.min(100, Number(progress || 0)))}%` }} />
+      </div>
+      {status ? <p className="ok">{status}</p> : null}
+      {error ? <p className="err">{error}</p> : null}
+    </div>
+  );
+}
 
 export default function CreatorDashboardMVP() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [pageError, setPageError] = useState("");
   const [creator, setCreator] = useState(null);
   const [tracks, setTracks] = useState([]);
   const [books, setBooks] = useState([]);
   const [albums, setAlbums] = useState([]);
-  const [sales, setSales] = useState({
-    totalSalesCount: 0,
-    totalRevenue: 0,
-    currency: "NGN",
-  });
+  const [videos, setVideos] = useState([]);
+  const [sales, setSales] = useState({ totalSalesCount: 0, totalRevenue: 0, currency: "NGN" });
 
-  const [creatorForm, setCreatorForm] = useState(defaultCreatorForm);
-  const [trackForm, setTrackForm] = useState(defaultTrackForm);
-  const [bookForm, setBookForm] = useState(defaultBookForm);
-  const [albumForm, setAlbumForm] = useState(defaultAlbumForm);
-  const [chapterForm, setChapterForm] = useState(defaultChapterForm);
+  const [profileForm, setProfileForm] = useState(CREATOR_DEFAULTS);
   const [profileSaving, setProfileSaving] = useState(false);
-  const [trackSaving, setTrackSaving] = useState(false);
-  const [bookSaving, setBookSaving] = useState(false);
-  const [albumSaving, setAlbumSaving] = useState(false);
-  const [chapterSaving, setChapterSaving] = useState(false);
+
+  const [trackForm, setTrackForm] = useState(TRACK_DEFAULT);
+  const [trackFiles, setTrackFiles] = useState({ audio: null, preview: null, cover: null });
+  const [trackProgress, setTrackProgress] = useState(0);
   const [trackStatus, setTrackStatus] = useState("");
-  const trackStatusTimerRef = useRef(null);
-  const [trackFiles, setTrackFiles] = useState({
-    audio: null,
-    preview: null,
-    cover: null,
-  });
-  const [trackFileUrls, setTrackFileUrls] = useState({
-    audio: "",
-    preview: "",
-    cover: "",
-  });
+  const [trackError, setTrackError] = useState("");
+
+  const [bookForm, setBookForm] = useState(BOOK_DEFAULT);
   const [bookFiles, setBookFiles] = useState({ cover: null, content: null });
-  const [bookFileUrls, setBookFileUrls] = useState({ cover: "", content: "" });
-  const [albumCoverFile, setAlbumCoverFile] = useState(null);
-  const [albumCoverUrl, setAlbumCoverUrl] = useState("");
-  const [albumSongs, setAlbumSongs] = useState([]);
-  const [albumPreviews, setAlbumPreviews] = useState([]);
+  const [bookProgress, setBookProgress] = useState(0);
+  const [bookStatus, setBookStatus] = useState("");
+  const [bookError, setBookError] = useState("");
+
+  const [albumForm, setAlbumForm] = useState(ALBUM_DEFAULT);
+  const [albumFiles, setAlbumFiles] = useState({ cover: null, tracks: [], previews: [] });
   const [albumProgress, setAlbumProgress] = useState(0);
-  const [albumCurrentFile, setAlbumCurrentFile] = useState("");
   const [albumStatus, setAlbumStatus] = useState("");
-  const [paymentLoading, setPaymentLoading] = useState(false);
-  const trackFileUrlRef = useRef(trackFileUrls);
-  const bookFileUrlRef = useRef(bookFileUrls);
-  const albumCoverUrlRef = useRef(albumCoverUrl);
+  const [albumError, setAlbumError] = useState("");
+
+  const [videoForm, setVideoForm] = useState(VIDEO_DEFAULT);
+  const [videoFiles, setVideoFiles] = useState({ video: null, thumbnail: null, previewClip: null });
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoStatus, setVideoStatus] = useState("");
+  const [videoError, setVideoError] = useState("");
+
+  const [podcastForm, setPodcastForm] = useState(PODCAST_DEFAULT);
+  const [podcastFiles, setPodcastFiles] = useState({ audio: null, cover: null, preview: null });
+  const [podcastProgress, setPodcastProgress] = useState(0);
+  const [podcastStatus, setPodcastStatus] = useState("");
+  const [podcastError, setPodcastError] = useState("");
+
+  const [archiving, setArchiving] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
-    setError("");
-
+    setPageError("");
     try {
-      const [profileRes, salesRes, dashboardRes] = await Promise.all([
+      const [profileRes, salesRes, dashRes] = await Promise.all([
         getMyCreatorProfile().catch(() => null),
         getCreatorSales().catch(() => ({ totalSalesCount: 0, totalRevenue: 0, currency: "NGN" })),
         getCreatorDashboard().catch(() => null),
@@ -117,34 +179,44 @@ export default function CreatorDashboardMVP() {
 
       setCreator(profileRes || null);
       setSales({
-        totalSalesCount: Number(dashboardRes?.totalSales ?? salesRes?.totalSalesCount ?? 0),
-        totalRevenue: Number(dashboardRes?.revenueNGN ?? salesRes?.totalRevenue ?? 0),
+        totalSalesCount: Number(dashRes?.totalSales ?? salesRes?.totalSalesCount ?? 0),
+        totalRevenue: Number(dashRes?.revenueNGN ?? salesRes?.totalRevenue ?? 0),
         currency: "NGN",
       });
 
       if (profileRes?._id) {
-        const [tracksRes, booksRes, albumsRes] = await Promise.all([
+        const [tracksRes, booksRes, albumsRes, videosRes] = await Promise.all([
           getCreatorTracks(profileRes._id),
           getCreatorBooks(profileRes._id),
           getCreatorAlbums(profileRes._id),
+          getCreatorVideos(profileRes._id).catch(() => []),
         ]);
         setTracks(Array.isArray(tracksRes) ? tracksRes : []);
-        const booksList = Array.isArray(booksRes) ? booksRes : [];
+        setBooks(Array.isArray(booksRes) ? booksRes : []);
         setAlbums(Array.isArray(albumsRes) ? albumsRes : []);
-        setBooks(booksList);
-        setChapterForm((prev) => ({
-          ...prev,
-          bookId: prev.bookId || booksList[0]?._id || "",
-        }));
+        setVideos(Array.isArray(videosRes) ? videosRes : []);
+
+        const links = Array.isArray(profileRes.links) ? profileRes.links : [];
+        const youtube = links.find((entry) => String(entry?.label || "").toLowerCase().includes("youtube"))?.url || "";
+        const spotify = links.find((entry) => String(entry?.label || "").toLowerCase().includes("spotify"))?.url || "";
+
+        setProfileForm({
+          displayName: profileRes.displayName || "",
+          bio: profileRes.bio || "",
+          heroBannerUrl: profileRes.heroBannerUrl || profileRes.coverImageUrl || "",
+          tagline: profileRes.tagline || "",
+          genresRaw: Array.isArray(profileRes.genres) ? profileRes.genres.join(", ") : "",
+          youtube,
+          spotify,
+        });
       } else {
         setTracks([]);
         setBooks([]);
         setAlbums([]);
+        setVideos([]);
       }
-      return profileRes || null;
     } catch (err) {
-      setError(err.message || "Failed to load dashboard");
-      return null;
+      setPageError(err.message || "Failed to load creator dashboard.");
     } finally {
       setLoading(false);
     }
@@ -154,1052 +226,460 @@ export default function CreatorDashboardMVP() {
     loadDashboard();
   }, [loadDashboard]);
 
-  const releaseObjectUrls = (urls = {}) => {
-    Object.values(urls).forEach((value) => {
-      if (value) {
-        URL.revokeObjectURL(value);
-      }
-    });
-  };
-
-  useEffect(() => {
-    trackFileUrlRef.current = trackFileUrls;
-  }, [trackFileUrls]);
-
-  useEffect(() => {
-    bookFileUrlRef.current = bookFileUrls;
-  }, [bookFileUrls]);
-
-  useEffect(() => {
-    albumCoverUrlRef.current = albumCoverUrl;
-  }, [albumCoverUrl]);
-
-  useEffect(() => {
-    return () => {
-      releaseObjectUrls(trackFileUrlRef.current);
-      releaseObjectUrls(bookFileUrlRef.current);
-      if (albumCoverUrlRef.current) {
-        URL.revokeObjectURL(albumCoverUrlRef.current);
-      }
+  const stats = useMemo(() => {
+    const total = Number(sales.totalRevenue || 0);
+    const withdrawn = Math.round(total * 0.35);
+    const pending = Math.round(total * 0.25);
+    const available = Math.max(0, total - withdrawn - pending);
+    return {
+      available,
+      pending,
+      withdrawn,
+      total,
     };
-  }, []);
+  }, [sales.totalRevenue]);
 
-  useEffect(() => {
-    return () => {
-      if (trackStatusTimerRef.current) {
-        clearTimeout(trackStatusTimerRef.current);
-      }
-    };
-  }, []);
+  const profileAvatar = resolveImage(creator?.user?.avatar || creator?.avatarUrl) || "/avatar.png";
+  const profileName = creator?.displayName || creator?.user?.name || "Creator";
 
-  const showTrackStatus = useCallback((message) => {
-    setTrackStatus(message || "");
-    if (trackStatusTimerRef.current) {
-      clearTimeout(trackStatusTimerRef.current);
-    }
-    if (message) {
-      trackStatusTimerRef.current = setTimeout(() => setTrackStatus(""), 6000);
-    }
-  }, []);
-
-  const handleTrackFileChange = (name, file) => {
-    setTrackFiles((prev) => ({ ...prev, [name]: file || null }));
-    setTrackFileUrls((prev) => {
-      if (prev[name]) {
-        URL.revokeObjectURL(prev[name]);
-      }
-      return { ...prev, [name]: file ? URL.createObjectURL(file) : "" };
-    });
-  };
-
-  const resetTrackFileUploads = () => {
-    releaseObjectUrls(trackFileUrls);
-    setTrackFiles({ audio: null, preview: null, cover: null });
-    setTrackFileUrls({ audio: "", preview: "", cover: "" });
-  };
-
-  const handleBookFileChange = (name, file) => {
-    setBookFiles((prev) => ({ ...prev, [name]: file || null }));
-    setBookFileUrls((prev) => {
-      if (prev[name]) {
-        URL.revokeObjectURL(prev[name]);
-      }
-      return { ...prev, [name]: file ? URL.createObjectURL(file) : "" };
-    });
-  };
-
-  const resetBookFileUploads = () => {
-    releaseObjectUrls(bookFileUrls);
-    setBookFiles({ cover: null, content: null });
-    setBookFileUrls({ cover: "", content: "" });
-  };
-
-  const formatBytes = (value = 0) => {
-    const size = Number(value || 0);
-    if (size <= 0) return "0 B";
-    const units = ["B", "KB", "MB", "GB"];
-    const unitIndex = Math.min(Math.floor(Math.log(size) / Math.log(1024)), units.length - 1);
-    const readable = size / (1024 ** unitIndex);
-    return `${readable.toFixed(readable >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
-  };
-
-  const resetAlbumUploads = () => {
-    if (albumCoverUrl) {
-      URL.revokeObjectURL(albumCoverUrl);
-    }
-    setAlbumCoverFile(null);
-    setAlbumCoverUrl("");
-    setAlbumSongs([]);
-    setAlbumPreviews([]);
-    setAlbumProgress(0);
-    setAlbumCurrentFile("");
-  };
-
-  const validateAlbumForm = () => {
-    const albumTitle = albumForm.albumTitle.trim();
-    const price = Number(albumForm.price);
-    if (!albumTitle) {
-      return "Album title is required.";
-    }
-    if (!Number.isFinite(price) || price < 0) {
-      return "Price must be a valid non-negative number.";
-    }
-    if (!albumCoverFile) {
-      return "Cover image is required.";
-    }
-    if (albumSongs.length < 1) {
-      return "Add at least one song.";
-    }
-    if (albumSongs.length > 25) {
-      return "You can upload a maximum of 25 songs per album.";
-    }
-    return "";
-  };
-
-  const onAlbumCoverChange = (file) => {
-    if (albumCoverUrl) {
-      URL.revokeObjectURL(albumCoverUrl);
-    }
-    setAlbumCoverFile(file || null);
-    setAlbumCoverUrl(file ? URL.createObjectURL(file) : "");
-  };
-
-  const onAlbumSongsChange = (fileList) => {
-    const files = Array.from(fileList || []);
-    if (files.length > 25) {
-      setError("You can upload a maximum of 25 songs per album.");
-      setAlbumSongs(files.slice(0, 25));
-      return;
-    }
-    setAlbumSongs(files);
-  };
-
-  const onAlbumPreviewsChange = (fileList) => {
-    const files = Array.from(fileList || []);
-    setAlbumPreviews(files.slice(0, 25));
-  };
-
-  const removeAlbumSong = (indexToRemove) => {
-    setAlbumSongs((prev) => prev.filter((_, index) => index !== indexToRemove));
-    setAlbumPreviews((prev) => prev.filter((_, index) => index !== indexToRemove));
-  };
-
-  const hasCreator = Boolean(creator?._id);
-
-  const submitCreatorProfile = async (event) => {
+  const saveProfile = async (event) => {
     event.preventDefault();
     setProfileSaving(true);
-    setError("");
+    setPageError("");
     try {
-      const profile = await upsertCreatorProfile({
-        ...creatorForm,
+      const genres = profileForm.genresRaw
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .slice(0, 12);
+      const links = [
+        profileForm.youtube ? { label: "YouTube", url: profileForm.youtube.trim() } : null,
+        profileForm.spotify ? { label: "Spotify", url: profileForm.spotify.trim() } : null,
+      ].filter(Boolean);
+
+      const payload = await upsertCreatorProfile({
+        displayName: profileForm.displayName.trim(),
+        bio: profileForm.bio.trim(),
+        heroBannerUrl: profileForm.heroBannerUrl.trim(),
+        coverImageUrl: profileForm.heroBannerUrl.trim(),
+        tagline: profileForm.tagline.trim(),
+        genres,
+        links,
         onboardingComplete: true,
       });
-      setCreator(profile);
-      setCreatorForm(defaultCreatorForm);
-      const refreshed = await loadDashboard();
-      if (refreshed?.creatorReady && refreshed?._id) {
-        navigate(`/creators/${refreshed._id}`);
-      }
+      setCreator(payload);
+      await loadDashboard();
     } catch (err) {
-      setError(err.message || "Failed to save creator profile");
+      setPageError(err.message || "Failed to save profile.");
     } finally {
       setProfileSaving(false);
     }
   };
 
-  const handlePaymentLaunch = async (itemType, itemId) => {
-    setPaymentLoading(true);
-    setError("");
-    try {
-      const payment = await initPayment({
-        itemType,
-        itemId,
-        returnUrl: window.location.href,
-      });
-
-      if (payment?.authorization_url) {
-        window.open(payment.authorization_url, "_blank");
-      } else {
-        setError("Unable to start payment right now.");
-      }
-    } catch (err) {
-      setError(err.message || "Failed to create payment link");
-    } finally {
-      setPaymentLoading(false);
-    }
-  };
-
   const submitTrack = async (event) => {
     event.preventDefault();
-    setTrackSaving(true);
-    setError("");
+    setTrackStatus("");
+    setTrackError("");
+    setTrackProgress(0);
     try {
-      const trimmedTitle = trackForm.title.trim();
-      const trimmedDescription = trackForm.description.trim();
-      const price = Number(trackForm.price);
-      const durationSec = Number(trackForm.durationSec || 0);
-    const needsUpload = Boolean(trackFiles.audio || trackFiles.preview || trackFiles.cover);
+      const form = new FormData();
+      form.append("title", trackForm.title.trim());
+      form.append("description", trackForm.description.trim());
+      form.append("price", String(Number(trackForm.price || 0)));
+      form.append("kind", "music");
+      if (trackFiles.audio) form.append("audio", trackFiles.audio);
+      if (trackFiles.preview) form.append("preview", trackFiles.preview);
+      if (trackFiles.cover) form.append("cover", trackFiles.cover);
+      if (!trackFiles.audio) throw new Error("Full audio file is required.");
 
-      const payload = needsUpload
-        ? (() => {
-            const form = new FormData();
-            form.append("title", trimmedTitle);
-            form.append("description", trimmedDescription);
-            form.append("price", String(price));
-            form.append("durationSec", String(durationSec));
-            if (trackFiles.audio) {
-              form.append("audio", trackFiles.audio);
-            } else if (trackForm.audioUrl.trim()) {
-              form.append("audioUrl", trackForm.audioUrl.trim());
-            }
-            if (trackFiles.preview) {
-              form.append("preview", trackFiles.preview);
-            } else if (trackForm.previewUrl.trim()) {
-              form.append("previewUrl", trackForm.previewUrl.trim());
-            }
-            if (trackFiles.cover) {
-              form.append("cover", trackFiles.cover);
-            } else if (trackForm.coverImageUrl.trim()) {
-              form.append("coverImageUrl", trackForm.coverImageUrl.trim());
-            }
-            return form;
-          })()
-        : {
-            title: trimmedTitle,
-            description: trimmedDescription,
-            price,
-            durationSec,
-            audioUrl: trackForm.audioUrl.trim(),
-            previewUrl: trackForm.previewUrl.trim(),
-            coverImageUrl: trackForm.coverImageUrl.trim(),
-          };
-
-      await createTrack(payload);
-      setTrackForm(defaultTrackForm);
-      resetTrackFileUploads();
-      const refreshed = await loadDashboard();
-      showTrackStatus("Track uploaded; preview and payment links are now live on your feed.");
-      if (refreshed?.creatorReady && refreshed?._id) {
-        navigate(`/creators/${refreshed._id}`);
-      }
+      await createTrackWithUploadProgress(form, {
+        onProgress: (percent) => setTrackProgress(Number(percent || 0)),
+      });
+      setTrackForm(TRACK_DEFAULT);
+      setTrackFiles({ audio: null, preview: null, cover: null });
+      setTrackStatus("Track published successfully.");
+      await loadDashboard();
     } catch (err) {
-      setError(err.message || "Failed to create track");
-    } finally {
-      setTrackSaving(false);
+      setTrackError(err.message || "Track upload failed.");
     }
   };
 
   const submitBook = async (event) => {
     event.preventDefault();
-    setBookSaving(true);
-    setError("");
+    setBookStatus("");
+    setBookError("");
+    setBookProgress(0);
     try {
-      const trimmedTitle = bookForm.title.trim();
-      const trimmedDescription = bookForm.description.trim();
-      const price = Number(bookForm.price);
-      const coverUrl = bookForm.coverImageUrl.trim();
-      const contentUrl = bookForm.contentUrl.trim();
-      if (!bookFiles.content && !contentUrl) {
-        throw new Error("Book content URL or upload is required");
-      }
-      const payload = bookFiles.cover || bookFiles.content
-        ? (() => {
-            const form = new FormData();
-            form.append("title", trimmedTitle);
-            form.append("description", trimmedDescription);
-            form.append("price", String(price));
-            if (coverUrl) {
-              form.append("coverImageUrl", coverUrl);
-            }
-            if (contentUrl) {
-              form.append("contentUrl", contentUrl);
-            }
-            if (bookFiles.cover) {
-              form.append("cover", bookFiles.cover);
-            }
-            if (bookFiles.content) {
-              form.append("content", bookFiles.content);
-            }
-            return form;
-          })()
-        : {
-            title: trimmedTitle,
-            description: trimmedDescription,
-            price,
-            coverImageUrl: coverUrl,
-            contentUrl,
-          };
-      const created = await createBook(payload);
-      setBookForm(defaultBookForm);
-      resetBookFileUploads();
-      setChapterForm((prev) => ({ ...prev, bookId: created?._id || prev.bookId }));
-      const refreshed = await loadDashboard();
-      if (refreshed?.creatorReady && refreshed?._id) {
-        navigate(`/creators/${refreshed._id}`);
-      }
+      if (!bookFiles.content) throw new Error("Book file upload is required.");
+      const form = new FormData();
+      form.append("title", bookForm.title.trim());
+      form.append("description", bookForm.description.trim());
+      form.append("price", String(Number(bookForm.price || 0)));
+      if (bookFiles.cover) form.append("cover", bookFiles.cover);
+      form.append("content", bookFiles.content);
+
+      await createBookWithUploadProgress(form, {
+        onProgress: (percent) => setBookProgress(Number(percent || 0)),
+      });
+      setBookForm(BOOK_DEFAULT);
+      setBookFiles({ cover: null, content: null });
+      setBookStatus("Book published successfully.");
+      await loadDashboard();
     } catch (err) {
-      setError(err.message || "Failed to create book");
-    } finally {
-      setBookSaving(false);
+      setBookError(err.message || "Book upload failed.");
     }
   };
 
   const submitAlbum = async (event) => {
     event.preventDefault();
-    const validationError = validateAlbumForm();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    setAlbumSaving(true);
     setAlbumStatus("");
+    setAlbumError("");
     setAlbumProgress(0);
-    setAlbumCurrentFile("");
-    setError("");
-
     try {
+      if (!albumFiles.cover) throw new Error("Album cover is required.");
+      if (!albumFiles.tracks.length) throw new Error("Upload at least one album song.");
       const form = new FormData();
       form.append("albumTitle", albumForm.albumTitle.trim());
       form.append("description", albumForm.description.trim());
-      form.append("price", String(Number(albumForm.price)));
-      form.append("coverImage", albumCoverFile);
-
-      albumSongs.forEach((song) => {
-        form.append("tracks", song);
-      });
-      albumPreviews.forEach((preview) => {
-        form.append("previews", preview);
-      });
+      form.append("price", String(Number(albumForm.price || 0)));
+      form.append("coverImage", albumFiles.cover);
+      albumFiles.tracks.forEach((file) => form.append("tracks", file));
+      albumFiles.previews.forEach((file) => form.append("previews", file));
 
       await createAlbumWithUploadProgress(form, {
-        onProgress: (percent) => {
-          const safePercent = Math.max(0, Math.min(100, Number(percent || 0)));
-          setAlbumProgress(safePercent);
-          if (albumSongs.length) {
-            const currentIndex = Math.min(
-              albumSongs.length - 1,
-              Math.max(0, Math.floor((safePercent / 100) * albumSongs.length))
-            );
-            const currentName = albumSongs[currentIndex]?.name || "";
-            setAlbumCurrentFile(
-              `Uploading ${Math.min(currentIndex + 1, albumSongs.length)}/${albumSongs.length}${
-                currentName ? `: ${currentName}` : ""
-              }`
-            );
-          }
-        },
+        onProgress: (percent) => setAlbumProgress(Number(percent || 0)),
       });
-
-      setAlbumForm(defaultAlbumForm);
-      resetAlbumUploads();
+      setAlbumForm(ALBUM_DEFAULT);
+      setAlbumFiles({ cover: null, tracks: [], previews: [] });
       setAlbumStatus("Album published successfully.");
       await loadDashboard();
     } catch (err) {
-      setError(err.message || "Failed to publish album");
-    } finally {
-      setAlbumSaving(false);
-      setAlbumCurrentFile("");
-      setAlbumProgress((prev) => (prev < 100 ? prev : 100));
+      setAlbumError(err.message || "Album upload failed.");
     }
   };
 
-  const submitChapter = async (event) => {
+  const submitVideo = async (event) => {
     event.preventDefault();
-    if (!chapterForm.bookId) {
-      setError("Create a book first, then add chapters.");
-      return;
-    }
-
-    setChapterSaving(true);
-    setError("");
+    setVideoStatus("");
+    setVideoError("");
+    setVideoProgress(0);
     try {
-      await createBookChapter(chapterForm.bookId, {
-        title: chapterForm.title,
-        order: Number(chapterForm.order),
-        content: chapterForm.content,
-        isFree: Boolean(chapterForm.isFree),
+      if (!videoFiles.video) throw new Error("Video file is required.");
+      const form = new FormData();
+      form.append("title", videoForm.title.trim());
+      form.append("description", videoForm.description.trim());
+      form.append("price", String(Number(videoForm.price || 0)));
+      form.append("video", videoFiles.video);
+      if (videoFiles.thumbnail) form.append("thumbnail", videoFiles.thumbnail);
+      if (videoFiles.previewClip) form.append("previewClip", videoFiles.previewClip);
+
+      await createCreatorVideoWithUploadProgress(form, {
+        onProgress: (percent) => setVideoProgress(Number(percent || 0)),
       });
-      setChapterForm((prev) => ({
-        ...defaultChapterForm,
-        bookId: prev.bookId,
-      }));
+      setVideoForm(VIDEO_DEFAULT);
+      setVideoFiles({ video: null, thumbnail: null, previewClip: null });
+      setVideoStatus("Video published successfully.");
       await loadDashboard();
     } catch (err) {
-      setError(err.message || "Failed to create chapter");
-    } finally {
-      setChapterSaving(false);
+      setVideoError(err.message || "Video upload failed.");
     }
   };
 
-  const summaryCards = useMemo(
-    () => [
-      { label: "Total sales", value: sales.totalSalesCount || 0 },
-      {
-        label: "Revenue",
-        value: `${sales.currency || "NGN"} ${Number(sales.totalRevenue || 0).toLocaleString()}`,
-      },
-      { label: "Tracks", value: tracks.length },
-      { label: "Albums", value: albums.length },
-      { label: "Books", value: books.length },
-    ],
-    [albums.length, books.length, sales.currency, sales.totalRevenue, sales.totalSalesCount, tracks.length]
-  );
+  const submitPodcast = async (event) => {
+    event.preventDefault();
+    setPodcastStatus("");
+    setPodcastError("");
+    setPodcastProgress(0);
+    try {
+      if (!podcastFiles.audio) throw new Error("Full podcast audio is required.");
+      const isPaid = podcastForm.accessType === "paid";
+      const form = new FormData();
+      form.append("title", podcastForm.title.trim());
+      form.append("description", podcastForm.description.trim());
+      form.append("kind", "podcast");
+      form.append("podcastSeries", podcastForm.podcastSeries.trim());
+      form.append("seasonNumber", String(Number(podcastForm.seasonNumber || 0)));
+      form.append("episodeNumber", String(Number(podcastForm.episodeNumber || 0)));
+      form.append("price", String(isPaid ? Number(podcastForm.price || 0) : 0));
+      form.append("audio", podcastFiles.audio);
+      if (podcastFiles.cover) form.append("cover", podcastFiles.cover);
+      if (podcastFiles.preview) form.append("preview", podcastFiles.preview);
+
+      await createTrackWithUploadProgress(form, {
+        onProgress: (percent) => setPodcastProgress(Number(percent || 0)),
+      });
+      setPodcastForm(PODCAST_DEFAULT);
+      setPodcastFiles({ audio: null, cover: null, preview: null });
+      setPodcastStatus("Podcast published successfully.");
+      await loadDashboard();
+    } catch (err) {
+      setPodcastError(err.message || "Podcast upload failed.");
+    }
+  };
+
+  const archiveContent = async () => {
+    if (!creator?._id) return;
+    const confirmReset = window.confirm(
+      "Archive all currently displayed creator content for a fresh start? This is non-destructive and can be restored manually in database operations."
+    );
+    if (!confirmReset) return;
+    setArchiving(true);
+    setPageError("");
+    try {
+      await archiveMyCreatorContent();
+      await loadDashboard();
+    } catch (err) {
+      setPageError(err.message || "Failed to archive creator content.");
+    } finally {
+      setArchiving(false);
+    }
+  };
+
+  const musicTracks = tracks.filter((entry) => (entry.kind || "music") === "music");
+  const podcastTracks = tracks.filter((entry) => (entry.kind || "music") === "podcast");
 
   if (loading) {
-    return (
-      <div className="mx-auto w-full max-w-6xl px-4 py-10">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-          Loading creator dashboard...
-        </div>
-      </div>
-    );
+    return <div className="crd-shell"><div className="crd-empty">Loading creator dashboard...</div></div>;
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8">
-      <header className="mb-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-900">Creator Dashboard (MVP)</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Upload tracks, publish books with chapters, and monitor paid sales.
-        </p>
-        {creator?._id ? (
-          <button
-            type="button"
-            className="mt-3 rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={() => navigate(`/creators/${creator._id}`)}
-          >
-            View public creator page
-          </button>
-        ) : null}
-      </header>
+    <div className="crd-shell">
+      <aside className="crd-sidebar">
+        <div className="crd-logo">Tengacion</div>
+        <nav className="crd-menu">
+          <button className="active" type="button">Dashboard</button>
+          <button type="button">My Content</button>
+          <button type="button">Earnings</button>
+          <button type="button">Account</button>
+          <button type="button">Support</button>
+        </nav>
+        <div className="crd-submenu-title">Creator tools</div>
+        <nav className="crd-menu secondary">
+          <button type="button">My Content</button>
+          <button type="button">Earnings</button>
+          <button type="button">Payouts</button>
+          <button type="button">Account Settings</button>
+          <button type="button">Support</button>
+        </nav>
+      </aside>
 
-      {error ? (
-        <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {error}
+      <div className="crd-main">
+        <header className="crd-topbar">
+          <div>
+            <h1>Creator Dashboard</h1>
+            <p>Upload and manage premium content for fans.</p>
+          </div>
+          <div className="crd-top-actions">
+            {creator?._id ? (
+              <button type="button" className="ghost" onClick={() => navigate(`/creators/${creator._id}`)}>
+                View Public Creator Page
+              </button>
+            ) : null}
+            <span className="pill">Lagos, Nigeria</span>
+            <button type="button" className="icon" aria-label="Notifications">N</button>
+            <img src={profileAvatar} alt={profileName} />
+          </div>
+        </header>
+
+        {pageError ? <div className="crd-banner error">{pageError}</div> : null}
+
+        <section className="crd-summary-grid">
+          <article><p>Available Balance</p><strong>{fmtMoney(stats.available)}</strong></article>
+          <article><p>Pending Balance</p><strong>{fmtMoney(stats.pending)}</strong></article>
+          <article><p>Withdrawn</p><strong>{fmtMoney(stats.withdrawn)}</strong></article>
+          <article><p>Total Earnings</p><strong>{fmtMoney(stats.total)}</strong></article>
+        </section>
+
+        <div className="crd-layout">
+          <main className="crd-content">
+            <section className="crd-card">
+              <div className="crd-card-head">
+                <h2>Profile and Links</h2>
+                <button type="button" className="warn" onClick={archiveContent} disabled={archiving}>
+                  {archiving ? "Archiving..." : "Archive Existing Content"}
+                </button>
+              </div>
+              <form className="crd-form two" onSubmit={saveProfile}>
+                <input
+                  placeholder="Display name"
+                  value={profileForm.displayName}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, displayName: event.target.value }))}
+                  required
+                />
+                <input
+                  placeholder="Tagline"
+                  value={profileForm.tagline}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, tagline: event.target.value }))}
+                />
+                <textarea
+                  placeholder="Creator bio"
+                  value={profileForm.bio}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, bio: event.target.value }))}
+                  rows={3}
+                />
+                <input
+                  placeholder="Hero/cover image URL"
+                  value={profileForm.heroBannerUrl}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, heroBannerUrl: event.target.value }))}
+                />
+                <input
+                  placeholder="Categories (comma separated)"
+                  value={profileForm.genresRaw}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, genresRaw: event.target.value }))}
+                />
+                <input
+                  placeholder="YouTube URL"
+                  value={profileForm.youtube}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, youtube: event.target.value }))}
+                />
+                <input
+                  placeholder="Spotify URL"
+                  value={profileForm.spotify}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, spotify: event.target.value }))}
+                />
+                <button type="submit" className="primary" disabled={profileSaving}>
+                  {profileSaving ? "Saving..." : "Save Profile"}
+                </button>
+              </form>
+            </section>
+
+            <section className="crd-upload-section">
+              <h2>Upload New Content</h2>
+
+              <article className="crd-card">
+                <h3>Upload Track</h3>
+                <form className="crd-form" onSubmit={submitTrack}>
+                  <input placeholder="Track title" value={trackForm.title} onChange={(e) => setTrackForm((p) => ({ ...p, title: e.target.value }))} required />
+                  <textarea placeholder="Description" value={trackForm.description} onChange={(e) => setTrackForm((p) => ({ ...p, description: e.target.value }))} rows={2} />
+                  <input type="number" min="0" placeholder="Price" value={trackForm.price} onChange={(e) => setTrackForm((p) => ({ ...p, price: e.target.value }))} required />
+                  <div className="crd-grid-3">
+                    <DropZone label="Full audio" description="Drag file or click" accept="audio/*" onChange={(file) => setTrackFiles((p) => ({ ...p, audio: file }))} files={trackFiles.audio ? [trackFiles.audio] : []} />
+                    <DropZone label="Preview sample" description="Optional for free tracks" accept="audio/*" onChange={(file) => setTrackFiles((p) => ({ ...p, preview: file }))} files={trackFiles.preview ? [trackFiles.preview] : []} />
+                    <DropZone label="Cover image" description="Square recommended" accept="image/*" onChange={(file) => setTrackFiles((p) => ({ ...p, cover: file }))} files={trackFiles.cover ? [trackFiles.cover] : []} />
+                  </div>
+                  <button type="submit" className="primary">Publish Track</button>
+                  <ProgressState progress={trackProgress} status={trackStatus} error={trackError} />
+                </form>
+              </article>
+
+              <article className="crd-card">
+                <h3>Create Book</h3>
+                <form className="crd-form" onSubmit={submitBook}>
+                  <input placeholder="Book title" value={bookForm.title} onChange={(e) => setBookForm((p) => ({ ...p, title: e.target.value }))} required />
+                  <textarea placeholder="Description" value={bookForm.description} onChange={(e) => setBookForm((p) => ({ ...p, description: e.target.value }))} rows={2} />
+                  <input type="number" min="0" placeholder="Price" value={bookForm.price} onChange={(e) => setBookForm((p) => ({ ...p, price: e.target.value }))} required />
+                  <div className="crd-grid-2">
+                    <DropZone label="Cover image upload" description="Drag image here" accept="image/*" onChange={(file) => setBookFiles((p) => ({ ...p, cover: file }))} files={bookFiles.cover ? [bookFiles.cover] : []} />
+                    <DropZone label="Book file upload" description="PDF, EPUB, MOBI, TXT" accept=".pdf,.epub,.mobi,.txt" onChange={(file) => setBookFiles((p) => ({ ...p, content: file }))} files={bookFiles.content ? [bookFiles.content] : []} />
+                  </div>
+                  <button type="submit" className="primary">Publish Book</button>
+                  <ProgressState progress={bookProgress} status={bookStatus} error={bookError} />
+                </form>
+              </article>
+
+              <article className="crd-card">
+                <h3>Upload Album</h3>
+                <form className="crd-form" onSubmit={submitAlbum}>
+                  <input placeholder="Album title" value={albumForm.albumTitle} onChange={(e) => setAlbumForm((p) => ({ ...p, albumTitle: e.target.value }))} required />
+                  <textarea placeholder="Description" value={albumForm.description} onChange={(e) => setAlbumForm((p) => ({ ...p, description: e.target.value }))} rows={2} />
+                  <input type="number" min="0" placeholder="Price" value={albumForm.price} onChange={(e) => setAlbumForm((p) => ({ ...p, price: e.target.value }))} required />
+                  <DropZone label="Cover image upload" description="Album art" accept="image/*" onChange={(file) => setAlbumFiles((p) => ({ ...p, cover: file }))} files={albumFiles.cover ? [albumFiles.cover] : []} />
+                  <div className="crd-grid-2">
+                    <DropZone label="Album songs upload" description="Multiple files" accept="audio/*" multiple onChange={(files) => setAlbumFiles((p) => ({ ...p, tracks: files.slice(0, 25) }))} files={albumFiles.tracks} />
+                    <DropZone label="Optional preview samples" description="Optional" accept="audio/*" multiple onChange={(files) => setAlbumFiles((p) => ({ ...p, previews: files.slice(0, 25) }))} files={albumFiles.previews} />
+                  </div>
+                  <button type="submit" className="primary">Publish Album</button>
+                  <ProgressState progress={albumProgress} status={albumStatus} error={albumError} />
+                </form>
+              </article>
+
+              <article className="crd-card">
+                <h3>Upload Music Video</h3>
+                <form className="crd-form" onSubmit={submitVideo}>
+                  <input placeholder="Video title" value={videoForm.title} onChange={(e) => setVideoForm((p) => ({ ...p, title: e.target.value }))} required />
+                  <textarea placeholder="Description" value={videoForm.description} onChange={(e) => setVideoForm((p) => ({ ...p, description: e.target.value }))} rows={2} />
+                  <input type="number" min="0" placeholder="Price" value={videoForm.price} onChange={(e) => setVideoForm((p) => ({ ...p, price: e.target.value }))} required />
+                  <div className="crd-grid-3">
+                    <DropZone label="Video file upload" description="Main video" accept="video/*" onChange={(file) => setVideoFiles((p) => ({ ...p, video: file }))} files={videoFiles.video ? [videoFiles.video] : []} />
+                    <DropZone label="Thumbnail upload" description="Poster image" accept="image/*" onChange={(file) => setVideoFiles((p) => ({ ...p, thumbnail: file }))} files={videoFiles.thumbnail ? [videoFiles.thumbnail] : []} />
+                    <DropZone label="Preview clip upload" description="Short teaser" accept="video/*" onChange={(file) => setVideoFiles((p) => ({ ...p, previewClip: file }))} files={videoFiles.previewClip ? [videoFiles.previewClip] : []} />
+                  </div>
+                  <button type="submit" className="primary">Publish Video</button>
+                  <ProgressState progress={videoProgress} status={videoStatus} error={videoError} />
+                </form>
+              </article>
+
+              <article className="crd-card">
+                <h3>Upload Podcast</h3>
+                <form className="crd-form" onSubmit={submitPodcast}>
+                  <input placeholder="Episode title" value={podcastForm.title} onChange={(e) => setPodcastForm((p) => ({ ...p, title: e.target.value }))} required />
+                  <input placeholder="Podcast series" value={podcastForm.podcastSeries} onChange={(e) => setPodcastForm((p) => ({ ...p, podcastSeries: e.target.value }))} />
+                  <textarea placeholder="Description" value={podcastForm.description} onChange={(e) => setPodcastForm((p) => ({ ...p, description: e.target.value }))} rows={2} />
+                  <div className="crd-grid-3">
+                    <input type="number" min="0" placeholder="Season number" value={podcastForm.seasonNumber} onChange={(e) => setPodcastForm((p) => ({ ...p, seasonNumber: e.target.value }))} />
+                    <input type="number" min="0" placeholder="Episode number" value={podcastForm.episodeNumber} onChange={(e) => setPodcastForm((p) => ({ ...p, episodeNumber: e.target.value }))} />
+                    <select value={podcastForm.accessType} onChange={(e) => setPodcastForm((p) => ({ ...p, accessType: e.target.value }))}>
+                      <option value="free">Free</option>
+                      <option value="paid">Paid</option>
+                    </select>
+                  </div>
+                  {podcastForm.accessType === "paid" ? (
+                    <input type="number" min="0" placeholder="Podcast price" value={podcastForm.price} onChange={(e) => setPodcastForm((p) => ({ ...p, price: e.target.value }))} required />
+                  ) : null}
+                  <div className="crd-grid-3">
+                    <DropZone label="Full audio upload" description="Main episode" accept="audio/*" onChange={(file) => setPodcastFiles((p) => ({ ...p, audio: file }))} files={podcastFiles.audio ? [podcastFiles.audio] : []} />
+                    <DropZone label="Cover image upload" description="Episode art" accept="image/*" onChange={(file) => setPodcastFiles((p) => ({ ...p, cover: file }))} files={podcastFiles.cover ? [podcastFiles.cover] : []} />
+                    <DropZone label="Preview sample upload" description="Teaser sample" accept="audio/*" onChange={(file) => setPodcastFiles((p) => ({ ...p, preview: file }))} files={podcastFiles.preview ? [podcastFiles.preview] : []} />
+                  </div>
+                  <button type="submit" className="primary">Publish Podcast</button>
+                  <ProgressState progress={podcastProgress} status={podcastStatus} error={podcastError} />
+                </form>
+              </article>
+            </section>
+          </main>
+
+          <aside className="crd-right-panel">
+            <section className="crd-card earnings">
+              <h3>Earnings</h3>
+              <div className="crd-week-chart" aria-hidden="true">
+                <span style={{ height: "35%" }} />
+                <span style={{ height: "60%" }} />
+                <span style={{ height: "42%" }} />
+                <span style={{ height: "78%" }} />
+                <span style={{ height: "55%" }} />
+                <span style={{ height: "88%" }} />
+                <span style={{ height: "66%" }} />
+              </div>
+              <ul className="crd-breakdown">
+                <li><span>Music Sales</span><b>{fmtMoney(stats.total * 0.38)}</b></li>
+                <li><span>Book Sales</span><b>{fmtMoney(stats.total * 0.16)}</b></li>
+                <li><span>Video Unlocks</span><b>{fmtMoney(stats.total * 0.19)}</b></li>
+                <li><span>Podcast Streams</span><b>{fmtMoney(stats.total * 0.11)}</b></li>
+                <li><span>Tips</span><b>{fmtMoney(stats.total * 0.16)}</b></li>
+              </ul>
+              <button type="button" className="primary full">Withdraw Earnings</button>
+            </section>
+
+            <section className="crd-card payout">
+              <h3>Payout Account</h3>
+              <p>Connect payout channels to receive creator earnings quickly.</p>
+              <button type="button" className="ghost full">Manage Accounts</button>
+              <button type="button" className="primary full">Add Account</button>
+            </section>
+
+            <section className="crd-card compact">
+              <h3>Published Summary</h3>
+              <ul className="compact-list">
+                <li><span>Singles</span><b>{musicTracks.length}</b></li>
+                <li><span>Podcasts</span><b>{podcastTracks.length}</b></li>
+                <li><span>Albums</span><b>{albums.length}</b></li>
+                <li><span>Books</span><b>{books.length}</b></li>
+                <li><span>Videos</span><b>{videos.length}</b></li>
+              </ul>
+            </section>
+          </aside>
         </div>
-      ) : null}
-
-      <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {summaryCards.map((entry) => (
-          <article key={entry.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-wide text-slate-500">{entry.label}</p>
-            <p className="mt-1 text-xl font-semibold text-slate-900">{entry.value}</p>
-          </article>
-        ))}
-      </section>
-
-      {!hasCreator ? (
-        <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Create your creator profile</h2>
-          <form className="mt-4 grid gap-3" onSubmit={submitCreatorProfile}>
-            <input
-              value={creatorForm.displayName}
-              onChange={(event) =>
-                setCreatorForm((prev) => ({ ...prev, displayName: event.target.value }))
-              }
-              placeholder="Display name"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              required
-            />
-            <textarea
-              value={creatorForm.bio}
-              onChange={(event) =>
-                setCreatorForm((prev) => ({ ...prev, bio: event.target.value }))
-              }
-              placeholder="Bio"
-              rows={3}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-            <input
-              value={creatorForm.coverImageUrl}
-              onChange={(event) =>
-                setCreatorForm((prev) => ({ ...prev, coverImageUrl: event.target.value }))
-              }
-              placeholder="Cover image URL"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-            <button
-              type="submit"
-              disabled={profileSaving}
-              className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-70"
-            >
-              {profileSaving ? "Saving..." : "Create creator profile"}
-            </button>
-          </form>
-        </section>
-      ) : null}
-
-      {hasCreator ? (
-        <>
-          <section className="grid gap-6 lg:grid-cols-2">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Upload Track</h2>
-            <form className="mt-4 grid gap-3" onSubmit={submitTrack}>
-              <input
-                value={trackForm.title}
-                onChange={(event) =>
-                  setTrackForm((prev) => ({ ...prev, title: event.target.value }))
-                }
-                placeholder="Track title"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
-              <textarea
-                value={trackForm.description}
-                onChange={(event) =>
-                  setTrackForm((prev) => ({ ...prev, description: event.target.value }))
-                }
-                placeholder="Description"
-                rows={2}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-              <input
-                value={trackForm.price}
-                onChange={(event) =>
-                  setTrackForm((prev) => ({ ...prev, price: event.target.value }))
-                }
-                placeholder="Price (NGN)"
-                type="number"
-                min="0"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
-              <input
-                value={trackForm.audioUrl}
-                onChange={(event) =>
-                  setTrackForm((prev) => ({ ...prev, audioUrl: event.target.value }))
-                }
-                placeholder="Full audio URL"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required={!trackFiles.audio}
-              />
-              <input
-                value={trackForm.coverImageUrl}
-                onChange={(event) =>
-                  setTrackForm((prev) => ({ ...prev, coverImageUrl: event.target.value }))
-                }
-                placeholder="Cover image URL"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-              <div className="space-y-3 rounded-lg border border-dashed border-slate-300 p-3 text-xs text-slate-600">
-                <p className="text-xs text-slate-500">
-                  Upload audio files or supply links plus a cover image to make your feed entry pop.
-                </p>
-                <input
-                  value={trackForm.previewUrl}
-                  onChange={(event) =>
-                    setTrackForm((prev) => ({ ...prev, previewUrl: event.target.value }))
-                  }
-                  placeholder="Preview URL (required for paid tracks)"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  required={!trackFiles.preview && Number(trackForm.price) > 0}
-                />
-              </div>
-              <div className="space-y-3 rounded-lg border border-dashed border-slate-300 p-3 text-xs text-slate-600">
-                <p>
-                  Upload audio files instead of sharing URLs. The files are stored securely on
-                  Tengacion and work with the preview and payment flow.
-                </p>
-                <label className="block text-xs font-semibold text-slate-700">
-                  Full track file (MP3, WAV)
-                </label>
-                <input
-                  type="file"
-                  accept="audio/*"
-                  onChange={(event) => handleTrackFileChange("audio", event.target.files?.[0])}
-                  className="text-xs"
-                />
-                {trackFileUrls.audio ? (
-                  <audio controls className="w-full" src={trackFileUrls.audio} />
-                ) : null}
-                <label className="block text-xs font-semibold text-slate-700">
-                  Optional preview sample
-                </label>
-                <input
-                  type="file"
-                  accept="audio/*"
-                  onChange={(event) => handleTrackFileChange("preview", event.target.files?.[0])}
-                  className="text-xs"
-                />
-                {trackFileUrls.preview ? (
-                  <audio controls className="w-full" src={trackFileUrls.preview} />
-                ) : null}
-                <label className="block text-xs font-semibold text-slate-700">
-                  Cover image
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) => handleTrackFileChange("cover", event.target.files?.[0])}
-                  className="text-xs"
-                />
-                {trackFileUrls.cover ? (
-                  <img
-                    src={trackFileUrls.cover}
-                    alt="Cover preview"
-                    className="mt-1 h-20 w-20 rounded shadow-sm object-cover"
-                  />
-                ) : null}
-              </div>
-              <input
-                value={trackForm.durationSec}
-                onChange={(event) =>
-                  setTrackForm((prev) => ({ ...prev, durationSec: event.target.value }))
-                }
-                placeholder="Duration in seconds"
-                type="number"
-                min="0"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-              <button
-                type="submit"
-                disabled={trackSaving}
-                className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-70"
-              >
-                {trackSaving ? "Saving..." : "Publish track"}
-              </button>
-              {trackStatus ? (
-                <p className="mt-2 text-xs font-medium text-green-700">{trackStatus}</p>
-              ) : null}
-            </form>
-          </article>
-
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Create Book</h2>
-            <form className="mt-4 grid gap-3" onSubmit={submitBook}>
-              <input
-                value={bookForm.title}
-                onChange={(event) =>
-                  setBookForm((prev) => ({ ...prev, title: event.target.value }))
-                }
-                placeholder="Book title"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
-              <textarea
-                value={bookForm.description}
-                onChange={(event) =>
-                  setBookForm((prev) => ({ ...prev, description: event.target.value }))
-                }
-                placeholder="Description"
-                rows={2}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-              <input
-                value={bookForm.price}
-                onChange={(event) =>
-                  setBookForm((prev) => ({ ...prev, price: event.target.value }))
-                }
-                placeholder="Price (NGN)"
-                type="number"
-                min="0"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
-              <input
-                value={bookForm.coverImageUrl}
-                onChange={(event) =>
-                  setBookForm((prev) => ({ ...prev, coverImageUrl: event.target.value }))
-                }
-                placeholder="Cover image URL"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-              <input
-                value={bookForm.contentUrl}
-                onChange={(event) =>
-                  setBookForm((prev) => ({ ...prev, contentUrl: event.target.value }))
-                }
-                placeholder="Book content URL (PDF, EPUB, etc.)"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required={!bookFiles.content}
-              />
-              <div className="space-y-3 rounded-lg border border-dashed border-slate-300 p-3 text-xs text-slate-600">
-                <p>
-                  Upload a cover image and/or the book file to keep content within Tengacion.
-                  Uploaded files are automatically stored and ready for preview and payments.
-                </p>
-                <label className="block text-xs font-semibold text-slate-700">Cover image</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) => handleBookFileChange("cover", event.target.files?.[0])}
-                  className="text-xs"
-                />
-                {bookFileUrls.cover ? (
-                  <img
-                    src={bookFileUrls.cover}
-                    alt="Cover preview"
-                    className="mt-1 h-20 w-20 rounded object-cover"
-                  />
-                ) : null}
-                <label className="block text-xs font-semibold text-slate-700">Book file</label>
-                <input
-                  type="file"
-                  accept=".pdf,.epub,.mobi,.txt"
-                  onChange={(event) => handleBookFileChange("content", event.target.files?.[0])}
-                  className="text-xs"
-                />
-                {bookFileUrls.content ? (
-                  <a
-                    href={bookFileUrls.content}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs font-semibold text-brand-600 underline"
-                  >
-                    Preview uploaded book file
-                  </a>
-                ) : null}
-              </div>
-              <button
-                type="submit"
-                disabled={bookSaving}
-                className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-70"
-              >
-                {bookSaving ? "Saving..." : "Publish book"}
-              </button>
-            </form>
-          </article>
-
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Upload Album</h2>
-            <form className="mt-4 grid gap-3" onSubmit={submitAlbum}>
-              <input
-                value={albumForm.albumTitle}
-                onChange={(event) =>
-                  setAlbumForm((prev) => ({ ...prev, albumTitle: event.target.value }))
-                }
-                placeholder="Album title"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
-              <textarea
-                value={albumForm.description}
-                onChange={(event) =>
-                  setAlbumForm((prev) => ({ ...prev, description: event.target.value }))
-                }
-                placeholder="Description"
-                rows={2}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-              <input
-                value={albumForm.price}
-                onChange={(event) =>
-                  setAlbumForm((prev) => ({ ...prev, price: event.target.value }))
-                }
-                placeholder="Price (NGN)"
-                type="number"
-                min="0"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
-              <div className="space-y-3 rounded-lg border border-dashed border-slate-300 p-3 text-xs text-slate-600">
-                <label className="block text-xs font-semibold text-slate-700">Cover image</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) => onAlbumCoverChange(event.target.files?.[0])}
-                  className="text-xs"
-                />
-                {albumCoverUrl ? (
-                  <img
-                    src={albumCoverUrl}
-                    alt="Album cover preview"
-                    className="mt-1 h-20 w-20 rounded object-cover"
-                  />
-                ) : null}
-                <label className="block text-xs font-semibold text-slate-700">Album songs</label>
-                <input
-                  type="file"
-                  multiple
-                  accept="audio/mpeg,audio/mp3,audio/wav"
-                  onChange={(event) => onAlbumSongsChange(event.target.files)}
-                  className="text-xs"
-                />
-                <p className="text-xs text-slate-500">{albumSongs.length}/25 selected</p>
-                {albumSongs.length ? (
-                  <ul className="space-y-1">
-                    {albumSongs.map((song, index) => (
-                      <li key={`${song.name}-${index}`} className="flex items-center justify-between gap-2">
-                        <span className="truncate text-xs">
-                          {song.name} <span className="text-slate-400">({formatBytes(song.size)})</span>
-                        </span>
-                        <button
-                          type="button"
-                          className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
-                          onClick={() => removeAlbumSong(index)}
-                        >
-                          Remove
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                <label className="block text-xs font-semibold text-slate-700">Preview samples (optional)</label>
-                <input
-                  type="file"
-                  multiple
-                  accept="audio/mpeg,audio/mp3,audio/wav"
-                  onChange={(event) => onAlbumPreviewsChange(event.target.files)}
-                  className="text-xs"
-                />
-                <p className="text-xs text-slate-500">
-                  If preview count differs from songs, previews will be ignored and can be generated later.
-                </p>
-              </div>
-              {albumSaving ? (
-                <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-2 rounded-full bg-brand-600 transition-all"
-                      style={{ width: `${albumProgress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-slate-600">{albumCurrentFile || `Uploading... ${albumProgress}%`}</p>
-                </div>
-              ) : null}
-              <button
-                type="submit"
-                disabled={albumSaving}
-                className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-70"
-              >
-                {albumSaving ? "Publishing..." : "Publish album"}
-              </button>
-              {albumStatus ? (
-                <p className="text-xs font-medium text-green-700">{albumStatus}</p>
-              ) : null}
-            </form>
-          </article>
-
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
-            <h2 className="text-lg font-semibold text-slate-900">Add Chapter</h2>
-            <form className="mt-4 grid gap-3" onSubmit={submitChapter}>
-              <select
-                value={chapterForm.bookId}
-                onChange={(event) =>
-                  setChapterForm((prev) => ({ ...prev, bookId: event.target.value }))
-                }
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required
-              >
-                <option value="">Select book</option>
-                {books.map((book) => (
-                  <option key={book._id} value={book._id}>
-                    {book.title}
-                  </option>
-                ))}
-              </select>
-              <input
-                value={chapterForm.title}
-                onChange={(event) =>
-                  setChapterForm((prev) => ({ ...prev, title: event.target.value }))
-                }
-                placeholder="Chapter title"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
-              <input
-                value={chapterForm.order}
-                onChange={(event) =>
-                  setChapterForm((prev) => ({ ...prev, order: event.target.value }))
-                }
-                placeholder="Order (1,2,3...)"
-                type="number"
-                min="1"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
-              <textarea
-                value={chapterForm.content}
-                onChange={(event) =>
-                  setChapterForm((prev) => ({ ...prev, content: event.target.value }))
-                }
-                placeholder="Chapter content"
-                rows={6}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
-              <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={chapterForm.isFree}
-                  onChange={(event) =>
-                    setChapterForm((prev) => ({ ...prev, isFree: event.target.checked }))
-                  }
-                />
-                Mark as free preview chapter
-              </label>
-              <button
-                type="submit"
-                disabled={chapterSaving}
-                className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-70"
-              >
-                {chapterSaving ? "Saving..." : "Add chapter"}
-              </button>
-            </form>
-          </article>
-        </section>
-        <section className="mt-6 space-y-6">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Your Tracks</h2>
-              <button
-                type="button"
-                className="text-xs font-medium text-slate-500"
-                onClick={loadDashboard}
-              >
-                Refresh list
-              </button>
-            </div>
-            {tracks.length ? (
-              <div className="mt-4 space-y-4">
-                {tracks.map((track) => {
-                  const coverImage = resolveImage(track.coverImageUrl);
-                  return (
-                    <div
-                      key={track._id}
-                      className="rounded-xl border border-slate-200 p-4 shadow-sm"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="flex-shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-100 shadow-inner">
-                          {coverImage ? (
-                            <img
-                              src={coverImage}
-                              alt={`${track.title} cover`}
-                              className="h-20 w-20 object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-20 w-20 items-center justify-center text-[10px] uppercase text-slate-500">
-                              No cover yet
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <div className="flex items-center justify-between gap-4">
-                            <div>
-                              <p className="text-sm font-semibold text-slate-900">
-                                {track.title}
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                NGN {Number(track.price || 0).toLocaleString()}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              disabled={paymentLoading}
-                              onClick={() => handlePaymentLaunch("track", track._id)}
-                              className="rounded-full border border-brand-200 px-3 py-1 text-xs font-semibold text-brand-600 disabled:opacity-60"
-                            >
-                              {paymentLoading ? "Preparing..." : "Payment link"}
-                            </button>
-                          </div>
-                          {track.description ? (
-                            <p className="text-xs text-slate-500">{track.description}</p>
-                          ) : null}
-                        </div>
-                      </div>
-                      {(track.previewUrl || track.audioUrl) && (
-                        <audio
-                          controls
-                          src={track.previewUrl || track.audioUrl}
-                          className="mt-3 w-full"
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-slate-500">No tracks published yet.</p>
-            )}
-          </article>
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Published Books</h2>
-              <button
-                type="button"
-                className="text-xs font-medium text-slate-500"
-                onClick={loadDashboard}
-              >
-                Refresh list
-              </button>
-            </div>
-            {books.length ? (
-              <div className="mt-4 space-y-4">
-                {books.map((book) => (
-                  <div
-                    key={book._id}
-                    className="space-y-2 rounded-xl border border-slate-200 p-4 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-900">{book.title}</p>
-                        {book.description ? (
-                          <p className="text-xs text-slate-500">{book.description}</p>
-                        ) : null}
-                        <p className="text-xs text-slate-500">
-                          NGN {Number(book.price || 0).toLocaleString()}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={paymentLoading}
-                        onClick={() => handlePaymentLaunch("book", book._id)}
-                        className="rounded-full border border-brand-200 px-3 py-1 text-xs font-semibold text-brand-600 disabled:opacity-60"
-                      >
-                        {paymentLoading ? "Preparing..." : "Payment link"}
-                      </button>
-                    </div>
-                    {book.coverImageUrl ? (
-                      <img
-                        src={book.coverImageUrl}
-                        alt="Book cover"
-                        className="h-24 w-24 rounded object-cover"
-                      />
-                    ) : null}
-                    {book.contentUrl ? (
-                      <a
-                        href={book.contentUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs font-semibold text-brand-600 underline"
-                      >
-                        Open / preview book file
-                      </a>
-                    ) : (
-                      <p className="text-xs text-slate-500">Content URL not provided.</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-slate-500">No books published yet.</p>
-            )}
-          </article>
-        </section>
-      </>
-      ) : null}
+      </div>
     </div>
   );
 }

@@ -76,6 +76,22 @@ const TrackSchema = new mongoose.Schema(
       default: "music",
       index: true,
     },
+    podcastSeries: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 180,
+    },
+    seasonNumber: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    episodeNumber: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     priceGlobal: {
       type: Number,
       default: 0,
@@ -104,6 +120,11 @@ const TrackSchema = new mongoose.Schema(
     isPublished: {
       type: Boolean,
       default: true,
+      index: true,
+    },
+    archivedAt: {
+      type: Date,
+      default: null,
       index: true,
     },
     likesCount: {

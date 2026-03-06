@@ -96,6 +96,8 @@ exports.createBook = asyncHandler(async (req, res) => {
     coverImageUrl,
     contentUrl,
     price,
+    isPublished: true,
+    archivedAt: null,
   });
 
   const hydrated = await Book.findById(book._id)
@@ -174,7 +176,7 @@ exports.getBookById = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid book id" });
   }
 
-  const book = await Book.findById(bookId)
+  const book = await Book.findOne({ _id: bookId, isPublished: { $ne: false }, archivedAt: null })
     .populate({
       path: "creatorId",
       select: "displayName userId",
@@ -206,7 +208,7 @@ exports.getBookChapters = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid book id" });
   }
 
-  const book = await Book.findById(bookId)
+  const book = await Book.findOne({ _id: bookId, isPublished: { $ne: false }, archivedAt: null })
     .populate("creatorId", "userId")
     .lean();
   if (!book) {
@@ -243,7 +245,7 @@ exports.getBookChapterById = asyncHandler(async (req, res) => {
   }
 
   const [book, chapter] = await Promise.all([
-    Book.findById(bookId).populate("creatorId", "userId").lean(),
+    Book.findOne({ _id: bookId, isPublished: { $ne: false }, archivedAt: null }).populate("creatorId", "userId").lean(),
     Chapter.findOne({ _id: chapterId, bookId }).lean(),
   ]);
 

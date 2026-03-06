@@ -1,46 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import {
-  createCheckout,
-  getCreatorHub,
-  getDownloadUrl,
-  getStreamUrl,
-  getMyEntitlementsForCreator,
-  getProfile,
-  getContinueListening,
-  toggleFollowCreator,
-} from "../api";
-import { useCreatorPlayer } from "../context/CreatorPlayerContext";
-import CreatorHubLayout from "../components/creatorHub/CreatorHubLayout";
-import CreatorHubHomeSections from "../components/creatorHub/CreatorHubHomeSections";
-import MiniPlayer from "../components/creatorHub/MiniPlayer";
-import QueueDrawer from "../components/creatorHub/QueueDrawer";
-import styles from "../components/creatorHub/CreatorHub.module.css";
+import { createCheckout, getCreatorHub, getProfile, getStreamUrl, resolveImage, toggleFollowCreator } from "../api";
+import "./creator-redesign.css";
 
-const CURRENCY_KEY = "creator_hub_currency_mode";
+const NAV_ITEMS = ["Home", "Music", "Videos", "Save", "Tip", "Buy", "More"];
 
-const getTabFromPath = (pathname = "") => {
-  if (pathname.endsWith("/music")) return "music";
-  if (pathname.endsWith("/albums")) return "albums";
-  if (pathname.endsWith("/podcasts")) return "podcasts";
-  if (pathname.endsWith("/books")) return "books";
-  if (pathname.endsWith("/comedy")) return "comedy";
-  if (pathname.endsWith("/store")) return "store";
-  return "home";
-};
+const money = (value) => `NGN ${Number(value || 0).toLocaleString()}`;
 
-const mapPlayable = (entry, creator) => ({
-  id: entry.id,
-  title: entry.title,
-  coverUrl: entry.coverUrl,
-  creatorName: creator?.displayName || "Creator",
-  type: entry.kind === "podcast" ? "podcast" : "song",
-  streamUrl: entry.streamUrl,
-  durationSec: entry.durationSec,
-  creatorId: creator?.id,
-  lockedPreview: !entry.isFree && !entry.canDownload,
-  previewLimitSec: 45,
-});
+const getLinkByLabel = (links, label) =>
+  (Array.isArray(links) ? links : []).find((entry) =>
+    String(entry?.label || "").toLowerCase().includes(String(label || "").toLowerCase())
+  )?.url || "";
 
 export default function CreatorHubPage() {
   const { creatorId } = useParams();
@@ -51,217 +21,157 @@ export default function CreatorHubPage() {
   const [hub, setHub] = useState(null);
   const [viewer, setViewer] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [currencyMode, setCurrencyMode] = useState(() => {
-    try {
-      const stored = localStorage.getItem(CURRENCY_KEY);
-      return stored === "GLOBAL" ? "GLOBAL" : "NG";
-    } catch {
-      return "NG";
-    }
-  });
-  const [entitlements, setEntitlements] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [activeNav, setActiveNav] = useState("Home");
 
-  const activeTab = getTabFromPath(location.pathname);
-
-  const {
-    currentItem,
-    queue,
-    currentIndex,
-    queueOpen,
-    isPlaying,
-    position,
-    duration,
-    volume,
-    unlockRequired,
-    setUnlockRequired,
-    setVolume,
-    setQueueOpen,
-    playItem,
-    playByIndex,
-    playNext,
-    playPrev,
-    togglePlay,
-    seekTo,
-    moveQueueItem,
-    removeQueueItem,
-    setQueue,
-  } = useCreatorPlayer();
-
-  const loadHub = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [hubPayload, mePayload, continueItems, entitlementPayload] = await Promise.all([
-        getCreatorHub(creatorId),
-        getProfile().catch(() => null),
-        getContinueListening(creatorId).catch(() => []),
-        getMyEntitlementsForCreator(creatorId).catch(() => ({ entitlements: [] })),
-      ]);
-
-      const nextHub = {
-        ...hubPayload,
-        sections: {
-          ...(hubPayload?.sections || {}),
-          continueListening:
-            Array.isArray(continueItems) && continueItems.length
-              ? continueItems.map((item) => ({
-                  ...item,
-                  itemId: item.itemId,
-                  type: item.type,
-                }))
-              : hubPayload?.sections?.continueListening || [],
-        },
-      };
-
-      setHub(nextHub);
-      setViewer(mePayload || null);
-      setEntitlements(entitlementPayload?.entitlements || []);
-
-      const viewerId = String(mePayload?._id || mePayload?.id || "");
-      const creatorUserId = String(nextHub?.creator?.userId || "");
-      const followerIds = Array.isArray(mePayload?.following)
-        ? mePayload.following.map((id) => String(id))
-        : [];
-      setIsFollowing(followerIds.includes(creatorUserId));
-
-      if (viewerId && viewerId === creatorUserId) {
-        setIsFollowing(false);
-      }
-    } catch (err) {
-      setError(err.message || "Failed to load creator hub");
-    } finally {
-      setLoading(false);
-    }
-  }, [creatorId]);
+  const [queue, setQueue] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(-1);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef(null);
 
   useEffect(() => {
-    loadHub();
-  }, [loadHub]);
+    const path = String(location.pathname || "").toLowerCase();
+    if (path.endsWith("/music")) setActiveNav("Music");
+    else if (path.endsWith("/videos")) setActiveNav("Videos");
+    else if (path.endsWith("/buy") || path.endsWith("/store")) setActiveNav("Buy");
+    else setActiveNav("Home");
+  }, [location.pathname]);
 
-  const isOwner = useMemo(() => {
-    const viewerId = String(viewer?._id || viewer?.id || "");
-    const creatorUserId = String(hub?.creator?.userId || "");
-    return Boolean(viewerId && creatorUserId && viewerId === creatorUserId);
-  }, [hub?.creator?.userId, viewer?._id, viewer?.id]);
-
-  const sectionItems = useMemo(() => {
-    const sections = hub?.sections || {};
-    if (activeTab === "music") return sections.allMusic || [];
-    if (activeTab === "albums") return sections.allAlbums || [];
-    if (activeTab === "podcasts") return sections.allPodcasts || [];
-    if (activeTab === "books") return sections.allBooks || [];
-    if (activeTab === "comedy") return sections.allComedy || [];
-    if (activeTab === "store") {
-      const paidMusic = (sections.allMusic || []).filter((item) => !item.isFree);
-      const paidAlbums = (sections.allAlbums || []).filter((item) => !item.isFree);
-      const paidBooks = (sections.allBooks || []).filter((item) => item.purchaseRequired);
-      const paidComedy = (sections.allComedy || []).filter((item) => !item.isFree);
-      return [...paidMusic, ...paidAlbums, ...paidBooks, ...paidComedy];
-    }
-    return [];
-  }, [activeTab, hub?.sections]);
-
-  const filteredSectionItems = useMemo(() => {
-    const query = String(searchTerm || "").trim().toLowerCase();
-    if (!query) return sectionItems;
-    return sectionItems.filter((entry) =>
-      String(entry?.title || "").toLowerCase().includes(query)
-    );
-  }, [searchTerm, sectionItems]);
-
-  const handleCurrencyMode = (mode) => {
-    const next = mode === "GLOBAL" ? "GLOBAL" : "NG";
-    setCurrencyMode(next);
-    try {
-      localStorage.setItem(CURRENCY_KEY, next);
-    } catch {
-      // ignore
-    }
-  };
-
-  const hydrateStream = async (item) => {
-    const itemType = item?.type === "podcast"
-      ? "podcast"
-      : item?.type === "video"
-        ? "video"
-        : "song";
-    if (!item?.id) return item;
-    try {
-      const streamPayload = await getStreamUrl(itemType, item.id);
-      if (streamPayload?.streamUrl) {
-        return {
-          ...item,
-          streamUrl: streamPayload.streamUrl,
-          lockedPreview: Boolean(streamPayload.previewOnly),
-        };
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const [hubData, me] = await Promise.all([getCreatorHub(creatorId), getProfile().catch(() => null)]);
+        if (!alive) return;
+        setHub(hubData);
+        setViewer(me || null);
+        const creatorUserId = String(hubData?.creator?.userId || "");
+        const following = Array.isArray(me?.following) ? me.following.map((id) => String(id)) : [];
+        setIsFollowing(Boolean(creatorUserId && following.includes(creatorUserId)));
+      } catch (err) {
+        if (!alive) return;
+        setError(err.message || "Failed to load creator page.");
+      } finally {
+        if (alive) setLoading(false);
       }
-    } catch {
-      // Non-fatal: fallback to stream URL from creator payload.
+    };
+    load();
+    return () => {
+      alive = false;
+    };
+  }, [creatorId]);
+
+  const creator = hub?.creator || null;
+
+  const singles = useMemo(
+    () => (Array.isArray(hub?.tracks) ? hub.tracks : []).filter((entry) => String(entry.kind || "music") === "music"),
+    [hub?.tracks]
+  );
+
+  const podcasts = useMemo(
+    () => Array.isArray(hub?.podcasts) ? hub.podcasts : [],
+    [hub?.podcasts]
+  );
+
+  const albums = useMemo(() => (Array.isArray(hub?.albums) ? hub.albums : []), [hub?.albums]);
+  const books = useMemo(() => (Array.isArray(hub?.books) ? hub.books : []), [hub?.books]);
+  const videos = useMemo(() => (Array.isArray(hub?.videos) ? hub.videos : []), [hub?.videos]);
+
+  const playlist = useMemo(
+    () => [
+      ...singles.map((entry) => ({
+        id: entry.id,
+        itemType: "song",
+        title: entry.title,
+        creatorName: creator?.displayName || "Creator",
+        coverUrl: entry.coverUrl,
+        streamUrl: entry.streamUrl,
+        isFree: entry.isFree,
+      })),
+      ...podcasts.map((entry) => ({
+        id: entry.id,
+        itemType: "podcast",
+        title: entry.title,
+        creatorName: creator?.displayName || "Creator",
+        coverUrl: entry.coverUrl,
+        streamUrl: entry.streamUrl,
+        isFree: entry.isFree,
+      })),
+    ],
+    [creator?.displayName, podcasts, singles]
+  );
+
+  const current = currentIndex >= 0 ? queue[currentIndex] : null;
+
+  const playQueueItem = async (item, index, fullQueue = playlist) => {
+    if (!item?.id) return;
+    try {
+      const streamPayload = await getStreamUrl(item.itemType, item.id).catch(() => null);
+      const nextItem = {
+        ...item,
+        streamUrl: streamPayload?.streamUrl || item.streamUrl || "",
+      };
+      if (!nextItem.streamUrl) {
+        throw new Error("Preview unavailable.");
+      }
+      setQueue(fullQueue);
+      setCurrentIndex(index);
+      if (audioRef.current) {
+        audioRef.current.src = nextItem.streamUrl;
+        await audioRef.current.play();
+        setIsPlaying(true);
+      }
+    } catch (err) {
+      alert(err.message || "Playback unavailable right now.");
     }
-    return item;
   };
 
-  const handlePlay = async (item, queueItems = null) => {
-    const hydratedItem = await hydrateStream(item);
-    if (queueItems) {
-      const hydratedQueue = await Promise.all(queueItems.map((entry) => hydrateStream(entry)));
-      await playItem(hydratedItem, hydratedQueue);
+  const togglePlay = async () => {
+    if (!audioRef.current) return;
+    if (!current && playlist.length) {
+      await playQueueItem(playlist[0], 0, playlist);
       return;
     }
-    await playItem(hydratedItem);
+    if (audioRef.current.paused) {
+      await audioRef.current.play();
+      setIsPlaying(true);
+    } else {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
   };
 
-  const openCheckout = async (itemType, itemId) => {
+  const playNext = async () => {
+    if (!queue.length) return;
+    const next = (currentIndex + 1) % queue.length;
+    await playQueueItem(queue[next], next, queue);
+  };
+
+  const playPrev = async () => {
+    if (!queue.length) return;
+    const prev = (currentIndex - 1 + queue.length) % queue.length;
+    await playQueueItem(queue[prev], prev, queue);
+  };
+
+  const handleBuy = async (itemType, itemId) => {
     try {
-      const checkout = await createCheckout({ itemType, itemId, currencyMode });
+      const checkout = await createCheckout({ itemType, itemId, currencyMode: "NG" });
       if (checkout?.checkoutUrl) {
         window.open(checkout.checkoutUrl, "_blank", "noopener,noreferrer");
       }
     } catch (err) {
-      alert(err.message || "Unable to create checkout");
+      alert(err.message || "Checkout unavailable.");
     }
   };
 
-  const openDownload = async (itemType, itemId) => {
-    try {
-      const payload = await getDownloadUrl(itemType, itemId);
-      if (payload?.downloadUrl) {
-        window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
-      }
-    } catch (err) {
-      alert(err.message || "Download unavailable");
-    }
-  };
-
-  const handleItemMenu = (item) => {
-    const url = `${window.location.origin}/creators/${creatorId}`;
-    const choice = window.prompt("Action: share | copy | report", "copy");
-    if (!choice) return;
-    const action = choice.trim().toLowerCase();
-    if (action === "share") {
-      if (navigator.share) {
-        navigator.share({ title: item.title || "Tengacion", url }).catch(() => null);
-      } else {
-        navigator.clipboard?.writeText(url).catch(() => null);
-      }
-      return;
-    }
-    if (action === "copy") {
-      navigator.clipboard?.writeText(url).catch(() => null);
-      return;
-    }
-    if (action === "report") {
-      alert("Report sent.");
-    }
-  };
-
-  const handleFollowToggle = async () => {
+  const handleFollow = async () => {
     if (!viewer?._id && !viewer?.id) {
-      navigate("/login");
+      navigate("/");
       return;
     }
-
     try {
       const payload = await toggleFollowCreator(creatorId);
       setIsFollowing(Boolean(payload?.following));
@@ -277,206 +187,279 @@ export default function CreatorHubPage() {
           : prev
       );
     } catch (err) {
-      alert(err.message || "Follow action failed");
+      alert(err.message || "Could not follow creator.");
     }
   };
 
-  const handleUnlockCurrent = () => {
-    if (!currentItem?.id) return;
-    const type = currentItem.type === "podcast" ? "podcast" : currentItem.type === "video" ? "video" : "song";
-    openCheckout(type, currentItem.id);
-    setUnlockRequired(false);
-  };
-
-  const runFlow = useCallback(() => {
-    const sections = hub?.sections || {};
-    const source = activeTab === "podcasts" ? sections.allPodcasts : sections.allMusic || [];
-    const flowQueue = source
-      .map((entry) => mapPlayable(entry, hub?.creator))
-      .filter((item) => item.streamUrl);
-    if (flowQueue.length) {
-      setQueue(flowQueue);
-      playItem(flowQueue[0], flowQueue);
-    }
-  }, [activeTab, hub?.creator, hub?.sections, playItem, setQueue]);
+  const youtubeUrl = getLinkByLabel(creator?.links, "youtube");
+  const spotifyUrl = getLinkByLabel(creator?.links, "spotify");
 
   if (loading) {
-    return (
-      <div className={styles.hubPage}>
-        <div className={styles.sectionCard}>Loading Creator Hub...</div>
-      </div>
-    );
+    return <div className="cpub-page"><div className="cpub-empty">Loading creator page...</div></div>;
   }
 
-  if (error || !hub?.creator) {
-    return (
-      <div className={styles.hubPage}>
-        <div className={styles.sectionCard}>{error || "Creator hub unavailable"}</div>
-      </div>
-    );
+  if (error || !creator) {
+    return <div className="cpub-page"><div className="cpub-empty">{error || "Creator page unavailable."}</div></div>;
   }
 
-  const creator = hub.creator;
+  const creatorCover = resolveImage(creator.bannerUrl) || "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1600&q=80";
+  const creatorAvatar = resolveImage(creator.avatarUrl) || "/avatar.png";
 
   return (
-    <>
-      <CreatorHubLayout
-        creator={creator}
-        creatorId={creatorId}
-        activeTab={activeTab}
-        isOwner={isOwner}
-        isFollowing={isFollowing}
-        onToggleFollow={handleFollowToggle}
-        currencyMode={currencyMode}
-        onCurrencyMode={handleCurrencyMode}
-      >
-        {activeTab === "home" ? (
-          <CreatorHubHomeSections
-            sections={hub.sections || {}}
-            creator={creator}
-            currencyMode={currencyMode}
-            onPlay={handlePlay}
-            onViewTab={(tab) => navigate(`/creators/${creatorId}/${tab}`)}
-            onCheckout={openCheckout}
-            onDownload={(book) => openDownload("ebook", book.id)}
-            onMenu={handleItemMenu}
-          />
-        ) : (
-          <div className={styles.mainGrid}>
-            <article className={styles.sectionCard}>
-              <div className={styles.sectionHead}>
-                <h3>{activeTab.toUpperCase()}</h3>
-                <span className={styles.mutedText}>{filteredSectionItems.length} items</span>
-              </div>
-              <input
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Search tracks, albums, books..."
-                className={styles.searchInput}
-              />
-              {filteredSectionItems.length ? (
-                filteredSectionItems.map((entry) => {
-                  const isBook = activeTab === "books" || (activeTab === "store" && entry.purchaseRequired !== undefined);
-                  const isAlbum = activeTab === "albums" || (activeTab === "store" && entry.itemType === "album");
-                  const isVideo = activeTab === "comedy" && !Object.prototype.hasOwnProperty.call(entry, "kind");
-                  return (
-                    <div key={entry.id} className={styles.trackRow}>
-                      <img className={styles.trackCover} src={entry.coverUrl || "/avatar.png"} alt={entry.title} />
-                      <div>
-                        <span className={styles.trackName}>{entry.title}</span>
-                        <span className={styles.trackCreator}>
-                          {isAlbum
-                            ? `${Number(entry.totalTracks || 0)} songs`
-                            : isBook
-                              ? "eBook"
-                              : isVideo
-                                ? "Comedy Video"
-                                : activeTab === "podcasts"
-                                  ? "Podcast"
-                                  : "Track"}
-                        </span>
-                        {(Number(entry.playCount || entry.playsCount || 0) > 0 || Number(entry.purchaseCount || 0) > 0) ? (
-                          <span className={styles.trackCreator}>
-                            {Number(entry.playCount || entry.playsCount || 0).toLocaleString()} plays â€¢ {Number(entry.purchaseCount || 0).toLocaleString()} sales
-                          </span>
-                        ) : null}
-                      </div>
-                      {isAlbum ? (
-                        <button
-                          type="button"
-                          className={styles.ctaBtn}
-                          onClick={() => navigate(`/albums/${entry.id}`)}
-                        >
-                          Open album
-                        </button>
-                      ) : isBook ? (
-                        <button type="button" className={styles.ctaBtn} onClick={() => openDownload("ebook", entry.id)}>Download</button>
-                      ) : (
-                        <button
-                          type="button"
-                          className={styles.playBtn}
-                          onClick={() =>
-                            handlePlay({
-                              id: entry.id,
-                              title: entry.title,
-                              coverUrl: entry.coverUrl,
-                              creatorName: creator.displayName,
-                              type: activeTab === "podcasts" ? "podcast" : isVideo ? "video" : "song",
-                              streamUrl: entry.streamUrl,
-                              durationSec: entry.durationSec,
-                              creatorId: creator.id,
-                              lockedPreview: !entry.isFree && !entry.canDownload,
-                              previewLimitSec: 45,
-                            })
-                          }
-                        >
-                          Play
-                        </button>
-                      )}
-                      {!entry.isFree && (entry.purchaseRequired || !entry.canDownload) ? (
-                        <button
-                          type="button"
-                          className={styles.buyBtn}
-                          onClick={() =>
-                            openCheckout(
-                              isAlbum ? "album" : isBook ? "ebook" : activeTab === "podcasts" ? "podcast" : isVideo ? "video" : "song",
-                              entry.id
-                            )
-                          }
-                        >
-                          Buy
-                        </button>
-                      ) : null}
-                      <button type="button" className={styles.menuBtn} onClick={() => handleItemMenu(entry)}>...</button>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className={styles.mutedText}>No content in this tab yet.</p>
-              )}
-            </article>
-            <article className={styles.sectionCard}>
-              <div className={styles.sectionHead}><h4>Store & Entitlements</h4></div>
-              <p className={styles.mutedText}>Supported providers:</p>
-              <ul>
-                {(hub?.commerce?.supportedPaymentOptions?.[currencyMode] || []).map((provider) => (
-                  <li key={provider}>{provider}</li>
-                ))}
-              </ul>
-              <p className={styles.mutedText} style={{ marginTop: "0.8rem" }}>
-                Purchased items for this creator: {entitlements.length}
-              </p>
-            </article>
+    <div className="cpub-page">
+      <section className="cpub-hero" style={{ backgroundImage: `linear-gradient(130deg, rgba(6,50,29,0.72), rgba(10,82,54,0.62)), url(${creatorCover})` }}>
+        <div className="cpub-hero-media">
+          <img className="cpub-main-image" src={creatorCover} alt={creator.displayName} />
+          <img className="cpub-avatar" src={creatorAvatar} alt={creator.displayName} />
+        </div>
+        <div className="cpub-hero-copy">
+          <h1>
+            {creator.displayName}
+            {creator.verified ? <span className="verify">Verified</span> : null}
+          </h1>
+          <p className="meta">{(Array.isArray(creator.genres) ? creator.genres : []).join(" | ") || "Afrobeat | Author | Comedian"}</p>
+          <p className="stats">
+            {(creator.followersCount || 0).toLocaleString()} followers • {(creator.monthlyListeners || 0).toLocaleString()} supporters
+          </p>
+          <p className="bio">{creator.bio || "Welcome to my official creator page on Tengacion."}</p>
+          <div className="actions">
+            <button type="button" className="primary" onClick={() => (singles[0] ? playQueueItem({
+              id: singles[0].id,
+              itemType: "song",
+              title: singles[0].title,
+              creatorName: creator.displayName,
+              coverUrl: singles[0].coverUrl,
+              streamUrl: singles[0].streamUrl,
+              isFree: singles[0].isFree,
+            }, 0, playlist) : null)}>
+              Stream Latest Single
+            </button>
+            <button type="button" className="ghost" onClick={handleFollow}>{isFollowing ? "Following" : "Follow"}</button>
           </div>
-        )}
-      </CreatorHubLayout>
+        </div>
+      </section>
 
-      <MiniPlayer
-        currentItem={currentItem}
-        isPlaying={isPlaying}
-        position={position}
-        duration={duration}
-        volume={volume}
-        unlockRequired={unlockRequired}
-        onTogglePlay={togglePlay}
-        onPrev={playPrev}
-        onNext={playNext}
-        onSeek={seekTo}
-        onVolume={setVolume}
-        onToggleQueue={() => setQueueOpen((prev) => !prev)}
-        onFlow={runFlow}
-        onUnlock={handleUnlockCurrent}
-      />
+      <nav className="cpub-sticky-nav">
+        {NAV_ITEMS.map((item) => (
+          <button
+            key={item}
+            type="button"
+            className={activeNav === item ? "active" : ""}
+            onClick={() => setActiveNav(item)}
+          >
+            {item}
+          </button>
+        ))}
+      </nav>
 
-      <QueueDrawer
-        open={queueOpen}
-        queue={queue}
-        currentIndex={currentIndex}
-        onClose={() => setQueueOpen(false)}
-        onPlay={playByIndex}
-        onMove={moveQueueItem}
-        onRemove={removeQueueItem}
-      />
-    </>
+      <div className="cpub-layout">
+        <main className="cpub-main-col">
+          <section className="cpub-card">
+            <h2>Spotlight</h2>
+            {singles[0] ? (
+              <div className="spotlight">
+                <img src={resolveImage(singles[0].coverUrl) || "/avatar.png"} alt={singles[0].title} />
+                <div>
+                  <h3>{singles[0].title}</h3>
+                  <p>New Hit Single Out Now!</p>
+                  <button type="button" className="primary" onClick={() => playQueueItem({
+                    id: singles[0].id,
+                    itemType: "song",
+                    title: singles[0].title,
+                    creatorName: creator.displayName,
+                    coverUrl: singles[0].coverUrl,
+                    streamUrl: singles[0].streamUrl,
+                    isFree: singles[0].isFree,
+                  }, 0, playlist)}>
+                    {singles[0].isFree ? "Listen Preview" : "Unlock Full Song"}
+                  </button>
+                </div>
+              </div>
+            ) : <p className="empty">No singles uploaded yet.</p>}
+          </section>
+
+          <section className="cpub-card">
+            <h2>Top Singles</h2>
+            {singles.length ? singles.map((item, index) => (
+              <article key={item.id} className="single-row">
+                <img src={resolveImage(item.coverUrl) || "/avatar.png"} alt={item.title} />
+                <div>
+                  <strong>{item.title}</strong>
+                  <p>{item.isFree ? "Preview available" : "Premium single"}</p>
+                </div>
+                <span>{money(item.priceNGN || 0)}</span>
+                <button type="button" className="ghost" onClick={() => playQueueItem({
+                  id: item.id,
+                  itemType: "song",
+                  title: item.title,
+                  creatorName: creator.displayName,
+                  coverUrl: item.coverUrl,
+                  streamUrl: item.streamUrl,
+                  isFree: item.isFree,
+                }, index, playlist)}>{item.isFree ? "Listen Preview" : "Unlock"}</button>
+                {!item.isFree ? <button type="button" className="primary" onClick={() => handleBuy("song", item.id)}>Buy Now</button> : null}
+              </article>
+            )) : <p className="empty">No singles uploaded yet.</p>}
+          </section>
+
+          <section className="cpub-card">
+            <h2>Albums</h2>
+            {albums.length ? (
+              <div className="tile-grid">
+                {albums.map((album) => (
+                  <article key={album.id} className="tile">
+                    <img src={resolveImage(album.coverUrl) || "/avatar.png"} alt={album.title} />
+                    <strong>{album.title}</strong>
+                    <p>{money(album.priceNGN || 0)} • {Number(album.totalTracks || 0)} tracks</p>
+                    <div className="tile-actions">
+                      <button type="button" className="ghost" onClick={() => navigate(`/albums/${album.id}`)}>Preview</button>
+                      <button type="button" className="primary" onClick={() => handleBuy("album", album.id)}>Buy</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : <p className="empty">No albums uploaded yet.</p>}
+          </section>
+
+          <section className="cpub-card">
+            <h2>Books</h2>
+            {books.length ? (
+              <div className="tile-grid">
+                {books.map((book) => (
+                  <article key={book.id} className="tile">
+                    <img src={resolveImage(book.coverUrl) || "/avatar.png"} alt={book.title} />
+                    <strong>{book.title}</strong>
+                    <p>{money(book.priceNGN || 0)}</p>
+                    <div className="tile-actions">
+                      <a className="ghost" href={book.previewPdfUrl || "#"} target="_blank" rel="noreferrer">Read Sample</a>
+                      {!book.isFreePreview ? <button type="button" className="primary" onClick={() => handleBuy("ebook", book.id)}>Buy Book</button> : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : <p className="empty">No books uploaded yet.</p>}
+          </section>
+
+          <section className="cpub-card">
+            <h2>Videos</h2>
+            {videos.length ? (
+              <div className="tile-grid">
+                {videos.map((video) => (
+                  <article key={video.id} className="tile">
+                    <img src={resolveImage(video.coverUrl) || "/avatar.png"} alt={video.title} />
+                    <strong>{video.title}</strong>
+                    <p>{money(video.priceNGN || 0)}</p>
+                    <div className="tile-actions">
+                      <a className="ghost" href={video.previewUrl || video.streamUrl || "#"} target="_blank" rel="noreferrer">Watch Preview</a>
+                      {!video.isFree ? <button type="button" className="primary" onClick={() => handleBuy("video", video.id)}>Unlock Video</button> : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : <p className="empty">No videos uploaded yet.</p>}
+          </section>
+
+          <section className="cpub-card">
+            <h2>Podcasts</h2>
+            {podcasts.length ? podcasts.map((podcast) => (
+              <article key={podcast.id} className="single-row">
+                <img src={resolveImage(podcast.coverUrl) || "/avatar.png"} alt={podcast.title} />
+                <div>
+                  <strong>{podcast.title}</strong>
+                  <p>{podcast.podcastSeries || "Podcast episode"} • {podcast.isFree ? "Free" : "Paid"}</p>
+                </div>
+                <span>{money(podcast.priceNGN || 0)}</span>
+                <button type="button" className="ghost" onClick={() => playQueueItem({
+                  id: podcast.id,
+                  itemType: "podcast",
+                  title: podcast.title,
+                  creatorName: creator.displayName,
+                  coverUrl: podcast.coverUrl,
+                  streamUrl: podcast.streamUrl,
+                  isFree: podcast.isFree,
+                }, playlist.findIndex((item) => item.id === podcast.id), playlist)}>
+                  {podcast.isFree ? "Play Episode" : "Listen Preview"}
+                </button>
+                {!podcast.isFree ? <button type="button" className="primary" onClick={() => handleBuy("podcast", podcast.id)}>Unlock</button> : null}
+              </article>
+            )) : <p className="empty">No podcasts uploaded yet.</p>}
+          </section>
+
+          <section className="cpub-card">
+            <h2>You May Also Like</h2>
+            <div className="tile-grid">
+              {["Ayo Vibes", "Mina Stories", "Tobi Rhythm"].map((name) => (
+                <article key={name} className="tile related">
+                  <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=320&q=80" alt={name} />
+                  <strong>{name}</strong>
+                  <button type="button" className="ghost">View Creator</button>
+                </article>
+              ))}
+            </div>
+          </section>
+        </main>
+
+        <aside className="cpub-right-col">
+          <section className="cpub-card">
+            <h3>Official Artist Links</h3>
+            <div className="link-buttons">
+              <a href={youtubeUrl || "https://youtube.com"} target="_blank" rel="noreferrer">Visit YouTube</a>
+              <a href={spotifyUrl || "https://spotify.com"} target="_blank" rel="noreferrer">Visit Spotify</a>
+            </div>
+          </section>
+
+          <section className="cpub-card">
+            <h3>Creator Spotlight Bio</h3>
+            <p>{creator.bio || "No bio provided yet."}</p>
+          </section>
+        </aside>
+      </div>
+
+      <div className="cpub-mini-player">
+        <audio
+          ref={audioRef}
+          onTimeUpdate={() => {
+            const node = audioRef.current;
+            if (!node) return;
+            setProgress(Number(node.currentTime || 0));
+            setDuration(Number(node.duration || 0));
+          }}
+          onEnded={playNext}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+        />
+        <div className="track-meta">
+          <img src={resolveImage(current?.coverUrl) || "/avatar.png"} alt="Now playing" />
+          <div>
+            <strong>{current?.title || "Nothing playing"}</strong>
+            <p>{current?.creatorName || creator.displayName}</p>
+          </div>
+        </div>
+        <div className="controls">
+          <button type="button" onClick={playPrev}>Prev</button>
+          <button type="button" onClick={togglePlay}>{isPlaying ? "Pause" : "Play"}</button>
+          <button type="button" onClick={playNext}>Next</button>
+        </div>
+        <div className="progress-area">
+          <input
+            type="range"
+            min="0"
+            max={Math.max(1, duration || 0)}
+            value={Math.min(progress, duration || 0)}
+            onChange={(event) => {
+              const next = Number(event.target.value || 0);
+              if (audioRef.current) {
+                audioRef.current.currentTime = next;
+              }
+              setProgress(next);
+            }}
+          />
+          <span>{Math.floor(progress)}s / {Math.floor(duration || 0)}s</span>
+        </div>
+        {current && !current.isFree ? (
+          <button type="button" className="unlock" onClick={() => handleBuy(current.itemType, current.id)}>Unlock / Buy</button>
+        ) : null}
+      </div>
+    </div>
   );
 }

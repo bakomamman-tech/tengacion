@@ -130,6 +130,8 @@ exports.createAlbum = asyncHandler(async (req, res) => {
     tracks,
     status: "published",
     totalTracks: tracks.length,
+    isPublished: true,
+    archivedAt: null,
   });
 
   return res.status(201).json({
@@ -145,7 +147,7 @@ exports.getCreatorAlbums = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid creator id" });
   }
 
-  const albums = await Album.find({ creatorId, status: "published" })
+  const albums = await Album.find({ creatorId, status: "published", isPublished: { $ne: false }, archivedAt: null })
     .sort({ createdAt: -1 })
     .lean();
 
@@ -158,7 +160,7 @@ exports.getAlbumById = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid album id" });
   }
 
-  const album = await Album.findById(albumId).lean();
+  const album = await Album.findOne({ _id: albumId, isPublished: { $ne: false }, archivedAt: null }).lean();
   if (!album) {
     return res.status(404).json({ error: "Album not found" });
   }

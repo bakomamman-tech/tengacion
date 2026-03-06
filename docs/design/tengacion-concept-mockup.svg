@@ -1,0 +1,129 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF6EA"/>
+      <stop offset="1" stop-color="#EED7B9"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#D19348"/>
+      <stop offset="1" stop-color="#9E621F"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#6B4217" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <circle cx="260" cy="140" r="220" fill="#FFFFFF" fill-opacity="0.35"/>
+  <circle cx="1410" cy="780" r="270" fill="#DDA96A" fill-opacity="0.2"/>
+
+  <!-- Top nav -->
+  <rect x="24" y="20" width="1552" height="76" rx="22" fill="#F7EAD8" stroke="#D9BA92"/>
+  <text x="56" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700" fill="#5E3A16">Tengacion</text>
+  <rect x="340" y="38" width="500" height="40" rx="20" fill="#FDF4E8" stroke="#DCC2A4"/>
+  <text x="364" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="20" fill="#A08262">Search friends, creators, moments...</text>
+  <g>
+    <rect x="896" y="34" width="120" height="48" rx="24" fill="url(#gold)"/>
+    <text x="937" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="700" fill="white">Home</text>
+  </g>
+  <g>
+    <rect x="1028" y="34" width="138" height="48" rx="24" fill="#C7863C"/>
+    <text x="1062" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="700" fill="white">Live Pulse</text>
+  </g>
+  <circle cx="1518" cy="58" r="22" fill="#E2CCAE"/>
+  <text x="1508" y="67" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#5E3A16">DK</text>
+
+  <!-- Left rail -->
+  <rect x="32" y="116" width="300" height="748" rx="24" fill="#F3E3CF" stroke="#D5B58E"/>
+  <rect x="50" y="140" width="264" height="104" rx="18" fill="url(#gold)" filter="url(#shadow)"/>
+  <circle cx="94" cy="192" r="26" fill="#C9D9F3"/>
+  <text x="84" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="20" fill="#2D4F7A">DK</text>
+  <text x="132" y="187" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700" fill="white">Creator Card</text>
+  <text x="132" y="217" font-family="Segoe UI, Arial, sans-serif" font-size="20" fill="#F7E8D5">Music • Gaming • Live</text>
+  <text x="54" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700" fill="#6A4420">Identity Badges</text>
+  <rect x="50" y="308" width="264" height="72" rx="16" fill="#F9F0E4" stroke="#D7BA94"/>
+  <text x="72" y="352" font-family="Segoe UI, Arial, sans-serif" font-size="24" fill="#7B5730">Top Supporter</text>
+  <rect x="50" y="394" width="264" height="72" rx="16" fill="#F9F0E4" stroke="#D7BA94"/>
+  <text x="72" y="438" font-family="Segoe UI, Arial, sans-serif" font-size="24" fill="#7B5730">Verified Creator</text>
+  <rect x="50" y="480" width="264" height="72" rx="16" fill="#F9F0E4" stroke="#D7BA94"/>
+  <text x="72" y="524" font-family="Segoe UI, Arial, sans-serif" font-size="24" fill="#7B5730">Community Builder</text>
+
+  <!-- Main -->
+  <rect x="352" y="116" width="874" height="748" rx="24" fill="#F6EBDC" stroke="#D5B58E"/>
+  <text x="382" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="36" font-weight="800" fill="#5E3A16">Live Pulse</text>
+  <text x="568" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="22" fill="#8D6A45">What is happening now in your world</text>
+
+  <!-- Live pulse cards -->
+  <rect x="382" y="176" width="264" height="132" rx="18" fill="#FFFAF3" stroke="#DCC1A0"/>
+  <text x="406" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#6A4420">Friend is Live</text>
+  <text x="406" y="252" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#8A6742">Watch now • 120 viewers</text>
+  <rect x="382" y="270" width="112" height="28" rx="14" fill="#E4634F"/>
+  <text x="416" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" fill="white">LIVE</text>
+
+  <rect x="664" y="176" width="264" height="132" rx="18" fill="#FFFAF3" stroke="#DCC1A0"/>
+  <text x="688" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#6A4420">New Creator Drop</text>
+  <text x="688" y="252" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#8A6742">Beat pack released now</text>
+  <rect x="664" y="270" width="130" height="28" rx="14" fill="#C7863C"/>
+  <text x="694" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" fill="white">EXPLORE</text>
+
+  <rect x="946" y="176" width="250" height="132" rx="18" fill="#FFFAF3" stroke="#DCC1A0"/>
+  <text x="970" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#6A4420">Active Chats</text>
+  <text x="970" y="252" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#8A6742">7 convos • 3 unread</text>
+  <rect x="946" y="270" width="112" height="28" rx="14" fill="#4FAF68"/>
+  <text x="969" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" fill="white">OPEN</text>
+
+  <!-- Feed card -->
+  <rect x="382" y="332" width="814" height="460" rx="22" fill="#FFF7EC" stroke="#DCC1A0"/>
+  <text x="412" y="380" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="800" fill="#5E3A16">Contextual Feed</text>
+  <text x="412" y="412" font-family="Segoe UI, Arial, sans-serif" font-size="20" fill="#8D6A45">Actions change based on content type: React • Remix • Share • Join Live</text>
+  <rect x="412" y="438" width="754" height="222" rx="16" fill="#F5E4CE" stroke="#DAB98E"/>
+  <text x="436" y="480" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="700" fill="#6A4420">Now playing with followers</text>
+  <text x="436" y="512" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#8A6742">Drop your reaction or start watch party instantly.</text>
+  <rect x="412" y="686" width="754" height="74" rx="14" fill="#FDF4E8" stroke="#DCC1A0"/>
+  <rect x="430" y="705" width="130" height="36" rx="18" fill="#EBC89F"/>
+  <text x="468" y="729" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#6A4420">React</text>
+  <rect x="572" y="705" width="130" height="36" rx="18" fill="#EBC89F"/>
+  <text x="611" y="729" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#6A4420">Remix</text>
+  <rect x="714" y="705" width="130" height="36" rx="18" fill="#EBC89F"/>
+  <text x="758" y="729" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#6A4420">Share</text>
+  <rect x="856" y="705" width="184" height="36" rx="18" fill="url(#gold)"/>
+  <text x="900" y="729" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="white">Join Live</text>
+
+  <!-- Floating modular messenger -->
+  <g filter="url(#shadow)">
+    <rect x="1038" y="332" width="520" height="370" rx="20" fill="#F8EBD9" stroke="#D6B78F"/>
+    <rect x="1038" y="332" width="520" height="64" rx="20" fill="#EBD8C1"/>
+    <text x="1066" y="372" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="800" fill="#5E3A16">Messenger (Movable)</text>
+    <circle cx="1522" cy="364" r="16" fill="#C7863C"/>
+    <text x="1516" y="371" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="white">x</text>
+    <rect x="1058" y="420" width="182" height="258" rx="14" fill="#F3E2CD" stroke="#D4B28A"/>
+    <text x="1078" y="456" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#6A4420">Chats</text>
+    <rect x="1072" y="474" width="154" height="52" rx="12" fill="#C7863C"/>
+    <text x="1090" y="506" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="white">Admin User</text>
+    <rect x="1072" y="536" width="154" height="52" rx="12" fill="#E7D2B6"/>
+    <text x="1090" y="568" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#6A4420">Demo Friend</text>
+
+    <rect x="1256" y="420" width="282" height="206" rx="14" fill="#FFF5E8" stroke="#D9BB95"/>
+    <text x="1276" y="454" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#6A4420">Hey, this panel can be moved.</text>
+    <rect x="1268" y="476" width="176" height="46" rx="16" fill="#E6D0B3"/>
+    <text x="1284" y="505" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#5E3A16">Like Facebook style</text>
+    <rect x="1268" y="536" width="164" height="46" rx="16" fill="#C7863C"/>
+    <text x="1292" y="565" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="white">Exactly.</text>
+
+    <rect x="1256" y="636" width="282" height="42" rx="12" fill="#F5E7D4" stroke="#D4B48B"/>
+    <text x="1274" y="663" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#8A6742">Aa</text>
+    <rect x="1440" y="642" width="84" height="30" rx="15" fill="url(#gold)"/>
+    <text x="1464" y="662" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" fill="white">Send</text>
+  </g>
+
+  <!-- Docked mini panel -->
+  <g filter="url(#shadow)">
+    <rect x="1280" y="724" width="278" height="122" rx="18" fill="#F8EAD6" stroke="#D5B68E"/>
+    <text x="1302" y="762" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#5E3A16">Watch Together</text>
+    <text x="1302" y="790" font-family="Segoe UI, Arial, sans-serif" font-size="17" fill="#8A6742">Dockable mini panel module</text>
+    <rect x="1302" y="806" width="96" height="24" rx="12" fill="#4FAF68"/>
+    <text x="1328" y="824" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="white">ACTIVE</text>
+  </g>
+
+  <text x="28" y="892" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#7A5731">Concept mockup: Live Pulse + Creator Identity + Modular Messenger + Context Actions</text>
+</svg>

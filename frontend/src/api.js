@@ -537,6 +537,15 @@ export const getCreatorBooks = (creatorId) =>
 export const getCreatorAlbums = (creatorId) =>
   request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/albums`);
 
+export const getCreatorVideos = (creatorId) =>
+  request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/videos`);
+
+export const archiveMyCreatorContent = () =>
+  request(`${API_BASE}/creators/me/archive-content`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
 // ======================================================
 // TRACKS
 // ======================================================
@@ -721,6 +730,14 @@ export const getAlbum = (albumId) =>
     headers: getAuthHeaders(),
   });
 
+export const createCreatorVideoWithUploadProgress = (formData, { onProgress } = {}) =>
+  uploadFormWithProgress({
+    url: `${API_BASE}/videos`,
+    formData,
+    onProgress,
+    timeoutMs: 30 * 60 * 1000,
+  });
+
 export const getMyEntitlementsForCreator = (creatorId) =>
   request(`${API_BASE}/entitlements/me?creatorId=${encodeURIComponent(creatorId || "")}`, {
     headers: getAuthHeaders(),
@@ -861,6 +878,22 @@ export const createPost = (input, maybeFile = null) => {
     });
   });
 };
+
+export const createBookWithUploadProgress = (formData, { onProgress } = {}) =>
+  uploadFormWithProgress({
+    url: `${API_BASE}/books`,
+    formData,
+    onProgress,
+    timeoutMs: 20 * 60 * 1000,
+  });
+
+export const createTrackWithUploadProgress = (formData, { onProgress } = {}) =>
+  uploadFormWithProgress({
+    url: `${API_BASE}/tracks`,
+    formData,
+    onProgress,
+    timeoutMs: 20 * 60 * 1000,
+  });
 
 export const createPostWithUploadProgress = async (
   payload,

@@ -84,6 +84,11 @@ const BookSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    archivedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,

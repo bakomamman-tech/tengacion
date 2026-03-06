@@ -66,6 +66,11 @@ exports.createTrack = asyncHandler(async (req, res) => {
   const description = String(req.body?.description || "").trim();
   const price = Number(req.body?.price);
   const durationSec = Number(req.body?.durationSec || 0);
+  const rawKind = String(req.body?.kind || "music").trim().toLowerCase();
+  const kind = ["music", "podcast", "comedy"].includes(rawKind) ? rawKind : "music";
+  const podcastSeries = String(req.body?.podcastSeries || "").trim();
+  const seasonNumber = Number(req.body?.seasonNumber || 0);
+  const episodeNumber = Number(req.body?.episodeNumber || 0);
 
   if (!title) {
     return res.status(400).json({ error: "title is required" });
@@ -114,6 +119,12 @@ exports.createTrack = asyncHandler(async (req, res) => {
     previewUrl,
     coverImageUrl,
     durationSec: Number.isFinite(durationSec) && durationSec > 0 ? durationSec : 0,
+    kind,
+    podcastSeries: kind === "podcast" ? podcastSeries : "",
+    seasonNumber: kind === "podcast" && Number.isFinite(seasonNumber) ? Math.max(0, seasonNumber) : 0,
+    episodeNumber: kind === "podcast" && Number.isFinite(episodeNumber) ? Math.max(0, episodeNumber) : 0,
+    isPublished: true,
+    archivedAt: null,
   });
 
   const hydrated = await Track.findById(track._id)
@@ -152,7 +163,7 @@ exports.getTrackById = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid track id" });
   }
 
-  const track = await Track.findById(trackId)
+  const track = await Track.findOne({ _id: trackId, isPublished: { $ne: false }, archivedAt: null })
     .populate({
       path: "creatorId",
       select: "displayName userId",
@@ -182,7 +193,7 @@ exports.getTrackStream = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid track id" });
   }
 
-  const track = await Track.findById(trackId)
+  const track = await Track.findOne({ _id: trackId, isPublished: { $ne: false }, archivedAt: null })
     .populate("creatorId", "userId")
     .lean();
 

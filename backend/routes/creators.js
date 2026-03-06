@@ -8,9 +8,12 @@ const {
   getCreatorTracks,
   getCreatorBooks,
   getCreatorAlbums,
+  getCreatorVideos,
   getCreatorHub,
   toggleFollowCreator,
+  archiveMyCreatorContent,
 } = require("../controllers/creatorsController");
+const creatorAuth = require("../middleware/creatorAuth");
 
 const router = express.Router();
 
@@ -24,5 +27,7 @@ router.put("/:creatorId/follow", auth, toggleFollowCreator);
 router.get("/:creatorId/tracks", getCreatorTracks);
 router.get("/:creatorId/books", getCreatorBooks);
 router.get("/:creatorId/albums", getCreatorAlbums);
+router.get("/:creatorId/videos", getCreatorVideos);
+router.post("/me/archive-content", auth, creatorAuth, archiveMyCreatorContent);
 
 module.exports = router;

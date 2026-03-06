@@ -14,6 +14,9 @@ const VideoSchema = new mongoose.Schema({
   price: { type: Number, default: 0, min: 0 },
   priceGlobal: { type: Number, default: 0, min: 0 },
   isFree: { type: Boolean, default: true },
+  previewClipUrl: { type: String, default: "" },
+  isPublished: { type: Boolean, default: true, index: true },
+  archivedAt: { type: Date, default: null, index: true },
   creatorProfileId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "CreatorProfile",

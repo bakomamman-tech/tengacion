@@ -5,6 +5,7 @@ const { MongoMemoryServer } = require("mongodb-memory-server");
 const jwt = require("jsonwebtoken");
 
 process.env.NODE_ENV = "test";
+require("../../apps/api/config/env");
 
 const authRoutes = require("../../apps/api/routes/auth");
 const artistRoutes = require("../../apps/api/routes/artist");
@@ -15,8 +16,36 @@ let mongod;
 let app;
 let authToken;
 
+const issueSessionToken = async (userId) => {
+  const sessionId = new mongoose.Types.ObjectId().toString();
+  await User.updateOne(
+    { _id: userId },
+    {
+      $push: {
+        sessions: {
+          sessionId,
+          createdAt: new Date(),
+          lastSeenAt: new Date(),
+        },
+      },
+    }
+  );
+
+  return jwt.sign(
+    {
+      id: userId.toString(),
+      tv: 0,
+      sid: sessionId,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "2h" }
+  );
+};
+
 beforeAll(async () => {
-  mongod = await MongoMemoryServer.create();
+  mongod = await MongoMemoryServer.create({
+    instance: { launchTimeout: 60000 },
+  });
 
   const uri = mongod.getUri();
 
@@ -44,9 +73,7 @@ beforeEach(async () => {
     isVerified: true,
   });
 
-  authToken = jwt.sign({ id: creator._id }, process.env.JWT_SECRET, {
-    expiresIn: "2h",
-  });
+  authToken = await issueSessionToken(creator._id);
 });
 
 afterAll(async () => {

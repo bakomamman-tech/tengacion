@@ -17,8 +17,36 @@ let app;
 let authToken;
 let artist;
 
+const issueSessionToken = async (userId) => {
+  const sessionId = new mongoose.Types.ObjectId().toString();
+  await User.updateOne(
+    { _id: userId },
+    {
+      $push: {
+        sessions: {
+          sessionId,
+          createdAt: new Date(),
+          lastSeenAt: new Date(),
+        },
+      },
+    }
+  );
+
+  return jwt.sign(
+    {
+      id: userId.toString(),
+      tv: 0,
+      sid: sessionId,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "2h" }
+  );
+};
+
 beforeAll(async () => {
-  mongod = await MongoMemoryServer.create();
+  mongod = await MongoMemoryServer.create({
+    instance: { launchTimeout: 60000 },
+  });
   const uri = mongod.getUri();
 
   await mongoose.connect(uri, {
@@ -40,9 +68,7 @@ beforeEach(async () => {
     email: "feed_artist@test.com",
     password: "Password123!",
   });
-  authToken = jwt.sign({ id: artist._id }, process.env.JWT_SECRET, {
-    expiresIn: "2h",
-  });
+  authToken = await issueSessionToken(artist._id);
 });
 
 afterAll(async () => {

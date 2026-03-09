@@ -153,7 +153,7 @@ TrackSchema.pre("validate", function syncStandardFields(next) {
   if (!this.previewSampleUrl && this.previewUrl) this.previewSampleUrl = this.previewUrl;
   if (!Number.isFinite(this.playsCount) && Number.isFinite(this.playCount)) this.playsCount = this.playCount;
   if (!Number.isFinite(this.playCount) && Number.isFinite(this.playsCount)) this.playCount = this.playsCount;
-  next();
+  if (typeof next === "function") next();
 });
 
 module.exports = mongoose.model("Track", TrackSchema);

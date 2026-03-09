@@ -17,7 +17,9 @@ describe("chat + friend request flow", () => {
   let tokenB;
 
   beforeAll(async () => {
-    mongod = await MongoMemoryServer.create();
+    mongod = await MongoMemoryServer.create({
+      instance: { launchTimeout: 60000 },
+    });
     await mongoose.connect(mongod.getUri(), {
       serverSelectionTimeoutMS: 60000,
       socketTimeoutMS: 60000,

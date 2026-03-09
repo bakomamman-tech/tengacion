@@ -102,7 +102,7 @@ BookSchema.pre("validate", function syncBookFields(next) {
   if (!this.coverUrl && this.coverImageUrl) this.coverUrl = this.coverImageUrl;
   if (!this.contentUrl && this.fileUrl) this.contentUrl = this.fileUrl;
   if (!this.fileUrl && this.contentUrl) this.fileUrl = this.contentUrl;
-  next();
+  if (typeof next === "function") next();
 });
 
 BookSchema.virtual("isFree").get(function isFree() {

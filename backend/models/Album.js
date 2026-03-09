@@ -126,7 +126,7 @@ AlbumSchema.pre("validate", function syncAlbumFields(next) {
   if (this.isPublished && this.status !== "published") {
     this.status = "published";
   }
-  next();
+  if (typeof next === "function") next();
 });
 
 AlbumSchema.virtual("isFree").get(function isFree() {

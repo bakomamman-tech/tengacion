@@ -1471,6 +1471,7 @@ export const adminGetDashboard = (params = {}) => {
   });
   return request(`${API_BASE}/admin/dashboard?${query.toString()}`, {
     headers: getAuthHeaders(),
+    timeoutMs: 45000,
   });
 };
 
@@ -1485,6 +1486,7 @@ export const adminGetAnalyticsOverview = (params = {}) => {
   }
   return request(`${API_BASE}/admin/analytics/overview?${query.toString()}`, {
     headers: getAuthHeaders(),
+    timeoutMs: 45000,
   });
 };
 
@@ -1495,6 +1497,7 @@ export const adminGetAnalyticsUserGrowth = (params = {}) => {
   });
   return request(`${API_BASE}/admin/analytics/user-growth?${query.toString()}`, {
     headers: getAuthHeaders(),
+    timeoutMs: 45000,
   });
 };
 
@@ -1505,6 +1508,7 @@ export const adminGetAnalyticsContentUploads = (params = {}) => {
   });
   return request(`${API_BASE}/admin/analytics/content-uploads?${query.toString()}`, {
     headers: getAuthHeaders(),
+    timeoutMs: 45000,
   });
 };
 
@@ -1515,6 +1519,7 @@ export const adminGetAnalyticsRevenue = (params = {}) => {
   });
   return request(`${API_BASE}/admin/analytics/revenue?${query.toString()}`, {
     headers: getAuthHeaders(),
+    timeoutMs: 45000,
   });
 };
 
@@ -1525,6 +1530,7 @@ export const adminGetAnalyticsEngagement = (params = {}) => {
   });
   return request(`${API_BASE}/admin/analytics/engagement?${query.toString()}`, {
     headers: getAuthHeaders(),
+    timeoutMs: 45000,
   });
 };
 
@@ -1535,6 +1541,7 @@ export const adminGetMessagesOverview = (params = {}) => {
   });
   return request(`${API_BASE}/admin/messages/overview?${query.toString()}`, {
     headers: getAuthHeaders(),
+    timeoutMs: 45000,
   });
 };
 
@@ -1545,6 +1552,7 @@ export const adminGetAnalyticsTopCreators = (params = {}) => {
   });
   return request(`${API_BASE}/admin/analytics/top-creators?${query.toString()}`, {
     headers: getAuthHeaders(),
+    timeoutMs: 45000,
   });
 };
 
@@ -1555,6 +1563,7 @@ export const adminGetAnalyticsTopContent = (params = {}) => {
   });
   return request(`${API_BASE}/admin/analytics/top-content?${query.toString()}`, {
     headers: getAuthHeaders(),
+    timeoutMs: 45000,
   });
 };
 
@@ -1565,6 +1574,7 @@ export const adminGetAnalyticsRecentActivity = (params = {}) => {
   });
   return request(`${API_BASE}/admin/analytics/recent-activity?${query.toString()}`, {
     headers: getAuthHeaders(),
+    timeoutMs: 45000,
   });
 };
 
@@ -1575,6 +1585,7 @@ export const adminGetAnalyticsSystemAlerts = (params = {}) => {
   });
   return request(`${API_BASE}/admin/analytics/system-alerts?${query.toString()}`, {
     headers: getAuthHeaders(),
+    timeoutMs: 45000,
   });
 };
 
@@ -1585,6 +1596,7 @@ export const adminGetAnalyticsReportsSummary = (params = {}) => {
   });
   return request(`${API_BASE}/admin/analytics/reports-summary?${query.toString()}`, {
     headers: getAuthHeaders(),
+    timeoutMs: 45000,
   });
 };
 

@@ -1,10 +1,11 @@
 const User = require("../models/User");
 const Post = require("../models/Post");
+const Message = require("../models/Message");
+const Purchase = require("../models/Purchase");
+const AnalyticsEvent = require("../models/AnalyticsEvent");
 const {
   buildDateRange,
   normalizeInterval,
-  fetchDailyRows,
-  buildOverview,
   buildSystemAlerts,
 } = require("./analyticsService");
 
@@ -257,12 +258,386 @@ const buildZeroDevices = () => {
 const buildZeroAudienceAge = () =>
   AGE_GROUPS.map((group) => ({ label: group.label, value: 0 }));
 
+const isDateWithinRange = (value, start, end) => {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return false;
+  return date >= start && date <= end;
+};
+
+const createDashboardDateMap = ({ start, end }) => {
+  const map = new Map();
+  const startCursor = parseDateKey(formatDateKey(start));
+  const endCursor = parseDateKey(formatDateKey(end));
+
+  for (
+    let cursor = new Date(startCursor);
+    cursor <= endCursor;
+    cursor = new Date(cursor.getTime() + ONE_DAY_MS)
+  ) {
+    const dateKey = formatDateKey(cursor);
+    map.set(dateKey, {
+      date: dateKey,
+      newUsers: 0,
+      postsCount: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      messagesSent: 0,
+      streams: 0,
+      downloads: 0,
+      totalLogins: 0,
+      friendRequestsSent: 0,
+      friendRequestsAccepted: 0,
+      successfulPurchases: 0,
+      failedPurchases: 0,
+      revenueAmount: 0,
+      _actorIds: new Set(),
+    });
+  }
+
+  return map;
+};
+
+const mergeActorIds = (bucket, actorIds = []) => {
+  actorIds.forEach((actorId) => {
+    if (!actorId) return;
+    bucket._actorIds.add(String(actorId));
+  });
+};
+
+const buildDashboardSeries = async ({ start, end, interval = "daily" } = {}) => {
+  const rows = createDashboardDateMap({ start, end });
+
+  const [
+    userActivityRows,
+    postRows,
+    messageRows,
+    eventRows,
+    paidPurchaseRows,
+    failedPurchaseRows,
+  ] = await Promise.all([
+    User.find({
+      isDeleted: { $ne: true },
+      $or: [
+        { createdAt: { $gte: start, $lte: end } },
+        { lastSeenAt: { $gte: start, $lte: end } },
+        { lastLoginAt: { $gte: start, $lte: end } },
+        { lastLogin: { $gte: start, $lte: end } },
+      ],
+    })
+      .select("_id createdAt lastSeenAt lastLoginAt lastLogin")
+      .lean(),
+    Post.aggregate([
+      { $match: { createdAt: { $gte: start, $lte: end } } },
+      {
+        $project: {
+          date: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$createdAt",
+              timezone: "UTC",
+            },
+          },
+          author: 1,
+          likesCount: {
+            $max: [
+              { $size: { $ifNull: ["$likes", []] } },
+              { $ifNull: ["$reactionsCount", 0] },
+            ],
+          },
+          commentsCount: {
+            $max: [
+              { $size: { $ifNull: ["$comments", []] } },
+              { $ifNull: ["$commentsCount", 0] },
+            ],
+          },
+          shareCount: { $ifNull: ["$shareCount", 0] },
+        },
+      },
+      {
+        $group: {
+          _id: "$date",
+          postsCount: { $sum: 1 },
+          likes: { $sum: "$likesCount" },
+          comments: { $sum: "$commentsCount" },
+          shares: { $sum: "$shareCount" },
+          actors: { $addToSet: "$author" },
+        },
+      },
+    ]),
+    Message.aggregate([
+      { $match: { createdAt: { $gte: start, $lte: end } } },
+      {
+        $project: {
+          date: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$createdAt",
+              timezone: "UTC",
+            },
+          },
+          senderId: 1,
+        },
+      },
+      {
+        $group: {
+          _id: "$date",
+          messagesSent: { $sum: 1 },
+          actors: { $addToSet: "$senderId" },
+        },
+      },
+    ]).catch(() => []),
+    AnalyticsEvent.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: start, $lte: end },
+          type: {
+            $in: [
+              "user_login",
+              "download_completed",
+              "stream_started",
+              "stream_completed",
+              "friend_request_sent",
+              "friend_request_accepted",
+            ],
+          },
+        },
+      },
+      {
+        $project: {
+          date: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$createdAt",
+              timezone: "UTC",
+            },
+          },
+          userId: 1,
+          totalLogins: { $cond: [{ $eq: ["$type", "user_login"] }, 1, 0] },
+          downloads: { $cond: [{ $eq: ["$type", "download_completed"] }, 1, 0] },
+          streams: {
+            $cond: [
+              { $in: ["$type", ["stream_started", "stream_completed"]] },
+              1,
+              0,
+            ],
+          },
+          friendRequestsSent: {
+            $cond: [{ $eq: ["$type", "friend_request_sent"] }, 1, 0],
+          },
+          friendRequestsAccepted: {
+            $cond: [{ $eq: ["$type", "friend_request_accepted"] }, 1, 0],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$date",
+          totalLogins: { $sum: "$totalLogins" },
+          downloads: { $sum: "$downloads" },
+          streams: { $sum: "$streams" },
+          friendRequestsSent: { $sum: "$friendRequestsSent" },
+          friendRequestsAccepted: { $sum: "$friendRequestsAccepted" },
+          actors: { $addToSet: "$userId" },
+        },
+      },
+    ]),
+    Purchase.aggregate([
+      {
+        $match: {
+          status: "paid",
+          paidAt: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $project: {
+          date: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$paidAt",
+              timezone: "UTC",
+            },
+          },
+          amount: { $ifNull: ["$amount", 0] },
+        },
+      },
+      {
+        $group: {
+          _id: "$date",
+          successfulPurchases: { $sum: 1 },
+          revenueAmount: { $sum: "$amount" },
+        },
+      },
+    ]),
+    Purchase.aggregate([
+      {
+        $match: {
+          status: "failed",
+          updatedAt: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $project: {
+          date: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$updatedAt",
+              timezone: "UTC",
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$date",
+          failedPurchases: { $sum: 1 },
+        },
+      },
+    ]),
+  ]);
+
+  userActivityRows.forEach((user) => {
+    if (isDateWithinRange(user.createdAt, start, end)) {
+      const createdKey = formatDateKey(new Date(user.createdAt));
+      const createdBucket = rows.get(createdKey);
+      if (createdBucket) {
+        createdBucket.newUsers += 1;
+        mergeActorIds(createdBucket, [user._id]);
+      }
+    }
+
+    const activityDates = [user.lastSeenAt, user.lastLoginAt, user.lastLogin]
+      .filter((value, index, list) =>
+        isDateWithinRange(value, start, end) &&
+        list.findIndex((entry) => String(entry || "") === String(value || "")) === index
+      );
+
+    activityDates.forEach((value) => {
+      const activityKey = formatDateKey(new Date(value));
+      mergeActorIds(rows.get(activityKey), [user._id]);
+    });
+  });
+
+  postRows.forEach((row) => {
+    const bucket = rows.get(row._id);
+    if (!bucket) return;
+    bucket.postsCount += Number(row.postsCount || 0);
+    bucket.likes += Number(row.likes || 0);
+    bucket.comments += Number(row.comments || 0);
+    bucket.shares += Number(row.shares || 0);
+    mergeActorIds(bucket, row.actors || []);
+  });
+
+  messageRows.forEach((row) => {
+    const bucket = rows.get(row._id);
+    if (!bucket) return;
+    bucket.messagesSent += Number(row.messagesSent || 0);
+    mergeActorIds(bucket, row.actors || []);
+  });
+
+  eventRows.forEach((row) => {
+    const bucket = rows.get(row._id);
+    if (!bucket) return;
+    bucket.totalLogins += Number(row.totalLogins || 0);
+    bucket.downloads += Number(row.downloads || 0);
+    bucket.streams += Number(row.streams || 0);
+    bucket.friendRequestsSent += Number(row.friendRequestsSent || 0);
+    bucket.friendRequestsAccepted += Number(row.friendRequestsAccepted || 0);
+    mergeActorIds(bucket, row.actors || []);
+  });
+
+  paidPurchaseRows.forEach((row) => {
+    const bucket = rows.get(row._id);
+    if (!bucket) return;
+    bucket.successfulPurchases += Number(row.successfulPurchases || 0);
+    bucket.revenueAmount += Number(row.revenueAmount || 0);
+  });
+
+  failedPurchaseRows.forEach((row) => {
+    const bucket = rows.get(row._id);
+    if (!bucket) return;
+    bucket.failedPurchases += Number(row.failedPurchases || 0);
+  });
+
+  const activeUsersInRange = new Set();
+  const finalizedRows = Array.from(rows.values())
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    .map((row) => {
+      row._actorIds.forEach((actorId) => activeUsersInRange.add(actorId));
+      const activeUsers = row._actorIds.size;
+      const profileVisits =
+        Number(row.friendRequestsSent || 0) +
+        Number(row.friendRequestsAccepted || 0) +
+        Number(row.totalLogins || 0);
+      const saves = 0;
+      const reach =
+        Number(row.postsCount || 0) +
+        Number(row.likes || 0) +
+        Number(row.comments || 0) +
+        Number(row.shares || 0) +
+        Number(row.messagesSent || 0) +
+        Number(row.streams || 0) +
+        Number(row.downloads || 0) +
+        Number(activeUsers || 0);
+      const impressions =
+        reach +
+        Number(row.likes || 0) +
+        Number(row.comments || 0) +
+        Number(row.postsCount || 0);
+      const clicks =
+        Number(row.downloads || 0) +
+        Number(row.successfulPurchases || 0) +
+        Number(row.postsCount || 0) +
+        Number(row.friendRequestsSent || 0);
+      const contentInteractions =
+        Number(row.likes || 0) +
+        Number(row.comments || 0) +
+        Number(row.shares || 0) +
+        saves;
+      const engagement =
+        Number(row.likes || 0) +
+        Number(row.comments || 0) * 2 +
+        Number(row.shares || 0) * 3 +
+        Number(row.messagesSent || 0);
+
+      return {
+        date: row.date,
+        newUsers: Number(row.newUsers || 0),
+        activeUsers,
+        postsCount: Number(row.postsCount || 0),
+        likes: Number(row.likes || 0),
+        comments: Number(row.comments || 0),
+        shares: Number(row.shares || 0),
+        messagesSent: Number(row.messagesSent || 0),
+        streams: Number(row.streams || 0),
+        downloads: Number(row.downloads || 0),
+        totalLogins: Number(row.totalLogins || 0),
+        friendRequestsSent: Number(row.friendRequestsSent || 0),
+        friendRequestsAccepted: Number(row.friendRequestsAccepted || 0),
+        successfulPurchases: Number(row.successfulPurchases || 0),
+        failedPurchases: Number(row.failedPurchases || 0),
+        revenueAmount: Number(row.revenueAmount || 0),
+        profileVisits,
+        saves,
+        reach,
+        impressions,
+        clicks,
+        engagement,
+        contentInteractions,
+      };
+    });
+
+  return {
+    series: groupRowsByInterval(finalizedRows, interval),
+    activeUsersInRange: activeUsersInRange.size,
+  };
+};
+
 const buildOverviewCards = ({ summary, series }) => {
   const totalUsersValue = Number(summary?.totalUsers || 0);
-  const recentWindow = series.slice(-Math.min(7, series.length));
-  const reachValue = Math.max(sumField(recentWindow, "reach"), sumField(recentWindow, "activeUsers"));
-  const interactionsValue = sumField(recentWindow, "contentInteractions");
-  const impressionsValue = sumField(recentWindow, "impressions");
+  const reachValue = Math.max(sumField(series, "reach"), sumField(series, "activeUsers"));
+  const interactionsValue = sumField(series, "contentInteractions");
+  const impressionsValue = sumField(series, "impressions");
   const engagementValue = reachValue ? round((interactionsValue / reachValue) * 100, 1) : 0;
 
   return {
@@ -279,9 +654,9 @@ const buildOverviewCards = ({ summary, series }) => {
       {
         id: "active-users",
         label: "Active Users",
-        value: latestValue(series, "activeUsers"),
+        value: Number(summary?.activeUsersInRange || latestValue(series, "activeUsers")),
         unit: "number",
-        helper: "Current active audience",
+        helper: "Users active in selected range",
         change: computeChange(series, "activeUsers"),
         sparkline: series.slice(-10).map((row) => Number(row.activeUsers || 0)),
       },
@@ -666,26 +1041,45 @@ const buildAdminDashboard = async ({ range = "30d", startDate = "", endDate = ""
   const dates = buildDateRange({ range, startDate, endDate });
 
   const [
-    overview,
     systemAlerts,
     approvedUsers,
-    rawDailyRows,
-    dailyPostMetrics,
+    dashboardSeriesResult,
     devicesUsage,
     audienceAge,
+    totalUsers,
+    totalPosts,
+    monthlyRevenueRows,
   ] = await Promise.all([
-    buildOverview({ range, startDate, endDate, interval: normalizedInterval }),
     buildSystemAlerts({ range, startDate, endDate }),
     loadApprovedUsers(),
-    fetchDailyRows({ start: dates.start, end: dates.end, interval: "daily" }),
-    getDailyPostMetrics({ start: dates.start, end: dates.end }),
+    buildDashboardSeries({ start: dates.start, end: dates.end, interval: normalizedInterval }),
     getDevicesUsage(),
     getAudienceBreakdown(),
+    User.countDocuments({ isDeleted: { $ne: true } }),
+    Post.countDocuments({}).catch(() => 0),
+    Purchase.aggregate([
+      {
+        $match: {
+          status: "paid",
+          paidAt: {
+            $gte: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)),
+            $lte: new Date(),
+          },
+        },
+      },
+      { $group: { _id: null, revenue: { $sum: "$amount" } } },
+    ]),
   ]);
 
-  const chartSeries = buildLiveSeries(rawDailyRows, dailyPostMetrics, normalizedInterval);
+  const chartSeries = dashboardSeriesResult.series;
+  const overviewSummary = {
+    totalUsers: Number(totalUsers || 0),
+    totalPosts: Number(totalPosts || 0),
+    activeUsersInRange: Number(dashboardSeriesResult.activeUsersInRange || 0),
+    revenueThisMonth: Number(monthlyRevenueRows[0]?.revenue || 0),
+  };
   const overviewCards = buildOverviewCards({
-    summary: overview.summary,
+    summary: overviewSummary,
     series: chartSeries,
   });
   const kpis = buildKpis(chartSeries);
@@ -698,7 +1092,7 @@ const buildAdminDashboard = async ({ range = "30d", startDate = "", endDate = ""
   const topUsers = await getTopUsers(approvedUsers);
 
   const messageVolume = sumField(chartSeries, "messagesSent");
-  const dataMode = hasLiveSeriesData(chartSeries) || Number(overview.summary?.totalUsers || 0) > 0
+  const dataMode = hasLiveSeriesData(chartSeries) || Number(overviewSummary.totalUsers || 0) > 0
     ? "live"
     : "limited";
 
@@ -742,11 +1136,11 @@ const buildAdminDashboard = async ({ range = "30d", startDate = "", endDate = ""
     navDots: {
       analytics: Boolean(systemAlerts.alerts?.length),
       messages: messageVolume > 0,
-      campaigns: Number(overview.summary?.revenueThisMonth || 0) > 0,
+      campaigns: Number(overviewSummary.revenueThisMonth || 0) > 0,
       settings: Boolean(systemAlerts.metrics?.loginWarnings || systemAlerts.metrics?.failedPayments),
     },
     diagnostics: {
-      totalPosts: Number(overview.summary?.totalPosts || 0),
+      totalPosts: Number(overviewSummary.totalPosts || 0),
       totalMessages: messageVolume,
       approvedUserCount: topUsers.items.length,
       audienceTracked: audienceAge.items.reduce((sum, item) => sum + Number(item.value || 0), 0),

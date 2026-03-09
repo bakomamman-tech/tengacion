@@ -327,13 +327,49 @@ const computeDailySummary = async ({ date = new Date() } = {}) => {
 
 const recomputeUserStats = async ({ date = new Date() } = {}) => computeDailySummary({ date });
 
-const ensureDailySummaries = async ({ start, end } = {}) => {
+const inFlightDailySummaries = new Map();
+
+const queueDailySummary = ({ date, force = false } = {}) => {
+  const key = formatDateKey(date);
+  if (!force && inFlightDailySummaries.has(key)) {
+    return inFlightDailySummaries.get(key);
+  }
+
+  const job = computeDailySummary({ date }).finally(() => {
+    inFlightDailySummaries.delete(key);
+  });
+
+  inFlightDailySummaries.set(key, job);
+  return job;
+};
+
+const ensureDailySummaries = async ({ start, end, force = false } = {}) => {
   const normalizedStart = startOfUtcDay(start || new Date());
   const normalizedEnd = startOfUtcDay(end || new Date());
-  const work = [];
-  for (let cursor = normalizedStart; cursor <= normalizedEnd; cursor = new Date(cursor.getTime() + ONE_DAY_MS)) {
-    work.push(computeDailySummary({ date: cursor }));
+
+  let existingKeys = new Set();
+  if (!force) {
+    const existingRows = await DailyAnalytics.find({
+      date: { $gte: formatDateKey(normalizedStart), $lte: formatDateKey(normalizedEnd) },
+    })
+      .select("date -_id")
+      .lean();
+    existingKeys = new Set(existingRows.map((row) => row.date));
   }
+
+  const work = [];
+  for (
+    let cursor = normalizedStart;
+    cursor <= normalizedEnd;
+    cursor = new Date(cursor.getTime() + ONE_DAY_MS)
+  ) {
+    const key = formatDateKey(cursor);
+    if (!force && existingKeys.has(key)) {
+      continue;
+    }
+    work.push(queueDailySummary({ date: cursor, force }));
+  }
+
   return Promise.all(work);
 };
 
@@ -747,7 +783,7 @@ const buildReportsSummary = async ({ range, startDate, endDate, interval = "dail
 
 const backfillDailyAnalytics = async ({ startDate, endDate } = {}) => {
   const dates = buildDateRange({ range: "custom", startDate, endDate });
-  return ensureDailySummaries({ start: dates.start, end: dates.end });
+  return ensureDailySummaries({ start: dates.start, end: dates.end, force: true });
 };
 
 module.exports = {

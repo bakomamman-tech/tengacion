@@ -1,6 +1,14 @@
-const CACHE_NAME = "tengacion-static-v1";
+const CACHE_NAME = "tengacion-static-v2";
 const OFFLINE_URL = "/offline.html";
-const ASSETS = ["/", OFFLINE_URL, "/manifest.json"];
+const ASSETS = [OFFLINE_URL, "/manifest.json"];
+
+const isCacheableResponse = (response) =>
+  Boolean(response && response.ok && response.status === 200 && response.type !== "opaque");
+
+const putInCache = async (request, response) => {
+  const cache = await caches.open(CACHE_NAME);
+  await cache.put(request, response);
+};
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -33,23 +41,36 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => response)
+        .catch(async () => {
+          const offline = await caches.match(OFFLINE_URL);
+          return offline || new Response("Offline", { status: 503, statusText: "Offline" });
+        })
+    );
+    return;
+  }
+
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request)
-        .then((response) => {
-          if (response.ok && response.status === 200 && request.destination !== "document") {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone)).catch(() => null);
+    caches.match(request).then(async (cached) => {
+      const networkFetch = fetch(request)
+        .then(async (response) => {
+          if (isCacheableResponse(response)) {
+            await putInCache(request, response.clone()).catch(() => null);
           }
           return response;
         })
-        .catch(() => {
-          if (request.mode === "navigate") {
-            return caches.match(OFFLINE_URL);
-          }
-          return new Response("Offline", { status: 503, statusText: "Offline" });
-        });
+        .catch(() => null);
+
+      if (cached) {
+        networkFetch.catch(() => null);
+        return cached;
+      }
+
+      const response = await networkFetch;
+      return response || new Response("Offline", { status: 503, statusText: "Offline" });
     })
   );
 });

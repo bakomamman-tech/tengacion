@@ -32,18 +32,18 @@
   --btn-text: #ffffff;
   --btn-radius: 16px;
   --btn-focus: rgba(200, 154, 106, 0.55);
-  --glass-action-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.12) 100%);
-  --glass-action-fill-hover: linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.18) 100%);
-  --glass-action-fill-active: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.09) 100%);
-  --glass-action-fill-selected: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(234, 215, 193, 0.4) 100%);
-  --glass-action-border: rgba(255, 255, 255, 0.4);
-  --glass-action-border-strong: rgba(184, 116, 42, 0.34);
-  --glass-action-highlight: rgba(255, 255, 255, 0.54);
-  --glass-action-shadow: 0 10px 22px rgba(43, 26, 18, 0.08);
-  --glass-action-shadow-hover: 0 14px 28px rgba(43, 26, 18, 0.11);
-  --glass-action-ring: rgba(184, 122, 58, 0.24);
-  --glass-reaction-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.18) 100%);
-  --glass-reaction-btn-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.11) 100%);
+  --glass-action-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.22) 100%);
+  --glass-action-fill-hover: linear-gradient(180deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.3) 100%);
+  --glass-action-fill-active: linear-gradient(180deg, rgba(246, 247, 250, 0.64) 0%, rgba(231, 235, 241, 0.36) 100%);
+  --glass-action-fill-selected: linear-gradient(180deg, rgba(255, 255, 255, 0.66) 0%, rgba(231, 239, 249, 0.42) 100%);
+  --glass-action-border: rgba(255, 255, 255, 0.6);
+  --glass-action-border-strong: rgba(86, 133, 205, 0.34);
+  --glass-action-highlight: rgba(255, 255, 255, 0.82);
+  --glass-action-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  --glass-action-shadow-hover: 0 12px 24px rgba(15, 23, 42, 0.09);
+  --glass-action-ring: rgba(59, 130, 246, 0.22);
+  --glass-reaction-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.64) 0%, rgba(255, 255, 255, 0.3) 100%);
+  --glass-reaction-btn-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.46) 0%, rgba(255, 255, 255, 0.18) 100%);
 }
 
 .composer-video-progress {
@@ -1602,18 +1602,18 @@ html.dark-mode {
   --brand-soft: #4a3526;
   --danger: #ff6b5a;
   --success: #35d089;
-  --glass-action-fill: linear-gradient(180deg, rgba(78, 54, 39, 0.76) 0%, rgba(43, 26, 18, 0.64) 100%);
-  --glass-action-fill-hover: linear-gradient(180deg, rgba(92, 65, 47, 0.84) 0%, rgba(56, 36, 25, 0.72) 100%);
-  --glass-action-fill-active: linear-gradient(180deg, rgba(54, 36, 25, 0.9) 0%, rgba(33, 20, 15, 0.8) 100%);
-  --glass-action-fill-selected: linear-gradient(180deg, rgba(112, 78, 48, 0.86) 0%, rgba(74, 53, 38, 0.8) 100%);
-  --glass-action-border: rgba(247, 241, 232, 0.14);
-  --glass-action-border-strong: rgba(210, 150, 82, 0.4);
+  --glass-action-fill: linear-gradient(180deg, rgba(52, 61, 76, 0.78) 0%, rgba(22, 28, 37, 0.64) 100%);
+  --glass-action-fill-hover: linear-gradient(180deg, rgba(66, 78, 96, 0.86) 0%, rgba(28, 36, 48, 0.74) 100%);
+  --glass-action-fill-active: linear-gradient(180deg, rgba(25, 31, 41, 0.92) 0%, rgba(14, 18, 27, 0.82) 100%);
+  --glass-action-fill-selected: linear-gradient(180deg, rgba(67, 88, 118, 0.84) 0%, rgba(32, 47, 67, 0.76) 100%);
+  --glass-action-border: rgba(226, 232, 240, 0.14);
+  --glass-action-border-strong: rgba(96, 165, 250, 0.34);
   --glass-action-highlight: rgba(255, 255, 255, 0.12);
-  --glass-action-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
-  --glass-action-shadow-hover: 0 14px 28px rgba(0, 0, 0, 0.28);
-  --glass-action-ring: rgba(210, 150, 82, 0.3);
-  --glass-reaction-fill: linear-gradient(180deg, rgba(68, 45, 31, 0.92) 0%, rgba(36, 22, 15, 0.88) 100%);
-  --glass-reaction-btn-fill: linear-gradient(180deg, rgba(247, 241, 232, 0.12) 0%, rgba(247, 241, 232, 0.06) 100%);
+  --glass-action-shadow: 0 10px 22px rgba(0, 0, 0, 0.26);
+  --glass-action-shadow-hover: 0 14px 28px rgba(0, 0, 0, 0.34);
+  --glass-action-ring: rgba(96, 165, 250, 0.26);
+  --glass-reaction-fill: linear-gradient(180deg, rgba(35, 44, 56, 0.94) 0%, rgba(17, 23, 32, 0.88) 100%);
+  --glass-reaction-btn-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%);
 }
 
 * {
@@ -3570,10 +3570,10 @@ html.dark-mode .create-post-row input::placeholder {
 }
 
 .post-actions {
-  margin-top: 10px;
+  margin-top: 12px;
   display: flex;
   align-items: stretch;
-  gap: 10px;
+  gap: 8px;
 }
 
 .reaction-wrapper {
@@ -3592,7 +3592,7 @@ html.dark-mode .create-post-row input::placeholder {
   padding: 8px;
   border: 1px solid var(--glass-action-border);
   background: var(--glass-reaction-fill);
-  border-radius: 18px;
+  border-radius: 20px;
   box-shadow: inset 0 1px 0 var(--glass-action-highlight), var(--glass-action-shadow);
   backdrop-filter: blur(14px) saturate(150%);
   -webkit-backdrop-filter: blur(14px) saturate(150%);
@@ -3630,9 +3630,9 @@ html.dark-mode .create-post-row input::placeholder {
   width: 100%;
   border: 1px solid var(--glass-action-border);
   background: var(--glass-action-fill);
-  border-radius: 16px;
-  color: var(--text);
-  min-height: 44px;
+  border-radius: 18px;
+  color: color-mix(in srgb, var(--text) 68%, #667085 32%);
+  min-height: 46px;
   padding: 10px 16px;
   cursor: pointer;
   font-weight: 700;
@@ -3641,31 +3641,57 @@ html.dark-mode .create-post-row input::placeholder {
   justify-content: center;
   gap: 8px;
   white-space: nowrap;
+  position: relative;
+  overflow: hidden;
   backdrop-filter: blur(10px) saturate(140%);
   -webkit-backdrop-filter: blur(10px) saturate(140%);
   box-shadow: inset 0 1px 0 var(--glass-action-highlight), var(--glass-action-shadow);
   transition: transform 0.24s ease, background 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, color 0.24s ease, opacity 0.24s ease;
 }
 
-.action-btn.active-like,
-.action-btn.active {
+.action-btn::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.26) 0%, rgba(255, 255, 255, 0) 58%);
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.action-btn > * {
+  position: relative;
+  z-index: 1;
+}
+
+.action-btn.active-like {
   background: var(--glass-action-fill-selected);
   border-color: var(--glass-action-border-strong);
-  color: var(--brand);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-action-highlight) 90%, transparent), 0 10px 22px rgba(184, 116, 42, 0.12);
+  color: color-mix(in srgb, #2563eb 70%, var(--text));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-action-highlight) 90%, transparent), 0 10px 20px rgba(37, 99, 235, 0.1);
+}
+
+.action-btn.active {
+  background: var(--glass-action-fill-hover);
+  border-color: color-mix(in srgb, var(--glass-action-border) 72%, rgba(148, 163, 184, 0.4));
+  color: var(--text);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-action-highlight) 90%, transparent), var(--glass-action-shadow);
 }
 
 .action-btn:hover:not(:disabled) {
   background: var(--glass-action-fill-hover);
-  border-color: color-mix(in srgb, var(--glass-action-border) 72%, var(--border-strong));
+  border-color: color-mix(in srgb, var(--glass-action-border) 70%, rgba(148, 163, 184, 0.45));
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-action-highlight) 90%, transparent), var(--glass-action-shadow-hover);
   transform: translateY(-1px);
 }
 
-.action-btn.active-like:hover:not(:disabled),
-.action-btn.active:hover:not(:disabled) {
+.action-btn.active-like:hover:not(:disabled) {
   background: var(--glass-action-fill-selected);
   border-color: color-mix(in srgb, var(--glass-action-border-strong) 82%, var(--glass-action-border));
+}
+
+.action-btn.active:hover:not(:disabled) {
+  background: var(--glass-action-fill-hover);
 }
 
 .action-btn:active:not(:disabled) {
@@ -3688,11 +3714,23 @@ html.dark-mode .create-post-row input::placeholder {
 }
 
 .btn-emoji {
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+html.dark-mode .action-btn {
+  color: color-mix(in srgb, var(--text) 84%, #cbd5e1 16%);
+}
+
+html.dark-mode .action-btn::before {
+  opacity: 0.45;
+}
+
+html.dark-mode .action-btn.active-like {
+  color: #dbeafe;
 }
 
 .post-comments-wrap {

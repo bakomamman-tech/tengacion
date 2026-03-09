@@ -17,9 +17,7 @@ const readStoredTheme = () => {
 };
 
 export function ThemeProvider({ children }) {
-  const [isDark, setIsDark] = useState(() => {
-    return readStoredTheme() === "dark";
-  });
+  const [isDark, setIsDark] = useState(() => readStoredTheme() === "dark");
 
   useEffect(() => {
     const nextTheme = isDark ? "dark" : "light";

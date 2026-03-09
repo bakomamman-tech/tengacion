@@ -9,9 +9,11 @@ import { NotificationsProvider } from "./context/NotificationsContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { CreatorPlayerProvider } from "./context/CreatorPlayerContext";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { DialogProvider } from "./components/ui/DialogProvider";
 
 import "./index.css";
 import "./button-system.css";
+import "./dialog-system.css";
 
 const initializeThemeEarly = () => {
   if (typeof window === "undefined") {
@@ -54,8 +56,34 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <NotificationsProvider>
             <CreatorPlayerProvider>
               <BrowserRouter>
-                <App />
-                <Toaster />
+                <DialogProvider>
+                  <App />
+                  <Toaster
+                    position="top-center"
+                    toastOptions={{
+                      duration: 3200,
+                      style: {
+                        borderRadius: "18px",
+                        border: "1px solid var(--tg-toast-border)",
+                        background: "var(--tg-toast-bg)",
+                        color: "var(--tg-toast-text)",
+                        boxShadow: "var(--tg-toast-shadow)",
+                      },
+                      success: {
+                        iconTheme: {
+                          primary: "#bb833f",
+                          secondary: "#fff8ef",
+                        },
+                      },
+                      error: {
+                        iconTheme: {
+                          primary: "#ab5849",
+                          secondary: "#fff7f4",
+                        },
+                      },
+                    }}
+                  />
+                </DialogProvider>
               </BrowserRouter>
             </CreatorPlayerProvider>
           </NotificationsProvider>

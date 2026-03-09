@@ -75,6 +75,10 @@
   --tg-btn-icon-border: rgba(180, 140, 92, 0.22);
   --tg-btn-icon-text: color-mix(in srgb, var(--text) 80%, var(--brand-strong) 20%);
   --tg-btn-toolbar-bg: linear-gradient(180deg, rgba(255, 250, 244, 0.92) 0%, rgba(246, 239, 229, 0.88) 100%);
+  --tg-toast-bg: linear-gradient(180deg, rgba(255, 251, 246, 0.98) 0%, rgba(247, 239, 228, 0.94) 100%);
+  --tg-toast-border: rgba(187, 131, 63, 0.18);
+  --tg-toast-text: #24180f;
+  --tg-toast-shadow: 0 18px 44px rgba(50, 31, 13, 0.18);
 }
 
 html.dark-mode {
@@ -142,6 +146,10 @@ html.dark-mode {
   --tg-btn-icon-border: rgba(224, 188, 141, 0.18);
   --tg-btn-icon-text: color-mix(in srgb, var(--text) 90%, #efd7b6 10%);
   --tg-btn-toolbar-bg: linear-gradient(180deg, rgba(54, 38, 28, 0.94) 0%, rgba(42, 28, 20, 0.9) 100%);
+  --tg-toast-bg: linear-gradient(180deg, rgba(64, 46, 33, 0.98) 0%, rgba(46, 31, 22, 0.94) 100%);
+  --tg-toast-border: rgba(228, 184, 120, 0.2);
+  --tg-toast-text: #f8ecdb;
+  --tg-toast-shadow: 0 20px 48px rgba(0, 0, 0, 0.34);
 }
 
 button {

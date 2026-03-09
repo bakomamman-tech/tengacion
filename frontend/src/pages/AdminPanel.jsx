@@ -12,21 +12,21 @@ import {
 } from "../api";
 
 const formatDate = (value) => {
-  if (!value) return "-";
+  if (!value) {return "-";}
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString();
 };
 
 const statusLabel = (entry) => {
-  if (entry?.isDeleted) return "Deleted";
-  if (entry?.isBanned) return "Banned";
+  if (entry?.isDeleted) {return "Deleted";}
+  if (entry?.isBanned) {return "Banned";}
   return "Active";
 };
 
 function UserActionModal({ open, user, loading, onClose, onBan, onUnban, onForceLogout, onSoftDelete, onRefresh }) {
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
-  if (!open || !user) return null;
+  if (!open || !user) {return null;}
 
   const run = async (fn) => {
     try {
@@ -41,7 +41,7 @@ function UserActionModal({ open, user, loading, onClose, onBan, onUnban, onForce
   };
 
   return (
-    <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) {onClose();} }}>
       <div className="modal-card" style={{ width: "min(680px, calc(100vw - 32px))" }}>
         <div className="adminx-row"><h3 style={{ margin: 0 }}>Manage User</h3><button type="button" className="adminx-btn" onClick={onClose}>Close</button></div>
         <div className="adminx-list-grid" style={{ marginTop: 12 }}>
@@ -109,8 +109,8 @@ export default function AdminPanel({ user }) {
   }, [logsPage]);
 
   useEffect(() => {
-    if (isLogsView) loadLogs();
-    else loadUsers();
+    if (isLogsView) {loadLogs();}
+    else {loadUsers();}
   }, [isLogsView, loadLogs, loadUsers]);
 
   const refresh = () => (isLogsView ? loadLogs() : loadUsers());
@@ -118,7 +118,7 @@ export default function AdminPanel({ user }) {
   const logsPages = useMemo(() => Math.max(1, Math.ceil(logsTotal / 20)), [logsTotal]);
 
   const runUserAction = async (runner, reason) => {
-    if (!selectedUserId) return;
+    if (!selectedUserId) {return;}
     setBusy(true);
     try {
       await runner(selectedUserId, reason);

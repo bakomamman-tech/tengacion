@@ -1,22 +1,28 @@
+import { forwardRef } from "react";
+
 import { buttonStyles, cx } from "./buttonStyles";
 
-export default function Button({
-  variant = "secondary",
-  size = "md",
-  iconOnly = false,
-  loading = false,
-  fullWidth = false,
-  pressed = false,
-  className = "",
-  disabled = false,
-  children,
-  type,
-  ...props
-}) {
+const Button = forwardRef(function Button(
+  {
+    variant = "secondary",
+    size = "md",
+    iconOnly = false,
+    loading = false,
+    fullWidth = false,
+    pressed = false,
+    className = "",
+    disabled = false,
+    children,
+    type,
+    ...props
+  },
+  ref
+) {
   const isDisabled = disabled || loading;
 
   return (
     <button
+      ref={ref}
       type={type || "button"}
       className={buttonStyles({
         variant,
@@ -37,4 +43,6 @@ export default function Button({
       </span>
     </button>
   );
-}
+});
+
+export default Button;

@@ -2,6 +2,24 @@ import { useMemo, useState } from "react";
 
 import QuickAccessLayout from "../../components/QuickAccessLayout";
 
+const FRIENDS = [
+  "Damilola Grant",
+  "Seyi Okon",
+  "Miriam Akin",
+  "Lilian Ugo",
+  "Timi Gold",
+  "Ada Nkem",
+];
+
+const FRIEND_SUGGESTIONS = [
+  "Jesse Manu",
+  "Bola Tamuno",
+  "Nelly Jude",
+  "Arielle Dan",
+  "Mark Dike",
+  "King Lu",
+];
+
 function SectionCard({ title, action, children }) {
   return (
     <section className="card quick-section-card">
@@ -17,29 +35,12 @@ function SectionCard({ title, action, children }) {
 export function FriendsPage({ user }) {
   const [query, setQuery] = useState("");
 
-  const friends = [
-    "Damilola Grant",
-    "Seyi Okon",
-    "Miriam Akin",
-    "Lilian Ugo",
-    "Timi Gold",
-    "Ada Nkem",
-  ];
-  const suggestions = [
-    "Jesse Manu",
-    "Bola Tamuno",
-    "Nelly Jude",
-    "Arielle Dan",
-    "Mark Dike",
-    "King Lu",
-  ];
-
   const filteredFriends = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) {
-      return friends;
+      return FRIENDS;
     }
-    return friends.filter((name) => name.toLowerCase().includes(needle));
+    return FRIENDS.filter((name) => name.toLowerCase().includes(needle));
   }, [query]);
 
   return (
@@ -68,7 +69,7 @@ export function FriendsPage({ user }) {
 
       <SectionCard title="People you may know">
         <div className="quick-list-grid two-col">
-          {suggestions.map((name) => (
+          {FRIEND_SUGGESTIONS.map((name) => (
             <article key={name} className="quick-list-item">
               <strong>{name}</strong>
               <span>3 mutual friends</span>

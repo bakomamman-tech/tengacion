@@ -17,9 +17,11 @@ import {
   uploadAvatar,
   uploadCover,
 } from "./api";
+import { createReportDialogConfig } from "./constants/reportReasons";
 import { useAuth } from "./context/AuthContext";
 import Navbar from "./Navbar";
 import PostCard from "./components/PostCard";
+import { useDialog } from "./components/ui/useDialog";
 
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -169,6 +171,7 @@ function FactRow({ icon, children }) {
 }
 
 export default function ProfileEditor({ user }) {
+  const { prompt } = useDialog();
   const navigate = useNavigate();
   const { username: routeUsername } = useParams();
   const { updateUser } = useAuth();
@@ -746,11 +749,12 @@ export default function ProfileEditor({ user }) {
                   <button
                     className="profile-head-btn"
                     onClick={async () => {
-                      const reason = window.prompt(
-                        "Report reason: spam, hate_speech, violence, harassment, misinformation, nudity, other",
-                        "harassment"
+                      const reason = await prompt(
+                        createReportDialogConfig("profile", "harassment")
                       );
-                      if (!reason) return;
+                      if (!reason) {
+                        return;
+                      }
                       try {
                         await createReport({
                           targetType: "user",

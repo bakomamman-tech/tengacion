@@ -48,7 +48,7 @@ export default function AlbumDetail() {
 
   const tracks = Array.isArray(album.tracks) ? album.tracks : [];
   const handleBuyAlbum = async () => {
-    if (!album?._id) return;
+    if (!album?._id) {return;}
     setBuying(true);
     setError("");
     try {

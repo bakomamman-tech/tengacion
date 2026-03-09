@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import {
   archiveMyCreatorContent,
@@ -16,6 +17,7 @@ import {
   resolveImage,
   upsertCreatorProfile,
 } from "../api";
+import { useDialog } from "../components/ui/useDialog";
 import "./creator-redesign.css";
 
 const PROFILE_DEFAULT = {
@@ -120,6 +122,7 @@ function UploadCard({ icon, title, children, className = "" }) {
 }
 
 export default function CreatorDashboardMVP() {
+  const { confirm } = useDialog();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
@@ -330,9 +333,14 @@ export default function CreatorDashboardMVP() {
     if (!creator?._id) {
       return;
     }
-    const confirmed = window.confirm(
-      "Archive all currently displayed creator content for a fresh start?"
-    );
+    const confirmed = await confirm({
+      title: "Archive creator content?",
+      description:
+        "Archive all currently displayed creator content for a fresh start. You can still re-upload later.",
+      confirmLabel: "Archive content",
+      cancelLabel: "Cancel",
+      confirmVariant: "destructive",
+    });
     if (!confirmed) {
       return;
     }
@@ -341,8 +349,10 @@ export default function CreatorDashboardMVP() {
     try {
       await archiveMyCreatorContent();
       await refreshAll();
+      toast.success("Creator content archived");
     } catch (err) {
       setPageError(err.message || "Failed to archive creator content.");
+      toast.error(err.message || "Failed to archive creator content.");
     } finally {
       setArchiving(false);
     }

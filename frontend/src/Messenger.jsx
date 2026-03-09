@@ -1,4 +1,5 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import {
   deleteMessageForMe,
   getChatContacts,
@@ -11,9 +12,17 @@ import {
 import { connectSocket, disconnectSocket } from "./socket";
 import ContentCardMessage from "./components/ContentCardMessage";
 import ShareContentModal from "./components/ShareContentModal";
+import { useDialog } from "./components/ui/useDialog";
 
 const MOBILE_SHEET_QUERY = "(max-width: 640px)";
-const QUICK_REACTIONS = ["ðŸ‘", "â¤ï¸", "ðŸ˜‚", "ðŸ˜®", "ðŸ˜¢", "ðŸ”¥"];
+const QUICK_REACTIONS = [
+  "\u{1F44D}",
+  "\u{2764}\u{FE0F}",
+  "\u{1F602}",
+  "\u{1F62E}",
+  "\u{1F622}",
+  "\u{1F525}",
+];
 
 const toIdString = (value) => {
   if (!value) {return "";}
@@ -206,6 +215,7 @@ const isForConversation = (message, meId, otherId) => {
 };
 
 export default function Messenger({ user, onClose, onMinimize }) {
+  const { confirm } = useDialog();
   const meId = useMemo(() => toIdString(user?._id || user?.id), [user]);
   const token = localStorage.getItem("token");
 
@@ -698,12 +708,6 @@ export default function Messenger({ user, onClose, onMinimize }) {
 
     const handleIncomingMessage = (rawMessage) => {
       const message = normalizeMessage(rawMessage);
-      console.log("[SOCKET DELIVER]", {
-        direction: "incoming",
-        messageId: message._id || "",
-        fromUserId: toIdString(message.senderId),
-        toUserId: toIdString(message.receiverId),
-      });
       const activeContactId = selectedIdRef.current;
       const isIncoming = toIdString(message.senderId) !== meId;
 
@@ -743,19 +747,19 @@ export default function Messenger({ user, onClose, onMinimize }) {
     socket.on("chat:message", handleIncomingMessage);
     socket.on("chat:typing", ({ fromUserId, isTyping }) => {
       const id = toIdString(fromUserId);
-      if (!id) return;
+      if (!id) {return;}
       setTypingByUserId((prev) => ({ ...prev, [id]: Boolean(isTyping) }));
     });
     socket.on("chat:recording", ({ fromUserId, isRecording }) => {
       const id = toIdString(fromUserId);
-      if (!id) return;
+      if (!id) {return;}
       setRecordingByUserId((prev) => ({ ...prev, [id]: Boolean(isRecording) }));
     });
     socket.on("watch:state", ({ chatId, videoUrl, t, isPlaying }) => {
-      if (toIdString(chatId) !== toIdString(selectedIdRef.current)) return;
-      if (videoUrl) setWatchUrl(videoUrl);
+      if (toIdString(chatId) !== toIdString(selectedIdRef.current)) {return;}
+      if (videoUrl) {setWatchUrl(videoUrl);}
       const node = watchVideoRef.current;
-      if (!node) return;
+      if (!node) {return;}
       if (Number.isFinite(Number(t))) {
         node.currentTime = Number(t) || 0;
       }
@@ -766,31 +770,24 @@ export default function Messenger({ user, onClose, onMinimize }) {
       }
     });
     socket.on("watch:play", ({ chatId, t }) => {
-      if (toIdString(chatId) !== toIdString(selectedIdRef.current)) return;
+      if (toIdString(chatId) !== toIdString(selectedIdRef.current)) {return;}
       const node = watchVideoRef.current;
-      if (!node) return;
+      if (!node) {return;}
       node.currentTime = Number(t) || 0;
       node.play().catch(() => null);
     });
     socket.on("watch:pause", ({ chatId, t }) => {
-      if (toIdString(chatId) !== toIdString(selectedIdRef.current)) return;
+      if (toIdString(chatId) !== toIdString(selectedIdRef.current)) {return;}
       const node = watchVideoRef.current;
-      if (!node) return;
+      if (!node) {return;}
       node.currentTime = Number(t) || 0;
       node.pause();
     });
     socket.on("watch:seek", ({ chatId, t }) => {
-      if (toIdString(chatId) !== toIdString(selectedIdRef.current)) return;
+      if (toIdString(chatId) !== toIdString(selectedIdRef.current)) {return;}
       const node = watchVideoRef.current;
-      if (!node) return;
+      if (!node) {return;}
       node.currentTime = Number(t) || 0;
-    });
-    socket.on("chat:sent", (payload) => {
-      console.log("[SOCKET ACK]", {
-        fromEvent: true,
-        serverMsgId: payload?.serverMsgId || "",
-        clientMsgId: payload?.clientMsgId || "",
-      });
     });
     socket.on("message:deleted_for_me", ({ messageId }) => {
       const targetId = toIdString(messageId);
@@ -821,7 +818,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
 
   useEffect(() => {
     const socket = socketRef.current;
-    if (!socket || !selectedId) return;
+    if (!socket || !selectedId) {return;}
     socket.emit("chat:typing", {
       chatId: selectedId,
       toUserId: selectedId,
@@ -831,7 +828,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
 
   useEffect(() => {
     const socket = socketRef.current;
-    if (!socket || !selectedId) return;
+    if (!socket || !selectedId) {return;}
     socket.emit("chat:recording", {
       chatId: selectedId,
       toUserId: selectedId,
@@ -840,9 +837,9 @@ export default function Messenger({ user, onClose, onMinimize }) {
   }, [isRecording, selectedId]);
 
   useEffect(() => {
-    if (!watchOpen || !selectedId) return;
+    if (!watchOpen || !selectedId) {return;}
     const socket = socketRef.current;
-    if (!socket) return;
+    if (!socket) {return;}
     socket.emit("watch:join", { chatId: selectedId });
   }, [watchOpen, selectedId]);
 
@@ -874,12 +871,6 @@ export default function Messenger({ user, onClose, onMinimize }) {
             if (settled) {return;}
             settled = true;
             clearTimeout(timer);
-            console.log("[SOCKET ACK]", {
-              ok: Boolean(ack?.ok),
-              serverMsgId: ack?.serverMsgId || ack?.message?._id || "",
-              clientMsgId: payload?.clientId || "",
-              error: ack?.error || "",
-            });
 
             if (ack?.ok && ack.message) {
               resolve(normalizeMessage(ack.message));
@@ -941,12 +932,6 @@ export default function Messenger({ user, onClose, onMinimize }) {
     setError("");
 
     try {
-      console.log("[SOCKET SEND]", {
-        fromUserId: meId,
-        toUserId: targetId,
-        clientMsgId: clientId,
-        type: normalizedType,
-      });
       const persisted = await sendViaSocket(targetId, payload);
       if (shouldRenderOptimistic) {
         replaceMessageByClientId(clientId, {
@@ -1187,9 +1172,14 @@ export default function Messenger({ user, onClose, onMinimize }) {
     if (!messageId) {
       return;
     }
-    const confirmed = window.confirm(
-      "Delete this voice note for you? The other person will still see it."
-    );
+    const confirmed = await confirm({
+      title: "Delete voice note?",
+      description:
+        "This removes the voice note from your view only. The other person will still see it.",
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      confirmVariant: "destructive",
+    });
     if (!confirmed) {
       return;
     }
@@ -1202,6 +1192,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
       await deleteMessageForMe(targetId);
     } catch (err) {
       setError(err?.message || "Failed to delete voice note");
+      toast.error(err?.message || "Failed to delete voice note");
       try {
         const data = await getConversationMessages(selectedIdRef.current);
         const next = Array.isArray(data) ? data.map(normalizeMessage) : [];
@@ -1210,7 +1201,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
         // Keep current view if reload fails.
       }
     }
-  }, []);
+  }, [confirm]);
 
   const handleVoiceAudioEvent = useCallback((audioId, patch) => {
     if (!audioId) {
@@ -1285,7 +1276,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
         : [];
       for (const recipientId of recipients) {
         // sequential send to preserve ordering and prevent socket flood
-        // eslint-disable-next-line no-await-in-loop
+         
         await sendPayload(shareInput.payload, { receiverId: recipientId });
       }
       setShareOpen(false);
@@ -1487,7 +1478,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
                       type="button"
                       onClick={() => {
                         const socket = socketRef.current;
-                        if (!socket) return;
+                        if (!socket) {return;}
                         const node = watchVideoRef.current;
                         socket.emit("watch:state", {
                           chatId: selectedId,
@@ -1510,7 +1501,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
                       controls
                       onPlay={() => {
                         const socket = socketRef.current;
-                        if (!socket) return;
+                        if (!socket) {return;}
                         socket.emit("watch:play", {
                           chatId: selectedId,
                           t: watchVideoRef.current?.currentTime || 0,
@@ -1518,7 +1509,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
                       }}
                       onPause={() => {
                         const socket = socketRef.current;
-                        if (!socket) return;
+                        if (!socket) {return;}
                         socket.emit("watch:pause", {
                           chatId: selectedId,
                           t: watchVideoRef.current?.currentTime || 0,
@@ -1526,7 +1517,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
                       }}
                       onSeeked={() => {
                         const socket = socketRef.current;
-                        if (!socket) return;
+                        if (!socket) {return;}
                         socket.emit("watch:seek", {
                           chatId: selectedId,
                           t: watchVideoRef.current?.currentTime || 0,

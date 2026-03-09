@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
+
 import { createReport } from "../api";
+import { createReportDialogConfig } from "../constants/reportReasons";
+import { useDialog } from "./ui/useDialog";
 
 const EMOJIS = [
   "\u{1F44D}",
@@ -114,6 +118,7 @@ export default function PostComments({
   initialCount = 0,
   onCountChange,
 }) {
+  const { prompt } = useDialog();
   const [comments, setComments] = useState(() =>
     (Array.isArray(initialComments) ? initialComments : [])
       .map((comment, index) => normalizeComment(comment, index))
@@ -263,20 +268,22 @@ export default function PostComments({
             type="button"
             className="post-menu-item danger"
             onClick={async () => {
-              const reason = window.prompt(
-                "Report reason: spam, hate_speech, violence, harassment, misinformation, nudity, other",
-                "harassment"
+              const reason = await prompt(
+                createReportDialogConfig("comment", "harassment")
               );
-              if (!reason) return;
+              if (!reason) {
+                return;
+              }
+
               try {
                 await createReport({
                   targetType: "comment",
                   targetId: comment.id,
                   reason: String(reason).trim().toLowerCase(),
                 });
-                window.alert("Comment report submitted");
+                toast.success("Comment report submitted");
               } catch (err) {
-                window.alert(err?.message || "Failed to report comment");
+                toast.error(err?.message || "Failed to report comment");
               }
             }}
           >

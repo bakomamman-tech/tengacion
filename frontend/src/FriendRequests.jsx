@@ -26,13 +26,8 @@ export default function FriendRequests() {
     try {
       setLoading(true);
       setError("");
-      console.log("[FRIEND FETCH]", { source: "FriendRequests.load:start" });
       const result = await getFriendRequests();
       const list = Array.isArray(result) ? result : [];
-      console.log("[FRIEND UI]", {
-        source: "FriendRequests.load:done",
-        incomingCount: list.length,
-      });
       setRequests(list);
     } catch (err) {
       setError(err?.message || "Failed to load friend requests");
@@ -57,18 +52,10 @@ export default function FriendRequests() {
       return undefined;
     }
 
-    const onFriendRequest = (payload) => {
-      console.log("[SOCKET DELIVER]", {
-        type: "friend:request",
-        fromUserId: payload?.fromUser?._id || "",
-      });
+    const onFriendRequest = () => {
       loadRequests();
     };
-    const onFriendAccepted = (payload) => {
-      console.log("[SOCKET DELIVER]", {
-        type: "friend:accepted",
-        friendId: payload?.friend?._id || "",
-      });
+    const onFriendAccepted = () => {
       loadRequests();
     };
 
@@ -91,17 +78,12 @@ export default function FriendRequests() {
       setError("");
 
       if (action === "accept") {
-        console.log("[FRIEND ACCEPT]", { action: "accept:start", userId });
         await acceptFriendRequest(userId);
       } else {
         await rejectFriendRequest(userId);
       }
 
       setRequests((current) => current.filter((item) => item._id !== userId));
-      console.log("[FRIEND UI]", {
-        action: action === "accept" ? "accept:done" : "reject:done",
-        userId,
-      });
     } catch (err) {
       setError(err?.message || "Action failed");
     } finally {

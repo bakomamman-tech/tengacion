@@ -111,7 +111,7 @@ const compressImageFile = async (file) => {
     const blob = await new Promise((resolve) =>
       canvas.toBlob(resolve, "image/jpeg", 0.82)
     );
-    if (!blob) return file;
+    if (!blob) {return file;}
     return new File([blob], file.name.replace(/\.\w+$/, ".jpg"), {
       type: "image/jpeg",
     });
@@ -438,25 +438,12 @@ export const uploadCover = (file) => {
 export const getFriendRequests = () =>
   request(`${API_BASE}/users/requests`, {
     headers: getAuthHeaders(),
-  }).then((response) => {
-    console.log("[FRIEND FETCH]", {
-      endpoint: "/api/users/requests",
-      incomingCount: Array.isArray(response) ? response.length : 0,
-    });
-    return response;
   });
 
 export const sendFriendRequest = (userId) =>
   request(`${API_BASE}/users/${encodeURIComponent(userId || "")}/request`, {
     method: "POST",
     headers: getAuthHeaders(),
-  }).then((response) => {
-    console.log("[FRIEND SEND]", {
-      endpoint: "/api/users/:id/request",
-      toUserId: String(userId || ""),
-      created: Boolean(response?.created),
-    });
-    return response;
   });
 
 export const cancelFriendRequest = (userId) =>
@@ -469,13 +456,6 @@ export const acceptFriendRequest = (userId) =>
   request(`${API_BASE}/users/${encodeURIComponent(userId || "")}/accept`, {
     method: "POST",
     headers: getAuthHeaders(),
-  }).then((response) => {
-    console.log("[FRIEND ACCEPT]", {
-      endpoint: "/api/users/:id/accept",
-      userId: String(userId || ""),
-      friends: Boolean(response?.friends),
-    });
-    return response;
   });
 
 export const rejectFriendRequest = (userId) =>
@@ -1341,11 +1321,11 @@ export const deleteMessageForMe = (messageId) =>
 
 export const adminListUsers = ({ search = "", page = 1, limit = 20, role = "", banned = "" } = {}) => {
   const params = new URLSearchParams();
-  if (search) params.set("search", String(search));
-  if (page) params.set("page", String(page));
-  if (limit) params.set("limit", String(limit));
-  if (role) params.set("role", String(role));
-  if (banned !== "") params.set("banned", String(banned));
+  if (search) {params.set("search", String(search));}
+  if (page) {params.set("page", String(page));}
+  if (limit) {params.set("limit", String(limit));}
+  if (role) {params.set("role", String(role));}
+  if (banned !== "") {params.set("banned", String(banned));}
   return request(`${API_BASE}/admin/users?${params.toString()}`, {
     headers: getAuthHeaders(),
   });
@@ -1420,8 +1400,8 @@ export const adminGetAuditLogs = ({ page = 1, limit = 30, action = "", targetTyp
   const params = new URLSearchParams();
   params.set("page", String(page));
   params.set("limit", String(limit));
-  if (action) params.set("action", String(action));
-  if (targetType) params.set("targetType", String(targetType));
+  if (action) {params.set("action", String(action));}
+  if (targetType) {params.set("targetType", String(targetType));}
   return request(`${API_BASE}/admin/audit-logs?${params.toString()}`, {
     headers: getAuthHeaders(),
   });
@@ -1431,7 +1411,7 @@ export const adminListReports = ({ page = 1, limit = 20, status = "" } = {}) => 
   const params = new URLSearchParams();
   params.set("page", String(page));
   params.set("limit", String(limit));
-  if (status) params.set("status", String(status));
+  if (status) {params.set("status", String(status));}
   return request(`${API_BASE}/admin/reports?${params.toString()}`, {
     headers: getAuthHeaders(),
   });
@@ -1481,7 +1461,7 @@ export const adminGetAnalyticsOverview = (params = {}) => {
     query.set("range", params);
   } else {
     Object.entries(params || {}).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+      if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
     });
   }
   return request(`${API_BASE}/admin/analytics/overview?${query.toString()}`, {
@@ -1493,7 +1473,7 @@ export const adminGetAnalyticsOverview = (params = {}) => {
 export const adminGetAnalyticsUserGrowth = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
   });
   return request(`${API_BASE}/admin/analytics/user-growth?${query.toString()}`, {
     headers: getAuthHeaders(),
@@ -1504,7 +1484,7 @@ export const adminGetAnalyticsUserGrowth = (params = {}) => {
 export const adminGetAnalyticsContentUploads = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
   });
   return request(`${API_BASE}/admin/analytics/content-uploads?${query.toString()}`, {
     headers: getAuthHeaders(),
@@ -1515,7 +1495,7 @@ export const adminGetAnalyticsContentUploads = (params = {}) => {
 export const adminGetAnalyticsRevenue = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
   });
   return request(`${API_BASE}/admin/analytics/revenue?${query.toString()}`, {
     headers: getAuthHeaders(),
@@ -1526,7 +1506,7 @@ export const adminGetAnalyticsRevenue = (params = {}) => {
 export const adminGetAnalyticsEngagement = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
   });
   return request(`${API_BASE}/admin/analytics/engagement?${query.toString()}`, {
     headers: getAuthHeaders(),
@@ -1537,7 +1517,7 @@ export const adminGetAnalyticsEngagement = (params = {}) => {
 export const adminGetMessagesOverview = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
   });
   return request(`${API_BASE}/admin/messages/overview?${query.toString()}`, {
     headers: getAuthHeaders(),
@@ -1548,7 +1528,7 @@ export const adminGetMessagesOverview = (params = {}) => {
 export const adminGetAnalyticsTopCreators = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
   });
   return request(`${API_BASE}/admin/analytics/top-creators?${query.toString()}`, {
     headers: getAuthHeaders(),
@@ -1559,7 +1539,7 @@ export const adminGetAnalyticsTopCreators = (params = {}) => {
 export const adminGetAnalyticsTopContent = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
   });
   return request(`${API_BASE}/admin/analytics/top-content?${query.toString()}`, {
     headers: getAuthHeaders(),
@@ -1570,7 +1550,7 @@ export const adminGetAnalyticsTopContent = (params = {}) => {
 export const adminGetAnalyticsRecentActivity = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
   });
   return request(`${API_BASE}/admin/analytics/recent-activity?${query.toString()}`, {
     headers: getAuthHeaders(),
@@ -1581,7 +1561,7 @@ export const adminGetAnalyticsRecentActivity = (params = {}) => {
 export const adminGetAnalyticsSystemAlerts = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
   });
   return request(`${API_BASE}/admin/analytics/system-alerts?${query.toString()}`, {
     headers: getAuthHeaders(),
@@ -1592,7 +1572,7 @@ export const adminGetAnalyticsSystemAlerts = (params = {}) => {
 export const adminGetAnalyticsReportsSummary = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
   });
   return request(`${API_BASE}/admin/analytics/reports-summary?${query.toString()}`, {
     headers: getAuthHeaders(),
@@ -1603,7 +1583,7 @@ export const adminGetAnalyticsReportsSummary = (params = {}) => {
 export const adminListContent = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
   });
   return request(`${API_BASE}/admin/content?${query.toString()}`, {
     headers: getAuthHeaders(),
@@ -1613,7 +1593,7 @@ export const adminListContent = (params = {}) => {
 export const adminListTransactions = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
   });
   return request(`${API_BASE}/admin/transactions?${query.toString()}`, {
     headers: getAuthHeaders(),

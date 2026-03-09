@@ -188,18 +188,18 @@ export default function VideoControlsOverlay({
   }, [clearHideTimer, isPlaying, startHideTimer]);
 
   const progressPct = useMemo(() => {
-    if (!duration) return 0;
+    if (!duration) {return 0;}
     return Math.min(100, (currentTime / duration) * 100);
   }, [currentTime, duration]);
 
   const bufferedPct = useMemo(() => {
-    if (!duration) return 0;
+    if (!duration) {return 0;}
     return Math.min(100, (bufferedEnd / duration) * 100);
   }, [bufferedEnd, duration]);
 
   const togglePlayPause = () => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video) {return;}
     if (video.paused) {
       video.play().catch(() => {});
     } else {
@@ -209,14 +209,14 @@ export default function VideoControlsOverlay({
 
   const toggleMute = () => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video) {return;}
     video.muted = !video.muted;
     setIsMuted(video.muted);
   };
 
   const seekTo = (nextTime) => {
     const video = videoRef.current;
-    if (!video || !Number.isFinite(nextTime)) return;
+    if (!video || !Number.isFinite(nextTime)) {return;}
     video.currentTime = Math.min(Math.max(nextTime, 0), duration || 0);
   };
 
@@ -228,7 +228,7 @@ export default function VideoControlsOverlay({
   const onVolumeChange = (event) => {
     const next = Number(event.target.value);
     const video = videoRef.current;
-    if (!video) return;
+    if (!video) {return;}
     video.volume = Math.min(Math.max(next, 0), 1);
     if (video.volume > 0 && video.muted) {
       video.muted = false;
@@ -238,7 +238,7 @@ export default function VideoControlsOverlay({
 
   const toggleCaptions = () => {
     const video = videoRef.current;
-    if (!video || !video.textTracks || !video.textTracks.length) return;
+    if (!video || !video.textTracks || !video.textTracks.length) {return;}
     const nextState = !captionsVisible;
     for (let i = 0; i < video.textTracks.length; i += 1) {
       video.textTracks[i].mode = nextState ? "showing" : "hidden";
@@ -248,7 +248,7 @@ export default function VideoControlsOverlay({
 
   const applyPlaybackRate = (rate) => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video) {return;}
     video.playbackRate = rate;
     setPlaybackRate(rate);
     setShowSettings(false);
@@ -256,7 +256,7 @@ export default function VideoControlsOverlay({
 
   const toggleFullscreen = () => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video) {return;}
     if (document.fullscreenElement) {
       document.exitFullscreen?.();
       return;
@@ -270,7 +270,7 @@ export default function VideoControlsOverlay({
 
   const togglePiP = async () => {
     const video = videoRef.current;
-    if (!video || !pipAvailable) return;
+    if (!video || !pipAvailable) {return;}
     try {
       if (document.pictureInPictureElement) {
         await document.exitPictureInPicture();

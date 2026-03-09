@@ -62,4 +62,18 @@ export default defineConfig([
 
     },
   },
+  {
+    files: ['src/**/*.{test,spec}.{js,jsx}'],
+    languageOptions: {
+      globals: {
+        ...(globals.vitest || {}),
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        vi: 'readonly',
+      },
+    },
+  },
 ])

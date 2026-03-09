@@ -6,7 +6,38 @@ export default defineConfig({
   plugins: [react()],
 
   build: {
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) {
+            return undefined
+          }
+
+          if (id.includes('react-router')) {
+            return 'vendor-router'
+          }
+
+          if (id.includes('livekit')) {
+            return 'vendor-livekit'
+          }
+
+          if (id.includes('socket.io-client')) {
+            return 'vendor-socket'
+          }
+
+          if (id.includes('recharts')) {
+            return 'vendor-charts'
+          }
+
+          if (id.includes('framer-motion')) {
+            return 'vendor-motion'
+          }
+
+          return 'vendor'
+        },
+      },
+    },
   },
 
   server: {

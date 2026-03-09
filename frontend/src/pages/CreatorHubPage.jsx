@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   createCheckout,
@@ -159,7 +160,7 @@ export default function CreatorHubPage() {
         setIsPlaying(true);
       }
     } catch (err) {
-      alert(err.message || "Playback unavailable right now.");
+      toast.error(err.message || "Playback unavailable right now.");
     }
   };
 
@@ -203,7 +204,7 @@ export default function CreatorHubPage() {
         window.open(checkout.checkoutUrl, "_blank", "noopener,noreferrer");
       }
     } catch (err) {
-      alert(err.message || "Checkout unavailable.");
+      toast.error(err.message || "Checkout unavailable.");
     }
   };
 
@@ -227,7 +228,7 @@ export default function CreatorHubPage() {
           : prev
       );
     } catch (err) {
-      alert(err.message || "Could not follow creator.");
+      toast.error(err.message || "Could not follow creator.");
     }
   };
 

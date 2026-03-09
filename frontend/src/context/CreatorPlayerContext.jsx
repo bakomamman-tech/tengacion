@@ -25,12 +25,12 @@ export function CreatorPlayerProvider({ children }) {
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(SESSION_KEY);
-      if (!raw) return;
+      if (!raw) {return;}
       const parsed = JSON.parse(raw);
-      if (parsed?.currentItem) setCurrentItem(parsed.currentItem);
-      if (Array.isArray(parsed?.queue)) setQueue(parsed.queue);
-      if (Number.isFinite(parsed?.currentIndex)) setCurrentIndex(parsed.currentIndex);
-      if (Number.isFinite(parsed?.volume)) setVolume(Math.max(0, Math.min(1, parsed.volume)));
+      if (parsed?.currentItem) {setCurrentItem(parsed.currentItem);}
+      if (Array.isArray(parsed?.queue)) {setQueue(parsed.queue);}
+      if (Number.isFinite(parsed?.currentIndex)) {setCurrentIndex(parsed.currentIndex);}
+      if (Number.isFinite(parsed?.volume)) {setVolume(Math.max(0, Math.min(1, parsed.volume)));}
     } catch {
       // ignore
     }
@@ -49,9 +49,9 @@ export function CreatorPlayerProvider({ children }) {
 
   const persistProgress = useCallback(
     async (force = false) => {
-      if (!currentItem?.id || !["song", "podcast"].includes(currentItem.type)) return;
+      if (!currentItem?.id || !["song", "podcast"].includes(currentItem.type)) {return;}
       const now = Date.now();
-      if (!force && now - lastSavedRef.current < 12000) return;
+      if (!force && now - lastSavedRef.current < 12000) {return;}
       lastSavedRef.current = now;
       try {
         await savePlayerProgress({
@@ -70,7 +70,7 @@ export function CreatorPlayerProvider({ children }) {
 
   const loadAndPlay = useCallback(async (item) => {
     const audio = audioRef.current;
-    if (!audio || !item?.streamUrl) return;
+    if (!audio || !item?.streamUrl) {return;}
 
     setUnlockRequired(false);
     if (audio.src !== item.streamUrl) {
@@ -82,7 +82,7 @@ export function CreatorPlayerProvider({ children }) {
 
   const playItem = useCallback(
     async (item, nextQueue = null) => {
-      if (!item?.streamUrl) return;
+      if (!item?.streamUrl) {return;}
       if (Array.isArray(nextQueue)) {
         setQueue(nextQueue);
         const idx = Math.max(0, nextQueue.findIndex((entry) => entry.id === item.id));
@@ -96,7 +96,7 @@ export function CreatorPlayerProvider({ children }) {
 
   const playByIndex = useCallback(
     async (idx) => {
-      if (!Array.isArray(queue) || idx < 0 || idx >= queue.length) return;
+      if (!Array.isArray(queue) || idx < 0 || idx >= queue.length) {return;}
       const item = queue[idx];
       setCurrentIndex(idx);
       setCurrentItem(item);
@@ -106,7 +106,7 @@ export function CreatorPlayerProvider({ children }) {
   );
 
   const playNext = useCallback(async () => {
-    if (!queue.length) return;
+    if (!queue.length) {return;}
     const next = currentIndex + 1;
     if (next >= queue.length) {
       setIsPlaying(false);
@@ -116,15 +116,15 @@ export function CreatorPlayerProvider({ children }) {
   }, [currentIndex, playByIndex, queue.length]);
 
   const playPrev = useCallback(async () => {
-    if (!queue.length) return;
+    if (!queue.length) {return;}
     const prev = currentIndex - 1;
-    if (prev < 0) return;
+    if (prev < 0) {return;}
     await playByIndex(prev);
   }, [currentIndex, playByIndex, queue.length]);
 
   const togglePlay = useCallback(async () => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio) {return;}
     if (audio.paused) {
       await audio.play();
       return;
@@ -134,22 +134,22 @@ export function CreatorPlayerProvider({ children }) {
 
   const seekTo = useCallback((nextPosition) => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio) {return;}
     audio.currentTime = Math.max(0, Number(nextPosition) || 0);
   }, []);
 
   const moveQueueItem = useCallback((from, to) => {
     setQueue((prev) => {
-      if (from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev;
+      if (from < 0 || to < 0 || from >= prev.length || to >= prev.length) {return prev;}
       const next = [...prev];
       const [item] = next.splice(from, 1);
       next.splice(to, 0, item);
       return next;
     });
     setCurrentIndex((prev) => {
-      if (prev === from) return to;
-      if (from < prev && to >= prev) return prev - 1;
-      if (from > prev && to <= prev) return prev + 1;
+      if (prev === from) {return to;}
+      if (from < prev && to >= prev) {return prev - 1;}
+      if (from > prev && to <= prev) {return prev + 1;}
       return prev;
     });
   }, []);
@@ -157,8 +157,8 @@ export function CreatorPlayerProvider({ children }) {
   const removeQueueItem = useCallback((index) => {
     setQueue((prev) => prev.filter((_, idx) => idx !== index));
     setCurrentIndex((prev) => {
-      if (index < prev) return prev - 1;
-      if (index === prev) return Math.max(0, prev - 1);
+      if (index < prev) {return prev - 1;}
+      if (index === prev) {return Math.max(0, prev - 1);}
       return prev;
     });
   }, []);
@@ -211,7 +211,7 @@ export function CreatorPlayerProvider({ children }) {
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio) {return;}
     audio.volume = volume;
   }, [volume]);
 

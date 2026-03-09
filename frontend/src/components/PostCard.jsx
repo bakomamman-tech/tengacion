@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
+
 import PostComments from "./PostComments";
 import { createReport, initPayment, resolveImage } from "../api";
+import { createReportDialogConfig } from "../constants/reportReasons";
 import VideoPlayer from "./media/VideoPlayer";
+import { useDialog } from "./ui/useDialog";
 
 /* ======================================================
    SYSTEM / STARTER POST HANDLING
@@ -35,10 +39,10 @@ const inferVideoMimeType = (url = "", fallback = "") => {
   }
 
   const cleanUrl = String(url || "").toLowerCase();
-  if (cleanUrl.includes(".webm")) return "video/webm";
-  if (cleanUrl.includes(".ogg")) return "video/ogg";
-  if (cleanUrl.includes(".mov")) return "video/quicktime";
-  if (cleanUrl.includes(".m4v")) return "video/mp4";
+  if (cleanUrl.includes(".webm")) {return "video/webm";}
+  if (cleanUrl.includes(".ogg")) {return "video/ogg";}
+  if (cleanUrl.includes(".mov")) {return "video/quicktime";}
+  if (cleanUrl.includes(".m4v")) {return "video/mp4";}
   return "video/mp4";
 };
 
@@ -97,7 +101,7 @@ function EditPostModal({ post, onClose, onSave }) {
       onSave(data);
       onClose();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message || "Failed to update post");
     } finally {
       setLoading(false);
     }
@@ -142,6 +146,7 @@ export default function PostCard({
   onDelete,
   onEdit,
 }) {
+  const { confirm, prompt } = useDialog();
   /* SYSTEM POST SHORT-CIRCUIT */
   const isSystemPost = isSystem || post?.system;
 
@@ -230,7 +235,7 @@ export default function PostCard({
   const audioPreviewUrl = audioTrack?.previewUrl || audioTrack?.url;
   const hasAudioPreview = Boolean(audioPreviewUrl);
   const handleTrackPayment = async () => {
-    if (!audioTrack?.trackId) return;
+    if (!audioTrack?.trackId) {return;}
     setPaymentLoading(true);
     try {
       const payment = await initPayment({
@@ -242,10 +247,10 @@ export default function PostCard({
       if (payment?.authorization_url) {
         window.open(payment.authorization_url, "_blank");
       } else {
-        alert("Unable to start payment right now.");
+        toast.error("Unable to start payment right now.");
       }
     } catch (err) {
-      alert(err.message || "Failed to start payment");
+      toast.error(err.message || "Failed to start payment");
     } finally {
       setPaymentLoading(false);
     }
@@ -370,9 +375,9 @@ export default function PostCard({
   const copyLinkOnly = async () => {
     try {
       await copyCurrentLink();
-      alert("Post link copied");
+      toast.success("Post link copied");
     } catch {
-      alert("Copy failed");
+      toast.error("Copy failed");
     }
   };
 
@@ -412,7 +417,7 @@ export default function PostCard({
       });
       setReaction(nextLiked ? selectedReaction || reaction || REACTIONS[0] : null);
     } catch (err) {
-      alert(err.message || "Failed to update like");
+      toast.error(err.message || "Failed to update like");
     } finally {
       setLiking(false);
     }
@@ -448,12 +453,12 @@ export default function PostCard({
 
       try {
         await copyCurrentLink();
-        alert("Post shared");
+        toast.success("Post shared");
       } catch {
-        alert("Post shared");
+        toast.success("Post shared");
       }
     } catch (err) {
-      alert(err.message || "Failed to share post");
+      toast.error(err.message || "Failed to share post");
     } finally {
       setSharing(false);
     }
@@ -464,7 +469,13 @@ export default function PostCard({
       return;
     }
 
-    const ok = confirm("Delete this post?");
+    const ok = await confirm({
+      title: "Delete post?",
+      description: "This removes the post from your feed and cannot be undone.",
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      confirmVariant: "destructive",
+    });
     if (!ok) {
       return;
     }
@@ -487,19 +498,21 @@ export default function PostCard({
       onDelete?.(post._id);
       setMenuOpen(false);
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message || "Failed to delete post");
     } finally {
       setDeleting(false);
     }
   };
 
   const reportPost = async () => {
-    if (reporting) return;
-    const reason = window.prompt(
-      "Report reason: spam, hate_speech, violence, harassment, misinformation, nudity, other",
-      "spam"
-    );
-    if (!reason) return;
+    if (reporting) {
+      return;
+    }
+
+    const reason = await prompt(createReportDialogConfig("post", "spam"));
+    if (!reason) {
+      return;
+    }
 
     try {
       setReporting(true);
@@ -508,10 +521,10 @@ export default function PostCard({
         targetId: post?._id,
         reason: String(reason || "").trim().toLowerCase(),
       });
-      alert("Report submitted");
+      toast.success("Report submitted");
       setMenuOpen(false);
     } catch (err) {
-      alert(err?.message || "Failed to submit report");
+      toast.error(err?.message || "Failed to submit report");
     } finally {
       setReporting(false);
     }
@@ -633,7 +646,7 @@ export default function PostCard({
                   />
 
                   {isBuffering && (
-                    <div className="post-video-loading">Loading…</div>
+                    <div className="post-video-loading">Loading...</div>
                   )}
 
                   {videoError && (

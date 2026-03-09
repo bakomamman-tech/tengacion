@@ -21,7 +21,7 @@ export default function Rooms() {
   }, []);
 
   const submitRoom = async () => {
-    if (!name.trim() || busy) return;
+    if (!name.trim() || busy) {return;}
     try {
       setBusy(true);
       await createRoom({ name, description });

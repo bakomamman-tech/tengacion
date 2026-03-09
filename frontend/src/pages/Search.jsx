@@ -51,9 +51,9 @@ export default function Search() {
   }, [q, tab]);
 
   const emptyLabel = useMemo(() => {
-    if (tab === "users") return "No users found";
-    if (tab === "posts") return "No posts found";
-    if (tab === "hashtags") return "No hashtags found";
+    if (tab === "users") {return "No users found";}
+    if (tab === "posts") {return "No posts found";}
+    if (tab === "hashtags") {return "No hashtags found";}
     return "No rooms found";
   }, [tab]);
 

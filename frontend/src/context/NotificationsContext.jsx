@@ -79,12 +79,12 @@ export function NotificationsProvider({ children }) {
 
   const markOneRead = useCallback(
     async (id) => {
-      if (!id || !user?._id) return false;
+      if (!id || !user?._id) {return false;}
 
       let wasUnread = false;
       setNotifications((prev) =>
         prev.map((item) => {
-          if (String(item?._id) !== String(id)) return item;
+          if (String(item?._id) !== String(id)) {return item;}
           wasUnread = !item?.read;
           return { ...item, read: true };
         })
@@ -108,7 +108,7 @@ export function NotificationsProvider({ children }) {
 
   const markAllRead = useCallback(
     async ({ optimistic = true } = {}) => {
-      if (!user?._id) return false;
+      if (!user?._id) {return false;}
       if (optimistic) {
         setUnreadCount(0);
         setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));

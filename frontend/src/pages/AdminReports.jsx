@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AdminShell from "../components/AdminShell";
 import {
   adminListReports,
@@ -14,17 +14,17 @@ export default function AdminReportsPage({ user }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     adminListReports({ status })
       .then((payload) => setRows(Array.isArray(payload?.reports) ? payload.reports : []))
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
-  };
+  }, [status]);
 
   useEffect(() => {
     load();
-  }, [status]);
+  }, [load]);
 
   const action = async (entry, nextAction) => {
     try {

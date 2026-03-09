@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import PostSkeleton from "../components/PostSkeleton";
@@ -43,7 +44,7 @@ const MORE_OPTIONS = [
 const isBirthdayToday = (birthday = {}) => {
   const day = Number(birthday?.day) || 0;
   const month = Number(birthday?.month) || 0;
-  if (!day || !month) return false;
+  if (!day || !month) {return false;}
   const now = new Date();
   return now.getDate() === day && now.getMonth() + 1 === month;
 };
@@ -706,7 +707,7 @@ export default function Home({ user }) {
           setCheckInStreak(streakResult?.checkIn || { count: 0, lastCheckInAt: null });
         } catch {
           if (alive) {
-            alert("Failed to load feed");
+            toast.error("Failed to load feed");
           }
         } finally {
           if (alive) {
@@ -743,7 +744,7 @@ export default function Home({ user }) {
 
   useEffect(() => {
     const target = loadMoreRef.current;
-    if (!target) return undefined;
+    if (!target) {return undefined;}
     const observer = new IntersectionObserver(
       (entries) => {
         const first = entries[0];
@@ -758,8 +759,8 @@ export default function Home({ user }) {
   }, [posts.length]);
 
   useEffect(() => {
-    const viewer = profile || user;
-    if (!viewer?._id) {
+    const viewerId = profile?._id || user?._id;
+    if (!viewerId) {
       return;
     }
 
@@ -768,7 +769,7 @@ export default function Home({ user }) {
       return;
     }
 
-    const socket = connectSocket({ token, userId: viewer._id });
+    const socket = connectSocket({ token, userId: viewerId });
     if (!socket) {
       return;
     }
@@ -828,7 +829,7 @@ export default function Home({ user }) {
       String(file.type || "").startsWith("image/") ||
       ["video/mp4", "video/webm"].includes(String(file.type || "").toLowerCase());
     if (!isMedia) {
-      alert("Only images, MP4, or WebM are supported.");
+      toast.error("Only images, MP4, or WebM are supported.");
       return;
     }
     openComposer("", file);
@@ -838,7 +839,7 @@ export default function Home({ user }) {
   const visiblePosts = Array.isArray(posts) ? posts.slice(0, visiblePostCount) : [];
 
   const runCheckIn = async () => {
-    if (checkInBusy) return;
+    if (checkInBusy) {return;}
     try {
       setCheckInBusy(true);
       const payload = await submitDailyCheckIn(checkInText);

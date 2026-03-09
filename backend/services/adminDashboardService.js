@@ -10,47 +10,12 @@ const {
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-const APPROVED_USER_SEEDS = [
-  {
-    id: "lorietta-billy",
-    name: "Lorietta Billy",
-    descriptor: "Community Lead",
-    followersCount: 98364,
-    engagementCount: 12398,
-    growthPercent: 8.2,
-  },
-  {
-    id: "stephen-daniel-kurah",
-    name: "Stephen Daniel Kurah",
-    descriptor: "Creator Program",
-    followersCount: 65281,
-    engagementCount: 11782,
-    growthPercent: 7.9,
-  },
-  {
-    id: "demo-friend-user",
-    name: "Demo Friend User",
-    descriptor: "Member Network",
-    followersCount: 54392,
-    engagementCount: 9983,
-    growthPercent: 6.8,
-  },
-  {
-    id: "admin-user",
-    name: "Admin User",
-    descriptor: "Platform Admin",
-    followersCount: 48975,
-    engagementCount: 9149,
-    growthPercent: 5.4,
-  },
-  {
-    id: "demo-uiux-user",
-    name: "Demo UIUX User",
-    descriptor: "Design Circle",
-    followersCount: 41286,
-    engagementCount: 7429,
-    growthPercent: 4.6,
-  },
+const APPROVED_USERS = [
+  { id: "lorietta-billy", name: "Lorietta Billy", descriptor: "Community Lead" },
+  { id: "stephen-daniel-kurah", name: "Stephen Daniel Kurah", descriptor: "Creator Program" },
+  { id: "demo-friend-user", name: "Demo Friend User", descriptor: "Member Network" },
+  { id: "admin-user", name: "Admin User", descriptor: "Platform Admin" },
+  { id: "demo-uiux-user", name: "Demo UIUX User", descriptor: "Design Circle" },
 ];
 
 const DEVICE_COLORS = {
@@ -168,10 +133,8 @@ const averageOfRange = (rows = [], field) => {
 const computeChange = (rows = [], field) => {
   if (rows.length < 2) return 0;
   const midpoint = Math.max(1, Math.floor(rows.length / 2));
-  const previous = rows.slice(0, midpoint);
-  const current = rows.slice(midpoint);
-  const previousAvg = averageOfRange(previous, field);
-  const currentAvg = averageOfRange(current, field);
+  const previousAvg = averageOfRange(rows.slice(0, midpoint), field);
+  const currentAvg = averageOfRange(rows.slice(midpoint), field);
   if (!previousAvg) {
     return currentAvg > 0 ? 100 : 0;
   }
@@ -183,8 +146,20 @@ const sumField = (rows = [], field) =>
 
 const latestValue = (rows = [], field) => Number(rows[rows.length - 1]?.[field] || 0);
 
-const isMeaningfulSeries = (rows = [], fields = []) =>
-  rows.some((row) => fields.some((field) => Number(row[field] || 0) > 0));
+const hasLiveSeriesData = (rows = []) =>
+  rows.some((row) =>
+    [
+      "activeUsers",
+      "postsCount",
+      "likes",
+      "comments",
+      "shares",
+      "downloads",
+      "streams",
+      "messagesSent",
+      "contentInteractions",
+    ].some((field) => Number(row[field] || 0) > 0)
+  );
 
 const computeAge = (dob) => {
   if (!dob) return null;
@@ -250,130 +225,23 @@ const rangeSubtitle = (range = "30d") => {
   return match ? match.label : "Last 30 days";
 };
 
-const buildSeedSeries = (dailyRows = [], interval = "daily") => {
-  const seededDaily = dailyRows.map((row, index) => {
-    const activeUsers = Math.max(
-      7800,
-      Math.round(14800 + Math.sin(index / 1.8) * 3600 + Math.cos(index / 4.5) * 1400 + index * 240)
-    );
-    const reach = Math.max(
-      16200,
-      Math.round(22800 + Math.sin(index / 2.4 + 0.8) * 5200 + Math.cos(index / 3.2) * 2300 + index * 330)
-    );
-    const shares = Math.max(
-      2100,
-      Math.round(3650 + Math.sin(index / 1.7 + 1.4) * 920 + Math.cos(index / 3.8) * 420 + index * 66)
-    );
-    const likes = Math.max(
-      4200,
-      Math.round(6250 + Math.sin(index / 1.9 + 0.5) * 1350 + Math.cos(index / 5.2) * 560 + index * 90)
-    );
-    const comments = Math.max(
-      1600,
-      Math.round(2380 + Math.sin(index / 2.3 + 2.1) * 540 + Math.cos(index / 4.6) * 210 + index * 38)
-    );
-    const saves = Math.max(
-      980,
-      Math.round(1540 + Math.sin(index / 2.2 + 1.2) * 360 + Math.cos(index / 4.2) * 150 + index * 28)
-    );
-    const clicks = Math.max(
-      2300,
-      Math.round(3480 + Math.sin(index / 1.5 + 0.9) * 760 + Math.cos(index / 3.5) * 330 + index * 54)
-    );
-    const profileVisits = Math.max(
-      1800,
-      Math.round(2740 + Math.sin(index / 2.1 + 0.3) * 690 + Math.cos(index / 4.7) * 250 + index * 46)
-    );
-
-    return {
-      date: row.date,
-      activeUsers,
-      reach,
-      impressions: Math.round(reach * 1.27),
-      likes,
-      comments,
-      shares,
-      clicks,
-      saves,
-      profileVisits,
-      engagement: likes + comments * 2 + shares * 3,
-      contentInteractions: likes + comments + shares + saves,
-    };
-  });
-
-  return groupRowsByInterval(seededDaily, interval);
-};
-
-const buildSeedRecentPosts = () => {
-  const now = Date.now();
-  return [
-    {
-      id: "seed-post-1",
-      authorName: "Lorietta Billy",
-      authorDescriptor: "Community Lead",
-      createdAt: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
-      excerpt: "Shared a new community update for Tengacion creators.",
-      previewImage: "",
-      metrics: { likes: 342, comments: 87, shares: 11 },
-    },
-    {
-      id: "seed-post-2",
-      authorName: "Stephen Daniel Kurah",
-      authorDescriptor: "Creator Program",
-      createdAt: new Date(now - 8 * 60 * 60 * 1000).toISOString(),
-      excerpt: "Published a growth snapshot for creator onboarding performance.",
-      previewImage: "",
-      metrics: { likes: 251, comments: 66, shares: 11 },
-    },
-    {
-      id: "seed-post-3",
-      authorName: "Demo UIUX User",
-      authorDescriptor: "Design Circle",
-      createdAt: new Date(now - 22 * 60 * 60 * 1000).toISOString(),
-      excerpt: "Posted a product polish note for the Tengacion admin flow.",
-      previewImage: "",
-      metrics: { likes: 194, comments: 41, shares: 8 },
-    },
-  ];
-};
-
-const buildSeedTopUsers = () =>
-  APPROVED_USER_SEEDS.map((entry) => ({
-    id: entry.id,
-    displayName: entry.name,
-    descriptor: entry.descriptor,
-    followersCount: entry.followersCount,
-    engagementCount: entry.engagementCount,
-    growthPercent: entry.growthPercent,
-    avatarUrl: "",
-  }));
-
-const buildSeedAudienceAge = () => [
-  { label: "13-17", value: 184 },
-  { label: "18-24", value: 292 },
-  { label: "25-34", value: 318 },
-  { label: "35-44", value: 244 },
-  { label: "45-54", value: 136 },
-  { label: "55+", value: 62 },
-];
-
-const buildSeedDevices = () => {
+const buildZeroDevices = () => {
   const primary = [
-    { label: "Android", value: 46, color: DEVICE_COLORS.Android },
-    { label: "iOS", value: 38, color: DEVICE_COLORS.iOS },
-    { label: "Other", value: 16, color: DEVICE_COLORS.Other },
+    { label: "Android", value: 0, color: DEVICE_COLORS.Android },
+    { label: "iOS", value: 0, color: DEVICE_COLORS.iOS },
+    { label: "Other", value: 0, color: DEVICE_COLORS.Other },
   ];
   const secondary = [
-    { label: "Desktop", value: 54, color: DEVICE_COLORS.Desktop },
-    { label: "Mobile Web", value: 30, color: DEVICE_COLORS["Mobile Web"] },
-    { label: "Other", value: 16, color: DEVICE_COLORS.Other },
+    { label: "Desktop", value: 0, color: DEVICE_COLORS.Desktop },
+    { label: "Mobile Web", value: 0, color: DEVICE_COLORS["Mobile Web"] },
+    { label: "Other", value: 0, color: DEVICE_COLORS.Other },
   ];
   const legend = [
-    { label: "Android", value: 46, percent: 46, color: DEVICE_COLORS.Android },
-    { label: "Desktop", value: 54, percent: 54, color: DEVICE_COLORS.Desktop },
-    { label: "Mobile Web", value: 30, percent: 30, color: DEVICE_COLORS["Mobile Web"] },
-    { label: "iOS", value: 38, percent: 38, color: DEVICE_COLORS.iOS },
-    { label: "Other", value: 16, percent: 16, color: DEVICE_COLORS.Other },
+    { label: "Android", value: 0, percent: 0, color: DEVICE_COLORS.Android },
+    { label: "Desktop", value: 0, percent: 0, color: DEVICE_COLORS.Desktop },
+    { label: "Mobile Web", value: 0, percent: 0, color: DEVICE_COLORS["Mobile Web"] },
+    { label: "iOS", value: 0, percent: 0, color: DEVICE_COLORS.iOS },
+    { label: "Other", value: 0, percent: 0, color: DEVICE_COLORS.Other },
   ];
 
   return {
@@ -382,203 +250,122 @@ const buildSeedDevices = () => {
     primary,
     secondary,
     legend,
-    source: "seeded",
+    source: "empty",
   };
 };
 
-const buildSeedOverviewCards = (seedSeries) => {
-  const recentWindow = seedSeries.slice(-Math.min(7, seedSeries.length));
-  const recentReach = sumField(recentWindow, "reach");
-  const recentInteractions = sumField(recentWindow, "contentInteractions");
-  return [
-    {
-      id: "total-users",
-      label: "Total Users",
-      value: 85396,
-      unit: "number",
-      helper: "Registered accounts",
-      change: 2.3,
-      sparkline: seedSeries.slice(-10).map((row) => Number(row.activeUsers || 0)),
-    },
-    {
-      id: "active-users",
-      label: "Active Users",
-      value: 23987,
-      unit: "number",
-      helper: "Current active audience",
-      change: 3.8,
-      sparkline: seedSeries.slice(-10).map((row) => Number(row.activeUsers || 0)),
-    },
-    {
-      id: "engagement",
-      label: "Engagement",
-      value: recentReach ? round((recentInteractions / recentReach) * 100, 1) : 31.5,
-      unit: "percent",
-      helper: "Interactions over reach",
-      change: 31.5,
-      sparkline: seedSeries.slice(-10).map((row) => Number(row.engagement || 0)),
-    },
-    {
-      id: "reach",
-      label: "Reach",
-      value: Math.max(154763, sumField(recentWindow, "impressions")),
-      unit: "number",
-      helper: "Impressions in range",
-      change: 6.1,
-      sparkline: seedSeries.slice(-10).map((row) => Number(row.reach || 0)),
-    },
-  ];
-};
+const buildZeroAudienceAge = () =>
+  AGE_GROUPS.map((group) => ({ label: group.label, value: 0 }));
 
-const buildSeedKpis = (seedSeries) => {
-  const totals = {
-    likes: Math.max(2840, Math.round(averageOfRange(seedSeries, "likes"))),
-    comments: Math.max(1310, Math.round(averageOfRange(seedSeries, "comments"))),
-    shares: Math.max(870, Math.round(averageOfRange(seedSeries, "shares"))),
-    saves: Math.max(620, Math.round(averageOfRange(seedSeries, "saves"))),
-    profileVisits: Math.max(1980, Math.round(averageOfRange(seedSeries, "profileVisits"))),
-  };
-  totals.contentInteractions =
-    totals.likes + totals.comments + totals.shares + totals.saves;
-
-  return KPI_ITEMS.map((item) => ({
-    ...item,
-    value: Number(totals[item.id] || 0),
-  }));
-};
-
-const buildOverviewCards = ({ summary, series, fallbackCards }) => {
+const buildOverviewCards = ({ summary, series }) => {
   const totalUsersValue = Number(summary?.totalUsers || 0);
   const recentWindow = series.slice(-Math.min(7, series.length));
-  const reachValue = sumField(recentWindow, "reach");
+  const reachValue = Math.max(sumField(recentWindow, "reach"), sumField(recentWindow, "activeUsers"));
+  const interactionsValue = sumField(recentWindow, "contentInteractions");
   const impressionsValue = sumField(recentWindow, "impressions");
-  const engagementValue = reachValue
-    ? round((sumField(recentWindow, "contentInteractions") / reachValue) * 100, 1)
-    : 0;
-
-  const liveCards = [
-    {
-      id: "total-users",
-      label: "Total Users",
-      value: totalUsersValue,
-      unit: "number",
-      helper: "Registered accounts",
-      change: computeChange(series, "activeUsers"),
-      sparkline: series.slice(-10).map((row) => Number(row.activeUsers || 0)),
-    },
-    {
-      id: "active-users",
-      label: "Active Users",
-      value: latestValue(series, "activeUsers"),
-      unit: "number",
-      helper: "Current active audience",
-      change: computeChange(series, "activeUsers"),
-      sparkline: series.slice(-10).map((row) => Number(row.activeUsers || 0)),
-    },
-    {
-      id: "engagement",
-      label: "Engagement",
-      value: engagementValue,
-      unit: "percent",
-      helper: "Interactions over reach",
-      change: computeChange(series, "engagement"),
-      sparkline: series.slice(-10).map((row) => Number(row.engagement || 0)),
-    },
-    {
-      id: "reach",
-      label: "Reach",
-      value: impressionsValue,
-      unit: "number",
-      helper: "Impressions in range",
-      change: computeChange(series, "reach"),
-      sparkline: series.slice(-10).map((row) => Number(row.reach || 0)),
-    },
-  ];
-
-  const liveReady =
-    totalUsersValue >= 5 &&
-    isMeaningfulSeries(series, ["activeUsers", "reach", "engagement", "contentInteractions"]);
+  const engagementValue = reachValue ? round((interactionsValue / reachValue) * 100, 1) : 0;
 
   return {
-    cards: liveReady ? liveCards : fallbackCards,
-    source: liveReady ? "live" : "seeded",
+    cards: [
+      {
+        id: "total-users",
+        label: "Total Users",
+        value: totalUsersValue,
+        unit: "number",
+        helper: "Registered accounts",
+        change: computeChange(series, "activeUsers"),
+        sparkline: series.slice(-10).map((row) => Number(row.activeUsers || 0)),
+      },
+      {
+        id: "active-users",
+        label: "Active Users",
+        value: latestValue(series, "activeUsers"),
+        unit: "number",
+        helper: "Current active audience",
+        change: computeChange(series, "activeUsers"),
+        sparkline: series.slice(-10).map((row) => Number(row.activeUsers || 0)),
+      },
+      {
+        id: "engagement",
+        label: "Engagement",
+        value: engagementValue,
+        unit: "percent",
+        helper: "Interactions over active reach",
+        change: computeChange(series, "engagement"),
+        sparkline: series.slice(-10).map((row) => Number(row.engagement || 0)),
+      },
+      {
+        id: "reach",
+        label: "Reach",
+        value: impressionsValue,
+        unit: "number",
+        helper: "Derived exposure in range",
+        change: computeChange(series, "reach"),
+        sparkline: series.slice(-10).map((row) => Number(row.reach || 0)),
+      },
+    ],
+    source: hasLiveSeriesData(series) || totalUsersValue > 0 ? "live" : "empty",
   };
 };
 
-const buildKpis = (series = [], fallbackItems = []) => {
+const buildKpis = (series = []) => {
   const totals = {
-    likes: Math.round(averageOfRange(series, "likes")),
-    comments: Math.round(averageOfRange(series, "comments")),
-    shares: Math.round(averageOfRange(series, "shares")),
-    saves: Math.round(averageOfRange(series, "saves")),
-    profileVisits: Math.round(averageOfRange(series, "profileVisits")),
+    likes: sumField(series, "likes"),
+    comments: sumField(series, "comments"),
+    shares: sumField(series, "shares"),
+    saves: sumField(series, "saves"),
+    profileVisits: sumField(series, "profileVisits"),
   };
   totals.contentInteractions =
     totals.likes + totals.comments + totals.shares + totals.saves;
 
-  const liveReady =
-    totals.likes + totals.comments + totals.shares + totals.profileVisits >= 50;
-
   return {
-    items: liveReady
-      ? KPI_ITEMS.map((item) => ({
-          ...item,
-          value: Number(totals[item.id] || 0),
-        }))
-      : fallbackItems,
-    source: liveReady ? "live" : "seeded",
+    items: KPI_ITEMS.map((item) => ({
+      ...item,
+      value: Number(totals[item.id] || 0),
+    })),
+    source: Object.values(totals).some((value) => Number(value || 0) > 0) ? "live" : "empty",
   };
 };
 
 const buildLiveSeries = (dailyRows = [], postMetricsMap = new Map(), interval = "daily") => {
   const mergedDaily = dailyRows.map((row) => {
     const postMetrics = postMetricsMap.get(row.date) || {};
-    const likes = Number(postMetrics.likes || 0);
-    const comments = Number(postMetrics.comments || 0);
-    const shares = Number(postMetrics.shares || 0);
-    const saves = Math.max(0, Math.round(likes * 0.22 + shares * 0.58));
-    const reach = Math.max(
-      0,
-      Math.round(
-        Number(row.activeUsers || row.dau || 0) * 7.2 +
-        Number(row.streams || 0) * 1.8 +
-        Number(row.downloads || 0) * 2.4 +
-        Number(postMetrics.postsCount || row.postsCount || 0) * 12 +
-        Number(row.messagesSent || 0) * 0.55
-      )
-    );
-    const profileVisits = Math.max(
-      0,
-      Math.round(
-        Number(row.totalLogins || 0) * 0.7 +
-        Number(row.friendRequestsSent || 0) * 2.1 +
-        likes * 0.12 +
-        comments * 0.26
-      )
-    );
-    const clicks = Math.max(
-      0,
-      Math.round(
-        Number(row.downloads || 0) +
-        Number(row.friendRequestsSent || 0) +
-        Number(row.successfulPurchases || 0) * 2 +
-        profileVisits * 0.42
-      )
-    );
+    const postsCount = Number(postMetrics.postsCount || row.postsCount || 0);
+    const likes = Number(postMetrics.likes || row.postLikesCount || 0);
+    const comments = Number(postMetrics.comments || row.commentsCount || 0);
+    const shares = Number(postMetrics.shares || row.postSharesCount || 0);
+    const activeUsers = Number(row.activeUsers || row.dau || 0);
+    const downloads = Number(row.downloads || 0);
+    const streams = Number(row.streams || 0);
+    const messagesSent = Number(row.messagesSent || 0);
+    const profileVisits = Number(row.friendRequestsSent || 0) + Number(row.friendRequestsAccepted || 0);
+    const clicks =
+      downloads +
+      Number(row.successfulPurchases || 0) +
+      Number(row.friendRequestsSent || 0);
+    const reach = activeUsers + downloads + streams + postsCount;
+    const impressions = reach + likes + comments + messagesSent;
+    const saves = 0;
+    const contentInteractions = likes + comments + shares + saves;
 
     return {
       date: row.date,
-      activeUsers: Number(row.activeUsers || row.dau || 0),
+      postsCount,
+      activeUsers,
       reach,
-      impressions: Math.round(reach * 1.24),
+      impressions,
       likes,
       comments,
       shares,
       clicks,
       saves,
       profileVisits,
-      engagement: likes + comments * 2 + shares * 3 + Number(row.messagesSent || 0),
-      contentInteractions: likes + comments + shares + saves,
+      downloads,
+      streams,
+      messagesSent,
+      engagement: likes + comments * 2 + shares * 3 + messagesSent,
+      contentInteractions,
     };
   });
 
@@ -588,18 +375,18 @@ const buildLiveSeries = (dailyRows = [], postMetricsMap = new Map(), interval = 
 const loadApprovedUsers = async () => {
   const users = await User.find({
     isDeleted: { $ne: true },
-    $or: APPROVED_USER_SEEDS.map((entry) => ({
+    $or: APPROVED_USERS.map((entry) => ({
       name: { $regex: `^${escapeRegex(entry.name)}$`, $options: "i" },
     })),
   })
-    .select("_id name role avatar followers friends dob achievementsStats")
+    .select("_id name role avatar followers friends dob sessions")
     .lean();
 
   const byName = new Map(users.map((user) => [normalizeName(user.name), user]));
 
-  return APPROVED_USER_SEEDS.map((seed) => ({
-    ...seed,
-    user: byName.get(normalizeName(seed.name)) || null,
+  return APPROVED_USERS.map((entry) => ({
+    ...entry,
+    user: byName.get(normalizeName(entry.name)) || null,
   }));
 };
 
@@ -612,17 +399,15 @@ const getAuthorPostMetrics = async (userIds = []) => {
       $project: {
         author: 1,
         likesCount: {
-          $cond: [
-            { $gt: ["$reactionsCount", 0] },
-            "$reactionsCount",
+          $max: [
             { $size: { $ifNull: ["$likes", []] } },
+            { $ifNull: ["$reactionsCount", 0] },
           ],
         },
         commentsCount: {
-          $cond: [
-            { $gt: ["$commentsCount", 0] },
-            "$commentsCount",
+          $max: [
             { $size: { $ifNull: ["$comments", []] } },
+            { $ifNull: ["$commentsCount", 0] },
           ],
         },
         shareCount: { $ifNull: ["$shareCount", 0] },
@@ -675,17 +460,15 @@ const getDailyPostMetrics = async ({ start, end }) => {
           },
         },
         likesCount: {
-          $cond: [
-            { $gt: ["$reactionsCount", 0] },
-            "$reactionsCount",
+          $max: [
             { $size: { $ifNull: ["$likes", []] } },
+            { $ifNull: ["$reactionsCount", 0] },
           ],
         },
         commentsCount: {
-          $cond: [
-            { $gt: ["$commentsCount", 0] },
-            "$commentsCount",
+          $max: [
             { $size: { $ifNull: ["$comments", []] } },
+            { $ifNull: ["$commentsCount", 0] },
           ],
         },
         shareCount: { $ifNull: ["$shareCount", 0] },
@@ -743,8 +526,8 @@ const getRecentApprovedPosts = async (userIds = []) => {
       row.audio?.coverImageUrl ||
       "",
     metrics: {
-      likes: Number(row.reactionsCount || safeArrayLength(row.likes) || 0),
-      comments: Number(row.commentsCount || safeArrayLength(row.comments) || 0),
+      likes: Math.max(Number(row.reactionsCount || 0), safeArrayLength(row.likes)),
+      comments: Math.max(Number(row.commentsCount || 0), safeArrayLength(row.comments)),
       shares: Number(row.shareCount || 0),
     },
   }));
@@ -755,43 +538,37 @@ const getTopUsers = async (approvedUsers = []) => {
   const userIds = liveUsers.map((entry) => entry.user._id);
   const postMetrics = await getAuthorPostMetrics(userIds);
 
-  const items = approvedUsers.map((entry) => {
-    const userId = entry.user?._id ? String(entry.user._id) : "";
-    const liveMetrics = postMetrics.get(userId) || {};
-    const liveFollowers = safeArrayLength(entry.user?.followers);
-    const liveFriends = safeArrayLength(entry.user?.friends);
-    const engagementCount = Number(liveMetrics.engagementCount || 0);
-    const followersCount =
-      liveFollowers > 0
-        ? liveFollowers
-        : liveFriends > 0
-          ? liveFriends
+  const items = liveUsers
+    .map((entry) => {
+      const userId = String(entry.user._id);
+      const metrics = postMetrics.get(userId) || {};
+      const followersCount = Math.max(
+        safeArrayLength(entry.user?.followers),
+        safeArrayLength(entry.user?.friends)
+      );
+      const engagementCount = Number(metrics.engagementCount || 0);
+      const growthPercent = followersCount
+        ? round((engagementCount / Math.max(followersCount, 1)) * 100, 1)
+        : engagementCount > 0
+          ? 100
           : 0;
-    const useLive = Boolean(entry.user) && (engagementCount > 0 || followersCount > 0);
-    const growthPercent = useLive
-      ? round(
-          Math.max(1.2, Math.min(18.4, ((engagementCount || 1) / Math.max(followersCount || 18, 18)) * 100)),
-          1
-        )
-      : entry.growthPercent;
 
-    return {
-      id: entry.id,
-      displayName: entry.name,
-      descriptor: entry.descriptor,
-      followersCount: useLive ? followersCount : entry.followersCount,
-      engagementCount: useLive ? engagementCount : entry.engagementCount,
-      growthPercent,
-      avatarUrl: getAvatarUrl(entry.user),
-      source: useLive ? "live" : "seeded",
-    };
-  });
-
-  const liveCount = items.filter((entry) => entry.source === "live").length;
+      return {
+        id: entry.id,
+        displayName: entry.name,
+        descriptor: entry.descriptor,
+        followersCount,
+        engagementCount,
+        growthPercent,
+        avatarUrl: getAvatarUrl(entry.user),
+      };
+    })
+    .sort((a, b) => Number(b.engagementCount || 0) - Number(a.engagementCount || 0))
+    .slice(0, 5);
 
   return {
-    items: items.sort((a, b) => Number(b.engagementCount || 0) - Number(a.engagementCount || 0)),
-    source: liveCount >= 3 ? "live" : liveCount > 0 ? "hybrid" : "seeded",
+    items,
+    source: items.length ? "live" : "empty",
   };
 };
 
@@ -804,7 +581,6 @@ const getAudienceBreakdown = async () => {
     .lean();
 
   const counts = AGE_GROUPS.map((group) => ({ label: group.label, value: 0 }));
-  let total = 0;
 
   users.forEach((user) => {
     const age = computeAge(user.dob);
@@ -812,12 +588,11 @@ const getAudienceBreakdown = async () => {
     const index = AGE_GROUPS.findIndex((group) => age >= group.min && age <= group.max);
     if (index === -1) return;
     counts[index].value += 1;
-    total += 1;
   });
 
   return {
-    items: total >= 5 ? counts : buildSeedAudienceAge(),
-    source: total >= 5 ? "live" : "seeded",
+    items: counts,
+    source: counts.some((item) => item.value > 0) ? "live" : "empty",
   };
 };
 
@@ -826,24 +601,27 @@ const getDevicesUsage = async () => {
     .select("sessions")
     .lean();
 
+  if (!users.length) {
+    return buildZeroDevices();
+  }
+
   const primaryCounts = { Android: 0, iOS: 0, Other: 0 };
   const secondaryCounts = { Desktop: 0, "Mobile Web": 0, Other: 0 };
   const legendCounts = { Android: 0, Desktop: 0, "Mobile Web": 0, iOS: 0, Other: 0 };
   let totalPrimary = 0;
-  let totalSecondary = 0;
 
   users.forEach((user) => {
     const session = getLatestSession(user.sessions);
     if (!session) return;
     const primaryLabel = classifyPrimaryDevice(session.userAgent, session.deviceName);
     const secondaryLabel = classifySecondaryDevice(session.userAgent, session.deviceName);
+
     if (Object.prototype.hasOwnProperty.call(primaryCounts, primaryLabel)) {
       primaryCounts[primaryLabel] += 1;
       totalPrimary += 1;
     }
     if (Object.prototype.hasOwnProperty.call(secondaryCounts, secondaryLabel)) {
       secondaryCounts[secondaryLabel] += 1;
-      totalSecondary += 1;
     }
     if (Object.prototype.hasOwnProperty.call(legendCounts, primaryLabel)) {
       legendCounts[primaryLabel] += 1;
@@ -854,9 +632,11 @@ const getDevicesUsage = async () => {
     }
   });
 
-  if (totalPrimary < 4 || totalSecondary < 4) {
-    return buildSeedDevices();
+  if (!totalPrimary) {
+    return buildZeroDevices();
   }
+
+  const legendTotal = Object.values(legendCounts).reduce((sum, value) => sum + Number(value || 0), 0);
 
   return {
     primaryTitle: "Mobile OS",
@@ -874,32 +654,10 @@ const getDevicesUsage = async () => {
     legend: Object.entries(legendCounts).map(([label, value]) => ({
       label,
       value,
-      percent: percent(value, Object.values(legendCounts).reduce((sum, item) => sum + item, 0) || 1),
+      percent: percent(value, legendTotal || 1),
       color: DEVICE_COLORS[label],
     })),
     source: "live",
-  };
-};
-
-const mergeRecentPosts = (liveItems = []) => {
-  const approvedLive = liveItems.filter((entry) =>
-    APPROVED_USER_SEEDS.some((seed) => normalizeName(seed.name) === normalizeName(entry.authorName))
-  );
-
-  if (approvedLive.length >= 3) {
-    return { items: approvedLive.slice(0, 3), source: "live" };
-  }
-
-  const filled = [...approvedLive];
-  buildSeedRecentPosts().forEach((entry) => {
-    if (filled.length >= 3) return;
-    if (filled.some((item) => normalizeName(item.authorName) === normalizeName(entry.authorName))) return;
-    filled.push(entry);
-  });
-
-  return {
-    items: filled.slice(0, 3),
-    source: approvedLive.length ? "hybrid" : "seeded",
   };
 };
 
@@ -925,47 +683,24 @@ const buildAdminDashboard = async ({ range = "30d", startDate = "", endDate = ""
     getAudienceBreakdown(),
   ]);
 
-  const liveSeries = buildLiveSeries(rawDailyRows, dailyPostMetrics, normalizedInterval);
-  const seedSeries = buildSeedSeries(rawDailyRows, normalizedInterval);
-  const seriesIsLive = isMeaningfulSeries(liveSeries, [
-    "activeUsers",
-    "reach",
-    "likes",
-    "comments",
-    "shares",
-    "clicks",
-  ]);
-  const chartSeries = seriesIsLive ? liveSeries : seedSeries;
+  const chartSeries = buildLiveSeries(rawDailyRows, dailyPostMetrics, normalizedInterval);
   const overviewCards = buildOverviewCards({
     summary: overview.summary,
     series: chartSeries,
-    fallbackCards: buildSeedOverviewCards(seedSeries),
   });
-  const kpis = buildKpis(chartSeries, buildSeedKpis(seedSeries));
-  const recentPosts = mergeRecentPosts(
-    await getRecentApprovedPosts(
+  const kpis = buildKpis(chartSeries);
+  const recentPosts = {
+    items: await getRecentApprovedPosts(
       approvedUsers.filter((entry) => entry.user?._id).map((entry) => entry.user._id)
-    )
-  );
+    ),
+    source: "live",
+  };
   const topUsers = await getTopUsers(approvedUsers);
 
-  const sectionSources = [
-    overviewCards.source,
-    seriesIsLive ? "live" : "seeded",
-    devicesUsage.source,
-    recentPosts.source,
-    topUsers.source,
-    kpis.source,
-    audienceAge.source,
-  ];
-  const liveSectionCount = sectionSources.filter((entry) => entry === "live").length;
-  const seededSectionCount = sectionSources.filter((entry) => entry === "seeded").length;
-  const dataMode =
-    seededSectionCount === sectionSources.length
-      ? "seeded"
-      : liveSectionCount === sectionSources.length
-        ? "live"
-        : "hybrid";
+  const messageVolume = sumField(chartSeries, "messagesSent");
+  const dataMode = hasLiveSeriesData(chartSeries) || Number(overview.summary?.totalUsers || 0) > 0
+    ? "live"
+    : "limited";
 
   return {
     dataMode,
@@ -982,33 +717,44 @@ const buildAdminDashboard = async ({ range = "30d", startDate = "", endDate = ""
       adminName: "Admin User",
       roleLabel: "Admin",
       secondaryText: "Platform oversight",
-      notificationCount: Math.max(1, Number(systemAlerts.alerts?.length || 0)),
+      notificationCount: Number(systemAlerts.alerts?.length || 0),
+      alerts: systemAlerts.alerts || [],
     },
     overview: {
       cards: overviewCards.cards,
+      source: overviewCards.source,
     },
     chart: {
       tabs: chartTabs,
       rangeOptions,
       activeTab: "activity",
       series: chartSeries,
-      source: seriesIsLive ? "live" : "seeded",
+      source: hasLiveSeriesData(chartSeries) ? "live" : "empty",
     },
     devicesUsage,
-    recentPosts,
-    topUsers: topUsers.source === "seeded" ? { ...topUsers, items: buildSeedTopUsers() } : topUsers,
+    recentPosts: {
+      items: recentPosts.items,
+      source: recentPosts.items.length ? "live" : "empty",
+    },
+    topUsers,
     kpis,
     audienceAge,
     navDots: {
       analytics: Boolean(systemAlerts.alerts?.length),
-      messages: recentPosts.items.length > 0,
-      campaigns: false,
-      settings: false,
+      messages: messageVolume > 0,
+      campaigns: Number(overview.summary?.revenueThisMonth || 0) > 0,
+      settings: Boolean(systemAlerts.metrics?.loginWarnings || systemAlerts.metrics?.failedPayments),
+    },
+    diagnostics: {
+      totalPosts: Number(overview.summary?.totalPosts || 0),
+      totalMessages: messageVolume,
+      approvedUserCount: topUsers.items.length,
+      audienceTracked: audienceAge.items.reduce((sum, item) => sum + Number(item.value || 0), 0),
     },
   };
 };
 
 module.exports = {
-  APPROVED_USER_SEEDS,
+  APPROVED_USERS,
   buildAdminDashboard,
 };

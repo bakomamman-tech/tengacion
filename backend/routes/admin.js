@@ -22,6 +22,7 @@ const {
   buildContentUploads,
   buildRevenueAnalytics,
   buildEngagementAnalytics,
+  buildMessagesOverview,
   buildTopCreators,
   buildTopContent,
   buildRecentActivity,
@@ -972,6 +973,15 @@ router.get("/analytics/engagement", async (req, res) => {
   } catch (err) {
     const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
     return res.status(code).json({ error: err.message || "Failed to load engagement analytics" });
+  }
+});
+
+router.get("/messages/overview", async (req, res) => {
+  try {
+    return res.json(await buildMessagesOverview(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load message analytics" });
   }
 });
 

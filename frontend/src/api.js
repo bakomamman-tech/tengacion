@@ -1528,6 +1528,16 @@ export const adminGetAnalyticsEngagement = (params = {}) => {
   });
 };
 
+export const adminGetMessagesOverview = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  return request(`${API_BASE}/admin/messages/overview?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
 export const adminGetAnalyticsTopCreators = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {

@@ -54,12 +54,15 @@ function DonutBlock({ title, items }) {
 }
 
 export default function DevicesUsageCard({ data }) {
+  const hasData = [...(data?.primary || []), ...(data?.secondary || [])].some((item) => Number(item?.value || 0) > 0);
+
   return (
     <section className="tdash-panel">
       <div className="tdash-panel__head">
         <h3 className="tdash-panel__title">Devices Usage</h3>
       </div>
 
+      {!hasData ? <div className="tdash-empty">No device sessions have been recorded yet.</div> : null}
       <div className="tdash-devices">
         <DonutBlock title={data?.primaryTitle || "Mobile OS"} items={data?.primary || []} />
         <DonutBlock title={data?.secondaryTitle || "Access Mix"} items={data?.secondary || []} />

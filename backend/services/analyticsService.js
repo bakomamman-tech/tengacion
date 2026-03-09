@@ -182,6 +182,45 @@ const ACTIVE_EVENT_TYPES = [
   "friend_request_accepted",
 ];
 
+const aggregatePostSnapshot = async ({ start, end } = {}) => {
+  const rows = await Post.aggregate([
+    { $match: { createdAt: { $gte: start, $lte: end } } },
+    {
+      $project: {
+        likesCount: {
+          $max: [
+            { $size: { $ifNull: ["$likes", []] } },
+            { $ifNull: ["$reactionsCount", 0] },
+          ],
+        },
+        commentsCount: {
+          $max: [
+            { $size: { $ifNull: ["$comments", []] } },
+            { $ifNull: ["$commentsCount", 0] },
+          ],
+        },
+        sharesCount: { $ifNull: ["$shareCount", 0] },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        postsCount: { $sum: 1 },
+        likesCount: { $sum: "$likesCount" },
+        commentsCount: { $sum: "$commentsCount" },
+        sharesCount: { $sum: "$sharesCount" },
+      },
+    },
+  ]).catch(() => []);
+
+  return {
+    postsCount: Number(rows[0]?.postsCount || 0),
+    likesCount: Number(rows[0]?.likesCount || 0),
+    commentsCount: Number(rows[0]?.commentsCount || 0),
+    sharesCount: Number(rows[0]?.sharesCount || 0),
+  };
+};
+
 const computeDailySummary = async ({ date = new Date() } = {}) => {
   const dateKey = formatDateKey(date);
   const start = startOfUtcDay(date);
@@ -198,7 +237,7 @@ const computeDailySummary = async ({ date = new Date() } = {}) => {
     albumsUploaded,
     booksUploaded,
     videosUploaded,
-    postsCount,
+    postSummary,
     messagesSent,
     reportsCount,
     purchaseSummary,
@@ -225,7 +264,7 @@ const computeDailySummary = async ({ date = new Date() } = {}) => {
     Album.countDocuments({ createdAt: { $gte: start, $lte: end }, archivedAt: null }),
     Book.countDocuments({ createdAt: { $gte: start, $lte: end }, archivedAt: null }),
     Video.countDocuments({ time: { $gte: start, $lte: end }, archivedAt: null }),
-    Post.countDocuments({ createdAt: { $gte: start, $lte: end } }).catch(() => 0),
+    aggregatePostSnapshot({ start, end }),
     Message.countDocuments({ createdAt: { $gte: start, $lte: end } }).catch(() => 0),
     Report.countDocuments({ createdAt: { $gte: start, $lte: end } }),
     Purchase.aggregate([
@@ -244,6 +283,10 @@ const computeDailySummary = async ({ date = new Date() } = {}) => {
   ]);
 
   const purchaseRow = purchaseSummary[0] || {};
+  const postInteractionsCount =
+    Number(postSummary.likesCount || 0) +
+    Number(postSummary.commentsCount || 0) +
+    Number(postSummary.sharesCount || 0);
 
   return DailyAnalytics.findOneAndUpdate(
     { date: dateKey },
@@ -260,7 +303,11 @@ const computeDailySummary = async ({ date = new Date() } = {}) => {
         booksUploaded: Number(booksUploaded) || 0,
         podcastsUploaded: Number(podcastsUploaded) || 0,
         videosUploaded: Number(videosUploaded) || 0,
-        postsCount: Number(postsCount) || 0,
+        postsCount: Number(postSummary.postsCount) || 0,
+        commentsCount: Number(postSummary.commentsCount) || 0,
+        postLikesCount: Number(postSummary.likesCount) || 0,
+        postSharesCount: Number(postSummary.sharesCount) || 0,
+        postInteractionsCount,
         messagesSent: Number(messagesSent) || 0,
         downloads: Number(downloads) || 0,
         streams: Number(streams) || 0,
@@ -328,7 +375,7 @@ const fetchDailyRows = async ({ start, end, interval = "daily" } = {}) => {
 
 const buildOverview = async ({ range, startDate, endDate, category = "all", interval = "daily" } = {}) => {
   const dates = buildDateRange({ range, startDate, endDate });
-  const [series, totalUsers, totalCreatorAccounts, totalSongs, totalAlbums, totalVideos, totalPodcasts, totalBooks, monthlyRevenue] = await Promise.all([
+  const [series, totalUsers, totalCreatorAccounts, totalSongs, totalAlbums, totalVideos, totalPodcasts, totalBooks, totalPosts, monthlyRevenue] = await Promise.all([
     fetchDailyRows({ start: dates.start, end: dates.end, interval }),
     User.countDocuments({ isDeleted: { $ne: true } }),
     CreatorProfile.countDocuments({ isCreator: true }),
@@ -337,6 +384,7 @@ const buildOverview = async ({ range, startDate, endDate, category = "all", inte
     Video.countDocuments({ archivedAt: null }),
     Track.countDocuments({ kind: "podcast", archivedAt: null }),
     Book.countDocuments({ archivedAt: null }),
+    Post.countDocuments({}).catch(() => 0),
     Purchase.aggregate([
       { $match: { status: "paid", paidAt: { $gte: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)), $lte: new Date() } } },
       { $group: { _id: null, revenue: { $sum: "$amount" } } },
@@ -356,6 +404,7 @@ const buildOverview = async ({ range, startDate, endDate, category = "all", inte
       totalVideos,
       totalPodcasts,
       totalBooks,
+      totalPosts,
       revenueThisMonth: Number(monthlyRevenue[0]?.revenue || 0),
       downloadsToday: Number(latest.downloads || 0),
       streamsToday: Number(latest.streams || 0),
@@ -411,12 +460,116 @@ const buildEngagementAnalytics = async ({ range, startDate, endDate, interval = 
     interval: normalizeInterval(interval),
     series: series.map((row) => ({
       date: row.date,
+      postsCount: Number(row.postsCount || 0),
+      likes: Number(row.postLikesCount || 0),
+      comments: Number(row.commentsCount || 0),
+      shares: Number(row.postSharesCount || 0),
+      postInteractions: Number(row.postInteractionsCount || 0),
       downloads: Number(row.downloads || 0),
       streams: Number(row.streams || 0),
       messagesSent: Number(row.messagesSent || 0),
       friendRequestsSent: Number(row.friendRequestsSent || 0),
       friendRequestsAccepted: Number(row.friendRequestsAccepted || 0),
     })),
+  };
+};
+
+const buildMessagesOverview = async ({ range, startDate, endDate, interval = "daily" } = {}) => {
+  const dates = buildDateRange({ range, startDate, endDate });
+  const [series, totalMessages, unreadMessages, readMessages, activeSendersRows, conversationRows] =
+    await Promise.all([
+      fetchDailyRows({ start: dates.start, end: dates.end, interval }),
+      Message.countDocuments({ createdAt: { $gte: dates.start, $lte: dates.end } }),
+      Message.countDocuments({
+        createdAt: { $gte: dates.start, $lte: dates.end },
+        status: { $in: ["sent", "delivered"] },
+      }),
+      Message.countDocuments({
+        createdAt: { $gte: dates.start, $lte: dates.end },
+        status: "read",
+      }),
+      Message.aggregate([
+        { $match: { createdAt: { $gte: dates.start, $lte: dates.end } } },
+        { $group: { _id: "$senderId" } },
+        { $count: "count" },
+      ]),
+      Message.aggregate([
+        { $match: { createdAt: { $gte: dates.start, $lte: dates.end } } },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: "$conversationId",
+            messagesCount: { $sum: 1 },
+            lastMessageAt: { $first: "$createdAt" },
+            lastPreview: { $first: "$text" },
+            lastSenderName: { $first: "$senderName" },
+            senders: { $addToSet: "$senderId" },
+            receivers: { $addToSet: "$receiverId" },
+          },
+        },
+        { $sort: { lastMessageAt: -1 } },
+        { $limit: 8 },
+      ]),
+    ]);
+
+  const participantIds = Array.from(
+    new Set(
+      conversationRows
+        .flatMap((row) => [...(row.senders || []), ...(row.receivers || [])])
+        .map((entry) => String(entry || ""))
+        .filter(Boolean)
+    )
+  );
+
+  const users = participantIds.length
+    ? await User.find({ _id: { $in: participantIds } }).select("name").lean()
+    : [];
+  const userNameMap = new Map(users.map((row) => [String(row._id), row.name || "Unknown user"]));
+
+  const recentConversations = conversationRows.map((row) => {
+    const participants = Array.from(
+      new Set([...(row.senders || []), ...(row.receivers || [])].map((entry) => String(entry || "")).filter(Boolean))
+    );
+
+    return {
+      conversationId: row._id,
+      messagesCount: Number(row.messagesCount || 0),
+      lastMessageAt: row.lastMessageAt || null,
+      lastSenderName: row.lastSenderName || "",
+      lastPreview: String(row.lastPreview || "").trim() || "Attachment or shared content",
+      participantNames: participants
+        .map((entry) => userNameMap.get(entry))
+        .filter(Boolean)
+        .slice(0, 3),
+    };
+  });
+
+  const conversations = conversationRows.length
+    ? await Message.distinct("conversationId", { createdAt: { $gte: dates.start, $lte: dates.end } }).then((rows) => rows.length)
+    : 0;
+
+  return {
+    filters: {
+      range: dates.range,
+      startDate: dates.start,
+      endDate: dates.end,
+      interval: normalizeInterval(interval),
+    },
+    summary: {
+      totalMessages: Number(totalMessages || 0),
+      conversations: Number(conversations || 0),
+      activeSenders: Number(activeSendersRows[0]?.count || 0),
+      unreadMessages: Number(unreadMessages || 0),
+      readMessages: Number(readMessages || 0),
+      averagePerConversation: conversations
+        ? Number((Number(totalMessages || 0) / Number(conversations || 1)).toFixed(1))
+        : 0,
+    },
+    series: series.map((row) => ({
+      date: row.date,
+      messagesSent: Number(row.messagesSent || 0),
+    })),
+    recentConversations,
   };
 };
 
@@ -613,6 +766,7 @@ module.exports = {
   buildContentUploads,
   buildRevenueAnalytics,
   buildEngagementAnalytics,
+  buildMessagesOverview,
   buildTopCreators,
   buildTopContent,
   buildRecentActivity,

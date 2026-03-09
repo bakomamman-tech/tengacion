@@ -28,6 +28,10 @@ import AdminContentPage from "./pages/AdminContent";
 import AdminTransactionsPage from "./pages/AdminTransactions";
 import AdminCreatorDetailPage from "./pages/AdminCreatorDetail";
 import AdminDashboardPage from "./pages/AdminDashboard";
+import AdminAnalyticsPage from "./pages/AdminAnalytics";
+import AdminMessagesPage from "./pages/AdminMessages";
+import AdminCampaignsPage from "./pages/AdminCampaigns";
+import AdminSettingsPage from "./pages/AdminSettings";
 import CreatorPage from "./pages/CreatorPage";
 import CreatorSongs from "./pages/CreatorSongs";
 import CreatorHubPage from "./pages/CreatorHubPage";
@@ -409,7 +413,34 @@ export default function App() {
         path="/admin/analytics"
         element={
           <AdminRoute user={user}>
-            <AdminDashboardPage user={user} activeNav="analytics" />
+            <AdminAnalyticsPage user={user} />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/messages"
+        element={
+          <AdminRoute user={user}>
+            <AdminMessagesPage user={user} />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/campaigns"
+        element={
+          <AdminRoute user={user}>
+            <AdminCampaignsPage user={user} />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/settings"
+        element={
+          <AdminRoute user={user}>
+            <AdminSettingsPage user={user} />
           </AdminRoute>
         }
       />

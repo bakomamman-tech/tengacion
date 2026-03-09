@@ -17,6 +17,7 @@ export default function TopUsersCard({ items = [] }) {
           <span>Change</span>
         </div>
 
+        {!items.length ? <div className="tdash-empty">No approved user activity is available yet.</div> : null}
         {items.map((item) => (
           <div key={item.id} className="tdash-top-users__row">
             <div className="tdash-top-users__identity">

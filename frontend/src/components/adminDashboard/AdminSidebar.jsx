@@ -8,9 +8,9 @@ const NAV_ITEMS = [
   { key: "analytics", label: "Analytics", icon: "analytics", path: "/admin/analytics", dotKey: "analytics" },
   { key: "posts", label: "Posts", icon: "posts", path: "/admin/content" },
   { key: "users", label: "Users", icon: "users", path: "/admin/users" },
-  { key: "messages", label: "Messages", icon: "messages", path: "", dotKey: "messages" },
-  { key: "campaigns", label: "Campaigns", icon: "campaigns", path: "" },
-  { key: "settings", label: "Settings", icon: "settings", path: "" },
+  { key: "messages", label: "Messages", icon: "messages", path: "/admin/messages", dotKey: "messages" },
+  { key: "campaigns", label: "Campaigns", icon: "campaigns", path: "/admin/campaigns", dotKey: "campaigns" },
+  { key: "settings", label: "Settings", icon: "settings", path: "/admin/settings", dotKey: "settings" },
 ];
 
 export default function AdminSidebar({ activeKey = "dashboard", navDots = {}, avatarSrc = "", onClose }) {
@@ -29,17 +29,6 @@ export default function AdminSidebar({ activeKey = "dashboard", navDots = {}, av
       <nav className="tdash-sidebar__nav" aria-label="Admin dashboard sections">
         {NAV_ITEMS.map((item) => {
           const dotActive = item.dotKey ? Boolean(navDots[item.dotKey]) : false;
-          if (!item.path) {
-            return (
-              <button key={item.key} type="button" className="tdash-sidebar__item is-disabled" disabled>
-                <span className="tdash-sidebar__item-icon">
-                  <AdminDashboardIcon name={item.icon} size={18} />
-                </span>
-                <span className="tdash-sidebar__item-label">{item.label}</span>
-                {dotActive ? <span className="tdash-sidebar__dot" /> : null}
-              </button>
-            );
-          }
 
           return (
             <NavLink

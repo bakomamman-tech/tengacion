@@ -15,17 +15,23 @@ const timeAgo = (value) => {
   return `${diffDays}d ago`;
 };
 
-export default function RecentPostsCard({ items = [] }) {
+export default function RecentPostsCard({ items = [], onOpenAll }) {
   return (
     <section className="tdash-panel">
       <div className="tdash-panel__head">
         <h3 className="tdash-panel__title">Recent Posts</h3>
-        <button type="button" className="tdash-panel__ghost-btn" aria-label="Open recent posts menu">
+        <button
+          type="button"
+          className="tdash-panel__ghost-btn"
+          aria-label="Open recent posts menu"
+          onClick={onOpenAll}
+        >
           <AdminDashboardIcon name="more" size={18} />
         </button>
       </div>
 
       <div className="tdash-recent-posts">
+        {!items.length ? <div className="tdash-empty">No approved user posts in this range yet.</div> : null}
         {items.map((item) => (
           <article key={item.id} className="tdash-recent-post">
             <div

@@ -83,6 +83,9 @@ export default function AnalyticsChartCard({
   series = [],
 }) {
   const lines = chartSets[activeTab] || chartSets.activity;
+  const hasData = series.some((row) =>
+    lines.some((line) => Number(row?.[line.key] || 0) > 0)
+  );
 
   return (
     <section className="tdash-panel tdash-panel--chart">
@@ -117,6 +120,7 @@ export default function AnalyticsChartCard({
       </div>
 
       <div className="tdash-chart">
+        {!hasData ? <div className="tdash-empty tdash-empty--overlay">No chart activity has been recorded in this range yet.</div> : null}
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={series}>
             <CartesianGrid stroke="rgba(129, 153, 204, 0.14)" vertical={false} />

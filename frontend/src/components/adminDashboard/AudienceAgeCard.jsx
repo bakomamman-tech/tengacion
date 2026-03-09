@@ -17,12 +17,15 @@ function AgeTooltip({ active, payload, label }) {
 }
 
 export default function AudienceAgeCard({ items = [] }) {
+  const hasData = items.some((item) => Number(item?.value || 0) > 0);
+
   return (
     <section className="tdash-panel">
       <div className="tdash-panel__head">
         <h3 className="tdash-panel__title">Audience by Age</h3>
       </div>
 
+      {!hasData ? <div className="tdash-empty">No audience age data is available yet.</div> : null}
       <div className="tdash-age-chart">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={items}>

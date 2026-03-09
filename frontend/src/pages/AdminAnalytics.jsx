@@ -48,17 +48,11 @@ const CATEGORY_OPTIONS = [
 
 const currency = (value) => `NGN ${Number(value || 0).toLocaleString()}`;
 const number = (value) => Number(value || 0).toLocaleString();
-const shortDate = (value) => {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleDateString();
-};
 const todayInput = () => new Date().toISOString().slice(0, 10);
 const dateTime = (value) => {
-  if (!value) return "-";
+  if (!value) {return "-";}
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
+  if (Number.isNaN(date.getTime())) {return String(value);}
   return date.toLocaleString();
 };
 
@@ -79,12 +73,13 @@ const downloadBlob = ({ filename, content, type }) => {
   URL.revokeObjectURL(url);
 };
 
-function SummaryCards({ summary }) {
+function SummaryCards({ summary, interactions }) {
   const items = [
     ["Total Users", number(summary.totalUsers)],
     ["New Users Today", number(summary.newUsersToday)],
     ["Active Users Today", number(summary.activeUsersToday)],
     ["Creator Accounts", number(summary.totalCreatorAccounts)],
+    ["Total Posts", number(summary.totalPosts)],
     ["Total Songs", number(summary.totalSongs)],
     ["Total Albums", number(summary.totalAlbums)],
     ["Total Videos", number(summary.totalVideos)],
@@ -93,6 +88,9 @@ function SummaryCards({ summary }) {
     ["Revenue This Month", currency(summary.revenueThisMonth)],
     ["Downloads Today", number(summary.downloadsToday)],
     ["Streams Today", number(summary.streamsToday)],
+    ["Post Likes", number(interactions.likes)],
+    ["Post Comments", number(interactions.comments)],
+    ["Post Shares", number(interactions.shares)],
   ];
 
   return (
@@ -131,6 +129,20 @@ export default function AdminAnalyticsPage({ user }) {
     interval: filters.interval,
     ...(filters.range === "custom" ? { startDate: filters.startDate, endDate: filters.endDate } : {}),
   }), [filters]);
+
+  const postInteractions = useMemo(
+    () =>
+      (engagement.series || []).reduce(
+        (accumulator, row) => ({
+          posts: accumulator.posts + Number(row.postsCount || 0),
+          likes: accumulator.likes + Number(row.likes || 0),
+          comments: accumulator.comments + Number(row.comments || 0),
+          shares: accumulator.shares + Number(row.shares || 0),
+        }),
+        { posts: 0, likes: 0, comments: 0, shares: 0 }
+      ),
+    [engagement.series]
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -279,7 +291,7 @@ export default function AdminAnalyticsPage({ user }) {
 
       {loading ? <div className="adminx-loading">Loading analytics...</div> : null}
 
-      {!loading ? <SummaryCards summary={overview.summary || {}} /> : null}
+      {!loading ? <SummaryCards summary={overview.summary || {}} interactions={postInteractions} /> : null}
 
       {!loading ? (
         <div className="adminx-analytics-grid">
@@ -362,6 +374,25 @@ export default function AdminAnalyticsPage({ user }) {
             </div>
           </section>
 
+          <section className="adminx-panel adminx-panel--span-6">
+            <div className="adminx-panel-head"><h2 className="adminx-panel-title">Post Interactions</h2><span className="adminx-section-meta">Live likes, comments, shares, and post creation volume</span></div>
+            <div className="adminx-chart-box">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={engagement.series || []}>
+                  <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
+                  <XAxis dataKey="date" stroke="#9ec4ad" />
+                  <YAxis stroke="#9ec4ad" />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="likes" stroke="#4de586" strokeWidth={3} dot={false} />
+                  <Line type="monotone" dataKey="comments" stroke="#9ef4be" dot={false} />
+                  <Line type="monotone" dataKey="shares" stroke="#77d998" dot={false} />
+                  <Line type="monotone" dataKey="postsCount" stroke="#ffd166" dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
           <section className="adminx-panel adminx-panel--span-5">
             <div className="adminx-panel-head">
               <h2 className="adminx-panel-title">Top Creators</h2>
@@ -411,10 +442,10 @@ export default function AdminAnalyticsPage({ user }) {
             <div className="adminx-activity-list">
               {(recentActivity.items || []).map((entry) => (
                 <button key={entry._id} type="button" className="adminx-activity-item" onClick={() => {
-                  if (entry.targetType === "report") navigate("/admin/reports");
-                  else if (entry.targetType === "purchase") navigate("/admin/transactions");
-                  else if (["track", "album", "book", "podcast", "video"].includes(entry.contentType || entry.targetType)) navigate("/admin/content");
-                  else navigate("/admin/analytics");
+                  if (entry.targetType === "report") {navigate("/admin/reports");}
+                  else if (entry.targetType === "purchase") {navigate("/admin/transactions");}
+                  else if (["track", "album", "book", "podcast", "video"].includes(entry.contentType || entry.targetType)) {navigate("/admin/content");}
+                  else {navigate("/admin/analytics");}
                 }}>
                   <div className="adminx-row"><strong>{eventLabel(entry.type)}</strong><span className="adminx-activity-time">{dateTime(entry.createdAt)}</span></div>
                   <div className="adminx-muted">{entry.contentType || entry.targetType || "platform"}</div>

@@ -1,5 +1,6 @@
 import { startTransition, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, m } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 import AdminHeader from "../components/adminDashboard/AdminHeader";
 import AdminSidebar from "../components/adminDashboard/AdminSidebar";
@@ -19,14 +20,13 @@ function DashboardNotice({ mode, error }) {
     return null;
   }
 
-  const label =
-    mode === "hybrid"
-      ? "Using live analytics with seeded fallbacks"
-      : "Showing seeded dashboard analytics";
+  const label = mode === "limited"
+    ? "Live data is available but still sparse for this range."
+    : "Dashboard data is still loading.";
 
   return (
     <div className="tdash-notice" role="status">
-      <span className="tdash-notice__pill">{mode === "hybrid" ? "Hybrid" : "Seeded"}</span>
+      <span className="tdash-notice__pill">{mode === "limited" ? "Limited" : "Info"}</span>
       <span>{error || label}</span>
     </div>
   );
@@ -58,11 +58,12 @@ function DashboardSkeleton() {
 const MotionDiv = m.div;
 
 export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
+  const navigate = useNavigate();
   const [range, setRange] = useState("30d");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dashboard, setDashboard] = useState(null);
-  const [activeTab, setActiveTab] = useState(activeNav === "analytics" ? "reach" : "activity");
+  const [activeTab, setActiveTab] = useState("activity");
 
   useEffect(() => {
     let ignore = false;
@@ -92,12 +93,6 @@ export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
       ignore = true;
     };
   }, [range]);
-
-  useEffect(() => {
-    if (activeNav === "analytics") {
-      setActiveTab("reach");
-    }
-  }, [activeNav]);
 
   const avatarSrc = useMemo(() => {
     if (!user) {
@@ -150,6 +145,8 @@ export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
             secondaryText={content?.header?.secondaryText || "Platform oversight"}
             notificationCount={content?.header?.notificationCount || 0}
             avatarSrc={avatarSrc}
+            adminName={content?.header?.adminName || user?.name || "Admin User"}
+            notifications={content?.header?.alerts || []}
             onToggleSidebar={() => setSidebarOpen(true)}
           />
 
@@ -187,7 +184,7 @@ export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
 
                 <div className="tdash-stack">
                   <DevicesUsageCard data={content.devicesUsage} />
-                  <RecentPostsCard items={content.recentPosts?.items || []} />
+                  <RecentPostsCard items={content.recentPosts?.items || []} onOpenAll={() => navigate("/admin/content")} />
                 </div>
               </section>
 

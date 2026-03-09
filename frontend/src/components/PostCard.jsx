@@ -723,7 +723,9 @@ export default function PostCard({
                 {REACTIONS.map((nextReaction) => (
                   <button
                     key={nextReaction.key}
+                    type="button"
                     title={nextReaction.name}
+                    aria-label={nextReaction.name}
                     onClick={() => {
                       setShowReactions(false);
                       syncLike(true, nextReaction);
@@ -736,9 +738,11 @@ export default function PostCard({
             )}
 
             <button
+              type="button"
               className={`action-btn ${likedByViewer ? "active-like" : ""}`}
               onClick={() => syncLike(!likedByViewer, likedByViewer ? null : REACTIONS[0])}
               disabled={liking}
+              aria-pressed={likedByViewer}
             >
               <span className="btn-emoji">
                 {likedByViewer ? reaction?.label || "\u{1F44D}" : "\u{1F44D}"}
@@ -748,14 +752,16 @@ export default function PostCard({
           </div>
 
           <button
+            type="button"
             className={`action-btn ${showComments ? "active" : ""}`}
             onClick={() => setShowComments((state) => !state)}
+            aria-pressed={showComments}
           >
             <span className="btn-emoji">{"\u{1F4AC}"}</span>
             <span>Comment</span>
           </button>
 
-          <button className="action-btn" onClick={sharePost} disabled={sharing}>
+          <button type="button" className="action-btn" onClick={sharePost} disabled={sharing}>
             <span className="btn-emoji">{"\u{21AA}"}</span>
             <span>{sharing ? "Sharing..." : "Share"}</span>
           </button>

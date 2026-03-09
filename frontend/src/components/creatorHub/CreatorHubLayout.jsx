@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import styles from "./CreatorHub.module.css";
+import { buttonStyles, cx } from "../ui/buttonStyles";
 
 const TABS = [
   { key: "home", label: "HOME", suffix: "" },
@@ -36,14 +37,35 @@ export default function CreatorHubLayout({
           </div>
           <div className={styles.bannerActions}>
             {isOwner ? (
-              <Link to="/dashboard/creator" className={styles.ownerBtn}>Upload / Manage</Link>
+              <Link
+                to="/dashboard/creator"
+                className={cx(buttonStyles({ variant: "secondary" }), styles.ownerBtn)}
+              >
+                Upload / Manage
+              </Link>
             ) : (
-              <button type="button" onClick={onToggleFollow} className={styles.followBtn}>
+              <button
+                type="button"
+                onClick={onToggleFollow}
+                className={cx(buttonStyles({ variant: "primary" }), styles.followBtn)}
+              >
                 {isFollowing ? "Following" : "Follow"}
               </button>
             )}
-            <button type="button" className={styles.roundBtn} aria-label="Search creator content">&#128269;</button>
-            <button type="button" className={styles.roundBtn} aria-label="Open library">&#128218;</button>
+            <button
+              type="button"
+              className={cx(buttonStyles({ variant: "icon", iconOnly: true }), styles.roundBtn)}
+              aria-label="Search creator content"
+            >
+              &#128269;
+            </button>
+            <button
+              type="button"
+              className={cx(buttonStyles({ variant: "icon", iconOnly: true }), styles.roundBtn)}
+              aria-label="Open library"
+            >
+              &#128218;
+            </button>
           </div>
         </div>
 
@@ -53,7 +75,12 @@ export default function CreatorHubLayout({
               <Link
                 key={tab.key}
                 to={`/creators/${creatorId}${tab.suffix}`}
-                className={`${styles.tabBtn} ${activeTab === tab.key ? styles.tabBtnActive : ""}`}
+                className={cx(
+                  buttonStyles({ variant: "tab", size: "sm" }),
+                  styles.tabBtn,
+                  activeTab === tab.key && "is-active",
+                  activeTab === tab.key && styles.tabBtnActive
+                )}
               >
                 {tab.label}
               </Link>
@@ -64,14 +91,24 @@ export default function CreatorHubLayout({
             <span className={styles.currencyBox}>
               <button
                 type="button"
-                className={`${styles.currencyBtn} ${currencyMode === "NG" ? styles.currencyBtnActive : ""}`}
+                className={cx(
+                  buttonStyles({ variant: "tab", size: "xs" }),
+                  styles.currencyBtn,
+                  currencyMode === "NG" && "is-active",
+                  currencyMode === "NG" && styles.currencyBtnActive
+                )}
                 onClick={() => onCurrencyMode("NG")}
               >
                 NG
               </button>
               <button
                 type="button"
-                className={`${styles.currencyBtn} ${currencyMode === "GLOBAL" ? styles.currencyBtnActive : ""}`}
+                className={cx(
+                  buttonStyles({ variant: "tab", size: "xs" }),
+                  styles.currencyBtn,
+                  currencyMode === "GLOBAL" && "is-active",
+                  currencyMode === "GLOBAL" && styles.currencyBtnActive
+                )}
                 onClick={() => onCurrencyMode("GLOBAL")}
               >
                 GLOBAL

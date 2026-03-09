@@ -15,7 +15,9 @@
 
 .banner {
   min-height: 210px;
-  background: linear-gradient(132deg, #123a78 0%, #1e4f9e 50%, #2f5fa9 100%);
+  background:
+    radial-gradient(circle at top right, rgba(255, 243, 224, 0.18), transparent 28%),
+    linear-gradient(132deg, #9a6526 0%, #6e431a 52%, #3c2414 100%);
   color: #fff;
   padding: 1rem;
   display: flex;
@@ -73,20 +75,20 @@
 .flowBtn,
 .menuBtn,
 .ctaBtn {
-  border: none;
-  border-radius: 999px;
-  background: var(--btn-bg);
-  color: var(--btn-text);
-  padding: 0.55rem 1rem;
   font-size: 0.84rem;
-  font-weight: 700;
-  cursor: pointer;
+  white-space: nowrap;
 }
 
 .roundBtn {
-  width: 2.1rem;
-  height: 2.1rem;
-  padding: 0;
+  width: 2.5rem;
+  min-width: 2.5rem;
+  height: 2.5rem;
+}
+
+.menuBtn {
+  width: 2.25rem;
+  min-width: 2.25rem;
+  height: 2.25rem;
 }
 
 .tabsRow {
@@ -107,19 +109,12 @@
 }
 
 .tabBtn {
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 0.34rem 0.85rem;
   font-size: 0.8rem;
-  font-weight: 700;
   text-decoration: none;
 }
 
 .tabBtnActive {
-  background: rgba(255, 255, 255, 0.95);
-  color: #19355d;
+  color: #fff7ee;
 }
 
 .currencyBox {
@@ -130,18 +125,13 @@
 }
 
 .currencyBtn {
-  background: transparent;
-  color: #fff;
-  border: none;
-  padding: 0.35rem 0.7rem;
-  cursor: pointer;
   font-size: 0.76rem;
-  font-weight: 700;
+  min-height: 2rem;
+  padding-inline: 0.75rem;
 }
 
 .currencyBtnActive {
-  background: rgba(255, 255, 255, 0.94);
-  color: #1d3f6f;
+  color: #fff7ee;
 }
 
 .mainGrid {
@@ -188,13 +178,8 @@
 }
 
 .viewAll {
-  border: none;
-  background: transparent;
-  color: var(--brand-strong);
-  text-decoration: underline;
-  font-weight: 700;
-  cursor: pointer;
   font-size: 0.78rem;
+  text-decoration: none;
 }
 
 .rowScroller {
@@ -350,12 +335,7 @@
 }
 
 .queueBtnSmall {
-  border: 1px solid rgba(242, 208, 173, 0.28);
-  background: transparent;
-  color: #fff;
-  border-radius: 999px;
   font-size: 0.72rem;
-  padding: 0.2rem 0.5rem;
   margin-right: 0.3rem;
 }
 
@@ -396,21 +376,6 @@ html.dark-mode .trackRow {
   border-bottom-color: #6a4d33;
 }
 
-html.dark-mode .followBtn:focus,
-html.dark-mode .ownerBtn:focus,
-html.dark-mode .roundBtn:focus,
-html.dark-mode .buyBtn:focus,
-html.dark-mode .playBtn:focus,
-html.dark-mode .shuffleBtn:focus,
-html.dark-mode .menuBtn:focus,
-html.dark-mode .tabBtn:focus,
-html.dark-mode .queueBtn:focus,
-html.dark-mode .flowBtn:focus,
-html.dark-mode .ctaBtn:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(201, 153, 104, 0.55);
-}
-
 @media (max-width: 980px) {
   .mainGrid,
   .tracksGrid,
@@ -431,3 +396,4 @@ html.dark-mode .ctaBtn:focus {
     align-items: flex-start;
   }
 }
+

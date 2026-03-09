@@ -1,4 +1,5 @@
 import styles from "./CreatorHub.module.css";
+import { buttonStyles, cx } from "../ui/buttonStyles";
 
 export default function ContinueListeningRow({ items = [], onPlay }) {
   if (!items.length) {
@@ -18,11 +19,12 @@ export default function ContinueListeningRow({ items = [], onPlay }) {
           <div key={`${item.type}-${item.itemId}`} className={styles.itemCard}>
             <img className={styles.itemThumb} src={item.coverUrl || "/avatar.png"} alt={item.title} />
             <p className={styles.itemTitle}>{item.title}</p>
-            <p className={styles.itemMeta}>{item.type === "podcast" ? "Podcast" : "Song"} · {Math.floor(Number(item.progressSec || 0))}s</p>
-            <button type="button" className={styles.playBtn} onClick={() => onPlay(item)}>Play</button>
+            <p className={styles.itemMeta}>{item.type === "podcast" ? "Podcast" : "Song"} Â· {Math.floor(Number(item.progressSec || 0))}s</p>
+            <button type="button" className={cx(buttonStyles({ variant: "secondary", size: "sm" }), styles.playBtn)} onClick={() => onPlay(item)}>Play</button>
           </div>
         ))}
       </div>
     </article>
   );
 }
+

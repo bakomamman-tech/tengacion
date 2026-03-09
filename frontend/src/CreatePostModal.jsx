@@ -1,10 +1,12 @@
 import { useState } from "react";
+import Button from "./components/ui/Button";
 import "./CreatePostModal.css";
 
 export default function CreatePostModal({ onClose, onPost }) {
   const [text, setText] = useState("");
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleFile = (e) => {
     const f = e.target.files[0];
@@ -15,14 +17,34 @@ export default function CreatePostModal({ onClose, onPost }) {
     setPreview(URL.createObjectURL(f));
   };
 
+  const submit = async () => {
+    if (submitting) {
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await Promise.resolve(onPost?.({ text, file }));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="modal-overlay">
       <div className="modal-card">
         <div className="modal-header">
           <h3>Create Post</h3>
-          <button className="create-post-modal-close" onClick={onClose} aria-label="Close">
+          <Button
+            variant="icon"
+            size="sm"
+            iconOnly
+            className="create-post-modal-close"
+            onClick={onClose}
+            aria-label="Close"
+          >
             <span className="icon-glyph-center">X</span>
-          </button>
+          </Button>
         </div>
 
         <textarea
@@ -33,7 +55,11 @@ export default function CreatePostModal({ onClose, onPost }) {
 
         {preview && (
           <div className="preview">
-            {file.type.startsWith("video") ? <video src={preview} controls /> : <img src={preview} />}
+            {file.type.startsWith("video") ? (
+              <video src={preview} controls />
+            ) : (
+              <img src={preview} alt="Post preview" />
+            )}
           </div>
         )}
 
@@ -47,9 +73,9 @@ export default function CreatePostModal({ onClose, onPost }) {
           <span>??</span>
         </div>
 
-        <button className="post-btn" onClick={() => onPost({ text, file })}>
+        <Button className="post-btn" variant="primary" size="lg" loading={submitting} onClick={submit}>
           Post
-        </button>
+        </Button>
       </div>
     </div>
   );

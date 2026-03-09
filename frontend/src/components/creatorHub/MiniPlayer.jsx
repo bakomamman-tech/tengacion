@@ -1,4 +1,5 @@
 import styles from "./CreatorHub.module.css";
+import { buttonStyles, cx } from "../ui/buttonStyles";
 
 const formatTime = (seconds) => {
   const value = Math.max(0, Number(seconds || 0));
@@ -23,7 +24,9 @@ export default function MiniPlayer({
   onFlow,
   onUnlock,
 }) {
-  if (!currentItem) return null;
+  if (!currentItem) {
+    return null;
+  }
 
   return (
     <div className={styles.playerDock}>
@@ -38,11 +41,11 @@ export default function MiniPlayer({
 
         <div>
           <div className={styles.playerControls}>
-            <button type="button" className={styles.roundBtn} onClick={onPrev} aria-label="Previous">&#9664;</button>
-            <button type="button" className={styles.roundBtn} onClick={onTogglePlay} aria-label="Play or pause">
+            <button type="button" className={cx(buttonStyles({ variant: "icon", iconOnly: true }), styles.roundBtn)} onClick={onPrev} aria-label="Previous">&#9664;</button>
+            <button type="button" className={cx(buttonStyles({ variant: "icon", iconOnly: true }), styles.roundBtn)} onClick={onTogglePlay} aria-label="Play or pause">
               {isPlaying ? "||" : ">"}
             </button>
-            <button type="button" className={styles.roundBtn} onClick={onNext} aria-label="Next">&#9654;</button>
+            <button type="button" className={cx(buttonStyles({ variant: "icon", iconOnly: true }), styles.roundBtn)} onClick={onNext} aria-label="Next">&#9654;</button>
           </div>
           <div className={styles.playerProgress}>
             <span>{formatTime(position)}</span>
@@ -59,15 +62,15 @@ export default function MiniPlayer({
         </div>
 
         <div className={styles.playerControls} style={{ justifyContent: "flex-end" }}>
-          <button type="button" className={styles.queueBtn} onClick={onToggleQueue}>Queue</button>
-          <button type="button" className={styles.flowBtn} onClick={onFlow}>Tengacion Flow</button>
+          <button type="button" className={cx(buttonStyles({ variant: "secondary", size: "sm" }), styles.queueBtn)} onClick={onToggleQueue}>Queue</button>
+          <button type="button" className={cx(buttonStyles({ variant: "outline", size: "sm" }), styles.flowBtn)} onClick={onFlow}>Tengacion Flow</button>
           <input type="range" min="0" max="1" step="0.01" value={volume} onChange={(event) => onVolume(Number(event.target.value || 0.8))} />
         </div>
       </div>
       {unlockRequired ? (
         <div className={styles.unlockHint}>
           Preview ended. Unlock to continue full stream.
-          <button type="button" className={styles.buyBtn} onClick={onUnlock} style={{ marginLeft: "0.5rem" }}>Unlock</button>
+          <button type="button" className={cx(buttonStyles({ variant: "primary", size: "sm" }), styles.buyBtn)} onClick={onUnlock} style={{ marginLeft: "0.5rem" }}>Unlock</button>
         </div>
       ) : null}
     </div>

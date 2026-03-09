@@ -10,17 +10,22 @@
 
 .modal-card {
   width: 480px;
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
+  background: linear-gradient(180deg, rgba(252, 246, 239, 0.98) 0%, rgba(246, 239, 229, 0.94) 100%);
+  border: 1px solid rgba(180, 140, 92, 0.2);
+  border-radius: 20px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-shadow: 0 24px 48px rgba(43, 26, 18, 0.16);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
 }
 
 .create-post-modal-close {
@@ -40,10 +45,14 @@
 }
 
 .modal-card textarea {
-  border: none;
+  border: 1px solid rgba(180, 140, 92, 0.18);
   font-size: 16px;
   min-height: 100px;
   resize: none;
+  border-radius: 16px;
+  background: rgba(255, 251, 246, 0.8);
+  color: var(--text);
+  padding: 12px 14px;
 }
 
 .preview img, .preview video {
@@ -59,8 +68,17 @@
 }
 
 .post-btn {
-  background: #1877f2;
-  color: white;
-  padding: 10px;
-  border-radius: 8px;
+  width: 100%;
+  justify-content: center;
+}
+
+html.dark-mode .modal-card {
+  background: linear-gradient(180deg, rgba(47, 31, 22, 0.98) 0%, rgba(35, 23, 17, 0.96) 100%);
+  border-color: rgba(224, 188, 141, 0.16);
+  box-shadow: 0 30px 56px rgba(0, 0, 0, 0.32);
+}
+
+html.dark-mode .modal-card textarea {
+  background: rgba(64, 46, 33, 0.72);
+  border-color: rgba(224, 188, 141, 0.16);
 }

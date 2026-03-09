@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { resolveImage } from "../../api";
+import { buttonStyles, cx } from "../../components/ui/buttonStyles";
 
 const releaseDate = (value) => {
   if (!value) {
@@ -37,14 +38,14 @@ export default function DiscographySection({ styles, tracks, onOpenTrack }) {
       <div className={styles.discTabs}>
         <button
           type="button"
-          className={tab === "popular" ? styles.active : ""}
+          className={cx(buttonStyles({ variant: "tab", size: "sm" }), tab === "popular" && "is-active", tab === "popular" && styles.active)}
           onClick={() => setTab("popular")}
         >
           Popular releases
         </button>
         <button
           type="button"
-          className={tab === "singles" ? styles.active : ""}
+          className={cx(buttonStyles({ variant: "tab", size: "sm" }), tab === "singles" && "is-active", tab === "singles" && styles.active)}
           onClick={() => setTab("singles")}
         >
           Singles and EPs
@@ -66,7 +67,7 @@ export default function DiscographySection({ styles, tracks, onOpenTrack }) {
                   <p>{releaseDate(track.createdAt)}</p>
                   <p className={styles.discType}>Single</p>
                 </div>
-                <button type="button" onClick={() => onOpenTrack(track)}>
+                <button type="button" className={buttonStyles({ variant: "secondary", size: "sm" })} onClick={() => onOpenTrack(track)}>
                   Open
                 </button>
               </article>
@@ -77,3 +78,4 @@ export default function DiscographySection({ styles, tracks, onOpenTrack }) {
     </section>
   );
 }
+

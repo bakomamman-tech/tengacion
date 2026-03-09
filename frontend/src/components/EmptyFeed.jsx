@@ -1,4 +1,5 @@
 import { PlusSquare, Users, Camera } from "lucide-react";
+import Button from "./ui/Button";
 
 export default function EmptyFeed({ onCreate }) {
   return (
@@ -14,15 +15,15 @@ export default function EmptyFeed({ onCreate }) {
         </p>
 
         <div className="actions">
-          <button onClick={onCreate} className="primary">
+          <Button onClick={onCreate} variant="primary" className="primary">
             <PlusSquare size={16} />
             Create Post
-          </button>
+          </Button>
 
-          <button className="secondary">
+          <Button className="secondary">
             <Camera size={16} />
             Share a photo
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { resolveImage } from "../../api";
+import { buttonStyles, cx } from "../../components/ui/buttonStyles";
 
 const compactNumber = (value) =>
   new Intl.NumberFormat("en", {
@@ -43,7 +44,7 @@ export default function CreatorSongsHeader({
           <div className={styles.actions}>
             <button
               type="button"
-              className={styles.playBtn}
+              className={cx(buttonStyles({ variant: "primary" }), styles.playBtn)}
               onClick={onPlayTopTrack}
               disabled={!canPlay}
             >
@@ -51,14 +52,14 @@ export default function CreatorSongsHeader({
             </button>
             <button
               type="button"
-              className={styles.followBtn}
+              className={cx(buttonStyles({ variant: "secondary" }), styles.followBtn)}
               onClick={onToggleFollow}
             >
               {isFollowing ? "Following" : "Follow"}
             </button>
             <button
               type="button"
-              className={styles.moreBtn}
+              className={cx(buttonStyles({ variant: "icon", iconOnly: true }), styles.moreBtn)}
               aria-label="More options"
             >
               ...
@@ -69,3 +70,4 @@ export default function CreatorSongsHeader({
     </header>
   );
 }
+

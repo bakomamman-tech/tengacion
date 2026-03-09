@@ -1,8 +1,11 @@
 import styles from "./CreatorHub.module.css";
+import { buttonStyles, cx } from "../ui/buttonStyles";
 
 const formatPrice = (item, mode) => {
   const value = mode === "GLOBAL" ? Number(item.priceUSD || 0) : Number(item.priceNGN || 0);
-  if (value <= 0 || item.isFree) return "Free";
+  if (value <= 0 || item.isFree) {
+    return "Free";
+  }
   return mode === "GLOBAL" ? `$${value.toFixed(2)}` : `NGN ${value.toLocaleString()}`;
 };
 
@@ -12,8 +15,8 @@ export function TopTracksList({ tracks = [], currencyMode = "NG", creatorName = 
       <div className={styles.sectionHead}>
         <h3>Top Tracks</h3>
         <div>
-          <button type="button" className={styles.shuffleBtn} onClick={() => onPlay(tracks[0], tracks)}>Shuffle</button>
-          <button type="button" className={styles.viewAll} onClick={onViewAll}>View All</button>
+          <button type="button" className={cx(buttonStyles({ variant: "secondary", size: "sm" }), styles.shuffleBtn)} onClick={() => onPlay(tracks[0], tracks)}>Shuffle</button>
+          <button type="button" className={cx(buttonStyles({ variant: "ghost", size: "sm" }), styles.viewAll)} onClick={onViewAll}>View All</button>
         </div>
       </div>
       {tracks.length ? (
@@ -25,12 +28,12 @@ export function TopTracksList({ tracks = [], currencyMode = "NG", creatorName = 
               <span className={styles.trackName}>{track.title}</span>
               <span className={styles.trackCreator}>{creatorName}</span>
             </div>
-            <button type="button" className={styles.playBtn} onClick={() => onPlay(track, tracks)}>Play</button>
-            <button type="button" className={styles.menuBtn} onClick={() => onTrackMenu(track)}>...</button>
+            <button type="button" className={cx(buttonStyles({ variant: "secondary", size: "sm" }), styles.playBtn)} onClick={() => onPlay(track, tracks)}>Play</button>
+            <button type="button" className={cx(buttonStyles({ variant: "icon", size: "sm", iconOnly: true }), styles.menuBtn)} onClick={() => onTrackMenu(track)} aria-label={`More options for ${track.title}`}>...</button>
             <span className={styles.mutedText}>{Number(track.playsCount || 0).toLocaleString()} plays</span>
             <span className={styles.mutedText}>{formatPrice(track, currencyMode)}</span>
             {!track.isFree ? (
-              <button type="button" className={styles.buyBtn} onClick={() => onCheckout("song", track.id)}>Buy</button>
+              <button type="button" className={cx(buttonStyles({ variant: "primary", size: "sm" }), styles.buyBtn)} onClick={() => onCheckout("song", track.id)}>Buy</button>
             ) : null}
           </div>
         ))

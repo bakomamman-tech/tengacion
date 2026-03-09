@@ -1,4 +1,5 @@
 import { resolveImage } from "../../api";
+import { buttonStyles, cx } from "../../components/ui/buttonStyles";
 
 const formatDuration = (seconds) => {
   const total = Number(seconds) || 0;
@@ -58,7 +59,7 @@ export default function PopularSongsList({
                 </span>
                 <button
                   type="button"
-                  className={styles.rowMore}
+                  className={cx(buttonStyles({ variant: "icon", size: "sm", iconOnly: true }), styles.rowMore)}
                   aria-label={`Open ${track.title}`}
                   onClick={(event) => {
                     event.stopPropagation();
@@ -75,3 +76,4 @@ export default function PopularSongsList({
     </section>
   );
 }
+

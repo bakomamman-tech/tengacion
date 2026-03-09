@@ -11,6 +11,7 @@ import { CreatorPlayerProvider } from "./context/CreatorPlayerContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 import "./index.css";
+import "./button-system.css";
 
 const initializeThemeEarly = () => {
   if (typeof window === "undefined") {

@@ -1,4 +1,5 @@
 import { resolveImage } from "../../api";
+import { buttonStyles, cx } from "../../components/ui/buttonStyles";
 
 const formatDuration = (seconds) => {
   const total = Number(seconds) || 0;
@@ -46,7 +47,7 @@ export default function NowPlayingSidebar({
         <h4>{currentTrack.title}</h4>
         <p>{creator?.displayName || "Creator"}</p>
         <p className={styles.nowDuration}>{formatDuration(currentTrack.durationSec)}</p>
-        <button type="button" onClick={onPlayPause} className={styles.nowBtn}>
+        <button type="button" onClick={onPlayPause} className={cx(buttonStyles({ variant: "primary", fullWidth: true }), styles.nowBtn)}>
           {isPlaying ? "Pause" : "Play"}
         </button>
       </section>
@@ -61,3 +62,4 @@ export default function NowPlayingSidebar({
     </aside>
   );
 }
+

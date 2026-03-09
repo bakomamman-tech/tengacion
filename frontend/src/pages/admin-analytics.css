@@ -172,11 +172,14 @@
 .adminx-tab,
 .adminx-link-btn {
   border-radius: 14px;
-  border: 1px solid var(--adminx-border);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--adminx-text);
+  border: 1px solid var(--tg-btn-secondary-border);
+  background: var(--tg-btn-secondary-bg);
+  color: var(--tg-btn-secondary-text);
   min-height: 44px;
   padding: 0 14px;
+  box-shadow: var(--tg-btn-shadow-soft);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
 }
 
 .adminx-btn,
@@ -191,24 +194,29 @@
 .adminx-btn:focus-visible,
 .adminx-link-btn:focus-visible,
 .adminx-tab:focus-visible {
-  border-color: var(--adminx-border-strong);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--tg-btn-secondary-border-hover);
+  background: var(--tg-btn-secondary-bg-hover);
+  box-shadow: var(--tg-btn-shadow-hover);
 }
 
 .adminx-tab.is-active {
-  background: rgba(77, 229, 134, 0.16);
-  border-color: rgba(77, 229, 134, 0.34);
+  background: var(--tg-btn-tab-bg-active);
+  border-color: var(--tg-btn-tab-border-active);
+  color: var(--tg-btn-tab-text-active);
 }
 
 .adminx-btn--primary {
-  background: linear-gradient(135deg, #4de586, #1f874a);
-  color: #04110a;
-  border-color: rgba(77, 229, 134, 0.4);
+  background: var(--tg-btn-primary-bg);
+  color: var(--tg-btn-primary-text);
+  border-color: var(--tg-btn-primary-border);
+  box-shadow: var(--tg-btn-shadow-primary);
 }
 
 .adminx-btn--danger {
-  color: #ffdada;
-  border-color: rgba(255, 125, 125, 0.25);
+  background: var(--tg-btn-danger-bg);
+  color: var(--tg-btn-danger-text);
+  border-color: var(--tg-btn-danger-border);
+  box-shadow: var(--tg-btn-shadow-danger);
 }
 
 .adminx-select,

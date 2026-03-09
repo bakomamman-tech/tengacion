@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { markStorySeen, reactToStory, replyToStory, resolveImage } from "../api";
+import Button from "../components/ui/Button";
 
 const IMAGE_DURATION_MS = 5000;
 
@@ -45,7 +46,13 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
   const [replyBusy, setReplyBusy] = useState(false);
   const [reactionBusy, setReactionBusy] = useState("");
 
-  const quickReactions = ["❤️", "🔥", "😂", "😮", "🎉"];
+  const quickReactions = [
+    "\u2764\uFE0F",
+    "\u{1F525}",
+    "\u{1F602}",
+    "\u{1F62E}",
+    "\u{1F389}",
+  ];
 
   const activeStory = orderedStories[index] || story;
   const mediaType = activeStory?.mediaType || "image";
@@ -56,7 +63,7 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
         activeStory?.username || "User"
       )}`;
 
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     setIndex((current) => {
       if (current >= orderedStories.length - 1) {
         onClose?.();
@@ -64,11 +71,11 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
       }
       return current + 1;
     });
-  };
+  }, [onClose, orderedStories.length]);
 
-  const goToPrev = () => {
+  const goToPrev = useCallback(() => {
     setIndex((current) => Math.max(current - 1, 0));
-  };
+  }, []);
 
   useEffect(() => {
     if (!activeStory?._id) {
@@ -116,7 +123,7 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
         timerRef.current = null;
       }
     };
-  }, [activeStory, mediaType]);
+  }, [activeStory, goToNext, mediaType]);
 
   useEffect(() => {
     if (mediaType !== "video") {
@@ -148,7 +155,9 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
   }
 
   const handleReact = async (emoji) => {
-    if (!activeStory?._id || reactionBusy) return;
+    if (!activeStory?._id || reactionBusy) {
+      return;
+    }
     try {
       setReactionBusy(emoji);
       await reactToStory(activeStory._id, emoji);
@@ -161,7 +170,9 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
 
   const handleReply = async () => {
     const text = replyText.trim();
-    if (!activeStory?._id || !text || replyBusy) return;
+    if (!activeStory?._id || !text || replyBusy) {
+      return;
+    }
     try {
       setReplyBusy(true);
       await replyToStory(activeStory._id, text);
@@ -195,9 +206,16 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
               <span>{formatStoryTime(activeStory?.time)}</span>
             </div>
           </div>
-          <button className="story-viewer-close" onClick={onClose} aria-label="Close story">
+          <Button
+            variant="icon"
+            size="sm"
+            iconOnly
+            className="story-viewer-close"
+            onClick={onClose}
+            aria-label="Close story"
+          >
             X
-          </button>
+          </Button>
         </div>
 
         <div className="story-viewer-media">
@@ -247,23 +265,23 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
               placeholder="Reply to story..."
               maxLength={220}
             />
-            <button type="button" onClick={handleReply} disabled={replyBusy || !replyText.trim()}>
-              {replyBusy ? "Sending..." : "Reply"}
-            </button>
+            <Button variant="secondary" size="sm" loading={replyBusy} onClick={handleReply} disabled={!replyText.trim()}>
+              Reply
+            </Button>
           </div>
         </div>
 
         {orderedStories.length > 1 && (
           <div className="story-viewer-controls">
-            <button onClick={goToPrev} disabled={index === 0}>
+            <Button variant="outline" size="sm" onClick={goToPrev} disabled={index === 0}>
               Previous
-            </button>
+            </Button>
             <span>
               {index + 1}/{orderedStories.length}
             </span>
-            <button onClick={goToNext} disabled={index === orderedStories.length - 1}>
+            <Button variant="outline" size="sm" onClick={goToNext} disabled={index === orderedStories.length - 1}>
               Next
-            </button>
+            </Button>
           </div>
         )}
       </div>

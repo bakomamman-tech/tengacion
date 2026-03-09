@@ -5,6 +5,7 @@ import TopTracksWidget from "./TopTracksWidget";
 import LatestPodcastsWidget from "./LatestPodcastsWidget";
 import ComedyRow from "./ComedyRow";
 import EbooksRow from "./EbooksRow";
+import { buttonStyles, cx } from "../ui/buttonStyles";
 
 export default function CreatorHubHomeSections({
   sections,
@@ -116,7 +117,7 @@ export default function CreatorHubHomeSections({
         <div style={{ marginTop: "1rem" }} className={styles.sectionCard}>
           <div className={styles.sectionHead}>
             <h4>Albums</h4>
-            <button type="button" className={styles.viewAll} onClick={() => onViewTab("albums")}>
+            <button type="button" className={cx(buttonStyles({ variant: "ghost", size: "sm" }), styles.viewAll)} onClick={() => onViewTab("albums")}>
               View all
             </button>
           </div>
@@ -131,7 +132,7 @@ export default function CreatorHubHomeSections({
                   />
                   <p className={styles.itemTitle}>{album.title}</p>
                   <p className={styles.itemMeta}>
-                    {Number(album.totalTracks || 0)} songs • {currencyMode === "GLOBAL" ? `$${Number(album.priceUSD || 0).toLocaleString()}` : `NGN ${Number(album.priceNGN || 0).toLocaleString()}`}
+                    {Number(album.totalTracks || 0)} songs {"\u2022"} {currencyMode === "GLOBAL" ? `$${Number(album.priceUSD || 0).toLocaleString()}` : `NGN ${Number(album.priceNGN || 0).toLocaleString()}`}
                   </p>
                 </article>
               ))}

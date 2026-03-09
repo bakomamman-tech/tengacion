@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createStoryWithUploadProgress, resolveImage } from "../api";
+import Button from "../components/ui/Button";
 
 const ACCEPTED_TYPES = ["image/", "video/"];
 
@@ -128,14 +129,16 @@ export default function CreateStory({ user, onCreated }) {
           >
             <div className="story-create-modal-header">
               <h3>Create story</h3>
-              <button
-                type="button"
+              <Button
                 className="story-create-modal-close"
                 aria-label="Close story creation"
                 onClick={closeModal}
+                variant="icon"
+                size="sm"
+                iconOnly
               >
                 <span className="icon-glyph-center">X</span>
-              </button>
+              </Button>
             </div>
 
             <div className="story-create-modal-body">
@@ -174,12 +177,12 @@ export default function CreateStory({ user, onCreated }) {
             </div>
 
             <div className="story-create-modal-actions">
-              <button type="button" className="btn-secondary" onClick={openFileDialog} disabled={submitting}>
+              <Button variant="secondary" onClick={openFileDialog} disabled={submitting}>
                 Change media
-              </button>
-              <button type="button" onClick={submit} disabled={!file || submitting}>
-                {submitting ? "Posting..." : "Share to story"}
-              </button>
+              </Button>
+              <Button variant="primary" loading={submitting} onClick={submit} disabled={!file}>
+                Share to story
+              </Button>
             </div>
           </div>
         </div>

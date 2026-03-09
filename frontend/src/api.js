@@ -1462,18 +1462,144 @@ export const adminModerationAction = (payload = {}) =>
     body: JSON.stringify(payload || {}),
   });
 
-export const adminGetAnalyticsOverview = (range = "7d") =>
-  request(`${API_BASE}/admin/analytics/overview?range=${encodeURIComponent(range)}`, {
+export const adminGetDashboard = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  });
+  return request(`${API_BASE}/admin/dashboard?${query.toString()}`, {
     headers: getAuthHeaders(),
   });
+};
 
-export const adminGetRetentionAnalytics = (cohort = "weekly") =>
-  request(`${API_BASE}/admin/analytics/retention?cohort=${encodeURIComponent(cohort)}`, {
+export const adminGetAnalyticsOverview = (params = {}) => {
+  const query = new URLSearchParams();
+  if (typeof params === "string") {
+    query.set("range", params);
+  } else {
+    Object.entries(params || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+    });
+  }
+  return request(`${API_BASE}/admin/analytics/overview?${query.toString()}`, {
     headers: getAuthHeaders(),
   });
+};
 
-export const adminGetUploadErrorAnalytics = () =>
-  request(`${API_BASE}/admin/analytics/errors/uploads`, {
+export const adminGetAnalyticsUserGrowth = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  return request(`${API_BASE}/admin/analytics/user-growth?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminGetAnalyticsContentUploads = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  return request(`${API_BASE}/admin/analytics/content-uploads?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminGetAnalyticsRevenue = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  return request(`${API_BASE}/admin/analytics/revenue?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminGetAnalyticsEngagement = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  return request(`${API_BASE}/admin/analytics/engagement?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminGetAnalyticsTopCreators = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  return request(`${API_BASE}/admin/analytics/top-creators?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminGetAnalyticsTopContent = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  return request(`${API_BASE}/admin/analytics/top-content?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminGetAnalyticsRecentActivity = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  return request(`${API_BASE}/admin/analytics/recent-activity?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminGetAnalyticsSystemAlerts = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  return request(`${API_BASE}/admin/analytics/system-alerts?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminGetAnalyticsReportsSummary = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  return request(`${API_BASE}/admin/analytics/reports-summary?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminListContent = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  return request(`${API_BASE}/admin/content?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminListTransactions = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, String(value));
+  });
+  return request(`${API_BASE}/admin/transactions?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminGetCreatorDetail = (creatorId) =>
+  request(`${API_BASE}/admin/creators/${encodeURIComponent(creatorId || "")}`, {
     headers: getAuthHeaders(),
   });
 

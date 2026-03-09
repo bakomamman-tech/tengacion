@@ -16,6 +16,7 @@ const {
   createProviderReference,
   initializeTransaction,
 } = require("../services/paymentProviders/paystack");
+const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
 
 const isValidId = (value) => mongoose.Types.ObjectId.isValid(value);
 
@@ -263,6 +264,20 @@ exports.createCheckout = asyncHandler(async (req, res) => {
     });
   } catch (error) {
     await Purchase.updateOne({ _id: purchase._id }, { $set: { status: "failed" } });
+    await logAnalyticsEvent({
+      type: "purchase_failed",
+      userId,
+      actorRole: req.user?.role || "user",
+      targetId: purchase._id,
+      targetType: "purchase",
+      contentType: item.itemType,
+      metadata: {
+        creatorId: item.creatorId?.toString?.() || "",
+        itemId: item.itemId.toString(),
+        amount,
+        reason: error.message || "Checkout initialization failed",
+      },
+    }).catch(() => null);
     return res.status(502).json({ error: error.message || "Checkout initialization failed" });
   }
 });
@@ -401,6 +416,19 @@ exports.getProtectedStream = asyncHandler(async (req, res) => {
   } else if (item.itemType === "album") {
     await Album.updateOne({ _id: item.itemId }, { $inc: { playCount: 1 } }).catch(() => null);
   }
+  await touchUserActivity({ userId, seenAt: new Date() }).catch(() => null);
+  await logAnalyticsEvent({
+    type: canAccessFull ? "stream_completed" : "stream_started",
+    userId,
+    actorRole: req.user?.role || "user",
+    targetId: item.itemId,
+    targetType: item.itemType,
+    contentType: item.itemType,
+    metadata: {
+      creatorId: item.creatorId?.toString?.() || item.payload?.creatorId?.toString?.() || item.payload?.creatorProfileId?.toString?.() || "",
+      previewOnly: !canAccessFull,
+    },
+  }).catch(() => null);
 
   const streamUrl = buildSignedMediaUrl({
     sourceUrl,
@@ -467,6 +495,19 @@ exports.getProtectedDownload = asyncHandler(async (req, res) => {
     req,
     expiresInSec: 10 * 60,
   });
+
+  await touchUserActivity({ userId, seenAt: new Date() }).catch(() => null);
+  await logAnalyticsEvent({
+    type: "download_completed",
+    userId,
+    actorRole: req.user?.role || "user",
+    targetId: item.itemId,
+    targetType: item.itemType,
+    contentType: item.itemType,
+    metadata: {
+      creatorId: item.creatorId?.toString?.() || item.payload?.creatorId?.toString?.() || item.payload?.creatorProfileId?.toString?.() || "",
+    },
+  }).catch(() => null);
 
   return res.json({
     itemType: item.itemType,

@@ -6,6 +6,7 @@ const CreatorProfile = require("../models/CreatorProfile");
 const { saveUploadedFile } = require("../services/mediaStore");
 const { hasEntitlement } = require("../services/entitlementService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
+const { logAnalyticsEvent } = require("../services/analyticsService");
 
 const MAX_ALBUM_TRACKS = 25;
 const MAX_TRACK_FILE_SIZE_BYTES = 25 * 1024 * 1024;
@@ -133,6 +134,21 @@ exports.createAlbum = asyncHandler(async (req, res) => {
     isPublished: true,
     archivedAt: null,
   });
+
+  await logAnalyticsEvent({
+    type: "album_uploaded",
+    userId: req.user.id,
+    actorRole: req.user.role,
+    targetId: album._id,
+    targetType: "album",
+    contentType: "album",
+    metadata: {
+      creatorId: req.creatorProfile._id.toString(),
+      price: Number(album.price || 0),
+      title: album.title || "",
+      tracksCount: tracks.length,
+    },
+  }).catch(() => null);
 
   return res.status(201).json({
     ...toAlbumListPayload(album),

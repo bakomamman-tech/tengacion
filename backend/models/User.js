@@ -261,6 +261,18 @@ const UserSchema = new mongoose.Schema(
 
     lastLogin: Date,
 
+    lastLoginAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+
+    lastSeenAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+
     passwordChangedAt: Date,
 
     joined: {

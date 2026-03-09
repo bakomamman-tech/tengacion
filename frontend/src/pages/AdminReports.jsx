@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AdminShell from "../components/AdminShell";
 import {
   adminListReports,
   adminModerationAction,
@@ -7,13 +8,18 @@ import {
 
 const REASONS = ["spam", "hate_speech", "violence", "harassment", "misinformation", "nudity", "other"];
 
-export default function AdminReportsPage() {
+export default function AdminReportsPage({ user }) {
   const [status, setStatus] = useState("");
   const [rows, setRows] = useState([]);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const load = () => {
-    adminListReports({ status }).then((payload) => setRows(Array.isArray(payload?.reports) ? payload.reports : [])).catch(() => setRows([]));
+    setLoading(true);
+    adminListReports({ status })
+      .then((payload) => setRows(Array.isArray(payload?.reports) ? payload.reports : []))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
@@ -39,47 +45,51 @@ export default function AdminReportsPage() {
   };
 
   return (
-    <div className="app-shell">
-      <main className="feed" style={{ maxWidth: 980, margin: "0 auto", padding: 20, display: "grid", gap: 14 }}>
-        <section className="card" style={{ padding: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h2 style={{ margin: 0 }}>Reports queue</h2>
-            <select value={status} onChange={(event) => setStatus(event.target.value)}>
-              <option value="">All</option>
-              <option value="open">Open</option>
-              <option value="reviewing">Reviewing</option>
-              <option value="actioned">Actioned</option>
-              <option value="dismissed">Dismissed</option>
-            </select>
-          </div>
-          <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-            {rows.map((entry) => (
-              <article key={entry._id} className="card" style={{ padding: 10 }}>
-                <div><b>{entry.targetType}</b> | reason: {entry.reason}</div>
-                <div>reporter: @{entry?.reporterId?.username || "unknown"}</div>
-                <div>status: {entry.status}</div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                  <button type="button" onClick={() => adminUpdateReport(entry._id, { status: "dismissed" }).then(load)}>Dismiss</button>
-                  <button type="button" onClick={() => adminUpdateReport(entry._id, { status: "reviewing" }).then(load)}>Mark reviewing</button>
-                  <button type="button" onClick={() => action(entry, "warn")}>Warn + strike</button>
-                  <button type="button" onClick={() => action(entry, "mute")}>Mute + strike</button>
-                  <button type="button" onClick={() => action(entry, "ban")}>Ban + strike</button>
-                  {entry.targetType === "post" ? (
-                    <button type="button" onClick={() => action(entry, "delete_post")}>Delete post</button>
-                  ) : null}
-                </div>
-              </article>
-            ))}
-            {rows.length === 0 ? <p>No reports found.</p> : null}
-          </div>
-          {message ? <p>{message}</p> : null}
-        </section>
+    <AdminShell
+      title="Reports"
+      subtitle="Moderation queue for user, post, comment, and message reports."
+      user={user}
+      actions={<button type="button" className="adminx-btn" onClick={load}>Refresh</button>}
+    >
+      <section className="adminx-panel adminx-panel--span-12">
+        <div className="adminx-filter-row">
+          <select className="adminx-select" value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="">All</option>
+            <option value="open">Open</option>
+            <option value="reviewing">Reviewing</option>
+            <option value="actioned">Actioned</option>
+            <option value="dismissed">Dismissed</option>
+          </select>
+        </div>
+      </section>
 
-        <section className="card" style={{ padding: 14 }}>
-          <h3 style={{ marginTop: 0 }}>Report reasons</h3>
-          <p>{REASONS.join(", ")}</p>
+      {message ? <div className="adminx-panel adminx-panel--span-12">{message}</div> : null}
+      {loading ? <div className="adminx-loading">Loading reports...</div> : null}
+
+      {!loading ? (
+        <section className="adminx-list-grid">
+          {rows.map((entry) => (
+            <article key={entry._id} className="adminx-panel adminx-panel--span-12">
+              <div className="adminx-row"><strong>{entry.targetType}</strong><span className="adminx-badge">{entry.status}</span></div>
+              <div className="adminx-muted">reason: {entry.reason} | reporter: @{entry?.reporterId?.username || "unknown"}</div>
+              <div className="adminx-action-row">
+                <button type="button" className="adminx-btn" onClick={() => adminUpdateReport(entry._id, { status: "dismissed" }).then(load)}>Dismiss</button>
+                <button type="button" className="adminx-btn" onClick={() => adminUpdateReport(entry._id, { status: "reviewing" }).then(load)}>Mark Reviewing</button>
+                <button type="button" className="adminx-btn" onClick={() => action(entry, "warn")}>Warn + Strike</button>
+                <button type="button" className="adminx-btn" onClick={() => action(entry, "mute")}>Mute + Strike</button>
+                <button type="button" className="adminx-btn adminx-btn--danger" onClick={() => action(entry, "ban")}>Ban + Strike</button>
+                {entry.targetType === "post" ? <button type="button" className="adminx-btn" onClick={() => action(entry, "delete_post")}>Delete Post</button> : null}
+              </div>
+            </article>
+          ))}
+          {rows.length === 0 ? <div className="adminx-empty">No reports found.</div> : null}
         </section>
-      </main>
-    </div>
+      ) : null}
+
+      <section className="adminx-panel adminx-panel--span-12">
+        <h2 className="adminx-panel-title">Report Reasons</h2>
+        <p className="adminx-muted">{REASONS.join(", ")}</p>
+      </section>
+    </AdminShell>
   );
 }

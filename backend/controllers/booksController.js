@@ -5,6 +5,7 @@ const Chapter = require("../models/Chapter");
 const CreatorProfile = require("../models/CreatorProfile");
 const { saveUploadedFile } = require("../services/mediaStore");
 const { hasEntitlement } = require("../services/entitlementService");
+const { logAnalyticsEvent } = require("../services/analyticsService");
 
 // TODO(phase2): add audiobook media support alongside chapter text content.
 
@@ -107,6 +108,20 @@ exports.createBook = asyncHandler(async (req, res) => {
       populate: { path: "userId", select: "username" },
     })
     .lean();
+
+  await logAnalyticsEvent({
+    type: "book_uploaded",
+    userId: req.user.id,
+    actorRole: req.user.role,
+    targetId: book._id,
+    targetType: "book",
+    contentType: "book",
+    metadata: {
+      creatorId: req.creatorProfile._id.toString(),
+      price: Number(book.price || 0),
+      title: book.title || "",
+    },
+  }).catch(() => null);
 
   return res.status(201).json(toBookPayload(hydrated));
 });

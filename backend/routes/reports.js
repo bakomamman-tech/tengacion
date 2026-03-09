@@ -11,7 +11,7 @@ const User = require("../models/User");
 const Post = require("../models/Post");
 const Message = require("../models/Message");
 const UserStrike = require("../models/UserStrike");
-const { incrementDailyMetric } = require("../services/analyticsService");
+const { incrementDailyMetric, logAnalyticsEvent } = require("../services/analyticsService");
 
 const router = express.Router();
 
@@ -112,6 +112,14 @@ router.post("/", auth, reportLimiter, async (req, res) => {
       status: "open",
     });
     await incrementDailyMetric("reportsCount", 1).catch(() => null);
+    await logAnalyticsEvent({
+      type: "content_reported",
+      userId: req.user.id,
+      actorRole: req.user.role,
+      targetId,
+      targetType,
+      metadata: { reason, reportId: report._id.toString() },
+    }).catch(() => null);
     return res.status(201).json({ success: true, report });
   } catch (err) {
     console.error("Report create failed:", err);

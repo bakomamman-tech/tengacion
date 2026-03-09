@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Otp = require("../models/Otp");
 const sendOtpEmail = require("../utils/sendOtpEmail");
+const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
 
 const generateToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
@@ -353,6 +354,16 @@ exports.register = async (req, res) => {
       }
     }
 
+    await touchUserActivity({ userId: user._id, login: true }).catch(() => null);
+    await logAnalyticsEvent({
+      type: "user_registered",
+      userId: user._id,
+      actorRole: user.role,
+      targetId: user._id,
+      targetType: "user",
+      metadata: { username: user.username || "", email: user.email || "" },
+    }).catch(() => null);
+
     return res.status(201).json({
       token: generateToken(user._id),
       user,
@@ -414,8 +425,23 @@ exports.login = async (req, res) => {
   }).select("+password");
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
+    await logAnalyticsEvent({
+      type: "login_warning",
+      targetType: "user",
+      metadata: { identifier },
+    }).catch(() => null);
     return res.status(401).json({ message: "Invalid credentials" });
   }
+
+  await touchUserActivity({ userId: user._id, login: true }).catch(() => null);
+  await logAnalyticsEvent({
+    type: "user_login",
+    userId: user._id,
+    actorRole: user.role,
+    targetId: user._id,
+    targetType: "user",
+    metadata: { username: user.username || "" },
+  }).catch(() => null);
 
   res.json({
     token: generateToken(user._id),

@@ -12,6 +12,7 @@ const {
   verifyTransaction,
   verifyWebhookSignature,
 } = require("../services/paymentProviders/paystack");
+const { logAnalyticsEvent } = require("../services/analyticsService");
 
 // TODO(phase2): add subscription Fan Pass and gifting payment intents.
 
@@ -131,6 +132,19 @@ exports.initializePayment = asyncHandler(async (req, res) => {
       { _id: purchase._id },
       { $set: { status: "failed" } }
     );
+    await logAnalyticsEvent({
+      type: "purchase_failed",
+      userId,
+      actorRole: req.user?.role || "user",
+      targetId: purchase._id,
+      targetType: "purchase",
+      contentType: item.itemType,
+      metadata: {
+        itemId: item.itemId.toString(),
+        amount: Number(item.price || 0),
+        reason: error.message || "Payment initialization failed",
+      },
+    }).catch(() => null);
     return res.status(502).json({ error: error.message || "Payment initialization failed" });
   }
 });
@@ -171,10 +185,35 @@ const handlePaystackWebhook = async (req, res) => {
   ) {
     purchase.status = "failed";
     await purchase.save();
+    await logAnalyticsEvent({
+      type: "purchase_failed",
+      userId: purchase.userId,
+      targetId: purchase._id,
+      targetType: "purchase",
+      contentType: purchase.itemType,
+      metadata: {
+        itemId: purchase.itemId?.toString?.() || "",
+        amount: Number(purchase.amount || 0),
+        reason: "Webhook verification mismatch",
+      },
+    }).catch(() => null);
     return res.status(200).json({ received: true });
   }
 
   await markPurchasePaidAndGrantEntitlement(purchase);
+  await logAnalyticsEvent({
+    type: "purchase_success",
+    userId: purchase.userId,
+    targetId: purchase._id,
+    targetType: "purchase",
+    contentType: purchase.itemType,
+    metadata: {
+      creatorId: purchase.creatorId?.toString?.() || "",
+      itemId: purchase.itemId?.toString?.() || "",
+      amount: Number(purchase.amount || 0),
+      provider: purchase.provider || "",
+    },
+  }).catch(() => null);
 
   return res.status(200).json({ received: true });
 };

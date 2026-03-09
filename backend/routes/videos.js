@@ -10,6 +10,7 @@ const {
   createVideoUploadPayload,
   MAX_VIDEO_BYTES,
 } = require("../services/videoStorage");
+const { logAnalyticsEvent } = require("../services/analyticsService");
 
 const router = express.Router();
 
@@ -101,6 +102,20 @@ router.post(
       likes: [],
       comments: [],
     });
+
+    await logAnalyticsEvent({
+      type: "video_uploaded",
+      userId: req.user.id,
+      actorRole: req.user.role,
+      targetId: video._id,
+      targetType: "video",
+      contentType: "video",
+      metadata: {
+        creatorId: req.creatorProfile?._id?.toString?.() || "",
+        price: Number(video.price || 0),
+        title: video.caption || "",
+      },
+    }).catch(() => null);
 
     res.json(video);
   })

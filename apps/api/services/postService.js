@@ -11,7 +11,7 @@ const {
 const userRepository = require("../repositories/userRepository");
 const postRepository = require("../repositories/postRepository");
 const { resolveMentionUserIds } = require("../../../backend/utils/mentions");
-const { incrementDailyMetric } = require("../../../backend/services/analyticsService");
+const { incrementDailyMetric, logAnalyticsEvent, touchUserActivity } = require("../../../backend/services/analyticsService");
 
 const toIdString = (value) => {
   if (!value) return "";
@@ -412,6 +412,14 @@ class PostService {
 
     const post = await withPostAuthor(Post.findById(created._id)).lean();
     await incrementDailyMetric("postsCount", 1).catch(() => null);
+    await touchUserActivity({ userId: viewerId, seenAt: new Date() }).catch(() => null);
+    await logAnalyticsEvent({
+      type: "post_created",
+      userId: viewerId,
+      targetId: created._id,
+      targetType: "post",
+      metadata: { type, visibility },
+    }).catch(() => null);
     return toPostPayload(post, viewerId);
   }
 

@@ -8,9 +8,28 @@ const Post = require("../models/Post");
 const Message = require("../models/Message");
 const Report = require("../models/Report");
 const UserStrike = require("../models/UserStrike");
-const DailyAnalytics = require("../models/DailyAnalytics");
+const CreatorProfile = require("../models/CreatorProfile");
+const Track = require("../models/Track");
+const Album = require("../models/Album");
+const Book = require("../models/Book");
+const Video = require("../models/Video");
+const Purchase = require("../models/Purchase");
 const { writeAuditLog } = require("../services/auditLogService");
-const { recomputeUserStats, formatDateKey } = require("../services/analyticsService");
+const { buildAdminDashboard } = require("../services/adminDashboardService");
+const {
+  buildOverview,
+  buildUserGrowth,
+  buildContentUploads,
+  buildRevenueAnalytics,
+  buildEngagementAnalytics,
+  buildTopCreators,
+  buildTopContent,
+  buildRecentActivity,
+  buildSystemAlerts,
+  buildReportsSummary,
+  backfillDailyAnalytics,
+  logAnalyticsEvent,
+} = require("../services/analyticsService");
 
 const router = express.Router();
 
@@ -26,6 +45,18 @@ const toId = (value) => {
 };
 
 const isValidId = (value) => mongoose.Types.ObjectId.isValid(value);
+const clamp = (value, min, max, fallback) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.min(max, Math.max(min, num));
+};
+const getAnalyticsFilters = (req) => ({
+  range: String(req.query.range || "30d").trim().toLowerCase(),
+  startDate: String(req.query.startDate || "").trim(),
+  endDate: String(req.query.endDate || "").trim(),
+  category: String(req.query.category || "all").trim().toLowerCase(),
+  interval: String(req.query.interval || "daily").trim().toLowerCase(),
+});
 
 const toAdminUserDTO = (user, requesterRole = "admin") => ({
   _id: toId(user._id),
@@ -106,6 +137,16 @@ const applyUserStrikes = async ({ targetUserId, reportId, count = 1, reason = ""
     action = "temporary_mute";
   }
   await target.save();
+  if (action === "permanent_ban" || action === "temporary_ban") {
+    await logAnalyticsEvent({
+      type: "account_banned",
+      userId: target._id,
+      actorRole: target.role,
+      targetId: target._id,
+      targetType: "user",
+      metadata: { action, reason: target.banReason || reason || "" },
+    }).catch(() => null);
+  }
   return { strikeCount: total, action };
 };
 
@@ -284,6 +325,14 @@ router.post("/users/:id/ban", async (req, res) => {
       targetId: toId(target._id),
       reason,
     });
+    await logAnalyticsEvent({
+      type: "account_banned",
+      userId: target._id,
+      actorRole: target.role,
+      targetId: target._id,
+      targetType: "user",
+      metadata: { reason, bannedBy: req.user.id },
+    }).catch(() => null);
 
     return res.json({ success: true });
   } catch (err) {
@@ -684,78 +733,297 @@ router.post("/moderation/action", async (req, res) => {
   }
 });
 
-router.get("/analytics/overview", async (req, res) => {
+router.get("/content", async (req, res) => {
   try {
-    const range = String(req.query.range || "7d");
-    const days = range === "30d" ? 30 : 7;
-    const end = new Date();
-    const start = new Date(Date.now() - (days - 1) * 24 * 60 * 60 * 1000);
-    const docs = await DailyAnalytics.find({
-      date: { $gte: formatDateKey(start), $lte: formatDateKey(end) },
-    })
-      .sort({ date: 1 })
-      .lean();
-    await recomputeUserStats().catch(() => null);
-    const latest = docs[docs.length - 1] || {};
-    return res.json({
-      range,
-      latest,
-      series: docs,
-    });
+    const page = clamp(req.query.page, 1, 500, 1);
+    const limit = clamp(req.query.limit, 1, 100, 20);
+    const skip = (page - 1) * limit;
+    const category = String(req.query.category || "all").trim().toLowerCase();
+
+    const items = [];
+    const pushRows = (rows, type, getTitle, getCreatedAt, getMetric) => {
+      for (const row of rows) {
+        items.push({
+          id: toId(row._id),
+          type,
+          title: getTitle(row),
+          createdAt: getCreatedAt(row),
+          metricValue: getMetric(row),
+          status: row.isPublished === false ? "draft" : "published",
+        });
+      }
+    };
+
+    if (["all", "music", "tracks"].includes(category)) {
+      pushRows(
+        await Track.find({ archivedAt: null, kind: { $ne: "podcast" } }).sort({ createdAt: -1 }).limit(200).lean(),
+        "track",
+        (row) => row.title || "Untitled Track",
+        (row) => row.createdAt,
+        (row) => Number(row.playsCount || row.playCount || 0)
+      );
+    }
+    if (["all", "albums"].includes(category)) {
+      pushRows(
+        await Album.find({ archivedAt: null }).sort({ createdAt: -1 }).limit(200).lean(),
+        "album",
+        (row) => row.title || "Untitled Album",
+        (row) => row.createdAt,
+        (row) => Number(row.playCount || 0)
+      );
+    }
+    if (["all", "books"].includes(category)) {
+      pushRows(
+        await Book.find({ archivedAt: null }).sort({ createdAt: -1 }).limit(200).lean(),
+        "book",
+        (row) => row.title || "Untitled Book",
+        (row) => row.createdAt,
+        (row) => Number(row.downloadCount || 0)
+      );
+    }
+    if (["all", "podcasts"].includes(category)) {
+      pushRows(
+        await Track.find({ archivedAt: null, kind: "podcast" }).sort({ createdAt: -1 }).limit(200).lean(),
+        "podcast",
+        (row) => row.title || "Untitled Podcast",
+        (row) => row.createdAt,
+        (row) => Number(row.playsCount || row.playCount || 0)
+      );
+    }
+    if (["all", "videos"].includes(category)) {
+      pushRows(
+        await Video.find({ archivedAt: null }).sort({ time: -1 }).limit(200).lean(),
+        "video",
+        (row) => row.caption || "Untitled Video",
+        (row) => row.time || row.createdAt,
+        (row) => Number(row.viewsCount || 0)
+      );
+    }
+
+    const rows = items
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(skip, skip + limit);
+
+    return res.json({ page, limit, total: items.length, items: rows });
   } catch (err) {
-    console.error("Admin analytics overview error:", req.requestId, err);
+    console.error("Admin content list error:", req.requestId, err);
     return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
   }
 });
 
-router.get("/analytics/retention", async (_req, res) => {
+router.get("/transactions", async (req, res) => {
   try {
-    const cohorts = await User.aggregate([
-      {
-        $project: {
-          signupWeek: { $dateToString: { format: "%G-W%V", date: "$createdAt" } },
-          hasLoggedInAgain: {
-            $cond: [
-              { $gt: ["$lastLogin", { $dateAdd: { startDate: "$createdAt", unit: "day", amount: 7 } }] },
-              1,
-              0,
-            ],
-          },
-        },
-      },
-      {
-        $group: {
-          _id: "$signupWeek",
-          users: { $sum: 1 },
-          retained: { $sum: "$hasLoggedInAgain" },
-        },
-      },
-      { $sort: { _id: 1 } },
+    const page = clamp(req.query.page, 1, 500, 1);
+    const limit = clamp(req.query.limit, 1, 100, 20);
+    const skip = (page - 1) * limit;
+    const status = String(req.query.status || "").trim().toLowerCase();
+    const query = status ? { status } : {};
+    const [rows, total] = await Promise.all([
+      Purchase.find(query)
+        .sort({ paidAt: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Purchase.countDocuments(query),
     ]);
-    return res.json(
-      cohorts.map((row) => ({
-        cohort: row._id,
-        users: row.users,
-        retained: row.retained,
-        retentionRate: row.users ? row.retained / row.users : 0,
-      }))
-    );
+
+    return res.json({
+      page,
+      limit,
+      total,
+      transactions: rows.map((row) => ({
+        _id: toId(row._id),
+        userId: toId(row.userId),
+        creatorId: toId(row.creatorId),
+        itemType: row.itemType || "",
+        itemId: toId(row.itemId),
+        amount: Number(row.amount || 0),
+        currency: row.currency || "NGN",
+        status: row.status || "pending",
+        provider: row.provider || "",
+        providerRef: row.providerRef || "",
+        paidAt: row.paidAt || null,
+        createdAt: row.createdAt,
+      })),
+    });
   } catch (err) {
-    console.error("Admin retention analytics error:", err);
-    return res.status(500).json({ error: "Failed to load retention analytics" });
+    console.error("Admin transactions list error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
   }
 });
 
-router.get("/analytics/errors/uploads", async (_req, res) => {
+router.get("/creators/:id", async (req, res) => {
   try {
-    const docs = await DailyAnalytics.find({}, "date uploadFailuresCount")
-      .sort({ date: -1 })
-      .limit(60)
-      .lean();
-    return res.json(docs);
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: "Invalid creator id" });
+    }
+
+    const creator = await CreatorProfile.findById(req.params.id).populate("userId", "_id name username email avatar").lean();
+    if (!creator) {
+      return res.status(404).json({ error: "Creator not found" });
+    }
+
+    const [tracks, podcasts, albums, books, videos, revenueRows] = await Promise.all([
+      Track.countDocuments({ creatorId: creator._id, kind: { $ne: "podcast" }, archivedAt: null }),
+      Track.countDocuments({ creatorId: creator._id, kind: "podcast", archivedAt: null }),
+      Album.countDocuments({ creatorId: creator._id, archivedAt: null }),
+      Book.countDocuments({ creatorId: creator._id, archivedAt: null }),
+      Video.countDocuments({ creatorProfileId: creator._id, archivedAt: null }),
+      Purchase.aggregate([
+        { $match: { creatorId: creator._id, status: "paid" } },
+        { $group: { _id: null, revenue: { $sum: "$amount" }, purchases: { $sum: 1 } } },
+      ]),
+    ]);
+
+    return res.json({
+      _id: toId(creator._id),
+      displayName: creator.displayName || "",
+      bio: creator.bio || "",
+      tagline: creator.tagline || "",
+      genres: Array.isArray(creator.genres) ? creator.genres : [],
+      links: Array.isArray(creator.links) ? creator.links : [],
+      user: creator.userId
+        ? {
+            _id: toId(creator.userId._id),
+            name: creator.userId.name || "",
+            username: creator.userId.username || "",
+            email: creator.userId.email || "",
+            avatar: creator.userId.avatar?.url || creator.userId.avatar || "",
+          }
+        : null,
+      stats: {
+        tracks,
+        podcasts,
+        albums,
+        books,
+        videos,
+        totalRevenue: Number(revenueRows[0]?.revenue || 0),
+        purchases: Number(revenueRows[0]?.purchases || 0),
+      },
+    });
   } catch (err) {
-    console.error("Admin upload error analytics failed:", err);
-    return res.status(500).json({ error: "Failed to load upload failure analytics" });
+    console.error("Admin creator detail error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
+router.post("/analytics/backfill", requireRole(SUPER_ADMIN_ROLES), async (req, res) => {
+  try {
+    const startDate = String(req.body?.startDate || "").trim();
+    const endDate = String(req.body?.endDate || "").trim();
+    const docs = await backfillDailyAnalytics({ startDate, endDate });
+    return res.json({ success: true, count: docs.length });
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to backfill analytics" });
+  }
+});
+
+router.get("/dashboard", async (req, res) => {
+  try {
+    return res.json(await buildAdminDashboard(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    console.error("Admin dashboard error:", req.requestId, err);
+    return res.status(code).json({ error: err.message || "Failed to load admin dashboard" });
+  }
+});
+
+router.get("/analytics/overview", async (req, res) => {
+  try {
+    return res.json(await buildOverview(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    console.error("Admin analytics overview error:", req.requestId, err);
+    return res.status(code).json({ error: err.message || "Internal Server Error", requestId: req.requestId });
+  }
+});
+
+router.get("/analytics/user-growth", async (req, res) => {
+  try {
+    return res.json(await buildUserGrowth(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load user growth analytics" });
+  }
+});
+
+router.get("/analytics/content-uploads", async (req, res) => {
+  try {
+    return res.json(await buildContentUploads(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load content upload analytics" });
+  }
+});
+
+router.get("/analytics/revenue", async (req, res) => {
+  try {
+    return res.json(await buildRevenueAnalytics(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load revenue analytics" });
+  }
+});
+
+router.get("/analytics/engagement", async (req, res) => {
+  try {
+    return res.json(await buildEngagementAnalytics(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load engagement analytics" });
+  }
+});
+
+router.get("/analytics/top-creators", async (req, res) => {
+  try {
+    const mode = String(req.query.mode || "revenue").trim().toLowerCase();
+    const limit = clamp(req.query.limit, 1, 50, 10);
+    return res.json(await buildTopCreators({ ...getAnalyticsFilters(req), mode, limit }));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load top creators analytics" });
+  }
+});
+
+router.get("/analytics/top-content", async (req, res) => {
+  try {
+    const limit = clamp(req.query.limit, 1, 50, 10);
+    return res.json(await buildTopContent({ ...getAnalyticsFilters(req), limit }));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load top content analytics" });
+  }
+});
+
+router.get("/analytics/recent-activity", async (req, res) => {
+  try {
+    return res.json(await buildRecentActivity({
+      ...getAnalyticsFilters(req),
+      page: req.query.page,
+      limit: req.query.limit,
+    }));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load recent activity" });
+  }
+});
+
+router.get("/analytics/system-alerts", async (req, res) => {
+  try {
+    return res.json(await buildSystemAlerts(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load system alerts" });
+  }
+});
+
+router.get("/analytics/reports-summary", async (req, res) => {
+  try {
+    return res.json(await buildReportsSummary(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load reports summary" });
   }
 });
 

@@ -12,6 +12,7 @@ const {
   buildConversationId,
   normalizeMessage,
 } = require("../utils/messagePayload");
+const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
 
 const router = express.Router();
 
@@ -433,10 +434,23 @@ router.post("/:otherUserId", auth, async (req, res) => {
     });
 
     if (!result.existed) {
+      await touchUserActivity({ userId: me, seenAt: new Date() }).catch(() => null);
       const previewText =
         payload.type === "contentCard"
           ? `shared: ${payload.metadata?.title || payload.metadata?.itemType || "content"}`
           : String(payload.text || "").slice(0, 120);
+
+      await logAnalyticsEvent({
+        type: "message_sent",
+        userId: me,
+        actorRole: req.user.role,
+        targetId: payload._id,
+        targetType: "message",
+        metadata: {
+          receiverId: other,
+          messageType: payload.type || "text",
+        },
+      }).catch(() => null);
 
       await createNotification({
         recipient: other,

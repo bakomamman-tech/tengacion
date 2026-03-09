@@ -3,7 +3,7 @@ const fsp = require("fs/promises");
 const path = require("path");
 const mongoose = require("mongoose");
 const { pipeline } = require("stream/promises");
-const { incrementDailyMetric } = require("./analyticsService");
+const { incrementDailyMetric, logAnalyticsEvent } = require("./analyticsService");
 
 const bucketName = "uploads";
 
@@ -104,6 +104,10 @@ const saveUploadedFile = async (file) => {
     return payload.url;
   } catch (err) {
     await incrementDailyMetric("uploadFailuresCount", 1).catch(() => null);
+    await logAnalyticsEvent({
+      type: "upload_failed",
+      metadata: { message: err.message || "Upload failed", filename: file?.originalname || "" },
+    }).catch(() => null);
     throw err;
   }
 };
@@ -113,6 +117,10 @@ const saveUploadedMedia = async (file) => {
     return await persistUpload(file);
   } catch (err) {
     await incrementDailyMetric("uploadFailuresCount", 1).catch(() => null);
+    await logAnalyticsEvent({
+      type: "upload_failed",
+      metadata: { message: err.message || "Upload failed", filename: file?.originalname || "" },
+    }).catch(() => null);
     throw err;
   }
 };

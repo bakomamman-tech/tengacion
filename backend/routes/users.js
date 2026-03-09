@@ -11,6 +11,7 @@ const {
   mediaToUrl,
   normalizeUserMediaDocument,
 } = require("../utils/userMedia");
+const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
 
 const router = express.Router();
 
@@ -397,6 +398,15 @@ router.post("/:id/request", auth, async (req, res) => {
         io: req.app.get("io"),
         onlineUsers: req.app.get("onlineUsers"),
       });
+      await touchUserActivity({ userId: me._id, seenAt: new Date() }).catch(() => null);
+      await logAnalyticsEvent({
+        type: "friend_request_sent",
+        userId: me._id,
+        actorRole: req.user.role,
+        targetId: user._id,
+        targetType: "user",
+        metadata: { username: user.username || "" },
+      }).catch(() => null);
     }
 
     console.log("[FRIEND SEND]", {
@@ -509,6 +519,15 @@ router.post("/:id/accept", auth, async (req, res) => {
       requesterId,
       friendsNow: true,
     });
+    await touchUserActivity({ userId: me._id, seenAt: new Date() }).catch(() => null);
+    await logAnalyticsEvent({
+      type: "friend_request_accepted",
+      userId: me._id,
+      actorRole: req.user.role,
+      targetId: user._id,
+      targetType: "user",
+      metadata: { username: user.username || "" },
+    }).catch(() => null);
 
     return res.json({
       friends: true,

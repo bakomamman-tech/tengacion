@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
@@ -23,8 +23,11 @@ import OnboardingPage from "./pages/Onboarding";
 import TermsPage from "./pages/Terms";
 import PrivacyPolicyPage from "./pages/PrivacyPolicy";
 import CommunityGuidelinesPage from "./pages/CommunityGuidelines";
-import AdminAnalyticsPage from "./pages/AdminAnalytics";
 import AdminReportsPage from "./pages/AdminReports";
+import AdminContentPage from "./pages/AdminContent";
+import AdminTransactionsPage from "./pages/AdminTransactions";
+import AdminCreatorDetailPage from "./pages/AdminCreatorDetail";
+import AdminDashboardPage from "./pages/AdminDashboard";
 import CreatorPage from "./pages/CreatorPage";
 import CreatorSongs from "./pages/CreatorSongs";
 import CreatorHubPage from "./pages/CreatorHubPage";
@@ -335,7 +338,16 @@ export default function App() {
         path="/admin"
         element={
           <AdminRoute user={user}>
-            <AdminPanel user={user} />
+            <Navigate to="/admin/dashboard" replace />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/dashboard"
+        element={
+          <AdminRoute user={user}>
+            <AdminDashboardPage user={user} activeNav="dashboard" />
           </AdminRoute>
         }
       />
@@ -345,6 +357,32 @@ export default function App() {
         element={
           <AdminRoute user={user}>
             <AdminPanel user={user} />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/content"
+        element={
+          <AdminRoute user={user}>
+            <AdminContentPage user={user} />
+          </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/admin/transactions"
+        element={
+          <AdminRoute user={user}>
+            <AdminTransactionsPage user={user} />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/creators/:creatorId"
+        element={
+          <AdminRoute user={user}>
+            <AdminCreatorDetailPage user={user} />
           </AdminRoute>
         }
       />
@@ -362,7 +400,7 @@ export default function App() {
         path="/admin/reports"
         element={
           <AdminRoute user={user}>
-            <AdminReportsPage />
+            <AdminReportsPage user={user} />
           </AdminRoute>
         }
       />
@@ -371,7 +409,7 @@ export default function App() {
         path="/admin/analytics"
         element={
           <AdminRoute user={user}>
-            <AdminAnalyticsPage />
+            <AdminDashboardPage user={user} activeNav="analytics" />
           </AdminRoute>
         }
       />

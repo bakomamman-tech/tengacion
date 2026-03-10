@@ -5047,6 +5047,13 @@ html.dark-mode .composer-textarea::placeholder {
   box-shadow: var(--shadow-xs);
 }
 
+.message-row.them .msg-bubble {
+  background: linear-gradient(180deg, #e2f4ff 0%, #cfeaff 100%);
+  border-color: #a8d2f0;
+  color: #17324d;
+  box-shadow: 0 8px 18px rgba(73, 137, 188, 0.14);
+}
+
 .message-row.me .msg-bubble {
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
   color: #fff;
@@ -5062,10 +5069,19 @@ html.dark-mode .composer-textarea::placeholder {
   word-break: break-word;
 }
 
+.message-row.them .msg-text {
+  color: #17324d;
+}
+
 .msg-time {
   margin-top: 4px;
   font-size: 11px;
   opacity: 0.82;
+}
+
+.message-row.them .msg-time {
+  color: #406684;
+  opacity: 1;
 }
 
 .msg-attachment-image,

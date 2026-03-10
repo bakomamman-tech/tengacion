@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { resetPassword } from "../api";
+import AuthPasswordField from "../components/AuthPasswordField";
 
 export default function ResetPasswordPage() {
   const [params] = useSearchParams();
@@ -23,12 +24,13 @@ export default function ResetPasswordPage() {
       <div className="login-right" style={{ width: "100%" }}>
         <form className="login-box" onSubmit={submit}>
           <h2>Reset password</h2>
-          <input
-            type="password"
+          <AuthPasswordField
             className="login-input"
             placeholder="New password"
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
+            autoComplete="new-password"
+            name="new-password"
           />
           <button type="submit" className="login-btn">Reset password</button>
           {message ? <p>{message}</p> : null}

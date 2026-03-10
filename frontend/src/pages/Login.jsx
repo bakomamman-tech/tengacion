@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { login as loginApi } from "../api";
+import AuthPasswordField from "../components/AuthPasswordField";
 import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
@@ -102,14 +103,15 @@ export default function Login() {
           </div>
 
           <div className="form-group">
-            <input
-              type="password"
+            <AuthPasswordField
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
               required
               className="login-input"
+              autoComplete="current-password"
+              name="password"
             />
           </div>
 

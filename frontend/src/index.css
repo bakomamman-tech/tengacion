@@ -5525,6 +5525,67 @@ html.dark-mode .composer-textarea::placeholder {
   color: var(--text);
 }
 
+.password-toggle-field {
+  position: relative;
+  width: 100%;
+}
+
+.password-toggle-field .login-input,
+.password-toggle-field .register-fb-input {
+  padding-right: 46px;
+}
+
+.password-toggle-field input::-ms-reveal,
+.password-toggle-field input::-ms-clear {
+  display: none;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #65676b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.password-toggle-btn:hover {
+  background: rgba(101, 103, 107, 0.1);
+}
+
+.password-toggle-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+.password-toggle-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+html.dark-mode .password-toggle-btn {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+html.dark-mode .password-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .login-btn,
 .signup-btn {
   width: 100%;
@@ -5668,6 +5729,10 @@ html.dark-mode .composer-textarea::placeholder {
   padding: 0 16px;
   font-size: 16px;
   outline: none;
+}
+
+.register-fb-password-wrap .password-toggle-btn {
+  right: 14px;
 }
 
 .register-fb-input:focus {

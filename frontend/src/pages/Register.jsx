@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { register as registerApi } from "../api";
+import AuthPasswordField from "../components/AuthPasswordField";
 
 const MONTH_OPTIONS = [
   "January",
@@ -294,13 +295,14 @@ export default function Register() {
 
           <div className="register-fb-section">
             <label className="register-fb-label">Password</label>
-            <input
-              type="password"
+            <AuthPasswordField
               className="register-fb-input"
+              containerClassName="register-fb-password-wrap"
               placeholder="Password"
               value={form.password}
               onChange={(event) => setValue("password", event.target.value)}
               autoComplete="new-password"
+              name="password"
             />
           </div>
 

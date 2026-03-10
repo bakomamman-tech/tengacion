@@ -755,7 +755,16 @@ const buildSystemAlerts = async ({ range, startDate, endDate } = {}) => {
   if (failedPayments > DEFAULT_ALERT_THRESHOLDS.failedPayments) alerts.push({ key: "failed_payments", severity: "high", title: "Failed payments spike", value: failedPayments, actionPath: "/admin/transactions" });
   if (uploadFailures > DEFAULT_ALERT_THRESHOLDS.uploadFailures) alerts.push({ key: "upload_failures", severity: "medium", title: "Upload failures elevated", value: uploadFailures, actionPath: "/admin/content" });
   if (loginWarnings > DEFAULT_ALERT_THRESHOLDS.loginWarnings) alerts.push({ key: "login_warnings", severity: "high", title: "Suspicious login activity", value: loginWarnings, actionPath: "/admin/analytics" });
-  if (unresolvedReports > DEFAULT_ALERT_THRESHOLDS.unresolvedReports) alerts.push({ key: "unresolved_reports", severity: "medium", title: "Unresolved reports backlog", value: unresolvedReports, actionPath: "/admin/reports" });
+  if (unresolvedReports > 0) {
+    const hasBacklog = unresolvedReports > DEFAULT_ALERT_THRESHOLDS.unresolvedReports;
+    alerts.push({
+      key: hasBacklog ? "unresolved_reports_backlog" : "open_reports",
+      severity: hasBacklog ? "medium" : "low",
+      title: hasBacklog ? "Unresolved reports backlog" : "Open reports awaiting review",
+      value: unresolvedReports,
+      actionPath: "/admin/reports",
+    });
+  }
   if (Number(repeatFailedUploads[0]?.count || 0) > 0) alerts.push({ key: "repeat_upload_failures", severity: "medium", title: "Creators with repeated failed uploads", value: Number(repeatFailedUploads[0]?.count || 0), actionPath: "/admin/content" });
 
   return {

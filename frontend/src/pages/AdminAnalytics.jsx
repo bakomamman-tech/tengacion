@@ -442,7 +442,7 @@ export default function AdminAnalyticsPage({ user }) {
             <div className="adminx-activity-list">
               {(recentActivity.items || []).map((entry) => (
                 <button key={entry._id} type="button" className="adminx-activity-item" onClick={() => {
-                  if (entry.targetType === "report") {navigate("/admin/reports");}
+                  if (entry.type === "content_reported" || entry.targetType === "report") {navigate("/admin/reports");}
                   else if (entry.targetType === "purchase") {navigate("/admin/transactions");}
                   else if (["track", "album", "book", "podcast", "video"].includes(entry.contentType || entry.targetType)) {navigate("/admin/content");}
                   else {navigate("/admin/analytics");}

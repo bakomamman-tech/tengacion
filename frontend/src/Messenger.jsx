@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import {
+  blockUser,
   deleteMessageForMe,
   getChatContacts,
   getConversationMessages,
@@ -216,6 +218,7 @@ const isForConversation = (message, meId, otherId) => {
 
 export default function Messenger({ user, onClose, onMinimize }) {
   const { confirm } = useDialog();
+  const navigate = useNavigate();
   const meId = useMemo(() => toIdString(user?._id || user?.id), [user]);
   const token = localStorage.getItem("token");
 
@@ -245,6 +248,8 @@ export default function Messenger({ user, onClose, onMinimize }) {
   const [recordingByUserId, setRecordingByUserId] = useState({});
   const [watchOpen, setWatchOpen] = useState(false);
   const [watchUrl, setWatchUrl] = useState("");
+  const [chatMenuOpen, setChatMenuOpen] = useState(false);
+  const [isBlockingUser, setIsBlockingUser] = useState(false);
   const recorderRef = useRef(null);
   const recorderChunksRef = useRef([]);
   const recordMimeRef = useRef("audio/webm");
@@ -253,6 +258,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
   const recordingStreamRef = useRef(null);
   const recordingCancelledRef = useRef(false);
   const voiceMenuRef = useRef(null);
+  const chatMenuRef = useRef(null);
   const voiceAudioRefs = useRef(new Map());
   const mediaInputRef = useRef(null);
   const watchVideoRef = useRef(null);
@@ -513,6 +519,37 @@ export default function Messenger({ user, onClose, onMinimize }) {
     const timer = window.setTimeout(() => setHeaderNotice(""), 2400);
     return () => window.clearTimeout(timer);
   }, [headerNotice]);
+
+  useEffect(() => {
+    setChatMenuOpen(false);
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (!chatMenuOpen) {
+      return undefined;
+    }
+
+    const onPointerDown = (event) => {
+      if (chatMenuRef.current?.contains(event.target)) {
+        return;
+      }
+      setChatMenuOpen(false);
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setChatMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [chatMenuOpen]);
 
   useEffect(() => {
     if (!openVoiceMenuId) {
@@ -1269,6 +1306,67 @@ export default function Messenger({ user, onClose, onMinimize }) {
     setOpenVoiceMenuId("");
   }, []);
 
+  const openSelectedProfile = useCallback(() => {
+    if (!selectedContact?.username) {
+      setChatMenuOpen(false);
+      toast.error("Profile link unavailable for this chat");
+      return;
+    }
+
+    setChatMenuOpen(false);
+    onClose?.();
+    navigate(`/profile/${selectedContact.username}`);
+  }, [navigate, onClose, selectedContact?.username]);
+
+  const handleBlockSelectedContact = useCallback(async () => {
+    const targetId = toIdString(selectedContact?._id);
+    const targetName = selectedContact?.name || selectedContact?.username || "this user";
+
+    if (!targetId || isBlockingUser) {
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: `Block ${targetName}?`,
+      description:
+        "They will no longer be able to reach you in Messenger, and this chat will be removed from your list.",
+      confirmLabel: "Block user",
+      cancelLabel: "Cancel",
+      confirmVariant: "destructive",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    setChatMenuOpen(false);
+    setIsBlockingUser(true);
+    setError("");
+
+    try {
+      await blockUser(targetId);
+
+      const remainingContacts = contacts.filter((contact) => contact._id !== targetId);
+      const nextSelectedId = remainingContacts[0]?._id || "";
+
+      setContacts(remainingContacts);
+      setSelectedId((current) => (current === targetId ? nextSelectedId : current));
+      if (selectedIdRef.current === targetId) {
+        setMessages([]);
+        setText("");
+      }
+      setWatchOpen(false);
+      setHeaderNotice(`${targetName} blocked`);
+      toast.success(`${targetName} blocked`);
+    } catch (err) {
+      const message = err?.message || "Failed to block user";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsBlockingUser(false);
+    }
+  }, [confirm, contacts, isBlockingUser, selectedContact]);
+
   const shareContent = async (shareInput) => {
     if (shareInput?.mode === "friends") {
       const recipients = Array.isArray(shareInput.recipientIds)
@@ -1436,12 +1534,29 @@ export default function Messenger({ user, onClose, onMinimize }) {
 
           {selectedContact && (
             <>
-              <div className="chat-topbar">
-                <img src={getAvatar(selectedContact)} alt="" className="chat-top-avatar" />
-                <div>
-                  <div className="chat-top-name">
-                    {selectedContact.name || selectedContact.username}
-                  </div>
+              <div className="chat-topbar" ref={chatMenuRef}>
+                <button
+                  type="button"
+                  className={`chat-top-profile-btn ${chatMenuOpen ? "active" : ""}`}
+                  onClick={() => setChatMenuOpen((prev) => !prev)}
+                  aria-haspopup="menu"
+                  aria-expanded={chatMenuOpen}
+                  aria-label={`Open chat options for ${
+                    selectedContact.name || selectedContact.username || "this user"
+                  }`}
+                >
+                  <img src={getAvatar(selectedContact)} alt="" className="chat-top-avatar" />
+                  <div className="chat-top-copy">
+                    <div className="chat-top-name-row">
+                      <span className="chat-top-name">
+                        {selectedContact.name || selectedContact.username}
+                      </span>
+                      <span className={`chat-top-caret ${chatMenuOpen ? "open" : ""}`}>
+                        <svg viewBox="0 0 20 20" aria-hidden="true">
+                          <path d="M5 7.5 10 12.5 15 7.5" />
+                        </svg>
+                      </span>
+                    </div>
                   <div className="chat-top-status">
                     {typingByUserId[selectedContact._id]
                       ? "Typing..."
@@ -1454,16 +1569,68 @@ export default function Messenger({ user, onClose, onMinimize }) {
                       ? ` · ${selectedContact?.status?.emoji || ""} ${selectedContact?.status?.text || ""}`
                       : ""}
                   </div>
-                </div>
+                  </div>
+                </button>
                 <button
                   type="button"
                   className="messenger-action-btn"
-                  onClick={() => setWatchOpen((prev) => !prev)}
+                  onClick={() => {
+                    setChatMenuOpen(false);
+                    setWatchOpen((prev) => !prev);
+                  }}
                   title="Watch Together"
                   aria-label="Watch Together"
                 >
                   Watch Together
                 </button>
+
+                {chatMenuOpen && (
+                  <div className="chat-top-menu" role="menu" aria-label="Conversation options">
+                    <div className="chat-top-menu-header">
+                      <div className="chat-top-menu-title">
+                        {selectedContact.name || selectedContact.username}
+                      </div>
+                      <div className="chat-top-menu-sub">
+                        {selectedContact.username ? `@${selectedContact.username}` : "Chat options"}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="chat-top-menu-item"
+                      role="menuitem"
+                      onClick={openSelectedProfile}
+                    >
+                      <span className="chat-top-menu-item-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5Z" />
+                        </svg>
+                      </span>
+                      <span className="chat-top-menu-item-copy">
+                        <strong>View profile</strong>
+                        <small>Open their Tengacion profile page.</small>
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="chat-top-menu-item danger"
+                      role="menuitem"
+                      onClick={handleBlockSelectedContact}
+                      disabled={isBlockingUser}
+                    >
+                      <span className="chat-top-menu-item-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <path d="M12 2a9 9 0 1 0 9 9 9.01 9.01 0 0 0-9-9Zm0 2a6.94 6.94 0 0 1 4.95 2.05L6.05 16.95A7 7 0 0 1 12 4Zm0 14a6.94 6.94 0 0 1-4.95-2.05L17.95 5.05A7 7 0 0 1 12 18Z" />
+                        </svg>
+                      </span>
+                      <span className="chat-top-menu-item-copy">
+                        <strong>{isBlockingUser ? "Blocking user..." : "Block user"}</strong>
+                        <small>Stop new messages from this person if you feel unsafe.</small>
+                      </span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {watchOpen && (

@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 
 import { createReport } from "../api";
 import { createReportDialogConfig } from "../constants/reportReasons";
+import Button from "./ui/Button";
 import { useDialog } from "./ui/useDialog";
 
 const EMOJIS = [
@@ -264,9 +265,10 @@ export default function PostComments({
               alt="Comment attachment preview"
             />
           )}
-          <button
-            type="button"
-            className="post-menu-item danger"
+          <Button
+            size="xs"
+            variant="utility"
+            className="comment-report-btn"
             onClick={async () => {
               const reason = await prompt(
                 createReportDialogConfig("comment", "harassment")
@@ -288,7 +290,7 @@ export default function PostComments({
             }}
           >
             Report
-          </button>
+          </Button>
         </article>
       ))}
 

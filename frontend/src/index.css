@@ -3746,6 +3746,44 @@ html.dark-mode .action-btn.active-like {
   color: #1f2937;
 }
 
+.comment-report-btn {
+  --tg-btn-current-height: 30px;
+  --tg-btn-current-radius: 999px;
+  --tg-btn-current-bg: linear-gradient(180deg, #7d5530 0%, #5f3d1f 100%);
+  --tg-btn-current-bg-hover: linear-gradient(180deg, #8d623a 0%, #6d4726 100%);
+  --tg-btn-current-bg-active: linear-gradient(180deg, #6f4b2a 0%, #543519 100%);
+  --tg-btn-current-border: rgba(86, 54, 24, 0.54);
+  --tg-btn-current-border-hover: rgba(111, 71, 38, 0.68);
+  --tg-btn-current-color: #fff9f2;
+  --tg-btn-current-shadow: 0 6px 16px rgba(67, 40, 16, 0.14);
+  --tg-btn-current-shadow-hover: 0 10px 20px rgba(67, 40, 16, 0.18);
+  --tg-btn-current-shadow-active: 0 5px 12px rgba(67, 40, 16, 0.16);
+  margin-top: 8px;
+  padding-inline: 0.72rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.comment-report-btn:focus-visible {
+  box-shadow:
+    0 0 0 3px rgba(205, 161, 103, 0.24),
+    0 0 0 5px rgba(95, 61, 31, 0.16),
+    var(--tg-btn-current-shadow-hover);
+}
+
+html.dark-mode .comment-report-btn {
+  --tg-btn-current-bg: linear-gradient(180deg, #99683d 0%, #744820 100%);
+  --tg-btn-current-bg-hover: linear-gradient(180deg, #aa784a 0%, #835328 100%);
+  --tg-btn-current-bg-active: linear-gradient(180deg, #875a33 0%, #653d1b 100%);
+  --tg-btn-current-border: rgba(244, 214, 178, 0.18);
+  --tg-btn-current-border-hover: rgba(244, 214, 178, 0.28);
+  --tg-btn-current-color: #fff7ee;
+  --tg-btn-current-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+  --tg-btn-current-shadow-hover: 0 12px 24px rgba(0, 0, 0, 0.34);
+  --tg-btn-current-shadow-active: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
 .comment-inline-media {
   margin-top: 8px;
   width: min(220px, 100%);

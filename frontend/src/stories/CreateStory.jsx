@@ -8,8 +8,9 @@ const isAcceptedType = (file) =>
   Boolean(file) &&
   ACCEPTED_TYPES.some((prefix) => String(file.type || "").toLowerCase().startsWith(prefix));
 
-export default function CreateStory({ user, onCreated }) {
+export default function CreateStory({ user, onCreated, openSignal = 0 }) {
   const fileRef = useRef(null);
+  const lastOpenSignalRef = useRef(0);
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState(null);
   const [caption, setCaption] = useState("");
@@ -39,6 +40,15 @@ export default function CreateStory({ user, onCreated }) {
     setPreviewUrl(next);
     return () => URL.revokeObjectURL(next);
   }, [file]);
+
+  useEffect(() => {
+    if (openSignal === lastOpenSignalRef.current) {
+      return;
+    }
+    lastOpenSignalRef.current = openSignal;
+    setOpen(true);
+    setError("");
+  }, [openSignal]);
 
   const onPickFile = (event) => {
     const picked = event.target.files?.[0] || null;
@@ -178,7 +188,7 @@ export default function CreateStory({ user, onCreated }) {
 
             <div className="story-create-modal-actions">
               <Button variant="secondary" onClick={openFileDialog} disabled={submitting}>
-                Change media
+                {file ? "Change media" : "Choose media"}
               </Button>
               <Button variant="primary" loading={submitting} onClick={submit} disabled={!file}>
                 Share to story

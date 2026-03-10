@@ -676,6 +676,7 @@ export default function Home({ user }) {
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerInitialFile, setComposerInitialFile] = useState(null);
   const [composerInitialMode, setComposerInitialMode] = useState("");
+  const [storyCreatorSignal, setStoryCreatorSignal] = useState(0);
   const [checkInText, setCheckInText] = useState("");
   const [checkInStreak, setCheckInStreak] = useState({ count: 0, lastCheckInAt: null });
   const [checkInBusy, setCheckInBusy] = useState(false);
@@ -725,7 +726,10 @@ export default function Home({ user }) {
   useEffect(() => {
     const shouldOpenMessenger = Boolean(location.state?.openMessenger);
     const shouldOpenComposer = Boolean(location.state?.openComposer);
-    if (!shouldOpenMessenger && !shouldOpenComposer) {
+    const shouldOpenStoryCreator = Boolean(location.state?.openStoryCreator);
+    const composerMode =
+      typeof location.state?.composerMode === "string" ? location.state.composerMode : "";
+    if (!shouldOpenMessenger && !shouldOpenComposer && !shouldOpenStoryCreator) {
       return;
     }
 
@@ -735,8 +739,11 @@ export default function Home({ user }) {
     }
     if (shouldOpenComposer) {
       setComposerInitialFile(null);
-      setComposerInitialMode("");
+      setComposerInitialMode(composerMode);
       setComposerOpen(true);
+    }
+    if (shouldOpenStoryCreator) {
+      setStoryCreatorSignal((value) => value + 1);
     }
 
     navigate(location.pathname, { replace: true, state: {} });
@@ -864,7 +871,17 @@ export default function Home({ user }) {
           setChatOpen(true);
           setChatMinimized(false);
         }}
-        onOpenCreatePost={() => openComposer()}
+        onOpenCreatePost={(target = "post") => {
+          if (target === "story") {
+            setStoryCreatorSignal((value) => value + 1);
+            return;
+          }
+          if (target === "reel") {
+            openComposer("reel");
+            return;
+          }
+          openComposer();
+        }}
       />
 
       <div className="app-shell">
@@ -916,7 +933,7 @@ export default function Home({ user }) {
               </button>
             </section>
           )}
-          {!loading && <Stories user={currentUser} />}
+          {!loading && <Stories user={currentUser} openCreateSignal={storyCreatorSignal} />}
           {!loading && (
             <section className="card checkin-card">
               <div className="checkin-head">

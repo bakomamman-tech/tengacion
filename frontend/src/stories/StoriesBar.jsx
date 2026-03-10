@@ -9,7 +9,7 @@ const getTimeValue = (value) => {
   return Number.isFinite(next) ? next : 0;
 };
 
-export default function StoriesBar({ user }) {
+export default function StoriesBar({ user, openCreateSignal = 0 }) {
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -186,7 +186,7 @@ export default function StoriesBar({ user }) {
       )}
 
       <div className="stories-bar" ref={scrollerRef}>
-        <CreateStory user={user} onCreated={loadStories} />
+        <CreateStory user={user} onCreated={loadStories} openSignal={openCreateSignal} />
 
         {!loading &&
           groupedStories.map((entry) => (

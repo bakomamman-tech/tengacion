@@ -65,7 +65,6 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
   const [loading, setLoading] = useState(false);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [createSearch, setCreateSearch] = useState("");
-  const [comingSoonLabel, setComingSoonLabel] = useState("");
 
   const searchRef = useRef(null);
   const menuRef = useRef(null);
@@ -89,7 +88,6 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
       if (event.key === "Escape") {
         setSearchOpen(false);
         setShowMenu(false);
-        setComingSoonLabel("");
         if (showCreateMenu) {
           setShowCreateMenu(false);
           createMenuButtonRef.current?.focus();
@@ -154,136 +152,248 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
     navigate("/home", { state: { openMessenger: true } });
   };
 
-  const openPostComposer = () => {
-    if (typeof onOpenCreatePost === "function") {
-      onOpenCreatePost();
+  const openCreateFlow = (flow = "post") => {
+    if (flow === "story") {
+      if (typeof onOpenCreatePost === "function") {
+        onOpenCreatePost("story");
+        return;
+      }
+      navigate("/home", { state: { openStoryCreator: true } });
       return;
     }
-    navigate("/home", { state: { openComposer: true } });
+
+    if (flow === "reel") {
+      if (typeof onOpenCreatePost === "function") {
+        onOpenCreatePost("reel");
+        return;
+      }
+      navigate("/home", { state: { openComposer: true, composerMode: "reel" } });
+      return;
+    }
+
+    if (typeof onOpenCreatePost === "function") {
+      onOpenCreatePost("post");
+      return;
+    }
+    navigate("/home", { state: { openComposer: true, composerMode: "" } });
   };
+
+  const menuSections = [
+    {
+      id: "professional",
+      title: "Professional",
+      items: [
+        {
+          id: "menu-ads",
+          label: "Ads Manager",
+          description: "Create, manage, and monitor Tengacion campaigns.",
+          icon: "ads",
+          handler: () => navigate("/ads-manager"),
+        },
+        {
+          id: "menu-creator",
+          label: "Creator dashboard",
+          description: "Manage publishing tools, uploads, and creator growth.",
+          icon: "creator",
+          handler: () => navigate("/dashboard/creator"),
+        },
+        {
+          id: "menu-professional-dashboard",
+          label: "Professional dashboard",
+          description: "Track audience growth, reach, and performance.",
+          icon: "dashboard",
+          handler: () => navigate("/dashboard"),
+        },
+        {
+          id: "menu-go-live",
+          label: "Go live",
+          description: "Start a live session and stream to your audience.",
+          icon: "broadcast",
+          handler: () => navigate("/live/go"),
+        },
+      ],
+    },
+    {
+      id: "social",
+      title: "Social",
+      items: [
+        {
+          id: "menu-friends",
+          label: "Friends",
+          description: "See your connections and discover people you may know.",
+          icon: "friends",
+          handler: () => navigate("/friends"),
+        },
+        {
+          id: "menu-groups",
+          label: "Groups",
+          description: "Jump back into your creative communities.",
+          icon: "groups",
+          handler: () => navigate("/groups"),
+        },
+        {
+          id: "menu-events",
+          label: "Events",
+          description: "View upcoming sessions, meetups, and launches.",
+          icon: "events",
+          handler: () => navigate("/events"),
+        },
+        {
+          id: "menu-birthdays",
+          label: "Birthdays",
+          description: "Celebrate friends and keep up with reminders.",
+          icon: "birthdays",
+          handler: () => navigate("/birthdays"),
+        },
+      ],
+    },
+    {
+      id: "discover",
+      title: "Discover",
+      items: [
+        {
+          id: "menu-home",
+          label: "Home",
+          description: "Return to your main Tengacion feed.",
+          icon: "home",
+          handler: () => navigate("/home"),
+        },
+        {
+          id: "menu-trending",
+          label: "Trending",
+          description: "See hot posts, creators, and conversations.",
+          icon: "trending",
+          handler: () => navigate("/trending"),
+        },
+        {
+          id: "menu-reels",
+          label: "Reels",
+          description: "Watch short-form video highlights.",
+          icon: "reels",
+          handler: () => navigate("/reels"),
+        },
+        {
+          id: "menu-live",
+          label: "Live directory",
+          description: "Browse active live sessions across Tengacion.",
+          icon: "live",
+          handler: () => navigate("/live"),
+        },
+        {
+          id: "menu-gaming",
+          label: "Gaming",
+          description: "Explore gaming and interactive content.",
+          icon: "gaming",
+          handler: () => navigate("/gaming"),
+        },
+        {
+          id: "menu-saved",
+          label: "Saved",
+          description: "Open your saved posts, videos, and links.",
+          icon: "saved",
+          handler: () => navigate("/saved"),
+        },
+      ],
+    },
+    {
+      id: "account",
+      title: "Settings",
+      items: [
+        {
+          id: "menu-notifications",
+          label: "Notifications",
+          description: "Review the latest updates from across the app.",
+          icon: "notifications",
+          handler: () => navigate("/notifications"),
+        },
+        {
+          id: "menu-messages",
+          label: "Messages",
+          description: "Open your Messenger conversations.",
+          icon: "messages",
+          handler: () => openMessenger(),
+        },
+        {
+          id: "menu-rooms",
+          label: "Rooms",
+          description: "Join or browse the rooms experience.",
+          icon: "rooms",
+          handler: () => navigate("/rooms"),
+        },
+        {
+          id: "menu-security",
+          label: "Security settings",
+          description: "Manage password, sessions, and account protection.",
+          icon: "security",
+          handler: () => navigate("/settings/security"),
+        },
+        {
+          id: "menu-privacy",
+          label: "Privacy settings",
+          description: "Control visibility and communication preferences.",
+          icon: "privacy",
+          handler: () => navigate("/settings/privacy"),
+        },
+      ],
+    },
+  ];
 
   const createActions = [
     {
       id: "create-post",
       label: "Post",
-      description: "Share an update",
-      icon: "ðŸ“",
-      handler: () => openPostComposer(),
+      description: "Share an update to your feed.",
+      icon: "post",
+      handler: () => openCreateFlow("post"),
     },
     {
       id: "create-story",
       label: "Story",
-      description: "Share a story",
-      icon: "ðŸ“–",
-      handler: () => setComingSoonLabel("Story"),
+      description: "Share a quick visual update.",
+      icon: "story",
+      handler: () => openCreateFlow("story"),
     },
     {
       id: "create-reel",
       label: "Reel",
-      description: "Create a short video",
-      icon: "ðŸŽ¬",
-      handler: () => setComingSoonLabel("Reel"),
+      description: "Create a short-form video post.",
+      icon: "reel-create",
+      handler: () => openCreateFlow("reel"),
     },
     {
-      id: "create-life-update",
-      label: "Life update",
-      description: "Post a life update",
-      icon: "ðŸ’¬",
-      handler: () => openPostComposer(),
-    },
-    {
-      id: "create-page",
-      label: "Page",
-      description: "Create a page",
-      icon: "ðŸ“„",
-      handler: () => setComingSoonLabel("Page"),
+      id: "create-live",
+      label: "Live session",
+      description: "Broadcast to your audience in real time.",
+      icon: "broadcast",
+      handler: () => navigate("/live/go"),
     },
     {
       id: "create-group",
       label: "Group",
-      description: "Start a community",
-      icon: "ðŸ‘¥",
-      handler: () => setComingSoonLabel("Group"),
+      description: "Start or manage a community.",
+      icon: "groups",
+      handler: () => navigate("/groups"),
     },
     {
       id: "create-event",
       label: "Event",
-      description: "Host an event",
-      icon: "ðŸ“…",
-      handler: () => setComingSoonLabel("Event"),
+      description: "Plan and publish an upcoming activity.",
+      icon: "events",
+      handler: () => navigate("/events"),
     },
     {
-      id: "create-marketplace",
-      label: "Marketplace listing",
-      description: "Sell something",
-      icon: "ðŸ›ï¸",
-      handler: () => setComingSoonLabel("Marketplace listing"),
-    },
-  ];
-
-  const menuItems = [
-    {
-      id: "menu-home",
-      label: "Home",
-      description: "Main feed",
-      icon: "Home",
-      handler: () => navigate("/home"),
+      id: "create-ad",
+      label: "Ad campaign",
+      description: "Launch a promotional campaign.",
+      icon: "ads",
+      handler: () => navigate("/ads-manager"),
     },
     {
-      id: "menu-trending",
-      label: "Trending",
-      description: "Hot posts and topics",
-      icon: "Trending",
-      handler: () => navigate("/trending"),
-    },
-    {
-      id: "menu-live",
-      label: "Live directory",
-      description: "Watch live sessions",
-      icon: "Live",
-      handler: () => navigate("/live"),
-    },
-    {
-      id: "menu-go-live",
-      label: "Go live",
-      description: "Start a live update",
-      icon: "Broadcast",
-      handler: () => navigate("/live/go"),
-    },
-    {
-      id: "menu-creator",
+      id: "create-dashboard",
       label: "Creator dashboard",
-      description: "Manage your creator tools",
-      icon: "Creator",
+      description: "Open creator tools and publishing controls.",
+      icon: "dashboard",
       handler: () => navigate("/dashboard/creator"),
-    },
-    {
-      id: "menu-notifications",
-      label: "Notifications",
-      description: "See updates",
-      icon: "Alerts",
-      handler: () => navigate("/notifications"),
-    },
-    {
-      id: "menu-security",
-      label: "Security settings",
-      description: "Sessions and password",
-      icon: "Security",
-      handler: () => navigate("/settings/security"),
-    },
-    {
-      id: "menu-privacy",
-      label: "Privacy settings",
-      description: "Visibility and controls",
-      icon: "Privacy",
-      handler: () => navigate("/settings/privacy"),
-    },
-    {
-      id: "menu-messages",
-      label: "Messages",
-      description: "Open Messenger",
-      icon: "Messages",
-      handler: () => openMessenger(),
     },
   ];
 
@@ -299,7 +409,9 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
     });
   };
 
-  const filteredMenuItems = filterItems(menuItems);
+  const filteredMenuSections = menuSections
+    .map((section) => ({ ...section, items: filterItems(section.items) }))
+    .filter((section) => section.items.length > 0);
   const filteredCreateActions = filterItems(createActions);
 
   const navTabs = [
@@ -438,8 +550,8 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
                     return next;
                   })
                 }
-                aria-label="Apps"
-                title="Apps"
+                aria-label="Menu"
+                title="Menu"
                 aria-expanded={showCreateMenu}
                 aria-controls="navbar-create-menu"
               >
@@ -450,7 +562,7 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
                   id="navbar-create-menu"
                   searchValue={createSearch}
                   onSearchChange={setCreateSearch}
-                  leftItems={filteredMenuItems}
+                  menuSections={filteredMenuSections}
                   createItems={filteredCreateActions}
                   onItemClick={onCreateMenuItemClick}
                 />
@@ -532,21 +644,6 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
         </div>
       )}
 
-      {comingSoonLabel ? (
-        <div className="create-coming-backdrop" onMouseDown={() => setComingSoonLabel("")}>
-          <div className="create-coming-card" onMouseDown={(event) => event.stopPropagation()}>
-            <h4>{comingSoonLabel}</h4>
-            <p>{comingSoonLabel} creation is coming soon.</p>
-            <button
-              type="button"
-              className="create-coming-close"
-              onClick={() => setComingSoonLabel("")}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      ) : null}
     </header>
   );
 }

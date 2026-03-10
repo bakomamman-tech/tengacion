@@ -4301,11 +4301,16 @@ html.dark-mode .comment-report-btn {
   min-height: clamp(110px, 18vh, 180px);
   max-height: 34vh;
   padding: 0 16px 8px;
-  font-size: clamp(26px, 2.2vw, 38px);
-  line-height: 1.23;
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 400;
   color: #1f2937;
   overflow-y: auto;
   resize: none;
+}
+
+.composer-textarea::placeholder {
+  color: #667085;
 }
 
 html.dark-mode .composer-textarea {
@@ -7388,7 +7393,7 @@ html.dark-mode .composer-textarea::placeholder {
 
   .composer-textarea {
     min-height: 140px;
-    font-size: 24px;
+    font-size: 14px;
   }
 
   .composer-grid {

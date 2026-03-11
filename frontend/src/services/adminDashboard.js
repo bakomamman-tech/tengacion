@@ -2,10 +2,8 @@ import { adminGetDashboard, resolveImage } from "../api";
 
 const APPROVED_USER_NAMES = [
   "Lorietta Billy",
-  "Stephen Daniel Kurah",
-  "Demo Friend User",
+  "Daniel Stephen Kurah",
   "Admin User",
-  "Demo UIUX User",
 ];
 
 const APPROVED_NAME_SET = new Set(APPROVED_USER_NAMES.map((name) => name.toLowerCase()));

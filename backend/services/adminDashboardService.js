@@ -13,10 +13,8 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 const APPROVED_USERS = [
   { id: "lorietta-billy", name: "Lorietta Billy", descriptor: "Community Lead" },
-  { id: "stephen-daniel-kurah", name: "Stephen Daniel Kurah", descriptor: "Creator Program" },
-  { id: "demo-friend-user", name: "Demo Friend User", descriptor: "Member Network" },
+  { id: "daniel-stephen-kurah", name: "Daniel Stephen Kurah", descriptor: "Creator Program" },
   { id: "admin-user", name: "Admin User", descriptor: "Platform Admin" },
-  { id: "demo-uiux-user", name: "Demo UIUX User", descriptor: "Design Circle" },
 ];
 
 const DEVICE_COLORS = {

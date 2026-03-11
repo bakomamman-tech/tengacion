@@ -243,18 +243,6 @@ function ReelComposerModal({ user, onClose, onCreated }) {
           </button>
         </div>
 
-        <div className="reels-composer-user">
-          <img src={resolveImage(user?.avatar) || "/avatar.png"} alt={user?.username || "You"} />
-          <div>
-            <strong>{user?.name || user?.username || "You"}</strong>
-            <span>Share a short-form video with your audience.</span>
-          </div>
-        </div>
-
-        <button type="button" className="reels-composer-picker" onClick={() => inputRef.current?.click()}>
-          {file ? "Choose another video" : "Choose reel video"}
-        </button>
-
         <input
           ref={inputRef}
           type="file"
@@ -263,33 +251,47 @@ function ReelComposerModal({ user, onClose, onCreated }) {
           onChange={handleFileChange}
         />
 
-        {previewUrl ? (
-          <div className="reels-composer-preview">
-            <video src={previewUrl} controls playsInline muted />
+        <div className="reels-composer-body">
+          <div className="reels-composer-user">
+            <img src={resolveImage(user?.avatar) || "/avatar.png"} alt={user?.username || "You"} />
+            <div>
+              <strong>{user?.name || user?.username || "You"}</strong>
+              <span>Share a short-form video with your audience.</span>
+            </div>
           </div>
-        ) : (
-          <div className="reels-composer-empty">
-            <span>9:16 videos look best here.</span>
-            <small>MP4 or WebM, up to 200MB.</small>
-          </div>
-        )}
 
-        <textarea
-          className="reels-composer-caption"
-          placeholder={`Write a caption for your reel, ${user?.username || "creator"}...`}
-          value={caption}
-          onChange={(event) => setCaption(event.target.value)}
-          maxLength={240}
-        />
+          <button type="button" className="reels-composer-picker" onClick={() => inputRef.current?.click()}>
+            {file ? "Choose another video" : "Choose reel video"}
+          </button>
 
-        {progress > 0 && submitting && (
-          <div className="reels-composer-progress">
-            <div style={{ width: `${Math.min(progress, 100)}%` }} />
-            <span>Uploading reel ({progress}%)</span>
-          </div>
-        )}
+          {previewUrl ? (
+            <div className="reels-composer-preview">
+              <video src={previewUrl} controls playsInline muted />
+            </div>
+          ) : (
+            <div className="reels-composer-empty">
+              <span>9:16 videos look best here.</span>
+              <small>MP4 or WebM, up to 200MB.</small>
+            </div>
+          )}
 
-        {error && <p className="reels-composer-error">{error}</p>}
+          <textarea
+            className="reels-composer-caption"
+            placeholder={`Write a caption for your reel, ${user?.username || "creator"}...`}
+            value={caption}
+            onChange={(event) => setCaption(event.target.value)}
+            maxLength={240}
+          />
+
+          {progress > 0 && submitting && (
+            <div className="reels-composer-progress">
+              <div style={{ width: `${Math.min(progress, 100)}%` }} />
+              <span>Uploading reel ({progress}%)</span>
+            </div>
+          )}
+
+          {error && <p className="reels-composer-error">{error}</p>}
+        </div>
 
         <div className="reels-composer-actions">
           <button type="button" className="btn-secondary" onClick={onClose}>

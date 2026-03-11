@@ -3199,6 +3199,99 @@ html.dark-mode .create-menu-empty {
   padding: 0 12px;
 }
 
+html:not(.dark-mode) {
+  --home-soft-btn-bg: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(249, 242, 233, 0.94) 100%
+  );
+  --home-soft-btn-bg-hover: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(252, 247, 240, 0.98) 100%
+  );
+  --home-soft-btn-border: rgba(188, 146, 97, 0.24);
+  --home-soft-btn-border-strong: rgba(188, 146, 97, 0.42);
+  --home-soft-btn-shadow: 0 10px 22px rgba(75, 47, 18, 0.08);
+  --home-soft-btn-shadow-hover: 0 16px 28px rgba(75, 47, 18, 0.12);
+  --home-soft-btn-text: color-mix(in srgb, var(--text) 90%, #654223 10%);
+}
+
+html:not(.dark-mode) .nav-pill-group,
+html:not(.dark-mode) .pillGroup {
+  border-color: rgba(188, 146, 97, 0.16);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 250, 244, 0.82) 0%,
+    rgba(247, 239, 229, 0.68) 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
+html:not(.dark-mode) .nav-tab,
+html:not(.dark-mode) .pillLink,
+html:not(.dark-mode) .sidebar-btn,
+html:not(.dark-mode) .quick-nav-more,
+html:not(.dark-mode) .checkin-card > button,
+html:not(.dark-mode) .friend-requests-head .btn-link {
+  background: var(--home-soft-btn-bg) !important;
+  border: 1px solid var(--home-soft-btn-border) !important;
+  color: var(--home-soft-btn-text) !important;
+  box-shadow: var(--home-soft-btn-shadow);
+}
+
+html:not(.dark-mode) .nav-tab:hover,
+html:not(.dark-mode) .pillLink:hover,
+html:not(.dark-mode) .sidebar-btn:hover,
+html:not(.dark-mode) .quick-nav-more:hover,
+html:not(.dark-mode) .checkin-card > button:hover,
+html:not(.dark-mode) .friend-requests-head .btn-link:hover {
+  background: var(--home-soft-btn-bg-hover) !important;
+  border-color: var(--home-soft-btn-border-strong) !important;
+  box-shadow: var(--home-soft-btn-shadow-hover);
+}
+
+html:not(.dark-mode) .nav-tab.active,
+html:not(.dark-mode) .pillLink.active {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(250, 244, 235, 0.98) 100%
+  ) !important;
+  border-color: var(--home-soft-btn-border-strong) !important;
+  color: color-mix(in srgb, var(--brand-strong) 58%, var(--text) 42%) !important;
+  box-shadow:
+    0 14px 26px rgba(75, 47, 18, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+html:not(.dark-mode) .quick-nav-item {
+  background: var(--home-soft-btn-bg);
+  border-color: var(--home-soft-btn-border);
+  box-shadow: var(--home-soft-btn-shadow);
+}
+
+html:not(.dark-mode) .quick-nav-item:hover,
+html:not(.dark-mode) .quick-nav-item.active {
+  background: var(--home-soft-btn-bg-hover);
+  border-color: var(--home-soft-btn-border-strong);
+  box-shadow: var(--home-soft-btn-shadow-hover);
+}
+
+html:not(.dark-mode) .quick-nav-item.active {
+  color: color-mix(in srgb, var(--brand-strong) 60%, var(--text) 40%);
+}
+
+html:not(.dark-mode) .quick-nav-item-icon {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(248, 241, 232, 0.9) 100%
+  );
+  border: 1px solid rgba(188, 146, 97, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
 .rooms-page {
   width: min(1000px, 100%);
   margin: 18px auto;

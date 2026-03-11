@@ -581,7 +581,7 @@ export default function Register({ onBack }) {
                     <input
                       {...register("name")}
                       className="w-full mt-1 p-3 rounded-xl bg-slate-950 border border-slate-800 outline-none focus:border-blue-500"
-                      placeholder="Stephen Daniel Kurah"
+                      placeholder="Your full name"
                     />
                     {errors.name && (
                       <p className="text-xs text-red-300 mt-1">{errors.name.message}</p>
@@ -597,7 +597,7 @@ export default function Register({ onBack }) {
                         usernameStatus === "ok" ? "border-green-600" : "border-slate-800",
                         usernameStatus === "bad" ? "border-red-600" : ""
                       )}
-                      placeholder="pyrexx"
+                      placeholder="yourusername"
                     />
 
                     {errors.username && (

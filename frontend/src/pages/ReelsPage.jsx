@@ -296,7 +296,7 @@ function ReelComposerModal({ user, onClose, onCreated }) {
             Cancel
           </button>
           <button type="button" className="btn-primary" onClick={submit} disabled={!file || submitting}>
-            {submitting ? "Publishing..." : "Publish Reel"}
+            {submitting ? "Posting..." : "Post"}
           </button>
         </div>
       </div>

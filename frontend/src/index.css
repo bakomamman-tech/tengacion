@@ -2342,13 +2342,17 @@ textarea:focus {
   display: grid;
   place-items: center;
   padding: 24px;
+  overflow-y: auto;
   background: rgba(17, 11, 8, 0.6);
   backdrop-filter: blur(10px);
 }
 
 .reels-composer {
   width: min(100%, 720px);
+  max-height: min(88dvh, 900px);
   padding: 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .reels-composer-head,
@@ -2402,7 +2406,7 @@ textarea:focus {
 
 .reels-composer-preview video {
   width: 100%;
-  max-height: 58vh;
+  max-height: min(42dvh, 420px);
   object-fit: cover;
   display: block;
   background: #05070c;
@@ -2428,7 +2432,7 @@ textarea:focus {
 
 .reels-composer-caption {
   width: 100%;
-  min-height: 110px;
+  min-height: 96px;
   margin-top: 18px;
   padding: 16px 18px;
   border-radius: 18px;
@@ -2460,6 +2464,9 @@ textarea:focus {
 .reels-composer-actions {
   margin-top: 20px;
   justify-content: flex-end;
+  position: sticky;
+  bottom: 0;
+  padding-top: 14px;
 }
 
 html:not(.dark-mode) .reels-page-shell {
@@ -2635,6 +2642,19 @@ html.dark-mode .reels-composer-overlay {
 
   .reels-composer {
     padding: 18px;
+  }
+
+  .reels-composer-overlay {
+    align-items: start;
+    padding: 14px;
+  }
+
+  .reels-composer {
+    max-height: calc(100dvh - 28px);
+  }
+
+  .reels-composer-preview video {
+    max-height: min(34dvh, 320px);
   }
 }
 

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import Navbar from "../Navbar";
 import Tengacion2048 from "../components/gaming/Tengacion2048";
+import SnakeXavia from "../components/gaming/SnakeXavia";
 
 const SAVED_GAMES_KEY = "tengacion.gaming.saved";
 
@@ -19,6 +20,18 @@ const GAME_LIBRARY = [
       "Combine matching tiles, chase bigger numbers, and build your best score directly inside Tengacion.",
     originalUrl: "https://gabrielecirulli.github.io/2048/",
     sourceUrl: "https://github.com/gabrielecirulli/2048",
+  },
+  {
+    id: "snake-xavia",
+    title: "Snake Xavia",
+    genre: "Arcade",
+    status: "Playable now",
+    playable: true,
+    accent: "linear-gradient(145deg, #28a96b 0%, #103b27 100%)",
+    summary: "A fast original Tengacion snake run built for quick reflex sessions.",
+    description:
+      "Guide the snake, collect glowing fruit, avoid collisions, and climb your best score in a lighter arcade lane.",
+    builtInLabel: "Built inside Tengacion",
   },
   {
     id: "night-raid",
@@ -124,6 +137,7 @@ export default function GamingPage({ user }) {
     moves: 0,
     highestTile: 4,
     gameOver: false,
+    game: "2048-classic",
   });
 
   const deferredSearch = useDeferredValue(search);
@@ -162,7 +176,10 @@ export default function GamingPage({ user }) {
     {
       title: "Best score",
       value: lastSession.bestScore || 0,
-      meta: "Highest local 2048 run saved on this browser",
+      meta:
+        lastSession.game === "snake-xavia"
+          ? "Highest local Snake Xavia run saved on this browser"
+          : "Highest local 2048 run saved on this browser",
     },
     {
       title: "Latest score",
@@ -175,9 +192,12 @@ export default function GamingPage({ user }) {
       meta: "Titles pinned for quick access on this page",
     },
     {
-      title: "Top tile",
+      title: lastSession.game === "snake-xavia" ? "Snake length" : "Top tile",
       value: lastSession.highestTile || 4,
-      meta: lastSession.gameOver ? "Last run ended. Start another." : "Current run is active.",
+      meta:
+        lastSession.gameOver
+          ? "Last run ended. Start another."
+          : "Current run is active.",
     },
   ];
 
@@ -187,8 +207,8 @@ export default function GamingPage({ user }) {
       copy: "2048 is fully playable inside Tengacion today while the rest of the catalog matures.",
     },
     {
-      title: "Arcade lane is next",
-      copy: "Night Raid and Block Drop are queued up as the next internal prototypes.",
+      title: "Arcade lane is live",
+      copy: "Snake Xavia is now playable and gives the gaming page a faster reflex challenge.",
     },
     {
       title: "Board games are being scoped",
@@ -214,6 +234,14 @@ export default function GamingPage({ user }) {
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/");
+  };
+
+  const renderPlayableGame = () => {
+    if (featuredGame.id === "snake-xavia") {
+      return <SnakeXavia onSessionChange={setLastSession} />;
+    }
+
+    return <Tengacion2048 onSessionChange={setLastSession} />;
   };
 
   const renderPlayDeck = () => (
@@ -308,15 +336,22 @@ export default function GamingPage({ user }) {
 
           {featuredGame.playable ? (
             <>
-              <div className="gaming-link-row">
-                <a href={featuredGame.originalUrl} target="_blank" rel="noreferrer">
-                  Original game
-                </a>
-                <a href={featuredGame.sourceUrl} target="_blank" rel="noreferrer">
-                  Source code
-                </a>
-              </div>
-              <Tengacion2048 onSessionChange={setLastSession} />
+              {(featuredGame.originalUrl || featuredGame.sourceUrl || featuredGame.builtInLabel) && (
+                <div className="gaming-link-row">
+                  {featuredGame.originalUrl && (
+                    <a href={featuredGame.originalUrl} target="_blank" rel="noreferrer">
+                      Original game
+                    </a>
+                  )}
+                  {featuredGame.sourceUrl && (
+                    <a href={featuredGame.sourceUrl} target="_blank" rel="noreferrer">
+                      Source code
+                    </a>
+                  )}
+                  {featuredGame.builtInLabel && <span>{featuredGame.builtInLabel}</span>}
+                </div>
+              )}
+              {renderPlayableGame()}
             </>
           ) : (
             <div className="gaming-coming-soon-card" style={{ background: featuredGame.accent }}>
@@ -347,7 +382,15 @@ export default function GamingPage({ user }) {
                 <strong>{lastSession.bestScore || 0}</strong>
               </div>
               <div>
-                <span>Moves played</span>
+                <span>{lastSession.game === "snake-xavia" ? "Snake length" : "Moves played"}</span>
+                <strong>
+                  {lastSession.game === "snake-xavia"
+                    ? lastSession.highestTile || 3
+                    : lastSession.moves || 0}
+                </strong>
+              </div>
+              <div>
+                <span>{lastSession.game === "snake-xavia" ? "Steps" : "Moves played"}</span>
                 <strong>{lastSession.moves || 0}</strong>
               </div>
             </div>

@@ -2032,7 +2032,8 @@ textarea:focus {
 .gaming-side-card h3,
 .gaming-empty-state h3,
 .gaming-coming-soon-card h3,
-.game-2048-head h3 {
+.game-2048-head h3,
+.game-snake-head h3 {
   margin: 0;
 }
 
@@ -2100,7 +2101,8 @@ textarea:focus {
 .gaming-empty-state p,
 .gaming-spotlight-list p,
 .gaming-activity-card p,
-.game-2048-head p {
+.game-2048-head p,
+.game-snake-head p {
   color: var(--muted);
 }
 
@@ -2113,7 +2115,9 @@ textarea:focus {
 .gaming-section-head,
 .gaming-link-row,
 .game-2048-head,
+.game-snake-head,
 .game-2048-stats,
+.game-snake-stats,
 .gaming-hero {
   display: flex;
   align-items: start;
@@ -2303,6 +2307,11 @@ textarea:focus {
   text-decoration: none;
 }
 
+.gaming-link-row span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .gaming-coming-soon-card {
   min-height: 420px;
   padding: 26px;
@@ -2359,11 +2368,13 @@ textarea:focus {
   gap: 16px;
 }
 
-.game-2048-head {
+.game-2048-head,
+.game-snake-head {
   align-items: end;
 }
 
-.game-2048-head p {
+.game-2048-head p,
+.game-snake-head p {
   margin: 8px 0 0;
   max-width: 520px;
 }
@@ -2411,6 +2422,80 @@ textarea:focus {
   font-weight: 700;
 }
 
+.game-snake-shell {
+  display: grid;
+  gap: 16px;
+}
+
+.game-snake-kicker {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, #36c978 74%, var(--muted) 26%);
+}
+
+.game-snake-head-actions,
+.game-snake-controls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.game-snake-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.game-snake-stats > div {
+  padding: 14px 16px;
+  border-radius: 18px;
+}
+
+.game-snake-stats span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.game-snake-stats strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.game-snake-board {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  aspect-ratio: 1 / 1;
+  border-radius: 26px;
+}
+
+.game-snake-cell {
+  border-radius: 10px;
+  transition: background 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.game-snake-cell.head {
+  transform: scale(1.03);
+}
+
+.game-snake-cell.food {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08) inset;
+}
+
+.game-snake-controls button {
+  min-width: 92px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
 html:not(.dark-mode) .gaming-page-shell {
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.74), transparent 24%),
@@ -2430,9 +2515,11 @@ html:not(.dark-mode) .gaming-category-list button,
 html:not(.dark-mode) .gaming-mini-list button,
 html:not(.dark-mode) .gaming-chip,
 html:not(.dark-mode) .game-2048-controls button,
+html:not(.dark-mode) .game-snake-controls button,
 html:not(.dark-mode) .gaming-game-card,
 html:not(.dark-mode) .gaming-stat-list > div,
 html:not(.dark-mode) .game-2048-stats > div,
+html:not(.dark-mode) .game-snake-stats > div,
 html:not(.dark-mode) .gaming-activity-card,
 html:not(.dark-mode) .gaming-spotlight-list article {
   background: rgba(255, 255, 255, 0.62);
@@ -2447,6 +2534,7 @@ html:not(.dark-mode) .gaming-mini-list button:hover,
 html:not(.dark-mode) .gaming-chip:hover,
 html:not(.dark-mode) .gaming-chip.active,
 html:not(.dark-mode) .game-2048-controls button:hover,
+html:not(.dark-mode) .game-snake-controls button:hover,
 html:not(.dark-mode) .gaming-game-card:hover,
 html:not(.dark-mode) .gaming-game-card.active {
   background: rgba(255, 255, 255, 0.9);
@@ -2459,6 +2547,27 @@ html:not(.dark-mode) .game-2048-board {
 
 html:not(.dark-mode) .game-2048-tile.empty {
   background: rgba(255, 255, 255, 0.52);
+}
+
+html:not(.dark-mode) .game-snake-board {
+  background: rgba(31, 130, 74, 0.12);
+}
+
+html:not(.dark-mode) .game-snake-cell.empty {
+  background: rgba(255, 255, 255, 0.44);
+}
+
+html:not(.dark-mode) .game-snake-cell.body {
+  background: linear-gradient(145deg, #6fdc98, #2c934f);
+}
+
+html:not(.dark-mode) .game-snake-cell.head {
+  background: linear-gradient(145deg, #1f8f4b, #105227);
+  box-shadow: 0 10px 18px rgba(31, 130, 74, 0.22);
+}
+
+html:not(.dark-mode) .game-snake-cell.food {
+  background: radial-gradient(circle at 35% 35%, #ffebb0, #f08c2d 68%, #b55410 100%);
 }
 
 html.dark-mode .gaming-page-shell {
@@ -2486,9 +2595,11 @@ html.dark-mode .gaming-category-list button,
 html.dark-mode .gaming-mini-list button,
 html.dark-mode .gaming-chip,
 html.dark-mode .game-2048-controls button,
+html.dark-mode .game-snake-controls button,
 html.dark-mode .gaming-game-card,
 html.dark-mode .gaming-stat-list > div,
 html.dark-mode .game-2048-stats > div,
+html.dark-mode .game-snake-stats > div,
 html.dark-mode .gaming-activity-card,
 html.dark-mode .gaming-spotlight-list article {
   background: rgba(255, 255, 255, 0.04);
@@ -2503,6 +2614,7 @@ html.dark-mode .gaming-mini-list button:hover,
 html.dark-mode .gaming-chip:hover,
 html.dark-mode .gaming-chip.active,
 html.dark-mode .game-2048-controls button:hover,
+html.dark-mode .game-snake-controls button:hover,
 html.dark-mode .gaming-game-card:hover,
 html.dark-mode .gaming-game-card.active {
   background: rgba(255, 255, 255, 0.08);
@@ -2515,6 +2627,27 @@ html.dark-mode .game-2048-board {
 
 html.dark-mode .game-2048-tile.empty {
   background: rgba(255, 255, 255, 0.06);
+}
+
+html.dark-mode .game-snake-board {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+html.dark-mode .game-snake-cell.empty {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+html.dark-mode .game-snake-cell.body {
+  background: linear-gradient(145deg, #2eb86f, #12522d);
+}
+
+html.dark-mode .game-snake-cell.head {
+  background: linear-gradient(145deg, #56f3a0, #1f7f48);
+  box-shadow: 0 10px 20px rgba(21, 196, 102, 0.24);
+}
+
+html.dark-mode .game-snake-cell.food {
+  background: radial-gradient(circle at 35% 35%, #ffd98d, #ff8d3a 68%, #c74f12 100%);
 }
 
 @media (max-width: 1120px) {
@@ -2536,7 +2669,8 @@ html.dark-mode .game-2048-tile.empty {
 
   .gaming-hero,
   .gaming-section-head,
-  .game-2048-head {
+  .game-2048-head,
+  .game-snake-head {
     flex-direction: column;
     align-items: stretch;
   }
@@ -2547,6 +2681,7 @@ html.dark-mode .game-2048-tile.empty {
 
   .gaming-stat-list,
   .game-2048-stats,
+  .game-snake-stats,
   .gaming-activity-grid {
     grid-template-columns: 1fr;
   }

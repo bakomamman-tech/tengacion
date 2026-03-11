@@ -152,7 +152,7 @@ const PostSchema = new mongoose.Schema(
 
     type: {
       type: String,
-      enum: ["text", "image", "video", "poll", "quiz", "checkin"],
+      enum: ["text", "image", "video", "reel", "poll", "quiz", "checkin"],
       default: "text",
       index: true,
     },

@@ -113,6 +113,7 @@ function ComposerIcon({ name }) {
 }
 
 function PostComposerModal({ user, onClose, onPosted, initialFile = null, initialMode = "" }) {
+  const isReelMode = initialMode === "reel";
   const [text, setText] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
@@ -205,7 +206,9 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
     (callsEnabled && callNumber.trim())
   );
 
-  const canSubmit = Boolean(text.trim() || selectedFile || hasMetadata);
+  const canSubmit = isReelMode
+    ? Boolean(selectedFile?.type?.startsWith("video/"))
+    : Boolean(text.trim() || selectedFile || hasMetadata);
 
   const addTag = () => {
     const cleaned = tagInput.trim().replace(/^@+/, "");
@@ -230,6 +233,10 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
   const applyPickedFile = (file) => {
     if (!file) {return false;}
     const maxVideoBytes = 200 * 1024 * 1024;
+    if (isReelMode && !file.type.startsWith("video/")) {
+      setError("Reels must be uploaded as MP4 or WebM video");
+      return false;
+    }
     if (file.type.startsWith("video/")) {
       if (!["video/mp4", "video/webm"].includes(file.type)) {
         setError("Only MP4 and WebM videos are supported");
@@ -282,7 +289,7 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
       const created = await createPostWithUploadProgress(
         {
           text: text.trim(),
-          type: "video",
+          type: isReelMode ? "reel" : "video",
           file: selectedFile,
           tags: taggedPeople,
           feeling,
@@ -496,7 +503,7 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
         aria-modal="true"
       >
         <div className="pc-header composer-header">
-          <h3>Create post</h3>
+          <h3>{isReelMode ? "Create reel" : "Create post"}</h3>
           <button className="pc-close" onClick={onClose} aria-label="Close">
             <span className="icon-glyph-center">X</span>
           </button>
@@ -518,7 +525,11 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
 
         <textarea
           className="pc-textarea composer-textarea"
-          placeholder={`What's on your mind, ${user?.username || ""}?`}
+          placeholder={
+            isReelMode
+              ? `Write a caption for your reel, ${user?.username || ""}...`
+              : `What's on your mind, ${user?.username || ""}?`
+          }
           value={text}
           onChange={(e) => setText(e.target.value)}
           autoFocus
@@ -580,17 +591,17 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
         <div className="pc-divider" />
 
         <div className="pc-add composer-actions-wrap">
-          <span>Add to your post</span>
+          <span>{isReelMode ? "Build your reel" : "Add to your post"}</span>
 
           <div className="pc-actions composer-actions">
             <button
               type="button"
               className={selectedFile ? "active" : ""}
               onClick={() => openAction("media")}
-              title="Photo/Video"
+              title={isReelMode ? "Video" : "Photo/Video"}
             >
               <ComposerIcon name="media" />
-              <span>Photo/Video</span>
+              <span>{isReelMode ? "Video" : "Photo/Video"}</span>
             </button>
             <button
               type="button"
@@ -646,7 +657,7 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
           ref={fileRef}
           type="file"
           hidden
-          accept="image/*,video/mp4,video/webm"
+          accept={isReelMode ? "video/mp4,video/webm" : "image/*,video/mp4,video/webm"}
           onChange={handleFileChange}
         />
 
@@ -655,7 +666,7 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
           disabled={!canSubmit || loading}
           onClick={submit}
         >
-          {loading ? "Posting..." : "Post"}
+          {loading ? (isReelMode ? "Publishing..." : "Posting...") : (isReelMode ? "Publish reel" : "Post")}
         </button>
       </div>
     </div>

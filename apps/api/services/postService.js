@@ -35,7 +35,7 @@ const inferMediaKind = (file) => {
   return "image";
 };
 
-const ALLOWED_POST_TYPES = new Set(["text", "image", "video", "poll", "quiz", "checkin"]);
+const ALLOWED_POST_TYPES = new Set(["text", "image", "video", "reel", "poll", "quiz", "checkin"]);
 
 const parseVideoPayload = (value) => {
   if (!value) return null;
@@ -278,7 +278,7 @@ class PostService {
       }
     }
 
-    if (type === "video" && !hasVideo && uploadKind !== "video") {
+    if (["video", "reel"].includes(type) && !hasVideo && uploadKind !== "video") {
       throw ApiError.badRequest("Video data is required for video posts");
     }
 
@@ -400,7 +400,7 @@ class PostService {
       moreOptions,
       media,
       type,
-      video: type === "video" ? videoMeta : null,
+      video: ["video", "reel"].includes(type) ? videoMeta : null,
       privacy: "public",
       visibility,
       audience,

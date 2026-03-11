@@ -795,12 +795,13 @@ export const createPost = (input, maybeFile = null) => {
   const video = payload.video;
 
   const isVideoPost =
-    normalizedType === "video" || (video && typeof video === "object" && video.url);
+    ["video", "reel"].includes(normalizedType) ||
+    (video && typeof video === "object" && video.url);
 
   if (isVideoPost) {
     const body = {
       ...payload,
-      type: "video",
+      type: normalizedType === "reel" ? "reel" : "video",
     };
 
     return request(`${API_BASE}/posts`, {

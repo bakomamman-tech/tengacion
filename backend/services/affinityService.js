@@ -34,6 +34,7 @@ const normalizeContentType = (value) => {
   if (["album"].includes(raw)) return "album";
   if (["book", "ebook"].includes(raw)) return "book";
   if (["video", "live"].includes(raw)) return raw;
+  if (["reel", "reels"].includes(raw)) return "video";
   if (["creator"].includes(raw)) return "creator";
   if (["room", "rooms"].includes(raw)) return "room";
   if (["post", "image", "text", "poll", "quiz", "checkin"].includes(raw)) return "post";

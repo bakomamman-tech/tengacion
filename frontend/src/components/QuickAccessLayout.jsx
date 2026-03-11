@@ -28,7 +28,19 @@ export default function QuickAccessLayout({ user, title, subtitle, children }) {
           setChatOpen(true);
           setChatMinimized(false);
         }}
-        onOpenCreatePost={() => navigate("/home", { state: { openComposer: true } })}
+        onOpenCreatePost={(target = "post") => {
+          if (target === "story") {
+            navigate("/home", { state: { openStoryCreator: true } });
+            return;
+          }
+
+          navigate("/home", {
+            state: {
+              openComposer: true,
+              composerMode: target === "reel" ? "reel" : "",
+            },
+          });
+        }}
       />
 
       <div className="app-shell quick-access-shell">

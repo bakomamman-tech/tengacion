@@ -1,4 +1,6 @@
 import { useState } from "react";
+
+import QuickAccessLayout from "../components/QuickAccessLayout";
 import {
   blockUser,
   hideStoriesFromUser,
@@ -11,11 +13,22 @@ import {
   updatePrivacy,
 } from "../api";
 
-export default function PrivacySettings() {
+function SectionCard({ title, children }) {
+  return (
+    <section className="card quick-section-card">
+      <div className="quick-section-head">
+        <h2>{title}</h2>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+export default function PrivacySettings({ user }) {
   const [form, setForm] = useState({
-    profileVisibility: "public",
-    defaultPostAudience: "friends",
-    allowMessagesFrom: "everyone",
+    profileVisibility: user?.privacy?.profileVisibility || "public",
+    defaultPostAudience: user?.privacy?.defaultPostAudience || "friends",
+    allowMessagesFrom: user?.privacy?.allowMessagesFrom || "everyone",
   });
   const [targetId, setTargetId] = useState("");
   const [message, setMessage] = useState("");
@@ -44,67 +57,140 @@ export default function PrivacySettings() {
   };
 
   return (
-    <div className="app-shell">
-      <main className="feed" style={{ maxWidth: 820, margin: "0 auto", padding: 20, display: "grid", gap: 14 }}>
-        <section className="card" style={{ padding: 14, display: "grid", gap: 8 }}>
-          <h2 style={{ marginTop: 0 }}>Privacy settings</h2>
+    <QuickAccessLayout
+      user={user}
+      title="Privacy Settings"
+      subtitle="Choose who can find you, who can message you, and which accounts you want to limit or block."
+    >
+      <SectionCard title="Core privacy controls">
+        <div className="account-form-grid">
           <label>
             Profile visibility
             <select
+              className="account-select"
               value={form.profileVisibility}
-              onChange={(event) => setForm((prev) => ({ ...prev, profileVisibility: event.target.value }))}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  profileVisibility: event.target.value,
+                }))
+              }
             >
               <option value="public">Public</option>
               <option value="friends">Friends</option>
               <option value="private">Private</option>
             </select>
           </label>
+
           <label>
             Default post audience
             <select
+              className="account-select"
               value={form.defaultPostAudience}
-              onChange={(event) => setForm((prev) => ({ ...prev, defaultPostAudience: event.target.value }))}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  defaultPostAudience: event.target.value,
+                }))
+              }
             >
               <option value="public">Public</option>
               <option value="friends">Friends</option>
               <option value="close_friends">Close friends</option>
             </select>
           </label>
+
           <label>
             Allow messages from
             <select
+              className="account-select"
               value={form.allowMessagesFrom}
-              onChange={(event) => setForm((prev) => ({ ...prev, allowMessagesFrom: event.target.value }))}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  allowMessagesFrom: event.target.value,
+                }))
+              }
             >
               <option value="everyone">Everyone</option>
               <option value="friends">Friends</option>
               <option value="no_one">No one</option>
             </select>
           </label>
-          <button type="button" onClick={save}>Save privacy</button>
-        </section>
 
-        <section className="card" style={{ padding: 14, display: "grid", gap: 8 }}>
-          <h3 style={{ marginTop: 0 }}>Manage block / mute / restrict</h3>
-          <input
-            value={targetId}
-            onChange={(event) => setTargetId(event.target.value)}
-            placeholder="Target user id"
-          />
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button type="button" onClick={() => runListAction(blockUser)}>Block</button>
-            <button type="button" onClick={() => runListAction(unblockUser)}>Unblock</button>
-            <button type="button" onClick={() => runListAction(muteUser)}>Mute</button>
-            <button type="button" onClick={() => runListAction(unmuteUser)}>Unmute</button>
-            <button type="button" onClick={() => runListAction(restrictUser)}>Restrict</button>
-            <button type="button" onClick={() => runListAction(unrestrictUser)}>Unrestrict</button>
-            <button type="button" onClick={() => runListAction(hideStoriesFromUser)}>Hide stories</button>
-            <button type="button" onClick={() => runListAction(unhideStoriesFromUser)}>Unhide stories</button>
+          <div className="account-button-row">
+            <button type="button" onClick={save}>
+              Save privacy
+            </button>
+            {message ? <span className="account-inline-message">{message}</span> : null}
           </div>
-        </section>
+        </div>
+      </SectionCard>
 
-        {message ? <p>{message}</p> : null}
-      </main>
-    </div>
+      <SectionCard title="Block, mute, and restrict">
+        <div className="account-form-grid">
+          <label>
+            Target user id
+            <input
+              className="account-input"
+              value={targetId}
+              onChange={(event) => setTargetId(event.target.value)}
+              placeholder="Enter a user id"
+            />
+          </label>
+
+          <div className="account-chip-row">
+            <button type="button" className="account-chip" onClick={() => runListAction(blockUser)}>
+              Block
+            </button>
+            <button
+              type="button"
+              className="account-chip"
+              onClick={() => runListAction(unblockUser)}
+            >
+              Unblock
+            </button>
+            <button type="button" className="account-chip" onClick={() => runListAction(muteUser)}>
+              Mute
+            </button>
+            <button
+              type="button"
+              className="account-chip"
+              onClick={() => runListAction(unmuteUser)}
+            >
+              Unmute
+            </button>
+            <button
+              type="button"
+              className="account-chip"
+              onClick={() => runListAction(restrictUser)}
+            >
+              Restrict
+            </button>
+            <button
+              type="button"
+              className="account-chip"
+              onClick={() => runListAction(unrestrictUser)}
+            >
+              Unrestrict
+            </button>
+            <button
+              type="button"
+              className="account-chip"
+              onClick={() => runListAction(hideStoriesFromUser)}
+            >
+              Hide stories
+            </button>
+            <button
+              type="button"
+              className="account-chip"
+              onClick={() => runListAction(unhideStoriesFromUser)}
+            >
+              Unhide stories
+            </button>
+          </div>
+        </div>
+      </SectionCard>
+    </QuickAccessLayout>
   );
 }

@@ -7,6 +7,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./context/AuthContext";
 
 const loadQuickAccessPages = () => import("./pages/quickAccess/QuickAccessPages");
+const loadAccountPages = () => import("./pages/AccountPages");
 const lazyNamedExport = (loader, exportName) =>
   lazy(async () => {
     const module = await loader();
@@ -61,6 +62,13 @@ const EventsPage = lazyNamedExport(loadQuickAccessPages, "EventsPage");
 const FriendsPage = lazyNamedExport(loadQuickAccessPages, "FriendsPage");
 const GroupsPage = lazyNamedExport(loadQuickAccessPages, "GroupsPage");
 const MemoriesPage = lazyNamedExport(loadQuickAccessPages, "MemoriesPage");
+const SettingsHubPage = lazyNamedExport(loadAccountPages, "SettingsHubPage");
+const HelpSupportPage = lazyNamedExport(loadAccountPages, "HelpSupportPage");
+const DisplayAccessibilityPage = lazyNamedExport(
+  loadAccountPages,
+  "DisplayAccessibilityPage"
+);
+const FeedbackPage = lazyNamedExport(loadAccountPages, "FeedbackPage");
 const ProfessionalDashboardPage = lazyNamedExport(
   loadQuickAccessPages,
   "ProfessionalDashboardPage"
@@ -263,10 +271,18 @@ export default function App() {
             }
           />
           <Route
+            path="/settings"
+            element={
+              <ProtectedRoute user={user}>
+                <SettingsHubPage user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/settings/security"
             element={
               <ProtectedRoute user={user}>
-                <SecuritySettings />
+                <SecuritySettings user={user} />
               </ProtectedRoute>
             }
           />
@@ -274,7 +290,7 @@ export default function App() {
             path="/settings/privacy"
             element={
               <ProtectedRoute user={user}>
-                <PrivacySettings />
+                <PrivacySettings user={user} />
               </ProtectedRoute>
             }
           />
@@ -282,7 +298,31 @@ export default function App() {
             path="/settings/notifications"
             element={
               <ProtectedRoute user={user}>
-                <NotificationSettings />
+                <NotificationSettings user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings/display"
+            element={
+              <ProtectedRoute user={user}>
+                <DisplayAccessibilityPage user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/help-support"
+            element={
+              <ProtectedRoute user={user}>
+                <HelpSupportPage user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/feedback"
+            element={
+              <ProtectedRoute user={user}>
+                <FeedbackPage user={user} />
               </ProtectedRoute>
             }
           />

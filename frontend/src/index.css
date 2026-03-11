@@ -3886,12 +3886,12 @@ html.dark-mode .create-menu-empty {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  width: 250px;
+  width: min(360px, calc(100vw - 24px));
   border: 1px solid var(--border);
   background: var(--surface);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  padding: 8px;
+  padding: 12px;
   z-index: 14;
   animation: dropdownIn 0.18s ease both;
 }
@@ -3920,6 +3920,13 @@ html.dark-mode .create-menu-empty {
   border-radius: 50%;
 }
 
+.pm-user-card {
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-soft) 78%, transparent);
+  box-shadow: var(--shadow-xs);
+}
+
 .pm-name {
   font-weight: 800;
 }
@@ -3932,6 +3939,11 @@ html.dark-mode .create-menu-empty {
 .pm-divider {
   border-top: 1px solid var(--border);
   margin: 6px 0;
+}
+
+.pm-menu-list {
+  display: grid;
+  gap: 6px;
 }
 
 .pm-item {
@@ -3952,6 +3964,133 @@ html.dark-mode .create-menu-empty {
 
 .pm-item.logout {
   color: var(--danger);
+}
+
+.pm-panel-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.pm-panel-back {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.pm-panel-back:hover {
+  background: color-mix(in srgb, var(--surface-soft) 82%, var(--brand-soft) 18%);
+}
+
+.pm-panel-title {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding-top: 2px;
+}
+
+.pm-panel-title strong {
+  font-size: 18px;
+}
+
+.pm-panel-title span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.pm-nav-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.pm-nav-item:hover {
+  background: rgba(187, 131, 63, 0.1);
+  transform: translateY(-1px);
+}
+
+.pm-nav-item-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-soft) 74%, var(--brand-soft) 26%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pm-nav-item-icon-text {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.pm-nav-item-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.pm-nav-item-copy strong {
+  font-size: 15px;
+}
+
+.pm-nav-item-copy small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.pm-nav-item-badge {
+  min-width: 34px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-soft) 72%, var(--surface));
+  color: color-mix(in srgb, var(--brand-strong) 70%, var(--text));
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.pm-nav-item-chevron,
+.pm-panel-back svg {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  color: var(--muted);
+}
+
+.pm-nav-item-chevron svg,
+.pm-panel-back svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Main layout */
@@ -4386,6 +4525,187 @@ html.dark-mode .create-menu-empty {
 .quick-empty {
   margin: 0;
   color: var(--muted);
+}
+
+.account-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.account-kpi-card {
+  border: 1px solid rgba(184, 122, 58, 0.24);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-soft) 88%, transparent);
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.account-kpi-card span,
+.account-shortcut-card span,
+.account-choice-card span,
+.account-inline-message,
+.account-toggle-row span,
+.account-keyboard-item span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.account-kpi-card strong {
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.account-shortcut-grid,
+.account-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.account-shortcut-card,
+.account-choice-card {
+  border: 1px solid rgba(184, 122, 58, 0.24);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-soft) 88%, transparent);
+  color: var(--text);
+  padding: 14px;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+
+.account-shortcut-card:hover,
+.account-choice-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--brand) 28%, var(--border));
+}
+
+.account-choice-card.active {
+  background: color-mix(in srgb, var(--brand-soft) 72%, var(--surface));
+  border-color: color-mix(in srgb, var(--brand) 34%, var(--border));
+  box-shadow: var(--shadow-xs);
+}
+
+.account-shortcut-card p,
+.account-choice-card p,
+.account-note-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.account-form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.account-form-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.account-input,
+.account-select,
+.account-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  color: var(--text);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.account-textarea {
+  resize: vertical;
+  min-height: 132px;
+}
+
+.account-input:focus,
+.account-select:focus,
+.account-textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--brand) 42%, var(--border));
+}
+
+.account-button-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.account-note-card {
+  border: 1px solid rgba(184, 122, 58, 0.24);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-soft) 88%, transparent);
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.account-chip-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.account-chip {
+  min-height: 34px;
+  border-radius: 999px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface-soft) !important;
+  color: var(--text) !important;
+  padding: 0 12px !important;
+  font-size: 12px;
+}
+
+.account-chip.active {
+  background: color-mix(in srgb, var(--brand-soft) 72%, var(--surface)) !important;
+  border-color: color-mix(in srgb, var(--brand) 34%, var(--border)) !important;
+}
+
+.account-toggle-list,
+.account-keyboard-list {
+  display: grid;
+  gap: 10px;
+}
+
+.account-toggle-row,
+.account-keyboard-item {
+  border: 1px solid rgba(184, 122, 58, 0.24);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-soft) 88%, transparent);
+  padding: 12px;
+}
+
+.account-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.account-toggle-row div {
+  display: grid;
+  gap: 4px;
+}
+
+.account-keyboard-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .sidebar-nav {
@@ -9238,7 +9558,10 @@ html.dark-mode .password-toggle-btn:hover {
   }
 
   .quick-list-grid.two-col,
-  .quick-stats-grid {
+  .quick-stats-grid,
+  .account-kpi-grid,
+  .account-shortcut-grid,
+  .account-choice-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -9278,6 +9601,24 @@ html.dark-mode .password-toggle-btn:hover {
     width: 100%;
     justify-content: flex-start;
     padding-bottom: 2px;
+  }
+}
+
+@media (max-width: 760px) {
+  .account-kpi-grid,
+  .account-shortcut-grid,
+  .account-choice-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-toggle-row,
+  .account-keyboard-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .account-keyboard-item span {
+    text-align: left;
   }
 }
 

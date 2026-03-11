@@ -1,10 +1,12 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
+
 import { resolveImage, searchGlobal } from "./api";
-import { useTheme } from "./context/ThemeContext";
-import { useNotifications } from "./context/NotificationsContext";
-import { Icon } from "./Icon";
 import CreateMenuDropdown from "./components/CreateMenuDropdown";
+import { Icon } from "./Icon";
+import { useAuth } from "./context/AuthContext";
+import { useNotifications } from "./context/NotificationsContext";
+import { useTheme } from "./context/ThemeContext";
 
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -52,13 +54,68 @@ const NotificationBellIcon = ({ size = 20 }) => (
   </svg>
 );
 
-export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePost }) {
+const ChevronRightIcon = () => (
+  <svg viewBox="0 0 20 20" aria-hidden="true">
+    <path d="M7.5 4.8 12.7 10l-5.2 5.2" />
+  </svg>
+);
+
+const BackIcon = () => (
+  <svg viewBox="0 0 20 20" aria-hidden="true">
+    <path d="M11.8 4.8 6.6 10l5.2 5.2" />
+  </svg>
+);
+
+function glyphFor(item) {
+  if (item.glyph) {
+    return item.glyph;
+  }
+  return String(item.label || "?")
+    .split(" ")
+    .map((part) => part[0] || "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function AccountMenuRow({ item, onClick }) {
+  return (
+    <button
+      type="button"
+      className={`pm-nav-item ${item.danger ? "logout" : ""}`}
+      onClick={onClick}
+    >
+      <span className="pm-nav-item-icon" aria-hidden="true">
+        <span className="pm-nav-item-icon-text">{glyphFor(item)}</span>
+      </span>
+      <span className="pm-nav-item-copy">
+        <strong>{item.label}</strong>
+        {item.description ? <small>{item.description}</small> : null}
+      </span>
+      {item.badge ? <span className="pm-nav-item-badge">{item.badge}</span> : null}
+      {item.showChevron ? (
+        <span className="pm-nav-item-chevron" aria-hidden="true">
+          <ChevronRightIcon />
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+export default function Navbar({
+  user,
+  onLogout,
+  onOpenMessenger,
+  onOpenCreatePost,
+}) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isDark, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+  const { logout: authLogout } = useAuth();
   const { unreadCount: unreadNotifications, markAllRead } = useNotifications();
 
   const [showMenu, setShowMenu] = useState(false);
+  const [menuView, setMenuView] = useState("root");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState({ users: [], posts: [] });
   const [searchOpen, setSearchOpen] = useState(false);
@@ -88,6 +145,7 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
       if (event.key === "Escape") {
         setSearchOpen(false);
         setShowMenu(false);
+        setMenuView("root");
         if (showCreateMenu) {
           setShowCreateMenu(false);
           createMenuButtonRef.current?.focus();
@@ -104,6 +162,19 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
     };
   }, [showCreateMenu]);
 
+  useEffect(() => {
+    setShowMenu(false);
+    setMenuView("root");
+    setSearchOpen(false);
+    setShowCreateMenu(false);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (!showMenu) {
+      setMenuView("root");
+    }
+  }, [showMenu]);
+
   const performSearch = useCallback(async (value) => {
     if (!value.trim()) {
       setResults({ users: [], posts: [] });
@@ -113,7 +184,6 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
 
     try {
       setLoading(true);
-
       const [usersPayload, postsPayload] = await Promise.all([
         searchGlobal({ q: value, type: "users" }),
         searchGlobal({ q: value, type: "posts" }),
@@ -125,7 +195,6 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
         users: Array.isArray(users) ? users.slice(0, 5) : [],
         posts: Array.isArray(posts) ? posts.slice(0, 5) : [],
       });
-
       setSearchOpen(true);
     } catch {
       setResults({ users: [], posts: [] });
@@ -143,12 +212,31 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
   const role = String(user?.role || "").toLowerCase();
   const canOpenAdmin = role === "admin" || role === "super_admin";
 
+  const closeAccountMenu = () => {
+    setShowMenu(false);
+    setMenuView("root");
+  };
+
+  const openAccountRoute = (target) => {
+    closeAccountMenu();
+    navigate(target);
+  };
+
+  const handleLogout = () => {
+    closeAccountMenu();
+    if (typeof onLogout === "function") {
+      onLogout();
+      return;
+    }
+    authLogout();
+    navigate("/");
+  };
+
   const openMessenger = () => {
     if (typeof onOpenMessenger === "function") {
       onOpenMessenger();
       return;
     }
-
     navigate("/home", { state: { openMessenger: true } });
   };
 
@@ -422,6 +510,197 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
     { id: "reels", label: "Reels", path: "/reels" },
   ];
 
+  const currentMode = theme === "dark" ? "Dark mode is on" : "Light mode is on";
+  const accountMenuPanels = {
+    root: {
+      items: [
+        {
+          id: "account-settings",
+          label: "Settings & privacy",
+          description: "Privacy controls, security, notifications, and account shortcuts.",
+          glyph: "SP",
+          view: "settings",
+          showChevron: true,
+        },
+        {
+          id: "account-help",
+          label: "Help & support",
+          description: "Support resources, policies, and ways to report an issue.",
+          glyph: "HS",
+          view: "help",
+          showChevron: true,
+        },
+        {
+          id: "account-display",
+          label: "Display & accessibility",
+          description: `${currentMode}. Review appearance and accessibility options.`,
+          glyph: "DA",
+          view: "display",
+          showChevron: true,
+        },
+        {
+          id: "account-feedback",
+          label: "Give feedback",
+          description: "Report a bug, suggest a feature, or share general feedback.",
+          glyph: "GF",
+          view: "feedback",
+          showChevron: true,
+        },
+        ...(canOpenAdmin
+          ? [
+              {
+                id: "account-admin",
+                label: "Admin panel",
+                description: "Open moderation, analytics, and platform controls.",
+                glyph: "AP",
+                path: "/admin",
+              },
+            ]
+          : []),
+      ],
+    },
+    settings: {
+      title: "Settings & privacy",
+      description: "Open the account areas users expect to find in the menu.",
+      items: [
+        {
+          id: "settings-home",
+          label: "Settings center",
+          description: "View your account overview and recommended next steps.",
+          glyph: "SC",
+          path: "/settings",
+        },
+        {
+          id: "settings-privacy",
+          label: "Privacy settings",
+          description: "Control visibility, posting audience, and messaging access.",
+          glyph: "PR",
+          path: "/settings/privacy",
+        },
+        {
+          id: "settings-security",
+          label: "Security settings",
+          description: "Manage password changes, email verification, and sessions.",
+          glyph: "SE",
+          path: "/settings/security",
+        },
+        {
+          id: "settings-notifications",
+          label: "Notification settings",
+          description: "Choose which alerts should appear in your account.",
+          glyph: "NO",
+          path: "/settings/notifications",
+        },
+      ],
+    },
+    help: {
+      title: "Help & support",
+      description: "Policies, help destinations, and support paths.",
+      items: [
+        {
+          id: "help-home",
+          label: "Help center",
+          description: "Read support guidance for account, content, and messaging issues.",
+          glyph: "HC",
+          path: "/help-support",
+        },
+        {
+          id: "help-guidelines",
+          label: "Community guidelines",
+          description: "Review platform rules and moderation expectations.",
+          glyph: "CG",
+          path: "/community-guidelines",
+        },
+        {
+          id: "help-privacy",
+          label: "Privacy policy",
+          description: "Learn how user data and account requests are handled.",
+          glyph: "PP",
+          path: "/privacy",
+        },
+        {
+          id: "help-terms",
+          label: "Terms",
+          description: "Read terms covering account ownership and disputes.",
+          glyph: "TM",
+          path: "/terms",
+        },
+        {
+          id: "help-bug",
+          label: "Report a problem",
+          description: "Open the feedback page with the bug-report flow selected.",
+          glyph: "RP",
+          path: "/feedback?type=bug",
+        },
+      ],
+    },
+    display: {
+      title: "Display & accessibility",
+      description: "Appearance controls and accessibility guidance.",
+      items: [
+        {
+          id: "display-dark",
+          label: "Dark mode",
+          description: "Use darker surfaces and softer glare for low-light browsing.",
+          glyph: "DM",
+          badge: theme === "dark" ? "On" : "Off",
+          onClick: () => setTheme("dark"),
+        },
+        {
+          id: "display-light",
+          label: "Light mode",
+          description: "Use brighter surfaces for a lighter daytime experience.",
+          glyph: "LM",
+          badge: theme === "light" ? "On" : "Off",
+          onClick: () => setTheme("light"),
+        },
+        {
+          id: "display-center",
+          label: "Display center",
+          description: "Open the full page for appearance and accessibility information.",
+          glyph: "DC",
+          path: "/settings/display",
+        },
+      ],
+    },
+    feedback: {
+      title: "Give feedback",
+      description: "Collect feedback flows directly from the account menu.",
+      items: [
+        {
+          id: "feedback-home",
+          label: "Feedback center",
+          description: "Open the main feedback page for general comments.",
+          glyph: "FC",
+          path: "/feedback",
+        },
+        {
+          id: "feedback-bug",
+          label: "Report a problem",
+          description: "Open the feedback page with the bug type selected.",
+          glyph: "RP",
+          path: "/feedback?type=bug",
+        },
+        {
+          id: "feedback-idea",
+          label: "Suggest a feature",
+          description: "Send an improvement idea or product request.",
+          glyph: "SF",
+          path: "/feedback?type=idea",
+        },
+        {
+          id: "feedback-safety",
+          label: "Safety feedback",
+          description: "Open a safety-focused feedback form for sensitive issues.",
+          glyph: "SA",
+          path: "/feedback?type=safety",
+        },
+      ],
+    },
+  };
+
+  const activeMenuPanel = accountMenuPanels[menuView] || accountMenuPanels.root;
+
   const isNavTabActive = (tab, isActive) => {
     if (isActive) {
       return true;
@@ -436,6 +715,18 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
     item.handler?.();
     setShowCreateMenu(false);
     setCreateSearch("");
+  };
+
+  const onAccountMenuItemClick = (item) => {
+    if (item.view) {
+      setMenuView(item.view);
+      return;
+    }
+    if (item.path) {
+      openAccountRoute(item.path);
+      return;
+    }
+    item.onClick?.();
   };
 
   return (
@@ -489,7 +780,7 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
                       key={entry._id}
                       className="sd-item"
                       onClick={() => {
-                        navigate(`/home`);
+                        navigate("/home");
                         setSearchOpen(false);
                       }}
                     >
@@ -601,8 +892,18 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
           <div className="avatar-wrapper" ref={menuRef}>
             <button
               className="avatar-btn nav-avatar-chip"
-              onClick={() => setShowMenu((open) => !open)}
+              onClick={() => {
+                setShowMenu((open) => {
+                  const next = !open;
+                  if (!next) {
+                    setMenuView("root");
+                  }
+                  return next;
+                });
+              }}
               aria-label="Account menu"
+              aria-expanded={showMenu}
+              aria-controls="navbar-account-menu"
             >
               <img src={avatar} className="nav-avatar" alt="Profile" />
               <span className="nav-avatar-caret" aria-hidden="true">
@@ -611,41 +912,80 @@ export default function Navbar({ user, onLogout, onOpenMessenger, onOpenCreatePo
             </button>
 
             {showMenu && (
-              <div className="profile-menu">
-                <button
-                  className="pm-user"
-                  onClick={() => navigate(`/profile/${user.username}`)}
-                >
-                  <img src={avatar} alt="" />
-                  <div>
-                    <div className="pm-name">{user.name}</div>
-                    <div className="pm-view">See your profile</div>
-                  </div>
-                </button>
+              <div className="profile-menu" id="navbar-account-menu">
+                {menuView === "root" ? (
+                  <>
+                    <button
+                      type="button"
+                      className="pm-user pm-user-card"
+                      onClick={() => openAccountRoute(`/profile/${user.username}`)}
+                    >
+                      <img src={avatar} alt="" />
+                      <div>
+                        <div className="pm-name">{user.name}</div>
+                        <div className="pm-view">See your profile</div>
+                      </div>
+                    </button>
 
-                <div className="pm-divider" />
+                    <div className="pm-divider" />
 
-                <button className="pm-item" onClick={toggleTheme}>
-                  {isDark ? "Switch to light mode" : "Switch to dark mode"}
-                </button>
+                    <div className="pm-menu-list">
+                      {accountMenuPanels.root.items.map((item) => (
+                        <AccountMenuRow
+                          key={item.id}
+                          item={item}
+                          onClick={() => onAccountMenuItemClick(item)}
+                        />
+                      ))}
+                    </div>
 
-                {canOpenAdmin ? (
-                  <button className="pm-item" onClick={() => navigate("/admin")}>
-                    Admin panel
-                  </button>
-                ) : null}
+                    <div className="pm-divider" />
 
-                <button className="pm-item logout" onClick={onLogout}>
-                  Log out
-                </button>
+                    <button
+                      type="button"
+                      className="pm-item logout"
+                      onClick={handleLogout}
+                    >
+                      Log out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="pm-panel-head">
+                      <button
+                        type="button"
+                        className="pm-panel-back"
+                        onClick={() => setMenuView("root")}
+                        aria-label="Back to account menu"
+                      >
+                        <BackIcon />
+                      </button>
+                      <div className="pm-panel-title">
+                        <strong>{activeMenuPanel.title}</strong>
+                        {activeMenuPanel.description ? (
+                          <span>{activeMenuPanel.description}</span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="pm-divider" />
+
+                    <div className="pm-menu-list">
+                      {activeMenuPanel.items.map((item) => (
+                        <AccountMenuRow
+                          key={item.id}
+                          item={item}
+                          onClick={() => onAccountMenuItemClick(item)}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
         </div>
       )}
-
     </header>
   );
 }
-
-

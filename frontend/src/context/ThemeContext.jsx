@@ -17,18 +17,18 @@ const readStoredTheme = () => {
 };
 
 export function ThemeProvider({ children }) {
-  const [isDark, setIsDark] = useState(() => readStoredTheme() === "dark");
+  const [theme, setThemeState] = useState(() => readStoredTheme());
+  const isDark = theme === "dark";
 
   useEffect(() => {
-    const nextTheme = isDark ? "dark" : "light";
     try {
-      localStorage.setItem(THEME_KEY, nextTheme);
+      localStorage.setItem(THEME_KEY, theme);
       localStorage.removeItem(LEGACY_THEME_KEY);
     } catch {
       // Ignore storage access errors.
     }
 
-    document.documentElement.dataset.theme = nextTheme;
+    document.documentElement.dataset.theme = theme;
     if (isDark) {
       document.documentElement.classList.add("dark-mode");
       document.documentElement.style.colorScheme = "dark";
@@ -36,12 +36,20 @@ export function ThemeProvider({ children }) {
       document.documentElement.classList.remove("dark-mode");
       document.documentElement.style.colorScheme = "light";
     }
-  }, [isDark]);
+  }, [isDark, theme]);
 
-  const toggleTheme = () => setIsDark(!isDark);
+  const setTheme = (nextTheme) => {
+    if (nextTheme === "dark" || nextTheme === "light") {
+      setThemeState(nextTheme);
+    }
+  };
+
+  const toggleTheme = () => {
+    setThemeState((current) => (current === "dark" ? "light" : "dark"));
+  };
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, isDark, setTheme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

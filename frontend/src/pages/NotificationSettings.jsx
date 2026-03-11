@@ -1,9 +1,33 @@
 import { useEffect, useState } from "react";
-import { getNotificationPreferences, updateNotificationPreferences } from "../api";
 
-const KEYS = ["likes", "comments", "follows", "mentions", "messages", "reports", "system"];
+import QuickAccessLayout from "../components/QuickAccessLayout";
+import {
+  getNotificationPreferences,
+  updateNotificationPreferences,
+} from "../api";
 
-export default function NotificationSettingsPage() {
+const KEYS = [
+  "likes",
+  "comments",
+  "follows",
+  "mentions",
+  "messages",
+  "reports",
+  "system",
+];
+
+function SectionCard({ title, children }) {
+  return (
+    <section className="card quick-section-card">
+      <div className="quick-section-head">
+        <h2>{title}</h2>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+export default function NotificationSettingsPage({ user }) {
   const [prefs, setPrefs] = useState({});
   const [message, setMessage] = useState("");
 
@@ -27,28 +51,35 @@ export default function NotificationSettingsPage() {
   };
 
   return (
-    <div className="app-shell">
-      <main className="feed" style={{ maxWidth: 760, margin: "0 auto", padding: 20 }}>
-        <section className="card" style={{ padding: 14 }}>
-          <h2 style={{ marginTop: 0 }}>Notification settings</h2>
-          <div style={{ display: "grid", gap: 8 }}>
-            {KEYS.map((key) => (
-              <label key={key} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input
-                  type="checkbox"
-                  checked={Boolean(prefs[key])}
-                  onChange={() => toggle(key)}
-                />
-                <span>{key}</span>
-              </label>
-            ))}
-          </div>
-          <button type="button" onClick={save} style={{ marginTop: 10 }}>
-            Save
+    <QuickAccessLayout
+      user={user}
+      title="Notification Settings"
+      subtitle="Choose which types of activity should trigger alerts, from likes and comments to reports and system updates."
+    >
+      <SectionCard title="Notification types">
+        <div className="account-toggle-list">
+          {KEYS.map((key) => (
+            <label key={key} className="account-toggle-row">
+              <div>
+                <strong>{key.charAt(0).toUpperCase() + key.slice(1)}</strong>
+                <span>Turn {key} notifications on or off.</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={Boolean(prefs[key])}
+                onChange={() => toggle(key)}
+              />
+            </label>
+          ))}
+        </div>
+
+        <div className="account-button-row">
+          <button type="button" onClick={save}>
+            Save preferences
           </button>
-          {message ? <p>{message}</p> : null}
-        </section>
-      </main>
-    </div>
+          {message ? <span className="account-inline-message">{message}</span> : null}
+        </div>
+      </SectionCard>
+    </QuickAccessLayout>
   );
 }

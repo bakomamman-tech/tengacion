@@ -17,6 +17,7 @@ import {
   uploadAvatar,
   uploadCover,
 } from "./api";
+import { COUNTRY_OPTIONS } from "./constants/countries";
 import { createReportDialogConfig } from "./constants/reportReasons";
 import { useAuth } from "./context/AuthContext";
 import Navbar from "./Navbar";
@@ -89,6 +90,19 @@ const toWebsiteLabel = (value) => {
   }
   return raw.replace(/^https?:\/\//i, "");
 };
+
+const trimProfileText = (value) => (typeof value === "string" ? value.trim() : "");
+
+const sanitizeCountryValue = (value) => {
+  const nextValue = trimProfileText(value);
+  if (!nextValue) {
+    return "";
+  }
+  return nextValue.startsWith("tmp_country_") ? "" : nextValue;
+};
+
+const formatProfileLocation = (currentCity, country) =>
+  [trimProfileText(currentCity), sanitizeCountryValue(country)].filter(Boolean).join(", ");
 
 const POST_FILTERS = [
   { id: "all", label: "All posts" },
@@ -222,8 +236,21 @@ export default function ProfileEditor({ user }) {
     resolveImage(user?.avatar) ||
     fallbackAvatar(profile?.name);
   const displayCover = coverPreview || resolveImage(profile?.cover);
-  const websiteHref = toWebsiteUrl(website || profile?.website);
-  const websiteLabel = toWebsiteLabel(website || profile?.website);
+  const profileCountry = sanitizeCountryValue(profile?.country);
+  const profileLocation = formatProfileLocation(profile?.currentCity, profileCountry);
+  const profileHometown = trimProfileText(profile?.hometown);
+  const profileWorkplace = trimProfileText(profile?.workplace);
+  const profileEducation = trimProfileText(profile?.education);
+  const profileWebsite = trimProfileText(profile?.website);
+  const websiteHref = toWebsiteUrl(profileWebsite);
+  const websiteLabel = toWebsiteLabel(profileWebsite);
+  const countryOptions = useMemo(() => {
+    const nextCountry = sanitizeCountryValue(country);
+    if (!nextCountry || COUNTRY_OPTIONS.includes(nextCountry)) {
+      return COUNTRY_OPTIONS;
+    }
+    return [nextCountry, ...COUNTRY_OPTIONS];
+  }, [country]);
 
   const mediaItems = useMemo(
     () =>
@@ -266,15 +293,15 @@ export default function ProfileEditor({ user }) {
   }, [postFilter, posts]);
 
   const syncEditableFields = useCallback((nextProfile) => {
-    setBio(nextProfile?.bio || "");
-    setCountry(nextProfile?.country || "");
-    setCurrentCity(nextProfile?.currentCity || "");
-    setHometown(nextProfile?.hometown || "");
-    setWorkplace(nextProfile?.workplace || "");
-    setEducation(nextProfile?.education || "");
-    setWebsite(nextProfile?.website || "");
-    setStatusText(nextProfile?.status?.text || "");
-    setStatusEmoji(nextProfile?.status?.emoji || "");
+    setBio(trimProfileText(nextProfile?.bio));
+    setCountry(sanitizeCountryValue(nextProfile?.country));
+    setCurrentCity(trimProfileText(nextProfile?.currentCity));
+    setHometown(trimProfileText(nextProfile?.hometown));
+    setWorkplace(trimProfileText(nextProfile?.workplace));
+    setEducation(trimProfileText(nextProfile?.education));
+    setWebsite(trimProfileText(nextProfile?.website));
+    setStatusText(trimProfileText(nextProfile?.status?.text));
+    setStatusEmoji(trimProfileText(nextProfile?.status?.emoji));
   }, []);
 
   const loadAll = useCallback(
@@ -661,22 +688,22 @@ export default function ProfileEditor({ user }) {
                     {profile.badges[0]?.label || "Badge earned"}
                   </span>
                 )}
-                {(profile.currentCity || profile.country) && (
+                {profileLocation && (
                   <span>
                     <Glyph name="pin" className="profile-mini-ico" />
-                    {profile.currentCity || profile.country}
+                    {profileLocation}
                   </span>
                 )}
-                {profile.workplace && (
+                {profileWorkplace && (
                   <span>
                     <Glyph name="work" className="profile-mini-ico" />
-                    {profile.workplace}
+                    {profileWorkplace}
                   </span>
                 )}
-                {profile.education && (
+                {profileEducation && (
                   <span>
                     <Glyph name="edu" className="profile-mini-ico" />
-                    {profile.education}
+                    {profileEducation}
                   </span>
                 )}
               </div>
@@ -863,10 +890,10 @@ export default function ProfileEditor({ user }) {
               </div>
 
               <div className="profile-facts-list">
-                {(profile.currentCity || profile.country) && (
-                  <FactRow icon="pin">Lives in {profile.currentCity || profile.country}</FactRow>
+                {profileLocation && (
+                  <FactRow icon="pin">Lives in {profileLocation}</FactRow>
                 )}
-                {profile.hometown && <FactRow icon="home">From {profile.hometown}</FactRow>}
+                {profileHometown && <FactRow icon="home">From {profileHometown}</FactRow>}
                 {profile.dob && <FactRow icon="cake">{formatDate(profile.dob)}</FactRow>}
                 {profile.joinedAt && <FactRow icon="join">Joined {formatDate(profile.joinedAt)}</FactRow>}
               </div>
@@ -912,8 +939,8 @@ export default function ProfileEditor({ user }) {
                 )}
               </div>
               <div className="profile-facts-list">
-                {workplace ? (
-                  <FactRow icon="work">{workplace}</FactRow>
+                {profileWorkplace ? (
+                  <FactRow icon="work">{profileWorkplace}</FactRow>
                 ) : (
                   <p className="profile-mute">Add your workplace</p>
                 )}
@@ -934,8 +961,8 @@ export default function ProfileEditor({ user }) {
                 )}
               </div>
               <div className="profile-facts-list">
-                {education ? (
-                  <FactRow icon="edu">{education}</FactRow>
+                {profileEducation ? (
+                  <FactRow icon="edu">{profileEducation}</FactRow>
                 ) : (
                   <p className="profile-mute">Add your school</p>
                 )}
@@ -955,7 +982,14 @@ export default function ProfileEditor({ user }) {
                   </label>
                   <label>
                     Country
-                    <input value={country} onChange={(event) => setCountry(event.target.value)} />
+                    <select value={country} onChange={(event) => setCountry(event.target.value)}>
+                      <option value="">Select a country</option>
+                      {countryOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label>
                     Current city

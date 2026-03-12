@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const { normalizeMediaValue } = require("../utils/userMedia");
+const { sanitizeCountryValue, sanitizePhoneValue } = require("../utils/profileFields");
 
 const UserSchema = new mongoose.Schema(
   {
@@ -501,12 +502,8 @@ UserSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
   delete obj.__v;
-  if (typeof obj.phone === "string" && obj.phone.startsWith("tmp_phone_")) {
-    obj.phone = "";
-  }
-  if (typeof obj.country === "string" && obj.country.startsWith("tmp_country_")) {
-    obj.country = "";
-  }
+  obj.phone = sanitizePhoneValue(obj.phone);
+  obj.country = sanitizeCountryValue(obj.country);
   obj.avatar = normalizeMediaValue(obj.avatar);
   obj.cover = normalizeMediaValue(obj.cover);
   return obj;

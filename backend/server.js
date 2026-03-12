@@ -79,10 +79,12 @@ if (process.env.NODE_ENV !== "test") {
 
   const connectDB = require("./config/db");
   const { repairUserMediaFields } = require("./scripts/repairUserMediaFields");
+  const { repairUserProfileIndexes } = require("./scripts/repairUserProfileIndexes");
   const { repairUserSecurityFields } = require("./scripts/repairUserSecurityFields");
   const { runBirthdayRecognition } = require("./services/birthdayService");
   connectDB()
     .then(async () => {
+      await repairUserProfileIndexes({ logger: console });
       await repairUserMediaFields({ logger: console });
       await repairUserSecurityFields({ logger: console });
       await runBirthdayRecognition({ logger: console });
@@ -93,7 +95,7 @@ if (process.env.NODE_ENV !== "test") {
       }, 60 * 60 * 1000);
     })
     .catch((err) => {
-      console.error("User media repair failed on startup:", err?.message || err);
+      console.error("Startup repair failed:", err?.message || err);
     });
 
   const io = new Server(server, {

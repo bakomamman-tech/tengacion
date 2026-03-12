@@ -1223,6 +1223,7 @@ html.dark-mode .live-preview-panel {
 }
 
 .profile-edit-grid input,
+.profile-edit-grid select,
 .profile-edit-grid textarea {
   border: 1px solid #d5dde8;
   background: #f8fafc;
@@ -1238,6 +1239,7 @@ html.dark-mode .live-preview-panel {
 }
 
 .profile-edit-grid input:focus,
+.profile-edit-grid select:focus,
 .profile-edit-grid textarea:focus {
   border-color: #7db2f3;
   box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.14);

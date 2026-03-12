@@ -11,6 +11,11 @@ const {
   mediaToUrl,
   normalizeUserMediaDocument,
 } = require("../utils/userMedia");
+const {
+  trimTextValue,
+  sanitizeCountryValue,
+  sanitizePhoneValue,
+} = require("../utils/profileFields");
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
 
 const router = express.Router();
@@ -134,6 +139,7 @@ router.put("/me", auth, async (req, res) => {
       pronouns,
       avatar,
       cover,
+      country,
       currentCity,
       hometown,
       workplace,
@@ -143,14 +149,15 @@ router.put("/me", auth, async (req, res) => {
     } = req.body;
 
     const updates = {};
-    if (bio !== undefined) updates.bio = bio;
-    if (gender !== undefined) updates.gender = gender;
-    if (pronouns !== undefined) updates.pronouns = pronouns;
-    if (currentCity !== undefined) updates.currentCity = currentCity;
-    if (hometown !== undefined) updates.hometown = hometown;
-    if (workplace !== undefined) updates.workplace = workplace;
-    if (education !== undefined) updates.education = education;
-    if (website !== undefined) updates.website = website;
+    if (bio !== undefined) updates.bio = trimTextValue(bio);
+    if (gender !== undefined) updates.gender = trimTextValue(gender);
+    if (pronouns !== undefined) updates.pronouns = trimTextValue(pronouns);
+    if (country !== undefined) updates.country = sanitizeCountryValue(country);
+    if (currentCity !== undefined) updates.currentCity = trimTextValue(currentCity);
+    if (hometown !== undefined) updates.hometown = trimTextValue(hometown);
+    if (workplace !== undefined) updates.workplace = trimTextValue(workplace);
+    if (education !== undefined) updates.education = trimTextValue(education);
+    if (website !== undefined) updates.website = trimTextValue(website);
     if (birthday !== undefined && birthday && typeof birthday === "object") {
       updates.birthday = {
         day: Number(birthday.day) || 0,
@@ -242,6 +249,8 @@ router.get("/profile/:username", auth, async (req, res) => {
       }))
       .filter((friend) => friend._id);
 
+    const safeCountry = sanitizeCountryValue(user.country);
+
     return res.json({
       _id: user._id.toString(),
       name: user.name || "",
@@ -249,13 +258,13 @@ router.get("/profile/:username", auth, async (req, res) => {
       bio: user.bio || "",
       gender: user.gender || "",
       pronouns: user.pronouns || "",
-      country: user.country || "",
+      country: safeCountry,
       currentCity: user.currentCity || "",
       hometown: user.hometown || "",
       workplace: user.workplace || "",
       education: user.education || "",
       website: user.website || "",
-      phone: user.phone || "",
+      phone: sanitizePhoneValue(user.phone),
       dob: user.dob || null,
       birthday: user.birthday || { day: 0, month: 0, year: 0, visibility: "private" },
       avatar: avatarToUrl(user.avatar),

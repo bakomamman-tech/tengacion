@@ -6067,10 +6067,12 @@ html.dark-mode .create-post-row input::placeholder {
   right: 0;
   top: calc(100% + 8px);
   width: 220px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid rgba(214, 164, 102, 0.3);
+  background:
+    linear-gradient(180deg, rgba(60, 31, 16, 0.97) 0%, rgba(37, 18, 10, 0.98) 100%);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 22px 44px rgba(10, 4, 1, 0.38);
+  backdrop-filter: blur(14px) saturate(125%);
   padding: 6px;
   z-index: 12;
 }
@@ -6079,19 +6081,25 @@ html.dark-mode .create-post-row input::placeholder {
   width: 100%;
   border: none;
   background: transparent;
-  color: var(--text);
+  color: #f8ecdc;
   text-align: left;
   border-radius: 8px;
   padding: 8px 10px;
   cursor: pointer;
+  font-weight: 700;
 }
 
 .post-menu-dropdown button:hover {
-  background: var(--surface-soft);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.post-menu-dropdown button:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .post-menu-dropdown .danger {
-  color: var(--danger);
+  color: #ff8c7b;
 }
 
 .post-body {

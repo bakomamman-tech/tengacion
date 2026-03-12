@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 
 import QuickAccessLayout from "../components/QuickAccessLayout";
 import {
@@ -38,6 +39,8 @@ export default function SecuritySettings({ user: currentUser }) {
   const [stepUpCode, setStepUpCode] = useState("");
   const [disableState, setDisableState] = useState({ password: "", code: "" });
   const [message, setMessage] = useState("");
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [qrError, setQrError] = useState("");
 
   const loadSessions = async () => {
     try {
@@ -58,6 +61,44 @@ export default function SecuritySettings({ user: currentUser }) {
     loadSessions().catch(() => setSessions([]));
     loadMfa().catch(() => setMfa({ enabled: false, method: "none", adminRequired: false }));
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const generateQr = async () => {
+      if (!setupState?.otpauthUrl) {
+        setQrCodeUrl("");
+        setQrError("");
+        return;
+      }
+
+      try {
+        const dataUrl = await QRCode.toDataURL(setupState.otpauthUrl, {
+          width: 220,
+          margin: 1,
+          color: {
+            dark: "#111827",
+            light: "#FFFFFFFF",
+          },
+        });
+        if (!cancelled) {
+          setQrCodeUrl(dataUrl);
+          setQrError("");
+        }
+      } catch {
+        if (!cancelled) {
+          setQrCodeUrl("");
+          setQrError("We could not generate the QR code. Use the manual key below instead.");
+        }
+      }
+    };
+
+    generateQr();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setupState?.otpauthUrl]);
 
   const verifyCurrentStepUp = async () => {
     if (!stepUpCode.trim()) {
@@ -99,7 +140,7 @@ export default function SecuritySettings({ user: currentUser }) {
     try {
       const payload = await startMfaSetup();
       setSetupState(payload);
-      setMessage("Authenticator setup started. Add the key below, then verify a code.");
+      setMessage("Scan the QR code with your authenticator app, then enter the 6-digit code.");
     } catch (err) {
       setMessage(err?.message || "Failed to start MFA setup");
     }
@@ -177,10 +218,63 @@ export default function SecuritySettings({ user: currentUser }) {
 
         {setupState ? (
           <div className="account-form-grid" style={{ marginBottom: 18 }}>
+            <div className="account-note-card">
+              <strong>Set up your authenticator app</strong>
+              <p>
+                Open Google Authenticator, Microsoft Authenticator, Authy, or
+                another TOTP app, tap <strong>Add account</strong>, then scan this code.
+              </p>
+              <div
+                style={{
+                  marginTop: 14,
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                {qrCodeUrl ? (
+                  <img
+                    src={qrCodeUrl}
+                    alt="Scan this QR code with your authenticator app"
+                    style={{
+                      width: 220,
+                      height: 220,
+                      background: "#fff",
+                      padding: 10,
+                      borderRadius: 18,
+                      border: "1px solid rgba(15, 23, 42, 0.08)",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 220,
+                      minHeight: 220,
+                      display: "grid",
+                      placeItems: "center",
+                      background: "#f8fafc",
+                      borderRadius: 18,
+                      border: "1px solid rgba(15, 23, 42, 0.08)",
+                      padding: 18,
+                      textAlign: "center",
+                      color: "#475569",
+                    }}
+                  >
+                    {qrError || "Generating QR code..."}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <label>
               Manual key
               <input className="account-input" value={setupState.secret || ""} readOnly />
             </label>
+
+            <p className="account-inline-message" style={{ marginTop: -4 }}>
+              If scanning does not work, choose <strong>Enter setup key</strong> in the app and
+              paste the manual key.
+            </p>
+
             <label>
               Authenticator code
               <input
@@ -191,6 +285,7 @@ export default function SecuritySettings({ user: currentUser }) {
                 }
                 placeholder="Enter 6-digit code"
                 inputMode="numeric"
+                autoComplete="one-time-code"
               />
             </label>
             <div className="account-button-row">

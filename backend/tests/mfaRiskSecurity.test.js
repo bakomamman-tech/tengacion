@@ -15,6 +15,14 @@ const { totp } = require("../utils/totp");
 
 let mongod;
 
+const extractLastEmailCode = () => {
+  const lastCall = sendSecurityEmail.mock.calls[sendSecurityEmail.mock.calls.length - 1] || [];
+  const payload = lastCall[0] || {};
+  const html = String(payload.html || "");
+  const match = html.match(/(\d{6})/);
+  return match ? match[1] : "";
+};
+
 const makeSessionMeta = ({
   deviceName = "Google Chrome on Windows",
   ip = "102.89.1.10",
@@ -142,5 +150,73 @@ describe("MFA and suspicious-login security", () => {
       expect.arrayContaining(["new_device", "new_ip", "new_country", "impossible_travel"])
     );
     expect(sendSecurityEmail).toHaveBeenCalled();
+  });
+
+  test("supports email-code MFA for login and step-up verification", async () => {
+    const user = await User.create({
+      name: "Email MFA User",
+      username: "email_mfa_user",
+      email: "emailmfa@test.com",
+      password: "Password123!",
+      emailVerified: true,
+      isVerified: true,
+    });
+
+    const enabled = await AuthService.enableEmailTwoFactor({
+      userId: user._id.toString(),
+    });
+
+    expect(enabled).toMatchObject({
+      enabled: true,
+      method: "email",
+    });
+
+    const challenge = await AuthService.login({
+      email: "emailmfa@test.com",
+      password: "Password123!",
+      sessionMeta: makeSessionMeta(),
+    });
+
+    expect(challenge).toMatchObject({
+      challengeRequired: true,
+    });
+    expect(challenge.challenge.method).toBe("email");
+
+    const loginCode = extractLastEmailCode();
+    expect(loginCode).toMatch(/^\d{6}$/);
+
+    const verifiedLogin = await AuthService.verifyAuthChallenge({
+      challengeToken: challenge.challenge.token,
+      code: loginCode,
+    });
+
+    expect(verifiedLogin.token).toBeTruthy();
+    expect(verifiedLogin.stepUpToken).toBeTruthy();
+    expect(verifiedLogin.user?.twoFactor).toMatchObject({
+      enabled: true,
+      method: "email",
+    });
+
+    const stepUpChallenge = await AuthService.verifyStepUp({
+      userId: user._id.toString(),
+      sessionId: verifiedLogin.sessionId,
+    });
+
+    expect(stepUpChallenge).toMatchObject({
+      challengeRequired: true,
+    });
+    expect(stepUpChallenge.challenge.method).toBe("email");
+
+    const stepUpCode = extractLastEmailCode();
+    expect(stepUpCode).toMatch(/^\d{6}$/);
+
+    const stepUpVerified = await AuthService.verifyStepUp({
+      userId: user._id.toString(),
+      sessionId: verifiedLogin.sessionId,
+      challengeToken: stepUpChallenge.challenge.token,
+      code: stepUpCode,
+    });
+
+    expect(stepUpVerified.stepUpToken).toBeTruthy();
   });
 });

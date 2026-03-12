@@ -72,6 +72,7 @@ router.post("/password/change", legacyAuth, requireStepUp(), authController.chan
 router.get("/mfa", legacyAuth, authController.getMfaStatus);
 router.post("/mfa/setup", legacyAuth, authController.beginTwoFactorSetup);
 router.post("/mfa/setup/verify", legacyAuth, authController.verifyTwoFactorSetup);
+router.post("/mfa/email/enable", legacyAuth, authController.enableEmailTwoFactor);
 router.post("/mfa/disable", legacyAuth, requireStepUp(), authController.disableTwoFactor);
 router.post("/mfa/step-up", legacyAuth, authController.verifyStepUp);
 

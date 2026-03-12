@@ -5,11 +5,11 @@ const User = require("../models/User");
 
 const shouldRequireStepUp = (user, { adminOnly = false } = {}) => {
   const role = String(user?.role || "").toLowerCase();
-  const hasTotp = Boolean(user?.twoFactor?.enabled && user?.twoFactor?.method === "totp");
+  const hasMfa = Boolean(user?.twoFactor?.enabled && user?.twoFactor?.method !== "none");
   if (adminOnly) {
     return role === "admin" || role === "super_admin";
   }
-  return hasTotp || role === "admin" || role === "super_admin";
+  return hasMfa || role === "admin" || role === "super_admin";
 };
 
 const requireStepUp = ({ adminOnly = false } = {}) => {
@@ -25,7 +25,10 @@ const requireStepUp = ({ adminOnly = false } = {}) => {
       return next(
         ApiError.conflict("Step-up authentication required", {
           code: "STEP_UP_REQUIRED",
-          method: "totp",
+          method:
+            user?.twoFactor?.enabled && user?.twoFactor?.method
+              ? user.twoFactor.method
+              : "totp",
         })
       );
     }
@@ -43,7 +46,10 @@ const requireStepUp = ({ adminOnly = false } = {}) => {
       return next(
         ApiError.conflict("Step-up authentication required", {
           code: "STEP_UP_REQUIRED",
-          method: "totp",
+          method:
+            user?.twoFactor?.enabled && user?.twoFactor?.method
+              ? user.twoFactor.method
+              : "totp",
         })
       );
     }

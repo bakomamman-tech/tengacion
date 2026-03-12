@@ -244,6 +244,19 @@ const maskEmail = (email = "") => {
 const isAdminRole = (role = "") =>
   ["admin", "super_admin"].includes(String(role || "").toLowerCase());
 
+const EMAIL_CHALLENGE_PURPOSE_COPY = {
+  login_mfa: {
+    subject: "Your Tengacion sign-in code",
+    title: "Complete your Tengacion sign-in",
+    intro: "Enter the verification code below to finish signing in.",
+  },
+  step_up: {
+    subject: "Your Tengacion security code",
+    title: "Confirm this sensitive action",
+    intro: "Enter the verification code below to continue with this security-sensitive action.",
+  },
+};
+
 const MFA_SUMMARY_SELECT =
   "twoFactor.enabled twoFactor.method twoFactor.setupPending twoFactor.enabledAt twoFactor.lastVerifiedAt";
 const MFA_SECRET_SELECT = `${MFA_SUMMARY_SELECT} +twoFactor.secretCipher`;
@@ -254,6 +267,10 @@ const USER_SESSION_SELECT = `${USER_PROFILE_SELECT} tokenVersion sessions truste
 const LOGIN_USER_SELECT = `+password ${MFA_SETUP_SECRET_SELECT} ${USER_SESSION_SELECT}`;
 const CHALLENGE_USER_SELECT = `${MFA_SECRET_SELECT} ${USER_SESSION_SELECT}`;
 const REFRESH_USER_SELECT = `${MFA_SUMMARY_SELECT} ${USER_SESSION_SELECT} +sessions.refreshTokenHash`;
+
+const verifyEmailChallengeCode = (challenge, code) =>
+  String(challenge?.codeHash || "") ===
+  buildChallengeCodeHash(String(challenge?._id || ""), String(code || "").trim());
 
 const assertUserCanSignIn = (user) => {
   if (!user) {
@@ -345,6 +362,28 @@ const createChallengeResponse = ({
   },
 });
 
+const sendChallengeEmail = async ({ user, challenge, purpose, code }) => {
+  const copy = EMAIL_CHALLENGE_PURPOSE_COPY[purpose] || {
+    subject: "Your Tengacion verification code",
+    title: "Enter your verification code",
+    intro: "Use the code below to continue.",
+  };
+
+  await sendSecurityEmail({
+    to: user.email,
+    subject: copy.subject,
+    html: `
+      <div style="font-family: Arial; padding: 12px;">
+        <h2>${copy.title}</h2>
+        <p>${copy.intro}</p>
+        <p>Your code is <strong style="font-size: 20px; letter-spacing: 3px;">${code}</strong></p>
+        <p>This code expires in 10 minutes.</p>
+        <p style="color:#64748b;font-size:13px;">Challenge: ${String(challenge._id || "")}</p>
+      </div>
+    `,
+  });
+};
+
 const createAuthChallenge = async ({
   user,
   purpose,
@@ -368,18 +407,7 @@ const createAuthChallenge = async ({
     const code = buildOtpCode();
     challenge.codeHash = buildChallengeCodeHash(challenge._id.toString(), code);
     await challenge.save();
-    await sendSecurityEmail({
-      to: user.email,
-      subject: "Confirm your Tengacion login",
-      html: `
-        <div style="font-family: Arial; padding: 12px;">
-          <h2>Suspicious login verification</h2>
-          <p>We noticed a sign-in from a new or risky device.</p>
-          <p>Your login code is <strong style="font-size: 20px; letter-spacing: 3px;">${code}</strong></p>
-          <p>This code expires in 10 minutes.</p>
-        </div>
-      `,
-    });
+    await sendChallengeEmail({ user, challenge, purpose, code });
   }
 
   if (risk?.isSuspicious) {
@@ -405,6 +433,38 @@ const markChallengeFailure = async (challenge) => {
   await challenge.save();
   if (challenge.attempts >= Number(challenge.maxAttempts || 5)) {
     throw ApiError.tooManyRequests("Too many invalid verification attempts");
+  }
+};
+
+const markMfaEnabled = (user, method = "totp") => {
+  user.twoFactor = user.twoFactor || {};
+  user.twoFactor.enabled = true;
+  user.twoFactor.method = method;
+  user.twoFactor.setupPending = false;
+  user.twoFactor.enabledAt = new Date();
+  user.twoFactor.lastVerifiedAt = null;
+};
+
+const clearMfaState = (user) => {
+  user.twoFactor = user.twoFactor || {};
+  user.twoFactor.enabled = false;
+  user.twoFactor.method = "none";
+  user.twoFactor.setupPending = false;
+  user.twoFactor.secretCipher = "";
+  user.twoFactor.pendingSecretCipher = "";
+  user.twoFactor.enabledAt = null;
+  user.twoFactor.lastVerifiedAt = null;
+};
+
+const assertEmailMfaEligible = (user) => {
+  if (!user) {
+    throw ApiError.notFound("User not found");
+  }
+  if (isAdminRole(user.role)) {
+    throw ApiError.conflict("Admin accounts must use an authenticator app");
+  }
+  if (!user.emailVerified) {
+    throw ApiError.conflict("Verify your email before enabling email-code authentication");
   }
 };
 
@@ -780,6 +840,8 @@ class AuthService {
       Boolean(user?.twoFactor?.enabled) &&
       user?.twoFactor?.method === "totp" &&
       Boolean(user?.twoFactor?.secretCipher);
+    const hasEmailMfa =
+      Boolean(user?.twoFactor?.enabled) && user?.twoFactor?.method === "email";
 
     if (isAdminRole(user.role) && !hasTotp) {
       const secret = generateSecret();
@@ -798,6 +860,16 @@ class AuthService {
         user,
         purpose: "login_mfa",
         method: "totp",
+        sessionMeta: normalizedSessionMeta,
+        risk,
+      });
+    }
+
+    if (hasEmailMfa) {
+      return createAuthChallenge({
+        user,
+        purpose: "login_mfa",
+        method: "email",
         sessionMeta: normalizedSessionMeta,
         risk,
       });
@@ -842,19 +914,15 @@ class AuthService {
     if (challenge.method === "totp" && challenge.purpose === "login_mfa") {
       const secret = decryptSecret(user?.twoFactor?.secretCipher || "");
       valid = verifyTotp({ secret, token: normalizedCode });
-    } else if (challenge.method === "email") {
-      valid = challenge.codeHash === buildChallengeCodeHash(challenge._id.toString(), normalizedCode);
+    } else if (challenge.method === "email" && challenge.purpose === "login_mfa") {
+      valid = verifyEmailChallengeCode(challenge, normalizedCode);
     } else if (challenge.method === "totp" && challenge.purpose === "mfa_setup") {
       const secret = decryptSecret(challenge.secretCipher || "");
       valid = verifyTotp({ secret, token: normalizedCode });
       if (valid) {
-        user.twoFactor = user.twoFactor || {};
-        user.twoFactor.enabled = true;
-        user.twoFactor.method = "totp";
-        user.twoFactor.setupPending = false;
+        markMfaEnabled(user, "totp");
         user.twoFactor.secretCipher = challenge.secretCipher;
         user.twoFactor.pendingSecretCipher = "";
-        user.twoFactor.enabledAt = new Date();
         user.twoFactor.lastVerifiedAt = new Date();
       }
     }
@@ -1005,16 +1073,34 @@ class AuthService {
       throw ApiError.badRequest("Invalid authentication code");
     }
 
-    user.twoFactor.enabled = true;
-    user.twoFactor.method = "totp";
-    user.twoFactor.setupPending = false;
+    markMfaEnabled(user, "totp");
     user.twoFactor.secretCipher = user.twoFactor.pendingSecretCipher;
     user.twoFactor.pendingSecretCipher = "";
-    user.twoFactor.enabledAt = new Date();
     user.twoFactor.lastVerifiedAt = new Date();
     await user.save();
 
     return buildMfaSummary(user);
+  }
+
+  static async enableEmailTwoFactor({ userId }) {
+    const user = await User.findById(userId).select(
+      `_id email username role emailVerified ${MFA_SUMMARY_SELECT} +twoFactor.pendingSecretCipher +twoFactor.secretCipher`
+    );
+    assertEmailMfaEligible(user);
+
+    if (user?.twoFactor?.enabled) {
+      throw ApiError.conflict("Two-factor authentication is already enabled");
+    }
+
+    markMfaEnabled(user, "email");
+    user.twoFactor.secretCipher = "";
+    user.twoFactor.pendingSecretCipher = "";
+    await user.save();
+
+    return {
+      ...buildMfaSummary(user),
+      message: `Email codes will be sent to ${maskEmail(user.email) || user.email}.`,
+    };
   }
 
   static async disableTwoFactor({ userId, password, code }) {
@@ -1022,7 +1108,7 @@ class AuthService {
     if (!user) {
       throw ApiError.notFound("User not found");
     }
-    if (!user?.twoFactor?.enabled || user?.twoFactor?.method !== "totp") {
+    if (!user?.twoFactor?.enabled || user?.twoFactor?.method === "none") {
       throw ApiError.badRequest("Two-factor authentication is not enabled");
     }
 
@@ -1031,37 +1117,73 @@ class AuthService {
       throw ApiError.unauthorized("Current password is incorrect");
     }
 
-    const secret = decryptSecret(user?.twoFactor?.secretCipher || "");
-    const validCode = verifyTotp({ secret, token: String(code || "").trim() });
-    if (!validCode) {
-      throw ApiError.badRequest("Invalid authentication code");
+    if (user.twoFactor.method === "totp") {
+      const secret = decryptSecret(user?.twoFactor?.secretCipher || "");
+      const validCode = verifyTotp({ secret, token: String(code || "").trim() });
+      if (!validCode) {
+        throw ApiError.badRequest("Invalid authentication code");
+      }
     }
 
-    user.twoFactor.enabled = false;
-    user.twoFactor.method = "none";
-    user.twoFactor.setupPending = false;
-    user.twoFactor.secretCipher = "";
-    user.twoFactor.pendingSecretCipher = "";
-    user.twoFactor.enabledAt = null;
-    user.twoFactor.lastVerifiedAt = null;
+    clearMfaState(user);
     await user.save();
 
     return buildMfaSummary(user);
   }
 
-  static async verifyStepUp({ userId, sessionId, code }) {
+  static async verifyStepUp({ userId, sessionId, code, challengeToken }) {
     const user = await User.findById(userId).select(`_id role ${MFA_SECRET_SELECT}`);
     if (!user) {
       throw ApiError.notFound("User not found");
     }
-    if (!user?.twoFactor?.enabled || user?.twoFactor?.method !== "totp") {
+    if (!user?.twoFactor?.enabled || user?.twoFactor?.method === "none") {
       throw ApiError.badRequest("Two-factor authentication is required for step-up");
     }
 
-    const secret = decryptSecret(user?.twoFactor?.secretCipher || "");
-    const valid = verifyTotp({ secret, token: String(code || "").trim() });
-    if (!valid) {
-      throw ApiError.badRequest("Invalid authentication code");
+    if (user.twoFactor.method === "email") {
+      const normalizedCode = String(code || "").trim();
+      if (!challengeToken) {
+        return createAuthChallenge({
+          user,
+          purpose: "step_up",
+          method: "email",
+          sessionMeta: normalizeSessionMeta({}),
+          risk: {},
+        });
+      }
+
+      let decoded;
+      try {
+        decoded = verifyChallengeToken(challengeToken);
+      } catch {
+        throw ApiError.unauthorized("Challenge expired or invalid");
+      }
+
+      const challenge = await AuthChallenge.findById(decoded.cid);
+      if (
+        !challenge ||
+        challenge.usedAt ||
+        challenge.purpose !== "step_up" ||
+        String(challenge.userId || "") !== String(userId || "") ||
+        new Date(challenge.expiresAt).getTime() <= Date.now()
+      ) {
+        throw ApiError.unauthorized("Challenge expired or invalid");
+      }
+
+      const valid = verifyEmailChallengeCode(challenge, normalizedCode);
+      if (!valid) {
+        await markChallengeFailure(challenge);
+        throw ApiError.badRequest("Invalid authentication code");
+      }
+
+      challenge.usedAt = new Date();
+      await challenge.save();
+    } else {
+      const secret = decryptSecret(user?.twoFactor?.secretCipher || "");
+      const valid = verifyTotp({ secret, token: String(code || "").trim() });
+      if (!valid) {
+        throw ApiError.badRequest("Invalid authentication code");
+      }
     }
 
     user.twoFactor.lastVerifiedAt = new Date();

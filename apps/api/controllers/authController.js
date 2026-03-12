@@ -173,6 +173,13 @@ exports.verifyTwoFactorSetup = catchAsync(async (req, res) => {
   res.json(payload);
 });
 
+exports.enableEmailTwoFactor = catchAsync(async (req, res) => {
+  const payload = await AuthService.enableEmailTwoFactor({
+    userId: req.user.id,
+  });
+  res.json(payload);
+});
+
 exports.disableTwoFactor = catchAsync(async (req, res) => {
   const payload = await AuthService.disableTwoFactor({
     userId: req.user.id,
@@ -188,9 +195,14 @@ exports.verifyStepUp = catchAsync(async (req, res) => {
     userId: req.user.id,
     sessionId: req.user.sessionId || "",
     code: req.body?.code,
+    challengeToken: req.body?.challengeToken,
   });
   applyAuthCookies(res, payload);
-  res.json({ success: true });
+  if (payload?.stepUpToken) {
+    res.json({ success: true });
+    return;
+  }
+  res.json(payload);
 });
 
 exports.listSessions = catchAsync(async (req, res) => {

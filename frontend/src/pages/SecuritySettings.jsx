@@ -5,10 +5,12 @@ import QuickAccessLayout from "../components/QuickAccessLayout";
 import {
   changePassword,
   confirmMfaSetup,
+  enableEmailMfa,
   disableMfa,
   getMfaStatus,
   listSessions,
   logoutAllSessions,
+  requestStepUpChallenge,
   requestVerifyEmail,
   revokeSession,
   startMfaSetup,
@@ -28,6 +30,14 @@ function SectionCard({ title, action, children }) {
   );
 }
 
+const maskEmail = (value = "") => {
+  const [local, domain] = String(value || "").trim().split("@");
+  if (!local || !domain) {
+    return value;
+  }
+  return `${local.slice(0, 2)}${"*".repeat(Math.max(1, local.length - 2))}@${domain}`;
+};
+
 export default function SecuritySettings({ user: currentUser }) {
   const { user: authUser } = useAuth();
   const user = currentUser || authUser;
@@ -41,6 +51,10 @@ export default function SecuritySettings({ user: currentUser }) {
   const [message, setMessage] = useState("");
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [qrError, setQrError] = useState("");
+  const [stepUpChallenge, setStepUpChallenge] = useState(null);
+
+  const isEmailMfa = Boolean(mfa?.enabled && mfa?.method === "email");
+  const isTotpMfa = Boolean(mfa?.enabled && mfa?.method === "totp");
 
   const loadSessions = async () => {
     try {
@@ -101,6 +115,30 @@ export default function SecuritySettings({ user: currentUser }) {
   }, [setupState?.otpauthUrl]);
 
   const verifyCurrentStepUp = async () => {
+    if (isEmailMfa) {
+      if (!stepUpChallenge?.token) {
+        setMessage("Send the email verification code first.");
+        return false;
+      }
+      if (!stepUpCode.trim()) {
+        setMessage("Enter the 6-digit code we sent to your email.");
+        return false;
+      }
+      try {
+        await verifyStepUp({
+          challengeToken: stepUpChallenge.token,
+          code: stepUpCode.trim(),
+        });
+        setMessage("Security verification refreshed.");
+        setStepUpCode("");
+        setStepUpChallenge(null);
+        return true;
+      } catch (err) {
+        setMessage(err?.message || "Step-up verification failed");
+        return false;
+      }
+    }
+
     if (!stepUpCode.trim()) {
       setMessage("Enter the authenticator code to re-verify this session.");
       return false;
@@ -113,6 +151,24 @@ export default function SecuritySettings({ user: currentUser }) {
     } catch (err) {
       setMessage(err?.message || "Step-up verification failed");
       return false;
+    }
+  };
+
+  const requestEmailStepUpCode = async () => {
+    setMessage("");
+    try {
+      const payload = await requestStepUpChallenge();
+      if (payload?.challengeRequired && payload?.challenge) {
+        setStepUpChallenge(payload.challenge);
+        setStepUpCode("");
+        setMessage(
+          `We sent a 6-digit security code to ${payload.challenge.maskedEmail || "your email"}.`
+        );
+        return;
+      }
+      setMessage("A verification code was requested.");
+    } catch (err) {
+      setMessage(err?.message || "Failed to send the email verification code");
     }
   };
 
@@ -143,6 +199,20 @@ export default function SecuritySettings({ user: currentUser }) {
       setMessage("Scan the QR code with your authenticator app, then enter the 6-digit code.");
     } catch (err) {
       setMessage(err?.message || "Failed to start MFA setup");
+    }
+  };
+
+  const enableEmailCodeMfa = async () => {
+    setMessage("");
+    try {
+      const payload = await enableEmailMfa();
+      setSetupState(null);
+      setStepUpChallenge(null);
+      setStepUpCode("");
+      await loadMfa();
+      setMessage(payload?.message || "Email-code authentication is now enabled.");
+    } catch (err) {
+      setMessage(err?.message || "Failed to enable email-code authentication");
     }
   };
 
@@ -199,20 +269,47 @@ export default function SecuritySettings({ user: currentUser }) {
 
         {mfa?.enabled ? (
           <div className="account-note-card">
-            <strong>Authenticator app enabled</strong>
+            <strong>
+              {isEmailMfa ? "Email-code verification enabled" : "Authenticator app enabled"}
+            </strong>
             <p>
-              Your account requires a TOTP code for sensitive actions and risky logins.
+              {isEmailMfa
+                ? `Your account now sends a 6-digit verification code to ${maskEmail(
+                    mfa?.email || user?.email || ""
+                  )} for sign-in and sensitive actions.`
+                : "Your account requires a TOTP code for sensitive actions and risky logins."}
             </p>
           </div>
         ) : (
           <div className="account-note-card">
             <strong>Two-factor authentication is off</strong>
             <p>
-              Turn it on to protect new-device logins and administrative actions.
+              Turn it on to protect new-device logins and sensitive actions.
             </p>
-            <button type="button" onClick={startSetup}>
-              Set up authenticator app
-            </button>
+            <div className="account-button-row">
+              <button type="button" onClick={startSetup}>
+                Set up authenticator app
+              </button>
+              {!mfa?.adminRequired ? (
+                <button
+                  type="button"
+                  onClick={enableEmailCodeMfa}
+                  disabled={!user?.emailVerified}
+                >
+                  Use email code instead
+                </button>
+              ) : null}
+            </div>
+            {mfa?.adminRequired ? (
+              <p className="account-inline-message">
+                Admin accounts must use an authenticator app.
+              </p>
+            ) : !user?.emailVerified ? (
+              <p className="account-inline-message">
+                Verify your email first if you want to use email codes instead of an authenticator
+                app.
+              </p>
+            ) : null}
           </div>
         )}
 
@@ -331,7 +428,7 @@ export default function SecuritySettings({ user: currentUser }) {
                 type="text"
                 value={stepUpCode}
                 onChange={(event) => setStepUpCode(event.target.value)}
-                placeholder="Authenticator code"
+                placeholder={isEmailMfa ? "Email verification code" : "Authenticator code"}
                 inputMode="numeric"
               />
             </label>
@@ -344,8 +441,18 @@ export default function SecuritySettings({ user: currentUser }) {
                 Verify session
               </button>
             ) : null}
+            {isEmailMfa ? (
+              <button type="button" onClick={requestEmailStepUpCode}>
+                Send email code
+              </button>
+            ) : null}
             {message ? <span className="account-inline-message">{message}</span> : null}
           </div>
+          {isEmailMfa && stepUpChallenge?.maskedEmail ? (
+            <p className="account-inline-message">
+              Enter the code sent to {stepUpChallenge.maskedEmail}.
+            </p>
+          ) : null}
         </form>
 
         {mfa?.enabled ? (
@@ -362,22 +469,32 @@ export default function SecuritySettings({ user: currentUser }) {
                 placeholder="Current password"
               />
             </label>
-            <label>
-              Authenticator code
-              <input
-                className="account-input"
-                type="text"
-                value={disableState.code}
-                onChange={(event) =>
-                  setDisableState((prev) => ({ ...prev, code: event.target.value }))
-                }
-                placeholder="Authenticator code"
-                inputMode="numeric"
-              />
-            </label>
+            {isTotpMfa ? (
+              <label>
+                Authenticator code
+                <input
+                  className="account-input"
+                  type="text"
+                  value={disableState.code}
+                  onChange={(event) =>
+                    setDisableState((prev) => ({ ...prev, code: event.target.value }))
+                  }
+                  placeholder="Authenticator code"
+                  inputMode="numeric"
+                />
+              </label>
+            ) : (
+              <div className="account-note-card">
+                <strong>Email-code protection</strong>
+                <p>
+                  If this session is no longer recently verified, use the email-code
+                  verification above before disabling two-factor authentication.
+                </p>
+              </div>
+            )}
             <div className="account-button-row">
               <button type="button" onClick={disableCurrentMfa}>
-                Disable authenticator app
+                {isEmailMfa ? "Disable email-code verification" : "Disable authenticator app"}
               </button>
             </div>
           </div>

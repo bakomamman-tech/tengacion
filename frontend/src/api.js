@@ -469,6 +469,16 @@ export const confirmMfaSetup = (code) =>
     body: JSON.stringify({ code }),
   });
 
+export const enableEmailMfa = () =>
+  request(`${API_BASE}/auth/mfa/email/enable`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({}),
+  });
+
 export const disableMfa = ({ password, code }) =>
   request(`${API_BASE}/auth/mfa/disable`, {
     method: "POST",
@@ -479,14 +489,28 @@ export const disableMfa = ({ password, code }) =>
     body: JSON.stringify({ password, code }),
   });
 
-export const verifyStepUp = (code) =>
+export const requestStepUpChallenge = () =>
   request(`${API_BASE}/auth/mfa/step-up`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeaders(),
     },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({}),
+  });
+
+export const verifyStepUp = (payloadOrCode) =>
+  request(`${API_BASE}/auth/mfa/step-up`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(
+      typeof payloadOrCode === "string"
+        ? { code: payloadOrCode }
+        : payloadOrCode || {}
+    ),
   });
 
 export const listSessions = () =>

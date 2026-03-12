@@ -22,7 +22,7 @@ const authChallengeSchema = new mongoose.Schema(
     },
     purpose: {
       type: String,
-      enum: ["login_mfa", "mfa_setup"],
+      enum: ["login_mfa", "mfa_setup", "step_up"],
       required: true,
       index: true,
     },

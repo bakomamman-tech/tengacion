@@ -153,6 +153,15 @@ const refreshSession = async () => {
   return refreshPromise;
 };
 
+const buildRequestHeaders = (headersInit) => {
+  const headers = new Headers(headersInit || {});
+  const token = getSessionAccessToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  return headers;
+};
+
 const request = async (url, options = {}) => {
   const {
     timeoutMs = 15000,
@@ -170,6 +179,7 @@ const request = async (url, options = {}) => {
       fetch(url, {
         credentials: "same-origin",
         ...fetchOptions,
+        headers: buildRequestHeaders(fetchOptions.headers),
       }),
       timeoutMs
     );

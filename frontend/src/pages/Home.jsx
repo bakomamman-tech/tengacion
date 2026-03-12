@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -16,12 +16,16 @@ import { connectSocket } from "../socket";
 import {
   createPost,
   createPostWithUploadProgress,
+  getDiscoveryHome,
   getFeed,
   getMyStreaks,
   getProfile,
+  getLiveSessions,
+  muteUser,
   resolveImage,
   submitDailyCheckIn,
-  getLiveSessions,
+  toggleFollowCreator,
+  trackDiscoveryEvents,
 } from "../api";
 
 const FEELING_OPTIONS = [
@@ -41,12 +45,51 @@ const MORE_OPTIONS = [
   { id: "share-to-story", label: "Share to story" },
 ];
 
+const INITIAL_VISIBLE_POSTS = 10;
+const LOAD_MORE_INCREMENT = 8;
+const DISCOVERY_BATCH_DELAY_MS = 1400;
+const FEED_SURFACES = [
+  { id: "for_you", label: "For You" },
+  { id: "following", label: "Following" },
+];
+
 const isBirthdayToday = (birthday = {}) => {
   const day = Number(birthday?.day) || 0;
   const month = Number(birthday?.month) || 0;
   if (!day || !month) {return false;}
   const now = new Date();
   return now.getDate() === day && now.getMonth() + 1 === month;
+};
+
+const createFeedEntry = (post, discoveryMeta = null) => ({
+  key: String(post?._id || discoveryMeta?.entityId || ""),
+  post,
+  discoveryMeta,
+});
+
+const normalizeLegacyFeedItems = (posts = []) =>
+  (Array.isArray(posts) ? posts : [])
+    .filter((post) => post?._id)
+    .map((post) => createFeedEntry(post));
+
+const normalizeDiscoveryFeedItems = (payload = {}) => {
+  const requestId = String(payload?.requestId || "").trim();
+
+  return (Array.isArray(payload?.items) ? payload.items : [])
+    .filter((item) => item?.entityType === "post" && item?.payload?._id)
+    .map((item) =>
+      createFeedEntry(item.payload, {
+        requestId,
+        entityId: String(item.id || item?.payload?._id || "").trim(),
+        entityType: String(item.entityType || "post").trim().toLowerCase(),
+        rank: Number(item.rank || 0),
+        reason: String(item.reason || "").trim(),
+        reasonLabel: String(item.reasonLabel || "").trim(),
+        creatorId: String(item.creatorId || "").trim(),
+        authorUserId: String(item.authorUserId || item?.payload?.user?._id || "").trim(),
+        viewerFollowsCreator: Boolean(item.viewerFollowsCreator),
+      })
+    );
 };
 
 function ComposerIcon({ name }) {
@@ -678,8 +721,13 @@ export default function Home({ user }) {
   const location = useLocation();
 
   const [profile, setProfile] = useState(null);
-  const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [feedItems, setFeedItems] = useState([]);
+  const [feedLoading, setFeedLoading] = useState(true);
+  const [feedError, setFeedError] = useState("");
+  const [feedSurface, setFeedSurface] = useState("for_you");
+  const [feedUsesDiscovery, setFeedUsesDiscovery] = useState(false);
+  const [feedFallback, setFeedFallback] = useState(false);
   const [liveSessions, setLiveSessions] = useState([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMinimized, setChatMinimized] = useState(false);
@@ -691,48 +739,177 @@ export default function Home({ user }) {
   const [checkInText, setCheckInText] = useState("");
   const [checkInStreak, setCheckInStreak] = useState({ count: 0, lastCheckInAt: null });
   const [checkInBusy, setCheckInBusy] = useState(false);
-  const [visiblePostCount, setVisiblePostCount] = useState(10);
+  const [visiblePostCount, setVisiblePostCount] = useState(INITIAL_VISIBLE_POSTS);
   const loadMoreRef = useRef(null);
   const quickMediaRef = useRef(null);
+  const feedRequestSequenceRef = useRef(0);
+  const discoveryQueueRef = useRef([]);
+  const discoveryFlushTimerRef = useRef(null);
+
+  const flushDiscoveryEvents = useCallback(async () => {
+    if (!discoveryQueueRef.current.length) {
+      return;
+    }
+
+    const pending = discoveryQueueRef.current.splice(0, discoveryQueueRef.current.length);
+    const batches = new Map();
+
+    for (const entry of pending) {
+      const requestId = String(entry?.requestId || "").trim();
+      const surface = String(entry?.surface || "home").trim().toLowerCase();
+      const event = entry?.event;
+
+      if (!requestId || !event?.type) {
+        continue;
+      }
+
+      const key = `${requestId}:${surface}`;
+      if (!batches.has(key)) {
+        batches.set(key, { requestId, surface, events: [] });
+      }
+      batches.get(key).events.push(event);
+    }
+
+    if (!batches.size) {
+      return;
+    }
+
+    await Promise.all(
+      Array.from(batches.values()).map((batch) =>
+        trackDiscoveryEvents(batch).catch(() => null)
+      )
+    );
+  }, []);
+
+  const enqueueDiscoveryEvents = useCallback(
+    (entries = []) => {
+      const normalizedEntries = (Array.isArray(entries) ? entries : [entries]).filter(
+        (entry) => entry?.requestId && entry?.event?.type
+      );
+
+      if (!normalizedEntries.length) {
+        return;
+      }
+
+      discoveryQueueRef.current.push(...normalizedEntries);
+
+      if (typeof window !== "undefined") {
+        if (discoveryFlushTimerRef.current) {
+          window.clearTimeout(discoveryFlushTimerRef.current);
+        }
+        discoveryFlushTimerRef.current = window.setTimeout(() => {
+          void flushDiscoveryEvents();
+        }, DISCOVERY_BATCH_DELAY_MS);
+      }
+    },
+    [flushDiscoveryEvents]
+  );
+
+  const loadFeedSurface = useCallback(async (surface) => {
+    const requestSequence = ++feedRequestSequenceRef.current;
+
+    setFeedLoading(true);
+    setFeedError("");
+    setFeedUsesDiscovery(false);
+    setFeedFallback(false);
+
+    try {
+      if (surface === "for_you") {
+        try {
+          const payload = await getDiscoveryHome({ limit: 28 });
+          if (requestSequence !== feedRequestSequenceRef.current) {
+            return;
+          }
+
+          setFeedItems(normalizeDiscoveryFeedItems(payload));
+          setFeedUsesDiscovery(true);
+          setFeedFallback(false);
+        } catch {
+          const fallbackFeed = await getFeed();
+          if (requestSequence !== feedRequestSequenceRef.current) {
+            return;
+          }
+
+          setFeedItems(normalizeLegacyFeedItems(fallbackFeed));
+          setFeedUsesDiscovery(false);
+          setFeedFallback(true);
+        }
+      } else {
+        const payload = await getFeed();
+        if (requestSequence !== feedRequestSequenceRef.current) {
+          return;
+        }
+
+        setFeedItems(normalizeLegacyFeedItems(payload));
+        setFeedUsesDiscovery(false);
+        setFeedFallback(false);
+      }
+
+      if (requestSequence === feedRequestSequenceRef.current) {
+        setVisiblePostCount(INITIAL_VISIBLE_POSTS);
+      }
+    } catch (err) {
+      if (requestSequence !== feedRequestSequenceRef.current) {
+        return;
+      }
+
+      setFeedItems([]);
+      setFeedUsesDiscovery(false);
+      setFeedFallback(false);
+      setFeedError(err?.message || "Failed to load feed");
+    } finally {
+      if (requestSequence === feedRequestSequenceRef.current) {
+        setFeedLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     let alive = true;
 
-      const load = async () => {
-        try {
-          setLoading(true);
-          const [me, feed, liveResult, streakResult] = await Promise.all([
-            getProfile(),
-            getFeed(),
-            getLiveSessions(),
-            getMyStreaks().catch(() => ({ checkIn: { count: 0, lastCheckInAt: null } })),
-          ]);
+    const load = async () => {
+      try {
+        setLoading(true);
+        const [me, liveResult, streakResult] = await Promise.all([
+          getProfile(),
+          getLiveSessions(),
+          getMyStreaks().catch(() => ({ checkIn: { count: 0, lastCheckInAt: null } })),
+        ]);
 
-          if (!alive) {
-            return;
-          }
-
-          setProfile(me);
-          setPosts(Array.isArray(feed) ? feed : []);
-          setVisiblePostCount(10);
-          setLiveSessions(Array.isArray(liveResult?.sessions) ? liveResult.sessions : []);
-          setCheckInStreak(streakResult?.checkIn || { count: 0, lastCheckInAt: null });
-        } catch {
-          if (alive) {
-            toast.error("Failed to load feed");
-          }
-        } finally {
-          if (alive) {
-            setLoading(false);
-          }
+        if (!alive) {
+          return;
         }
-      };
+
+        setProfile(me);
+        setLiveSessions(Array.isArray(liveResult?.sessions) ? liveResult.sessions : []);
+        setCheckInStreak(streakResult?.checkIn || { count: 0, lastCheckInAt: null });
+      } catch {
+        if (alive) {
+          toast.error("Failed to load home");
+        }
+      } finally {
+        if (alive) {
+          setLoading(false);
+        }
+      }
+    };
 
     load();
     return () => {
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    void loadFeedSurface(feedSurface);
+  }, [feedSurface, loadFeedSurface]);
+
+  useEffect(() => () => {
+    if (typeof window !== "undefined" && discoveryFlushTimerRef.current) {
+      window.clearTimeout(discoveryFlushTimerRef.current);
+    }
+    void flushDiscoveryEvents();
+  }, [flushDiscoveryEvents]);
 
   useEffect(() => {
     const shouldOpenMessenger = Boolean(location.state?.openMessenger);
@@ -767,14 +944,14 @@ export default function Home({ user }) {
       (entries) => {
         const first = entries[0];
         if (first?.isIntersecting) {
-          setVisiblePostCount((prev) => prev + 8);
+          setVisiblePostCount((prev) => prev + LOAD_MORE_INCREMENT);
         }
       },
       { threshold: 0.35 }
     );
     observer.observe(target);
     return () => observer.disconnect();
-  }, [posts.length]);
+  }, [feedItems.length]);
 
   useEffect(() => {
     const viewerId = profile?._id || user?._id;
@@ -848,7 +1025,158 @@ export default function Home({ user }) {
   };
 
   const currentUser = profile || user;
-  const visiblePosts = Array.isArray(posts) ? posts.slice(0, visiblePostCount) : [];
+  const visibleFeedItems = Array.isArray(feedItems)
+    ? feedItems.slice(0, visiblePostCount)
+    : [];
+
+  const handleRecommendationAction = useCallback(
+    async ({
+      action,
+      discoveryMeta,
+      eventType,
+      metadata,
+      post,
+      value = 0,
+    } = {}) => {
+      const requestId = String(discoveryMeta?.requestId || "").trim();
+      const entityId = String(discoveryMeta?.entityId || post?._id || "").trim();
+
+      if (!requestId || !entityId) {
+        return;
+      }
+
+      const baseEvent = {
+        entityType: String(discoveryMeta?.entityType || "post").trim().toLowerCase(),
+        entityId,
+        position: Number(discoveryMeta?.rank || 0),
+        value: Number(value || 0),
+        metadata: {
+          action: String(action || "").trim().toLowerCase(),
+          reason: discoveryMeta?.reason || "",
+          ...(metadata && typeof metadata === "object" ? metadata : {}),
+        },
+      };
+
+      if (action === "interested") {
+        enqueueDiscoveryEvents([
+          {
+            requestId,
+            surface: "home",
+            event: {
+              ...baseEvent,
+              type: "recommendation_clicked",
+              metadata: {
+                ...baseEvent.metadata,
+                preference: "more_like_this",
+              },
+            },
+          },
+        ]);
+        toast.success("We will show you more like this.");
+        return;
+      }
+
+      if (action === "not_interested") {
+        setFeedItems((prev) =>
+          prev.filter((entry) => entry?.post?._id !== post?._id)
+        );
+        enqueueDiscoveryEvents([
+          {
+            requestId,
+            surface: "home",
+            event: {
+              ...baseEvent,
+              type: "recommendation_dismissed",
+            },
+          },
+        ]);
+        toast.success("We will show you less like this.");
+        return;
+      }
+
+      if (action === "mute_creator") {
+        const targetUserId = String(discoveryMeta?.authorUserId || post?.user?._id || "").trim();
+        if (!targetUserId) {
+          throw new Error("Creator details are unavailable for this card");
+        }
+
+        await muteUser(targetUserId);
+        setFeedItems((prev) =>
+          prev.filter((entry) => entry?.post?._id !== post?._id)
+        );
+        enqueueDiscoveryEvents([
+          {
+            requestId,
+            surface: "home",
+            event: {
+              ...baseEvent,
+              type: "recommendation_hidden",
+              metadata: {
+                ...baseEvent.metadata,
+                targetUserId,
+              },
+            },
+          },
+        ]);
+        toast.success("Creator muted.");
+        return;
+      }
+
+      if (action === "toggle_follow_creator") {
+        const creatorId = String(discoveryMeta?.creatorId || "").trim();
+        if (!creatorId) {
+          throw new Error("Creator profile is unavailable for this card");
+        }
+
+        const payload = await toggleFollowCreator(creatorId);
+        const following = Boolean(payload?.following);
+
+        setFeedItems((prev) =>
+          prev.map((entry) =>
+            entry?.discoveryMeta?.creatorId === creatorId
+              ? {
+                  ...entry,
+                  discoveryMeta: {
+                    ...entry.discoveryMeta,
+                    viewerFollowsCreator: following,
+                  },
+                }
+              : entry
+          )
+        );
+
+        enqueueDiscoveryEvents([
+          {
+            requestId,
+            surface: "home",
+            event: {
+              ...baseEvent,
+              type: following ? "creator_followed" : "recommendation_clicked",
+              metadata: {
+                ...baseEvent.metadata,
+                creatorId,
+                followState: following ? "followed" : "unfollowed",
+              },
+            },
+          },
+        ]);
+        toast.success(following ? "Creator followed." : "Creator unfollowed.");
+        return;
+      }
+
+      enqueueDiscoveryEvents([
+        {
+          requestId,
+          surface: "home",
+          event: {
+            ...baseEvent,
+            type: eventType || "recommendation_clicked",
+          },
+        },
+      ]);
+    },
+    [enqueueDiscoveryEvents]
+  );
 
   const runCheckIn = async () => {
     if (checkInBusy) {return;}
@@ -858,8 +1186,7 @@ export default function Home({ user }) {
       const nextStreak = payload?.streak || { count: 0, lastCheckInAt: null };
       setCheckInStreak(nextStreak);
       setCheckInText("");
-      const updatedFeed = await getFeed();
-      setPosts(Array.isArray(updatedFeed) ? updatedFeed : []);
+      await loadFeedSurface(feedSurface);
     } catch {
       // Keep existing UX stable.
     } finally {
@@ -1041,14 +1368,56 @@ export default function Home({ user }) {
             />
           </div>
 
+          <section className="card feed-surface-card">
+            <div className="feed-surface-tabs" role="tablist" aria-label="Feed surfaces">
+              {FEED_SURFACES.map((surface) => (
+                <button
+                  key={surface.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={feedSurface === surface.id}
+                  className={`feed-surface-tab ${
+                    feedSurface === surface.id ? "active" : ""
+                  }`}
+                  onClick={() => setFeedSurface(surface.id)}
+                >
+                  {surface.label}
+                </button>
+              ))}
+            </div>
+            <p className="feed-surface-note">
+              {feedSurface === "for_you"
+                ? feedFallback
+                  ? "For You is temporarily using the standard network feed while personalization reloads."
+                  : feedUsesDiscovery
+                    ? "For You blends your network, recent activity, and trust-aware ranking."
+                    : "Personalizing your feed."
+                : "Following shows the standard feed from accounts in your network."}
+            </p>
+          </section>
+
           <div className="tengacion-feed">
-            {loading ? (
+            {feedLoading ? (
               <>
                 <PostSkeleton />
                 <PostSkeleton />
                 <PostSkeleton />
               </>
-            ) : posts.length === 0 ? (
+            ) : feedError ? (
+              <div className="card empty-feed">
+                <div className="empty-feed-icon">Retry</div>
+                <h3>Could not load this feed</h3>
+                <p>{feedError}</p>
+                <button
+                  className="empty-feed-btn"
+                  onClick={() => {
+                    void loadFeedSurface(feedSurface);
+                  }}
+                >
+                  Try again
+                </button>
+              </div>
+            ) : feedItems.length === 0 ? (
               <div className="card empty-feed">
                 <div className="empty-feed-icon">News</div>
                 <h3>No posts yet</h3>
@@ -1061,24 +1430,30 @@ export default function Home({ user }) {
                 </button>
               </div>
             ) : (
-              visiblePosts.map((post) => (
+              visibleFeedItems.map((entry) => (
                 <PostCard
-                  key={post._id}
-                  post={post}
+                  key={entry.key}
+                  post={entry.post}
+                  discoveryMeta={entry.discoveryMeta}
+                  onRecommendationAction={handleRecommendationAction}
                   onDelete={(id) =>
-                    setPosts((prev) => prev.filter((entry) => entry._id !== id))
+                    setFeedItems((prev) =>
+                      prev.filter((feedEntry) => feedEntry?.post?._id !== id)
+                    )
                   }
                   onEdit={(updatedPost) =>
-                    setPosts((prev) =>
-                      prev.map((entry) =>
-                        entry._id === updatedPost._id ? updatedPost : entry
+                    setFeedItems((prev) =>
+                      prev.map((feedEntry) =>
+                        feedEntry?.post?._id === updatedPost._id
+                          ? { ...feedEntry, post: updatedPost }
+                          : feedEntry
                       )
                     )
                   }
                 />
               ))
             )}
-            {visiblePosts.length < posts.length ? (
+            {visibleFeedItems.length < feedItems.length ? (
               <div ref={loadMoreRef} className="card" style={{ padding: 12, textAlign: "center" }}>
                 Loading more...
               </div>
@@ -1135,7 +1510,9 @@ export default function Home({ user }) {
             setComposerInitialFile(null);
             setComposerInitialMode("");
           }}
-          onPosted={(post) => setPosts((prev) => [post, ...prev])}
+          onPosted={(post) =>
+            setFeedItems((prev) => [createFeedEntry(post), ...prev])
+          }
         />
       )}
     </>

@@ -50,6 +50,9 @@ const decorateRankedItems = ({ items = [] } = {}) =>
       rank: index + 1,
       reason: primaryReason.key,
       reasonLabel: LABELS[primaryReason.key] || LABELS.popular_now,
+      creatorId: item.creatorId || "",
+      authorUserId: item.authorUserId || "",
+      viewerFollowsCreator: Boolean(item.viewerFollowsCreator),
       payload: item.payload,
     };
   });

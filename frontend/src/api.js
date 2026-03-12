@@ -993,6 +993,34 @@ export const getFeed = () =>
     headers: getAuthHeaders(),
   });
 
+export const getDiscoveryHome = ({ limit = 24 } = {}) => {
+  const params = new URLSearchParams();
+  if (limit) {
+    params.set("limit", String(limit));
+  }
+
+  return request(
+    `${API_BASE}/discovery/home${params.toString() ? `?${params.toString()}` : ""}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+};
+
+export const trackDiscoveryEvents = ({ requestId = "", surface = "home", events = [] } = {}) =>
+  request(`${API_BASE}/discovery/events`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({
+      requestId,
+      surface,
+      events: Array.isArray(events) ? events : [],
+    }),
+  });
+
 export const getPostsByUsername = (username) =>
   request(`${API_BASE}/posts/user/${encodeURIComponent(username || "")}`, {
     headers: getAuthHeaders(),

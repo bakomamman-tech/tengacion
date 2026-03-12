@@ -82,19 +82,43 @@ const buildCreatorStatsMaps = async (creatorIds = []) => {
 
 const listHomeCandidates = async ({ userId, limit = 20 } = {}) => {
   const feed = await PostService.getFeed({ userId, search: "" });
+  const authorIds = Array.from(
+    new Set(
+      feed
+        .map((post) => normalizeId(post?.user?._id))
+        .filter(Boolean)
+    )
+  );
+  const creatorProfiles = authorIds.length
+    ? await CreatorProfile.find({ userId: { $in: authorIds } })
+      .select("_id userId")
+      .lean()
+    : [];
+  const creatorIdByUserId = new Map(
+    creatorProfiles.map((profile) => [
+      normalizeId(profile?.userId),
+      normalizeId(profile?._id),
+    ])
+  );
+
   return feed
     .slice(0, Math.max(limit * 4, 60))
-    .map((post) => ({
-      candidateId: makeEntityKey("post", post._id),
-      entityType: "post",
-      entityId: post._id,
-      creatorId: "",
-      authorUserId: normalizeId(post?.user?._id),
-      contentType: normalizeContentType(post?.type),
-      createdAt: safeDate(post?.createdAt),
-      popularity: Number(post?.likesCount || 0) + Number(post?.commentsCount || 0) * 1.5 + Number(post?.shareCount || 0) * 2,
-      payload: post,
-    }));
+    .map((post) => {
+      const authorUserId = normalizeId(post?.user?._id);
+
+      return {
+        candidateId: makeEntityKey("post", post._id),
+        entityType: "post",
+        entityId: post._id,
+        creatorId: creatorIdByUserId.get(authorUserId) || "",
+        authorUserId,
+        contentType: normalizeContentType(post?.type),
+        createdAt: safeDate(post?.createdAt),
+        popularity: Number(post?.likesCount || 0) + Number(post?.commentsCount || 0) * 1.5 + Number(post?.shareCount || 0) * 2,
+        topics: Array.isArray(post?.hashtags) ? post.hashtags : [],
+        payload: post,
+      };
+    });
 };
 
 const listCreatorCandidates = async ({ userId, limit = 20 } = {}) => {

@@ -182,6 +182,10 @@ const rankCandidates = ({ surface, candidates = [], affinity, creatorQualityMap,
     const popularity = getPopularityBoost(candidate, surface);
     const exploration = getExplorationBonus(candidate, affinity);
     const trustPenalty = getTrustPenalty(candidate, creatorQualityMap);
+    const viewerFollowsCreator = Boolean(
+      normalizeId(candidate?.creatorId)
+      && affinity?.relationshipSets?.followingCreatorIds?.has(normalizeId(candidate?.creatorId))
+    );
 
     const score = relationship.score
       + affinityBoost.score
@@ -193,6 +197,7 @@ const rankCandidates = ({ surface, candidates = [], affinity, creatorQualityMap,
     ranked.push({
       ...candidate,
       score: Number(score.toFixed(4)),
+      viewerFollowsCreator,
       reasonSignals: [
         ...relationship.reasons,
         ...affinityBoost.reasons,

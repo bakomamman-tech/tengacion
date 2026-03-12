@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 import PostComments from "./PostComments";
@@ -139,10 +139,13 @@ export default function PostCard({
   isSystem,
   onDelete,
   onEdit,
+  discoveryMeta = null,
+  onRecommendationAction,
 }) {
   const { confirm, prompt } = useDialog();
   /* SYSTEM POST SHORT-CIRCUIT */
   const isSystemPost = isSystem || post?.system;
+  const isRecommendedPost = Boolean(discoveryMeta?.requestId);
 
   /* -------------------------------------------------- */
 
@@ -154,10 +157,15 @@ export default function PostCard({
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const articleRef = useRef(null);
+  const hasTrackedImpressionRef = useRef(false);
+  const hasTrackedDwellRef = useRef(false);
+  const [isCardInView, setIsCardInView] = useState(false);
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
 
   const timeLabel = post?.createdAt
     ? new Date(post.createdAt).toLocaleString()
@@ -268,6 +276,21 @@ export default function PostCard({
 
   const isOwner = !!post?.isOwner;
 
+  const runRecommendationAction = useCallback(
+    async (payload = {}) => {
+      if (!isRecommendedPost || typeof onRecommendationAction !== "function") {
+        return;
+      }
+
+      await onRecommendationAction({
+        post,
+        discoveryMeta,
+        ...payload,
+      });
+    },
+    [discoveryMeta, isRecommendedPost, onRecommendationAction, post]
+  );
+
   useEffect(() => {
     const handler = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -300,6 +323,12 @@ export default function PostCard({
   }, [post?._id, post?.shareCount]);
 
   useEffect(() => {
+    hasTrackedImpressionRef.current = false;
+    hasTrackedDwellRef.current = false;
+    setIsCardInView(false);
+  }, [discoveryMeta?.requestId, discoveryMeta?.entityId, post?._id]);
+
+  useEffect(() => {
     setVideoError(false);
     setForceVideoRender(false);
     setIsPlaying(false);
@@ -309,6 +338,52 @@ export default function PostCard({
       videoRef.current.pause();
     }
   }, [post?._id, postMediaUrl, mediaTypeCandidate]);
+
+  useEffect(() => {
+    if (!isRecommendedPost || !articleRef.current) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        setIsCardInView(Boolean(entry?.isIntersecting));
+      },
+      { threshold: 0.6 }
+    );
+
+    observer.observe(articleRef.current);
+    return () => observer.disconnect();
+  }, [isRecommendedPost, discoveryMeta?.requestId, discoveryMeta?.entityId]);
+
+  useEffect(() => {
+    if (!isRecommendedPost || !isCardInView || hasTrackedImpressionRef.current) {
+      return;
+    }
+
+    hasTrackedImpressionRef.current = true;
+    void runRecommendationAction({
+      action: "impression",
+      eventType: "feed_impression",
+    });
+  }, [isCardInView, isRecommendedPost, runRecommendationAction]);
+
+  useEffect(() => {
+    if (!isRecommendedPost || !isCardInView || hasTrackedDwellRef.current) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      hasTrackedDwellRef.current = true;
+      void runRecommendationAction({
+        action: "dwell",
+        eventType: "post_dwell",
+        value: 4,
+      });
+    }, 4000);
+
+    return () => window.clearTimeout(timer);
+  }, [isCardInView, isRecommendedPost, runRecommendationAction]);
 
   useEffect(() => {
     const videoElement = videoRef.current;
@@ -375,6 +450,29 @@ export default function PostCard({
     }
   };
 
+  const explainRecommendation = () => {
+    if (!discoveryMeta?.reasonLabel) {
+      return;
+    }
+    toast.success(discoveryMeta.reasonLabel);
+  };
+
+  const handleRecommendationMenuAction = async (action) => {
+    if (!isRecommendedPost || feedbackBusy) {
+      return;
+    }
+
+    try {
+      setFeedbackBusy(true);
+      await runRecommendationAction({ action });
+      setMenuOpen(false);
+    } catch (err) {
+      toast.error(err?.message || "Could not update this recommendation");
+    } finally {
+      setFeedbackBusy(false);
+    }
+  };
+
   const syncLike = async (shouldLike, selectedReaction = null) => {
     if (liking) {
       return;
@@ -402,6 +500,15 @@ export default function PostCard({
         return Math.max(0, current + (nextLiked ? 1 : -1));
       });
       setReaction(nextLiked ? selectedReaction || reaction || REACTIONS[0] : null);
+      if (nextLiked) {
+        void runRecommendationAction({
+          action: "like",
+          eventType: "recommendation_clicked",
+          metadata: {
+            engagement: "like",
+          },
+        });
+      }
     } catch (err) {
       toast.error(err.message || "Failed to update like");
     } finally {
@@ -435,6 +542,13 @@ export default function PostCard({
       } catch {
         toast.success("Post shared");
       }
+      void runRecommendationAction({
+        action: "share",
+        eventType: "post_shared",
+        metadata: {
+          engagement: "share",
+        },
+      });
     } catch (err) {
       toast.error(err.message || "Failed to share post");
     } finally {
@@ -506,7 +620,7 @@ export default function PostCard({
 
   return (
     <>
-      <article className="post-card post-fade">
+      <article ref={articleRef} className="post-card post-fade">
         {/* HEADER */}
         <div className="post-header">
           <div className="post-user">
@@ -514,6 +628,15 @@ export default function PostCard({
             <div className="post-user-meta">
               <p className="post-name">{username}</p>
               <p className="post-time">{timeLabel}</p>
+              {discoveryMeta?.reasonLabel && (
+                <button
+                  type="button"
+                  className="post-reason-pill"
+                  onClick={explainRecommendation}
+                >
+                  {discoveryMeta.reasonLabel}
+                </button>
+              )}
             </div>
           </div>
 
@@ -530,6 +653,39 @@ export default function PostCard({
             {menuOpen && (
               <div className="post-menu-dropdown">
                 <button onClick={copyLinkOnly}>Copy link</button>
+                {isRecommendedPost && (
+                  <>
+                    <button onClick={explainRecommendation}>Why am I seeing this?</button>
+                    <button
+                      onClick={() => handleRecommendationMenuAction("interested")}
+                      disabled={feedbackBusy}
+                    >
+                      Interested
+                    </button>
+                    <button
+                      onClick={() => handleRecommendationMenuAction("not_interested")}
+                      disabled={feedbackBusy}
+                    >
+                      {feedbackBusy ? "Updating..." : "Not interested"}
+                    </button>
+                    {discoveryMeta?.authorUserId && (
+                      <button
+                        onClick={() => handleRecommendationMenuAction("mute_creator")}
+                        disabled={feedbackBusy}
+                      >
+                        Mute creator
+                      </button>
+                    )}
+                    {discoveryMeta?.creatorId && (
+                      <button
+                        onClick={() => handleRecommendationMenuAction("toggle_follow_creator")}
+                        disabled={feedbackBusy}
+                      >
+                        {discoveryMeta?.viewerFollowsCreator ? "Unfollow creator" : "Follow creator"}
+                      </button>
+                    )}
+                  </>
+                )}
                 {!isOwner && (
                   <button className="danger" onClick={reportPost}>
                     {reporting ? "Reporting..." : "Report post"}
@@ -737,7 +893,21 @@ export default function PostCard({
           <button
             type="button"
             className={`action-btn ${showComments ? "active" : ""}`}
-            onClick={() => setShowComments((state) => !state)}
+            onClick={() => {
+              setShowComments((state) => {
+                const nextState = !state;
+                if (nextState) {
+                  void runRecommendationAction({
+                    action: "open_comments",
+                    eventType: "post_opened",
+                    metadata: {
+                      engagement: "comments",
+                    },
+                  });
+                }
+                return nextState;
+              });
+            }}
             aria-pressed={showComments}
           >
             <span className="btn-emoji">{"\u{1F4AC}"}</span>

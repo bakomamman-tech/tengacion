@@ -3,10 +3,12 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { resolveImage, searchGlobal } from "./api";
 import CreateMenuDropdown from "./components/CreateMenuDropdown";
+import NotificationsDropdown from "./components/NotificationsDropdown";
 import { Icon } from "./Icon";
 import { useAuth } from "./context/AuthContext";
 import { useNotifications } from "./context/NotificationsContext";
 import { useTheme } from "./context/ThemeContext";
+import { getNotificationTarget } from "./notificationUtils";
 
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -112,7 +114,15 @@ export default function Navbar({
   const location = useLocation();
   const { theme, setTheme } = useTheme();
   const { logout: authLogout } = useAuth();
-  const { unreadCount: unreadNotifications, markAllRead } = useNotifications();
+  const {
+    notifications,
+    unreadCount: unreadNotifications,
+    loading: notificationsLoading,
+    error: notificationsError,
+    fetchNotifications,
+    markAllRead,
+    markOneRead,
+  } = useNotifications();
 
   const [showMenu, setShowMenu] = useState(false);
   const [menuView, setMenuView] = useState("root");
@@ -121,12 +131,15 @@ export default function Navbar({
   const [searchOpen, setSearchOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
   const [createSearch, setCreateSearch] = useState("");
 
   const searchRef = useRef(null);
   const menuRef = useRef(null);
   const createMenuRef = useRef(null);
   const createMenuButtonRef = useRef(null);
+  const notificationMenuRef = useRef(null);
+  const notificationButtonRef = useRef(null);
 
   useEffect(() => {
     const close = (event) => {
@@ -139,6 +152,12 @@ export default function Navbar({
       if (createMenuRef.current && !createMenuRef.current.contains(event.target)) {
         setShowCreateMenu(false);
       }
+      if (
+        notificationMenuRef.current &&
+        !notificationMenuRef.current.contains(event.target)
+      ) {
+        setShowNotificationsMenu(false);
+      }
     };
 
     const onKeyDown = (event) => {
@@ -146,6 +165,10 @@ export default function Navbar({
         setSearchOpen(false);
         setShowMenu(false);
         setMenuView("root");
+        if (showNotificationsMenu) {
+          setShowNotificationsMenu(false);
+          notificationButtonRef.current?.focus();
+        }
         if (showCreateMenu) {
           setShowCreateMenu(false);
           createMenuButtonRef.current?.focus();
@@ -160,13 +183,14 @@ export default function Navbar({
       document.removeEventListener("mousedown", close);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [showCreateMenu]);
+  }, [showCreateMenu, showNotificationsMenu]);
 
   useEffect(() => {
     setShowMenu(false);
     setMenuView("root");
     setSearchOpen(false);
     setShowCreateMenu(false);
+    setShowNotificationsMenu(false);
   }, [location.pathname, location.search]);
 
   useEffect(() => {
@@ -264,6 +288,41 @@ export default function Navbar({
       return;
     }
     navigate("/home", { state: { openComposer: true, composerMode: "" } });
+  };
+
+  const toggleNotificationsMenu = () => {
+    setShowMenu(false);
+    setMenuView("root");
+    setShowCreateMenu(false);
+    setSearchOpen(false);
+    setShowNotificationsMenu((open) => {
+      const next = !open;
+      if (next) {
+        fetchNotifications({ page: 1, limit: 40 });
+      }
+      return next;
+    });
+  };
+
+  const openNotificationsPage = () => {
+    setShowNotificationsMenu(false);
+    navigate("/notifications");
+  };
+
+  const openNotificationSettings = () => {
+    setShowNotificationsMenu(false);
+    navigate("/settings/notifications");
+  };
+
+  const handleNotificationClick = async (item) => {
+    await markOneRead(item._id);
+    setShowNotificationsMenu(false);
+    const target = getNotificationTarget(item);
+    if (target?.state) {
+      navigate(target.path, { state: target.state });
+      return;
+    }
+    navigate(target?.path || "/notifications");
   };
 
   const menuSections = [
@@ -869,24 +928,40 @@ export default function Navbar({
               <Icon name="message" size={18} />
             </button>
 
-            <button
-              className={`nav-circle-btn nav-notification-btn ${
-                unreadNotifications > 0 ? "has-badge" : ""
-              }`}
-              onClick={() => {
-                markAllRead({ optimistic: true });
-                navigate("/notifications");
-              }}
-              aria-label="Notifications"
-              title="Notifications"
-            >
-              <NotificationBellIcon />
-              {unreadNotifications > 0 && (
-                <span className="nav-badge">
-                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
-                </span>
+            <div className="nav-notification-anchor" ref={notificationMenuRef}>
+              <button
+                ref={notificationButtonRef}
+                className={`nav-circle-btn nav-notification-btn ${
+                  unreadNotifications > 0 ? "has-badge" : ""
+                }`}
+                onClick={toggleNotificationsMenu}
+                aria-label="Notifications"
+                title="Notifications"
+                aria-expanded={showNotificationsMenu}
+                aria-controls="navbar-notifications-menu"
+              >
+                <NotificationBellIcon />
+                {unreadNotifications > 0 && (
+                  <span className="nav-badge">
+                    {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                  </span>
+                )}
+              </button>
+
+              {showNotificationsMenu && (
+                <NotificationsDropdown
+                  id="navbar-notifications-menu"
+                  notifications={notifications}
+                  unreadCount={unreadNotifications}
+                  loading={notificationsLoading}
+                  error={notificationsError}
+                  onMarkAllRead={() => markAllRead({ optimistic: true })}
+                  onNotificationClick={handleNotificationClick}
+                  onOpenSettings={openNotificationSettings}
+                  onOpenAll={openNotificationsPage}
+                />
               )}
-            </button>
+            </div>
           </div>
 
           <div className="avatar-wrapper" ref={menuRef}>

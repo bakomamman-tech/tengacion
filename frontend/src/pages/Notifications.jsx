@@ -2,88 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
-import {
-  resolveImage,
-} from "../api";
 import { useNotifications } from "../context/NotificationsContext";
-
-const fallbackAvatar = (name) =>
-  `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    name || "User"
-  )}&size=96&background=DFE8F6&color=1D3A6D`;
-
-const getRelativeTime = (value) => {
-  const stamp = new Date(value || "").getTime();
-  if (!Number.isFinite(stamp)) {
-    return "now";
-  }
-
-  const diffSec = Math.max(1, Math.floor((Date.now() - stamp) / 1000));
-  if (diffSec < 60) {
-    return `${diffSec}s`;
-  }
-
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) {
-    return `${diffMin}m`;
-  }
-
-  const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) {
-    return `${diffHours}h`;
-  }
-
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d`;
-};
-
-const normalizeNotification = (entry) => {
-  const sender = entry?.sender && typeof entry.sender === "object" ? entry.sender : null;
-  const actorName = sender?.name || "Someone";
-  const senderId = sender?._id || "";
-  const senderUsername = sender?.username || "";
-  const actorAvatar = resolveImage(sender?.avatar) || fallbackAvatar(actorName);
-  const type = entry?.type || "system";
-  const createdAt = entry?.createdAt || null;
-  const previewText = entry?.metadata?.previewText || "";
-
-  let messageText = entry?.text || "";
-
-  if (!messageText) {
-    if (type === "message") {
-      messageText = "sent you a message.";
-    } else if (type === "like") {
-      messageText = "liked your post.";
-    } else if (type === "comment") {
-      messageText = "commented on your post.";
-    } else if (type === "friend_request") {
-      messageText = "sent you a friend request.";
-    } else {
-      messageText = "sent you a notification.";
-    }
-  }
-
-  if (!/[.!?]$/.test(messageText)) {
-    messageText = `${messageText}.`;
-  }
-
-  return {
-    _id: entry?._id || "",
-    read: Boolean(entry?.read),
-    type,
-    actorName,
-    senderId,
-    senderUsername,
-    actorAvatar,
-    messageText,
-    previewText,
-    createdAt,
-    timeLabel: getRelativeTime(createdAt),
-  };
-};
+import {
+  getNotificationTarget,
+  normalizeNotificationEntry,
+} from "../notificationUtils";
 
 function NotificationActionIcon({ type }) {
-  if (type === "comment") {
+  if (type === "comment" || type === "reply" || type === "mention" || type === "tag") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4 5.5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 4v-4H6a2 2 0 0 1-2-2z" />
@@ -103,6 +29,14 @@ function NotificationActionIcon({ type }) {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4 5.5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9.2L5.1 19v-3.5H6a2 2 0 0 1-2-2z" />
+      </svg>
+    );
+  }
+
+  if (type === "birthday") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 5.2c1 0 1.8-.8 1.8-1.8S13 1.6 12 1.6s-1.8.8-1.8 1.8S11 5.2 12 5.2zm-5.6 4.1h11.2v10.7H6.4V9.3zm2.4-3.1h6.4l1.1 2.1H7.7l1.1-2.1z" />
       </svg>
     );
   }
@@ -152,7 +86,6 @@ export default function Notifications({ user }) {
   const [filter, setFilter] = useState("all");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
-  const markedOnOpenRef = useRef(false);
 
   const loadNotifications = useCallback(async () => {
     await fetchNotifications({ page: 1, limit: 100 });
@@ -164,14 +97,6 @@ export default function Notifications({ user }) {
     const timer = window.setInterval(loadNotifications, 20000);
     return () => window.clearInterval(timer);
   }, [loadNotifications]);
-
-  useEffect(() => {
-    if (markedOnOpenRef.current) {
-      return;
-    }
-    markedOnOpenRef.current = true;
-    markAllRead({ optimistic: true });
-  }, [markAllRead]);
 
   useEffect(() => {
     const onMouseDown = (event) => {
@@ -232,17 +157,16 @@ export default function Notifications({ user }) {
 
   const handleNotificationClick = (item) => {
     markAsRead(item._id);
-    if (item.type === "message") {
-      navigate("/home", { state: { openMessenger: true } });
+    const target = getNotificationTarget(item);
+    if (target?.state) {
+      navigate(target.path, { state: target.state });
       return;
     }
-    if (item.senderUsername) {
-      navigate(`/profile/${item.senderUsername}`);
-    }
+    navigate(target?.path || "/notifications");
   };
 
   const renderRow = (entry) => {
-    const item = normalizeNotification(entry);
+    const item = normalizeNotificationEntry(entry);
     return (
     <button
       key={item._id}

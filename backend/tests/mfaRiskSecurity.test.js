@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { MongoMemoryServer } = require("mongodb-memory-server");
+const request = require("supertest");
 
 process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "12345678901234567890123456789012";
@@ -8,6 +9,7 @@ require("../../apps/api/config/env");
 jest.mock("../utils/sendOtpEmail", () => jest.fn().mockResolvedValue(undefined));
 jest.mock("../utils/sendSecurityEmail", () => jest.fn().mockResolvedValue(undefined));
 
+const app = require("../app");
 const AuthService = require("../../apps/api/services/authService");
 const User = require("../models/User");
 const sendSecurityEmail = require("../utils/sendSecurityEmail");
@@ -218,5 +220,44 @@ describe("MFA and suspicious-login security", () => {
     });
 
     expect(stepUpVerified.stepUpToken).toBeTruthy();
+  });
+
+  test("accepts admin authenticator setup codes over the HTTP challenge flow", async () => {
+    await User.create({
+      name: "Admin Setup User",
+      username: "admin_setup_user",
+      email: "adminsetup@test.com",
+      password: "Password123!",
+      role: "admin",
+      emailVerified: true,
+      isVerified: true,
+    });
+
+    const loginResponse = await request(app).post("/api/auth/login").send({
+      email: "adminsetup@test.com",
+      password: "Password123!",
+      deviceName: "Google Chrome on Windows",
+    });
+
+    expect(loginResponse.status).toBe(200);
+    expect(loginResponse.body).toMatchObject({
+      challengeRequired: true,
+    });
+    expect(loginResponse.body.challenge.purpose).toBe("mfa_setup");
+    expect(loginResponse.body.challenge.method).toBe("totp");
+
+    const secret = loginResponse.body.challenge?.setup?.secret;
+    const challengeToken = loginResponse.body.challenge?.token;
+    const verifyResponse = await request(app).post("/api/auth/challenge/verify").send({
+      challengeToken,
+      code: totp({ secret }),
+    });
+
+    expect(verifyResponse.status).toBe(200);
+    expect(verifyResponse.body?.user?.twoFactor).toMatchObject({
+      enabled: true,
+      method: "totp",
+    });
+    expect(verifyResponse.body?.token).toBeTruthy();
   });
 });

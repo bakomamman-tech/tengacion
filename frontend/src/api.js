@@ -89,9 +89,9 @@ const parseResponse = async (response, { suppressAuthFailure = false } = {}) => 
 
   if (response.status === 401) {
     if (!suppressAuthFailure) {
-      handleAuthFailure(data?.error);
+      handleAuthFailure(data?.error || data?.message || "Unauthorized");
     }
-    throw new Error(data?.error || "Unauthorized");
+    throw new Error(data?.error || data?.message || "Unauthorized");
   }
 
   if (!response.ok) {

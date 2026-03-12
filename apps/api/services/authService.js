@@ -913,12 +913,12 @@ class AuthService {
 
     if (challenge.method === "totp" && challenge.purpose === "login_mfa") {
       const secret = decryptSecret(user?.twoFactor?.secretCipher || "");
-      valid = verifyTotp({ secret, token: normalizedCode });
+      valid = verifyTotp({ secret, token: normalizedCode, window: 2 });
     } else if (challenge.method === "email" && challenge.purpose === "login_mfa") {
       valid = verifyEmailChallengeCode(challenge, normalizedCode);
     } else if (challenge.method === "totp" && challenge.purpose === "mfa_setup") {
       const secret = decryptSecret(challenge.secretCipher || "");
-      valid = verifyTotp({ secret, token: normalizedCode });
+      valid = verifyTotp({ secret, token: normalizedCode, window: 2 });
       if (valid) {
         markMfaEnabled(user, "totp");
         user.twoFactor.secretCipher = challenge.secretCipher;
@@ -1068,7 +1068,11 @@ class AuthService {
       throw ApiError.badRequest("Two-factor setup was not started");
     }
 
-    const valid = verifyTotp({ secret: pendingSecret, token: String(code || "").trim() });
+    const valid = verifyTotp({
+      secret: pendingSecret,
+      token: String(code || "").trim(),
+      window: 2,
+    });
     if (!valid) {
       throw ApiError.badRequest("Invalid authentication code");
     }
@@ -1119,7 +1123,11 @@ class AuthService {
 
     if (user.twoFactor.method === "totp") {
       const secret = decryptSecret(user?.twoFactor?.secretCipher || "");
-      const validCode = verifyTotp({ secret, token: String(code || "").trim() });
+      const validCode = verifyTotp({
+        secret,
+        token: String(code || "").trim(),
+        window: 2,
+      });
       if (!validCode) {
         throw ApiError.badRequest("Invalid authentication code");
       }
@@ -1180,7 +1188,11 @@ class AuthService {
       await challenge.save();
     } else {
       const secret = decryptSecret(user?.twoFactor?.secretCipher || "");
-      const valid = verifyTotp({ secret, token: String(code || "").trim() });
+      const valid = verifyTotp({
+        secret,
+        token: String(code || "").trim(),
+        window: 2,
+      });
       if (!valid) {
         throw ApiError.badRequest("Invalid authentication code");
       }

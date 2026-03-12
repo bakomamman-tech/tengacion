@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import QRCode from "qrcode";
 
 import { login as loginApi, verifyLoginChallenge } from "../api";
 import AuthPasswordField from "../components/AuthPasswordField";
@@ -16,8 +17,48 @@ export default function Login() {
   const [challenge, setChallenge] = useState(null);
   const [verificationCode, setVerificationCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [qrError, setQrError] = useState("");
   const returnToRaw = new URLSearchParams(location.search).get("returnTo") || "";
   const returnTo = returnToRaw.startsWith("/") ? returnToRaw : "/home";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const generateQr = async () => {
+      if (challenge?.purpose !== "mfa_setup" || !challenge?.setup?.otpauthUrl) {
+        setQrCodeUrl("");
+        setQrError("");
+        return;
+      }
+
+      try {
+        const dataUrl = await QRCode.toDataURL(challenge.setup.otpauthUrl, {
+          width: 220,
+          margin: 1,
+          color: {
+            dark: "#111827",
+            light: "#FFFFFFFF",
+          },
+        });
+        if (!cancelled) {
+          setQrCodeUrl(dataUrl);
+          setQrError("");
+        }
+      } catch {
+        if (!cancelled) {
+          setQrCodeUrl("");
+          setQrError("We could not generate the QR code. Use the manual key below instead.");
+        }
+      }
+    };
+
+    generateQr();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [challenge]);
 
   if (user) {
     return <Navigate to={returnTo} replace />;
@@ -139,8 +180,57 @@ export default function Login() {
                     ? `Enter the code sent to ${challenge.maskedEmail || "your email"}.`
                     : "Open your authenticator app and enter the current 6-digit code."}
               </p>
+              {challenge.purpose === "mfa_setup" ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    display: "flex",
+                    justifyContent: "center",
+                  }}
+                >
+                  {qrCodeUrl ? (
+                    <img
+                      src={qrCodeUrl}
+                      alt="Scan this QR code with your authenticator app"
+                      style={{
+                        width: 220,
+                        height: 220,
+                        background: "#fff",
+                        padding: 10,
+                        borderRadius: 18,
+                        border: "1px solid rgba(15, 23, 42, 0.08)",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: 220,
+                        minHeight: 220,
+                        display: "grid",
+                        placeItems: "center",
+                        background: "#f8fafc",
+                        borderRadius: 18,
+                        border: "1px solid rgba(15, 23, 42, 0.08)",
+                        padding: 18,
+                        textAlign: "center",
+                        color: "#475569",
+                      }}
+                    >
+                      {qrError || "Generating QR code..."}
+                    </div>
+                  )}
+                </div>
+              ) : null}
               {challenge.setup?.secret ? (
-                <p className="account-inline-message">Manual key: {challenge.setup.secret}</p>
+                <p className="account-inline-message">
+                  Manual key: {challenge.setup.secret}
+                </p>
+              ) : null}
+              {challenge.purpose === "mfa_setup" ? (
+                <p className="account-inline-message">
+                  In Google Authenticator, tap <strong>Scan a QR code</strong>. If scanning does
+                  not work, choose <strong>Enter a setup key</strong> and paste the manual key.
+                </p>
               ) : null}
               {Array.isArray(challenge.riskReasons) && challenge.riskReasons.length > 0 ? (
                 <p className="account-inline-message">

@@ -2,9 +2,13 @@ const http = require("http");
 const path = require("path");
 const fs = require("fs");
 const express = require("express");
-const jwt = require("jsonwebtoken");
 const { Server } = require("socket.io");
 const { createNotification } = require("./services/notificationService");
+const {
+  SessionAuthError,
+  authenticateAccessToken,
+  extractBearerToken,
+} = require("./services/sessionAuth");
 const { persistChatMessage } = require("./services/chatService");
 const { toIdString } = require("./utils/messagePayload");
 const Message = require("./models/Message");
@@ -23,6 +27,17 @@ console.log(`Node ${process.version} starting in ${process.cwd()}`);
 console.log(
   `dotenv loaded for backend (NODE_ENV=${config.NODE_ENV || "unknown"}, PORT=${config.PORT || "unset"})`
 );
+
+const parsedSocketAuthCacheMs = Number(process.env.SOCKET_AUTH_CACHE_MS || 30000);
+const SOCKET_AUTH_CACHE_MS =
+  Number.isFinite(parsedSocketAuthCacheMs) && parsedSocketAuthCacheMs >= 5000
+    ? parsedSocketAuthCacheMs
+    : 30000;
+const parsedSocketRevalidateMs = Number(process.env.SOCKET_REVALIDATE_MS || 60000);
+const SOCKET_REVALIDATE_MS =
+  Number.isFinite(parsedSocketRevalidateMs) && parsedSocketRevalidateMs >= 10000
+    ? parsedSocketRevalidateMs
+    : 60000;
 
 const frontendPath = path.join(__dirname, "../frontend/dist");
 const frontendIndex = path.join(frontendPath, "index.html");
@@ -90,6 +105,7 @@ if (process.env.NODE_ENV !== "test") {
   });
 
   const onlineUsers = new Map();
+  const sessionSockets = new Map();
   const userRoom = (userId) => `user:${toIdString(userId)}`;
   const logSocket = (tag, payload = {}) => {
     console.log(tag, payload);
@@ -118,70 +134,245 @@ if (process.env.NODE_ENV !== "test") {
     }
   };
 
-  const authenticateSocketUser = (socket) => {
-    const token = socket.handshake?.auth?.token;
-
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        return toIdString(decoded.id);
-      } catch {
-        return "";
-      }
+  const addSessionSocket = (sessionId, socketId) => {
+    const id = String(sessionId || "").trim();
+    if (!id) return;
+    if (!sessionSockets.has(id)) {
+      sessionSockets.set(id, new Set());
     }
-    return "";
+    sessionSockets.get(id).add(socketId);
   };
 
-  const attachUserToSocket = (socket, userId) => {
+  const removeSessionSocket = (sessionId, socketId) => {
+    const id = String(sessionId || "").trim();
+    if (!id || !sessionSockets.has(id)) return;
+    const sockets = sessionSockets.get(id);
+    sockets.delete(socketId);
+    if (sockets.size === 0) {
+      sessionSockets.delete(id);
+    }
+  };
+
+  const emitSocketLogout = (socket, { code = "SESSION_REVOKED", message = "" } = {}) => {
+    if (!socket || socket.disconnected) {
+      return;
+    }
+
+    socket.emit("auth:logout", {
+      code,
+      message: message || "Session revoked. Please login again.",
+    });
+  };
+
+  const disconnectSocketForAuth = (socket, errorOrPayload = {}) => {
+    if (!socket || socket.disconnected) {
+      return false;
+    }
+
+    const payload =
+      typeof errorOrPayload === "string"
+        ? { code: "SESSION_REVOKED", message: errorOrPayload }
+        : {
+            code: errorOrPayload?.code || "SESSION_REVOKED",
+            message: errorOrPayload?.message || "Session revoked. Please login again.",
+          };
+
+    emitSocketLogout(socket, payload);
+    socket.disconnect(true);
+    return false;
+  };
+
+  const disconnectSessionSockets = (
+    sessionId,
+    { code = "SESSION_REVOKED", message = "Session revoked. Please login again." } = {}
+  ) => {
+    const id = String(sessionId || "").trim();
+    if (!id || !sessionSockets.has(id)) {
+      return 0;
+    }
+
+    let disconnected = 0;
+    for (const socketId of [...sessionSockets.get(id)]) {
+      const socket = io.sockets.sockets.get(socketId);
+      if (!socket) continue;
+      disconnectSocketForAuth(socket, { code, message });
+      disconnected += 1;
+    }
+
+    return disconnected;
+  };
+
+  const disconnectUserSockets = (
+    userId,
+    {
+      exceptSessionId = "",
+      code = "ACCOUNT_REVOKED",
+      message = "Account access changed. Please login again.",
+    } = {}
+  ) => {
     const id = toIdString(userId);
+    if (!id || !onlineUsers.has(id)) {
+      return 0;
+    }
+
+    let disconnected = 0;
+    for (const socketId of [...onlineUsers.get(id)]) {
+      const socket = io.sockets.sockets.get(socketId);
+      if (!socket) continue;
+      if (exceptSessionId && String(socket.sessionId || "") === String(exceptSessionId || "")) {
+        continue;
+      }
+      disconnectSocketForAuth(socket, { code, message });
+      disconnected += 1;
+    }
+    return disconnected;
+  };
+
+  const getSocketToken = (socket) => {
+    const authToken = socket?.handshake?.auth?.token;
+    if (authToken) {
+      return String(authToken).trim();
+    }
+    return extractBearerToken(socket?.handshake?.headers?.authorization || "");
+  };
+
+  const authenticateSocketContext = async (socket) => {
+    const token = getSocketToken(socket);
+    return authenticateAccessToken(token, { touchSession: false });
+  };
+
+  const refreshSocketAuthContext = async (socket, { force = false } = {}) => {
+    if (!socket || socket.disconnected) {
+      return false;
+    }
+
+    const lastValidatedAt = Number(socket.authValidatedAt || 0);
+    if (!force && lastValidatedAt && Date.now() - lastValidatedAt < SOCKET_AUTH_CACHE_MS) {
+      return true;
+    }
+
+    try {
+      const authContext = await authenticateSocketContext(socket);
+      const userId = toIdString(authContext.user._id);
+      const sessionId = String(authContext.sessionId || "").trim();
+
+      if (
+        (socket.userId && socket.userId !== userId) ||
+        (socket.sessionId && socket.sessionId !== sessionId)
+      ) {
+        throw new SessionAuthError(
+          "Session invalid. Please login again.",
+          "SESSION_CONTEXT_MISMATCH",
+          401
+        );
+      }
+
+      socket.userId = userId;
+      socket.sessionId = sessionId;
+      socket.authValidatedAt = Date.now();
+      socket.authTokenVersion = authContext.tokenVersion;
+      return true;
+    } catch (err) {
+      return disconnectSocketForAuth(socket, err);
+    }
+  };
+
+  const attachUserToSocket = (socket, authContext) => {
+    const id = toIdString(authContext?.user?._id || authContext?.userId || socket.userId);
+    const sessionId = String(authContext?.sessionId || socket.sessionId || "").trim();
     if (!id) return;
     socket.userId = id;
+    socket.sessionId = sessionId;
+    socket.authValidatedAt = Date.now();
     socket.join(id);
     socket.join(userRoom(id));
     addOnlineUserSocket(id, socket.id);
+    addSessionSocket(sessionId, socket.id);
     emitOnlineUsers();
     logSocket("[SOCKET JOIN]", {
       socketId: socket.id,
       userId: id,
+      sessionId,
       rooms: [id, userRoom(id)],
     });
   };
 
-  io.use((socket, next) => {
-    const userId = authenticateSocketUser(socket);
-    logSocket("[SOCKET AUTH]", {
-      socketId: socket.id,
-      ok: Boolean(userId),
-    });
-    if (!userId) {
-      return next(new Error("Unauthorized"));
+  io.use(async (socket, next) => {
+    try {
+      const authContext = await authenticateSocketContext(socket);
+      logSocket("[SOCKET AUTH]", {
+        socketId: socket.id,
+        ok: true,
+        userId: authContext.userId,
+        sessionId: authContext.sessionId,
+      });
+      socket.authenticatedContext = authContext;
+      return next();
+    } catch (err) {
+      logSocket("[SOCKET AUTH]", {
+        socketId: socket.id,
+        ok: false,
+        code: err?.code || "UNAUTHORIZED",
+      });
+      return next(new Error(err?.message || "Unauthorized"));
     }
-    socket.authenticatedUserId = userId;
-    return next();
   });
 
   app.set("io", io);
   app.set("onlineUsers", onlineUsers);
+  app.set("realtimeSecurity", {
+    disconnectSession: disconnectSessionSockets,
+    disconnectUser: disconnectUserSockets,
+    disconnectUserSessionsExcept: (userId, exceptSessionId, options = {}) =>
+      disconnectUserSockets(userId, { ...options, exceptSessionId }),
+  });
 
   io.on("connection", (socket) => {
-    const initialUserId = socket.authenticatedUserId || authenticateSocketUser(socket);
-    attachUserToSocket(socket, initialUserId);
+    const initialAuthContext = socket.authenticatedContext || null;
+    attachUserToSocket(socket, initialAuthContext);
     logSocket("[SOCKET CONNECT]", {
       socketId: socket.id,
       userId: socket.userId,
+      sessionId: socket.sessionId || "",
       transport: socket.conn?.transport?.name,
     });
 
+    socket.use((packet, next) => {
+      refreshSocketAuthContext(socket)
+        .then((ok) => {
+          if (!ok) {
+            next(new Error("Unauthorized"));
+            return;
+          }
+          next();
+        })
+        .catch(() => {
+          next(new Error("Unauthorized"));
+        });
+    });
+
+    const sessionRecheckTimer = setInterval(() => {
+      if (socket.disconnected) {
+        clearInterval(sessionRecheckTimer);
+        return;
+      }
+      refreshSocketAuthContext(socket, { force: true }).catch(() => null);
+    }, SOCKET_REVALIDATE_MS);
+    sessionRecheckTimer.unref?.();
+
     socket.on("join", (userId) => {
-      const trustedUserId = initialUserId || authenticateSocketUser(socket);
+      const trustedUserId = socket.userId || "";
       const requestedUserId = toIdString(userId);
       if (!trustedUserId || requestedUserId !== trustedUserId) return;
-      attachUserToSocket(socket, trustedUserId);
+      attachUserToSocket(socket, {
+        userId: trustedUserId,
+        sessionId: socket.sessionId || "",
+      });
     });
 
     const handleSendMessage = async (payload = {}, ack) => {
       try {
-        const senderId = socket.userId || authenticateSocketUser(socket);
+        const senderId = socket.userId || "";
         const receiverId = toIdString(payload.receiverId || payload.toUserId);
         const clientMsgId = String(payload.clientId || payload.clientMsgId || "").trim();
         logSocket("[SOCKET SEND]", {
@@ -385,10 +576,13 @@ if (process.env.NODE_ENV !== "test") {
 
     socket.on("disconnect", () => {
       removeOnlineUserSocket(socket.userId, socket.id);
+      removeSessionSocket(socket.sessionId, socket.id);
+      clearInterval(sessionRecheckTimer);
       emitOnlineUsers();
-      logSocket("[SOCKET CONNECT]", {
+      logSocket("[SOCKET DISCONNECT]", {
         socketId: socket.id,
         userId: socket.userId || "",
+        sessionId: socket.sessionId || "",
         disconnected: true,
       });
     });

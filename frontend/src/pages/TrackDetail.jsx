@@ -21,7 +21,7 @@ export default function TrackDetail() {
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
 
-  const isLoggedIn = Boolean(user?._id || localStorage.getItem("token"));
+  const isLoggedIn = Boolean(user?._id);
 
   const loadTrack = useCallback(async () => {
     setLoading(true);

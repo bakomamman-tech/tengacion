@@ -1,5 +1,11 @@
 import { io } from "socket.io-client";
 
+import {
+  emitAuthLogout,
+  getSessionAccessToken,
+  subscribeSessionAccessToken,
+} from "./authSession";
+
 const getSocketUrl = () => {
   if (import.meta.env.VITE_SOCKET_URL) {
     return import.meta.env.VITE_SOCKET_URL;
@@ -13,14 +19,42 @@ const getSocketUrl = () => {
 let socket = null;
 let activeToken = "";
 let activeUserId = "";
+let unsubscribeToken = null;
 
-export function connectSocket({ token, userId }) {
-  if (!token || !userId) {return null;}
+const wireSocketTokenRefresh = () => {
+  if (unsubscribeToken) {
+    return;
+  }
+
+  unsubscribeToken = subscribeSessionAccessToken((nextToken) => {
+    if (!socket || !activeUserId) {
+      activeToken = nextToken || "";
+      return;
+    }
+    if (String(nextToken || "") === String(activeToken || "")) {
+      return;
+    }
+
+    activeToken = String(nextToken || "");
+    socket.auth = { token: activeToken, userId: activeUserId };
+    if (socket.connected) {
+      socket.disconnect().connect();
+      return;
+    }
+    socket.connect();
+  });
+};
+
+export function connectSocket({ token = "", userId }) {
+  const nextToken = String(token || getSessionAccessToken() || "").trim();
+  if (!nextToken || !userId) {
+    return null;
+  }
 
   if (
     socket &&
     socket.connected &&
-    activeToken === token &&
+    activeToken === nextToken &&
     activeUserId === userId
   ) {
     return socket;
@@ -31,12 +65,11 @@ export function connectSocket({ token, userId }) {
     socket = null;
   }
 
-  activeToken = token;
+  activeToken = nextToken;
   activeUserId = userId;
 
   socket = io(getSocketUrl(), {
     path: "/socket.io",
-    // Polling-first is more reliable on Render cold starts and proxies.
     transports: ["polling", "websocket"],
     upgrade: true,
     rememberUpgrade: false,
@@ -47,9 +80,13 @@ export function connectSocket({ token, userId }) {
     reconnectionDelay: 1200,
     timeout: 10000,
     auth: {
-      token,
+      token: nextToken,
       userId,
     },
+  });
+
+  socket.on("auth:logout", (payload) => {
+    emitAuthLogout(payload?.message || "Session revoked");
   });
 
   socket.connect();
@@ -62,6 +99,7 @@ export function connectSocket({ token, userId }) {
     socket.emit("join", userId);
   });
 
+  wireSocketTokenRefresh();
   return socket;
 }
 
@@ -70,11 +108,17 @@ export function getSocket() {
 }
 
 export function disconnectSocket() {
-  if (!socket) {return;}
+  if (!socket) {
+    return;
+  }
 
   socket.removeAllListeners();
   socket.disconnect();
   socket = null;
   activeToken = "";
   activeUserId = "";
+  if (unsubscribeToken) {
+    unsubscribeToken();
+    unsubscribeToken = null;
+  }
 }

@@ -1,16 +1,39 @@
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const ApiError = require("../utils/ApiError");
 const { config } = require("../config/env");
 const userRepository = require("../repositories/userRepository");
+const User = require("../../../backend/models/User");
 const Otp = require("../../../backend/models/Otp");
+const AuthChallenge = require("../../../backend/models/AuthChallenge");
 const sendOtpEmail = require("../../../backend/utils/sendOtpEmail");
 const sendSecurityEmail = require("../../../backend/utils/sendSecurityEmail");
 const { normalizeMediaValue } = require("../../../backend/utils/userMedia");
+const {
+  hashToken,
+  signAccessToken,
+  signRefreshToken,
+  signStepUpToken,
+  signChallengeToken,
+  verifyRefreshToken,
+  verifyChallengeToken,
+  encryptSecret,
+  decryptSecret,
+} = require("../../../backend/services/authTokens");
+const {
+  generateSecret,
+  verifyTotp,
+  buildOtpauthUrl,
+} = require("../../../backend/utils/totp");
+const {
+  normalizeSessionMeta,
+  scoreLoginRisk,
+  updateTrustedDevice,
+} = require("../../../backend/services/loginRisk");
 
 const USERNAME_REGEX = /^[a-zA-Z0-9._]{3,30}$/;
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
+const LOGIN_CHALLENGE_TTL_MS = 10 * 60 * 1000;
 
 const extractDuplicateField = (err) => {
   if (!err) return "";
@@ -30,17 +53,6 @@ const extractDuplicateField = (err) => {
   return "";
 };
 
-const summarizeMongoDetails = (err) => {
-  const details = err?.errInfo?.details;
-  if (!details) return "";
-  try {
-    const raw = JSON.stringify(details);
-    return raw.length > 600 ? `${raw.slice(0, 600)}...` : raw;
-  } catch {
-    return "";
-  }
-};
-
 const setByPath = (target, path, value) => {
   if (!path) return;
 
@@ -51,7 +63,6 @@ const setByPath = (target, path, value) => {
 
   const keys = path.split(".");
   let cursor = target;
-
   for (let i = 0; i < keys.length - 1; i += 1) {
     const key = keys[i];
     if (!cursor[key] || typeof cursor[key] !== "object") {
@@ -98,7 +109,6 @@ const tryCreateWithFallbacks = async (baseData) => {
 
       const hasExplicitValue = Object.prototype.hasOwnProperty.call(baseData, duplicateField);
       const fallback = buildFieldFallback(duplicateField);
-
       if (hasExplicitValue || fallback === null) {
         throw err;
       }
@@ -121,10 +131,8 @@ const tryLegacyInsertFallback = async ({
   gender,
 }) => {
   const passwordHash = await bcrypt.hash(password, 12);
-  const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const now = new Date();
-
-  const shared = {
+  const draft = {
     name: displayName,
     username,
     email,
@@ -144,59 +152,35 @@ const tryLegacyInsertFallback = async ({
     friendRequests: [],
     createdAt: now,
     updatedAt: now,
-  };
-
-  const modernDoc = {
-    ...shared,
     dob: dob ? new Date(dob) : null,
     avatar: { public_id: "", url: "" },
     cover: { public_id: "", url: "" },
   };
 
-  const variants = [modernDoc];
-  let lastError = null;
-
-  for (const variant of variants) {
-    const draft = { ...variant };
-
-    for (let attempt = 0; attempt < 4; attempt += 1) {
-      try {
-        const inserted = await userRepository.insertOne(draft);
-        return await userRepository.findById(inserted.insertedId);
-      } catch (err) {
-        lastError = err;
-
-        if (err?.code !== 11000) {
-          break;
-        }
-
-        const duplicateField = extractDuplicateField(err);
-        const fallback = buildFieldFallback(duplicateField);
-
-        if (!duplicateField || fallback === null) {
-          break;
-        }
-
-        setByPath(draft, duplicateField, fallback);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      const inserted = await userRepository.insertOne(draft);
+      return await userRepository.findById(inserted.insertedId);
+    } catch (err) {
+      if (err?.code !== 11000) {
+        throw err;
       }
+      const duplicateField = extractDuplicateField(err);
+      const fallback = buildFieldFallback(duplicateField);
+      if (!duplicateField || fallback === null) {
+        throw err;
+      }
+      setByPath(draft, duplicateField, fallback);
     }
   }
 
-  throw lastError || new Error("Legacy registration fallback failed");
+  throw new Error("Legacy registration fallback failed");
 };
 
 const makeTokenHash = (token = "") =>
   crypto.createHash("sha256").update(String(token)).digest("hex");
-
 const makeRawToken = (size = 32) => crypto.randomBytes(size).toString("hex");
-
 const generateSessionId = () => crypto.randomUUID();
-
-const generateToken = (id, tokenVersion = 0, sessionId = "") =>
-  jwt.sign({ id, tv: Number(tokenVersion) || 0, sid: String(sessionId || "") }, config.JWT_SECRET, {
-    expiresIn: "7d",
-  });
-
 const getBaseUrl = () => process.env.APP_ORIGIN || process.env.WEB_ORIGIN || "http://localhost:5173";
 
 const formatSession = (entry) => ({
@@ -204,12 +188,21 @@ const formatSession = (entry) => ({
   deviceName: entry?.deviceName || "",
   ip: entry?.ip || "",
   userAgent: entry?.userAgent || "",
+  country: entry?.country || "",
+  city: entry?.city || "",
   createdAt: entry?.createdAt || null,
   lastSeenAt: entry?.lastSeenAt || null,
   revokedAt: entry?.revokedAt || null,
 });
 
 const isOtpRequired = () => config.REQUIRE_EMAIL_OTP === "true";
+const OTP_CODE_TTL_MS = 10 * 60 * 1000;
+const OTP_VERIFIED_TTL_MS = 30 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
+const OTP_RESEND_WINDOW_MS = 60 * 60 * 1000;
+const OTP_MAX_RESENDS_PER_WINDOW = 5;
+const OTP_MAX_VERIFY_ATTEMPTS = 5;
+const OTP_LOCKOUT_MS = 15 * 60 * 1000;
 
 const sanitizeRegistrationPayload = (payload = {}) => {
   const rawName = (payload.name || "").trim();
@@ -220,20 +213,297 @@ const sanitizeRegistrationPayload = (payload = {}) => {
   const country = (payload.country || "").trim();
   const dob = payload.dob || "";
   const gender = payload.gender || "";
-
-  return {
-    rawName,
-    username,
-    email,
-    password,
-    phone,
-    country,
-    dob,
-    gender,
-  };
+  return { rawName, username, email, password, phone, country, dob, gender };
 };
 
 const sanitizeIdentifier = (value = "") => (value || "").trim().toLowerCase();
+const makeOtpHash = (email = "", otp = "") =>
+  crypto
+    .createHmac("sha256", config.JWT_SECRET)
+    .update(`${sanitizeIdentifier(email)}:${String(otp || "").trim()}`)
+    .digest("hex");
+const buildOtpCode = () => Math.floor(100000 + Math.random() * 900000).toString();
+const getOtpRecord = (email) =>
+  Otp.findOne({ email: sanitizeIdentifier(email) }).sort({ updatedAt: -1 });
+const msUntil = (futureValue, now = Date.now()) => {
+  const future = new Date(futureValue || 0).getTime();
+  return Math.max(0, future - now);
+};
+const buildChallengeCodeHash = (challengeId, code) =>
+  hashToken(`${String(challengeId || "")}:${String(code || "").trim()}`);
+
+const maskEmail = (email = "") => {
+  const value = String(email || "").trim();
+  const [local, domain] = value.split("@");
+  if (!local || !domain) {
+    return "";
+  }
+  return `${local.slice(0, 2)}${"*".repeat(Math.max(1, local.length - 2))}@${domain}`;
+};
+
+const isAdminRole = (role = "") =>
+  ["admin", "super_admin"].includes(String(role || "").toLowerCase());
+
+const MFA_SUMMARY_SELECT =
+  "twoFactor.enabled twoFactor.method twoFactor.setupPending twoFactor.enabledAt twoFactor.lastVerifiedAt";
+const MFA_SECRET_SELECT = `${MFA_SUMMARY_SELECT} +twoFactor.secretCipher`;
+const MFA_SETUP_SECRET_SELECT = `${MFA_SECRET_SELECT} +twoFactor.pendingSecretCipher`;
+const USER_PROFILE_SELECT =
+  "_id name username email role avatar cover emailVerified isActive isBanned isDeleted lastLogin lastLoginAt lastSeenAt";
+const USER_SESSION_SELECT = `${USER_PROFILE_SELECT} tokenVersion sessions trustedDevices`;
+const LOGIN_USER_SELECT = `+password ${MFA_SETUP_SECRET_SELECT} ${USER_SESSION_SELECT}`;
+const CHALLENGE_USER_SELECT = `${MFA_SECRET_SELECT} ${USER_SESSION_SELECT}`;
+const REFRESH_USER_SELECT = `${MFA_SUMMARY_SELECT} ${USER_SESSION_SELECT} +sessions.refreshTokenHash`;
+
+const assertUserCanSignIn = (user) => {
+  if (!user) {
+    throw ApiError.unauthorized("Invalid credentials");
+  }
+  if (user.isDeleted) {
+    throw ApiError.forbidden("Account is deleted");
+  }
+  if (!user.isActive) {
+    throw ApiError.forbidden("Account is inactive");
+  }
+  if (user.isBanned) {
+    throw ApiError.forbidden("Your account is banned");
+  }
+};
+
+const getSessionById = (user, sessionId = "") =>
+  (Array.isArray(user?.sessions) ? user.sessions : []).find(
+    (entry) => String(entry?.sessionId || "") === String(sessionId || "")
+  );
+
+const buildMfaSummary = (user) => ({
+  enabled: Boolean(user?.twoFactor?.enabled),
+  method: user?.twoFactor?.method || "none",
+  adminRequired: isAdminRole(user?.role),
+});
+
+const buildProfilePayload = (user) => {
+  const avatar = normalizeMediaValue(user?.avatar);
+  const cover = normalizeMediaValue(user?.cover);
+  const payload = user?.toObject ? user.toObject() : { ...user };
+  delete payload.password;
+  delete payload.sessions;
+  delete payload.tokenVersion;
+  delete payload.trustedDevices;
+  delete payload.passwordChangedAt;
+  delete payload.emailVerifyTokenHash;
+  delete payload.emailVerifyExpiresAt;
+  delete payload.resetPasswordTokenHash;
+  delete payload.resetPasswordExpiresAt;
+  delete payload.__v;
+  payload.displayName = payload.name || "";
+  payload.avatar = avatar;
+  payload.cover = cover;
+  payload.avatarUrl = avatar.url;
+  payload.coverUrl = cover.url;
+  payload.emailVerified = Boolean(payload.emailVerified);
+  if (payload.twoFactor && typeof payload.twoFactor === "object") {
+    delete payload.twoFactor.secretCipher;
+    delete payload.twoFactor.pendingSecretCipher;
+  }
+  payload.twoFactor = buildMfaSummary(payload);
+  return payload;
+};
+
+const createChallengeResponse = ({
+  challenge,
+  user,
+  method,
+  purpose,
+  risk = {},
+  secret = "",
+}) => ({
+  challengeRequired: true,
+  challenge: {
+    token: signChallengeToken({
+      challengeId: challenge._id.toString(),
+      userId: user._id.toString(),
+      purpose,
+    }),
+    method,
+    purpose,
+    expiresAt: challenge.expiresAt,
+    riskReasons: Array.isArray(risk?.reasons) ? risk.reasons : [],
+    maskedEmail: method === "email" ? maskEmail(user.email) : "",
+    setup:
+      purpose === "mfa_setup"
+        ? {
+            secret,
+            issuer: "Tengacion",
+            label: user.email || user.username || "user",
+            otpauthUrl: buildOtpauthUrl({
+              issuer: "Tengacion",
+              label: user.email || user.username || "user",
+              secret,
+            }),
+          }
+        : null,
+  },
+});
+
+const createAuthChallenge = async ({
+  user,
+  purpose,
+  method,
+  sessionMeta,
+  risk = {},
+  secret = "",
+}) => {
+  const challenge = await AuthChallenge.create({
+    userId: user._id,
+    purpose,
+    method,
+    sessionMeta,
+    riskScore: Number(risk?.score || 0),
+    riskReasons: Array.isArray(risk?.reasons) ? risk.reasons : [],
+    secretCipher: secret ? encryptSecret(secret) : "",
+    expiresAt: new Date(Date.now() + LOGIN_CHALLENGE_TTL_MS),
+  });
+
+  if (method === "email") {
+    const code = buildOtpCode();
+    challenge.codeHash = buildChallengeCodeHash(challenge._id.toString(), code);
+    await challenge.save();
+    await sendSecurityEmail({
+      to: user.email,
+      subject: "Confirm your Tengacion login",
+      html: `
+        <div style="font-family: Arial; padding: 12px;">
+          <h2>Suspicious login verification</h2>
+          <p>We noticed a sign-in from a new or risky device.</p>
+          <p>Your login code is <strong style="font-size: 20px; letter-spacing: 3px;">${code}</strong></p>
+          <p>This code expires in 10 minutes.</p>
+        </div>
+      `,
+    });
+  }
+
+  if (risk?.isSuspicious) {
+    sendSecurityEmail({
+      to: user.email,
+      subject: "New Tengacion login challenge",
+      html: `
+        <div style="font-family: Arial; padding: 12px;">
+          <h2>We protected a login attempt</h2>
+          <p>Device: ${sessionMeta.deviceName || "Unknown device"}</p>
+          <p>Location: ${sessionMeta.city || sessionMeta.country || "Unknown location"}</p>
+          <p>Reasons: ${(risk.reasons || []).join(", ") || "risk_check"}</p>
+        </div>
+      `,
+    }).catch(() => null);
+  }
+
+  return createChallengeResponse({ challenge, user, method, purpose, risk, secret });
+};
+
+const markChallengeFailure = async (challenge) => {
+  challenge.attempts = Number(challenge.attempts || 0) + 1;
+  await challenge.save();
+  if (challenge.attempts >= Number(challenge.maxAttempts || 5)) {
+    throw ApiError.tooManyRequests("Too many invalid verification attempts");
+  }
+};
+
+const attachNewSession = (user, sessionMeta = {}) => {
+  const sessionId = generateSessionId();
+  const refreshToken = signRefreshToken({
+    userId: user._id.toString(),
+    tokenVersion: user.tokenVersion,
+    sessionId,
+  });
+  const refreshTokenHash = hashToken(refreshToken);
+
+  user.sessions = Array.isArray(user.sessions) ? user.sessions : [];
+  user.sessions.push({
+    sessionId,
+    refreshTokenHash,
+    deviceName: sessionMeta.deviceName || "",
+    ip: sessionMeta.ip || "",
+    userAgent: sessionMeta.userAgent || "",
+    country: sessionMeta.country || "",
+    city: sessionMeta.city || "",
+    fingerprint: sessionMeta.fingerprint || "",
+    createdAt: new Date(),
+    lastSeenAt: new Date(),
+    revokedAt: null,
+  });
+  if (user.sessions.length > 30) {
+    user.sessions = user.sessions.slice(-30);
+  }
+
+  return {
+    sessionId,
+    refreshToken,
+    accessToken: signAccessToken({
+      userId: user._id.toString(),
+      tokenVersion: user.tokenVersion,
+      sessionId,
+    }),
+  };
+};
+
+const shouldNotifyLoginRisk = (risk = {}) =>
+  Boolean(
+    risk?.shouldNotify ||
+      (Array.isArray(risk?.reasons) && risk.reasons.length > 0) ||
+      Number(risk?.score || 0) >= 20
+  );
+
+const sendLoginAlert = async (user, sessionMeta = {}, risk = {}) => {
+  if (!user?.email || !shouldNotifyLoginRisk(risk) || risk?.isSuspicious) {
+    return;
+  }
+
+  await sendSecurityEmail({
+    to: user.email,
+    subject: "New Tengacion login detected",
+    html: `
+      <div style="font-family: Arial; padding: 12px;">
+        <h2>New login detected</h2>
+        <p>Device: ${sessionMeta.deviceName || "Unknown device"}</p>
+        <p>Location: ${sessionMeta.city || sessionMeta.country || "Unknown location"}</p>
+        <p>Risk signals: ${(risk.reasons || []).join(", ") || "new_login"}</p>
+      </div>
+    `,
+  });
+};
+
+const finalizeLogin = async (
+  user,
+  sessionMeta = {},
+  { markMfaVerified = false, loginRisk = null } = {}
+) => {
+  const tokens = attachNewSession(user, sessionMeta);
+  updateTrustedDevice(user, sessionMeta);
+  user.lastLogin = new Date();
+  user.lastLoginAt = new Date();
+  user.lastSeenAt = new Date();
+  if (markMfaVerified) {
+    user.twoFactor = user.twoFactor || {};
+    user.twoFactor.lastVerifiedAt = new Date();
+  }
+  await user.save();
+  sendLoginAlert(user, sessionMeta, loginRisk).catch(() => null);
+
+  return {
+    user: buildProfilePayload(user),
+    token: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    sessionId: tokens.sessionId,
+    stepUpToken:
+      markMfaVerified || isAdminRole(user.role)
+        ? signStepUpToken({
+            userId: user._id.toString(),
+            sessionId: tokens.sessionId,
+            scope: "default",
+          })
+        : "",
+  };
+};
 
 class AuthService {
   static async checkUsername(username) {
@@ -255,11 +525,52 @@ class AuthService {
       throw ApiError.serviceUnavailable("Email verification is not configured");
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const now = Date.now();
+    const existing = await getOtpRecord(normalized);
+    const lockedMs = msUntil(existing?.lockedUntil, now);
+    if (lockedMs > 0) {
+      throw ApiError.tooManyRequests(
+        `Too many invalid OTP attempts. Try again in ${Math.ceil(lockedMs / 1000)} seconds.`
+      );
+    }
 
-    await Otp.deleteMany({ email: normalized });
-    await Otp.create({ email: normalized, otp, expiresAt, verified: false });
+    const cooldownMs = msUntil(
+      existing?.lastSentAt ? new Date(existing.lastSentAt).getTime() + OTP_RESEND_COOLDOWN_MS : 0,
+      now
+    );
+    if (cooldownMs > 0) {
+      throw ApiError.tooManyRequests(
+        `Please wait ${Math.ceil(cooldownMs / 1000)} seconds before requesting another code.`
+      );
+    }
+
+    const windowStartedAt = existing?.windowStartedAt
+      ? new Date(existing.windowStartedAt).getTime()
+      : 0;
+    const withinSendWindow = windowStartedAt && now - windowStartedAt < OTP_RESEND_WINDOW_MS;
+    const resendCount = withinSendWindow ? Number(existing?.resendCount || 0) : 0;
+    if (withinSendWindow && resendCount >= OTP_MAX_RESENDS_PER_WINDOW) {
+      throw ApiError.tooManyRequests(
+        "Too many OTP requests for this email. Please try again later."
+      );
+    }
+
+    const otp = buildOtpCode();
+    const record = existing || new Otp({ email: normalized });
+    record.email = normalized;
+    record.otp = "";
+    record.otpHash = makeOtpHash(normalized, otp);
+    record.expiresAt = new Date(now + OTP_CODE_TTL_MS);
+    record.verified = false;
+    record.verifiedAt = null;
+    record.attemptCount = 0;
+    record.resendCount = withinSendWindow ? resendCount + 1 : 1;
+    record.lastSentAt = new Date(now);
+    record.lastAttemptAt = null;
+    record.lockedUntil = null;
+    record.windowStartedAt = withinSendWindow ? existing.windowStartedAt : new Date(now);
+    await record.save();
+    await Otp.deleteMany({ email: normalized, _id: { $ne: record._id } }).catch(() => null);
     await sendOtpEmail({ email: normalized, otp });
 
     return { message: "OTP sent" };
@@ -273,18 +584,62 @@ class AuthService {
       throw ApiError.badRequest("Email and OTP are required");
     }
 
-    const record = await Otp.findOne({ email: normalizedEmail, otp: normalizedOtp });
-    if (!record || record.expiresAt < new Date()) {
+    const record = await getOtpRecord(normalizedEmail);
+    const now = Date.now();
+    if (!record) {
+      throw ApiError.badRequest("Invalid or expired OTP");
+    }
+
+    const lockedMs = msUntil(record.lockedUntil, now);
+    if (lockedMs > 0) {
+      throw ApiError.tooManyRequests(
+        `Too many invalid OTP attempts. Try again in ${Math.ceil(lockedMs / 1000)} seconds.`
+      );
+    }
+
+    if (record.verified && record.expiresAt && new Date(record.expiresAt).getTime() > now) {
+      return { message: "OTP already verified" };
+    }
+
+    if (!record.expiresAt || new Date(record.expiresAt).getTime() <= now) {
+      throw ApiError.badRequest("Invalid or expired OTP");
+    }
+
+    const hashMatches =
+      Boolean(record.otpHash) && record.otpHash === makeOtpHash(normalizedEmail, normalizedOtp);
+    const legacyMatches = Boolean(record.otp) && record.otp === normalizedOtp;
+    if (!hashMatches && !legacyMatches) {
+      record.attemptCount = Number(record.attemptCount || 0) + 1;
+      record.lastAttemptAt = new Date(now);
+      if (record.attemptCount >= OTP_MAX_VERIFY_ATTEMPTS) {
+        record.lockedUntil = new Date(now + OTP_LOCKOUT_MS);
+      }
+      await record.save();
+
+      if (record.lockedUntil && new Date(record.lockedUntil).getTime() > now) {
+        throw ApiError.tooManyRequests(
+          `Too many invalid OTP attempts. Try again in ${Math.ceil(OTP_LOCKOUT_MS / 1000)} seconds.`
+        );
+      }
+
       throw ApiError.badRequest("Invalid or expired OTP");
     }
 
     record.verified = true;
+    record.verifiedAt = new Date(now);
+    record.expiresAt = new Date(now + OTP_VERIFIED_TTL_MS);
+    record.otp = "";
+    record.otpHash = "";
+    record.attemptCount = 0;
+    record.lastAttemptAt = new Date(now);
+    record.lockedUntil = null;
     await record.save();
 
     return { message: "OTP verified" };
   }
 
   static async register(payload = {}) {
+    const normalizedSessionMeta = normalizeSessionMeta(payload.sessionMeta || {});
     const {
       rawName,
       username,
@@ -299,17 +654,14 @@ class AuthService {
     if (!username || !email || !password) {
       throw ApiError.badRequest("Name, username, and password are required");
     }
-
     if (password.length < 8) {
       throw ApiError.badRequest("Password must be at least 8 characters");
     }
-
     if (!USERNAME_REGEX.test(username)) {
       throw ApiError.badRequest(
         "Username can only contain letters, numbers, dots and underscores (3-30 chars)"
       );
     }
-
     if (!EMAIL_REGEX.test(email)) {
       throw ApiError.badRequest("Please use a valid email address");
     }
@@ -318,17 +670,21 @@ class AuthService {
       userRepository.exists({ username }),
       userRepository.exists({ email }),
     ]);
-
     if (usernameExists) {
       throw ApiError.conflict("Username already taken");
     }
-
     if (emailExists) {
       throw ApiError.conflict("Email already registered");
     }
 
     if (isOtpRequired()) {
-      const verified = await Otp.findOne({ email, verified: true }).catch(() => null);
+      const verified = await Otp.findOne({
+        email,
+        verified: true,
+        expiresAt: { $gt: new Date() },
+      })
+        .sort({ updatedAt: -1 })
+        .catch(() => null);
       if (!verified) {
         throw ApiError.unauthorized("Email not verified");
       }
@@ -357,7 +713,7 @@ class AuthService {
     let user;
     try {
       user = await tryCreateWithFallbacks(baseUserData);
-    } catch (createErr) {
+    } catch (_createErr) {
       user = await tryLegacyInsertFallback({
         displayName,
         username,
@@ -371,26 +727,12 @@ class AuthService {
     }
 
     if (isOtpRequired()) {
-      Otp.deleteMany({ email }).catch((otpCleanupErr) => {
-        console.warn("Register OTP cleanup failed:", otpCleanupErr?.message || otpCleanupErr);
-      });
+      Otp.deleteMany({ email }).catch(() => null);
     }
 
     const rawVerifyToken = makeRawToken(24);
     user.emailVerifyTokenHash = makeTokenHash(rawVerifyToken);
     user.emailVerifyExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-    const sessionId = generateSessionId();
-    user.sessions = Array.isArray(user.sessions) ? user.sessions : [];
-    user.sessions.push({
-      sessionId,
-      deviceName: "Current device",
-      ip: "",
-      userAgent: "",
-      createdAt: new Date(),
-      lastSeenAt: new Date(),
-      revokedAt: null,
-    });
     await user.save();
 
     try {
@@ -407,15 +749,11 @@ class AuthService {
           </div>
         `,
       });
-    } catch (err) {
-      // Non-fatal: account should still be created.
-      console.warn("verify email send failed:", err?.message || err);
+    } catch {
+      // Non-fatal.
     }
 
-    return {
-      user,
-      token: generateToken(user._id, user.tokenVersion, sessionId),
-    };
+    return finalizeLogin(user, normalizedSessionMeta);
   }
 
   static async login({ emailOrUsername, email, username, password, sessionMeta = {} }) {
@@ -428,45 +766,164 @@ class AuthService {
       .findOne({
         $or: [{ email: identifier }, { username: identifier }],
       })
-      .select("+password");
+      .select(LOGIN_USER_SELECT);
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw ApiError.unauthorized("Invalid credentials");
     }
-    if (user.isDeleted) {
-      console.warn(`Login blocked: deleted account ${user._id}`);
-      throw ApiError.forbidden("Account is deleted");
-    }
-    if (!user.isActive) {
-      console.warn(`Login blocked: inactive account ${user._id}`);
-      throw ApiError.forbidden("Account is inactive");
-    }
-    if (user.isBanned) {
-      console.warn(`Login blocked: banned account ${user._id}`);
-      throw ApiError.forbidden("Your account is banned");
+
+    assertUserCanSignIn(user);
+
+    const normalizedSessionMeta = normalizeSessionMeta(sessionMeta);
+    const risk = scoreLoginRisk(user, normalizedSessionMeta);
+    const hasTotp =
+      Boolean(user?.twoFactor?.enabled) &&
+      user?.twoFactor?.method === "totp" &&
+      Boolean(user?.twoFactor?.secretCipher);
+
+    if (isAdminRole(user.role) && !hasTotp) {
+      const secret = generateSecret();
+      return createAuthChallenge({
+        user,
+        purpose: "mfa_setup",
+        method: "totp",
+        sessionMeta: normalizedSessionMeta,
+        risk,
+        secret,
+      });
     }
 
-    const sessionId = generateSessionId();
-    user.sessions = Array.isArray(user.sessions) ? user.sessions : [];
-    user.sessions.push({
-      sessionId,
-      deviceName: String(sessionMeta.deviceName || "").slice(0, 180),
-      ip: String(sessionMeta.ip || "").slice(0, 180),
-      userAgent: String(sessionMeta.userAgent || "").slice(0, 400),
-      createdAt: new Date(),
-      lastSeenAt: new Date(),
-      revokedAt: null,
-    });
-    if (user.sessions.length > 30) {
-      user.sessions = user.sessions.slice(-30);
+    if (hasTotp) {
+      return createAuthChallenge({
+        user,
+        purpose: "login_mfa",
+        method: "totp",
+        sessionMeta: normalizedSessionMeta,
+        risk,
+      });
     }
-    user.lastLogin = new Date();
+
+    if (risk.isSuspicious) {
+      return createAuthChallenge({
+        user,
+        purpose: "login_mfa",
+        method: "email",
+        sessionMeta: normalizedSessionMeta,
+        risk,
+      });
+    }
+
+    return finalizeLogin(user, normalizedSessionMeta, { loginRisk: risk });
+  }
+
+  static async verifyAuthChallenge({ challengeToken, code }) {
+    if (!challengeToken || !code) {
+      throw ApiError.badRequest("Challenge token and code are required");
+    }
+
+    let decoded;
+    try {
+      decoded = verifyChallengeToken(challengeToken);
+    } catch {
+      throw ApiError.unauthorized("Challenge expired or invalid");
+    }
+
+    const challenge = await AuthChallenge.findById(decoded.cid);
+    if (!challenge || challenge.usedAt || new Date(challenge.expiresAt).getTime() <= Date.now()) {
+      throw ApiError.unauthorized("Challenge expired or invalid");
+    }
+
+    const user = await User.findById(challenge.userId).select(CHALLENGE_USER_SELECT);
+    assertUserCanSignIn(user);
+
+    const normalizedCode = String(code || "").trim();
+    let valid = false;
+
+    if (challenge.method === "totp" && challenge.purpose === "login_mfa") {
+      const secret = decryptSecret(user?.twoFactor?.secretCipher || "");
+      valid = verifyTotp({ secret, token: normalizedCode });
+    } else if (challenge.method === "email") {
+      valid = challenge.codeHash === buildChallengeCodeHash(challenge._id.toString(), normalizedCode);
+    } else if (challenge.method === "totp" && challenge.purpose === "mfa_setup") {
+      const secret = decryptSecret(challenge.secretCipher || "");
+      valid = verifyTotp({ secret, token: normalizedCode });
+      if (valid) {
+        user.twoFactor = user.twoFactor || {};
+        user.twoFactor.enabled = true;
+        user.twoFactor.method = "totp";
+        user.twoFactor.setupPending = false;
+        user.twoFactor.secretCipher = challenge.secretCipher;
+        user.twoFactor.pendingSecretCipher = "";
+        user.twoFactor.enabledAt = new Date();
+        user.twoFactor.lastVerifiedAt = new Date();
+      }
+    }
+
+    if (!valid) {
+      await markChallengeFailure(challenge);
+      throw ApiError.badRequest("Invalid authentication code");
+    }
+
+    challenge.usedAt = new Date();
+    await challenge.save();
+
+    return finalizeLogin(user, challenge.sessionMeta || {}, {
+      markMfaVerified: true,
+      loginRisk: {
+        score: Number(challenge.riskScore || 0),
+        reasons: Array.isArray(challenge.riskReasons) ? challenge.riskReasons : [],
+        isSuspicious: Number(challenge.riskScore || 0) >= 60,
+        shouldNotify: Array.isArray(challenge.riskReasons) && challenge.riskReasons.length > 0,
+      },
+    });
+  }
+
+  static async refreshSession({ refreshToken }) {
+    const rawToken = String(refreshToken || "").trim();
+    if (!rawToken) {
+      throw ApiError.unauthorized("Refresh token missing");
+    }
+
+    let decoded;
+    try {
+      decoded = verifyRefreshToken(rawToken);
+    } catch {
+      throw ApiError.unauthorized("Session expired");
+    }
+
+    const user = await User.findById(decoded.id).select(REFRESH_USER_SELECT);
+    assertUserCanSignIn(user);
+
+    const session = getSessionById(user, decoded.sid);
+    if (!session || session.revokedAt) {
+      throw ApiError.unauthorized("Session revoked. Please login again.");
+    }
+    if (Number(decoded.tv ?? 0) !== Number(user.tokenVersion || 0)) {
+      throw ApiError.unauthorized("Session revoked. Please login again.");
+    }
+    if (String(session.refreshTokenHash || "") !== hashToken(rawToken)) {
+      throw ApiError.unauthorized("Session revoked. Please login again.");
+    }
+
+    const nextRefreshToken = signRefreshToken({
+      userId: user._id.toString(),
+      tokenVersion: user.tokenVersion,
+      sessionId: decoded.sid,
+    });
+    session.refreshTokenHash = hashToken(nextRefreshToken);
+    session.lastSeenAt = new Date();
+    user.lastSeenAt = new Date();
     await user.save();
 
     return {
-      user,
-      token: generateToken(user._id, user.tokenVersion, sessionId),
-      sessionId,
+      user: buildProfilePayload(user),
+      token: signAccessToken({
+        userId: user._id.toString(),
+        tokenVersion: user.tokenVersion,
+        sessionId: decoded.sid,
+      }),
+      refreshToken: nextRefreshToken,
+      sessionId: decoded.sid,
     };
   }
 
@@ -477,20 +934,147 @@ class AuthService {
 
     const user = await userRepository
       .findById(userId)
-      .select("_id name username email role avatar cover");
+      .select(`${USER_PROFILE_SELECT} ${MFA_SUMMARY_SELECT}`);
     if (!user) {
       throw ApiError.notFound("User not found");
     }
 
-    const avatar = normalizeMediaValue(user.avatar);
-    const cover = normalizeMediaValue(user.cover);
-    const payload = user.toObject ? user.toObject() : { ...user };
-    payload.displayName = payload.name || "";
-    payload.avatar = avatar;
-    payload.cover = cover;
-    payload.avatarUrl = avatar.url;
-    payload.coverUrl = cover.url;
-    return payload;
+    return buildProfilePayload(user);
+  }
+
+  static async getMfaStatus(userId) {
+    const user = await User.findById(userId).select(
+      `_id email username role ${MFA_SUMMARY_SELECT}`
+    );
+    if (!user) {
+      throw ApiError.notFound("User not found");
+    }
+
+    return {
+      ...buildMfaSummary(user),
+      email: user.email || "",
+      username: user.username || "",
+    };
+  }
+
+  static async beginTwoFactorSetup({ userId }) {
+    const user = await User.findById(userId).select(
+      `_id email username role ${MFA_SETUP_SECRET_SELECT}`
+    );
+    if (!user) {
+      throw ApiError.notFound("User not found");
+    }
+    if (user?.twoFactor?.enabled) {
+      throw ApiError.conflict("Two-factor authentication is already enabled");
+    }
+
+    const secret = generateSecret();
+    user.twoFactor = user.twoFactor || {};
+    user.twoFactor.setupPending = true;
+    user.twoFactor.pendingSecretCipher = encryptSecret(secret);
+    await user.save();
+
+    return {
+      enabled: false,
+      method: "totp",
+      setupPending: true,
+      secret,
+      issuer: "Tengacion",
+      label: user.email || user.username || "user",
+      otpauthUrl: buildOtpauthUrl({
+        issuer: "Tengacion",
+        label: user.email || user.username || "user",
+        secret,
+      }),
+    };
+  }
+
+  static async verifyTwoFactorSetup({ userId, code }) {
+    const user = await User.findById(userId).select(`_id role ${MFA_SETUP_SECRET_SELECT}`);
+    if (!user) {
+      throw ApiError.notFound("User not found");
+    }
+
+    const pendingSecret = decryptSecret(user?.twoFactor?.pendingSecretCipher || "");
+    if (!pendingSecret) {
+      throw ApiError.badRequest("Two-factor setup was not started");
+    }
+
+    const valid = verifyTotp({ secret: pendingSecret, token: String(code || "").trim() });
+    if (!valid) {
+      throw ApiError.badRequest("Invalid authentication code");
+    }
+
+    user.twoFactor.enabled = true;
+    user.twoFactor.method = "totp";
+    user.twoFactor.setupPending = false;
+    user.twoFactor.secretCipher = user.twoFactor.pendingSecretCipher;
+    user.twoFactor.pendingSecretCipher = "";
+    user.twoFactor.enabledAt = new Date();
+    user.twoFactor.lastVerifiedAt = new Date();
+    await user.save();
+
+    return buildMfaSummary(user);
+  }
+
+  static async disableTwoFactor({ userId, password, code }) {
+    const user = await User.findById(userId).select(`+password _id role ${MFA_SECRET_SELECT}`);
+    if (!user) {
+      throw ApiError.notFound("User not found");
+    }
+    if (!user?.twoFactor?.enabled || user?.twoFactor?.method !== "totp") {
+      throw ApiError.badRequest("Two-factor authentication is not enabled");
+    }
+
+    const validPassword = await bcrypt.compare(String(password || ""), user.password);
+    if (!validPassword) {
+      throw ApiError.unauthorized("Current password is incorrect");
+    }
+
+    const secret = decryptSecret(user?.twoFactor?.secretCipher || "");
+    const validCode = verifyTotp({ secret, token: String(code || "").trim() });
+    if (!validCode) {
+      throw ApiError.badRequest("Invalid authentication code");
+    }
+
+    user.twoFactor.enabled = false;
+    user.twoFactor.method = "none";
+    user.twoFactor.setupPending = false;
+    user.twoFactor.secretCipher = "";
+    user.twoFactor.pendingSecretCipher = "";
+    user.twoFactor.enabledAt = null;
+    user.twoFactor.lastVerifiedAt = null;
+    await user.save();
+
+    return buildMfaSummary(user);
+  }
+
+  static async verifyStepUp({ userId, sessionId, code }) {
+    const user = await User.findById(userId).select(`_id role ${MFA_SECRET_SELECT}`);
+    if (!user) {
+      throw ApiError.notFound("User not found");
+    }
+    if (!user?.twoFactor?.enabled || user?.twoFactor?.method !== "totp") {
+      throw ApiError.badRequest("Two-factor authentication is required for step-up");
+    }
+
+    const secret = decryptSecret(user?.twoFactor?.secretCipher || "");
+    const valid = verifyTotp({ secret, token: String(code || "").trim() });
+    if (!valid) {
+      throw ApiError.badRequest("Invalid authentication code");
+    }
+
+    user.twoFactor.lastVerifiedAt = new Date();
+    await user.save();
+
+    return {
+      success: true,
+      stepUpToken: signStepUpToken({
+        userId: user._id.toString(),
+        sessionId,
+        scope: "default",
+      }),
+    };
   }
 
   static async requestEmailVerification({ userId, email }) {
@@ -603,10 +1187,17 @@ class AuthService {
     user.resetPasswordExpiresAt = null;
     user.passwordChangedAt = new Date();
     user.tokenVersion = (Number(user.tokenVersion) || 0) + 1;
+    const revokedSessionIds = (user.sessions || [])
+      .map((entry) => entry?.sessionId || "")
+      .filter(Boolean);
     user.sessions = [];
     await user.save();
 
-    return { success: true };
+    return {
+      success: true,
+      userId: user._id.toString(),
+      revokedSessionIds,
+    };
   }
 
   static async changePassword({ userId, oldPassword, newPassword }) {
@@ -623,13 +1214,20 @@ class AuthService {
     user.password = String(newPassword);
     user.passwordChangedAt = new Date();
     user.tokenVersion = (Number(user.tokenVersion) || 0) + 1;
+    const revokedSessionIds = (user.sessions || [])
+      .map((entry) => entry?.sessionId || "")
+      .filter(Boolean);
     user.sessions = [];
     await user.save();
-    return { success: true };
+    return {
+      success: true,
+      userId: user._id.toString(),
+      revokedSessionIds,
+    };
   }
 
   static async listSessions(userId) {
-    const user = await userRepository.findById(userId).select("sessions");
+    const user = await userRepository.findById(userId).select("sessions +sessions.refreshTokenHash");
     if (!user) throw ApiError.notFound("User not found");
     return (user.sessions || []).map(formatSession).sort((a, b) => {
       const at = new Date(a.lastSeenAt || a.createdAt || 0).getTime();
@@ -644,22 +1242,37 @@ class AuthService {
     const session = (user.sessions || []).find((entry) => entry.sessionId === sessionId);
     if (!session) throw ApiError.notFound("Session not found");
     session.revokedAt = new Date();
+    session.refreshTokenHash = "";
     await user.save();
-    return { success: true };
+    return { success: true, userId: user._id.toString(), sessionId };
   }
 
   static async revokeAllSessions({ userId, exceptSessionId = "" }) {
-    const user = await userRepository.findById(userId).select("sessions tokenVersion");
+    const user = await userRepository
+      .findById(userId)
+      .select("sessions tokenVersion +sessions.refreshTokenHash");
     if (!user) throw ApiError.notFound("User not found");
     const now = new Date();
+    const revokedSessionIds = [];
     (user.sessions || []).forEach((entry) => {
       if (!exceptSessionId || entry.sessionId !== exceptSessionId) {
         entry.revokedAt = now;
+        entry.refreshTokenHash = "";
+        if (entry.sessionId) {
+          revokedSessionIds.push(entry.sessionId);
+        }
       }
     });
-    user.tokenVersion = (Number(user.tokenVersion) || 0) + 1;
+    if (!exceptSessionId) {
+      user.tokenVersion = (Number(user.tokenVersion) || 0) + 1;
+    }
     await user.save();
-    return { success: true };
+    return {
+      success: true,
+      userId: user._id.toString(),
+      exceptSessionId: String(exceptSessionId || ""),
+      revokedSessionIds,
+    };
   }
 
   static async touchSession({ userId, sessionId }) {

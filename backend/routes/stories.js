@@ -1,11 +1,15 @@
 const express = require("express");
-const jwt = require("jsonwebtoken");
 const Story = require("../models/Story");
 const User = require("../models/User");
 const Message = require("../models/Message");
 const upload = require("../utils/upload");
 const { saveUploadedFile } = require("../services/mediaStore");
 const { createNotification } = require("../services/notificationService");
+const {
+  SessionAuthError,
+  authenticateAccessToken,
+  extractBearerToken,
+} = require("../services/sessionAuth");
 
 const router = express.Router();
 
@@ -25,20 +29,25 @@ const toIdString = (value) => {
 /* ================= AUTH ================= */
 
 function auth(req, res, next) {
-  const header = req.headers.authorization;
-  if (!header) return res.status(401).json({ error: "No token" });
+  const token = extractBearerToken(req.headers.authorization);
 
-  const token = header.startsWith("Bearer ")
-    ? header.split(" ")[1]
-    : header;
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
-    next();
-  } catch {
-    return res.status(401).json({ error: "Invalid token" });
-  }
+  authenticateAccessToken(token, { touchSession: true })
+    .then((authContext) => {
+      req.userId = authContext.userId;
+      req.user = {
+        id: authContext.userId,
+        _id: authContext.user._id,
+        role: authContext.user.role || "user",
+        sessionId: authContext.sessionId,
+      };
+      next();
+    })
+    .catch((err) => {
+      if (err instanceof SessionAuthError) {
+        return res.status(err.statusCode || 401).json({ error: err.message });
+      }
+      return res.status(401).json({ error: "Invalid token" });
+    });
 }
 
 const inferStoryMediaType = (file = null) => {

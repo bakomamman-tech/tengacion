@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { register as registerApi } from "../api";
 import AuthPasswordField from "../components/AuthPasswordField";
+import { useAuth } from "../context/AuthContext";
 
 const MONTH_OPTIONS = [
   "January",
@@ -37,6 +38,7 @@ const calculateAge = (dateValue) => {
 
 export default function Register() {
   const navigate = useNavigate();
+  const { user, login } = useAuth();
 
   const [form, setForm] = useState({
     firstName: "",
@@ -61,8 +63,7 @@ export default function Register() {
     return Array.from({ length: count }, (_, idx) => String(idx + 1));
   }, []);
 
-  const token = localStorage.getItem("token");
-  if (token) {
+  if (user) {
     return <Navigate to="/home" replace />;
   }
 
@@ -148,7 +149,7 @@ export default function Register() {
     setLoading(true);
 
     try {
-      await registerApi({
+      const payload = await registerApi({
         name: `${firstName} ${lastName}`.trim(),
         username,
         email,
@@ -158,11 +159,14 @@ export default function Register() {
         gender,
       });
 
-      if (phone) {
-        toast.success("Account created. Log in with your username.");
-      } else {
-        toast.success("Account created successfully. Please log in.");
+      if (payload?.token && payload?.user) {
+        login(payload.token, payload.user);
+        toast.success(phone ? "Account created. You are now signed in." : "Account created.");
+        navigate("/home", { replace: true });
+        return;
       }
+
+      toast.success("Account created.");
       navigate("/", { replace: true });
     } catch (err) {
       toast.error(err?.message || "Registration failed.");

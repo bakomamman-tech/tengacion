@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const auth = require("../middleware/auth");
 const requireRole = require("../middleware/requireRole");
+const requireStepUp = require("../middleware/requireStepUp");
 const User = require("../models/User");
 const AuditLog = require("../models/AuditLog");
 const Post = require("../models/Post");
@@ -15,6 +16,7 @@ const Book = require("../models/Book");
 const Video = require("../models/Video");
 const Purchase = require("../models/Purchase");
 const { writeAuditLog } = require("../services/auditLogService");
+const { disconnectUserSockets } = require("../utils/realtimeSessions");
 const { buildAdminDashboard } = require("../services/adminDashboardService");
 const {
   buildOverview,
@@ -240,7 +242,7 @@ router.get("/users/:id", async (req, res) => {
   }
 });
 
-router.patch("/users/:id", async (req, res) => {
+router.patch("/users/:id", requireStepUp({ adminOnly: true }), async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id" });
@@ -276,6 +278,12 @@ router.patch("/users/:id", async (req, res) => {
     }
 
     await target.save();
+    if (!target.isActive) {
+      disconnectUserSockets(req.app, target._id, {
+        code: "ACCOUNT_INACTIVE",
+        message: "Your account was disabled. Please contact support.",
+      });
+    }
     await writeAuditLog({
       req,
       actorId,
@@ -296,7 +304,7 @@ router.patch("/users/:id", async (req, res) => {
   }
 });
 
-router.post("/users/:id/ban", async (req, res) => {
+router.post("/users/:id/ban", requireStepUp({ adminOnly: true }), async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id" });
@@ -317,6 +325,10 @@ router.post("/users/:id/ban", async (req, res) => {
     target.bannedBy = new mongoose.Types.ObjectId(req.user.id);
     target.tokenVersion = (Number(target.tokenVersion) || 0) + 1;
     await target.save();
+    disconnectUserSockets(req.app, target._id, {
+      code: "ACCOUNT_BANNED",
+      message: "Your account was banned.",
+    });
 
     await writeAuditLog({
       req,
@@ -342,7 +354,7 @@ router.post("/users/:id/ban", async (req, res) => {
   }
 });
 
-router.post("/users/:id/unban", async (req, res) => {
+router.post("/users/:id/unban", requireStepUp({ adminOnly: true }), async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id" });
@@ -374,7 +386,7 @@ router.post("/users/:id/unban", async (req, res) => {
   }
 });
 
-router.post("/users/:id/force-logout", async (req, res) => {
+router.post("/users/:id/force-logout", requireStepUp({ adminOnly: true }), async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id" });
@@ -388,6 +400,10 @@ router.post("/users/:id/force-logout", async (req, res) => {
     }
     target.tokenVersion = (Number(target.tokenVersion) || 0) + 1;
     await target.save();
+    disconnectUserSockets(req.app, target._id, {
+      code: "ADMIN_FORCE_LOGOUT",
+      message: "An administrator logged out your account.",
+    });
 
     await writeAuditLog({
       req,
@@ -405,7 +421,7 @@ router.post("/users/:id/force-logout", async (req, res) => {
   }
 });
 
-router.post("/users/:id/reset-password", async (req, res) => {
+router.post("/users/:id/reset-password", requireStepUp({ adminOnly: true }), async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id" });
@@ -433,7 +449,7 @@ router.post("/users/:id/reset-password", async (req, res) => {
   }
 });
 
-router.delete("/users/:id", async (req, res) => {
+router.delete("/users/:id", requireStepUp({ adminOnly: true }), async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id" });
@@ -460,6 +476,10 @@ router.delete("/users/:id", async (req, res) => {
       target.email = `deleted+${uid.slice(-8)}@tengacion.local`;
     }
     await target.save();
+    disconnectUserSockets(req.app, target._id, {
+      code: "ACCOUNT_DELETED",
+      message: "This account is no longer available.",
+    });
 
     await User.updateMany(
       {},

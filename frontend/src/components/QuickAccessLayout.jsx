@@ -15,7 +15,6 @@ export default function QuickAccessLayout({ user, title, subtitle, children }) {
   const [chatDockMeta, setChatDockMeta] = useState(null);
 
   const logout = () => {
-    localStorage.removeItem("token");
     navigate("/");
   };
 

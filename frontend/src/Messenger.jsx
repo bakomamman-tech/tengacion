@@ -220,7 +220,6 @@ export default function Messenger({ user, onClose, onMinimize }) {
   const { confirm } = useDialog();
   const navigate = useNavigate();
   const meId = useMemo(() => toIdString(user?._id || user?.id), [user]);
-  const token = localStorage.getItem("token");
 
   const [text, setText] = useState("");
   const [contacts, setContacts] = useState([]);
@@ -733,9 +732,9 @@ export default function Messenger({ user, onClose, onMinimize }) {
   }, [messages]);
 
   useEffect(() => {
-    if (!meId || !token) {return undefined;}
+    if (!meId) {return undefined;}
 
-    const socket = connectSocket({ token, userId: meId });
+    const socket = connectSocket({ userId: meId });
     if (!socket) {return undefined;}
     socketRef.current = socket;
 
@@ -851,7 +850,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
       disconnectSocket();
       socketRef.current = null;
     };
-  }, [meId, moveContactToTop, token]);
+  }, [meId, moveContactToTop]);
 
   useEffect(() => {
     const socket = socketRef.current;

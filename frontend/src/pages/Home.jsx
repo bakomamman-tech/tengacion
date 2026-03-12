@@ -782,12 +782,7 @@ export default function Home({ user }) {
       return;
     }
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      return;
-    }
-
-    const socket = connectSocket({ token, userId: viewerId });
+    const socket = connectSocket({ userId: viewerId });
     if (!socket) {
       return;
     }
@@ -827,7 +822,6 @@ export default function Home({ user }) {
   }, [profile?._id, user?._id]);
 
   const logout = () => {
-    localStorage.removeItem("token");
     navigate("/");
   };
 

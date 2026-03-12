@@ -30,6 +30,10 @@ class ApiError extends Error {
   static serviceUnavailable(message = "Service unavailable") {
     return new ApiError(message, 503);
   }
+
+  static tooManyRequests(message = "Too many requests", details = null) {
+    return new ApiError(message, 429, details);
+  }
 }
 
 module.exports = ApiError;

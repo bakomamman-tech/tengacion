@@ -232,6 +232,10 @@ const UserSchema = new mongoose.Schema(
         deviceName: { type: String, default: "", trim: true, maxlength: 180 },
         ip: { type: String, default: "", trim: true, maxlength: 180 },
         userAgent: { type: String, default: "", trim: true, maxlength: 400 },
+        country: { type: String, default: "", trim: true, maxlength: 32 },
+        city: { type: String, default: "", trim: true, maxlength: 120 },
+        fingerprint: { type: String, default: "", trim: true, maxlength: 128 },
+        refreshTokenHash: { type: String, default: "", select: false },
         createdAt: { type: Date, default: Date.now },
         lastSeenAt: { type: Date, default: Date.now },
         revokedAt: { type: Date, default: null },
@@ -257,7 +261,37 @@ const UserSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
+      secretCipher: {
+        type: String,
+        default: "",
+        select: false,
+      },
+      pendingSecretCipher: {
+        type: String,
+        default: "",
+        select: false,
+      },
+      enabledAt: {
+        type: Date,
+        default: null,
+      },
+      lastVerifiedAt: {
+        type: Date,
+        default: null,
+      },
     },
+
+    trustedDevices: [
+      {
+        fingerprint: { type: String, required: true, trim: true, maxlength: 128 },
+        deviceName: { type: String, default: "", trim: true, maxlength: 180 },
+        userAgent: { type: String, default: "", trim: true, maxlength: 400 },
+        firstSeenAt: { type: Date, default: Date.now },
+        lastSeenAt: { type: Date, default: Date.now },
+        lastIp: { type: String, default: "", trim: true, maxlength: 180 },
+        lastCountry: { type: String, default: "", trim: true, maxlength: 32 },
+      },
+    ],
 
     lastLogin: Date,
 

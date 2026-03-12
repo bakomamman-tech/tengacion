@@ -232,7 +232,6 @@ export default function GamingPage({ user }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
     navigate("/");
   };
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { register as registerApi } from "./api";
+import { setSessionAccessToken } from "./authSession";
 
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -469,7 +470,7 @@ export default function Register({ onBack }) {
 
       if (result?.token && result?.user) {
         // Save session
-        localStorage.setItem("token", result.token);
+        setSessionAccessToken(result.token);
         localStorage.setItem("user", JSON.stringify(result.user));
 
         setCreatedToken(result.token);

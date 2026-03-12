@@ -1,6 +1,9 @@
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
 const asyncHandler = require("./asyncHandler");
+const {
+  SessionAuthError,
+  authenticateAccessToken,
+  extractBearerToken,
+} = require("../services/sessionAuth");
 
 /**
  * Authentication middleware
@@ -10,69 +13,33 @@ const asyncHandler = require("./asyncHandler");
  * - Attaches trusted user identity to request
  */
 const auth = asyncHandler(async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ error: "No token" });
   }
 
-  const token = authHeader.split(" ")[1];
-
-  let decoded;
+  const token = extractBearerToken(authHeader);
   try {
-    decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const authContext = await authenticateAccessToken(token, { touchSession: true });
+    req.user = {
+      id: authContext.userId,
+      _id: authContext.user._id,
+      role: authContext.user.role || "user",
+      tokenVersion: authContext.tokenVersion,
+      sessionId: authContext.sessionId,
+      twoFactor: {
+        enabled: Boolean(authContext.user?.twoFactor?.enabled),
+        method: authContext.user?.twoFactor?.method || "none",
+      },
+    };
+    req.userId = authContext.userId;
+    next();
   } catch (err) {
-    if (err.name === "TokenExpiredError") {
-      return res.status(401).json({ error: "Session expired" });
+    if (err instanceof SessionAuthError) {
+      return res.status(err.statusCode || 401).json({ error: err.message });
     }
     return res.status(401).json({ error: "Invalid token" });
   }
-
-  const user = await User.findById(decoded.id).select(
-    "_id role isActive isBanned isDeleted tokenVersion sessions"
-  );
-
-  if (!user) {
-    return res.status(401).json({ error: "User no longer exists" });
-  }
-  if (!user.isActive || user.isDeleted) {
-    return res.status(403).json({ error: "Account is inactive" });
-  }
-  if (user.isBanned) {
-    return res.status(403).json({ error: "Account is banned" });
-  }
-
-  const tokenVersion = Number(user.tokenVersion) || 0;
-  const claimVersion = Number(decoded.tv ?? 0);
-  if (claimVersion !== tokenVersion) {
-    return res.status(401).json({ error: "Session revoked. Please login again." });
-  }
-  const claimSessionId = String(decoded.sid || "").trim();
-  if (!claimSessionId) {
-    return res.status(401).json({ error: "Session invalid. Please login again." });
-  }
-  const session = Array.isArray(user.sessions)
-    ? user.sessions.find((entry) => String(entry?.sessionId || "") === claimSessionId)
-    : null;
-  if (!session || session.revokedAt) {
-    return res.status(401).json({ error: "Session revoked. Please login again." });
-  }
-  // Touch session lastSeenAt using atomic update to avoid saving partially selected user docs.
-  await User.updateOne(
-    { _id: user._id, "sessions.sessionId": claimSessionId },
-    { $set: { "sessions.$.lastSeenAt": new Date() } }
-  );
-
-  req.user = {
-    id: user._id.toString(),
-    _id: user._id,
-    role: user.role || "user",
-    tokenVersion,
-    sessionId: claimSessionId,
-  };
-  req.userId = user._id.toString();
-
-  next();
 });
 
 module.exports = auth;

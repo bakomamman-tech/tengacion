@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { createReport } from "../api";
+import { apiRequest, createReport } from "../api";
 import { createReportDialogConfig } from "../constants/reportReasons";
 import Button from "./ui/Button";
 import { useDialog } from "./ui/useDialog";
@@ -173,19 +173,13 @@ export default function PostComments({
       setError("");
 
       const payloadText = text.trim() || "Image reply";
-      const res = await fetch(`/api/posts/${postId}/comment`, {
+      const data = await apiRequest(`/api/posts/${postId}/comment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer " + localStorage.getItem("token"),
         },
         body: JSON.stringify({ text: payloadText }),
       });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data?.error || "Failed to send comment");
-      }
 
       const serverComment = normalizeComment(data?.comment, Date.now()) || {
         id: Date.now().toString(),

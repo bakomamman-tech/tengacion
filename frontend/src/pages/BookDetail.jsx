@@ -28,7 +28,7 @@ export default function BookDetail() {
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
 
-  const isLoggedIn = Boolean(user?._id || localStorage.getItem("token"));
+  const isLoggedIn = Boolean(user?._id);
 
   const loadBook = useCallback(async () => {
     setLoading(true);

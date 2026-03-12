@@ -248,11 +248,11 @@ export default function Navbar({
 
   const handleLogout = () => {
     closeAccountMenu();
+    authLogout({ remote: true });
     if (typeof onLogout === "function") {
       onLogout();
       return;
     }
-    authLogout();
     navigate("/");
   };
 

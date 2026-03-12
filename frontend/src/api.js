@@ -5,21 +5,64 @@
 // ---------------- BASE CONFIG ----------------
 
 // Same-origin API (works locally, on Render, and behind proxies)
+import {
+  clearSessionAccessToken,
+  emitAuthLogout,
+  getSessionAccessToken,
+  setSessionAccessToken,
+} from "./authSession";
+
 export const API_BASE = "/api";
 
 // ---------------- AUTH HELPERS ----------------
 
 const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
+  const token = getSessionAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const getDeviceName = () => {
+  if (typeof navigator === "undefined") {
+    return "Web browser";
+  }
+
+  const ua = String(navigator.userAgent || "");
+  const platform =
+    navigator.userAgentData?.platform ||
+    navigator.platform ||
+    "";
+  const browser =
+    (Array.isArray(navigator.userAgentData?.brands) &&
+      navigator.userAgentData.brands
+        .map((entry) => entry?.brand)
+        .filter(Boolean)
+        .join(" ")) ||
+    (ua.includes("Edg/")
+      ? "Microsoft Edge"
+      : ua.includes("Chrome/")
+        ? "Google Chrome"
+        : ua.includes("Firefox/")
+          ? "Mozilla Firefox"
+          : ua.includes("Safari/")
+            ? "Safari"
+            : "Browser");
+
+  return [browser, platform].filter(Boolean).join(" on ") || "Web browser";
 };
 
 const handleAuthFailure = (error = "Unauthorized") => {
   console.warn("🔐 Authentication failure:", error);
 
+  clearSessionAccessToken();
+  try {
+    localStorage.removeItem("user");
+  } catch {
+    // ignore storage errors
+  }
+  emitAuthLogout(error);
+
   // Prevent redirect loops
-  if (window.location.pathname !== "/") {
-    localStorage.clear();
+  if (window.location.pathname !== "/" && window.location.pathname !== "/login") {
     window.location.replace("/");
   }
 };
@@ -34,7 +77,7 @@ const safeJSON = (text) => {
   }
 };
 
-const parseResponse = async (response) => {
+const parseResponse = async (response, { suppressAuthFailure = false } = {}) => {
   const raw = await response.text();
   const contentType = response.headers.get("content-type") || "";
   const isJson = contentType.includes("application/json");
@@ -45,16 +88,21 @@ const parseResponse = async (response) => {
     : {};
 
   if (response.status === 401) {
-    handleAuthFailure(data?.error);
+    if (!suppressAuthFailure) {
+      handleAuthFailure(data?.error);
+    }
     throw new Error(data?.error || "Unauthorized");
   }
 
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       data?.error ||
       data?.message ||
       `Request failed (${response.status})`
     );
+    error.status = response.status;
+    error.details = data?.details || null;
+    throw error;
   }
 
   return data;
@@ -70,23 +118,82 @@ const withTimeout = (promise, ms = 15000) =>
     ),
   ]);
 
+let refreshPromise = null;
+const shouldSkipRefresh = (url = "") =>
+  String(url || "").includes("/auth/login") ||
+  String(url || "").includes("/auth/register") ||
+  String(url || "").includes("/auth/refresh") ||
+  String(url || "").includes("/auth/challenge/verify");
+
+const refreshSession = async () => {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = withTimeout(
+    fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    }),
+    15000
+  )
+    .then((response) => parseResponse(response))
+    .then((data) => {
+      if (data?.token) {
+        setSessionAccessToken(data.token);
+      }
+      return data;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+};
+
 const request = async (url, options = {}) => {
-  const { timeoutMs = 15000, ...fetchOptions } = options;
+  const {
+    timeoutMs = 15000,
+    skipAuthRefresh = false,
+    suppressAuthFailure = false,
+    ...fetchOptions
+  } = options;
 
   if (!navigator.onLine) {
     throw new Error("No internet connection");
   }
 
-  const response = await withTimeout(
-    fetch(url, {
-      credentials: "same-origin",
-      ...fetchOptions,
-    }),
-    timeoutMs
-  );
+  const doFetch = () =>
+    withTimeout(
+      fetch(url, {
+        credentials: "same-origin",
+        ...fetchOptions,
+      }),
+      timeoutMs
+    );
 
-  return parseResponse(response);
+  let response = await doFetch();
+  if (response.status === 401 && !skipAuthRefresh && !shouldSkipRefresh(url)) {
+    try {
+      const refreshPayload = await refreshSession();
+      if (refreshPayload?.token) {
+        response = await doFetch();
+      }
+    } catch {
+      // Fall through to standard auth failure handling.
+    }
+  }
+
+  const data = await parseResponse(response, { suppressAuthFailure });
+  if (data?.token) {
+    setSessionAccessToken(data.token);
+  }
+  return data;
 };
+
+export const apiRequest = request;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const compressImageFile = async (file) => {
@@ -146,7 +253,7 @@ const uploadPostFormWithProgress = ({
     xhr.withCredentials = true;
     xhr.timeout = timeoutMs;
 
-    const token = localStorage.getItem("token");
+    const token = getSessionAccessToken();
     if (token) {
       xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     }
@@ -205,7 +312,7 @@ const uploadFormWithProgress = ({
     xhr.withCredentials = true;
     xhr.timeout = timeoutMs;
 
-    const token = localStorage.getItem("token");
+    const token = getSessionAccessToken();
     if (token) {
       xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     }
@@ -260,14 +367,44 @@ export const login = (email, password) =>
   request(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, emailOrUsername: email, password }),
+    skipAuthRefresh: true,
+    suppressAuthFailure: true,
+    body: JSON.stringify({
+      email,
+      emailOrUsername: email,
+      password,
+      deviceName: getDeviceName(),
+    }),
   });
 
 export const register = (payload) =>
   request(`${API_BASE}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    skipAuthRefresh: true,
+    suppressAuthFailure: true,
+    body: JSON.stringify({
+      ...(payload || {}),
+      deviceName: getDeviceName(),
+    }),
+  });
+
+export const restoreSession = () =>
+  request(`${API_BASE}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+    skipAuthRefresh: true,
+    suppressAuthFailure: true,
+  });
+
+export const verifyLoginChallenge = ({ challengeToken, code }) =>
+  request(`${API_BASE}/auth/challenge/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ challengeToken, code }),
+    skipAuthRefresh: true,
+    suppressAuthFailure: true,
   });
 
 export const requestVerifyEmail = () =>
@@ -305,6 +442,51 @@ export const changePassword = ({ oldPassword, newPassword }) =>
       ...getAuthHeaders(),
     },
     body: JSON.stringify({ oldPassword, newPassword }),
+  });
+
+export const getMfaStatus = () =>
+  request(`${API_BASE}/auth/mfa`, {
+    headers: getAuthHeaders(),
+  });
+
+export const startMfaSetup = () =>
+  request(`${API_BASE}/auth/mfa/setup`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({}),
+  });
+
+export const confirmMfaSetup = (code) =>
+  request(`${API_BASE}/auth/mfa/setup/verify`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ code }),
+  });
+
+export const disableMfa = ({ password, code }) =>
+  request(`${API_BASE}/auth/mfa/disable`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ password, code }),
+  });
+
+export const verifyStepUp = (code) =>
+  request(`${API_BASE}/auth/mfa/step-up`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ code }),
   });
 
 export const listSessions = () =>
@@ -1051,7 +1233,7 @@ export const createStoryWithUploadProgress = ({
     xhr.withCredentials = true;
     xhr.timeout = timeoutMs;
 
-    const token = localStorage.getItem("token");
+    const token = getSessionAccessToken();
     if (token) {
       xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     }

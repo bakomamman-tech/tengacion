@@ -42,12 +42,11 @@ export default function FriendRequests() {
   }, [loadRequests]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token || !user?._id) {
+    if (!user?._id) {
       return undefined;
     }
 
-    const socket = connectSocket({ token, userId: user._id });
+    const socket = connectSocket({ userId: user._id });
     if (!socket) {
       return undefined;
     }

@@ -8,7 +8,10 @@ const ensureObject = (value, fallback = {}) => {
 };
 
 async function repairUserSecurityFields({ logger = console } = {}) {
-  const cursor = User.find({}, "_id privacy onboarding notificationPrefs sessions interests blocks mutes restricts hiddenStoriesFrom").cursor();
+  const cursor = User.find(
+    {},
+    "_id privacy onboarding notificationPrefs sessions twoFactor trustedDevices interests blocks mutes restricts hiddenStoriesFrom"
+  ).cursor();
   let touched = 0;
   for await (const user of cursor) {
     let dirty = false;
@@ -34,6 +37,20 @@ async function repairUserSecurityFields({ logger = console } = {}) {
 
     if (!Array.isArray(user.sessions)) {
       user.sessions = [];
+      dirty = true;
+    }
+    if (!user.twoFactor || typeof user.twoFactor !== "object") {
+      user.twoFactor = {
+        enabled: false,
+        method: "none",
+        setupPending: false,
+        enabledAt: null,
+        lastVerifiedAt: null,
+      };
+      dirty = true;
+    }
+    if (!Array.isArray(user.trustedDevices)) {
+      user.trustedDevices = [];
       dirty = true;
     }
     if (!Array.isArray(user.interests)) {

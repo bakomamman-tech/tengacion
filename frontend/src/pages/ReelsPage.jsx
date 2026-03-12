@@ -424,7 +424,6 @@ export default function ReelsPage({ user }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
     navigate("/");
   };
 

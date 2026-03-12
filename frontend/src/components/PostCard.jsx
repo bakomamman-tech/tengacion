@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 import PostComments from "./PostComments";
-import { createReport, initPayment, resolveImage } from "../api";
+import { apiRequest, createReport, initPayment, resolveImage } from "../api";
 import { createReportDialogConfig } from "../constants/reportReasons";
 import VideoPlayer from "./media/VideoPlayer";
 import { useDialog } from "./ui/useDialog";
@@ -84,19 +84,13 @@ function EditPostModal({ post, onClose, onSave }) {
     try {
       setLoading(true);
 
-      const res = await fetch(`/api/posts/${post._id}`, {
+      const data = await apiRequest(`/api/posts/${post._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer " + localStorage.getItem("token"),
         },
         body: JSON.stringify({ text }),
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || "Failed to update post");
-      }
 
       onSave(data);
       onClose();
@@ -394,17 +388,9 @@ export default function PostCard({
     try {
       setLiking(true);
 
-      const res = await fetch(`/api/posts/${post._id}/like`, {
+      const data = await apiRequest(`/api/posts/${post._id}/like`, {
         method: "POST",
-        headers: {
-          Authorization: "Bearer " + localStorage.getItem("token"),
-        },
       });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data?.error || "Failed to update like");
-      }
 
       const nextLiked = Boolean(data?.liked);
       setLikedByViewer(nextLiked);
@@ -431,17 +417,9 @@ export default function PostCard({
     try {
       setSharing(true);
 
-      const res = await fetch(`/api/posts/${post._id}/share`, {
+      const data = await apiRequest(`/api/posts/${post._id}/share`, {
         method: "POST",
-        headers: {
-          Authorization: "Bearer " + localStorage.getItem("token"),
-        },
       });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data?.error || "Failed to share post");
-      }
 
       setShareCount((current) => {
         const nextCount = Number(data?.shareCount);
@@ -483,17 +461,9 @@ export default function PostCard({
     try {
       setDeleting(true);
 
-      const res = await fetch(`/api/posts/${post._id}`, {
+      await apiRequest(`/api/posts/${post._id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: "Bearer " + localStorage.getItem("token"),
-        },
       });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data?.error || "Failed to delete post");
-      }
 
       onDelete?.(post._id);
       setMenuOpen(false);

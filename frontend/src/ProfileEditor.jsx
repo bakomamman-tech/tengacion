@@ -556,7 +556,6 @@ export default function ProfileEditor({ user }) {
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
     navigate("/");
   };
 

@@ -131,12 +131,7 @@ export default function GoLive() {
       return;
     }
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      return;
-    }
-
-    const socket = connectSocket({ token, userId: user._id });
+    const socket = connectSocket({ userId: user._id });
     if (!socket) {
       return;
     }

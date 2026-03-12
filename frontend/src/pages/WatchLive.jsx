@@ -69,15 +69,11 @@ export default function WatchLive() {
       return;
     }
 
-    const token = localStorage.getItem("token");
-    if (!token) {
+    if (!user?._id) {
       return;
     }
 
-    const socket = connectSocket({
-      token,
-      userId: user._id,
-    });
+    const socket = connectSocket({ userId: user._id });
     if (!socket) {
       return;
     }

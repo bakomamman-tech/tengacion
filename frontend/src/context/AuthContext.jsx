@@ -1,5 +1,11 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import axios from "axios";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+
+import { logoutCurrentSession, restoreSession as restoreSessionApi } from "../api";
+import {
+  clearSessionAccessToken,
+  SESSION_LOGOUT_EVENT,
+  setSessionAccessToken,
+} from "../authSession";
 
 const AuthContext = createContext(null);
 
@@ -42,122 +48,101 @@ const persistUserSnapshot = (nextUser) => {
   }
 };
 
-/* ======================================================
-   FACEBOOK-GRADE AUTH PROVIDER (FAILSAFE)
-====================================================== */
-
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  /* ===== AXIOS INTERCEPTORS ===== */
-  useEffect(() => {
-    const req = axios.interceptors.request.use((config) => {
-      const token = localStorage.getItem("token");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    });
-
-    const res = axios.interceptors.response.use(
-      (r) => r,
-      (err) => {
-        if (err?.response?.status === 401) {
-          hardLogout();
-        }
-        return Promise.reject(err);
-      }
-    );
-
-    return () => {
-      axios.interceptors.request.eject(req);
-      axios.interceptors.response.eject(res);
-    };
-  }, []);
-
-  /* ===== RESTORE SESSION (NON-BLOCKING) ===== */
-  useEffect(() => {
-    let alive = true;
-
-    const token = localStorage.getItem("token");
-
-    // Guest: never block UI
-    if (!token) {
-      setLoading(false);
-      return;
+  const applyUser = useCallback((nextUser, token = "") => {
+    const normalized = normalizeUserMedia(nextUser || null);
+    if (token) {
+      setSessionAccessToken(token);
     }
-
-    const controller = new AbortController();
-
-    axios
-      .get("/api/auth/me", { signal: controller.signal })
-      .then((res) => {
-        if (!alive) {return;}
-        const normalized = normalizeUserMedia(res.data?.user || res.data || null);
-        setUser(normalized);
-        persistUserSnapshot(normalized);
-      })
-      .catch(() => {
-        if (!alive) {return;}
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        setUser(null);
-      })
-      .finally(() => {
-        if (alive) {setLoading(false);}
-      });
-
-    // 🔒 HARD FAILSAFE (prevents infinite loading)
-    const timeout = setTimeout(() => {
-      if (alive) {setLoading(false);}
-    }, 4000);
-
-    return () => {
-      alive = false;
-      controller.abort();
-      clearTimeout(timeout);
-    };
-  }, []);
-
-  /* ===== MULTI-TAB SYNC ===== */
-  useEffect(() => {
-    const sync = (e) => {
-      if (e.key === "token" && !e.newValue) {
-        setUser(null);
-      }
-    };
-
-    window.addEventListener("storage", sync);
-    return () => window.removeEventListener("storage", sync);
-  }, []);
-
-  /* ===== ACTIONS ===== */
-
-  const login = (token, userData) => {
-    if (!token || !userData) {return;}
-    localStorage.setItem("token", token);
-    const normalized = normalizeUserMedia(userData);
     setUser(normalized);
     persistUserSnapshot(normalized);
     setError(null);
-  };
+    return normalized;
+  }, []);
 
-  const hardLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+  const hardLogout = useCallback(async ({ remote = false } = {}) => {
+    if (remote) {
+      try {
+        await logoutCurrentSession();
+      } catch {
+        // Continue with local cleanup even if revoke fails.
+      }
+    }
+    clearSessionAccessToken();
+    persistUserSnapshot(null);
     setUser(null);
     setLoading(false);
-  };
+  }, []);
 
-  const updateUser = (data) => {
-    setUser((u) => {
-      const next = u ? normalizeUserMedia({ ...u, ...data }) : u;
+  useEffect(() => {
+    let alive = true;
+
+    const restore = async () => {
+      try {
+        const payload = await restoreSessionApi();
+        if (!alive) {
+          return;
+        }
+        applyUser(payload?.user || null, payload?.token || "");
+      } catch {
+        if (!alive) {
+          return;
+        }
+        clearSessionAccessToken();
+        persistUserSnapshot(null);
+        setUser(null);
+      } finally {
+        if (alive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    restore();
+    return () => {
+      alive = false;
+    };
+  }, [applyUser]);
+
+  useEffect(() => {
+    const onStorage = (event) => {
+      if (event.key === "user" && !event.newValue) {
+        setUser(null);
+      }
+    };
+    const onForcedLogout = () => {
+      hardLogout({ remote: false });
+    };
+
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(SESSION_LOGOUT_EVENT, onForcedLogout);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(SESSION_LOGOUT_EVENT, onForcedLogout);
+    };
+  }, [hardLogout]);
+
+  const login = useCallback(
+    (token, userData) => {
+      if (!userData) {
+        return;
+      }
+      applyUser(userData, token || "");
+    },
+    [applyUser]
+  );
+
+  const updateUser = useCallback((data) => {
+    setUser((current) => {
+      const next = current ? normalizeUserMedia({ ...current, ...data }) : current;
       persistUserSnapshot(next);
       return next;
     });
-  };
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -165,11 +150,9 @@ export function AuthProvider({ children }) {
         user,
         loading,
         error,
-
         login,
         logout: hardLogout,
         updateUser,
-
         isAuthenticated: Boolean(user),
       }}
     >

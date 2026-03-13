@@ -49,6 +49,7 @@ const MORE_OPTIONS = [
 const INITIAL_VISIBLE_POSTS = 10;
 const LOAD_MORE_INCREMENT = 8;
 const DISCOVERY_BATCH_DELAY_MS = 1400;
+const FEED_AUTO_REFRESH_MS = 5 * 60 * 1000;
 const FEED_SURFACES = [
   { id: "for_you", label: "For You" },
   { id: "following", label: "Following" },
@@ -943,6 +944,7 @@ export default function Home({ user }) {
   const loadMoreRef = useRef(null);
   const quickMediaRef = useRef(null);
   const feedRequestSequenceRef = useRef(0);
+  const lastFeedRefreshAtRef = useRef(0);
   const discoveryQueueRef = useRef([]);
   const discoveryFlushTimerRef = useRef(null);
 
@@ -1005,15 +1007,24 @@ export default function Home({ user }) {
     [flushDiscoveryEvents]
   );
 
-  const loadFeedSurface = useCallback(async (surface) => {
+  const loadFeedSurface = useCallback(async (
+    surface,
+    { silent = false, preserveVisibleCount = false } = {}
+  ) => {
     const requestSequence = ++feedRequestSequenceRef.current;
 
-    setFeedLoading(true);
-    setFeedError("");
-    setFeedUsesDiscovery(false);
-    setFeedFallback(false);
+    if (!silent) {
+      setFeedLoading(true);
+      setFeedError("");
+      setFeedUsesDiscovery(false);
+      setFeedFallback(false);
+    }
 
     try {
+      let nextItems = [];
+      let nextUsesDiscovery = false;
+      let nextFallback = false;
+
       if (surface === "for_you") {
         try {
           const payload = await getDiscoveryHome({ limit: 28 });
@@ -1021,18 +1032,18 @@ export default function Home({ user }) {
             return;
           }
 
-          setFeedItems(normalizeDiscoveryFeedItems(payload));
-          setFeedUsesDiscovery(true);
-          setFeedFallback(false);
+          nextItems = normalizeDiscoveryFeedItems(payload);
+          nextUsesDiscovery = true;
+          nextFallback = false;
         } catch {
           const fallbackFeed = await getFeed();
           if (requestSequence !== feedRequestSequenceRef.current) {
             return;
           }
 
-          setFeedItems(normalizeLegacyFeedItems(fallbackFeed));
-          setFeedUsesDiscovery(false);
-          setFeedFallback(true);
+          nextItems = normalizeLegacyFeedItems(fallbackFeed);
+          nextUsesDiscovery = false;
+          nextFallback = true;
         }
       } else {
         const payload = await getFeed();
@@ -1040,16 +1051,27 @@ export default function Home({ user }) {
           return;
         }
 
-        setFeedItems(normalizeLegacyFeedItems(payload));
-        setFeedUsesDiscovery(false);
-        setFeedFallback(false);
+        nextItems = normalizeLegacyFeedItems(payload);
+        nextUsesDiscovery = false;
+        nextFallback = false;
       }
 
       if (requestSequence === feedRequestSequenceRef.current) {
-        setVisiblePostCount(INITIAL_VISIBLE_POSTS);
+        setFeedItems(nextItems);
+        setFeedUsesDiscovery(nextUsesDiscovery);
+        setFeedFallback(nextFallback);
+        setFeedError("");
+        lastFeedRefreshAtRef.current = Date.now();
+        if (!preserveVisibleCount) {
+          setVisiblePostCount(INITIAL_VISIBLE_POSTS);
+        }
       }
     } catch (err) {
       if (requestSequence !== feedRequestSequenceRef.current) {
+        return;
+      }
+
+      if (silent) {
         return;
       }
 
@@ -1058,7 +1080,7 @@ export default function Home({ user }) {
       setFeedFallback(false);
       setFeedError(err?.message || "Failed to load feed");
     } finally {
-      if (requestSequence === feedRequestSequenceRef.current) {
+      if (!silent && requestSequence === feedRequestSequenceRef.current) {
         setFeedLoading(false);
       }
     }
@@ -1102,6 +1124,47 @@ export default function Home({ user }) {
 
   useEffect(() => {
     void loadFeedSurface(feedSurface);
+  }, [feedSurface, loadFeedSurface]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const refreshFeed = () => {
+      if (typeof document !== "undefined" && document.hidden) {
+        return;
+      }
+      void loadFeedSurface(feedSurface, {
+        silent: true,
+        preserveVisibleCount: true,
+      });
+    };
+
+    const handleVisibilityChange = () => {
+      if (typeof document === "undefined" || document.hidden) {
+        return;
+      }
+      if (Date.now() - lastFeedRefreshAtRef.current < FEED_AUTO_REFRESH_MS) {
+        return;
+      }
+      void loadFeedSurface(feedSurface, {
+        silent: true,
+        preserveVisibleCount: true,
+      });
+    };
+
+    const timer = window.setInterval(refreshFeed, FEED_AUTO_REFRESH_MS);
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    }
+
+    return () => {
+      window.clearInterval(timer);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      }
+    };
   }, [feedSurface, loadFeedSurface]);
 
   useEffect(() => () => {

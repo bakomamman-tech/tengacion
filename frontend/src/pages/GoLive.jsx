@@ -311,14 +311,14 @@ export default function GoLive() {
         </button>
       </header>
 
-      <section className="go-live-panel">
-        <label>
-          Stream title
-          <input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Share what you're about to do"
-          />
+        <section className="go-live-panel">
+          <label className="go-live-title-field">
+            <span className="go-live-field-label">Stream title</span>
+            <input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="Share what you're about to do"
+            />
         </label>
 
         {!liveSession ? (

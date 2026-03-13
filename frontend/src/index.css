@@ -250,6 +250,26 @@ html.dark-mode .live-preview-panel {
   font-weight: 700;
 }
 
+.go-live-title-field {
+  justify-items: start;
+}
+
+.go-live-field-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tg-btn-height-md, 42px);
+  padding: 0 1rem;
+  border: 1px solid var(--tg-btn-primary-border, rgba(151, 100, 42, 0.28));
+  border-radius: var(--tg-btn-radius-md, 15px);
+  background: var(--tg-btn-primary-bg, linear-gradient(180deg, #d3a05f 0%, #bb833f 100%));
+  color: var(--tg-btn-primary-text, #fffaf3);
+  box-shadow: var(--tg-btn-shadow-primary, 0 14px 30px rgba(126, 82, 30, 0.18));
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
 .go-live-panel input {
   width: 100%;
   padding: 0.55rem 0.75rem;

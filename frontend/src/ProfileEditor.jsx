@@ -1057,7 +1057,7 @@ export default function ProfileEditor({ user }) {
                     <ProfileMediaTile key={item.id} item={item} alt={`Highlight ${index + 1}`} />
                   ))}
                   <button
-                    className="profile-highlight-add"
+                    className="profile-highlight-add btn-secondary"
                     onClick={() => {
                       if (!photoItems.length) {
                         toast("Add photos first to create highlights");
@@ -1086,7 +1086,7 @@ export default function ProfileEditor({ user }) {
             <article className="card profile-panel" ref={photosRef}>
               <div className="profile-panel-head">
                 <h3>Photos</h3>
-                <button className="btn-link" onClick={() => setShowAllPhotos((current) => !current)}>
+                <button className="btn-secondary" onClick={() => setShowAllPhotos((current) => !current)}>
                   {showAllPhotos ? "Show less" : "See all photos"}
                 </button>
               </div>
@@ -1105,7 +1105,7 @@ export default function ProfileEditor({ user }) {
               <div className="profile-panel-head">
                 <h3>Friends</h3>
                 <button
-                  className="btn-link"
+                  className="btn-secondary"
                   onClick={() => navigate("/search")}
                 >
                   Find friends

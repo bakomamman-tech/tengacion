@@ -7,6 +7,7 @@ const typeToPrefKey = {
   reply: "comments",
   follow: "follows",
   mention: "mentions",
+  tag: "mentions",
   message: "messages",
   report_update: "reports",
   system: "system",

@@ -92,6 +92,30 @@ const CommentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+const TaggedUserSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    name: {
+      type: String,
+      trim: true,
+      maxlength: 120,
+      default: "",
+    },
+    username: {
+      type: String,
+      trim: true,
+      maxlength: 30,
+      default: "",
+    },
+  },
+  { _id: false }
+);
+
 /* ================= POST SCHEMA ================= */
 const PostSchema = new mongoose.Schema(
   {
@@ -110,6 +134,11 @@ const PostSchema = new mongoose.Schema(
 
     tags: {
       type: [String],
+      default: [],
+    },
+
+    taggedUsers: {
+      type: [TaggedUserSchema],
       default: [],
     },
 

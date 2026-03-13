@@ -6578,7 +6578,26 @@ html.dark-mode .create-post-quick-btn--reel {
 }
 
 .post-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  line-height: 1.35;
   font-weight: 900;
+}
+
+.post-name-author {
+  color: var(--text);
+}
+
+.post-name-context {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.post-name-tagged-person {
+  color: color-mix(in srgb, var(--brand) 82%, var(--text) 18%);
+  font-weight: 800;
 }
 
 .post-time {
@@ -6682,9 +6701,22 @@ html.dark-mode .create-post-quick-btn--reel {
 }
 
 .post-meta-chip.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border-color: color-mix(in srgb, var(--brand) 30%, var(--border));
   background: color-mix(in srgb, var(--brand-soft) 65%, var(--surface));
   color: color-mix(in srgb, var(--brand) 85%, #163a6b);
+}
+
+.post-tag-chip-name {
+  font-weight: 800;
+}
+
+.post-tag-chip-handle {
+  color: color-mix(in srgb, var(--brand-strong) 68%, var(--muted));
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .post-meta-chip.feeling {
@@ -7727,6 +7759,18 @@ html.dark-mode .composer-textarea::placeholder {
   font-size: 14px;
 }
 
+.composer-panel-hint {
+  margin: -2px 0 10px;
+  display: block;
+  color: #5c6b81;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+html.dark-mode .composer-panel-hint {
+  color: rgba(226, 232, 240, 0.72);
+}
+
 .composer-panel-row {
   display: flex;
   gap: 8px;
@@ -7745,6 +7789,141 @@ html.dark-mode .composer-textarea::placeholder {
   outline: none;
   border-color: #5d97e5;
   box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.12);
+}
+
+.composer-tag-results {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.composer-tag-result {
+  width: 100%;
+  border: 1px solid #d4deeb;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #17304f;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.composer-tag-result:hover {
+  border-color: #8fb2e4;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(44, 85, 146, 0.1);
+}
+
+.composer-tag-result--manual {
+  margin-top: 10px;
+}
+
+html.dark-mode .composer-tag-result {
+  border-color: rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.82);
+  color: rgba(241, 245, 249, 0.96);
+}
+
+html.dark-mode .composer-tag-result:hover {
+  border-color: rgba(96, 165, 250, 0.42);
+  box-shadow: 0 12px 24px rgba(2, 6, 23, 0.34);
+}
+
+.composer-tag-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.composer-tag-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.composer-tag-copy strong {
+  color: #10233a;
+  font-size: 14px;
+}
+
+.composer-tag-copy span {
+  color: #5a6980;
+  font-size: 12px;
+}
+
+html.dark-mode .composer-tag-copy strong {
+  color: rgba(248, 250, 252, 0.96);
+}
+
+html.dark-mode .composer-tag-copy span {
+  color: rgba(191, 219, 254, 0.78);
+}
+
+.composer-tag-status {
+  margin-left: auto;
+  border-radius: 999px;
+  border: 1px solid #d2dbe7;
+  background: #f5f8fd;
+  color: #4c607c;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.composer-tag-status.friend {
+  border-color: #b9d9c7;
+  background: #eef9f2;
+  color: #1f7a45;
+}
+
+html.dark-mode .composer-tag-status {
+  border-color: rgba(148, 163, 184, 0.2);
+  background: rgba(30, 41, 59, 0.72);
+  color: rgba(203, 213, 225, 0.92);
+}
+
+html.dark-mode .composer-tag-status.friend {
+  border-color: rgba(74, 222, 128, 0.22);
+  background: rgba(20, 83, 45, 0.4);
+  color: #86efac;
+}
+
+.composer-tag-empty {
+  margin-top: 10px;
+  border-radius: 12px;
+  border: 1px dashed #cfd9e6;
+  background: rgba(255, 255, 255, 0.72);
+  color: #58708f;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.composer-tag-empty.error {
+  border-color: #efb7b7;
+  background: #fff4f4;
+  color: #b42318;
+}
+
+html.dark-mode .composer-tag-empty {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.66);
+  color: rgba(191, 219, 254, 0.82);
+}
+
+html.dark-mode .composer-tag-empty.error {
+  border-color: rgba(248, 113, 113, 0.34);
+  background: rgba(69, 10, 10, 0.42);
+  color: #fca5a5;
 }
 
 .composer-grid {

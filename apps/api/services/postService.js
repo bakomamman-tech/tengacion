@@ -109,6 +109,9 @@ const normalizeText = (value, maxLength = 160) => {
   return value.trim().slice(0, maxLength);
 };
 
+const normalizeUsername = (value, maxLength = 30) =>
+  normalizeText(String(value || "").replace(/^@+/, "").replace(/\s+/g, "").toLowerCase(), maxLength);
+
 const toBool = (value) => {
   if (typeof value === "boolean") return value;
   if (typeof value === "number") return value === 1;
@@ -148,6 +151,150 @@ const toStringArray = (value, maxItems = 8, maxLength = 60, stripAt = false) => 
     .slice(0, maxItems);
 };
 
+const escapeRegex = (value = "") => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const parseTaggedUsersInput = (value, maxItems = 12) => {
+  if (value == null) return [];
+
+  let source = value;
+  if (typeof source === "string") {
+    const trimmed = source.trim();
+    if (!trimmed) return [];
+
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        source = JSON.parse(trimmed);
+      } catch {
+        source = [trimmed];
+      }
+    } else {
+      source = [trimmed];
+    }
+  }
+
+  if (!Array.isArray(source)) {
+    source = [source];
+  }
+
+  return source
+    .map((entry) => {
+      if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+        const userId = toIdString(entry.userId || entry._id || entry.id || entry.user);
+        const username = normalizeUsername(entry.username || entry.handle);
+        const name = normalizeText(entry.name || entry.displayName || entry.label || "", 120);
+        if (!userId && !username && !name) {
+          return null;
+        }
+        return { userId, username, name };
+      }
+
+      const raw = normalizeText(String(entry || ""), 160);
+      if (!raw) {
+        return null;
+      }
+
+      const handleMatch = raw.match(/@([a-zA-Z0-9._]{1,30})/);
+      if (handleMatch) {
+        return {
+          userId: "",
+          username: normalizeUsername(handleMatch[1]),
+          name: normalizeText(raw.replace(handleMatch[0], "").replace(/\s+/g, " ").trim(), 120),
+        };
+      }
+
+      if (/^\S+$/.test(raw)) {
+        return { userId: "", username: normalizeUsername(raw), name: "" };
+      }
+
+      return { userId: "", username: "", name: normalizeText(raw, 120) };
+    })
+    .filter(Boolean)
+    .slice(0, maxItems);
+};
+
+const resolveTaggedUsers = async (value) => {
+  const requested = parseTaggedUsersInput(value);
+  if (requested.length === 0) {
+    return [];
+  }
+
+  const requestedIds = uniqueIds(
+    requested
+      .map((entry) => entry.userId)
+      .filter((entry) => mongoose.Types.ObjectId.isValid(entry))
+  );
+  const requestedUsernames = uniqueIds(requested.map((entry) => entry.username).filter(Boolean));
+  const requestedNames = uniqueIds(requested.map((entry) => entry.name).filter(Boolean));
+
+  const [usersByIdRows, usersByUsernameRows, usersByNameRows] = await Promise.all([
+    requestedIds.length
+      ? User.find({ _id: { $in: requestedIds } }, "_id name username avatar").lean()
+      : Promise.resolve([]),
+    requestedUsernames.length
+      ? User.find({ username: { $in: requestedUsernames } }, "_id name username avatar").lean()
+      : Promise.resolve([]),
+    requestedNames.length
+      ? User.find(
+          {
+            $or: requestedNames.map((entry) => ({
+              name: { $regex: `^${escapeRegex(entry)}$`, $options: "i" },
+            })),
+          },
+          "_id name username avatar"
+        ).lean()
+      : Promise.resolve([]),
+  ]);
+
+  const usersById = new Map(usersByIdRows.map((entry) => [toIdString(entry._id), entry]));
+  const usersByUsername = new Map(
+    usersByUsernameRows.map((entry) => [normalizeUsername(entry.username), entry])
+  );
+  const usersByName = new Map();
+  for (const entry of usersByNameRows) {
+    const key = normalizeText(entry.name || "", 120).toLowerCase();
+    if (!key) {
+      continue;
+    }
+    if (usersByName.has(key)) {
+      usersByName.set(key, null);
+      continue;
+    }
+    usersByName.set(key, entry);
+  }
+
+  const seen = new Set();
+  const resolved = [];
+
+  for (const entry of requested) {
+    const exactId = mongoose.Types.ObjectId.isValid(entry.userId) ? entry.userId : "";
+    const exactUsername = normalizeUsername(entry.username);
+    const exactName = normalizeText(entry.name || "", 120).toLowerCase();
+
+    const matchedUser =
+      (exactId ? usersById.get(exactId) : null) ||
+      (exactUsername ? usersByUsername.get(exactUsername) : null) ||
+      (exactName ? usersByName.get(exactName) : null);
+
+    if (!matchedUser) {
+      continue;
+    }
+
+    const userId = toIdString(matchedUser._id);
+    if (!userId || seen.has(userId)) {
+      continue;
+    }
+
+    seen.add(userId);
+    resolved.push({
+      userId,
+      name: normalizeText(matchedUser.name || entry.name || "", 120),
+      username: normalizeUsername(matchedUser.username || entry.username),
+    });
+  }
+
+  return resolved;
+};
+
 const toVisibility = (value) => {
   const normalized = String(value || "").trim().toLowerCase();
   return ["public", "friends", "close_friends"].includes(normalized)
@@ -175,7 +322,24 @@ const toPostPayload = (post, viewerId) => {
   const comments = Array.isArray(post.comments) ? post.comments : [];
   const videoPayload = post.video || null;
   const postType = post.type || (videoPayload ? "video" : "text");
-  const tags = Array.isArray(post.tags) ? post.tags : [];
+  const taggedUsers = (Array.isArray(post.taggedUsers) ? post.taggedUsers : [])
+    .map((entry) => {
+      const userId = toIdString(entry?.userId || entry?.user || entry?._id);
+      const username = normalizeUsername(entry?.username);
+      const name = normalizeText(entry?.name || "", 120);
+      if (!userId && !username && !name) {
+        return null;
+      }
+      return {
+        userId,
+        name,
+        username,
+      };
+    })
+    .filter(Boolean);
+  const tags = Array.isArray(post.tags) && post.tags.length > 0
+    ? post.tags
+    : taggedUsers.map((entry) => entry.username || entry.name).filter(Boolean);
   const moreOptions = Array.isArray(post.moreOptions) ? post.moreOptions : [];
   const callToAction = post.callToAction || {};
   const authorId = author?._id ? author._id.toString() : "";
@@ -199,6 +363,7 @@ const toPostPayload = (post, viewerId) => {
     comments,
     commentsCount: post.commentsCount ?? comments.length,
     tags,
+    taggedUsers,
     feeling: post.feeling || "",
     location: post.location || "",
     callToAction: {
@@ -224,10 +389,11 @@ const toPostPayload = (post, viewerId) => {
 };
 
 class PostService {
-  static async createPost({ userId, body, files }) {
+  static async createPost({ userId, body, files, io = null, onlineUsers = null }) {
     const viewerId = userId;
     const text = normalizeText(body?.text || "", 240);
-    const tags = toStringArray(body?.tags, 12, 40, true);
+    const taggedUsers = await resolveTaggedUsers(body?.taggedUsers || body?.tags);
+    const tags = taggedUsers.map((entry) => entry.username || entry.name).filter(Boolean);
     const feeling = normalizeText(body?.feeling, 60);
     const location = normalizeText(body?.location, 140);
     const callsEnabled = toBool(body?.callsEnabled);
@@ -394,6 +560,7 @@ class PostService {
       author: viewerId,
       text,
       tags,
+      taggedUsers,
       feeling,
       location,
       callToAction,
@@ -420,6 +587,27 @@ class PostService {
       targetType: "post",
       metadata: { type, visibility },
     }).catch(() => null);
+
+    for (const taggedUser of taggedUsers) {
+      const recipientId = toIdString(taggedUser.userId);
+      if (!recipientId || recipientId === String(viewerId)) {
+        continue;
+      }
+
+      await createNotification({
+        recipient: recipientId,
+        sender: viewerId,
+        type: "tag",
+        text: "tagged you in a post",
+        entity: {
+          id: created._id,
+          model: "Post",
+        },
+        io,
+        onlineUsers,
+      });
+    }
+
     return toPostPayload(post, viewerId);
   }
 

@@ -6,6 +6,8 @@ exports.createPost = catchAsync(async (req, res) => {
     userId: req.user.id,
     body: req.body,
     files: req.files,
+    io: req.app.get("io"),
+    onlineUsers: req.app.get("onlineUsers"),
   });
   res.status(201).json(payload);
 });

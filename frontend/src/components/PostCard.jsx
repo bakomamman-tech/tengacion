@@ -46,6 +46,59 @@ const inferVideoMimeType = (url = "", fallback = "") => {
   return "video/mp4";
 };
 
+const normalizeTagHandle = (value = "") =>
+  String(value || "").trim().replace(/^@+/, "").replace(/\s+/g, "").toLowerCase().slice(0, 30);
+
+const normalizeTaggedUser = (value = {}) => {
+  if (typeof value === "string") {
+    const raw = String(value || "").trim();
+    if (!raw) {
+      return null;
+    }
+
+    if (/^\S+$/.test(raw)) {
+      return { userId: "", name: "", username: normalizeTagHandle(raw) };
+    }
+
+    return { userId: "", name: raw, username: "" };
+  }
+
+  const userId = String(value?.userId || value?._id || value?.id || "").trim();
+  const name = String(value?.name || "").trim();
+  const username = normalizeTagHandle(value?.username || value?.handle);
+
+  if (!userId && !name && !username) {
+    return null;
+  }
+
+  return { userId, name, username };
+};
+
+const getTaggedUserLabel = (person = {}) => {
+  const name = String(person?.name || "").trim();
+  const username = normalizeTagHandle(person?.username);
+
+  if (name && username) {
+    return `${name} @${username}`;
+  }
+
+  if (name) {
+    return name;
+  }
+
+  if (username) {
+    return `@${username}`;
+  }
+
+  return "";
+};
+
+const getTaggedUserHeadline = (person = {}) => {
+  const name = String(person?.name || "").trim();
+  const username = normalizeTagHandle(person?.username);
+  return name || (username ? `@${username}` : "");
+};
+
 /* ======================================================
    EDIT MODAL
    ====================================================== */
@@ -171,7 +224,8 @@ export default function PostCard({
     ? new Date(post.createdAt).toLocaleString()
     : "Just now";
 
-  const username = post?.user?.name || post?.username || "Unknown User";
+  const username = post?.user?.name || post?.name || "Unknown User";
+  const authorHandle = normalizeTagHandle(post?.user?.username || post?.username || "");
   const avatar =
     resolveImage(post?.user?.profilePic || post?.avatar) || "/avatar.png";
   const firstMediaEntry = Array.isArray(post?.media)
@@ -216,6 +270,19 @@ export default function PostCard({
   const videoRef = useRef(null);
   const videoWrapperRef = useRef(null);
   const tags = Array.isArray(post?.tags) ? post.tags.filter(Boolean) : [];
+  const taggedUsers = useMemo(() => {
+    const nextTaggedUsers = (Array.isArray(post?.taggedUsers) ? post.taggedUsers : [])
+      .map((entry) => normalizeTaggedUser(entry))
+      .filter(Boolean);
+
+    if (nextTaggedUsers.length > 0) {
+      return nextTaggedUsers;
+    }
+
+    return tags.map((entry) => normalizeTaggedUser(entry)).filter(Boolean);
+  }, [post?.taggedUsers, tags]);
+  const primaryTaggedUser = taggedUsers[0] || null;
+  const additionalTaggedCount = Math.max(0, taggedUsers.length - 1);
   const feeling = typeof post?.feeling === "string" ? post.feeling.trim() : "";
   const checkInLocation =
     typeof post?.location === "string" ? post.location.trim() : "";
@@ -626,8 +693,25 @@ export default function PostCard({
           <div className="post-user">
             <img className="post-avatar" src={avatar} alt="user" />
             <div className="post-user-meta">
-              <p className="post-name">{username}</p>
+              <p className="post-name">
+                <span className="post-name-author">{username}</span>
+                {primaryTaggedUser && (
+                  <span className="post-name-context">
+                    is with{" "}
+                    <span className="post-name-tagged-person">
+                      {getTaggedUserHeadline(primaryTaggedUser)}
+                    </span>
+                    {additionalTaggedCount > 0 &&
+                      ` and ${additionalTaggedCount} other${
+                        additionalTaggedCount === 1 ? "" : "s"
+                      }`}
+                  </span>
+                )}
+              </p>
               <p className="post-time">{timeLabel}</p>
+              {authorHandle && !discoveryMeta?.reasonLabel && (
+                <p className="post-time">@{authorHandle}</p>
+              )}
               {discoveryMeta?.reasonLabel && (
                 <button
                   type="button"
@@ -717,11 +801,20 @@ export default function PostCard({
         <div className="post-body">
           {post?.text && <p className="post-text">{post.text}</p>}
 
-          {(tags.length > 0 || feeling || checkInLocation || moreOptions.length > 0) && (
+          {(taggedUsers.length > 0 || feeling || checkInLocation || moreOptions.length > 0) && (
             <div className="post-meta-row">
-              {tags.map((person) => (
-                <span key={`tag-${person}`} className="post-meta-chip tag">
-                  @{person}
+              {taggedUsers.map((person) => (
+                <span
+                  key={`tag-${person.userId || person.username || person.name}`}
+                  className="post-meta-chip tag"
+                  title={getTaggedUserLabel(person)}
+                >
+                  <span className="post-tag-chip-name">
+                    {getTaggedUserHeadline(person)}
+                  </span>
+                  {person.name && person.username && (
+                    <span className="post-tag-chip-handle">@{person.username}</span>
+                  )}
                 </span>
               ))}
 

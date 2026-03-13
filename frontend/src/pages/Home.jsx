@@ -21,6 +21,7 @@ import {
   getMyStreaks,
   getProfile,
   getLiveSessions,
+  getUsers,
   muteUser,
   resolveImage,
   submitDailyCheckIn,
@@ -52,6 +53,70 @@ const FEED_SURFACES = [
   { id: "for_you", label: "For You" },
   { id: "following", label: "Following" },
 ];
+
+const normalizeHandle = (value = "") =>
+  String(value || "").trim().replace(/^@+/, "").replace(/\s+/g, "").toLowerCase().slice(0, 30);
+
+const buildTaggedPerson = (value = {}) => {
+  const userId = String(value?.userId || value?._id || value?.id || "").trim();
+  const name = String(value?.name || "").trim();
+  const username = normalizeHandle(value?.username || value?.handle);
+  const avatar = resolveImage(value?.avatar || value?.profilePic || "") || "";
+
+  if (!userId && !name && !username) {
+    return null;
+  }
+
+  return {
+    userId,
+    name,
+    username,
+    avatar,
+    relationship: value?.relationship || null,
+  };
+};
+
+const getTaggedPersonKey = (person = {}) =>
+  String(person?.userId || person?.username || person?.name || "").trim();
+
+const getTaggedPersonLabel = (person = {}) => {
+  const name = String(person?.name || "").trim();
+  const username = normalizeHandle(person?.username);
+
+  if (name && username) {
+    return `${name} @${username}`;
+  }
+
+  if (name) {
+    return name;
+  }
+
+  if (username) {
+    return `@${username}`;
+  }
+
+  return "";
+};
+
+const parseManualTaggedPerson = (value = "") => {
+  const text = String(value || "").trim();
+  if (!text) {
+    return null;
+  }
+
+  const handleMatch = text.match(/@([a-zA-Z0-9._]{3,30})/);
+  if (!handleMatch) {
+    return null;
+  }
+
+  const username = normalizeHandle(handleMatch[1]);
+  const name = text.replace(handleMatch[0], "").replace(/\s+/g, " ").trim();
+  if (!name || !username) {
+    return null;
+  }
+
+  return buildTaggedPerson({ name, username });
+};
 
 const isBirthdayToday = (birthday = {}) => {
   const day = Number(birthday?.day) || 0;
@@ -163,6 +228,9 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
   const [activePanel, setActivePanel] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [taggedPeople, setTaggedPeople] = useState([]);
+  const [tagSuggestions, setTagSuggestions] = useState([]);
+  const [tagSearchBusy, setTagSearchBusy] = useState(false);
+  const [tagSearchError, setTagSearchError] = useState("");
   const [feeling, setFeeling] = useState("");
   const [checkInLocation, setCheckInLocation] = useState("");
   const [callsEnabled, setCallsEnabled] = useState(false);
@@ -240,6 +308,7 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
       ),
     [moreOptions]
   );
+  const manualTagCandidate = useMemo(() => parseManualTaggedPerson(tagInput), [tagInput]);
 
   const hasMetadata = Boolean(
     taggedPeople.length ||
@@ -253,20 +322,98 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
     ? Boolean(selectedFile?.type?.startsWith("video/"))
     : Boolean(text.trim() || selectedFile || hasMetadata);
 
-  const addTag = () => {
-    const cleaned = tagInput.trim().replace(/^@+/, "");
-    if (!cleaned) {
+  useEffect(() => {
+    if (activePanel !== "tag") {
+      setTagSuggestions([]);
+      setTagSearchBusy(false);
+      setTagSearchError("");
+      return;
+    }
+
+    const query = tagInput.trim();
+    if (query.length < 2) {
+      setTagSuggestions([]);
+      setTagSearchBusy(false);
+      setTagSearchError("");
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setTagSearchBusy(true);
+      setTagSearchError("");
+
+      try {
+        const rows = await getUsers(query);
+        if (cancelled) {
+          return;
+        }
+
+        const nextSuggestions = (Array.isArray(rows) ? rows : [])
+          .map((entry) => buildTaggedPerson(entry))
+          .filter(Boolean)
+          .filter(
+            (entry) =>
+              !taggedPeople.some(
+                (current) => getTaggedPersonKey(current) === getTaggedPersonKey(entry)
+              )
+          )
+          .slice(0, 8);
+
+        setTagSuggestions(nextSuggestions);
+      } catch (err) {
+        if (!cancelled) {
+          setTagSuggestions([]);
+          setTagSearchError(err?.message || "Could not search people right now.");
+        }
+      } finally {
+        if (!cancelled) {
+          setTagSearchBusy(false);
+        }
+      }
+    }, 220);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [activePanel, tagInput, taggedPeople]);
+
+  const addTaggedPerson = (value) => {
+    const nextPerson = buildTaggedPerson(value);
+    const nextKey = getTaggedPersonKey(nextPerson);
+    if (!nextPerson || !nextKey) {
       return;
     }
 
     setTaggedPeople((current) =>
-      current.includes(cleaned) ? current : [...current, cleaned]
+      current.some((entry) => getTaggedPersonKey(entry) === nextKey)
+        ? current
+        : [...current, nextPerson]
     );
     setTagInput("");
+    setTagSuggestions([]);
+    setTagSearchError("");
   };
 
-  const removeTag = (person) => {
-    setTaggedPeople((current) => current.filter((entry) => entry !== person));
+  const addTag = () => {
+    if (tagSuggestions.length > 0) {
+      addTaggedPerson(tagSuggestions[0]);
+      return;
+    }
+
+    if (manualTagCandidate) {
+      addTaggedPerson(manualTagCandidate);
+      return;
+    }
+
+    setTagSearchError("Use the person's name and @handle, or choose from the list.");
+  };
+
+  const removeTag = (personKey) => {
+    setTaggedPeople((current) =>
+      current.filter((entry) => getTaggedPersonKey(entry) !== personKey)
+    );
   };
 
   const toggleMore = (id) => {
@@ -398,7 +545,10 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
   };
 
   const activeBadges = [
-    ...taggedPeople.map((person) => ({ key: `tag-${person}`, label: `@${person}` })),
+    ...taggedPeople.map((person) => ({
+      key: `tag-${getTaggedPersonKey(person)}`,
+      label: getTaggedPersonLabel(person),
+    })),
     ...(feeling ? [{ key: "feeling", label: `Feeling ${feeling}` }] : []),
     ...(checkInLocation.trim()
       ? [{ key: "location", label: `Check-in ${checkInLocation.trim()}` }]
@@ -418,6 +568,10 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
       return (
         <div className="composer-panel">
           <p>Tag people</p>
+          <span className="composer-panel-hint">
+            Tag friends or anyone else by searching their name or typing their full
+            name with an @handle.
+          </span>
           <div className="composer-panel-row">
             <input
               value={tagInput}
@@ -428,22 +582,68 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
                   addTag();
                 }
               }}
-              placeholder="Type a name and press Enter"
+              placeholder="Search by name or @handle"
             />
             <button type="button" className="btn-secondary" onClick={addTag}>
               Add
             </button>
           </div>
+          {tagSearchBusy && <div className="composer-tag-empty">Searching people...</div>}
+          {!tagSearchBusy && tagSearchError && (
+            <div className="composer-tag-empty error">{tagSearchError}</div>
+          )}
+          {!tagSearchBusy && tagSuggestions.length > 0 && (
+            <div className="composer-tag-results">
+              {tagSuggestions.map((person) => (
+                <button
+                  key={getTaggedPersonKey(person)}
+                  type="button"
+                  className="composer-tag-result"
+                  onClick={() => addTaggedPerson(person)}
+                >
+                  <img
+                    className="composer-tag-avatar"
+                    src={person.avatar || "/avatar.png"}
+                    alt={person.name || person.username || "User"}
+                  />
+                  <span className="composer-tag-copy">
+                    <strong>{person.name || `@${person.username}`}</strong>
+                    {person.username && <span>@{person.username}</span>}
+                  </span>
+                  <span
+                    className={`composer-tag-status ${
+                      person.relationship?.isFriend ? "friend" : ""
+                    }`}
+                  >
+                    {person.relationship?.isFriend ? "Friend" : "Profile"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          {!tagSearchBusy && !tagSuggestions.length && manualTagCandidate && (
+            <button
+              type="button"
+              className="composer-tag-result composer-tag-result--manual"
+              onClick={() => addTaggedPerson(manualTagCandidate)}
+            >
+              <span className="composer-tag-copy">
+                <strong>{manualTagCandidate.name}</strong>
+                <span>@{manualTagCandidate.username}</span>
+              </span>
+              <span className="composer-tag-status">Tag this person</span>
+            </button>
+          )}
           {taggedPeople.length > 0 && (
             <div className="composer-chip-row">
               {taggedPeople.map((person) => (
                 <button
-                  key={person}
+                  key={getTaggedPersonKey(person)}
                   type="button"
                   className="composer-chip removable"
-                  onClick={() => removeTag(person)}
+                  onClick={() => removeTag(getTaggedPersonKey(person))}
                 >
-                  @{person} x
+                  {getTaggedPersonLabel(person)} x
                 </button>
               ))}
             </div>

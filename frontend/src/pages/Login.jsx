@@ -144,19 +144,15 @@ export default function Login() {
 
         <div className="login-features">
           <div className="feature-item">
-            <span className="feature-icon">ðŸ“±</span>
             <p>Share moments with your friends</p>
           </div>
           <div className="feature-item">
-            <span className="feature-icon">ðŸ’¬</span>
             <p>Chat and stay connected</p>
           </div>
           <div className="feature-item">
-            <span className="feature-icon">ðŸŒ</span>
             <p>Build your community</p>
           </div>
           <div className="feature-item">
-            <span className="feature-icon">âœ¨</span>
             <p>Discover amazing stories</p>
           </div>
         </div>

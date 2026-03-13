@@ -8720,10 +8720,6 @@ html.dark-mode .composer-textarea::placeholder {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.feature-icon {
-  font-size: 20px;
-}
-
 .feature-item p {
   margin: 0;
 }

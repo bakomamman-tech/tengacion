@@ -52,7 +52,7 @@ const MessageSchema = new mongoose.Schema(
     metadata: {
       type: {
         type: String,
-        enum: ["", "birthday", "watchTogether"],
+        enum: ["", "birthday", "watchTogether", "onboardingReminder"],
         default: "",
       },
       payload: {

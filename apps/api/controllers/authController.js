@@ -13,6 +13,9 @@ const {
   REFRESH_COOKIE_NAME,
 } = require("../../../backend/services/authTokens");
 const { getCookieValue } = require("../../../backend/utils/requestCookies");
+const {
+  ensureOnboardingReminderMessage,
+} = require("../../../backend/services/onboardingReminderService");
 
 const applyAuthCookies = (res, payload = {}) => {
   if (payload?.refreshToken) {
@@ -107,6 +110,13 @@ exports.verifyAuthChallenge = catchAsync(async (req, res) => {
 exports.getProfile = catchAsync(async (req, res) => {
   res.set("Cache-Control", "no-store");
   const user = await AuthService.getProfile(req.user.id);
+  await ensureOnboardingReminderMessage({
+    userId: req.user.id,
+    io: req.app.get("io"),
+    onlineUsers: req.app.get("onlineUsers"),
+  }).catch((error) => {
+    console.error("Onboarding reminder failed:", error);
+  });
   res.json({ user });
 });
 

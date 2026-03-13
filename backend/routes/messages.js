@@ -136,7 +136,7 @@ router.post("/share/followers", auth, async (req, res) => {
 });
 
 /*
-  Chat contacts for logged-in user (friends + latest message)
+  Chat contacts for logged-in user (friends + any existing conversations)
 */
 router.get("/contacts", auth, async (req, res) => {
   try {
@@ -148,32 +148,13 @@ router.get("/contacts", auth, async (req, res) => {
     }
 
     const friendIds = (me.friends || []).map((id) => id.toString());
-    const contactQuery =
-      friendIds.length > 0
-        ? { _id: { $in: friendIds } }
-        : { _id: { $ne: meId } };
-
-    const contacts = await User.find(contactQuery, "_id name username avatar status")
-      .sort({ name: 1 })
-      .limit(40)
-      .lean();
-
-    if (contacts.length === 0) {
-      return res.json([]);
-    }
-
     const meObjectId = new mongoose.Types.ObjectId(meId);
-    const peerIds = contacts.map((user) => toIdString(user._id));
-    const friendObjectIds = peerIds
-      .filter((id) => mongoose.Types.ObjectId.isValid(id))
-      .map((id) => new mongoose.Types.ObjectId(id));
-
     const latestMessages = await Message.aggregate([
       {
         $match: {
           $or: [
-            { senderId: meObjectId, receiverId: { $in: friendObjectIds } },
-            { receiverId: meObjectId, senderId: { $in: friendObjectIds } },
+            { senderId: meObjectId },
+            { receiverId: meObjectId },
           ],
           deletedFor: { $ne: meObjectId },
         },
@@ -190,9 +171,37 @@ router.get("/contacts", auth, async (req, res) => {
       collection: "messages",
       route: "GET /api/messages/contacts",
       meId,
-      peerCount: peerIds.length,
+      friendCount: friendIds.length,
       latestRows: latestMessages.length,
     });
+
+    const contactIds = new Set(friendIds);
+    for (const row of latestMessages) {
+      const msg = row?.message || {};
+      const senderId = toIdString(msg.senderId);
+      const receiverId = toIdString(msg.receiverId);
+      const otherId = senderId === meId ? receiverId : senderId;
+      if (otherId) {
+        contactIds.add(otherId);
+      }
+    }
+
+    const contactIdList = Array.from(contactIds).filter(Boolean);
+    const contactQuery =
+      contactIdList.length > 0
+        ? { _id: { $in: contactIdList } }
+        : { _id: { $ne: meId } };
+
+    const contactSearch = User.find(contactQuery, "_id name username avatar status");
+    if (contactIdList.length === 0) {
+      contactSearch.sort({ name: 1 }).limit(40);
+    }
+
+    const contacts = await contactSearch.lean();
+
+    if (contacts.length === 0) {
+      return res.json([]);
+    }
 
     const latestByUserId = new Map();
     for (const row of latestMessages) {

@@ -1438,33 +1438,6 @@ export default function Home({ user }) {
               </div>
             </section>
           )}
-          {!currentUser?.onboarding?.completed && (
-            <section className="card checkin-card">
-              <div className="checkin-head">
-                <strong>Complete your profile</strong>
-                <span>Checklist</span>
-              </div>
-              <p style={{ marginTop: 8 }}>
-                Add your avatar, bio, interests, and follow suggestions to unlock your profile badge.
-              </p>
-              <button type="button" onClick={() => navigate("/onboarding")}>
-                Continue onboarding
-              </button>
-            </section>
-          )}
-          {!currentUser?.emailVerified && (
-            <section className="card checkin-card">
-              <div className="checkin-head">
-                <strong>Verify your email</strong>
-              </div>
-              <p style={{ marginTop: 8 }}>
-                Verify your account to improve security and recovery options.
-              </p>
-              <button type="button" onClick={() => navigate("/settings/security")}>
-                Open security settings
-              </button>
-            </section>
-          )}
           {!loading && <Stories user={currentUser} openCreateSignal={storyCreatorSignal} />}
           {!loading && (
             <section className="card checkin-card">

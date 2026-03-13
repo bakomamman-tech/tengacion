@@ -1327,7 +1327,7 @@ export default function Home({ user }) {
               <div className="create-post-quick-actions">
                 <button
                   type="button"
-                  className="create-post-quick-btn"
+                  className="create-post-quick-btn create-post-quick-btn--media"
                   title="Photo/Video"
                   aria-label="Photo/Video"
                   onClick={(event) => {
@@ -1343,7 +1343,24 @@ export default function Home({ user }) {
                 </button>
                 <button
                   type="button"
-                  className="create-post-quick-btn"
+                  className="create-post-quick-btn create-post-quick-btn--live"
+                  title="Live"
+                  aria-label="Live"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    navigate("/live/go");
+                  }}
+                >
+                  <span className="create-post-quick-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h6A2.5 2.5 0 0 1 15 8.5V9l4.4-2.6A1 1 0 0 1 21 7.3v9.4a1 1 0 0 1-1.6.8L15 15v.5a2.5 2.5 0 0 1-2.5 2.5h-6A2.5 2.5 0 0 1 4 15.5v-7z" />
+                      <circle cx="9.2" cy="12" r="2.1" />
+                    </svg>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="create-post-quick-btn create-post-quick-btn--reel"
                   title="Reel"
                   aria-label="Reel"
                   onClick={(event) => {

@@ -6274,6 +6274,7 @@ html.dark-mode .sidebar-user:hover {
 
 .create-post-row input {
   width: 100%;
+  min-width: 0;
   border: none;
   background: var(--surface-soft);
   border-radius: var(--radius-pill);
@@ -6299,26 +6300,100 @@ html.dark-mode .create-post-row input::placeholder {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+html.dark-mode .create-post-quick-actions {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.78);
+  box-shadow: 0 12px 24px rgba(2, 6, 23, 0.3);
 }
 
 .create-post-quick-btn {
-  width: 36px;
-  height: 36px;
-  min-width: 36px !important;
+  width: 40px;
+  height: 40px;
+  min-width: 40px !important;
   padding: 0 !important;
   border-radius: 50% !important;
-  border: 1px solid var(--border) !important;
+  border: 1px solid transparent !important;
   background: var(--surface-soft) !important;
   color: var(--text) !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
+  position: relative;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
 }
 
 .create-post-quick-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.14);
   background: var(--surface-strong) !important;
+}
+
+.create-post-quick-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.create-post-quick-btn--media {
+  border-color: rgba(34, 197, 94, 0.24) !important;
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #16a34a !important;
+}
+
+.create-post-quick-btn--live {
+  border-color: rgba(239, 68, 68, 0.24) !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #dc2626 !important;
+}
+
+.create-post-quick-btn--live::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f43f5e;
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.18);
+}
+
+.create-post-quick-btn--reel {
+  border-color: rgba(249, 115, 22, 0.24) !important;
+  background: rgba(249, 115, 22, 0.12) !important;
+  color: #ea580c !important;
+}
+
+html.dark-mode .create-post-quick-btn--media {
+  border-color: rgba(134, 239, 172, 0.24) !important;
+  background: rgba(34, 197, 94, 0.18) !important;
+  color: #86efac !important;
+}
+
+html.dark-mode .create-post-quick-btn--live {
+  border-color: rgba(252, 165, 165, 0.22) !important;
+  background: rgba(239, 68, 68, 0.18) !important;
+  color: #fca5a5 !important;
+}
+
+html.dark-mode .create-post-quick-btn--reel {
+  border-color: rgba(253, 186, 116, 0.22) !important;
+  background: rgba(249, 115, 22, 0.18) !important;
+  color: #fdba74 !important;
 }
 
 .create-post-quick-icon {
@@ -6331,6 +6406,24 @@ html.dark-mode .create-post-row input::placeholder {
   width: 100%;
   height: 100%;
   fill: currentColor;
+}
+
+@media (max-width: 720px) {
+  .create-post-quick-actions {
+    gap: 4px;
+    padding: 3px;
+  }
+
+  .create-post-quick-btn {
+    width: 34px;
+    height: 34px;
+    min-width: 34px !important;
+  }
+
+  .create-post-quick-icon {
+    width: 16px;
+    height: 16px;
+  }
 }
 
 .tengacion-feed {

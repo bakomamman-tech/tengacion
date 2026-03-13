@@ -324,7 +324,7 @@ export default function GoLive() {
         {!liveSession ? (
           <button
             type="button"
-            className="primary"
+            className="primary go-live-start-btn"
             disabled={loading}
             onClick={handleStart}
           >

@@ -243,11 +243,66 @@ html.dark-mode .live-preview-panel {
   gap: 0.75rem;
 }
 
+.go-live-panel label {
+  display: grid;
+  gap: 0.5rem;
+  color: #5d3514;
+  font-weight: 700;
+}
+
 .go-live-panel input {
   width: 100%;
   padding: 0.55rem 0.75rem;
   border: 1px solid #d1d5db;
   border-radius: 0.75rem;
+}
+
+.go-live-start-btn {
+  align-self: flex-start;
+  min-width: 220px;
+  padding-inline: 1.35rem;
+  border-color: rgba(125, 73, 24, 0.34) !important;
+  background: linear-gradient(135deg, #c88434 0%, #9a5f22 100%) !important;
+  color: #fff9f2 !important;
+  text-shadow: 0 1px 0 rgba(79, 41, 10, 0.35);
+  box-shadow:
+    0 14px 28px rgba(115, 61, 18, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.go-live-start-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d59446 0%, #ac6a28 100%) !important;
+  box-shadow:
+    0 18px 32px rgba(115, 61, 18, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+}
+
+.go-live-start-btn:active:not(:disabled) {
+  background: linear-gradient(135deg, #b5732d 0%, #8a521b 100%) !important;
+}
+
+.go-live-start-btn:disabled {
+  border-color: rgba(125, 73, 24, 0.24) !important;
+  background: linear-gradient(135deg, #d3a46d 0%, #b98954 100%) !important;
+  color: rgba(255, 249, 242, 0.95) !important;
+}
+
+html.dark-mode .go-live-panel label {
+  color: #f2d4ab;
+}
+
+html.dark-mode .go-live-start-btn {
+  border-color: rgba(247, 215, 170, 0.18) !important;
+  background: linear-gradient(135deg, #e5b36d 0%, #c7893f 100%) !important;
+  color: #24160c !important;
+  text-shadow: none;
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 248, 236, 0.26) !important;
+}
+
+html.dark-mode .go-live-start-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #efc481 0%, #d79b52 100%) !important;
 }
 
 .go-live-controls {

@@ -82,21 +82,6 @@ if (process.env.NODE_ENV !== "test") {
   const { repairUserProfileIndexes } = require("./scripts/repairUserProfileIndexes");
   const { repairUserSecurityFields } = require("./scripts/repairUserSecurityFields");
   const { runBirthdayRecognition } = require("./services/birthdayService");
-  connectDB()
-    .then(async () => {
-      await repairUserProfileIndexes({ logger: console });
-      await repairUserMediaFields({ logger: console });
-      await repairUserSecurityFields({ logger: console });
-      await runBirthdayRecognition({ logger: console });
-      setInterval(() => {
-        runBirthdayRecognition({ logger: console }).catch((err) => {
-          console.error("Birthday recognition task failed:", err?.message || err);
-        });
-      }, 60 * 60 * 1000);
-    })
-    .catch((err) => {
-      console.error("Startup repair failed:", err?.message || err);
-    });
 
   const io = new Server(server, {
     cors: {
@@ -617,6 +602,36 @@ if (process.env.NODE_ENV !== "test") {
   };
 
   server.on("error", handleServerError);
+  const listenNow = server.listen.bind(server);
+  server.listen = (...args) => {
+    const callback = typeof args[args.length - 1] === "function" ? args.pop() : () => {};
+
+    (async () => {
+      await connectDB();
+
+      try {
+        await repairUserProfileIndexes({ logger: console });
+        await repairUserMediaFields({ logger: console });
+        await repairUserSecurityFields({ logger: console });
+        await runBirthdayRecognition({ logger: console });
+      } catch (err) {
+        console.error("Startup repair failed:", err?.message || err);
+      }
+
+      setInterval(() => {
+        runBirthdayRecognition({ logger: console }).catch((err) => {
+          console.error("Birthday recognition task failed:", err?.message || err);
+        });
+      }, 60 * 60 * 1000);
+
+      listenNow(...args, callback);
+    })().catch((err) => {
+      console.error("Server bootstrap failed:", err?.message || err);
+      process.exit(1);
+    });
+
+    return server;
+  };
 
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Tengacion running on port ${PORT}`);

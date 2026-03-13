@@ -263,10 +263,14 @@ const MFA_SECRET_SELECT = `${MFA_SUMMARY_SELECT} +twoFactor.secretCipher`;
 const MFA_SETUP_SECRET_SELECT = `${MFA_SECRET_SELECT} +twoFactor.pendingSecretCipher`;
 const USER_PROFILE_SELECT =
   "_id name username email role avatar cover emailVerified isActive isBanned isDeleted lastLogin lastLoginAt lastSeenAt";
-const USER_SESSION_SELECT = `${USER_PROFILE_SELECT} tokenVersion sessions trustedDevices`;
+const SESSION_SELECT =
+  "sessions.sessionId sessions.deviceName sessions.ip sessions.userAgent sessions.country sessions.city sessions.fingerprint sessions.createdAt sessions.lastSeenAt sessions.revokedAt";
+const SESSION_SELECT_WITH_HASH = `${SESSION_SELECT} +sessions.refreshTokenHash`;
+const USER_SESSION_SELECT = `${USER_PROFILE_SELECT} tokenVersion ${SESSION_SELECT} trustedDevices`;
 const LOGIN_USER_SELECT = `+password ${MFA_SETUP_SECRET_SELECT} ${USER_SESSION_SELECT}`;
 const CHALLENGE_USER_SELECT = `${MFA_SECRET_SELECT} ${USER_SESSION_SELECT}`;
-const REFRESH_USER_SELECT = `${MFA_SUMMARY_SELECT} ${USER_SESSION_SELECT} +sessions.refreshTokenHash`;
+const REFRESH_USER_SELECT =
+  `${MFA_SUMMARY_SELECT} ${USER_PROFILE_SELECT} tokenVersion trustedDevices ${SESSION_SELECT_WITH_HASH}`;
 
 const verifyEmailChallengeCode = (challenge, code) =>
   String(challenge?.codeHash || "") ===
@@ -1361,7 +1365,7 @@ class AuthService {
   }
 
   static async listSessions(userId) {
-    const user = await userRepository.findById(userId).select("sessions +sessions.refreshTokenHash");
+    const user = await userRepository.findById(userId).select(SESSION_SELECT);
     if (!user) throw ApiError.notFound("User not found");
     return (user.sessions || []).map(formatSession).sort((a, b) => {
       const at = new Date(a.lastSeenAt || a.createdAt || 0).getTime();
@@ -1371,7 +1375,7 @@ class AuthService {
   }
 
   static async revokeSession({ userId, sessionId }) {
-    const user = await userRepository.findById(userId).select("sessions");
+    const user = await userRepository.findById(userId).select(SESSION_SELECT_WITH_HASH);
     if (!user) throw ApiError.notFound("User not found");
     const session = (user.sessions || []).find((entry) => entry.sessionId === sessionId);
     if (!session) throw ApiError.notFound("Session not found");
@@ -1384,7 +1388,7 @@ class AuthService {
   static async revokeAllSessions({ userId, exceptSessionId = "" }) {
     const user = await userRepository
       .findById(userId)
-      .select("sessions tokenVersion +sessions.refreshTokenHash");
+      .select(`tokenVersion ${SESSION_SELECT_WITH_HASH}`);
     if (!user) throw ApiError.notFound("User not found");
     const now = new Date();
     const revokedSessionIds = [];

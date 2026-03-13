@@ -116,6 +116,35 @@ describe("chat + friend request flow", () => {
     expect((freshB.friends || []).map((id) => id.toString())).toContain(userA._id.toString());
   });
 
+  test("login issues a refresh cookie that restores session after reload", async () => {
+    const agent = request.agent(app);
+
+    const loginResponse = await agent
+      .post("/api/auth/login")
+      .send({
+        email: "usera@test.com",
+        password: "Password123!",
+      })
+      .expect(200);
+
+    expect(loginResponse.body).toHaveProperty("token");
+    expect(loginResponse.body?.user?._id).toBe(userA._id.toString());
+    expect(loginResponse.headers["set-cookie"] || []).toEqual(
+      expect.arrayContaining([expect.stringContaining("tg_refresh=")])
+    );
+
+    const refreshResponse = await agent
+      .post("/api/auth/refresh")
+      .send({})
+      .expect(200);
+
+    expect(refreshResponse.body).toHaveProperty("token");
+    expect(refreshResponse.body?.user?._id).toBe(userA._id.toString());
+    expect(refreshResponse.headers["set-cookie"] || []).toEqual(
+      expect.arrayContaining([expect.stringContaining("tg_refresh=")])
+    );
+  });
+
   test("message persists and is returned by conversation endpoint", async () => {
     const sendResponse = await request(app)
       .post("/api/chat/messages")

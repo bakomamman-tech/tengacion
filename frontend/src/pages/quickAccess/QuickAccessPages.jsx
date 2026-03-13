@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
+import toast from "react-hot-toast";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import QuickAccessLayout from "../../components/QuickAccessLayout";
+import { apiRequest } from "../../api";
 
 const FRIENDS = [
   "Damilola Grant",
@@ -19,6 +22,52 @@ const FRIEND_SUGGESTIONS = [
   "Mark Dike",
   "King Lu",
 ];
+
+const GROUP_SHARE_STORAGE_KEY = "tengacion:group-shares";
+
+const normalizeShareDraft = (value = {}) => {
+  const postId = String(value?.postId || "").trim();
+  const url = String(value?.url || "").trim();
+  if (!postId || !url) {
+    return null;
+  }
+
+  return {
+    postId,
+    url,
+    note: String(value?.note || "").trim(),
+    authorName: String(value?.authorName || "Tengacion creator").trim(),
+    authorUsername: String(value?.authorUsername || "").trim().replace(/^@+/, ""),
+    excerpt: String(value?.excerpt || "").trim(),
+    previewImage: String(value?.previewImage || "").trim(),
+  };
+};
+
+const readStoredGroupShares = () => {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const raw = window.localStorage.getItem(GROUP_SHARE_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const writeStoredGroupShares = (value) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(GROUP_SHARE_STORAGE_KEY, JSON.stringify(value || {}));
+  } catch {
+    // Ignore storage errors for this lightweight share handoff.
+  }
+};
 
 function SectionCard({ title, action, children }) {
   return (
@@ -204,12 +253,71 @@ export function SavedPage({ user }) {
 }
 
 export function GroupsPage({ user }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const shareDraft = normalizeShareDraft(location.state?.sharePost);
+  const [groupShares, setGroupShares] = useState(() => readStoredGroupShares());
+
   const groups = [
-    "Tengacion Artists Hub",
-    "Afrobeat Producers",
-    "Live Session Organizers",
-    "Songwriters Community",
+    {
+      id: "artists-hub",
+      name: "Tengacion Artists Hub",
+      note: "Active this week",
+    },
+    {
+      id: "afrobeat-producers",
+      name: "Afrobeat Producers",
+      note: "Beat swaps and sessions",
+    },
+    {
+      id: "live-session-organizers",
+      name: "Live Session Organizers",
+      note: "Planning the next stage run",
+    },
+    {
+      id: "songwriters-community",
+      name: "Songwriters Community",
+      note: "Lyrics, hooks, and drafts",
+    },
   ];
+
+  const handleGroupShare = async (group) => {
+    if (!shareDraft?.postId) {
+      return;
+    }
+
+    try {
+      await apiRequest(`/api/posts/${encodeURIComponent(shareDraft.postId)}/share`, {
+        method: "POST",
+      }).catch(() => null);
+
+      let copied = false;
+      try {
+        await navigator.clipboard.writeText(shareDraft.url);
+        copied = true;
+      } catch {
+        copied = false;
+      }
+
+      const nextShares = {
+        ...groupShares,
+        [group.id]: {
+          postId: shareDraft.postId,
+          groupName: group.name,
+          sharedAt: new Date().toISOString(),
+        },
+      };
+      setGroupShares(nextShares);
+      writeStoredGroupShares(nextShares);
+      toast.success(
+        copied
+          ? `Shared to ${group.name}. Link copied for the group.`
+          : `Shared to ${group.name}.`
+      );
+    } catch (err) {
+      toast.error(err?.message || "Failed to share to this group");
+    }
+  };
 
   return (
     <QuickAccessLayout
@@ -217,16 +325,62 @@ export function GroupsPage({ user }) {
       title="Groups"
       subtitle="Discover and manage your creative communities."
     >
+      {shareDraft ? (
+        <section className="card quick-section-card quick-share-banner">
+          <div className="quick-share-banner__content">
+            <p className="quick-share-banner__eyebrow">Group share</p>
+            <strong>
+              {shareDraft.authorName}
+              {shareDraft.authorUsername ? ` @${shareDraft.authorUsername}` : ""}
+            </strong>
+            <p>
+              {shareDraft.note || shareDraft.excerpt || "Choose one of your groups and drop this post into the conversation."}
+            </p>
+            <small>{shareDraft.url}</small>
+          </div>
+          {shareDraft.previewImage ? (
+            <div className="quick-share-banner__media">
+              <img src={shareDraft.previewImage} alt="Shared post preview" />
+            </div>
+          ) : null}
+          <div className="quick-share-banner__actions">
+            <button
+              type="button"
+              className="friends-page-btn ghost"
+              onClick={() => navigate(`/posts/${shareDraft.postId}/share`)}
+            >
+              Back to share
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       <SectionCard
         title="Your groups"
         action={<button type="button">Create group</button>}
       >
         <div className="quick-list-grid two-col">
           {groups.map((group) => (
-            <article key={group} className="quick-list-item">
-              <strong>{group}</strong>
-              <span>Active this week</span>
-              <button type="button">Open group</button>
+            <article key={group.id} className="quick-list-item quick-list-item--shareable">
+              <strong>{group.name}</strong>
+              <span>
+                {shareDraft && groupShares?.[group.id]?.postId === shareDraft.postId
+                  ? "Shared from this post"
+                  : group.note}
+              </span>
+              <button
+                type="button"
+                className={shareDraft ? "quick-share-action" : ""}
+                onClick={() => {
+                  if (shareDraft) {
+                    void handleGroupShare(group);
+                    return;
+                  }
+                  toast.success(`${group.name} is ready to open soon.`);
+                }}
+              >
+                {shareDraft ? "Share here" : "Open group"}
+              </button>
             </article>
           ))}
         </div>

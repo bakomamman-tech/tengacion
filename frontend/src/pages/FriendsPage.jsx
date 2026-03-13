@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
 import Messenger from "../Messenger";
 import {
   acceptFriendRequest,
+  apiRequest,
   cancelFriendRequest,
   getFriendsHub,
   rejectFriendRequest,
@@ -77,6 +78,24 @@ const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "User"
   )}&size=96&background=DFE8F6&color=1D3A6D`;
+
+const normalizeShareDraft = (value = {}) => {
+  const postId = String(value?.postId || "").trim();
+  const url = String(value?.url || "").trim();
+  if (!postId || !url) {
+    return null;
+  }
+
+  return {
+    postId,
+    url,
+    note: String(value?.note || "").trim(),
+    authorName: String(value?.authorName || "Tengacion creator").trim(),
+    authorUsername: String(value?.authorUsername || "").trim().replace(/^@+/, ""),
+    excerpt: String(value?.excerpt || "").trim(),
+    previewImage: String(value?.previewImage || "").trim(),
+  };
+};
 
 const filterPeople = (list = [], query = "") => {
   const needle = String(query || "").trim().toLowerCase();
@@ -286,6 +305,9 @@ function FriendRow({
   onRemoveFriend,
   closeFriendBusy,
   removeBusy,
+  extraActionLabel = "",
+  extraActionBusy = false,
+  onExtraAction,
 }) {
   return (
     <article className="friends-row-card">
@@ -319,6 +341,16 @@ function FriendRow({
       </div>
 
       <div className="friends-row-card__actions">
+        {typeof onExtraAction === "function" ? (
+          <button
+            type="button"
+            className="friends-page-btn primary"
+            onClick={onExtraAction}
+            disabled={busy}
+          >
+            {extraActionBusy ? "Opening..." : extraActionLabel || "Share"}
+          </button>
+        ) : null}
         <button
           type="button"
           className="friends-page-btn ghost"
@@ -379,7 +411,9 @@ function BirthdayRow({ person, onOpenProfile }) {
 }
 
 export default function FriendsPage({ user }) {
+  const location = useLocation();
   const navigate = useNavigate();
+  const shareDraft = normalizeShareDraft(location.state?.sharePost);
   const [hub, setHub] = useState(EMPTY_HUB);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -428,6 +462,12 @@ export default function FriendsPage({ user }) {
   useEffect(() => {
     void loadHub();
   }, [loadHub]);
+
+  useEffect(() => {
+    if (shareDraft?.postId) {
+      setActiveSection("friends");
+    }
+  }, [shareDraft?.postId]);
 
   useEffect(() => {
     if (!user?._id) {
@@ -481,6 +521,54 @@ export default function FriendsPage({ user }) {
     navigate(`/profile/${username}`);
   };
 
+  const copyShareLink = useCallback(async () => {
+    if (!shareDraft?.url) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareDraft.url);
+      toast.success("Post link copied.");
+    } catch (err) {
+      toast.error(err?.message || "Failed to copy the share link");
+    }
+  }, [shareDraft?.url]);
+
+  const shareToProfile = useCallback(
+    async (person) => {
+      const personId = String(person?._id || "").trim();
+      const username = String(person?.username || "").trim();
+      if (!shareDraft?.postId || !personId || !username || busyKey) {
+        return;
+      }
+
+      const key = `share-profile:${personId}`;
+      try {
+        setBusyKey(key);
+        await apiRequest(`/api/posts/${encodeURIComponent(shareDraft.postId)}/share`, {
+          method: "POST",
+        }).catch(() => null);
+
+        navigate(`/profile/${username}`, {
+          state: {
+            sharedPost: {
+              ...shareDraft,
+              targetName: String(person?.name || "").trim(),
+              targetUsername: username,
+              sharedAt: new Date().toISOString(),
+            },
+          },
+        });
+        toast.success(`Opened ${person?.name || username}'s profile with this post ready to share.`);
+      } catch (err) {
+        toast.error(err?.message || "Failed to prepare this profile share");
+      } finally {
+        setBusyKey("");
+      }
+    },
+    [busyKey, navigate, shareDraft]
+  );
+
   const logout = () => {
     navigate("/");
   };
@@ -493,7 +581,9 @@ export default function FriendsPage({ user }) {
   const outgoingRequests = filterPeople(hub.outgoingRequests, search);
 
   const pageTitle =
-    activeSection === "home"
+    shareDraft
+      ? "Choose a friend's profile and continue the share from there."
+      : activeSection === "home"
       ? "All the people that matter, in one place."
       : activeSection === "requests"
         ? "Review the invites waiting on you."
@@ -842,7 +932,11 @@ export default function FriendsPage({ user }) {
     <section className="card friends-panel">
       <SectionHeader
         title="All Friends"
-        description="Every connection in your Tengacion circle."
+        description={
+          shareDraft
+            ? "Pick a friend below to open their profile with this post ready to share."
+            : "Every connection in your Tengacion circle."
+        }
       />
       {friends.length > 0 ? (
         <div className="friends-row-stack">
@@ -873,13 +967,26 @@ export default function FriendsPage({ user }) {
                   successMessage: "Friend removed.",
                 })
               }
+              extraActionLabel={shareDraft ? "Share to profile" : ""}
+              extraActionBusy={busyKey === `share-profile:${person._id}`}
+              onExtraAction={
+                shareDraft
+                  ? () => {
+                      void shareToProfile(person);
+                    }
+                  : undefined
+              }
             />
           ))}
         </div>
       ) : (
         <EmptyState
-          title="No friends yet"
-          description="Start with suggestions to grow your network."
+          title={shareDraft ? "No friends available for this share" : "No friends yet"}
+          description={
+            shareDraft
+              ? "Add a few friends first, then come back here to share directly to their profiles."
+              : "Start with suggestions to grow your network."
+          }
           actionLabel="See suggestions"
           onAction={() => setActiveSection("suggestions")}
         />
@@ -1102,6 +1209,34 @@ export default function FriendsPage({ user }) {
                 </button>
               </div>
             </div>
+
+            {shareDraft ? (
+              <section className="friends-share-banner">
+                <div className="friends-share-banner__content">
+                  <p className="friends-share-banner__eyebrow">Friend profile share</p>
+                  <strong>
+                    {shareDraft.authorName}
+                    {shareDraft.authorUsername ? ` @${shareDraft.authorUsername}` : ""}
+                  </strong>
+                  <p>
+                    {shareDraft.note || shareDraft.excerpt || "Open a friend's profile below and keep this post ready to share."}
+                  </p>
+                  <small>{shareDraft.url}</small>
+                </div>
+                <div className="friends-share-banner__actions">
+                  <button type="button" className="friends-page-btn primary" onClick={() => void copyShareLink()}>
+                    Copy link
+                  </button>
+                  <button
+                    type="button"
+                    className="friends-page-btn ghost"
+                    onClick={() => navigate(`/posts/${shareDraft.postId}/share`)}
+                  >
+                    Back to share
+                  </button>
+                </div>
+              </section>
+            ) : null}
 
             {error ? <p className="friends-page-error">{error}</p> : null}
 

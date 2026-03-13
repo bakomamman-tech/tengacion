@@ -19,6 +19,7 @@ const Register = lazy(() => import("./pages/Register"));
 const Search = lazy(() => import("./pages/Search"));
 const Home = lazy(() => import("./pages/Home"));
 const PostDetail = lazy(() => import("./pages/PostDetail"));
+const PostSharePage = lazy(() => import("./pages/PostShare"));
 const ProfileEditor = lazy(() => import("./ProfileEditor"));
 const CreatorDashboardMVP = lazy(() => import("./pages/CreatorDashboardMVP"));
 const Notifications = lazy(() => import("./pages/Notifications"));
@@ -187,6 +188,14 @@ export default function App() {
             element={
               <ProtectedRoute user={user}>
                 <PostDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/posts/:postId/share"
+            element={
+              <ProtectedRoute user={user}>
+                <PostSharePage />
               </ProtectedRoute>
             }
           />

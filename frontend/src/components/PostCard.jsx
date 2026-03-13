@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 import PostComments from "./PostComments";
 import { apiRequest, createReport, initPayment, resolveImage } from "../api";
@@ -196,6 +197,7 @@ export default function PostCard({
   onRecommendationAction,
 }) {
   const { confirm, prompt } = useDialog();
+  const navigate = useNavigate();
   /* SYSTEM POST SHORT-CIRCUIT */
   const isSystemPost = isSystem || post?.system;
   const isRecommendedPost = Boolean(discoveryMeta?.requestId);
@@ -334,7 +336,6 @@ export default function PostCard({
   const [liveCommentsCount, setLiveCommentsCount] = useState(baseCommentsCount);
   const [shareCount, setShareCount] = useState(Number(post?.shareCount) || 0);
   const [liking, setLiking] = useState(false);
-  const [sharing, setSharing] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
   const reactionsCount = likesCount;
@@ -504,8 +505,23 @@ export default function PostCard({
     return reaction?.name || "Like";
   }, [likedByViewer, reaction]);
 
+  const postLink = useMemo(() => {
+    const postId = String(post?._id || "").trim();
+    if (!postId) {
+      return "";
+    }
+    const base =
+      typeof window !== "undefined" && window.location?.origin
+        ? window.location.origin
+        : "https://tengacion.onrender.com";
+    return `${base}/posts/${postId}`;
+  }, [post?._id]);
+
   const copyCurrentLink = async () => {
-    await navigator.clipboard.writeText(window.location.href);
+    if (!postLink) {
+      throw new Error("Post link unavailable");
+    }
+    await navigator.clipboard.writeText(postLink);
   };
 
   const copyLinkOnly = async () => {
@@ -583,44 +599,16 @@ export default function PostCard({
     }
   };
 
-  const sharePost = async () => {
-    if (sharing) {
+  const openSharePage = () => {
+    if (!post?._id) {
       return;
     }
 
-    try {
-      setSharing(true);
-
-      const data = await apiRequest(`/api/posts/${post._id}/share`, {
-        method: "POST",
-      });
-
-      setShareCount((current) => {
-        const nextCount = Number(data?.shareCount);
-        if (Number.isFinite(nextCount) && nextCount >= 0) {
-          return nextCount;
-        }
-        return current + 1;
-      });
-
-      try {
-        await copyCurrentLink();
-        toast.success("Post shared");
-      } catch {
-        toast.success("Post shared");
-      }
-      void runRecommendationAction({
-        action: "share",
-        eventType: "post_shared",
-        metadata: {
-          engagement: "share",
-        },
-      });
-    } catch (err) {
-      toast.error(err.message || "Failed to share post");
-    } finally {
-      setSharing(false);
-    }
+    navigate(`/posts/${post._id}/share`, {
+      state: {
+        post,
+      },
+    });
   };
 
   const deletePost = async () => {
@@ -1007,9 +995,14 @@ export default function PostCard({
             <span>Comment</span>
           </button>
 
-          <button type="button" className="action-btn" onClick={sharePost} disabled={sharing}>
+          <button
+            type="button"
+            className="action-btn"
+            onClick={openSharePage}
+            disabled={!post?._id}
+          >
             <span className="btn-emoji">{"\u{21AA}"}</span>
-            <span>{sharing ? "Sharing..." : "Share"}</span>
+            <span>Share</span>
           </button>
         </div>
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import {
@@ -142,6 +142,26 @@ const toMediaUrl = (value) => {
   return value.url || "";
 };
 
+const normalizeSharedPost = (value = {}) => {
+  const postId = String(value?.postId || "").trim();
+  const url = String(value?.url || "").trim();
+  if (!postId || !url) {
+    return null;
+  }
+
+  return {
+    postId,
+    url,
+    note: trimProfileText(value?.note),
+    excerpt: trimProfileText(value?.excerpt),
+    authorName: trimProfileText(value?.authorName) || "Tengacion creator",
+    authorUsername: trimProfileText(value?.authorUsername).replace(/^@+/, ""),
+    previewImage: trimProfileText(value?.previewImage),
+    targetName: trimProfileText(value?.targetName),
+    targetUsername: trimProfileText(value?.targetUsername).replace(/^@+/, ""),
+  };
+};
+
 function Glyph({ name, className = "" }) {
   const path = iconPathByName[name] || "";
   return (
@@ -186,11 +206,28 @@ function FactRow({ icon, children }) {
 
 export default function ProfileEditor({ user }) {
   const { prompt } = useDialog();
+  const location = useLocation();
   const navigate = useNavigate();
   const { username: routeUsername } = useParams();
   const { updateUser } = useAuth();
 
   const targetUsername = (routeUsername || user?.username || "").toLowerCase();
+  const sharedPost = useMemo(() => {
+    const draft = normalizeSharedPost(location.state?.sharedPost);
+    if (!draft) {
+      return null;
+    }
+
+    if (
+      draft.targetUsername &&
+      targetUsername &&
+      draft.targetUsername.toLowerCase() !== targetUsername
+    ) {
+      return null;
+    }
+
+    return draft;
+  }, [location.state, targetUsername]);
 
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
@@ -403,6 +440,19 @@ export default function ProfileEditor({ user }) {
     }
     ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  const copySharedPostLink = useCallback(async () => {
+    if (!sharedPost?.url) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(sharedPost.url);
+      toast.success("Post link copied.");
+    } catch (err) {
+      toast.error(err?.message || "Failed to copy the shared post link");
+    }
+  }, [sharedPost?.url]);
 
   const handleTabSelect = (tabId) => {
     setActiveTab(tabId);
@@ -622,6 +672,39 @@ export default function ProfileEditor({ user }) {
             </div>
           </section>
         )}
+        {sharedPost ? (
+          <section className="card profile-share-banner">
+            <div className="profile-share-banner__copy">
+              <p className="profile-share-banner__eyebrow">Profile share ready</p>
+              <strong>
+                From {sharedPost.authorName}
+                {sharedPost.authorUsername ? ` @${sharedPost.authorUsername}` : ""}
+              </strong>
+              <p>
+                {sharedPost.note ||
+                  sharedPost.excerpt ||
+                  "This post is ready to continue from this profile."}
+              </p>
+              <small>{sharedPost.url}</small>
+            </div>
+            {sharedPost.previewImage ? (
+              <div className="profile-share-banner__media">
+                <img src={sharedPost.previewImage} alt="Shared post preview" />
+              </div>
+            ) : null}
+            <div className="profile-share-banner__actions">
+              <button className="btn-secondary" onClick={() => void copySharedPostLink()}>
+                Copy link
+              </button>
+              <button
+                className="btn-secondary"
+                onClick={() => navigate(`/posts/${sharedPost.postId}/share`)}
+              >
+                Back to share
+              </button>
+            </div>
+          </section>
+        ) : null}
         <section className="profile-hero-card">
           <div className="profile-cover-v2">
             {displayCover ? (

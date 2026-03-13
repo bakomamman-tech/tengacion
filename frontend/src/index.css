@@ -1250,6 +1250,8 @@ html.dark-mode .live-preview-panel {
   margin-top: 12px;
   display: flex;
   justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .profile-composer-prompt {

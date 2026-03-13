@@ -152,6 +152,26 @@ html.dark-mode {
   --tg-toast-shadow: 0 20px 48px rgba(0, 0, 0, 0.34);
 }
 
+html:not(.dark-mode) {
+  --tg-btn-primary-bg: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(250, 244, 235, 0.98) 100%);
+  --tg-btn-primary-bg-hover: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(252, 247, 240, 0.99) 100%);
+  --tg-btn-primary-bg-active: linear-gradient(180deg, rgba(248, 240, 229, 0.98) 0%, rgba(243, 231, 215, 0.94) 100%);
+  --tg-btn-primary-border: var(--home-soft-btn-border-strong);
+  --tg-btn-primary-text: color-mix(in srgb, var(--brand-strong) 58%, var(--text) 42%);
+  --tg-btn-secondary-bg: var(--home-soft-btn-bg);
+  --tg-btn-secondary-bg-hover: var(--home-soft-btn-bg-hover);
+  --tg-btn-secondary-bg-active: linear-gradient(180deg, rgba(247, 239, 227, 0.98) 0%, rgba(241, 231, 217, 0.94) 100%);
+  --tg-btn-secondary-border: var(--home-soft-btn-border);
+  --tg-btn-secondary-border-hover: var(--home-soft-btn-border-strong);
+  --tg-btn-secondary-text: var(--home-soft-btn-text);
+  --tg-btn-shadow-primary:
+    0 14px 26px rgba(75, 47, 18, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  --tg-btn-shadow-primary-hover:
+    0 18px 32px rgba(75, 47, 18, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
 button {
   -webkit-tap-highlight-color: transparent;
 }
@@ -429,6 +449,144 @@ button {
   --tg-btn-current-color: var(--tg-btn-secondary-text);
 }
 
+html:not(.dark-mode)
+  :is(
+    .btn-primary,
+    .post-btn,
+    .primary,
+    .login-btn,
+    .register-fb-submit,
+    .profile-head-btn.primary,
+    .friend-request-btn.confirm,
+    .search-person-btn.primary,
+    .pc-submit.active,
+    .profile-primary-action:not(.soft),
+    .post-audio-cta,
+    .cpub-rail-btn:not(.light)
+  ) {
+  background: var(--tg-btn-primary-bg) !important;
+  border: 1px solid var(--tg-btn-primary-border) !important;
+  color: var(--tg-btn-primary-text) !important;
+  box-shadow: var(--tg-btn-shadow-primary) !important;
+}
+
+html:not(.dark-mode)
+  :is(
+    .btn-primary,
+    .post-btn,
+    .primary,
+    .login-btn,
+    .register-fb-submit,
+    .profile-head-btn.primary,
+    .friend-request-btn.confirm,
+    .search-person-btn.primary,
+    .pc-submit.active,
+    .profile-primary-action:not(.soft),
+    .post-audio-cta,
+    .cpub-rail-btn:not(.light)
+  ):hover:not(:disabled) {
+  background: var(--tg-btn-primary-bg-hover) !important;
+  border-color: var(--tg-btn-primary-border) !important;
+  box-shadow: var(--tg-btn-shadow-primary-hover) !important;
+}
+
+html:not(.dark-mode)
+  :is(
+    .btn-primary,
+    .post-btn,
+    .primary,
+    .login-btn,
+    .register-fb-submit,
+    .profile-head-btn.primary,
+    .friend-request-btn.confirm,
+    .search-person-btn.primary,
+    .pc-submit.active,
+    .profile-primary-action:not(.soft),
+    .post-audio-cta,
+    .cpub-rail-btn:not(.light)
+  ):active:not(:disabled) {
+  background: var(--tg-btn-primary-bg-active) !important;
+  box-shadow: var(--tg-btn-shadow-primary) !important;
+}
+
+html:not(.dark-mode)
+  :is(
+    .btn-secondary,
+    .secondary,
+    .signup-btn,
+    .register-fb-secondary,
+    .profile-head-btn,
+    .friend-request-btn,
+    .search-person-btn,
+    .sidebar-btn,
+    .notifications-tab,
+    .notif-mark-all,
+    .notif-previous-btn,
+    .adminx-btn,
+    .adminx-link-btn,
+    .live-tool-btn,
+    .live-chat-close,
+    .create-coming-close,
+    .profile-primary-action.soft,
+    .cpub-rail-btn.light
+  ) {
+  background: var(--tg-btn-secondary-bg) !important;
+  border: 1px solid var(--tg-btn-secondary-border) !important;
+  color: var(--tg-btn-secondary-text) !important;
+  box-shadow: var(--tg-btn-shadow-soft) !important;
+}
+
+html:not(.dark-mode)
+  :is(
+    .btn-secondary,
+    .secondary,
+    .signup-btn,
+    .register-fb-secondary,
+    .profile-head-btn,
+    .friend-request-btn,
+    .search-person-btn,
+    .sidebar-btn,
+    .notifications-tab,
+    .notif-mark-all,
+    .notif-previous-btn,
+    .adminx-btn,
+    .adminx-link-btn,
+    .live-tool-btn,
+    .live-chat-close,
+    .create-coming-close,
+    .profile-primary-action.soft,
+    .cpub-rail-btn.light
+  ):hover:not(:disabled) {
+  background: var(--tg-btn-secondary-bg-hover) !important;
+  border-color: var(--tg-btn-secondary-border-hover) !important;
+  box-shadow: var(--tg-btn-shadow-hover) !important;
+}
+
+html:not(.dark-mode)
+  :is(
+    .btn-secondary,
+    .secondary,
+    .signup-btn,
+    .register-fb-secondary,
+    .profile-head-btn,
+    .friend-request-btn,
+    .search-person-btn,
+    .sidebar-btn,
+    .notifications-tab,
+    .notif-mark-all,
+    .notif-previous-btn,
+    .adminx-btn,
+    .adminx-link-btn,
+    .live-tool-btn,
+    .live-chat-close,
+    .create-coming-close,
+    .profile-primary-action.soft,
+    .cpub-rail-btn.light
+  ):active:not(:disabled) {
+  background: var(--tg-btn-secondary-bg-active) !important;
+  box-shadow: var(--tg-btn-shadow-press) !important;
+}
+
 :is(
   .btn-link,
   .ghost,
@@ -562,8 +720,8 @@ html.dark-mode .navbar {
 
 .nav-pill-group,
 .pillGroup {
-  gap: 6px;
-  padding: 5px;
+  gap: 10px;
+  padding: 6px;
   border-radius: 18px;
   border: 1px solid rgba(180, 140, 92, 0.14);
   background: linear-gradient(180deg, rgba(255, 250, 244, 0.72) 0%, rgba(247, 239, 229, 0.58) 100%);

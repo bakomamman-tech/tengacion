@@ -297,9 +297,23 @@ const resolveTaggedUsers = async (value) => {
 
 const toVisibility = (value) => {
   const normalized = String(value || "").trim().toLowerCase();
+  if (["private", "only_me", "only me"].includes(normalized)) {
+    return "private";
+  }
   return ["public", "friends", "close_friends"].includes(normalized)
     ? normalized
     : "public";
+};
+
+const toPrivacy = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["friends", "private"].includes(normalized)) {
+    return normalized;
+  }
+  if (["only_me", "only me"].includes(normalized)) {
+    return "private";
+  }
+  return "public";
 };
 
 const extractHashtags = (text = "") => {
@@ -314,6 +328,100 @@ const avatarToUrl = (avatar) => {
 };
 
 const withPostAuthor = (query) => query.populate("author", "name username avatar");
+
+const getPostPreviewImage = (post = {}) => {
+  if (post?.video?.thumbnailUrl) {
+    return normalizeVideoUrl(post.video.thumbnailUrl);
+  }
+
+  const mediaList = Array.isArray(post?.media) ? post.media : [];
+  const firstMedia = mediaList[0];
+  if (firstMedia && typeof firstMedia === "object" && firstMedia.url) {
+    return normalizeVideoUrl(firstMedia.url);
+  }
+
+  return "";
+};
+
+const parseSharedPostPayload = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  let source = value;
+  if (typeof source === "string") {
+    try {
+      source = JSON.parse(source);
+    } catch {
+      source = { postId: source };
+    }
+  }
+
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    return null;
+  }
+
+  const postId = String(source.postId || source.originalPostId || "").trim();
+  if (!postId) {
+    return null;
+  }
+
+  return { postId };
+};
+
+const buildSharedPostMeta = async (value) => {
+  const payload = parseSharedPostPayload(value);
+  if (!payload?.postId) {
+    return null;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(payload.postId)) {
+    throw ApiError.badRequest("Invalid shared post id");
+  }
+
+  const originalPost = await withPostAuthor(Post.findById(payload.postId)).lean();
+  if (!originalPost) {
+    throw ApiError.notFound("Shared post not found");
+  }
+
+  if (originalPost.sharedPost && typeof originalPost.sharedPost === "object") {
+    return {
+      originalPostId: originalPost.sharedPost.originalPostId || originalPost._id,
+      originalAuthorId: originalPost.sharedPost.originalAuthorId || null,
+      originalAuthorName: normalizeText(originalPost.sharedPost.originalAuthorName || "", 120),
+      originalAuthorUsername: normalizeUsername(originalPost.sharedPost.originalAuthorUsername || ""),
+      originalAuthorAvatar: normalizeText(originalPost.sharedPost.originalAuthorAvatar || "", 500),
+      originalText: normalizeText(originalPost.sharedPost.originalText || "", 5000),
+      previewImage: normalizeText(originalPost.sharedPost.previewImage || "", 500),
+      previewMediaType: ["image", "video", "reel"].includes(originalPost.sharedPost.previewMediaType)
+        ? originalPost.sharedPost.previewMediaType
+        : "text",
+    };
+  }
+
+  const originalAuthor = originalPost.author || {};
+  const previewMediaType =
+    originalPost.type === "reel"
+      ? "reel"
+      : originalPost?.video?.playbackUrl || originalPost?.video?.url
+        ? "video"
+        : Array.isArray(originalPost?.media) && originalPost.media.length > 0
+          ? originalPost.media[0]?.type || "image"
+          : "text";
+
+  return {
+    originalPostId: originalPost._id,
+    originalAuthorId: originalAuthor?._id || null,
+    originalAuthorName: normalizeText(originalAuthor?.name || "", 120),
+    originalAuthorUsername: normalizeUsername(originalAuthor?.username || ""),
+    originalAuthorAvatar: avatarToUrl(originalAuthor?.avatar),
+    originalText: normalizeText(originalPost?.text || "", 5000),
+    previewImage: getPostPreviewImage(originalPost),
+    previewMediaType: ["image", "video", "reel"].includes(previewMediaType)
+      ? previewMediaType
+      : "text",
+  };
+};
 
 const toPostPayload = (post, viewerId) => {
   const author = post.author || {};
@@ -342,6 +450,21 @@ const toPostPayload = (post, viewerId) => {
     : taggedUsers.map((entry) => entry.username || entry.name).filter(Boolean);
   const moreOptions = Array.isArray(post.moreOptions) ? post.moreOptions : [];
   const callToAction = post.callToAction || {};
+  const sharedPost =
+    post.sharedPost && typeof post.sharedPost === "object"
+      ? {
+          originalPostId: toIdString(post.sharedPost.originalPostId),
+          originalAuthorId: toIdString(post.sharedPost.originalAuthorId),
+          originalAuthorName: normalizeText(post.sharedPost.originalAuthorName || "", 120),
+          originalAuthorUsername: normalizeUsername(post.sharedPost.originalAuthorUsername || ""),
+          originalAuthorAvatar: normalizeText(post.sharedPost.originalAuthorAvatar || "", 500),
+          originalText: normalizeText(post.sharedPost.originalText || "", 5000),
+          previewImage: normalizeText(post.sharedPost.previewImage || "", 500),
+          previewMediaType: ["text", "image", "video", "reel"].includes(post.sharedPost.previewMediaType)
+            ? post.sharedPost.previewMediaType
+            : "text",
+        }
+      : null;
   const authorId = author?._id ? author._id.toString() : "";
   const viewerIdString = viewerId ? viewerId.toString() : "";
   const likedByViewer = Boolean(viewerIdString && likes.some((id) => id.toString() === viewerIdString));
@@ -371,8 +494,14 @@ const toPostPayload = (post, viewerId) => {
       enabled: Boolean(callToAction.enabled),
       value: callToAction.value || "",
     },
+    sharedPost,
     moreOptions,
-    audience: post.audience || post.visibility || "friends",
+    audience:
+      post.visibility === "private"
+        ? "private"
+        : post.audience || post.visibility || "friends",
+    privacy: post.privacy || "public",
+    visibility: post.visibility || "public",
     hashtags: Array.isArray(post.hashtags) ? post.hashtags : [],
     mentions: Array.isArray(post.mentions) ? post.mentions.map((id) => toIdString(id)) : [],
     createdAt: post.createdAt,
@@ -392,6 +521,7 @@ class PostService {
   static async createPost({ userId, body, files, io = null, onlineUsers = null }) {
     const viewerId = userId;
     const text = normalizeText(body?.text || "", 240);
+    const sharedPost = await buildSharedPostMeta(body?.sharedPost);
     const taggedUsers = await resolveTaggedUsers(body?.taggedUsers || body?.tags);
     const tags = taggedUsers.map((entry) => entry.username || entry.name).filter(Boolean);
     const feeling = normalizeText(body?.feeling, 60);
@@ -424,7 +554,8 @@ class PostService {
     validateVideoMeta(videoMeta);
 
     const hasVideo = Boolean(videoMeta);
-    if (!text && !uploadFile && !hasMetadata && !hasVideo) {
+    const hasSharedPost = Boolean(sharedPost);
+    if (!text && !uploadFile && !hasMetadata && !hasVideo && !hasSharedPost) {
       throw ApiError.badRequest("Post cannot be empty");
     }
 
@@ -449,13 +580,17 @@ class PostService {
     }
 
     const visibility = toVisibility(body?.visibility || body?.privacy);
+    const privacy = toPrivacy(body?.privacy || body?.visibility);
     const hashtags = extractHashtags(text);
     const mentions = await resolveMentionUserIds(text);
     const viewer = await userRepository.findById(viewerId);
     const defaultAudience = String(viewer?.privacy?.defaultPostAudience || "").toLowerCase();
-    const audience = ["public", "friends", "close_friends"].includes(defaultAudience)
-      ? defaultAudience
-      : visibility;
+    const audience =
+      visibility === "private"
+        ? "friends"
+        : ["public", "friends", "close_friends"].includes(defaultAudience)
+          ? defaultAudience
+          : visibility;
 
     const pollPayload = body?.poll && typeof body.poll === "string"
       ? (() => {
@@ -568,7 +703,8 @@ class PostService {
       media,
       type,
       video: ["video", "reel"].includes(type) ? videoMeta : null,
-      privacy: "public",
+      sharedPost,
+      privacy,
       visibility,
       audience,
       hashtags,
@@ -667,6 +803,7 @@ class PostService {
       });
       visibilityScopes.push({
         author: { $in: closeFriendIds },
+        privacy: { $in: ["public", "friends"] },
         visibility: { $in: ["public", "friends", "close_friends"] },
         audience: { $in: ["public", "friends", "close_friends", null] },
       });

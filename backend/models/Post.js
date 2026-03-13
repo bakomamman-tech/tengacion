@@ -116,6 +116,57 @@ const TaggedUserSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const SharedPostSchema = new mongoose.Schema(
+  {
+    originalPostId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+      required: true,
+      index: true,
+    },
+    originalAuthorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    originalAuthorName: {
+      type: String,
+      trim: true,
+      maxlength: 120,
+      default: "",
+    },
+    originalAuthorUsername: {
+      type: String,
+      trim: true,
+      maxlength: 30,
+      default: "",
+    },
+    originalAuthorAvatar: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    originalText: {
+      type: String,
+      trim: true,
+      maxlength: 5000,
+      default: "",
+    },
+    previewImage: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    previewMediaType: {
+      type: String,
+      enum: ["text", "image", "video", "reel"],
+      default: "text",
+    },
+  },
+  { _id: false }
+);
+
 /* ================= POST SCHEMA ================= */
 const PostSchema = new mongoose.Schema(
   {
@@ -231,7 +282,7 @@ const PostSchema = new mongoose.Schema(
 
     visibility: {
       type: String,
-      enum: ["public", "friends", "close_friends"],
+      enum: ["public", "friends", "close_friends", "private"],
       default: "public",
       index: true,
     },
@@ -328,6 +379,11 @@ const PostSchema = new mongoose.Schema(
         trim: true,
         default: "",
       },
+    },
+
+    sharedPost: {
+      type: SharedPostSchema,
+      default: null,
     },
 
     likes: [

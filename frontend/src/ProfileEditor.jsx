@@ -1281,6 +1281,16 @@ export default function ProfileEditor({ user }) {
                   <PostCard
                     key={post._id}
                     post={post}
+                    onShareCreated={(sharedPost) => {
+                      if (!isOwner) {
+                        return;
+                      }
+
+                      setPosts((current) => [
+                        sharedPost,
+                        ...current.filter((entry) => entry._id !== sharedPost?._id),
+                      ]);
+                    }}
                     onDelete={(id) =>
                       setPosts((current) => current.filter((entry) => entry._id !== id))
                     }

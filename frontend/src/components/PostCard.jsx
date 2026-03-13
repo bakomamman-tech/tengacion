@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
 
 import PostComments from "./PostComments";
+import PostShareModal from "./share/PostShareModal";
+import {
+  buildPostShareUrl,
+  fallbackAvatar,
+  truncateText,
+} from "./share/postShareUtils";
 import { apiRequest, createReport, initPayment, resolveImage } from "../api";
 import { createReportDialogConfig } from "../constants/reportReasons";
 import VideoPlayer from "./media/VideoPlayer";
@@ -193,11 +198,11 @@ export default function PostCard({
   isSystem,
   onDelete,
   onEdit,
+  onShareCreated,
   discoveryMeta = null,
   onRecommendationAction,
 }) {
   const { confirm, prompt } = useDialog();
-  const navigate = useNavigate();
   /* SYSTEM POST SHORT-CIRCUIT */
   const isSystemPost = isSystem || post?.system;
   const isRecommendedPost = Boolean(discoveryMeta?.requestId);
@@ -209,6 +214,7 @@ export default function PostCard({
   );
   const [showReactions, setShowReactions] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -305,6 +311,28 @@ export default function PostCard({
   const audioTrack = post?.audio;
   const audioPreviewUrl = audioTrack?.previewUrl || audioTrack?.url;
   const hasAudioPreview = Boolean(audioPreviewUrl);
+  const hasSharedPost = Boolean(
+    post?.sharedPost &&
+      typeof post.sharedPost === "object" &&
+      (
+        post.sharedPost.originalPostId ||
+        post.sharedPost.originalAuthorName ||
+        post.sharedPost.originalText ||
+        post.sharedPost.previewImage
+      )
+  );
+  const sharedPostAuthorName = String(
+    post?.sharedPost?.originalAuthorName || "Original creator"
+  ).trim();
+  const sharedPostAuthorHandle = normalizeTagHandle(
+    post?.sharedPost?.originalAuthorUsername || ""
+  );
+  const sharedPostAvatar =
+    resolveImage(post?.sharedPost?.originalAuthorAvatar || "") ||
+    fallbackAvatar(sharedPostAuthorName);
+  const sharedPostPreviewText = String(post?.sharedPost?.originalText || "").trim();
+  const sharedPostPreviewImage = resolveImage(post?.sharedPost?.previewImage || "");
+  const sharedPostKind = String(post?.sharedPost?.previewMediaType || "text").trim();
   const handleTrackPayment = async () => {
     if (!audioTrack?.trackId) {return;}
     setPaymentLoading(true);
@@ -506,15 +534,7 @@ export default function PostCard({
   }, [likedByViewer, reaction]);
 
   const postLink = useMemo(() => {
-    const postId = String(post?._id || "").trim();
-    if (!postId) {
-      return "";
-    }
-    const base =
-      typeof window !== "undefined" && window.location?.origin
-        ? window.location.origin
-        : "https://tengacion.onrender.com";
-    return `${base}/posts/${postId}`;
+    return buildPostShareUrl(post?._id);
   }, [post?._id]);
 
   const copyCurrentLink = async () => {
@@ -599,16 +619,12 @@ export default function PostCard({
     }
   };
 
-  const openSharePage = () => {
+  const openShareComposer = () => {
     if (!post?._id) {
       return;
     }
 
-    navigate(`/posts/${post._id}/share`, {
-      state: {
-        post,
-      },
-    });
+    setShareOpen(true);
   };
 
   const deletePost = async () => {
@@ -693,6 +709,18 @@ export default function PostCard({
                       ` and ${additionalTaggedCount} other${
                         additionalTaggedCount === 1 ? "" : "s"
                       }`}
+                  </span>
+                )}
+                {!primaryTaggedUser && hasSharedPost && (
+                  <span className="post-name-context">
+                    shared <span className="post-name-tagged-person">a post</span>
+                    {sharedPostAuthorName ? (
+                      <>
+                        {" "}
+                        from{" "}
+                        <span className="post-name-tagged-person">{sharedPostAuthorName}</span>
+                      </>
+                    ) : null}
                   </span>
                 )}
               </p>
@@ -788,6 +816,39 @@ export default function PostCard({
         {/* BODY */}
         <div className="post-body">
           {post?.text && <p className="post-text">{post.text}</p>}
+
+          {hasSharedPost && (
+            <div className="post-shared-preview">
+              <div className="post-shared-preview__header">
+                <div className="post-shared-preview__author">
+                  <img src={sharedPostAvatar} alt={sharedPostAuthorName} />
+                  <div>
+                    <strong>{sharedPostAuthorName}</strong>
+                    <span>
+                      {sharedPostAuthorHandle
+                        ? `@${sharedPostAuthorHandle}`
+                        : "Original post"}
+                    </span>
+                  </div>
+                </div>
+                <span className="post-shared-preview__badge">
+                  {sharedPostKind === "video" ? "Video" : "Original post"}
+                </span>
+              </div>
+
+              {sharedPostPreviewText ? (
+                <p className="post-shared-preview__text">
+                  {truncateText(sharedPostPreviewText, 280)}
+                </p>
+              ) : null}
+
+              {sharedPostPreviewImage ? (
+                <div className="post-shared-preview__media">
+                  <img src={sharedPostPreviewImage} alt="Shared post preview" />
+                </div>
+              ) : null}
+            </div>
+          )}
 
           {(taggedUsers.length > 0 || feeling || checkInLocation || moreOptions.length > 0) && (
             <div className="post-meta-row">
@@ -998,7 +1059,7 @@ export default function PostCard({
           <button
             type="button"
             className="action-btn"
-            onClick={openSharePage}
+            onClick={openShareComposer}
             disabled={!post?._id}
           >
             <span className="btn-emoji">{"\u{21AA}"}</span>
@@ -1030,6 +1091,14 @@ export default function PostCard({
           }}
         />
       )}
+
+      <PostShareModal
+        open={shareOpen}
+        post={post}
+        onClose={() => setShareOpen(false)}
+        onShareCountChange={setShareCount}
+        onShareCreated={onShareCreated}
+      />
     </>
   );
 }

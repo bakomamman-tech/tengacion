@@ -1689,6 +1689,12 @@ export default function Home({ user }) {
                   post={entry.post}
                   discoveryMeta={entry.discoveryMeta}
                   onRecommendationAction={handleRecommendationAction}
+                  onShareCreated={(sharedPost) =>
+                    setFeedItems((prev) => [
+                      createFeedEntry(sharedPost),
+                      ...prev.filter((feedEntry) => feedEntry?.post?._id !== sharedPost?._id),
+                    ])
+                  }
                   onDelete={(id) =>
                     setFeedItems((prev) =>
                       prev.filter((feedEntry) => feedEntry?.post?._id !== id)

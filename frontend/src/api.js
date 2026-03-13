@@ -1070,6 +1070,9 @@ export const createPost = (input, maybeFile = null) => {
     callsEnabled = false,
     callNumber = "",
     moreOptions = [],
+    visibility = "",
+    privacy = "",
+    sharedPost = null,
   } = payload;
 
   return compressImageFile(file).then((optimizedFile) => {
@@ -1099,6 +1102,18 @@ export const createPost = (input, maybeFile = null) => {
 
     if (Array.isArray(moreOptions) && moreOptions.length > 0) {
       form.append("moreOptions", JSON.stringify(moreOptions));
+    }
+
+    if (visibility) {
+      form.append("visibility", String(visibility));
+    }
+
+    if (privacy) {
+      form.append("privacy", String(privacy));
+    }
+
+    if (sharedPost && typeof sharedPost === "object") {
+      form.append("sharedPost", JSON.stringify(sharedPost));
     }
 
     return request(`${API_BASE}/posts`, {
@@ -1139,6 +1154,9 @@ export const createPostWithUploadProgress = async (
     callsEnabled = false,
     callNumber = "",
     moreOptions = [],
+    visibility = "",
+    privacy = "",
+    sharedPost = null,
   } = payload || {};
 
   const optimizedFile = await compressImageFile(file);
@@ -1165,6 +1183,15 @@ export const createPostWithUploadProgress = async (
   }
   if (Array.isArray(moreOptions) && moreOptions.length > 0) {
     form.append("moreOptions", JSON.stringify(moreOptions));
+  }
+  if (visibility) {
+    form.append("visibility", String(visibility));
+  }
+  if (privacy) {
+    form.append("privacy", String(privacy));
+  }
+  if (sharedPost && typeof sharedPost === "object") {
+    form.append("sharedPost", JSON.stringify(sharedPost));
   }
 
   let lastError = null;

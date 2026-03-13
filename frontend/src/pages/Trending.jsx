@@ -140,6 +140,12 @@ export default function Trending({ user }) {
                 <PostCard
                   key={p._id}
                   post={p}
+                  onShareCreated={(sharedPost) =>
+                    setPosts((prev) => [
+                      sharedPost,
+                      ...prev.filter((entry) => entry._id !== sharedPost?._id),
+                    ])
+                  }
                   onDelete={(id) =>
                     setPosts((prev) => prev.filter((x) => x._id !== id))
                   }

@@ -13,6 +13,9 @@ describe("chat + friend request flow", () => {
   let mongod;
   let userA;
   let userB;
+  let userC;
+  let userD;
+  let userE;
   let tokenA;
   let tokenB;
 
@@ -38,6 +41,24 @@ describe("chat + friend request flow", () => {
       name: "User B",
       username: "user_b",
       email: "userb@test.com",
+      password: "Password123!",
+    });
+    userC = await User.create({
+      name: "User C",
+      username: "user_c",
+      email: "userc@test.com",
+      password: "Password123!",
+    });
+    userD = await User.create({
+      name: "User D",
+      username: "user_d",
+      email: "userd@test.com",
+      password: "Password123!",
+    });
+    userE = await User.create({
+      name: "User E",
+      username: "user_e",
+      email: "usere@test.com",
       password: "Password123!",
     });
 
@@ -124,5 +145,73 @@ describe("chat + friend request flow", () => {
 
     expect(Array.isArray(loaded.body)).toBe(true);
     expect(loaded.body.some((entry) => String(entry._id) === sendResponse.body._id)).toBe(true);
+  });
+
+  test("friends hub returns requests, friends, suggestions, birthdays, and close friends", async () => {
+    const today = new Date();
+
+    userA.friends = [userB._id];
+    userA.friendRequests = [userC._id];
+    userA.closeFriends = [userB._id];
+    await userA.save();
+
+    userB.friends = [userA._id];
+    userB.birthday = {
+      day: today.getDate(),
+      month: today.getMonth() + 1,
+      year: 1998,
+      visibility: "friends",
+    };
+    await userB.save();
+
+    userD.friendRequests = [userA._id];
+    await userD.save();
+
+    const response = await request(app)
+      .get("/api/users/me/friends-hub")
+      .set("Authorization", `Bearer ${tokenA}`)
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      stats: {
+        friendsCount: 1,
+        incomingRequestsCount: 1,
+        outgoingRequestsCount: 1,
+        closeFriendsCount: 1,
+        birthdaysCount: 1,
+      },
+    });
+
+    expect(response.body.incomingRequests).toHaveLength(1);
+    expect(response.body.incomingRequests[0]).toMatchObject({
+      _id: userC._id.toString(),
+      relationshipStatus: "request_received",
+    });
+
+    expect(response.body.outgoingRequests).toHaveLength(1);
+    expect(response.body.outgoingRequests[0]).toMatchObject({
+      _id: userD._id.toString(),
+      relationshipStatus: "request_sent",
+    });
+
+    expect(response.body.friends).toHaveLength(1);
+    expect(response.body.friends[0]).toMatchObject({
+      _id: userB._id.toString(),
+      relationshipStatus: "friends",
+      isCloseFriend: true,
+    });
+
+    expect(response.body.birthdays).toHaveLength(1);
+    expect(response.body.birthdays[0]).toMatchObject({
+      _id: userB._id.toString(),
+      birthdayLabel: "Today",
+      birthdayIsToday: true,
+    });
+
+    expect(Array.isArray(response.body.suggestions)).toBe(true);
+    expect(response.body.suggestions.some((entry) => entry._id === userE._id.toString())).toBe(true);
+    expect(response.body.suggestions.some((entry) => entry._id === userB._id.toString())).toBe(false);
+    expect(response.body.suggestions.some((entry) => entry._id === userC._id.toString())).toBe(false);
+    expect(response.body.suggestions.some((entry) => entry._id === userD._id.toString())).toBe(false);
   });
 });

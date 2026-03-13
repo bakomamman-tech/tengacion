@@ -656,6 +656,11 @@ export const getFriendRequests = () =>
     headers: getAuthHeaders(),
   });
 
+export const getFriendsHub = () =>
+  request(`${API_BASE}/users/me/friends-hub`, {
+    headers: getAuthHeaders(),
+  });
+
 export const sendFriendRequest = (userId) =>
   request(`${API_BASE}/users/${encodeURIComponent(userId || "")}/request`, {
     method: "POST",

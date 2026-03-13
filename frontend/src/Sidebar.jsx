@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { resolveImage } from "./api";
 
 const fallbackAvatar = (name) =>
@@ -8,6 +8,7 @@ const fallbackAvatar = (name) =>
 
 export default function Sidebar({ user, openChat, openProfile }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const avatar = resolveImage(user?.avatar) || fallbackAvatar(user?.name);
 
@@ -22,6 +23,9 @@ export default function Sidebar({ user, openChat, openProfile }) {
     }
   };
 
+  const isProfileRoute = location.pathname.startsWith("/profile/");
+  const sidebarBtnClass = (isActive) => `sidebar-btn${isActive ? " active" : ""}`;
+
   return (
     <aside className="card sidebar-nav" role="navigation">
       <button className="sidebar-user" onClick={goProfile}>
@@ -35,36 +39,63 @@ export default function Sidebar({ user, openChat, openProfile }) {
       <div className="sb-divider" />
 
       <div className="sidebar-links">
-        <button className="sidebar-btn" onClick={() => navigate("/home")}>
+        <button
+          className={sidebarBtnClass(location.pathname === "/home")}
+          onClick={() => navigate("/home")}
+        >
           Home
         </button>
 
-        <button className="sidebar-btn" onClick={() => navigate("/trending")}>
+        <button
+          className={sidebarBtnClass(location.pathname === "/trending")}
+          onClick={() => navigate("/trending")}
+        >
           Trending
         </button>
 
-        <button className="sidebar-btn" onClick={() => navigate("/live")}>
+        <button
+          className={sidebarBtnClass(location.pathname === "/live")}
+          onClick={() => navigate("/live")}
+        >
           Live directory
         </button>
 
-        <button className="sidebar-btn" onClick={() => navigate("/live/go")}>
+        <button
+          className={sidebarBtnClass(location.pathname === "/live/go")}
+          onClick={() => navigate("/live/go")}
+        >
           Go live
         </button>
 
-        <button className="sidebar-btn" onClick={() => navigate("/creator")}>
+        <button
+          className={sidebarBtnClass(
+            location.pathname === "/creator" || location.pathname === "/dashboard/creator"
+          )}
+          onClick={() => navigate("/creator")}
+        >
           Creator Dashboard
         </button>
 
-        <button className="sidebar-btn" onClick={() => navigate("/notifications")}>
+        <button
+          className={sidebarBtnClass(location.pathname === "/notifications")}
+          onClick={() => navigate("/notifications")}
+        >
           Notifications
         </button>
 
-        <button className="sidebar-btn" onClick={openChat}>
+        <button className={sidebarBtnClass(false)} onClick={openChat}>
           Messages
         </button>
 
-        <button className="sidebar-btn" onClick={goProfile}>
+        <button className={sidebarBtnClass(isProfileRoute)} onClick={goProfile}>
           Profile
+        </button>
+
+        <button
+          className={sidebarBtnClass(location.pathname === "/friends")}
+          onClick={() => navigate("/friends")}
+        >
+          Friends
         </button>
       </div>
     </aside>

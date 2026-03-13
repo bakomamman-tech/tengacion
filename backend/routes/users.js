@@ -111,6 +111,98 @@ const isBirthdayToday = (birthday = {}) => {
   return now.getDate() === day && now.getMonth() + 1 === month;
 };
 
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const countMutualFriends = (viewerFriendIds = [], candidateFriendIds = [], excludedIds = []) => {
+  const viewerSet = new Set(
+    (Array.isArray(viewerFriendIds) ? viewerFriendIds : [])
+      .map((entry) => toIdString(entry))
+      .filter(Boolean)
+  );
+  const excludedSet = new Set(
+    (Array.isArray(excludedIds) ? excludedIds : [])
+      .map((entry) => toIdString(entry))
+      .filter(Boolean)
+  );
+  let count = 0;
+
+  (Array.isArray(candidateFriendIds) ? candidateFriendIds : []).forEach((entry) => {
+    const id = toIdString(entry);
+    if (!id || excludedSet.has(id)) {
+      return;
+    }
+    if (viewerSet.has(id)) {
+      count += 1;
+    }
+  });
+
+  return count;
+};
+
+const buildBirthdayInfo = (birthday = {}) => {
+  const day = Number(birthday?.day) || 0;
+  const month = Number(birthday?.month) || 0;
+  const year = Number(birthday?.year) || 0;
+  const visibility = ["private", "friends", "public"].includes(String(birthday?.visibility || ""))
+    ? String(birthday.visibility)
+    : "private";
+
+  if (!day || !month || !["friends", "public"].includes(visibility)) {
+    return null;
+  }
+
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  let nextBirthday = new Date(today.getFullYear(), month - 1, day);
+  if (nextBirthday.getMonth() !== month - 1 || nextBirthday.getDate() !== day) {
+    return null;
+  }
+  if (nextBirthday < todayStart) {
+    nextBirthday = new Date(today.getFullYear() + 1, month - 1, day);
+  }
+
+  const daysUntil = Math.round((nextBirthday.getTime() - todayStart.getTime()) / 86400000);
+  let label = `${MONTH_NAMES[month - 1]} ${day}`;
+  if (daysUntil === 0) {
+    label = "Today";
+  } else if (daysUntil === 1) {
+    label = "Tomorrow";
+  }
+
+  return {
+    birthday: {
+      day,
+      month,
+      year,
+      visibility,
+    },
+    birthdayLabel: label,
+    birthdayIsToday: daysUntil === 0,
+    birthdayDaysUntil: daysUntil,
+    nextBirthdayAt: nextBirthday.toISOString(),
+  };
+};
+
+const buildFriendsHubCard = ({
+  entry,
+  viewerId,
+  viewerFriendIds = [],
+  closeFriendIdSet = new Set(),
+  relationshipStatus = "none",
+  includeBirthday = false,
+}) => {
+  const id = toIdString(entry?._id);
+  const birthdayInfo = includeBirthday ? buildBirthdayInfo(entry?.birthday) : null;
+
+  return {
+    ...userListPayload(entry),
+    relationshipStatus,
+    mutualFriendsCount: countMutualFriends(viewerFriendIds, entry?.friends || [], [viewerId, id]),
+    isCloseFriend: closeFriendIdSet.has(id),
+    ...(birthdayInfo || {}),
+  };
+};
+
 /* ================= MY PROFILE ================= */
 router.get("/me", auth, async (req, res) => {
   try {
@@ -631,6 +723,166 @@ router.get("/requests", auth, async (req, res) => {
     return res.json(users.map(userListPayload));
   } catch {
     return res.status(500).json({ error: "Failed to load requests" });
+  }
+});
+
+/* ================= FRIENDS HUB ================= */
+router.get("/me/friends-hub", auth, async (req, res) => {
+  try {
+    const me = await User.findById(req.user.id)
+      .select("_id friends friendRequests closeFriends blocks blockedUsers")
+      .lean();
+
+    if (!me) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const viewerId = toIdString(me._id);
+    const viewerFriendIds = Array.isArray(me.friends)
+      ? me.friends.map((entry) => toIdString(entry)).filter(Boolean)
+      : [];
+    const incomingRequestIds = Array.isArray(me.friendRequests)
+      ? me.friendRequests.map((entry) => toIdString(entry)).filter(Boolean)
+      : [];
+    const closeFriendIdSet = new Set(
+      (Array.isArray(me.closeFriends) ? me.closeFriends : [])
+        .map((entry) => toIdString(entry))
+        .filter(Boolean)
+    );
+    const excludedSuggestionIds = [
+      viewerId,
+      ...viewerFriendIds,
+      ...incomingRequestIds,
+      ...(Array.isArray(me.blocks) ? me.blocks : []),
+      ...(Array.isArray(me.blockedUsers) ? me.blockedUsers : []),
+    ]
+      .map((entry) => toIdString(entry))
+      .filter(Boolean);
+
+    const baseSelect = "_id name username avatar friends birthday";
+    const [incomingUsers, outgoingUsersRaw, friendUsers, suggestionCandidates] = await Promise.all([
+      incomingRequestIds.length > 0
+        ? User.find({ _id: { $in: incomingRequestIds } })
+          .select(baseSelect)
+          .sort({ name: 1, username: 1 })
+          .lean()
+        : [],
+      User.find({ friendRequests: me._id })
+        .select(baseSelect)
+        .sort({ name: 1, username: 1 })
+        .lean(),
+      viewerFriendIds.length > 0
+        ? User.find({ _id: { $in: viewerFriendIds } })
+          .select(baseSelect)
+          .sort({ name: 1, username: 1 })
+          .lean()
+        : [],
+      User.find({ _id: { $nin: excludedSuggestionIds } })
+        .select(baseSelect)
+        .sort({ name: 1, username: 1 })
+        .limit(80)
+        .lean(),
+    ]);
+
+    const incomingRequestIdSet = new Set(incomingRequestIds);
+    const friendIdSet = new Set(viewerFriendIds);
+    const outgoingUsers = outgoingUsersRaw.filter((entry) => {
+      const id = toIdString(entry?._id);
+      return Boolean(id) && !friendIdSet.has(id) && !incomingRequestIdSet.has(id) && id !== viewerId;
+    });
+    const outgoingRequestIdSet = new Set(
+      outgoingUsers.map((entry) => toIdString(entry?._id)).filter(Boolean)
+    );
+
+    const suggestions = suggestionCandidates
+      .filter((entry) => {
+        const id = toIdString(entry?._id);
+        return Boolean(id) && !outgoingRequestIdSet.has(id);
+      })
+      .map((entry) =>
+        buildFriendsHubCard({
+          entry,
+          viewerId,
+          viewerFriendIds,
+          closeFriendIdSet,
+          relationshipStatus: "none",
+        })
+      )
+      .sort((left, right) => {
+        const mutualDelta = Number(right.mutualFriendsCount || 0) - Number(left.mutualFriendsCount || 0);
+        if (mutualDelta !== 0) {
+          return mutualDelta;
+        }
+        return String(left.name || left.username || "").localeCompare(
+          String(right.name || right.username || "")
+        );
+      })
+      .slice(0, 24);
+
+    const incomingRequests = incomingUsers.map((entry) =>
+      buildFriendsHubCard({
+        entry,
+        viewerId,
+        viewerFriendIds,
+        closeFriendIdSet,
+        relationshipStatus: "request_received",
+      })
+    );
+
+    const outgoingRequests = outgoingUsers.map((entry) =>
+      buildFriendsHubCard({
+        entry,
+        viewerId,
+        viewerFriendIds,
+        closeFriendIdSet,
+        relationshipStatus: "request_sent",
+      })
+    );
+
+    const friends = friendUsers.map((entry) =>
+      buildFriendsHubCard({
+        entry,
+        viewerId,
+        viewerFriendIds,
+        closeFriendIdSet,
+        relationshipStatus: "friends",
+        includeBirthday: true,
+      })
+    );
+
+    const birthdays = friends
+      .filter((entry) => entry?.birthday && Number(entry?.birthday?.day) > 0 && Number(entry?.birthday?.month) > 0)
+      .sort((left, right) => {
+        const dayDelta = Number(left.birthdayDaysUntil || 0) - Number(right.birthdayDaysUntil || 0);
+        if (dayDelta !== 0) {
+          return dayDelta;
+        }
+        return String(left.name || left.username || "").localeCompare(
+          String(right.name || right.username || "")
+        );
+      });
+
+    const closeFriends = friends.filter((entry) => entry.isCloseFriend);
+
+    return res.json({
+      stats: {
+        friendsCount: friends.length,
+        incomingRequestsCount: incomingRequests.length,
+        outgoingRequestsCount: outgoingRequests.length,
+        suggestionsCount: suggestions.length,
+        birthdaysCount: birthdays.length,
+        closeFriendsCount: closeFriends.length,
+      },
+      incomingRequests,
+      outgoingRequests,
+      suggestions,
+      friends,
+      birthdays,
+      closeFriends,
+    });
+  } catch (err) {
+    console.error("Friends hub fetch failed:", err);
+    return res.status(500).json({ error: "Failed to load friends hub" });
   }
 });
 

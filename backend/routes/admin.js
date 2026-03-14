@@ -19,6 +19,9 @@ const { writeAuditLog } = require("../services/auditLogService");
 const { disconnectUserSockets } = require("../utils/realtimeSessions");
 const { buildAdminDashboard } = require("../services/adminDashboardService");
 const {
+  buildCreatorFinanceRepository,
+} = require("../services/creatorFinanceRepositoryService");
+const {
   buildOverview,
   buildUserGrowth,
   buildContentUploads,
@@ -870,6 +873,17 @@ router.get("/transactions", async (req, res) => {
   } catch (err) {
     console.error("Admin transactions list error:", req.requestId, err);
     return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
+router.get("/finance/creator-earnings", async (req, res) => {
+  try {
+    return res.json(await buildCreatorFinanceRepository(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res
+      .status(code)
+      .json({ error: err.message || "Failed to load creator earnings repository" });
   }
 });
 

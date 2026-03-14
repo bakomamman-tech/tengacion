@@ -351,6 +351,13 @@
   padding: 10px;
 }
 
+.adminx-table-wrap--flush {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .adminx-table {
   width: 100%;
   border-collapse: collapse;
@@ -387,6 +394,64 @@
   flex-wrap: wrap;
 }
 
+.adminx-repository-hero {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(63, 218, 122, 0.16), rgba(63, 218, 122, 0.05));
+  border: 1px solid rgba(63, 218, 122, 0.18);
+}
+
+.adminx-repository-name {
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--adminx-muted);
+}
+
+.adminx-repository-total {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+}
+
+.adminx-repository-copy {
+  margin: 14px 0 8px;
+  line-height: 1.6;
+}
+
+.adminx-finance-row {
+  gap: 10px;
+}
+
+.adminx-finance-meta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: var(--adminx-muted);
+  font-size: 0.92rem;
+}
+
+.adminx-link-btn--inline {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: var(--adminx-accent);
+}
+
+.adminx-link-btn--inline:hover,
+.adminx-link-btn--inline:focus-visible {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #8ff0b0;
+}
+
 @media (max-width: 1280px) {
   .adminx-stat-card { grid-column: span 4; }
   .adminx-panel--span-4,
@@ -412,6 +477,11 @@
 
   .adminx-stat-card {
     grid-column: span 6;
+  }
+
+  .adminx-finance-meta {
+    flex-direction: column;
+    gap: 6px;
   }
 }
 

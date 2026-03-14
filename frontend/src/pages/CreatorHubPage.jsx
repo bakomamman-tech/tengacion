@@ -21,6 +21,8 @@ const NAV_ITEMS = [
   { label: "More", type: "action" },
 ];
 
+const CREATOR_SHARE_RATE = 0.4;
+const PLATFORM_SHARE_RATE = 0.6;
 const money = (value) => `NGN ${Number(value || 0).toLocaleString()}`;
 
 const getLinkByLabel = (links, label) =>
@@ -251,6 +253,9 @@ export default function CreatorHubPage() {
   const merchBook = books[0] || null;
   const merchVideo = videos[0] || null;
   const headerIcons = ["Chat", "Mix", "Search"];
+  const grossCreatorRevenue = Number(hub?.stats?.revenueNGN || 0);
+  const creatorRevenueShare = grossCreatorRevenue * CREATOR_SHARE_RATE;
+  const platformRevenueShare = grossCreatorRevenue * PLATFORM_SHARE_RATE;
 
   return (
     <div className="cpub-page cpub-page-exact">
@@ -447,7 +452,7 @@ export default function CreatorHubPage() {
           <section className="cpub-side-rail-card">
             <h3>Earnings</h3>
             <p className="cpub-side-muted">Current week</p>
-            <strong className="cpub-side-total">{money(hub?.stats?.revenueNGN || 7200)}</strong>
+            <strong className="cpub-side-total">{money(creatorRevenueShare)}</strong>
             <div className="cpub-side-chart" aria-hidden="true">
               <span style={{ height: "20%" }} />
               <span style={{ height: "16%" }} />
@@ -460,11 +465,11 @@ export default function CreatorHubPage() {
               <span style={{ height: "64%" }} />
             </div>
             <ul className="cpub-side-list">
-              <li><span>Music Sales</span><b>{money((hub?.stats?.revenueNGN || 7200) * 0.17)}</b></li>
-              <li><span>Store Sales</span><b>{money((hub?.stats?.revenueNGN || 7200) * 0.2)}</b></li>
-              <li><span>Video Unlocks</span><b>{money((hub?.stats?.revenueNGN || 7200) * 0.12)}</b></li>
-              <li><span>Podcast Streams</span><b>{money((hub?.stats?.revenueNGN || 7200) * 0.11)}</b></li>
-              <li><span>Tips</span><b>{money((hub?.stats?.revenueNGN || 7200) * 0.06)}</b></li>
+              <li><span>Music Sales</span><b>{money(creatorRevenueShare * 0.17)}</b></li>
+              <li><span>Store Sales</span><b>{money(creatorRevenueShare * 0.2)}</b></li>
+              <li><span>Video Unlocks</span><b>{money(creatorRevenueShare * 0.12)}</b></li>
+              <li><span>Podcast Streams</span><b>{money(creatorRevenueShare * 0.11)}</b></li>
+              <li><span>Tips</span><b>{money(creatorRevenueShare * 0.06)}</b></li>
             </ul>
             <button type="button" className="cpub-rail-btn">Withdraw Earnings</button>
           </section>
@@ -482,12 +487,12 @@ export default function CreatorHubPage() {
               </div>
             </div>
             <div className="cpub-payout-split">
-              <span>60% Creator</span>
-              <b>555,540</b>
+              <span>40% Creator</span>
+              <b>{money(creatorRevenueShare)}</b>
             </div>
             <div className="cpub-payout-split">
-              <span>40% Tengacion</span>
-              <b>Tengacion Admin</b>
+              <span>60% Tengacion</span>
+              <b>{money(platformRevenueShare)}</b>
             </div>
             <button type="button" className="cpub-rail-btn">Manage Accounts</button>
             <button type="button" className="cpub-rail-btn light">Add Account</button>

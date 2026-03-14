@@ -4,6 +4,7 @@ import "../pages/admin-analytics.css";
 
 const ADMIN_ITEMS = [
   { key: "overview", label: "Overview", path: "/admin/dashboard" },
+  { key: "creator-earnings", label: "Earnings From Creators", path: "/admin/creator-earnings" },
   { key: "users", label: "Users", path: "/admin/users" },
   { key: "content", label: "Content", path: "/admin/content" },
   { key: "messages", label: "Messages", path: "/admin/messages" },

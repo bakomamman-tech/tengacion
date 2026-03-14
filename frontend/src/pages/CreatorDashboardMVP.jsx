@@ -44,6 +44,8 @@ const PODCAST_DEFAULT = {
   price: "",
 };
 
+const CREATOR_SHARE_RATE = 0.4;
+const PLATFORM_SHARE_RATE = 0.6;
 const fmtMoney = (value) => `NGN ${Number(value || 0).toLocaleString()}`;
 
 function DropZone({ icon, label, description, accept, multiple = false, files = [], onChange }) {
@@ -243,11 +245,13 @@ export default function CreatorDashboardMVP() {
   }, []);
 
   const stats = useMemo(() => {
-    const total = Number(sales.totalRevenue || 0);
-    const withdrawn = Math.round(total * 0.35);
-    const pending = Math.round(total * 0.25);
-    const available = Math.max(0, total - withdrawn - pending);
-    return { available, pending, withdrawn, total };
+    const totalRevenue = Number(sales.totalRevenue || 0);
+    const creatorTotal = totalRevenue * CREATOR_SHARE_RATE;
+    const platformTotal = totalRevenue * PLATFORM_SHARE_RATE;
+    const withdrawn = Math.round(creatorTotal * 0.35);
+    const pending = Math.round(creatorTotal * 0.25);
+    const available = Math.max(0, creatorTotal - withdrawn - pending);
+    return { available, pending, withdrawn, total: creatorTotal, platformTotal };
   }, [sales.totalRevenue]);
 
   const creatorAvatar = resolveImage(creator?.user?.avatar || "") || "/avatar.png";
@@ -1125,12 +1129,12 @@ export default function CreatorDashboardMVP() {
                 </div>
               </div>
               <div className="crd-split-row">
-                <span>60% Creator</span>
-                <b>535,540</b>
+                <span>40% Creator</span>
+                <b>{fmtMoney(stats.total)}</b>
               </div>
               <div className="crd-split-row">
-                <span>40% Tengacion</span>
-                <b>Tengacion Admin</b>
+                <span>60% Tengacion</span>
+                <b>{fmtMoney(stats.platformTotal)}</b>
               </div>
               <button type="button" className="crd-submit-btn">Manage Accounts</button>
               <button type="button" className="crd-light-btn full">Add Account</button>

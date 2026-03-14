@@ -36,6 +36,7 @@ const CommunityGuidelinesPage = lazy(() => import("./pages/CommunityGuidelines")
 const AdminReportsPage = lazy(() => import("./pages/AdminReports"));
 const AdminContentPage = lazy(() => import("./pages/AdminContent"));
 const AdminTransactionsPage = lazy(() => import("./pages/AdminTransactions"));
+const AdminCreatorEarningsPage = lazy(() => import("./pages/AdminCreatorEarnings"));
 const AdminCreatorDetailPage = lazy(() => import("./pages/AdminCreatorDetail"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboard"));
 const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalytics"));
@@ -413,6 +414,14 @@ export default function App() {
             element={
               <AdminRoute user={user}>
                 <AdminTransactionsPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/creator-earnings"
+            element={
+              <AdminRoute user={user}>
+                <AdminCreatorEarningsPage user={user} />
               </AdminRoute>
             }
           />

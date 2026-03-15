@@ -70,10 +70,28 @@ const TrackSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    genre: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
     kind: {
       type: String,
       enum: ["music", "podcast", "comedy"],
       default: "music",
+      index: true,
+    },
+    creatorCategory: {
+      type: String,
+      enum: ["music", "books", "podcasts"],
+      default: "music",
+      index: true,
+    },
+    contentType: {
+      type: String,
+      enum: ["track", "podcast_episode"],
+      default: "track",
       index: true,
     },
     podcastSeries: {
@@ -122,9 +140,43 @@ const TrackSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    publishedStatus: {
+      type: String,
+      enum: ["draft", "published", "under_review", "blocked"],
+      default: "published",
+      index: true,
+    },
     archivedAt: {
       type: Date,
       default: null,
+      index: true,
+    },
+    copyrightScanStatus: {
+      type: String,
+      enum: ["pending_scan", "passed", "flagged", "blocked"],
+      default: "pending_scan",
+      index: true,
+    },
+    verificationNotes: {
+      type: String,
+      default: "",
+      maxlength: 2000,
+    },
+    reviewRequired: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    contentFingerprintHash: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+    contentFileHash: {
+      type: String,
+      default: "",
+      trim: true,
       index: true,
     },
     likesCount: {
@@ -153,6 +205,15 @@ TrackSchema.pre("validate", function syncStandardFields(next) {
   if (!this.previewSampleUrl && this.previewUrl) this.previewSampleUrl = this.previewUrl;
   if (!Number.isFinite(this.playsCount) && Number.isFinite(this.playCount)) this.playsCount = this.playCount;
   if (!Number.isFinite(this.playCount) && Number.isFinite(this.playsCount)) this.playCount = this.playsCount;
+  if (this.kind === "podcast") {
+    this.creatorCategory = "podcasts";
+    this.contentType = "podcast_episode";
+  } else {
+    this.creatorCategory = "music";
+    this.contentType = "track";
+  }
+  if (this.publishedStatus === "published") this.isPublished = true;
+  if (["draft", "under_review", "blocked"].includes(this.publishedStatus)) this.isPublished = false;
   if (typeof next === "function") next();
 });
 

@@ -1,4 +1,21 @@
 const mongoose = require("mongoose");
+const {
+  calculateCreatorProfileCompletionScore,
+  normalizeCreatorTypes,
+  normalizeSocialHandles,
+} = require("../services/creatorProfileService");
+
+const SocialHandlesSchema = new mongoose.Schema(
+  {
+    facebook: { type: String, default: "", trim: true, maxlength: 120 },
+    instagram: { type: String, default: "", trim: true, maxlength: 120 },
+    linkedin: { type: String, default: "", trim: true, maxlength: 120 },
+    x: { type: String, default: "", trim: true, maxlength: 120 },
+    threads: { type: String, default: "", trim: true, maxlength: 120 },
+    youtube: { type: String, default: "", trim: true, maxlength: 120 },
+  },
+  { _id: false }
+);
 
 const CreatorProfileSchema = new mongoose.Schema(
   {
@@ -14,6 +31,65 @@ const CreatorProfileSchema = new mongoose.Schema(
       required: true,
       trim: true,
       maxlength: 120,
+    },
+    fullName: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
+    phoneNumber: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 40,
+    },
+    accountNumber: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 40,
+    },
+    country: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
+    countryOfResidence: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
+    socialHandles: {
+      type: SocialHandlesSchema,
+      default: () => ({
+        facebook: "",
+        instagram: "",
+        linkedin: "",
+        x: "",
+        threads: "",
+        youtube: "",
+      }),
+    },
+    creatorTypes: {
+      type: [
+        {
+          type: String,
+          enum: ["music", "books", "podcasts"],
+          trim: true,
+        },
+      ],
+      default: [],
+    },
+    acceptedTerms: {
+      type: Boolean,
+      default: false,
+    },
+    acceptedCopyrightDeclaration: {
+      type: Boolean,
+      default: false,
     },
     bio: {
       type: String,
@@ -39,6 +115,23 @@ const CreatorProfileSchema = new mongoose.Schema(
     onboardingComplete: {
       type: Boolean,
       default: false,
+      index: true,
+    },
+    onboardingCompleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    profileCompletionScore: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    status: {
+      type: String,
+      enum: ["active", "pending_review", "restricted"],
+      default: "active",
       index: true,
     },
     heroBannerUrl: {
@@ -69,5 +162,25 @@ const CreatorProfileSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+CreatorProfileSchema.pre("validate", function syncCreatorProfile(next) {
+  this.fullName = String(this.fullName || this.displayName || "").trim().slice(0, 120);
+  this.displayName = String(this.displayName || this.fullName || "").trim().slice(0, 120);
+  this.phoneNumber = String(this.phoneNumber || "").trim().slice(0, 40);
+  this.accountNumber = String(this.accountNumber || "").trim().slice(0, 40);
+  this.country = String(this.country || "").trim().slice(0, 120);
+  this.countryOfResidence = String(this.countryOfResidence || this.country || "").trim().slice(0, 120);
+  this.socialHandles = normalizeSocialHandles(this.socialHandles);
+  this.creatorTypes = normalizeCreatorTypes(this.creatorTypes);
+  this.onboardingCompleted = Boolean(this.onboardingCompleted || this.onboardingComplete);
+  this.onboardingComplete = Boolean(this.onboardingCompleted || this.onboardingComplete);
+  this.profileCompletionScore = calculateCreatorProfileCompletionScore(this);
+  if (!this.status) {
+    this.status = "active";
+  }
+  if (typeof next === "function") {
+    next();
+  }
+});
 
 module.exports = mongoose.model("CreatorProfile", CreatorProfileSchema);

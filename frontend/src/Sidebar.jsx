@@ -69,7 +69,7 @@ export default function Sidebar({ user, openChat, openProfile }) {
 
         <button
           className={sidebarBtnClass(
-            location.pathname === "/creator" || location.pathname === "/dashboard/creator"
+            location.pathname.startsWith("/creator") || location.pathname === "/dashboard/creator"
           )}
           onClick={() => navigate("/creator")}
         >

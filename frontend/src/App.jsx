@@ -21,7 +21,6 @@ const Home = lazy(() => import("./pages/Home"));
 const PostDetail = lazy(() => import("./pages/PostDetail"));
 const PostSharePage = lazy(() => import("./pages/PostShare"));
 const ProfileEditor = lazy(() => import("./ProfileEditor"));
-const CreatorDashboardMVP = lazy(() => import("./pages/CreatorDashboardMVP"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const SecuritySettings = lazy(() => import("./pages/SecuritySettings"));
 const PrivacySettings = lazy(() => import("./pages/PrivacySettings"));
@@ -31,6 +30,7 @@ const ResetPasswordPage = lazy(() => import("./pages/ResetPassword"));
 const VerifyEmailPage = lazy(() => import("./pages/VerifyEmail"));
 const OnboardingPage = lazy(() => import("./pages/Onboarding"));
 const TermsPage = lazy(() => import("./pages/Terms"));
+const CopyrightPolicyPage = lazy(() => import("./pages/CopyrightPolicy"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicy"));
 const CommunityGuidelinesPage = lazy(() => import("./pages/CommunityGuidelines"));
 const AdminReportsPage = lazy(() => import("./pages/AdminReports"));
@@ -59,6 +59,20 @@ const FriendsPage = lazy(() => import("./pages/FriendsPage"));
 const GamingPage = lazy(() => import("./pages/GamingPage"));
 const ReelsPage = lazy(() => import("./pages/ReelsPage"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const CreatorAccessGate = lazy(() => import("./routes/CreatorAccessGate"));
+const RequireCreatorAuth = lazy(() => import("./routes/RequireCreatorAuth"));
+const RequireCreatorCategory = lazy(() => import("./routes/RequireCreatorCategory"));
+const CreatorWorkspaceLayout = lazy(() => import("./components/creator/CreatorWorkspaceLayout"));
+const CreatorRegisterPage = lazy(() => import("./pages/creator/CreatorRegisterPage"));
+const CreatorDashboardPage = lazy(() => import("./pages/creator/CreatorDashboardPage"));
+const CreatorMusicPage = lazy(() => import("./pages/creator/CreatorMusicPage"));
+const CreatorBooksPage = lazy(() => import("./pages/creator/CreatorBooksPage"));
+const CreatorPodcastsPage = lazy(() => import("./pages/creator/CreatorPodcastsPage"));
+const CreatorEarningsPage = lazy(() => import("./pages/creator/CreatorEarningsPage"));
+const CreatorPayoutsPage = lazy(() => import("./pages/creator/CreatorPayoutsPage"));
+const CreatorSettingsPage = lazy(() => import("./pages/creator/CreatorSettingsPage"));
+const CreatorVerificationPage = lazy(() => import("./pages/creator/CreatorVerificationPage"));
+const CreatorSupportPage = lazy(() => import("./pages/creator/CreatorSupportPage"));
 const AdsManagerPage = lazyNamedExport(loadQuickAccessPages, "AdsManagerPage");
 const BirthdaysPage = lazyNamedExport(loadQuickAccessPages, "BirthdaysPage");
 const EventsPage = lazyNamedExport(loadQuickAccessPages, "EventsPage");
@@ -105,6 +119,7 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/copyright-policy" element={<CopyrightPolicyPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/community-guidelines" element={<CommunityGuidelinesPage />} />
           <Route path="/creators/:creatorId" element={<CreatorPage />} />
@@ -204,7 +219,7 @@ export default function App() {
             path="/dashboard/creator"
             element={
               <ProtectedRoute user={user}>
-                <CreatorDashboardMVP user={user} />
+                <Navigate to="/creator" replace />
               </ProtectedRoute>
             }
           />
@@ -212,10 +227,60 @@ export default function App() {
             path="/creator"
             element={
               <ProtectedRoute user={user}>
-                <CreatorDashboardMVP user={user} />
+                <CreatorAccessGate />
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/creator/register"
+            element={
+              <ProtectedRoute user={user}>
+                <CreatorRegisterPage user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/creator/*"
+            element={
+              <ProtectedRoute user={user}>
+                <RequireCreatorAuth>
+                  <CreatorWorkspaceLayout />
+                </RequireCreatorAuth>
+              </ProtectedRoute>
+            }
+          >
+            <Route path="dashboard" element={<CreatorDashboardPage />} />
+            <Route
+              path="music"
+              element={
+                <RequireCreatorCategory category="music">
+                  <CreatorMusicPage />
+                </RequireCreatorCategory>
+              }
+            />
+            <Route
+              path="books"
+              element={
+                <RequireCreatorCategory category="books">
+                  <CreatorBooksPage />
+                </RequireCreatorCategory>
+              }
+            />
+            <Route
+              path="podcasts"
+              element={
+                <RequireCreatorCategory category="podcasts">
+                  <CreatorPodcastsPage />
+                </RequireCreatorCategory>
+              }
+            />
+            <Route path="earnings" element={<CreatorEarningsPage />} />
+            <Route path="payouts" element={<CreatorPayoutsPage />} />
+            <Route path="settings" element={<CreatorSettingsPage />} />
+            <Route path="verification" element={<CreatorVerificationPage />} />
+            <Route path="support" element={<CreatorSupportPage />} />
+            <Route path="*" element={<Navigate to="/creator/dashboard" replace />} />
+          </Route>
           <Route
             path="/notifications"
             element={

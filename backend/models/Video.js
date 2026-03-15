@@ -16,7 +16,53 @@ const VideoSchema = new mongoose.Schema({
   isFree: { type: Boolean, default: true },
   previewClipUrl: { type: String, default: "" },
   isPublished: { type: Boolean, default: true, index: true },
+  creatorCategory: {
+    type: String,
+    enum: ["music", "books", "podcasts"],
+    default: "music",
+    index: true,
+  },
+  contentType: {
+    type: String,
+    enum: ["music_video"],
+    default: "music_video",
+    index: true,
+  },
+  publishedStatus: {
+    type: String,
+    enum: ["draft", "published", "under_review", "blocked"],
+    default: "published",
+    index: true,
+  },
   archivedAt: { type: Date, default: null, index: true },
+  copyrightScanStatus: {
+    type: String,
+    enum: ["pending_scan", "passed", "flagged", "blocked"],
+    default: "pending_scan",
+    index: true,
+  },
+  verificationNotes: {
+    type: String,
+    default: "",
+    maxlength: 2000,
+  },
+  reviewRequired: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
+  contentFingerprintHash: {
+    type: String,
+    default: "",
+    trim: true,
+    index: true,
+  },
+  contentFileHash: {
+    type: String,
+    default: "",
+    trim: true,
+    index: true,
+  },
   creatorProfileId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "CreatorProfile",
@@ -37,6 +83,14 @@ const VideoSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+});
+
+VideoSchema.pre("validate", function syncVideoFields(next) {
+  this.creatorCategory = "music";
+  this.contentType = "music_video";
+  if (this.publishedStatus === "published") this.isPublished = true;
+  if (["draft", "under_review", "blocked"].includes(this.publishedStatus)) this.isPublished = false;
+  if (typeof next === "function") next();
 });
 
 module.exports = mongoose.model("Video", VideoSchema);

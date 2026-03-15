@@ -1,0 +1,56 @@
+import { NavLink } from "react-router-dom";
+
+import { CREATOR_CATEGORY_CONFIG, CREATOR_STATIC_NAV } from "./creatorConfig";
+
+const CATEGORY_ORDER = ["music", "books", "podcasts"];
+
+export default function CreatorSidebar({ creatorProfile, mobileOpen = false, onNavigate }) {
+  const enabledCategories = CATEGORY_ORDER.filter((key) =>
+    Array.isArray(creatorProfile?.creatorTypes) ? creatorProfile.creatorTypes.includes(key) : false
+  );
+
+  return (
+    <aside className={`creator-sidebar ${mobileOpen ? "is-open" : ""}`}>
+      <div className="creator-sidebar-brand">
+        <div className="creator-sidebar-logo">T</div>
+        <div>
+          <strong>Tengacion</strong>
+          <span>Creator Workspace</span>
+        </div>
+      </div>
+
+      <nav className="creator-sidebar-nav" aria-label="Creator workspace navigation">
+        <div className="creator-sidebar-group">
+          <span className="creator-sidebar-label">Workspace</span>
+          <NavLink to="/creator/dashboard" className="creator-sidebar-link" onClick={onNavigate}>
+            Overview
+          </NavLink>
+          {enabledCategories.map((key) => (
+            <NavLink
+              key={key}
+              to={CREATOR_CATEGORY_CONFIG[key].route}
+              className="creator-sidebar-link"
+              onClick={onNavigate}
+            >
+              {CREATOR_CATEGORY_CONFIG[key].shortTitle}
+            </NavLink>
+          ))}
+        </div>
+
+        <div className="creator-sidebar-group">
+          <span className="creator-sidebar-label">Account</span>
+          {CREATOR_STATIC_NAV.filter((item) => item.key !== "dashboard").map((item) => (
+            <NavLink
+              key={item.key}
+              to={item.route}
+              className="creator-sidebar-link"
+              onClick={onNavigate}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
+    </aside>
+  );
+}

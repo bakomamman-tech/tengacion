@@ -50,6 +50,18 @@ const BookSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    genre: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
+    fileFormat: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 30,
+    },
     fileUrl: {
       type: String,
       default: "",
@@ -59,6 +71,23 @@ const BookSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+    },
+    previewExcerptText: {
+      type: String,
+      default: "",
+      maxlength: 3000,
+    },
+    creatorCategory: {
+      type: String,
+      enum: ["music", "books", "podcasts"],
+      default: "books",
+      index: true,
+    },
+    contentType: {
+      type: String,
+      enum: ["ebook", "pdf_book"],
+      default: "ebook",
+      index: true,
     },
     priceGlobal: {
       type: Number,
@@ -84,9 +113,43 @@ const BookSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    publishedStatus: {
+      type: String,
+      enum: ["draft", "published", "under_review", "blocked"],
+      default: "published",
+      index: true,
+    },
     archivedAt: {
       type: Date,
       default: null,
+      index: true,
+    },
+    copyrightScanStatus: {
+      type: String,
+      enum: ["pending_scan", "passed", "flagged", "blocked"],
+      default: "pending_scan",
+      index: true,
+    },
+    verificationNotes: {
+      type: String,
+      default: "",
+      maxlength: 2000,
+    },
+    reviewRequired: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    contentFingerprintHash: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+    contentFileHash: {
+      type: String,
+      default: "",
+      trim: true,
       index: true,
     },
   },
@@ -102,6 +165,12 @@ BookSchema.pre("validate", function syncBookFields(next) {
   if (!this.coverUrl && this.coverImageUrl) this.coverUrl = this.coverImageUrl;
   if (!this.contentUrl && this.fileUrl) this.contentUrl = this.fileUrl;
   if (!this.fileUrl && this.contentUrl) this.fileUrl = this.contentUrl;
+  this.creatorCategory = "books";
+  if (this.fileFormat && String(this.fileFormat).toLowerCase() === "pdf") {
+    this.contentType = "pdf_book";
+  }
+  if (this.publishedStatus === "published") this.isPublished = true;
+  if (["draft", "under_review", "blocked"].includes(this.publishedStatus)) this.isPublished = false;
   if (typeof next === "function") next();
 });
 

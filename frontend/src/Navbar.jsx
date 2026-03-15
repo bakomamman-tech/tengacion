@@ -342,7 +342,7 @@ export default function Navbar({
           label: "Creator dashboard",
           description: "Manage publishing tools, uploads, and creator growth.",
           icon: "creator",
-          handler: () => navigate("/dashboard/creator"),
+          handler: () => navigate("/creator"),
         },
         {
           id: "menu-professional-dashboard",
@@ -540,7 +540,7 @@ export default function Navbar({
       label: "Creator dashboard",
       description: "Open creator tools and publishing controls.",
       icon: "dashboard",
-      handler: () => navigate("/dashboard/creator"),
+      handler: () => navigate("/creator"),
     },
   ];
 
@@ -564,7 +564,7 @@ export default function Navbar({
   const navTabs = [
     { id: "home", label: "Home", path: "/home" },
     { id: "trending", label: "Trending", path: "/trending" },
-    { id: "creator", label: "Creator", path: "/dashboard/creator" },
+    { id: "creator", label: "Creator", path: "/creator" },
     { id: "gaming", label: "Gaming", path: "/gaming" },
     { id: "reels", label: "Reels", path: "/reels" },
   ];
@@ -765,7 +765,7 @@ export default function Navbar({
       return true;
     }
     if (tab.id === "creator") {
-      return location.pathname === "/creator";
+      return location.pathname.startsWith("/creator") || location.pathname === "/dashboard/creator";
     }
     return false;
   };

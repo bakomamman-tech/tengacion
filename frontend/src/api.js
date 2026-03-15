@@ -313,12 +313,13 @@ const uploadPostFormWithProgress = ({
 const uploadFormWithProgress = ({
   url,
   formData,
+  method = "POST",
   onProgress,
   timeoutMs = 10 * 60 * 1000,
 }) =>
   new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", url);
+    xhr.open(method, url);
     xhr.withCredentials = true;
     xhr.timeout = timeoutMs;
 
@@ -695,6 +696,36 @@ export const unfriend = (userId) =>
 // CREATORS
 // ======================================================
 
+export const getCreatorAccess = () =>
+  request(`${API_BASE}/creator/access`, {
+    headers: getAuthHeaders(),
+  });
+
+export const getCreatorWorkspaceProfile = () =>
+  request(`${API_BASE}/creator/profile`, {
+    headers: getAuthHeaders(),
+  });
+
+export const registerCreatorProfile = (payload = {}) =>
+  request(`${API_BASE}/creator/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const updateCreatorWorkspaceProfile = (payload = {}) =>
+  request(`${API_BASE}/creator/profile`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
 export const getMyCreatorProfile = () =>
   request(`${API_BASE}/creators/me`, {
     headers: getAuthHeaders(),
@@ -926,6 +957,15 @@ export const createAlbumWithUploadProgress = (formData, { onProgress } = {}) =>
     timeoutMs: 20 * 60 * 1000,
   });
 
+export const updateAlbumWithUploadProgress = (albumId, formData, { onProgress } = {}) =>
+  uploadFormWithProgress({
+    url: `${API_BASE}/albums/${encodeURIComponent(albumId || "")}`,
+    method: "PUT",
+    formData,
+    onProgress,
+    timeoutMs: 20 * 60 * 1000,
+  });
+
 export const getAlbum = (albumId) =>
   request(`${API_BASE}/albums/${encodeURIComponent(albumId || "")}`, {
     headers: getAuthHeaders(),
@@ -934,6 +974,15 @@ export const getAlbum = (albumId) =>
 export const createCreatorVideoWithUploadProgress = (formData, { onProgress } = {}) =>
   uploadFormWithProgress({
     url: `${API_BASE}/videos`,
+    formData,
+    onProgress,
+    timeoutMs: 30 * 60 * 1000,
+  });
+
+export const updateCreatorVideoWithUploadProgress = (videoId, formData, { onProgress } = {}) =>
+  uploadFormWithProgress({
+    url: `${API_BASE}/videos/${encodeURIComponent(videoId || "")}`,
+    method: "PUT",
     formData,
     onProgress,
     timeoutMs: 30 * 60 * 1000,
@@ -1132,9 +1181,27 @@ export const createBookWithUploadProgress = (formData, { onProgress } = {}) =>
     timeoutMs: 20 * 60 * 1000,
   });
 
+export const updateBookWithUploadProgress = (bookId, formData, { onProgress } = {}) =>
+  uploadFormWithProgress({
+    url: `${API_BASE}/books/${encodeURIComponent(bookId || "")}`,
+    method: "PUT",
+    formData,
+    onProgress,
+    timeoutMs: 20 * 60 * 1000,
+  });
+
 export const createTrackWithUploadProgress = (formData, { onProgress } = {}) =>
   uploadFormWithProgress({
     url: `${API_BASE}/tracks`,
+    formData,
+    onProgress,
+    timeoutMs: 20 * 60 * 1000,
+  });
+
+export const updateTrackWithUploadProgress = (trackId, formData, { onProgress } = {}) =>
+  uploadFormWithProgress({
+    url: `${API_BASE}/tracks/${encodeURIComponent(trackId || "")}`,
+    method: "PUT",
     formData,
     onProgress,
     timeoutMs: 20 * 60 * 1000,

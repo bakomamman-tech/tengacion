@@ -7,6 +7,8 @@ const { saveUploadedFile } = require("../services/mediaStore");
 const { hasEntitlement } = require("../services/entitlementService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const { logAnalyticsEvent } = require("../services/analyticsService");
+const { evaluateVerification } = require("../services/contentVerificationService");
+const { creatorHasCategory } = require("../services/creatorProfileService");
 
 const MAX_ALBUM_TRACKS = 25;
 const MAX_TRACK_FILE_SIZE_BYTES = 25 * 1024 * 1024;
@@ -34,9 +36,28 @@ const toAlbumListPayload = (album) => ({
   coverUrl: album.coverUrl || "",
   totalTracks: Number(album.totalTracks || album.tracks?.length || 0),
   status: album.status || "published",
+  releaseType: album.releaseType || album.contentType || "album",
+  publishedStatus: album.publishedStatus || (album.isPublished ? "published" : "draft"),
+  copyrightScanStatus: album.copyrightScanStatus || "pending_scan",
+  verificationNotes: album.verificationNotes || "",
+  reviewRequired: Boolean(album.reviewRequired),
+  creatorCategory: "music",
+  contentType: album.contentType || album.releaseType || "album",
   createdAt: album.createdAt,
   updatedAt: album.updatedAt,
 });
+
+const resolveRequestedStatus = (body = {}) => {
+  const value = String(
+    body?.publishedStatus || body?.publishMode || body?.status || ""
+  )
+    .trim()
+    .toLowerCase();
+  if (value === "draft" || body?.saveAsDraft === true || body?.saveAsDraft === "true") {
+    return "draft";
+  }
+  return "published";
+};
 
 const resolveAlbumOwnership = async ({ album, userId }) => {
   if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
@@ -48,9 +69,17 @@ const resolveAlbumOwnership = async ({ album, userId }) => {
 };
 
 exports.createAlbum = asyncHandler(async (req, res) => {
+  if (!creatorHasCategory(req.creatorProfile, "music")) {
+    return res.status(403).json({ error: "Music publishing is not enabled on this creator profile" });
+  }
+
   const albumTitle = String(req.body?.albumTitle || req.body?.title || "").trim();
   const description = String(req.body?.description || "").trim();
   const price = Number(req.body?.price);
+  const releaseType = String(req.body?.releaseType || req.body?.contentType || "album").trim().toLowerCase() === "ep"
+    ? "ep"
+    : "album";
+  const requestedStatus = resolveRequestedStatus(req.body);
   const coverFile = req.files?.coverImage?.[0] || req.files?.cover?.[0] || null;
   const trackFiles = [
     ...(Array.isArray(req.files?.tracks) ? req.files.tracks : []),
@@ -122,16 +151,39 @@ exports.createAlbum = asyncHandler(async (req, res) => {
     });
   }
 
+  const verification = await evaluateVerification({
+    creatorProfileId: req.creatorProfile._id,
+    creatorCategory: "music",
+    contentType: releaseType,
+    requestedStatus,
+    title: albumTitle,
+    description,
+    primaryFile: trackFiles[0] || coverFile || null,
+    metadata: {
+      creatorId: req.creatorProfile._id?.toString?.() || "",
+      tracksCount: trackFiles.length,
+      releaseType,
+    },
+  });
+
   const album = await Album.create({
     creatorId: req.creatorProfile._id,
     title: albumTitle,
     description: description.slice(0, 4000),
     price,
+    releaseType,
+    contentType: releaseType,
     coverUrl,
     tracks,
-    status: "published",
+    status: verification.publishedStatus === "published" ? "published" : "draft",
+    publishedStatus: verification.publishedStatus,
+    copyrightScanStatus: verification.scanStatus,
+    verificationNotes: verification.verificationNotes,
+    reviewRequired: verification.reviewRequired,
+    contentFingerprintHash: verification.contentFingerprintHash,
+    contentFileHash: verification.contentFileHash,
     totalTracks: tracks.length,
-    isPublished: true,
+    isPublished: verification.publishedStatus === "published",
     archivedAt: null,
   });
 
@@ -154,6 +206,86 @@ exports.createAlbum = asyncHandler(async (req, res) => {
     ...toAlbumListPayload(album),
     tracks,
     previewMappingIgnored: previewFiles.length > 0 && !previewsMatch,
+  });
+});
+
+exports.updateAlbum = asyncHandler(async (req, res) => {
+  const { albumId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(albumId)) {
+    return res.status(400).json({ error: "Invalid album id" });
+  }
+  if (!creatorHasCategory(req.creatorProfile, "music")) {
+    return res.status(403).json({ error: "Music publishing is not enabled on this creator profile" });
+  }
+
+  const album = await Album.findById(albumId);
+  if (!album || String(album.creatorId) !== String(req.creatorProfile._id)) {
+    return res.status(404).json({ error: "Album not found" });
+  }
+
+  const title = String(req.body?.albumTitle || req.body?.title || album.title || "").trim();
+  const description = String(req.body?.description || album.description || "").trim();
+  const price = Number(req.body?.price ?? album.price ?? 0);
+  const releaseType = String(req.body?.releaseType || req.body?.contentType || album.releaseType || "album")
+    .trim()
+    .toLowerCase() === "ep"
+    ? "ep"
+    : "album";
+  const requestedStatus = resolveRequestedStatus(req.body);
+
+  if (!title) {
+    return res.status(400).json({ error: "albumTitle is required" });
+  }
+  if (!Number.isFinite(price) || price < 0) {
+    return res.status(400).json({ error: "price must be a valid non-negative number" });
+  }
+
+  const coverFile = req.files?.coverImage?.[0] || req.files?.cover?.[0] || null;
+  let coverUrl = String(req.body?.coverUrl || album.coverUrl || "").trim();
+  if (coverFile) {
+    coverUrl = await saveUploadedFile(coverFile);
+  }
+  if (!coverUrl) {
+    return res.status(400).json({ error: "coverImage is required and must be an image file" });
+  }
+
+  const verification = await evaluateVerification({
+    creatorProfileId: req.creatorProfile._id,
+    creatorCategory: "music",
+    contentType: releaseType,
+    requestedStatus,
+    title,
+    description,
+    primaryFile: coverFile || null,
+    metadata: {
+      creatorId: req.creatorProfile._id?.toString?.() || "",
+      tracksCount: Array.isArray(album.tracks) ? album.tracks.length : 0,
+      releaseType,
+    },
+  });
+
+  album.title = title;
+  album.description = description.slice(0, 4000);
+  album.price = price;
+  album.coverUrl = coverUrl;
+  album.releaseType = releaseType;
+  album.contentType = releaseType;
+  album.status = verification.publishedStatus === "published" ? "published" : "draft";
+  album.publishedStatus = verification.publishedStatus;
+  album.copyrightScanStatus = verification.scanStatus;
+  album.verificationNotes = verification.verificationNotes;
+  album.reviewRequired = verification.reviewRequired;
+  album.contentFingerprintHash = verification.contentFingerprintHash;
+  if (verification.contentFileHash) {
+    album.contentFileHash = verification.contentFileHash;
+  }
+  album.isPublished = verification.publishedStatus === "published";
+
+  await album.save();
+
+  return res.json({
+    ...toAlbumListPayload(album),
+    tracks: Array.isArray(album.tracks) ? album.tracks : [],
   });
 });
 

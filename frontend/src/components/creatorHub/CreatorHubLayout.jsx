@@ -38,7 +38,7 @@ export default function CreatorHubLayout({
           <div className={styles.bannerActions}>
             {isOwner ? (
               <Link
-                to="/dashboard/creator"
+                to="/creator"
                 className={cx(buttonStyles({ variant: "secondary" }), styles.ownerBtn)}
               >
                 Upload / Manage

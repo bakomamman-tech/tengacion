@@ -7,6 +7,7 @@ const {
   createTrack,
   getTrackById,
   getTrackStream,
+  updateTrack,
 } = require("../controllers/tracksController");
 
 const router = express.Router();
@@ -21,6 +22,18 @@ router.post(
     { name: "cover", maxCount: 1 },
   ]),
   createTrack
+);
+
+router.put(
+  "/:trackId",
+  auth,
+  creatorAuth,
+  upload.fields([
+    { name: "audio", maxCount: 1 },
+    { name: "preview", maxCount: 1 },
+    { name: "cover", maxCount: 1 },
+  ]),
+  updateTrack
 );
 
 router.get("/:trackId", optionalAuth, getTrackById);

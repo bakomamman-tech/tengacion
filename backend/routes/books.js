@@ -9,6 +9,7 @@ const {
   getBookById,
   getBookChapters,
   getBookChapterById,
+  updateBook,
 } = require("../controllers/booksController");
 
 const router = express.Router();
@@ -20,8 +21,20 @@ router.post(
   upload.fields([
     { name: "cover", maxCount: 1 },
     { name: "content", maxCount: 1 },
+    { name: "preview", maxCount: 1 },
   ]),
   createBook
+);
+router.put(
+  "/:bookId",
+  auth,
+  creatorAuth,
+  upload.fields([
+    { name: "cover", maxCount: 1 },
+    { name: "content", maxCount: 1 },
+    { name: "preview", maxCount: 1 },
+  ]),
+  updateBook
 );
 router.post("/:bookId/chapters", auth, creatorAuth, createChapter);
 

@@ -6,6 +6,8 @@ const CreatorProfile = require("../models/CreatorProfile");
 const { saveUploadedFile } = require("../services/mediaStore");
 const { hasEntitlement } = require("../services/entitlementService");
 const { logAnalyticsEvent } = require("../services/analyticsService");
+const { evaluateVerification } = require("../services/contentVerificationService");
+const { creatorHasCategory } = require("../services/creatorProfileService");
 
 // TODO(phase2): add audiobook media support alongside chapter text content.
 
@@ -18,9 +20,20 @@ const toBookPayload = (book) => ({
   title: book.title || "",
   description: book.description || "",
   price: Number(book.price) || 0,
+  genre: book.genre || "",
   coverImageUrl: book.coverImageUrl || "",
   contentUrl: book.contentUrl || "",
+  previewUrl: book.previewUrl || "",
+  fileFormat: book.fileFormat || "",
+  previewExcerptText: book.previewExcerptText || "",
   createdAt: book.createdAt,
+  updatedAt: book.updatedAt,
+  publishedStatus: book.publishedStatus || (book.isPublished ? "published" : "draft"),
+  copyrightScanStatus: book.copyrightScanStatus || "pending_scan",
+  verificationNotes: book.verificationNotes || "",
+  reviewRequired: Boolean(book.reviewRequired),
+  creatorCategory: "books",
+  contentType: book.contentType || "ebook",
   creator:
     book.creatorId && typeof book.creatorId === "object"
       ? {
@@ -31,6 +44,18 @@ const toBookPayload = (book) => ({
         }
       : null,
 });
+
+const resolveRequestedStatus = (body = {}) => {
+  const value = String(
+    body?.publishedStatus || body?.publishMode || body?.status || ""
+  )
+    .trim()
+    .toLowerCase();
+  if (value === "draft" || body?.saveAsDraft === true || body?.saveAsDraft === "true") {
+    return "draft";
+  }
+  return "published";
+};
 
 const canReadFullBook = async ({ book, userId }) => {
   if (!book) {
@@ -62,13 +87,23 @@ const canReadFullBook = async ({ book, userId }) => {
 };
 
 exports.createBook = asyncHandler(async (req, res) => {
+  if (!creatorHasCategory(req.creatorProfile, "books")) {
+    return res.status(403).json({ error: "Books publishing is not enabled on this creator profile" });
+  }
+
   const title = String(req.body?.title || "").trim();
   const description = String(req.body?.description || "").trim();
   let coverImageUrl = String(req.body?.coverImageUrl || "").trim();
   let contentUrl = String(req.body?.contentUrl || req.body?.fileUrl || "").trim();
+  let previewUrl = String(req.body?.previewUrl || "").trim();
   const price = Number(req.body?.price);
+  const genre = String(req.body?.genre || "").trim();
+  const fileFormat = String(req.body?.fileFormat || "").trim().toLowerCase();
+  const previewExcerptText = String(req.body?.previewExcerptText || req.body?.previewExcerpt || "").trim();
+  const requestedStatus = resolveRequestedStatus(req.body);
   const coverFile = req.files?.cover?.[0] || null;
   const contentFile = req.files?.content?.[0] || null;
+  const previewFile = req.files?.preview?.[0] || null;
 
   if (!title) {
     return res.status(400).json({ error: "title is required" });
@@ -85,10 +120,29 @@ exports.createBook = asyncHandler(async (req, res) => {
   if (contentFile) {
     contentUrl = await saveUploadedFile(contentFile);
   }
+  if (previewFile) {
+    previewUrl = await saveUploadedFile(previewFile);
+  }
 
   if (!contentUrl) {
     return res.status(400).json({ error: "content URL or upload is required" });
   }
+
+  const verification = await evaluateVerification({
+    creatorProfileId: req.creatorProfile._id,
+    creatorCategory: "books",
+    contentType: fileFormat === "pdf" ? "pdf_book" : "ebook",
+    requestedStatus,
+    title,
+    description,
+    primaryFile: contentFile || null,
+    metadata: {
+      creatorId: req.creatorProfile._id?.toString?.() || "",
+      authorName: req.creatorProfile.displayName || "",
+      genre,
+      fileFormat,
+    },
+  });
 
   const book = await Book.create({
     creatorId: req.creatorProfile._id,
@@ -96,8 +150,19 @@ exports.createBook = asyncHandler(async (req, res) => {
     description,
     coverImageUrl,
     contentUrl,
+    previewUrl,
     price,
-    isPublished: true,
+    genre,
+    fileFormat,
+    previewExcerptText,
+    contentType: fileFormat === "pdf" ? "pdf_book" : "ebook",
+    publishedStatus: verification.publishedStatus,
+    copyrightScanStatus: verification.scanStatus,
+    verificationNotes: verification.verificationNotes,
+    reviewRequired: verification.reviewRequired,
+    contentFingerprintHash: verification.contentFingerprintHash,
+    contentFileHash: verification.contentFileHash,
+    isPublished: verification.publishedStatus === "published",
     archivedAt: null,
   });
 
@@ -124,6 +189,106 @@ exports.createBook = asyncHandler(async (req, res) => {
   }).catch(() => null);
 
   return res.status(201).json(toBookPayload(hydrated));
+});
+
+exports.updateBook = asyncHandler(async (req, res) => {
+  const { bookId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return res.status(400).json({ error: "Invalid book id" });
+  }
+  if (!creatorHasCategory(req.creatorProfile, "books")) {
+    return res.status(403).json({ error: "Books publishing is not enabled on this creator profile" });
+  }
+
+  const book = await Book.findById(bookId);
+  if (!book || String(book.creatorId) !== String(req.creatorProfile._id)) {
+    return res.status(404).json({ error: "Book not found" });
+  }
+
+  const title = String(req.body?.title || book.title || "").trim();
+  const description = String(req.body?.description || book.description || "").trim();
+  const genre = String(req.body?.genre || book.genre || "").trim();
+  const fileFormat = String(req.body?.fileFormat || book.fileFormat || "").trim().toLowerCase();
+  const previewExcerptText = String(
+    req.body?.previewExcerptText || req.body?.previewExcerpt || book.previewExcerptText || ""
+  ).trim();
+  const price = Number(req.body?.price ?? book.price ?? 0);
+  const requestedStatus = resolveRequestedStatus(req.body);
+
+  if (!title) {
+    return res.status(400).json({ error: "title is required" });
+  }
+  if (!Number.isFinite(price) || price < 0) {
+    return res.status(400).json({ error: "price must be a valid non-negative number" });
+  }
+
+  let coverImageUrl = String(req.body?.coverImageUrl || book.coverImageUrl || "").trim();
+  let contentUrl = String(req.body?.contentUrl || req.body?.fileUrl || book.contentUrl || book.fileUrl || "").trim();
+  let previewUrl = String(req.body?.previewUrl || book.previewUrl || "").trim();
+  const coverFile = req.files?.cover?.[0] || null;
+  const contentFile = req.files?.content?.[0] || null;
+  const previewFile = req.files?.preview?.[0] || null;
+
+  if (coverFile) {
+    coverImageUrl = await saveUploadedFile(coverFile);
+  }
+  if (contentFile) {
+    contentUrl = await saveUploadedFile(contentFile);
+  }
+  if (previewFile) {
+    previewUrl = await saveUploadedFile(previewFile);
+  }
+  if (!contentUrl) {
+    return res.status(400).json({ error: "content URL or upload is required" });
+  }
+
+  const verification = await evaluateVerification({
+    creatorProfileId: req.creatorProfile._id,
+    creatorCategory: "books",
+    contentType: fileFormat === "pdf" ? "pdf_book" : "ebook",
+    requestedStatus,
+    title,
+    description,
+    primaryFile: contentFile || null,
+    metadata: {
+      creatorId: req.creatorProfile._id?.toString?.() || "",
+      authorName: req.creatorProfile.displayName || "",
+      genre,
+      fileFormat,
+    },
+  });
+
+  book.title = title;
+  book.description = description;
+  book.genre = genre;
+  book.fileFormat = fileFormat;
+  book.previewExcerptText = previewExcerptText;
+  book.coverImageUrl = coverImageUrl;
+  book.contentUrl = contentUrl;
+  book.previewUrl = previewUrl;
+  book.price = price;
+  book.contentType = fileFormat === "pdf" ? "pdf_book" : "ebook";
+  book.publishedStatus = verification.publishedStatus;
+  book.copyrightScanStatus = verification.scanStatus;
+  book.verificationNotes = verification.verificationNotes;
+  book.reviewRequired = verification.reviewRequired;
+  book.contentFingerprintHash = verification.contentFingerprintHash;
+  if (verification.contentFileHash) {
+    book.contentFileHash = verification.contentFileHash;
+  }
+  book.isPublished = verification.publishedStatus === "published";
+
+  await book.save();
+
+  const hydrated = await Book.findById(book._id)
+    .populate({
+      path: "creatorId",
+      select: "displayName userId",
+      populate: { path: "userId", select: "username" },
+    })
+    .lean();
+
+  return res.json(toBookPayload(hydrated));
 });
 
 exports.createChapter = asyncHandler(async (req, res) => {

@@ -72,6 +72,24 @@ const AlbumSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    releaseType: {
+      type: String,
+      enum: ["album", "ep"],
+      default: "album",
+      index: true,
+    },
+    creatorCategory: {
+      type: String,
+      enum: ["music", "books", "podcasts"],
+      default: "music",
+      index: true,
+    },
+    contentType: {
+      type: String,
+      enum: ["album", "ep"],
+      default: "album",
+      index: true,
+    },
     tracks: {
       type: [AlbumTrackSchema],
       default: [],
@@ -106,9 +124,43 @@ const AlbumSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    publishedStatus: {
+      type: String,
+      enum: ["draft", "published", "under_review", "blocked"],
+      default: "published",
+      index: true,
+    },
     archivedAt: {
       type: Date,
       default: null,
+      index: true,
+    },
+    copyrightScanStatus: {
+      type: String,
+      enum: ["pending_scan", "passed", "flagged", "blocked"],
+      default: "pending_scan",
+      index: true,
+    },
+    verificationNotes: {
+      type: String,
+      default: "",
+      maxlength: 2000,
+    },
+    reviewRequired: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    contentFingerprintHash: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+    contentFileHash: {
+      type: String,
+      default: "",
+      trim: true,
       index: true,
     },
   },
@@ -123,8 +175,15 @@ AlbumSchema.pre("validate", function syncAlbumFields(next) {
   if (Number.isFinite(this.totalTracks) && this.totalTracks <= 0 && Array.isArray(this.tracks)) {
     this.totalTracks = this.tracks.length;
   }
-  if (this.isPublished && this.status !== "published") {
+  this.creatorCategory = "music";
+  this.contentType = this.releaseType === "ep" ? "ep" : "album";
+  if (this.publishedStatus === "published") {
+    this.isPublished = true;
     this.status = "published";
+  }
+  if (["draft", "under_review", "blocked"].includes(this.publishedStatus)) {
+    this.isPublished = false;
+    this.status = "draft";
   }
   if (typeof next === "function") next();
 });

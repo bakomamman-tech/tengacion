@@ -31,11 +31,18 @@ export default function CreatorCategoriesPage() {
       setSaving(true);
       await updateCreatorWorkspaceProfile({
         fullName: creatorProfile.fullName,
+        displayName: creatorProfile.displayName,
         phoneNumber: creatorProfile.phoneNumber,
         accountNumber: creatorProfile.accountNumber,
         country: creatorProfile.country,
         countryOfResidence: creatorProfile.countryOfResidence,
+        tagline: creatorProfile.tagline,
+        bio: creatorProfile.bio,
+        genres: creatorProfile.genres,
         socialHandles: creatorProfile.socialHandles,
+        musicProfile: creatorProfile.musicProfile,
+        booksProfile: creatorProfile.booksProfile,
+        podcastsProfile: creatorProfile.podcastsProfile,
         creatorTypes: selectedTypes,
         acceptedTerms: creatorProfile.acceptedTerms,
         acceptedCopyrightDeclaration: creatorProfile.acceptedCopyrightDeclaration,

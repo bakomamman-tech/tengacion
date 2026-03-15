@@ -25,21 +25,19 @@ export default function CreatorTypeSelector({ value = [], onChange, error = "" }
           const item = CREATOR_CATEGORY_CONFIG[key];
           const active = selected.includes(key);
           return (
-            <label
+            <button
               key={key}
+              type="button"
               className={`creator-type-card ${active ? "is-active" : ""}`}
+              onClick={() => toggle(key)}
+              role="checkbox"
+              aria-checked={active}
             >
               <div className="creator-type-card-top">
                 <span className="creator-type-icon" aria-hidden="true">
                   {item.icon}
                 </span>
                 <span className={`creator-type-check ${active ? "is-active" : ""}`} aria-hidden="true">
-                  <input
-                    type="checkbox"
-                    checked={active}
-                    onChange={() => toggle(key)}
-                    aria-label={`Enable ${item.title}`}
-                  />
                   <svg viewBox="0 0 20 20">
                     <path d="m5.3 10.4 3.1 3.1 6.3-7" />
                   </svg>
@@ -47,7 +45,7 @@ export default function CreatorTypeSelector({ value = [], onChange, error = "" }
               </div>
               <strong>{item.title}</strong>
               <span>{item.description}</span>
-            </label>
+            </button>
           );
         })}
       </div>

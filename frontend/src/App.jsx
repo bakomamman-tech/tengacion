@@ -65,6 +65,7 @@ const RequireCreatorCategory = lazy(() => import("./routes/RequireCreatorCategor
 const CreatorWorkspaceLayout = lazy(() => import("./components/creator/CreatorWorkspaceLayout"));
 const CreatorRegisterPage = lazy(() => import("./pages/creator/CreatorRegisterPage"));
 const CreatorDashboardPage = lazy(() => import("./pages/creator/CreatorDashboardPage"));
+const CreatorCategoriesPage = lazy(() => import("./pages/creator/CreatorCategoriesPage"));
 const CreatorMusicPage = lazy(() => import("./pages/creator/CreatorMusicPage"));
 const CreatorBooksPage = lazy(() => import("./pages/creator/CreatorBooksPage"));
 const CreatorPodcastsPage = lazy(() => import("./pages/creator/CreatorPodcastsPage"));
@@ -250,6 +251,7 @@ export default function App() {
             }
           >
             <Route path="dashboard" element={<CreatorDashboardPage />} />
+            <Route path="categories" element={<CreatorCategoriesPage />} />
             <Route
               path="music"
               element={

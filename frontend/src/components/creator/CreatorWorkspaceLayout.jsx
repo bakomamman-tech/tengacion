@@ -104,6 +104,11 @@ export default function CreatorWorkspaceLayout() {
             title: "Payouts",
             subtitle: "Review payout details, settlement readiness, and the balance available for withdrawal.",
           }
+        : location.pathname.startsWith("/creator/categories")
+          ? {
+              title: "Content Categories",
+              subtitle: "Choose the creator lanes you want active, then visit those dashboards to register uploads there too.",
+            }
         : location.pathname.startsWith("/creator/settings")
           ? {
               title: "Account Settings",
@@ -149,6 +154,9 @@ export default function CreatorWorkspaceLayout() {
             <div className="creator-mobile-tabs">
               <NavLink className="creator-chip-link" to="/creator/dashboard">
                 Overview
+              </NavLink>
+              <NavLink className="creator-chip-link" to="/creator/categories">
+                Categories
               </NavLink>
               {creatorProfile.creatorTypes?.map((key) => (
                 <NavLink key={key} className="creator-chip-link" to={CREATOR_CATEGORY_CONFIG[key]?.route || "/creator/dashboard"}>

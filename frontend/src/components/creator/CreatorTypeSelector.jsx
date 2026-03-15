@@ -17,27 +17,37 @@ export default function CreatorTypeSelector({ value = [], onChange, error = "" }
       <div className="creator-form-block-head">
         <div>
           <h3>Choose your creator lanes</h3>
-          <p>Select one or more content categories to unlock the right workspace.</p>
+          <p>Tick Music, Book Publishing, Podcasts, or all three to unlock the right workspace.</p>
         </div>
       </div>
-      <div className="creator-type-grid">
+      <div className="creator-type-grid" role="group" aria-label="Creator content categories">
         {CATEGORY_KEYS.map((key) => {
           const item = CREATOR_CATEGORY_CONFIG[key];
           const active = selected.includes(key);
           return (
-            <button
+            <label
               key={key}
-              type="button"
               className={`creator-type-card ${active ? "is-active" : ""}`}
-              onClick={() => toggle(key)}
-              aria-pressed={active}
             >
-              <span className="creator-type-icon" aria-hidden="true">
-                {item.icon}
-              </span>
+              <div className="creator-type-card-top">
+                <span className="creator-type-icon" aria-hidden="true">
+                  {item.icon}
+                </span>
+                <span className={`creator-type-check ${active ? "is-active" : ""}`} aria-hidden="true">
+                  <input
+                    type="checkbox"
+                    checked={active}
+                    onChange={() => toggle(key)}
+                    aria-label={`Enable ${item.title}`}
+                  />
+                  <svg viewBox="0 0 20 20">
+                    <path d="m5.3 10.4 3.1 3.1 6.3-7" />
+                  </svg>
+                </span>
+              </div>
               <strong>{item.title}</strong>
               <span>{item.description}</span>
-            </button>
+            </label>
           );
         })}
       </div>

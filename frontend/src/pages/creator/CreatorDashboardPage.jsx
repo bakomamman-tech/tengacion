@@ -105,6 +105,10 @@ export default function CreatorDashboardPage() {
             </div>
           </div>
           <div className="creator-quick-list">
+            <Link className="creator-quick-action" to="/creator/categories">
+              <span>Content categories</span>
+              <small>Enable more creator lanes here, then open their dashboards and upload there too.</small>
+            </Link>
             {creatorProfile.creatorTypes?.map((key) => (
               <Link key={key} className="creator-quick-action" to={CREATOR_CATEGORY_CONFIG[key].route}>
                 <span>{CREATOR_CATEGORY_CONFIG[key].shortTitle}</span>

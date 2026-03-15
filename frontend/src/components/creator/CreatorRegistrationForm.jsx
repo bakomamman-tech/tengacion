@@ -94,7 +94,10 @@ export default function CreatorRegistrationForm({
   const stepMeta = useMemo(
     () => [
       { title: "Creator identity", caption: "Tell us who is publishing and where payouts should land." },
-      { title: "Creator lanes", caption: "Choose the content lanes Tengacion should unlock for your workspace." },
+      {
+        title: "Creator lanes",
+        caption: "Tick Music, Book Publishing, Podcasts, or all of the above for your workspace.",
+      },
       { title: "Legal confirmation", caption: "Confirm rights ownership before your account can publish." },
     ],
     []

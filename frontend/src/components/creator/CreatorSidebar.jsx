@@ -25,6 +25,9 @@ export default function CreatorSidebar({ creatorProfile, mobileOpen = false, onN
           <NavLink to="/creator/dashboard" className="creator-sidebar-link" onClick={onNavigate}>
             Overview
           </NavLink>
+          <NavLink to="/creator/categories" className="creator-sidebar-link" onClick={onNavigate}>
+            Content Categories
+          </NavLink>
           {enabledCategories.map((key) => (
             <NavLink
               key={key}

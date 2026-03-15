@@ -13,7 +13,7 @@ export default function CreatorSidebar({ creatorProfile, mobileOpen = false, onN
     <aside className={`creator-sidebar ${mobileOpen ? "is-open" : ""}`}>
       <div className="creator-sidebar-brand">
         <div className="creator-sidebar-logo">T</div>
-        <div>
+        <div className="creator-sidebar-brand-copy">
           <strong>Tengacion</strong>
           <span>Creator Workspace</span>
         </div>

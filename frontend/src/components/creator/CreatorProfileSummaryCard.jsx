@@ -1,12 +1,22 @@
+import { resolveImage } from "../../api";
 import CopyrightStatusBadge from "./CopyrightStatusBadge";
 import { formatCurrency } from "./creatorConfig";
 
 export default function CreatorProfileSummaryCard({ creatorProfile, summary }) {
+  const avatarSrc =
+    resolveImage(creatorProfile?.user?.avatar || "") ||
+    resolveImage(creatorProfile?.coverImageUrl || "") ||
+    "";
+
   return (
     <section className="creator-profile-summary card">
       <div className="creator-profile-summary-head">
         <div className="creator-avatar-mark">
-          {(creatorProfile?.displayName || creatorProfile?.fullName || "C").slice(0, 1).toUpperCase()}
+          {avatarSrc ? (
+            <img src={avatarSrc} alt={creatorProfile?.displayName || creatorProfile?.fullName || "Creator"} />
+          ) : (
+            (creatorProfile?.displayName || creatorProfile?.fullName || "C").slice(0, 1).toUpperCase()
+          )}
         </div>
         <div>
           <div className="creator-inline-row">

@@ -6,13 +6,17 @@ import {
   getCreatorAccess,
   getCreatorWorkspaceProfile,
   registerCreatorProfile,
+  resolveImage,
+  uploadAvatar,
 } from "../../api";
 import CreatorRegistrationForm from "../../components/creator/CreatorRegistrationForm";
+import { useAuth } from "../../context/AuthContext";
 
 import "./creator-workspace.css";
 
 export default function CreatorRegisterPage({ user }) {
   const navigate = useNavigate();
+  const { updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [initialValues, setInitialValues] = useState(null);
@@ -41,6 +45,7 @@ export default function CreatorRegisterPage({ user }) {
           countryOfResidence: profile?.countryOfResidence || profile?.country || user?.country || "",
           socialHandles: profile?.socialHandles || {},
           creatorTypes: profile?.creatorTypes || [],
+          profileImageUrl: profile?.coverImageUrl || resolveImage(user?.avatar || "") || "",
           acceptedTerms: Boolean(profile?.acceptedTerms),
           acceptedCopyrightDeclaration: Boolean(profile?.acceptedCopyrightDeclaration),
         });
@@ -68,7 +73,19 @@ export default function CreatorRegisterPage({ user }) {
   const handleSubmit = async (values) => {
     try {
       setSubmitLoading(true);
-      await registerCreatorProfile(values);
+      const { profileImageFile, profileImageUrl, ...profileValues } = values || {};
+      let coverImageUrl = profileImageUrl || "";
+
+      if (profileImageFile) {
+        const updatedUser = await uploadAvatar(profileImageFile);
+        updateUser(updatedUser);
+        coverImageUrl = resolveImage(updatedUser?.avatar || "") || coverImageUrl;
+      }
+
+      await registerCreatorProfile({
+        ...profileValues,
+        coverImageUrl,
+      });
       toast.success("Creator registration completed");
       navigate("/creator/dashboard", { replace: true });
     } catch (err) {

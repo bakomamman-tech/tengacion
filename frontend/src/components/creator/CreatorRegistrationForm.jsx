@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -65,6 +65,9 @@ export default function CreatorRegistrationForm({
   onSubmit,
 }) {
   const [step, setStep] = useState(0);
+  const [profileImageFile, setProfileImageFile] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState(initialValues?.profileImageUrl || "");
+  const [profileImageError, setProfileImageError] = useState("");
 
   const form = useForm({
     resolver: zodResolver(registrationSchema),
@@ -91,6 +94,20 @@ export default function CreatorRegistrationForm({
 
   const values = watch();
 
+  useEffect(() => {
+    setProfileImagePreview(initialValues?.profileImageUrl || "");
+    setProfileImageFile(null);
+    setProfileImageError("");
+  }, [initialValues?.profileImageUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (profileImagePreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(profileImagePreview);
+      }
+    };
+  }, [profileImagePreview]);
+
   const stepMeta = useMemo(
     () => [
       { title: "Creator identity", caption: "Tell us who is publishing and where payouts should land." },
@@ -112,8 +129,51 @@ export default function CreatorRegistrationForm({
 
   const goBack = () => setStep((current) => Math.max(current - 1, 0));
 
+  const handleProfileImageChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    if (!file.type?.startsWith("image/")) {
+      setProfileImageError("Please choose an image file");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileImageError("Profile picture must be 5MB or less");
+      return;
+    }
+
+    if (profileImagePreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(profileImagePreview);
+    }
+
+    setProfileImageError("");
+    setProfileImageFile(file);
+    setProfileImagePreview(URL.createObjectURL(file));
+  };
+
+  const clearProfileImage = () => {
+    if (profileImagePreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(profileImagePreview);
+    }
+    setProfileImageFile(null);
+    setProfileImagePreview("");
+    setProfileImageError("");
+  };
+
+  const profileInitial = (values.displayName || values.fullName || "C").slice(0, 1).toUpperCase();
+
   return (
-    <form className="creator-register-form" onSubmit={handleSubmit(onSubmit)}>
+    <form
+      className="creator-register-form"
+      onSubmit={handleSubmit((payload) =>
+        onSubmit({
+          ...payload,
+          profileImageFile,
+          profileImageUrl: profileImagePreview || initialValues?.profileImageUrl || "",
+        })
+      )}
+    >
       <div className="creator-steps">
         {stepMeta.map((item, index) => (
           <div
@@ -144,48 +204,75 @@ export default function CreatorRegistrationForm({
               </div>
             </div>
 
-            <div className="creator-form-grid">
-              <label>
-                <span>Full Name</span>
-                <input {...register("fullName")} placeholder="Enter your full legal name" />
-                {errors.fullName ? <em className="creator-field-error">{errors.fullName.message}</em> : null}
-              </label>
-              <label>
-                <span>Phone Number</span>
-                <input {...register("phoneNumber")} placeholder="Enter a reachable phone number" />
-                {errors.phoneNumber ? <em className="creator-field-error">{errors.phoneNumber.message}</em> : null}
-              </label>
-              <label>
-                <span>Bank Account Number</span>
-                <input {...register("accountNumber")} placeholder="Enter your payout account number" />
-                {errors.accountNumber ? <em className="creator-field-error">{errors.accountNumber.message}</em> : null}
-              </label>
-              <label>
-                <span>Country</span>
-                <select {...register("country")}>
-                  <option value="">Select country</option>
-                  {COUNTRY_OPTIONS.map((country) => (
-                    <option key={country} value={country}>
-                      {country}
-                    </option>
-                  ))}
-                </select>
-                {errors.country ? <em className="creator-field-error">{errors.country.message}</em> : null}
-              </label>
-              <label>
-                <span>Country of Residence</span>
-                <select {...register("countryOfResidence")}>
-                  <option value="">Select country of residence</option>
-                  {COUNTRY_OPTIONS.map((country) => (
-                    <option key={country} value={country}>
-                      {country}
-                    </option>
-                  ))}
-                </select>
-                {errors.countryOfResidence ? (
-                  <em className="creator-field-error">{errors.countryOfResidence.message}</em>
+            <div className="creator-identity-layout">
+              <div className="creator-form-grid">
+                <label>
+                  <span>Full Name</span>
+                  <input {...register("fullName")} placeholder="Enter your full legal name" />
+                  {errors.fullName ? <em className="creator-field-error">{errors.fullName.message}</em> : null}
+                </label>
+                <label>
+                  <span>Phone Number</span>
+                  <input {...register("phoneNumber")} placeholder="Enter a reachable phone number" />
+                  {errors.phoneNumber ? <em className="creator-field-error">{errors.phoneNumber.message}</em> : null}
+                </label>
+                <label>
+                  <span>Bank Account Number</span>
+                  <input {...register("accountNumber")} placeholder="Enter your payout account number" />
+                  {errors.accountNumber ? <em className="creator-field-error">{errors.accountNumber.message}</em> : null}
+                </label>
+                <label>
+                  <span>Country</span>
+                  <select {...register("country")}>
+                    <option value="">Select country</option>
+                    {COUNTRY_OPTIONS.map((country) => (
+                      <option key={country} value={country}>
+                        {country}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.country ? <em className="creator-field-error">{errors.country.message}</em> : null}
+                </label>
+                <label>
+                  <span>Country of Residence</span>
+                  <select {...register("countryOfResidence")}>
+                    <option value="">Select country of residence</option>
+                    {COUNTRY_OPTIONS.map((country) => (
+                      <option key={country} value={country}>
+                        {country}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.countryOfResidence ? (
+                    <em className="creator-field-error">{errors.countryOfResidence.message}</em>
+                  ) : null}
+                </label>
+              </div>
+
+              <aside className="creator-avatar-card">
+                <div className="creator-avatar-upload-shell">
+                  {profileImagePreview ? (
+                    <img src={profileImagePreview} alt="Creator profile preview" className="creator-avatar-upload-image" />
+                  ) : (
+                    <span>{profileInitial}</span>
+                  )}
+                </div>
+                <div className="creator-avatar-copy">
+                  <strong>Profile picture</strong>
+                  <p>Upload the photo fans should see on your creator profile during onboarding.</p>
+                </div>
+                <label className="creator-upload-btn">
+                  <input type="file" accept="image/*" onChange={handleProfileImageChange} />
+                  {profileImageFile || profileImagePreview ? "Change photo" : "Upload photo"}
+                </label>
+                <small className="creator-field-hint">JPG, PNG, or WEBP. Recommended square image up to 5MB.</small>
+                {profileImageError ? <em className="creator-field-error">{profileImageError}</em> : null}
+                {profileImagePreview ? (
+                  <button type="button" className="creator-ghost-btn" onClick={clearProfileImage}>
+                    Remove photo
+                  </button>
                 ) : null}
-              </label>
+              </aside>
             </div>
           </section>
         ) : null}

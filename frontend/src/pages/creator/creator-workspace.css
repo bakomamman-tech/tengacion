@@ -237,6 +237,13 @@
   gap: 16px;
 }
 
+.creator-identity-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+  gap: 20px;
+  align-items: start;
+}
+
 .creator-form-grid label,
 .creator-form-card label {
   display: grid;
@@ -297,6 +304,62 @@
   color: var(--creator-muted);
   font-size: 0.8rem;
   margin: -2px 0 0;
+}
+
+.creator-avatar-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 249, 241, 0.7);
+  border: 1px solid rgba(95, 76, 33, 0.08);
+}
+
+.creator-avatar-upload-shell {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 26px;
+  background: linear-gradient(135deg, rgba(183, 138, 66, 0.94), rgba(49, 93, 67, 0.94));
+  color: #f7f3ea;
+  font-family: var(--creator-font-display);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.creator-avatar-upload-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.creator-avatar-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.creator-upload-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--creator-accent), var(--creator-accent-strong));
+  color: #f7f3ea;
+  cursor: pointer;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.creator-upload-btn input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .creator-type-grid {
@@ -488,6 +551,17 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.creator-sidebar-brand-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.creator-sidebar-brand-copy strong,
+.creator-sidebar-brand-copy span {
+  display: block;
+  line-height: 1.1;
+}
+
 .creator-sidebar-logo {
   display: grid;
   place-items: center;
@@ -676,6 +750,13 @@
   color: #f7f3ea;
   font-size: 1.4rem;
   font-weight: 800;
+  overflow: hidden;
+}
+
+.creator-avatar-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .creator-profile-summary-grid,
@@ -887,6 +968,7 @@
   }
 
   .creator-form-grid,
+  .creator-identity-layout,
   .creator-type-grid,
   .creator-panel-grid,
   .creator-metric-grid,

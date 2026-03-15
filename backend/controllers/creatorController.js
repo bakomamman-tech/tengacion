@@ -547,6 +547,7 @@ exports.registerCreator = asyncHandler(async (req, res) => {
 
   const socialHandles = normalizeSocialHandles(req.body?.socialHandles);
   const displayName = trimCreatorText(req.body?.displayName || fullName, 120) || fullName;
+  const coverImageUrl = trimCreatorText(req.body?.coverImageUrl || "", 500);
   const acceptedTerms = Boolean(req.body?.acceptedTerms);
   const acceptedCopyrightDeclaration = Boolean(req.body?.acceptedCopyrightDeclaration);
   const musicProfile = normalizeMusicProfile(req.body?.musicProfile);
@@ -568,6 +569,7 @@ exports.registerCreator = asyncHandler(async (req, res) => {
         booksProfile,
         podcastsProfile,
         creatorTypes,
+        coverImageUrl,
         acceptedTerms,
         acceptedCopyrightDeclaration,
         onboardingCompleted: true,
@@ -619,6 +621,7 @@ exports.updateCreatorProfile = asyncHandler(async (req, res) => {
     req.body?.displayName || existing.displayName || req.body?.fullName || existing.fullName || "",
     120
   );
+  const nextCoverImageUrl = trimCreatorText(req.body?.coverImageUrl || existing.coverImageUrl || "", 500);
   const nextGenres = normalizeGenres(req.body?.genres || existing.genres || []);
   const nextMusicProfile = normalizeMusicProfile(req.body?.musicProfile || existing.musicProfile || {});
   const nextBooksProfile = normalizeBooksProfile(req.body?.booksProfile || existing.booksProfile || {});
@@ -657,6 +660,7 @@ exports.updateCreatorProfile = asyncHandler(async (req, res) => {
         booksProfile: nextBooksProfile,
         podcastsProfile: nextPodcastsProfile,
         creatorTypes: nextCreatorTypes,
+        coverImageUrl: nextCoverImageUrl,
         tagline: trimCreatorText(req.body?.tagline || existing.tagline || "", 200),
         bio: trimCreatorText(req.body?.bio || existing.bio || "", 2000),
         genres: nextGenres,

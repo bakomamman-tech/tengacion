@@ -7,32 +7,46 @@ const Track = require("../models/Track");
 const User = require("../models/User");
 const Video = require("../models/Video");
 const {
+  normalizeBooksProfile,
   calculateCreatorProfileCompletionScore,
   isCreatorRegistrationCompleted,
+  normalizeGenres,
+  normalizeMusicProfile,
+  normalizePodcastsProfile,
   normalizeCreatorTypes,
   normalizeSocialHandles,
+  trimCreatorText,
 } = require("../services/creatorProfileService");
 
 const CREATOR_SHARE_RATE = 0.4;
 
+const resolveSocialUrl = (value = "", fallbackPrefix = "") => {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return "";
+  }
+  if (/^https?:\/\//i.test(normalized)) {
+    return normalized;
+  }
+  return `${fallbackPrefix}${normalized}`;
+};
+
 const buildSocialLinks = (socialHandles = {}) => {
   const handles = normalizeSocialHandles(socialHandles);
   return [
-    handles.facebook
-      ? { label: "facebook", url: `https://facebook.com/${handles.facebook}` }
-      : null,
+    handles.facebook ? { label: "facebook", url: resolveSocialUrl(handles.facebook, "https://facebook.com/") } : null,
     handles.instagram
-      ? { label: "instagram", url: `https://instagram.com/${handles.instagram}` }
+      ? { label: "instagram", url: resolveSocialUrl(handles.instagram, "https://instagram.com/") }
       : null,
     handles.linkedin
-      ? { label: "linkedin", url: `https://linkedin.com/in/${handles.linkedin}` }
+      ? { label: "linkedin", url: resolveSocialUrl(handles.linkedin, "https://linkedin.com/in/") }
       : null,
-    handles.x ? { label: "x", url: `https://x.com/${handles.x}` } : null,
+    handles.x ? { label: "x", url: resolveSocialUrl(handles.x, "https://x.com/") } : null,
     handles.threads
-      ? { label: "threads", url: `https://www.threads.net/@${handles.threads}` }
+      ? { label: "threads", url: resolveSocialUrl(handles.threads, "https://www.threads.net/@") }
       : null,
     handles.youtube
-      ? { label: "youtube", url: `https://youtube.com/@${handles.youtube}` }
+      ? { label: "youtube", url: resolveSocialUrl(handles.youtube, "https://youtube.com/@") }
       : null,
   ].filter(Boolean);
 };
@@ -58,6 +72,9 @@ const serializeCreatorProfile = ({
     country: profile?.country || user?.country || "",
     countryOfResidence: profile?.countryOfResidence || profile?.country || user?.country || "",
     socialHandles: normalizeSocialHandles(profile?.socialHandles),
+    musicProfile: normalizeMusicProfile(profile?.musicProfile),
+    booksProfile: normalizeBooksProfile(profile?.booksProfile),
+    podcastsProfile: normalizePodcastsProfile(profile?.podcastsProfile),
     creatorTypes,
     acceptedTerms: Boolean(profile?.acceptedTerms),
     acceptedCopyrightDeclaration: Boolean(profile?.acceptedCopyrightDeclaration),
@@ -70,7 +87,7 @@ const serializeCreatorProfile = ({
     heroBannerUrl: profile?.heroBannerUrl || profile?.coverImageUrl || "",
     coverImageUrl: profile?.coverImageUrl || "",
     paymentModeDefault: profile?.paymentModeDefault || "NG",
-    genres: Array.isArray(profile?.genres) ? profile.genres : [],
+    genres: normalizeGenres(profile?.genres),
     links: buildSocialLinks(profile?.socialHandles),
     contentCounts,
     user: user
@@ -529,20 +546,27 @@ exports.registerCreator = asyncHandler(async (req, res) => {
   }
 
   const socialHandles = normalizeSocialHandles(req.body?.socialHandles);
+  const displayName = trimCreatorText(req.body?.displayName || fullName, 120) || fullName;
   const acceptedTerms = Boolean(req.body?.acceptedTerms);
   const acceptedCopyrightDeclaration = Boolean(req.body?.acceptedCopyrightDeclaration);
+  const musicProfile = normalizeMusicProfile(req.body?.musicProfile);
+  const booksProfile = normalizeBooksProfile(req.body?.booksProfile);
+  const podcastsProfile = normalizePodcastsProfile(req.body?.podcastsProfile);
 
   const profile = await CreatorProfile.findOneAndUpdate(
     { userId: req.user.id },
     {
       $set: {
-        displayName: fullName,
+        displayName,
         fullName,
         phoneNumber,
         accountNumber,
         country,
         countryOfResidence,
         socialHandles,
+        musicProfile,
+        booksProfile,
+        podcastsProfile,
         creatorTypes,
         acceptedTerms,
         acceptedCopyrightDeclaration,
@@ -591,9 +615,22 @@ exports.updateCreatorProfile = asyncHandler(async (req, res) => {
 
   const nextHandles = normalizeSocialHandles(req.body?.socialHandles || existing.socialHandles || {});
   const nextCreatorTypes = normalizeCreatorTypes(req.body?.creatorTypes || existing.creatorTypes || []);
+  const nextDisplayName = trimCreatorText(
+    req.body?.displayName || existing.displayName || req.body?.fullName || existing.fullName || "",
+    120
+  );
+  const nextGenres = normalizeGenres(req.body?.genres || existing.genres || []);
+  const nextMusicProfile = normalizeMusicProfile(req.body?.musicProfile || existing.musicProfile || {});
+  const nextBooksProfile = normalizeBooksProfile(req.body?.booksProfile || existing.booksProfile || {});
+  const nextPodcastsProfile = normalizePodcastsProfile(
+    req.body?.podcastsProfile || existing.podcastsProfile || {}
+  );
 
   if (!String(req.body?.fullName || existing.fullName || existing.displayName || "").trim()) {
     return res.status(400).json({ error: "Full Name is required" });
+  }
+  if (!nextDisplayName) {
+    return res.status(400).json({ error: "Artist stage name is required" });
   }
   if (!nextCreatorTypes.length) {
     return res.status(400).json({ error: "Select at least one creator category" });
@@ -607,14 +644,22 @@ exports.updateCreatorProfile = asyncHandler(async (req, res) => {
     { userId: req.user.id },
     {
       $set: {
-        displayName: String(req.body?.displayName || req.body?.fullName || existing.displayName || "").trim(),
+        displayName: nextDisplayName,
         fullName: String(req.body?.fullName || existing.fullName || existing.displayName || "").trim(),
         phoneNumber: String(req.body?.phoneNumber || existing.phoneNumber || "").trim(),
         accountNumber: String(req.body?.accountNumber || existing.accountNumber || "").trim(),
         country: String(req.body?.country || existing.country || "").trim(),
-        countryOfResidence: String(req.body?.countryOfResidence || existing.countryOfResidence || existing.country || "").trim(),
+        countryOfResidence: String(
+          req.body?.countryOfResidence || existing.countryOfResidence || existing.country || ""
+        ).trim(),
         socialHandles: nextHandles,
+        musicProfile: nextMusicProfile,
+        booksProfile: nextBooksProfile,
+        podcastsProfile: nextPodcastsProfile,
         creatorTypes: nextCreatorTypes,
+        tagline: trimCreatorText(req.body?.tagline || existing.tagline || "", 200),
+        bio: trimCreatorText(req.body?.bio || existing.bio || "", 2000),
+        genres: nextGenres,
         acceptedTerms,
         acceptedCopyrightDeclaration,
         onboardingCompleted: acceptedTerms && acceptedCopyrightDeclaration && nextCreatorTypes.length > 0,

@@ -1,7 +1,11 @@
 const mongoose = require("mongoose");
 const {
   calculateCreatorProfileCompletionScore,
+  normalizeBooksProfile,
   normalizeCreatorTypes,
+  normalizeGenres,
+  normalizeMusicProfile,
+  normalizePodcastsProfile,
   normalizeSocialHandles,
 } = require("../services/creatorProfileService");
 
@@ -13,6 +17,36 @@ const SocialHandlesSchema = new mongoose.Schema(
     x: { type: String, default: "", trim: true, maxlength: 120 },
     threads: { type: String, default: "", trim: true, maxlength: 120 },
     youtube: { type: String, default: "", trim: true, maxlength: 120 },
+  },
+  { _id: false }
+);
+
+const MusicProfileSchema = new mongoose.Schema(
+  {
+    primaryGenre: { type: String, default: "", trim: true, maxlength: 80 },
+    recordLabel: { type: String, default: "", trim: true, maxlength: 120 },
+    artistBio: { type: String, default: "", maxlength: 2000 },
+  },
+  { _id: false }
+);
+
+const BooksProfileSchema = new mongoose.Schema(
+  {
+    penName: { type: String, default: "", trim: true, maxlength: 120 },
+    primaryGenre: { type: String, default: "", trim: true, maxlength: 80 },
+    publisherName: { type: String, default: "", trim: true, maxlength: 120 },
+    authorBio: { type: String, default: "", maxlength: 2000 },
+  },
+  { _id: false }
+);
+
+const PodcastsProfileSchema = new mongoose.Schema(
+  {
+    podcastName: { type: String, default: "", trim: true, maxlength: 120 },
+    hostName: { type: String, default: "", trim: true, maxlength: 120 },
+    themeOrTopic: { type: String, default: "", trim: true, maxlength: 160 },
+    seriesTitle: { type: String, default: "", trim: true, maxlength: 120 },
+    description: { type: String, default: "", maxlength: 2000 },
   },
   { _id: false }
 );
@@ -71,6 +105,33 @@ const CreatorProfileSchema = new mongoose.Schema(
         x: "",
         threads: "",
         youtube: "",
+      }),
+    },
+    musicProfile: {
+      type: MusicProfileSchema,
+      default: () => ({
+        primaryGenre: "",
+        recordLabel: "",
+        artistBio: "",
+      }),
+    },
+    booksProfile: {
+      type: BooksProfileSchema,
+      default: () => ({
+        penName: "",
+        primaryGenre: "",
+        publisherName: "",
+        authorBio: "",
+      }),
+    },
+    podcastsProfile: {
+      type: PodcastsProfileSchema,
+      default: () => ({
+        podcastName: "",
+        hostName: "",
+        themeOrTopic: "",
+        seriesTitle: "",
+        description: "",
       }),
     },
     creatorTypes: {
@@ -171,7 +232,11 @@ CreatorProfileSchema.pre("validate", function syncCreatorProfile(next) {
   this.country = String(this.country || "").trim().slice(0, 120);
   this.countryOfResidence = String(this.countryOfResidence || this.country || "").trim().slice(0, 120);
   this.socialHandles = normalizeSocialHandles(this.socialHandles);
+  this.musicProfile = normalizeMusicProfile(this.musicProfile);
+  this.booksProfile = normalizeBooksProfile(this.booksProfile);
+  this.podcastsProfile = normalizePodcastsProfile(this.podcastsProfile);
   this.creatorTypes = normalizeCreatorTypes(this.creatorTypes);
+  this.genres = normalizeGenres(this.genres);
   this.onboardingCompleted = Boolean(this.onboardingCompleted || this.onboardingComplete);
   this.onboardingComplete = Boolean(this.onboardingCompleted || this.onboardingComplete);
   this.profileCompletionScore = calculateCreatorProfileCompletionScore(this);

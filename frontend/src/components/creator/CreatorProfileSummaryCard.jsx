@@ -15,7 +15,9 @@ export default function CreatorProfileSummaryCard({ creatorProfile, summary }) {
           </div>
           <p>
             {creatorProfile?.creatorTypes?.length
-              ? creatorProfile.creatorTypes.map((entry) => entry.charAt(0).toUpperCase() + entry.slice(1)).join(" · ")
+              ? creatorProfile.creatorTypes
+                  .map((entry) => entry.charAt(0).toUpperCase() + entry.slice(1))
+                  .join(" | ")
               : "Creator workspace"}
           </p>
         </div>

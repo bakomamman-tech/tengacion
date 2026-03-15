@@ -2,7 +2,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 
 import { updateCreatorWorkspaceProfile } from "../../api";
-import CreatorRegistrationForm from "../../components/creator/CreatorRegistrationForm";
+import CreatorAccountSettingsForm from "../../components/creator/CreatorAccountSettingsForm";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 
 export default function CreatorSettingsPage() {
@@ -28,10 +28,13 @@ export default function CreatorSettingsPage() {
         <div className="creator-panel-head">
           <div>
             <h2>Creator profile settings</h2>
-            <p>Update your creator identity, enabled content lanes, and payout details.</p>
+            <p>
+              Update your public creator name, enabled content lanes, social links, and category-specific profile
+              details for music, books, and podcasts.
+            </p>
           </div>
         </div>
-        <CreatorRegistrationForm
+        <CreatorAccountSettingsForm
           initialValues={creatorProfile}
           submitLabel="Save creator profile"
           loading={loading}

@@ -1,5 +1,8 @@
 const VALID_CREATOR_TYPES = ["music", "books", "podcasts"];
 
+const trimCreatorText = (value = "", maxLength = 200) =>
+  String(value || "").trim().slice(0, maxLength);
+
 const normalizeCreatorType = (value = "") => {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized === "book" || normalized === "book publishing" || normalized === "publishing") {
@@ -39,6 +42,36 @@ const normalizeSocialHandles = (handles = {}) => ({
   youtube: normalizeSocialHandleValue(handles?.youtube),
 });
 
+const normalizeGenres = (values = []) => {
+  const list = Array.isArray(values) ? values : String(values || "").split(",");
+  return [...new Set(
+    list
+      .map((entry) => trimCreatorText(entry, 60))
+      .filter(Boolean)
+  )].slice(0, 12);
+};
+
+const normalizeMusicProfile = (profile = {}) => ({
+  primaryGenre: trimCreatorText(profile?.primaryGenre, 80),
+  recordLabel: trimCreatorText(profile?.recordLabel, 120),
+  artistBio: trimCreatorText(profile?.artistBio, 2000),
+});
+
+const normalizeBooksProfile = (profile = {}) => ({
+  penName: trimCreatorText(profile?.penName, 120),
+  primaryGenre: trimCreatorText(profile?.primaryGenre, 80),
+  publisherName: trimCreatorText(profile?.publisherName, 120),
+  authorBio: trimCreatorText(profile?.authorBio, 2000),
+});
+
+const normalizePodcastsProfile = (profile = {}) => ({
+  podcastName: trimCreatorText(profile?.podcastName, 120),
+  hostName: trimCreatorText(profile?.hostName, 120),
+  themeOrTopic: trimCreatorText(profile?.themeOrTopic, 160),
+  seriesTitle: trimCreatorText(profile?.seriesTitle, 120),
+  description: trimCreatorText(profile?.description, 2000),
+});
+
 const isCreatorRegistrationCompleted = (profile) =>
   Boolean(profile?.onboardingCompleted || profile?.onboardingComplete);
 
@@ -74,10 +107,15 @@ const creatorHasCategory = (profile, category, { allowLegacyFallback = true } = 
 
 module.exports = {
   VALID_CREATOR_TYPES,
+  trimCreatorText,
   normalizeCreatorType,
   normalizeCreatorTypes,
   normalizeSocialHandles,
   normalizeSocialHandleValue,
+  normalizeGenres,
+  normalizeMusicProfile,
+  normalizeBooksProfile,
+  normalizePodcastsProfile,
   isCreatorRegistrationCompleted,
   calculateCreatorProfileCompletionScore,
   creatorHasCategory,

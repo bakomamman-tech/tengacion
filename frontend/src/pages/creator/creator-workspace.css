@@ -245,6 +245,11 @@
   color: var(--creator-muted);
 }
 
+.creator-settings-stack {
+  display: grid;
+  gap: 18px;
+}
+
 .creator-form-full {
   grid-column: 1 / -1;
 }
@@ -286,6 +291,12 @@
   color: var(--creator-danger);
   font-size: 0.84rem;
   margin: 0;
+}
+
+.creator-field-hint {
+  color: var(--creator-muted);
+  font-size: 0.8rem;
+  margin: -2px 0 0;
 }
 
 .creator-type-grid {
@@ -639,8 +650,21 @@
 .creator-metric-card,
 .creator-upload-notice,
 .creator-editor-card,
-.creator-restricted-card {
+.creator-restricted-card,
+.creator-category-form {
   padding: 22px;
+}
+
+.creator-category-form.music {
+  background: linear-gradient(180deg, rgba(245, 251, 246, 0.94), rgba(234, 244, 237, 0.86));
+}
+
+.creator-category-form.books {
+  background: linear-gradient(180deg, rgba(252, 247, 238, 0.96), rgba(247, 238, 224, 0.9));
+}
+
+.creator-category-form.podcasts {
+  background: linear-gradient(180deg, rgba(241, 248, 251, 0.96), rgba(229, 239, 244, 0.9));
 }
 
 .creator-profile-summary-head {

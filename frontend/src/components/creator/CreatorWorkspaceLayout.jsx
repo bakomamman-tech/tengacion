@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { getCreatorDashboard, getCreatorWorkspaceProfile } from "../../api";
 import CreatorHeader from "./CreatorHeader";
@@ -129,6 +129,7 @@ export default function CreatorWorkspaceLayout() {
                   subtitle:
                     "Manage your categories, publishing health, and creator earnings from one premium workspace.",
                 };
+  const isSettingsPage = location.pathname.startsWith("/creator/settings");
 
   return (
     <div className="creator-shell">
@@ -150,6 +151,17 @@ export default function CreatorWorkspaceLayout() {
           creatorProfile={creatorProfile}
           summary={dashboard.summary}
           onToggleMenu={() => setMobileOpen((open) => !open)}
+          action={
+            isSettingsPage ? (
+              <button type="submit" form="creator-settings-form" className="creator-secondary-btn">
+                Save creator profile
+              </button>
+            ) : (
+              <Link className="creator-secondary-btn" to="/creator/settings">
+                Edit creator profile
+              </Link>
+            )
+          }
           primaryAction={
             <div className="creator-mobile-tabs">
               <NavLink className="creator-chip-link" to="/creator/dashboard">

@@ -181,7 +181,7 @@ export default function CreatorAccountSettingsForm({
     });
 
   return (
-    <form className="creator-settings-stack" onSubmit={handleSubmit(handleFormSubmit)}>
+    <form id="creator-settings-form" className="creator-settings-stack" onSubmit={handleSubmit(handleFormSubmit)}>
       <section className="creator-form-card">
         <div className="creator-form-block-head">
           <div>

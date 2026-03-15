@@ -9,6 +9,7 @@ export default function CreatorHeader({
   creatorProfile,
   summary,
   onToggleMenu,
+  action,
   primaryAction,
 }) {
   return (
@@ -33,9 +34,13 @@ export default function CreatorHeader({
           <span>Available</span>
           <strong>{formatCurrency(summary?.availableBalance || 0)}</strong>
         </div>
-        <Link className="creator-secondary-btn" to="/creator/settings">
-          Edit creator profile
-        </Link>
+        {action ? (
+          action
+        ) : (
+          <Link className="creator-secondary-btn" to="/creator/settings">
+            Edit creator profile
+          </Link>
+        )}
         {primaryAction ? primaryAction : null}
       </div>
     </header>

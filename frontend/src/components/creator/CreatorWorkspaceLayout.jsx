@@ -115,6 +115,7 @@ export default function CreatorWorkspaceLayout() {
   const currentCategory = CREATOR_CATEGORY_ORDER.find((key) =>
     location.pathname.startsWith(CREATOR_CATEGORY_CONFIG[key].route)
   );
+  const isCategorySectionActive = Boolean(currentCategory) || location.pathname.startsWith("/creator/categories");
   const pageMeta = currentCategory
     ? {
         title: CREATOR_CATEGORY_CONFIG[currentCategory].title,
@@ -189,19 +190,36 @@ export default function CreatorWorkspaceLayout() {
             )
           }
           primaryAction={
-            <div className="creator-mobile-tabs">
+            <nav className="creator-mobile-tabs creator-chip-nav" aria-label="Creator workspace quick navigation">
               <NavLink className="creator-chip-link" to="/creator/dashboard">
                 Overview
               </NavLink>
-              <NavLink className="creator-chip-link" to="/creator/categories">
-                Categories
-              </NavLink>
-              {normalizedCreatorTypes.map((key) => (
-                <NavLink key={key} className="creator-chip-link" to={CREATOR_CATEGORY_CONFIG[key]?.route || "/creator/dashboard"}>
-                  {CREATOR_CATEGORY_CONFIG[key]?.shortTitle || key}
+              <div
+                className={`creator-chip-group${isCategorySectionActive ? " is-active" : ""}`}
+                role="group"
+                aria-label="Content Categories"
+              >
+                <NavLink
+                  className={`creator-chip-link creator-chip-link--parent${isCategorySectionActive ? " active" : ""}`}
+                  to="/creator/categories"
+                >
+                  Content Categories
                 </NavLink>
-              ))}
-            </div>
+                {normalizedCreatorTypes.length ? (
+                  <div className="creator-chip-group-list">
+                    {normalizedCreatorTypes.map((key) => (
+                      <NavLink
+                        key={key}
+                        className="creator-chip-link creator-chip-link--child"
+                        to={CREATOR_CATEGORY_CONFIG[key]?.route || "/creator/dashboard"}
+                      >
+                        {CREATOR_CATEGORY_CONFIG[key]?.shortTitle || key}
+                      </NavLink>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </nav>
           }
         />
 

@@ -1,12 +1,16 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 
 import { CREATOR_CATEGORY_CONFIG, CREATOR_CATEGORY_ORDER, CREATOR_STATIC_NAV, normalizeCreatorLaneKeys } from "./creatorConfig";
 
 export default function CreatorSidebar({ creatorProfile, mobileOpen = false, onNavigate }) {
+  const location = useLocation();
   const enabledLanes = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes);
   const enabledCategories = CREATOR_CATEGORY_ORDER.filter((key) =>
     enabledLanes.includes(key)
   );
+  const isCategorySectionActive =
+    location.pathname.startsWith("/creator/categories") ||
+    enabledCategories.some((key) => location.pathname.startsWith(CREATOR_CATEGORY_CONFIG[key].route));
 
   return (
     <aside className={`creator-sidebar ${mobileOpen ? "is-open" : ""}`}>
@@ -24,19 +28,29 @@ export default function CreatorSidebar({ creatorProfile, mobileOpen = false, onN
           <NavLink to="/creator/dashboard" className="creator-sidebar-link" onClick={onNavigate}>
             Overview
           </NavLink>
-          <NavLink to="/creator/categories" className="creator-sidebar-link" onClick={onNavigate}>
-            Content Categories
-          </NavLink>
-          {enabledCategories.map((key) => (
+          <div className="creator-sidebar-tree" role="group" aria-label="Content Categories">
             <NavLink
-              key={key}
-              to={CREATOR_CATEGORY_CONFIG[key].route}
-              className="creator-sidebar-link"
+              to="/creator/categories"
+              className={`creator-sidebar-link creator-sidebar-link--parent${isCategorySectionActive ? " active" : ""}`}
               onClick={onNavigate}
             >
-              {CREATOR_CATEGORY_CONFIG[key].shortTitle}
+              Content Categories
             </NavLink>
-          ))}
+            {enabledCategories.length ? (
+              <div className="creator-sidebar-submenu">
+                {enabledCategories.map((key) => (
+                  <NavLink
+                    key={key}
+                    to={CREATOR_CATEGORY_CONFIG[key].route}
+                    className="creator-sidebar-link creator-sidebar-link--child"
+                    onClick={onNavigate}
+                  >
+                    {CREATOR_CATEGORY_CONFIG[key].shortTitle}
+                  </NavLink>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <div className="creator-sidebar-group">

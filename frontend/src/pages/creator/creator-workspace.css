@@ -625,6 +625,11 @@
   gap: 10px;
 }
 
+.creator-sidebar-tree {
+  display: grid;
+  gap: 8px;
+}
+
 .creator-sidebar-link {
   display: flex;
   align-items: center;
@@ -639,6 +644,24 @@
 .creator-sidebar-link:hover {
   background: rgba(255, 250, 239, 0.1);
   color: #fff6e5;
+}
+
+.creator-sidebar-link--parent {
+  font-weight: 600;
+}
+
+.creator-sidebar-submenu {
+  display: grid;
+  gap: 8px;
+  margin-left: 16px;
+  padding-left: 14px;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.creator-sidebar-link--child {
+  min-height: 38px;
+  padding-left: 12px;
+  color: rgba(245, 240, 227, 0.72);
 }
 
 .creator-main {
@@ -713,6 +736,42 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.creator-chip-nav {
+  align-items: flex-start;
+  flex-basis: 100%;
+  justify-content: flex-end;
+}
+
+.creator-chip-group {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(95, 76, 33, 0.12);
+  background: rgba(255, 248, 238, 0.56);
+}
+
+.creator-chip-group.is-active {
+  border-color: rgba(49, 93, 67, 0.2);
+  background: rgba(49, 93, 67, 0.08);
+}
+
+.creator-chip-group-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-left: 12px;
+}
+
+.creator-chip-link--parent {
+  justify-content: flex-start;
+  font-weight: 600;
+}
+
+.creator-chip-link--child {
+  min-height: 40px;
 }
 
 .creator-chip-link.active {
@@ -1102,6 +1161,10 @@
 
   .creator-header {
     flex-direction: column;
+  }
+
+  .creator-chip-nav {
+    justify-content: flex-start;
   }
 
   .creator-inline-notice {

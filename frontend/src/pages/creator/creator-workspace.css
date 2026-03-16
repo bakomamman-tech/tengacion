@@ -1175,6 +1175,29 @@
   object-fit: cover;
 }
 
+.creator-avatar-mark--small {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  font-size: 1.15rem;
+}
+
+.creator-upload-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 249, 241, 0.72);
+  border: 1px solid rgba(95, 76, 33, 0.08);
+}
+
+.creator-upload-account p {
+  margin: 4px 0 0;
+  color: var(--creator-muted);
+  font-size: 0.84rem;
+}
+
 .creator-profile-summary-grid,
 .creator-category-stats {
   display: grid;

@@ -69,9 +69,9 @@ const CreatorCategoriesPage = lazy(() => import("./pages/creator/CreatorCategori
 const CreatorMusicPage = lazy(() => import("./pages/creator/CreatorMusicPage"));
 const CreatorBooksPage = lazy(() => import("./pages/creator/CreatorBooksPage"));
 const CreatorPodcastsPage = lazy(() => import("./pages/creator/CreatorPodcastsPage"));
+const CreatorMusicUploadPage = lazy(() => import("./pages/creator/CreatorMusicUploadPage"));
 const CreatorBooksUploadPage = lazy(() => import("./pages/creator/CreatorBooksUploadPage"));
 const CreatorPodcastsUploadPage = lazy(() => import("./pages/creator/CreatorPodcastsUploadPage"));
-const CreatorDashboardMVP = lazy(() => import("./pages/CreatorDashboardMVP"));
 const CreatorEarningsPage = lazy(() => import("./pages/creator/CreatorEarningsPage"));
 const CreatorPayoutsPage = lazy(() => import("./pages/creator/CreatorPayoutsPage"));
 const CreatorSettingsPage = lazy(() => import("./pages/creator/CreatorSettingsPage"));
@@ -248,7 +248,7 @@ export default function App() {
             element={
               <ProtectedRoute user={user}>
                 <RequireCreatorAuth>
-                  <CreatorDashboardMVP />
+                  <Navigate to="/creator/music/upload" replace />
                 </RequireCreatorAuth>
               </ProtectedRoute>
             }
@@ -269,7 +269,7 @@ export default function App() {
               path="music/upload"
               element={
                 <RequireCreatorCategory category="music">
-                  <Navigate to="/creator/music/upload-studio" replace />
+                  <CreatorMusicUploadPage />
                 </RequireCreatorCategory>
               }
             />

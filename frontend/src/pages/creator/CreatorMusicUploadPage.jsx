@@ -1,29 +1,13 @@
 import { Link } from "react-router-dom";
 
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
-import { formatCurrency } from "../../components/creator/creatorConfig";
-import CreatorAudienceDestinationCard from "../../components/creator/upload/CreatorAudienceDestinationCard";
+import CreatorUploadSupportPanels from "../../components/creator/upload/CreatorUploadSupportPanels";
 import MusicUploadStudio from "../../components/creator/upload/MusicUploadStudio";
 
 export default function CreatorMusicUploadPage() {
   const { creatorProfile, dashboard } = useCreatorWorkspace();
   const musicStats = dashboard.categories?.music || {};
   const musicAnalytics = dashboard.content?.music?.analytics || {};
-  const publicMusicPath = creatorProfile?._id ? `/creators/${creatorProfile._id}/music` : "";
-  const audienceHighlights = [
-    {
-      title: "Use a clean release title",
-      copy: "Match the title, artwork, and file metadata as closely as possible.",
-    },
-    {
-      title: "Add preview assets",
-      copy: "Preview samples and thumbnails improve discovery and trust.",
-    },
-    {
-      title: "Lead fans to the final page",
-      copy: "Once published, your audience-facing music page is where people can stream, buy, and watch releases.",
-    },
-  ];
 
   return (
     <div className="creator-page-grid creator-upload-page">
@@ -62,33 +46,10 @@ export default function CreatorMusicUploadPage() {
       </div>
 
       <aside className="creator-page-side">
-        <section className="creator-panel card creator-upload-side-card">
-          <div className="creator-panel-head">
-            <div>
-              <h2>Lane snapshot</h2>
-              <p>Keep an eye on review pressure and earnings before you publish.</p>
-            </div>
-          </div>
-          <div className="creator-stack-list">
-            <div className="creator-stack-row">
-              <span>In review</span>
-              <strong>{Number(musicStats.underReview || 0)}</strong>
-            </div>
-            <div className="creator-stack-row">
-              <span>Music earnings</span>
-              <strong>{formatCurrency(musicStats.earnings || 0)}</strong>
-            </div>
-            <div className="creator-stack-row">
-              <span>Available</span>
-              <strong>{formatCurrency(dashboard.summary?.availableBalance || 0)}</strong>
-            </div>
-          </div>
-        </section>
-
-        <CreatorAudienceDestinationCard
+        <CreatorUploadSupportPanels
+          creatorProfile={creatorProfile}
+          dashboard={dashboard}
           categoryKey="music"
-          publicPath={publicMusicPath}
-          highlights={audienceHighlights}
         />
       </aside>
     </div>

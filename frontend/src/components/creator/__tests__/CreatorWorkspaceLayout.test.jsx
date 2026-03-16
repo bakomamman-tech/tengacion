@@ -14,6 +14,7 @@ vi.mock("../../../api", () => ({
   getCreatorDashboardSummary: vi.fn(),
   getCreatorPrivateContent: vi.fn(),
   getCreatorWorkspaceProfile: vi.fn(),
+  resolveImage: vi.fn((value) => value || ""),
 }));
 
 describe("CreatorWorkspaceLayout", () => {
@@ -61,5 +62,34 @@ describe("CreatorWorkspaceLayout", () => {
     expect(within(categoryGroup).getByRole("link", { name: /music/i })).toHaveAttribute("href", "/creator/music");
     expect(within(categoryGroup).getByRole("link", { name: /book publishing/i })).toHaveAttribute("href", "/creator/books");
     expect(within(categoryGroup).getByRole("link", { name: /podcast/i })).toHaveAttribute("href", "/creator/podcasts");
+  });
+
+  it("renders the creator profile image in the sidebar brand area", async () => {
+    getCreatorWorkspaceProfile.mockResolvedValue({
+      displayName: "Creator Example",
+      status: "active",
+      creatorTypes: ["music"],
+      user: {
+        avatar: "/uploads/creator-profile.png",
+      },
+    });
+    getCreatorDashboardSummary.mockResolvedValue({
+      summary: { availableBalance: 0 },
+      content: {},
+    });
+    getCreatorPrivateContent.mockResolvedValue({ content: {} });
+
+    render(
+      <MemoryRouter initialEntries={["/creator/dashboard"]}>
+        <Routes>
+          <Route path="/creator" element={<CreatorWorkspaceLayout />}>
+            <Route path="dashboard" element={<div>Dashboard page</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await screen.findByText("Dashboard page");
+    expect(screen.getByAltText("Creator Example")).toHaveAttribute("src", "/uploads/creator-profile.png");
   });
 });

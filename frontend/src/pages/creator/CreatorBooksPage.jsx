@@ -1,30 +1,13 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import {
-  createCreatorBook,
-  updateBookWithUploadProgress,
-} from "../../api";
+import { updateBookWithUploadProgress } from "../../api";
 import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge";
 import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
-import BookUploadForm from "../../components/creator/upload/BookUploadForm";
+import BookUploadStudio from "../../components/creator/upload/BookUploadStudio";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import { formatCurrency, formatShortDate } from "../../components/creator/creatorConfig";
-import { useUnsavedChangesPrompt } from "../../hooks/useUnsavedChangesPrompt";
-
-const EMPTY_BOOK_FORM = {
-  bookTitle: "",
-  description: "",
-  genre: "",
-  language: "",
-  tags: "",
-  price: "",
-  fileFormat: "pdf",
-  previewExcerptText: "",
-  coverImageFile: null,
-  fullBookFile: null,
-  previewSampleFile: null,
-};
 
 function BookEditPanel({ item, onCancel, onSave }) {
   const [values, setValues] = useState({
@@ -124,7 +107,6 @@ function BookEditPanel({ item, onCancel, onSave }) {
 
 export default function CreatorBooksPage() {
   const { dashboard, refreshWorkspace } = useCreatorWorkspace();
-  const [bookForm, setBookForm] = useState(EMPTY_BOOK_FORM);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [editingItem, setEditingItem] = useState(null);
@@ -136,65 +118,6 @@ export default function CreatorBooksPage() {
     () => [...books].sort((left, right) => new Date(right.updatedAt || right.createdAt) - new Date(left.updatedAt || left.createdAt)),
     [books]
   );
-
-  const dirty = Boolean(
-    bookForm.bookTitle ||
-      bookForm.description ||
-      bookForm.genre ||
-      bookForm.language ||
-      bookForm.tags ||
-      bookForm.price ||
-      bookForm.previewExcerptText ||
-      bookForm.coverImageFile ||
-      bookForm.fullBookFile ||
-      bookForm.previewSampleFile
-  );
-
-  useUnsavedChangesPrompt(dirty);
-
-  const resetForm = () => setBookForm(EMPTY_BOOK_FORM);
-
-  const submitBook = async (publishedStatus) => {
-    if (!bookForm.bookTitle.trim()) {
-      toast.error("Book title is required");
-      return;
-    }
-    if (!bookForm.fullBookFile) {
-      toast.error("Choose a book file");
-      return;
-    }
-    const formData = new FormData();
-    formData.append("title", bookForm.bookTitle.trim());
-    formData.append("description", bookForm.description.trim());
-    formData.append("genre", bookForm.genre.trim());
-    formData.append("language", bookForm.language.trim());
-    formData.append("tags", bookForm.tags.trim());
-    formData.append("price", bookForm.price || "0");
-    formData.append("fileFormat", bookForm.fileFormat);
-    formData.append("previewExcerptText", bookForm.previewExcerptText.trim());
-    formData.append("publishedStatus", publishedStatus);
-    formData.append("content", bookForm.fullBookFile);
-    if (bookForm.coverImageFile) {
-      formData.append("cover", bookForm.coverImageFile);
-    }
-    if (bookForm.previewSampleFile) {
-      formData.append("preview", bookForm.previewSampleFile);
-    }
-
-    try {
-      setBusy(true);
-      setProgress(0);
-      await createCreatorBook(formData, { onProgress: setProgress });
-      await refreshWorkspace();
-      toast.success(publishedStatus === "draft" ? "Book draft saved" : "Book uploaded");
-      resetForm();
-    } catch (err) {
-      toast.error(err?.message || "Could not upload book");
-    } finally {
-      setBusy(false);
-      setProgress(0);
-    }
-  };
 
   const saveEdit = async (values) => {
     if (!editingItem) {
@@ -255,22 +178,17 @@ export default function CreatorBooksPage() {
         />
       </section>
 
-      <section className="creator-upload-notice card">
-        <strong>Copyright screening</strong>
-        <p>
-          Book uploads are screened with file hashing, duplicate checks, and metadata similarity so suspicious items can
-          be held for review.
-        </p>
+      <section className="creator-inline-notice">
+        <div>
+          <strong>Dedicated upload page</strong>
+          <span>Open the Upload Book page for a focused publishing view built around the same fields from your current workspace.</span>
+        </div>
+        <Link className="creator-secondary-btn" to="/creator/books/upload">
+          Upload Book
+        </Link>
       </section>
 
-      <BookUploadForm
-        value={bookForm}
-        onChange={(key, nextValue) => setBookForm((current) => ({ ...current, [key]: nextValue }))}
-        busy={busy}
-        progress={progress}
-        onSaveDraft={() => submitBook("draft")}
-        onPublish={() => submitBook("published")}
-      />
+      <BookUploadStudio />
 
       {editingItem ? <BookEditPanel item={editingItem} onCancel={() => setEditingItem(null)} onSave={saveEdit} /> : null}
 
@@ -308,6 +226,8 @@ export default function CreatorBooksPage() {
           )}
         </div>
       </section>
+
+      {busy ? <div className="creator-upload-progress">Updating book... {progress}%</div> : null}
     </div>
   );
 }

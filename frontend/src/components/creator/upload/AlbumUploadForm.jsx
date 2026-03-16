@@ -1,3 +1,5 @@
+import CreatorUploadField from "./CreatorUploadField";
+
 export default function AlbumUploadForm({
   value,
   onChange,
@@ -31,18 +33,40 @@ export default function AlbumUploadForm({
           <span>Price</span>
           <input value={value.price} inputMode="decimal" onChange={(event) => onChange("price", event.target.value)} />
         </label>
-        <label>
-          <span>Album cover image file</span>
-          <input type="file" accept="image/*" onChange={(event) => onChange("albumCoverImageFile", event.target.files?.[0] || null)} />
-        </label>
-        <label className="creator-form-full">
-          <span>Album songs files</span>
-          <input type="file" accept="audio/*" multiple onChange={(event) => onChange("albumSongsFiles", Array.from(event.target.files || []))} />
-        </label>
-        <label className="creator-form-full">
-          <span>Optional preview samples</span>
-          <input type="file" accept="audio/*" multiple onChange={(event) => onChange("optionalPreviewSamples", Array.from(event.target.files || []))} />
-        </label>
+        <CreatorUploadField
+          icon="I"
+          label="Cover image file"
+          helper="Album art for your release page"
+          accept="image/*"
+          selectedText={value.albumCoverImageFile?.name || ""}
+          onChange={(event) => onChange("albumCoverImageFile", event.target.files?.[0] || null)}
+        />
+        <CreatorUploadField
+          icon="S"
+          label="Album songs upload"
+          helper="Upload multiple tracks for the album"
+          accept="audio/*"
+          multiple
+          selectedText={
+            value.albumSongsFiles?.length
+              ? `${value.albumSongsFiles.length} audio file${value.albumSongsFiles.length === 1 ? "" : "s"} selected`
+              : ""
+          }
+          onChange={(event) => onChange("albumSongsFiles", Array.from(event.target.files || []))}
+        />
+        <CreatorUploadField
+          icon="V"
+          label="Optional preview samples"
+          helper="Optional teaser files for preview playback"
+          accept="audio/*"
+          multiple
+          selectedText={
+            value.optionalPreviewSamples?.length
+              ? `${value.optionalPreviewSamples.length} preview file${value.optionalPreviewSamples.length === 1 ? "" : "s"} selected`
+              : ""
+          }
+          onChange={(event) => onChange("optionalPreviewSamples", Array.from(event.target.files || []))}
+        />
         <label className="creator-form-full">
           <span>Description</span>
           <textarea rows={4} value={value.description} onChange={(event) => onChange("description", event.target.value)} />

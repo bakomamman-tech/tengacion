@@ -112,11 +112,19 @@ export default function CreatorWorkspaceLayout() {
   };
 
   const normalizedCreatorTypes = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes);
+  const currentUploadCategory = CREATOR_CATEGORY_ORDER.find((key) =>
+    location.pathname.startsWith(CREATOR_CATEGORY_CONFIG[key].uploadRoute || "")
+  );
   const currentCategory = CREATOR_CATEGORY_ORDER.find((key) =>
     location.pathname.startsWith(CREATOR_CATEGORY_CONFIG[key].route)
   );
   const isCategorySectionActive = Boolean(currentCategory) || location.pathname.startsWith("/creator/categories");
-  const pageMeta = currentCategory
+  const pageMeta = currentUploadCategory
+    ? {
+        title: CREATOR_CATEGORY_CONFIG[currentUploadCategory].uploadTitle,
+        subtitle: CREATOR_CATEGORY_CONFIG[currentUploadCategory].uploadDescription,
+      }
+    : currentCategory
     ? {
         title: CREATOR_CATEGORY_CONFIG[currentCategory].title,
         subtitle: CREATOR_CATEGORY_CONFIG[currentCategory].description,
@@ -183,6 +191,10 @@ export default function CreatorWorkspaceLayout() {
               <button type="submit" form="creator-settings-form" className="creator-secondary-btn">
                 Save creator profile
               </button>
+            ) : currentUploadCategory ? (
+              <Link className="creator-secondary-btn" to={CREATOR_CATEGORY_CONFIG[currentUploadCategory].route}>
+                Back to {CREATOR_CATEGORY_CONFIG[currentUploadCategory].shortTitle}
+              </Link>
             ) : (
               <Link className="creator-secondary-btn" to="/creator/settings">
                 Edit creator profile

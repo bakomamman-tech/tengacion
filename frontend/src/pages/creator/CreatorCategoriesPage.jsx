@@ -136,9 +136,14 @@ export default function CreatorCategoriesPage() {
                   </span>
                 ) : null}
                 {enabled ? (
-                  <Link className="creator-secondary-btn" to={item.route}>
-                    Open {item.shortTitle}
-                  </Link>
+                  <div className="creator-category-actions">
+                    <Link className="creator-secondary-btn" to={item.route}>
+                      Open {item.shortTitle}
+                    </Link>
+                    <Link className="creator-primary-btn creator-upload-cta" to={item.uploadRoute}>
+                      {item.uploadButtonLabel}
+                    </Link>
+                  </div>
                 ) : (
                   <button
                     type="button"

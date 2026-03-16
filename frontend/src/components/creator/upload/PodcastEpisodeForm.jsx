@@ -1,3 +1,5 @@
+import CreatorUploadField from "./CreatorUploadField";
+
 export default function PodcastEpisodeForm({
   value,
   onChange,
@@ -43,18 +45,30 @@ export default function PodcastEpisodeForm({
           <span>Price</span>
           <input value={value.price} inputMode="decimal" onChange={(event) => onChange("price", event.target.value)} />
         </label>
-        <label>
-          <span>Full audio file</span>
-          <input type="file" accept="audio/*" onChange={(event) => onChange("fullAudioFile", event.target.files?.[0] || null)} />
-        </label>
-        <label>
-          <span>Preview sample file</span>
-          <input type="file" accept="audio/*" onChange={(event) => onChange("previewSampleFile", event.target.files?.[0] || null)} />
-        </label>
-        <label>
-          <span>Cover image file</span>
-          <input type="file" accept="image/*" onChange={(event) => onChange("coverImageFile", event.target.files?.[0] || null)} />
-        </label>
+        <CreatorUploadField
+          icon="A"
+          label="Full audio upload"
+          helper="Podcast episode master audio file"
+          accept="audio/*"
+          selectedText={value.fullAudioFile?.name || ""}
+          onChange={(event) => onChange("fullAudioFile", event.target.files?.[0] || null)}
+        />
+        <CreatorUploadField
+          icon="S"
+          label="Preview sample upload"
+          helper="Optional short sample for discovery"
+          accept="audio/*"
+          selectedText={value.previewSampleFile?.name || ""}
+          onChange={(event) => onChange("previewSampleFile", event.target.files?.[0] || null)}
+        />
+        <CreatorUploadField
+          icon="I"
+          label="Cover image upload"
+          helper="Episode cover artwork"
+          accept="image/*"
+          selectedText={value.coverImageFile?.name || ""}
+          onChange={(event) => onChange("coverImageFile", event.target.files?.[0] || null)}
+        />
         <label className="creator-form-full">
           <span>Description</span>
           <textarea rows={4} value={value.description} onChange={(event) => onChange("description", event.target.value)} />

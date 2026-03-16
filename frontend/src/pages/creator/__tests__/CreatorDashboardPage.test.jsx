@@ -48,12 +48,24 @@ describe("CreatorDashboardPage", () => {
       "href",
       "/creator/music"
     );
+    expect(screen.getByRole("link", { name: /upload music/i })).toHaveAttribute(
+      "href",
+      "/creator/music/upload"
+    );
     expect(
       screen.getByRole("link", { name: /go to book publishing dashboard/i })
     ).toHaveAttribute("href", "/creator/books");
+    expect(screen.getByRole("link", { name: /upload book/i })).toHaveAttribute(
+      "href",
+      "/creator/books/upload"
+    );
     expect(screen.getByRole("link", { name: /go to podcast dashboard/i })).toHaveAttribute(
       "href",
       "/creator/podcasts"
     );
-  });
+    expect(screen.getByRole("link", { name: /upload podcasts/i })).toHaveAttribute(
+      "href",
+      "/creator/podcasts/upload"
+    );
+  }, 15000);
 });

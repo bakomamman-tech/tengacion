@@ -69,6 +69,9 @@ const CreatorCategoriesPage = lazy(() => import("./pages/creator/CreatorCategori
 const CreatorMusicPage = lazy(() => import("./pages/creator/CreatorMusicPage"));
 const CreatorBooksPage = lazy(() => import("./pages/creator/CreatorBooksPage"));
 const CreatorPodcastsPage = lazy(() => import("./pages/creator/CreatorPodcastsPage"));
+const CreatorMusicUploadPage = lazy(() => import("./pages/creator/CreatorMusicUploadPage"));
+const CreatorBooksUploadPage = lazy(() => import("./pages/creator/CreatorBooksUploadPage"));
+const CreatorPodcastsUploadPage = lazy(() => import("./pages/creator/CreatorPodcastsUploadPage"));
 const CreatorEarningsPage = lazy(() => import("./pages/creator/CreatorEarningsPage"));
 const CreatorPayoutsPage = lazy(() => import("./pages/creator/CreatorPayoutsPage"));
 const CreatorSettingsPage = lazy(() => import("./pages/creator/CreatorSettingsPage"));
@@ -253,6 +256,14 @@ export default function App() {
             <Route path="dashboard" element={<CreatorDashboardPage />} />
             <Route path="categories" element={<CreatorCategoriesPage />} />
             <Route
+              path="music/upload"
+              element={
+                <RequireCreatorCategory category="music">
+                  <CreatorMusicUploadPage />
+                </RequireCreatorCategory>
+              }
+            />
+            <Route
               path="music"
               element={
                 <RequireCreatorCategory category="music">
@@ -261,10 +272,26 @@ export default function App() {
               }
             />
             <Route
+              path="books/upload"
+              element={
+                <RequireCreatorCategory category="bookPublishing">
+                  <CreatorBooksUploadPage />
+                </RequireCreatorCategory>
+              }
+            />
+            <Route
               path="books"
               element={
                 <RequireCreatorCategory category="bookPublishing">
                   <CreatorBooksPage />
+                </RequireCreatorCategory>
+              }
+            />
+            <Route
+              path="podcasts/upload"
+              element={
+                <RequireCreatorCategory category="podcast">
+                  <CreatorPodcastsUploadPage />
                 </RequireCreatorCategory>
               }
             />

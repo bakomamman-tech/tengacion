@@ -48,9 +48,14 @@ export default function CreatorLaneCard({ categoryKey, stats = {} }) {
         <CopyrightStatusBadge
           status={Number(stats.underReview || 0) > 0 ? "under_review" : "active"}
         />
-        <Link className="creator-secondary-btn" to={item.route}>
-          Go to {item.shortTitle} Dashboard
-        </Link>
+        <div className="creator-category-actions">
+          <Link className="creator-secondary-btn" to={item.route}>
+            Go to {item.shortTitle} Dashboard
+          </Link>
+          <Link className="creator-primary-btn creator-upload-cta" to={item.uploadRoute}>
+            {item.uploadButtonLabel}
+          </Link>
+        </div>
       </div>
     </article>
   );

@@ -1,3 +1,5 @@
+import CreatorUploadField from "./CreatorUploadField";
+
 export default function MusicVideoUploadForm({
   value,
   onChange,
@@ -24,18 +26,30 @@ export default function MusicVideoUploadForm({
           <span>Price</span>
           <input value={value.price} inputMode="decimal" onChange={(event) => onChange("price", event.target.value)} />
         </label>
-        <label>
-          <span>Video file</span>
-          <input type="file" accept="video/*" onChange={(event) => onChange("videoFile", event.target.files?.[0] || null)} />
-        </label>
-        <label>
-          <span>Thumbnail file</span>
-          <input type="file" accept="image/*" onChange={(event) => onChange("thumbnailFile", event.target.files?.[0] || null)} />
-        </label>
-        <label>
-          <span>Preview clip file</span>
-          <input type="file" accept="video/*" onChange={(event) => onChange("previewClipFile", event.target.files?.[0] || null)} />
-        </label>
+        <CreatorUploadField
+          icon="F"
+          label="Video file upload"
+          helper="Drag and drop the full video master"
+          accept="video/*"
+          selectedText={value.videoFile?.name || ""}
+          onChange={(event) => onChange("videoFile", event.target.files?.[0] || null)}
+        />
+        <CreatorUploadField
+          icon="T"
+          label="Thumbnail upload"
+          helper="Poster image for the release card"
+          accept="image/*"
+          selectedText={value.thumbnailFile?.name || ""}
+          onChange={(event) => onChange("thumbnailFile", event.target.files?.[0] || null)}
+        />
+        <CreatorUploadField
+          icon="P"
+          label="Preview clip upload"
+          helper="Short teaser clip for previews"
+          accept="video/*"
+          selectedText={value.previewClipFile?.name || ""}
+          onChange={(event) => onChange("previewClipFile", event.target.files?.[0] || null)}
+        />
         <label className="creator-form-full">
           <span>Description</span>
           <textarea rows={4} value={value.description} onChange={(event) => onChange("description", event.target.value)} />

@@ -1,3 +1,5 @@
+import CreatorUploadField from "./CreatorUploadField";
+
 export default function BookUploadForm({
   value,
   onChange,
@@ -10,7 +12,7 @@ export default function BookUploadForm({
     <article className="creator-panel creator-upload-panel creator-upload-panel--books card">
       <div className="creator-panel-head">
         <div>
-          <h2>Create Book</h2>
+          <h2>Upload Book</h2>
           <p>Publish PDF, EPUB, MOBI, or TXT releases with previews, language, genre, and pricing.</p>
         </div>
       </div>
@@ -45,18 +47,30 @@ export default function BookUploadForm({
           <span>Tags</span>
           <input value={value.tags} onChange={(event) => onChange("tags", event.target.value)} placeholder="literary, drama, fiction" />
         </label>
-        <label>
-          <span>Cover image file</span>
-          <input type="file" accept="image/*" onChange={(event) => onChange("coverImageFile", event.target.files?.[0] || null)} />
-        </label>
-        <label>
-          <span>Full book file</span>
-          <input type="file" accept=".pdf,.epub,.mobi,.txt" onChange={(event) => onChange("fullBookFile", event.target.files?.[0] || null)} />
-        </label>
-        <label>
-          <span>Preview sample file</span>
-          <input type="file" accept=".pdf,.epub,.mobi,.txt" onChange={(event) => onChange("previewSampleFile", event.target.files?.[0] || null)} />
-        </label>
+        <CreatorUploadField
+          icon="C"
+          label="Cover image file"
+          helper="Upload book artwork"
+          accept="image/*"
+          selectedText={value.coverImageFile?.name || ""}
+          onChange={(event) => onChange("coverImageFile", event.target.files?.[0] || null)}
+        />
+        <CreatorUploadField
+          icon="F"
+          label="Full book upload"
+          helper="PDF, EPUB, MOBI, or TXT release file"
+          accept=".pdf,.epub,.mobi,.txt"
+          selectedText={value.fullBookFile?.name || ""}
+          onChange={(event) => onChange("fullBookFile", event.target.files?.[0] || null)}
+        />
+        <CreatorUploadField
+          icon="P"
+          label="Preview sample"
+          helper="Optional sample file for discovery previews"
+          accept=".pdf,.epub,.mobi,.txt"
+          selectedText={value.previewSampleFile?.name || ""}
+          onChange={(event) => onChange("previewSampleFile", event.target.files?.[0] || null)}
+        />
         <label className="creator-form-full">
           <span>Description</span>
           <textarea rows={4} value={value.description} onChange={(event) => onChange("description", event.target.value)} />
@@ -74,7 +88,7 @@ export default function BookUploadForm({
           Save draft
         </button>
         <button type="button" className="creator-primary-btn" disabled={busy} onClick={onPublish}>
-          Publish book
+          Publish Book
         </button>
       </div>
     </article>

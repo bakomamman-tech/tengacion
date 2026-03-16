@@ -1,17 +1,19 @@
-const VALID_CREATOR_TYPES = ["music", "books", "podcasts"];
+const VALID_CREATOR_TYPES = ["music", "bookPublishing", "podcast"];
 
 const trimCreatorText = (value = "", maxLength = 200) =>
   String(value || "").trim().slice(0, maxLength);
 
 const normalizeCreatorType = (value = "") => {
-  const normalized = String(value || "").trim().toLowerCase();
-  if (normalized === "book" || normalized === "book publishing" || normalized === "publishing") {
-    return "books";
+  const normalized = String(value || "").trim();
+  const compact = normalized.toLowerCase().replace(/[\s_-]+/g, "");
+
+  if (compact === "book" || compact === "books" || compact === "bookpublishing" || compact === "publishing") {
+    return "bookPublishing";
   }
-  if (normalized === "podcast" || normalized === "podcasts") {
-    return "podcasts";
+  if (compact === "podcast" || compact === "podcasts") {
+    return "podcast";
   }
-  if (normalized === "music" || normalized === "songs" || normalized === "audio") {
+  if (compact === "music" || compact === "songs" || compact === "audio") {
     return "music";
   }
   return "";

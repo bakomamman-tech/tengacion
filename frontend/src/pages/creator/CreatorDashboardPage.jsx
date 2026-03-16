@@ -4,10 +4,16 @@ import CreatorCategoryCard from "../../components/creator/CreatorCategoryCard";
 import CreatorProfileSummaryCard from "../../components/creator/CreatorProfileSummaryCard";
 import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
-import { CREATOR_CATEGORY_CONFIG, formatCurrency, formatShortDate } from "../../components/creator/creatorConfig";
+import {
+  CREATOR_CATEGORY_CONFIG,
+  formatCurrency,
+  formatShortDate,
+  normalizeCreatorLaneKeys,
+} from "../../components/creator/creatorConfig";
 
 export default function CreatorDashboardPage() {
   const { creatorProfile, dashboard } = useCreatorWorkspace();
+  const creatorLanes = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes);
 
   return (
     <div className="creator-page-grid">
@@ -15,8 +21,12 @@ export default function CreatorDashboardPage() {
         <CreatorProfileSummaryCard creatorProfile={creatorProfile} summary={dashboard.summary} />
 
         <section className="creator-panel-grid">
-          {creatorProfile.creatorTypes?.map((key) => (
-            <CreatorCategoryCard key={key} categoryKey={key} stats={dashboard.categories?.[key] || {}} />
+          {creatorLanes.map((key) => (
+            <CreatorCategoryCard
+              key={key}
+              categoryKey={key}
+              stats={dashboard.categories?.[CREATOR_CATEGORY_CONFIG[key]?.dashboardKey] || {}}
+            />
           ))}
         </section>
 
@@ -109,7 +119,7 @@ export default function CreatorDashboardPage() {
               <span>Content categories</span>
               <small>Enable more creator lanes here, then open their dashboards and upload there too.</small>
             </Link>
-            {creatorProfile.creatorTypes?.map((key) => (
+            {creatorLanes.map((key) => (
               <Link key={key} className="creator-quick-action" to={CREATOR_CATEGORY_CONFIG[key].route}>
                 <span>{CREATOR_CATEGORY_CONFIG[key].shortTitle}</span>
                 <small>{CREATOR_CATEGORY_CONFIG[key].description}</small>

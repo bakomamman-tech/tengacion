@@ -138,7 +138,7 @@ const CreatorProfileSchema = new mongoose.Schema(
       type: [
         {
           type: String,
-          enum: ["music", "books", "podcasts"],
+          enum: ["music", "bookPublishing", "podcast"],
           trim: true,
         },
       ],

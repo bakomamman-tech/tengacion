@@ -4,7 +4,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { getCreatorDashboard, getCreatorWorkspaceProfile } from "../../api";
 import CreatorHeader from "./CreatorHeader";
 import CreatorSidebar from "./CreatorSidebar";
-import { CREATOR_CATEGORY_CONFIG } from "./creatorConfig";
+import { CREATOR_CATEGORY_CONFIG, CREATOR_CATEGORY_ORDER, normalizeCreatorLaneKeys } from "./creatorConfig";
 
 import "../../pages/creator/creator-workspace.css";
 
@@ -88,7 +88,8 @@ export default function CreatorWorkspaceLayout() {
     setDashboard,
   };
 
-  const currentCategory = ["music", "books", "podcasts"].find((key) =>
+  const normalizedCreatorTypes = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes);
+  const currentCategory = CREATOR_CATEGORY_ORDER.find((key) =>
     location.pathname.startsWith(CREATOR_CATEGORY_CONFIG[key].route)
   );
   const pageMeta = currentCategory
@@ -172,7 +173,7 @@ export default function CreatorWorkspaceLayout() {
               <NavLink className="creator-chip-link" to="/creator/categories">
                 Categories
               </NavLink>
-              {creatorProfile.creatorTypes?.map((key) => (
+              {normalizedCreatorTypes.map((key) => (
                 <NavLink key={key} className="creator-chip-link" to={CREATOR_CATEGORY_CONFIG[key]?.route || "/creator/dashboard"}>
                   {CREATOR_CATEGORY_CONFIG[key]?.shortTitle || key}
                 </NavLink>

@@ -40,7 +40,7 @@ const issueSessionToken = async (userId) => {
   );
 };
 
-const createUserAndProfile = async ({ creatorTypes = ["music", "books", "podcasts"] } = {}) => {
+const createUserAndProfile = async ({ creatorTypes = ["music", "bookPublishing", "podcast"] } = {}) => {
   const user = await User.create({
     name: "Creator Example",
     username: "creator_example",
@@ -70,6 +70,35 @@ const createUserAndProfile = async ({ creatorTypes = ["music", "books", "podcast
   const token = await issueSessionToken(user._id);
   return { user, profile, token };
 };
+
+const buildProfileUpdatePayload = (creatorTypes = []) => ({
+  fullName: "Creator Example",
+  displayName: "Creator Example",
+  phoneNumber: "08000000000",
+  accountNumber: "1234567890",
+  country: "Nigeria",
+  countryOfResidence: "Nigeria",
+  socialHandles: {},
+  musicProfile: {},
+  booksProfile: {},
+  podcastsProfile: {},
+  creatorTypes,
+  acceptedTerms: true,
+  acceptedCopyrightDeclaration: true,
+});
+
+const saveCreatorTypes = (token, creatorTypes) =>
+  request(app)
+    .put("/api/creator/profile")
+    .set("Authorization", `Bearer ${token}`)
+    .send(buildProfileUpdatePayload(creatorTypes))
+    .expect(200);
+
+const fetchCreatorProfile = (token) =>
+  request(app)
+    .get("/api/creator/profile")
+    .set("Authorization", `Bearer ${token}`)
+    .expect(200);
 
 describe("creator profile routes", () => {
   beforeAll(async () => {
@@ -102,6 +131,30 @@ describe("creator profile routes", () => {
     }
   });
 
+  test.each([
+    { creatorTypes: ["bookPublishing"], expected: ["bookPublishing"] },
+    { creatorTypes: ["music", "bookPublishing"], expected: ["music", "bookPublishing"] },
+    { creatorTypes: ["music", "bookPublishing", "podcast"], expected: ["music", "bookPublishing", "podcast"] },
+  ])("save + refresh persists creator lanes $expected", async ({ creatorTypes, expected }) => {
+    const { token } = await createUserAndProfile({ creatorTypes: ["music"] });
+
+    await saveCreatorTypes(token, creatorTypes);
+    const response = await fetchCreatorProfile(token);
+
+    expect(response.body.creatorTypes).toEqual(expected);
+  });
+
+  test("legacy creator lane values are normalized to canonical keys on save", async () => {
+    const { token } = await createUserAndProfile({ creatorTypes: ["music"] });
+
+    await saveCreatorTypes(token, ["music", "books", "podcasts"]);
+    const response = await fetchCreatorProfile(token);
+    const profile = await CreatorProfile.findOne({ displayName: "Creator Example" }).lean();
+
+    expect(response.body.creatorTypes).toEqual(["music", "bookPublishing", "podcast"]);
+    expect(profile.creatorTypes).toEqual(["music", "bookPublishing", "podcast"]);
+  });
+
   test("GET /api/creator/profile returns the saved creator types even when content exists in another lane", async () => {
     const { profile, token } = await createUserAndProfile();
 
@@ -116,41 +169,16 @@ describe("creator profile routes", () => {
       isPublished: true,
     });
 
-    await request(app)
-      .put("/api/creator/profile")
-      .set("Authorization", `Bearer ${token}`)
-      .send({
-        fullName: "Creator Example",
-        displayName: "Creator Example",
-        phoneNumber: "08000000000",
-        accountNumber: "1234567890",
-        country: "Nigeria",
-        countryOfResidence: "Nigeria",
-        socialHandles: {},
-        musicProfile: {},
-        booksProfile: {},
-        podcastsProfile: {},
-        creatorTypes: ["music", "podcasts"],
-        acceptedTerms: true,
-        acceptedCopyrightDeclaration: true,
-      })
-      .expect(200);
+    await saveCreatorTypes(token, ["music", "podcast"]);
+    const response = await fetchCreatorProfile(token);
 
-    const response = await request(app)
-      .get("/api/creator/profile")
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200);
-
-    expect(response.body.creatorTypes).toEqual(["music", "podcasts"]);
+    expect(response.body.creatorTypes).toEqual(["music", "podcast"]);
   });
 
   test("GET /api/creator/profile sends no-store headers", async () => {
     const { token } = await createUserAndProfile({ creatorTypes: ["music"] });
 
-    const response = await request(app)
-      .get("/api/creator/profile")
-      .set("Authorization", `Bearer ${token}`)
-      .expect(200);
+    const response = await fetchCreatorProfile(token);
 
     expect(response.headers["cache-control"]).toContain("no-store");
     expect(response.headers.pragma).toBe("no-cache");

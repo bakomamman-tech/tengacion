@@ -4,7 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import CreatorCategoriesPage from "../CreatorCategoriesPage";
+import CreatorSettingsPage from "../CreatorSettingsPage";
 import { updateCreatorWorkspaceProfile } from "../../../api";
 import { useCreatorWorkspace } from "../../../components/creator/useCreatorWorkspace";
 
@@ -23,12 +23,12 @@ vi.mock("react-hot-toast", () => ({
   },
 }));
 
-describe("CreatorCategoriesPage", () => {
+describe("CreatorSettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("syncs the saved creator profile into workspace state after enabling book publishing", async () => {
+  it("persists book publishing from the settings form with canonical creator lane keys", async () => {
     const setCreatorProfile = vi.fn();
     const creatorProfile = {
       fullName: "Creator Example",
@@ -44,13 +44,13 @@ describe("CreatorCategoriesPage", () => {
       musicProfile: {},
       booksProfile: {},
       podcastsProfile: {},
-      creatorTypes: ["music", "podcast"],
+      creatorTypes: ["music"],
       acceptedTerms: true,
       acceptedCopyrightDeclaration: true,
     };
     const updatedProfile = {
       ...creatorProfile,
-      creatorTypes: ["music", "bookPublishing", "podcast"],
+      creatorTypes: ["music", "bookPublishing"],
     };
 
     useCreatorWorkspace.mockReturnValue({
@@ -64,17 +64,17 @@ describe("CreatorCategoriesPage", () => {
 
     render(
       <MemoryRouter>
-        <CreatorCategoriesPage />
+        <CreatorSettingsPage />
       </MemoryRouter>
     );
 
     await userEvent.click(screen.getByRole("checkbox", { name: /book publishing/i }));
-    await userEvent.click(screen.getByRole("button", { name: /save category selection/i }));
+    await userEvent.click(screen.getByRole("button", { name: /save creator profile/i }));
 
     await waitFor(() => {
       expect(updateCreatorWorkspaceProfile).toHaveBeenCalledWith(
         expect.objectContaining({
-          creatorTypes: ["music", "podcast", "bookPublishing"],
+          creatorTypes: ["music", "bookPublishing"],
         })
       );
       expect(setCreatorProfile).toHaveBeenCalledWith(updatedProfile);

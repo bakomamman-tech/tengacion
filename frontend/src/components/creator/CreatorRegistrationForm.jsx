@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { COUNTRY_OPTIONS } from "../../constants/countries";
+import { formatCreatorLaneLabel, normalizeCreatorLaneKeys } from "./creatorConfig";
 import CreatorTypeSelector from "./CreatorTypeSelector";
 import TermsDeclarationCard from "./TermsDeclarationCard";
 
@@ -24,7 +25,7 @@ const registrationSchema = z.object({
   country: z.string().trim().min(2, "Country is required"),
   countryOfResidence: z.string().trim().min(2, "Country of Residence is required"),
   socialHandles: socialHandleSchema,
-  creatorTypes: z.array(z.enum(["music", "books", "podcasts"])).min(1, "Select at least one creator category"),
+  creatorTypes: z.array(z.enum(["music", "bookPublishing", "podcast"])).min(1, "Select at least one creator category"),
   acceptedTerms: z.literal(true, {
     errorMap: () => ({ message: "You must accept the Terms and Conditions" }),
   }),
@@ -79,7 +80,7 @@ export default function CreatorRegistrationForm({
         ...DEFAULT_VALUES.socialHandles,
         ...(initialValues?.socialHandles || {}),
       },
-      creatorTypes: Array.isArray(initialValues?.creatorTypes) ? initialValues.creatorTypes : [],
+      creatorTypes: normalizeCreatorLaneKeys(initialValues?.creatorTypes),
     },
   });
 
@@ -342,7 +343,11 @@ export default function CreatorRegistrationForm({
               <h3>Registration review</h3>
               <ul>
                 <li>{values.fullName || "No name yet"}</li>
-                <li>{values.creatorTypes?.length ? values.creatorTypes.join(", ") : "No creator categories selected"}</li>
+                <li>
+                  {values.creatorTypes?.length
+                    ? normalizeCreatorLaneKeys(values.creatorTypes).map((entry) => formatCreatorLaneLabel(entry)).join(", ")
+                    : "No creator categories selected"}
+                </li>
                 <li>{values.countryOfResidence || "Country of residence not set"}</li>
               </ul>
             </div>

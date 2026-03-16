@@ -1,12 +1,11 @@
 import { NavLink } from "react-router-dom";
 
-import { CREATOR_CATEGORY_CONFIG, CREATOR_STATIC_NAV } from "./creatorConfig";
-
-const CATEGORY_ORDER = ["music", "books", "podcasts"];
+import { CREATOR_CATEGORY_CONFIG, CREATOR_CATEGORY_ORDER, CREATOR_STATIC_NAV, normalizeCreatorLaneKeys } from "./creatorConfig";
 
 export default function CreatorSidebar({ creatorProfile, mobileOpen = false, onNavigate }) {
-  const enabledCategories = CATEGORY_ORDER.filter((key) =>
-    Array.isArray(creatorProfile?.creatorTypes) ? creatorProfile.creatorTypes.includes(key) : false
+  const enabledLanes = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes);
+  const enabledCategories = CREATOR_CATEGORY_ORDER.filter((key) =>
+    enabledLanes.includes(key)
   );
 
   return (

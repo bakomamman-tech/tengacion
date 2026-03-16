@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { COUNTRY_OPTIONS } from "../../constants/countries";
+import { normalizeCreatorLaneKeys } from "./creatorConfig";
 import CreatorTypeSelector from "./CreatorTypeSelector";
 
 const socialHandleSchema = z.object({
@@ -47,7 +48,7 @@ const settingsSchema = z.object({
   bio: z.string().max(2000, "Bio cannot exceed 2000 characters").optional(),
   genresRaw: z.string().optional(),
   socialHandles: socialHandleSchema,
-  creatorTypes: z.array(z.enum(["music", "books", "podcasts"])).min(1, "Select at least one creator category"),
+  creatorTypes: z.array(z.enum(["music", "bookPublishing", "podcast"])).min(1, "Select at least one creator category"),
   musicProfile: musicProfileSchema,
   booksProfile: booksProfileSchema,
   podcastsProfile: podcastsProfileSchema,
@@ -96,7 +97,7 @@ const toDefaultValues = (initialValues = {}) => ({
   ...DEFAULT_VALUES,
   ...initialValues,
   genresRaw: Array.isArray(initialValues?.genres) ? initialValues.genres.join(", ") : "",
-  creatorTypes: Array.isArray(initialValues?.creatorTypes) ? initialValues.creatorTypes : [],
+  creatorTypes: normalizeCreatorLaneKeys(initialValues?.creatorTypes),
   socialHandles: {
     ...DEFAULT_VALUES.socialHandles,
     ...(initialValues?.socialHandles || {}),
@@ -158,12 +159,12 @@ export default function CreatorAccountSettingsForm({
         caption: "Set the artist-facing details that should support your music releases and fan profile.",
         className: "music",
       },
-      books: {
+      bookPublishing: {
         title: "Book publishing profile",
         caption: "Add the identity and publishing details readers should see across your books.",
         className: "books",
       },
-      podcasts: {
+      podcast: {
         title: "Podcast profile",
         caption: "Define the podcast name, host identity, and theme that should guide your spoken-word uploads.",
         className: "podcasts",
@@ -334,12 +335,12 @@ export default function CreatorAccountSettingsForm({
         </section>
       ) : null}
 
-      {creatorTypes.includes("books") ? (
-        <section className={`creator-form-card creator-category-form ${categoryCards.books.className}`}>
+      {creatorTypes.includes("bookPublishing") ? (
+        <section className={`creator-form-card creator-category-form ${categoryCards.bookPublishing.className}`}>
           <div className="creator-form-block-head">
             <div>
-              <h3>{categoryCards.books.title}</h3>
-              <p>{categoryCards.books.caption}</p>
+              <h3>{categoryCards.bookPublishing.title}</h3>
+              <p>{categoryCards.bookPublishing.caption}</p>
             </div>
           </div>
 
@@ -367,12 +368,12 @@ export default function CreatorAccountSettingsForm({
         </section>
       ) : null}
 
-      {creatorTypes.includes("podcasts") ? (
-        <section className={`creator-form-card creator-category-form ${categoryCards.podcasts.className}`}>
+      {creatorTypes.includes("podcast") ? (
+        <section className={`creator-form-card creator-category-form ${categoryCards.podcast.className}`}>
           <div className="creator-form-block-head">
             <div>
-              <h3>{categoryCards.podcasts.title}</h3>
-              <p>{categoryCards.podcasts.caption}</p>
+              <h3>{categoryCards.podcast.title}</h3>
+              <p>{categoryCards.podcast.caption}</p>
             </div>
           </div>
 

@@ -1,6 +1,6 @@
-import { CREATOR_CATEGORY_CONFIG } from "./creatorConfig";
+import { CREATOR_CATEGORY_CONFIG, CREATOR_CATEGORY_ORDER } from "./creatorConfig";
 
-const CATEGORY_KEYS = ["music", "books", "podcasts"];
+const CATEGORY_KEYS = CREATOR_CATEGORY_ORDER;
 
 export default function CreatorTypeSelector({ value = [], onChange, error = "" }) {
   const selected = Array.isArray(value) ? value : [];

@@ -65,7 +65,7 @@ export default function CreatorRegisterPage({ user }) {
     () => ({
       title: "Register As A Creator",
       body:
-        "Set up your professional creator profile once, then unlock a structured workspace for music, books, and podcasts with real publishing status checks from the backend.",
+        "Set up your professional creator profile once, then unlock a structured workspace for music, Book Publishing, and Podcast with real publishing status checks from the backend.",
     }),
     []
   );

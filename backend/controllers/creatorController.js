@@ -221,8 +221,8 @@ const getCreatorContent = async (profile, userId) => {
 const inferCreatorTypesFromContent = (content = {}) =>
   normalizeCreatorTypes([
     content?.musicTracks?.length || content?.albums?.length || content?.videos?.length ? "music" : "",
-    content?.books?.length ? "books" : "",
-    content?.podcastTracks?.length ? "podcasts" : "",
+    content?.books?.length ? "bookPublishing" : "",
+    content?.podcastTracks?.length ? "podcast" : "",
   ]);
 
 const resolveCreatorTypes = ({ profile, content }) => {
@@ -388,7 +388,7 @@ const getDashboardPayload = async ({ profile, user }) => {
 
   const grossRevenue = purchases.reduce((sum, row) => sum + clampMoney(row.amount), 0);
   const summary = buildEarningsSummary(grossRevenue);
-  const contentCounts = {
+  const laneCounts = {
     music: {
       uploads: musicTracks.filter((entry) => entry.publishedStatus !== "draft").length
         + albums.filter((entry) => entry.publishedStatus !== "draft").length
@@ -403,18 +403,23 @@ const getDashboardPayload = async ({ profile, user }) => {
         + albums.filter((entry) => entry.publishedStatus === "under_review").length
         + videos.filter((entry) => entry.publishedStatus === "under_review").length,
     },
-    books: {
+    bookPublishing: {
       uploads: books.filter((entry) => entry.publishedStatus !== "draft").length,
       drafts: books.filter((entry) => entry.publishedStatus === "draft").length,
       earnings: books.reduce((sum, entry) => sum + clampMoney(entry.earnings), 0),
       underReview: books.filter((entry) => entry.publishedStatus === "under_review").length,
     },
-    podcasts: {
+    podcast: {
       uploads: podcastTracks.filter((entry) => entry.publishedStatus !== "draft").length,
       drafts: podcastTracks.filter((entry) => entry.publishedStatus === "draft").length,
       earnings: podcastTracks.reduce((sum, entry) => sum + clampMoney(entry.earnings), 0),
       underReview: podcastTracks.filter((entry) => entry.publishedStatus === "under_review").length,
     },
+  };
+  const contentCounts = {
+    ...laneCounts,
+    books: laneCounts.bookPublishing,
+    podcasts: laneCounts.podcast,
   };
 
   const creatorProfile = serializeCreatorProfile({
@@ -422,10 +427,11 @@ const getDashboardPayload = async ({ profile, user }) => {
     user,
     creatorTypes,
     contentCounts: {
-      musicUploads: contentCounts.music.uploads,
-      musicDrafts: contentCounts.music.drafts,
-      bookUploads: contentCounts.books.uploads,
-      podcastUploads: contentCounts.podcasts.uploads,
+      musicUploads: laneCounts.music.uploads,
+      musicDrafts: laneCounts.music.drafts,
+      bookPublishingUploads: laneCounts.bookPublishing.uploads,
+      podcastUploads: laneCounts.podcast.uploads,
+      bookUploads: laneCounts.bookPublishing.uploads,
     },
   });
 

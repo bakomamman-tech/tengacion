@@ -5,14 +5,16 @@ import toast from "react-hot-toast";
 import { updateCreatorWorkspaceProfile } from "../../api";
 import CreatorTypeSelector from "../../components/creator/CreatorTypeSelector";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
-import { CREATOR_CATEGORY_CONFIG } from "../../components/creator/creatorConfig";
-
-const CATEGORY_ORDER = ["music", "books", "podcasts"];
+import {
+  CREATOR_CATEGORY_CONFIG,
+  CREATOR_CATEGORY_ORDER,
+  normalizeCreatorLaneKeys,
+} from "../../components/creator/creatorConfig";
 
 export default function CreatorCategoriesPage() {
   const { creatorProfile, setCreatorProfile } = useCreatorWorkspace();
   const savedTypesSignature = useMemo(
-    () => (Array.isArray(creatorProfile?.creatorTypes) ? creatorProfile.creatorTypes.join("|") : ""),
+    () => normalizeCreatorLaneKeys(creatorProfile?.creatorTypes).join("|"),
     [creatorProfile?.creatorTypes]
   );
   const savedTypes = useMemo(
@@ -107,7 +109,7 @@ export default function CreatorCategoriesPage() {
       </section>
 
       <section className="creator-panel-grid">
-        {CATEGORY_ORDER.map((key) => {
+        {CREATOR_CATEGORY_ORDER.map((key) => {
           const item = CREATOR_CATEGORY_CONFIG[key];
           const enabled = savedTypes.includes(key);
           const pendingEnabled = selectedTypes.includes(key);

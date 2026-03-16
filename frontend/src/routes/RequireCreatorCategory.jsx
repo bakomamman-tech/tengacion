@@ -1,12 +1,10 @@
 import CreatorRestrictedAccess from "../components/creator/CreatorRestrictedAccess";
 import { useCreatorWorkspace } from "../components/creator/useCreatorWorkspace";
-import { CREATOR_CATEGORY_CONFIG } from "../components/creator/creatorConfig";
+import { CREATOR_CATEGORY_CONFIG, normalizeCreatorLaneKeys } from "../components/creator/creatorConfig";
 
 export default function RequireCreatorCategory({ category, children }) {
   const { creatorProfile } = useCreatorWorkspace();
-  const enabled = Array.isArray(creatorProfile?.creatorTypes)
-    ? creatorProfile.creatorTypes.includes(category)
-    : false;
+  const enabled = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes).includes(category);
 
   if (!enabled) {
     return (

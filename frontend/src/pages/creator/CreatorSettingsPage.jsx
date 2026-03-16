@@ -32,7 +32,7 @@ export default function CreatorSettingsPage() {
             <h2>Creator profile settings</h2>
             <p>
               Update your public creator name, enabled content lanes, social links, and category-specific profile
-              details for music, books, and podcasts.
+              details for music, Book Publishing, and Podcast.
             </p>
           </div>
         </div>

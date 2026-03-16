@@ -263,7 +263,7 @@ export default function App() {
             <Route
               path="books"
               element={
-                <RequireCreatorCategory category="books">
+                <RequireCreatorCategory category="bookPublishing">
                   <CreatorBooksPage />
                 </RequireCreatorCategory>
               }
@@ -271,7 +271,7 @@ export default function App() {
             <Route
               path="podcasts"
               element={
-                <RequireCreatorCategory category="podcasts">
+                <RequireCreatorCategory category="podcast">
                   <CreatorPodcastsPage />
                 </RequireCreatorCategory>
               }

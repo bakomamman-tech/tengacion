@@ -1,12 +1,13 @@
 import { resolveImage } from "../../api";
 import CopyrightStatusBadge from "./CopyrightStatusBadge";
-import { formatCurrency } from "./creatorConfig";
+import { formatCreatorLaneLabel, formatCurrency, normalizeCreatorLaneKeys } from "./creatorConfig";
 
 export default function CreatorProfileSummaryCard({ creatorProfile, summary }) {
   const avatarSrc =
     resolveImage(creatorProfile?.user?.avatar || "") ||
     resolveImage(creatorProfile?.coverImageUrl || "") ||
     "";
+  const creatorLanes = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes);
 
   return (
     <section className="creator-profile-summary card">
@@ -24,9 +25,9 @@ export default function CreatorProfileSummaryCard({ creatorProfile, summary }) {
             <CopyrightStatusBadge status={creatorProfile?.status || "active"} />
           </div>
           <p>
-            {creatorProfile?.creatorTypes?.length
-              ? creatorProfile.creatorTypes
-                  .map((entry) => entry.charAt(0).toUpperCase() + entry.slice(1))
+            {creatorLanes.length
+              ? creatorLanes
+                  .map((entry) => formatCreatorLaneLabel(entry))
                   .join(" | ")
               : "Creator workspace"}
           </p>

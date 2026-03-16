@@ -50,6 +50,51 @@ export default function CreatorDashboardPage() {
           />
         </section>
 
+        <section className="creator-upload-launchpad card">
+          <div className="creator-panel-head">
+            <div>
+              <h2>Upload new content</h2>
+              <p>Open the dedicated publishing studio for any creator lane you enabled and start uploading immediately.</p>
+            </div>
+          </div>
+
+          <div className="creator-upload-launch-grid">
+            {creatorLanes.map((key) => {
+              const item = CREATOR_CATEGORY_CONFIG[key];
+              const stats = dashboard.categories?.[item.dashboardKey] || {};
+
+              return (
+                <article key={key} className="creator-upload-launch-card card">
+                  <div className="creator-category-top">
+                    <span className="creator-category-icon" aria-hidden="true">
+                      {item.icon}
+                    </span>
+                    <div>
+                      <h3>{item.uploadTitle}</h3>
+                      <p>{item.description}</p>
+                    </div>
+                  </div>
+
+                  <div className="creator-upload-launch-meta">
+                    <span>Published {Number(stats.uploads || 0)}</span>
+                    <span>Drafts {Number(stats.drafts || 0)}</span>
+                    <span>In review {Number(stats.underReview || 0)}</span>
+                  </div>
+
+                  <div className="creator-category-actions">
+                    <Link className="creator-primary-btn creator-upload-cta" to={item.uploadRoute}>
+                      {item.uploadButtonLabel}
+                    </Link>
+                    <Link className="creator-secondary-btn" to={item.route}>
+                      Open {item.shortTitle}
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
         <section className="creator-panel-grid">
           {creatorLanes.map((key) => (
             <CreatorLaneCard
@@ -150,9 +195,9 @@ export default function CreatorDashboardPage() {
               <small>Enable more creator lanes here, then open their dashboards and upload there too.</small>
             </Link>
             {creatorLanes.map((key) => (
-              <Link key={key} className="creator-quick-action" to={CREATOR_CATEGORY_CONFIG[key].route}>
-                <span>{CREATOR_CATEGORY_CONFIG[key].shortTitle}</span>
-                <small>{CREATOR_CATEGORY_CONFIG[key].description}</small>
+              <Link key={key} className="creator-quick-action" to={CREATOR_CATEGORY_CONFIG[key].uploadRoute}>
+                <span>{CREATOR_CATEGORY_CONFIG[key].uploadButtonLabel}</span>
+                <small>{CREATOR_CATEGORY_CONFIG[key].uploadDescription}</small>
               </Link>
             ))}
             <Link className="creator-quick-action" to="/creator/support">

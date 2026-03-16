@@ -734,6 +734,28 @@ export const getMyCreatorProfile = () =>
     headers: getAuthHeaders(),
   });
 
+export const getCreatorDashboardSummary = () =>
+  request(withCacheBust(`${API_BASE}/creator/me/content-summary`), {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
+export const getCreatorPrivateContent = () =>
+  request(withCacheBust(`${API_BASE}/creator/me/content`), {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
+export const updatePodcastSeries = (payload = {}) =>
+  request(`${API_BASE}/creator/podcasts/series`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
 export const upsertCreatorProfile = (payload) =>
   request(`${API_BASE}/creators/me`, {
     method: "POST",
@@ -747,15 +769,20 @@ export const upsertCreatorProfile = (payload) =>
 export const getCreator = (creatorId) =>
   request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}`);
 
-export const getCreatorHub = (creatorId) =>
-  request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/public`, {
+export const getPublicCreatorProfile = (creatorId) =>
+  request(`${API_BASE}/creator/${encodeURIComponent(creatorId || "")}/public-profile`, {
     headers: getAuthHeaders(),
+    cache: "no-store",
   });
 
 export const getCreatorPublicContent = (creatorId) =>
-  request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/public`, {
+  request(`${API_BASE}/creator/${encodeURIComponent(creatorId || "")}/content`, {
     headers: getAuthHeaders(),
+    cache: "no-store",
   });
+
+export const getCreatorHub = (creatorId) =>
+  getPublicCreatorProfile(creatorId);
 
 export const toggleFollowCreator = (creatorId) =>
   request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/follow`, {
@@ -975,6 +1002,22 @@ export const getAlbum = (albumId) =>
     headers: getAuthHeaders(),
   });
 
+export const createMusicTrack = (formData, { onProgress } = {}) =>
+  uploadFormWithProgress({
+    url: `${API_BASE}/creator/music/tracks`,
+    formData,
+    onProgress,
+    timeoutMs: 20 * 60 * 1000,
+  });
+
+export const createMusicAlbum = (formData, { onProgress } = {}) =>
+  uploadFormWithProgress({
+    url: `${API_BASE}/creator/music/albums`,
+    formData,
+    onProgress,
+    timeoutMs: 20 * 60 * 1000,
+  });
+
 export const createCreatorVideoWithUploadProgress = (formData, { onProgress } = {}) =>
   uploadFormWithProgress({
     url: `${API_BASE}/videos`,
@@ -990,6 +1033,22 @@ export const updateCreatorVideoWithUploadProgress = (videoId, formData, { onProg
     formData,
     onProgress,
     timeoutMs: 30 * 60 * 1000,
+  });
+
+export const createMusicVideo = (formData, { onProgress } = {}) =>
+  uploadFormWithProgress({
+    url: `${API_BASE}/creator/music/videos`,
+    formData,
+    onProgress,
+    timeoutMs: 30 * 60 * 1000,
+  });
+
+export const createPodcastEpisode = (formData, { onProgress } = {}) =>
+  uploadFormWithProgress({
+    url: `${API_BASE}/creator/podcasts/episodes`,
+    formData,
+    onProgress,
+    timeoutMs: 20 * 60 * 1000,
   });
 
 export const getMyEntitlementsForCreator = (creatorId) =>
@@ -1180,6 +1239,14 @@ export const createPost = (input, maybeFile = null) => {
 export const createBookWithUploadProgress = (formData, { onProgress } = {}) =>
   uploadFormWithProgress({
     url: `${API_BASE}/books`,
+    formData,
+    onProgress,
+    timeoutMs: 20 * 60 * 1000,
+  });
+
+export const createCreatorBook = (formData, { onProgress } = {}) =>
+  uploadFormWithProgress({
+    url: `${API_BASE}/creator/books`,
     formData,
     onProgress,
     timeoutMs: 20 * 60 * 1000,

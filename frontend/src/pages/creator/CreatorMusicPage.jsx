@@ -2,26 +2,30 @@ import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import {
-  createAlbumWithUploadProgress,
-  createCreatorVideoWithUploadProgress,
-  createTrackWithUploadProgress,
+  createMusicAlbum,
+  createMusicTrack,
+  createMusicVideo,
   updateAlbumWithUploadProgress,
   updateCreatorVideoWithUploadProgress,
   updateTrackWithUploadProgress,
 } from "../../api";
 import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge";
+import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
+import AlbumUploadForm from "../../components/creator/upload/AlbumUploadForm";
+import MusicVideoUploadForm from "../../components/creator/upload/MusicVideoUploadForm";
+import TrackUploadForm from "../../components/creator/upload/TrackUploadForm";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import { formatCurrency, formatShortDate } from "../../components/creator/creatorConfig";
 import { useUnsavedChangesPrompt } from "../../hooks/useUnsavedChangesPrompt";
 
 const EMPTY_TRACK_FORM = {
-  title: "",
+  trackTitle: "",
   description: "",
   genre: "",
   price: "",
-  audio: null,
-  preview: null,
-  cover: null,
+  fullAudioFile: null,
+  previewSampleFile: null,
+  coverImageFile: null,
 };
 
 const EMPTY_ALBUM_FORM = {
@@ -29,18 +33,18 @@ const EMPTY_ALBUM_FORM = {
   description: "",
   releaseType: "album",
   price: "",
-  cover: null,
-  tracks: [],
-  previews: [],
+  albumCoverImageFile: null,
+  albumSongsFiles: [],
+  optionalPreviewSamples: [],
 };
 
 const EMPTY_VIDEO_FORM = {
-  title: "",
+  videoTitle: "",
   description: "",
   price: "",
-  video: null,
-  thumbnail: null,
-  previewClip: null,
+  videoFile: null,
+  thumbnailFile: null,
+  previewClipFile: null,
 };
 
 function ReleaseCard({ item, type, onEdit }) {
@@ -194,25 +198,25 @@ export default function CreatorMusicPage() {
   );
 
   const hasUnsavedChanges = Boolean(
-    trackForm.title ||
+    trackForm.trackTitle ||
       trackForm.description ||
       trackForm.genre ||
       trackForm.price ||
-      trackForm.audio ||
-      trackForm.preview ||
-      trackForm.cover ||
+      trackForm.fullAudioFile ||
+      trackForm.previewSampleFile ||
+      trackForm.coverImageFile ||
       albumForm.albumTitle ||
       albumForm.description ||
       albumForm.price ||
-      albumForm.cover ||
-      albumForm.tracks.length ||
-      albumForm.previews.length ||
-      videoForm.title ||
+      albumForm.albumCoverImageFile ||
+      albumForm.albumSongsFiles.length ||
+      albumForm.optionalPreviewSamples.length ||
+      videoForm.videoTitle ||
       videoForm.description ||
       videoForm.price ||
-      videoForm.video ||
-      videoForm.thumbnail ||
-      videoForm.previewClip
+      videoForm.videoFile ||
+      videoForm.thumbnailFile ||
+      videoForm.previewClipFile
   );
 
   useUnsavedChangesPrompt(hasUnsavedChanges);
@@ -222,29 +226,33 @@ export default function CreatorMusicPage() {
   const resetVideoForm = () => setVideoForm(EMPTY_VIDEO_FORM);
 
   const submitTrack = async (publishedStatus) => {
-    if (!trackForm.title.trim()) {
+    if (!trackForm.trackTitle.trim()) {
       toast.error("Track title is required");
       return;
     }
-    if (!trackForm.audio) {
+    if (!trackForm.fullAudioFile) {
       toast.error("Choose an audio file");
       return;
     }
     const formData = new FormData();
-    formData.append("title", trackForm.title.trim());
+    formData.append("title", trackForm.trackTitle.trim());
     formData.append("description", trackForm.description.trim());
     formData.append("genre", trackForm.genre.trim());
     formData.append("price", trackForm.price || "0");
     formData.append("kind", "music");
     formData.append("publishedStatus", publishedStatus);
-    formData.append("audio", trackForm.audio);
-    if (trackForm.preview) formData.append("preview", trackForm.preview);
-    if (trackForm.cover) formData.append("cover", trackForm.cover);
+    formData.append("audio", trackForm.fullAudioFile);
+    if (trackForm.previewSampleFile) {
+      formData.append("preview", trackForm.previewSampleFile);
+    }
+    if (trackForm.coverImageFile) {
+      formData.append("cover", trackForm.coverImageFile);
+    }
 
     try {
       setBusyKey("track");
       setProgress(0);
-      await createTrackWithUploadProgress(formData, { onProgress: setProgress });
+      await createMusicTrack(formData, { onProgress: setProgress });
       await refreshWorkspace();
       toast.success(publishedStatus === "draft" ? "Track draft saved" : "Track uploaded");
       resetTrackForm();
@@ -261,11 +269,11 @@ export default function CreatorMusicPage() {
       toast.error("Album title is required");
       return;
     }
-    if (!albumForm.cover) {
+    if (!albumForm.albumCoverImageFile) {
       toast.error("Choose a cover image");
       return;
     }
-    if (!albumForm.tracks.length) {
+    if (!albumForm.albumSongsFiles.length) {
       toast.error("Add at least one audio track");
       return;
     }
@@ -275,14 +283,14 @@ export default function CreatorMusicPage() {
     formData.append("releaseType", albumForm.releaseType);
     formData.append("price", albumForm.price || "0");
     formData.append("publishedStatus", publishedStatus);
-    formData.append("coverImage", albumForm.cover);
-    albumForm.tracks.forEach((file) => formData.append("tracks", file));
-    albumForm.previews.forEach((file) => formData.append("previews", file));
+    formData.append("coverImage", albumForm.albumCoverImageFile);
+    albumForm.albumSongsFiles.forEach((file) => formData.append("tracks", file));
+    albumForm.optionalPreviewSamples.forEach((file) => formData.append("previews", file));
 
     try {
       setBusyKey("album");
       setProgress(0);
-      await createAlbumWithUploadProgress(formData, { onProgress: setProgress });
+      await createMusicAlbum(formData, { onProgress: setProgress });
       await refreshWorkspace();
       toast.success(publishedStatus === "draft" ? "Album draft saved" : "Album uploaded");
       resetAlbumForm();
@@ -295,27 +303,31 @@ export default function CreatorMusicPage() {
   };
 
   const submitVideo = async (publishedStatus) => {
-    if (!videoForm.title.trim()) {
+    if (!videoForm.videoTitle.trim()) {
       toast.error("Video title is required");
       return;
     }
-    if (!videoForm.video) {
+    if (!videoForm.videoFile) {
       toast.error("Choose a music video file");
       return;
     }
     const formData = new FormData();
-    formData.append("title", videoForm.title.trim());
+    formData.append("title", videoForm.videoTitle.trim());
     formData.append("description", videoForm.description.trim());
     formData.append("price", videoForm.price || "0");
     formData.append("publishedStatus", publishedStatus);
-    formData.append("video", videoForm.video);
-    if (videoForm.thumbnail) formData.append("thumbnail", videoForm.thumbnail);
-    if (videoForm.previewClip) formData.append("previewClip", videoForm.previewClip);
+    formData.append("video", videoForm.videoFile);
+    if (videoForm.thumbnailFile) {
+      formData.append("thumbnail", videoForm.thumbnailFile);
+    }
+    if (videoForm.previewClipFile) {
+      formData.append("previewClip", videoForm.previewClipFile);
+    }
 
     try {
       setBusyKey("video");
       setProgress(0);
-      await createCreatorVideoWithUploadProgress(formData, { onProgress: setProgress });
+      await createMusicVideo(formData, { onProgress: setProgress });
       await refreshWorkspace();
       toast.success(publishedStatus === "draft" ? "Music video draft saved" : "Music video uploaded");
       resetVideoForm();
@@ -343,18 +355,32 @@ export default function CreatorMusicPage() {
       if (editingEntry.contentType === "track") {
         formData.append("kind", "music");
         formData.append("genre", values.genre || "");
-        if (values.cover) formData.append("cover", values.cover);
-        if (values.audio) formData.append("audio", values.audio);
-        if (values.preview) formData.append("preview", values.preview);
+        if (values.cover) {
+          formData.append("cover", values.cover);
+        }
+        if (values.audio) {
+          formData.append("audio", values.audio);
+        }
+        if (values.preview) {
+          formData.append("preview", values.preview);
+        }
         await updateTrackWithUploadProgress(editingEntry._id, formData, { onProgress: setProgress });
       } else if (editingEntry.contentType === "album" || editingEntry.contentType === "ep") {
         formData.append("releaseType", values.releaseType || "album");
-        if (values.cover) formData.append("coverImage", values.cover);
+        if (values.cover) {
+          formData.append("coverImage", values.cover);
+        }
         await updateAlbumWithUploadProgress(editingEntry._id, formData, { onProgress: setProgress });
       } else {
-        if (values.thumbnail) formData.append("thumbnail", values.thumbnail);
-        if (values.video) formData.append("video", values.video);
-        if (values.previewClip) formData.append("previewClip", values.previewClip);
+        if (values.thumbnail) {
+          formData.append("thumbnail", values.thumbnail);
+        }
+        if (values.video) {
+          formData.append("video", values.video);
+        }
+        if (values.previewClip) {
+          formData.append("previewClip", values.previewClip);
+        }
         await updateCreatorVideoWithUploadProgress(editingEntry._id, formData, { onProgress: setProgress });
       }
 
@@ -372,18 +398,22 @@ export default function CreatorMusicPage() {
   return (
     <div className="creator-page-stack">
       <section className="creator-metric-grid">
-        <article className="creator-metric-card card">
-          <span>Active releases</span>
-          <strong>{musicContent.analytics?.activeReleases || 0}</strong>
-        </article>
-        <article className="creator-metric-card card">
-          <span>Total streams</span>
-          <strong>{musicContent.analytics?.totalStreams || 0}</strong>
-        </article>
-        <article className="creator-metric-card card">
-          <span>Music earnings</span>
-          <strong>{formatCurrency(dashboard.categories?.music?.earnings || 0)}</strong>
-        </article>
+        <CreatorStatsCard
+          label="Published releases"
+          value={musicContent.analytics?.activeReleases || 0}
+          helper="Tracks, albums, and videos currently live."
+          tone="success"
+        />
+        <CreatorStatsCard
+          label="Total streams"
+          value={musicContent.analytics?.totalStreams || 0}
+          helper="Combined listens and video plays."
+        />
+        <CreatorStatsCard
+          label="Music earnings"
+          value={formatCurrency(dashboard.categories?.music?.earnings || 0)}
+          helper="Creator share across paid music releases."
+        />
       </section>
 
       <section className="creator-upload-notice card">
@@ -392,149 +422,33 @@ export default function CreatorMusicPage() {
       </section>
 
       <section className="creator-upload-grid">
-        <article className="creator-panel card">
-          <div className="creator-panel-head">
-            <div>
-              <h2>Upload Track</h2>
-              <p>Singles and standalone tracks only.</p>
-            </div>
-          </div>
-          <div className="creator-form-grid">
-            <label>
-              <span>Track title</span>
-              <input value={trackForm.title} onChange={(event) => setTrackForm((current) => ({ ...current, title: event.target.value }))} />
-            </label>
-            <label>
-              <span>Genre</span>
-              <input value={trackForm.genre} onChange={(event) => setTrackForm((current) => ({ ...current, genre: event.target.value }))} />
-            </label>
-            <label>
-              <span>Price</span>
-              <input value={trackForm.price} inputMode="numeric" onChange={(event) => setTrackForm((current) => ({ ...current, price: event.target.value }))} />
-            </label>
-            <label>
-              <span>Audio file</span>
-              <input type="file" accept="audio/*" onChange={(event) => setTrackForm((current) => ({ ...current, audio: event.target.files?.[0] || null }))} />
-            </label>
-            <label>
-              <span>Preview sample</span>
-              <input type="file" accept="audio/*" onChange={(event) => setTrackForm((current) => ({ ...current, preview: event.target.files?.[0] || null }))} />
-            </label>
-            <label>
-              <span>Cover art</span>
-              <input type="file" accept="image/*" onChange={(event) => setTrackForm((current) => ({ ...current, cover: event.target.files?.[0] || null }))} />
-            </label>
-            <label className="creator-form-full">
-              <span>Description</span>
-              <textarea rows={4} value={trackForm.description} onChange={(event) => setTrackForm((current) => ({ ...current, description: event.target.value }))} />
-            </label>
-          </div>
-          {busyKey === "track" ? <div className="creator-upload-progress">Uploading... {progress}%</div> : null}
-          <div className="creator-form-actions">
-            <button type="button" className="creator-ghost-btn" disabled={busyKey === "track"} onClick={() => submitTrack("draft")}>
-              Save draft
-            </button>
-            <button type="button" className="creator-primary-btn" disabled={busyKey === "track"} onClick={() => submitTrack("published")}>
-              Publish track
-            </button>
-          </div>
-        </article>
+        <TrackUploadForm
+          value={trackForm}
+          onChange={(key, nextValue) => setTrackForm((current) => ({ ...current, [key]: nextValue }))}
+          busy={busyKey === "track"}
+          progress={progress}
+          onSaveDraft={() => submitTrack("draft")}
+          onPublish={() => submitTrack("published")}
+        />
 
-        <article className="creator-panel card">
-          <div className="creator-panel-head">
-            <div>
-              <h2>Upload Album / EP</h2>
-              <p>Bundle multiple tracks into a single release.</p>
-            </div>
-          </div>
-          <div className="creator-form-grid">
-            <label>
-              <span>Release title</span>
-              <input value={albumForm.albumTitle} onChange={(event) => setAlbumForm((current) => ({ ...current, albumTitle: event.target.value }))} />
-            </label>
-            <label>
-              <span>Release type</span>
-              <select value={albumForm.releaseType} onChange={(event) => setAlbumForm((current) => ({ ...current, releaseType: event.target.value }))}>
-                <option value="album">Album</option>
-                <option value="ep">EP</option>
-              </select>
-            </label>
-            <label>
-              <span>Price</span>
-              <input value={albumForm.price} inputMode="numeric" onChange={(event) => setAlbumForm((current) => ({ ...current, price: event.target.value }))} />
-            </label>
-            <label>
-              <span>Cover image</span>
-              <input type="file" accept="image/*" onChange={(event) => setAlbumForm((current) => ({ ...current, cover: event.target.files?.[0] || null }))} />
-            </label>
-            <label className="creator-form-full">
-              <span>Album tracks</span>
-              <input type="file" accept="audio/*" multiple onChange={(event) => setAlbumForm((current) => ({ ...current, tracks: Array.from(event.target.files || []) }))} />
-            </label>
-            <label className="creator-form-full">
-              <span>Preview samples</span>
-              <input type="file" accept="audio/*" multiple onChange={(event) => setAlbumForm((current) => ({ ...current, previews: Array.from(event.target.files || []) }))} />
-            </label>
-            <label className="creator-form-full">
-              <span>Description</span>
-              <textarea rows={4} value={albumForm.description} onChange={(event) => setAlbumForm((current) => ({ ...current, description: event.target.value }))} />
-            </label>
-          </div>
-          {busyKey === "album" ? <div className="creator-upload-progress">Uploading... {progress}%</div> : null}
-          <div className="creator-form-actions">
-            <button type="button" className="creator-ghost-btn" disabled={busyKey === "album"} onClick={() => submitAlbum("draft")}>
-              Save draft
-            </button>
-            <button type="button" className="creator-primary-btn" disabled={busyKey === "album"} onClick={() => submitAlbum("published")}>
-              Publish release
-            </button>
-          </div>
-        </article>
+        <AlbumUploadForm
+          value={albumForm}
+          onChange={(key, nextValue) => setAlbumForm((current) => ({ ...current, [key]: nextValue }))}
+          busy={busyKey === "album"}
+          progress={progress}
+          onSaveDraft={() => submitAlbum("draft")}
+          onPublish={() => submitAlbum("published")}
+        />
       </section>
 
-      <section className="creator-panel card">
-        <div className="creator-panel-head">
-          <div>
-            <h2>Upload Music Video</h2>
-            <p>Publish official music videos with pricing, preview clips, and verification status.</p>
-          </div>
-        </div>
-        <div className="creator-form-grid">
-          <label>
-            <span>Video title</span>
-            <input value={videoForm.title} onChange={(event) => setVideoForm((current) => ({ ...current, title: event.target.value }))} />
-          </label>
-          <label>
-            <span>Price</span>
-            <input value={videoForm.price} inputMode="numeric" onChange={(event) => setVideoForm((current) => ({ ...current, price: event.target.value }))} />
-          </label>
-          <label>
-            <span>Video file</span>
-            <input type="file" accept="video/*" onChange={(event) => setVideoForm((current) => ({ ...current, video: event.target.files?.[0] || null }))} />
-          </label>
-          <label>
-            <span>Thumbnail</span>
-            <input type="file" accept="image/*" onChange={(event) => setVideoForm((current) => ({ ...current, thumbnail: event.target.files?.[0] || null }))} />
-          </label>
-          <label>
-            <span>Preview clip</span>
-            <input type="file" accept="video/*" onChange={(event) => setVideoForm((current) => ({ ...current, previewClip: event.target.files?.[0] || null }))} />
-          </label>
-          <label className="creator-form-full">
-            <span>Description</span>
-            <textarea rows={4} value={videoForm.description} onChange={(event) => setVideoForm((current) => ({ ...current, description: event.target.value }))} />
-          </label>
-        </div>
-        {busyKey === "video" ? <div className="creator-upload-progress">Uploading... {progress}%</div> : null}
-        <div className="creator-form-actions">
-          <button type="button" className="creator-ghost-btn" disabled={busyKey === "video"} onClick={() => submitVideo("draft")}>
-            Save draft
-          </button>
-          <button type="button" className="creator-primary-btn" disabled={busyKey === "video"} onClick={() => submitVideo("published")}>
-            Publish music video
-          </button>
-        </div>
-      </section>
+      <MusicVideoUploadForm
+        value={videoForm}
+        onChange={(key, nextValue) => setVideoForm((current) => ({ ...current, [key]: nextValue }))}
+        busy={busyKey === "video"}
+        progress={progress}
+        onSaveDraft={() => submitVideo("draft")}
+        onPublish={() => submitVideo("published")}
+      />
 
       {editingEntry ? <MusicEditPanel entry={editingEntry} onCancel={() => setEditingEntry(null)} onSave={saveEdit} /> : null}
 

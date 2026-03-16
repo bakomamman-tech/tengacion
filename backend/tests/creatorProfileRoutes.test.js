@@ -8,9 +8,12 @@ process.env.MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/teng
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test_secret_1234567890123456789012";
 
 const app = require("../app");
+const Album = require("../models/Album");
 const Book = require("../models/Book");
 const CreatorProfile = require("../models/CreatorProfile");
+const Track = require("../models/Track");
 const User = require("../models/User");
+const Video = require("../models/Video");
 
 let mongod;
 
@@ -182,5 +185,115 @@ describe("creator profile routes", () => {
 
     expect(response.headers["cache-control"]).toContain("no-store");
     expect(response.headers.pragma).toBe("no-cache");
+  });
+
+  test("GET /api/creator/:creatorId/public-profile returns grouped published creator content", async () => {
+    const { profile } = await createUserAndProfile({
+      creatorTypes: ["music", "bookPublishing", "podcast"],
+    });
+
+    await Track.create([
+      {
+        creatorId: profile._id,
+        title: "Studio Single",
+        description: "Published music release",
+        price: 0,
+        audioUrl: "https://example.com/song.mp3",
+        previewUrl: "https://example.com/song-preview.mp3",
+        kind: "music",
+        creatorCategory: "music",
+        contentType: "track",
+        publishedStatus: "published",
+        isPublished: true,
+      },
+      {
+        creatorId: profile._id,
+        title: "Hidden Draft",
+        description: "Should not show publicly",
+        price: 0,
+        audioUrl: "https://example.com/draft.mp3",
+        previewUrl: "https://example.com/draft-preview.mp3",
+        kind: "music",
+        creatorCategory: "music",
+        contentType: "track",
+        publishedStatus: "draft",
+        isPublished: false,
+      },
+      {
+        creatorId: profile._id,
+        title: "Pilot Episode",
+        description: "Podcast launch",
+        price: 0,
+        audioUrl: "https://example.com/episode.mp3",
+        previewUrl: "https://example.com/episode-preview.mp3",
+        kind: "podcast",
+        creatorCategory: "podcasts",
+        contentType: "podcast_episode",
+        podcastSeries: "Studio Stories",
+        publishedStatus: "published",
+        isPublished: true,
+      },
+    ]);
+
+    await Album.create({
+      creatorId: profile._id,
+      title: "Debut Project",
+      description: "Album release",
+      price: 0,
+      coverUrl: "https://example.com/album-cover.jpg",
+      tracks: [
+        {
+          title: "Intro",
+          trackUrl: "https://example.com/album-track.mp3",
+          previewUrl: "https://example.com/album-preview.mp3",
+          order: 1,
+        },
+      ],
+      totalTracks: 1,
+      status: "published",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+
+    await Book.create({
+      creatorId: profile._id,
+      title: "Creator Notes",
+      description: "Published book",
+      price: 0,
+      contentUrl: "https://example.com/book.pdf",
+      previewUrl: "https://example.com/book-preview.pdf",
+      fileFormat: "pdf",
+      language: "English",
+      tags: ["insight", "creative"],
+      publishedStatus: "published",
+      isPublished: true,
+    });
+
+    await Video.create({
+      userId: profile.userId.toString(),
+      creatorProfileId: profile._id,
+      caption: "Launch Visual",
+      videoUrl: "https://example.com/video.mp4",
+      previewClipUrl: "https://example.com/video-preview.mp4",
+      coverImageUrl: "https://example.com/video-cover.jpg",
+      price: 0,
+      publishedStatus: "published",
+      isPublished: true,
+    });
+
+    const response = await request(app)
+      .get(`/api/creator/${profile._id}/public-profile`)
+      .expect(200);
+
+    expect(response.body.creator.displayName).toBe("Creator Example");
+    expect(response.body.creator.creatorTypes).toEqual(["music", "bookPublishing", "podcast"]);
+    expect(response.body.music.tracks).toHaveLength(1);
+    expect(response.body.music.albums).toHaveLength(1);
+    expect(response.body.music.videos).toHaveLength(1);
+    expect(response.body.podcasts.episodes).toHaveLength(1);
+    expect(response.body.books).toHaveLength(1);
+    expect(response.body.books[0].language).toBe("English");
+    expect(response.body.books[0].tags).toEqual(["insight", "creative"]);
+    expect(response.body.featured.item.title).toBeTruthy();
   });
 });

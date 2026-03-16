@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
-import { getCreatorDashboard, getCreatorWorkspaceProfile } from "../../api";
+import {
+  getCreatorDashboardSummary,
+  getCreatorPrivateContent,
+  getCreatorWorkspaceProfile,
+} from "../../api";
 import CreatorHeader from "./CreatorHeader";
 import CreatorSidebar from "./CreatorSidebar";
 import { CREATOR_CATEGORY_CONFIG, CREATOR_CATEGORY_ORDER, normalizeCreatorLaneKeys } from "./creatorConfig";
@@ -26,21 +30,40 @@ export default function CreatorWorkspaceLayout() {
   const [error, setError] = useState("");
   const [creatorProfile, setCreatorProfile] = useState(null);
   const [dashboard, setDashboard] = useState(null);
+  const creatorProfileRef = useRef(null);
+  const dashboardRef = useRef(null);
 
-  const loadWorkspace = async ({ silent = false } = {}) => {
+  useEffect(() => {
+    creatorProfileRef.current = creatorProfile;
+  }, [creatorProfile]);
+
+  useEffect(() => {
+    dashboardRef.current = dashboard;
+  }, [dashboard]);
+
+  const loadWorkspace = useCallback(async ({ silent = false } = {}) => {
     if (!silent) {
       setLoading(true);
     }
     try {
-      const [profilePayload, dashboardPayload] = await Promise.all([
+      const [profilePayload, summaryPayload, contentPayload] = await Promise.all([
         getCreatorWorkspaceProfile(),
-        getCreatorDashboard(),
+        getCreatorDashboardSummary(),
+        getCreatorPrivateContent(),
       ]);
-      setCreatorProfile(profilePayload || null);
-      setDashboard(dashboardPayload || null);
+      setCreatorProfile(
+        profilePayload ||
+          summaryPayload?.creatorProfile ||
+          contentPayload?.creatorProfile ||
+          null
+      );
+      setDashboard({
+        ...(summaryPayload || {}),
+        content: contentPayload?.content || summaryPayload?.content || {},
+      });
       setError("");
     } catch (err) {
-      if (!silent || !creatorProfile || !dashboard) {
+      if (!silent || !creatorProfileRef.current || !dashboardRef.current) {
         setError(err?.message || "Failed to load your creator workspace.");
       }
     } finally {
@@ -48,11 +71,11 @@ export default function CreatorWorkspaceLayout() {
         setLoading(false);
       }
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadWorkspace();
-  }, []);
+  }, [loadWorkspace]);
 
   useEffect(() => {
     setMobileOpen(false);

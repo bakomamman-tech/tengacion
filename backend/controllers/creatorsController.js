@@ -10,6 +10,7 @@ const User = require("../models/User");
 const PlayerProgress = require("../models/PlayerProgress");
 const { hasEntitlement } = require("../services/entitlementService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
+const { buildCreatorPublicPayload } = require("../services/publicCreatorProfileService");
 
 const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
@@ -407,160 +408,41 @@ exports.getCreatorVideos = asyncHandler(async (req, res) => {
 
 exports.getCreatorHub = asyncHandler(async (req, res) => {
   const { creatorId } = req.params;
-  if (!mongoose.Types.ObjectId.isValid(creatorId)) {
-    return res.status(400).json({ error: "Invalid creator id" });
+  try {
+    const payload = await buildCreatorPublicPayload({
+      creatorId,
+      viewerId: req.user?.id || "",
+      req,
+    });
+    return res.json(payload);
+  } catch (error) {
+    return res.status(error.status || 500).json({ error: error.message || "Failed to load creator hub" });
   }
+});
 
-  const viewerId = req.user?.id || "";
-  const profile = await CreatorProfile.findById(creatorId).populate(
-    "userId",
-    "name username avatar followers isVerified emailVerified bio country"
-  );
-  if (!profile) {
-    return res.status(404).json({ error: "Creator not found" });
-  }
+exports.getPublicCreatorProfile = asyncHandler(async (req, res) => {
+  const payload = await buildCreatorPublicPayload({
+    creatorId: req.params.creatorId,
+    viewerId: req.user?.id || "",
+    req,
+  });
 
-  const [musicTracksRaw, podcastTracksRaw, comedyTracksRaw, booksRaw, albumsRaw, comedyVideosRaw, continueRows] = await Promise.all([
-    Track.find({ creatorId, kind: { $in: ["music", null] }, ...ACTIVE_TRACK_FILTER }).sort({ playsCount: -1, createdAt: -1 }).limit(30).lean(),
-    Track.find({ creatorId, kind: "podcast", ...ACTIVE_TRACK_FILTER }).sort({ createdAt: -1 }).limit(20).lean(),
-    Track.find({ creatorId, kind: "comedy", ...ACTIVE_TRACK_FILTER }).sort({ createdAt: -1 }).limit(20).lean(),
-    Book.find({ creatorId, ...ACTIVE_BOOK_FILTER }).sort({ createdAt: -1 }).limit(20).lean(),
-    Album.find({ creatorId, ...ACTIVE_ALBUM_FILTER }).sort({ createdAt: -1 }).limit(20).lean(),
-    Video.find({ $or: [{ creatorProfileId: creatorId }, { userId: String(profile.userId?._id || "") }], ...ACTIVE_VIDEO_FILTER })
-      .sort({ time: -1, createdAt: -1 })
-      .limit(20)
-      .lean(),
-    viewerId
-      ? PlayerProgress.find({ userId: viewerId, creatorId }).sort({ playedAt: -1 }).limit(12).lean()
-      : [],
-  ]);
+  return res.json(payload);
+});
 
-  const musicTracks = await Promise.all(
-    musicTracksRaw.map((track) => mapTrackForHub({ track, req, userId: viewerId }))
-  );
-  const podcastTracks = await Promise.all(
-    podcastTracksRaw.map((track) => mapTrackForHub({ track, req, userId: viewerId }))
-  );
-  const comedyTracks = await Promise.all(
-    comedyTracksRaw.map((track) => mapTrackForHub({ track, req, userId: viewerId }))
-  );
-  const books = await Promise.all(booksRaw.map((book) => mapBookForHub({ book, req, userId: viewerId })));
-  const albums = await Promise.all(albumsRaw.map((album) => mapAlbumForHub({ album, req, userId: viewerId })));
-
-  const videos = await Promise.all(
-    comedyVideosRaw.map(async (video) => {
-      const entitled = Number(video.price || 0) <= 0 || (viewerId
-        ? await hasEntitlement({ userId: viewerId, itemType: "video", itemId: video._id })
-        : false);
-      const sourceUrl = entitled ? (video.videoUrl || "") : (video.previewClipUrl || video.videoUrl || "");
-      return {
-        id: video._id.toString(),
-        title: video.caption || "Video",
-        coverUrl: video.coverImageUrl || "",
-        durationSec: Number(video.durationSec || 0),
-        viewsCount: Number(video.viewsCount || 0),
-        isFree: Number(video.price || 0) <= 0,
-        priceNGN: Number(video.price || 0),
-        priceUSD: Number(video.priceGlobal || 0),
-        streamUrl: sourceUrl
-          ? buildSignedMediaUrl({
-              sourceUrl: entitled ? sourceUrl : sourceUrl,
-              itemType: "video",
-              itemId: video._id.toString(),
-              userId: viewerId || "",
-              req,
-              expiresInSec: 10 * 60,
-            })
-          : "",
-        previewUrl: video.previewClipUrl || "",
-        itemType: "video",
-      };
-    })
-  );
-
-  const continueListening = await Promise.all(
-    (continueRows || []).map(async (row) => {
-      if (!mongoose.Types.ObjectId.isValid(row.itemId)) return null;
-      const track = await Track.findById(row.itemId).lean();
-      if (!track) return null;
-      return {
-        type: row.itemType === "podcast" ? "podcast" : "song",
-        itemId: row.itemId.toString(),
-        title: track.title || "",
-        coverUrl: track.coverImageUrl || "",
-        creatorName: profile.displayName || "",
-        progressSec: Number(row.positionSec || 0),
-        durationSec: Number(row.durationSec || track.durationSec || 0),
-      };
-    })
-  );
-
-  const creatorUser = profile.userId || {};
-  const followersCount = Array.isArray(creatorUser.followers) ? creatorUser.followers.length : 0;
-  const monthlyListeners = musicTracks.reduce((sum, item) => sum + Number(item.playsCount || 0), 0);
-  const totalPlays = musicTracks.reduce((sum, item) => sum + Number(item.playsCount || 0), 0)
-    + albums.reduce((sum, item) => sum + Number(item.playCount || 0), 0);
-  const paidPurchases = await Purchase.find({
-    creatorId,
-    status: "paid",
-    itemType: { $in: ["track", "book", "album"] },
-  }).select("amount").lean();
-  const totalSales = paidPurchases.length;
-  const revenueNGN = paidPurchases.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+exports.getPublicCreatorContent = asyncHandler(async (req, res) => {
+  const payload = await buildCreatorPublicPayload({
+    creatorId: req.params.creatorId,
+    viewerId: req.user?.id || "",
+    req,
+  });
 
   return res.json({
-    creator: {
-      id: profile._id.toString(),
-      userId: creatorUser._id?.toString() || "",
-      displayName: profile.displayName || "",
-      username: creatorUser.username || "",
-      avatarUrl: typeof creatorUser.avatar === "string" ? creatorUser.avatar : creatorUser.avatar?.url || "",
-      bannerUrl: profile.heroBannerUrl || profile.coverImageUrl || "",
-      tagline: profile.tagline || "",
-      genres: Array.isArray(profile.genres) ? profile.genres : [],
-      verified: Boolean(creatorUser.isVerified || creatorUser.emailVerified),
-      followersCount,
-      monthlyListeners,
-      bio: profile.bio || "",
-      location: creatorUser.country || "",
-      creatorReady: Boolean(profile.onboardingComplete) && (musicTracks.length + podcastTracks.length + comedyTracks.length + books.length + albums.length + videos.length > 0),
-      albumsCount: albums.length,
-      links: Array.isArray(profile.links) ? profile.links : [],
-    },
-    tracks: musicTracks,
-    albums,
-    books,
-    podcasts: podcastTracks,
-    videos,
-    comedy: comedyTracks,
-    stats: {
-      totalPlays,
-      totalSales,
-      followerCount: followersCount,
-      revenueNGN,
-    },
-    sections: {
-      continueListening: continueListening.filter(Boolean),
-      topTracks: musicTracks.slice(0, 12),
-      latestPodcasts: podcastTracks.slice(0, 10),
-      latestComedy: comedyTracks.slice(0, 10),
-      ebooks: books.slice(0, 10),
-      latestAlbums: albums.slice(0, 10),
-      latestVideos: videos.slice(0, 10),
-      allMusic: musicTracks,
-      allPodcasts: podcastTracks,
-      allComedy: comedyTracks,
-      allBooks: books,
-      allAlbums: albums,
-      allVideos: videos,
-    },
-    commerce: {
-      currencyMode: profile.paymentModeDefault || "NG",
-      supportedPaymentOptions: {
-        NG: ["Paystack Card", "Bank Transfer", "USSD", "Verve", "Flutterwave"],
-        GLOBAL: ["Card", "Apple Pay", "Google Pay", "Stripe", "PayPal"],
-      },
-    },
+    featured: payload.featured,
+    music: payload.music,
+    podcasts: payload.podcasts,
+    books: payload.books,
+    stats: payload.stats,
   });
 });
 

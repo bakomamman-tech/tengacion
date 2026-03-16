@@ -1,25 +1,30 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import {
-  createTrackWithUploadProgress,
+  createPodcastEpisode,
+  updatePodcastSeries,
   updateTrackWithUploadProgress,
 } from "../../api";
 import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge";
+import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
+import PodcastEpisodeForm from "../../components/creator/upload/PodcastEpisodeForm";
+import PodcastSeriesForm from "../../components/creator/upload/PodcastSeriesForm";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import { formatCurrency, formatShortDate } from "../../components/creator/creatorConfig";
 import { useUnsavedChangesPrompt } from "../../hooks/useUnsavedChangesPrompt";
 
 const EMPTY_PODCAST_FORM = {
-  title: "",
+  episodeTitle: "",
   description: "",
   podcastSeries: "",
-  seasonNumber: "",
+  season: "",
   episodeNumber: "",
+  accessType: "free",
   price: "",
-  audio: null,
-  preview: null,
-  cover: null,
+  fullAudioFile: null,
+  previewSampleFile: null,
+  coverImageFile: null,
 };
 
 function PodcastEditPanel({ item, onCancel, onSave }) {
@@ -104,14 +109,42 @@ function PodcastEditPanel({ item, onCancel, onSave }) {
 }
 
 export default function CreatorPodcastsPage() {
-  const { dashboard, refreshWorkspace } = useCreatorWorkspace();
+  const { creatorProfile, dashboard, refreshWorkspace, setCreatorProfile } = useCreatorWorkspace();
   const [podcastForm, setPodcastForm] = useState(EMPTY_PODCAST_FORM);
+  const [seriesForm, setSeriesForm] = useState({
+    podcastName: creatorProfile?.podcastsProfile?.podcastName || "",
+    hostName: creatorProfile?.podcastsProfile?.hostName || "",
+    themeOrTopic: creatorProfile?.podcastsProfile?.themeOrTopic || "",
+    seriesTitle: creatorProfile?.podcastsProfile?.seriesTitle || "",
+    description: creatorProfile?.podcastsProfile?.description || "",
+  });
   const [busy, setBusy] = useState(false);
+  const [seriesBusy, setSeriesBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [editingItem, setEditingItem] = useState(null);
 
-  const episodes = dashboard.content?.podcasts?.episodes || [];
+  const episodes = useMemo(
+    () => dashboard.content?.podcasts?.episodes || [],
+    [dashboard.content?.podcasts?.episodes]
+  );
   const analytics = dashboard.content?.podcasts?.analytics || {};
+  const savedSeriesProfile = {
+    podcastName: creatorProfile?.podcastsProfile?.podcastName || "",
+    hostName: creatorProfile?.podcastsProfile?.hostName || "",
+    themeOrTopic: creatorProfile?.podcastsProfile?.themeOrTopic || "",
+    seriesTitle: creatorProfile?.podcastsProfile?.seriesTitle || "",
+    description: creatorProfile?.podcastsProfile?.description || "",
+  };
+
+  useEffect(() => {
+    setSeriesForm({
+      podcastName: creatorProfile?.podcastsProfile?.podcastName || "",
+      hostName: creatorProfile?.podcastsProfile?.hostName || "",
+      themeOrTopic: creatorProfile?.podcastsProfile?.themeOrTopic || "",
+      seriesTitle: creatorProfile?.podcastsProfile?.seriesTitle || "",
+      description: creatorProfile?.podcastsProfile?.description || "",
+    });
+  }, [creatorProfile?.podcastsProfile]);
 
   const seriesSummary = useMemo(() => {
     const map = new Map();
@@ -127,16 +160,19 @@ export default function CreatorPodcastsPage() {
     [episodes]
   );
 
+  const seriesDirty = JSON.stringify(seriesForm) !== JSON.stringify(savedSeriesProfile);
+
   const dirty = Boolean(
-    podcastForm.title ||
+    podcastForm.episodeTitle ||
       podcastForm.description ||
       podcastForm.podcastSeries ||
-      podcastForm.seasonNumber ||
+      podcastForm.season ||
       podcastForm.episodeNumber ||
       podcastForm.price ||
-      podcastForm.audio ||
-      podcastForm.preview ||
-      podcastForm.cover
+      podcastForm.fullAudioFile ||
+      podcastForm.previewSampleFile ||
+      podcastForm.coverImageFile ||
+      seriesDirty
   );
 
   useUnsavedChangesPrompt(dirty);
@@ -144,30 +180,34 @@ export default function CreatorPodcastsPage() {
   const resetForm = () => setPodcastForm(EMPTY_PODCAST_FORM);
 
   const submitEpisode = async (publishedStatus) => {
-    if (!podcastForm.title.trim()) {
+    if (!podcastForm.episodeTitle.trim()) {
       toast.error("Episode title is required");
       return;
     }
-    if (!podcastForm.audio) {
+    if (!podcastForm.fullAudioFile) {
       toast.error("Choose a full audio file");
       return;
     }
     const formData = new FormData();
-    formData.append("title", podcastForm.title.trim());
+    formData.append("title", podcastForm.episodeTitle.trim());
     formData.append("description", podcastForm.description.trim());
     formData.append("kind", "podcast");
     formData.append("podcastSeries", podcastForm.podcastSeries.trim());
-    formData.append("seasonNumber", podcastForm.seasonNumber || "0");
+    formData.append("seasonNumber", podcastForm.season || "0");
     formData.append("episodeNumber", podcastForm.episodeNumber || "0");
-    formData.append("price", podcastForm.price || "0");
+    formData.append("price", podcastForm.accessType === "paid" ? podcastForm.price || "0" : "0");
     formData.append("publishedStatus", publishedStatus);
-    formData.append("audio", podcastForm.audio);
-    if (podcastForm.preview) formData.append("preview", podcastForm.preview);
-    if (podcastForm.cover) formData.append("cover", podcastForm.cover);
+    formData.append("audio", podcastForm.fullAudioFile);
+    if (podcastForm.previewSampleFile) {
+      formData.append("preview", podcastForm.previewSampleFile);
+    }
+    if (podcastForm.coverImageFile) {
+      formData.append("cover", podcastForm.coverImageFile);
+    }
 
     try {
       setBusy(true);
-      await createTrackWithUploadProgress(formData, { onProgress: setProgress });
+      await createPodcastEpisode(formData, { onProgress: setProgress });
       await refreshWorkspace();
       toast.success(publishedStatus === "draft" ? "Podcast draft saved" : "Podcast episode uploaded");
       resetForm();
@@ -176,6 +216,21 @@ export default function CreatorPodcastsPage() {
     } finally {
       setBusy(false);
       setProgress(0);
+    }
+  };
+
+  const saveSeriesProfile = async () => {
+    try {
+      setSeriesBusy(true);
+      const payload = await updatePodcastSeries(seriesForm);
+      if (payload?.creatorProfile) {
+        setCreatorProfile(payload.creatorProfile);
+      }
+      toast.success("Podcast series profile saved");
+    } catch (err) {
+      toast.error(err?.message || "Could not save series profile");
+    } finally {
+      setSeriesBusy(false);
     }
   };
 
@@ -194,9 +249,15 @@ export default function CreatorPodcastsPage() {
       formData.append("episodeNumber", values.episodeNumber || "0");
       formData.append("price", values.price || "0");
       formData.append("publishedStatus", values.publishedStatus);
-      if (values.cover) formData.append("cover", values.cover);
-      if (values.audio) formData.append("audio", values.audio);
-      if (values.preview) formData.append("preview", values.preview);
+      if (values.cover) {
+        formData.append("cover", values.cover);
+      }
+      if (values.audio) {
+        formData.append("audio", values.audio);
+      }
+      if (values.preview) {
+        formData.append("preview", values.preview);
+      }
 
       await updateTrackWithUploadProgress(editingItem._id, formData, { onProgress: setProgress });
       await refreshWorkspace();
@@ -213,18 +274,22 @@ export default function CreatorPodcastsPage() {
   return (
     <div className="creator-page-stack">
       <section className="creator-metric-grid">
-        <article className="creator-metric-card card">
-          <span>Total episodes</span>
-          <strong>{analytics.totalEpisodes || 0}</strong>
-        </article>
-        <article className="creator-metric-card card">
-          <span>Active episodes</span>
-          <strong>{analytics.activeEpisodes || 0}</strong>
-        </article>
-        <article className="creator-metric-card card">
-          <span>Podcast earnings</span>
-          <strong>{formatCurrency(dashboard.categories?.podcasts?.earnings || 0)}</strong>
-        </article>
+        <CreatorStatsCard
+          label="Total episodes"
+          value={analytics.totalEpisodes || 0}
+          helper="Every episode published or drafted in this lane."
+        />
+        <CreatorStatsCard
+          label="Active episodes"
+          value={analytics.activeEpisodes || 0}
+          helper="Podcast episodes currently live on Tengacion."
+          tone="success"
+        />
+        <CreatorStatsCard
+          label="Podcast earnings"
+          value={formatCurrency(dashboard.categories?.podcast?.earnings || dashboard.categories?.podcasts?.earnings || 0)}
+          helper="Creator share from podcast purchases and access unlocks."
+        />
       </section>
 
       <section className="creator-upload-notice card">
@@ -232,70 +297,29 @@ export default function CreatorPodcastsPage() {
         <p>Podcast uploads use the same metadata and duplicate screening pipeline as music uploads, with episode and series checks layered in.</p>
       </section>
 
-      <section className="creator-panel card">
-        <div className="creator-panel-head">
-          <div>
-            <h2>Upload podcast episode</h2>
-            <p>Keep podcast publishing strictly separated from music and books.</p>
-          </div>
-        </div>
+      <section className="creator-upload-grid">
+        <PodcastSeriesForm
+          value={seriesForm}
+          onChange={(key, nextValue) => setSeriesForm((current) => ({ ...current, [key]: nextValue }))}
+          busy={seriesBusy}
+          onSave={saveSeriesProfile}
+        />
 
-        <div className="creator-form-grid">
-          <label>
-            <span>Episode title</span>
-            <input value={podcastForm.title} onChange={(event) => setPodcastForm((current) => ({ ...current, title: event.target.value }))} />
-          </label>
-          <label>
-            <span>Series</span>
-            <input value={podcastForm.podcastSeries} onChange={(event) => setPodcastForm((current) => ({ ...current, podcastSeries: event.target.value }))} />
-          </label>
-          <label>
-            <span>Season number</span>
-            <input value={podcastForm.seasonNumber} inputMode="numeric" onChange={(event) => setPodcastForm((current) => ({ ...current, seasonNumber: event.target.value }))} />
-          </label>
-          <label>
-            <span>Episode number</span>
-            <input value={podcastForm.episodeNumber} inputMode="numeric" onChange={(event) => setPodcastForm((current) => ({ ...current, episodeNumber: event.target.value }))} />
-          </label>
-          <label>
-            <span>Price</span>
-            <input value={podcastForm.price} inputMode="numeric" onChange={(event) => setPodcastForm((current) => ({ ...current, price: event.target.value }))} />
-          </label>
-          <label>
-            <span>Cover art</span>
-            <input type="file" accept="image/*" onChange={(event) => setPodcastForm((current) => ({ ...current, cover: event.target.files?.[0] || null }))} />
-          </label>
-          <label>
-            <span>Full audio upload</span>
-            <input type="file" accept="audio/*" onChange={(event) => setPodcastForm((current) => ({ ...current, audio: event.target.files?.[0] || null }))} />
-          </label>
-          <label>
-            <span>Optional teaser</span>
-            <input type="file" accept="audio/*" onChange={(event) => setPodcastForm((current) => ({ ...current, preview: event.target.files?.[0] || null }))} />
-          </label>
-          <label className="creator-form-full">
-            <span>Description</span>
-            <textarea rows={4} value={podcastForm.description} onChange={(event) => setPodcastForm((current) => ({ ...current, description: event.target.value }))} />
-          </label>
-        </div>
-
-        {busy ? <div className="creator-upload-progress">Uploading... {progress}%</div> : null}
-
-        <div className="creator-form-actions">
-          <button type="button" className="creator-ghost-btn" disabled={busy} onClick={() => submitEpisode("draft")}>
-            Save draft
-          </button>
-          <button type="button" className="creator-primary-btn" disabled={busy} onClick={() => submitEpisode("published")}>
-            Publish episode
-          </button>
-        </div>
+        <PodcastEpisodeForm
+          value={podcastForm}
+          onChange={(key, nextValue) => setPodcastForm((current) => ({ ...current, [key]: nextValue }))}
+          busy={busy}
+          progress={progress}
+          onSaveDraft={() => submitEpisode("draft")}
+          onPublish={() => submitEpisode("published")}
+        />
       </section>
 
       <section className="creator-panel card">
         <div className="creator-panel-head">
           <div>
-            <h2>Series management</h2>
-            <p>Group your episodes by series so creators and support teams can see the structure at a glance.</p>
+            <h2>Series overview</h2>
+            <p>Watch how episodes are distributed across your shows and standalone drops.</p>
           </div>
         </div>
         <div className="creator-stack-list">

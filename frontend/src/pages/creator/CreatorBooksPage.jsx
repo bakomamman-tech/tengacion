@@ -2,24 +2,28 @@ import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import {
-  createBookWithUploadProgress,
+  createCreatorBook,
   updateBookWithUploadProgress,
 } from "../../api";
 import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge";
+import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
+import BookUploadForm from "../../components/creator/upload/BookUploadForm";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import { formatCurrency, formatShortDate } from "../../components/creator/creatorConfig";
 import { useUnsavedChangesPrompt } from "../../hooks/useUnsavedChangesPrompt";
 
 const EMPTY_BOOK_FORM = {
-  title: "",
+  bookTitle: "",
   description: "",
   genre: "",
+  language: "",
+  tags: "",
   price: "",
   fileFormat: "pdf",
   previewExcerptText: "",
-  cover: null,
-  content: null,
-  preview: null,
+  coverImageFile: null,
+  fullBookFile: null,
+  previewSampleFile: null,
 };
 
 function BookEditPanel({ item, onCancel, onSave }) {
@@ -27,6 +31,8 @@ function BookEditPanel({ item, onCancel, onSave }) {
     title: item.title || "",
     description: item.description || "",
     genre: item.genre || "",
+    language: item.language || "",
+    tags: Array.isArray(item.tags) ? item.tags.join(", ") : "",
     price: String(item.price ?? ""),
     fileFormat: item.fileFormat || "pdf",
     previewExcerptText: item.previewExcerptText || "",
@@ -54,6 +60,14 @@ function BookEditPanel({ item, onCancel, onSave }) {
         <label>
           <span>Genre</span>
           <input value={values.genre} onChange={(event) => update("genre", event.target.value)} />
+        </label>
+        <label>
+          <span>Language</span>
+          <input value={values.language} onChange={(event) => update("language", event.target.value)} />
+        </label>
+        <label>
+          <span>Tags</span>
+          <input value={values.tags} onChange={(event) => update("tags", event.target.value)} />
         </label>
         <label>
           <span>Price</span>
@@ -115,7 +129,7 @@ export default function CreatorBooksPage() {
   const [progress, setProgress] = useState(0);
   const [editingItem, setEditingItem] = useState(null);
 
-  const books = dashboard.content?.books?.items || [];
+  const books = useMemo(() => dashboard.content?.books?.items || [], [dashboard.content?.books?.items]);
   const analytics = dashboard.content?.books?.analytics || {};
 
   const sortedBooks = useMemo(
@@ -124,14 +138,16 @@ export default function CreatorBooksPage() {
   );
 
   const dirty = Boolean(
-    bookForm.title ||
+    bookForm.bookTitle ||
       bookForm.description ||
       bookForm.genre ||
+      bookForm.language ||
+      bookForm.tags ||
       bookForm.price ||
       bookForm.previewExcerptText ||
-      bookForm.cover ||
-      bookForm.content ||
-      bookForm.preview
+      bookForm.coverImageFile ||
+      bookForm.fullBookFile ||
+      bookForm.previewSampleFile
   );
 
   useUnsavedChangesPrompt(dirty);
@@ -139,30 +155,36 @@ export default function CreatorBooksPage() {
   const resetForm = () => setBookForm(EMPTY_BOOK_FORM);
 
   const submitBook = async (publishedStatus) => {
-    if (!bookForm.title.trim()) {
+    if (!bookForm.bookTitle.trim()) {
       toast.error("Book title is required");
       return;
     }
-    if (!bookForm.content) {
+    if (!bookForm.fullBookFile) {
       toast.error("Choose a book file");
       return;
     }
     const formData = new FormData();
-    formData.append("title", bookForm.title.trim());
+    formData.append("title", bookForm.bookTitle.trim());
     formData.append("description", bookForm.description.trim());
     formData.append("genre", bookForm.genre.trim());
+    formData.append("language", bookForm.language.trim());
+    formData.append("tags", bookForm.tags.trim());
     formData.append("price", bookForm.price || "0");
     formData.append("fileFormat", bookForm.fileFormat);
     formData.append("previewExcerptText", bookForm.previewExcerptText.trim());
     formData.append("publishedStatus", publishedStatus);
-    formData.append("content", bookForm.content);
-    if (bookForm.cover) formData.append("cover", bookForm.cover);
-    if (bookForm.preview) formData.append("preview", bookForm.preview);
+    formData.append("content", bookForm.fullBookFile);
+    if (bookForm.coverImageFile) {
+      formData.append("cover", bookForm.coverImageFile);
+    }
+    if (bookForm.previewSampleFile) {
+      formData.append("preview", bookForm.previewSampleFile);
+    }
 
     try {
       setBusy(true);
       setProgress(0);
-      await createBookWithUploadProgress(formData, { onProgress: setProgress });
+      await createCreatorBook(formData, { onProgress: setProgress });
       await refreshWorkspace();
       toast.success(publishedStatus === "draft" ? "Book draft saved" : "Book uploaded");
       resetForm();
@@ -184,13 +206,21 @@ export default function CreatorBooksPage() {
       formData.append("title", values.title.trim());
       formData.append("description", values.description.trim());
       formData.append("genre", values.genre.trim());
+      formData.append("language", values.language.trim());
+      formData.append("tags", values.tags.trim());
       formData.append("price", values.price || "0");
       formData.append("fileFormat", values.fileFormat || "pdf");
       formData.append("previewExcerptText", values.previewExcerptText.trim());
       formData.append("publishedStatus", values.publishedStatus);
-      if (values.cover) formData.append("cover", values.cover);
-      if (values.content) formData.append("content", values.content);
-      if (values.preview) formData.append("preview", values.preview);
+      if (values.cover) {
+        formData.append("cover", values.cover);
+      }
+      if (values.content) {
+        formData.append("content", values.content);
+      }
+      if (values.preview) {
+        formData.append("preview", values.preview);
+      }
 
       await updateBookWithUploadProgress(editingItem._id, formData, { onProgress: setProgress });
       await refreshWorkspace();
@@ -207,18 +237,22 @@ export default function CreatorBooksPage() {
   return (
     <div className="creator-page-stack">
       <section className="creator-metric-grid">
-        <article className="creator-metric-card card">
-          <span>Active books</span>
-          <strong>{analytics.activeBooks || 0}</strong>
-        </article>
-        <article className="creator-metric-card card">
-          <span>Total book purchases</span>
-          <strong>{analytics.totalDownloads || 0}</strong>
-        </article>
-        <article className="creator-metric-card card">
-          <span>Book earnings</span>
-          <strong>{formatCurrency(dashboard.categories?.books?.earnings || 0)}</strong>
-        </article>
+        <CreatorStatsCard
+          label="Published books"
+          value={analytics.activeBooks || 0}
+          helper="Titles currently live on your public creator page."
+          tone="success"
+        />
+        <CreatorStatsCard
+          label="Downloads"
+          value={analytics.totalDownloads || 0}
+          helper="Combined reads and paid book retrievals."
+        />
+        <CreatorStatsCard
+          label="Book earnings"
+          value={formatCurrency(dashboard.categories?.bookPublishing?.earnings || dashboard.categories?.books?.earnings || 0)}
+          helper="Creator share from book purchases."
+        />
       </section>
 
       <section className="creator-upload-notice card">
@@ -229,69 +263,14 @@ export default function CreatorBooksPage() {
         </p>
       </section>
 
-      <section className="creator-panel card">
-        <div className="creator-panel-head">
-          <div>
-            <h2>Upload Book</h2>
-            <p>Publish ebooks, PDFs, EPUBs, MOBI files, and text releases without mixing them into music or podcast tools.</p>
-          </div>
-        </div>
-
-        <div className="creator-form-grid">
-          <label>
-            <span>Book title</span>
-            <input value={bookForm.title} onChange={(event) => setBookForm((current) => ({ ...current, title: event.target.value }))} />
-          </label>
-          <label>
-            <span>Genre / category</span>
-            <input value={bookForm.genre} onChange={(event) => setBookForm((current) => ({ ...current, genre: event.target.value }))} />
-          </label>
-          <label>
-            <span>Price</span>
-            <input value={bookForm.price} inputMode="numeric" onChange={(event) => setBookForm((current) => ({ ...current, price: event.target.value }))} />
-          </label>
-          <label>
-            <span>File format</span>
-            <select value={bookForm.fileFormat} onChange={(event) => setBookForm((current) => ({ ...current, fileFormat: event.target.value }))}>
-              <option value="pdf">PDF</option>
-              <option value="epub">EPUB</option>
-              <option value="mobi">MOBI</option>
-              <option value="txt">TXT</option>
-            </select>
-          </label>
-          <label>
-            <span>Cover image</span>
-            <input type="file" accept="image/*" onChange={(event) => setBookForm((current) => ({ ...current, cover: event.target.files?.[0] || null }))} />
-          </label>
-          <label>
-            <span>Book file</span>
-            <input type="file" accept=".pdf,.epub,.mobi,.txt" onChange={(event) => setBookForm((current) => ({ ...current, content: event.target.files?.[0] || null }))} />
-          </label>
-          <label>
-            <span>Preview file</span>
-            <input type="file" accept=".pdf,.epub,.mobi,.txt" onChange={(event) => setBookForm((current) => ({ ...current, preview: event.target.files?.[0] || null }))} />
-          </label>
-          <label className="creator-form-full">
-            <span>Description</span>
-            <textarea rows={4} value={bookForm.description} onChange={(event) => setBookForm((current) => ({ ...current, description: event.target.value }))} />
-          </label>
-          <label className="creator-form-full">
-            <span>Preview excerpt</span>
-            <textarea rows={4} value={bookForm.previewExcerptText} onChange={(event) => setBookForm((current) => ({ ...current, previewExcerptText: event.target.value }))} />
-          </label>
-        </div>
-
-        {busy ? <div className="creator-upload-progress">Uploading... {progress}%</div> : null}
-
-        <div className="creator-form-actions">
-          <button type="button" className="creator-ghost-btn" disabled={busy} onClick={() => submitBook("draft")}>
-            Save draft
-          </button>
-          <button type="button" className="creator-primary-btn" disabled={busy} onClick={() => submitBook("published")}>
-            Publish book
-          </button>
-        </div>
-      </section>
+      <BookUploadForm
+        value={bookForm}
+        onChange={(key, nextValue) => setBookForm((current) => ({ ...current, [key]: nextValue }))}
+        busy={busy}
+        progress={progress}
+        onSaveDraft={() => submitBook("draft")}
+        onPublish={() => submitBook("published")}
+      />
 
       {editingItem ? <BookEditPanel item={editingItem} onCancel={() => setEditingItem(null)} onSave={saveEdit} /> : null}
 

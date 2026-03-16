@@ -43,17 +43,17 @@ const resolveSourceUrl = (item) => {
 const resolvePreviewSourceUrl = (item) => {
   if (!item || !item.payload) return "";
   if (item.itemType === "track") {
-    return String(item.payload.previewUrl || item.payload.audioUrl || "");
+    return String(item.payload.previewUrl || (Number(item.payload.price || 0) <= 0 ? item.payload.audioUrl || "" : ""));
   }
   if (item.itemType === "album") {
     const firstTrack = Array.isArray(item.payload.tracks) ? item.payload.tracks[0] : null;
-    return String(firstTrack?.previewUrl || "");
+    return String(firstTrack?.previewUrl || (Number(item.payload.price || 0) <= 0 ? firstTrack?.trackUrl || "" : ""));
   }
   if (item.itemType === "book") {
-    return String(item.payload.previewUrl || "");
+    return String(item.payload.previewUrl || (item.payload.isFreePreview ? item.payload.contentUrl || item.payload.fileUrl || "" : ""));
   }
   if (item.itemType === "video") {
-    return String(item.payload.previewUrl || item.payload.videoUrl || "");
+    return String(item.payload.previewClipUrl || (Number(item.payload.price || 0) <= 0 ? item.payload.videoUrl || "" : ""));
   }
   return "";
 };

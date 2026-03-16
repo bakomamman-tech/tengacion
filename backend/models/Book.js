@@ -56,6 +56,19 @@ const BookSchema = new mongoose.Schema(
       trim: true,
       maxlength: 120,
     },
+    language: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 60,
+    },
+    tags: [
+      {
+        type: String,
+        trim: true,
+        maxlength: 40,
+      },
+    ],
     fileFormat: {
       type: String,
       default: "",

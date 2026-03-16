@@ -749,7 +749,9 @@
 .creator-profile-summary,
 .creator-panel,
 .creator-category-card,
+.creator-lane-card,
 .creator-metric-card,
+.creator-stats-card,
 .creator-upload-notice,
 .creator-editor-card,
 .creator-restricted-card,
@@ -767,6 +769,73 @@
 
 .creator-category-form.podcasts {
   background: linear-gradient(180deg, rgba(241, 248, 251, 0.96), rgba(229, 239, 244, 0.9));
+}
+
+.creator-stats-card {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 249, 241, 0.76);
+}
+
+.creator-stats-card strong {
+  font-size: 1.4rem;
+  font-family: var(--creator-font-display);
+}
+
+.creator-stats-card small {
+  color: var(--creator-muted);
+  line-height: 1.5;
+}
+
+.creator-stats-card--success {
+  background: rgba(49, 93, 67, 0.1);
+}
+
+.creator-stats-card--warning {
+  background: rgba(156, 112, 29, 0.1);
+}
+
+.creator-lane-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.creator-lane-card__glow {
+  position: absolute;
+  inset: -25% auto auto -10%;
+  width: 180px;
+  height: 180px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--creator-lane-accent) 24%, transparent);
+  filter: blur(12px);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.creator-upload-panel {
+  background:
+    radial-gradient(circle at top right, rgba(183, 138, 66, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 250, 241, 0.94), rgba(249, 242, 230, 0.88));
+}
+
+.creator-upload-panel--wide {
+  background:
+    radial-gradient(circle at top right, rgba(32, 86, 109, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(255, 250, 241, 0.94), rgba(243, 247, 249, 0.9));
+}
+
+.creator-upload-panel--series {
+  background:
+    radial-gradient(circle at top left, rgba(32, 86, 109, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(248, 252, 255, 0.94), rgba(239, 246, 249, 0.9));
+}
+
+.creator-upload-panel--books {
+  background:
+    radial-gradient(circle at top left, rgba(183, 138, 66, 0.14), transparent 24%),
+    linear-gradient(180deg, rgba(255, 250, 244, 0.94), rgba(249, 239, 226, 0.9));
 }
 
 .creator-profile-summary-head {

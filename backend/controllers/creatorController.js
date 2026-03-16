@@ -144,6 +144,8 @@ const serializeBookItem = (book, earnings = 0) => ({
   description: book.description || "",
   price: Number(book.price || 0),
   genre: book.genre || "",
+  language: book.language || "",
+  tags: Array.isArray(book.tags) ? book.tags : [],
   coverImageUrl: book.coverImageUrl || book.coverUrl || "",
   previewUrl: book.previewUrl || "",
   fileFormat: book.fileFormat || "",
@@ -705,6 +707,74 @@ exports.updateCreatorProfile = asyncHandler(async (req, res) => {
       profile,
       user,
       creatorTypes: nextCreatorTypes,
+    }),
+  });
+});
+
+exports.getCreatorContentSummary = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const { profile, user } = await getProfileBundle(req.user.id);
+  if (!profile) {
+    return res.status(404).json({ error: "Creator profile not found" });
+  }
+  if (!isCreatorRegistrationCompleted(profile)) {
+    return res.status(403).json({ error: "Complete creator registration to access the dashboard" });
+  }
+
+  const payload = await getDashboardPayload({ profile, user });
+  return res.json({
+    creatorProfile: payload.creatorProfile,
+    summary: payload.summary,
+    categories: payload.categories,
+    verificationOverview: payload.verificationOverview,
+    recentActivity: payload.recentActivity,
+    support: payload.support,
+  });
+});
+
+exports.getCreatorPrivateContent = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const { profile, user } = await getProfileBundle(req.user.id);
+  if (!profile) {
+    return res.status(404).json({ error: "Creator profile not found" });
+  }
+  if (!isCreatorRegistrationCompleted(profile)) {
+    return res.status(403).json({ error: "Complete creator registration to access the dashboard" });
+  }
+
+  const payload = await getDashboardPayload({ profile, user });
+  return res.json({
+    creatorProfile: payload.creatorProfile,
+    content: payload.content,
+    categories: payload.categories,
+  });
+});
+
+exports.updatePodcastSeries = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const existing = await CreatorProfile.findOne({ userId: req.user.id });
+  if (!existing) {
+    return res.status(404).json({ error: "Creator profile not found" });
+  }
+
+  existing.podcastsProfile = normalizePodcastsProfile({
+    ...(existing.podcastsProfile?.toObject?.() || existing.podcastsProfile || {}),
+    ...(req.body || {}),
+  });
+
+  await existing.save();
+
+  const user = await User.findById(req.user.id)
+    .select("name username email avatar phone country isVerified emailVerified followers")
+    .lean();
+
+  return res.json({
+    success: true,
+    podcastsProfile: normalizePodcastsProfile(existing.podcastsProfile),
+    creatorProfile: serializeCreatorProfile({
+      profile: existing.toObject(),
+      user,
+      creatorTypes: normalizeCreatorTypes(existing.creatorTypes),
     }),
   });
 });

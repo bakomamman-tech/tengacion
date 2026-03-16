@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 
-import CreatorCategoryCard from "../../components/creator/CreatorCategoryCard";
+import CreatorLaneCard from "../../components/creator/CreatorLaneCard";
 import CreatorProfileSummaryCard from "../../components/creator/CreatorProfileSummaryCard";
+import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
 import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import {
@@ -20,9 +21,38 @@ export default function CreatorDashboardPage() {
       <div className="creator-page-main">
         <CreatorProfileSummaryCard creatorProfile={creatorProfile} summary={dashboard.summary} />
 
+        <section className="creator-metric-grid">
+          <CreatorStatsCard
+            label="Total uploads"
+            value={creatorLanes.reduce(
+              (sum, key) => sum + Number(dashboard.categories?.[CREATOR_CATEGORY_CONFIG[key]?.dashboardKey]?.uploads || 0),
+              0
+            )}
+            helper="Published releases live across your active lanes."
+            tone="success"
+          />
+          <CreatorStatsCard
+            label="Drafts"
+            value={creatorLanes.reduce(
+              (sum, key) => sum + Number(dashboard.categories?.[CREATOR_CATEGORY_CONFIG[key]?.dashboardKey]?.drafts || 0),
+              0
+            )}
+            helper="Unfinished work waiting in your studio."
+          />
+          <CreatorStatsCard
+            label="Pending review"
+            value={creatorLanes.reduce(
+              (sum, key) => sum + Number(dashboard.categories?.[CREATOR_CATEGORY_CONFIG[key]?.dashboardKey]?.underReview || 0),
+              0
+            )}
+            helper="Uploads currently in moderation or copyright review."
+            tone="warning"
+          />
+        </section>
+
         <section className="creator-panel-grid">
           {creatorLanes.map((key) => (
-            <CreatorCategoryCard
+            <CreatorLaneCard
               key={key}
               categoryKey={key}
               stats={dashboard.categories?.[CREATOR_CATEGORY_CONFIG[key]?.dashboardKey] || {}}

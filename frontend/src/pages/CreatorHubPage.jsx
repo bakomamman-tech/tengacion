@@ -1,115 +1,79 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+
 import {
   createCheckout,
-  getCreatorHub,
-  getProfile,
+  getDownloadUrl,
+  getPublicCreatorProfile,
   getStreamUrl,
   resolveImage,
   toggleFollowCreator,
 } from "../api";
-import "./creator-redesign.css";
+import CreatorHero from "../components/creator/media/CreatorHero";
+import CreatorContentShelf from "../components/creator/media/CreatorContentShelf";
+import { useAuth } from "../context/AuthContext";
+import "./creator-public.css";
 
-const NAV_ITEMS = [
-  { label: "Home", type: "section" },
-  { label: "Music", type: "route", route: "music" },
-  { label: "Videos", type: "section" },
-  { label: "Save", type: "action" },
-  { label: "Tip", type: "action" },
-  { label: "Buy", type: "action" },
-  { label: "More", type: "action" },
+const PUBLIC_TABS = [
+  { key: "home", label: "Home", suffix: "" },
+  { key: "music", label: "Music", suffix: "/music" },
+  { key: "albums", label: "Albums", suffix: "/albums" },
+  { key: "podcasts", label: "Podcasts", suffix: "/podcasts" },
+  { key: "books", label: "Books", suffix: "/books" },
 ];
 
-const CREATOR_SHARE_RATE = 0.4;
-const PLATFORM_SHARE_RATE = 0.6;
-const money = (value) => `NGN ${Number(value || 0).toLocaleString()}`;
+const formatMoney = (value = 0) =>
+  Number(value || 0) <= 0 ? "Free" : `NGN ${Number(value || 0).toLocaleString()}`;
 
-const getLinkByLabel = (links, label) =>
-  (Array.isArray(links) ? links : []).find((entry) =>
-    String(entry?.label || "").toLowerCase().includes(String(label || "").toLowerCase())
-  )?.url || "";
+const resolveTab = (pathname = "") => {
+  const lowerPath = String(pathname || "").toLowerCase();
+  const match = PUBLIC_TABS.find((tab) => tab.suffix && lowerPath.endsWith(tab.suffix));
+  return match?.key || "home";
+};
 
-const fallbackCards = [
-  {
-    name: "Kwame Beats",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=640&q=80",
-  },
-  {
-    name: "Nyasha Reads",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=640&q=80",
-  },
-  {
-    name: "DJ Malik",
-    image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=640&q=80",
-  },
-  {
-    name: "Adama Kole",
-    image: "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=640&q=80",
-  },
-];
-
-function makePlayable(entry, creatorName, itemType) {
-  return {
-    id: entry.id,
-    itemType,
-    title: entry.title,
-    creatorName,
-    coverUrl: entry.coverUrl,
-    streamUrl: entry.streamUrl,
-    isFree: entry.isFree,
-    priceNGN: entry.priceNGN || 0,
-  };
-}
+const normalizePreviewPayload = ({ item, src, mode = "preview" }) => ({
+  id: item.id,
+  kind: item.mediaType,
+  title: item.title,
+  subtitle: item.subtitle || "",
+  artwork: item.coverUrl || "",
+  src,
+  mode,
+});
 
 export default function CreatorHubPage() {
   const { creatorId } = useParams();
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [hub, setHub] = useState(null);
-  const [viewer, setViewer] = useState(null);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [activeNav, setActiveNav] = useState("Home");
-  const [queue, setQueue] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(-1);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const audioRef = useRef(null);
+  const [payload, setPayload] = useState(null);
+  const [activePreview, setActivePreview] = useState(null);
+  const [followBusy, setFollowBusy] = useState(false);
+
+  const activeTab = useMemo(() => resolveTab(location.pathname), [location.pathname]);
+  const isLoggedIn = Boolean(user?._id || user?.id);
 
   useEffect(() => {
-    const path = String(location.pathname || "").toLowerCase();
-    if (path.endsWith("/music")) {
-      setActiveNav("Music");
-    } else {
-      setActiveNav("Home");
-    }
-  }, [location.pathname]);
-
-  useEffect(() => {
-    let alive = true;
+    let cancelled = false;
 
     const load = async () => {
       setLoading(true);
       setError("");
       try {
-        const [hubData, me] = await Promise.all([getCreatorHub(creatorId), getProfile().catch(() => null)]);
-        if (!alive) {
-          return;
+        const response = await getPublicCreatorProfile(creatorId);
+        if (!cancelled) {
+          setPayload(response || null);
         }
-        setHub(hubData);
-        setViewer(me || null);
-        const creatorUserId = String(hubData?.creator?.userId || "");
-        const following = Array.isArray(me?.following) ? me.following.map((id) => String(id)) : [];
-        setIsFollowing(Boolean(creatorUserId && following.includes(creatorUserId)));
       } catch (err) {
-        if (alive) {
-          setError(err.message || "Failed to load creator page.");
+        if (!cancelled) {
+          setError(err?.message || "Failed to load this creator page.");
         }
       } finally {
-        if (alive) {
+        if (!cancelled) {
           setLoading(false);
         }
       }
@@ -117,439 +81,505 @@ export default function CreatorHubPage() {
 
     load();
     return () => {
-      alive = false;
+      cancelled = true;
     };
   }, [creatorId]);
 
-  const creator = hub?.creator || null;
-  const singles = useMemo(
-    () => (Array.isArray(hub?.tracks) ? hub.tracks : []).filter((entry) => String(entry.kind || "music") === "music"),
-    [hub?.tracks]
-  );
-  const podcasts = useMemo(() => (Array.isArray(hub?.podcasts) ? hub.podcasts : []), [hub?.podcasts]);
-  const albums = useMemo(() => (Array.isArray(hub?.albums) ? hub.albums : []), [hub?.albums]);
-  const books = useMemo(() => (Array.isArray(hub?.books) ? hub.books : []), [hub?.books]);
-  const videos = useMemo(() => (Array.isArray(hub?.videos) ? hub.videos : []), [hub?.videos]);
+  const creator = payload?.creator || null;
+  const music = payload?.music || { tracks: [], albums: [], videos: [] };
+  const podcasts = payload?.podcasts || { series: {}, episodes: [] };
+  const books = Array.isArray(payload?.books) ? payload.books : [];
+  const featured = payload?.featured || null;
+  const viewer = payload?.viewer || {};
 
-  const playlist = useMemo(() => {
-    const creatorName = creator?.displayName || "Creator";
-    return [
-      ...singles.map((entry) => makePlayable(entry, creatorName, "song")),
-      ...podcasts.map((entry) => makePlayable(entry, creatorName, "podcast")),
-    ];
-  }, [creator?.displayName, podcasts, singles]);
-
-  const current = currentIndex >= 0 ? queue[currentIndex] : null;
-
-  const playQueueItem = async (item, index, fullQueue = playlist) => {
-    if (!item?.id) {
-      return;
+  const requireViewer = () => {
+    if (isLoggedIn) {
+      return true;
     }
-    try {
-      const streamPayload = await getStreamUrl(item.itemType, item.id).catch(() => null);
-      const nextItem = {
-        ...item,
-        streamUrl: streamPayload?.streamUrl || item.streamUrl || "",
-      };
-      if (!nextItem.streamUrl) {
-        throw new Error("Preview unavailable.");
-      }
-      setQueue(fullQueue);
-      setCurrentIndex(index);
-      if (audioRef.current) {
-        audioRef.current.src = nextItem.streamUrl;
-        await audioRef.current.play();
-        setIsPlaying(true);
-      }
-    } catch (err) {
-      toast.error(err.message || "Playback unavailable right now.");
-    }
+    const returnTo = `${location.pathname}${location.search}`;
+    navigate(`/?returnTo=${encodeURIComponent(returnTo)}`);
+    return false;
   };
 
-  const togglePlay = async () => {
-    if (!audioRef.current) {
-      return;
-    }
-    if (!current && playlist.length) {
-      await playQueueItem(playlist[0], 0, playlist);
-      return;
-    }
-    if (audioRef.current.paused) {
-      await audioRef.current.play();
-      setIsPlaying(true);
-    } else {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    }
-  };
-
-  const playNext = async () => {
-    if (!queue.length) {
-      return;
-    }
-    const next = (currentIndex + 1) % queue.length;
-    await playQueueItem(queue[next], next, queue);
-  };
-
-  const playPrev = async () => {
-    if (!queue.length) {
-      return;
-    }
-    const prev = (currentIndex - 1 + queue.length) % queue.length;
-    await playQueueItem(queue[prev], prev, queue);
-  };
-
-  const handleBuy = async (itemType, itemId) => {
-    try {
-      const checkout = await createCheckout({ itemType, itemId, currencyMode: "NG" });
-      if (checkout?.checkoutUrl) {
-        window.open(checkout.checkoutUrl, "_blank", "noopener,noreferrer");
-      }
-    } catch (err) {
-      toast.error(err.message || "Checkout unavailable.");
-    }
+  const refreshPublicProfile = async () => {
+    const nextPayload = await getPublicCreatorProfile(creatorId);
+    setPayload(nextPayload || null);
+    return nextPayload;
   };
 
   const handleFollow = async () => {
-    if (!viewer?._id && !viewer?.id) {
-      navigate("/");
+    if (!creator?.id || !requireViewer()) {
       return;
     }
     try {
-      const payload = await toggleFollowCreator(creatorId);
-      setIsFollowing(Boolean(payload?.following));
-      setHub((prev) =>
-        prev
+      setFollowBusy(true);
+      const response = await toggleFollowCreator(creator.id);
+      setPayload((current) =>
+        current
           ? {
-              ...prev,
+              ...current,
+              viewer: {
+                ...(current.viewer || {}),
+                isFollowing: Boolean(response?.following),
+              },
               creator: {
-                ...prev.creator,
-                followersCount: Number(payload?.followersCount ?? prev.creator.followersCount ?? 0),
+                ...(current.creator || {}),
+                followersCount: Number(response?.followersCount ?? current.creator?.followersCount ?? 0),
+              },
+              stats: {
+                ...(current.stats || {}),
+                followersCount: Number(response?.followersCount ?? current.stats?.followersCount ?? 0),
               },
             }
-          : prev
+          : current
       );
     } catch (err) {
-      toast.error(err.message || "Could not follow creator.");
+      toast.error(err?.message || "Could not follow this creator right now.");
+    } finally {
+      setFollowBusy(false);
     }
   };
 
+  const handleBuy = async (item) => {
+    if (!item?.id || !requireViewer()) {
+      return;
+    }
+    try {
+      const checkout = await createCheckout({
+        itemType: item.itemType,
+        itemId: item.id,
+        currencyMode: "NG",
+      });
+      if (checkout?.checkoutUrl) {
+        window.open(checkout.checkoutUrl, "_blank", "noopener,noreferrer");
+      } else {
+        throw new Error("Checkout unavailable");
+      }
+    } catch (err) {
+      toast.error(err?.message || "Could not start checkout.");
+    }
+  };
+
+  const handlePreview = async (item) => {
+    if (!item) {
+      return;
+    }
+
+    if (item.mediaType === "document") {
+      const previewUrl = item.previewUrl || item.streamUrl || item.route;
+      if (previewUrl) {
+        window.open(previewUrl, "_blank", "noopener,noreferrer");
+      } else {
+        toast.error("Preview unavailable for this book.");
+      }
+      return;
+    }
+
+    const source = item.previewUrl || item.streamUrl;
+    if (!source) {
+      toast.error("Preview unavailable for this release.");
+      return;
+    }
+
+    setActivePreview(normalizePreviewPayload({ item, src: source, mode: "preview" }));
+  };
+
+  const handleStream = async (item) => {
+    if (!item) {
+      return;
+    }
+
+    if (item.mediaType === "document") {
+      const targetUrl = item.streamUrl;
+      if (targetUrl) {
+        window.open(targetUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+    }
+
+    try {
+      const streamPayload = await getStreamUrl(item.itemType, item.id);
+      const streamUrl = streamPayload?.streamUrl || item.streamUrl || item.previewUrl || "";
+      if (!streamUrl) {
+        if (item.canBuy) {
+          await handleBuy(item);
+          return;
+        }
+        throw new Error("Stream unavailable for this release.");
+      }
+      setActivePreview(normalizePreviewPayload({ item, src: streamUrl, mode: "stream" }));
+    } catch (err) {
+      toast.error(err?.message || "Could not start playback.");
+    }
+  };
+
+  const handleDownload = async (item) => {
+    if (!item) {
+      return;
+    }
+
+    if (item.itemType === "album" && item.route) {
+      navigate(item.route);
+      return;
+    }
+
+    if (item.downloadUrl) {
+      window.open(item.downloadUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    if (item.canBuy) {
+      await handleBuy(item);
+      return;
+    }
+
+    if (!requireViewer()) {
+      return;
+    }
+
+    try {
+      const downloadPayload = await getDownloadUrl(item.itemType, item.id);
+      if (!downloadPayload?.downloadUrl) {
+        throw new Error("Download unavailable");
+      }
+      window.open(downloadPayload.downloadUrl, "_blank", "noopener,noreferrer");
+      await refreshPublicProfile().catch(() => null);
+    } catch (err) {
+      toast.error(err?.message || "Could not prepare download.");
+    }
+  };
+
+  const featuredItem = featured?.item || null;
+
   if (loading) {
-    return <div className="cpub-page"><div className="cpub-empty">Loading creator page...</div></div>;
+    return (
+      <div className="creator-public-page">
+        <div className="creator-public-status">Loading creator studio...</div>
+      </div>
+    );
   }
 
   if (error || !creator) {
-    return <div className="cpub-page"><div className="cpub-empty">{error || "Creator page unavailable."}</div></div>;
+    return (
+      <div className="creator-public-page">
+        <div className="creator-public-status creator-public-status--error">
+          {error || "Creator page unavailable."}
+        </div>
+      </div>
+    );
   }
 
-  const creatorCover =
-    resolveImage(creator.bannerUrl) ||
-    "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1800&q=80";
-  const creatorAvatar = resolveImage(creator.avatarUrl) || "/avatar.png";
-  const youtubeUrl = getLinkByLabel(creator.links, "youtube");
-  const spotifyUrl = getLinkByLabel(creator.links, "spotify");
-  const spotlightTrack = singles[0] || null;
-  const merchAlbum = albums[0] || null;
-  const merchBook = books[0] || null;
-  const merchVideo = videos[0] || null;
-  const headerIcons = ["Chat", "Mix", "Search"];
-  const grossCreatorRevenue = Number(hub?.stats?.revenueNGN || 0);
-  const creatorRevenueShare = grossCreatorRevenue * CREATOR_SHARE_RATE;
-  const platformRevenueShare = grossCreatorRevenue * PLATFORM_SHARE_RATE;
-
-  return (
-    <div className="cpub-page cpub-page-exact">
-      <header className="cpub-topbar">
-        <div className="cpub-brand">
-          <span className="cpub-brand-mark">T</span>
-          <span>Tengacion</span>
+  const renderHome = () => (
+    <>
+      <CreatorContentShelf
+        title="Top Singles"
+        subtitle="Fresh tracks ready to preview, stream, download, or buy."
+        creatorId={creator.id}
+        items={music.tracks}
+        emptyMessage="No music has been published yet."
+        onPreview={handlePreview}
+        onStream={handleStream}
+        onDownload={handleDownload}
+        onBuy={handleBuy}
+      />
+      <CreatorContentShelf
+        title="Albums & EPs"
+        subtitle="Premium bundles presented like collectible drops."
+        creatorId={creator.id}
+        items={music.albums}
+        emptyMessage="No albums or EPs have been published yet."
+        onPreview={handlePreview}
+        onStream={handleStream}
+        onDownload={handleDownload}
+        onBuy={handleBuy}
+      />
+      <CreatorContentShelf
+        title="Video Premieres"
+        subtitle="Music visuals, teasers, and video releases."
+        creatorId={creator.id}
+        items={music.videos}
+        emptyMessage="No videos have been published yet."
+        onPreview={handlePreview}
+        onStream={handleStream}
+        onDownload={handleDownload}
+        onBuy={handleBuy}
+      />
+      <section className="creator-public-series">
+        <div className="creator-public-series__copy">
+          <p className="creator-public-series__eyebrow">Podcast Series</p>
+          <h2>{podcasts.series?.seriesTitle || podcasts.series?.podcastName || "Podcast Studio"}</h2>
+          <p>{podcasts.series?.description || podcasts.series?.themeOrTopic || "Episodes, commentary, and long-form spoken-word releases."}</p>
         </div>
-        <div className="cpub-top-icons">
-          {headerIcons.map((label) => (
-            <button key={label} type="button" aria-label={label} className="cpub-top-icon">
-              {label.slice(0, 1)}
-            </button>
-          ))}
-        </div>
-      </header>
-
-      <section
-        className="cpub-hero cpub-hero-full"
-        style={{ backgroundImage: `linear-gradient(90deg, rgba(10, 54, 31, 0.35), rgba(177, 209, 147, 0.16)), url(${creatorCover})` }}
-      >
-        <div className="cpub-hero-face-wrap">
-          <img className="cpub-main-image" src={creatorCover} alt={creator.displayName} />
-          <img className="cpub-avatar cpub-avatar-large" src={creatorAvatar} alt={creator.displayName} />
-        </div>
-        <div className="cpub-hero-copy cpub-hero-copy-exact">
-          <h1>
-            {creator.displayName}
-            {creator.verified ? <span className="verify">V</span> : null}
-          </h1>
-          <p className="meta">{(Array.isArray(creator.genres) ? creator.genres : []).join(" | ") || "Afrobeat | Author | Comedian"}</p>
-          <p className="stats">
-            {(creator.followersCount || 0).toLocaleString()} Followers | {(creator.monthlyListeners || 0).toLocaleString()} Supporters
-          </p>
-          <p className="bio">{creator.bio || "Music and stories from the heart of Africa."}</p>
-          <div className="actions">
-            <button
-              type="button"
-              className="primary"
-              onClick={() => {
-                if (spotlightTrack) {
-                  playQueueItem(makePlayable(spotlightTrack, creator.displayName, "song"), 0, playlist);
-                }
-              }}
-            >
-              Stream Latest Single
-            </button>
-            <button type="button" className="ghost" onClick={handleFollow}>
-              {isFollowing ? "Following" : "Follow"}
-            </button>
-          </div>
+        <div className="creator-public-series__meta">
+          <span>{podcasts.series?.hostName || creator.displayName}</span>
+          <strong>{Number(podcasts.series?.totalEpisodes || 0)} episodes</strong>
         </div>
       </section>
+      <CreatorContentShelf
+        title="Podcast Episodes"
+        subtitle="Series episodes and spoken-word releases."
+        creatorId={creator.id}
+        items={podcasts.episodes}
+        emptyMessage="No podcast episodes have been published yet."
+        onPreview={handlePreview}
+        onStream={handleStream}
+        onDownload={handleDownload}
+        onBuy={handleBuy}
+      />
+      <CreatorContentShelf
+        title="Book Publishing"
+        subtitle="Beautiful covers, previews, downloads, and premium reading releases."
+        creatorId={creator.id}
+        items={books}
+        emptyMessage="No books have been published yet."
+        onPreview={handlePreview}
+        onStream={handleStream}
+        onDownload={handleDownload}
+        onBuy={handleBuy}
+      />
+    </>
+  );
 
-      <nav className="cpub-sticky-nav cpub-sticky-nav-exact">
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.label}
-            type="button"
-            className={activeNav === item.label ? "active" : ""}
-            onClick={() => {
-              setActiveNav(item.label);
-              if (item.route) {
-                navigate(`/creators/${creatorId}/${item.route}`);
-              }
-            }}
+  const renderTabContent = () => {
+    if (activeTab === "music") {
+      return (
+        <>
+          <CreatorContentShelf
+            title="Singles"
+            subtitle="Tracks available now."
+            creatorId={creator.id}
+            items={music.tracks}
+            emptyMessage="No singles published yet."
+            onPreview={handlePreview}
+            onStream={handleStream}
+            onDownload={handleDownload}
+            onBuy={handleBuy}
+          />
+          <CreatorContentShelf
+            title="Video releases"
+            subtitle="Music videos and preview clips."
+            creatorId={creator.id}
+            items={music.videos}
+            emptyMessage="No videos published yet."
+            onPreview={handlePreview}
+            onStream={handleStream}
+            onDownload={handleDownload}
+            onBuy={handleBuy}
+          />
+        </>
+      );
+    }
+
+    if (activeTab === "albums") {
+      return (
+        <CreatorContentShelf
+          title="Albums & EPs"
+          subtitle="Full projects and collectible releases."
+          creatorId={creator.id}
+          items={music.albums}
+          emptyMessage="No albums or EPs published yet."
+          onPreview={handlePreview}
+          onStream={handleStream}
+          onDownload={handleDownload}
+          onBuy={handleBuy}
+        />
+      );
+    }
+
+    if (activeTab === "podcasts") {
+      return (
+        <>
+          <section className="creator-public-series">
+            <div className="creator-public-series__copy">
+              <p className="creator-public-series__eyebrow">Series Profile</p>
+              <h2>{podcasts.series?.seriesTitle || podcasts.series?.podcastName || "Podcast"}</h2>
+              <p>{podcasts.series?.description || podcasts.series?.themeOrTopic || "Podcast episodes published on Tengacion."}</p>
+            </div>
+            <div className="creator-public-series__meta">
+              <span>{podcasts.series?.hostName || creator.displayName}</span>
+              <strong>{Number(podcasts.series?.totalEpisodes || 0)} episodes</strong>
+            </div>
+          </section>
+          <CreatorContentShelf
+            title="Episodes"
+            subtitle="Preview, stream, download, or unlock."
+            creatorId={creator.id}
+            items={podcasts.episodes}
+            emptyMessage="No episodes published yet."
+            onPreview={handlePreview}
+            onStream={handleStream}
+            onDownload={handleDownload}
+            onBuy={handleBuy}
+          />
+        </>
+      );
+    }
+
+    if (activeTab === "books") {
+      return (
+        <CreatorContentShelf
+          title="Published books"
+          subtitle="Books, manuscripts, and digital releases."
+          creatorId={creator.id}
+          items={books}
+          emptyMessage="No books published yet."
+          onPreview={handlePreview}
+          onStream={handleStream}
+          onDownload={handleDownload}
+          onBuy={handleBuy}
+        />
+      );
+    }
+
+    return renderHome();
+  };
+
+  return (
+    <div className="creator-public-page">
+      <CreatorHero
+        creator={{
+          ...creator,
+          bannerUrl: resolveImage(creator.bannerUrl),
+          avatarUrl: resolveImage(creator.avatarUrl),
+        }}
+        stats={payload?.stats}
+        isOwner={Boolean(viewer.isOwner)}
+        isFollowing={Boolean(viewer.isFollowing)}
+        onFollow={followBusy ? () => null : handleFollow}
+        onOpenStudio={() => navigate("/creator/dashboard")}
+      />
+
+      <nav className="creator-public-tabs" aria-label="Creator content navigation">
+        {PUBLIC_TABS.map((tab) => (
+          <Link
+            key={tab.key}
+            to={`/creators/${creator.id}${tab.suffix}`}
+            className={`creator-public-tab${activeTab === tab.key ? " is-active" : ""}`}
           >
-            {item.label}
-          </button>
+            {tab.label}
+          </Link>
         ))}
       </nav>
 
-      <div className="cpub-layout cpub-layout-exact">
-        <main className="cpub-main-col">
-          <section className="cpub-card cpub-card-hero-section">
-            <div className="cpub-section-head">
-              <h2>Spotlight</h2>
-              <div className="cpub-dots"><span /><span /><span className="active" /></div>
-            </div>
-            {spotlightTrack ? (
-              <div className="spotlight spotlight-exact">
-                <img src={resolveImage(spotlightTrack.coverUrl) || creatorAvatar} alt={spotlightTrack.title} />
-                <div>
-                  <h3>{spotlightTrack.title}</h3>
-                  <p>New Hit Single Out Now!</p>
-                  <button
-                    type="button"
-                    className="primary"
-                    onClick={() => playQueueItem(makePlayable(spotlightTrack, creator.displayName, "song"), 0, playlist)}
-                  >
-                    {spotlightTrack.isFree ? "Listen Preview" : `Unlock Full Song ${money(spotlightTrack.priceNGN || 0)}`}
-                  </button>
-                </div>
+      <div className="creator-public-layout">
+        <main className="creator-public-main">
+          <section className="creator-public-featured">
+            <div className="creator-public-featured__copy">
+              <p className="creator-public-featured__eyebrow">{featured?.headline || "Featured release"}</p>
+              <h2>{featuredItem?.title || "New work arriving soon"}</h2>
+              <p>{featuredItem?.description || creator.bio || "Stream the latest creator release and explore the full studio."}</p>
+              <div className="creator-public-featured__actions">
+                {featuredItem ? (
+                  <>
+                    {featuredItem.canPreview ? (
+                      <button type="button" className="creator-secondary-btn" onClick={() => handlePreview(featuredItem)}>
+                        Preview
+                      </button>
+                    ) : null}
+                    {featuredItem.canStream ? (
+                      <button type="button" className="creator-primary-btn" onClick={() => handleStream(featuredItem)}>
+                        {featuredItem.mediaType === "document" ? "Read now" : "Stream now"}
+                      </button>
+                    ) : null}
+                    {featuredItem.canDownload ? (
+                      <button type="button" className="creator-ghost-btn" onClick={() => handleDownload(featuredItem)}>
+                        Download
+                      </button>
+                    ) : null}
+                    {featuredItem.canBuy ? (
+                      <button type="button" className="creator-ghost-btn" onClick={() => handleBuy(featuredItem)}>
+                        Buy for {formatMoney(featuredItem.price)}
+                      </button>
+                    ) : null}
+                  </>
+                ) : null}
               </div>
-            ) : <p className="empty">No singles uploaded yet.</p>}
-          </section>
-
-          <section className="cpub-card">
-            <div className="cpub-section-head">
-              <h2>Top Singles</h2>
-              <button type="button" className="cpub-view-all">View All</button>
             </div>
-            {singles.length ? singles.map((item, index) => (
-              <article key={item.id} className="single-row single-row-exact">
-                <img src={resolveImage(item.coverUrl) || creatorAvatar} alt={item.title} />
-                <div>
-                  <strong>{item.title}</strong>
-                  <p>Play Now {money(item.priceNGN || 0)}</p>
-                </div>
-                <span>{money(item.priceNGN || 0)}</span>
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={() => playQueueItem(makePlayable(item, creator.displayName, "song"), index, playlist)}
-                >
-                  {item.isFree ? "Listen Preview" : index % 3 === 0 ? "Buy Now" : "Unlock"}
-                </button>
-              </article>
-            )) : <p className="empty">No singles uploaded yet.</p>}
-          </section>
 
-          <section className="cpub-card">
-            <div className="cpub-section-head">
-              <h2>Merch & Offers</h2>
-              <a className="cpub-spotify-chip" href={spotifyUrl || "https://spotify.com"} target="_blank" rel="noreferrer">
-                Listen on Spotify
-              </a>
-            </div>
-            <div className="cpub-offers-grid">
-              <article className="cpub-offer-card">
-                <img src={resolveImage(merchAlbum?.coverUrl) || creatorAvatar} alt="Album bundle" />
-                <div>
-                  <strong>{merchAlbum?.title || "Album Bundle"}</strong>
-                  <p>Play Preview</p>
-                </div>
-                <button type="button" className="primary" onClick={() => merchAlbum && handleBuy("album", merchAlbum.id)}>
-                  {money(merchAlbum?.priceNGN || 2799)}
-                </button>
-              </article>
-              <article className="cpub-offer-card">
-                <img src={resolveImage(merchBook?.coverUrl || merchVideo?.coverUrl) || creatorAvatar} alt="Signed book" />
-                <div>
-                  <strong>{merchBook?.title || "Signed Book"}</strong>
-                  <p>Play Now</p>
-                </div>
-                <button type="button" className="primary" onClick={() => merchBook && handleBuy("ebook", merchBook.id)}>
-                  {money(merchBook?.priceNGN || 1969)}
-                </button>
-              </article>
-            </div>
-          </section>
-
-          <section className="cpub-card">
-            <h2>Albums</h2>
-            {albums.length ? (
-              <div className="tile-grid tile-grid-wide">
-                {albums.map((album) => (
-                  <article key={album.id} className="tile">
-                    <img src={resolveImage(album.coverUrl) || creatorAvatar} alt={album.title} />
-                    <strong>{album.title}</strong>
-                    <p>{money(album.priceNGN || 0)} | {Number(album.totalTracks || 0)} tracks</p>
-                    <div className="tile-actions">
-                      <button type="button" className="ghost" onClick={() => navigate(`/albums/${album.id}`)}>Preview</button>
-                      <button type="button" className="primary" onClick={() => handleBuy("album", album.id)}>Buy</button>
+            <div className="creator-public-preview">
+              {activePreview?.src ? (
+                <>
+                  <div className="creator-public-preview__head">
+                    <div>
+                      <p>{activePreview.mode === "stream" ? "Now streaming" : "Previewing"}</p>
+                      <strong>{activePreview.title}</strong>
+                      {activePreview.subtitle ? <span>{activePreview.subtitle}</span> : null}
                     </div>
-                  </article>
-                ))}
-              </div>
-            ) : <p className="empty">No albums uploaded yet.</p>}
-          </section>
-
-          <section className="cpub-card">
-            <h2>External Links</h2>
-            <div className="link-buttons cpub-link-buttons-exact">
-              <a href={youtubeUrl || "https://youtube.com"} target="_blank" rel="noreferrer">Visit YouTube</a>
-              <a href={spotifyUrl || "https://spotify.com"} target="_blank" rel="noreferrer">Visit Spotify</a>
+                  </div>
+                  {activePreview.kind === "video" ? (
+                    <video className="creator-public-preview__player" controls src={activePreview.src} poster={activePreview.artwork} />
+                  ) : activePreview.kind === "audio" ? (
+                    <div className="creator-public-preview__audio">
+                      <img src={resolveImage(activePreview.artwork) || "/avatar.png"} alt={activePreview.title} />
+                      <audio className="creator-public-preview__player" controls src={activePreview.src} />
+                    </div>
+                  ) : (
+                    <iframe className="creator-public-preview__frame" src={activePreview.src} title={activePreview.title} />
+                  )}
+                </>
+              ) : featuredItem?.coverUrl ? (
+                <div className="creator-public-preview__cover">
+                  <img src={resolveImage(featuredItem.coverUrl)} alt={featuredItem.title} />
+                </div>
+              ) : (
+                <div className="creator-public-preview__empty">
+                  Choose a release to preview, stream, or read.
+                </div>
+              )}
             </div>
           </section>
 
-          <section className="cpub-card">
-            <h2>You May Also Like</h2>
-            <div className="cpub-related-grid">
-              {fallbackCards.map((card) => (
-                <article key={card.name} className="cpub-related-card">
-                  <img src={card.image} alt={card.name} />
-                  <span>{card.name}</span>
-                </article>
+          {renderTabContent()}
+        </main>
+
+        <aside className="creator-public-side">
+          <section className="creator-public-panel">
+            <h3>Creator Snapshot</h3>
+            <div className="creator-public-side__list">
+              <div>
+                <span>Tracks</span>
+                <strong>{payload?.stats?.totalTracks || 0}</strong>
+              </div>
+              <div>
+                <span>Albums</span>
+                <strong>{payload?.stats?.totalAlbums || 0}</strong>
+              </div>
+              <div>
+                <span>Episodes</span>
+                <strong>{payload?.stats?.totalEpisodes || 0}</strong>
+              </div>
+              <div>
+                <span>Books</span>
+                <strong>{payload?.stats?.totalBooks || 0}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section className="creator-public-panel">
+            <h3>Publishing Identity</h3>
+            <p>{creator.bio || "A creator building across music, podcasts, and books on Tengacion."}</p>
+            <div className="creator-public-tags">
+              {(creator.genres || []).map((genre) => (
+                <span key={genre}>{genre}</span>
               ))}
             </div>
           </section>
-        </main>
 
-        <aside className="cpub-right-col">
-          <section className="cpub-side-rail-card">
-            <h3>Earnings</h3>
-            <p className="cpub-side-muted">Current week</p>
-            <strong className="cpub-side-total">{money(creatorRevenueShare)}</strong>
-            <div className="cpub-side-chart" aria-hidden="true">
-              <span style={{ height: "20%" }} />
-              <span style={{ height: "16%" }} />
-              <span style={{ height: "23%" }} />
-              <span style={{ height: "21%" }} />
-              <span style={{ height: "37%" }} />
-              <span style={{ height: "34%" }} />
-              <span style={{ height: "44%" }} />
-              <span style={{ height: "66%" }} />
-              <span style={{ height: "64%" }} />
+          <section className="creator-public-panel">
+            <h3>Links</h3>
+            <div className="creator-public-links">
+              {(creator.links || []).length ? (
+                creator.links.map((entry) => (
+                  <a key={entry.url} href={entry.url} target="_blank" rel="noreferrer">
+                    {entry.label || "Open link"}
+                  </a>
+                ))
+              ) : (
+                <span>No external links added yet.</span>
+              )}
             </div>
-            <ul className="cpub-side-list">
-              <li><span>Music Sales</span><b>{money(creatorRevenueShare * 0.17)}</b></li>
-              <li><span>Store Sales</span><b>{money(creatorRevenueShare * 0.2)}</b></li>
-              <li><span>Video Unlocks</span><b>{money(creatorRevenueShare * 0.12)}</b></li>
-              <li><span>Podcast Streams</span><b>{money(creatorRevenueShare * 0.11)}</b></li>
-              <li><span>Tips</span><b>{money(creatorRevenueShare * 0.06)}</b></li>
-            </ul>
-            <button type="button" className="cpub-rail-btn">Withdraw Earnings</button>
-          </section>
-
-          <section className="cpub-side-rail-card">
-            <div className="cpub-section-head compact">
-              <h3>Payout Account</h3>
-              <span className="cpub-soft-dot" />
-            </div>
-            <div className="cpub-payout-user">
-              <div className="cpub-payout-avatar">{creator.displayName.slice(0, 1).toUpperCase()}</div>
-              <div>
-                <strong>{creator.displayName}</strong>
-                <p>GTBank - 0441****8925</p>
-              </div>
-            </div>
-            <div className="cpub-payout-split">
-              <span>40% Creator</span>
-              <b>{money(creatorRevenueShare)}</b>
-            </div>
-            <div className="cpub-payout-split">
-              <span>60% Tengacion</span>
-              <b>{money(platformRevenueShare)}</b>
-            </div>
-            <button type="button" className="cpub-rail-btn">Manage Accounts</button>
-            <button type="button" className="cpub-rail-btn light">Add Account</button>
           </section>
         </aside>
-      </div>
-
-      <div className="cpub-mini-player cpub-mini-player-exact">
-        <audio
-          ref={audioRef}
-          onTimeUpdate={() => {
-            const node = audioRef.current;
-            if (!node) {
-              return;
-            }
-            setProgress(Number(node.currentTime || 0));
-            setDuration(Number(node.duration || 0));
-          }}
-          onEnded={playNext}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-        />
-        <div className="track-meta">
-          <img src={resolveImage(current?.coverUrl) || creatorAvatar} alt="Now playing" />
-          <div>
-            <strong>{current?.title || spotlightTrack?.title || "Nothing playing"}</strong>
-            <p>{current?.creatorName || creator.displayName}</p>
-          </div>
-        </div>
-        <div className="progress-area progress-area-exact">
-          <span>{Math.floor(progress)}:{String(Math.floor(progress % 60)).padStart(2, "0")}</span>
-          <input
-            type="range"
-            min="0"
-            max={Math.max(1, duration || 0)}
-            value={Math.min(progress, duration || 0)}
-            onChange={(event) => {
-              const next = Number(event.target.value || 0);
-              if (audioRef.current) {
-                audioRef.current.currentTime = next;
-              }
-              setProgress(next);
-            }}
-          />
-        </div>
-        <div className="controls">
-          <button type="button" onClick={playPrev}>B</button>
-          <button type="button" onClick={togglePlay}>{isPlaying ? "II" : "P"}</button>
-          <button type="button" onClick={playNext}>N</button>
-        </div>
-        <button
-          type="button"
-          className="unlock"
-          onClick={() => current && !current.isFree && handleBuy(current.itemType, current.id)}
-        >
-          Unlock {money(current?.priceNGN || spotlightTrack?.priceNGN || 499)}
-        </button>
       </div>
     </div>
   );

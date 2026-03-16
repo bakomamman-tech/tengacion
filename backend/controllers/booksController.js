@@ -21,6 +21,8 @@ const toBookPayload = (book) => ({
   description: book.description || "",
   price: Number(book.price) || 0,
   genre: book.genre || "",
+  language: book.language || "",
+  tags: Array.isArray(book.tags) ? book.tags : [],
   coverImageUrl: book.coverImageUrl || "",
   contentUrl: book.contentUrl || "",
   previewUrl: book.previewUrl || "",
@@ -98,6 +100,14 @@ exports.createBook = asyncHandler(async (req, res) => {
   let previewUrl = String(req.body?.previewUrl || "").trim();
   const price = Number(req.body?.price);
   const genre = String(req.body?.genre || "").trim();
+  const language = String(req.body?.language || "").trim();
+  const tags = Array.isArray(req.body?.tags)
+    ? req.body.tags
+    : String(req.body?.tags || "")
+        .split(",")
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean)
+        .slice(0, 12);
   const fileFormat = String(req.body?.fileFormat || "").trim().toLowerCase();
   const previewExcerptText = String(req.body?.previewExcerptText || req.body?.previewExcerpt || "").trim();
   const requestedStatus = resolveRequestedStatus(req.body);
@@ -140,6 +150,7 @@ exports.createBook = asyncHandler(async (req, res) => {
       creatorId: req.creatorProfile._id?.toString?.() || "",
       authorName: req.creatorProfile.displayName || "",
       genre,
+      language,
       fileFormat,
     },
   });
@@ -153,6 +164,8 @@ exports.createBook = asyncHandler(async (req, res) => {
     previewUrl,
     price,
     genre,
+    language,
+    tags,
     fileFormat,
     previewExcerptText,
     contentType: fileFormat === "pdf" ? "pdf_book" : "ebook",
@@ -208,6 +221,14 @@ exports.updateBook = asyncHandler(async (req, res) => {
   const title = String(req.body?.title || book.title || "").trim();
   const description = String(req.body?.description || book.description || "").trim();
   const genre = String(req.body?.genre || book.genre || "").trim();
+  const language = String(req.body?.language || book.language || "").trim();
+  const tags = Array.isArray(req.body?.tags)
+    ? req.body.tags
+    : String(req.body?.tags || book.tags || "")
+        .split(",")
+        .map((entry) => String(entry || "").trim())
+        .filter(Boolean)
+        .slice(0, 12);
   const fileFormat = String(req.body?.fileFormat || book.fileFormat || "").trim().toLowerCase();
   const previewExcerptText = String(
     req.body?.previewExcerptText || req.body?.previewExcerpt || book.previewExcerptText || ""
@@ -254,6 +275,7 @@ exports.updateBook = asyncHandler(async (req, res) => {
       creatorId: req.creatorProfile._id?.toString?.() || "",
       authorName: req.creatorProfile.displayName || "",
       genre,
+      language,
       fileFormat,
     },
   });
@@ -261,6 +283,8 @@ exports.updateBook = asyncHandler(async (req, res) => {
   book.title = title;
   book.description = description;
   book.genre = genre;
+  book.language = language;
+  book.tags = tags;
   book.fileFormat = fileFormat;
   book.previewExcerptText = previewExcerptText;
   book.coverImageUrl = coverImageUrl;

@@ -30,7 +30,6 @@ describe("CreatorCategoriesPage", () => {
 
   it("syncs the saved creator profile into workspace state after enabling books", async () => {
     const setCreatorProfile = vi.fn();
-    const refreshWorkspace = vi.fn().mockResolvedValue(undefined);
     const creatorProfile = {
       fullName: "Creator Example",
       displayName: "Creator Example",
@@ -56,7 +55,6 @@ describe("CreatorCategoriesPage", () => {
 
     useCreatorWorkspace.mockReturnValue({
       creatorProfile,
-      refreshWorkspace,
       setCreatorProfile,
     });
     updateCreatorWorkspaceProfile.mockResolvedValue({
@@ -80,7 +78,6 @@ describe("CreatorCategoriesPage", () => {
         })
       );
       expect(setCreatorProfile).toHaveBeenCalledWith(updatedProfile);
-      expect(refreshWorkspace).toHaveBeenCalledTimes(1);
     });
   });
 });

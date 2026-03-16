@@ -4,6 +4,7 @@ const CATEGORY_KEYS = ["music", "books", "podcasts"];
 
 export default function CreatorTypeSelector({ value = [], onChange, error = "" }) {
   const selected = Array.isArray(value) ? value : [];
+  const selectedCount = selected.length;
 
   const toggle = (category) => {
     const next = selected.includes(category)
@@ -20,19 +21,24 @@ export default function CreatorTypeSelector({ value = [], onChange, error = "" }
           <p>Tick Music, Book Publishing, Podcasts, or all three to unlock the right workspace.</p>
         </div>
       </div>
-      <div className="creator-type-grid" role="group" aria-label="Creator content categories">
+      <div className="creator-type-meta">
+        <span className="creator-status-badge neutral">
+          {selectedCount} of {CATEGORY_KEYS.length} selected
+        </span>
+        <span className="creator-field-hint">Click any card to turn a lane on or off.</span>
+      </div>
+      <div className="creator-type-grid" aria-label="Creator content categories">
         {CATEGORY_KEYS.map((key) => {
           const item = CREATOR_CATEGORY_CONFIG[key];
           const active = selected.includes(key);
           return (
-            <button
-              key={key}
-              type="button"
-              className={`creator-type-card ${active ? "is-active" : ""}`}
-              onClick={() => toggle(key)}
-              role="checkbox"
-              aria-checked={active}
-            >
+            <label key={key} className={`creator-type-card ${active ? "is-active" : ""}`}>
+              <input
+                className="creator-type-input"
+                type="checkbox"
+                checked={active}
+                onChange={() => toggle(key)}
+              />
               <div className="creator-type-card-top">
                 <span className="creator-type-icon" aria-hidden="true">
                   {item.icon}
@@ -45,7 +51,10 @@ export default function CreatorTypeSelector({ value = [], onChange, error = "" }
               </div>
               <strong>{item.title}</strong>
               <span>{item.description}</span>
-            </button>
+              <span className={`creator-type-state ${active ? "is-active" : ""}`}>
+                {active ? "Enabled" : "Disabled"}
+              </span>
+            </label>
           );
         })}
       </div>

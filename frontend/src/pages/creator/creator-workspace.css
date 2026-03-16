@@ -368,7 +368,16 @@
   gap: 16px;
 }
 
+.creator-type-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .creator-type-card {
+  position: relative;
   display: grid;
   gap: 10px;
   padding: 18px;
@@ -378,6 +387,13 @@
   text-align: left;
   cursor: pointer;
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.creator-type-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .creator-type-card-top {
@@ -420,6 +436,26 @@
 
 .creator-type-check.is-active svg {
   stroke: #f7f3ea;
+}
+
+.creator-type-state {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(95, 76, 33, 0.12);
+  background: rgba(255, 249, 241, 0.92);
+  color: var(--creator-neutral);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.creator-type-state.is-active {
+  border-color: rgba(49, 93, 67, 0.18);
+  background: rgba(49, 93, 67, 0.1);
+  color: var(--creator-accent-strong);
 }
 
 .creator-type-icon,
@@ -849,6 +885,38 @@
   color: var(--creator-accent-strong);
 }
 
+.creator-inline-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-top: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(95, 76, 33, 0.08);
+  background: rgba(255, 249, 241, 0.76);
+  color: var(--creator-text);
+}
+
+.creator-inline-notice strong {
+  font-size: 0.95rem;
+}
+
+.creator-inline-notice span {
+  color: var(--creator-muted);
+  font-size: 0.88rem;
+}
+
+.creator-inline-notice.success {
+  background: rgba(49, 93, 67, 0.08);
+  border-color: rgba(49, 93, 67, 0.16);
+}
+
+.creator-inline-notice.warning {
+  background: rgba(156, 112, 29, 0.08);
+  border-color: rgba(156, 112, 29, 0.16);
+}
+
 .creator-status-badge {
   display: inline-flex;
   align-items: center;
@@ -965,6 +1033,11 @@
 
   .creator-header {
     flex-direction: column;
+  }
+
+  .creator-inline-notice {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .creator-form-grid,

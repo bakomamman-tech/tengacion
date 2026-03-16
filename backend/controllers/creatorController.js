@@ -19,6 +19,13 @@ const {
 } = require("../services/creatorProfileService");
 
 const CREATOR_SHARE_RATE = 0.4;
+const CREATOR_NO_STORE_HEADER = "no-store, no-cache, must-revalidate, proxy-revalidate";
+
+const applyNoStore = (res) => {
+  res.set("Cache-Control", CREATOR_NO_STORE_HEADER);
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+};
 
 const resolveSocialUrl = (value = "", fallbackPrefix = "") => {
   const normalized = String(value || "").trim();
@@ -211,15 +218,19 @@ const getCreatorContent = async (profile, userId) => {
   return { musicTracks, podcastTracks, books, albums, videos };
 };
 
-const resolveCreatorTypes = ({ profile, content }) => {
-  const storedTypes = normalizeCreatorTypes(profile?.creatorTypes);
-  const inferredTypes = normalizeCreatorTypes([
+const inferCreatorTypesFromContent = (content = {}) =>
+  normalizeCreatorTypes([
     content?.musicTracks?.length || content?.albums?.length || content?.videos?.length ? "music" : "",
     content?.books?.length ? "books" : "",
     content?.podcastTracks?.length ? "podcasts" : "",
   ]);
-  const combined = normalizeCreatorTypes([...storedTypes, ...inferredTypes]);
-  return combined;
+
+const resolveCreatorTypes = ({ profile, content }) => {
+  const storedTypes = normalizeCreatorTypes(profile?.creatorTypes);
+  if (storedTypes.length) {
+    return storedTypes;
+  }
+  return inferCreatorTypesFromContent(content);
 };
 
 const buildEarningsSummary = (grossRevenue = 0) => {
@@ -479,6 +490,7 @@ const getDashboardPayload = async ({ profile, user }) => {
 };
 
 exports.getCreatorAccess = asyncHandler(async (req, res) => {
+  applyNoStore(res);
   const { profile, user } = await getProfileBundle(req.user.id);
   if (!profile) {
     return res.json({
@@ -511,6 +523,7 @@ exports.getCreatorAccess = asyncHandler(async (req, res) => {
 });
 
 exports.getCreatorProfile = asyncHandler(async (req, res) => {
+  applyNoStore(res);
   const { profile, user } = await getProfileBundle(req.user.id);
   if (!profile) {
     return res.status(404).json({ error: "Creator profile not found" });
@@ -533,6 +546,7 @@ exports.getCreatorProfile = asyncHandler(async (req, res) => {
 });
 
 exports.registerCreator = asyncHandler(async (req, res) => {
+  applyNoStore(res);
   const { errors, fullName, phoneNumber, accountNumber, country, countryOfResidence, creatorTypes } =
     validateRegistrationPayload(req.body);
 
@@ -610,6 +624,7 @@ exports.registerCreator = asyncHandler(async (req, res) => {
 });
 
 exports.updateCreatorProfile = asyncHandler(async (req, res) => {
+  applyNoStore(res);
   const existing = await CreatorProfile.findOne({ userId: req.user.id }).lean();
   if (!existing) {
     return res.status(404).json({ error: "Creator profile not found" });
@@ -689,6 +704,7 @@ exports.updateCreatorProfile = asyncHandler(async (req, res) => {
 });
 
 exports.getCreatorDashboard = asyncHandler(async (req, res) => {
+  applyNoStore(res);
   const { profile, user } = await getProfileBundle(req.user.id);
   if (!profile) {
     return res.status(404).json({ error: "Creator profile not found" });

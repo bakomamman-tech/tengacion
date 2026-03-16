@@ -13,6 +13,7 @@ import {
 } from "./authSession";
 
 export const API_BASE = "/api";
+const withCacheBust = (url) => `${url}${String(url).includes("?") ? "&" : "?"}t=${Date.now()}`;
 
 // ---------------- AUTH HELPERS ----------------
 
@@ -697,13 +698,15 @@ export const unfriend = (userId) =>
 // ======================================================
 
 export const getCreatorAccess = () =>
-  request(`${API_BASE}/creator/access`, {
+  request(withCacheBust(`${API_BASE}/creator/access`), {
     headers: getAuthHeaders(),
+    cache: "no-store",
   });
 
 export const getCreatorWorkspaceProfile = () =>
-  request(`${API_BASE}/creator/profile`, {
+  request(withCacheBust(`${API_BASE}/creator/profile`), {
     headers: getAuthHeaders(),
+    cache: "no-store",
   });
 
 export const registerCreatorProfile = (payload = {}) =>
@@ -897,8 +900,9 @@ export const getCreatorSales = () =>
   });
 
 export const getCreatorDashboard = () =>
-  request(`${API_BASE}/creator/dashboard`, {
+  request(withCacheBust(`${API_BASE}/creator/dashboard`), {
     headers: getAuthHeaders(),
+    cache: "no-store",
   });
 
 export const checkEntitlement = ({ itemType, itemId }) =>

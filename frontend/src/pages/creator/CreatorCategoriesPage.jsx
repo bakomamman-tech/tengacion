@@ -10,21 +10,28 @@ import { CREATOR_CATEGORY_CONFIG } from "../../components/creator/creatorConfig"
 const CATEGORY_ORDER = ["music", "books", "podcasts"];
 
 export default function CreatorCategoriesPage() {
-  const { creatorProfile, refreshWorkspace, setCreatorProfile } = useCreatorWorkspace();
-  const profileTypes = Array.isArray(creatorProfile?.creatorTypes) ? creatorProfile.creatorTypes : [];
-  const [selectedTypes, setSelectedTypes] = useState(profileTypes);
+  const { creatorProfile, setCreatorProfile } = useCreatorWorkspace();
+  const savedTypesSignature = useMemo(
+    () => (Array.isArray(creatorProfile?.creatorTypes) ? creatorProfile.creatorTypes.join("|") : ""),
+    [creatorProfile?.creatorTypes]
+  );
+  const savedTypes = useMemo(
+    () => (savedTypesSignature ? savedTypesSignature.split("|") : []),
+    [savedTypesSignature]
+  );
+  const [selectedTypes, setSelectedTypes] = useState(savedTypes);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setSelectedTypes(profileTypes);
-  }, [profileTypes.join("|")]);
+    setSelectedTypes(savedTypes);
+  }, [savedTypes, savedTypesSignature]);
 
   const hasChanges = useMemo(() => {
-    if (profileTypes.length !== selectedTypes.length) {
+    if (savedTypes.length !== selectedTypes.length) {
       return true;
     }
-    return profileTypes.some((type) => !selectedTypes.includes(type));
-  }, [profileTypes, selectedTypes]);
+    return savedTypes.some((type) => !selectedTypes.includes(type));
+  }, [savedTypes, selectedTypes]);
 
   const saveCategories = async () => {
     try {
@@ -50,7 +57,6 @@ export default function CreatorCategoriesPage() {
       if (response?.creatorProfile) {
         setCreatorProfile(response.creatorProfile);
       }
-      await refreshWorkspace();
       toast.success("Creator categories updated");
     } catch (err) {
       toast.error(err?.message || "Could not update creator categories");
@@ -76,6 +82,17 @@ export default function CreatorCategoriesPage() {
         </div>
 
         <CreatorTypeSelector value={selectedTypes} onChange={setSelectedTypes} />
+        {hasChanges ? (
+          <div className="creator-inline-notice warning">
+            <strong>Unsaved changes</strong>
+            <span>Save category selection to update your live creator workspace and sidebar.</span>
+          </div>
+        ) : (
+          <div className="creator-inline-notice success">
+            <strong>Workspace in sync</strong>
+            <span>Your live creator lanes match the selection saved on your profile.</span>
+          </div>
+        )}
 
         <div className="creator-form-actions">
           <button
@@ -92,7 +109,9 @@ export default function CreatorCategoriesPage() {
       <section className="creator-panel-grid">
         {CATEGORY_ORDER.map((key) => {
           const item = CREATOR_CATEGORY_CONFIG[key];
-          const enabled = selectedTypes.includes(key);
+          const enabled = savedTypes.includes(key);
+          const pendingEnabled = selectedTypes.includes(key);
+          const pendingChange = enabled !== pendingEnabled;
 
           return (
             <article key={key} className="creator-category-card card">
@@ -109,6 +128,11 @@ export default function CreatorCategoriesPage() {
                 <span className={`creator-status-badge ${enabled ? "success" : "neutral"}`}>
                   {enabled ? "Enabled" : "Not enabled"}
                 </span>
+                {pendingChange ? (
+                  <span className="creator-status-badge warning">
+                    {pendingEnabled ? "Selected - save to enable" : "Selected - save to disable"}
+                  </span>
+                ) : null}
                 {enabled ? (
                   <Link className="creator-secondary-btn" to={item.route}>
                     Open {item.shortTitle}
@@ -119,7 +143,7 @@ export default function CreatorCategoriesPage() {
                     className="creator-secondary-btn"
                     onClick={() => setSelectedTypes((current) => [...new Set([...current, key])])}
                   >
-                    Enable {item.shortTitle}
+                    {pendingEnabled ? "Save to enable" : `Enable ${item.shortTitle}`}
                   </button>
                 )}
               </div>

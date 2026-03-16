@@ -1,4 +1,4 @@
-const CACHE_NAME = "tengacion-static-v2";
+const CACHE_NAME = "tengacion-static-v3";
 const OFFLINE_URL = "/offline.html";
 const ASSETS = [OFFLINE_URL, "/manifest.json"];
 
@@ -8,6 +8,28 @@ const isCacheableResponse = (response) =>
 const putInCache = async (request, response) => {
   const cache = await caches.open(CACHE_NAME);
   await cache.put(request, response);
+};
+
+const networkFirst = async (request, fallbackToOfflinePage = false) => {
+  try {
+    const response = await fetch(request);
+    if (isCacheableResponse(response)) {
+      await putInCache(request, response.clone()).catch(() => null);
+    }
+    return response;
+  } catch {
+    const cached = await caches.match(request);
+    if (cached) {
+      return cached;
+    }
+    if (fallbackToOfflinePage) {
+      const offline = await caches.match(OFFLINE_URL);
+      if (offline) {
+        return offline;
+      }
+    }
+    return new Response("Offline", { status: 503, statusText: "Offline" });
+  }
 };
 
 self.addEventListener("install", (event) => {
@@ -42,14 +64,13 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => response)
-        .catch(async () => {
-          const offline = await caches.match(OFFLINE_URL);
-          return offline || new Response("Offline", { status: 503, statusText: "Offline" });
-        })
-    );
+    event.respondWith(networkFirst(request, true));
+    return;
+  }
+
+  // Keep hashed bundles fresh across deployments.
+  if (url.pathname.startsWith("/assets/")) {
+    event.respondWith(networkFirst(request));
     return;
   }
 

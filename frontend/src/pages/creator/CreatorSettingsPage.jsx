@@ -6,13 +6,16 @@ import CreatorAccountSettingsForm from "../../components/creator/CreatorAccountS
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 
 export default function CreatorSettingsPage() {
-  const { creatorProfile, refreshWorkspace } = useCreatorWorkspace();
+  const { creatorProfile, refreshWorkspace, setCreatorProfile } = useCreatorWorkspace();
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (values) => {
     try {
       setLoading(true);
-      await updateCreatorWorkspaceProfile(values);
+      const response = await updateCreatorWorkspaceProfile(values);
+      if (response?.creatorProfile) {
+        setCreatorProfile(response.creatorProfile);
+      }
       await refreshWorkspace();
       toast.success("Creator profile updated");
     } catch (err) {

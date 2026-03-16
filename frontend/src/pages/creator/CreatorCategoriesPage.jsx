@@ -10,7 +10,7 @@ import { CREATOR_CATEGORY_CONFIG } from "../../components/creator/creatorConfig"
 const CATEGORY_ORDER = ["music", "books", "podcasts"];
 
 export default function CreatorCategoriesPage() {
-  const { creatorProfile, refreshWorkspace } = useCreatorWorkspace();
+  const { creatorProfile, refreshWorkspace, setCreatorProfile } = useCreatorWorkspace();
   const profileTypes = Array.isArray(creatorProfile?.creatorTypes) ? creatorProfile.creatorTypes : [];
   const [selectedTypes, setSelectedTypes] = useState(profileTypes);
   const [saving, setSaving] = useState(false);
@@ -29,7 +29,7 @@ export default function CreatorCategoriesPage() {
   const saveCategories = async () => {
     try {
       setSaving(true);
-      await updateCreatorWorkspaceProfile({
+      const response = await updateCreatorWorkspaceProfile({
         fullName: creatorProfile.fullName,
         displayName: creatorProfile.displayName,
         phoneNumber: creatorProfile.phoneNumber,
@@ -47,6 +47,9 @@ export default function CreatorCategoriesPage() {
         acceptedTerms: creatorProfile.acceptedTerms,
         acceptedCopyrightDeclaration: creatorProfile.acceptedCopyrightDeclaration,
       });
+      if (response?.creatorProfile) {
+        setCreatorProfile(response.creatorProfile);
+      }
       await refreshWorkspace();
       toast.success("Creator categories updated");
     } catch (err) {

@@ -40,7 +40,9 @@ export default function CreatorWorkspaceLayout() {
       setDashboard(dashboardPayload || null);
       setError("");
     } catch (err) {
-      setError(err?.message || "Failed to load your creator workspace.");
+      if (!silent || !creatorProfile || !dashboard) {
+        setError(err?.message || "Failed to load your creator workspace.");
+      }
     } finally {
       if (!silent) {
         setLoading(false);

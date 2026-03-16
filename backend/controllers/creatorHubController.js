@@ -9,6 +9,7 @@ const Entitlement = require("../models/Entitlement");
 const Purchase = require("../models/Purchase");
 const CreatorProfile = require("../models/CreatorProfile");
 const PlayerProgress = require("../models/PlayerProgress");
+const { buildAlbumArchiveUrl } = require("../services/albumArchiveService");
 const { hasEntitlement } = require("../services/entitlementService");
 const { resolvePurchasableItem } = require("../services/catalogService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
@@ -463,7 +464,8 @@ exports.getProtectedDownload = asyncHandler(async (req, res) => {
   }
 
   const sourceUrl = resolveSourceUrl(item);
-  if (!sourceUrl) {
+  const isAlbumDownload = item.itemType === "album";
+  if (!isAlbumDownload && !sourceUrl) {
     return res.status(404).json({ error: "Download source not available" });
   }
 
@@ -486,15 +488,21 @@ exports.getProtectedDownload = asyncHandler(async (req, res) => {
     });
   }
 
-  const downloadUrl = buildSignedMediaUrl({
-    sourceUrl,
-    itemType: item.itemType,
-    itemId: item.itemId.toString(),
-    userId,
-    allowDownload: true,
-    req,
-    expiresInSec: 10 * 60,
-  });
+  const downloadUrl = isAlbumDownload
+    ? buildAlbumArchiveUrl({
+        albumId: item.itemId.toString(),
+        req,
+        userId,
+      })
+    : buildSignedMediaUrl({
+        sourceUrl,
+        itemType: item.itemType,
+        itemId: item.itemId.toString(),
+        userId,
+        allowDownload: true,
+        req,
+        expiresInSec: 10 * 60,
+      });
 
   await touchUserActivity({ userId, seenAt: new Date() }).catch(() => null);
   await logAnalyticsEvent({

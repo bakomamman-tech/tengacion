@@ -29,6 +29,24 @@ const toPurchasePayload = (purchase) => ({
   createdAt: purchase.createdAt,
 });
 
+const emitEntitlementGranted = ({ req, purchase }) => {
+  const io = req.app?.get?.("io");
+  if (!io || !purchase?.userId) {
+    return;
+  }
+
+  const payload = {
+    purchaseId: purchase._id?.toString?.() || "",
+    itemType: purchase.itemType || "",
+    itemId: purchase.itemId?.toString?.() || "",
+    creatorId: purchase.creatorId?.toString?.() || "",
+    status: "paid",
+    paidAt: purchase.paidAt || new Date(),
+  };
+
+  io.to(`user:${String(purchase.userId)}`).emit("entitlement:granted", payload);
+};
+
 const markPurchasePaidAndGrantEntitlement = async (purchase) => {
   if (!purchase) return;
 
@@ -201,6 +219,7 @@ const handlePaystackWebhook = async (req, res) => {
   }
 
   await markPurchasePaidAndGrantEntitlement(purchase);
+  emitEntitlementGranted({ req, purchase });
   await logAnalyticsEvent({
     type: "purchase_success",
     userId: purchase.userId,

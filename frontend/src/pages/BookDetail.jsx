@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   checkEntitlement,
@@ -10,6 +11,7 @@ import {
 } from "../api";
 import PaywallModal from "../components/PaywallModal";
 import { useAuth } from "../context/AuthContext";
+import useEntitlementSocket from "../hooks/useEntitlementSocket";
 
 export default function BookDetail() {
   const { bookId } = useParams();
@@ -56,6 +58,25 @@ export default function BookDetail() {
   useEffect(() => {
     loadBook();
   }, [loadBook]);
+
+  useEntitlementSocket({
+    enabled: isLoggedIn,
+    onEntitlement: async (event = {}) => {
+      if (String(event.itemType || "") !== "book" || String(event.itemId || "") !== String(bookId || "")) {
+        return;
+      }
+
+      try {
+        await loadBook();
+        setPaywallOpen(false);
+        setPaying(false);
+        setPayError("");
+        toast.success("Book unlocked. Your library refreshed instantly.");
+      } catch {
+        // Keep the reader stable and allow the callback polling fallback to continue.
+      }
+    },
+  });
 
   const loadChapter = useCallback(
     async (chapterId) => {
@@ -158,6 +179,7 @@ export default function BookDetail() {
       if (!payment?.authorization_url) {
         throw new Error("Payment link is missing");
       }
+      toast.success("Checkout opened. This book will unlock automatically after payment.");
       window.location.assign(payment.authorization_url);
     } catch (err) {
       setPayError(err.message || "Failed to start payment");

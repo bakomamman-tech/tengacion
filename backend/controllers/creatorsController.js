@@ -8,6 +8,7 @@ const Video = require("../models/Video");
 const Purchase = require("../models/Purchase");
 const User = require("../models/User");
 const PlayerProgress = require("../models/PlayerProgress");
+const { buildAlbumArchiveUrl } = require("../services/albumArchiveService");
 const { hasEntitlement } = require("../services/entitlementService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const { buildCreatorPublicPayload } = require("../services/publicCreatorProfileService");
@@ -179,6 +180,13 @@ const mapAlbumForHub = async ({ album, req, userId }) => {
     totalTracks: Number(album.totalTracks || tracks.length || 0),
     canStream: tracks.some((track) => Boolean(track.streamUrl)),
     canDownload: canPlayFull,
+    downloadUrl: canPlayFull
+      ? buildAlbumArchiveUrl({
+          albumId: album._id.toString(),
+          req,
+          userId: userId || "",
+        })
+      : "",
     canPlayFull,
     playCount: Number(album.playCount || 0),
     purchaseCount: Number(album.purchaseCount || 0),

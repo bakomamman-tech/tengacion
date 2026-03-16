@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const asyncHandler = require("../middleware/asyncHandler");
 const Album = require("../models/Album");
 const CreatorProfile = require("../models/CreatorProfile");
+const { buildAlbumArchiveUrl } = require("../services/albumArchiveService");
 const { saveUploadedFile } = require("../services/mediaStore");
 const { hasEntitlement } = require("../services/entitlementService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
@@ -358,6 +359,13 @@ exports.getAlbumById = asyncHandler(async (req, res) => {
   return res.json({
     ...toAlbumListPayload(album),
     canPlayFull,
+    downloadUrl: canPlayFull
+      ? buildAlbumArchiveUrl({
+          albumId: album._id.toString(),
+          req,
+          userId: req.user?.id || "",
+        })
+      : "",
     tracks,
   });
 });

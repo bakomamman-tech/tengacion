@@ -103,6 +103,9 @@ const fetchCreatorProfile = (token) =>
     .set("Authorization", `Bearer ${token}`)
     .expect(200);
 
+const toDataUrl = (contentType, content) =>
+  `data:${contentType};base64,${Buffer.from(String(content || ""), "utf8").toString("base64")}`;
+
 describe("creator profile routes", () => {
   beforeAll(async () => {
     mongod = await MongoMemoryServer.create({
@@ -289,11 +292,67 @@ describe("creator profile routes", () => {
     expect(response.body.creator.creatorTypes).toEqual(["music", "bookPublishing", "podcast"]);
     expect(response.body.music.tracks).toHaveLength(1);
     expect(response.body.music.albums).toHaveLength(1);
+    expect(response.body.music.albums[0].downloadUrl).toContain("/api/media/delivery/");
     expect(response.body.music.videos).toHaveLength(1);
     expect(response.body.podcasts.episodes).toHaveLength(1);
     expect(response.body.books).toHaveLength(1);
     expect(response.body.books[0].language).toBe("English");
     expect(response.body.books[0].tags).toEqual(["insight", "creative"]);
     expect(response.body.featured.item.title).toBeTruthy();
+  });
+
+  test("GET /api/download/album/:itemId returns a signed archive URL and the archive streams successfully", async () => {
+    const { profile, token } = await createUserAndProfile({
+      creatorTypes: ["music", "bookPublishing", "podcast"],
+    });
+
+    const album = await Album.create({
+      creatorId: profile._id,
+      title: "Archive Ready Album",
+      description: "Bundled release",
+      price: 0,
+      coverUrl: toDataUrl("image/png", "cover"),
+      tracks: [
+        {
+          title: "Track One",
+          trackUrl: toDataUrl("audio/mpeg", "track-one"),
+          previewUrl: toDataUrl("audio/mpeg", "preview-one"),
+          order: 1,
+        },
+        {
+          title: "Track Two",
+          trackUrl: toDataUrl("audio/mpeg", "track-two"),
+          previewUrl: toDataUrl("audio/mpeg", "preview-two"),
+          order: 2,
+        },
+      ],
+      totalTracks: 2,
+      status: "published",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+
+    const downloadResponse = await request(app)
+      .get(`/api/download/album/${album._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(downloadResponse.body.downloadUrl).toContain("/api/media/delivery/");
+
+    const downloadPath = new URL(downloadResponse.body.downloadUrl).pathname;
+    const archiveResponse = await request(app)
+      .get(downloadPath)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks = [];
+        res.on("data", (chunk) => chunks.push(chunk));
+        res.on("end", () => callback(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+
+    expect(archiveResponse.headers["content-type"]).toContain("application/zip");
+    expect(archiveResponse.headers["content-disposition"]).toContain("attachment;");
+    expect(Buffer.isBuffer(archiveResponse.body)).toBe(true);
+    expect(archiveResponse.body.length).toBeGreaterThan(0);
   });
 });

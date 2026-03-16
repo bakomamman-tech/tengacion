@@ -6,6 +6,7 @@ const CreatorProfile = require("../models/CreatorProfile");
 const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const Video = require("../models/Video");
+const { buildAlbumArchiveUrl } = require("./albumArchiveService");
 const { getUserPaidPurchases } = require("./entitlementService");
 const { buildSignedMediaUrl } = require("./mediaSigner");
 const { normalizeCreatorTypes } = require("./creatorProfileService");
@@ -197,6 +198,13 @@ const mapAlbumItem = ({ album, req, viewerId, ownerAccess, entitlements }) => {
       itemId: String(album._id),
       userId: viewerId,
     }),
+    downloadUrl: canAccessFull
+      ? buildAlbumArchiveUrl({
+          albumId: String(album._id),
+          req,
+          userId: viewerId,
+        })
+      : "",
     route: `/albums/${String(album._id)}`,
     price: numberOrZero(album.price),
     isFree: numberOrZero(album.price) <= 0,

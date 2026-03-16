@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
@@ -13,6 +13,7 @@ import {
 import CreatorHero from "../components/creator/media/CreatorHero";
 import CreatorContentShelf from "../components/creator/media/CreatorContentShelf";
 import { useAuth } from "../context/AuthContext";
+import useEntitlementSocket from "../hooks/useEntitlementSocket";
 import "./creator-public.css";
 
 const PUBLIC_TABS = [
@@ -101,11 +102,32 @@ export default function CreatorHubPage() {
     return false;
   };
 
-  const refreshPublicProfile = async () => {
+  const refreshPublicProfile = useCallback(async () => {
     const nextPayload = await getPublicCreatorProfile(creatorId);
     setPayload(nextPayload || null);
     return nextPayload;
-  };
+  }, [creatorId]);
+
+  const handleEntitlementGranted = useCallback(
+    async (event = {}) => {
+      if (String(event.creatorId || "") !== String(creatorId || "")) {
+        return;
+      }
+
+      try {
+        await refreshPublicProfile();
+        toast.success("Purchase unlocked. Your creator library is up to date.");
+      } catch {
+        // Keep the current view stable if refresh fails.
+      }
+    },
+    [creatorId, refreshPublicProfile]
+  );
+
+  useEntitlementSocket({
+    enabled: isLoggedIn,
+    onEntitlement: handleEntitlementGranted,
+  });
 
   const handleFollow = async () => {
     if (!creator?.id || !requireViewer()) {
@@ -152,6 +174,7 @@ export default function CreatorHubPage() {
       });
       if (checkout?.checkoutUrl) {
         window.open(checkout.checkoutUrl, "_blank", "noopener,noreferrer");
+        toast.success("Checkout opened. This page will unlock automatically once payment confirms.");
       } else {
         throw new Error("Checkout unavailable");
       }
@@ -218,11 +241,6 @@ export default function CreatorHubPage() {
       return;
     }
 
-    if (item.itemType === "album" && item.route) {
-      navigate(item.route);
-      return;
-    }
-
     if (item.downloadUrl) {
       window.open(item.downloadUrl, "_blank", "noopener,noreferrer");
       return;
@@ -230,6 +248,11 @@ export default function CreatorHubPage() {
 
     if (item.canBuy) {
       await handleBuy(item);
+      return;
+    }
+
+    if (item.route) {
+      navigate(item.route);
       return;
     }
 

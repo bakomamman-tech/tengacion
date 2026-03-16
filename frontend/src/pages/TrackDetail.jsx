@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { checkEntitlement, getTrack, getTrackStream, initPayment } from "../api";
 import PaywallModal from "../components/PaywallModal";
 import { useAuth } from "../context/AuthContext";
+import useEntitlementSocket from "../hooks/useEntitlementSocket";
 
 const PREVIEW_LIMIT_SEC = 30;
 
@@ -43,6 +45,25 @@ export default function TrackDetail() {
   useEffect(() => {
     loadTrack();
   }, [loadTrack]);
+
+  useEntitlementSocket({
+    enabled: isLoggedIn,
+    onEntitlement: async (event = {}) => {
+      if (String(event.itemType || "") !== "track" || String(event.itemId || "") !== String(trackId || "")) {
+        return;
+      }
+
+      try {
+        await loadTrack();
+        setPaywallOpen(false);
+        setPaying(false);
+        setPayError("");
+        toast.success("Track unlocked. Full playback is ready.");
+      } catch {
+        // Let the existing retry and refresh paths continue if needed.
+      }
+    },
+  });
 
   const checkAndUnlock = useCallback(async () => {
     if (!isLoggedIn) {
@@ -134,6 +155,7 @@ export default function TrackDetail() {
       if (!payment?.authorization_url) {
         throw new Error("Payment link is missing");
       }
+      toast.success("Checkout opened. This track will unlock automatically after payment.");
       window.location.assign(payment.authorization_url);
     } catch (err) {
       setPayError(err.message || "Failed to start payment");

@@ -49,7 +49,7 @@ export default function MediaPreviewCard({
         ) : null}
         {item.canDownload ? (
           <button type="button" className="creator-ghost-btn" onClick={() => onDownload(item)}>
-            Download
+            {item.itemType === "album" ? "Download bundle" : "Download"}
           </button>
         ) : item.canBuy ? (
           <button type="button" className="creator-primary-btn" onClick={() => onBuy(item)}>
@@ -60,7 +60,7 @@ export default function MediaPreviewCard({
           className="creator-ghost-btn"
           title={item.title}
           text="Listen, read, or watch this creator release on Tengacion."
-          url={`${window.location.origin}/creators/${creatorId}`}
+          url={`${window.location.origin}${item.route || `/creators/${creatorId}`}`}
         />
       </div>
     </article>

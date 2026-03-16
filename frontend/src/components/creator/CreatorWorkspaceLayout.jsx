@@ -12,6 +12,8 @@ import { CREATOR_CATEGORY_CONFIG, CREATOR_CATEGORY_ORDER, normalizeCreatorLaneKe
 
 import "../../pages/creator/creator-workspace.css";
 
+const getUploadNavLabel = (key) => `${CREATOR_CATEGORY_CONFIG[key]?.shortTitle || key} Uploads`;
+
 function CreatorWorkspaceSkeleton() {
   return (
     <div className="creator-shell">
@@ -118,7 +120,8 @@ export default function CreatorWorkspaceLayout() {
   const currentCategory = CREATOR_CATEGORY_ORDER.find((key) =>
     location.pathname.startsWith(CREATOR_CATEGORY_CONFIG[key].route)
   );
-  const isCategorySectionActive = Boolean(currentCategory) || location.pathname.startsWith("/creator/categories");
+  const isCategorySectionActive =
+    Boolean(currentCategory) || Boolean(currentUploadCategory) || location.pathname.startsWith("/creator/categories");
   const pageMeta = currentUploadCategory
     ? {
         title: CREATOR_CATEGORY_CONFIG[currentUploadCategory].uploadTitle,
@@ -223,9 +226,9 @@ export default function CreatorWorkspaceLayout() {
                       <NavLink
                         key={key}
                         className="creator-chip-link creator-chip-link--child"
-                        to={CREATOR_CATEGORY_CONFIG[key]?.route || "/creator/dashboard"}
+                        to={CREATOR_CATEGORY_CONFIG[key]?.uploadRoute || "/creator/dashboard"}
                       >
-                        {CREATOR_CATEGORY_CONFIG[key]?.shortTitle || key}
+                        {getUploadNavLabel(key)}
                       </NavLink>
                     ))}
                   </div>

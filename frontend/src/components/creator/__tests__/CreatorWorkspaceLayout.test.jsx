@@ -35,14 +35,14 @@ describe("CreatorWorkspaceLayout", () => {
     getCreatorPrivateContent.mockResolvedValue({ content: {} });
 
     render(
-      <MemoryRouter initialEntries={["/creator/music"]}>
+      <MemoryRouter initialEntries={["/creator/music/upload"]}>
         <Routes>
           <Route path="/creator" element={<CreatorWorkspaceLayout />}>
             <Route path="dashboard" element={<div>Dashboard page</div>} />
             <Route path="categories" element={<div>Categories page</div>} />
-            <Route path="music" element={<div>Music page</div>} />
-            <Route path="books" element={<div>Books page</div>} />
-            <Route path="podcasts" element={<div>Podcasts page</div>} />
+            <Route path="music/upload" element={<div>Music uploads page</div>} />
+            <Route path="books/upload" element={<div>Books uploads page</div>} />
+            <Route path="podcasts/upload" element={<div>Podcasts uploads page</div>} />
             <Route path="settings" element={<div>Settings page</div>} />
             <Route path="earnings" element={<div>Earnings page</div>} />
             <Route path="payouts" element={<div>Payouts page</div>} />
@@ -53,15 +53,24 @@ describe("CreatorWorkspaceLayout", () => {
       </MemoryRouter>
     );
 
-    await screen.findByText("Music page");
+    await screen.findByText("Music uploads page");
 
     const quickNav = screen.getByRole("navigation", { name: /creator workspace quick navigation/i });
     expect(within(quickNav).getByRole("link", { name: /content categories/i })).toHaveClass("active");
 
     const categoryGroup = within(quickNav).getByRole("group", { name: /content categories/i });
-    expect(within(categoryGroup).getByRole("link", { name: /music/i })).toHaveAttribute("href", "/creator/music");
-    expect(within(categoryGroup).getByRole("link", { name: /book publishing/i })).toHaveAttribute("href", "/creator/books");
-    expect(within(categoryGroup).getByRole("link", { name: /podcast/i })).toHaveAttribute("href", "/creator/podcasts");
+    expect(within(categoryGroup).getByRole("link", { name: /music uploads/i })).toHaveAttribute(
+      "href",
+      "/creator/music/upload"
+    );
+    expect(within(categoryGroup).getByRole("link", { name: /book publishing uploads/i })).toHaveAttribute(
+      "href",
+      "/creator/books/upload"
+    );
+    expect(within(categoryGroup).getByRole("link", { name: /podcast uploads/i })).toHaveAttribute(
+      "href",
+      "/creator/podcasts/upload"
+    );
   });
 
   it("renders the creator profile image in the sidebar brand area", async () => {

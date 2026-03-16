@@ -3,6 +3,8 @@ import { resolveImage } from "../../api";
 
 import { CREATOR_CATEGORY_CONFIG, CREATOR_CATEGORY_ORDER, CREATOR_STATIC_NAV, normalizeCreatorLaneKeys } from "./creatorConfig";
 
+const getUploadNavLabel = (key) => `${CREATOR_CATEGORY_CONFIG[key]?.shortTitle || key} Uploads`;
+
 export default function CreatorSidebar({ creatorProfile, mobileOpen = false, onNavigate }) {
   const location = useLocation();
   const avatarSrc =
@@ -16,7 +18,11 @@ export default function CreatorSidebar({ creatorProfile, mobileOpen = false, onN
   );
   const isCategorySectionActive =
     location.pathname.startsWith("/creator/categories") ||
-    enabledCategories.some((key) => location.pathname.startsWith(CREATOR_CATEGORY_CONFIG[key].route));
+    enabledCategories.some(
+      (key) =>
+        location.pathname.startsWith(CREATOR_CATEGORY_CONFIG[key].route) ||
+        location.pathname.startsWith(CREATOR_CATEGORY_CONFIG[key].uploadRoute)
+    );
 
   return (
     <aside className={`creator-sidebar ${mobileOpen ? "is-open" : ""}`}>
@@ -49,11 +55,11 @@ export default function CreatorSidebar({ creatorProfile, mobileOpen = false, onN
                 {enabledCategories.map((key) => (
                   <NavLink
                     key={key}
-                    to={CREATOR_CATEGORY_CONFIG[key].route}
+                    to={CREATOR_CATEGORY_CONFIG[key].uploadRoute}
                     className="creator-sidebar-link creator-sidebar-link--child"
                     onClick={onNavigate}
                   >
-                    {CREATOR_CATEGORY_CONFIG[key].shortTitle}
+                    {getUploadNavLabel(key)}
                   </NavLink>
                 ))}
               </div>

@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 
-import CreatorLaneCard from "../../components/creator/CreatorLaneCard";
 import CreatorProfileSummaryCard from "../../components/creator/CreatorProfileSummaryCard";
 import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
 import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge";
@@ -93,16 +92,6 @@ export default function CreatorDashboardPage() {
               );
             })}
           </div>
-        </section>
-
-        <section className="creator-panel-grid">
-          {creatorLanes.map((key) => (
-            <CreatorLaneCard
-              key={key}
-              categoryKey={key}
-              stats={dashboard.categories?.[CREATOR_CATEGORY_CONFIG[key]?.dashboardKey] || {}}
-            />
-          ))}
         </section>
 
         <section className="creator-panel card">

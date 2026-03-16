@@ -15,7 +15,7 @@ describe("CreatorDashboardPage", () => {
     vi.clearAllMocks();
   });
 
-  it("links each creator lane card to its dedicated studio route", () => {
+  it("keeps the upload launch cards linked to each dedicated studio route", () => {
     useCreatorWorkspace.mockReturnValue({
       creatorProfile: {
         displayName: "Creator Example",
@@ -44,16 +44,16 @@ describe("CreatorDashboardPage", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole("link", { name: /go to music dashboard/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /open music/i })).toHaveAttribute(
       "href",
       "/creator/music"
     );
     expect(screen.getAllByRole("link", { name: /upload music/i })[0]).toHaveAttribute("href", "/creator/music/upload");
     expect(
-      screen.getByRole("link", { name: /go to book publishing dashboard/i })
+      screen.getByRole("link", { name: /open book publishing/i })
     ).toHaveAttribute("href", "/creator/books");
     expect(screen.getAllByRole("link", { name: /upload book/i })[0]).toHaveAttribute("href", "/creator/books/upload");
-    expect(screen.getByRole("link", { name: /go to podcast dashboard/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /open podcast/i })).toHaveAttribute(
       "href",
       "/creator/podcasts"
     );

@@ -917,7 +917,6 @@
 .creator-profile-summary,
 .creator-panel,
 .creator-category-card,
-.creator-lane-card,
 .creator-metric-card,
 .creator-stats-card,
 .creator-upload-notice,
@@ -963,23 +962,6 @@
 
 .creator-stats-card--warning {
   background: rgba(156, 112, 29, 0.1);
-}
-
-.creator-lane-card {
-  position: relative;
-  overflow: hidden;
-}
-
-.creator-lane-card__glow {
-  position: absolute;
-  inset: -25% auto auto -10%;
-  width: 180px;
-  height: 180px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--creator-lane-accent) 24%, transparent);
-  filter: blur(12px);
-  opacity: 0.9;
-  pointer-events: none;
 }
 
 .creator-upload-panel {

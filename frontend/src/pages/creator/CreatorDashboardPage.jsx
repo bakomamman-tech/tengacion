@@ -84,9 +84,6 @@ export default function CreatorDashboardPage() {
                     <Link className="creator-primary-btn creator-upload-cta" to={item.uploadRoute}>
                       {item.uploadButtonLabel}
                     </Link>
-                    <Link className="creator-secondary-btn" to={item.route}>
-                      Open {item.shortTitle}
-                    </Link>
                   </div>
                 </article>
               );

@@ -15,7 +15,7 @@ describe("CreatorDashboardPage", () => {
     vi.clearAllMocks();
   });
 
-  it("keeps the upload launch cards linked to each dedicated studio route", () => {
+  it("shows upload launch cards with upload-only actions", () => {
     useCreatorWorkspace.mockReturnValue({
       creatorProfile: {
         displayName: "Creator Example",
@@ -44,19 +44,11 @@ describe("CreatorDashboardPage", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole("link", { name: /open music/i })).toHaveAttribute(
-      "href",
-      "/creator/music"
-    );
     expect(screen.getAllByRole("link", { name: /upload music/i })[0]).toHaveAttribute("href", "/creator/music/upload");
-    expect(
-      screen.getByRole("link", { name: /open book publishing/i })
-    ).toHaveAttribute("href", "/creator/books");
     expect(screen.getAllByRole("link", { name: /upload book/i })[0]).toHaveAttribute("href", "/creator/books/upload");
-    expect(screen.getByRole("link", { name: /open podcast/i })).toHaveAttribute(
-      "href",
-      "/creator/podcasts"
-    );
     expect(screen.getAllByRole("link", { name: /upload podcasts/i })[0]).toHaveAttribute("href", "/creator/podcasts/upload");
+    expect(screen.queryByRole("link", { name: /open music/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /open book publishing/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /open podcast/i })).not.toBeInTheDocument();
   }, 15000);
 });

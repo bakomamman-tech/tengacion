@@ -2,12 +2,28 @@ import { Link } from "react-router-dom";
 
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import { formatCurrency } from "../../components/creator/creatorConfig";
+import CreatorAudienceDestinationCard from "../../components/creator/upload/CreatorAudienceDestinationCard";
 import PodcastUploadStudio from "../../components/creator/upload/PodcastUploadStudio";
 
 export default function CreatorPodcastsUploadPage() {
-  const { dashboard } = useCreatorWorkspace();
+  const { creatorProfile, dashboard } = useCreatorWorkspace();
   const podcastStats = dashboard.categories?.podcast || dashboard.categories?.podcasts || {};
   const podcastAnalytics = dashboard.content?.podcasts?.analytics || {};
+  const publicPodcastsPath = creatorProfile?._id ? `/creators/${creatorProfile._id}/podcasts` : "";
+  const audienceHighlights = [
+    {
+      title: "Set the series first",
+      copy: "Save host and topic details once before publishing episodes.",
+    },
+    {
+      title: "Use season and episode numbers",
+      copy: "Structured numbering keeps your catalog easy to browse.",
+    },
+    {
+      title: "Lead listeners to the final page",
+      copy: "Your public podcast page is where audiences can preview, stream, and buy access to the episode.",
+    },
+  ];
 
   return (
     <div className="creator-page-grid creator-upload-page">
@@ -69,28 +85,11 @@ export default function CreatorPodcastsUploadPage() {
           </div>
         </section>
 
-        <section className="creator-panel card creator-upload-side-card">
-          <div className="creator-panel-head">
-            <div>
-              <h2>Episode checklist</h2>
-              <p>These details help listeners and reviewers understand the release faster.</p>
-            </div>
-          </div>
-          <div className="creator-quick-list">
-            <div className="creator-quick-action">
-              <span>Set the series first</span>
-              <small>Save host and topic details once before publishing episodes.</small>
-            </div>
-            <div className="creator-quick-action">
-              <span>Use season and episode numbers</span>
-              <small>Structured numbering keeps your catalog easy to browse.</small>
-            </div>
-            <div className="creator-quick-action">
-              <span>Add a teaser sample</span>
-              <small>Preview clips help free listeners discover paid or premium episodes.</small>
-            </div>
-          </div>
-        </section>
+        <CreatorAudienceDestinationCard
+          categoryKey="podcast"
+          publicPath={publicPodcastsPath}
+          highlights={audienceHighlights}
+        />
       </aside>
     </div>
   );

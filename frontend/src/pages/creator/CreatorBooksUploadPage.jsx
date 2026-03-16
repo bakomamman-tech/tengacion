@@ -2,12 +2,28 @@ import { Link } from "react-router-dom";
 
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import { formatCurrency } from "../../components/creator/creatorConfig";
+import CreatorAudienceDestinationCard from "../../components/creator/upload/CreatorAudienceDestinationCard";
 import BookUploadStudio from "../../components/creator/upload/BookUploadStudio";
 
 export default function CreatorBooksUploadPage() {
-  const { dashboard } = useCreatorWorkspace();
+  const { creatorProfile, dashboard } = useCreatorWorkspace();
   const bookStats = dashboard.categories?.bookPublishing || dashboard.categories?.books || {};
   const bookAnalytics = dashboard.content?.books?.analytics || {};
+  const publicBooksPath = creatorProfile?._id ? `/creators/${creatorProfile._id}/books` : "";
+  const audienceHighlights = [
+    {
+      title: "Choose the right format",
+      copy: "Match the uploaded file type to the format you select.",
+    },
+    {
+      title: "Upload artwork",
+      copy: "Clear cover art makes your release easier to trust and discover.",
+    },
+    {
+      title: "Lead readers to the final page",
+      copy: "The public books page is where your audience can preview, buy, and read the release.",
+    },
+  ];
 
   return (
     <div className="creator-page-grid creator-upload-page">
@@ -69,28 +85,11 @@ export default function CreatorBooksUploadPage() {
           </div>
         </section>
 
-        <section className="creator-panel card creator-upload-side-card">
-          <div className="creator-panel-head">
-            <div>
-              <h2>Submission checklist</h2>
-              <p>A few quick checks can save time in review.</p>
-            </div>
-          </div>
-          <div className="creator-quick-list">
-            <div className="creator-quick-action">
-              <span>Choose the right format</span>
-              <small>Match the uploaded file type to the format you select.</small>
-            </div>
-            <div className="creator-quick-action">
-              <span>Upload artwork</span>
-              <small>Clear cover art makes your release easier to trust and discover.</small>
-            </div>
-            <div className="creator-quick-action">
-              <span>Add preview text</span>
-              <small>Short excerpts help readers sample the work before purchase.</small>
-            </div>
-          </div>
-        </section>
+        <CreatorAudienceDestinationCard
+          categoryKey="bookPublishing"
+          publicPath={publicBooksPath}
+          highlights={audienceHighlights}
+        />
       </aside>
     </div>
   );

@@ -20,11 +20,20 @@ export default function MusicVideoUploadForm({
       <div className="creator-form-grid">
         <label>
           <span>Video title</span>
-          <input value={value.videoTitle} onChange={(event) => onChange("videoTitle", event.target.value)} />
+          <input
+            value={value.videoTitle}
+            placeholder="Video title"
+            onChange={(event) => onChange("videoTitle", event.target.value)}
+          />
         </label>
         <label>
           <span>Price</span>
-          <input value={value.price} inputMode="decimal" onChange={(event) => onChange("price", event.target.value)} />
+          <input
+            value={value.price}
+            placeholder="Price"
+            inputMode="decimal"
+            onChange={(event) => onChange("price", event.target.value)}
+          />
         </label>
         <CreatorUploadField
           icon="F"
@@ -52,7 +61,12 @@ export default function MusicVideoUploadForm({
         />
         <label className="creator-form-full">
           <span>Description</span>
-          <textarea rows={4} value={value.description} onChange={(event) => onChange("description", event.target.value)} />
+          <textarea
+            rows={4}
+            value={value.description}
+            placeholder="Description"
+            onChange={(event) => onChange("description", event.target.value)}
+          />
         </label>
       </div>
 

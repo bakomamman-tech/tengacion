@@ -20,19 +20,37 @@ export default function PodcastEpisodeForm({
       <div className="creator-form-grid">
         <label>
           <span>Episode title</span>
-          <input value={value.episodeTitle} onChange={(event) => onChange("episodeTitle", event.target.value)} />
+          <input
+            value={value.episodeTitle}
+            placeholder="Episode title"
+            onChange={(event) => onChange("episodeTitle", event.target.value)}
+          />
         </label>
         <label>
           <span>Podcast series</span>
-          <input value={value.podcastSeries} onChange={(event) => onChange("podcastSeries", event.target.value)} />
+          <input
+            value={value.podcastSeries}
+            placeholder="Podcast series"
+            onChange={(event) => onChange("podcastSeries", event.target.value)}
+          />
         </label>
         <label>
           <span>Season</span>
-          <input value={value.season} inputMode="numeric" onChange={(event) => onChange("season", event.target.value)} />
+          <input
+            value={value.season}
+            placeholder="Season"
+            inputMode="numeric"
+            onChange={(event) => onChange("season", event.target.value)}
+          />
         </label>
         <label>
           <span>Episode number</span>
-          <input value={value.episodeNumber} inputMode="numeric" onChange={(event) => onChange("episodeNumber", event.target.value)} />
+          <input
+            value={value.episodeNumber}
+            placeholder="Episode number"
+            inputMode="numeric"
+            onChange={(event) => onChange("episodeNumber", event.target.value)}
+          />
         </label>
         <label>
           <span>Access type</span>
@@ -43,7 +61,13 @@ export default function PodcastEpisodeForm({
         </label>
         <label>
           <span>Price</span>
-          <input value={value.price} inputMode="decimal" onChange={(event) => onChange("price", event.target.value)} />
+          <input
+            value={value.price}
+            placeholder="Price"
+            inputMode="decimal"
+            disabled={value.accessType !== "paid"}
+            onChange={(event) => onChange("price", event.target.value)}
+          />
         </label>
         <CreatorUploadField
           icon="A"
@@ -71,7 +95,12 @@ export default function PodcastEpisodeForm({
         />
         <label className="creator-form-full">
           <span>Description</span>
-          <textarea rows={4} value={value.description} onChange={(event) => onChange("description", event.target.value)} />
+          <textarea
+            rows={4}
+            value={value.description}
+            placeholder="Description"
+            onChange={(event) => onChange("description", event.target.value)}
+          />
         </label>
       </div>
 

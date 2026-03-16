@@ -1028,6 +1028,72 @@
   gap: 18px;
 }
 
+.creator-publish-outcome {
+  display: grid;
+  gap: 16px;
+  background:
+    radial-gradient(circle at top left, rgba(131, 181, 96, 0.16), transparent 28%),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(241, 247, 234, 0.94));
+}
+
+.creator-publish-outcome.is-live {
+  border-color: rgba(49, 93, 67, 0.22);
+}
+
+.creator-audience-destination-card,
+.creator-publish-outcome {
+  position: relative;
+  overflow: hidden;
+}
+
+.creator-audience-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.creator-audience-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(49, 93, 67, 0.08);
+  border: 1px solid rgba(49, 93, 67, 0.12);
+  color: var(--creator-accent-strong);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.creator-upload-route-note {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(49, 93, 67, 0.14);
+  background: rgba(255, 252, 247, 0.9);
+}
+
+.creator-upload-route-note span {
+  color: var(--creator-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.creator-upload-route-note strong {
+  color: var(--creator-text);
+  font-size: 0.96rem;
+  overflow-wrap: anywhere;
+}
+
+.creator-audience-destination-card .creator-quick-list,
+.creator-publish-outcome .creator-category-actions {
+  margin-top: 2px;
+}
+
 .creator-upload-studio .creator-upload-notice {
   background: rgba(232, 244, 219, 0.82);
   border-color: rgba(131, 181, 96, 0.24);
@@ -1053,6 +1119,16 @@
 .creator-upload-studio .creator-form-grid textarea {
   background: rgba(255, 252, 247, 0.96);
   border-color: rgba(131, 181, 96, 0.24);
+}
+
+.creator-upload-studio .creator-form-grid input:not(.creator-upload-field-input)::placeholder,
+.creator-upload-studio .creator-form-grid textarea::placeholder {
+  color: rgba(68, 91, 67, 0.48);
+}
+
+.creator-upload-studio .creator-form-grid input:not(.creator-upload-field-input):disabled {
+  background: rgba(241, 238, 229, 0.84);
+  color: rgba(108, 98, 77, 0.7);
 }
 
 .creator-upload-studio .creator-form-grid label:not(.creator-upload-field) > span {

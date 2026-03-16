@@ -4,8 +4,10 @@ import toast from "react-hot-toast";
 import { createPodcastEpisode, updatePodcastSeries } from "../../../api";
 import { useUnsavedChangesPrompt } from "../../../hooks/useUnsavedChangesPrompt";
 import { useCreatorWorkspace } from "../useCreatorWorkspace";
+import CreatorPublishOutcomeCard from "./CreatorPublishOutcomeCard";
 import PodcastEpisodeForm from "./PodcastEpisodeForm";
 import PodcastSeriesForm from "./PodcastSeriesForm";
+import { buildUploadOutcome } from "./uploadAudienceUtils";
 
 const EMPTY_PODCAST_FORM = {
   episodeTitle: "",
@@ -33,6 +35,7 @@ export default function PodcastUploadStudio({ showNotice = true }) {
   const [busy, setBusy] = useState(false);
   const [seriesBusy, setSeriesBusy] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [outcome, setOutcome] = useState(null);
 
   useEffect(() => {
     setSeriesForm({
@@ -103,8 +106,18 @@ export default function PodcastUploadStudio({ showNotice = true }) {
 
     try {
       setBusy(true);
-      await createPodcastEpisode(formData, { onProgress: setProgress });
+      const created = await createPodcastEpisode(formData, { onProgress: setProgress });
       await refreshWorkspace();
+      setOutcome(
+        buildUploadOutcome({
+          creatorProfileId: creatorProfile?._id || "",
+          categoryKey: "podcast",
+          itemType: "podcast",
+          itemId: created?._id || "",
+          title: created?.title || podcastForm.episodeTitle,
+          publishedStatus: created?.publishedStatus || publishedStatus,
+        })
+      );
       toast.success(publishedStatus === "draft" ? "Podcast draft saved" : "Podcast episode uploaded");
       resetForm();
     } catch (err) {
@@ -152,13 +165,21 @@ export default function PodcastUploadStudio({ showNotice = true }) {
 
         <PodcastEpisodeForm
           value={podcastForm}
-          onChange={(key, nextValue) => setPodcastForm((current) => ({ ...current, [key]: nextValue }))}
+          onChange={(key, nextValue) =>
+            setPodcastForm((current) => ({
+              ...current,
+              [key]: nextValue,
+              ...(key === "accessType" && nextValue !== "paid" ? { price: "" } : {}),
+            }))
+          }
           busy={busy}
           progress={progress}
           onSaveDraft={() => submitEpisode("draft")}
           onPublish={() => submitEpisode("published")}
         />
       </section>
+
+      <CreatorPublishOutcomeCard outcome={outcome} />
     </div>
   );
 }

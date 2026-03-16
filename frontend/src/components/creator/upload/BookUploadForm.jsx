@@ -20,19 +20,36 @@ export default function BookUploadForm({
       <div className="creator-form-grid">
         <label>
           <span>Book title</span>
-          <input value={value.bookTitle} onChange={(event) => onChange("bookTitle", event.target.value)} />
+          <input
+            value={value.bookTitle}
+            placeholder="Book title"
+            onChange={(event) => onChange("bookTitle", event.target.value)}
+          />
         </label>
         <label>
           <span>Genre / category</span>
-          <input value={value.genre} onChange={(event) => onChange("genre", event.target.value)} />
+          <input
+            value={value.genre}
+            placeholder="Genre / category"
+            onChange={(event) => onChange("genre", event.target.value)}
+          />
         </label>
         <label>
           <span>Language</span>
-          <input value={value.language} onChange={(event) => onChange("language", event.target.value)} />
+          <input
+            value={value.language}
+            placeholder="Language"
+            onChange={(event) => onChange("language", event.target.value)}
+          />
         </label>
         <label>
           <span>Price</span>
-          <input value={value.price} inputMode="decimal" onChange={(event) => onChange("price", event.target.value)} />
+          <input
+            value={value.price}
+            placeholder="Price"
+            inputMode="decimal"
+            onChange={(event) => onChange("price", event.target.value)}
+          />
         </label>
         <label>
           <span>File format</span>
@@ -45,7 +62,11 @@ export default function BookUploadForm({
         </label>
         <label>
           <span>Tags</span>
-          <input value={value.tags} onChange={(event) => onChange("tags", event.target.value)} placeholder="literary, drama, fiction" />
+          <input
+            value={value.tags}
+            onChange={(event) => onChange("tags", event.target.value)}
+            placeholder="literary, drama, fiction"
+          />
         </label>
         <CreatorUploadField
           icon="C"
@@ -73,11 +94,21 @@ export default function BookUploadForm({
         />
         <label className="creator-form-full">
           <span>Description</span>
-          <textarea rows={4} value={value.description} onChange={(event) => onChange("description", event.target.value)} />
+          <textarea
+            rows={4}
+            value={value.description}
+            placeholder="Description"
+            onChange={(event) => onChange("description", event.target.value)}
+          />
         </label>
         <label className="creator-form-full">
           <span>Preview excerpt</span>
-          <textarea rows={4} value={value.previewExcerptText} onChange={(event) => onChange("previewExcerptText", event.target.value)} />
+          <textarea
+            rows={4}
+            value={value.previewExcerptText}
+            placeholder="Preview excerpt"
+            onChange={(event) => onChange("previewExcerptText", event.target.value)}
+          />
         </label>
       </div>
 

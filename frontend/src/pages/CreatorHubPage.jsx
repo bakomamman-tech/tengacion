@@ -56,6 +56,7 @@ export default function CreatorHubPage() {
   const [followBusy, setFollowBusy] = useState(false);
 
   const activeTab = useMemo(() => resolveTab(location.pathname), [location.pathname]);
+  const requestedPreviewId = useMemo(() => new URLSearchParams(location.search).get("previewItem") || "", [location.search]);
   const isLoggedIn = Boolean(user?._id || user?.id);
 
   useEffect(() => {
@@ -273,6 +274,43 @@ export default function CreatorHubPage() {
   };
 
   const featuredItem = featured?.item || null;
+
+  useEffect(() => {
+    if (!requestedPreviewId) {
+      return;
+    }
+
+    const allItems = [
+      ...(music.tracks || []),
+      ...(music.albums || []),
+      ...(music.videos || []),
+      ...(podcasts.episodes || []),
+      ...(books || []),
+    ];
+    const targetItem = allItems.find((entry) => String(entry?.id || "") === String(requestedPreviewId || ""));
+    if (!targetItem) {
+      return;
+    }
+
+    const sourceUrl =
+      targetItem.streamUrl ||
+      targetItem.previewUrl ||
+      targetItem.downloadUrl ||
+      targetItem.route ||
+      "";
+
+    if (!sourceUrl) {
+      return;
+    }
+
+    setActivePreview(
+      normalizePreviewPayload({
+        item: targetItem,
+        src: sourceUrl,
+        mode: targetItem.canStream ? "stream" : "preview",
+      })
+    );
+  }, [books, music.albums, music.tracks, music.videos, podcasts.episodes, requestedPreviewId]);
 
   if (loading) {
     return (

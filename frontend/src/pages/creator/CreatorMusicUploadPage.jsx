@@ -2,12 +2,28 @@ import { Link } from "react-router-dom";
 
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import { formatCurrency } from "../../components/creator/creatorConfig";
+import CreatorAudienceDestinationCard from "../../components/creator/upload/CreatorAudienceDestinationCard";
 import MusicUploadStudio from "../../components/creator/upload/MusicUploadStudio";
 
 export default function CreatorMusicUploadPage() {
-  const { dashboard } = useCreatorWorkspace();
+  const { creatorProfile, dashboard } = useCreatorWorkspace();
   const musicStats = dashboard.categories?.music || {};
   const musicAnalytics = dashboard.content?.music?.analytics || {};
+  const publicMusicPath = creatorProfile?._id ? `/creators/${creatorProfile._id}/music` : "";
+  const audienceHighlights = [
+    {
+      title: "Use a clean release title",
+      copy: "Match the title, artwork, and file metadata as closely as possible.",
+    },
+    {
+      title: "Add preview assets",
+      copy: "Preview samples and thumbnails improve discovery and trust.",
+    },
+    {
+      title: "Lead fans to the final page",
+      copy: "Once published, your audience-facing music page is where people can stream, buy, and watch releases.",
+    },
+  ];
 
   return (
     <div className="creator-page-grid creator-upload-page">
@@ -69,28 +85,11 @@ export default function CreatorMusicUploadPage() {
           </div>
         </section>
 
-        <section className="creator-panel card creator-upload-side-card">
-          <div className="creator-panel-head">
-            <div>
-              <h2>Publishing checklist</h2>
-              <p>These details help your release move through screening faster.</p>
-            </div>
-          </div>
-          <div className="creator-quick-list">
-            <div className="creator-quick-action">
-              <span>Use a clean release title</span>
-              <small>Match the title, artwork, and file metadata as closely as possible.</small>
-            </div>
-            <div className="creator-quick-action">
-              <span>Add preview assets</span>
-              <small>Preview samples and thumbnails improve discovery and trust.</small>
-            </div>
-            <div className="creator-quick-action">
-              <span>Check pricing once</span>
-              <small>Draft first if you want to review your release before it goes live.</small>
-            </div>
-          </div>
-        </section>
+        <CreatorAudienceDestinationCard
+          categoryKey="music"
+          publicPath={publicMusicPath}
+          highlights={audienceHighlights}
+        />
       </aside>
     </div>
   );

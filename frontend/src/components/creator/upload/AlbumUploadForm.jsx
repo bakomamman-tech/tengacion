@@ -20,7 +20,11 @@ export default function AlbumUploadForm({
       <div className="creator-form-grid">
         <label>
           <span>Album title</span>
-          <input value={value.albumTitle} onChange={(event) => onChange("albumTitle", event.target.value)} />
+          <input
+            value={value.albumTitle}
+            placeholder="Album title"
+            onChange={(event) => onChange("albumTitle", event.target.value)}
+          />
         </label>
         <label>
           <span>Release type</span>
@@ -31,7 +35,12 @@ export default function AlbumUploadForm({
         </label>
         <label>
           <span>Price</span>
-          <input value={value.price} inputMode="decimal" onChange={(event) => onChange("price", event.target.value)} />
+          <input
+            value={value.price}
+            placeholder="Price"
+            inputMode="decimal"
+            onChange={(event) => onChange("price", event.target.value)}
+          />
         </label>
         <CreatorUploadField
           icon="I"
@@ -69,7 +78,12 @@ export default function AlbumUploadForm({
         />
         <label className="creator-form-full">
           <span>Description</span>
-          <textarea rows={4} value={value.description} onChange={(event) => onChange("description", event.target.value)} />
+          <textarea
+            rows={4}
+            value={value.description}
+            placeholder="Description"
+            onChange={(event) => onChange("description", event.target.value)}
+          />
         </label>
       </div>
 

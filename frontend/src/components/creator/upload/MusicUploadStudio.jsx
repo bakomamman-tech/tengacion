@@ -9,8 +9,10 @@ import {
 import { useUnsavedChangesPrompt } from "../../../hooks/useUnsavedChangesPrompt";
 import { useCreatorWorkspace } from "../useCreatorWorkspace";
 import AlbumUploadForm from "./AlbumUploadForm";
+import CreatorPublishOutcomeCard from "./CreatorPublishOutcomeCard";
 import MusicVideoUploadForm from "./MusicVideoUploadForm";
 import TrackUploadForm from "./TrackUploadForm";
+import { buildUploadOutcome } from "./uploadAudienceUtils";
 
 const EMPTY_TRACK_FORM = {
   trackTitle: "",
@@ -42,12 +44,13 @@ const EMPTY_VIDEO_FORM = {
 };
 
 export default function MusicUploadStudio({ showNotice = true }) {
-  const { refreshWorkspace } = useCreatorWorkspace();
+  const { creatorProfile, refreshWorkspace } = useCreatorWorkspace();
   const [trackForm, setTrackForm] = useState(EMPTY_TRACK_FORM);
   const [albumForm, setAlbumForm] = useState(EMPTY_ALBUM_FORM);
   const [videoForm, setVideoForm] = useState(EMPTY_VIDEO_FORM);
   const [busyKey, setBusyKey] = useState("");
   const [progress, setProgress] = useState(0);
+  const [outcome, setOutcome] = useState(null);
 
   const hasUnsavedChanges = Boolean(
     trackForm.trackTitle ||
@@ -105,8 +108,18 @@ export default function MusicUploadStudio({ showNotice = true }) {
     try {
       setBusyKey("track");
       setProgress(0);
-      await createMusicTrack(formData, { onProgress: setProgress });
+      const created = await createMusicTrack(formData, { onProgress: setProgress });
       await refreshWorkspace();
+      setOutcome(
+        buildUploadOutcome({
+          creatorProfileId: creatorProfile?._id || "",
+          categoryKey: "music",
+          itemType: "track",
+          itemId: created?._id || "",
+          title: created?.title || trackForm.trackTitle,
+          publishedStatus: created?.publishedStatus || publishedStatus,
+        })
+      );
       toast.success(publishedStatus === "draft" ? "Track draft saved" : "Track uploaded");
       resetTrackForm();
     } catch (err) {
@@ -144,8 +157,18 @@ export default function MusicUploadStudio({ showNotice = true }) {
     try {
       setBusyKey("album");
       setProgress(0);
-      await createMusicAlbum(formData, { onProgress: setProgress });
+      const created = await createMusicAlbum(formData, { onProgress: setProgress });
       await refreshWorkspace();
+      setOutcome(
+        buildUploadOutcome({
+          creatorProfileId: creatorProfile?._id || "",
+          categoryKey: "music",
+          itemType: "album",
+          itemId: created?._id || "",
+          title: created?.title || albumForm.albumTitle,
+          publishedStatus: created?.publishedStatus || publishedStatus,
+        })
+      );
       toast.success(publishedStatus === "draft" ? "Album draft saved" : "Album uploaded");
       resetAlbumForm();
     } catch (err) {
@@ -182,8 +205,18 @@ export default function MusicUploadStudio({ showNotice = true }) {
     try {
       setBusyKey("video");
       setProgress(0);
-      await createMusicVideo(formData, { onProgress: setProgress });
+      const created = await createMusicVideo(formData, { onProgress: setProgress });
       await refreshWorkspace();
+      setOutcome(
+        buildUploadOutcome({
+          creatorProfileId: creatorProfile?._id || "",
+          categoryKey: "music",
+          itemType: "video",
+          itemId: created?._id || "",
+          title: created?.title || videoForm.videoTitle,
+          publishedStatus: created?.publishedStatus || publishedStatus,
+        })
+      );
       toast.success(publishedStatus === "draft" ? "Music video draft saved" : "Music video uploaded");
       resetVideoForm();
     } catch (err) {
@@ -234,6 +267,8 @@ export default function MusicUploadStudio({ showNotice = true }) {
         onSaveDraft={() => submitVideo("draft")}
         onPublish={() => submitVideo("published")}
       />
+
+      <CreatorPublishOutcomeCard outcome={outcome} />
     </div>
   );
 }

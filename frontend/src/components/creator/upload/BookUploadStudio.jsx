@@ -5,6 +5,8 @@ import { createCreatorBook } from "../../../api";
 import { useUnsavedChangesPrompt } from "../../../hooks/useUnsavedChangesPrompt";
 import { useCreatorWorkspace } from "../useCreatorWorkspace";
 import BookUploadForm from "./BookUploadForm";
+import CreatorPublishOutcomeCard from "./CreatorPublishOutcomeCard";
+import { buildUploadOutcome } from "./uploadAudienceUtils";
 
 const EMPTY_BOOK_FORM = {
   bookTitle: "",
@@ -21,10 +23,11 @@ const EMPTY_BOOK_FORM = {
 };
 
 export default function BookUploadStudio({ showNotice = true }) {
-  const { refreshWorkspace } = useCreatorWorkspace();
+  const { creatorProfile, refreshWorkspace } = useCreatorWorkspace();
   const [bookForm, setBookForm] = useState(EMPTY_BOOK_FORM);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [outcome, setOutcome] = useState(null);
 
   const dirty = Boolean(
     bookForm.bookTitle ||
@@ -74,8 +77,18 @@ export default function BookUploadStudio({ showNotice = true }) {
     try {
       setBusy(true);
       setProgress(0);
-      await createCreatorBook(formData, { onProgress: setProgress });
+      const created = await createCreatorBook(formData, { onProgress: setProgress });
       await refreshWorkspace();
+      setOutcome(
+        buildUploadOutcome({
+          creatorProfileId: creatorProfile?._id || "",
+          categoryKey: "bookPublishing",
+          itemType: "book",
+          itemId: created?._id || "",
+          title: created?.title || bookForm.bookTitle,
+          publishedStatus: created?.publishedStatus || publishedStatus,
+        })
+      );
       toast.success(publishedStatus === "draft" ? "Book draft saved" : "Book uploaded");
       resetForm();
     } catch (err) {
@@ -106,6 +119,8 @@ export default function BookUploadStudio({ showNotice = true }) {
         onSaveDraft={() => submitBook("draft")}
         onPublish={() => submitBook("published")}
       />
+
+      <CreatorPublishOutcomeCard outcome={outcome} />
     </div>
   );
 }

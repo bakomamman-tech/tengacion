@@ -16,23 +16,44 @@ export default function PodcastSeriesForm({
       <div className="creator-form-grid">
         <label>
           <span>Podcast name</span>
-          <input value={value.podcastName} onChange={(event) => onChange("podcastName", event.target.value)} />
+          <input
+            value={value.podcastName}
+            placeholder="Podcast name"
+            onChange={(event) => onChange("podcastName", event.target.value)}
+          />
         </label>
         <label>
           <span>Host name</span>
-          <input value={value.hostName} onChange={(event) => onChange("hostName", event.target.value)} />
+          <input
+            value={value.hostName}
+            placeholder="Host name"
+            onChange={(event) => onChange("hostName", event.target.value)}
+          />
         </label>
         <label>
           <span>Theme or topic</span>
-          <input value={value.themeOrTopic} onChange={(event) => onChange("themeOrTopic", event.target.value)} />
+          <input
+            value={value.themeOrTopic}
+            placeholder="Theme or topic"
+            onChange={(event) => onChange("themeOrTopic", event.target.value)}
+          />
         </label>
         <label>
           <span>Series title</span>
-          <input value={value.seriesTitle} onChange={(event) => onChange("seriesTitle", event.target.value)} />
+          <input
+            value={value.seriesTitle}
+            placeholder="Series title"
+            onChange={(event) => onChange("seriesTitle", event.target.value)}
+          />
         </label>
         <label className="creator-form-full">
           <span>Series description</span>
-          <textarea rows={4} value={value.description} onChange={(event) => onChange("description", event.target.value)} />
+          <textarea
+            rows={4}
+            value={value.description}
+            placeholder="Series description"
+            onChange={(event) => onChange("description", event.target.value)}
+          />
         </label>
       </div>
 

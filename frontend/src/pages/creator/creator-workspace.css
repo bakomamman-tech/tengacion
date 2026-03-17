@@ -1943,3 +1943,27 @@ textarea {
 .creator-upload-page *::after {
   box-sizing: border-box;
 }
+
+.creator-dropzone-copy,
+.creator-dropzone-helper,
+.creator-dropzone-meta,
+.creator-dropzone-meta span,
+.creator-dropzone-action {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.creator-dropzone-action {
+  max-width: 100%;
+  text-align: center;
+}
+
+.creator-dropzone-clear {
+  justify-self: start;
+}
+
+.creator-dropzone-meta button,
+.creator-dropzone-meta span {
+  max-width: 100%;
+}

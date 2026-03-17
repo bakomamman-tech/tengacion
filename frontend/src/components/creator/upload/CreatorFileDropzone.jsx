@@ -69,25 +69,40 @@ export default function CreatorFileDropzone({
         className="creator-dropzone-surface"
         onClick={() => {
           if (inputRef.current) {
-            inputRef.current.value = "";
             inputRef.current.click();
           }
         }}
+        aria-labelledby={`${inputId}-label`}
+        aria-describedby={`${inputId}-helper`}
       >
-        <span className="creator-dropzone-icon" aria-hidden="true">
-          {icon}
+        <span className="creator-dropzone-header">
+          <span className="creator-dropzone-icon" aria-hidden="true">
+            {icon}
+          </span>
+
+          <span className="creator-dropzone-copy">
+            <strong id={`${inputId}-label`}>{label}</strong>
+            <span id={`${inputId}-helper`} className="creator-dropzone-helper">
+              {file ? file.name : helper}
+            </span>
+          </span>
         </span>
-        <span className="creator-dropzone-copy">
-          <strong>{label}</strong>
-          <span>{file ? file.name : helper}</span>
+
+        <span className="creator-dropzone-actions">
+          <span className="creator-dropzone-action">
+            {file ? "Replace file" : "Browse or drop"}
+          </span>
         </span>
-        <span className="creator-dropzone-action">{file ? "Replace file" : "Browse or drop"}</span>
       </button>
 
       <div className="creator-dropzone-meta">
         <span>{file ? formatBytes(file.size) : formats}</span>
         {file ? (
-          <button type="button" className="creator-dropzone-clear" onClick={() => handleSelect(null)}>
+          <button
+            type="button"
+            className="creator-dropzone-clear"
+            onClick={() => handleSelect(null)}
+          >
             Remove
           </button>
         ) : null}

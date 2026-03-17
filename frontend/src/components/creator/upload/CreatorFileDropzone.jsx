@@ -5,9 +5,14 @@ const formatBytes = (value = 0) => {
   if (!Number.isFinite(size) || size <= 0) {
     return "";
   }
+
   const units = ["B", "KB", "MB", "GB"];
-  const index = Math.min(Math.floor(Math.log(size) / Math.log(1024)), units.length - 1);
+  const index = Math.min(
+    Math.floor(Math.log(size) / Math.log(1024)),
+    units.length - 1
+  );
   const normalized = size / 1024 ** index;
+
   return `${normalized.toFixed(normalized >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
 };
 
@@ -27,15 +32,19 @@ export default function CreatorFileDropzone({
 
   const handleSelect = (nextFile) => {
     setDragActive(false);
+
     if (!nextFile && inputRef.current) {
       inputRef.current.value = "";
     }
+
     onChange(nextFile || null);
   };
 
   return (
     <div
-      className={`creator-dropzone${dragActive ? " is-dragging" : ""}${file ? " has-file" : ""}${error ? " has-error" : ""}`}
+      className={`creator-dropzone${dragActive ? " is-dragging" : ""}${
+        file ? " has-file" : ""
+      }${error ? " has-error" : ""}`}
       onDragOver={(event) => {
         event.preventDefault();
         setDragActive(true);
@@ -67,36 +76,34 @@ export default function CreatorFileDropzone({
       <button
         type="button"
         className="creator-dropzone-surface"
-        onClick={() => {
-          if (inputRef.current) {
-            inputRef.current.click();
-          }
-        }}
+        onClick={() => inputRef.current?.click()}
         aria-labelledby={`${inputId}-label`}
         aria-describedby={`${inputId}-helper`}
       >
-        <span className="creator-dropzone-header">
-          <span className="creator-dropzone-icon" aria-hidden="true">
+        <div className="creator-dropzone-header">
+          <div className="creator-dropzone-icon" aria-hidden="true">
             {icon}
-          </span>
+          </div>
 
-          <span className="creator-dropzone-copy">
+          <div className="creator-dropzone-copy">
             <strong id={`${inputId}-label`}>{label}</strong>
             <span id={`${inputId}-helper`} className="creator-dropzone-helper">
-              {file ? file.name : helper}
+              {file
+                ? `${file.name}${file.size ? ` • ${formatBytes(file.size)}` : ""}`
+                : helper}
             </span>
-          </span>
-        </span>
+          </div>
+        </div>
 
-        <span className="creator-dropzone-actions">
+        <div className="creator-dropzone-actions">
           <span className="creator-dropzone-action">
-            {file ? "Replace file" : "Browse or drop"}
+            {file ? "Replace file" : "Choose file"}
           </span>
-        </span>
+        </div>
       </button>
 
       <div className="creator-dropzone-meta">
-        <span>{file ? formatBytes(file.size) : formats}</span>
+        <span>{file ? "File ready" : formats}</span>
         {file ? (
           <button
             type="button"

@@ -1450,7 +1450,7 @@ textarea {
 
 .creator-upload-focus-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.82fr);
   gap: 20px;
   align-items: start;
 }
@@ -1497,18 +1497,16 @@ textarea {
 
 .creator-upload-dropzone-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  align-items: stretch;
-  width: 100%;
-  min-width: 0;
 }
+
 .creator-dropzone {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
-  width: 100%;
 }
+
 .creator-dropzone-input {
   position: absolute;
   opacity: 0;
@@ -1519,11 +1517,10 @@ textarea {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: flex-start;
-  gap: 16px;
-  min-height: 250px;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 220px;
   width: 100%;
-  min-width: 0;
   padding: 20px;
   border: 1px dashed rgba(49, 93, 67, 0.28);
   border-radius: 22px;
@@ -1533,9 +1530,9 @@ textarea {
   color: inherit;
   text-align: left;
   cursor: pointer;
-  overflow: hidden;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
+
 .creator-dropzone:hover .creator-dropzone-surface,
 .creator-dropzone.is-dragging .creator-dropzone-surface,
 .creator-dropzone.has-file .creator-dropzone-surface {
@@ -1560,8 +1557,8 @@ textarea {
   align-items: flex-start;
   gap: 14px;
   min-width: 0;
-  width: 100%;
 }
+
 .creator-dropzone-icon {
   display: inline-grid;
   place-items: center;
@@ -1578,33 +1575,31 @@ textarea {
 
 .creator-dropzone-copy {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
   flex: 1;
-  width: 100%;
 }
+
 .creator-dropzone-copy strong {
   color: var(--creator-text);
-  font-size: 0.98rem;
+  font-size: 1.08rem;
   line-height: 1.3;
-  overflow-wrap: anywhere;
-  word-break: break-word;
 }
+
 .creator-dropzone-copy span,
 .creator-dropzone-helper {
   color: var(--creator-muted);
-  line-height: 1.55;
-  font-size: 0.96rem;
-  overflow-wrap: anywhere;
+  line-height: 1.6;
   word-break: break-word;
   white-space: normal;
 }
+
 .creator-dropzone-actions {
   display: flex;
   justify-content: flex-start;
   margin-top: auto;
-  width: 100%;
 }
+
 .creator-dropzone-action {
   display: inline-flex;
   align-items: center;
@@ -1620,20 +1615,16 @@ textarea {
 }
 
 .creator-dropzone-meta {
-  display: grid;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   min-height: 22px;
   color: var(--creator-muted);
   font-size: 0.82rem;
 }
 
-.creator-dropzone-meta > * {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
 .creator-dropzone-clear {
   border: 0;
   background: transparent;
@@ -1901,22 +1892,16 @@ textarea {
   }
 
   .creator-form-grid,
-.creator-identity-layout,
-.creator-type-grid,
-.creator-panel-grid,
-.creator-metric-grid,
-.creator-profile-summary-grid,
-.creator-category-stats,
-.creator-upload-dropzone-grid {
-  grid-template-columns: 1fr;
-}
-.creator-dropzone-surface {
-  min-height: 220px;
-}
+  .creator-identity-layout,
+  .creator-type-grid,
+  .creator-panel-grid,
+  .creator-metric-grid,
+  .creator-profile-summary-grid,
+  .creator-category-stats,
+  .creator-upload-dropzone-grid {
+    grid-template-columns: 1fr;
+  }
 
-.creator-dropzone-meta {
-  gap: 6px;
-}
   .creator-content-category-link,
   .creator-dropzone-surface {
     grid-template-columns: 1fr;
@@ -1926,20 +1911,4 @@ textarea {
   .creator-upload-preview-card {
     position: static;
   }
-}
-
-.creator-upload-form-card,
-.creator-upload-preview-card,
-.creator-upload-section,
-.creator-upload-dropzone-grid,
-.creator-dropzone,
-.creator-dropzone-surface,
-.creator-dropzone-copy {
-  min-width: 0;
-}
-
-.creator-upload-page *,
-.creator-upload-page *::before,
-.creator-upload-page *::after {
-  box-sizing: border-box;
 }

@@ -8,18 +8,25 @@ import {
 } from "../../api";
 import CreatorHeader from "./CreatorHeader";
 import CreatorSidebar from "./CreatorSidebar";
-import { CREATOR_CATEGORY_CONFIG, CREATOR_CATEGORY_ORDER, normalizeCreatorLaneKeys } from "./creatorConfig";
+import {
+  CREATOR_CATEGORY_CONFIG,
+  CREATOR_CATEGORY_ORDER,
+  normalizeCreatorLaneKeys,
+} from "./creatorConfig";
 
 import "../../pages/creator/creator-workspace.css";
 
-const getUploadNavLabel = (key) => `${CREATOR_CATEGORY_CONFIG[key]?.shortTitle || key} Uploads`;
+const getUploadNavLabel = (key) =>
+  `${CREATOR_CATEGORY_CONFIG[key]?.shortTitle || key} Uploads`;
 
 function CreatorWorkspaceSkeleton() {
   return (
     <div className="creator-shell">
       <aside className="creator-sidebar skeleton" />
       <main className="creator-main">
-        <div className="creator-page-loading card">Loading creator workspace...</div>
+        <section className="creator-page-stack">
+          <div className="creator-page-loading">Loading creator workspace...</div>
+        </section>
       </main>
     </div>
   );
@@ -47,22 +54,26 @@ export default function CreatorWorkspaceLayout() {
     if (!silent) {
       setLoading(true);
     }
+
     try {
       const [profilePayload, summaryPayload, contentPayload] = await Promise.all([
         getCreatorWorkspaceProfile(),
         getCreatorDashboardSummary(),
         getCreatorPrivateContent(),
       ]);
+
       setCreatorProfile(
         profilePayload ||
           summaryPayload?.creatorProfile ||
           contentPayload?.creatorProfile ||
           null
       );
+
       setDashboard({
         ...(summaryPayload || {}),
         content: contentPayload?.content || summaryPayload?.content || {},
       });
+
       setError("");
     } catch (err) {
       if (!silent || !creatorProfileRef.current || !dashboardRef.current) {
@@ -91,12 +102,18 @@ export default function CreatorWorkspaceLayout() {
     return (
       <div className="creator-shell">
         <main className="creator-main">
-          <section className="creator-page-error card">
-            <h2>Creator workspace unavailable</h2>
-            <p>{error || "We could not load your creator workspace right now."}</p>
-            <button type="button" className="creator-primary-btn" onClick={() => loadWorkspace()}>
-              Try again
-            </button>
+          <section className="creator-page-stack">
+            <section className="creator-page-error">
+              <h2>Creator workspace unavailable</h2>
+              <p>{error || "We could not load your creator workspace right now."}</p>
+              <button
+                type="button"
+                className="creator-primary-btn"
+                onClick={() => loadWorkspace()}
+              >
+                Try again
+              </button>
+            </section>
           </section>
         </main>
       </div>
@@ -113,60 +130,75 @@ export default function CreatorWorkspaceLayout() {
     setDashboard,
   };
 
-  const normalizedCreatorTypes = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes);
+  const normalizedCreatorTypes = normalizeCreatorLaneKeys(
+    creatorProfile?.creatorTypes
+  );
+
   const currentUploadCategory = CREATOR_CATEGORY_ORDER.find((key) =>
     location.pathname.startsWith(CREATOR_CATEGORY_CONFIG[key].uploadRoute || "")
   );
+
   const currentCategory = CREATOR_CATEGORY_ORDER.find((key) =>
     location.pathname.startsWith(CREATOR_CATEGORY_CONFIG[key].route)
   );
+
   const isCategorySectionActive =
-    Boolean(currentCategory) || Boolean(currentUploadCategory) || location.pathname.startsWith("/creator/categories");
+    Boolean(currentCategory) ||
+    Boolean(currentUploadCategory) ||
+    location.pathname.startsWith("/creator/categories");
+
   const pageMeta = currentUploadCategory
     ? {
         title: CREATOR_CATEGORY_CONFIG[currentUploadCategory].uploadTitle,
         subtitle: CREATOR_CATEGORY_CONFIG[currentUploadCategory].uploadDescription,
       }
     : currentCategory
-    ? {
-        title: CREATOR_CATEGORY_CONFIG[currentCategory].title,
-        subtitle: CREATOR_CATEGORY_CONFIG[currentCategory].description,
-      }
-    : location.pathname.startsWith("/creator/earnings")
       ? {
-          title: "Earnings",
-          subtitle: "Track your creator share, category performance, and current balance health.",
+          title: CREATOR_CATEGORY_CONFIG[currentCategory].title,
+          subtitle: CREATOR_CATEGORY_CONFIG[currentCategory].description,
         }
-      : location.pathname.startsWith("/creator/payouts")
+      : location.pathname.startsWith("/creator/earnings")
         ? {
-            title: "Payouts",
-            subtitle: "Review payout details, settlement readiness, and the balance available for withdrawal.",
+            title: "Earnings",
+            subtitle:
+              "Track your creator share, category performance, and current balance health.",
           }
-        : location.pathname.startsWith("/creator/categories")
+        : location.pathname.startsWith("/creator/payouts")
           ? {
-              title: "Content Categories",
-              subtitle: "Choose the creator lanes you want active, then visit those dashboards to register uploads there too.",
+              title: "Payouts",
+              subtitle:
+                "Review payout details, settlement readiness, and the balance available for withdrawal.",
             }
-        : location.pathname.startsWith("/creator/settings")
-          ? {
-              title: "Account Settings",
-              subtitle: "Manage creator identity, payout details, and the content lanes enabled on your profile.",
-            }
-          : location.pathname.startsWith("/creator/verification")
+          : location.pathname.startsWith("/creator/categories")
             ? {
-                title: "Copyright & Verification",
-                subtitle: "Review screening results, flagged uploads, and the status of your verification pipeline.",
+                title: "Content Categories",
+                subtitle:
+                  "Choose the creator lanes you want active, then visit those dashboards to register uploads there too.",
               }
-            : location.pathname.startsWith("/creator/support")
+            : location.pathname.startsWith("/creator/settings")
               ? {
-                  title: "Support",
-                  subtitle: "Reach help resources, report issues, and review creator-facing policies.",
-                }
-              : {
-                  title: "Content Dashboard",
+                  title: "Account Settings",
                   subtitle:
-                    "Manage your categories, publishing health, and creator earnings from one premium workspace.",
-                };
+                    "Manage creator identity, payout details, and the content lanes enabled on your profile.",
+                }
+              : location.pathname.startsWith("/creator/verification")
+                ? {
+                    title: "Copyright & Verification",
+                    subtitle:
+                      "Review screening results, flagged uploads, and the status of your verification pipeline.",
+                  }
+                : location.pathname.startsWith("/creator/support")
+                  ? {
+                      title: "Support",
+                      subtitle:
+                        "Reach help resources, report issues, and review creator-facing policies.",
+                    }
+                  : {
+                      title: "Content Dashboard",
+                      subtitle:
+                        "Manage your categories, publishing health, and creator earnings from one premium workspace.",
+                    };
+
   const isSettingsPage = location.pathname.startsWith("/creator/settings");
 
   return (
@@ -176,6 +208,7 @@ export default function CreatorWorkspaceLayout() {
         onClick={() => setMobileOpen(false)}
         aria-hidden="true"
       />
+
       <CreatorSidebar
         creatorProfile={creatorProfile}
         mobileOpen={mobileOpen}
@@ -191,11 +224,18 @@ export default function CreatorWorkspaceLayout() {
           onToggleMenu={() => setMobileOpen((open) => !open)}
           action={
             isSettingsPage ? (
-              <button type="submit" form="creator-settings-form" className="creator-secondary-btn">
+              <button
+                type="submit"
+                form="creator-settings-form"
+                className="creator-secondary-btn"
+              >
                 Save creator profile
               </button>
             ) : currentUploadCategory ? (
-              <Link className="creator-secondary-btn" to={CREATOR_CATEGORY_CONFIG[currentUploadCategory].route}>
+              <Link
+                className="creator-secondary-btn"
+                to={CREATOR_CATEGORY_CONFIG[currentUploadCategory].route}
+              >
                 Back to {CREATOR_CATEGORY_CONFIG[currentUploadCategory].shortTitle}
               </Link>
             ) : (
@@ -205,28 +245,40 @@ export default function CreatorWorkspaceLayout() {
             )
           }
           primaryAction={
-            <nav className="creator-mobile-tabs creator-chip-nav" aria-label="Creator workspace quick navigation">
+            <nav
+              className="creator-mobile-tabs creator-chip-nav"
+              aria-label="Creator workspace quick navigation"
+            >
               <NavLink className="creator-chip-link" to="/creator/dashboard">
                 Overview
               </NavLink>
+
               <div
-                className={`creator-chip-group${isCategorySectionActive ? " is-active" : ""}`}
+                className={`creator-chip-group${
+                  isCategorySectionActive ? " is-active" : ""
+                }`}
                 role="group"
                 aria-label="Content Categories"
               >
                 <NavLink
-                  className={`creator-chip-link creator-chip-link--parent${isCategorySectionActive ? " active" : ""}`}
+                  className={`creator-chip-link creator-chip-link--parent${
+                    isCategorySectionActive ? " active" : ""
+                  }`}
                   to="/creator/categories"
                 >
                   Content Categories
                 </NavLink>
+
                 {normalizedCreatorTypes.length ? (
                   <div className="creator-chip-group-list">
                     {normalizedCreatorTypes.map((key) => (
                       <NavLink
                         key={key}
                         className="creator-chip-link creator-chip-link--child"
-                        to={CREATOR_CATEGORY_CONFIG[key]?.uploadRoute || "/creator/dashboard"}
+                        to={
+                          CREATOR_CATEGORY_CONFIG[key]?.uploadRoute ||
+                          "/creator/dashboard"
+                        }
                       >
                         {getUploadNavLabel(key)}
                       </NavLink>
@@ -238,7 +290,9 @@ export default function CreatorWorkspaceLayout() {
           }
         />
 
-        <Outlet context={contextValue} />
+        <section className="creator-page-stack">
+          <Outlet context={contextValue} />
+        </section>
       </main>
     </div>
   );

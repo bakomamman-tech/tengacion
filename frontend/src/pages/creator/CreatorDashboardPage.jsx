@@ -19,30 +19,53 @@ export default function CreatorDashboardPage() {
   return (
     <div className="creator-page-grid">
       <div className="creator-page-main">
-        <CreatorProfileSummaryCard creatorProfile={creatorProfile} summary={dashboard.summary} />
+        <CreatorProfileSummaryCard
+          creatorProfile={creatorProfile}
+          summary={dashboard.summary}
+        />
 
         <section className="creator-metric-grid">
           <CreatorStatsCard
             label="Total uploads"
             value={creatorLanes.reduce(
-              (sum, key) => sum + Number(dashboard.categories?.[CREATOR_CATEGORY_CONFIG[key]?.dashboardKey]?.uploads || 0),
+              (sum, key) =>
+                sum +
+                Number(
+                  dashboard.categories?.[
+                    CREATOR_CATEGORY_CONFIG[key]?.dashboardKey
+                  ]?.uploads || 0
+                ),
               0
             )}
             helper="Published releases live across your active lanes."
             tone="success"
           />
+
           <CreatorStatsCard
             label="Drafts"
             value={creatorLanes.reduce(
-              (sum, key) => sum + Number(dashboard.categories?.[CREATOR_CATEGORY_CONFIG[key]?.dashboardKey]?.drafts || 0),
+              (sum, key) =>
+                sum +
+                Number(
+                  dashboard.categories?.[
+                    CREATOR_CATEGORY_CONFIG[key]?.dashboardKey
+                  ]?.drafts || 0
+                ),
               0
             )}
             helper="Unfinished work waiting in your studio."
           />
+
           <CreatorStatsCard
             label="Pending review"
             value={creatorLanes.reduce(
-              (sum, key) => sum + Number(dashboard.categories?.[CREATOR_CATEGORY_CONFIG[key]?.dashboardKey]?.underReview || 0),
+              (sum, key) =>
+                sum +
+                Number(
+                  dashboard.categories?.[
+                    CREATOR_CATEGORY_CONFIG[key]?.dashboardKey
+                  ]?.underReview || 0
+                ),
               0
             )}
             helper="Uploads currently in moderation or copyright review."
@@ -50,11 +73,15 @@ export default function CreatorDashboardPage() {
           />
         </section>
 
-        <section className="creator-upload-launchpad card">
+        <section className="creator-upload-launchpad">
           <div className="creator-panel-head">
             <div>
               <h2>Content Categories</h2>
-              <p>Choose the exact publishing studio you need. Music, podcasts, and books each open in their own fully separated upload experience.</p>
+              <p>
+                Choose the exact publishing studio you need. Music, podcasts,
+                and books each open in their own fully separated upload
+                experience.
+              </p>
             </div>
           </div>
 
@@ -65,11 +92,12 @@ export default function CreatorDashboardPage() {
               const enabled = creatorLanes.includes(key);
 
               return (
-                <article key={key} className="creator-upload-launch-card card">
+                <article key={key} className="creator-upload-launch-card">
                   <div className="creator-category-top">
                     <span className="creator-category-icon" aria-hidden="true">
                       {item.icon}
                     </span>
+
                     <div>
                       <h3>{item.uploadTitle}</h3>
                       <p>{item.description}</p>
@@ -77,7 +105,11 @@ export default function CreatorDashboardPage() {
                   </div>
 
                   <div className="creator-upload-launch-meta">
-                    <span className={`creator-status-badge ${enabled ? "success" : "neutral"}`}>
+                    <span
+                      className={`creator-status-badge ${
+                        enabled ? "success" : "neutral"
+                      }`}
+                    >
                       {enabled ? "Enabled" : "Not enabled"}
                     </span>
                     <span>Published {Number(stats.uploads || 0)}</span>
@@ -86,8 +118,13 @@ export default function CreatorDashboardPage() {
                   </div>
 
                   <div className="creator-category-actions">
-                    <Link className="creator-primary-btn creator-upload-cta" to={enabled ? item.uploadRoute : "/creator/categories"}>
-                      {enabled ? item.uploadButtonLabel : `Enable ${item.shortTitle}`}
+                    <Link
+                      className="creator-primary-btn creator-upload-cta"
+                      to={enabled ? item.uploadRoute : "/creator/categories"}
+                    >
+                      {enabled
+                        ? item.uploadButtonLabel
+                        : `Enable ${item.shortTitle}`}
                     </Link>
                   </div>
                 </article>
@@ -96,11 +133,14 @@ export default function CreatorDashboardPage() {
           </div>
         </section>
 
-        <section className="creator-panel card">
+        <section className="creator-panel">
           <div className="creator-panel-head">
             <div>
               <h2>Recent activity</h2>
-              <p>The latest publishing, review, and sales updates from your creator workspace.</p>
+              <p>
+                The latest publishing, review, and sales updates from your
+                creator workspace.
+              </p>
             </div>
           </div>
 
@@ -112,6 +152,7 @@ export default function CreatorDashboardPage() {
                     <strong>{item.title}</strong>
                     <p>{item.description}</p>
                   </div>
+
                   <div className="creator-activity-meta">
                     <CopyrightStatusBadge status={item.status} />
                     <span>{formatShortDate(item.timestamp)}</span>
@@ -119,33 +160,46 @@ export default function CreatorDashboardPage() {
                 </article>
               ))
             ) : (
-              <div className="creator-empty-card">Your recent creator activity will appear here after you publish content.</div>
+              <div className="creator-empty-card">
+                Your recent creator activity will appear here after you publish
+                content.
+              </div>
             )}
           </div>
         </section>
       </div>
 
       <aside className="creator-page-side">
-        <section className="creator-panel card">
+        <section className="creator-panel">
           <div className="creator-panel-head">
             <div>
               <h2>Quick earnings snapshot</h2>
               <p>Your current creator finance position.</p>
             </div>
           </div>
+
           <div className="creator-stack-list">
             <div className="creator-stack-row">
               <span>Total earnings</span>
-              <strong>{formatCurrency(dashboard.summary?.totalEarnings || 0)}</strong>
+              <strong>
+                {formatCurrency(dashboard.summary?.totalEarnings || 0)}
+              </strong>
             </div>
+
             <div className="creator-stack-row">
               <span>Available</span>
-              <strong>{formatCurrency(dashboard.summary?.availableBalance || 0)}</strong>
+              <strong>
+                {formatCurrency(dashboard.summary?.availableBalance || 0)}
+              </strong>
             </div>
+
             <div className="creator-stack-row">
               <span>Pending</span>
-              <strong>{formatCurrency(dashboard.summary?.pendingBalance || 0)}</strong>
+              <strong>
+                {formatCurrency(dashboard.summary?.pendingBalance || 0)}
+              </strong>
             </div>
+
             <div className="creator-stack-row">
               <span>Withdrawn</span>
               <strong>{formatCurrency(dashboard.summary?.withdrawn || 0)}</strong>
@@ -153,47 +207,63 @@ export default function CreatorDashboardPage() {
           </div>
         </section>
 
-        <section className="creator-panel card">
+        <section className="creator-panel">
           <div className="creator-panel-head">
             <div>
               <h2>Verification overview</h2>
               <p>Live scan states across your uploads.</p>
             </div>
           </div>
+
           <div className="creator-stack-list">
-            {Object.entries(dashboard.verificationOverview || {}).map(([key, value]) => (
-              <div key={key} className="creator-stack-row">
-                <CopyrightStatusBadge status={key} />
-                <strong>{value}</strong>
-              </div>
-            ))}
+            {Object.entries(dashboard.verificationOverview || {}).map(
+              ([key, value]) => (
+                <div key={key} className="creator-stack-row">
+                  <CopyrightStatusBadge status={key} />
+                  <strong>{value}</strong>
+                </div>
+              )
+            )}
           </div>
+
           <Link className="creator-secondary-btn" to="/creator/verification">
             Open verification center
           </Link>
         </section>
 
-        <section className="creator-panel card">
+        <section className="creator-panel">
           <div className="creator-panel-head">
             <div>
               <h2>Quick actions</h2>
               <p>Jump straight into the areas you enabled during onboarding.</p>
             </div>
           </div>
+
           <div className="creator-quick-list">
             <Link className="creator-quick-action" to="/creator/categories">
               <span>Content categories</span>
-              <small>Enable more creator lanes here, then open their dashboards and upload there too.</small>
+              <small>
+                Enable more creator lanes here, then open their dashboards and
+                upload there too.
+              </small>
             </Link>
+
             {creatorLanes.map((key) => (
-              <Link key={key} className="creator-quick-action" to={CREATOR_CATEGORY_CONFIG[key].uploadRoute}>
+              <Link
+                key={key}
+                className="creator-quick-action"
+                to={CREATOR_CATEGORY_CONFIG[key].uploadRoute}
+              >
                 <span>{CREATOR_CATEGORY_CONFIG[key].uploadButtonLabel}</span>
                 <small>{CREATOR_CATEGORY_CONFIG[key].uploadDescription}</small>
               </Link>
             ))}
+
             <Link className="creator-quick-action" to="/creator/support">
               <span>Support</span>
-              <small>Get help with onboarding, payouts, and verification questions.</small>
+              <small>
+                Get help with onboarding, payouts, and verification questions.
+              </small>
             </Link>
           </div>
         </section>

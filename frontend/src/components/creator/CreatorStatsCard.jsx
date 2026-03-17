@@ -5,7 +5,7 @@ export default function CreatorStatsCard({
   tone = "neutral",
 }) {
   return (
-    <article className={`creator-stats-card creator-stats-card--${tone} card`}>
+    <article className={`creator-stats-card creator-stats-card--${tone}`}>
       <span>{label}</span>
       <strong>{value}</strong>
       {helper ? <small>{helper}</small> : null}

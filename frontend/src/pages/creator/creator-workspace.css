@@ -22,6 +22,23 @@
   --creator-font-body: "Manrope", "Segoe UI", sans-serif;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
 .creator-gate-screen,
 .creator-register-shell,
 .creator-shell,
@@ -273,8 +290,6 @@
   border: 1px solid rgba(95, 76, 33, 0.14);
   background: rgba(255, 251, 246, 0.92);
   color: var(--creator-text);
-  font: inherit;
-  box-sizing: border-box;
 }
 
 .creator-form-grid textarea,
@@ -572,6 +587,7 @@
   justify-content: flex-end;
   gap: 12px;
   margin-top: 18px;
+  flex-wrap: wrap;
 }
 
 .creator-primary-btn,
@@ -585,7 +601,7 @@
   padding: 0 18px;
   border-radius: 14px;
   border: 1px solid transparent;
-  font: inherit;
+  color: inherit;
   text-decoration: none;
   cursor: pointer;
   transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
@@ -1613,13 +1629,13 @@
   border: 0;
   background: transparent;
   color: var(--creator-accent-strong);
-  font: inherit;
   cursor: pointer;
 }
 
 .creator-dropzone-clear:hover {
   text-decoration: underline;
 }
+
 .creator-toggle.is-active {
   background: linear-gradient(135deg, rgba(49, 93, 67, 0.16), rgba(49, 93, 67, 0.08));
   border-color: rgba(49, 93, 67, 0.22);

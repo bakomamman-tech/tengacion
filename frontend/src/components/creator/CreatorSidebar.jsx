@@ -1,21 +1,37 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { resolveImage } from "../../api";
 
-import { CREATOR_CATEGORY_CONFIG, CREATOR_CATEGORY_ORDER, CREATOR_STATIC_NAV, normalizeCreatorLaneKeys } from "./creatorConfig";
+import {
+  CREATOR_CATEGORY_CONFIG,
+  CREATOR_CATEGORY_ORDER,
+  CREATOR_STATIC_NAV,
+  normalizeCreatorLaneKeys,
+} from "./creatorConfig";
 
-const getUploadNavLabel = (key) => `${CREATOR_CATEGORY_CONFIG[key]?.shortTitle || key} Uploads`;
+const getUploadNavLabel = (key) =>
+  `${CREATOR_CATEGORY_CONFIG[key]?.shortTitle || key} Uploads`;
 
-export default function CreatorSidebar({ creatorProfile, mobileOpen = false, onNavigate }) {
+export default function CreatorSidebar({
+  creatorProfile,
+  mobileOpen = false,
+  onNavigate = () => {},
+}) {
   const location = useLocation();
+
   const avatarSrc =
     resolveImage(creatorProfile?.user?.avatar || "") ||
     resolveImage(creatorProfile?.coverImageUrl || "") ||
     "";
-  const creatorName = creatorProfile?.displayName || creatorProfile?.fullName || "Creator";
+
+  const creatorName =
+    creatorProfile?.displayName || creatorProfile?.fullName || "Creator";
+
   const enabledLanes = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes);
+
   const enabledCategories = CREATOR_CATEGORY_ORDER.filter((key) =>
     enabledLanes.includes(key)
   );
+
   const isCategorySectionActive =
     location.pathname.startsWith("/creator/categories") ||
     enabledCategories.some(
@@ -25,31 +41,55 @@ export default function CreatorSidebar({ creatorProfile, mobileOpen = false, onN
     );
 
   return (
-    <aside className={`creator-sidebar ${mobileOpen ? "is-open" : ""}`}>
+    <aside
+      className={`creator-sidebar ${mobileOpen ? "is-open" : ""}`}
+      aria-label="Creator sidebar"
+    >
       <div className="creator-sidebar-brand">
         <div className="creator-sidebar-logo">
-          {avatarSrc ? <img src={avatarSrc} alt={creatorName} /> : creatorName.slice(0, 1).toUpperCase()}
+          {avatarSrc ? (
+            <img src={avatarSrc} alt={creatorName} />
+          ) : (
+            creatorName.slice(0, 1).toUpperCase()
+          )}
         </div>
+
         <div className="creator-sidebar-brand-copy">
           <strong>Tengacion</strong>
           <span>Creator Workspace</span>
         </div>
       </div>
 
-      <nav className="creator-sidebar-nav" aria-label="Creator workspace navigation">
+      <nav
+        className="creator-sidebar-nav"
+        aria-label="Creator workspace navigation"
+      >
         <div className="creator-sidebar-group">
           <span className="creator-sidebar-label">Workspace</span>
-          <NavLink to="/creator/dashboard" className="creator-sidebar-link" onClick={onNavigate}>
+
+          <NavLink
+            to="/creator/dashboard"
+            className="creator-sidebar-link"
+            onClick={onNavigate}
+          >
             Overview
           </NavLink>
-          <div className="creator-sidebar-tree" role="group" aria-label="Content Categories">
+
+          <div
+            className="creator-sidebar-tree"
+            role="group"
+            aria-label="Content Categories"
+          >
             <NavLink
               to="/creator/categories"
-              className={`creator-sidebar-link creator-sidebar-link--parent${isCategorySectionActive ? " active" : ""}`}
+              className={`creator-sidebar-link creator-sidebar-link--parent${
+                isCategorySectionActive ? " active" : ""
+              }`}
               onClick={onNavigate}
             >
               Content Categories
             </NavLink>
+
             {enabledCategories.length ? (
               <div className="creator-sidebar-submenu">
                 {enabledCategories.map((key) => (
@@ -69,16 +109,19 @@ export default function CreatorSidebar({ creatorProfile, mobileOpen = false, onN
 
         <div className="creator-sidebar-group">
           <span className="creator-sidebar-label">Account</span>
-          {CREATOR_STATIC_NAV.filter((item) => item.key !== "dashboard").map((item) => (
-            <NavLink
-              key={item.key}
-              to={item.route}
-              className="creator-sidebar-link"
-              onClick={onNavigate}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+
+          {CREATOR_STATIC_NAV.filter((item) => item.key !== "dashboard").map(
+            (item) => (
+              <NavLink
+                key={item.key}
+                to={item.route}
+                className="creator-sidebar-link"
+                onClick={onNavigate}
+              >
+                {item.label}
+              </NavLink>
+            )
+          )}
         </div>
       </nav>
     </aside>

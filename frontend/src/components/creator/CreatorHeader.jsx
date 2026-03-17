@@ -8,18 +8,24 @@ export default function CreatorHeader({
   subtitle,
   creatorProfile,
   summary,
-  onToggleMenu,
+  onToggleMenu = () => {},
   action,
   primaryAction,
 }) {
   return (
     <header className="creator-header">
       <div className="creator-header-left">
-        <button type="button" className="creator-mobile-toggle" onClick={onToggleMenu}>
+        <button
+          type="button"
+          className="creator-mobile-toggle"
+          onClick={onToggleMenu}
+          aria-label="Open creator navigation"
+        >
           <span />
           <span />
           <span />
         </button>
+
         <div>
           <div className="creator-inline-row">
             <h1>{title}</h1>
@@ -34,6 +40,7 @@ export default function CreatorHeader({
           <span>Available</span>
           <strong>{formatCurrency(summary?.availableBalance || 0)}</strong>
         </div>
+
         {action ? (
           action
         ) : (
@@ -41,6 +48,7 @@ export default function CreatorHeader({
             Edit creator profile
           </Link>
         )}
+
         {primaryAction ? primaryAction : null}
       </div>
     </header>

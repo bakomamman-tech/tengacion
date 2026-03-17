@@ -40,10 +40,6 @@ export default function CreatorFileDropzone({
     onChange(nextFile || null);
   };
 
-  const fileSummary = file
-    ? `${file.name}${file.size ? ` • ${formatBytes(file.size)}` : ""}`
-    : helper;
-
   return (
     <div
       className={`creator-dropzone${dragActive ? " is-dragging" : ""}${
@@ -82,7 +78,7 @@ export default function CreatorFileDropzone({
         className="creator-dropzone-surface"
         onClick={() => inputRef.current?.click()}
         aria-labelledby={`${inputId}-label`}
-        aria-describedby={`${inputId}-helper ${inputId}-meta`}
+        aria-describedby={`${inputId}-helper`}
       >
         <div className="creator-dropzone-header">
           <div className="creator-dropzone-icon" aria-hidden="true">
@@ -91,9 +87,10 @@ export default function CreatorFileDropzone({
 
           <div className="creator-dropzone-copy">
             <strong id={`${inputId}-label`}>{label}</strong>
-
             <span id={`${inputId}-helper`} className="creator-dropzone-helper">
-              {fileSummary}
+              {file
+                ? `${file.name}${file.size ? ` • ${formatBytes(file.size)}` : ""}`
+                : helper}
             </span>
           </div>
         </div>
@@ -105,9 +102,8 @@ export default function CreatorFileDropzone({
         </div>
       </button>
 
-      <div id={`${inputId}-meta`} className="creator-dropzone-meta">
+      <div className="creator-dropzone-meta">
         <span>{file ? "File ready" : formats}</span>
-
         {file ? (
           <button
             type="button"

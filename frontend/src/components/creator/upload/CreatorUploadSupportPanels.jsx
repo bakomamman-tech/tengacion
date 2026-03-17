@@ -6,14 +6,32 @@ const CATEGORY_META = {
   music: {
     dashboardKey: "music",
     label: "Music",
+    formats: "MP3, WAV, FLAC, M4A, AAC, OGG",
+    tips: [
+      "Paid music releases should include a preview sample before publishing.",
+      "Use crisp square cover art for the strongest storefront presentation.",
+      "Double-check titles, credits, and release type before going live.",
+    ],
   },
   bookPublishing: {
     dashboardKey: "bookPublishing",
     label: "Book Publishing",
+    formats: "PDF, EPUB, MOBI, TXT",
+    tips: [
+      "Keep manuscript files polished and export-ready before upload.",
+      "Add a clear synopsis and language metadata for stronger discovery.",
+      "Use the optional copyright declaration if you want that captured on the release.",
+    ],
   },
   podcast: {
     dashboardKey: "podcast",
     label: "Podcast",
+    formats: "MP3, WAV, FLAC, M4A, AAC, OGG",
+    tips: [
+      "Premium podcast episodes should include a preview sample before publishing.",
+      "Series name, season number, and episode number help keep your catalog organized.",
+      "Transcript uploads are optional but useful for accessibility and repurposing.",
+    ],
   },
 };
 
@@ -62,6 +80,29 @@ export default function CreatorUploadSupportPanels({
 
   return (
     <>
+      <section className="creator-panel card creator-upload-side-card">
+        <div className="creator-panel-head">
+          <div>
+            <h2>{meta.label} guide</h2>
+            <p>Accepted formats and quick publishing reminders for this studio.</p>
+          </div>
+        </div>
+        <div className="creator-upload-guide">
+          <div className="creator-upload-guide-formats">
+            <span>Accepted formats</span>
+            <strong>{meta.formats}</strong>
+          </div>
+          <div className="creator-upload-guide-list">
+            {meta.tips.map((tip) => (
+              <div key={tip} className="creator-upload-guide-item">
+                <span />
+                <small>{tip}</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="creator-panel card creator-upload-side-card">
         <div className="creator-panel-head">
           <div>

@@ -6,6 +6,7 @@ import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge"
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import {
   CREATOR_CATEGORY_CONFIG,
+  CREATOR_CATEGORY_ORDER,
   formatCurrency,
   formatShortDate,
   normalizeCreatorLaneKeys,
@@ -52,15 +53,16 @@ export default function CreatorDashboardPage() {
         <section className="creator-upload-launchpad card">
           <div className="creator-panel-head">
             <div>
-              <h2>Upload new content</h2>
-              <p>Open the dedicated publishing studio for any creator lane you enabled and start uploading immediately.</p>
+              <h2>Content Categories</h2>
+              <p>Choose the exact publishing studio you need. Music, podcasts, and books each open in their own fully separated upload experience.</p>
             </div>
           </div>
 
           <div className="creator-upload-launch-grid">
-            {creatorLanes.map((key) => {
+            {CREATOR_CATEGORY_ORDER.map((key) => {
               const item = CREATOR_CATEGORY_CONFIG[key];
               const stats = dashboard.categories?.[item.dashboardKey] || {};
+              const enabled = creatorLanes.includes(key);
 
               return (
                 <article key={key} className="creator-upload-launch-card card">
@@ -75,14 +77,17 @@ export default function CreatorDashboardPage() {
                   </div>
 
                   <div className="creator-upload-launch-meta">
+                    <span className={`creator-status-badge ${enabled ? "success" : "neutral"}`}>
+                      {enabled ? "Enabled" : "Not enabled"}
+                    </span>
                     <span>Published {Number(stats.uploads || 0)}</span>
                     <span>Drafts {Number(stats.drafts || 0)}</span>
                     <span>In review {Number(stats.underReview || 0)}</span>
                   </div>
 
                   <div className="creator-category-actions">
-                    <Link className="creator-primary-btn creator-upload-cta" to={item.uploadRoute}>
-                      {item.uploadButtonLabel}
+                    <Link className="creator-primary-btn creator-upload-cta" to={enabled ? item.uploadRoute : "/creator/categories"}>
+                      {enabled ? item.uploadButtonLabel : `Enable ${item.shortTitle}`}
                     </Link>
                   </div>
                 </article>

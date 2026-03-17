@@ -19,6 +19,18 @@ const BookSchema = new mongoose.Schema(
       default: "",
       maxlength: 4000,
     },
+    authorName: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
+    subtitle: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 180,
+    },
     price: {
       type: Number,
       required: true,
@@ -61,6 +73,40 @@ const BookSchema = new mongoose.Schema(
       default: "",
       trim: true,
       maxlength: 60,
+    },
+    pageCount: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+    isbn: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 40,
+    },
+    edition: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 40,
+    },
+    audience: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 80,
+    },
+    readingAge: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 80,
+    },
+    tableOfContents: {
+      type: String,
+      default: "",
+      maxlength: 4000,
     },
     tags: [
       {
@@ -110,6 +156,10 @@ const BookSchema = new mongoose.Schema(
     isFreePreview: {
       type: Boolean,
       default: true,
+    },
+    copyrightDeclared: {
+      type: Boolean,
+      default: false,
     },
     downloadCount: {
       type: Number,

@@ -32,6 +32,15 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   description: track.description || "",
   price: Number(track.price) || 0,
   genre: track.genre || "",
+  artistName: track.artistName || "",
+  releaseType: track.releaseType || "single",
+  explicitContent: Boolean(track.explicitContent),
+  featuringArtists: Array.isArray(track.featuringArtists) ? track.featuringArtists : [],
+  producerCredits: Array.isArray(track.producerCredits) ? track.producerCredits : [],
+  songwriterCredits: Array.isArray(track.songwriterCredits) ? track.songwriterCredits : [],
+  releaseDate: track.releaseDate || null,
+  lyrics: track.lyrics || "",
+  audioFormat: track.audioFormat || "",
   previewUrl: track.previewUrl || "",
   coverImageUrl: track.coverImageUrl || "",
   durationSec: Number(track.durationSec) || 0,
@@ -46,6 +55,12 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   podcastSeries: track.podcastSeries || "",
   seasonNumber: Number(track.seasonNumber || 0),
   episodeNumber: Number(track.episodeNumber || 0),
+  podcastCategory: track.podcastCategory || "",
+  episodeType: track.episodeType || "free",
+  guestNames: Array.isArray(track.guestNames) ? track.guestNames : [],
+  showNotes: track.showNotes || "",
+  transcriptUrl: track.transcriptUrl || "",
+  episodeTags: Array.isArray(track.episodeTags) ? track.episodeTags : [],
   creator:
     track.creatorId && typeof track.creatorId === "object"
       ? {

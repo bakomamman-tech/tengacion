@@ -68,8 +68,8 @@ describe("CreatorCategoriesPage", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole("link", { name: /upload music/i })).toHaveAttribute("href", "/creator/music/upload");
-    expect(screen.getByRole("link", { name: /upload podcasts/i })).toHaveAttribute("href", "/creator/podcasts/upload");
+    expect(screen.getByRole("link", { name: /music uploads/i })).toHaveAttribute("href", "/creator/music/upload");
+    expect(screen.getByRole("link", { name: /podcast uploads/i })).toHaveAttribute("href", "/creator/podcasts/upload");
 
     await userEvent.click(screen.getByRole("checkbox", { name: /book publishing/i }));
     await userEvent.click(screen.getByRole("button", { name: /save category selection/i }));

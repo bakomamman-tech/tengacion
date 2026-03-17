@@ -1,111 +1,132 @@
-import { useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 
-import { createPodcastEpisode, updatePodcastSeries } from "../../../api";
+import { createPodcastEpisode } from "../../../api";
 import { useUnsavedChangesPrompt } from "../../../hooks/useUnsavedChangesPrompt";
+import { formatCurrency } from "../creatorConfig";
 import { useCreatorWorkspace } from "../useCreatorWorkspace";
+import CreatorFileDropzone from "./CreatorFileDropzone";
 import CreatorPublishOutcomeCard from "./CreatorPublishOutcomeCard";
-import PodcastEpisodeForm from "./PodcastEpisodeForm";
-import PodcastSeriesForm from "./PodcastSeriesForm";
+import {
+  AUDIO_ACCEPT,
+  IMAGE_ACCEPT,
+  TRANSCRIPT_ACCEPT,
+  podcastUploadSchema,
+  splitCommaValues,
+} from "./uploadSchemas";
 import { buildUploadOutcome } from "./uploadAudienceUtils";
+import useAudioFileMetadata from "./useAudioFileMetadata";
 
-const EMPTY_PODCAST_FORM = {
+const buildDefaultValues = (creatorProfile) => ({
   episodeTitle: "",
-  description: "",
-  podcastSeries: "",
-  season: "",
+  podcastSeriesName:
+    creatorProfile?.podcastsProfile?.seriesTitle ||
+    creatorProfile?.podcastsProfile?.podcastName ||
+    "",
+  episodeDescription: "",
+  seasonNumber: "",
   episodeNumber: "",
-  accessType: "free",
-  price: "",
+  category: creatorProfile?.podcastsProfile?.themeOrTopic || "",
+  episodeType: "free",
+  price: 0,
+  explicitContent: false,
+  guestNames: "",
+  showNotes: "",
+  episodeTags: "",
+  coverImageFile: null,
   fullAudioFile: null,
   previewSampleFile: null,
-  coverImageFile: null,
-};
+  transcriptFile: null,
+});
 
 export default function PodcastUploadStudio({ showNotice = true }) {
-  const { creatorProfile, refreshWorkspace, setCreatorProfile } = useCreatorWorkspace();
-  const [podcastForm, setPodcastForm] = useState(EMPTY_PODCAST_FORM);
-  const [seriesForm, setSeriesForm] = useState({
-    podcastName: creatorProfile?.podcastsProfile?.podcastName || "",
-    hostName: creatorProfile?.podcastsProfile?.hostName || "",
-    themeOrTopic: creatorProfile?.podcastsProfile?.themeOrTopic || "",
-    seriesTitle: creatorProfile?.podcastsProfile?.seriesTitle || "",
-    description: creatorProfile?.podcastsProfile?.description || "",
-  });
-  const [busy, setBusy] = useState(false);
-  const [seriesBusy, setSeriesBusy] = useState(false);
+  const { creatorProfile, refreshWorkspace } = useCreatorWorkspace();
+  const [busyMode, setBusyMode] = useState("");
   const [progress, setProgress] = useState(0);
   const [outcome, setOutcome] = useState(null);
 
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    setValue,
+    setError,
+    clearErrors,
+    formState: { errors, isDirty },
+  } = useForm({
+    resolver: zodResolver(podcastUploadSchema),
+    defaultValues: buildDefaultValues(creatorProfile),
+  });
+
   useEffect(() => {
-    setSeriesForm({
-      podcastName: creatorProfile?.podcastsProfile?.podcastName || "",
-      hostName: creatorProfile?.podcastsProfile?.hostName || "",
-      themeOrTopic: creatorProfile?.podcastsProfile?.themeOrTopic || "",
-      seriesTitle: creatorProfile?.podcastsProfile?.seriesTitle || "",
-      description: creatorProfile?.podcastsProfile?.description || "",
-    });
-  }, [creatorProfile?.podcastsProfile]);
+    reset(buildDefaultValues(creatorProfile));
+  }, [creatorProfile, reset]);
 
-  const savedSeriesProfile = useMemo(
-    () => ({
-      podcastName: creatorProfile?.podcastsProfile?.podcastName || "",
-      hostName: creatorProfile?.podcastsProfile?.hostName || "",
-      themeOrTopic: creatorProfile?.podcastsProfile?.themeOrTopic || "",
-      seriesTitle: creatorProfile?.podcastsProfile?.seriesTitle || "",
-      description: creatorProfile?.podcastsProfile?.description || "",
-    }),
-    [creatorProfile?.podcastsProfile]
-  );
+  useUnsavedChangesPrompt(isDirty);
 
-  const seriesDirty = JSON.stringify(seriesForm) !== JSON.stringify(savedSeriesProfile);
+  const fullAudioFile = watch("fullAudioFile");
+  const previewSampleFile = watch("previewSampleFile");
+  const coverImageFile = watch("coverImageFile");
+  const transcriptFile = watch("transcriptFile");
+  const episodeType = watch("episodeType");
+  const price = Number(watch("price") || 0);
+  const episodeTitle = watch("episodeTitle");
+  const podcastSeriesName = watch("podcastSeriesName");
+  const category = watch("category");
+  const explicitContent = watch("explicitContent");
+  const { durationSec, formattedDuration } = useAudioFileMetadata(fullAudioFile);
 
-  const dirty = Boolean(
-    podcastForm.episodeTitle ||
-      podcastForm.description ||
-      podcastForm.podcastSeries ||
-      podcastForm.season ||
-      podcastForm.episodeNumber ||
-      podcastForm.price ||
-      podcastForm.fullAudioFile ||
-      podcastForm.previewSampleFile ||
-      podcastForm.coverImageFile ||
-      seriesDirty
-  );
-
-  useUnsavedChangesPrompt(dirty);
-
-  const resetForm = () => setPodcastForm(EMPTY_PODCAST_FORM);
-
-  const submitEpisode = async (publishedStatus) => {
-    if (!podcastForm.episodeTitle.trim()) {
-      toast.error("Episode title is required");
-      return;
-    }
-    if (!podcastForm.fullAudioFile) {
-      toast.error("Choose a full audio file");
+  const submitUpload = async (values, publishMode) => {
+    if (values.episodeType === "premium" && Number(values.price || 0) <= 0) {
+      setError("price", {
+        type: "manual",
+        message: "Premium podcast episodes need a price",
+      });
       return;
     }
 
-    const formData = new FormData();
-    formData.append("title", podcastForm.episodeTitle.trim());
-    formData.append("description", podcastForm.description.trim());
-    formData.append("kind", "podcast");
-    formData.append("podcastSeries", podcastForm.podcastSeries.trim());
-    formData.append("seasonNumber", podcastForm.season || "0");
-    formData.append("episodeNumber", podcastForm.episodeNumber || "0");
-    formData.append("price", podcastForm.accessType === "paid" ? podcastForm.price || "0" : "0");
-    formData.append("publishedStatus", publishedStatus);
-    formData.append("audio", podcastForm.fullAudioFile);
-    if (podcastForm.previewSampleFile) {
-      formData.append("preview", podcastForm.previewSampleFile);
-    }
-    if (podcastForm.coverImageFile) {
-      formData.append("cover", podcastForm.coverImageFile);
+    if (publishMode === "published" && values.episodeType === "premium" && !values.previewSampleFile) {
+      setError("previewSampleFile", {
+        type: "manual",
+        message: "Add a preview sample before publishing a premium podcast episode",
+      });
+      return;
     }
 
     try {
-      setBusy(true);
+      setBusyMode(publishMode);
+      setProgress(0);
+      clearErrors(["price", "previewSampleFile"]);
+
+      const formData = new FormData();
+      formData.append("title", values.episodeTitle.trim());
+      formData.append("podcastSeries", values.podcastSeriesName.trim());
+      formData.append("description", values.episodeDescription.trim());
+      formData.append("seasonNumber", String(values.seasonNumber || 0));
+      formData.append("episodeNumber", String(values.episodeNumber || 0));
+      formData.append("category", values.category.trim());
+      formData.append("episodeType", values.episodeType);
+      formData.append("price", String(values.episodeType === "premium" ? values.price || 0 : 0));
+      formData.append("publishedStatus", publishMode);
+      formData.append("explicitContent", String(Boolean(values.explicitContent)));
+      formData.append("guestNames", values.guestNames);
+      formData.append("showNotes", values.showNotes);
+      formData.append("episodeTags", values.episodeTags);
+      formData.append("durationSec", String(durationSec || 0));
+      formData.append("audio", values.fullAudioFile);
+      if (values.previewSampleFile) {
+        formData.append("preview", values.previewSampleFile);
+      }
+      if (values.coverImageFile) {
+        formData.append("cover", values.coverImageFile);
+      }
+      if (values.transcriptFile) {
+        formData.append("transcript", values.transcriptFile);
+      }
+
       const created = await createPodcastEpisode(formData, { onProgress: setProgress });
       await refreshWorkspace();
       setOutcome(
@@ -114,70 +135,289 @@ export default function PodcastUploadStudio({ showNotice = true }) {
           categoryKey: "podcast",
           itemType: "podcast",
           itemId: created?._id || "",
-          title: created?.title || podcastForm.episodeTitle,
-          publishedStatus: created?.publishedStatus || publishedStatus,
+          title: created?.title || values.episodeTitle,
+          publishedStatus: created?.publishedStatus || publishMode,
         })
       );
-      toast.success(publishedStatus === "draft" ? "Podcast draft saved" : "Podcast episode uploaded");
-      resetForm();
+      toast.success(publishMode === "draft" ? "Podcast draft saved" : "Podcast episode published");
+      reset(buildDefaultValues(creatorProfile));
     } catch (err) {
-      toast.error(err?.message || "Could not upload podcast episode");
+      toast.error(err?.message || "Could not upload this podcast episode");
     } finally {
-      setBusy(false);
+      setBusyMode("");
       setProgress(0);
     }
   };
 
-  const saveSeriesProfile = async () => {
-    try {
-      setSeriesBusy(true);
-      const payload = await updatePodcastSeries(seriesForm);
-      if (payload?.creatorProfile) {
-        setCreatorProfile(payload.creatorProfile);
-      }
-      toast.success("Podcast series profile saved");
-    } catch (err) {
-      toast.error(err?.message || "Could not save series profile");
-    } finally {
-      setSeriesBusy(false);
-    }
-  };
-
   return (
-    <div className="creator-upload-studio-shell">
+    <div className="creator-upload-studio-shell creator-upload-studio-shell--focused">
       {showNotice ? (
         <section className="creator-upload-notice card">
-          <strong>Podcast verification</strong>
-          <p>
-            Podcast uploads use the same metadata and duplicate screening pipeline as music uploads, with episode and
-            series checks layered in.
-          </p>
+          <strong>Podcast uploads only</strong>
+          <p>This studio is dedicated to podcast episodes and spoken-word metadata. Music release fields and book publishing inputs are intentionally excluded.</p>
         </section>
       ) : null}
 
-      <section className="creator-upload-grid">
-        <PodcastSeriesForm
-          value={seriesForm}
-          onChange={(key, nextValue) => setSeriesForm((current) => ({ ...current, [key]: nextValue }))}
-          busy={seriesBusy}
-          onSave={saveSeriesProfile}
-        />
+      <div className="creator-upload-focus-grid">
+        <section className="creator-panel creator-upload-form-card card">
+          <div className="creator-panel-head">
+            <div>
+              <h2>Podcast Uploads</h2>
+              <p>Publish a clean episode page with series context, season numbering, monetization, and polished audio assets.</p>
+            </div>
+            <span className="creator-status-badge success">Podcast only</span>
+          </div>
 
-        <PodcastEpisodeForm
-          value={podcastForm}
-          onChange={(key, nextValue) =>
-            setPodcastForm((current) => ({
-              ...current,
-              [key]: nextValue,
-              ...(key === "accessType" && nextValue !== "paid" ? { price: "" } : {}),
-            }))
-          }
-          busy={busy}
-          progress={progress}
-          onSaveDraft={() => submitEpisode("draft")}
-          onPublish={() => submitEpisode("published")}
-        />
-      </section>
+          <div className="creator-upload-section">
+            <div className="creator-upload-section-head">
+              <strong>Episode details</strong>
+              <small>Everything your audience sees before they press play.</small>
+            </div>
+
+            <div className="creator-form-grid">
+              <label>
+                <span>Episode Title</span>
+                <input placeholder="Episode 012: Making the leap" {...register("episodeTitle")} />
+                {errors.episodeTitle ? <p className="creator-field-error">{errors.episodeTitle.message}</p> : null}
+              </label>
+
+              <label>
+                <span>Podcast Series Name</span>
+                <input placeholder="Studio Conversations" {...register("podcastSeriesName")} />
+                {errors.podcastSeriesName ? <p className="creator-field-error">{errors.podcastSeriesName.message}</p> : null}
+              </label>
+
+              <label>
+                <span>Season Number</span>
+                <input type="number" min="0" inputMode="numeric" placeholder="1" {...register("seasonNumber")} />
+                {errors.seasonNumber ? <p className="creator-field-error">{errors.seasonNumber.message}</p> : null}
+              </label>
+
+              <label>
+                <span>Episode Number</span>
+                <input type="number" min="0" inputMode="numeric" placeholder="12" {...register("episodeNumber")} />
+                {errors.episodeNumber ? <p className="creator-field-error">{errors.episodeNumber.message}</p> : null}
+              </label>
+
+              <label>
+                <span>Category</span>
+                <input placeholder="Business, Culture, Wellness" {...register("category")} />
+                {errors.category ? <p className="creator-field-error">{errors.category.message}</p> : null}
+              </label>
+
+              <label>
+                <span>Episode Type</span>
+                <select
+                  {...register("episodeType")}
+                  onChange={(event) => {
+                    setValue("episodeType", event.target.value, { shouldDirty: true, shouldValidate: true });
+                    if (event.target.value !== "premium") {
+                      setValue("price", 0, { shouldDirty: true, shouldValidate: true });
+                    }
+                  }}
+                >
+                  <option value="free">Free</option>
+                  <option value="premium">Premium</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Price</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputMode="numeric"
+                  disabled={episodeType !== "premium"}
+                  placeholder="0"
+                  {...register("price")}
+                />
+                {errors.price ? <p className="creator-field-error">{errors.price.message}</p> : null}
+              </label>
+
+              <label className="creator-toggle-field">
+                <span>Explicit Content</span>
+                <button
+                  type="button"
+                  className={`creator-toggle${explicitContent ? " is-active" : ""}`}
+                  onClick={() => setValue("explicitContent", !explicitContent, { shouldDirty: true })}
+                  aria-pressed={explicitContent}
+                >
+                  <span>{explicitContent ? "Enabled" : "Clean"}</span>
+                </button>
+              </label>
+
+              <label className="creator-form-full">
+                <span>Episode Description</span>
+                <textarea rows={4} placeholder="Describe the episode, key moments, and why it matters..." {...register("episodeDescription")} />
+                {errors.episodeDescription ? <p className="creator-field-error">{errors.episodeDescription.message}</p> : null}
+              </label>
+            </div>
+          </div>
+
+          <div className="creator-upload-section">
+            <div className="creator-upload-section-head">
+              <strong>Files</strong>
+              <small>Clean upload zones for audio, art, and optional transcript support.</small>
+            </div>
+
+            <div className="creator-upload-dropzone-grid">
+              <CreatorFileDropzone
+                icon="A"
+                label="Full Audio Upload"
+                helper="Upload the full episode master audio"
+                accept={AUDIO_ACCEPT}
+                formats="MP3, WAV, FLAC, M4A, AAC, OGG"
+                file={fullAudioFile}
+                error={errors.fullAudioFile?.message}
+                onChange={(file) => setValue("fullAudioFile", file, { shouldDirty: true, shouldValidate: true })}
+              />
+              <CreatorFileDropzone
+                icon="P"
+                label="Preview Sample Upload"
+                helper="Optional sample clip for discovery and premium gating"
+                accept={AUDIO_ACCEPT}
+                formats="Optional audio teaser"
+                file={previewSampleFile}
+                error={errors.previewSampleFile?.message}
+                onChange={(file) => setValue("previewSampleFile", file, { shouldDirty: true, shouldValidate: true })}
+              />
+              <CreatorFileDropzone
+                icon="C"
+                label="Cover Image Upload"
+                helper="Episode artwork or branded show cover"
+                accept={IMAGE_ACCEPT}
+                formats="PNG, JPG, WEBP, GIF, AVIF"
+                file={coverImageFile}
+                error={errors.coverImageFile?.message}
+                onChange={(file) => setValue("coverImageFile", file, { shouldDirty: true, shouldValidate: true })}
+              />
+              <CreatorFileDropzone
+                icon="T"
+                label="Transcript Upload"
+                helper="Optional transcript file for accessibility and repurposing"
+                accept={TRANSCRIPT_ACCEPT}
+                formats="PDF, TXT, DOC, DOCX"
+                file={transcriptFile}
+                error={errors.transcriptFile?.message}
+                onChange={(file) => setValue("transcriptFile", file, { shouldDirty: true, shouldValidate: true })}
+              />
+            </div>
+          </div>
+
+          <details className="creator-advanced-panel">
+            <summary>Advanced podcast details</summary>
+            <div className="creator-form-grid">
+              <label>
+                <span>Guest Names</span>
+                <input placeholder="Comma-separated guest names" {...register("guestNames")} />
+              </label>
+              <label>
+                <span>Episode Tags</span>
+                <input placeholder="Comma-separated tags" {...register("episodeTags")} />
+              </label>
+              <label className="creator-form-full">
+                <span>Show Notes</span>
+                <textarea rows={5} placeholder="Links, callouts, timestamps, and supporting notes" {...register("showNotes")} />
+              </label>
+            </div>
+          </details>
+
+          {busyMode ? (
+            <div className="creator-upload-progress-block" role="status" aria-live="polite">
+              <div className="creator-upload-progress-bar">
+                <span style={{ width: `${progress}%` }} />
+              </div>
+              <strong>{busyMode === "draft" ? "Saving draft" : "Publishing episode"}...</strong>
+              <small>{progress}% uploaded</small>
+            </div>
+          ) : null}
+
+          <div className="creator-form-actions">
+            <button
+              type="button"
+              className="creator-ghost-btn"
+              disabled={Boolean(busyMode)}
+              onClick={handleSubmit((values) => submitUpload(values, "draft"))}
+            >
+              Save as Draft
+            </button>
+            <button
+              type="button"
+              className="creator-primary-btn"
+              disabled={Boolean(busyMode)}
+              onClick={handleSubmit((values) => submitUpload(values, "published"))}
+            >
+              Publish Podcast
+            </button>
+          </div>
+        </section>
+
+        <aside className="creator-panel creator-upload-preview-card card">
+          <div className="creator-panel-head">
+            <div>
+              <h2>Episode preview</h2>
+              <p>A quick summary of how this podcast drop is shaping up before you publish it.</p>
+            </div>
+          </div>
+
+          <div className="creator-upload-preview-card__hero podcasts">
+            <span className="creator-upload-preview-card__eyebrow">{episodeType === "premium" ? "PREMIUM" : "FREE"}</span>
+            <strong>{episodeTitle || "Untitled episode"}</strong>
+            <span>{podcastSeriesName || "Podcast series"}</span>
+          </div>
+
+          <div className="creator-stack-list">
+            <div className="creator-stack-row">
+              <span>Category</span>
+              <strong>{category || "Not set yet"}</strong>
+            </div>
+            <div className="creator-stack-row">
+              <span>Price</span>
+              <strong>{formatCurrency(episodeType === "premium" ? price || 0 : 0)}</strong>
+            </div>
+            <div className="creator-stack-row">
+              <span>Audio duration</span>
+              <strong>{formattedDuration || "Pending file metadata"}</strong>
+            </div>
+            <div className="creator-stack-row">
+              <span>Explicit</span>
+              <strong>{explicitContent ? "Yes" : "No"}</strong>
+            </div>
+          </div>
+
+          <div className="creator-upload-checklist">
+            <div className={`creator-upload-checklist-item${fullAudioFile ? " is-complete" : ""}`}>
+              <span />
+              <small>{fullAudioFile ? "Episode audio selected" : "Add your full episode audio"}</small>
+            </div>
+            <div className={`creator-upload-checklist-item${coverImageFile ? " is-complete" : ""}`}>
+              <span />
+              <small>{coverImageFile ? "Cover image selected" : "Optional episode cover can be added"}</small>
+            </div>
+            <div className={`creator-upload-checklist-item${episodeType !== "premium" || previewSampleFile ? " is-complete" : ""}`}>
+              <span />
+              <small>
+                {episodeType !== "premium" || previewSampleFile
+                  ? "Preview requirement satisfied"
+                  : "Premium episodes need a preview sample before publishing"}
+              </small>
+            </div>
+            <div className={`creator-upload-checklist-item${transcriptFile ? " is-complete" : ""}`}>
+              <span />
+              <small>{transcriptFile ? "Transcript attached" : "Transcript upload is optional"}</small>
+            </div>
+          </div>
+
+          <div className="creator-upload-chip-row">
+            {splitCommaValues(watch("guestNames")).map((value) => (
+              <span key={value} className="creator-audience-chip">
+                {value}
+              </span>
+            ))}
+          </div>
+        </aside>
+      </div>
 
       <CreatorPublishOutcomeCard outcome={outcome} />
     </div>

@@ -5,7 +5,6 @@ import toast from "react-hot-toast";
 import { updateBookWithUploadProgress } from "../../api";
 import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge";
 import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
-import BookUploadStudio from "../../components/creator/upload/BookUploadStudio";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import { formatCurrency, formatShortDate } from "../../components/creator/creatorConfig";
 
@@ -181,14 +180,12 @@ export default function CreatorBooksPage() {
       <section className="creator-inline-notice">
         <div>
           <strong>Dedicated upload page</strong>
-          <span>Open the Upload Book page for a focused publishing view built around the same fields from your current workspace.</span>
+          <span>Open the Book Publishing Uploads page for the dedicated manuscript publishing flow. This dashboard now stays focused on your catalog and metadata updates.</span>
         </div>
         <Link className="creator-secondary-btn" to="/creator/books/upload">
           Upload Book
         </Link>
       </section>
-
-      <BookUploadStudio />
 
       {editingItem ? <BookEditPanel item={editingItem} onCancel={() => setEditingItem(null)} onSave={saveEdit} /> : null}
 

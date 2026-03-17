@@ -433,7 +433,7 @@ export default function ReelsPage({ user }) {
       return;
     }
 
-    const willLike = !Boolean(previous.likedByViewer);
+    const willLike = !previous.likedByViewer;
     setReels((current) =>
       current.map((entry) =>
         entry._id === reelId

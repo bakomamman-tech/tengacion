@@ -5,7 +5,7 @@ const creatorAuth = require("../middleware/creatorAuth");
 const optionalAuth = require("../middleware/optionalAuth");
 const upload = require("../utils/upload");
 const { createAlbum } = require("../controllers/albumsController");
-const { createBook } = require("../controllers/booksController");
+const { createBookUpload, createMusicUpload, createPodcastUpload } = require("../controllers/creatorUploadsController");
 const {
   getCreatorAccess,
   getCreatorContentSummary,
@@ -17,7 +17,6 @@ const {
   updateCreatorProfile,
 } = require("../controllers/creatorController");
 const { getPublicCreatorContent, getPublicCreatorProfile } = require("../controllers/creatorsController");
-const { createTrack } = require("../controllers/tracksController");
 const { createCreatorVideo } = require("../controllers/videosController");
 
 const router = express.Router();
@@ -32,6 +31,18 @@ router.get("/me/content", auth, getCreatorPrivateContent);
 router.put("/podcasts/series", auth, creatorAuth, updatePodcastSeries);
 
 router.post(
+  "/music",
+  auth,
+  creatorAuth,
+  upload.fields([
+    { name: "audio", maxCount: 1 },
+    { name: "preview", maxCount: 1 },
+    { name: "cover", maxCount: 1 },
+  ]),
+  createMusicUpload
+);
+
+router.post(
   "/music/tracks",
   auth,
   creatorAuth,
@@ -40,7 +51,7 @@ router.post(
     { name: "preview", maxCount: 1 },
     { name: "cover", maxCount: 1 },
   ]),
-  createTrack
+  createMusicUpload
 );
 
 router.post(
@@ -71,6 +82,19 @@ router.post(
 );
 
 router.post(
+  "/podcasts",
+  auth,
+  creatorAuth,
+  upload.fields([
+    { name: "audio", maxCount: 1 },
+    { name: "preview", maxCount: 1 },
+    { name: "cover", maxCount: 1 },
+    { name: "transcript", maxCount: 1 },
+  ]),
+  createPodcastUpload
+);
+
+router.post(
   "/podcasts/episodes",
   auth,
   creatorAuth,
@@ -78,8 +102,9 @@ router.post(
     { name: "audio", maxCount: 1 },
     { name: "preview", maxCount: 1 },
     { name: "cover", maxCount: 1 },
+    { name: "transcript", maxCount: 1 },
   ]),
-  createTrack
+  createPodcastUpload
 );
 
 router.post(
@@ -91,7 +116,7 @@ router.post(
     { name: "content", maxCount: 1 },
     { name: "preview", maxCount: 1 },
   ]),
-  createBook
+  createBookUpload
 );
 
 router.get("/:creatorId/public-profile", optionalAuth, getPublicCreatorProfile);

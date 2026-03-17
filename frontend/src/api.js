@@ -1004,7 +1004,7 @@ export const getAlbum = (albumId) =>
 
 export const createMusicTrack = (formData, { onProgress } = {}) =>
   uploadFormWithProgress({
-    url: `${API_BASE}/creator/music/tracks`,
+    url: `${API_BASE}/creator/music`,
     formData,
     onProgress,
     timeoutMs: 20 * 60 * 1000,
@@ -1045,7 +1045,7 @@ export const createMusicVideo = (formData, { onProgress } = {}) =>
 
 export const createPodcastEpisode = (formData, { onProgress } = {}) =>
   uploadFormWithProgress({
-    url: `${API_BASE}/creator/podcasts/episodes`,
+    url: `${API_BASE}/creator/podcasts`,
     formData,
     onProgress,
     timeoutMs: 20 * 60 * 1000,

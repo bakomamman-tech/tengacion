@@ -264,6 +264,9 @@ export default function App() {
             }
           >
             <Route path="dashboard" element={<CreatorDashboardPage />} />
+            <Route path="dashboard/music" element={<Navigate to="/creator/music/upload" replace />} />
+            <Route path="dashboard/podcast" element={<Navigate to="/creator/podcasts/upload" replace />} />
+            <Route path="dashboard/books" element={<Navigate to="/creator/books/upload" replace />} />
             <Route path="categories" element={<CreatorCategoriesPage />} />
             <Route
               path="music/upload"

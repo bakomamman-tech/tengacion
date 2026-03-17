@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import CreatorContentCategoryNav from "../../components/creator/CreatorContentCategoryNav";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import CreatorUploadSupportPanels from "../../components/creator/upload/CreatorUploadSupportPanels";
 import PodcastUploadStudio from "../../components/creator/upload/PodcastUploadStudio";
@@ -16,8 +17,8 @@ export default function CreatorPodcastsUploadPage() {
           <div className="creator-panel-head">
             <div>
               <span className="creator-eyebrow">Podcast Studio</span>
-              <h2>Upload Podcasts</h2>
-              <p>Set the series identity, add episode metadata, and publish audio drops with previews, seasons, and cover art.</p>
+              <h2>Podcast Uploads</h2>
+              <p>A dedicated episode publishing flow with clean seasoning, pricing, previews, transcripts, and podcast-only metadata.</p>
             </div>
             <Link className="creator-secondary-btn" to="/creator/podcasts">
               Back to Podcast dashboard
@@ -38,6 +39,16 @@ export default function CreatorPodcastsUploadPage() {
               <small>Total episodes across all podcast series.</small>
             </div>
           </div>
+        </section>
+
+        <section className="creator-panel card">
+          <div className="creator-panel-head">
+            <div>
+              <h2>Content Categories</h2>
+              <p>Switch between music, podcasts, and books without mixing forms, files, or publishing rules.</p>
+            </div>
+          </div>
+          <CreatorContentCategoryNav creatorTypes={creatorProfile?.creatorTypes} />
         </section>
 
         <div className="creator-upload-studio creator-upload-studio--podcasts">

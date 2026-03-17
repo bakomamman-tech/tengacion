@@ -10,7 +10,6 @@ import {
 import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge";
 import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
 import { formatCurrency, formatShortDate } from "../../components/creator/creatorConfig";
-import MusicUploadStudio from "../../components/creator/upload/MusicUploadStudio";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 
 function ReleaseCard({ item, type, onEdit }) {
@@ -247,14 +246,12 @@ export default function CreatorMusicPage() {
       <section className="creator-inline-notice">
         <div>
           <strong>Dedicated upload page</strong>
-          <span>Open the full Upload Music studio for a focused publishing layout with track, album, and video cards.</span>
+          <span>Open the Music Uploads page for the dedicated audio publishing experience. This dashboard stays focused on managing existing releases.</span>
         </div>
         <Link className="creator-secondary-btn" to="/creator/music/upload">
           Upload Music
         </Link>
       </section>
-
-      <MusicUploadStudio />
 
       {editingEntry ? <MusicEditPanel entry={editingEntry} onCancel={() => setEditingEntry(null)} onSave={saveEdit} /> : null}
 

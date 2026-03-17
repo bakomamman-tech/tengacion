@@ -5,7 +5,6 @@ import toast from "react-hot-toast";
 import { updateTrackWithUploadProgress } from "../../api";
 import CopyrightStatusBadge from "../../components/creator/CopyrightStatusBadge";
 import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
-import PodcastUploadStudio from "../../components/creator/upload/PodcastUploadStudio";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import { formatCurrency, formatShortDate } from "../../components/creator/creatorConfig";
 
@@ -174,14 +173,12 @@ export default function CreatorPodcastsPage() {
       <section className="creator-inline-notice">
         <div>
           <strong>Dedicated upload page</strong>
-          <span>Open Upload Podcasts for the full studio layout with series setup and episode publishing side by side.</span>
+          <span>Open the Podcast Uploads page for the dedicated episode publishing flow. This dashboard remains focused on managing your published and draft catalog.</span>
         </div>
         <Link className="creator-secondary-btn" to="/creator/podcasts/upload">
           Upload Podcasts
         </Link>
       </section>
-
-      <PodcastUploadStudio />
 
       <section className="creator-panel card">
         <div className="creator-panel-head">

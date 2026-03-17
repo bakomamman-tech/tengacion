@@ -44,9 +44,9 @@ describe("CreatorDashboardPage", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getAllByRole("link", { name: /upload music/i })[0]).toHaveAttribute("href", "/creator/music/upload");
-    expect(screen.getAllByRole("link", { name: /upload book/i })[0]).toHaveAttribute("href", "/creator/books/upload");
-    expect(screen.getAllByRole("link", { name: /upload podcasts/i })[0]).toHaveAttribute("href", "/creator/podcasts/upload");
+    expect(screen.getAllByRole("link", { name: /music uploads/i })[0]).toHaveAttribute("href", "/creator/music/upload");
+    expect(screen.getAllByRole("link", { name: /book publishing uploads/i })[0]).toHaveAttribute("href", "/creator/books/upload");
+    expect(screen.getAllByRole("link", { name: /podcast uploads/i })[0]).toHaveAttribute("href", "/creator/podcasts/upload");
     expect(screen.queryByRole("link", { name: /open music/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /open book publishing/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /open podcast/i })).not.toBeInTheDocument();

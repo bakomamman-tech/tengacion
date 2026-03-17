@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import CreatorContentCategoryNav from "../../components/creator/CreatorContentCategoryNav";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import CreatorUploadSupportPanels from "../../components/creator/upload/CreatorUploadSupportPanels";
 import BookUploadStudio from "../../components/creator/upload/BookUploadStudio";
@@ -16,8 +17,8 @@ export default function CreatorBooksUploadPage() {
           <div className="creator-panel-head">
             <div>
               <span className="creator-eyebrow">Book Studio</span>
-              <h2>Upload Book</h2>
-              <p>Prepare ebooks and digital manuscripts with cover art, preview excerpts, metadata, and pricing in one focused page.</p>
+              <h2>Book Publishing Uploads</h2>
+              <p>A calm, premium publishing flow for digital books with supported manuscript formats, metadata, and polished draft or publish states.</p>
             </div>
             <Link className="creator-secondary-btn" to="/creator/books">
               Back to Book Publishing
@@ -38,6 +39,16 @@ export default function CreatorBooksUploadPage() {
               <small>Total book downloads and reader retrievals.</small>
             </div>
           </div>
+        </section>
+
+        <section className="creator-panel card">
+          <div className="creator-panel-head">
+            <div>
+              <h2>Content Categories</h2>
+              <p>Use the dedicated studio for each content type so creators always know exactly where to publish next.</p>
+            </div>
+          </div>
+          <CreatorContentCategoryNav creatorTypes={creatorProfile?.creatorTypes} />
         </section>
 
         <div className="creator-upload-studio creator-upload-studio--books">

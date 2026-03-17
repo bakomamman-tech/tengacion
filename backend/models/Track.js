@@ -76,6 +76,57 @@ const TrackSchema = new mongoose.Schema(
       trim: true,
       maxlength: 120,
     },
+    artistName: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
+    releaseType: {
+      type: String,
+      enum: ["single", "ep", "album"],
+      default: "single",
+    },
+    explicitContent: {
+      type: Boolean,
+      default: false,
+    },
+    featuringArtists: [
+      {
+        type: String,
+        trim: true,
+        maxlength: 80,
+      },
+    ],
+    producerCredits: [
+      {
+        type: String,
+        trim: true,
+        maxlength: 80,
+      },
+    ],
+    songwriterCredits: [
+      {
+        type: String,
+        trim: true,
+        maxlength: 80,
+      },
+    ],
+    releaseDate: {
+      type: Date,
+      default: null,
+    },
+    lyrics: {
+      type: String,
+      default: "",
+      maxlength: 12000,
+    },
+    audioFormat: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 32,
+    },
     kind: {
       type: String,
       enum: ["music", "podcast", "comedy"],
@@ -110,6 +161,41 @@ const TrackSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    podcastCategory: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
+    episodeType: {
+      type: String,
+      enum: ["free", "premium"],
+      default: "free",
+    },
+    guestNames: [
+      {
+        type: String,
+        trim: true,
+        maxlength: 80,
+      },
+    ],
+    showNotes: {
+      type: String,
+      default: "",
+      maxlength: 12000,
+    },
+    transcriptUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    episodeTags: [
+      {
+        type: String,
+        trim: true,
+        maxlength: 40,
+      },
+    ],
     priceGlobal: {
       type: Number,
       default: 0,
@@ -208,9 +294,12 @@ TrackSchema.pre("validate", function syncStandardFields(next) {
   if (this.kind === "podcast") {
     this.creatorCategory = "podcasts";
     this.contentType = "podcast_episode";
+    this.releaseType = "single";
   } else {
     this.creatorCategory = "music";
     this.contentType = "track";
+    this.podcastCategory = "";
+    this.episodeType = this.price > 0 ? "premium" : "free";
   }
   if (this.publishedStatus === "published") this.isPublished = true;
   if (["draft", "under_review", "blocked"].includes(this.publishedStatus)) this.isPublished = false;

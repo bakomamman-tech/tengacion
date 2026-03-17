@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import CreatorContentCategoryNav from "../../components/creator/CreatorContentCategoryNav";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import CreatorUploadSupportPanels from "../../components/creator/upload/CreatorUploadSupportPanels";
 import MusicUploadStudio from "../../components/creator/upload/MusicUploadStudio";
@@ -16,8 +17,8 @@ export default function CreatorMusicUploadPage() {
           <div className="creator-panel-head">
             <div>
               <span className="creator-eyebrow">Music Studio</span>
-              <h2>Upload Music</h2>
-              <p>Publish tracks, albums, EPs, and music videos from one dedicated studio built around your creator workflow.</p>
+              <h2>Music Uploads</h2>
+              <p>A focused music publishing flow with artwork, audio, metadata, pricing, drafts, and live release states.</p>
             </div>
             <Link className="creator-secondary-btn" to="/creator/music">
               Back to Music dashboard
@@ -38,6 +39,16 @@ export default function CreatorMusicUploadPage() {
               <small>Total streams across your music lane.</small>
             </div>
           </div>
+        </section>
+
+        <section className="creator-panel card">
+          <div className="creator-panel-head">
+            <div>
+              <h2>Content Categories</h2>
+              <p>Each category opens its own dedicated upload experience with strict separation in fields, validation, and routing.</p>
+            </div>
+          </div>
+          <CreatorContentCategoryNav creatorTypes={creatorProfile?.creatorTypes} />
         </section>
 
         <div className="creator-upload-studio creator-upload-studio--music">

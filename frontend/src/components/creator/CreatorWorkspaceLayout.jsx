@@ -7,6 +7,7 @@ import {
   getCreatorWorkspaceProfile,
 } from "../../api";
 import CreatorHeader from "./CreatorHeader";
+import CreatorFanPagePreview from "./CreatorFanPagePreview";
 import CreatorSidebar from "./CreatorSidebar";
 import {
   CREATOR_CATEGORY_CONFIG,
@@ -200,6 +201,7 @@ export default function CreatorWorkspaceLayout() {
                     };
 
   const isSettingsPage = location.pathname.startsWith("/creator/settings");
+  const isDashboardPage = location.pathname === "/creator/dashboard";
 
   return (
     <div className="creator-shell">
@@ -222,6 +224,14 @@ export default function CreatorWorkspaceLayout() {
           creatorProfile={creatorProfile}
           summary={dashboard.summary}
           onToggleMenu={() => setMobileOpen((open) => !open)}
+          featuredContent={
+            isDashboardPage ? (
+              <CreatorFanPagePreview
+                creatorProfile={creatorProfile}
+                dashboard={dashboard}
+              />
+            ) : null
+          }
           action={
             isSettingsPage ? (
               <button

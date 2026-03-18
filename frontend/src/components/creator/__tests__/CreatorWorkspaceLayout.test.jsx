@@ -101,4 +101,33 @@ describe("CreatorWorkspaceLayout", () => {
     await screen.findByText("Dashboard page");
     expect(screen.getByAltText("Creator Example")).toHaveAttribute("src", "/uploads/creator-profile.png");
   });
+
+  it("shows a dedicated fan page view button on the dashboard header", async () => {
+    getCreatorWorkspaceProfile.mockResolvedValue({
+      displayName: "Creator Example",
+      status: "active",
+      creatorTypes: ["music", "bookPublishing", "podcast"],
+    });
+    getCreatorDashboardSummary.mockResolvedValue({
+      summary: { availableBalance: 0 },
+      content: {},
+    });
+    getCreatorPrivateContent.mockResolvedValue({ content: {} });
+
+    render(
+      <MemoryRouter initialEntries={["/creator/dashboard"]}>
+        <Routes>
+          <Route path="/creator" element={<CreatorWorkspaceLayout />}>
+            <Route path="dashboard" element={<div>Dashboard page</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await screen.findByText("Dashboard page");
+    expect(screen.getByRole("link", { name: /fan page view/i })).toHaveAttribute(
+      "href",
+      "/creator/fan-page-view"
+    );
+  });
 });

@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
-import {
-  getCreatorDashboardSummary,
-  getCreatorPrivateContent,
-  getCreatorWorkspaceProfile,
-} from "../../api";
 import CreatorHeader from "./CreatorHeader";
-import CreatorFanPagePreview from "./CreatorFanPagePreview";
 import CreatorSidebar from "./CreatorSidebar";
+import { loadCreatorWorkspaceBundle } from "./creatorWorkspaceData";
 import {
   CREATOR_CATEGORY_CONFIG,
   CREATOR_CATEGORY_ORDER,
@@ -57,23 +52,10 @@ export default function CreatorWorkspaceLayout() {
     }
 
     try {
-      const [profilePayload, summaryPayload, contentPayload] = await Promise.all([
-        getCreatorWorkspaceProfile(),
-        getCreatorDashboardSummary(),
-        getCreatorPrivateContent(),
-      ]);
+      const nextWorkspace = await loadCreatorWorkspaceBundle();
 
-      setCreatorProfile(
-        profilePayload ||
-          summaryPayload?.creatorProfile ||
-          contentPayload?.creatorProfile ||
-          null
-      );
-
-      setDashboard({
-        ...(summaryPayload || {}),
-        content: contentPayload?.content || summaryPayload?.content || {},
-      });
+      setCreatorProfile(nextWorkspace.creatorProfile);
+      setDashboard(nextWorkspace.dashboard);
 
       setError("");
     } catch (err) {
@@ -226,10 +208,14 @@ export default function CreatorWorkspaceLayout() {
           onToggleMenu={() => setMobileOpen((open) => !open)}
           featuredContent={
             isDashboardPage ? (
-              <CreatorFanPagePreview
-                creatorProfile={creatorProfile}
-                dashboard={dashboard}
-              />
+              <div className="creator-dashboard-shortcut">
+                <Link
+                  className="creator-dashboard-shortcut__link"
+                  to="/creator/fan-page-view"
+                >
+                  Fan Page view
+                </Link>
+              </div>
             ) : null
           }
           action={

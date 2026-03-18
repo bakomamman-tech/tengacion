@@ -66,6 +66,7 @@ const CreatorWorkspaceLayout = lazy(() => import("./components/creator/CreatorWo
 const CreatorRegisterPage = lazy(() => import("./pages/creator/CreatorRegisterPage"));
 const CreatorDashboardPage = lazy(() => import("./pages/creator/CreatorDashboardPage"));
 const CreatorCategoriesPage = lazy(() => import("./pages/creator/CreatorCategoriesPage"));
+const CreatorFanPageViewPage = lazy(() => import("./pages/creator/CreatorFanPageViewPage"));
 const CreatorMusicPage = lazy(() => import("./pages/creator/CreatorMusicPage"));
 const CreatorBooksPage = lazy(() => import("./pages/creator/CreatorBooksPage"));
 const CreatorPodcastsPage = lazy(() => import("./pages/creator/CreatorPodcastsPage"));
@@ -249,6 +250,16 @@ export default function App() {
               <ProtectedRoute user={user}>
                 <RequireCreatorAuth>
                   <Navigate to="/creator/music/upload" replace />
+                </RequireCreatorAuth>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/creator/fan-page-view"
+            element={
+              <ProtectedRoute user={user}>
+                <RequireCreatorAuth>
+                  <CreatorFanPageViewPage />
                 </RequireCreatorAuth>
               </ProtectedRoute>
             }

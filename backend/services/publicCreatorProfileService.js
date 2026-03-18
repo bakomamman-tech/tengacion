@@ -116,7 +116,7 @@ const mapTrackItem = ({ track, req, viewerId, ownerAccess, entitlements }) => {
   return {
     id: String(track._id),
     itemType,
-    mediaType: "audio",
+    mediaType: toCleanString(track.mediaType || (track.videoUrl ? "video" : "audio")) === "video" ? "video" : "audio",
     lane: isPodcast ? "podcast" : "music",
     title: toCleanString(track.title),
     description: toCleanString(track.description),

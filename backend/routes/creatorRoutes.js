@@ -86,7 +86,9 @@ router.post(
   auth,
   creatorAuth,
   upload.fields([
+    { name: "media", maxCount: 1 },
     { name: "audio", maxCount: 1 },
+    { name: "video", maxCount: 1 },
     { name: "preview", maxCount: 1 },
     { name: "cover", maxCount: 1 },
     { name: "transcript", maxCount: 1 },
@@ -99,7 +101,9 @@ router.post(
   auth,
   creatorAuth,
   upload.fields([
+    { name: "media", maxCount: 1 },
     { name: "audio", maxCount: 1 },
+    { name: "video", maxCount: 1 },
     { name: "preview", maxCount: 1 },
     { name: "cover", maxCount: 1 },
     { name: "transcript", maxCount: 1 },

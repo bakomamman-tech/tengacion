@@ -22,6 +22,15 @@ const resolveRequestedStatus = (body = {}) => {
   return "published";
 };
 
+const inferUploadedFormat = (file) => {
+  const originalName = String(file?.originalname || "");
+  const dotIndex = originalName.lastIndexOf(".");
+  if (dotIndex >= 0) {
+    return originalName.slice(dotIndex + 1).toLowerCase();
+  }
+  return String(file?.mimetype || "").split("/")[1] || "";
+};
+
 const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   _id: track._id.toString(),
   creatorId:
@@ -41,6 +50,8 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   releaseDate: track.releaseDate || null,
   lyrics: track.lyrics || "",
   audioFormat: track.audioFormat || "",
+  mediaType: track.mediaType || (track.videoUrl ? "video" : "audio"),
+  videoFormat: track.videoFormat || "",
   previewUrl: track.previewUrl || "",
   coverImageUrl: track.coverImageUrl || "",
   durationSec: Number(track.durationSec) || 0,
@@ -70,7 +81,12 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
           username: track.creatorId.userId?.username || "",
         }
       : null,
-  ...(includeAudio ? { audioUrl: track.audioUrl || "" } : {}),
+  ...(includeAudio
+    ? {
+        audioUrl: track.audioUrl || "",
+        videoUrl: track.videoUrl || "",
+      }
+    : {}),
 });
 
 const canAccessFullTrack = async ({ track, userId }) => {
@@ -277,6 +293,11 @@ exports.updateTrack = asyncHandler(async (req, res) => {
   const podcastSeries = String(req.body?.podcastSeries ?? track.podcastSeries ?? "").trim();
   const seasonNumber = Number(req.body?.seasonNumber ?? track.seasonNumber ?? 0);
   const episodeNumber = Number(req.body?.episodeNumber ?? track.episodeNumber ?? 0);
+  const mediaType = nextKind === "podcast"
+    ? (String(req.body?.mediaType || track.mediaType || (track.videoUrl ? "video" : "audio")).trim().toLowerCase() === "video"
+        ? "video"
+        : "audio")
+    : "audio";
 
   if (!title) {
     return res.status(400).json({ error: "title is required" });
@@ -286,29 +307,43 @@ exports.updateTrack = asyncHandler(async (req, res) => {
   }
 
   let audioUrl = String(req.body?.audioUrl || track.audioUrl || "").trim();
+  let videoUrl = String(req.body?.videoUrl || track.videoUrl || "").trim();
   let previewUrl = String(req.body?.previewUrl || track.previewUrl || "").trim();
+  let previewClipUrl = String(req.body?.previewClipUrl || track.previewClipUrl || "").trim();
   let coverImageUrl = String(req.body?.coverImageUrl || track.coverImageUrl || "").trim();
 
-  const audioFile = req.files?.audio?.[0] || null;
-  const previewFile = req.files?.preview?.[0] || null;
+  const mediaFile = req.files?.media?.[0] || req.files?.audio?.[0] || req.files?.video?.[0] || null;
+  const previewFile = req.files?.preview?.[0] || req.files?.previewClip?.[0] || null;
   const coverFile = req.files?.cover?.[0] || null;
 
-  if (audioFile) {
-    audioUrl = await saveUploadedFile(audioFile);
+  if (mediaFile) {
+    const uploadedMediaUrl = await saveUploadedFile(mediaFile);
+    audioUrl = uploadedMediaUrl;
+    if (mediaType === "video") {
+      videoUrl = uploadedMediaUrl;
+    }
   }
   if (previewFile) {
     previewUrl = await saveUploadedFile(previewFile);
+    if (mediaType === "video") {
+      previewClipUrl = previewUrl;
+    }
   }
   if (coverFile) {
     coverImageUrl = await saveUploadedFile(coverFile);
   }
 
   if (!audioUrl) {
-    return res.status(400).json({ error: "audioUrl or audio upload is required" });
+    return res.status(400).json({
+      error: mediaType === "video" ? "videoUrl or video upload is required" : "audioUrl or audio upload is required",
+    });
   }
   if (requestedStatus === "published" && price > 0 && !previewUrl) {
     return res.status(400).json({
-      error: "previewUrl or preview upload is required for paid tracks",
+      error:
+        mediaType === "video"
+          ? "previewClipUrl or preview clip upload is required for paid video podcasts"
+          : "previewUrl or preview upload is required for paid tracks",
     });
   }
 
@@ -319,11 +354,12 @@ exports.updateTrack = asyncHandler(async (req, res) => {
     requestedStatus,
     title,
     description,
-    primaryFile: audioFile || null,
+    primaryFile: mediaFile || null,
     metadata: {
       creatorId: req.creatorProfile._id?.toString?.() || "",
       genre,
       seriesName: podcastSeries,
+      mediaType,
     },
   });
 
@@ -331,10 +367,17 @@ exports.updateTrack = asyncHandler(async (req, res) => {
   track.description = description;
   track.price = price;
   track.audioUrl = audioUrl;
+  track.fullAudioUrl = audioUrl;
+  track.mediaType = mediaType;
+  track.videoUrl = mediaType === "video" ? (videoUrl || audioUrl) : "";
   track.previewUrl = previewUrl;
+  track.previewSampleUrl = previewUrl;
+  track.previewClipUrl = mediaType === "video" ? (previewClipUrl || previewUrl) : "";
   track.coverImageUrl = coverImageUrl;
   track.durationSec = Number.isFinite(durationSec) && durationSec >= 0 ? durationSec : 0;
   track.genre = genre;
+  track.audioFormat = mediaType === "audio" && mediaFile ? inferUploadedFormat(mediaFile) : track.audioFormat;
+  track.videoFormat = mediaType === "video" && mediaFile ? inferUploadedFormat(mediaFile) : "";
   track.kind = nextKind;
   track.podcastSeries = nextKind === "podcast" ? podcastSeries : "";
   track.seasonNumber = nextKind === "podcast" && Number.isFinite(seasonNumber) ? Math.max(0, seasonNumber) : 0;

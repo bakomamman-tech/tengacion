@@ -18,7 +18,7 @@ export default function CreatorPodcastsUploadPage() {
             <div>
               <span className="creator-eyebrow">Podcast Studio</span>
               <h2>Podcast Uploads</h2>
-              <p>A dedicated episode publishing flow with clean seasoning, pricing, previews, transcripts, and podcast-only metadata.</p>
+              <p>A dedicated episode publishing flow for audio or video podcasts with clean sequencing, pricing, previews, transcripts, and podcast-only metadata.</p>
             </div>
             <Link className="creator-secondary-btn" to="/creator/podcasts">
               Back to Podcast dashboard

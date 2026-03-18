@@ -1048,7 +1048,7 @@ export const createPodcastEpisode = (formData, { onProgress } = {}) =>
     url: `${API_BASE}/creator/podcasts`,
     formData,
     onProgress,
-    timeoutMs: 20 * 60 * 1000,
+    timeoutMs: 30 * 60 * 1000,
   });
 
 export const getMyEntitlementsForCreator = (creatorId) =>

@@ -177,6 +177,35 @@ describe("creator upload routes", () => {
     expect(await Track.countDocuments()).toBe(0);
   });
 
+  test("POST /api/creator/podcasts creates a video podcast episode with supported formats", async () => {
+    const { token } = await createUserAndProfile();
+
+    const response = await request(app)
+      .post("/api/creator/podcasts")
+      .set("Authorization", `Bearer ${token}`)
+      .field("title", "Video Episode One")
+      .field("podcastSeries", "Studio Stories")
+      .field("mediaType", "video")
+      .field("category", "Culture")
+      .field("price", "0")
+      .field("publishedStatus", "draft")
+      .attach("media", Buffer.from("podcast-video"), {
+        filename: "video-episode.mp4",
+        contentType: "video/mp4",
+      })
+      .expect(201);
+
+    expect(response.body.title).toBe("Video Episode One");
+    expect(response.body.mediaType).toBe("video");
+
+    const savedTrack = await Track.findOne({ title: "Video Episode One" }).lean();
+    expect(savedTrack).toBeTruthy();
+    expect(savedTrack.kind).toBe("podcast");
+    expect(savedTrack.mediaType).toBe("video");
+    expect(savedTrack.videoUrl).toBeTruthy();
+    expect(savedTrack.audioUrl).toBe(savedTrack.videoUrl);
+  });
+
   test("POST /api/creator/books rejects unsupported manuscript file types", async () => {
     const { token } = await createUserAndProfile();
 

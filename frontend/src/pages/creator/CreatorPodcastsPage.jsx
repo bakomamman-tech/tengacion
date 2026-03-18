@@ -9,6 +9,7 @@ import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspac
 import { formatCurrency, formatShortDate } from "../../components/creator/creatorConfig";
 
 function PodcastEditPanel({ item, onCancel, onSave }) {
+  const isVideoEpisode = item.mediaType === "video";
   const [values, setValues] = useState({
     title: item.title || "",
     description: item.description || "",
@@ -17,8 +18,9 @@ function PodcastEditPanel({ item, onCancel, onSave }) {
     episodeNumber: String(item.episodeNumber ?? ""),
     price: String(item.price ?? ""),
     publishedStatus: item.publishedStatus === "draft" ? "draft" : "published",
+    mediaType: item.mediaType || "audio",
     cover: null,
-    audio: null,
+    media: null,
     preview: null,
   });
 
@@ -65,12 +67,20 @@ function PodcastEditPanel({ item, onCancel, onSave }) {
           <input type="file" accept="image/*" onChange={(event) => update("cover", event.target.files?.[0] || null)} />
         </label>
         <label>
-          <span>Replace audio</span>
-          <input type="file" accept="audio/*" onChange={(event) => update("audio", event.target.files?.[0] || null)} />
+          <span>{isVideoEpisode ? "Replace video" : "Replace audio"}</span>
+          <input
+            type="file"
+            accept={isVideoEpisode ? ".mp4,.mov,.m4v,.webm,video/*" : "audio/*"}
+            onChange={(event) => update("media", event.target.files?.[0] || null)}
+          />
         </label>
         <label>
-          <span>Replace teaser</span>
-          <input type="file" accept="audio/*" onChange={(event) => update("preview", event.target.files?.[0] || null)} />
+          <span>{isVideoEpisode ? "Replace preview clip" : "Replace teaser"}</span>
+          <input
+            type="file"
+            accept={isVideoEpisode ? ".mp4,.mov,.m4v,.webm,video/*" : "audio/*"}
+            onChange={(event) => update("preview", event.target.files?.[0] || null)}
+          />
         </label>
         <label className="creator-form-full">
           <span>Description</span>
@@ -127,11 +137,12 @@ export default function CreatorPodcastsPage() {
       formData.append("episodeNumber", values.episodeNumber || "0");
       formData.append("price", values.price || "0");
       formData.append("publishedStatus", values.publishedStatus);
+      formData.append("mediaType", values.mediaType || editingItem.mediaType || "audio");
       if (values.cover) {
         formData.append("cover", values.cover);
       }
-      if (values.audio) {
-        formData.append("audio", values.audio);
+      if (values.media) {
+        formData.append("media", values.media);
       }
       if (values.preview) {
         formData.append("preview", values.preview);
@@ -219,7 +230,11 @@ export default function CreatorPodcastsPage() {
                     <strong>{episode.title}</strong>
                     <CopyrightStatusBadge status={episode.publishedStatus} />
                   </div>
-                  <p>{episode.podcastSeries || "Standalone episode"}</p>
+                  <p>
+                    {episode.podcastSeries || "Standalone episode"}
+                    {" - "}
+                    {episode.mediaType === "video" ? "Video episode" : "Audio episode"}
+                  </p>
                 </div>
                 <div className="creator-release-meta">
                   <span>{formatCurrency(episode.price || 0)}</span>

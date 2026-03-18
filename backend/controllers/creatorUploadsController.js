@@ -16,6 +16,8 @@ const {
   IMAGE_MIME_TYPES,
   TRANSCRIPT_EXTENSIONS,
   TRANSCRIPT_MIME_TYPES,
+  VIDEO_EXTENSIONS,
+  VIDEO_MIME_TYPES,
   bookUploadSchema,
   getExtension,
   inferBookFormatFromFile,
@@ -41,6 +43,8 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   releaseDate: track.releaseDate || null,
   lyrics: track.lyrics || "",
   audioFormat: track.audioFormat || "",
+  mediaType: track.mediaType || (track.videoUrl ? "video" : "audio"),
+  videoFormat: track.videoFormat || "",
   previewUrl: track.previewUrl || "",
   coverImageUrl: track.coverImageUrl || "",
   durationSec: Number(track.durationSec) || 0,
@@ -70,7 +74,12 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
           username: track.creatorId.userId?.username || "",
         }
       : null,
-  ...(includeAudio ? { audioUrl: track.audioUrl || "" } : {}),
+  ...(includeAudio
+    ? {
+        audioUrl: track.audioUrl || "",
+        videoUrl: track.videoUrl || "",
+      }
+    : {}),
 });
 
 const toBookPayload = (book) => ({
@@ -136,7 +145,7 @@ const hydrateBook = (bookId) =>
     })
     .lean();
 
-const inferAudioFormat = (file) => {
+const inferUploadedFormat = (file) => {
   const extension = getExtension(file);
   return extension ? extension.slice(1) : String(file?.mimetype || "").split("/")[1] || "";
 };
@@ -261,7 +270,7 @@ exports.createMusicUpload = asyncHandler(async (req, res) => {
     songwriterCredits: parsed.data.songwriterCredits,
     releaseDate: parsed.data.releaseDate || null,
     lyrics: parsed.data.lyrics,
-    audioFormat: inferAudioFormat(audioFile),
+    audioFormat: inferUploadedFormat(audioFile),
     kind: "music",
     creatorCategory: "music",
     contentType: "track",
@@ -323,28 +332,38 @@ exports.createPodcastUpload = asyncHandler(async (req, res) => {
     return sendBadRequest(res, parsed.error);
   }
 
-  const audioFile = req.files?.audio?.[0] || null;
+  const mediaType = parsed.data.mediaType === "video" ? "video" : "audio";
+  const mediaFile =
+    req.files?.media?.[0]
+    || req.files?.audio?.[0]
+    || (mediaType === "video" ? req.files?.video?.[0] : null)
+    || null;
   const previewFile = req.files?.preview?.[0] || null;
   const coverFile = req.files?.cover?.[0] || null;
   const transcriptFile = req.files?.transcript?.[0] || null;
 
-  if (!audioFile) {
-    return sendBadRequest(res, "A full audio upload is required");
+  if (!mediaFile) {
+    return sendBadRequest(
+      res,
+      mediaType === "video"
+        ? "A full video upload is required"
+        : "A full audio upload is required"
+    );
   }
 
-  const audioError = validateFile(audioFile, {
-    label: "Episode audio",
-    allowedExtensions: AUDIO_EXTENSIONS,
-    allowedMimeTypes: AUDIO_MIME_TYPES,
+  const mediaError = validateFile(mediaFile, {
+    label: mediaType === "video" ? "Episode video" : "Episode audio",
+    allowedExtensions: mediaType === "video" ? VIDEO_EXTENSIONS : AUDIO_EXTENSIONS,
+    allowedMimeTypes: mediaType === "video" ? VIDEO_MIME_TYPES : AUDIO_MIME_TYPES,
   });
-  if (audioError) {
-    return sendBadRequest(res, audioError);
+  if (mediaError) {
+    return sendBadRequest(res, mediaError);
   }
 
   const previewError = validateFile(previewFile, {
-    label: "Preview sample",
-    allowedExtensions: AUDIO_EXTENSIONS,
-    allowedMimeTypes: AUDIO_MIME_TYPES,
+    label: mediaType === "video" ? "Preview clip" : "Preview sample",
+    allowedExtensions: mediaType === "video" ? VIDEO_EXTENSIONS : AUDIO_EXTENSIONS,
+    allowedMimeTypes: mediaType === "video" ? VIDEO_MIME_TYPES : AUDIO_MIME_TYPES,
   });
   if (previewError) {
     return sendBadRequest(res, previewError);
@@ -377,10 +396,15 @@ exports.createPodcastUpload = asyncHandler(async (req, res) => {
     parsed.data.episodeType === "premium" &&
     !previewFile
   ) {
-    return sendBadRequest(res, "A preview sample is required before publishing a premium podcast episode");
+    return sendBadRequest(
+      res,
+      mediaType === "video"
+        ? "A preview clip is required before publishing a premium video podcast episode"
+        : "A preview sample is required before publishing a premium podcast episode"
+    );
   }
 
-  const audioUrl = await saveUploadedFile(audioFile);
+  const mediaUrl = await saveUploadedFile(mediaFile);
   const previewUrl = previewFile ? await saveUploadedFile(previewFile) : "";
   const coverImageUrl = coverFile ? await saveUploadedFile(coverFile) : "";
   const transcriptUrl = transcriptFile ? await saveUploadedFile(transcriptFile) : "";
@@ -393,12 +417,13 @@ exports.createPodcastUpload = asyncHandler(async (req, res) => {
     requestedStatus: parsed.data.publishedStatus,
     title: parsed.data.title,
     description: parsed.data.description,
-    primaryFile: audioFile,
+    primaryFile: mediaFile,
     metadata: {
       creatorId: req.creatorProfile._id?.toString?.() || "",
       category: parsed.data.category,
       seriesName: parsed.data.podcastSeries,
       episodeType: parsed.data.episodeType,
+      mediaType,
     },
   });
 
@@ -408,13 +433,18 @@ exports.createPodcastUpload = asyncHandler(async (req, res) => {
     description: parsed.data.description,
     price: finalPrice,
     priceNGN: finalPrice,
-    audioUrl,
-    fullAudioUrl: audioUrl,
+    audioUrl: mediaUrl,
+    fullAudioUrl: mediaUrl,
+    mediaType,
+    videoUrl: mediaType === "video" ? mediaUrl : "",
     previewUrl,
     previewSampleUrl: previewUrl,
+    previewClipUrl: mediaType === "video" ? previewUrl : "",
     coverImageUrl,
     coverUrl: coverImageUrl,
     durationSec: parsed.data.durationSec,
+    audioFormat: mediaType === "audio" ? inferUploadedFormat(mediaFile) : "",
+    videoFormat: mediaType === "video" ? inferUploadedFormat(mediaFile) : "",
     kind: "podcast",
     creatorCategory: "podcasts",
     contentType: "podcast_episode",
@@ -439,7 +469,7 @@ exports.createPodcastUpload = asyncHandler(async (req, res) => {
     archivedAt: null,
   });
 
-  if (track.publishedStatus === "published") {
+  if (track.publishedStatus === "published" && mediaType === "audio") {
     try {
       await maybeCreateAudioPost({
         authorId: req.user.id,

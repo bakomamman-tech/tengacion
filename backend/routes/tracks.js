@@ -29,8 +29,11 @@ router.put(
   auth,
   creatorAuth,
   upload.fields([
+    { name: "media", maxCount: 1 },
     { name: "audio", maxCount: 1 },
+    { name: "video", maxCount: 1 },
     { name: "preview", maxCount: 1 },
+    { name: "previewClip", maxCount: 1 },
     { name: "cover", maxCount: 1 },
   ]),
   updateTrack

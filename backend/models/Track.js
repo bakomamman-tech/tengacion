@@ -127,6 +127,27 @@ const TrackSchema = new mongoose.Schema(
       trim: true,
       maxlength: 32,
     },
+    mediaType: {
+      type: String,
+      enum: ["audio", "video"],
+      default: "audio",
+    },
+    videoUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    previewClipUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    videoFormat: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 32,
+    },
     kind: {
       type: String,
       enum: ["music", "podcast", "comedy"],
@@ -295,9 +316,26 @@ TrackSchema.pre("validate", function syncStandardFields(next) {
     this.creatorCategory = "podcasts";
     this.contentType = "podcast_episode";
     this.releaseType = "single";
+    this.mediaType = this.mediaType === "video" ? "video" : "audio";
+    if (this.mediaType === "video") {
+      if (!this.videoUrl && this.audioUrl) this.videoUrl = this.audioUrl;
+      if (!this.audioUrl && this.videoUrl) this.audioUrl = this.videoUrl;
+      if (!this.fullAudioUrl && this.audioUrl) this.fullAudioUrl = this.audioUrl;
+      if (!this.previewClipUrl && this.previewUrl) this.previewClipUrl = this.previewUrl;
+      if (!this.previewUrl && this.previewClipUrl) this.previewUrl = this.previewClipUrl;
+      if (!this.previewSampleUrl && this.previewUrl) this.previewSampleUrl = this.previewUrl;
+    } else {
+      this.videoUrl = "";
+      this.previewClipUrl = "";
+      this.videoFormat = "";
+    }
   } else {
     this.creatorCategory = "music";
     this.contentType = "track";
+    this.mediaType = "audio";
+    this.videoUrl = "";
+    this.previewClipUrl = "";
+    this.videoFormat = "";
     this.podcastCategory = "";
     this.episodeType = this.price > 0 ? "premium" : "free";
   }

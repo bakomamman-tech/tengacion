@@ -1,11 +1,13 @@
 import { z } from "zod";
 
 export const AUDIO_ACCEPT = ".mp3,.wav,.flac,.m4a,.aac,.ogg,audio/*";
+export const VIDEO_ACCEPT = ".mp4,.mov,.m4v,.webm,video/*";
 export const IMAGE_ACCEPT = ".png,.jpg,.jpeg,.webp,.gif,.avif,image/*";
 export const BOOK_ACCEPT = ".pdf,.epub,.mobi,.txt";
 export const TRANSCRIPT_ACCEPT = ".pdf,.txt,.doc,.docx";
 
 const AUDIO_EXTENSIONS = [".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg"];
+const VIDEO_EXTENSIONS = [".mp4", ".mov", ".m4v", ".webm"];
 const IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"];
 const BOOK_EXTENSIONS = [".pdf", ".epub", ".mobi", ".txt"];
 const TRANSCRIPT_EXTENSIONS = [".pdf", ".txt", ".doc", ".docx"];
@@ -86,6 +88,7 @@ export const podcastUploadSchema = z
     episodeTitle: z.string().trim().min(1, "Episode title is required").max(180),
     podcastSeriesName: z.string().trim().min(1, "Podcast series name is required").max(180),
     episodeDescription: z.string().trim().max(3000).optional().default(""),
+    episodeMediaType: z.enum(["audio", "video"]).default("audio"),
     seasonNumber: optionalIntegerField,
     episodeNumber: optionalIntegerField,
     category: z.string().trim().min(1, "Category is required").max(120),
@@ -96,11 +99,36 @@ export const podcastUploadSchema = z
     showNotes: z.string().trim().max(12000).optional().default(""),
     episodeTags: z.string().trim().max(320).optional().default(""),
     coverImageFile: fileField("Cover image", IMAGE_EXTENSIONS),
-    fullAudioFile: fileField("Episode audio", AUDIO_EXTENSIONS, { required: true }),
-    previewSampleFile: fileField("Preview sample", AUDIO_EXTENSIONS),
+    episodeMediaFile: fileField("Episode media", [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS], { required: true }),
+    previewSampleFile: fileField("Preview sample", [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS]),
     transcriptFile: fileField("Transcript upload", TRANSCRIPT_EXTENSIONS),
   })
   .superRefine((value, ctx) => {
+    const allowedEpisodeExtensions =
+      value.episodeMediaType === "video" ? VIDEO_EXTENSIONS : AUDIO_EXTENSIONS;
+
+    if (value.episodeMediaFile && !hasValidExtension(value.episodeMediaFile, allowedEpisodeExtensions)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["episodeMediaFile"],
+        message:
+          value.episodeMediaType === "video"
+            ? "Episode video must match MP4, MOV, M4V, WEBM"
+            : "Episode audio must match MP3, WAV, FLAC, M4A, AAC, OGG",
+      });
+    }
+
+    if (value.previewSampleFile && !hasValidExtension(value.previewSampleFile, allowedEpisodeExtensions)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["previewSampleFile"],
+        message:
+          value.episodeMediaType === "video"
+            ? "Preview clip must match MP4, MOV, M4V, WEBM"
+            : "Preview sample must match MP3, WAV, FLAC, M4A, AAC, OGG",
+      });
+    }
+
     if (value.episodeType === "premium" && Number(value.price || 0) <= 0) {
       ctx.addIssue({
         code: "custom",

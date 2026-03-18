@@ -52,6 +52,7 @@ describe("Creator upload studios", () => {
 
     expect(screen.getByLabelText(/episode title/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/podcast series name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/episode format/i)).toBeInTheDocument();
     expect(screen.getByText(/full audio upload/i)).toBeInTheDocument();
     expect(screen.getAllByText(/transcript upload/i)[0]).toBeInTheDocument();
     expect(screen.queryByLabelText(/track title/i)).not.toBeInTheDocument();

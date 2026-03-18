@@ -17,6 +17,13 @@ const AUDIO_MIME_TYPES = [
   "audio/x-wav",
   "application/ogg",
 ];
+const VIDEO_EXTENSIONS = [".mp4", ".mov", ".m4v", ".webm"];
+const VIDEO_MIME_TYPES = [
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "video/x-m4v",
+];
 const IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"];
 const IMAGE_MIME_TYPES = [
   "image/avif",
@@ -134,6 +141,7 @@ const podcastUploadSchema = z
     title: z.string().trim().min(1, "Episode title is required").max(180),
     podcastSeries: z.string().trim().min(1, "Podcast series name is required").max(180),
     description: boundedString(3000),
+    mediaType: z.enum(["audio", "video"]).default("audio"),
     seasonNumber: nonNegativeInteger.default(0),
     episodeNumber: nonNegativeInteger.default(0),
     category: z.string().trim().min(1, "Podcast category is required").max(120),
@@ -213,6 +221,8 @@ const inferBookFormatFromFile = (file) => {
 module.exports = {
   AUDIO_EXTENSIONS,
   AUDIO_MIME_TYPES,
+  VIDEO_EXTENSIONS,
+  VIDEO_MIME_TYPES,
   IMAGE_EXTENSIONS,
   IMAGE_MIME_TYPES,
   BOOK_EXTENSIONS,

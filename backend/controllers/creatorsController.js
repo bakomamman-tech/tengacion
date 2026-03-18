@@ -402,7 +402,7 @@ exports.getCreatorVideos = asyncHandler(async (req, res) => {
       _id: video._id.toString(),
       creatorId: video.creatorProfileId?.toString?.() || "",
       title: video.caption || "",
-      description: video.caption || "",
+      description: video.description || video.caption || "",
       videoUrl: video.videoUrl || "",
       coverImageUrl: video.coverImageUrl || "",
       previewClipUrl: video.previewClipUrl || "",

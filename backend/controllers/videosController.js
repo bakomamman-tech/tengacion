@@ -5,6 +5,32 @@ const { saveUploadedFile } = require("../services/mediaStore");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const {
+  IMAGE_EXTENSIONS,
+  IMAGE_MIME_TYPES,
+  VIDEO_EXTENSIONS,
+  VIDEO_MIME_TYPES,
+  getExtension,
+  validateFile,
+} = require("../services/creatorUploadValidation");
+
+const sendBadRequest = (res, error) => res.status(400).json({ error });
+
+const parseNonNegativeNumber = (value, { fallback = 0 } = {}) => {
+  if (value === "" || value === undefined || value === null) {
+    return fallback;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return Number.NaN;
+  }
+  return parsed;
+};
+
+const inferUploadedFormat = (file) => {
+  const extension = getExtension(file);
+  return extension ? extension.slice(1) : String(file?.mimetype || "").split("/")[1] || "";
+};
 
 const resolveRequestedStatus = (body = {}) => {
   const value = String(body?.publishedStatus || body?.publishMode || body?.status || "")
@@ -19,12 +45,14 @@ const resolveRequestedStatus = (body = {}) => {
 const toVideoPayload = (video) => ({
   _id: String(video?._id || ""),
   title: String(video?.caption || "Music video"),
-  description: String(video?.caption || ""),
+  description: String(video?.description || video?.caption || ""),
   videoUrl: String(video?.videoUrl || ""),
   coverImageUrl: String(video?.coverImageUrl || ""),
   previewClipUrl: String(video?.previewClipUrl || ""),
   price: Number(video?.price || 0),
   isFree: Boolean(video?.isFree),
+  durationSec: Number(video?.durationSec || 0),
+  videoFormat: String(video?.videoFormat || ""),
   creatorCategory: String(video?.creatorCategory || "music"),
   contentType: String(video?.contentType || "music_video"),
   publishedStatus: String(video?.publishedStatus || (video?.isPublished ? "published" : "draft")),
@@ -61,6 +89,7 @@ const resolveUploadFields = async ({ req, current = null }) => {
     previewClipUrl,
     videoFile,
     thumbnailFile,
+    previewClipFile,
   };
 };
 
@@ -76,17 +105,59 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
 
   const title = String(req.body?.title || req.body?.caption || "").trim();
   const description = String(req.body?.description || "").trim();
-  const price = Number(req.body?.price || 0);
+  const price = parseNonNegativeNumber(req.body?.price, { fallback: 0 });
+  const durationSec = parseNonNegativeNumber(req.body?.durationSec, { fallback: 0 });
   const requestedStatus = resolveRequestedStatus(req.body);
-  const { videoUrl, coverImageUrl, previewClipUrl, videoFile, thumbnailFile } = await resolveUploadFields({
+  const {
+    videoUrl,
+    coverImageUrl,
+    previewClipUrl,
+    videoFile,
+    thumbnailFile,
+    previewClipFile,
+  } = await resolveUploadFields({
     req,
   });
 
   if (!videoUrl) {
-    return res.status(400).json({ error: "Video file or videoUrl is required" });
+    return sendBadRequest(res, "Video file or videoUrl is required");
   }
-  if (!Number.isFinite(price) || price < 0) {
-    return res.status(400).json({ error: "price must be a valid non-negative number" });
+  if (!Number.isFinite(price)) {
+    return sendBadRequest(res, "price must be a valid non-negative number");
+  }
+  if (!Number.isFinite(durationSec)) {
+    return sendBadRequest(res, "durationSec must be a valid non-negative number");
+  }
+
+  const videoError = validateFile(videoFile, {
+    label: "Video upload",
+    allowedExtensions: VIDEO_EXTENSIONS,
+    allowedMimeTypes: VIDEO_MIME_TYPES,
+  });
+  if (videoError) {
+    return sendBadRequest(res, videoError);
+  }
+
+  const previewError = validateFile(previewClipFile, {
+    label: "Preview clip",
+    allowedExtensions: VIDEO_EXTENSIONS,
+    allowedMimeTypes: VIDEO_MIME_TYPES,
+  });
+  if (previewError) {
+    return sendBadRequest(res, previewError);
+  }
+
+  const thumbnailError = validateFile(thumbnailFile, {
+    label: "Thumbnail image",
+    allowedExtensions: IMAGE_EXTENSIONS,
+    allowedMimeTypes: IMAGE_MIME_TYPES,
+  });
+  if (thumbnailError) {
+    return sendBadRequest(res, thumbnailError);
+  }
+
+  if (requestedStatus === "published" && price > 0 && !previewClipUrl) {
+    return sendBadRequest(res, "A preview clip is required before publishing a paid music video");
   }
 
   const verification = await evaluateVerification({
@@ -100,6 +171,7 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
     metadata: {
       creatorId: req.creatorProfile?._id?.toString?.() || "",
       hasPreviewClip: Boolean(previewClipUrl),
+      durationSec,
     },
   });
 
@@ -113,6 +185,9 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
     coverImageUrl,
     previewClipUrl,
     caption: title || description || "",
+    description,
+    durationSec,
+    videoFormat: inferUploadedFormat(videoFile),
     price,
     isFree: price <= 0,
     creatorCategory: "music",
@@ -166,19 +241,61 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
   }
 
   const title = String(req.body?.title || req.body?.caption || video.caption || "").trim();
-  const description = String(req.body?.description || video.caption || "").trim();
-  const price = Number(req.body?.price ?? video.price ?? 0);
+  const description = String(req.body?.description ?? video.description ?? video.caption ?? "").trim();
+  const price = parseNonNegativeNumber(req.body?.price, { fallback: Number(video.price || 0) });
+  const durationSec = parseNonNegativeNumber(req.body?.durationSec, { fallback: Number(video.durationSec || 0) });
   const requestedStatus = resolveRequestedStatus(req.body);
-  const { videoUrl, coverImageUrl, previewClipUrl, videoFile, thumbnailFile } = await resolveUploadFields({
+  const {
+    videoUrl,
+    coverImageUrl,
+    previewClipUrl,
+    videoFile,
+    thumbnailFile,
+    previewClipFile,
+  } = await resolveUploadFields({
     req,
     current: video,
   });
 
   if (!videoUrl) {
-    return res.status(400).json({ error: "Video file or videoUrl is required" });
+    return sendBadRequest(res, "Video file or videoUrl is required");
   }
-  if (!Number.isFinite(price) || price < 0) {
-    return res.status(400).json({ error: "price must be a valid non-negative number" });
+  if (!Number.isFinite(price)) {
+    return sendBadRequest(res, "price must be a valid non-negative number");
+  }
+  if (!Number.isFinite(durationSec)) {
+    return sendBadRequest(res, "durationSec must be a valid non-negative number");
+  }
+
+  const videoError = validateFile(videoFile, {
+    label: "Video upload",
+    allowedExtensions: VIDEO_EXTENSIONS,
+    allowedMimeTypes: VIDEO_MIME_TYPES,
+  });
+  if (videoError) {
+    return sendBadRequest(res, videoError);
+  }
+
+  const previewError = validateFile(previewClipFile, {
+    label: "Preview clip",
+    allowedExtensions: VIDEO_EXTENSIONS,
+    allowedMimeTypes: VIDEO_MIME_TYPES,
+  });
+  if (previewError) {
+    return sendBadRequest(res, previewError);
+  }
+
+  const thumbnailError = validateFile(thumbnailFile, {
+    label: "Thumbnail image",
+    allowedExtensions: IMAGE_EXTENSIONS,
+    allowedMimeTypes: IMAGE_MIME_TYPES,
+  });
+  if (thumbnailError) {
+    return sendBadRequest(res, thumbnailError);
+  }
+
+  if (requestedStatus === "published" && price > 0 && !previewClipUrl) {
+    return sendBadRequest(res, "A preview clip is required before publishing a paid music video");
   }
 
   const verification = await evaluateVerification({
@@ -192,6 +309,7 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
     metadata: {
       creatorId: req.creatorProfile?._id?.toString?.() || "",
       hasPreviewClip: Boolean(previewClipUrl),
+      durationSec,
     },
   });
 
@@ -199,8 +317,13 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
   video.coverImageUrl = coverImageUrl;
   video.previewClipUrl = previewClipUrl;
   video.caption = title || description || "";
+  video.description = description;
   video.price = price;
   video.isFree = price <= 0;
+  video.durationSec = durationSec;
+  if (videoFile) {
+    video.videoFormat = inferUploadedFormat(videoFile);
+  }
   video.publishedStatus = verification.publishedStatus;
   video.copyrightScanStatus = verification.scanStatus;
   video.verificationNotes = verification.verificationNotes;

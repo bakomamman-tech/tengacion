@@ -9,7 +9,9 @@ const VideoSchema = new mongoose.Schema({
   videoUrl: String,   // uploaded OR link
   coverImageUrl: { type: String, default: "" },
   caption: String,
+  description: { type: String, default: "" },
   durationSec: { type: Number, default: 0 },
+  videoFormat: { type: String, default: "" },
   viewsCount: { type: Number, default: 0 },
   price: { type: Number, default: 0, min: 0 },
   priceGlobal: { type: Number, default: 0, min: 0 },

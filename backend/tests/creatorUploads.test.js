@@ -12,6 +12,7 @@ const Book = require("../models/Book");
 const CreatorProfile = require("../models/CreatorProfile");
 const Track = require("../models/Track");
 const User = require("../models/User");
+const Video = require("../models/Video");
 
 let mongod;
 let sequence = 0;
@@ -133,6 +134,45 @@ describe("creator upload routes", () => {
     expect(savedTrack).toBeTruthy();
     expect(savedTrack.kind).toBe("music");
     expect(savedTrack.contentType).toBe("track");
+  });
+
+  test("POST /api/creator/music/videos creates a music video upload with supported formats", async () => {
+    const { token } = await createUserAndProfile();
+
+    const response = await request(app)
+      .post("/api/creator/music/videos")
+      .set("Authorization", `Bearer ${token}`)
+      .field("title", "Visual Anthem")
+      .field("description", "High-energy performance video")
+      .field("price", "0")
+      .field("durationSec", "215")
+      .field("publishedStatus", "draft")
+      .attach("video", Buffer.from("music-video"), {
+        filename: "visual-anthem.m4v",
+        contentType: "video/x-m4v",
+      })
+      .attach("previewClip", Buffer.from("music-video-preview"), {
+        filename: "visual-anthem-preview.webm",
+        contentType: "video/webm",
+      })
+      .attach("thumbnail", Buffer.from("music-video-thumbnail"), {
+        filename: "visual-anthem.webp",
+        contentType: "image/webp",
+      })
+      .expect(201);
+
+    expect(response.body.title).toBe("Visual Anthem");
+    expect(response.body.description).toBe("High-energy performance video");
+    expect(response.body.durationSec).toBe(215);
+    expect(response.body.videoFormat).toBe("m4v");
+
+    const savedVideo = await Video.findOne({ caption: "Visual Anthem" }).lean();
+    expect(savedVideo).toBeTruthy();
+    expect(savedVideo.contentType).toBe("music_video");
+    expect(savedVideo.previewClipUrl).toBeTruthy();
+    expect(savedVideo.coverImageUrl).toBeTruthy();
+    expect(savedVideo.durationSec).toBe(215);
+    expect(savedVideo.videoFormat).toBe("m4v");
   });
 
   test("POST /api/creator/music rejects podcast-only metadata fields", async () => {

@@ -246,7 +246,7 @@ export default function CreatorMusicPage() {
       <section className="creator-inline-notice">
         <div>
           <strong>Dedicated upload page</strong>
-          <span>Open the Music Uploads page for the dedicated audio publishing experience. This dashboard stays focused on managing existing releases.</span>
+          <span>Open the Music Uploads page for the dedicated studio for audio releases and music videos. This dashboard stays focused on managing existing releases.</span>
         </div>
         <Link className="creator-secondary-btn" to="/creator/music/upload">
           Upload Music

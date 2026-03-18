@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useCreatorWorkspace } from "../../useCreatorWorkspace";
@@ -40,11 +40,22 @@ describe("Creator upload studios", () => {
     render(<MusicUploadStudio showNotice={false} />);
 
     expect(screen.getByLabelText(/track title/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/release format/i)).toBeInTheDocument();
     expect(screen.getByText(/full audio upload/i)).toBeInTheDocument();
     expect(screen.getByText(/cover image upload/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/podcast series name/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/manuscript upload/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/season number/i)).not.toBeInTheDocument();
+
+    act(() => {
+      fireEvent.change(screen.getByLabelText(/release format/i), {
+        target: { value: "video" },
+      });
+    });
+
+    expect(screen.getByText(/full video upload/i)).toBeInTheDocument();
+    expect(screen.getByText(/preview clip upload/i)).toBeInTheDocument();
+    expect(screen.getByText(/thumbnail upload/i)).toBeInTheDocument();
   });
 
   it("renders a podcast-only form without music or book fields", () => {

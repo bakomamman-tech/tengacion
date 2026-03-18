@@ -66,9 +66,10 @@ export const splitCommaValues = (value = "") =>
   )];
 
 export const musicUploadSchema = z.object({
+  releaseMediaType: z.enum(["audio", "video"]).default("audio"),
   trackTitle: z.string().trim().min(1, "Track title is required").max(180),
   artistName: z.string().trim().max(120).optional().default(""),
-  genre: z.string().trim().min(1, "Genre is required").max(120),
+  genre: z.string().trim().max(120).optional().default(""),
   description: z.string().trim().max(2000).optional().default(""),
   price: moneyField,
   releaseType: z.enum(["single", "ep", "album"]),
@@ -79,8 +80,41 @@ export const musicUploadSchema = z.object({
   releaseDate: z.string().optional().default(""),
   lyrics: z.string().trim().max(12000).optional().default(""),
   coverImageFile: fileField("Cover image", IMAGE_EXTENSIONS),
-  fullAudioFile: fileField("Full audio upload", AUDIO_EXTENSIONS, { required: true }),
-  previewSampleFile: fileField("Preview sample", AUDIO_EXTENSIONS),
+  releaseMediaFile: fileField("Release media", [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS], { required: true }),
+  previewSampleFile: fileField("Preview media", [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS]),
+}).superRefine((value, ctx) => {
+  const allowedPrimaryExtensions =
+    value.releaseMediaType === "video" ? VIDEO_EXTENSIONS : AUDIO_EXTENSIONS;
+
+  if (value.releaseMediaFile && !hasValidExtension(value.releaseMediaFile, allowedPrimaryExtensions)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["releaseMediaFile"],
+      message:
+        value.releaseMediaType === "video"
+          ? "Music video upload must match MP4, MOV, M4V, WEBM"
+          : "Full audio upload must match MP3, WAV, FLAC, M4A, AAC, OGG",
+    });
+  }
+
+  if (value.previewSampleFile && !hasValidExtension(value.previewSampleFile, allowedPrimaryExtensions)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["previewSampleFile"],
+      message:
+        value.releaseMediaType === "video"
+          ? "Preview clip must match MP4, MOV, M4V, WEBM"
+          : "Preview sample must match MP3, WAV, FLAC, M4A, AAC, OGG",
+    });
+  }
+
+  if (value.releaseMediaType === "audio" && !String(value.genre || "").trim()) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["genre"],
+      message: "Genre is required",
+    });
+  }
 });
 
 export const podcastUploadSchema = z

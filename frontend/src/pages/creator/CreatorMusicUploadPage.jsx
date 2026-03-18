@@ -18,7 +18,7 @@ export default function CreatorMusicUploadPage() {
             <div>
               <span className="creator-eyebrow">Music Studio</span>
               <h2>Music Uploads</h2>
-              <p>A focused music publishing flow with artwork, audio, metadata, pricing, drafts, and live release states.</p>
+              <p>A focused music publishing flow with artwork, metadata, pricing, drafts, audio masters, and high-quality music video uploads.</p>
             </div>
             <Link className="creator-secondary-btn" to="/creator/music">
               Back to Music dashboard

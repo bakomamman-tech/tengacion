@@ -233,7 +233,7 @@ const mapVideoItem = ({ video, req, viewerId, ownerAccess, entitlements }) => {
     mediaType: "video",
     lane: "music",
     title: toCleanString(video.caption || "Music video"),
-    description: toCleanString(video.caption),
+    description: toCleanString(video.description || video.caption),
     subtitle: numberOrZero(video.viewsCount) ? `${numberOrZero(video.viewsCount).toLocaleString()} views` : "Music video",
     coverUrl: toCleanString(video.coverImageUrl),
     previewUrl: buildSignedUrl({

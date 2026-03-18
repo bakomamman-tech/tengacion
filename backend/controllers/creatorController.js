@@ -213,10 +213,12 @@ const serializeAlbumItem = (album, earnings = 0) => ({
 const serializeVideoItem = (video, earnings = 0) => ({
   _id: video._id.toString(),
   title: video.caption || "Music video",
-  description: video.caption || "",
+  description: video.description || video.caption || "",
   price: Number(video.price || 0),
   coverImageUrl: video.coverImageUrl || "",
   previewClipUrl: video.previewClipUrl || "",
+  durationSec: Number(video.durationSec || 0),
+  videoFormat: video.videoFormat || "",
   creatorCategory: video.creatorCategory || "music",
   contentType: video.contentType || "music_video",
   publishedStatus: video.publishedStatus || (video.isPublished ? "published" : "draft"),

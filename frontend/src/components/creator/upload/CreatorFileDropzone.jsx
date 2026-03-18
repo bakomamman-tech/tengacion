@@ -80,25 +80,29 @@ export default function CreatorFileDropzone({
         aria-labelledby={`${inputId}-label`}
         aria-describedby={`${inputId}-helper`}
       >
-        <div className="creator-dropzone-header">
-          <div className="creator-dropzone-icon" aria-hidden="true">
-            {icon}
-          </div>
+        <div className="creator-dropzone-body">
+          <div className="creator-dropzone-header">
+            <div className="creator-dropzone-icon" aria-hidden="true">
+              {icon}
+            </div>
 
-          <div className="creator-dropzone-copy">
-            <strong id={`${inputId}-label`}>{label}</strong>
-            <span id={`${inputId}-helper`} className="creator-dropzone-helper">
-              {file
-                ? `${file.name}${file.size ? ` • ${formatBytes(file.size)}` : ""}`
-                : helper}
-            </span>
+            <div className="creator-dropzone-copy">
+              <strong id={`${inputId}-label`}>{label}</strong>
+              <span id={`${inputId}-helper`} className="creator-dropzone-helper">
+                {file
+                  ? `${file.name}${file.size ? ` - ${formatBytes(file.size)}` : ""}`
+                  : helper}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="creator-dropzone-actions">
-          <span className="creator-dropzone-action">
-            {file ? "Replace file" : "Choose file"}
-          </span>
+        <div className="creator-dropzone-footer">
+          <div className="creator-dropzone-actions">
+            <span className="creator-dropzone-action">
+              {file ? "Replace file" : "Choose file"}
+            </span>
+          </div>
         </div>
       </button>
 

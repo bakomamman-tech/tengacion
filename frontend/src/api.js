@@ -596,6 +596,21 @@ export const updatePrivacy = (payload) =>
     body: JSON.stringify(payload || {}),
   });
 
+export const getAudioPreferences = () =>
+  request(`${API_BASE}/users/me/audio`, {
+    headers: getAuthHeaders(),
+  });
+
+export const updateAudioPreferences = (payload) =>
+  request(`${API_BASE}/users/me/audio`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
 export const updateOnboarding = (payload) =>
   request(`${API_BASE}/users/me/onboarding`, {
     method: "PUT",

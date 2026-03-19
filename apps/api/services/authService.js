@@ -9,6 +9,7 @@ const AuthChallenge = require("../../../backend/models/AuthChallenge");
 const sendOtpEmail = require("../../../backend/utils/sendOtpEmail");
 const sendSecurityEmail = require("../../../backend/utils/sendSecurityEmail");
 const { normalizeMediaValue } = require("../../../backend/utils/userMedia");
+const { normalizeAudioPrefs } = require("../../../backend/utils/audioPrefs");
 const {
   hashToken,
   signAccessToken,
@@ -262,7 +263,7 @@ const MFA_SUMMARY_SELECT =
 const MFA_SECRET_SELECT = `${MFA_SUMMARY_SELECT} +twoFactor.secretCipher`;
 const MFA_SETUP_SECRET_SELECT = `${MFA_SECRET_SELECT} +twoFactor.pendingSecretCipher`;
 const USER_PROFILE_SELECT =
-  "_id name username email role avatar cover emailVerified isActive isBanned isDeleted lastLogin lastLoginAt lastSeenAt";
+  "_id name username email role avatar cover audioPrefs emailVerified isActive isBanned isDeleted lastLogin lastLoginAt lastSeenAt";
 const SESSION_SELECT =
   "sessions.sessionId sessions.deviceName sessions.ip sessions.userAgent sessions.country sessions.city sessions.fingerprint sessions.createdAt sessions.lastSeenAt sessions.revokedAt";
 const SESSION_SELECT_WITH_HASH = `${SESSION_SELECT} +sessions.refreshTokenHash`;
@@ -319,6 +320,7 @@ const buildProfilePayload = (user) => {
   payload.displayName = payload.name || "";
   payload.avatar = avatar;
   payload.cover = cover;
+  payload.audioPrefs = normalizeAudioPrefs(payload.audioPrefs);
   payload.avatarUrl = avatar.url;
   payload.coverUrl = cover.url;
   payload.emailVerified = Boolean(payload.emailVerified);

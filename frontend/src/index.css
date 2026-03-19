@@ -6129,6 +6129,33 @@ html.dark-mode .create-menu-empty {
   flex-wrap: wrap;
 }
 
+.account-slider-group {
+  display: grid;
+  gap: 10px;
+}
+
+.account-range {
+  width: 100%;
+  accent-color: var(--brand);
+}
+
+.account-slider-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.account-slider-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .account-note-card {
   border: 1px solid rgba(184, 122, 58, 0.24);
   border-radius: 12px;

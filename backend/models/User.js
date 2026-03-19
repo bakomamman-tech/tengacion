@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const { normalizeMediaValue } = require("../utils/userMedia");
+const { normalizeAudioPrefs, DEFAULT_WELCOME_VOICE_VOLUME } = require("../utils/audioPrefs");
 const { sanitizeCountryValue, sanitizePhoneValue } = require("../utils/profileFields");
 
 const UserSchema = new mongoose.Schema(
@@ -416,6 +417,22 @@ const UserSchema = new mongoose.Schema(
       system: { type: Boolean, default: true },
     },
 
+    audioPrefs: {
+      type: new mongoose.Schema(
+        {
+          welcomeVoiceEnabled: { type: Boolean, default: true },
+          welcomeVoiceVolume: {
+            type: Number,
+            default: DEFAULT_WELCOME_VOICE_VOLUME,
+            min: 0,
+            max: 0.45,
+          },
+        },
+        { _id: false }
+      ),
+      default: () => normalizeAudioPrefs(),
+    },
+
     onboarding: {
       completed: { type: Boolean, default: false },
       steps: {
@@ -476,6 +493,10 @@ UserSchema.pre("save", async function () {
     this.isNew ||
     this.isModified("cover") ||
     (typeof this.isSelected === "function" && this.isSelected("cover"));
+  const canNormalizeAudioPrefs =
+    this.isNew ||
+    this.isModified("audioPrefs") ||
+    (typeof this.isSelected === "function" && this.isSelected("audioPrefs"));
 
   // Avoid wiping media when saving partially selected documents (e.g. auth session touch).
   if (canNormalizeAvatar) {
@@ -483,6 +504,9 @@ UserSchema.pre("save", async function () {
   }
   if (canNormalizeCover) {
     this.cover = normalizeMediaValue(this.cover);
+  }
+  if (canNormalizeAudioPrefs) {
+    this.audioPrefs = normalizeAudioPrefs(this.audioPrefs);
   }
 
   if (!this.isModified("password")) {
@@ -506,6 +530,7 @@ UserSchema.methods.toJSON = function () {
   obj.country = sanitizeCountryValue(obj.country);
   obj.avatar = normalizeMediaValue(obj.avatar);
   obj.cover = normalizeMediaValue(obj.cover);
+  obj.audioPrefs = normalizeAudioPrefs(obj.audioPrefs);
   return obj;
 };
 

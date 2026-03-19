@@ -11,6 +11,7 @@ const {
   mediaToUrl,
   normalizeUserMediaDocument,
 } = require("../utils/userMedia");
+const { normalizeAudioPrefs } = require("../utils/audioPrefs");
 const {
   trimTextValue,
   sanitizeCountryValue,
@@ -1142,6 +1143,54 @@ router.put("/me/privacy", auth, async (req, res) => {
   } catch (err) {
     console.error("Privacy update failed:", err);
     return res.status(500).json({ error: "Failed to update privacy settings" });
+  }
+});
+
+router.get("/me/audio", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("audioPrefs");
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.json({
+      success: true,
+      audioPrefs: normalizeAudioPrefs(user.audioPrefs),
+    });
+  } catch (err) {
+    console.error("Audio settings fetch failed:", err);
+    return res.status(500).json({ error: "Failed to load audio settings" });
+  }
+});
+
+router.put("/me/audio", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("audioPrefs");
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const patch = req.body && typeof req.body === "object" ? req.body : {};
+    const current = normalizeAudioPrefs(user.audioPrefs);
+
+    user.audioPrefs = normalizeAudioPrefs({
+      ...current,
+      ...(Object.prototype.hasOwnProperty.call(patch, "welcomeVoiceEnabled")
+        ? { welcomeVoiceEnabled: patch.welcomeVoiceEnabled }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(patch, "welcomeVoiceVolume")
+        ? { welcomeVoiceVolume: patch.welcomeVoiceVolume }
+        : {}),
+    });
+
+    await user.save();
+    return res.json({
+      success: true,
+      audioPrefs: normalizeAudioPrefs(user.audioPrefs),
+    });
+  } catch (err) {
+    console.error("Audio settings update failed:", err);
+    return res.status(500).json({ error: "Failed to update audio settings" });
   }
 });
 

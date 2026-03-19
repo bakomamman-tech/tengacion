@@ -86,7 +86,7 @@ export default function Login() {
       }
 
       if (payload?.token && payload?.user) {
-        login(payload.token, payload.user);
+        login(payload.token, payload.user, payload.sessionId);
         toast.success("Welcome back");
         navigate(returnTo, { replace: true });
         return;
@@ -114,7 +114,7 @@ export default function Login() {
         code: verificationCode.trim(),
       });
       if (payload?.token && payload?.user) {
-        login(payload.token, payload.user);
+        login(payload.token, payload.user, payload.sessionId);
         toast.success("Login verified");
         navigate(returnTo, { replace: true });
         return;

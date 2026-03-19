@@ -6,6 +6,7 @@ import {
   SESSION_LOGOUT_EVENT,
   setSessionAccessToken,
 } from "../authSession";
+import { cancelAmbientWelcome } from "../services/welcomeVoice";
 
 const AuthContext = createContext(null);
 
@@ -25,12 +26,13 @@ const normalizeMediaField = (value) => {
   };
 };
 
-const normalizeUserMedia = (rawUser) => {
+const normalizeUserMedia = (rawUser, activeSessionId = "") => {
   if (!rawUser || typeof rawUser !== "object") {
     return rawUser;
   }
   return {
     ...rawUser,
+    activeSessionId: String(activeSessionId || rawUser.activeSessionId || ""),
     avatar: normalizeMediaField(rawUser.avatar),
     cover: normalizeMediaField(rawUser.cover),
   };
@@ -53,8 +55,8 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const applyUser = useCallback((nextUser, token = "") => {
-    const normalized = normalizeUserMedia(nextUser || null);
+  const applyUser = useCallback((nextUser, token = "", activeSessionId = "") => {
+    const normalized = normalizeUserMedia(nextUser || null, activeSessionId);
     if (token) {
       setSessionAccessToken(token);
     }
@@ -72,6 +74,7 @@ export function AuthProvider({ children }) {
         // Continue with local cleanup even if revoke fails.
       }
     }
+    cancelAmbientWelcome();
     clearSessionAccessToken();
     persistUserSnapshot(null);
     setUser(null);
@@ -87,7 +90,7 @@ export function AuthProvider({ children }) {
         if (!alive) {
           return;
         }
-        applyUser(payload?.user || null, payload?.token || "");
+        applyUser(payload?.user || null, payload?.token || "", payload?.sessionId || "");
       } catch {
         if (!alive) {
           return;
@@ -127,11 +130,11 @@ export function AuthProvider({ children }) {
   }, [hardLogout]);
 
   const login = useCallback(
-    (token, userData) => {
+    (token, userData, activeSessionId = "") => {
       if (!userData) {
         return;
       }
-      applyUser(userData, token || "");
+      applyUser(userData, token || "", activeSessionId || "");
     },
     [applyUser]
   );

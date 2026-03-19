@@ -160,7 +160,7 @@ export default function Register() {
       });
 
       if (payload?.token && payload?.user) {
-        login(payload.token, payload.user);
+        login(payload.token, payload.user, payload.sessionId);
         toast.success(phone ? "Account created. You are now signed in." : "Account created.");
         navigate("/home", { replace: true });
         return;

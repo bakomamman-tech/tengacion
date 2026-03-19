@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import QuickAccessLayout from "../components/QuickAccessLayout";
 import { useTheme } from "../context/ThemeContext";
+import { normalizeWelcomeVoicePrefs } from "../services/welcomeVoice";
 
 const FEEDBACK_STORAGE_KEY = "tengacion_feedback_draft";
 const FEEDBACK_TYPES = ["general", "bug", "idea", "safety"];
@@ -61,6 +62,7 @@ function humanize(value) {
 export function SettingsHubPage({ user }) {
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const audioPrefs = normalizeWelcomeVoicePrefs(user?.audioPrefs);
 
   const overview = [
     {
@@ -82,6 +84,11 @@ export function SettingsHubPage({ user }) {
       label: "Messages",
       value: humanize(user?.privacy?.allowMessagesFrom || "everyone"),
       note: "Who can start a chat with you",
+    },
+    {
+      label: "Welcome voice",
+      value: audioPrefs.welcomeVoiceEnabled ? "On" : "Off",
+      note: `Ambient voice at ${Math.round(audioPrefs.welcomeVoiceVolume * 100)}% volume`,
     },
   ];
 
@@ -113,6 +120,13 @@ export function SettingsHubPage({ user }) {
       description: "Appearance mode and accessibility guidance.",
       note: "Adjust how Tengacion looks",
       path: "/settings/display",
+    },
+    {
+      id: "sound",
+      label: "Sound & welcome voice",
+      description: "Ambient greeting, quiet volume controls, and audio behavior.",
+      note: "Shape the spoken Tengacion welcome",
+      path: "/settings/sound",
     },
   ];
 

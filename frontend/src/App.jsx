@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AdminRoute from "./components/AdminRoute";
 import InstallPrompt from "./components/InstallPrompt";
 import ProtectedRoute from "./components/ProtectedRoute";
+import WelcomeVoiceController from "./components/WelcomeVoiceController";
 import { useAuth } from "./context/AuthContext";
 
 const loadQuickAccessPages = () => import("./pages/quickAccess/QuickAccessPages");
@@ -25,6 +26,7 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const SecuritySettings = lazy(() => import("./pages/SecuritySettings"));
 const PrivacySettings = lazy(() => import("./pages/PrivacySettings"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
+const SoundSettings = lazy(() => import("./pages/SoundSettings"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPassword"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPassword"));
 const VerifyEmailPage = lazy(() => import("./pages/VerifyEmail"));
@@ -115,6 +117,7 @@ export default function App() {
 
   return (
     <>
+      <WelcomeVoiceController user={user} />
       <Suspense fallback={<AppShellFallback />}>
         <Routes>
           <Route path="/" element={<Login />} />
@@ -435,6 +438,14 @@ export default function App() {
             element={
               <ProtectedRoute user={user}>
                 <DisplayAccessibilityPage user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings/sound"
+            element={
+              <ProtectedRoute user={user}>
+                <SoundSettings user={user} />
               </ProtectedRoute>
             }
           />

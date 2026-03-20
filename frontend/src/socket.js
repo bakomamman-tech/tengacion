@@ -3,6 +3,7 @@ import { io } from "socket.io-client";
 import {
   emitAuthLogout,
   getSessionAccessToken,
+  setSessionAccessToken,
   subscribeSessionAccessToken,
 } from "./authSession";
 
@@ -20,6 +21,75 @@ let socket = null;
 let activeToken = "";
 let activeUserId = "";
 let unsubscribeToken = null;
+let sessionRecoveryPromise = null;
+
+const parseRefreshResponse = async (response) => {
+  const raw = await response.text();
+  let data = {};
+
+  if (raw) {
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      throw new Error("Invalid server response");
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.error || data?.message || "Session refresh failed");
+  }
+
+  return data;
+};
+
+const refreshSocketSession = async () => {
+  if (sessionRecoveryPromise) {
+    return sessionRecoveryPromise;
+  }
+
+  sessionRecoveryPromise = fetch("/api/auth/refresh", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  })
+    .then(parseRefreshResponse)
+    .then((payload) => {
+      const nextToken = String(payload?.token || "").trim();
+      if (!nextToken) {
+        throw new Error("Session refresh failed");
+      }
+      setSessionAccessToken(nextToken);
+      return payload;
+    })
+    .finally(() => {
+      sessionRecoveryPromise = null;
+    });
+
+  return sessionRecoveryPromise;
+};
+
+const recoverSocketSession = async () => {
+  const previousToken = String(activeToken || "").trim();
+  const payload = await refreshSocketSession();
+  const nextToken = String(payload?.token || getSessionAccessToken() || "").trim();
+
+  if (!socket || !activeUserId || !nextToken) {
+    return false;
+  }
+
+  if (nextToken === previousToken) {
+    activeToken = nextToken;
+    socket.auth = { token: nextToken, userId: activeUserId };
+    if (socket.connected) {
+      socket.disconnect().connect();
+    } else {
+      socket.connect();
+    }
+  }
+
+  return true;
+};
 
 const wireSocketTokenRefresh = () => {
   if (unsubscribeToken) {
@@ -86,7 +156,9 @@ export function connectSocket({ token = "", userId }) {
   });
 
   socket.on("auth:logout", (payload) => {
-    emitAuthLogout(payload?.message || "Session revoked");
+    recoverSocketSession().catch(() => {
+      emitAuthLogout(payload?.message || "Session revoked");
+    });
   });
 
   socket.connect();

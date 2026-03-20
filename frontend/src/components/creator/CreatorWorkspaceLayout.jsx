@@ -209,12 +209,48 @@ export default function CreatorWorkspaceLayout() {
           featuredContent={
             isDashboardPage ? (
               <div className="creator-dashboard-shortcut">
-                <Link
-                  className="creator-dashboard-shortcut__link"
-                  to="/creator/fan-page-view"
+                <div className="creator-dashboard-shortcut__copy">
+                  <span className="creator-dashboard-shortcut__eyebrow">
+                    Public fan experience
+                  </span>
+                  <h2>Shape the page your audience lands on</h2>
+                  <p>
+                    Preview your public creator presence before you share it,
+                    so the first click feels polished, premium, and ready for
+                    attention.
+                  </p>
+
+                  <div className="creator-dashboard-shortcut__footer">
+                    <Link
+                      className="creator-dashboard-shortcut__link"
+                      to="/creator/fan-page-view"
+                    >
+                      <span>Fan Page view</span>
+                      <small>Open live preview</small>
+                    </Link>
+
+                    <span className="creator-dashboard-shortcut__hint">
+                      Check your music, books, and podcasts the way fans will.
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  className="creator-dashboard-shortcut__scene"
+                  aria-hidden="true"
                 >
-                  Fan Page view
-                </Link>
+                  <span className="creator-dashboard-shortcut__scene-pill">
+                    Audience-ready
+                  </span>
+                  <div className="creator-dashboard-shortcut__scene-card">
+                    <strong>Creator spotlight</strong>
+                    <span>
+                      Your storefront, featured drops, and layout rhythm in one
+                      quick glance.
+                    </span>
+                  </div>
+                  <div className="creator-dashboard-shortcut__scene-glow" />
+                </div>
               </div>
             ) : null
           }
@@ -235,8 +271,14 @@ export default function CreatorWorkspaceLayout() {
                 Back to {CREATOR_CATEGORY_CONFIG[currentUploadCategory].shortTitle}
               </Link>
             ) : (
-              <Link className="creator-secondary-btn" to="/creator/settings">
-                Edit creator profile
+              <Link
+                className="creator-secondary-btn creator-secondary-btn--profile"
+                to="/creator/settings"
+              >
+                <span className="creator-btn-stack">
+                  <strong>Edit creator profile</strong>
+                  <small>Identity, payouts, and creator lanes</small>
+                </span>
               </Link>
             )
           }
@@ -245,8 +287,13 @@ export default function CreatorWorkspaceLayout() {
               className="creator-mobile-tabs creator-chip-nav"
               aria-label="Creator workspace quick navigation"
             >
-              <NavLink className="creator-chip-link" to="/creator/dashboard">
-                Overview
+              <NavLink
+                className="creator-chip-link creator-chip-link--overview"
+                style={{ "--creator-chip-accent": "var(--creator-accent)" }}
+                to="/creator/dashboard"
+              >
+                <span className="creator-chip-link__eyebrow">Workspace</span>
+                <span className="creator-chip-link__label">Overview</span>
               </NavLink>
 
               <div
@@ -260,9 +307,13 @@ export default function CreatorWorkspaceLayout() {
                   className={`creator-chip-link creator-chip-link--parent${
                     isCategorySectionActive ? " active" : ""
                   }`}
+                  style={{ "--creator-chip-accent": "var(--creator-gold)" }}
                   to="/creator/categories"
                 >
-                  Content Categories
+                  <span className="creator-chip-link__eyebrow">Studios</span>
+                  <span className="creator-chip-link__label">
+                    Content Categories
+                  </span>
                 </NavLink>
 
                 {normalizedCreatorTypes.length ? (
@@ -271,12 +322,22 @@ export default function CreatorWorkspaceLayout() {
                       <NavLink
                         key={key}
                         className="creator-chip-link creator-chip-link--child"
+                        style={{
+                          "--creator-chip-accent":
+                            CREATOR_CATEGORY_CONFIG[key]?.accent ||
+                            "var(--creator-accent)",
+                        }}
                         to={
                           CREATOR_CATEGORY_CONFIG[key]?.uploadRoute ||
                           "/creator/dashboard"
                         }
                       >
-                        {getUploadNavLabel(key)}
+                        <span className="creator-chip-link__eyebrow">
+                          Open studio
+                        </span>
+                        <span className="creator-chip-link__label">
+                          {getUploadNavLabel(key)}
+                        </span>
                       </NavLink>
                     ))}
                   </div>

@@ -22,6 +22,10 @@ export default function CreatorContentCategoryNav({ creatorTypes = [] }) {
           <NavLink
             key={key}
             to={enabled ? item.uploadRoute : "/creator/categories"}
+            style={{
+              "--creator-category-accent":
+                item.accent || "var(--creator-accent)",
+            }}
             className={({ isActive }) =>
               `creator-content-category-link${isActive ? " active" : ""}${enabled ? "" : " is-disabled"}`
             }
@@ -30,11 +34,27 @@ export default function CreatorContentCategoryNav({ creatorTypes = [] }) {
               {item.icon}
             </span>
             <span className="creator-content-category-link__copy">
+              <span className="creator-content-category-link__eyebrow">
+                {enabled ? "Publishing studio" : "Activation required"}
+              </span>
               <strong>{getNavLabel(key)}</strong>
               <small>{enabled ? item.uploadDescription : "Enable this lane to open its dedicated publishing studio."}</small>
             </span>
-            <span className={`creator-status-badge ${enabled ? "success" : "neutral"}`}>
-              {enabled ? "Ready" : "Disabled"}
+            <span className="creator-content-category-link__meta">
+              <span className={`creator-status-badge ${enabled ? "success" : "neutral"}`}>
+                {enabled ? "Ready" : "Disabled"}
+              </span>
+              <span
+                className="creator-content-category-link__trail"
+                aria-hidden="true"
+              >
+                <span className="creator-content-category-link__intent">
+                  {enabled ? "Open studio" : "Enable lane"}
+                </span>
+                <span className="creator-content-category-link__chevron">
+                  &gt;
+                </span>
+              </span>
             </span>
           </NavLink>
         );

@@ -4,6 +4,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import PostSkeleton from "../components/PostSkeleton";
 import PostCard from "../components/PostCard";
+import NewsClusterCard from "../features/news/components/NewsClusterCard";
+import NewsDetailDrawer from "../features/news/components/NewsDetailDrawer";
+import NewsStoryCard from "../features/news/components/NewsStoryCard";
+import { useNewsFeed } from "../features/news/hooks/useNewsFeed";
+import { useNewsPreferences } from "../features/news/hooks/useNewsPreferences";
 
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
@@ -50,6 +55,10 @@ const INITIAL_VISIBLE_POSTS = 10;
 const LOAD_MORE_INCREMENT = 8;
 const DISCOVERY_BATCH_DELAY_MS = 1400;
 const FEED_AUTO_REFRESH_MS = 5 * 60 * 1000;
+const HOME_NEWS_INTERVAL = Math.max(
+  1,
+  Number(import.meta.env.VITE_HOME_NEWS_INJECTION_INTERVAL || 8)
+);
 const FEED_SURFACES = [
   { id: "for_you", label: "For You" },
   { id: "following", label: "Following" },
@@ -156,6 +165,28 @@ const normalizeDiscoveryFeedItems = (payload = {}) => {
         viewerFollowsCreator: Boolean(item.viewerFollowsCreator),
       })
     );
+};
+
+const injectNewsCards = (postEntries = [], newsCards = [], interval = HOME_NEWS_INTERVAL) => {
+  const result = [];
+  const posts = Array.isArray(postEntries) ? postEntries : [];
+  const cards = Array.isArray(newsCards) ? newsCards : [];
+  let newsIndex = 0;
+
+  posts.forEach((entry, index) => {
+    result.push({ type: "post", entry, key: `post-${entry?.key || index}` });
+    if ((index + 1) % interval === 0 && cards[newsIndex]) {
+      const card = cards[newsIndex];
+      result.push({
+        type: "news",
+        card,
+        key: `news-${card?.id || newsIndex}`,
+      });
+      newsIndex += 1;
+    }
+  });
+
+  return result;
 };
 
 function ComposerIcon({ name }) {
@@ -940,6 +971,7 @@ export default function Home({ user }) {
   const [checkInText, setCheckInText] = useState("");
   const [checkInStreak, setCheckInStreak] = useState({ count: 0, lastCheckInAt: null });
   const [checkInBusy, setCheckInBusy] = useState(false);
+  const [selectedNewsCard, setSelectedNewsCard] = useState(null);
   const [visiblePostCount, setVisiblePostCount] = useState(INITIAL_VISIBLE_POSTS);
   const loadMoreRef = useRef(null);
   const quickMediaRef = useRef(null);
@@ -947,6 +979,11 @@ export default function Home({ user }) {
   const lastFeedRefreshAtRef = useRef(0);
   const discoveryQueueRef = useRef([]);
   const discoveryFlushTimerRef = useRef(null);
+  const newsFeed = useNewsFeed({
+    tab: feedSurface === "following" ? "local" : "for-you",
+    limit: 12,
+  });
+  const newsPreferences = useNewsPreferences();
 
   const flushDiscoveryEvents = useCallback(async () => {
     if (!discoveryQueueRef.current.length) {
@@ -1291,6 +1328,22 @@ export default function Home({ user }) {
   const visibleFeedItems = Array.isArray(feedItems)
     ? feedItems.slice(0, visiblePostCount)
     : [];
+  const visibleMixedFeedItems = useMemo(
+    () => injectNewsCards(visibleFeedItems, newsFeed.cards || [], HOME_NEWS_INTERVAL),
+    [newsFeed.cards, visibleFeedItems]
+  );
+  const handleNewsReport = useCallback(
+    async (payload = {}) => {
+      const reason = window.prompt(
+        "Tell us what looks wrong about this news item.",
+        "Possible issue with this story"
+      );
+      if (reason) {
+        await newsPreferences.reportIssue({ ...payload, reason });
+      }
+    },
+    [newsPreferences]
+  );
 
   const handleRecommendationAction = useCallback(
     async ({
@@ -1683,34 +1736,56 @@ export default function Home({ user }) {
                 </button>
               </div>
             ) : (
-              visibleFeedItems.map((entry) => (
-                <PostCard
-                  key={entry.key}
-                  post={entry.post}
-                  discoveryMeta={entry.discoveryMeta}
-                  onRecommendationAction={handleRecommendationAction}
-                  onShareCreated={(sharedPost) =>
-                    setFeedItems((prev) => [
-                      createFeedEntry(sharedPost),
-                      ...prev.filter((feedEntry) => feedEntry?.post?._id !== sharedPost?._id),
-                    ])
-                  }
-                  onDelete={(id) =>
-                    setFeedItems((prev) =>
-                      prev.filter((feedEntry) => feedEntry?.post?._id !== id)
-                    )
-                  }
-                  onEdit={(updatedPost) =>
-                    setFeedItems((prev) =>
-                      prev.map((feedEntry) =>
-                        feedEntry?.post?._id === updatedPost._id
-                          ? { ...feedEntry, post: updatedPost }
-                          : feedEntry
+              visibleMixedFeedItems.map((item) => {
+                if (item.type === "news") {
+                  const sharedProps = {
+                    card: item.card,
+                    compact: true,
+                    onOpen: (card) => setSelectedNewsCard(card),
+                    onHide: (payload) => newsPreferences.hideItem(payload),
+                    onFollowSource: (sourceSlug) =>
+                      newsPreferences.followSource({ sourceSlug, follow: true }),
+                    onReport: handleNewsReport,
+                    onTrack: newsPreferences.track,
+                  };
+
+                  return item.card?.cardType === "cluster" ? (
+                    <NewsClusterCard key={item.key} {...sharedProps} />
+                  ) : (
+                    <NewsStoryCard key={item.key} {...sharedProps} />
+                  );
+                }
+
+                const entry = item.entry;
+                return (
+                  <PostCard
+                    key={entry.key}
+                    post={entry.post}
+                    discoveryMeta={entry.discoveryMeta}
+                    onRecommendationAction={handleRecommendationAction}
+                    onShareCreated={(sharedPost) =>
+                      setFeedItems((prev) => [
+                        createFeedEntry(sharedPost),
+                        ...prev.filter((feedEntry) => feedEntry?.post?._id !== sharedPost?._id),
+                      ])
+                    }
+                    onDelete={(id) =>
+                      setFeedItems((prev) =>
+                        prev.filter((feedEntry) => feedEntry?.post?._id !== id)
                       )
-                    )
-                  }
-                />
-              ))
+                    }
+                    onEdit={(updatedPost) =>
+                      setFeedItems((prev) =>
+                        prev.map((feedEntry) =>
+                          feedEntry?.post?._id === updatedPost._id
+                            ? { ...feedEntry, post: updatedPost }
+                            : feedEntry
+                        )
+                      )
+                    }
+                  />
+                );
+              })
             )}
             {visibleFeedItems.length < feedItems.length ? (
               <div ref={loadMoreRef} className="card" style={{ padding: 12, textAlign: "center" }}>
@@ -1774,6 +1849,11 @@ export default function Home({ user }) {
           }
         />
       )}
+      <NewsDetailDrawer
+        card={selectedNewsCard}
+        open={Boolean(selectedNewsCard)}
+        onClose={() => setSelectedNewsCard(null)}
+      />
     </>
   );
 }

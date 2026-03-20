@@ -157,6 +157,7 @@ const applyUserStrikes = async ({ targetUserId, reportId, count = 1, reason = ""
 };
 
 router.use(auth, requireRole(ADMIN_ROLES));
+router.use("/news", require("./newsAdmin.routes"));
 
 router.get("/users", async (req, res) => {
   try {

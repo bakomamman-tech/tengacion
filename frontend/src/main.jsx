@@ -14,6 +14,7 @@ import { DialogProvider } from "./components/ui/DialogProvider";
 import "./index.css";
 import "./button-system.css";
 import "./dialog-system.css";
+import "./features/news/news.css";
 
 const initializeThemeEarly = () => {
   if (typeof window === "undefined") {

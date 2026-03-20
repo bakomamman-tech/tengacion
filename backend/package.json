@@ -8,6 +8,7 @@
     "build": "npm run build:frontend",
     "build:frontend": "cd ../frontend && npm install --include=dev --no-save && npm run build",
     "seed:marketplace": "node scripts/seedMarketplace.js",
+    "seed:news": "node scripts/seedNewsSampleData.js",
     "seed:admin": "node scripts/seedAdmin.js",
     "repair:user-media": "node scripts/repairUserMediaFields.js",
     "reset:admin-password": "node scripts/resetAdminPassword.js",

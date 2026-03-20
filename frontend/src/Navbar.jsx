@@ -413,6 +413,13 @@ export default function Navbar({
           handler: () => navigate("/trending"),
         },
         {
+          id: "menu-news",
+          label: "News",
+          description: "Read trusted local and international news inside Tengacion.",
+          icon: "saved",
+          handler: () => navigate("/news"),
+        },
+        {
           id: "menu-reels",
           label: "Reels",
           description: "Watch short-form video highlights.",
@@ -564,6 +571,7 @@ export default function Navbar({
   const navTabs = [
     { id: "home", label: "Home", path: "/home" },
     { id: "trending", label: "Trending", path: "/trending" },
+    { id: "news", label: "News", path: "/news" },
     { id: "creator", label: "Creator", path: "/creator" },
     { id: "gaming", label: "Gaming", path: "/gaming" },
     { id: "reels", label: "Reels", path: "/reels" },
@@ -766,6 +774,9 @@ export default function Navbar({
     }
     if (tab.id === "creator") {
       return location.pathname.startsWith("/creator") || location.pathname === "/dashboard/creator";
+    }
+    if (tab.id === "news") {
+      return location.pathname.startsWith("/news");
     }
     return false;
   };

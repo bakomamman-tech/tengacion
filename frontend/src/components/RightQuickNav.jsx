@@ -3,6 +3,13 @@ import { NavLink } from "react-router-dom";
 
 const NAV_ITEMS = [
   {
+    key: "news",
+    label: "News",
+    path: "/news",
+    description: "Trusted daily briefings",
+    icon: "events",
+  },
+  {
     key: "friends",
     label: "Friends",
     path: "/friends",

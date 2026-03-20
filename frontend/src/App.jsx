@@ -80,6 +80,9 @@ const CreatorPayoutsPage = lazy(() => import("./pages/creator/CreatorPayoutsPage
 const CreatorSettingsPage = lazy(() => import("./pages/creator/CreatorSettingsPage"));
 const CreatorVerificationPage = lazy(() => import("./pages/creator/CreatorVerificationPage"));
 const CreatorSupportPage = lazy(() => import("./pages/creator/CreatorSupportPage"));
+const NewsHubPage = lazy(() => import("./features/news/pages/NewsHubPage"));
+const NewsTopicPage = lazy(() => import("./features/news/pages/NewsTopicPage"));
+const NewsSourcePage = lazy(() => import("./features/news/pages/NewsSourcePage"));
 const AdsManagerPage = lazyNamedExport(loadQuickAccessPages, "AdsManagerPage");
 const BirthdaysPage = lazyNamedExport(loadQuickAccessPages, "BirthdaysPage");
 const EventsPage = lazyNamedExport(loadQuickAccessPages, "EventsPage");
@@ -164,6 +167,30 @@ export default function App() {
             element={
               <ProtectedRoute user={user}>
                 <Trending user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/news"
+            element={
+              <ProtectedRoute user={user}>
+                <NewsHubPage user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/news/topic/:slug"
+            element={
+              <ProtectedRoute user={user}>
+                <NewsTopicPage user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/news/source/:slug"
+            element={
+              <ProtectedRoute user={user}>
+                <NewsSourcePage user={user} />
               </ProtectedRoute>
             }
           />

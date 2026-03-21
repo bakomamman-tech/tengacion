@@ -10,6 +10,7 @@ import NewsDetailDrawer from "../components/NewsDetailDrawer";
 import NewsFeedTabs from "../components/NewsFeedTabs";
 import NewsCardSkeleton from "../components/NewsCardSkeleton";
 import NewsHighlightsStrip from "../components/NewsHighlightsStrip";
+import NewsPublisherLinksPanel from "../components/NewsPublisherLinksPanel";
 import NewsStoryCard from "../components/NewsStoryCard";
 import { useNewsFeed } from "../hooks/useNewsFeed";
 import { useNewsPreferences } from "../hooks/useNewsPreferences";
@@ -163,6 +164,7 @@ export default function NewsHubPage({ user }) {
           </section>
 
           <NewsHighlightsStrip highlights={highlights} meta={meta} />
+          <NewsPublisherLinksPanel />
 
           <MotionSection
             key={activeTab}

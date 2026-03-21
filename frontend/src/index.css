@@ -6006,6 +6006,150 @@ html.dark-mode .create-menu-empty {
   font-size: 12px;
 }
 
+.birthday-card-grid,
+.birthday-upcoming-list {
+  display: grid;
+  gap: 12px;
+}
+
+.birthday-spotlight-card,
+.birthday-upcoming-item {
+  border: 1px solid rgba(184, 122, 58, 0.24);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 213, 154, 0.22), transparent 44%),
+    color-mix(in srgb, var(--surface-soft) 90%, transparent);
+  padding: 14px;
+}
+
+.birthday-spotlight-card {
+  display: grid;
+  gap: 12px;
+}
+
+.birthday-spotlight-card__profile,
+.birthday-upcoming-item__profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.birthday-spotlight-card__profile img,
+.birthday-upcoming-item__profile img {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  object-fit: cover;
+  border: 1px solid rgba(184, 122, 58, 0.26);
+  box-shadow: 0 12px 24px rgba(8, 4, 2, 0.12);
+}
+
+.birthday-spotlight-card__profile strong,
+.birthday-upcoming-item__profile strong {
+  display: block;
+  font-size: 16px;
+}
+
+.birthday-spotlight-card__profile span,
+.birthday-upcoming-item__profile span,
+.birthday-spotlight-card__profile small,
+.birthday-upcoming-item__copy small {
+  color: var(--muted);
+}
+
+.birthday-spotlight-card__meta,
+.birthday-upcoming-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.birthday-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(184, 122, 58, 0.24);
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.birthday-pill.accent {
+  background: color-mix(in srgb, var(--brand-soft) 76%, var(--surface));
+  border-color: color-mix(in srgb, var(--brand) 32%, var(--border));
+  color: color-mix(in srgb, var(--brand) 72%, var(--text));
+}
+
+.birthday-wish-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.birthday-wish-presets button {
+  min-height: 32px;
+  border-radius: 999px !important;
+  border: 1px solid rgba(184, 122, 58, 0.22) !important;
+  background: rgba(255, 255, 255, 0.56) !important;
+  color: var(--text) !important;
+  padding: 0 12px !important;
+  font-size: 12px;
+  text-align: left;
+}
+
+.birthday-wish-composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.birthday-wish-composer input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text);
+  padding: 0 14px;
+}
+
+.birthday-wish-composer input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--border));
+}
+
+.birthday-spotlight-card__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.birthday-upcoming-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) auto auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.birthday-upcoming-item__copy {
+  display: grid;
+  gap: 4px;
+}
+
+.birthday-upcoming-item__copy b {
+  font-size: 15px;
+}
+
 .quick-empty {
   margin: 0;
   color: var(--muted);
@@ -12659,6 +12803,16 @@ html.dark-mode .password-toggle-btn:hover {
   .quick-list-grid.two-col,
   .quick-stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .birthday-wish-composer,
+  .birthday-upcoming-item {
+    grid-template-columns: 1fr;
+  }
+
+  .birthday-spotlight-card__actions,
+  .birthday-upcoming-item__actions {
+    justify-content: flex-start;
   }
 
   .post-share-contact-strip {

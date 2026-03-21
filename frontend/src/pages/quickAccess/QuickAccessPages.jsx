@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import QuickAccessLayout from "../../components/QuickAccessLayout";
-import { apiRequest } from "../../api";
+import { apiRequest, getFriendsHub, resolveImage, sendChatMessage } from "../../api";
 
 const FRIENDS = [
   "Damilola Grant",
@@ -24,6 +24,16 @@ const FRIEND_SUGGESTIONS = [
 ];
 
 const GROUP_SHARE_STORAGE_KEY = "tengacion:group-shares";
+const BIRTHDAY_WISH_PRESETS = [
+  "Happy birthday! Wishing you joy and more life.",
+  "More grace, peace, and beautiful moments this year.",
+  "Celebrate big today. Your new year will be full of wins.",
+];
+
+const fallbackAvatar = (name) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    name || "User"
+  )}&size=96&background=DFE8F6&color=1D3A6D`;
 
 const normalizeShareDraft = (value = {}) => {
   const postId = String(value?.postId || "").trim();
@@ -435,11 +445,107 @@ export function EventsPage({ user }) {
 }
 
 export function BirthdaysPage({ user }) {
-  const birthdays = [
-    { name: "Grace Obi", when: "Today" },
-    { name: "Daniel Musa", when: "Tomorrow" },
-    { name: "Halima Yusuf", when: "Mar 5" },
-  ];
+  const navigate = useNavigate();
+  const [birthdays, setBirthdays] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
+  const [error, setError] = useState("");
+  const [sendingKey, setSendingKey] = useState("");
+  const [wishDrafts, setWishDrafts] = useState({});
+
+  const loadBirthdays = useCallback(async ({ silent = false } = {}) => {
+    try {
+      if (silent) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError("");
+      const payload = await getFriendsHub();
+      setBirthdays(Array.isArray(payload?.birthdays) ? payload.birthdays : []);
+    } catch (err) {
+      setBirthdays([]);
+      setError(err?.message || "Failed to load birthdays");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadBirthdays();
+  }, [loadBirthdays]);
+
+  const filteredBirthdays = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) {
+      return birthdays;
+    }
+
+    return birthdays.filter((entry) => {
+      const haystack = `${entry?.name || ""} ${entry?.username || ""}`.toLowerCase();
+      return haystack.includes(needle);
+    });
+  }, [birthdays, search]);
+
+  const todaysBirthdays = useMemo(
+    () => filteredBirthdays.filter((entry) => Boolean(entry?.birthdayIsToday)),
+    [filteredBirthdays]
+  );
+
+  const upcomingBirthdays = useMemo(
+    () => filteredBirthdays.filter((entry) => !entry?.birthdayIsToday),
+    [filteredBirthdays]
+  );
+
+  const updateDraft = useCallback((personId, value) => {
+    setWishDrafts((prev) => ({
+      ...prev,
+      [personId]: value,
+    }));
+  }, []);
+
+  const fillWish = useCallback(
+    (person, template) => {
+      const personId = String(person?._id || "").trim();
+      if (!personId) {
+        return;
+      }
+
+      updateDraft(personId, template);
+    },
+    [updateDraft]
+  );
+
+  const sendWish = useCallback(
+    async (person, override = "") => {
+      const personId = String(person?._id || "").trim();
+      const firstName = String(person?.name || "friend").trim().split(/\s+/)[0] || "friend";
+      const message = String(
+        override || wishDrafts[personId] || `Happy birthday, ${firstName}! Wishing you a beautiful day.`
+      ).trim();
+
+      if (!personId || !message) {
+        return;
+      }
+
+      try {
+        setSendingKey(personId);
+        await sendChatMessage(personId, { text: message });
+        setWishDrafts((prev) => ({
+          ...prev,
+          [personId]: "",
+        }));
+        toast.success(`Birthday wish sent to ${person?.name || "your friend"}.`);
+      } catch (err) {
+        toast.error(err?.message || "Failed to send birthday wish");
+      } finally {
+        setSendingKey("");
+      }
+    },
+    [wishDrafts]
+  );
 
   return (
     <QuickAccessLayout
@@ -447,16 +553,177 @@ export function BirthdaysPage({ user }) {
       title="Birthdays"
       subtitle="Send wishes and keep up with your friends' celebrations."
     >
-      <SectionCard title="Birthday reminders">
-        <div className="quick-list-grid">
-          {birthdays.map((entry) => (
-            <article key={entry.name} className="quick-list-item">
-              <strong>{entry.name}</strong>
-              <span>{entry.when}</span>
-              <button type="button">Send wish</button>
-            </article>
-          ))}
+      <SectionCard
+        title="Birthday calendar"
+        action={
+          <button
+            type="button"
+            className="friends-page-btn ghost"
+            onClick={() => {
+              void loadBirthdays({ silent: true });
+            }}
+            disabled={refreshing}
+          >
+            {refreshing ? "Refreshing..." : "Refresh"}
+          </button>
+        }
+      >
+        <div className="quick-stats-grid">
+          <article className="quick-stat-card">
+            <span>Today</span>
+            <strong>{todaysBirthdays.length}</strong>
+            <small>Ready to celebrate</small>
+          </article>
+          <article className="quick-stat-card">
+            <span>Upcoming</span>
+            <strong>{upcomingBirthdays.length}</strong>
+            <small>Across your friends list</small>
+          </article>
+          <article className="quick-stat-card">
+            <span>Total visible</span>
+            <strong>{filteredBirthdays.length}</strong>
+            <small>Shared by friends</small>
+          </article>
         </div>
+        <input
+          className="quick-inline-input"
+          placeholder="Search birthday list"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+        {error ? <p className="quick-empty">{error}</p> : null}
+      </SectionCard>
+
+      <SectionCard title="Today's birthdays">
+        {loading ? (
+          <p className="quick-empty">Loading birthday celebrations...</p>
+        ) : todaysBirthdays.length > 0 ? (
+          <div className="birthday-card-grid">
+            {todaysBirthdays.map((person) => {
+              const personId = String(person?._id || "");
+              const draft = wishDrafts[personId] || "";
+              const isSending = sendingKey === personId;
+
+              return (
+                <article key={personId || person?.username} className="birthday-spotlight-card">
+                  <button
+                    type="button"
+                    className="birthday-spotlight-card__profile"
+                    onClick={() => navigate(`/profile/${person?.username || ""}`)}
+                  >
+                    <img
+                      src={resolveImage(person?.avatar) || fallbackAvatar(person?.name)}
+                      alt={person?.name || "User"}
+                    />
+                    <div>
+                      <strong>{person?.name || "Unknown user"}</strong>
+                      <span>@{person?.username || "unknown"}</span>
+                      <small>Celebrate them today</small>
+                    </div>
+                  </button>
+
+                  <div className="birthday-spotlight-card__meta">
+                    <span className="birthday-pill accent">{person?.birthdayLabel || "Today"}</span>
+                    {person?.isCloseFriend ? (
+                      <span className="birthday-pill">Close friend</span>
+                    ) : null}
+                  </div>
+
+                  <div className="birthday-wish-presets">
+                    {BIRTHDAY_WISH_PRESETS.map((template) => (
+                      <button
+                        key={`${personId}-${template}`}
+                        type="button"
+                        onClick={() => fillWish(person, template)}
+                      >
+                        {template}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="birthday-wish-composer">
+                    <input
+                      value={draft}
+                      onChange={(event) => updateDraft(personId, event.target.value)}
+                      placeholder={`Write a birthday wish for ${person?.name || "your friend"}`}
+                    />
+                    <button
+                      type="button"
+                      className="friends-page-btn primary"
+                      onClick={() => {
+                        void sendWish(person);
+                      }}
+                      disabled={isSending}
+                    >
+                      {isSending ? "Sending..." : "Celebrate"}
+                    </button>
+                  </div>
+
+                  <div className="birthday-spotlight-card__actions">
+                    <button
+                      type="button"
+                      className="friends-page-btn ghost"
+                      onClick={() => navigate(`/profile/${person?.username || ""}`)}
+                    >
+                      View profile
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="quick-empty">No friends are celebrating today yet.</p>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Upcoming birthdays">
+        {loading ? (
+          <p className="quick-empty">Loading upcoming birthdays...</p>
+        ) : upcomingBirthdays.length > 0 ? (
+          <div className="birthday-upcoming-list">
+            {upcomingBirthdays.map((person) => (
+              <article key={person?._id || person?.username} className="birthday-upcoming-item">
+                <button
+                  type="button"
+                  className="birthday-upcoming-item__profile"
+                  onClick={() => navigate(`/profile/${person?.username || ""}`)}
+                >
+                  <img
+                    src={resolveImage(person?.avatar) || fallbackAvatar(person?.name)}
+                    alt={person?.name || "User"}
+                  />
+                  <div>
+                    <strong>{person?.name || "Unknown user"}</strong>
+                    <span>@{person?.username || "unknown"}</span>
+                  </div>
+                </button>
+
+                <div className="birthday-upcoming-item__copy">
+                  <b>{person?.birthdayLabel || "Upcoming"}</b>
+                  <small>
+                    {person?.birthdayDaysUntil === 1
+                      ? "Coming up tomorrow"
+                      : `Coming up in ${person?.birthdayDaysUntil || 0} days`}
+                  </small>
+                </div>
+
+                <div className="birthday-upcoming-item__actions">
+                  {person?.isCloseFriend ? <span className="birthday-pill">Close friend</span> : null}
+                  <button
+                    type="button"
+                    className="friends-page-btn ghost"
+                    onClick={() => navigate(`/profile/${person?.username || ""}`)}
+                  >
+                    Open profile
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="quick-empty">No upcoming birthdays are visible right now.</p>
+        )}
       </SectionCard>
     </QuickAccessLayout>
   );

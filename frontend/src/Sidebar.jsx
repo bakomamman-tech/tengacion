@@ -97,6 +97,13 @@ export default function Sidebar({ user, openChat, openProfile }) {
         >
           Friends
         </button>
+
+        <button
+          className={sidebarBtnClass(location.pathname === "/birthdays")}
+          onClick={() => navigate("/birthdays")}
+        >
+          Birthdays
+        </button>
       </div>
     </aside>
   );

@@ -19,15 +19,18 @@ const NewsUserPreferenceSchema = new mongoose.Schema(
     },
     hiddenTopicSlugs: [{ type: String, trim: true, lowercase: true, maxlength: 80 }],
     blockedTopicSlugs: [{ type: String, trim: true, lowercase: true, maxlength: 80 }],
+    followedTopicSlugs: [{ type: String, trim: true, lowercase: true, maxlength: 80 }],
     followedSourceSlugs: [{ type: String, trim: true, lowercase: true, maxlength: 80 }],
     mutedSourceSlugs: [{ type: String, trim: true, lowercase: true, maxlength: 80 }],
     preferredTopics: [{ type: String, trim: true, lowercase: true, maxlength: 80 }],
+    preferredRegions: [{ type: String, trim: true, lowercase: true, maxlength: 80 }],
     preferredCountries: [{ type: String, trim: true, maxlength: 120 }],
     preferredStates: [{ type: String, trim: true, maxlength: 120 }],
     preferredCities: [{ type: String, trim: true, maxlength: 120 }],
     preferredLanguage: { type: String, default: "en", trim: true, lowercase: true, maxlength: 12 },
     localBoostEnabled: { type: Boolean, default: true },
     worldBoostEnabled: { type: Boolean, default: true },
+    personalizationEnabled: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

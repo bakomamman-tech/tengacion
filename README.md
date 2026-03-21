@@ -111,6 +111,26 @@ For safety, `resetAdminPassword` is blocked in production unless `ALLOW_ADMIN_PA
 - **Purchases / Entitlements:** `GET /api/purchases/my`, `GET /api/purchases/creator/sales`, `GET /api/entitlements/check`
 - **Chat:** `POST /api/chat/messages` (and legacy `/api/messages/*` routes)
 
+## News Experience
+
+### How the tabs work
+- `For You` blends trusted stories using topic interests, followed sources/topics, location, engagement history, saved reads, recency, public-interest boosts, and diversity penalties so the feed feels relevant without becoming chaotic.
+- `Local` prioritizes the nearest trusted coverage using city, then state, then country fallbacks. It is designed for transport, weather, safety, community, and local governance updates.
+- `Nigeria` focuses on Nigeria-wide coverage across politics, economy, education, security, culture, sports, entertainment, technology, and business.
+- `World` emphasizes global reporting with stronger publisher diversity so one outlet does not dominate the stream.
+
+### Legal-safe ingestion
+- Tengacion stores only rights-safe metadata for external news stories: headline, short summary, source attribution, author when available, allowed thumbnails, canonical URL, publication time, and topic/location tags.
+- Full article bodies are not rendered unless a publisher contract explicitly grants `FULL_IN_APP` rights.
+- Source ingestion is limited to licensed APIs, official publisher RSS feeds, public-domain/government sources, or Tengacion-created editorial content.
+- Source catalog entries live in `backend/config/newsSources.js`, topic defaults live in `backend/config/newsTopics.js`, and automatic refresh can be enabled with the `NEWS_*` environment variables in `.env.example`.
+
+### Adding or removing trusted sources
+1. Update the source entry in `backend/config/newsSources.js` with the legal source type, endpoint/env keys, trust score, coverage tags, and license/use notes.
+2. Set the matching environment variables for the API or RSS endpoint in `.env`.
+3. Run `npm run seed:news --prefix backend` for local mock data or allow the scheduler to sync the catalog and ingest live feeds.
+4. To remove or block a source later, mark it inactive or blocked in the catalog/database so it stops ingesting and disappears from the public feed.
+
 ## Frontend Routes
 - `/` (landing/login)
 - `/register`

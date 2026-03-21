@@ -6,8 +6,12 @@ const NewsSource = require("../models/NewsSource");
 const NewsStory = require("../models/NewsStory");
 const NewsUserPreference = require("../models/NewsUserPreference");
 const User = require("../models/User");
-const { enforceStoryRights } = require("./newsRightsService");
+const { getTrustedSourceStrip } = require("./newsCatalogService");
 const { buildUserGeoProfile } = require("./newsGeoService");
+const { getSavedArticleIdsForUser } = require("./newsSavedService");
+const { buildPersonalizationSignals } = require("./newsPersonalizationService");
+const { getNewsTopics } = require("./newsTopicService");
+const { enforceStoryRights } = require("./newsRightsService");
 const { applyFeedDiversity, scoreCluster, scoreStory } = require("./newsRankingService");
 const {
   decodeCursor,
@@ -19,6 +23,41 @@ const {
 const PUBLIC_STATUSES = ["approved", "limited"];
 const DEFAULT_PAGE_SIZE = 20;
 const DEFAULT_CANDIDATE_SIZE = 120;
+
+const TAB_META = {
+  "for-you": {
+    title: "For You",
+    description:
+      "A calm mix of trusted reporting shaped by your interests, reading history, region, and important public-interest updates.",
+    emptyTitle: "Your trusted feed is quiet right now",
+    emptyDescription:
+      "Try following a few topics or trusted sources and check back as fresh coverage arrives.",
+  },
+  local: {
+    title: "Local",
+    description:
+      "Nearby reporting with city, state, and country fallbacks for transport, safety, weather, community, and local governance.",
+    emptyTitle: "No local stories yet",
+    emptyDescription:
+      "We could not find trusted local coverage for your area right now. We will fall back as soon as verified local feeds update.",
+  },
+  nigeria: {
+    title: "Nigeria",
+    description:
+      "National Nigerian coverage across politics, economy, education, security, culture, sports, entertainment, technology, and business.",
+    emptyTitle: "Nigeria coverage is refreshing",
+    emptyDescription:
+      "Trusted Nigeria-wide stories will appear here as source feeds update.",
+  },
+  world: {
+    title: "World",
+    description:
+      "International reporting with broader source diversity and less sensational weighting.",
+    emptyTitle: "World coverage is temporarily unavailable",
+    emptyDescription:
+      "We are waiting for fresh verified global stories from trusted sources.",
+  },
+};
 
 const isValidId = (value) => mongoose.Types.ObjectId.isValid(value);
 
@@ -65,6 +104,13 @@ const serializeSource = (source = {}) => ({
   logoUrl: String(source?.logoUrl || ""),
   publisherTier: String(source?.publisherTier || "discovery"),
   trustScore: Number(source?.trustScore || 0.6),
+  isBlocked: Boolean(source?.isBlocked),
+  verificationStatus: String(source?.verificationStatus || "reviewed"),
+  licenseType: String(source?.licenseType || "official_rss"),
+  licenseNotes: String(source?.licenseNotes || ""),
+  useNotes: String(source?.useNotes || ""),
+  categoryCoverage: Array.isArray(source?.categoryCoverage) ? source.categoryCoverage : [],
+  supportedRegions: Array.isArray(source?.supportedRegions) ? source.supportedRegions : [],
   attribution: {
     attributionRequired: source?.attribution?.attributionRequired !== false,
     canonicalLinkRequired: source?.attribution?.canonicalLinkRequired !== false,
@@ -72,18 +118,20 @@ const serializeSource = (source = {}) => ({
   },
 });
 
-const serializeStory = (story = {}, { source = null } = {}) => {
+const serializeStory = (story = {}, { source = null, savedArticleIds = new Set() } = {}) => {
   const safeStory = enforceStoryRights(story, { source });
   const primaryAsset = pickPrimaryAsset(story);
+  const storyId = String(story?._id || story?.id || "");
 
   return {
-    id: String(story?._id || ""),
+    id: storyId,
     clusterId: String(story?.clusterId || ""),
     sourceSlug: String(story?.sourceSlug || source?.slug || ""),
     title: String(safeStory?.title || ""),
     subtitle: String(safeStory?.subtitle || ""),
     bodyHtml: String(safeStory?.bodyHtml || ""),
     summaryText: String(safeStory?.summaryText || ""),
+    contentType: String(safeStory?.contentType || "summary"),
     canonicalUrl: String(safeStory?.canonicalUrl || ""),
     publishedAt: safeStory?.publishedAt || null,
     updatedAt: safeStory?.updatedAtSource || null,
@@ -100,9 +148,18 @@ const serializeStory = (story = {}, { source = null } = {}) => {
         ? safeStory.moderation.sensitiveFlags
         : [],
     },
-    scoring: safeStory?.scoring || {},
+    trustScore: Number(
+      safeStory?.trustScore ??
+        safeStory?.moderation?.sourceTrustScore ??
+        safeStory?.moderation?.trustScore ??
+        source?.trustScore ??
+        0.6
+    ),
+    isBreaking: Boolean(safeStory?.isBreaking || safeStory?.articleType === "breaking"),
+    isOpinion: Boolean(safeStory?.isOpinion || safeStory?.articleType === "opinion"),
     source: source ? serializeSource(source) : null,
     media: primaryAsset ? normalizeAssetDoc(primaryAsset) : null,
+    isSaved: savedArticleIds.has(storyId),
   };
 };
 
@@ -135,36 +192,57 @@ const attachAssetsToStory = (story = {}, assetsByStoryId = new Map()) => {
   return next;
 };
 
-const buildExposureMap = async (userId) => {
+const buildExposureMaps = async (userId) => {
   if (!userId || !isValidId(userId)) {
-    return new Map();
+    return {
+      storyExposure: new Map(),
+      sourceExposure: new Map(),
+      topicExposure: new Map(),
+    };
   }
 
   const impressions = await NewsFeedImpression.find({
     userId,
-    createdAt: { $gte: new Date(Date.now() - 48 * 60 * 60 * 1000) },
+    createdAt: { $gte: new Date(Date.now() - 72 * 60 * 60 * 1000) },
   })
     .sort({ createdAt: -1 })
-    .limit(300)
+    .limit(400)
     .lean();
 
-  const map = new Map();
+  const storyExposure = new Map();
+  const sourceExposure = new Map();
+  const topicExposure = new Map();
+
   for (const impression of impressions) {
     const storyId = String(impression?.storyId || "");
-    if (!storyId) {
-      continue;
+    if (storyId) {
+      if (!storyExposure.has(storyId)) {
+        storyExposure.set(storyId, {
+          sameStoryImpressions: 0,
+        });
+      }
+      storyExposure.get(storyId).sameStoryImpressions += 1;
     }
-    if (!map.has(storyId)) {
-      map.set(storyId, {
-        sameStoryImpressions: 0,
-        recentSourceImpressions: 0,
-        recentTopicImpressions: 0,
-      });
+
+    const sourceSlug = normalizeSlug(impression?.sourceSlug || "");
+    if (sourceSlug) {
+      sourceExposure.set(sourceSlug, (sourceExposure.get(sourceSlug) || 0) + 1);
     }
-    map.get(storyId).sameStoryImpressions += 1;
+
+    for (const topic of Array.isArray(impression?.topicTags) ? impression.topicTags : []) {
+      const slug = normalizeSlug(topic);
+      if (!slug) {
+        continue;
+      }
+      topicExposure.set(slug, (topicExposure.get(slug) || 0) + 1);
+    }
   }
 
-  return map;
+  return {
+    storyExposure,
+    sourceExposure,
+    topicExposure,
+  };
 };
 
 const buildQueryContext = async (userId) => {
@@ -173,19 +251,54 @@ const buildQueryContext = async (userId) => {
       user: null,
       preferences: null,
       userGeo: { country: "Nigeria", state: "", city: "" },
+      signals: {
+        topicWeights: new Map(),
+        sourceWeights: new Map(),
+        savedStoryIds: new Set(),
+        readStoryIds: new Set(),
+      },
+      savedArticleIds: new Set(),
     };
   }
 
   const [user, preferences] = await Promise.all([
-    User.findById(userId).select("_id country currentCity state interests").lean(),
+    User.findById(userId).select("_id country currentCity hometown interests").lean(),
     NewsUserPreference.findOne({ userId }).lean(),
   ]);
+  const signals = await buildPersonalizationSignals({
+    userId,
+    preferences: preferences || {},
+  });
 
   return {
     user,
     preferences,
     userGeo: buildUserGeoProfile(user || {}, preferences || {}),
+    signals,
+    savedArticleIds: signals.savedStoryIds,
   };
+};
+
+const buildLocalGeoFilter = ({ country = "", state = "", city = "" } = {}) => {
+  const clauses = [];
+  const normalizedCity = normalizeWhitespace(city);
+  const normalizedState = normalizeWhitespace(state);
+  const normalizedCountry = normalizeWhitespace(country);
+
+  if (normalizedCity) {
+    clauses.push({ "geography.primaryCity": normalizedCity });
+    clauses.push({ "geography.cities": normalizedCity });
+  }
+  if (normalizedState) {
+    clauses.push({ "geography.primaryState": normalizedState });
+    clauses.push({ "geography.states": normalizedState });
+  }
+  if (normalizedCountry) {
+    clauses.push({ "geography.primaryCountry": normalizedCountry });
+    clauses.push({ "geography.countries": normalizedCountry });
+  }
+
+  return clauses.length ? { $or: clauses } : {};
 };
 
 const buildClusterMongoQuery = ({
@@ -194,6 +307,7 @@ const buildClusterMongoQuery = ({
   sourceSlug = "",
   country = "",
   state = "",
+  city = "",
 } = {}) => {
   const query = {
     "moderation.status": { $in: PUBLIC_STATUSES },
@@ -206,20 +320,15 @@ const buildClusterMongoQuery = ({
     query.sourceSlugs = normalizeSlug(sourceSlug);
   }
 
-  const normalizedCountry = normalizeWhitespace(country);
-  const normalizedState = normalizeWhitespace(state);
-
   if (tab === "world") {
     query["geography.scope"] = "international";
   } else if (tab === "nigeria") {
-    query["geography.primaryCountry"] = "Nigeria";
+    query.$or = [
+      { "geography.primaryCountry": "Nigeria" },
+      { "geography.countries": "Nigeria" },
+    ];
   } else if (tab === "local") {
-    if (normalizedCountry) {
-      query["geography.countries"] = normalizedCountry;
-    }
-    if (normalizedState) {
-      query["geography.states"] = normalizedState;
-    }
+    Object.assign(query, buildLocalGeoFilter({ country, state, city }));
   }
 
   return query;
@@ -231,6 +340,7 @@ const buildStoryMongoQuery = ({
   sourceSlug = "",
   country = "",
   state = "",
+  city = "",
 } = {}) => {
   const query = {
     "moderation.status": { $in: PUBLIC_STATUSES },
@@ -243,23 +353,34 @@ const buildStoryMongoQuery = ({
     query.sourceSlug = normalizeSlug(sourceSlug);
   }
 
-  const normalizedCountry = normalizeWhitespace(country);
-  const normalizedState = normalizeWhitespace(state);
-
   if (tab === "world") {
     query["geography.scope"] = "international";
   } else if (tab === "nigeria") {
-    query["geography.primaryCountry"] = "Nigeria";
+    query.$or = [
+      { "geography.primaryCountry": "Nigeria" },
+      { "geography.countries": "Nigeria" },
+    ];
   } else if (tab === "local") {
-    if (normalizedCountry) {
-      query["geography.countries"] = normalizedCountry;
-    }
-    if (normalizedState) {
-      query["geography.states"] = normalizedState;
-    }
+    Object.assign(query, buildLocalGeoFilter({ country, state, city }));
   }
 
   return query;
+};
+
+const buildStoryExposure = (story = {}, exposureMaps = {}) => {
+  const storyId = String(story?._id || story?.id || "");
+  const sourceSlug = normalizeSlug(story?.sourceSlug || "");
+  const topics = Array.isArray(story?.topicTags) ? story.topicTags : [];
+
+  return {
+    sameStoryImpressions:
+      Number(exposureMaps?.storyExposure?.get(storyId)?.sameStoryImpressions || 0),
+    recentSourceImpressions: Number(exposureMaps?.sourceExposure?.get(sourceSlug) || 0),
+    recentTopicImpressions: topics.reduce((maxValue, topic) => {
+      const current = Number(exposureMaps?.topicExposure?.get(normalizeSlug(topic)) || 0);
+      return Math.max(maxValue, current);
+    }, 0),
+  };
 };
 
 const enrichClusterCards = async (clusters = [], context = {}) => {
@@ -289,8 +410,16 @@ const enrichClusterCards = async (clusters = [], context = {}) => {
       preferences: context?.preferences,
       userGeo: context?.userGeo,
       engagement: context?.engagementByCluster?.get(String(cluster?._id || "")) || {},
-      exposure: context?.exposureByStory?.get(String(representativeStory?._id || "")) || {},
+      exposure: representativeStory ? buildStoryExposure(representativeStory, context?.exposureMaps) : {},
+      signals: context?.signals,
     });
+
+    const serializedStory = representativeStory
+      ? serializeStory(representativeStory, {
+          source: sourceDoc,
+          savedArticleIds: context?.savedArticleIds || new Set(),
+        })
+      : null;
 
     return {
       id: String(cluster?._id || ""),
@@ -310,12 +439,12 @@ const enrichClusterCards = async (clusters = [], context = {}) => {
       scoring,
       finalScore: Number(scoring?.finalScore || 0),
       whyThis: Array.isArray(scoring?.reasons) ? scoring.reasons : [],
-      representativeStory: representativeStory
-        ? serializeStory(representativeStory, { source: sourceDoc })
-        : null,
+      reasonLabel: String(scoring?.reasons?.[0] || ""),
+      representativeStory: serializedStory,
       primarySourceSlug: String(
         representativeStory?.sourceSlug || cluster?.sourceSlugs?.[0] || ""
       ),
+      isSaved: Boolean(serializedStory?.isSaved),
     };
   });
 };
@@ -336,7 +465,12 @@ const enrichStoryCards = async (stories = [], context = {}) => {
       preferences: context?.preferences,
       userGeo: context?.userGeo,
       engagement: context?.engagementByStory?.get(String(story?._id || "")) || {},
-      exposure: context?.exposureByStory?.get(String(story?._id || "")) || {},
+      exposure: buildStoryExposure(story, context?.exposureMaps),
+      signals: context?.signals,
+    });
+    const serializedStory = serializeStory(story, {
+      source: sourceDoc,
+      savedArticleIds: context?.savedArticleIds || new Set(),
     });
 
     return {
@@ -357,8 +491,10 @@ const enrichStoryCards = async (stories = [], context = {}) => {
       scoring,
       finalScore: Number(scoring?.finalScore || 0),
       whyThis: Array.isArray(scoring?.reasons) ? scoring.reasons : [],
-      representativeStory: serializeStory(story, { source: sourceDoc }),
+      reasonLabel: String(scoring?.reasons?.[0] || ""),
+      representativeStory: serializedStory,
       primarySourceSlug: String(story?.sourceSlug || ""),
+      isSaved: Boolean(serializedStory?.isSaved),
     };
   });
 };
@@ -451,6 +587,113 @@ const buildEngagementMaps = async ({ clusterIds = [], storyIds = [] } = {}) => {
   return { engagementByCluster, engagementByStory };
 };
 
+const filterByPreferences = (cards = [], preferences = {}) => {
+  const hiddenStoryIds = new Set(
+    (Array.isArray(preferences?.hiddenStoryIds) ? preferences.hiddenStoryIds : [])
+      .map((entry) => String(entry || ""))
+      .filter(Boolean)
+  );
+  const hiddenClusterIds = new Set(
+    (Array.isArray(preferences?.hiddenClusterIds) ? preferences.hiddenClusterIds : [])
+      .map((entry) => String(entry || ""))
+      .filter(Boolean)
+  );
+  const blockedTopics = new Set(
+    (Array.isArray(preferences?.blockedTopicSlugs) ? preferences.blockedTopicSlugs : [])
+      .map((entry) => normalizeSlug(entry))
+      .filter(Boolean)
+  );
+
+  return (Array.isArray(cards) ? cards : []).filter((card) => {
+    if (hiddenStoryIds.has(String(card?.storyId || ""))) {
+      return false;
+    }
+    if (hiddenClusterIds.has(String(card?.clusterId || ""))) {
+      return false;
+    }
+    const topics = Array.isArray(card?.topicTags) ? card.topicTags : [];
+    if (topics.some((entry) => blockedTopics.has(normalizeSlug(entry)))) {
+      return false;
+    }
+    return true;
+  });
+};
+
+const hasRequiredAttribution = (story = {}) => {
+  const source = story?.source || null;
+  const attributionRequired = source?.attribution?.attributionRequired !== false;
+  const canonicalRequired = source?.attribution?.canonicalLinkRequired !== false;
+
+  if (!source?.displayName && !source?.publisherName) {
+    return false;
+  }
+  if (attributionRequired && !String(source?.displayName || source?.publisherName || "").trim()) {
+    return false;
+  }
+  if (canonicalRequired && !String(story?.canonicalUrl || "").trim()) {
+    return false;
+  }
+  return true;
+};
+
+const isCardDisplayable = (card = {}) => {
+  const story = card?.representativeStory || null;
+  if (!story || !hasRequiredAttribution(story)) {
+    return false;
+  }
+  if (Number(story?.trustScore || 0) < 0.45) {
+    return false;
+  }
+  if (!story?.source || story?.source?.isBlocked) {
+    return false;
+  }
+  return true;
+};
+
+const dedupeByCanonicalUrl = (cards = []) => {
+  const seen = new Set();
+  const deduped = [];
+
+  for (const card of cards) {
+    const canonical = String(card?.representativeStory?.canonicalUrl || "").trim();
+    const key = canonical || `${card?.cardType}:${card?.id}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(card);
+  }
+
+  return deduped;
+};
+
+const buildHighlightPayload = async ({ userId = "", tab = "for-you" } = {}) => {
+  const [topics, trustedSources] = await Promise.all([
+    getNewsTopics({ userId, limit: tab === "local" ? 6 : 8 }),
+    getTrustedSourceStrip({ limit: 6 }),
+  ]);
+
+  return {
+    topics,
+    trustedSources,
+  };
+};
+
+const buildFeedMeta = ({ tab = "for-you", userGeo = {} } = {}) => {
+  const meta = TAB_META[tab] || TAB_META["for-you"];
+  const locationLabel =
+    normalizeWhitespace(userGeo?.city || "") ||
+    normalizeWhitespace(userGeo?.state || "") ||
+    normalizeWhitespace(userGeo?.country || "") ||
+    "your area";
+
+  return {
+    tab,
+    ...meta,
+    locationLabel,
+  };
+};
+
 const buildNewsFeed = async ({
   userId = "",
   tab = "for-you",
@@ -460,19 +703,25 @@ const buildNewsFeed = async ({
   sourceSlug = "",
   country = "",
   state = "",
+  city = "",
 } = {}) => {
   const pageSize = normalizeLimit(limit);
   const offset = normalizeOffset(cursor);
   const queryContext = await buildQueryContext(userId);
-  const exposureByStory = await buildExposureMap(userId);
+  const exposureMaps = await buildExposureMaps(userId);
   const candidateLimit = Math.max(DEFAULT_CANDIDATE_SIZE, (offset + pageSize) * 4);
+
+  const geoCountry = country || (tab === "local" ? queryContext?.userGeo?.country || "Nigeria" : "");
+  const geoState = state || (tab === "local" ? queryContext?.userGeo?.state || "" : "");
+  const geoCity = city || (tab === "local" ? queryContext?.userGeo?.city || "" : "");
 
   const clusterQuery = buildClusterMongoQuery({
     tab,
     topicSlug,
     sourceSlug,
-    country: country || (tab === "local" ? queryContext?.userGeo?.country || "Nigeria" : ""),
-    state: state || (tab === "local" ? queryContext?.userGeo?.state || "" : ""),
+    country: geoCountry,
+    state: geoState,
+    city: geoCity,
   });
 
   const clusters = await NewsCluster.find(clusterQuery)
@@ -494,7 +743,7 @@ const buildNewsFeed = async ({
     cards = await enrichClusterCards(clusters, {
       ...queryContext,
       ...engagement,
-      exposureByStory,
+      exposureMaps,
     });
   } else {
     const stories = await NewsStory.find(
@@ -502,8 +751,9 @@ const buildNewsFeed = async ({
         tab,
         topicSlug,
         sourceSlug,
-        country: country || (tab === "local" ? queryContext?.userGeo?.country || "Nigeria" : ""),
-        state: state || (tab === "local" ? queryContext?.userGeo?.state || "" : ""),
+        country: geoCountry,
+        state: geoState,
+        city: geoCity,
       })
     )
       .sort({ "scoring.finalScore": -1, publishedAt: -1 })
@@ -514,22 +764,29 @@ const buildNewsFeed = async ({
     cards = await enrichStoryCards(stories, {
       ...queryContext,
       ...engagement,
-      exposureByStory,
+      exposureMaps,
     });
   }
 
-  const filteredCards = cards.filter((card) => card?.representativeStory);
+  const filteredCards = dedupeByCanonicalUrl(
+    filterByPreferences(cards, queryContext?.preferences || {}).filter(isCardDisplayable)
+  );
+
+  const diversityOptionsByTab = {
+    "for-you": { sourceCap: 3, topicCap: 4, localTarget: 2, internationalTarget: 2 },
+    local: { sourceCap: 2, topicCap: 4, localTarget: 5, internationalTarget: 0 },
+    nigeria: { sourceCap: 3, topicCap: 5, localTarget: 4, internationalTarget: 0 },
+    world: { sourceCap: 2, topicCap: 4, localTarget: 0, internationalTarget: 5 },
+  };
   const selectedCards = applyFeedDiversity(filteredCards, {
     limit: candidateLimit,
-    sourceCap: 3,
-    topicCap: 5,
-    localTarget: 2,
-    internationalTarget: 2,
+    ...(diversityOptionsByTab[tab] || diversityOptionsByTab["for-you"]),
   });
 
   const pageCards = selectedCards.slice(offset, offset + pageSize);
   const nextOffset = offset + pageCards.length;
   const hasMore = nextOffset < selectedCards.length;
+  const highlights = await buildHighlightPayload({ userId, tab });
 
   return {
     tab,
@@ -539,11 +796,14 @@ const buildNewsFeed = async ({
       ? encodeCursor({ offset: nextOffset, tab, topicSlug, sourceSlug })
       : "",
     hasMore,
+    meta: buildFeedMeta({ tab, userGeo: queryContext?.userGeo || {} }),
+    highlights,
+    savedArticleIds: [...(queryContext?.savedArticleIds || new Set())],
     cards: pageCards,
   };
 };
 
-const getStoryDetail = async (storyId) => {
+const getStoryDetail = async (storyId, { userId = "" } = {}) => {
   if (!isValidId(storyId)) {
     return null;
   }
@@ -556,12 +816,13 @@ const getStoryDetail = async (storyId) => {
     return null;
   }
 
+  const savedArticleIds = await getSavedArticleIdsForUser(userId);
   const assetsByStoryId = await loadStoryAssets([storyDoc._id]);
   const story = attachAssetsToStory(storyDoc.toObject(), assetsByStoryId);
-  return serializeStory(story, { source: storyDoc.sourceId });
+  return serializeStory(story, { source: storyDoc.sourceId, savedArticleIds });
 };
 
-const getClusterDetail = async (clusterId) => {
+const getClusterDetail = async (clusterId, { userId = "" } = {}) => {
   if (!isValidId(clusterId)) {
     return null;
   }
@@ -581,12 +842,16 @@ const getClusterDetail = async (clusterId) => {
     .sort({ publishedAt: -1 })
     .populate("sourceId");
 
+  const savedArticleIds = await getSavedArticleIdsForUser(userId);
   const assetsByStoryId = await loadStoryAssets(stories.map((entry) => entry._id));
-  const serializedStories = stories.map((storyDoc) =>
-    serializeStory(attachAssetsToStory(storyDoc.toObject(), assetsByStoryId), {
-      source: storyDoc.sourceId,
-    })
-  );
+  const serializedStories = stories
+    .map((storyDoc) =>
+      serializeStory(attachAssetsToStory(storyDoc.toObject(), assetsByStoryId), {
+        source: storyDoc.sourceId,
+        savedArticleIds,
+      })
+    )
+    .filter(hasRequiredAttribution);
 
   return {
     id: String(clusterDoc._id || ""),
@@ -606,7 +871,11 @@ const getClusterDetail = async (clusterId) => {
 };
 
 const getSourceProfile = async (slug = "") => {
-  const source = await NewsSource.findOne({ slug: normalizeSlug(slug), isActive: true }).lean();
+  const source = await NewsSource.findOne({
+    slug: normalizeSlug(slug),
+    isActive: true,
+    isBlocked: { $ne: true },
+  }).lean();
   if (!source) {
     return null;
   }

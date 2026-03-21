@@ -8,7 +8,7 @@ import {
   getWorldNews,
 } from "../api/newsApi";
 
-const resolveRequest = ({ tab, topicSlug, sourceSlug, country, state, cursor, limit }) => {
+const resolveRequest = ({ tab, topicSlug, sourceSlug, country, state, city, cursor, limit }) => {
   if (topicSlug) {
     return getTopicNews(topicSlug, { tab, cursor, limit });
   }
@@ -16,7 +16,7 @@ const resolveRequest = ({ tab, topicSlug, sourceSlug, country, state, cursor, li
     return getSourceNews(sourceSlug, { tab, cursor, limit });
   }
   if (tab === "local") {
-    return getLocalNews({ country, state, cursor, limit });
+    return getLocalNews({ country, state, city, cursor, limit });
   }
   if (tab === "world") {
     return getWorldNews({ cursor, limit });
@@ -33,6 +33,7 @@ export function useNewsFeed({
   sourceSlug = "",
   country = "",
   state = "",
+  city = "",
   limit = 20,
   enabled = true,
 } = {}) {
@@ -41,6 +42,9 @@ export function useNewsFeed({
     nextCursor: "",
     hasMore: false,
     tab,
+    meta: null,
+    highlights: { topics: [], trustedSources: [] },
+    savedArticleIds: [],
   });
   const [loading, setLoading] = useState(Boolean(enabled));
   const [loadingMore, setLoadingMore] = useState(false);
@@ -63,6 +67,7 @@ export function useNewsFeed({
           sourceSlug,
           country,
           state,
+          city,
           cursor: "",
           limit,
         });
@@ -72,7 +77,15 @@ export function useNewsFeed({
       } catch (err) {
         if (!cancelled) {
           setError(err?.message || "Failed to load news");
-          setPayload({ cards: [], nextCursor: "", hasMore: false, tab });
+          setPayload({
+            cards: [],
+            nextCursor: "",
+            hasMore: false,
+            tab,
+            meta: null,
+            highlights: { topics: [], trustedSources: [] },
+            savedArticleIds: [],
+          });
         }
       } finally {
         if (!cancelled) {
@@ -85,7 +98,7 @@ export function useNewsFeed({
     return () => {
       cancelled = true;
     };
-  }, [country, enabled, limit, sourceSlug, state, tab, topicSlug]);
+  }, [city, country, enabled, limit, sourceSlug, state, tab, topicSlug]);
 
   const loadMore = async () => {
     if (!payload?.nextCursor || loadingMore) {
@@ -100,6 +113,7 @@ export function useNewsFeed({
         sourceSlug,
         country,
         state,
+        city,
         cursor: payload.nextCursor,
         limit,
       });
@@ -115,18 +129,34 @@ export function useNewsFeed({
   };
 
   const refresh = async () => {
-    const next = await resolveRequest({
-      tab,
-      topicSlug,
-      sourceSlug,
+    try {
+      const next = await resolveRequest({
+        tab,
+        topicSlug,
+        sourceSlug,
       country,
       state,
+      city,
       cursor: "",
       limit,
     });
-    setPayload(next || { cards: [], nextCursor: "", hasMore: false, tab });
-    setError("");
-    return next;
+      setPayload(
+        next || {
+          cards: [],
+          nextCursor: "",
+          hasMore: false,
+          tab,
+          meta: null,
+          highlights: { topics: [], trustedSources: [] },
+          savedArticleIds: [],
+        }
+      );
+      setError("");
+      return next;
+    } catch (err) {
+      setError(err?.message || "Failed to refresh news");
+      throw err;
+    }
   };
 
   return {

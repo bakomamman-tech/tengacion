@@ -2,6 +2,8 @@ const NewsComplaint = require("../models/NewsComplaint");
 const NewsFeedImpression = require("../models/NewsFeedImpression");
 const NewsUserPreference = require("../models/NewsUserPreference");
 const asyncHandler = require("../middleware/asyncHandler");
+const { saveNewsArticleForUser, removeSavedNewsArticleForUser } = require("../services/newsSavedService");
+const { getNewsTopics } = require("../services/newsTopicService");
 const {
   buildNewsFeed,
   getClusterDetail,
@@ -24,6 +26,16 @@ const parseLimit = (value, fallback = 20) => {
   return Math.max(1, Math.min(40, limit));
 };
 
+const normalizeStringArray = (value = []) =>
+  (Array.isArray(value) ? value : [])
+    .map((entry) => normalizeSlug(entry))
+    .filter(Boolean);
+
+const normalizeLocationArray = (value = []) =>
+  (Array.isArray(value) ? value : [])
+    .map((entry) => normalizeWhitespace(entry))
+    .filter(Boolean);
+
 const getFeed = asyncHandler(async (req, res) => {
   const tab = String(req.query.tab || "for-you").trim().toLowerCase();
   const payload = await buildNewsFeed({
@@ -44,6 +56,7 @@ const getLocal = asyncHandler(async (req, res) => {
     limit: parseLimit(req.query.limit, 20),
     country: String(req.query.country || ""),
     state: String(req.query.state || ""),
+    city: String(req.query.city || ""),
   });
 
   res.json(payload);
@@ -76,7 +89,9 @@ const getTopic = asyncHandler(async (req, res) => {
 });
 
 const getCluster = asyncHandler(async (req, res) => {
-  const cluster = await getClusterDetail(req.params.clusterId);
+  const cluster = await getClusterDetail(req.params.clusterId, {
+    userId: req.user?.id || "",
+  });
   if (!cluster) {
     return res.status(404).json({ error: "Cluster not found" });
   }
@@ -84,11 +99,112 @@ const getCluster = asyncHandler(async (req, res) => {
 });
 
 const getStory = asyncHandler(async (req, res) => {
-  const story = await getStoryDetail(req.params.storyId);
+  const story = await getStoryDetail(req.params.storyId, {
+    userId: req.user?.id || "",
+  });
   if (!story) {
     return res.status(404).json({ error: "Story not found" });
   }
   return res.json(story);
+});
+
+const getTopics = asyncHandler(async (req, res) => {
+  const topics = await getNewsTopics({
+    userId: req.user?.id || "",
+    limit: parseLimit(req.query.limit, 12),
+  });
+
+  return res.json({ topics });
+});
+
+const getPreferences = asyncHandler(async (req, res) => {
+  const preferences = await ensurePreferencesDoc(req.user.id);
+  return res.json({ preferences });
+});
+
+const updatePreferences = asyncHandler(async (req, res) => {
+  const prefs = await ensurePreferencesDoc(req.user.id);
+  const payload = req.body && typeof req.body === "object" ? req.body : {};
+
+  if (payload.preferredTopics) {
+    prefs.preferredTopics = normalizeStringArray(payload.preferredTopics);
+  }
+  if (payload.blockedTopics) {
+    prefs.blockedTopicSlugs = normalizeStringArray(payload.blockedTopics);
+  }
+  if (payload.preferredRegions) {
+    prefs.preferredRegions = normalizeStringArray(payload.preferredRegions);
+  }
+  if (payload.followedSources) {
+    prefs.followedSourceSlugs = normalizeStringArray(payload.followedSources);
+  }
+  if (payload.followedTopics) {
+    prefs.followedTopicSlugs = normalizeStringArray(payload.followedTopics);
+  }
+  if (payload.preferredCountries) {
+    prefs.preferredCountries = normalizeLocationArray(payload.preferredCountries);
+  }
+  if (payload.preferredStates) {
+    prefs.preferredStates = normalizeLocationArray(payload.preferredStates);
+  }
+  if (payload.preferredCities) {
+    prefs.preferredCities = normalizeLocationArray(payload.preferredCities);
+  }
+  if (payload.preferredLanguage !== undefined) {
+    prefs.preferredLanguage = String(payload.preferredLanguage || "en").trim().toLowerCase() || "en";
+  }
+  if (payload.personalizationEnabled !== undefined) {
+    prefs.personalizationEnabled = Boolean(payload.personalizationEnabled);
+  }
+  if (payload.localBoostEnabled !== undefined) {
+    prefs.localBoostEnabled = Boolean(payload.localBoostEnabled);
+  }
+  if (payload.worldBoostEnabled !== undefined) {
+    prefs.worldBoostEnabled = Boolean(payload.worldBoostEnabled);
+  }
+
+  await prefs.save();
+  return res.json({ success: true, preferences: prefs });
+});
+
+const saveArticle = asyncHandler(async (req, res) => {
+  const saved = await saveNewsArticleForUser({
+    userId: req.user.id,
+    articleId: req.params.articleId,
+  });
+
+  await NewsFeedImpression.create({
+    userId: req.user.id,
+    surface: "news",
+    feedTab: String(req.body?.feedTab || "for-you").trim().toLowerCase(),
+    cardType: "story",
+    storyId: saved.articleId,
+    clusterId: saved.clusterId || null,
+    sourceSlug: saved.sourceSlug || "",
+    topicTags: Array.isArray(saved.topicTags) ? saved.topicTags : [],
+    action: "save",
+  });
+
+  return res.status(201).json({
+    success: true,
+    saved: {
+      articleId: String(saved.articleId || ""),
+      savedAt: saved.savedAt,
+    },
+  });
+});
+
+const removeSavedArticle = asyncHandler(async (req, res) => {
+  const removed = await removeSavedNewsArticleForUser({
+    userId: req.user.id,
+    articleId: req.params.articleId,
+  });
+
+  return res.json({
+    success: true,
+    removed,
+    articleId: String(req.params.articleId || ""),
+  });
 });
 
 const postImpression = asyncHandler(async (req, res) => {
@@ -202,6 +318,11 @@ module.exports = {
   getLocal,
   getWorld,
   getTopic,
+  getTopics,
+  getPreferences,
+  updatePreferences,
+  saveArticle,
+  removeSavedArticle,
   getCluster,
   getStory,
   postImpression,

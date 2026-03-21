@@ -3,11 +3,11 @@ export default function NewsWhyThisCard({ reasons = [], rights = {} }) {
 
   return (
     <div className="news-why-card">
-      <strong>Why you are seeing this</strong>
+      <strong>Why you're seeing this</strong>
       <ul>
         {(Array.isArray(reasons) && reasons.length
           ? reasons
-          : ["Selected for relevance, freshness, and source diversity."]
+          : ["Selected for relevance, recency, trust, and source diversity."]
         ).map((reason) => (
           <li key={reason}>{reason}</li>
         ))}

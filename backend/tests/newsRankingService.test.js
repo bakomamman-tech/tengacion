@@ -1,4 +1,4 @@
-const { scoreStory } = require("../services/newsRankingService");
+const { computePublicInterestBoost, scoreStory } = require("../services/newsRankingService");
 
 describe("newsRankingService", () => {
   test("ranks fresh local stories above older less relevant stories", () => {
@@ -41,5 +41,36 @@ describe("newsRankingService", () => {
 
     expect(localBreaking.finalScore).toBeGreaterThan(staleWorldOpinion.finalScore);
     expect(localBreaking.localRelevanceScore).toBeGreaterThan(staleWorldOpinion.localRelevanceScore);
+  });
+
+  test("adds a stronger public-interest boost to non-opinion civic coverage than opinion pieces", () => {
+    const publicInterest = computePublicInterestBoost(
+      {
+        articleType: "breaking",
+        isBreaking: true,
+        topicTags: ["politics", "education"],
+        geography: { scope: "national", primaryCountry: "Nigeria" },
+        moderation: { sensitiveFlags: ["elections"], sourceTrustScore: 0.9 },
+      },
+      {
+        source: { trustScore: 0.9 },
+      }
+    );
+
+    const opinionBoost = computePublicInterestBoost(
+      {
+        articleType: "opinion",
+        isOpinion: true,
+        topicTags: ["politics"],
+        geography: { scope: "national", primaryCountry: "Nigeria" },
+        moderation: { sensitiveFlags: ["elections"], sourceTrustScore: 0.9 },
+      },
+      {
+        source: { trustScore: 0.9 },
+      }
+    );
+
+    expect(publicInterest).toBeGreaterThan(opinionBoost);
+    expect(opinionBoost).toBe(0);
   });
 });

@@ -152,6 +152,14 @@ describe("GET /api/news/feed", () => {
 
     expect(response.body).toMatchObject({
       tab: "for-you",
+      meta: expect.objectContaining({
+        title: expect.any(String),
+        description: expect.any(String),
+      }),
+      highlights: expect.objectContaining({
+        topics: expect.any(Array),
+        trustedSources: expect.any(Array),
+      }),
       cards: [
         expect.objectContaining({
           cardType: "story",
@@ -172,5 +180,15 @@ describe("GET /api/news/feed", () => {
         }),
       ],
     });
+  });
+
+  test("returns topic highlights", async () => {
+    const response = await request(app).get("/api/news/topics").expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        topics: expect.any(Array),
+      })
+    );
   });
 });

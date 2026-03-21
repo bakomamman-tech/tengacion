@@ -1,4 +1,5 @@
 const NewsAsset = require("../models/NewsAsset");
+const NewsIngestionJob = require("../models/NewsIngestionJob");
 const NewsPublisherContract = require("../models/NewsPublisherContract");
 const NewsSource = require("../models/NewsSource");
 const NewsStory = require("../models/NewsStory");
@@ -24,6 +25,20 @@ const PROVIDER_MAP = {
   gdelt: gdeltDiscoveryService,
   partner_rss: partnerRssIngestService,
 };
+
+const sanitizeRawPayload = (normalized = {}, source = {}) => ({
+  externalId: normalized?.externalId || "",
+  canonicalUrl: normalized?.canonicalUrl || "",
+  publishedAt: normalized?.publishedAt || null,
+  updatedAt: normalized?.updatedAt || null,
+  authorByline: normalized?.authorByline || "",
+  language: normalized?.language || "en",
+  sourceSlug: normalized?.sourceSlug || source?.slug || "",
+  tags: Array.isArray(normalized?.tags) ? normalized.tags : [],
+  assetCount: Array.isArray(normalized?.assets) ? normalized.assets.length : 0,
+  providerType: source?.providerType || "",
+  licenseType: source?.licenseType || "",
+});
 
 const getActiveContract = async (sourceId) =>
   NewsPublisherContract.findOne({
@@ -114,12 +129,19 @@ const buildStoryUpdatePayload = ({ source, contract, providerStory }) => {
       subtitle: normalized.subtitle,
       bodyHtml: normalized.bodyHtml,
       summaryText: buildSummary(normalized),
+      contentType: rights.mode === "FULL_IN_APP" ? "explainer" : "summary",
       canonicalUrl: normalized.canonicalUrl,
       publishedAt: normalized.publishedAt,
       updatedAtSource: normalized.updatedAt,
       authorByline: normalized.authorByline,
       language: normalized.language,
+      country: geography?.primaryCountry || "",
+      region: geography?.primaryState || "",
+      city: geography?.primaryCity || "",
       articleType: classification.articleType,
+      trustScore: Number(source?.trustScore || 0.7),
+      isBreaking: classification.articleType === "breaking",
+      isOpinion: classification.articleType === "opinion",
       topicTags: classification.topicTags,
       namedEntities: classification.namedEntities,
       geography,
@@ -136,7 +158,7 @@ const buildStoryUpdatePayload = ({ source, contract, providerStory }) => {
       isDiscoveryOnly: Boolean(source?.discoveryOnly || source?.publisherTier === "discovery"),
       ingestionKey: hashValue(`${source.slug}:${normalized.externalId}:${normalized.canonicalUrl}`),
       ingestedAt: new Date(),
-      raw: normalized.raw || {},
+      raw: sanitizeRawPayload(normalized, source),
     },
     { source, contract }
   );
@@ -148,77 +170,127 @@ const ingestSource = async ({
   fetchImpl = global.fetch,
   mockStories = null,
 } = {}) => {
-  const provider = PROVIDER_MAP[source?.providerType];
-  if (!provider) {
-    return {
-      sourceSlug: source?.slug || "",
-      providerType: source?.providerType || "",
-      ingested: 0,
-      skipped: 0,
-      stories: [],
-      error: `Unsupported provider type: ${source?.providerType || "unknown"}`,
-    };
-  }
-
-  const contract = await getActiveContract(source._id);
-  const providerStories = await provider.fetchStories({
-    source,
-    limit,
-    fetchImpl,
-    mockStories,
+  const jobDoc = await NewsIngestionJob.create({
+    sourceId: source?._id || null,
+    sourceSlug: source?.slug || "",
+    providerType: source?.providerType || "",
+    licenseType: source?.licenseType || "",
+    status: "running",
+    startedAt: new Date(),
+    metadata: {
+      limit,
+      sourceType: source?.sourceType || "",
+      publisherTier: source?.publisherTier || "",
+    },
   });
 
-  const stories = [];
-  let skipped = 0;
-  for (const providerStory of providerStories) {
-    if (!providerStory?.title || !providerStory?.canonicalUrl) {
-      skipped += 1;
-      continue;
+  try {
+    const provider = PROVIDER_MAP[source?.providerType];
+    if (!provider) {
+      await NewsIngestionJob.updateOne(
+        { _id: jobDoc._id },
+        {
+          $set: {
+            status: "failed",
+            completedAt: new Date(),
+            errorMessage: `Unsupported provider type: ${source?.providerType || "unknown"}`,
+          },
+        }
+      );
+      return {
+        sourceSlug: source?.slug || "",
+        providerType: source?.providerType || "",
+        ingested: 0,
+        skipped: 0,
+        stories: [],
+        error: `Unsupported provider type: ${source?.providerType || "unknown"}`,
+      };
     }
 
-    const updatePayload = buildStoryUpdatePayload({ source, contract, providerStory });
-    const storyDoc = await NewsStory.findOneAndUpdate(
-      {
-        sourceSlug: updatePayload.sourceSlug,
-        externalId: updatePayload.externalId,
-      },
-      { $set: updatePayload },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
-    const assetRefs = await upsertAssets({
-      storyId: storyDoc._id,
-      sourceId: source._id,
-      sourceSlug: source.slug,
-      assets: normalizeAssets(providerStory?.assets || []),
-      rights: updatePayload.rights,
+    const contract = await getActiveContract(source._id);
+    const providerStories = await provider.fetchStories({
+      source,
+      limit,
+      fetchImpl,
+      mockStories,
     });
 
-    if (assetRefs.length) {
-      storyDoc.assetRefs = assetRefs;
-      await storyDoc.save();
+    const stories = [];
+    let skipped = 0;
+    for (const providerStory of providerStories) {
+      if (!providerStory?.title || !providerStory?.canonicalUrl) {
+        skipped += 1;
+        continue;
+      }
+
+      const updatePayload = buildStoryUpdatePayload({ source, contract, providerStory });
+      const storyDoc = await NewsStory.findOneAndUpdate(
+        {
+          sourceSlug: updatePayload.sourceSlug,
+          externalId: updatePayload.externalId,
+        },
+        { $set: updatePayload },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      const assetRefs = await upsertAssets({
+        storyId: storyDoc._id,
+        sourceId: source._id,
+        sourceSlug: source.slug,
+        assets: normalizeAssets(providerStory?.assets || []),
+        rights: updatePayload.rights,
+      });
+
+      if (assetRefs.length) {
+        storyDoc.assetRefs = assetRefs;
+        await storyDoc.save();
+      }
+
+      stories.push(storyDoc);
     }
 
-    stories.push(storyDoc);
+    await NewsSource.updateOne(
+      { _id: source._id },
+      {
+        $set: {
+          "ingest.lastIngestedAt": new Date(),
+          "ingest.lastIngestStatus": "ok",
+        },
+      }
+    );
+
+    await NewsIngestionJob.updateOne(
+      { _id: jobDoc._id },
+      {
+        $set: {
+          status: "completed",
+          completedAt: new Date(),
+          ingestedCount: stories.length,
+          skippedCount: skipped,
+        },
+      }
+    );
+
+    return {
+      sourceSlug: source.slug,
+      providerType: source.providerType,
+      ingested: stories.length,
+      skipped,
+      stories,
+    };
+  } catch (error) {
+    await NewsIngestionJob.updateOne(
+      { _id: jobDoc._id },
+      {
+        $set: {
+          status: "failed",
+          completedAt: new Date(),
+          errorMessage: error?.message || "Ingest failed",
+        },
+      }
+    );
+    throw error;
   }
-
-  await NewsSource.updateOne(
-    { _id: source._id },
-    {
-      $set: {
-        "ingest.lastIngestedAt": new Date(),
-        "ingest.lastIngestStatus": "ok",
-      },
-    }
-  );
-
-  return {
-    sourceSlug: source.slug,
-    providerType: source.providerType,
-    ingested: stories.length,
-    skipped,
-    stories,
-  };
 };
 
 const runIngestNewsJob = async ({
@@ -230,6 +302,7 @@ const runIngestNewsJob = async ({
 } = {}) => {
   const query = {
     isActive: true,
+    isBlocked: { $ne: true },
     "ingest.enabled": { $ne: false },
   };
   if (Array.isArray(sourceIds) && sourceIds.length) {

@@ -128,7 +128,7 @@ const buildUserGeoProfile = (user = {}, preferences = {}) => ({
     "Nigeria",
   state:
     preferences?.preferredStates?.[0] ||
-    normalizeWhitespace(user?.currentCity || user?.state || ""),
+    normalizeWhitespace(user?.state || user?.hometown || ""),
   city:
     preferences?.preferredCities?.[0] ||
     normalizeWhitespace(user?.currentCity || ""),

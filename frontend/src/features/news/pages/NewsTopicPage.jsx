@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import Navbar from "../../../Navbar";
@@ -13,9 +13,21 @@ import { useNewsPreferences } from "../hooks/useNewsPreferences";
 
 const renderCard = (card, handlers) =>
   card?.cardType === "cluster" ? (
-    <NewsClusterCard key={card.id} card={card} {...handlers} />
+    <NewsClusterCard
+      key={card.id}
+      card={card}
+      saved={handlers.isSaved(card)}
+      saving={handlers.isSaving(card)}
+      {...handlers}
+    />
   ) : (
-    <NewsStoryCard key={card.id} card={card} {...handlers} />
+    <NewsStoryCard
+      key={card.id}
+      card={card}
+      saved={handlers.isSaved(card)}
+      saving={handlers.isSaving(card)}
+      {...handlers}
+    />
   );
 
 export default function NewsTopicPage({ user }) {
@@ -24,12 +36,29 @@ export default function NewsTopicPage({ user }) {
   const [selectedCard, setSelectedCard] = useState(null);
   const feed = useNewsFeed({ topicSlug: slug, limit: 18 });
   const preferences = useNewsPreferences();
+  const { savedArticleIds } = feed;
+  const { syncSavedIds, savingIds } = preferences;
+
+  useEffect(() => {
+    syncSavedIds(savedArticleIds || []);
+  }, [savedArticleIds, syncSavedIds]);
 
   const handlers = useMemo(
     () => ({
+      activeTab: "for-you",
       onOpen: (card) => setSelectedCard(card),
       onHide: (payload) => preferences.hideItem(payload),
       onFollowSource: (sourceSlug) => preferences.followSource({ sourceSlug, follow: true }),
+      onToggleSave: preferences.toggleSaved,
+      onShare: preferences.shareItem,
+      isSaved: (card) =>
+        preferences.isSaved(
+          String(card?.storyId || card?.representativeStory?.id || card?.id || "")
+        ),
+      isSaving: (card) =>
+        savingIds.has(
+          String(card?.storyId || card?.representativeStory?.id || card?.id || "")
+        ),
       onTrack: preferences.track,
       onReport: async (payload) => {
         const reason = window.prompt("Tell us what looks wrong about this news item.", "Possible issue with this story");
@@ -38,7 +67,11 @@ export default function NewsTopicPage({ user }) {
         }
       },
     }),
-    [preferences]
+    [preferences, savingIds]
+  );
+
+  const selectedStoryId = String(
+    selectedCard?.storyId || selectedCard?.representativeStory?.id || selectedCard?.id || ""
   );
 
   return (
@@ -79,7 +112,16 @@ export default function NewsTopicPage({ user }) {
           <RightQuickNav />
         </aside>
       </div>
-      <NewsDetailDrawer card={selectedCard} open={Boolean(selectedCard)} onClose={() => setSelectedCard(null)} />
+      <NewsDetailDrawer
+        card={selectedCard}
+        open={Boolean(selectedCard)}
+        onClose={() => setSelectedCard(null)}
+        onToggleSave={preferences.toggleSaved}
+        onShare={preferences.shareItem}
+        activeTab="for-you"
+        saved={preferences.isSaved(selectedStoryId)}
+        saving={savingIds.has(selectedStoryId)}
+      />
     </>
   );
 }

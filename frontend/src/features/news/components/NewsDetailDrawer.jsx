@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react";
 
 import { getNewsCluster, getNewsStory } from "../api/newsApi";
+import { formatAbsoluteTime, formatTopicLabel } from "../utils/newsUi";
 import NewsPublisherBadge from "./NewsPublisherBadge";
 import NewsSourceChip from "./NewsSourceChip";
 
-export default function NewsDetailDrawer({ card, open, onClose }) {
+export default function NewsDetailDrawer({
+  card,
+  open,
+  onClose,
+  onToggleSave,
+  onShare,
+  activeTab = "for-you",
+  saved = false,
+  saving = false,
+}) {
   const [loading, setLoading] = useState(false);
   const [payload, setPayload] = useState(null);
   const [error, setError] = useState("");
@@ -64,6 +74,9 @@ export default function NewsDetailDrawer({ card, open, onClose }) {
   const story =
     payload?.stories?.[0] || payload?.representativeStory || payload || card?.representativeStory || null;
   const source = story?.source || card?.representativeStory?.source || null;
+  const topicTags = Array.isArray(payload?.topicTags) && payload.topicTags.length
+    ? payload.topicTags
+    : story?.topicTags || [];
 
   return (
     <div className="news-drawer-backdrop" onMouseDown={onClose}>
@@ -79,6 +92,9 @@ export default function NewsDetailDrawer({ card, open, onClose }) {
             <div className="news-drawer-meta">
               {source ? <NewsSourceChip source={source} /> : null}
               {source ? <NewsPublisherBadge tier={source.publisherTier} /> : null}
+              {story?.articleType ? (
+                <span className={`news-type-badge ${story.articleType}`}>{story.articleType}</span>
+              ) : null}
             </div>
             <h2>{story?.title || card?.title || "News detail"}</h2>
           </div>
@@ -104,7 +120,21 @@ export default function NewsDetailDrawer({ card, open, onClose }) {
                 alt={story.media.altText || story.title || "News"}
               />
             ) : null}
+
+            <div className="news-drawer-context-row">
+              {story?.publishedAt ? (
+                <time dateTime={story.publishedAt}>{formatAbsoluteTime(story.publishedAt)}</time>
+              ) : null}
+              {story?.authorByline ? <span>{story.authorByline}</span> : null}
+              {topicTags.slice(0, 3).map((tag) => (
+                <span key={tag} className="news-topic-chip">
+                  {formatTopicLabel(tag)}
+                </span>
+              ))}
+            </div>
+
             {story?.summaryText ? <p className="news-drawer-summary">{story.summaryText}</p> : null}
+
             {story?.display?.canRenderFullText && story?.bodyHtml ? (
               <div
                 className="news-drawer-richtext"
@@ -113,10 +143,51 @@ export default function NewsDetailDrawer({ card, open, onClose }) {
             ) : (
               <div className="news-drawer-linkout-note">
                 <p>
-                  Tengacion is showing the available summary and attribution for this article.
+                  Tengacion is intentionally showing a legal-safe summary with source attribution and
+                  a direct link to the publisher&apos;s original coverage.
                 </p>
               </div>
             )}
+
+            <div className="news-drawer-action-row">
+              <button
+                type="button"
+                className={`news-action-button ${saved ? "saved" : ""}`}
+                onClick={() =>
+                  onToggleSave?.({
+                    articleId: story?.id,
+                    saved,
+                    feedTab: activeTab,
+                  })
+                }
+                disabled={saving}
+              >
+                {saving ? "Saving..." : saved ? "Saved" : "Save"}
+              </button>
+              <button
+                type="button"
+                className="news-action-button"
+                onClick={() =>
+                  onShare?.({
+                    title: story?.title || "Tengacion News",
+                    canonicalUrl: story?.canonicalUrl || "",
+                  })
+                }
+              >
+                Share
+              </button>
+              {story?.canonicalUrl ? (
+                <a
+                  className="news-drawer-linkout"
+                  href={story.canonicalUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Read original
+                </a>
+              ) : null}
+            </div>
+
             {payload?.stories?.length > 1 ? (
               <div className="news-drawer-coverage-list">
                 <strong>More coverage in this cluster</strong>
@@ -130,16 +201,6 @@ export default function NewsDetailDrawer({ card, open, onClose }) {
                   ))}
                 </ul>
               </div>
-            ) : null}
-            {story?.canonicalUrl ? (
-              <a
-                className="news-drawer-linkout"
-                href={story.canonicalUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open on publisher site
-              </a>
             ) : null}
           </div>
         )}

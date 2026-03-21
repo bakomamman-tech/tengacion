@@ -36,7 +36,7 @@ app.use(
           "https://tengacioncom-8unikgcj.livekit.cloud",
           "wss://tengacioncom-8unikgcj.livekit.cloud",
         ],
-        imgSrc: ["'self'", "data:", "blob:", "https://ui-avatars.com"],
+        imgSrc: ["'self'", "data:", "blob:", "https:", "https://ui-avatars.com"],
         mediaSrc: ["'self'", "blob:", "https:"],
         workerSrc: ["'self'", "blob:"],
         scriptSrc: isProduction ? ["'self'"] : ["'self'", "'unsafe-inline'"],

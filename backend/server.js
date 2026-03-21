@@ -82,6 +82,7 @@ if (process.env.NODE_ENV !== "test") {
   const { repairUserProfileIndexes } = require("./scripts/repairUserProfileIndexes");
   const { repairUserSecurityFields } = require("./scripts/repairUserSecurityFields");
   const { runBirthdayRecognition } = require("./services/birthdayService");
+  const { startNewsSchedulers } = require("./services/newsSchedulerService");
 
   const io = new Server(server, {
     cors: {
@@ -614,6 +615,7 @@ if (process.env.NODE_ENV !== "test") {
         await repairUserMediaFields({ logger: console });
         await repairUserSecurityFields({ logger: console });
         await runBirthdayRecognition({ logger: console });
+        await startNewsSchedulers({ logger: console });
       } catch (err) {
         console.error("Startup repair failed:", err?.message || err);
       }

@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { motion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import Navbar from "../../../Navbar";
@@ -8,40 +9,124 @@ import NewsClusterCard from "../components/NewsClusterCard";
 import NewsDetailDrawer from "../components/NewsDetailDrawer";
 import NewsFeedTabs from "../components/NewsFeedTabs";
 import NewsCardSkeleton from "../components/NewsCardSkeleton";
+import NewsHighlightsStrip from "../components/NewsHighlightsStrip";
 import NewsStoryCard from "../components/NewsStoryCard";
 import { useNewsFeed } from "../hooks/useNewsFeed";
 import { useNewsPreferences } from "../hooks/useNewsPreferences";
 
-const renderCard = (card, handlers) =>
+const VALID_TABS = new Set(["for-you", "local", "nigeria", "world"]);
+
+const renderCard = (card, handlers, savedState) =>
   card?.cardType === "cluster" ? (
-    <NewsClusterCard key={card.id} card={card} {...handlers} />
+    <NewsClusterCard
+      key={card.id}
+      card={card}
+      saved={savedState.saved}
+      saving={savedState.saving}
+      {...handlers}
+    />
   ) : (
-    <NewsStoryCard key={card.id} card={card} {...handlers} />
+    <NewsStoryCard
+      key={card.id}
+      card={card}
+      saved={savedState.saved}
+      saving={savedState.saving}
+      {...handlers}
+    />
   );
 
+const getStoryId = (card) =>
+  String(card?.storyId || card?.representativeStory?.id || card?.id || "");
+
 export default function NewsHubPage({ user }) {
+  const MotionSection = motion.section;
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const activeTab = params.get("tab") || "for-you";
+  const [isPending, startTransition] = useTransition();
+  const activeTab = VALID_TABS.has(params.get("tab")) ? params.get("tab") : "for-you";
   const [selectedCard, setSelectedCard] = useState(null);
-  const feed = useNewsFeed({ tab: activeTab, limit: 18 });
+  const loadMoreRef = useRef(null);
+  const feed = useNewsFeed({ tab: activeTab, limit: 12 });
   const preferences = useNewsPreferences();
+  const {
+    cards = [],
+    error,
+    hasMore,
+    highlights,
+    loading,
+    loadingMore,
+    loadMore,
+    meta,
+    refresh,
+    savedArticleIds,
+  } = feed;
+  const { savingIds, syncSavedIds } = preferences;
+
+  useEffect(() => {
+    setSelectedCard(null);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (!VALID_TABS.has(params.get("tab"))) {
+      setParams({ tab: "for-you" }, { replace: true });
+    }
+  }, [params, setParams]);
+
+  useEffect(() => {
+    syncSavedIds(savedArticleIds || []);
+  }, [savedArticleIds, syncSavedIds]);
+
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasMore || loading || loadingMore) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          loadMore();
+        }
+      },
+      {
+        rootMargin: "220px 0px",
+      }
+    );
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadingMore, loadMore]);
 
   const handlers = useMemo(
     () => ({
+      activeTab,
       onOpen: (card) => setSelectedCard(card),
       onHide: (payload) => preferences.hideItem(payload),
       onFollowSource: (sourceSlug) => preferences.followSource({ sourceSlug, follow: true }),
+      onToggleSave: preferences.toggleSaved,
+      onShare: preferences.shareItem,
       onTrack: preferences.track,
       onReport: async (payload) => {
-        const reason = window.prompt("Tell us what looks wrong about this news item.", "Possible issue with this story");
+        const reason = window.prompt(
+          "Tell us what looks wrong about this news item.",
+          "Possible issue with this story"
+        );
         if (reason) {
           await preferences.reportIssue({ ...payload, reason });
         }
       },
     }),
-    [preferences]
+    [activeTab, preferences]
   );
+
+  const handleTabChange = (nextTab) => {
+    startTransition(() => {
+      setParams({ tab: nextTab });
+    });
+  };
+
+  const selectedStoryId = getStoryId(selectedCard);
+  const selectedSaved = preferences.isSaved(selectedStoryId);
+  const selectedSaving = savingIds.has(selectedStoryId);
 
   return (
     <>
@@ -55,50 +140,91 @@ export default function NewsHubPage({ user }) {
           />
         </aside>
 
-        <main className="feed">
+        <main className="feed news-feed-shell">
           <section className="card news-hero-panel">
-            <div>
+            <div className="news-hero-copy">
               <span className="news-eyebrow">Tengacion News</span>
               <h1>Trusted news for your social feed</h1>
               <p>
-                Follow local developments, Nigeria-wide coverage, and international stories with source attribution built in.
+                Calm, rights-aware news with strong source attribution, balanced ranking, and
+                quick access to the publisher&apos;s original reporting.
               </p>
             </div>
-            <NewsFeedTabs
-              activeTab={activeTab}
-              onChange={(nextTab) => setParams({ tab: nextTab })}
-            />
+
+            <NewsFeedTabs activeTab={activeTab} onChange={handleTabChange} />
+
+            <div className="news-hero-meta-row">
+              <div>
+                <strong>{meta?.title || "For You"}</strong>
+                <p>{meta?.description || "Trusted stories shaped for you."}</p>
+              </div>
+              {isPending ? <span className="news-hero-status">Refreshing feed...</span> : null}
+            </div>
           </section>
 
-          <section className="news-feed-grid">
-            {feed.loading ? (
+          <NewsHighlightsStrip highlights={highlights} meta={meta} />
+
+          <MotionSection
+            key={activeTab}
+            id={`news-panel-${activeTab}`}
+            role="tabpanel"
+            aria-labelledby={`news-tab-${activeTab}`}
+            className="news-feed-grid"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, ease: "easeOut" }}
+          >
+            {loading ? (
               <>
                 <NewsCardSkeleton />
                 <NewsCardSkeleton />
                 <NewsCardSkeleton />
+                <NewsCardSkeleton />
               </>
-            ) : feed.error ? (
+            ) : error ? (
               <article className="card news-empty-state">
                 <h3>Could not load Tengacion News</h3>
-                <p>{feed.error}</p>
-                <button type="button" className="news-action-button primary" onClick={() => feed.refresh()}>
+                <p>{error}</p>
+                <button
+                  type="button"
+                  className="news-action-button primary"
+                  onClick={() => refresh()}
+                >
                   Try again
                 </button>
               </article>
+            ) : Array.isArray(cards) && cards.length ? (
+              cards.map((card) =>
+                renderCard(card, handlers, {
+                  saved: preferences.isSaved(getStoryId(card)),
+                  saving: savingIds.has(getStoryId(card)),
+                })
+              )
             ) : (
-              (feed.cards || []).map((card) => renderCard(card, handlers))
+              <article className="card news-empty-state">
+                <h3>{meta?.emptyTitle || "No news yet"}</h3>
+                <p>{meta?.emptyDescription || "Fresh stories will appear here soon."}</p>
+                <button
+                  type="button"
+                  className="news-action-button"
+                  onClick={() => refresh()}
+                >
+                  Refresh feed
+                </button>
+              </article>
             )}
-          </section>
+          </MotionSection>
 
-          {!feed.loading && feed.hasMore ? (
+          {!loading && hasMore ? (
             <div className="news-load-more-row">
+              <div ref={loadMoreRef} className="news-feed-sentinel" aria-hidden="true" />
               <button
                 type="button"
-                className="news-action-button primary"
-                onClick={() => feed.loadMore()}
-                disabled={feed.loadingMore}
+                className="news-action-button"
+                onClick={() => loadMore()}
+                disabled={loadingMore}
               >
-                {feed.loadingMore ? "Loading..." : "Load more news"}
+                {loadingMore ? "Loading..." : "Load more news"}
               </button>
             </div>
           ) : null}
@@ -109,7 +235,16 @@ export default function NewsHubPage({ user }) {
         </aside>
       </div>
 
-      <NewsDetailDrawer card={selectedCard} open={Boolean(selectedCard)} onClose={() => setSelectedCard(null)} />
+      <NewsDetailDrawer
+        card={selectedCard}
+        open={Boolean(selectedCard)}
+        onClose={() => setSelectedCard(null)}
+        onToggleSave={preferences.toggleSaved}
+        onShare={preferences.shareItem}
+        activeTab={activeTab}
+        saved={selectedSaved}
+        saving={selectedSaving}
+      />
     </>
   );
 }

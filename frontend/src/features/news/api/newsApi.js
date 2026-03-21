@@ -14,11 +14,14 @@ const withParams = (path, params = {}) => {
 export const getNewsFeed = ({ tab = "for-you", cursor = "", limit = 20 } = {}) =>
   apiRequest(withParams("/news/feed", { tab, cursor, limit }));
 
-export const getLocalNews = ({ country = "", state = "", cursor = "", limit = 20 } = {}) =>
-  apiRequest(withParams("/news/local", { country, state, cursor, limit }));
+export const getLocalNews = ({ country = "", state = "", city = "", cursor = "", limit = 20 } = {}) =>
+  apiRequest(withParams("/news/local", { country, state, city, cursor, limit }));
 
 export const getWorldNews = ({ cursor = "", limit = 20 } = {}) =>
   apiRequest(withParams("/news/world", { cursor, limit }));
+
+export const getNewsTopics = ({ limit = 12 } = {}) =>
+  apiRequest(withParams("/news/topics", { limit }));
 
 export const getTopicNews = (slug, { tab = "for-you", cursor = "", limit = 20 } = {}) =>
   apiRequest(withParams(`/news/topic/${encodeURIComponent(slug || "")}`, { tab, cursor, limit }));
@@ -58,4 +61,26 @@ export const reportNewsIssue = (payload = {}) =>
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload || {}),
+  });
+
+export const getNewsPreferences = () =>
+  apiRequest(`${API_BASE}/news/preferences`);
+
+export const updateNewsPreferences = (payload = {}) =>
+  apiRequest(`${API_BASE}/news/preferences`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const saveNewsArticle = (articleId, payload = {}) =>
+  apiRequest(`${API_BASE}/news/save/${encodeURIComponent(articleId || "")}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const unsaveNewsArticle = (articleId) =>
+  apiRequest(`${API_BASE}/news/save/${encodeURIComponent(articleId || "")}`, {
+    method: "DELETE",
   });

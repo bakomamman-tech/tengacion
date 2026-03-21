@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import CreatorContentCategoryNav from "../../components/creator/CreatorContentCategoryNav";
+import CreatorFanPageWorkspacePreview from "../../components/creator/CreatorFanPageWorkspacePreview";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import CreatorUploadSupportPanels from "../../components/creator/upload/CreatorUploadSupportPanels";
 import MusicUploadStudio from "../../components/creator/upload/MusicUploadStudio";
@@ -41,6 +42,18 @@ export default function CreatorMusicUploadPage() {
           </div>
         </section>
 
+        <CreatorFanPageWorkspacePreview
+          creatorProfile={creatorProfile}
+          dashboard={dashboard}
+          currentCategoryKey="music"
+        />
+
+        <div className="creator-upload-studio creator-upload-studio--music">
+          <MusicUploadStudio showNotice={false} />
+        </div>
+      </div>
+
+      <aside className="creator-page-side">
         <section className="creator-panel card">
           <div className="creator-panel-head">
             <div>
@@ -51,12 +64,6 @@ export default function CreatorMusicUploadPage() {
           <CreatorContentCategoryNav creatorTypes={creatorProfile?.creatorTypes} />
         </section>
 
-        <div className="creator-upload-studio creator-upload-studio--music">
-          <MusicUploadStudio showNotice={false} />
-        </div>
-      </div>
-
-      <aside className="creator-page-side">
         <CreatorUploadSupportPanels
           creatorProfile={creatorProfile}
           dashboard={dashboard}

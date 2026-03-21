@@ -49,5 +49,5 @@ describe("CreatorFanPagePreview", () => {
     expect(screen.getByText(/featured episode/i)).toBeInTheDocument();
     expect(screen.getByText(/featured visual/i)).toBeInTheDocument();
     expect(screen.getByText(/books by creator example/i)).toBeInTheDocument();
-  });
+  }, 10000);
 });

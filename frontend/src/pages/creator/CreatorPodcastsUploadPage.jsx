@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import CreatorContentCategoryNav from "../../components/creator/CreatorContentCategoryNav";
+import CreatorFanPageWorkspacePreview from "../../components/creator/CreatorFanPageWorkspacePreview";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import CreatorUploadSupportPanels from "../../components/creator/upload/CreatorUploadSupportPanels";
 import PodcastUploadStudio from "../../components/creator/upload/PodcastUploadStudio";
@@ -41,6 +42,18 @@ export default function CreatorPodcastsUploadPage() {
           </div>
         </section>
 
+        <CreatorFanPageWorkspacePreview
+          creatorProfile={creatorProfile}
+          dashboard={dashboard}
+          currentCategoryKey="podcast"
+        />
+
+        <div className="creator-upload-studio creator-upload-studio--podcasts">
+          <PodcastUploadStudio showNotice={false} />
+        </div>
+      </div>
+
+      <aside className="creator-page-side">
         <section className="creator-panel card">
           <div className="creator-panel-head">
             <div>
@@ -51,12 +64,6 @@ export default function CreatorPodcastsUploadPage() {
           <CreatorContentCategoryNav creatorTypes={creatorProfile?.creatorTypes} />
         </section>
 
-        <div className="creator-upload-studio creator-upload-studio--podcasts">
-          <PodcastUploadStudio showNotice={false} />
-        </div>
-      </div>
-
-      <aside className="creator-page-side">
         <CreatorUploadSupportPanels
           creatorProfile={creatorProfile}
           dashboard={dashboard}

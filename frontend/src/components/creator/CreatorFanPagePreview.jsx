@@ -1,243 +1,26 @@
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
-import { resolveImage } from "../../api";
+import { formatCurrency } from "./creatorConfig";
 import {
-  formatCreatorLaneLabel,
-  formatCurrency,
-  normalizeCreatorLaneKeys,
-} from "./creatorConfig";
+  buildCreatorFanPageData,
+  formatCreatorFanPageFollowerCount,
+  getCreatorFanPageInitials,
+  resolveCreatorFanPageTabKey,
+} from "./creatorFanPageData";
 
-const pickPrimaryItem = (items = []) =>
-  Array.isArray(items) && items.length ? items[0] : null;
-
-const padNumber = (value) => String(value || 0).padStart(2, "0");
-
-const formatFollowerCount = (value = 0) =>
-  Number(value || 0).toLocaleString("en-US");
-
-const formatDuration = (seconds = 0) => {
-  const totalSeconds = Math.max(0, Number(seconds || 0));
-  const minutes = Math.floor(totalSeconds / 60);
-  const remainingSeconds = totalSeconds % 60;
-  return `${minutes}:${padNumber(remainingSeconds)}`;
+const getSectionActionLabel = (sectionKey = "") => {
+  if (sectionKey === "books") {
+    return "Read library";
+  }
+  if (sectionKey === "podcasts") {
+    return "Listen";
+  }
+  if (sectionKey === "videos") {
+    return "Watch";
+  }
+  return "Stream all";
 };
-
-const fallbackImage = (source = "") => resolveImage(source || "") || "";
-
-const buildReleaseRows = ({ entries = [], creatorName, fallbackImageUrl }) => {
-  const fallbackRows = [
-    {
-      title: "Lost in Thought",
-      subtitle: creatorName,
-      listens: 482,
-      duration: "2:30",
-      imageUrl: fallbackImageUrl,
-    },
-    {
-      title: "Rainy Night",
-      subtitle: creatorName,
-      listens: 482,
-      duration: "3:32",
-      imageUrl: fallbackImageUrl,
-    },
-    {
-      title: "Endless Dream",
-      subtitle: creatorName,
-      listens: 482,
-      duration: "2:35",
-      imageUrl: fallbackImageUrl,
-    },
-  ];
-
-  const mappedEntries = entries.map((entry, index) => ({
-    title: entry?.title || fallbackRows[index]?.title || `Release ${index + 1}`,
-    subtitle: entry?.artistName || entry?.authorName || creatorName,
-    listens: Number(entry?.streams || entry?.plays || entry?.listens || fallbackRows[index]?.listens || 482),
-    duration:
-      entry?.durationSec
-        ? formatDuration(entry.durationSec)
-        : fallbackRows[index]?.duration || "3:12",
-    imageUrl:
-      fallbackImage(entry?.coverImageUrl) ||
-      fallbackImage(entry?.thumbnailUrl) ||
-      fallbackRows[index]?.imageUrl ||
-      fallbackImageUrl,
-  }));
-
-  return [...mappedEntries, ...fallbackRows.slice(mappedEntries.length)].slice(0, 3);
-};
-
-const buildMockPreviewData = ({ creatorProfile, dashboard }) => {
-  const creatorName =
-    creatorProfile?.displayName ||
-    creatorProfile?.fullName ||
-    "Stephen Daniel Kurah";
-  const creatorLanes = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes)
-    .map((entry) => formatCreatorLaneLabel(entry))
-    .filter(Boolean);
-  const musicContent = dashboard?.content?.music || {};
-  const bookContent = dashboard?.content?.books || {};
-  const podcastContent = dashboard?.content?.podcasts || {};
-  const trackEntries = [
-    ...(Array.isArray(musicContent.tracks) ? musicContent.tracks : []),
-    ...(Array.isArray(musicContent.albums) ? musicContent.albums : []),
-  ];
-  const videoEntries = Array.isArray(musicContent.videos) ? musicContent.videos : [];
-  const bookEntries = Array.isArray(bookContent.items) ? bookContent.items : [];
-  const podcastEntries = Array.isArray(podcastContent.episodes)
-    ? podcastContent.episodes
-    : [];
-
-  const primaryTrack = pickPrimaryItem(trackEntries);
-  const primaryBook = pickPrimaryItem(bookEntries);
-  const primaryPodcast = pickPrimaryItem(podcastEntries);
-  const primaryVideo = pickPrimaryItem(videoEntries);
-
-  const avatarUrl =
-    fallbackImage(creatorProfile?.user?.avatar) ||
-    fallbackImage(creatorProfile?.coverImageUrl) ||
-    fallbackImage(primaryTrack?.coverImageUrl) ||
-    "";
-  const heroUrl =
-    fallbackImage(creatorProfile?.coverImageUrl) ||
-    fallbackImage(primaryTrack?.coverImageUrl) ||
-    fallbackImage(primaryVideo?.thumbnailUrl) ||
-    avatarUrl;
-
-  const featuredMusicTitle = primaryTrack?.title || "Living in the Moment";
-  const featuredMusicPrice = Number(primaryTrack?.price ?? 500);
-  const featuredMusicImage =
-    fallbackImage(primaryTrack?.coverImageUrl) || heroUrl || avatarUrl;
-
-  return {
-    creatorName,
-    avatarUrl,
-    heroUrl,
-    followers: Number(
-      creatorProfile?.user?.followersCount ||
-        creatorProfile?.followersCount ||
-        1532
-    ),
-    tagline:
-      creatorProfile?.bio ||
-      "A premium fan page where supporters can stream, preview, buy, and unlock every drop in one place.",
-    lanes: creatorLanes.length
-      ? creatorLanes
-      : ["Music", "Podcasts", "Book Publishing"],
-    supportPrice: Number(creatorProfile?.subscriptionPrice ?? 500),
-    tabs: ["Overview", "Music", "Books", "Podcasts", "Videos"],
-    sidebarLinks: ["Overview", "Music", "Books", "Podcasts", "Videos", "Downloads"],
-    stats: [
-      {
-        label: "Tracks",
-        value:
-          dashboard?.categories?.music?.uploads ||
-          trackEntries.length ||
-          12,
-      },
-      {
-        label: "Books",
-        value:
-          dashboard?.categories?.bookPublishing?.uploads ||
-          bookEntries.length ||
-          2,
-      },
-      {
-        label: "Episodes",
-        value:
-          dashboard?.categories?.podcast?.uploads ||
-          podcastEntries.length ||
-          5,
-      },
-      {
-        label: "Videos",
-        value: videoEntries.length || 3,
-      },
-    ],
-    music: {
-      title: featuredMusicTitle,
-      subtitle: primaryTrack?.artistName || creatorName,
-      releaseType:
-        primaryTrack?.releaseType ||
-        primaryTrack?.contentType ||
-        "Single",
-      genre:
-        primaryTrack?.genre ||
-        creatorProfile?.genres?.[0] ||
-        "Afrobeat",
-      duration:
-        primaryTrack?.durationSec
-          ? formatDuration(primaryTrack.durationSec)
-          : "3:58",
-      price: featuredMusicPrice,
-      coverUrl: featuredMusicImage,
-      queueCount: "1.201",
-      listeners: 201,
-    },
-    popularReleases: buildReleaseRows({
-      entries: trackEntries,
-      creatorName,
-      fallbackImageUrl: featuredMusicImage,
-    }),
-    book: {
-      title: primaryBook?.title || "Untitled book",
-      author: primaryBook?.authorName || creatorName,
-      imprint: primaryBook?.genre || "Attobeat",
-      price: Number(primaryBook?.price ?? 2500),
-      coverUrl:
-        fallbackImage(primaryBook?.coverImageUrl) ||
-        fallbackImage(primaryBook?.thumbnailUrl) ||
-        heroUrl ||
-        avatarUrl,
-    },
-    podcast: {
-      title: primaryPodcast?.title || "Studio Notes: The Long Game",
-      series:
-        primaryPodcast?.podcastSeries ||
-        creatorProfile?.podcastsProfile?.seriesTitle ||
-        "Creator Sessions",
-      summary:
-        primaryPodcast?.description ||
-        "Listen to premium conversations, behind-the-scenes notes, and featured audio drops.",
-      coverUrl:
-        fallbackImage(primaryPodcast?.coverImageUrl) ||
-        heroUrl ||
-        avatarUrl,
-      duration:
-        primaryPodcast?.durationSec
-          ? formatDuration(primaryPodcast.durationSec)
-          : "41:08",
-    },
-    video: {
-      title: primaryVideo?.title || "Golden Hour Session",
-      channel: creatorName,
-      summary:
-        primaryVideo?.description ||
-        "Watch premium live sessions, visual stories, and YouTube-ready drops from the creator studio.",
-      thumbnailUrl:
-        fallbackImage(primaryVideo?.thumbnailUrl) ||
-        fallbackImage(primaryVideo?.coverImageUrl) ||
-        heroUrl ||
-        avatarUrl,
-    },
-    platforms: [
-      { label: "Play on YouTube", tone: "dark" },
-      { label: "Play on Spotify", tone: "green" },
-    ],
-    supporterCopy:
-      "Supporters unlock exclusive drops, premium downloads, and direct support access from the public page.",
-    rewardsCopy: "Weekly rewards land here for top supporters and subscribers.",
-  };
-};
-
-function getInitials(label = "") {
-  return String(label || "Creator")
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((entry) => entry[0] || "")
-    .join("")
-    .toUpperCase();
-}
 
 function FanPageImage({
   src,
@@ -258,13 +41,68 @@ export default function CreatorFanPagePreview({
   previewData,
   dashboardPath = "/creator/dashboard",
 }) {
-  const data = previewData || buildMockPreviewData({ creatorProfile, dashboard });
-  const initials = getInitials(data.creatorName);
+  const navigate = useNavigate();
+  const data = useMemo(
+    () => previewData || buildCreatorFanPageData({ creatorProfile, dashboard }),
+    [creatorProfile, dashboard, previewData]
+  );
+  const [activeTab, setActiveTab] = useState(
+    resolveCreatorFanPageTabKey("music")
+  );
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    setActiveTab(resolveCreatorFanPageTabKey("music"));
+  }, [data.creatorName]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+    setIsPlaying(false);
+  }, [activeTab]);
+
+  const initials = getCreatorFanPageInitials(data.creatorName);
   const heroStyle = data.heroUrl
     ? {
         backgroundImage: `linear-gradient(135deg, rgba(19, 24, 20, 0.88), rgba(35, 41, 33, 0.72)), url("${data.heroUrl}")`,
       }
     : undefined;
+
+  const activeSection = data.sections?.[activeTab] || data.sections?.music;
+  const queue = activeSection?.items?.length
+    ? activeSection.items
+    : [activeSection?.featured].filter(Boolean);
+  const currentItem = queue[activeIndex] || activeSection?.featured;
+
+  const openPath = (path = "", options = undefined) => {
+    if (!path) {
+      return;
+    }
+    navigate(path, options);
+  };
+
+  const openPreview = (item = currentItem) => {
+    openPath(item?.previewPath || item?.detailPath || activeSection?.uploadPath);
+  };
+
+  const openDetails = (item = currentItem) => {
+    openPath(item?.detailPath || item?.publicPath || activeSection?.uploadPath);
+  };
+
+  const openPublic = (item = currentItem) => {
+    openPath(item?.publicPath || activeSection?.publicPath || activeSection?.uploadPath);
+  };
+
+  const movePlayer = (direction = 1) => {
+    if (!queue.length) {
+      return;
+    }
+    setActiveIndex((current) => {
+      const total = queue.length;
+      return (current + direction + total) % total;
+    });
+    setIsPlaying(true);
+  };
 
   return (
     <section className="creator-fan-page" aria-label="Fan Page View">
@@ -285,13 +123,25 @@ export default function CreatorFanPagePreview({
           <Link className="creator-fan-page__workspace-link" to={dashboardPath}>
             Back to dashboard
           </Link>
-          <button type="button" className="creator-fan-page__top-pill">
+          <button
+            type="button"
+            className="creator-fan-page__top-pill"
+            onClick={() => openPath("/home", { state: { openMessenger: true } })}
+          >
             Inbox
           </button>
-          <button type="button" className="creator-fan-page__top-pill">
+          <button
+            type="button"
+            className="creator-fan-page__top-pill"
+            onClick={() => openPath("/notifications")}
+          >
             Alerts
           </button>
-          <button type="button" className="creator-fan-page__top-pill">
+          <button
+            type="button"
+            className="creator-fan-page__top-pill"
+            onClick={() => openPath("/settings/security")}
+          >
             Settings
           </button>
           <FanPageImage
@@ -318,24 +168,36 @@ export default function CreatorFanPagePreview({
           </div>
 
           <div className="creator-fan-page__button-row">
-            <button type="button" className="creator-fan-page__button creator-fan-page__button--light">
+            <button
+              type="button"
+              className="creator-fan-page__button creator-fan-page__button--light"
+              onClick={() => openPublic(activeSection?.featured)}
+            >
               Follow
             </button>
-            <button type="button" className="creator-fan-page__button creator-fan-page__button--accent">
+            <button
+              type="button"
+              className="creator-fan-page__button creator-fan-page__button--accent"
+              onClick={() => openPublic(activeSection?.featured)}
+            >
               Donate
             </button>
           </div>
 
           <nav className="creator-fan-page__sidebar-nav" aria-label="Fan page sections">
-            {data.sidebarLinks.map((item, index) => (
-              <button
-                key={item}
-                type="button"
-                className={`creator-fan-page__nav-link${index === 0 ? " is-active" : ""}`}
-              >
-                {item}
-              </button>
-            ))}
+            {data.sidebarLinks.map((item) => {
+              const isActive = item.key === activeTab;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`creator-fan-page__nav-link${isActive ? " is-active" : ""}`}
+                  onClick={() => setActiveTab(item.key)}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </nav>
 
           <div className="creator-fan-page__stats-grid">
@@ -353,34 +215,50 @@ export default function CreatorFanPagePreview({
             <span className="creator-fan-page__eyebrow">Public Fan Experience</span>
             <h2>{data.creatorName}</h2>
             <p>
-              {formatFollowerCount(data.followers)} followers
+              {formatCreatorFanPageFollowerCount(data.followers)} followers
               {data.lanes.length ? ` / ${data.lanes.join(" / ")}` : ""}
             </p>
 
             <div className="creator-fan-page__button-row">
-              <button type="button" className="creator-fan-page__button creator-fan-page__button--accent">
+              <button
+                type="button"
+                className="creator-fan-page__button creator-fan-page__button--accent"
+                onClick={() => openPublic(activeSection?.featured)}
+              >
                 Follow
               </button>
-              <button type="button" className="creator-fan-page__button creator-fan-page__button--light">
+              <button
+                type="button"
+                className="creator-fan-page__button creator-fan-page__button--light"
+                onClick={() => openPublic(activeSection?.featured)}
+              >
                 Donate
               </button>
-              <button type="button" className="creator-fan-page__button creator-fan-page__button--light">
+              <button
+                type="button"
+                className="creator-fan-page__button creator-fan-page__button--light"
+                onClick={() => openPublic(activeSection?.featured)}
+              >
                 Subscribe
               </button>
             </div>
 
             <div className="creator-fan-page__tabs" role="tablist" aria-label="Fan page tabs">
-              {data.tabs.map((tab, index) => (
-                <button
-                  key={tab}
-                  type="button"
-                  className={`creator-fan-page__tab${index === 1 ? " is-active" : ""}`}
-                  role="tab"
-                  aria-selected={index === 1}
-                >
-                  {tab}
-                </button>
-              ))}
+              {data.tabs.map((tab) => {
+                const isActive = tab.key === activeTab;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    className={`creator-fan-page__tab${isActive ? " is-active" : ""}`}
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setActiveTab(tab.key)}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
           </section>
 
@@ -388,52 +266,70 @@ export default function CreatorFanPagePreview({
             <section className="creator-fan-page__panel creator-fan-page__panel--releases">
               <div className="creator-fan-page__panel-head">
                 <div>
-                  <span>Music</span>
-                  <h3>Popular Releases</h3>
+                  <span>{activeSection?.label || "Music"}</span>
+                  <h3>{activeSection?.title || "Popular Releases"}</h3>
                 </div>
-                <button type="button" className="creator-fan-page__button creator-fan-page__button--ghost">
-                  Stream all
+                <button
+                  type="button"
+                  className="creator-fan-page__button creator-fan-page__button--ghost"
+                  onClick={() => openPublic()}
+                >
+                  {getSectionActionLabel(activeSection?.key)}
                 </button>
               </div>
 
               <article className="creator-fan-page__feature-release">
                 <FanPageImage
-                  src={data.music.coverUrl}
-                  alt={data.music.title}
+                  src={currentItem?.imageUrl}
+                  alt={currentItem?.title || activeSection?.label}
                   initials={initials}
                   className="creator-fan-page__image--release"
                 />
 
                 <div className="creator-fan-page__feature-copy">
                   <span className="creator-fan-page__pill">
-                    {String(data.music.releaseType || "Single").toUpperCase()}
+                    {String(currentItem?.releaseType || activeSection?.label || "Release").toUpperCase()}
                   </span>
-                  <h4>{data.music.title}</h4>
-                  <p>{data.music.subtitle}</p>
+                  <h4>{currentItem?.title || activeSection?.label}</h4>
+                  <p>{currentItem?.subtitle || data.creatorName}</p>
 
                   <div className="creator-fan-page__meta-row">
-                    <span>{data.music.genre}</span>
-                    <span>{data.music.duration}</span>
-                    <span>{formatCurrency(data.music.price)}</span>
+                    {currentItem?.genre ? <span>{currentItem.genre}</span> : null}
+                    {currentItem?.secondaryLine ? <span>{currentItem.secondaryLine}</span> : null}
+                    {Number(currentItem?.price || 0) > 0 ? (
+                      <span>{formatCurrency(currentItem.price)}</span>
+                    ) : null}
                   </div>
                 </div>
 
                 <div className="creator-fan-page__feature-actions">
-                  <button type="button" className="creator-fan-page__button creator-fan-page__button--light">
+                  <button
+                    type="button"
+                    className="creator-fan-page__button creator-fan-page__button--light"
+                    onClick={() => openPreview()}
+                  >
                     Preview
                   </button>
-                  <button type="button" className="creator-fan-page__button creator-fan-page__button--accent">
-                    Buy
+                  <button
+                    type="button"
+                    className="creator-fan-page__button creator-fan-page__button--accent"
+                    onClick={() => openDetails()}
+                  >
+                    Open details
                   </button>
-                  <button type="button" className="creator-fan-page__button creator-fan-page__button--ghost">
-                    Download
+                  <button
+                    type="button"
+                    className="creator-fan-page__button creator-fan-page__button--ghost"
+                    onClick={() => openPath(activeSection?.uploadPath)}
+                  >
+                    Open studio
                   </button>
                 </div>
               </article>
 
               <div className="creator-fan-page__release-list">
-                {data.popularReleases.map((release, index) => (
-                  <article key={`${release.title}-${index}`} className="creator-fan-page__release-row">
+                {queue.slice(0, 3).map((release, index) => (
+                  <article key={release.id || `${release.title}-${index}`} className="creator-fan-page__release-row">
                     <span className="creator-fan-page__release-index">{index + 1}.</span>
                     <FanPageImage
                       src={release.imageUrl}
@@ -443,11 +339,18 @@ export default function CreatorFanPagePreview({
                     />
                     <div className="creator-fan-page__release-copy">
                       <strong>{release.title}</strong>
-                      <span>{release.subtitle}</span>
+                      <span>{release.subtitle || data.creatorName}</span>
                     </div>
-                    <small>{release.listens} saves</small>
-                    <small>{release.duration}</small>
-                    <button type="button" className="creator-fan-page__button creator-fan-page__button--icon">
+                    <small>{release.statusLabel}</small>
+                    <small>{release.secondaryLine || release.duration || ""}</small>
+                    <button
+                      type="button"
+                      className="creator-fan-page__button creator-fan-page__button--icon"
+                      onClick={() => {
+                        setActiveIndex(index);
+                        setIsPlaying(true);
+                      }}
+                    >
                       Play
                     </button>
                   </article>
@@ -461,7 +364,11 @@ export default function CreatorFanPagePreview({
                   <span>Podcasts</span>
                   <h3>Featured Episode</h3>
                 </div>
-                <button type="button" className="creator-fan-page__button creator-fan-page__button--ghost">
+                <button
+                  type="button"
+                  className="creator-fan-page__button creator-fan-page__button--ghost"
+                  onClick={() => openPublic(data.podcast)}
+                >
                   Listen
                 </button>
               </div>
@@ -476,7 +383,7 @@ export default function CreatorFanPagePreview({
                 <div>
                   <h4>{data.podcast.title}</h4>
                   <p>{data.podcast.series}</p>
-                  <small>{data.podcast.duration}</small>
+                  <small>{data.podcast.secondaryLine || data.podcast.duration}</small>
                 </div>
                 <p>{data.podcast.summary}</p>
               </article>
@@ -488,7 +395,11 @@ export default function CreatorFanPagePreview({
                   <span>Videos</span>
                   <h3>Featured Visual</h3>
                 </div>
-                <button type="button" className="creator-fan-page__button creator-fan-page__button--ghost">
+                <button
+                  type="button"
+                  className="creator-fan-page__button creator-fan-page__button--ghost"
+                  onClick={() => openPublic(data.video)}
+                >
                   Watch
                 </button>
               </div>
@@ -503,7 +414,7 @@ export default function CreatorFanPagePreview({
                 <div>
                   <h4>{data.video.title}</h4>
                   <p>{data.video.channel}</p>
-                  <small>YouTube premiere ready</small>
+                  <small>{data.video.secondaryLine || "YouTube premiere ready"}</small>
                 </div>
                 <p>{data.video.summary}</p>
               </article>
@@ -516,7 +427,11 @@ export default function CreatorFanPagePreview({
             <span>Unlock Exclusive Content</span>
             <h3>{formatCurrency(data.supportPrice)}/month</h3>
             <p>{data.supporterCopy}</p>
-            <button type="button" className="creator-fan-page__button creator-fan-page__button--accent">
+            <button
+              type="button"
+              className="creator-fan-page__button creator-fan-page__button--accent"
+              onClick={() => openPublic(activeSection?.featured)}
+            >
               Subscribe for {formatCurrency(data.supportPrice)}/month
             </button>
           </section>
@@ -534,6 +449,7 @@ export default function CreatorFanPagePreview({
                   key={platform.label}
                   type="button"
                   className={`creator-fan-page__platform-button creator-fan-page__platform-button--${platform.tone}`}
+                  onClick={() => openPath(platform.path)}
                 >
                   {platform.label}
                 </button>
@@ -565,10 +481,18 @@ export default function CreatorFanPagePreview({
             </article>
 
             <div className="creator-fan-page__button-row">
-              <button type="button" className="creator-fan-page__button creator-fan-page__button--accent">
+              <button
+                type="button"
+                className="creator-fan-page__button creator-fan-page__button--accent"
+                onClick={() => openPublic(data.book)}
+              >
                 Buy Now
               </button>
-              <button type="button" className="creator-fan-page__button creator-fan-page__button--light">
+              <button
+                type="button"
+                className="creator-fan-page__button creator-fan-page__button--light"
+                onClick={() => openPreview(data.book)}
+              >
                 Preview
               </button>
             </div>
@@ -584,34 +508,46 @@ export default function CreatorFanPagePreview({
       <footer className="creator-fan-page__player">
         <div className="creator-fan-page__player-track">
           <FanPageImage
-            src={data.music.coverUrl}
-            alt={data.music.title}
+            src={currentItem?.imageUrl || data.music.coverUrl}
+            alt={currentItem?.title || data.music.title}
             initials={initials}
             className="creator-fan-page__image--player"
           />
           <div>
-            <strong>{data.music.title}</strong>
-            <span>{data.music.subtitle}</span>
+            <strong>{currentItem?.title || data.music.title}</strong>
+            <span>{currentItem?.subtitle || data.music.subtitle}</span>
           </div>
         </div>
 
         <div className="creator-fan-page__player-controls" aria-hidden="true">
-          <button type="button" className="creator-fan-page__button creator-fan-page__button--icon">
+          <button
+            type="button"
+            className="creator-fan-page__button creator-fan-page__button--icon"
+            onClick={() => movePlayer(-1)}
+          >
             Back
           </button>
-          <button type="button" className="creator-fan-page__button creator-fan-page__button--accent">
-            Play
+          <button
+            type="button"
+            className="creator-fan-page__button creator-fan-page__button--accent"
+            onClick={() => setIsPlaying((current) => !current)}
+          >
+            {isPlaying ? "Pause" : "Play"}
           </button>
-          <button type="button" className="creator-fan-page__button creator-fan-page__button--icon">
+          <button
+            type="button"
+            className="creator-fan-page__button creator-fan-page__button--icon"
+            onClick={() => movePlayer(1)}
+          >
             Next
           </button>
         </div>
 
         <div className="creator-fan-page__player-meta">
-          <span>{data.music.queueCount}</span>
-          <span>{data.music.duration}</span>
-          <span>Download</span>
-          <strong>{formatCurrency(data.music.price)}</strong>
+          <span>{currentItem?.statusLabel || data.music.queueCount}</span>
+          <span>{currentItem?.secondaryLine || currentItem?.duration || ""}</span>
+          <span>{currentItem?.metricLabel ? `${currentItem.metricValue || 0} ${currentItem.metricLabel}` : "Ready"}</span>
+          <strong>{formatCurrency(currentItem?.price || 0)}</strong>
         </div>
       </footer>
     </section>

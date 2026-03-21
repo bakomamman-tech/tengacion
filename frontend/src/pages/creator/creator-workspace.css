@@ -1460,6 +1460,65 @@ textarea {
   gap: 8px;
 }
 
+.creator-fan-preview__queue,
+.creator-fan-preview__workspace-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.creator-fan-preview__queue-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 247, 233, 0.06);
+  border: 1px solid rgba(255, 247, 233, 0.08);
+}
+
+.creator-fan-preview__queue-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.creator-fan-preview__queue-copy strong,
+.creator-fan-preview__queue-copy span,
+.creator-fan-preview__queue-meta small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.creator-fan-preview__queue-copy span {
+  color: rgba(246, 239, 223, 0.68);
+  font-size: 0.84rem;
+}
+
+.creator-fan-preview__queue-meta {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.creator-fan-preview__queue-meta small {
+  color: rgba(246, 239, 223, 0.62);
+  font-size: 0.78rem;
+}
+
+.creator-fan-preview__mini-action {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 247, 233, 0.08);
+  color: #f6efdf;
+  border: 1px solid rgba(255, 247, 233, 0.08);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .creator-fan-preview__trackline span {
   height: 7px;
   border-radius: 999px;
@@ -1525,6 +1584,12 @@ textarea {
 .creator-fan-preview__player-controls button.is-active {
   background: linear-gradient(135deg, #d7aa58, #b98735);
   color: #2f2718;
+}
+
+.creator-fan-preview__play-pill.is-active {
+  background: linear-gradient(135deg, #d7aa58, #b98735);
+  color: #2f2718;
+  border-color: transparent;
 }
 
 .creator-fan-preview__player-progress {
@@ -2813,7 +2878,8 @@ textarea {
 
   .creator-fan-preview__hero,
   .creator-fan-preview__feature-row,
-  .creator-fan-preview__mini-body {
+  .creator-fan-preview__mini-body,
+  .creator-fan-preview__queue-row {
     grid-template-columns: 1fr;
   }
 
@@ -2824,5 +2890,9 @@ textarea {
 
   .creator-upload-preview-card {
     position: static;
+  }
+
+  .creator-fan-preview__queue-meta {
+    justify-items: start;
   }
 }

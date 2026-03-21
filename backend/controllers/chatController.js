@@ -21,6 +21,7 @@ exports.sendChatMessage = asyncHandler(async (req, res) => {
         type: req.body?.type,
         metadata: req.body?.metadata,
         attachments: req.body?.attachments,
+        replyTo: req.body?.replyTo,
         clientId: req.body?.clientId,
       },
     });

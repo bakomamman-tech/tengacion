@@ -32,6 +32,46 @@ const ensureContentCardMetadata = async (metadata) => {
   };
 };
 
+const buildReplyReference = async ({ conversationId, replyToMessageId }) => {
+  if (!replyToMessageId) {
+    return undefined;
+  }
+
+  const target = await Message.findOne({
+    _id: replyToMessageId,
+    conversationId,
+  }).select(
+    "_id senderId senderName text type metadata attachments"
+  );
+
+  if (!target) {
+    throw new Error("Reply target not found");
+  }
+
+  const normalizedTarget = normalizeMessage(target.toObject());
+  return {
+    messageId: target._id,
+    senderId: target.senderId,
+    senderName: normalizedTarget.senderName || "",
+    type: normalizedTarget.type || "text",
+    text: String(normalizedTarget.text || "").slice(0, 400),
+    contentTitle:
+      normalizedTarget.type === "contentCard"
+        ? String(
+            normalizedTarget.metadata?.title
+              || normalizedTarget.metadata?.itemType
+              || ""
+          ).slice(0, 200)
+        : "",
+    attachmentType: String(
+      normalizedTarget.attachments?.[0]?.type || ""
+    ).slice(0, 16),
+    attachmentCount: Array.isArray(normalizedTarget.attachments)
+      ? normalizedTarget.attachments.length
+      : 0,
+  };
+};
+
 const persistChatMessage = async ({ senderId, receiverId, payload }) => {
   if (
     !mongoose.Types.ObjectId.isValid(senderId) ||
@@ -94,6 +134,10 @@ const persistChatMessage = async ({ senderId, receiverId, payload }) => {
         ? await ensureContentCardMetadata(parsed.metadata)
         : undefined,
     attachments: parsed.attachments || [],
+    replyTo: await buildReplyReference({
+      conversationId,
+      replyToMessageId: parsed.replyToMessageId,
+    }),
     time: Date.now(),
     clientId: parsed.clientId || undefined,
   });

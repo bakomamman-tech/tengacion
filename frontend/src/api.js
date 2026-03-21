@@ -1745,6 +1745,16 @@ export const deleteMessageForMe = (messageId) =>
     headers: getAuthHeaders(),
   });
 
+export const reactToChatMessage = (messageId, emoji) =>
+  request(`${API_BASE}/messages/${encodeURIComponent(messageId || "")}/react`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ emoji }),
+  });
+
 // ======================================================
 // ADMIN
 // ======================================================

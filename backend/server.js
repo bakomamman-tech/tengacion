@@ -392,6 +392,7 @@ if (process.env.NODE_ENV !== "test") {
             type: payload.type,
             metadata: payload.metadata,
             attachments: payload.attachments,
+            replyTo: payload.replyTo,
             clientId: clientMsgId,
           },
         });

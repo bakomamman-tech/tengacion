@@ -35,6 +35,7 @@ const normalizeMessage = (message) => {
     message?.senderId && typeof message.senderId === "object"
       ? message.senderId
       : null;
+  const replyTo = message?.replyTo || null;
 
   return {
     _id: toIdString(message._id),
@@ -69,6 +70,28 @@ const normalizeMessage = (message) => {
           }))
           .filter((file) => file.url)
       : [],
+    replyTo:
+      replyTo && replyTo.messageId
+        ? {
+            messageId: toIdString(replyTo.messageId),
+            senderId: toIdString(replyTo.senderId),
+            senderName: replyTo.senderName || "",
+            type: MESSAGE_TYPES.includes(replyTo.type) ? replyTo.type : "text",
+            text: replyTo.text || "",
+            contentTitle: replyTo.contentTitle || "",
+            attachmentType: String(replyTo.attachmentType || "").trim(),
+            attachmentCount: Number(replyTo.attachmentCount) || 0,
+          }
+        : null,
+    reactions: Array.isArray(message.reactions)
+      ? message.reactions
+          .map((entry) => ({
+            userId: toIdString(entry?.userId),
+            emoji: String(entry?.emoji || "").trim(),
+            createdAt: entry?.createdAt || null,
+          }))
+          .filter((entry) => entry.userId && entry.emoji)
+      : [],
     time:
       message.time ||
       (message.createdAt ? new Date(message.createdAt).getTime() : Date.now()),
@@ -82,6 +105,9 @@ const normalizeIncomingMessagePayload = (payload = {}) => {
   const text = String(payload.text || "").trim();
   const clientId = String(payload.clientId || "").trim();
   const type = MESSAGE_TYPES.includes(payload.type) ? payload.type : "text";
+  const replyToMessageId = String(
+    payload.replyTo?.messageId || payload.replyToMessageId || ""
+  ).trim();
   const attachments = Array.isArray(payload.attachments)
     ? payload.attachments
         .map((file) => ({
@@ -142,12 +168,17 @@ const normalizeIncomingMessagePayload = (payload = {}) => {
     }
   }
 
+  if (replyToMessageId && !mongoose.Types.ObjectId.isValid(replyToMessageId)) {
+    return { error: "Invalid reply target" };
+  }
+
   return {
     text,
     clientId,
     type,
     metadata,
     attachments,
+    replyToMessageId,
   };
 };
 

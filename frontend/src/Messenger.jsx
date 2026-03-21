@@ -6,6 +6,7 @@ import {
   deleteMessageForMe,
   getChatContacts,
   getConversationMessages,
+  reactToChatMessage,
   resolveImage,
   sendChatMessage,
   shareMessageToFollowers,
@@ -24,6 +25,16 @@ const QUICK_REACTIONS = [
   "\u{1F62E}",
   "\u{1F622}",
   "\u{1F525}",
+];
+const MESSAGE_ACTION_EMOJIS = [
+  "\u{1F44D}",
+  "\u{2764}\u{FE0F}",
+  "\u{1F602}",
+  "\u{1F62E}",
+  "\u{1F622}",
+  "\u{1F525}",
+  "\u{1F389}",
+  "\u{1F44F}",
 ];
 
 const toIdString = (value) => {
@@ -192,6 +203,33 @@ const normalizeMessage = (message) => ({
         }))
         .filter((file) => file.url)
     : [],
+  replyTo:
+    message?.replyTo?.messageId
+      ? {
+          messageId: toIdString(message.replyTo.messageId),
+          senderId: toIdString(message.replyTo.senderId),
+          senderName: message.replyTo.senderName || "",
+          type:
+            message.replyTo.type === "contentCard"
+              ? "contentCard"
+              : message.replyTo.type === "voice"
+                ? "voice"
+                : "text",
+          text: message.replyTo.text || "",
+          contentTitle: message.replyTo.contentTitle || "",
+          attachmentType: String(message.replyTo.attachmentType || "").trim(),
+          attachmentCount: Number(message.replyTo.attachmentCount) || 0,
+        }
+      : null,
+  reactions: Array.isArray(message?.reactions)
+    ? message.reactions
+        .map((entry) => ({
+          userId: toIdString(entry?.userId),
+          emoji: String(entry?.emoji || "").trim(),
+          createdAt: entry?.createdAt || null,
+        }))
+        .filter((entry) => entry.userId && entry.emoji)
+    : [],
   time:
     message?.time ||
     (message?.createdAt ? new Date(message.createdAt).getTime() : Date.now()),
@@ -208,6 +246,151 @@ const getMessagePreviewText = (message) => {
     return message.attachments[0]?.type === "audio" ? "voice note" : "attachment";
   }
   return message?.text || "";
+};
+
+const getReplyPreviewText = (message) => {
+  if (!message) {
+    return "";
+  }
+  if (message.type === "contentCard") {
+    return message.metadata?.title || "Shared content";
+  }
+  if (message.type === "voice") {
+    return "Voice message";
+  }
+  if (message.attachmentType) {
+    const firstType = String(message.attachmentType || "").trim().toLowerCase();
+    if (firstType === "image") {
+      return "Photo";
+    }
+    if (firstType === "video") {
+      return "Video";
+    }
+    if (firstType === "audio") {
+      return "Voice message";
+    }
+    return "Attachment";
+  }
+  if (Array.isArray(message.attachments) && message.attachments.length > 0) {
+    const firstType = String(message.attachments[0]?.type || "").trim().toLowerCase();
+    if (firstType === "image") {
+      return "Photo";
+    }
+    if (firstType === "video") {
+      return "Video";
+    }
+    if (firstType === "audio") {
+      return "Voice message";
+    }
+    return "Attachment";
+  }
+  return String(message.text || "").trim() || "Message";
+};
+
+const buildReplyTarget = (message) => {
+  const messageId = toIdString(message?._id);
+  if (!messageId) {
+    return null;
+  }
+  return {
+    messageId,
+    senderId: toIdString(message?.senderId),
+    senderName: message?.senderName || "",
+    type: message?.type || "text",
+    text: String(message?.text || ""),
+    contentTitle: String(message?.metadata?.title || ""),
+    attachmentType: String(message?.attachments?.[0]?.type || "").trim(),
+    attachmentCount: Array.isArray(message?.attachments) ? message.attachments.length : 0,
+    previewText: getReplyPreviewText(message),
+  };
+};
+
+const toggleReactionEntries = (entries = [], userId = "", emoji = "") => {
+  const normalizedUserId = toIdString(userId);
+  const nextEmoji = String(emoji || "").trim();
+  if (!normalizedUserId || !nextEmoji) {
+    return Array.isArray(entries) ? entries : [];
+  }
+
+  const list = Array.isArray(entries)
+    ? entries.map((entry) => ({
+        userId: toIdString(entry?.userId),
+        emoji: String(entry?.emoji || "").trim(),
+        createdAt: entry?.createdAt || null,
+      }))
+    : [];
+
+  const existingIndex = list.findIndex((entry) => entry.userId === normalizedUserId);
+  if (existingIndex >= 0) {
+    if (list[existingIndex].emoji === nextEmoji) {
+      list.splice(existingIndex, 1);
+    } else {
+      list[existingIndex] = {
+        ...list[existingIndex],
+        emoji: nextEmoji,
+        createdAt: new Date().toISOString(),
+      };
+    }
+    return list;
+  }
+
+  return [
+    ...list,
+    {
+      userId: normalizedUserId,
+      emoji: nextEmoji,
+      createdAt: new Date().toISOString(),
+    },
+  ];
+};
+
+const summarizeReactions = (entries = [], meId = "") => {
+  const order = [];
+  const counts = new Map();
+  let viewerEmoji = "";
+
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    const emoji = String(entry?.emoji || "").trim();
+    if (!emoji) {
+      continue;
+    }
+    if (!counts.has(emoji)) {
+      counts.set(emoji, 0);
+      order.push(emoji);
+    }
+    counts.set(emoji, counts.get(emoji) + 1);
+    if (toIdString(entry?.userId) === toIdString(meId)) {
+      viewerEmoji = emoji;
+    }
+  }
+
+  return {
+    total: [...counts.values()].reduce((sum, value) => sum + value, 0),
+    viewerEmoji,
+    items: order.map((emoji) => ({
+      emoji,
+      count: counts.get(emoji) || 0,
+      viewerReacted: emoji === viewerEmoji,
+    })),
+  };
+};
+
+const getReplyLabel = ({ message, meId }) => {
+  const replySenderId = toIdString(message?.replyTo?.senderId);
+  const messageSenderId = toIdString(message?.senderId);
+  const replySenderName = message?.replyTo?.senderName || "message";
+
+  if (messageSenderId === toIdString(meId)) {
+    return replySenderId === toIdString(meId)
+      ? "You replied to yourself"
+      : `You replied to ${replySenderName}`;
+  }
+
+  if (replySenderId === toIdString(meId)) {
+    return `${message?.senderName || "They"} replied to you`;
+  }
+
+  return `${message?.senderName || "They"} replied to ${replySenderName}`;
 };
 
 const isForConversation = (message, meId, otherId) => {
@@ -241,6 +424,10 @@ export default function Messenger({ user, onClose, onMinimize }) {
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [voicePreview, setVoicePreview] = useState(null);
   const [isSendingVoice, setIsSendingVoice] = useState(false);
+  const [replyTarget, setReplyTarget] = useState(null);
+  const [activeMessageId, setActiveMessageId] = useState("");
+  const [hoveredMessageId, setHoveredMessageId] = useState("");
+  const [openMessageReactionId, setOpenMessageReactionId] = useState("");
   const [openVoiceMenuId, setOpenVoiceMenuId] = useState("");
   const [voicePlaybackById, setVoicePlaybackById] = useState({});
   const [typingByUserId, setTypingByUserId] = useState({});
@@ -260,6 +447,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
   const chatMenuRef = useRef(null);
   const voiceAudioRefs = useRef(new Map());
   const mediaInputRef = useRef(null);
+  const composerInputRef = useRef(null);
   const watchVideoRef = useRef(null);
 
   const [isMobileSheet, setIsMobileSheet] = useState(() => {
@@ -296,6 +484,13 @@ export default function Messenger({ user, onClose, onMinimize }) {
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
+  }, [selectedId]);
+
+  useEffect(() => {
+    setReplyTarget(null);
+    setActiveMessageId("");
+    setHoveredMessageId("");
+    setOpenMessageReactionId("");
   }, [selectedId]);
 
   useEffect(() => {
@@ -834,6 +1029,30 @@ export default function Messenger({ user, onClose, onMinimize }) {
         prev.filter((message) => toIdString(message?._id) !== targetId)
       );
     });
+    socket.on("message:reaction", ({ messageId, reactions }) => {
+      const targetId = toIdString(messageId);
+      if (!targetId) {
+        return;
+      }
+      setMessages((prev) =>
+        prev.map((message) =>
+          toIdString(message?._id) === targetId
+            ? {
+                ...message,
+                reactions: Array.isArray(reactions)
+                  ? reactions
+                      .map((entry) => ({
+                        userId: toIdString(entry?.userId),
+                        emoji: String(entry?.emoji || "").trim(),
+                        createdAt: entry?.createdAt || null,
+                      }))
+                      .filter((entry) => entry.userId && entry.emoji)
+                  : [],
+              }
+            : message
+        )
+      );
+    });
 
     return () => {
       socket.off("onlineUsers", handleOnlineUsers);
@@ -841,6 +1060,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
       socket.off("chat:message", handleIncomingMessage);
       socket.off("chat:sent");
       socket.off("message:deleted_for_me");
+      socket.off("message:reaction");
       socket.off("chat:typing");
       socket.off("chat:recording");
       socket.off("watch:state");
@@ -925,6 +1145,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
     if (!targetId || !meId) {return false;}
     const now = Date.now();
     const clientId = `c_${now}_${Math.random().toString(36).slice(2, 8)}`;
+    const nextReplyTarget = options.replyTarget || replyTarget;
     const payload =
       payloadInput && typeof payloadInput === "object"
         ? { ...payloadInput, clientId }
@@ -941,6 +1162,12 @@ export default function Messenger({ user, onClose, onMinimize }) {
         ? `shared: ${payload?.metadata?.title || payload?.metadata?.itemType || "content"}`
         : String(payload.text || "").trim();
     const hasAttachments = Array.isArray(payload.attachments) && payload.attachments.length > 0;
+    const networkPayload = {
+      ...payload,
+      replyTo: nextReplyTarget?.messageId
+        ? { messageId: nextReplyTarget.messageId }
+        : undefined,
+    };
 
     if (!previewText && !hasAttachments) {
       return false;
@@ -955,12 +1182,16 @@ export default function Messenger({ user, onClose, onMinimize }) {
       type: normalizedType,
       metadata: normalizedType === "contentCard" ? payload.metadata : null,
       attachments: hasAttachments ? payload.attachments : [],
+      replyTo: nextReplyTarget ? { ...nextReplyTarget } : null,
       time: now,
       clientId,
       pending: true,
     });
 
     const shouldRenderOptimistic = targetId === selectedIdRef.current;
+    setReplyTarget(null);
+    setActiveMessageId("");
+    setOpenMessageReactionId("");
     if (shouldRenderOptimistic) {
       setMessages((prev) => [...prev, optimistic]);
     }
@@ -968,7 +1199,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
     setError("");
 
     try {
-      const persisted = await sendViaSocket(targetId, payload);
+      const persisted = await sendViaSocket(targetId, networkPayload);
       if (shouldRenderOptimistic) {
         replaceMessageByClientId(clientId, {
           ...persisted,
@@ -982,7 +1213,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
     }
 
     try {
-      const persisted = await sendChatMessage(targetId, payload);
+      const persisted = await sendChatMessage(targetId, networkPayload);
       if (shouldRenderOptimistic) {
         replaceMessageByClientId(clientId, {
           ...normalizeMessage(persisted),
@@ -1001,7 +1232,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
       setError(err.message || "Failed to send message");
       return false;
     }
-  }, [meId, moveContactToTop, replaceMessageByClientId, selectedId, sendViaSocket, user?.name]);
+  }, [meId, moveContactToTop, replaceMessageByClientId, replyTarget, selectedId, sendViaSocket, user?.name]);
 
   const send = async () => {
     const value = text.trim();
@@ -1191,6 +1422,73 @@ export default function Messenger({ user, onClose, onMinimize }) {
     await sendPayload({ text: emoji, type: "text" });
     setShowReactions(false);
   };
+
+  const clearReplySelection = useCallback(() => {
+    setReplyTarget(null);
+  }, []);
+
+  const selectReplyTarget = useCallback((message) => {
+    if (!message || !toIdString(message?._id) || message?.pending) {
+      return;
+    }
+    setReplyTarget(buildReplyTarget(message));
+    setActiveMessageId(toIdString(message?._id));
+    setOpenMessageReactionId("");
+    window.requestAnimationFrame(() => {
+      composerInputRef.current?.focus();
+    });
+  }, []);
+
+  const reactToMessageBubble = useCallback(async (message, emoji) => {
+    const messageId = toIdString(message?._id);
+    if (!messageId || !emoji) {
+      return;
+    }
+
+    const previousReactions = Array.isArray(message?.reactions)
+      ? message.reactions
+      : [];
+    const optimisticReactions = toggleReactionEntries(previousReactions, meId, emoji);
+
+    setMessages((prev) =>
+      prev.map((entry) =>
+        toIdString(entry?._id) === messageId
+          ? { ...entry, reactions: optimisticReactions }
+          : entry
+      )
+    );
+    setOpenMessageReactionId("");
+    setActiveMessageId(messageId);
+
+    try {
+      const response = await reactToChatMessage(messageId, emoji);
+      const normalizedReactions = Array.isArray(response?.reactions)
+        ? response.reactions
+            .map((entry) => ({
+              userId: toIdString(entry?.userId),
+              emoji: String(entry?.emoji || "").trim(),
+              createdAt: entry?.createdAt || null,
+            }))
+            .filter((entry) => entry.userId && entry.emoji)
+        : [];
+      setMessages((prev) =>
+        prev.map((entry) =>
+          toIdString(entry?._id) === messageId
+            ? { ...entry, reactions: normalizedReactions }
+            : entry
+        )
+      );
+    } catch (err) {
+      setMessages((prev) =>
+        prev.map((entry) =>
+          toIdString(entry?._id) === messageId
+            ? { ...entry, reactions: previousReactions }
+            : entry
+        )
+      );
+      setError(err?.message || "Failed to react to message");
+    }
+  }, [meId]);
 
   const sendGif = async (gifUrl) => {
     if (!gifUrl) {
@@ -1706,11 +2004,26 @@ export default function Messenger({ user, onClose, onMinimize }) {
                 {!loadingMessages &&
                   messages.map((m) => {
                     const isMe = toIdString(m.senderId) === meId;
+                    const messageKey = toIdString(m._id || m.clientId);
                     const bubbleClass = `${isMe ? "me" : "them"} ${
                       m.failed ? "failed" : ""
                     }`;
+                    const reactionSummary = summarizeReactions(m.reactions, meId);
+                    const toolsVisible =
+                      hoveredMessageId === messageKey
+                      || activeMessageId === messageKey
+                      || openMessageReactionId === messageKey;
                     return (
-                      <div key={m._id || m.clientId} className={`message-row ${bubbleClass}`}>
+                      <div
+                        key={m._id || m.clientId}
+                        className={`message-row ${bubbleClass}${toolsVisible ? " is-tools-open" : ""}`}
+                        onMouseEnter={() => setHoveredMessageId(messageKey)}
+                        onMouseLeave={() => {
+                          setHoveredMessageId((current) =>
+                            current === messageKey ? "" : current
+                          );
+                        }}
+                      >
                         {!isMe && (
                           <img
                             src={m.senderAvatar || getAvatar(selectedContact)}
@@ -1719,7 +2032,21 @@ export default function Messenger({ user, onClose, onMinimize }) {
                           />
                         )}
 
-                        <div className="msg-bubble">
+                        <div className="msg-stack">
+                        <div
+                          className="msg-bubble"
+                          onClick={() =>
+                            setActiveMessageId((current) =>
+                              current === messageKey ? "" : messageKey
+                            )
+                          }
+                        >
+                          {m.replyTo ? (
+                            <div className="msg-reply-preview">
+                              <small>{getReplyLabel({ message: m, meId })}</small>
+                              <strong>{m.replyTo.contentTitle || getReplyPreviewText(m.replyTo)}</strong>
+                            </div>
+                          ) : null}
                           {m.type === "contentCard" ? (
                             <ContentCardMessage metadata={m.metadata} />
                           ) : (
@@ -1749,8 +2076,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
                                     );
                                   }
                                   if (file.type === "audio") {
-                                    const messageId = toIdString(m._id || m.clientId);
-                                    const audioId = `${messageId}:${index}`;
+                                    const audioId = `${messageKey}:${index}`;
                                     const playback = voicePlaybackById[audioId] || {};
                                     const currentTime = Number(playback.currentTime) || 0;
                                     const storedDuration = Number(file.durationSeconds) || 0;
@@ -1885,6 +2211,21 @@ export default function Messenger({ user, onClose, onMinimize }) {
                                 })}
                             </>
                           )}
+                          {reactionSummary.total > 0 ? (
+                            <div className="msg-reaction-summary">
+                              {reactionSummary.items.map((entry) => (
+                                <button
+                                  key={`${messageKey}-${entry.emoji}`}
+                                  type="button"
+                                  className={`msg-reaction-chip${entry.viewerReacted ? " is-active" : ""}`}
+                                  onClick={() => reactToMessageBubble(m, entry.emoji)}
+                                >
+                                  <span>{entry.emoji}</span>
+                                  <small>{entry.count}</small>
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
                           <div className="msg-time">
                             {new Date(m.time).toLocaleTimeString([], {
                               hour: "2-digit",
@@ -1894,6 +2235,57 @@ export default function Messenger({ user, onClose, onMinimize }) {
                             {m.failed ? " - Failed" : ""}
                           </div>
                         </div>
+                        {!m.pending ? (
+                          <div className={`msg-tools msg-tools--${isMe ? "me" : "them"}${toolsVisible ? " is-visible" : ""}`}>
+                            <button
+                              type="button"
+                              className="msg-tool-btn"
+                              aria-label="Reply to message"
+                              title="Reply"
+                              onClick={() => selectReplyTarget(m)}
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M10 8 5 12l5 4" />
+                                <path d="M6 12h9a5 5 0 0 1 5 5" />
+                              </svg>
+                            </button>
+                            <div className="msg-tool-picker-wrap">
+                              <button
+                                type="button"
+                                className="msg-tool-btn"
+                                aria-label="React to message"
+                                title="React"
+                                onClick={() =>
+                                  setOpenMessageReactionId((current) =>
+                                    current === messageKey ? "" : messageKey
+                                  )
+                                }
+                              >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <circle cx="12" cy="12" r="9" />
+                                  <path d="M9 10h.01" />
+                                  <path d="M15 10h.01" />
+                                  <path d="M8.5 14c1 1.3 2.1 2 3.5 2s2.5-.7 3.5-2" />
+                                </svg>
+                              </button>
+                              {openMessageReactionId === messageKey ? (
+                                <div className={`msg-reaction-picker msg-reaction-picker--${isMe ? "me" : "them"}`}>
+                                  {MESSAGE_ACTION_EMOJIS.map((emoji) => (
+                                    <button
+                                      key={`${messageKey}-${emoji}`}
+                                      type="button"
+                                      className="msg-reaction-picker-btn"
+                                      onClick={() => reactToMessageBubble(m, emoji)}
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
+                        </div>
                       </div>
                     );
                   })}
@@ -1902,6 +2294,24 @@ export default function Messenger({ user, onClose, onMinimize }) {
               </div>
 
               <div className="messenger-input">
+                {replyTarget ? (
+                  <div className="messenger-reply-banner">
+                    <div className="messenger-reply-banner__copy">
+                      <small>
+                        Replying to {toIdString(replyTarget.senderId) === meId ? "yourself" : replyTarget.senderName || "message"}
+                      </small>
+                      <strong>{replyTarget.contentTitle || replyTarget.previewText}</strong>
+                    </div>
+                    <button
+                      type="button"
+                      className="messenger-reply-banner__close"
+                      onClick={clearReplySelection}
+                      aria-label="Cancel reply"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : null}
                 {(isRecording || voicePreview) && (
                   <div className="messenger-voice-recorder">
                     <div className="messenger-voice-status">
@@ -2099,6 +2509,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
                   </div>
                 )}
                 <input
+                  ref={composerInputRef}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && send()}

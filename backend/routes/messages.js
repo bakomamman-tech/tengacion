@@ -79,6 +79,7 @@ router.post("/share/followers", auth, async (req, res) => {
       type: req.body?.type,
       metadata: req.body?.metadata,
       attachments: req.body?.attachments,
+      replyTo: req.body?.replyTo,
       clientId: "",
     };
 
@@ -415,6 +416,7 @@ router.post("/:otherUserId", auth, async (req, res) => {
           type: req.body?.type,
           metadata: req.body?.metadata,
           attachments: req.body?.attachments,
+          replyTo: req.body?.replyTo,
           clientId: req.body?.clientId,
         },
       });

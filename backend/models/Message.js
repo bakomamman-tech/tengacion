@@ -119,6 +119,50 @@ const MessageSchema = new mongoose.Schema(
       }
     ],
 
+    replyTo: {
+      messageId: {
+        type: mongoose.Schema.Types.ObjectId,
+        default: null,
+      },
+      senderId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      senderName: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      type: {
+        type: String,
+        enum: ["", "text", "contentCard", "voice"],
+        default: "",
+      },
+      text: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 400,
+      },
+      contentTitle: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 200,
+      },
+      attachmentType: {
+        type: String,
+        enum: ["", "image", "video", "file", "audio"],
+        default: "",
+      },
+      attachmentCount: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+    },
+
     deletedFor: [
       {
         type: mongoose.Schema.Types.ObjectId,

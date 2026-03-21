@@ -176,6 +176,81 @@ describe("chat + friend request flow", () => {
     expect(loaded.body.some((entry) => String(entry._id) === sendResponse.body._id)).toBe(true);
   });
 
+  test("messages support reply metadata and emoji reactions", async () => {
+    const firstMessage = await request(app)
+      .post("/api/chat/messages")
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({
+        receiverId: userB._id.toString(),
+        text: "Original message",
+        clientId: "client-msg-reply-1",
+      })
+      .expect(201);
+
+    const replyMessage = await request(app)
+      .post("/api/chat/messages")
+      .set("Authorization", `Bearer ${tokenB}`)
+      .send({
+        receiverId: userA._id.toString(),
+        text: "Replying now",
+        clientId: "client-msg-reply-2",
+        replyTo: {
+          messageId: firstMessage.body._id,
+        },
+      })
+      .expect(201);
+
+    expect(replyMessage.body.replyTo).toMatchObject({
+      messageId: firstMessage.body._id,
+      senderId: userA._id.toString(),
+      senderName: "User A",
+      type: "text",
+      text: "Original message",
+    });
+
+    const reacted = await request(app)
+      .post(`/api/messages/${encodeURIComponent(firstMessage.body._id)}/react`)
+      .set("Authorization", `Bearer ${tokenB}`)
+      .send({ emoji: "🔥" })
+      .expect(200);
+
+    expect(reacted.body.success).toBe(true);
+    expect(Array.isArray(reacted.body.reactions)).toBe(true);
+    expect(reacted.body.reactions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          emoji: "🔥",
+        }),
+      ])
+    );
+
+    const loaded = await request(app)
+      .get(`/api/messages/${userA._id.toString()}`)
+      .set("Authorization", `Bearer ${tokenB}`)
+      .expect(200);
+
+    const hydratedReply = loaded.body.find(
+      (entry) => String(entry._id) === replyMessage.body._id
+    );
+    const hydratedOriginal = loaded.body.find(
+      (entry) => String(entry._id) === firstMessage.body._id
+    );
+
+    expect(hydratedReply.replyTo).toMatchObject({
+      messageId: firstMessage.body._id,
+      senderName: "User A",
+      text: "Original message",
+    });
+    expect(hydratedOriginal.reactions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          userId: userB._id.toString(),
+          emoji: "🔥",
+        }),
+      ])
+    );
+  });
+
   test("friends hub returns requests, friends, suggestions, birthdays, and close friends", async () => {
     const today = new Date();
 

@@ -9,7 +9,6 @@ import NewsClusterCard from "../components/NewsClusterCard";
 import NewsDetailDrawer from "../components/NewsDetailDrawer";
 import NewsFeedTabs from "../components/NewsFeedTabs";
 import NewsCardSkeleton from "../components/NewsCardSkeleton";
-import NewsHighlightsStrip from "../components/NewsHighlightsStrip";
 import NewsPublisherLinksPanel from "../components/NewsPublisherLinksPanel";
 import NewsStoryCard from "../components/NewsStoryCard";
 import { useNewsFeed } from "../hooks/useNewsFeed";
@@ -53,7 +52,6 @@ export default function NewsHubPage({ user }) {
     cards = [],
     error,
     hasMore,
-    highlights,
     loading,
     loadingMore,
     loadMore,
@@ -163,7 +161,6 @@ export default function NewsHubPage({ user }) {
             </div>
           </section>
 
-          <NewsHighlightsStrip highlights={highlights} meta={meta} />
           <NewsPublisherLinksPanel />
 
           <MotionSection

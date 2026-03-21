@@ -134,7 +134,9 @@ const NewsSourceSchema = new mongoose.Schema(
 NewsSourceSchema.index({ providerType: 1, isActive: 1 });
 NewsSourceSchema.index({ publisherTier: 1, isActive: 1 });
 NewsSourceSchema.index({ topicTags: 1 });
-NewsSourceSchema.index({ countries: 1, states: 1 });
+NewsSourceSchema.index({ countries: 1 });
+NewsSourceSchema.index({ states: 1 });
+NewsSourceSchema.index({ supportedRegions: 1 });
 
 NewsSourceSchema.methods.toJSON = function () {
   const obj = this.toObject();

@@ -219,6 +219,7 @@ const serializeVideoItem = (video, earnings = 0) => ({
   description: video.description || video.caption || "",
   price: Number(video.price || 0),
   coverImageUrl: video.coverImageUrl || "",
+  videoUrl: video.videoUrl || "",
   previewClipUrl: video.previewClipUrl || "",
   durationSec: Number(video.durationSec || 0),
   videoFormat: video.videoFormat || "",

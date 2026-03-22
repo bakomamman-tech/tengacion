@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import CreatorAudioPreviewPlayer from "./CreatorAudioPreviewPlayer";
+import CreatorVideoPreviewPlayer from "./CreatorVideoPreviewPlayer";
 import { formatCurrency } from "./creatorConfig";
 import {
   buildCreatorFanPageData,
@@ -76,6 +77,7 @@ export default function CreatorFanPagePreview({
     ? activeSection.items
     : [activeSection?.featured].filter(Boolean);
   const currentItem = queue[activeIndex] || activeSection?.featured;
+  const isVideoTab = activeTab === "videos";
 
   const openPath = (path = "", options = undefined) => {
     if (!path) {
@@ -96,16 +98,382 @@ export default function CreatorFanPagePreview({
     openPath(item?.publicPath || activeSection?.publicPath || activeSection?.uploadPath);
   };
 
+  const selectQueueItem = (index, autoplay = true) => {
+    setActiveIndex(index);
+    if (autoplay) {
+      setAutoplayRequest((current) => current + 1);
+    }
+  };
+
   const movePlayer = (direction = 1) => {
     if (!queue.length) {
       return;
     }
+
     setActiveIndex((current) => {
       const total = queue.length;
       return (current + direction + total) % total;
     });
     setAutoplayRequest((current) => current + 1);
   };
+
+  const renderStandardContent = () => (
+    <div className="creator-fan-page__content-grid">
+      <section className="creator-fan-page__panel creator-fan-page__panel--releases">
+        <div className="creator-fan-page__panel-head">
+          <div>
+            <span>{activeSection?.label || "Music"}</span>
+            <h3>{activeSection?.title || "Popular Releases"}</h3>
+          </div>
+          <button
+            type="button"
+            className="creator-fan-page__button creator-fan-page__button--ghost"
+            onClick={() => openPublic()}
+          >
+            {getSectionActionLabel(activeSection?.key)}
+          </button>
+        </div>
+
+        <article className="creator-fan-page__feature-release">
+          <FanPageImage
+            src={currentItem?.imageUrl}
+            alt={currentItem?.title || activeSection?.label}
+            initials={initials}
+            className="creator-fan-page__image--release"
+          />
+
+          <div className="creator-fan-page__feature-copy">
+            <span className="creator-fan-page__pill">
+              {String(currentItem?.releaseType || activeSection?.label || "Release").toUpperCase()}
+            </span>
+            <h4>{currentItem?.title || activeSection?.label}</h4>
+            <p>{currentItem?.subtitle || data.creatorName}</p>
+
+            <div className="creator-fan-page__meta-row">
+              {currentItem?.genre ? <span>{currentItem.genre}</span> : null}
+              {currentItem?.secondaryLine ? <span>{currentItem.secondaryLine}</span> : null}
+              {Number(currentItem?.price || 0) > 0 ? (
+                <span>{formatCurrency(currentItem.price)}</span>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="creator-fan-page__feature-actions">
+            <button
+              type="button"
+              className="creator-fan-page__button creator-fan-page__button--light"
+              onClick={() => openPreview()}
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              className="creator-fan-page__button creator-fan-page__button--accent"
+              onClick={() => openDetails()}
+            >
+              Open details
+            </button>
+            <button
+              type="button"
+              className="creator-fan-page__button creator-fan-page__button--ghost"
+              onClick={() => openPath(activeSection?.uploadPath)}
+            >
+              Open studio
+            </button>
+          </div>
+        </article>
+
+        <div className="creator-fan-page__release-list">
+          {queue.slice(0, 3).map((release, index) => (
+            <article key={release.id || `${release.title}-${index}`} className="creator-fan-page__release-row">
+              <span className="creator-fan-page__release-index">{index + 1}.</span>
+              <FanPageImage
+                src={release.imageUrl}
+                alt={release.title}
+                initials={initials}
+                className="creator-fan-page__image--row"
+              />
+              <div className="creator-fan-page__release-copy">
+                <strong>{release.title}</strong>
+                <span>{release.subtitle || data.creatorName}</span>
+              </div>
+              <small>{release.statusLabel}</small>
+              <small>{release.secondaryLine || release.duration || ""}</small>
+              <button
+                type="button"
+                className="creator-fan-page__button creator-fan-page__button--icon"
+                onClick={() => selectQueueItem(index)}
+              >
+                {index === activeIndex && isPlaying ? "Playing" : "Play"}
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="creator-fan-page__panel">
+        <div className="creator-fan-page__panel-head">
+          <div>
+            <span>Podcasts</span>
+            <h3>Featured Episode</h3>
+          </div>
+          <button
+            type="button"
+            className="creator-fan-page__button creator-fan-page__button--ghost"
+            onClick={() => openPublic(data.podcast)}
+          >
+            Listen
+          </button>
+        </div>
+
+        <article className="creator-fan-page__spotlight-card">
+          <FanPageImage
+            src={data.podcast.coverUrl}
+            alt={data.podcast.title}
+            initials={initials}
+            className="creator-fan-page__image--spotlight"
+          />
+          <div>
+            <h4>{data.podcast.title}</h4>
+            <p>{data.podcast.series}</p>
+            <small>{data.podcast.secondaryLine || data.podcast.duration}</small>
+          </div>
+          <p>{data.podcast.summary}</p>
+        </article>
+      </section>
+
+      <section className="creator-fan-page__panel">
+        <div className="creator-fan-page__panel-head">
+          <div>
+            <span>Videos</span>
+            <h3>Featured Visual</h3>
+          </div>
+          <button
+            type="button"
+            className="creator-fan-page__button creator-fan-page__button--ghost"
+            onClick={() => openPublic(data.video)}
+          >
+            Watch
+          </button>
+        </div>
+
+        <article className="creator-fan-page__spotlight-card">
+          <FanPageImage
+            src={data.video.thumbnailUrl}
+            alt={data.video.title}
+            initials={initials}
+            className="creator-fan-page__image--spotlight"
+          />
+          <div>
+            <h4>{data.video.title}</h4>
+            <p>{data.video.channel}</p>
+            <small>{data.video.secondaryLine || "YouTube premiere ready"}</small>
+          </div>
+          <p>{data.video.summary}</p>
+        </article>
+      </section>
+    </div>
+  );
+
+  const renderVideoContent = () => (
+    <div className="creator-fan-page__content-grid creator-fan-page__content-grid--video">
+      <section className="creator-fan-page__panel creator-fan-page__panel--video-library">
+        <div className="creator-fan-page__panel-head">
+          <div>
+            <span>{activeSection?.label || "Videos"}</span>
+            <h3>Video Library</h3>
+          </div>
+          <div className="creator-fan-page__feature-actions">
+            <button
+              type="button"
+              className="creator-fan-page__button creator-fan-page__button--ghost"
+              onClick={() => openPublic()}
+            >
+              Watch on public page
+            </button>
+            <button
+              type="button"
+              className="creator-fan-page__button creator-fan-page__button--light"
+              onClick={() => openPath(activeSection?.uploadPath)}
+            >
+              Open studio
+            </button>
+          </div>
+        </div>
+
+        <article className="creator-fan-page__feature-release creator-fan-page__feature-release--video">
+          <FanPageImage
+            src={currentItem?.imageUrl}
+            alt={currentItem?.title || activeSection?.label}
+            initials={initials}
+            className="creator-fan-page__image--release"
+          />
+
+          <div className="creator-fan-page__feature-copy">
+            <span className="creator-fan-page__pill">
+              {String(currentItem?.releaseType || activeSection?.label || "Video").toUpperCase()}
+            </span>
+            <h4>{currentItem?.title || activeSection?.label}</h4>
+            <p>{currentItem?.description || activeSection?.description}</p>
+
+            <div className="creator-fan-page__meta-row">
+              <span>{currentItem?.subtitle || data.creatorName}</span>
+              {currentItem?.secondaryLine ? <span>{currentItem.secondaryLine}</span> : null}
+              {Number(currentItem?.price || 0) > 0 ? (
+                <span>{formatCurrency(currentItem.price)}</span>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="creator-fan-page__feature-actions">
+            <button
+              type="button"
+              className="creator-fan-page__button creator-fan-page__button--accent"
+              onClick={() => setAutoplayRequest((current) => current + 1)}
+            >
+              Play in player
+            </button>
+            <button
+              type="button"
+              className="creator-fan-page__button creator-fan-page__button--light"
+              onClick={() => openDetails()}
+            >
+              Open details
+            </button>
+            <button
+              type="button"
+              className="creator-fan-page__button creator-fan-page__button--ghost"
+              onClick={() => openPreview()}
+            >
+              Open preview
+            </button>
+          </div>
+        </article>
+
+        <div className="creator-fan-page__video-library" aria-label="Uploaded videos">
+          {queue.map((video, index) => {
+            const isActive = index === activeIndex;
+            return (
+              <button
+                key={video.id || `${video.title}-${index}`}
+                type="button"
+                className={`creator-fan-page__video-row${isActive ? " is-active" : ""}`}
+                aria-pressed={isActive}
+                aria-label={`Select ${video.title}`}
+                onClick={() => selectQueueItem(index)}
+              >
+                <span className="creator-fan-page__video-row-index">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <FanPageImage
+                  src={video.imageUrl}
+                  alt={video.title}
+                  initials={initials}
+                  className="creator-fan-page__image--video-row"
+                />
+                <div className="creator-fan-page__video-row-copy">
+                  <strong>{video.title}</strong>
+                  <span>{video.subtitle || data.creatorName}</span>
+                  <small>{video.description || activeSection?.description}</small>
+                </div>
+                <div className="creator-fan-page__video-row-meta">
+                  <span>{video.statusLabel}</span>
+                  <strong>{video.secondaryLine || video.duration || "Video release"}</strong>
+                </div>
+                <span className="creator-fan-page__video-row-state">
+                  {isActive && isPlaying ? "Playing" : isActive ? "Selected" : "Watch"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+
+  const renderStandardRail = () => (
+    <>
+      <section className="creator-fan-page__support-card">
+        <span>Unlock Exclusive Content</span>
+        <h3>{formatCurrency(data.supportPrice)}/month</h3>
+        <p>{data.supporterCopy}</p>
+        <button
+          type="button"
+          className="creator-fan-page__button creator-fan-page__button--accent"
+          onClick={() => openPublic(activeSection?.featured)}
+        >
+          Subscribe for {formatCurrency(data.supportPrice)}/month
+        </button>
+      </section>
+
+      <section className="creator-fan-page__rail-card">
+        <div className="creator-fan-page__panel-head">
+          <div>
+            <span>Platforms</span>
+            <h3>Listen on YouTube / Spotify</h3>
+          </div>
+        </div>
+        <div className="creator-fan-page__rail-actions">
+          {data.platforms.map((platform) => (
+            <button
+              key={platform.label}
+              type="button"
+              className={`creator-fan-page__platform-button creator-fan-page__platform-button--${platform.tone}`}
+              onClick={() => openPath(platform.path)}
+            >
+              {platform.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="creator-fan-page__rail-card creator-fan-page__book-card">
+        <div className="creator-fan-page__panel-head">
+          <div>
+            <span>Books</span>
+            <h3>Books by {data.creatorName}</h3>
+          </div>
+        </div>
+
+        <article className="creator-fan-page__book-row">
+          <FanPageImage
+            src={data.book.coverUrl}
+            alt={data.book.title}
+            initials={initials}
+            className="creator-fan-page__image--book"
+          />
+          <div className="creator-fan-page__book-copy">
+            <h4>{data.book.title}</h4>
+            <p>{data.book.author}</p>
+            <small>{data.book.imprint}</small>
+            <strong>{formatCurrency(data.book.price)}</strong>
+          </div>
+        </article>
+
+        <div className="creator-fan-page__button-row">
+          <button
+            type="button"
+            className="creator-fan-page__button creator-fan-page__button--accent"
+            onClick={() => openPublic(data.book)}
+          >
+            Buy Now
+          </button>
+          <button
+            type="button"
+            className="creator-fan-page__button creator-fan-page__button--light"
+            onClick={() => openPreview(data.book)}
+          >
+            Preview
+          </button>
+        </div>
+      </section>
+
+      <section className="creator-fan-page__rail-card">
+        <h3>Rewards for supporters</h3>
+        <p>{data.rewardsCopy}</p>
+      </section>
+    </>
+  );
 
   return (
     <section className="creator-fan-page" aria-label="Fan Page View">
@@ -156,7 +524,7 @@ export default function CreatorFanPagePreview({
         </div>
       </header>
 
-      <div className="creator-fan-page__layout">
+      <div className={`creator-fan-page__layout${isVideoTab ? " creator-fan-page__layout--video" : ""}`}>
         <aside className="creator-fan-page__sidebar">
           <FanPageImage
             src={data.avatarUrl}
@@ -265,262 +633,42 @@ export default function CreatorFanPagePreview({
             </div>
           </section>
 
-          <div className="creator-fan-page__content-grid">
-            <section className="creator-fan-page__panel creator-fan-page__panel--releases">
-              <div className="creator-fan-page__panel-head">
-                <div>
-                  <span>{activeSection?.label || "Music"}</span>
-                  <h3>{activeSection?.title || "Popular Releases"}</h3>
-                </div>
-                <button
-                  type="button"
-                  className="creator-fan-page__button creator-fan-page__button--ghost"
-                  onClick={() => openPublic()}
-                >
-                  {getSectionActionLabel(activeSection?.key)}
-                </button>
-              </div>
-
-              <article className="creator-fan-page__feature-release">
-                <FanPageImage
-                  src={currentItem?.imageUrl}
-                  alt={currentItem?.title || activeSection?.label}
-                  initials={initials}
-                  className="creator-fan-page__image--release"
-                />
-
-                <div className="creator-fan-page__feature-copy">
-                  <span className="creator-fan-page__pill">
-                    {String(currentItem?.releaseType || activeSection?.label || "Release").toUpperCase()}
-                  </span>
-                  <h4>{currentItem?.title || activeSection?.label}</h4>
-                  <p>{currentItem?.subtitle || data.creatorName}</p>
-
-                  <div className="creator-fan-page__meta-row">
-                    {currentItem?.genre ? <span>{currentItem.genre}</span> : null}
-                    {currentItem?.secondaryLine ? <span>{currentItem.secondaryLine}</span> : null}
-                    {Number(currentItem?.price || 0) > 0 ? (
-                      <span>{formatCurrency(currentItem.price)}</span>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="creator-fan-page__feature-actions">
-                  <button
-                    type="button"
-                    className="creator-fan-page__button creator-fan-page__button--light"
-                    onClick={() => openPreview()}
-                  >
-                    Preview
-                  </button>
-                  <button
-                    type="button"
-                    className="creator-fan-page__button creator-fan-page__button--accent"
-                    onClick={() => openDetails()}
-                  >
-                    Open details
-                  </button>
-                  <button
-                    type="button"
-                    className="creator-fan-page__button creator-fan-page__button--ghost"
-                    onClick={() => openPath(activeSection?.uploadPath)}
-                  >
-                    Open studio
-                  </button>
-                </div>
-              </article>
-
-              <div className="creator-fan-page__release-list">
-                {queue.slice(0, 3).map((release, index) => (
-                  <article key={release.id || `${release.title}-${index}`} className="creator-fan-page__release-row">
-                    <span className="creator-fan-page__release-index">{index + 1}.</span>
-                    <FanPageImage
-                      src={release.imageUrl}
-                      alt={release.title}
-                      initials={initials}
-                      className="creator-fan-page__image--row"
-                    />
-                    <div className="creator-fan-page__release-copy">
-                      <strong>{release.title}</strong>
-                      <span>{release.subtitle || data.creatorName}</span>
-                    </div>
-                    <small>{release.statusLabel}</small>
-                    <small>{release.secondaryLine || release.duration || ""}</small>
-                    <button
-                      type="button"
-                      className="creator-fan-page__button creator-fan-page__button--icon"
-                      onClick={() => {
-                        setActiveIndex(index);
-                        setAutoplayRequest((current) => current + 1);
-                      }}
-                    >
-                      {index === activeIndex && isPlaying ? "Playing" : "Play"}
-                    </button>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            <section className="creator-fan-page__panel">
-              <div className="creator-fan-page__panel-head">
-                <div>
-                  <span>Podcasts</span>
-                  <h3>Featured Episode</h3>
-                </div>
-                <button
-                  type="button"
-                  className="creator-fan-page__button creator-fan-page__button--ghost"
-                  onClick={() => openPublic(data.podcast)}
-                >
-                  Listen
-                </button>
-              </div>
-
-              <article className="creator-fan-page__spotlight-card">
-                <FanPageImage
-                  src={data.podcast.coverUrl}
-                  alt={data.podcast.title}
-                  initials={initials}
-                  className="creator-fan-page__image--spotlight"
-                />
-                <div>
-                  <h4>{data.podcast.title}</h4>
-                  <p>{data.podcast.series}</p>
-                  <small>{data.podcast.secondaryLine || data.podcast.duration}</small>
-                </div>
-                <p>{data.podcast.summary}</p>
-              </article>
-            </section>
-
-            <section className="creator-fan-page__panel">
-              <div className="creator-fan-page__panel-head">
-                <div>
-                  <span>Videos</span>
-                  <h3>Featured Visual</h3>
-                </div>
-                <button
-                  type="button"
-                  className="creator-fan-page__button creator-fan-page__button--ghost"
-                  onClick={() => openPublic(data.video)}
-                >
-                  Watch
-                </button>
-              </div>
-
-              <article className="creator-fan-page__spotlight-card">
-                <FanPageImage
-                  src={data.video.thumbnailUrl}
-                  alt={data.video.title}
-                  initials={initials}
-                  className="creator-fan-page__image--spotlight"
-                />
-                <div>
-                  <h4>{data.video.title}</h4>
-                  <p>{data.video.channel}</p>
-                  <small>{data.video.secondaryLine || "YouTube premiere ready"}</small>
-                </div>
-                <p>{data.video.summary}</p>
-              </article>
-            </section>
-          </div>
+          {isVideoTab ? renderVideoContent() : renderStandardContent()}
         </main>
 
-        <aside className="creator-fan-page__rail">
-          <section className="creator-fan-page__support-card">
-            <span>Unlock Exclusive Content</span>
-            <h3>{formatCurrency(data.supportPrice)}/month</h3>
-            <p>{data.supporterCopy}</p>
-            <button
-              type="button"
-              className="creator-fan-page__button creator-fan-page__button--accent"
-              onClick={() => openPublic(activeSection?.featured)}
-            >
-              Subscribe for {formatCurrency(data.supportPrice)}/month
-            </button>
-          </section>
-
-          <section className="creator-fan-page__rail-card">
-            <div className="creator-fan-page__panel-head">
-              <div>
-                <span>Platforms</span>
-                <h3>Listen on YouTube / Spotify</h3>
-              </div>
-            </div>
-            <div className="creator-fan-page__rail-actions">
-              {data.platforms.map((platform) => (
-                <button
-                  key={platform.label}
-                  type="button"
-                  className={`creator-fan-page__platform-button creator-fan-page__platform-button--${platform.tone}`}
-                  onClick={() => openPath(platform.path)}
-                >
-                  {platform.label}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="creator-fan-page__rail-card creator-fan-page__book-card">
-            <div className="creator-fan-page__panel-head">
-              <div>
-                <span>Books</span>
-                <h3>Books by {data.creatorName}</h3>
-              </div>
-            </div>
-
-            <article className="creator-fan-page__book-row">
-              <FanPageImage
-                src={data.book.coverUrl}
-                alt={data.book.title}
-                initials={initials}
-                className="creator-fan-page__image--book"
-              />
-              <div className="creator-fan-page__book-copy">
-                <h4>{data.book.title}</h4>
-                <p>{data.book.author}</p>
-                <small>{data.book.imprint}</small>
-                <strong>{formatCurrency(data.book.price)}</strong>
-              </div>
-            </article>
-
-            <div className="creator-fan-page__button-row">
-              <button
-                type="button"
-                className="creator-fan-page__button creator-fan-page__button--accent"
-                onClick={() => openPublic(data.book)}
-              >
-                Buy Now
-              </button>
-              <button
-                type="button"
-                className="creator-fan-page__button creator-fan-page__button--light"
-                onClick={() => openPreview(data.book)}
-              >
-                Preview
-              </button>
-            </div>
-          </section>
-
-          <section className="creator-fan-page__rail-card">
-            <h3>Rewards for supporters</h3>
-            <p>{data.rewardsCopy}</p>
-          </section>
+        <aside className={`creator-fan-page__rail${isVideoTab ? " creator-fan-page__rail--video" : ""}`}>
+          {isVideoTab ? (
+            <CreatorVideoPreviewPlayer
+              item={currentItem || data.video}
+              creatorName={data.creatorName}
+              queueLength={queue.length}
+              queueIndex={activeIndex}
+              onPrevious={() => movePlayer(-1)}
+              onNext={() => movePlayer(1)}
+              onPlayingChange={setIsPlaying}
+              autoplayRequest={autoplayRequest}
+            />
+          ) : (
+            renderStandardRail()
+          )}
         </aside>
       </div>
 
-      <footer className="creator-fan-page__player">
-        <CreatorAudioPreviewPlayer
-          item={currentItem || data.music}
-          creatorName={data.creatorName}
-          queueLength={queue.length}
-          queueIndex={activeIndex}
-          onPrevious={() => movePlayer(-1)}
-          onNext={() => movePlayer(1)}
-          onPlayingChange={setIsPlaying}
-          autoplayRequest={autoplayRequest}
-          variant="public"
-        />
-      </footer>
+      {isVideoTab ? null : (
+        <footer className="creator-fan-page__player">
+          <CreatorAudioPreviewPlayer
+            item={currentItem || data.music}
+            creatorName={data.creatorName}
+            queueLength={queue.length}
+            queueIndex={activeIndex}
+            onPrevious={() => movePlayer(-1)}
+            onNext={() => movePlayer(1)}
+            onPlayingChange={setIsPlaying}
+            autoplayRequest={autoplayRequest}
+            variant="public"
+          />
+        </footer>
+      )}
     </section>
   );
 }

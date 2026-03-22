@@ -195,6 +195,10 @@
   align-items: start;
 }
 
+.creator-fan-page__layout--video {
+  grid-template-columns: minmax(250px, 292px) minmax(0, 1.2fr) minmax(340px, 440px);
+}
+
 .creator-fan-page__sidebar,
 .creator-fan-page__rail {
   position: sticky;
@@ -349,6 +353,10 @@
   gap: 20px;
 }
 
+.creator-fan-page__content-grid--video {
+  grid-template-columns: 1fr;
+}
+
 .creator-fan-page__panel {
   display: grid;
   gap: 16px;
@@ -359,6 +367,10 @@
 
 .creator-fan-page__panel--releases {
   grid-row: 1 / span 2;
+}
+
+.creator-fan-page__panel--video-library {
+  min-height: 100%;
 }
 
 .creator-fan-page__panel-head {
@@ -382,6 +394,12 @@
   border-radius: 24px;
   background: rgba(255, 247, 233, 0.05);
   border: 1px solid rgba(255, 247, 233, 0.06);
+}
+
+.creator-fan-page__feature-release--video {
+  background:
+    radial-gradient(circle at top right, rgba(214, 173, 97, 0.12), transparent 34%),
+    rgba(255, 247, 233, 0.04);
 }
 
 .creator-fan-page__feature-copy {
@@ -415,6 +433,11 @@
   gap: 10px;
 }
 
+.creator-fan-page__video-library {
+  display: grid;
+  gap: 12px;
+}
+
 .creator-fan-page__release-row {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
@@ -426,8 +449,34 @@
   border: 1px solid rgba(255, 247, 233, 0.04);
 }
 
+.creator-fan-page__video-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 247, 233, 0.06);
+  border-radius: 24px;
+  background: rgba(255, 247, 233, 0.04);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.creator-fan-page__video-row.is-active {
+  border-color: rgba(214, 173, 97, 0.42);
+  background:
+    radial-gradient(circle at top right, rgba(214, 173, 97, 0.12), transparent 36%),
+    rgba(255, 247, 233, 0.06);
+  box-shadow: 0 16px 36px rgba(8, 10, 8, 0.16);
+}
+
 .creator-fan-page__release-index,
-.creator-fan-page__release-row small {
+.creator-fan-page__release-row small,
+.creator-fan-page__video-row-index,
+.creator-fan-page__video-row-copy small,
+.creator-fan-page__video-row-meta span {
   color: rgba(243, 234, 214, 0.68);
 }
 
@@ -435,6 +484,40 @@
   display: grid;
   gap: 4px;
   min-width: 0;
+}
+
+.creator-fan-page__video-row-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.creator-fan-page__video-row-copy strong,
+.creator-fan-page__video-row-copy span,
+.creator-fan-page__video-row-copy small,
+.creator-fan-page__video-row-meta strong {
+  overflow-wrap: anywhere;
+}
+
+.creator-fan-page__video-row-meta {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  min-width: 0;
+}
+
+.creator-fan-page__video-row-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: rgba(255, 247, 233, 0.08);
+  border: 1px solid rgba(255, 247, 233, 0.08);
+  color: #f3ead6;
+  font-weight: 700;
 }
 
 .creator-fan-page__spotlight-card {
@@ -445,6 +528,10 @@
 .creator-fan-page__rail {
   display: grid;
   gap: 20px;
+}
+
+.creator-fan-page__rail--video {
+  align-content: start;
 }
 
 .creator-fan-page__support-card,
@@ -580,6 +667,12 @@
   border-radius: 16px;
 }
 
+.creator-fan-page__image--video-row {
+  width: 120px;
+  aspect-ratio: 16 / 9;
+  border-radius: 18px;
+}
+
 .creator-fan-page__image--spotlight,
 .creator-fan-page__image--book {
   width: 110px;
@@ -597,10 +690,18 @@
     grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
   }
 
+  .creator-fan-page__layout--video {
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+  }
+
   .creator-fan-page__rail {
     position: static;
     grid-column: 1 / -1;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  .creator-fan-page__rail--video {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -649,6 +750,19 @@
   .creator-fan-page__feature-release,
   .creator-fan-page__book-row {
     grid-template-columns: 1fr;
+  }
+
+  .creator-fan-page__video-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .creator-fan-page__video-row-index,
+  .creator-fan-page__video-row-meta {
+    display: none;
+  }
+
+  .creator-fan-page__video-row-state {
+    justify-self: start;
   }
 
   .creator-fan-page__release-row {

@@ -196,11 +196,15 @@ const buildFallbackItem = ({
             : "Upload a release",
     primaryActionLabel: "Open studio",
     detailActionLabel: "Open studio",
+    durationSec: 0,
     audioUrl: "",
     previewAudioUrl: "",
+    videoUrl: "",
+    previewVideoUrl: "",
     previewStartSec: 0,
     previewLimitSec: 30,
     isPlayableAudio: false,
+    isPlayableVideo: false,
   };
 };
 
@@ -256,6 +260,14 @@ const normalizePreviewItem = ({
   const previewAudioUrl =
     mediaType === "audio" && ["track", "podcast"].includes(itemType)
       ? resolveFallbackImage(entry?.previewUrl) || ""
+      : "";
+  const videoUrl =
+    itemType === "video"
+      ? resolveFallbackImage(entry?.videoUrl) || ""
+      : "";
+  const previewVideoUrl =
+    itemType === "video"
+      ? resolveFallbackImage(entry?.previewClipUrl) || ""
       : "";
 
   const price = Number(entry?.price ?? 0);
@@ -376,11 +388,15 @@ const normalizePreviewItem = ({
           : itemType === "video"
             ? "Open video"
             : "Open release",
+    durationSec: Number(entry?.durationSec || 0),
     audioUrl,
     previewAudioUrl,
+    videoUrl,
+    previewVideoUrl,
     previewStartSec: Math.max(0, Number(entry?.previewStartSec || 0)),
     previewLimitSec: Math.max(0, Number(entry?.previewLimitSec || 30)),
     isPlayableAudio: Boolean(audioUrl || previewAudioUrl),
+    isPlayableVideo: itemType === "video" && Boolean(videoUrl || previewVideoUrl),
   };
 };
 

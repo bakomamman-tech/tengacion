@@ -206,6 +206,11 @@ export default function CreatorWorkspaceLayout() {
           creatorProfile={creatorProfile}
           summary={dashboard.summary}
           onToggleMenu={() => setMobileOpen((open) => !open)}
+          utilityAction={
+            <Link className="creator-secondary-btn" to="/home">
+              Back to Home
+            </Link>
+          }
           featuredContent={
             isDashboardPage ? (
               <div className="creator-dashboard-shortcut">

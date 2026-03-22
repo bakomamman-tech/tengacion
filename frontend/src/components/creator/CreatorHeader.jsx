@@ -9,6 +9,7 @@ export default function CreatorHeader({
   creatorProfile,
   summary,
   onToggleMenu = () => {},
+  utilityAction = null,
   action,
   primaryAction,
   featuredContent = null,
@@ -40,6 +41,8 @@ export default function CreatorHeader({
         </div>
 
         <div className="creator-header-right">
+          {utilityAction}
+
           <div className="creator-top-pill">
             <span>Available</span>
             <strong>{formatCurrency(summary?.availableBalance || 0)}</strong>

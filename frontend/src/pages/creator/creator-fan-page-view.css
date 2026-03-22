@@ -240,6 +240,14 @@
   color: rgba(243, 234, 214, 0.72);
 }
 
+.creator-fan-page__sidebar-copy p {
+  font-size: 0.92rem;
+  line-height: 1.62;
+  text-align: justify;
+  text-align-last: left;
+  text-justify: inter-word;
+}
+
 .creator-fan-page__sidebar-nav {
   display: grid;
   gap: 8px;
@@ -406,6 +414,13 @@
   display: grid;
   gap: 10px;
   min-width: 0;
+}
+
+.creator-fan-page__feature-release > .creator-fan-page__feature-actions {
+  grid-column: 2 / -1;
+  justify-content: flex-start;
+  align-self: start;
+  padding-top: 2px;
 }
 
 .creator-fan-page__feature-copy h4,
@@ -750,6 +765,10 @@
   .creator-fan-page__feature-release,
   .creator-fan-page__book-row {
     grid-template-columns: 1fr;
+  }
+
+  .creator-fan-page__feature-release > .creator-fan-page__feature-actions {
+    grid-column: 1;
   }
 
   .creator-fan-page__video-row {

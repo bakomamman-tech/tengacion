@@ -59,6 +59,13 @@ const NAV_ITEMS = [
     icon: "birthdays",
   },
   {
+    key: "calculator",
+    label: "Calculator",
+    path: "/calculator",
+    description: "Scientific calculations",
+    icon: "calculator",
+  },
+  {
     key: "ads-manager",
     label: "Ads Manager",
     path: "/ads-manager",
@@ -133,6 +140,19 @@ function QuickNavIcon({ name }) {
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 14h4l8-5v10l-8-5H4z" />
           <path d="M8 14.2l1.5 4.3h3.3l-1.9-5.4" />
+        </svg>
+      );
+    case "calculator":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="4" y="3.5" width="16" height="17" rx="3" />
+          <rect x="7" y="6.5" width="10" height="3.4" rx="1.1" fill="currentColor" />
+          <circle cx="8.2" cy="13.1" r="1.2" fill="currentColor" />
+          <circle cx="12" cy="13.1" r="1.2" fill="currentColor" />
+          <circle cx="15.8" cy="13.1" r="1.2" fill="currentColor" />
+          <circle cx="8.2" cy="16.9" r="1.2" fill="currentColor" />
+          <path d="M12 15.8v2.2M10.9 16.9h2.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M15 16.9h1.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
         </svg>
       );
     default:

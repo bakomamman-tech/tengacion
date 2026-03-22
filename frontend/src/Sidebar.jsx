@@ -104,6 +104,13 @@ export default function Sidebar({ user, openChat, openProfile }) {
         >
           Birthdays
         </button>
+
+        <button
+          className={sidebarBtnClass(location.pathname === "/calculator")}
+          onClick={() => navigate("/calculator")}
+        >
+          Calculator
+        </button>
       </div>
     </aside>
   );

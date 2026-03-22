@@ -83,6 +83,7 @@ const CreatorSupportPage = lazy(() => import("./pages/creator/CreatorSupportPage
 const NewsHubPage = lazy(() => import("./features/news/pages/NewsHubPage"));
 const NewsTopicPage = lazy(() => import("./features/news/pages/NewsTopicPage"));
 const NewsSourcePage = lazy(() => import("./features/news/pages/NewsSourcePage"));
+const CalculatorPage = lazy(() => import("./pages/quickAccess/CalculatorPage"));
 const AdsManagerPage = lazyNamedExport(loadQuickAccessPages, "AdsManagerPage");
 const BirthdaysPage = lazyNamedExport(loadQuickAccessPages, "BirthdaysPage");
 const EventsPage = lazyNamedExport(loadQuickAccessPages, "EventsPage");
@@ -521,6 +522,14 @@ export default function App() {
             element={
               <ProtectedRoute user={user}>
                 <BirthdaysPage user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/calculator"
+            element={
+              <ProtectedRoute user={user}>
+                <CalculatorPage user={user} />
               </ProtectedRoute>
             }
           />

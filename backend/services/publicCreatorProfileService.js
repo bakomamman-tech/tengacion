@@ -158,6 +158,8 @@ const mapTrackItem = ({ track, req, viewerId, ownerAccess, entitlements }) => {
     canStream: Boolean(streamSource),
     canDownload: Boolean(canAccessFull && toCleanString(track.audioUrl)),
     canBuy: numberOrZero(track.price) > 0 && !canAccessFull,
+    previewStartSec: numberOrZero(track.previewStartSec),
+    previewLimitSec: numberOrZero(track.previewLimitSec || 30),
     playsCount: numberOrZero(track.playsCount || track.playCount),
     purchaseCount: numberOrZero(track.purchaseCount),
     genre: toCleanString(track.genre),

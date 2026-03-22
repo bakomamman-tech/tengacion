@@ -314,6 +314,16 @@
   margin-top: 18px;
 }
 
+.creator-public-preview__audio-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.creator-public-preview__audio-copy small {
+  color: rgba(248, 243, 231, 0.72);
+  line-height: 1.6;
+}
+
 .creator-public-preview__audio img,
 .creator-public-preview__cover img {
   width: 100%;

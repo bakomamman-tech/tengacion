@@ -118,10 +118,15 @@ describe("creator upload routes", () => {
       .field("genre", "Afrobeats")
       .field("description", "A polished single")
       .field("releaseType", "single")
+      .field("previewStartSec", "75")
       .field("price", "0")
       .field("publishedStatus", "draft")
       .attach("audio", Buffer.from("music-audio"), {
         filename: "aurora.mp3",
+        contentType: "audio/mpeg",
+      })
+      .attach("preview", Buffer.from("music-preview"), {
+        filename: "aurora-preview.mp3",
         contentType: "audio/mpeg",
       })
       .expect(201);
@@ -129,11 +134,15 @@ describe("creator upload routes", () => {
     expect(response.body.title).toBe("Aurora");
     expect(response.body.artistName).toBe("Creator Example");
     expect(response.body.releaseType).toBe("single");
+    expect(response.body.previewStartSec).toBe(75);
+    expect(response.body.previewLimitSec).toBe(30);
 
     const savedTrack = await Track.findOne({ title: "Aurora" }).lean();
     expect(savedTrack).toBeTruthy();
     expect(savedTrack.kind).toBe("music");
     expect(savedTrack.contentType).toBe("track");
+    expect(savedTrack.previewStartSec).toBe(75);
+    expect(savedTrack.previewLimitSec).toBe(30);
   });
 
   test("POST /api/creator/music/videos creates a music video upload with supported formats", async () => {

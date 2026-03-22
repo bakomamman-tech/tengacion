@@ -203,6 +203,8 @@ describe("creator profile routes", () => {
         price: 0,
         audioUrl: "https://example.com/song.mp3",
         previewUrl: "https://example.com/song-preview.mp3",
+        previewStartSec: 64,
+        previewLimitSec: 30,
         kind: "music",
         creatorCategory: "music",
         contentType: "track",
@@ -291,6 +293,8 @@ describe("creator profile routes", () => {
     expect(response.body.creator.displayName).toBe("Creator Example");
     expect(response.body.creator.creatorTypes).toEqual(["music", "bookPublishing", "podcast"]);
     expect(response.body.music.tracks).toHaveLength(1);
+    expect(response.body.music.tracks[0].previewStartSec).toBe(64);
+    expect(response.body.music.tracks[0].previewLimitSec).toBe(30);
     expect(response.body.music.albums).toHaveLength(1);
     expect(response.body.music.albums[0].downloadUrl).toContain("/api/media/delivery/");
     expect(response.body.music.videos).toHaveLength(1);

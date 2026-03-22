@@ -19,6 +19,13 @@ import {
 import { buildUploadOutcome } from "./uploadAudienceUtils";
 import useMediaFileMetadata from "./useMediaFileMetadata";
 
+const formatPreviewTimestamp = (value = 0) => {
+  const totalSeconds = Math.max(0, Math.round(Number(value || 0)));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
+
 const buildDefaultValues = (creatorProfile) => ({
   releaseMediaType: "audio",
   trackTitle: "",
@@ -33,6 +40,7 @@ const buildDefaultValues = (creatorProfile) => ({
   songwriterCredits: "",
   releaseDate: "",
   lyrics: "",
+  previewStartSec: 0,
   coverImageFile: null,
   releaseMediaFile: null,
   previewSampleFile: null,
@@ -71,6 +79,7 @@ export default function MusicUploadStudio({ showNotice = true }) {
   const coverImageFile = watch("coverImageFile");
   const releaseType = watch("releaseType");
   const price = Number(watch("price") || 0);
+  const previewStartSec = Number(watch("previewStartSec") || 0);
   const trackTitle = watch("trackTitle");
   const artistName = watch("artistName");
   const genre = watch("genre");
@@ -81,6 +90,48 @@ export default function MusicUploadStudio({ showNotice = true }) {
     releaseMediaFile,
     releaseMediaType
   );
+  const {
+    durationSec: previewSampleDurationSec,
+    formattedDuration: previewSampleFormattedDuration,
+  } = useMediaFileMetadata(previewSampleFile, releaseMediaType);
+  const previewReferenceDurationSec = previewSampleFile
+    ? previewSampleDurationSec
+    : durationSec;
+  const previewReferenceDurationLabel = previewSampleFile
+    ? previewSampleFormattedDuration
+    : formattedDuration;
+  const previewMaxStartSec = Math.max(
+    0,
+    Number(previewReferenceDurationSec || 0) - 30
+  );
+  const previewStartSummary = formatPreviewTimestamp(previewStartSec);
+
+  useEffect(() => {
+    if (isVideoRelease) {
+      if (previewStartSec !== 0) {
+        setValue("previewStartSec", 0, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+      }
+      return;
+    }
+
+    const normalizedValue = Math.max(0, Math.round(Number(previewStartSec || 0)));
+    const clampedValue = Math.min(normalizedValue, previewMaxStartSec);
+
+    if (clampedValue !== previewStartSec) {
+      setValue("previewStartSec", clampedValue, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  }, [
+    isVideoRelease,
+    previewMaxStartSec,
+    previewStartSec,
+    setValue,
+  ]);
 
   const titleLabel = isVideoRelease ? "Video Title" : "Track Title";
   const titlePlaceholder = isVideoRelease ? "Lights On Me (Official Video)" : "Midnight Bloom";
@@ -160,6 +211,10 @@ export default function MusicUploadStudio({ showNotice = true }) {
         formData.append("releaseDate", values.releaseDate || "");
         formData.append("lyrics", values.lyrics);
         formData.append("durationSec", String(durationSec || 0));
+        formData.append(
+          "previewStartSec",
+          String(Math.max(0, Math.round(Number(values.previewStartSec || 0))))
+        );
         formData.append("audio", values.releaseMediaFile);
         if (values.previewSampleFile) {
           formData.append("preview", values.previewSampleFile);
@@ -266,6 +321,10 @@ export default function MusicUploadStudio({ showNotice = true }) {
                     setValue("previewSampleFile", null, {
                       shouldDirty: true,
                     });
+                    setValue("previewStartSec", 0, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
                     clearErrors(["releaseMediaFile", "previewSampleFile"]);
                   }}
                 >
@@ -322,6 +381,35 @@ export default function MusicUploadStudio({ showNotice = true }) {
                   <p className="creator-field-error">{errors.price.message}</p>
                 ) : null}
               </label>
+
+              {!isVideoRelease ? (
+                <label>
+                  <span>Chorus Preview Starts At (seconds)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={previewMaxStartSec > 0 ? previewMaxStartSec : undefined}
+                    step="1"
+                    inputMode="numeric"
+                    placeholder="0"
+                    {...register("previewStartSec")}
+                  />
+                  <small>
+                    {previewReferenceDurationSec > 0
+                      ? `Public preview starts at ${previewStartSummary}${
+                        previewReferenceDurationLabel
+                          ? ` inside a ${previewReferenceDurationLabel} source`
+                          : ""
+                      } and stops after 0:30.`
+                      : "Choose where the 30-second public preview should begin."}
+                  </small>
+                  {errors.previewStartSec ? (
+                    <p className="creator-field-error">
+                      {errors.previewStartSec.message}
+                    </p>
+                  ) : null}
+                </label>
+              ) : null}
 
               {!isVideoRelease ? (
                 <label className="creator-toggle-field">
@@ -534,13 +622,25 @@ export default function MusicUploadStudio({ showNotice = true }) {
               <span>{isVideoRelease ? "Video duration" : "Audio duration"}</span>
               <strong>{formattedDuration || "Pending file metadata"}</strong>
             </div>
+            {!isVideoRelease ? (
+              <div className="creator-stack-row">
+                <span>Preview sample</span>
+                <strong>
+                  {previewSampleFile
+                    ? `${previewStartSummary} start / 0:30 public sample`
+                    : price <= 0
+                      ? "Optional for free releases"
+                      : "Upload a preview and pick the chorus start"}
+                </strong>
+              </div>
+            ) : null}
             <div className="creator-stack-row">
               <span>Preview access</span>
               <strong>
                 {price <= 0
                   ? "Free release"
                   : previewSampleFile
-                    ? "Preview ready"
+                    ? "30-second sample ready"
                     : isVideoRelease
                       ? "Needs preview clip"
                       : "Needs preview sample"}
@@ -592,7 +692,7 @@ export default function MusicUploadStudio({ showNotice = true }) {
                   ? "Preview requirement satisfied"
                   : isVideoRelease
                     ? "Paid music videos need a preview clip before publishing"
-                    : "Paid releases need a preview sample before publishing"}
+                    : "Paid releases need a preview sample before publishing. Public playback stops after 30 seconds from the selected chorus start."}
               </small>
             </div>
           </div>

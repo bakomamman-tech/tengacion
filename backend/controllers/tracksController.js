@@ -53,6 +53,8 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   mediaType: track.mediaType || (track.videoUrl ? "video" : "audio"),
   videoFormat: track.videoFormat || "",
   previewUrl: track.previewUrl || "",
+  previewStartSec: Number(track.previewStartSec || 0),
+  previewLimitSec: Number(track.previewLimitSec || 30),
   coverImageUrl: track.coverImageUrl || "",
   durationSec: Number(track.durationSec) || 0,
   createdAt: track.createdAt,
@@ -131,6 +133,7 @@ exports.createTrack = asyncHandler(async (req, res) => {
   const episodeNumber = Number(req.body?.episodeNumber || 0);
   const requestedStatus = resolveRequestedStatus(req.body);
   const genre = String(req.body?.genre || "").trim();
+  const previewStartSec = Math.max(0, Number(req.body?.previewStartSec || 0));
 
   if (!creatorHasCategory(req.creatorProfile, creatorCategory)) {
     return res.status(403).json({
@@ -198,6 +201,8 @@ exports.createTrack = asyncHandler(async (req, res) => {
     price,
     audioUrl,
     previewUrl,
+    previewStartSec,
+    previewLimitSec: 30,
     coverImageUrl,
     durationSec: Number.isFinite(durationSec) && durationSec > 0 ? durationSec : 0,
     genre,
@@ -293,6 +298,7 @@ exports.updateTrack = asyncHandler(async (req, res) => {
   const podcastSeries = String(req.body?.podcastSeries ?? track.podcastSeries ?? "").trim();
   const seasonNumber = Number(req.body?.seasonNumber ?? track.seasonNumber ?? 0);
   const episodeNumber = Number(req.body?.episodeNumber ?? track.episodeNumber ?? 0);
+  const previewStartSec = Math.max(0, Number(req.body?.previewStartSec ?? track.previewStartSec ?? 0));
   const mediaType = nextKind === "podcast"
     ? (String(req.body?.mediaType || track.mediaType || (track.videoUrl ? "video" : "audio")).trim().toLowerCase() === "video"
         ? "video"
@@ -375,6 +381,8 @@ exports.updateTrack = asyncHandler(async (req, res) => {
   track.previewClipUrl = mediaType === "video" ? (previewClipUrl || previewUrl) : "";
   track.coverImageUrl = coverImageUrl;
   track.durationSec = Number.isFinite(durationSec) && durationSec >= 0 ? durationSec : 0;
+  track.previewStartSec = previewStartSec;
+  track.previewLimitSec = 30;
   track.genre = genre;
   track.audioFormat = mediaType === "audio" && mediaFile ? inferUploadedFormat(mediaFile) : track.audioFormat;
   track.videoFormat = mediaType === "video" && mediaFile ? inferUploadedFormat(mediaFile) : "";
@@ -433,7 +441,8 @@ exports.getTrackById = asyncHandler(async (req, res) => {
   return res.json({
     ...toTrackPayload(track),
     canPlayFull: allowed,
-    previewLimitSec: 30,
+    previewStartSec: Number(track.previewStartSec || 0),
+    previewLimitSec: Number(track.previewLimitSec || 30),
   });
 });
 
@@ -473,7 +482,8 @@ exports.getTrackStream = asyncHandler(async (req, res) => {
     itemId: track._id.toString(),
     allowedFullAccess: hasFullAccess,
     previewOnly: !hasFullAccess,
-    previewLimitSec: 30,
+    previewStartSec: Number(track.previewStartSec || 0),
+    previewLimitSec: Number(track.previewLimitSec || 30),
     streamUrl,
   });
 });

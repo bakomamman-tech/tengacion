@@ -65,6 +65,16 @@ const TrackSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    previewStartSec: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    previewLimitSec: {
+      type: Number,
+      default: 30,
+      min: 1,
+    },
     durationSec: {
       type: Number,
       default: 0,
@@ -310,6 +320,8 @@ TrackSchema.pre("validate", function syncStandardFields(next) {
   if (!this.fullAudioUrl && this.audioUrl) this.fullAudioUrl = this.audioUrl;
   if (!this.previewUrl && this.previewSampleUrl) this.previewUrl = this.previewSampleUrl;
   if (!this.previewSampleUrl && this.previewUrl) this.previewSampleUrl = this.previewUrl;
+  if (!Number.isFinite(this.previewStartSec) || this.previewStartSec < 0) this.previewStartSec = 0;
+  if (!Number.isFinite(this.previewLimitSec) || this.previewLimitSec <= 0) this.previewLimitSec = 30;
   if (!Number.isFinite(this.playsCount) && Number.isFinite(this.playCount)) this.playsCount = this.playCount;
   if (!Number.isFinite(this.playCount) && Number.isFinite(this.playsCount)) this.playCount = this.playsCount;
   if (this.kind === "podcast") {

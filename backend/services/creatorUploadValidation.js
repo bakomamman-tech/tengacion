@@ -132,6 +132,7 @@ const musicUploadSchema = z
     songwriterCredits: stringListField({ maxItems: 8, maxLength: 80 }).default([]),
     releaseDate: optionalDate,
     lyrics: boundedString(12000),
+    previewStartSec: nonNegativeInteger.default(0),
     durationSec: nonNegativeInteger.default(0),
   })
   .strict();

@@ -90,6 +90,8 @@ const mapTrackForHub = async ({ track, req, userId }) => {
     canStream: Boolean(streamSource),
     canDownload: canPlayFull,
     previewUrl: track.previewUrl || "",
+    previewStartSec: Number(track.previewStartSec || 0),
+    previewLimitSec: Number(track.previewLimitSec || 30),
     streamUrl: streamSource
       ? buildSignedMediaUrl({
           sourceUrl: streamSource,
@@ -328,6 +330,8 @@ exports.getCreatorTracks = asyncHandler(async (req, res) => {
       priceGlobal: Number(track.priceGlobal) || 0,
       previewUrl: track.previewUrl || "",
       audioUrl: track.audioUrl || "",
+      previewStartSec: Number(track.previewStartSec || 0),
+      previewLimitSec: Number(track.previewLimitSec || 30),
       coverImageUrl: track.coverImageUrl || "",
       durationSec: Number(track.durationSec) || 0,
       kind: track.kind || "music",

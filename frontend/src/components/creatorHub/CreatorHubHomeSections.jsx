@@ -7,6 +7,26 @@ import ComedyRow from "./ComedyRow";
 import EbooksRow from "./EbooksRow";
 import { buttonStyles, cx } from "../ui/buttonStyles";
 
+const toPlayerItem = ({
+  item,
+  creator,
+  type,
+  lockedPreview = false,
+}) => ({
+  id: item.id || item.itemId,
+  title: item.title,
+  coverUrl: item.coverUrl,
+  creatorName: creator.displayName,
+  type,
+  streamUrl: item.streamUrl || "",
+  durationSec: item.durationSec,
+  creatorId: creator.id,
+  progressSec: Number(item.progressSec || 0),
+  lockedPreview: Boolean(lockedPreview),
+  previewStartSec: Math.max(0, Number(item.previewStartSec || 0)),
+  previewLimitSec: Math.max(0, Number(item.previewLimitSec || 0)),
+});
+
 export default function CreatorHubHomeSections({
   sections,
   creator,
@@ -22,17 +42,12 @@ export default function CreatorHubHomeSections({
       <div>
         <ContinueListeningRow
           items={sections.continueListening || []}
-          onPlay={(item) => onPlay({
-            id: item.itemId,
-            title: item.title,
-            coverUrl: item.coverUrl,
-            creatorName: creator.displayName,
+          onPlay={(item) => onPlay(toPlayerItem({
+            item,
+            creator,
             type: item.type,
-            streamUrl: item.streamUrl || "",
-            durationSec: item.durationSec,
-            creatorId: creator.id,
-            lockedPreview: false,
-          })}
+            lockedPreview: item.lockedPreview,
+          }))}
         />
 
         <div className={styles.tracksGrid} style={{ marginTop: "1rem" }}>
@@ -40,29 +55,20 @@ export default function CreatorHubHomeSections({
             tracks={sections.topTracks || []}
             currencyMode={currencyMode}
             creatorName={creator.displayName}
-            onPlay={(track, queue) => onPlay({
-              id: track.id,
-              title: track.title,
-              coverUrl: track.coverUrl,
-              creatorName: creator.displayName,
-              type: track.kind === "podcast" ? "podcast" : "song",
-              streamUrl: track.streamUrl,
-              durationSec: track.durationSec,
-              creatorId: creator.id,
-              lockedPreview: !track.isFree && !track.canDownload,
-              previewLimitSec: 45,
-            }, queue.map((entry) => ({
-              id: entry.id,
-              title: entry.title,
-              coverUrl: entry.coverUrl,
-              creatorName: creator.displayName,
-              type: entry.kind === "podcast" ? "podcast" : "song",
-              streamUrl: entry.streamUrl,
-              durationSec: entry.durationSec,
-              creatorId: creator.id,
-              lockedPreview: !entry.isFree && !entry.canDownload,
-              previewLimitSec: 45,
-            })))}
+            onPlay={(track, queue) => onPlay(
+              toPlayerItem({
+                item: track,
+                creator,
+                type: track.kind === "podcast" ? "podcast" : "song",
+                lockedPreview: !track.isFree && !track.canDownload,
+              }),
+              queue.map((entry) => toPlayerItem({
+                item: entry,
+                creator,
+                type: entry.kind === "podcast" ? "podcast" : "song",
+                lockedPreview: !entry.isFree && !entry.canDownload,
+              }))
+            )}
             onViewAll={() => onViewTab("music")}
             onCheckout={onCheckout}
             onTrackMenu={onMenu}
@@ -75,29 +81,20 @@ export default function CreatorHubHomeSections({
             items={sections.latestComedy || []}
             currencyMode={currencyMode}
             onViewAll={() => onViewTab("comedy")}
-            onPlay={(video, queue) => onPlay({
-              id: video.id,
-              title: video.title,
-              coverUrl: video.coverUrl,
-              creatorName: creator.displayName,
-              type: "video",
-              streamUrl: video.streamUrl,
-              durationSec: video.durationSec,
-              creatorId: creator.id,
-              lockedPreview: !video.isFree,
-              previewLimitSec: 45,
-            }, queue.map((entry) => ({
-              id: entry.id,
-              title: entry.title,
-              coverUrl: entry.coverUrl,
-              creatorName: creator.displayName,
-              type: "video",
-              streamUrl: entry.streamUrl,
-              durationSec: entry.durationSec,
-              creatorId: creator.id,
-              lockedPreview: !entry.isFree,
-              previewLimitSec: 45,
-            })))}
+            onPlay={(video, queue) => onPlay(
+              toPlayerItem({
+                item: video,
+                creator,
+                type: "video",
+                lockedPreview: !video.isFree,
+              }),
+              queue.map((entry) => toPlayerItem({
+                item: entry,
+                creator,
+                type: "video",
+                lockedPreview: !entry.isFree,
+              }))
+            )}
             onCheckout={onCheckout}
             onMenu={onMenu}
           />
@@ -149,29 +146,20 @@ export default function CreatorHubHomeSections({
           currencyMode={currencyMode}
           onViewAll={() => onViewTab("podcasts")}
           onCheckout={onCheckout}
-          onPlay={(podcast, queue) => onPlay({
-            id: podcast.id,
-            title: podcast.title,
-            coverUrl: podcast.coverUrl,
-            creatorName: creator.displayName,
-            type: "podcast",
-            streamUrl: podcast.streamUrl,
-            durationSec: podcast.durationSec,
-            creatorId: creator.id,
-            lockedPreview: !podcast.isFree && !podcast.canDownload,
-            previewLimitSec: 45,
-          }, queue.map((entry) => ({
-            id: entry.id,
-            title: entry.title,
-            coverUrl: entry.coverUrl,
-            creatorName: creator.displayName,
-            type: "podcast",
-            streamUrl: entry.streamUrl,
-            durationSec: entry.durationSec,
-            creatorId: creator.id,
-            lockedPreview: !entry.isFree && !entry.canDownload,
-            previewLimitSec: 45,
-          })))}
+          onPlay={(podcast, queue) => onPlay(
+            toPlayerItem({
+              item: podcast,
+              creator,
+              type: "podcast",
+              lockedPreview: !podcast.isFree && !podcast.canDownload,
+            }),
+            queue.map((entry) => toPlayerItem({
+              item: entry,
+              creator,
+              type: "podcast",
+              lockedPreview: !entry.isFree && !entry.canDownload,
+            }))
+          )}
         />
       </div>
     </div>

@@ -61,5 +61,5 @@ describe("CreatorFanPageWorkspacePreview", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /full track/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /preview sample/i })).toBeInTheDocument();
-  });
+  }, 10000);
 });

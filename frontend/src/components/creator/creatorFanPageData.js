@@ -198,6 +198,8 @@ const buildFallbackItem = ({
     detailActionLabel: "Open studio",
     audioUrl: "",
     previewAudioUrl: "",
+    previewStartSec: 0,
+    previewLimitSec: 30,
     isPlayableAudio: false,
   };
 };
@@ -376,6 +378,8 @@ const normalizePreviewItem = ({
             : "Open release",
     audioUrl,
     previewAudioUrl,
+    previewStartSec: Math.max(0, Number(entry?.previewStartSec || 0)),
+    previewLimitSec: Math.max(0, Number(entry?.previewLimitSec || 30)),
     isPlayableAudio: Boolean(audioUrl || previewAudioUrl),
   };
 };

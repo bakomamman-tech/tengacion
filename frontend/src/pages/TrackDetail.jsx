@@ -6,7 +6,7 @@ import PaywallModal from "../components/PaywallModal";
 import { useAuth } from "../context/AuthContext";
 import useEntitlementSocket from "../hooks/useEntitlementSocket";
 
-const PREVIEW_LIMIT_SEC = 30;
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 export default function TrackDetail() {
   const { trackId } = useParams();
@@ -24,6 +24,9 @@ export default function TrackDetail() {
   const [payError, setPayError] = useState("");
 
   const isLoggedIn = Boolean(user?._id);
+  const previewStartSec = Math.max(0, Number(stream?.previewStartSec || 0));
+  const previewLimitSec = Math.max(0, Number(stream?.previewLimitSec || 30));
+  const previewEndSec = previewStartSec + previewLimitSec;
 
   const loadTrack = useCallback(async () => {
     setLoading(true);
@@ -119,10 +122,81 @@ export default function TrackDetail() {
       return;
     }
 
-    if (audio.currentTime >= PREVIEW_LIMIT_SEC) {
+    const boundedEnd = Math.min(
+      Number(audio.duration || previewEndSec || 0) || previewEndSec,
+      previewEndSec
+    );
+
+    if (audio.currentTime >= boundedEnd) {
       audio.pause();
-      audio.currentTime = PREVIEW_LIMIT_SEC;
+      audio.currentTime = boundedEnd;
       setPaywallOpen(true);
+    }
+  };
+
+  const handlePreviewLoadedMetadata = () => {
+    if (!stream || stream.allowedFullAccess) {
+      return;
+    }
+
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+
+    const boundedStart = clamp(
+      previewStartSec,
+      0,
+      Number(audio.duration || previewStartSec || 0) || previewStartSec
+    );
+    audio.currentTime = boundedStart;
+  };
+
+  const handlePreviewSeeking = () => {
+    if (!stream || stream.allowedFullAccess) {
+      return;
+    }
+
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+
+    const boundedEnd = Math.min(
+      Number(audio.duration || previewEndSec || 0) || previewEndSec,
+      previewEndSec
+    );
+
+    if (audio.currentTime < previewStartSec) {
+      audio.currentTime = previewStartSec;
+      return;
+    }
+
+    if (audio.currentTime > boundedEnd) {
+      audio.currentTime = boundedEnd;
+    }
+  };
+
+  const handlePreviewPlay = () => {
+    if (!stream || stream.allowedFullAccess) {
+      return;
+    }
+
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+
+    const boundedEnd = Math.min(
+      Number(audio.duration || previewEndSec || 0) || previewEndSec,
+      previewEndSec
+    );
+
+    if (
+      audio.currentTime < previewStartSec
+      || audio.currentTime >= Math.max(boundedEnd - 0.1, previewStartSec)
+    ) {
+      audio.currentTime = previewStartSec;
     }
   };
 
@@ -167,8 +241,10 @@ export default function TrackDetail() {
     if (stream?.allowedFullAccess) {
       return "You have full access to this track.";
     }
-    return "Preview is limited to 30 seconds. Buy to unlock full playback.";
-  }, [stream?.allowedFullAccess]);
+    return previewStartSec > 0
+      ? "Preview is limited to 30 seconds from the selected chorus section. Buy to unlock full playback."
+      : "Preview is limited to 30 seconds. Buy to unlock full playback.";
+  }, [previewStartSec, stream?.allowedFullAccess]);
 
   if (loading) {
     return (
@@ -212,6 +288,9 @@ export default function TrackDetail() {
             controls
             src={stream?.streamUrl || ""}
             className="w-full"
+            onLoadedMetadata={handlePreviewLoadedMetadata}
+            onPlay={handlePreviewPlay}
+            onSeeking={handlePreviewSeeking}
             onTimeUpdate={handlePreviewLimit}
             onEnded={handleEnded}
           />

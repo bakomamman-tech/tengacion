@@ -57,6 +57,13 @@ const optionalIntegerField = z.preprocess((value) => {
   return Number(value);
 }, z.number().int().min(0).optional());
 
+const nonNegativeNumberField = z.preprocess((value) => {
+  if (value === "" || value === undefined || value === null) {
+    return 0;
+  }
+  return Number(value);
+}, z.number().finite().min(0));
+
 export const splitCommaValues = (value = "") =>
   [...new Set(
     String(value || "")
@@ -79,6 +86,7 @@ export const musicUploadSchema = z.object({
   songwriterCredits: z.string().trim().max(320).optional().default(""),
   releaseDate: z.string().optional().default(""),
   lyrics: z.string().trim().max(12000).optional().default(""),
+  previewStartSec: nonNegativeNumberField.default(0),
   coverImageFile: fileField("Cover image", IMAGE_EXTENSIONS),
   releaseMediaFile: fileField("Release media", [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS], { required: true }),
   previewSampleFile: fileField("Preview media", [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS]),

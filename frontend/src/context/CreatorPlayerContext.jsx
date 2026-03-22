@@ -4,6 +4,32 @@ import { savePlayerProgress } from "../api";
 const SESSION_KEY = "creator_hub_player_state_v1";
 
 const CreatorPlayerContext = createContext(null);
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const getPreviewBounds = (item, mediaDuration = 0) => {
+  const previewStartSec = Math.max(0, Number(item?.previewStartSec || 0));
+  const previewLimitSec = Math.max(0, Number(item?.previewLimitSec || 0));
+
+  if (!item?.lockedPreview || previewLimitSec <= 0) {
+    return {
+      enabled: false,
+      start: 0,
+      end: Math.max(0, Number(mediaDuration || item?.durationSec || 0)),
+    };
+  }
+
+  const boundedDuration = Math.max(0, Number(mediaDuration || 0));
+  const fallbackEnd = previewStartSec + previewLimitSec;
+
+  return {
+    enabled: true,
+    start: previewStartSec,
+    end:
+      boundedDuration > 0
+        ? Math.min(boundedDuration, fallbackEnd)
+        : fallbackEnd,
+  };
+};
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useCreatorPlayer = () => useContext(CreatorPlayerContext);
@@ -72,11 +98,25 @@ export function CreatorPlayerProvider({ children }) {
     const audio = audioRef.current;
     if (!audio || !item?.streamUrl) {return;}
 
+    const previewBounds = getPreviewBounds(
+      item,
+      Number(audio.duration || item?.durationSec || 0)
+    );
+    const requestedStart = Math.max(0, Number(item?.progressSec || 0));
+    const startPosition = previewBounds.enabled
+      ? clamp(
+          requestedStart || previewBounds.start,
+          previewBounds.start,
+          previewBounds.end
+        )
+      : requestedStart;
+
     setUnlockRequired(false);
     if (audio.src !== item.streamUrl) {
       audio.src = item.streamUrl;
-      audio.currentTime = 0;
     }
+    audio.currentTime = startPosition;
+    setPosition(startPosition);
     await audio.play();
   }, []);
 
@@ -135,8 +175,20 @@ export function CreatorPlayerProvider({ children }) {
   const seekTo = useCallback((nextPosition) => {
     const audio = audioRef.current;
     if (!audio) {return;}
-    audio.currentTime = Math.max(0, Number(nextPosition) || 0);
-  }, []);
+    const previewBounds = getPreviewBounds(
+      currentItem,
+      Number(audio.duration || currentItem?.durationSec || 0)
+    );
+    const boundedPosition = previewBounds.enabled
+      ? clamp(
+          Number(nextPosition || 0),
+          previewBounds.start,
+          previewBounds.end
+        )
+      : Math.max(0, Number(nextPosition) || 0);
+    audio.currentTime = boundedPosition;
+    setPosition(boundedPosition);
+  }, [currentItem]);
 
   const moveQueueItem = useCallback((from, to) => {
     setQueue((prev) => {
@@ -171,23 +223,61 @@ export function CreatorPlayerProvider({ children }) {
 
     const onTime = () => {
       const currentTime = Number(audio.currentTime || 0);
+      const previewBounds = getPreviewBounds(
+        currentItem,
+        Number(audio.duration || currentItem?.durationSec || 0)
+      );
+
+      if (previewBounds.enabled && currentTime >= previewBounds.end) {
+        audio.pause();
+        audio.currentTime = previewBounds.end;
+        setPosition(previewBounds.end);
+        setUnlockRequired(true);
+        return;
+      }
+
       setPosition(currentTime);
       persistProgress(false);
-      const previewLimitSec = Number(currentItem?.previewLimitSec || 0);
-      if (previewLimitSec > 0 && currentItem?.lockedPreview && currentTime >= previewLimitSec) {
-        audio.pause();
-        setUnlockRequired(true);
+    };
+    const onLoaded = () => {
+      const nextDuration = Number(audio.duration || 0);
+      const previewBounds = getPreviewBounds(currentItem, nextDuration);
+
+      setDuration(nextDuration);
+
+      if (previewBounds.enabled) {
+        const boundedPosition = clamp(
+          Number(audio.currentTime || previewBounds.start),
+          previewBounds.start,
+          previewBounds.end
+        );
+
+        if (boundedPosition !== Number(audio.currentTime || 0)) {
+          audio.currentTime = boundedPosition;
+        }
+        setPosition(boundedPosition);
       }
     };
-    const onLoaded = () => setDuration(Number(audio.duration || 0));
     const onPlay = () => setIsPlaying(true);
     const onPause = () => {
       setIsPlaying(false);
       persistProgress(true);
     };
     const onEnded = () => {
+      const previewBounds = getPreviewBounds(
+        currentItem,
+        Number(audio.duration || currentItem?.durationSec || 0)
+      );
+
       setIsPlaying(false);
       persistProgress(true);
+
+      if (previewBounds.enabled) {
+        setPosition(previewBounds.end);
+        setUnlockRequired(true);
+        return;
+      }
+
       playNext();
     };
 
@@ -207,7 +297,12 @@ export function CreatorPlayerProvider({ children }) {
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("ended", onEnded);
     };
-  }, [currentItem?.lockedPreview, currentItem?.previewLimitSec, persistProgress, playNext, volume]);
+  }, [
+    currentItem,
+    persistProgress,
+    playNext,
+    volume,
+  ]);
 
   useEffect(() => {
     const audio = audioRef.current;

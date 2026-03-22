@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
@@ -27,21 +27,173 @@ const PUBLIC_TABS = [
 const formatMoney = (value = 0) =>
   Number(value || 0) <= 0 ? "Free" : `NGN ${Number(value || 0).toLocaleString()}`;
 
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
 const resolveTab = (pathname = "") => {
   const lowerPath = String(pathname || "").toLowerCase();
   const match = PUBLIC_TABS.find((tab) => tab.suffix && lowerPath.endsWith(tab.suffix));
   return match?.key || "home";
 };
 
-const normalizePreviewPayload = ({ item, src, mode = "preview" }) => ({
-  id: item.id,
-  kind: item.mediaType,
-  title: item.title,
-  subtitle: item.subtitle || "",
-  artwork: item.coverUrl || "",
+const normalizePreviewPayload = ({
+  item,
   src,
-  mode,
-});
+  mode = "preview",
+  streamPayload = null,
+}) => {
+  const defaultPreviewLimitSec =
+    item.itemType === "track" || item.itemType === "podcast" ? 30 : 0;
+  const previewStartSec = Math.max(
+    0,
+    Number(streamPayload?.previewStartSec ?? item.previewStartSec ?? 0)
+  );
+  const previewLimitSec = Math.max(
+    0,
+    Number(
+      streamPayload?.previewLimitSec ??
+        item.previewLimitSec ??
+        defaultPreviewLimitSec
+    )
+  );
+  const previewOnly =
+    Boolean(streamPayload?.previewOnly) ||
+    Boolean(
+      mode === "stream"
+        && item.mediaType === "audio"
+        && !item.canAccessFull
+        && previewLimitSec > 0
+    );
+
+  return {
+    id: item.id,
+    kind: item.mediaType,
+    title: item.title,
+    subtitle: item.subtitle || "",
+    artwork: item.coverUrl || "",
+    src,
+    mode,
+    durationSec: Number(item.durationSec || 0),
+    previewStartSec,
+    previewLimitSec,
+    enforcePreviewWindow:
+      item.mediaType === "audio"
+      && previewLimitSec > 0
+      && (mode === "preview" || previewOnly),
+  };
+};
+
+function CreatorPublicAudioPreview({ preview }) {
+  const audioRef = useRef(null);
+
+  const resolvePreviewEnd = (audio) => {
+    const previewEndSec =
+      Number(preview?.previewStartSec || 0) +
+      Number(preview?.previewLimitSec || 0);
+
+    return Math.min(
+      Number(audio?.duration || previewEndSec || 0) || previewEndSec,
+      previewEndSec
+    );
+  };
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+
+    audio.pause();
+  }, [preview?.id, preview?.src, preview?.mode]);
+
+  const handleLoadedMetadata = (event) => {
+    if (!preview?.enforcePreviewWindow) {
+      return;
+    }
+
+    const boundedStart = clamp(
+      Number(preview.previewStartSec || 0),
+      0,
+      Number(event.currentTarget.duration || preview.previewStartSec || 0)
+        || Number(preview.previewStartSec || 0)
+    );
+    event.currentTarget.currentTime = boundedStart;
+  };
+
+  const handleTimeUpdate = (event) => {
+    if (!preview?.enforcePreviewWindow) {
+      return;
+    }
+
+    const boundedEnd = resolvePreviewEnd(event.currentTarget);
+
+    if (event.currentTarget.currentTime >= boundedEnd) {
+      event.currentTarget.pause();
+      event.currentTarget.currentTime = boundedEnd;
+    }
+  };
+
+  const handleSeeking = (event) => {
+    if (!preview?.enforcePreviewWindow) {
+      return;
+    }
+
+    const boundedEnd = resolvePreviewEnd(event.currentTarget);
+    const previewStartSec = Number(preview.previewStartSec || 0);
+
+    if (event.currentTarget.currentTime < previewStartSec) {
+      event.currentTarget.currentTime = previewStartSec;
+      return;
+    }
+
+    if (event.currentTarget.currentTime > boundedEnd) {
+      event.currentTarget.currentTime = boundedEnd;
+    }
+  };
+
+  const handlePlay = (event) => {
+    if (!preview?.enforcePreviewWindow) {
+      return;
+    }
+
+    const previewStartSec = Number(preview.previewStartSec || 0);
+    const boundedEnd = resolvePreviewEnd(event.currentTarget);
+
+    if (
+      event.currentTarget.currentTime < previewStartSec
+      || event.currentTarget.currentTime >= Math.max(boundedEnd - 0.1, previewStartSec)
+    ) {
+      event.currentTarget.currentTime = previewStartSec;
+    }
+  };
+
+  return (
+    <div className="creator-public-preview__audio">
+      <img
+        src={resolveImage(preview?.artwork) || "/avatar.png"}
+        alt={preview?.title}
+      />
+      <div className="creator-public-preview__audio-copy">
+        <audio
+          ref={audioRef}
+          className="creator-public-preview__player"
+          controls
+          src={preview?.src}
+          onLoadedMetadata={handleLoadedMetadata}
+          onPlay={handlePlay}
+          onSeeking={handleSeeking}
+          onTimeUpdate={handleTimeUpdate}
+        />
+        <small>
+          {preview?.enforcePreviewWindow
+            ? preview?.previewStartSec > 0
+              ? "This sample jumps to the selected chorus and stops after 30 seconds."
+              : "This sample stops after 30 seconds."
+            : "Full playback is available for this release."}
+        </small>
+      </div>
+    </div>
+  );
+}
 
 export default function CreatorHubPage() {
   const { creatorId } = useParams();
@@ -205,7 +357,9 @@ export default function CreatorHubPage() {
       return;
     }
 
-    setActivePreview(normalizePreviewPayload({ item, src: source, mode: "preview" }));
+    setActivePreview(
+      normalizePreviewPayload({ item, src: source, mode: "preview" })
+    );
   };
 
   const handleStream = async (item) => {
@@ -231,7 +385,14 @@ export default function CreatorHubPage() {
         }
         throw new Error("Stream unavailable for this release.");
       }
-      setActivePreview(normalizePreviewPayload({ item, src: streamUrl, mode: "stream" }));
+      setActivePreview(
+        normalizePreviewPayload({
+          item,
+          src: streamUrl,
+          mode: "stream",
+          streamPayload,
+        })
+      );
     } catch (err) {
       toast.error(err?.message || "Could not start playback.");
     }
@@ -570,10 +731,7 @@ export default function CreatorHubPage() {
                   {activePreview.kind === "video" ? (
                     <video className="creator-public-preview__player" controls src={activePreview.src} poster={activePreview.artwork} />
                   ) : activePreview.kind === "audio" ? (
-                    <div className="creator-public-preview__audio">
-                      <img src={resolveImage(activePreview.artwork) || "/avatar.png"} alt={activePreview.title} />
-                      <audio className="creator-public-preview__player" controls src={activePreview.src} />
-                    </div>
+                    <CreatorPublicAudioPreview preview={activePreview} />
                   ) : (
                     <iframe className="creator-public-preview__frame" src={activePreview.src} title={activePreview.title} />
                   )}

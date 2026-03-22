@@ -134,6 +134,8 @@ const serializeTrackItem = (track, earnings = 0) => ({
   coverImageUrl: track.coverImageUrl || track.coverUrl || "",
   videoUrl: track.videoUrl || "",
   previewUrl: track.previewUrl || "",
+  previewStartSec: Number(track.previewStartSec || 0),
+  previewLimitSec: Number(track.previewLimitSec || 30),
   kind: track.kind || "music",
   creatorCategory: track.creatorCategory || (track.kind === "podcast" ? "podcasts" : "music"),
   contentType: track.contentType || (track.kind === "podcast" ? "podcast_episode" : "track"),

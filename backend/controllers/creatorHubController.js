@@ -157,7 +157,9 @@ exports.getContinueListening = asyncHandler(async (req, res) => {
   const rows = await PlayerProgress.find(query).sort({ playedAt: -1 }).limit(20).lean();
   const items = await Promise.all(
     rows.map(async (row) => {
-      const track = await Track.findById(row.itemId).select("title coverImageUrl durationSec price previewUrl audioUrl").lean();
+      const track = await Track.findById(row.itemId)
+        .select("title coverImageUrl durationSec price previewUrl audioUrl previewStartSec previewLimitSec")
+        .lean();
       if (!track) return null;
       const entitled = Number(track.price || 0) <= 0 || (await hasEntitlement({
         userId,
@@ -172,6 +174,9 @@ exports.getContinueListening = asyncHandler(async (req, res) => {
         coverUrl: track.coverImageUrl || "",
         progressSec: Number(row.positionSec || 0),
         durationSec: Number(row.durationSec || track.durationSec || 0),
+        previewStartSec: Number(track.previewStartSec || 0),
+        previewLimitSec: Number(track.previewLimitSec || 30),
+        lockedPreview: !entitled,
         streamUrl: sourceUrl
           ? buildSignedMediaUrl({
               sourceUrl,
@@ -445,6 +450,10 @@ exports.getProtectedStream = asyncHandler(async (req, res) => {
     itemId: item.itemId.toString(),
     canAccessFull,
     previewOnly: !canAccessFull,
+    previewStartSec:
+      item.itemType === "track" ? Number(item.payload?.previewStartSec || 0) : 0,
+    previewLimitSec:
+      item.itemType === "track" ? Number(item.payload?.previewLimitSec || 30) : 0,
     streamUrl,
   });
 });

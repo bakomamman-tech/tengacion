@@ -3,14 +3,15 @@ import { MemoryRouter } from "react-router-dom";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import CreatorFanPagePreview from "../CreatorFanPagePreview";
+import CreatorFanPageWorkspacePreview from "../CreatorFanPageWorkspacePreview";
 
-describe("CreatorFanPagePreview", () => {
-  it("renders the fan-facing preview sections and actions", () => {
+describe("CreatorFanPageWorkspacePreview", () => {
+  it("renders a playable audio dock for uploaded music", () => {
     render(
       <MemoryRouter>
-        <CreatorFanPagePreview
+        <CreatorFanPageWorkspacePreview
           creatorProfile={{
+            _id: "creator-1",
             displayName: "Creator Example",
             creatorTypes: ["music", "bookPublishing", "podcast"],
             user: {
@@ -27,6 +28,7 @@ describe("CreatorFanPagePreview", () => {
               music: {
                 tracks: [
                   {
+                    _id: "track-1",
                     title: "Golden Echoes",
                     artistName: "Creator Example",
                     price: 500,
@@ -46,24 +48,18 @@ describe("CreatorFanPagePreview", () => {
               },
             },
           }}
+          currentCategoryKey="music"
         />
       </MemoryRouter>
     );
 
-    expect(screen.getByLabelText(/fan page view/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/creator example/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("button", { name: /follow/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("button", { name: /donate/i }).length).toBeGreaterThan(0);
-    expect(screen.getByText(/unlock exclusive content/i)).toBeInTheDocument();
-    expect(screen.getByText(/popular releases/i)).toBeInTheDocument();
-    expect(screen.getByText(/featured episode/i)).toBeInTheDocument();
-    expect(screen.getByText(/featured visual/i)).toBeInTheDocument();
-    expect(screen.getByText(/books by creator example/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /play golden echoes/i })
     ).toBeInTheDocument();
     expect(
       screen.getByRole("slider", { name: /seek within golden echoes/i })
     ).toBeInTheDocument();
-  }, 10000);
+    expect(screen.getByRole("button", { name: /full track/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /preview sample/i })).toBeInTheDocument();
+  });
 });

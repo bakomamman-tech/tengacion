@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import CreatorAudioPreviewPlayer from "./CreatorAudioPreviewPlayer";
 import { formatCurrency } from "./creatorConfig";
 import {
   buildCreatorFanPageData,
@@ -39,6 +40,7 @@ export default function CreatorFanPageWorkspacePreview({
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [autoplayRequest, setAutoplayRequest] = useState(0);
 
   useEffect(() => {
     setActiveTab(defaultTab);
@@ -47,6 +49,7 @@ export default function CreatorFanPageWorkspacePreview({
   useEffect(() => {
     setActiveIndex(0);
     setIsPlaying(false);
+    setAutoplayRequest(0);
   }, [activeTab]);
 
   const initials = getCreatorFanPageInitials(data.creatorName);
@@ -83,11 +86,12 @@ export default function CreatorFanPageWorkspacePreview({
     if (!queue.length) {
       return;
     }
+
     setActiveIndex((current) => {
       const total = queue.length;
       return (current + direction + total) % total;
     });
-    setIsPlaying(true);
+    setAutoplayRequest((current) => current + 1);
   };
 
   return (
@@ -225,10 +229,10 @@ export default function CreatorFanPageWorkspacePreview({
                   className={`creator-fan-preview__play-pill${index === activeIndex ? " is-active" : ""}`}
                   onClick={() => {
                     setActiveIndex(index);
-                    setIsPlaying(true);
+                    setAutoplayRequest((current) => current + 1);
                   }}
                 >
-                  {index === activeIndex && isPlaying ? "Pause" : "Play"}
+                  {index === activeIndex && isPlaying ? "Playing" : "Play"}
                 </button>
                 <div className="creator-fan-preview__queue-copy">
                   <strong>{item.title}</strong>
@@ -326,26 +330,17 @@ export default function CreatorFanPageWorkspacePreview({
       </div>
 
       <div className="creator-fan-preview__player">
-        <div className="creator-fan-preview__player-track">
-          <strong>{currentItem?.title || activeSection.label}</strong>
-          <span>{currentItem?.subtitle || data.creatorName}</span>
-        </div>
-
-        <div className="creator-fan-preview__player-controls">
-          <button type="button" onClick={() => movePlayer(-1)}>
-            Back
-          </button>
-          <button
-            type="button"
-            className={isPlaying ? "is-active" : ""}
-            onClick={() => setIsPlaying((current) => !current)}
-          >
-            {isPlaying ? "Pause" : "Play"}
-          </button>
-          <button type="button" onClick={() => movePlayer(1)}>
-            Next
-          </button>
-        </div>
+        <CreatorAudioPreviewPlayer
+          item={currentItem}
+          creatorName={data.creatorName}
+          queueLength={queue.length}
+          queueIndex={activeIndex}
+          onPrevious={() => movePlayer(-1)}
+          onNext={() => movePlayer(1)}
+          onPlayingChange={setIsPlaying}
+          autoplayRequest={autoplayRequest}
+          variant="workspace"
+        />
 
         <div>
           <div className="creator-fan-preview__player-progress">

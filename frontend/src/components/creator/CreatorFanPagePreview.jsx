@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import CreatorAudioPreviewPlayer from "./CreatorAudioPreviewPlayer";
 import { formatCurrency } from "./creatorConfig";
 import {
   buildCreatorFanPageData,
@@ -51,6 +52,7 @@ export default function CreatorFanPagePreview({
   );
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [autoplayRequest, setAutoplayRequest] = useState(0);
 
   useEffect(() => {
     setActiveTab(resolveCreatorFanPageTabKey("music"));
@@ -59,6 +61,7 @@ export default function CreatorFanPagePreview({
   useEffect(() => {
     setActiveIndex(0);
     setIsPlaying(false);
+    setAutoplayRequest(0);
   }, [activeTab]);
 
   const initials = getCreatorFanPageInitials(data.creatorName);
@@ -101,7 +104,7 @@ export default function CreatorFanPagePreview({
       const total = queue.length;
       return (current + direction + total) % total;
     });
-    setIsPlaying(true);
+    setAutoplayRequest((current) => current + 1);
   };
 
   return (
@@ -348,10 +351,10 @@ export default function CreatorFanPagePreview({
                       className="creator-fan-page__button creator-fan-page__button--icon"
                       onClick={() => {
                         setActiveIndex(index);
-                        setIsPlaying(true);
+                        setAutoplayRequest((current) => current + 1);
                       }}
                     >
-                      Play
+                      {index === activeIndex && isPlaying ? "Playing" : "Play"}
                     </button>
                   </article>
                 ))}
@@ -506,49 +509,17 @@ export default function CreatorFanPagePreview({
       </div>
 
       <footer className="creator-fan-page__player">
-        <div className="creator-fan-page__player-track">
-          <FanPageImage
-            src={currentItem?.imageUrl || data.music.coverUrl}
-            alt={currentItem?.title || data.music.title}
-            initials={initials}
-            className="creator-fan-page__image--player"
-          />
-          <div>
-            <strong>{currentItem?.title || data.music.title}</strong>
-            <span>{currentItem?.subtitle || data.music.subtitle}</span>
-          </div>
-        </div>
-
-        <div className="creator-fan-page__player-controls" aria-hidden="true">
-          <button
-            type="button"
-            className="creator-fan-page__button creator-fan-page__button--icon"
-            onClick={() => movePlayer(-1)}
-          >
-            Back
-          </button>
-          <button
-            type="button"
-            className="creator-fan-page__button creator-fan-page__button--accent"
-            onClick={() => setIsPlaying((current) => !current)}
-          >
-            {isPlaying ? "Pause" : "Play"}
-          </button>
-          <button
-            type="button"
-            className="creator-fan-page__button creator-fan-page__button--icon"
-            onClick={() => movePlayer(1)}
-          >
-            Next
-          </button>
-        </div>
-
-        <div className="creator-fan-page__player-meta">
-          <span>{currentItem?.statusLabel || data.music.queueCount}</span>
-          <span>{currentItem?.secondaryLine || currentItem?.duration || ""}</span>
-          <span>{currentItem?.metricLabel ? `${currentItem.metricValue || 0} ${currentItem.metricLabel}` : "Ready"}</span>
-          <strong>{formatCurrency(currentItem?.price || 0)}</strong>
-        </div>
+        <CreatorAudioPreviewPlayer
+          item={currentItem || data.music}
+          creatorName={data.creatorName}
+          queueLength={queue.length}
+          queueIndex={activeIndex}
+          onPrevious={() => movePlayer(-1)}
+          onNext={() => movePlayer(1)}
+          onPlayingChange={setIsPlaying}
+          autoplayRequest={autoplayRequest}
+          variant="public"
+        />
       </footer>
     </section>
   );

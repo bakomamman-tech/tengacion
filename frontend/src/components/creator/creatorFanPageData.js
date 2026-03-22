@@ -196,6 +196,9 @@ const buildFallbackItem = ({
             : "Upload a release",
     primaryActionLabel: "Open studio",
     detailActionLabel: "Open studio",
+    audioUrl: "",
+    previewAudioUrl: "",
+    isPlayableAudio: false,
   };
 };
 
@@ -233,6 +236,25 @@ const normalizePreviewItem = ({
     resolveFallbackImage(entry?.thumbnailUrl) ||
     heroUrl ||
     avatarUrl;
+  const mediaType =
+    String(
+      entry?.mediaType ||
+        (itemType === "video" ? "video" : "audio")
+    )
+      .trim()
+      .toLowerCase() === "video"
+      ? "video"
+      : "audio";
+  const audioUrl =
+    mediaType === "audio" && ["track", "podcast"].includes(itemType)
+      ? resolveFallbackImage(entry?.audioUrl) ||
+        resolveFallbackImage(entry?.fullAudioUrl) ||
+        ""
+      : "";
+  const previewAudioUrl =
+    mediaType === "audio" && ["track", "podcast"].includes(itemType)
+      ? resolveFallbackImage(entry?.previewUrl) || ""
+      : "";
 
   const price = Number(entry?.price ?? 0);
   const title =
@@ -352,6 +374,9 @@ const normalizePreviewItem = ({
           : itemType === "video"
             ? "Open video"
             : "Open release",
+    audioUrl,
+    previewAudioUrl,
+    isPlayableAudio: Boolean(audioUrl || previewAudioUrl),
   };
 };
 

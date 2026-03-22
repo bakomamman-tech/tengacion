@@ -499,12 +499,11 @@
 .creator-fan-page__player {
   position: sticky;
   bottom: 12px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 18px;
-  border-radius: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .creator-fan-page__player-track {

@@ -1539,13 +1539,7 @@ textarea {
 
 .creator-fan-preview__player {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(140px, 0.9fr);
-  gap: 14px;
-  align-items: center;
-  padding: 14px 16px;
-  border-radius: 20px;
-  background: rgba(14, 19, 15, 0.5);
-  border: 1px solid rgba(255, 247, 233, 0.06);
+  gap: 12px;
 }
 
 .creator-fan-preview__player-track {

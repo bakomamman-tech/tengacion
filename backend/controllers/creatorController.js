@@ -130,6 +130,7 @@ const serializeTrackItem = (track, earnings = 0) => ({
   audioFormat: track.audioFormat || "",
   mediaType: track.mediaType || (track.videoUrl ? "video" : "audio"),
   videoFormat: track.videoFormat || "",
+  audioUrl: track.audioUrl || track.fullAudioUrl || "",
   coverImageUrl: track.coverImageUrl || track.coverUrl || "",
   videoUrl: track.videoUrl || "",
   previewUrl: track.previewUrl || "",

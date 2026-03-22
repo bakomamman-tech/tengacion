@@ -117,6 +117,7 @@ const canAccessFullTrack = async ({ track, userId }) => {
     userId,
     itemType: "track",
     itemId: track._id,
+    creatorId: track.creatorId?._id || track.creatorId,
   });
 };
 

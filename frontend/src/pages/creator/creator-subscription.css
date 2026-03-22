@@ -1,0 +1,283 @@
+.creator-subscription-page {
+  min-height: 100vh;
+  padding: clamp(18px, 2.4vw, 32px);
+  background:
+    radial-gradient(circle at top left, rgba(183, 138, 66, 0.18), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(31, 75, 52, 0.18), transparent 28%),
+    linear-gradient(180deg, #111912 0%, #18241b 34%, #f3ecdf 34%, #ede4d4 100%);
+  color: #2f281c;
+}
+
+.creator-subscription-shell {
+  display: grid;
+  gap: 24px;
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.creator-subscription-status,
+.creator-subscription-hero,
+.creator-subscription-panel {
+  border-radius: 30px;
+  border: 1px solid rgba(84, 67, 37, 0.1);
+  box-shadow: 0 28px 80px rgba(18, 27, 20, 0.16);
+}
+
+.creator-subscription-status {
+  width: min(100%, 620px);
+  margin: 12vh auto 0;
+  padding: 28px;
+  background: rgba(255, 249, 241, 0.94);
+  text-align: center;
+}
+
+.creator-subscription-status--error {
+  color: #9b4232;
+}
+
+.creator-subscription-status h2,
+.creator-subscription-status p,
+.creator-subscription-panel h2,
+.creator-subscription-panel p,
+.creator-subscription-hero h1,
+.creator-subscription-hero p {
+  margin: 0;
+}
+
+.creator-subscription-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 22px;
+  padding: clamp(22px, 3vw, 34px);
+  background:
+    linear-gradient(135deg, rgba(12, 24, 18, 0.92), rgba(26, 49, 36, 0.82)),
+    linear-gradient(145deg, rgba(183, 138, 66, 0.24), transparent 48%);
+  color: #f8f2e5;
+}
+
+.creator-subscription-hero__media {
+  display: grid;
+  place-items: center;
+  width: clamp(96px, 12vw, 124px);
+  height: clamp(96px, 12vw, 124px);
+  border-radius: 30px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #d7b067, #67835f);
+  font-size: 2.8rem;
+  font-weight: 700;
+}
+
+.creator-subscription-hero__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.creator-subscription-hero__copy {
+  display: grid;
+  gap: 14px;
+  align-content: center;
+}
+
+.creator-subscription__eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.creator-subscription-hero h1,
+.creator-subscription-panel h2 {
+  font-family: "Sora", "Avenir Next", "Segoe UI", sans-serif;
+  letter-spacing: -0.04em;
+}
+
+.creator-subscription-hero h1 {
+  font-size: clamp(2.1rem, 4vw, 3.4rem);
+}
+
+.creator-subscription-hero__summary {
+  max-width: 720px;
+  color: rgba(248, 242, 229, 0.82);
+  line-height: 1.7;
+}
+
+.creator-subscription-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.creator-subscription-hero__meta span {
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.92rem;
+}
+
+.creator-subscription-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.85fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.creator-subscription-panel {
+  display: grid;
+  gap: 20px;
+  padding: clamp(22px, 2.6vw, 30px);
+  background: rgba(255, 249, 241, 0.92);
+  backdrop-filter: blur(16px);
+}
+
+.creator-subscription-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.creator-subscription-panel__body {
+  color: #675d4c;
+  line-height: 1.75;
+  text-align: justify;
+  text-align-last: left;
+  text-justify: inter-word;
+}
+
+.creator-subscription-benefits {
+  display: grid;
+  gap: 14px;
+}
+
+.creator-subscription-benefits div,
+.creator-subscription-active,
+.creator-subscription-returning,
+.creator-subscription-checkout-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: rgba(255, 248, 236, 0.9);
+  border: 1px solid rgba(84, 67, 37, 0.08);
+}
+
+.creator-subscription-benefits strong,
+.creator-subscription-active strong,
+.creator-subscription-returning strong,
+.creator-subscription-checkout-card strong {
+  font-size: 1rem;
+}
+
+.creator-subscription-benefits span,
+.creator-subscription-active span,
+.creator-subscription-returning span,
+.creator-subscription-checkout-card span,
+.creator-subscription-active small {
+  color: #6e6452;
+  line-height: 1.65;
+}
+
+.creator-subscription-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.creator-subscription-fields label {
+  display: grid;
+  gap: 8px;
+}
+
+.creator-subscription-fields span {
+  color: #5e5545;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.creator-subscription-fields input {
+  min-height: 50px;
+  padding: 0 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(84, 67, 37, 0.12);
+  background: rgba(255, 252, 247, 0.96);
+  color: #2f281c;
+  font: inherit;
+}
+
+.creator-subscription-panel--checkout {
+  position: sticky;
+  top: 20px;
+}
+
+.creator-subscription-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.creator-subscription__primary,
+.creator-subscription__secondary,
+.creator-subscription__back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  font-weight: 700;
+  font: inherit;
+  cursor: pointer;
+}
+
+.creator-subscription__primary {
+  background: linear-gradient(135deg, #1f4b34, #173928);
+  color: #f8f2e5;
+  box-shadow: 0 18px 36px rgba(23, 57, 40, 0.22);
+}
+
+.creator-subscription__primary:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.creator-subscription__secondary,
+.creator-subscription__back-link {
+  background: rgba(255, 248, 236, 0.92);
+  border-color: rgba(84, 67, 37, 0.12);
+  color: #2f281c;
+}
+
+.creator-subscription-error {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(164, 63, 44, 0.1);
+  border: 1px solid rgba(164, 63, 44, 0.18);
+  color: #9b4232;
+  line-height: 1.65;
+}
+
+@media (max-width: 980px) {
+  .creator-subscription-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .creator-subscription-panel--checkout {
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .creator-subscription-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .creator-subscription-fields {
+    grid-template-columns: 1fr;
+  }
+}

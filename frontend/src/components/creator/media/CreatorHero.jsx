@@ -6,7 +6,9 @@ export default function CreatorHero({
   isOwner = false,
   isFollowing = false,
   onFollow,
+  onSubscribe,
   onOpenStudio,
+  subscriptionLabel = "Subscribe",
 }) {
   if (!creator) {
     return null;
@@ -43,9 +45,14 @@ export default function CreatorHero({
               Open Creator Studio
             </button>
           ) : (
-            <button type="button" className="creator-primary-btn" onClick={onFollow}>
-              {isFollowing ? "Following" : "Follow creator"}
-            </button>
+            <>
+              <button type="button" className="creator-primary-btn" onClick={onFollow}>
+                {isFollowing ? "Following" : "Follow creator"}
+              </button>
+              <button type="button" className="creator-secondary-btn" onClick={onSubscribe}>
+                {subscriptionLabel}
+              </button>
+            </>
           )}
           <ShareActions
             className="creator-secondary-btn"

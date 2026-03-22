@@ -569,6 +569,12 @@
   color: rgba(47, 39, 24, 0.72);
 }
 
+.creator-fan-page__support-card p {
+  text-align: justify;
+  text-align-last: left;
+  text-justify: inter-word;
+}
+
 .creator-fan-page__support-card span {
   text-transform: uppercase;
   letter-spacing: 0.08em;

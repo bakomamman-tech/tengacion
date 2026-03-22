@@ -31,6 +31,7 @@ const toCreatorPayload = (profile, extras = {}) => ({
   tagline: profile.tagline || "",
   genres: Array.isArray(profile.genres) ? profile.genres : [],
   paymentModeDefault: profile.paymentModeDefault || "NG",
+  subscriptionPrice: Number(profile.subscriptionPrice ?? 2000) || 2000,
   user:
     profile.userId && typeof profile.userId === "object"
       ? {
@@ -75,7 +76,12 @@ const countCreatorContent = async ({ creatorId, userId }) => {
 
 const mapTrackForHub = async ({ track, req, userId }) => {
   const canPlayFull = Number(track.price) <= 0 || (userId
-    ? await hasEntitlement({ userId, itemType: "track", itemId: track._id })
+    ? await hasEntitlement({
+        userId,
+        itemType: "track",
+        itemId: track._id,
+        creatorId: track.creatorId,
+      })
     : false);
   const streamSource = canPlayFull ? track.audioUrl : track.previewUrl || track.audioUrl;
   return {
@@ -113,7 +119,12 @@ const mapTrackForHub = async ({ track, req, userId }) => {
 
 const mapBookForHub = async ({ book, req, userId }) => {
   const entitled = Number(book.price) <= 0 || (userId
-    ? await hasEntitlement({ userId, itemType: "book", itemId: book._id })
+    ? await hasEntitlement({
+        userId,
+        itemType: "book",
+        itemId: book._id,
+        creatorId: book.creatorId,
+      })
     : false);
   return {
     id: book._id.toString(),
@@ -145,7 +156,12 @@ const mapBookForHub = async ({ book, req, userId }) => {
 
 const mapAlbumForHub = async ({ album, req, userId }) => {
   const canPlayFull = Number(album.price) <= 0 || (userId
-    ? await hasEntitlement({ userId, itemType: "album", itemId: album._id })
+    ? await hasEntitlement({
+        userId,
+        itemType: "album",
+        itemId: album._id,
+        creatorId: album.creatorId,
+      })
     : false);
 
   const tracks = (Array.isArray(album.tracks) ? album.tracks : [])

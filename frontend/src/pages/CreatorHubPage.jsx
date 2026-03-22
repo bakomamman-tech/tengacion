@@ -245,6 +245,7 @@ export default function CreatorHubPage() {
   const books = Array.isArray(payload?.books) ? payload.books : [];
   const featured = payload?.featured || null;
   const viewer = payload?.viewer || {};
+  const subscription = payload?.subscription || {};
 
   const requireViewer = () => {
     if (isLoggedIn) {
@@ -313,6 +314,13 @@ export default function CreatorHubPage() {
     } finally {
       setFollowBusy(false);
     }
+  };
+
+  const handleSubscribe = () => {
+    if (!creator?.id || !requireViewer()) {
+      return;
+    }
+    navigate(`/creators/${creator.id}/subscribe`);
   };
 
   const handleBuy = async (item) => {
@@ -668,7 +676,13 @@ export default function CreatorHubPage() {
         isOwner={Boolean(viewer.isOwner)}
         isFollowing={Boolean(viewer.isFollowing)}
         onFollow={followBusy ? () => null : handleFollow}
+        onSubscribe={handleSubscribe}
         onOpenStudio={() => navigate("/creator/dashboard")}
+        subscriptionLabel={
+          subscription?.isSubscribed
+            ? "Membership active"
+            : `Subscribe for ${formatMoney(subscription?.price || creator?.subscriptionPrice || 2000)}/month`
+        }
       />
 
       <nav className="creator-public-tabs" aria-label="Creator content navigation">
@@ -752,6 +766,27 @@ export default function CreatorHubPage() {
         </main>
 
         <aside className="creator-public-side">
+          <section className="creator-public-panel creator-public-panel--subscribe">
+            <h3>Unlock Exclusive Content</h3>
+            <strong className="creator-public-panel__price">
+              {formatMoney(subscription?.price || creator?.subscriptionPrice || 2000)}/month
+            </strong>
+            <p className="creator-public-panel__justified">
+              {subscription?.description
+                || "Supporters unlock endless streams, premium downloads, and direct support access from the creator page."}
+            </p>
+            {subscription?.isSubscribed ? (
+              <div className="creator-public-panel__status">
+                <strong>Membership active</strong>
+                <span>Full creator streams and downloads are unlocked for your account.</span>
+              </div>
+            ) : (
+              <button type="button" className="creator-primary-btn" onClick={handleSubscribe}>
+                Subscribe now
+              </button>
+            )}
+          </section>
+
           <section className="creator-public-panel">
             <h3>Creator Snapshot</h3>
             <div className="creator-public-side__list">

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const CreatorProfile = require("../models/CreatorProfile");
 const Track = require("../models/Track");
 const Book = require("../models/Book");
 const Album = require("../models/Album");
@@ -76,6 +77,28 @@ const resolvePurchasableItem = async (itemType, itemId) => {
       price: Number(video.price) || 0,
       creatorId: String(video.creatorProfileId || ""),
       payload: video,
+    };
+  }
+
+  if (["subscription", "membership", "fanpass"].includes(normalizedType)) {
+    const creatorProfile = await CreatorProfile.findById(objectId)
+      .select("displayName fullName subscriptionPrice userId")
+      .lean();
+    if (!creatorProfile) {
+      return null;
+    }
+    const creatorName =
+      creatorProfile.displayName ||
+      creatorProfile.fullName ||
+      "Creator";
+    return {
+      itemType: "subscription",
+      itemId: creatorProfile._id,
+      title: `${creatorName} Membership`,
+      price: Number(creatorProfile.subscriptionPrice ?? 2000) || 2000,
+      creatorId: creatorProfile._id.toString(),
+      ownerUserId: creatorProfile.userId?.toString?.() || "",
+      payload: creatorProfile,
     };
   }
 

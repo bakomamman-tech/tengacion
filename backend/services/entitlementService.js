@@ -4,7 +4,30 @@ const Entitlement = require("../models/Entitlement");
 
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
-const hasEntitlement = async ({ userId, itemType, itemId }) => {
+const hasCreatorSubscriptionAccess = async ({ userId, creatorId, at = new Date() }) => {
+  if (!userId || !creatorId) {
+    return false;
+  }
+
+  if (!isValidObjectId(userId) || !isValidObjectId(creatorId)) {
+    return false;
+  }
+
+  const exists = await Purchase.exists({
+    userId,
+    creatorId,
+    itemType: "subscription",
+    status: "paid",
+    $or: [
+      { accessExpiresAt: null },
+      { accessExpiresAt: { $gt: at } },
+    ],
+  });
+
+  return Boolean(exists);
+};
+
+const hasEntitlement = async ({ userId, itemType, itemId, creatorId = "" }) => {
   if (!userId || !itemType || !itemId) {
     return false;
   }
@@ -22,14 +45,27 @@ const hasEntitlement = async ({ userId, itemType, itemId }) => {
     return true;
   }
 
+  const normalizedItemType = String(itemType || "").trim().toLowerCase();
   const exists = await Purchase.exists({
     userId,
     itemType,
     itemId,
     status: "paid",
+    ...(normalizedItemType === "subscription"
+      ? {
+          $or: [
+            { accessExpiresAt: null },
+            { accessExpiresAt: { $gt: new Date() } },
+          ],
+        }
+      : {}),
   });
 
-  return Boolean(exists);
+  if (exists) {
+    return true;
+  }
+
+  return hasCreatorSubscriptionAccess({ userId, creatorId });
 };
 
 const getUserPaidPurchases = async (userId) => {
@@ -47,12 +83,19 @@ const getUserPaidPurchases = async (userId) => {
     Entitlement.find({ buyerId: userId }).sort({ grantedAt: -1 }).lean(),
   ]);
 
+  const now = new Date();
+  const activePurchases = purchases.filter((row) => (
+    String(row?.itemType || "").trim().toLowerCase() !== "subscription"
+      || !row?.accessExpiresAt
+      || new Date(row.accessExpiresAt) > now
+  ));
+
   if (!directEntitlements.length) {
-    return purchases;
+    return activePurchases;
   }
 
   const existingKeys = new Set(
-    purchases.map((row) => `${row.itemType}:${String(row.itemId || "")}`)
+    activePurchases.map((row) => `${row.itemType}:${String(row.itemId || "")}`)
   );
   const synthesized = directEntitlements
     .filter((row) => !existingKeys.has(`${row.itemType}:${String(row.itemId || "")}`))
@@ -71,10 +114,11 @@ const getUserPaidPurchases = async (userId) => {
       updatedAt: row.updatedAt,
     }));
 
-  return [...purchases, ...synthesized];
+  return [...activePurchases, ...synthesized];
 };
 
 module.exports = {
   hasEntitlement,
+  hasCreatorSubscriptionAccess,
   getUserPaidPurchases,
 };

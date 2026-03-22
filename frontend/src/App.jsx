@@ -69,6 +69,7 @@ const CreatorRegisterPage = lazy(() => import("./pages/creator/CreatorRegisterPa
 const CreatorDashboardPage = lazy(() => import("./pages/creator/CreatorDashboardPage"));
 const CreatorCategoriesPage = lazy(() => import("./pages/creator/CreatorCategoriesPage"));
 const CreatorFanPageViewPage = lazy(() => import("./pages/creator/CreatorFanPageViewPage"));
+const CreatorSubscriptionPage = lazy(() => import("./pages/creator/CreatorSubscriptionPage"));
 const CreatorMusicPage = lazy(() => import("./pages/creator/CreatorMusicPage"));
 const CreatorBooksPage = lazy(() => import("./pages/creator/CreatorBooksPage"));
 const CreatorPodcastsPage = lazy(() => import("./pages/creator/CreatorPodcastsPage"));
@@ -142,6 +143,14 @@ export default function App() {
           <Route path="/creators/:creatorId/books" element={<CreatorHubPage />} />
           <Route path="/creators/:creatorId/comedy" element={<CreatorHubPage />} />
           <Route path="/creators/:creatorId/store" element={<CreatorHubPage />} />
+          <Route
+            path="/creators/:creatorId/subscribe"
+            element={
+              <ProtectedRoute user={user}>
+                <CreatorSubscriptionPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/creator/:creatorId" element={<CreatorHubPage />} />
           <Route path="/tracks/:trackId" element={<TrackDetail />} />
           <Route path="/books/:bookId" element={<BookDetail />} />

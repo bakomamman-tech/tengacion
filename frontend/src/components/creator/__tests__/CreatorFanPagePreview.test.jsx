@@ -21,6 +21,7 @@ describe("CreatorFanPagePreview", () => {
       <MemoryRouter>
         <CreatorFanPagePreview
           creatorProfile={{
+            _id: "507f1f77bcf86cd799439011",
             displayName: "Creator Example",
             creatorTypes: ["music", "bookPublishing", "podcast"],
             user: {
@@ -76,6 +77,9 @@ describe("CreatorFanPagePreview", () => {
     expect(screen.getAllByRole("button", { name: /follow/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: /donate/i }).length).toBeGreaterThan(0);
     expect(screen.getByText(/unlock exclusive content/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /subscribe for .*2,000\/month/i })
+    ).toBeInTheDocument();
     expect(screen.getByText(/popular releases/i)).toBeInTheDocument();
     expect(screen.getByText(/featured episode/i)).toBeInTheDocument();
     expect(screen.getByText(/featured visual/i)).toBeInTheDocument();
@@ -95,6 +99,7 @@ describe("CreatorFanPagePreview", () => {
       <MemoryRouter>
         <CreatorFanPagePreview
           creatorProfile={{
+            _id: "507f1f77bcf86cd799439011",
             displayName: "Creator Example",
             creatorTypes: ["music", "bookPublishing", "podcast"],
             user: {

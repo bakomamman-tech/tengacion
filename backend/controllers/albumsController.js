@@ -316,7 +316,12 @@ exports.getAlbumById = asyncHandler(async (req, res) => {
 
   const isOwner = await resolveAlbumOwnership({ album, userId: req.user?.id });
   const entitled = req.user?.id
-    ? await hasEntitlement({ userId: req.user.id, itemType: "album", itemId: album._id })
+    ? await hasEntitlement({
+        userId: req.user.id,
+        itemType: "album",
+        itemId: album._id,
+        creatorId: album.creatorId,
+      })
     : false;
   const canPlayFull = Number(album.price || 0) <= 0 || isOwner || entitled;
 

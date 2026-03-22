@@ -10,7 +10,7 @@ const Purchase = require("../models/Purchase");
 const CreatorProfile = require("../models/CreatorProfile");
 const PlayerProgress = require("../models/PlayerProgress");
 const { buildAlbumArchiveUrl } = require("../services/albumArchiveService");
-const { hasEntitlement } = require("../services/entitlementService");
+const { hasCreatorSubscriptionAccess, hasEntitlement } = require("../services/entitlementService");
 const { resolvePurchasableItem } = require("../services/catalogService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const {
@@ -81,6 +81,19 @@ const checkOwnerAccess = async ({ userId, item }) => {
   }
 
   return false;
+};
+
+const resolveCreatorProfileIdFromItem = (item) => {
+  if (!item) {
+    return "";
+  }
+  if (item.itemType === "subscription") {
+    return String(item.creatorId || item.itemId || "");
+  }
+  if (item.itemType === "video") {
+    return String(item.payload?.creatorProfileId || item.creatorId || "");
+  }
+  return String(item.payload?.creatorId || item.creatorId || "");
 };
 
 exports.savePlayerProgress = asyncHandler(async (req, res) => {
@@ -158,13 +171,14 @@ exports.getContinueListening = asyncHandler(async (req, res) => {
   const items = await Promise.all(
     rows.map(async (row) => {
       const track = await Track.findById(row.itemId)
-        .select("title coverImageUrl durationSec price previewUrl audioUrl previewStartSec previewLimitSec")
+        .select("title coverImageUrl durationSec price previewUrl audioUrl previewStartSec previewLimitSec creatorId")
         .lean();
       if (!track) return null;
       const entitled = Number(track.price || 0) <= 0 || (await hasEntitlement({
         userId,
         itemType: "track",
         itemId: track._id,
+        creatorId: track.creatorId,
       }));
       const sourceUrl = entitled ? track.audioUrl : track.previewUrl || track.audioUrl;
       return {
@@ -209,6 +223,17 @@ exports.createCheckout = asyncHandler(async (req, res) => {
     return res.status(404).json({ error: "Item not found" });
   }
 
+  if (item.itemType === "subscription" && String(item.ownerUserId || "") === String(userId)) {
+    return res.status(400).json({ error: "You cannot subscribe to your own creator page" });
+  }
+
+  if (
+    item.itemType === "subscription"
+    && await hasCreatorSubscriptionAccess({ userId, creatorId: item.creatorId })
+  ) {
+    return res.status(400).json({ error: "You already have an active subscription for this creator" });
+  }
+
   const amount = Number(item.price || 0);
   if (amount <= 0) {
     return res.status(400).json({ error: "Item is free and does not require checkout" });
@@ -236,6 +261,7 @@ exports.createCheckout = asyncHandler(async (req, res) => {
     status: "pending",
     provider: "paystack",
     providerRef,
+    billingInterval: item.itemType === "subscription" ? "monthly" : "one_time",
   });
 
   try {
@@ -251,6 +277,7 @@ exports.createCheckout = asyncHandler(async (req, res) => {
         purchaseId: purchase._id.toString(),
         userId,
         currencyMode,
+        creatorId: item.creatorId?.toString?.() || "",
       },
     });
 
@@ -294,7 +321,7 @@ exports.getMyEntitlements = asyncHandler(async (req, res) => {
 
   const [purchases, directEntitlements] = await Promise.all([
     Purchase.find({ userId, status: "paid" })
-    .select("itemType itemId paidAt")
+    .select("itemType itemId creatorId paidAt accessExpiresAt")
     .sort({ paidAt: -1, createdAt: -1 })
     .lean(),
     Entitlement.find({ buyerId: userId }).select("itemType itemId grantedAt").lean(),
@@ -341,6 +368,9 @@ exports.getMyEntitlements = asyncHandler(async (req, res) => {
   const purchaseEntitlements = purchases
     .filter((row) => {
       if (!creatorId) return true;
+      if (row.itemType === "subscription") {
+        return String(row.creatorId || row.itemId || "") === creatorId;
+      }
       const key = String(row.itemId || "");
       if (row.itemType === "track") return trackMap.has(key);
       if (row.itemType === "book") return bookMap.has(key);
@@ -352,6 +382,7 @@ exports.getMyEntitlements = asyncHandler(async (req, res) => {
       itemType: row.itemType,
       itemId: String(row.itemId || ""),
       paidAt: row.paidAt || null,
+      accessExpiresAt: row.accessExpiresAt || null,
     }));
 
   const entitlementMap = new Map(
@@ -400,10 +431,16 @@ exports.getProtectedStream = asyncHandler(async (req, res) => {
   const userId = req.user?.id || "";
   const fullSourceUrl = resolveSourceUrl(item);
   const previewSourceUrl = resolvePreviewSourceUrl(item);
+  const creatorId = resolveCreatorProfileIdFromItem(item);
   const freeAccess = Number(item.price || 0) <= 0;
   const ownerAccess = await checkOwnerAccess({ userId, item });
   const paidAccess = userId
-    ? await hasEntitlement({ userId, itemType: item.itemType, itemId: item.itemId })
+    ? await hasEntitlement({
+        userId,
+        itemType: item.itemType,
+        itemId: item.itemId,
+        creatorId,
+      })
     : false;
   const canAccessFull = freeAccess || ownerAccess || paidAccess;
   const sourceUrl = canAccessFull ? fullSourceUrl : previewSourceUrl;
@@ -431,7 +468,7 @@ exports.getProtectedStream = asyncHandler(async (req, res) => {
     targetType: item.itemType,
     contentType: item.itemType,
     metadata: {
-      creatorId: item.creatorId?.toString?.() || item.payload?.creatorId?.toString?.() || item.payload?.creatorProfileId?.toString?.() || "",
+      creatorId,
       previewOnly: !canAccessFull,
     },
   }).catch(() => null);
@@ -474,6 +511,7 @@ exports.getProtectedDownload = asyncHandler(async (req, res) => {
 
   const sourceUrl = resolveSourceUrl(item);
   const isAlbumDownload = item.itemType === "album";
+  const creatorId = resolveCreatorProfileIdFromItem(item);
   if (!isAlbumDownload && !sourceUrl) {
     return res.status(404).json({ error: "Download source not available" });
   }
@@ -486,6 +524,7 @@ exports.getProtectedDownload = asyncHandler(async (req, res) => {
       userId,
       itemType: item.itemType,
       itemId: item.itemId,
+      creatorId,
     }));
 
   if (!freeAccess && !ownerAccess && !paidAccess) {
@@ -522,7 +561,7 @@ exports.getProtectedDownload = asyncHandler(async (req, res) => {
     targetType: item.itemType,
     contentType: item.itemType,
     metadata: {
-      creatorId: item.creatorId?.toString?.() || item.payload?.creatorId?.toString?.() || item.payload?.creatorProfileId?.toString?.() || "",
+      creatorId,
     },
   }).catch(() => null);
 

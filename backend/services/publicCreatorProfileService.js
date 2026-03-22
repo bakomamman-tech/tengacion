@@ -50,15 +50,36 @@ const buildSignedUrl = ({
       })
     : "";
 
-const buildEntitlementSet = async (viewerId) => {
+const buildViewerPurchaseState = async (viewerId) => {
   if (!mongoose.Types.ObjectId.isValid(viewerId)) {
-    return new Set();
+    return {
+      entitlements: new Set(),
+      subscriptionsByCreatorId: new Map(),
+    };
   }
 
   const purchases = await getUserPaidPurchases(viewerId);
-  return new Set(
-    purchases.map((row) => `${toCleanString(row.itemType).toLowerCase()}:${String(row.itemId || "")}`)
-  );
+  const entitlements = new Set();
+  const subscriptionsByCreatorId = new Map();
+
+  purchases.forEach((row) => {
+    const itemType = toCleanString(row.itemType).toLowerCase();
+    const itemId = String(row.itemId || "");
+    if (itemType && itemId) {
+      entitlements.add(`${itemType}:${itemId}`);
+    }
+    if (itemType === "subscription") {
+      const creatorId = toCleanString(row.creatorId || row.itemId);
+      if (creatorId && !subscriptionsByCreatorId.has(creatorId)) {
+        subscriptionsByCreatorId.set(creatorId, row);
+      }
+    }
+  });
+
+  return {
+    entitlements,
+    subscriptionsByCreatorId,
+  };
 };
 
 const buildTrackPreviewSource = (track, canAccessFull) => {
@@ -105,10 +126,14 @@ const buildAlbumPreviewSource = (album, canAccessFull) => {
   return toCleanString(firstTrack.previewUrl) || (numberOrZero(album?.price) <= 0 ? toCleanString(firstTrack.trackUrl) : "");
 };
 
-const mapTrackItem = ({ track, req, viewerId, ownerAccess, entitlements }) => {
+const mapTrackItem = ({ track, req, viewerId, ownerAccess, entitlements, creatorSubscriptionActive = false }) => {
   const isPodcast = toCleanString(track.kind).toLowerCase() === "podcast";
   const entitlementKey = `track:${String(track._id)}`;
-  const canAccessFull = ownerAccess || numberOrZero(track.price) <= 0 || entitlements.has(entitlementKey);
+  const canAccessFull =
+    ownerAccess
+    || creatorSubscriptionActive
+    || numberOrZero(track.price) <= 0
+    || entitlements.has(entitlementKey);
   const previewSource = buildTrackPreviewSource(track, false);
   const streamSource = buildTrackPreviewSource(track, canAccessFull);
   const itemType = isPodcast ? "podcast" : "track";
@@ -170,9 +195,13 @@ const mapTrackItem = ({ track, req, viewerId, ownerAccess, entitlements }) => {
   };
 };
 
-const mapAlbumItem = ({ album, req, viewerId, ownerAccess, entitlements }) => {
+const mapAlbumItem = ({ album, req, viewerId, ownerAccess, entitlements, creatorSubscriptionActive = false }) => {
   const entitlementKey = `album:${String(album._id)}`;
-  const canAccessFull = ownerAccess || numberOrZero(album.price) <= 0 || entitlements.has(entitlementKey);
+  const canAccessFull =
+    ownerAccess
+    || creatorSubscriptionActive
+    || numberOrZero(album.price) <= 0
+    || entitlements.has(entitlementKey);
   const previewSource = buildAlbumPreviewSource(album, false);
   const streamSource = buildAlbumPreviewSource(album, canAccessFull);
   const tracks = Array.isArray(album.tracks) ? album.tracks : [];
@@ -223,9 +252,13 @@ const mapAlbumItem = ({ album, req, viewerId, ownerAccess, entitlements }) => {
   };
 };
 
-const mapVideoItem = ({ video, req, viewerId, ownerAccess, entitlements }) => {
+const mapVideoItem = ({ video, req, viewerId, ownerAccess, entitlements, creatorSubscriptionActive = false }) => {
   const entitlementKey = `video:${String(video._id)}`;
-  const canAccessFull = ownerAccess || numberOrZero(video.price) <= 0 || entitlements.has(entitlementKey);
+  const canAccessFull =
+    ownerAccess
+    || creatorSubscriptionActive
+    || numberOrZero(video.price) <= 0
+    || entitlements.has(entitlementKey);
   const previewSource = buildVideoPreviewSource(video, false);
   const streamSource = buildVideoPreviewSource(video, canAccessFull);
 
@@ -275,9 +308,13 @@ const mapVideoItem = ({ video, req, viewerId, ownerAccess, entitlements }) => {
   };
 };
 
-const mapBookItem = ({ book, req, viewerId, ownerAccess, entitlements }) => {
+const mapBookItem = ({ book, req, viewerId, ownerAccess, entitlements, creatorSubscriptionActive = false }) => {
   const entitlementKey = `book:${String(book._id)}`;
-  const canAccessFull = ownerAccess || numberOrZero(book.price) <= 0 || entitlements.has(entitlementKey);
+  const canAccessFull =
+    ownerAccess
+    || creatorSubscriptionActive
+    || numberOrZero(book.price) <= 0
+    || entitlements.has(entitlementKey);
   const previewSource = buildBookPreviewSource(book, false);
   const streamSource = buildBookPreviewSource(book, canAccessFull);
   const bookFile = toCleanString(book.contentUrl || book.fileUrl);
@@ -402,6 +439,7 @@ const buildCreatorIdentity = ({ profile, creatorTypes = [] }) => {
     bannerUrl: toCleanString(profile?.heroBannerUrl || profile?.coverImageUrl),
     bio: toCleanString(profile?.bio),
     tagline: toCleanString(profile?.tagline),
+    subscriptionPrice: numberOrZero(profile?.subscriptionPrice || 2000) || 2000,
     genres: Array.isArray(profile?.genres) ? profile.genres.filter(Boolean) : [],
     links: Array.isArray(profile?.links) ? profile.links.filter((entry) => entry?.url) : [],
     verified: Boolean(creatorUser?.isVerified || creatorUser?.emailVerified),
@@ -431,7 +469,12 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
   }
 
   const ownerAccess = String(profile?.userId?._id || profile?.userId || "") === String(viewerId || "");
-  const entitlements = ownerAccess ? new Set() : await buildEntitlementSet(viewerId);
+  const viewerPurchaseState = ownerAccess
+    ? { entitlements: new Set(), subscriptionsByCreatorId: new Map() }
+    : await buildViewerPurchaseState(viewerId);
+  const entitlements = viewerPurchaseState.entitlements;
+  const activeSubscription = viewerPurchaseState.subscriptionsByCreatorId.get(String(profile?._id || "")) || null;
+  const creatorSubscriptionActive = ownerAccess || Boolean(activeSubscription);
 
   const [tracksRaw, podcastsRaw, albumsRaw, booksRaw, videosRaw, purchases] = await Promise.all([
     Track.find({ creatorId: objectId, kind: { $in: ["music", null] }, ...ACTIVE_TRACK_FILTER })
@@ -462,19 +505,54 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
   ]);
 
   const tracks = tracksRaw.map((track) =>
-    mapTrackItem({ track, req, viewerId, ownerAccess, entitlements })
+    mapTrackItem({
+      track,
+      req,
+      viewerId,
+      ownerAccess,
+      entitlements,
+      creatorSubscriptionActive,
+    })
   );
   const podcasts = podcastsRaw.map((track) =>
-    mapTrackItem({ track, req, viewerId, ownerAccess, entitlements })
+    mapTrackItem({
+      track,
+      req,
+      viewerId,
+      ownerAccess,
+      entitlements,
+      creatorSubscriptionActive,
+    })
   );
   const albums = albumsRaw.map((album) =>
-    mapAlbumItem({ album, req, viewerId, ownerAccess, entitlements })
+    mapAlbumItem({
+      album,
+      req,
+      viewerId,
+      ownerAccess,
+      entitlements,
+      creatorSubscriptionActive,
+    })
   );
   const videos = videosRaw.map((video) =>
-    mapVideoItem({ video, req, viewerId, ownerAccess, entitlements })
+    mapVideoItem({
+      video,
+      req,
+      viewerId,
+      ownerAccess,
+      entitlements,
+      creatorSubscriptionActive,
+    })
   );
   const books = booksRaw.map((book) =>
-    mapBookItem({ book, req, viewerId, ownerAccess, entitlements })
+    mapBookItem({
+      book,
+      req,
+      viewerId,
+      ownerAccess,
+      entitlements,
+      creatorSubscriptionActive,
+    })
   );
 
   const creatorTypes = normalizeCreatorTypes(profile.creatorTypes).length
@@ -492,6 +570,14 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
       isAuthenticated: Boolean(viewerId),
       isOwner: ownerAccess,
       isFollowing: viewerFollows,
+    },
+    subscription: {
+      price: numberOrZero(profile?.subscriptionPrice || 2000) || 2000,
+      interval: "monthly",
+      description:
+        "Supporters unlock endless streams, premium downloads, and direct support access from the creator page.",
+      isSubscribed: creatorSubscriptionActive,
+      accessExpiresAt: activeSubscription?.accessExpiresAt || null,
     },
     featured,
     music: {

@@ -474,6 +474,39 @@
   font-family: var(--creator-public-font-display);
 }
 
+.creator-public-panel--subscribe {
+  background:
+    radial-gradient(circle at top right, rgba(183, 138, 66, 0.18), transparent 34%),
+    linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(247, 240, 228, 0.92));
+}
+
+.creator-public-panel__price {
+  display: block;
+  font-size: 1.5rem;
+  font-family: var(--creator-public-font-display);
+  letter-spacing: -0.03em;
+}
+
+.creator-public-panel__justified {
+  color: var(--creator-public-muted);
+  text-align: justify;
+  text-align-last: left;
+  text-justify: inter-word;
+}
+
+.creator-public-panel__status {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(31, 75, 52, 0.08);
+  border: 1px solid rgba(31, 75, 52, 0.12);
+}
+
+.creator-public-panel__status span {
+  color: var(--creator-public-muted);
+}
+
 .creator-public-side__list {
   display: grid;
   gap: 12px;

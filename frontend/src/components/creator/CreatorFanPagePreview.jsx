@@ -98,6 +98,13 @@ export default function CreatorFanPagePreview({
     openPath(item?.publicPath || activeSection?.publicPath || activeSection?.uploadPath);
   };
 
+  const openSubscribe = () => {
+    if (!data.creatorId) {
+      return;
+    }
+    openPath(`/creators/${data.creatorId}/subscribe`);
+  };
+
   const selectQueueItem = (index, autoplay = true) => {
     setActiveIndex(index);
     if (autoplay) {
@@ -400,7 +407,7 @@ export default function CreatorFanPagePreview({
         <button
           type="button"
           className="creator-fan-page__button creator-fan-page__button--accent"
-          onClick={() => openPublic(activeSection?.featured)}
+          onClick={openSubscribe}
         >
           Subscribe for {formatCurrency(data.supportPrice)}/month
         </button>
@@ -608,7 +615,7 @@ export default function CreatorFanPagePreview({
               <button
                 type="button"
                 className="creator-fan-page__button creator-fan-page__button--light"
-                onClick={() => openPublic(activeSection?.featured)}
+                onClick={openSubscribe}
               >
                 Subscribe
               </button>

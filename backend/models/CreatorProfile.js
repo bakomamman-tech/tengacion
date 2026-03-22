@@ -218,6 +218,11 @@ const CreatorProfileSchema = new mongoose.Schema(
       enum: ["NG", "GLOBAL"],
       default: "NG",
     },
+    subscriptionPrice: {
+      type: Number,
+      default: 2000,
+      min: 0,
+    },
   },
   {
     timestamps: true,

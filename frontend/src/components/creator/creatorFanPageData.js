@@ -648,6 +648,7 @@ export function buildCreatorFanPageData({ creatorProfile, dashboard } = {}) {
   };
 
   return {
+    creatorId: creatorProfileId,
     creatorName,
     avatarUrl,
     heroUrl,
@@ -661,7 +662,7 @@ export function buildCreatorFanPageData({ creatorProfile, dashboard } = {}) {
       creatorProfile?.tagline ||
       "A premium fan page where supporters can stream, preview, buy, and unlock every drop in one place.",
     lanes: lanes.length ? lanes : ["Music", "Podcasts", "Book Publishing"],
-    supportPrice: Number(creatorProfile?.subscriptionPrice ?? 500),
+    supportPrice: Number(creatorProfile?.subscriptionPrice ?? 2000) || 2000,
     tabs: CREATOR_FAN_PAGE_TABS,
     sidebarLinks: CREATOR_FAN_PAGE_TABS,
     sections,
@@ -759,7 +760,7 @@ export function buildCreatorFanPageData({ creatorProfile, dashboard } = {}) {
       },
     ],
     supporterCopy:
-      "Supporters unlock exclusive drops, premium downloads, and direct support access from the public page.",
+      "Supporters unlock endless streams, premium downloads, and direct support access from the public page.",
     rewardsCopy:
       "Weekly rewards land here for top supporters and subscribers.",
   };

@@ -62,6 +62,16 @@ const PurchaseSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    billingInterval: {
+      type: String,
+      enum: ["one_time", "monthly"],
+      default: "one_time",
+    },
+    accessExpiresAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
     paidAt: {
       type: Date,
       default: null,

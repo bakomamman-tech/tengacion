@@ -4,6 +4,7 @@ const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const Book = require("../models/Book");
 const Album = require("../models/Album");
+const { resolvePurchasableItem } = require("../services/catalogService");
 const { hasEntitlement } = require("../services/entitlementService");
 
 // TODO(phase2): apply marketplace commission and referral reward splits here.
@@ -37,10 +38,12 @@ exports.checkEntitlement = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "itemType and valid itemId are required" });
   }
 
+  const item = await resolvePurchasableItem(itemType, itemId);
   const entitled = await hasEntitlement({
     userId: req.user.id,
     itemType,
     itemId,
+    creatorId: item?.creatorId || "",
   });
 
   return res.json({

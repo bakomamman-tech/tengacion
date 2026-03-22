@@ -94,6 +94,7 @@ const canReadFullBook = async ({ book, userId }) => {
     userId,
     itemType: "book",
     itemId: book._id,
+    creatorId: book.creatorId?._id || book.creatorId,
   });
 };
 

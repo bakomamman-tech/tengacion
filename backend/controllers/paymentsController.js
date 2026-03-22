@@ -6,6 +6,7 @@ const Book = require("../models/Book");
 const Album = require("../models/Album");
 const User = require("../models/User");
 const { resolvePurchasableItem } = require("../services/catalogService");
+const { hasCreatorSubscriptionAccess } = require("../services/entitlementService");
 const {
   createProviderReference,
   initializeTransaction,
@@ -14,7 +15,7 @@ const {
 } = require("../services/paymentProviders/paystack");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 
-// TODO(phase2): add subscription Fan Pass and gifting payment intents.
+const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
 const toPurchasePayload = (purchase) => ({
   _id: purchase._id.toString(),
@@ -50,8 +51,15 @@ const emitEntitlementGranted = ({ req, purchase }) => {
 const markPurchasePaidAndGrantEntitlement = async (purchase) => {
   if (!purchase) return;
 
+  const paidAt = new Date();
   purchase.status = "paid";
-  purchase.paidAt = new Date();
+  purchase.paidAt = paidAt;
+  if (purchase.itemType === "subscription") {
+    purchase.billingInterval = "monthly";
+    purchase.accessExpiresAt = new Date(paidAt.getTime() + MONTH_MS);
+    await purchase.save();
+    return;
+  }
   await purchase.save();
 
   await Entitlement.findOneAndUpdate(
@@ -91,6 +99,17 @@ exports.initializePayment = asyncHandler(async (req, res) => {
     return res.status(404).json({ error: "Item not found" });
   }
 
+  if (item.itemType === "subscription" && String(item.ownerUserId || "") === String(userId)) {
+    return res.status(400).json({ error: "You cannot subscribe to your own creator page" });
+  }
+
+  if (
+    item.itemType === "subscription"
+    && await hasCreatorSubscriptionAccess({ userId, creatorId: item.creatorId })
+  ) {
+    return res.status(400).json({ error: "You already have an active subscription for this creator" });
+  }
+
   if (Number(item.price) <= 0) {
     return res.status(400).json({ error: "Item is free and does not require payment" });
   }
@@ -122,6 +141,7 @@ exports.initializePayment = asyncHandler(async (req, res) => {
     status: "pending",
     provider: "paystack",
     providerRef,
+    billingInterval: item.itemType === "subscription" ? "monthly" : "one_time",
   });
 
   try {
@@ -136,6 +156,7 @@ exports.initializePayment = asyncHandler(async (req, res) => {
         itemId: item.itemId.toString(),
         purchaseId: purchase._id.toString(),
         userId,
+        creatorId: item.creatorId?.toString?.() || "",
       },
     });
 

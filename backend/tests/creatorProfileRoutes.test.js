@@ -11,6 +11,7 @@ const app = require("../app");
 const Album = require("../models/Album");
 const Book = require("../models/Book");
 const CreatorProfile = require("../models/CreatorProfile");
+const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const User = require("../models/User");
 const Video = require("../models/Video");
@@ -43,11 +44,18 @@ const issueSessionToken = async (userId) => {
   );
 };
 
-const createUserAndProfile = async ({ creatorTypes = ["music", "bookPublishing", "podcast"] } = {}) => {
+const createUserAndProfile = async ({
+  creatorTypes = ["music", "bookPublishing", "podcast"],
+  name = "Creator Example",
+  username = "creator_example",
+  email = "creator@example.com",
+  displayName = "Creator Example",
+  fullName = "Creator Example",
+} = {}) => {
   const user = await User.create({
-    name: "Creator Example",
-    username: "creator_example",
-    email: "creator@example.com",
+    name,
+    username,
+    email,
     password: "Password123!",
     role: "artist",
     isArtist: true,
@@ -56,8 +64,8 @@ const createUserAndProfile = async ({ creatorTypes = ["music", "bookPublishing",
 
   const profile = await CreatorProfile.create({
     userId: user._id,
-    displayName: "Creator Example",
-    fullName: "Creator Example",
+    displayName,
+    fullName,
     phoneNumber: "08000000000",
     accountNumber: "1234567890",
     country: "Nigeria",
@@ -72,6 +80,24 @@ const createUserAndProfile = async ({ creatorTypes = ["music", "bookPublishing",
 
   const token = await issueSessionToken(user._id);
   return { user, profile, token };
+};
+
+const createViewer = async ({
+  name = "Viewer Example",
+  username = "viewer_example",
+  email = "viewer@example.com",
+} = {}) => {
+  const user = await User.create({
+    name,
+    username,
+    email,
+    password: "Password123!",
+    role: "user",
+    isVerified: true,
+  });
+
+  const token = await issueSessionToken(user._id);
+  return { user, token };
 };
 
 const buildProfileUpdatePayload = (creatorTypes = []) => ({
@@ -358,5 +384,69 @@ describe("creator profile routes", () => {
     expect(archiveResponse.headers["content-disposition"]).toContain("attachment;");
     expect(Buffer.isBuffer(archiveResponse.body)).toBe(true);
     expect(archiveResponse.body.length).toBeGreaterThan(0);
+  });
+
+  test("creator subscriptions unlock full creator access for protected streams and public profile content", async () => {
+    const { profile } = await createUserAndProfile({
+      creatorTypes: ["music", "bookPublishing", "podcast"],
+    });
+    const { user: viewer, token: viewerToken } = await createViewer();
+
+    const paidTrack = await Track.create({
+      creatorId: profile._id,
+      title: "Members Only Release",
+      description: "Paid creator content",
+      price: 3000,
+      audioUrl: "https://example.com/members-only.mp3",
+      previewUrl: "https://example.com/members-only-preview.mp3",
+      previewStartSec: 45,
+      previewLimitSec: 30,
+      kind: "music",
+      creatorCategory: "music",
+      contentType: "track",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+
+    await Purchase.create({
+      userId: viewer._id,
+      creatorId: profile._id,
+      itemType: "subscription",
+      itemId: profile._id,
+      amount: 2000,
+      priceNGN: 2000,
+      currency: "NGN",
+      status: "paid",
+      provider: "paystack",
+      providerRef: "subscription_ref_001",
+      billingInterval: "monthly",
+      accessExpiresAt: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)),
+      paidAt: new Date(),
+    });
+
+    const profileResponse = await request(app)
+      .get(`/api/creator/${profile._id}/public-profile`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+
+    expect(profileResponse.body.subscription.price).toBe(2000);
+    expect(profileResponse.body.subscription.isSubscribed).toBe(true);
+    expect(profileResponse.body.music.tracks[0].canAccessFull).toBe(true);
+    expect(profileResponse.body.music.tracks[0].canDownload).toBe(true);
+
+    const entitlementResponse = await request(app)
+      .get(`/api/entitlements/check?itemType=track&itemId=${paidTrack._id}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+
+    expect(entitlementResponse.body.entitled).toBe(true);
+
+    const streamResponse = await request(app)
+      .get(`/api/stream/track/${paidTrack._id}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+
+    expect(streamResponse.body.canAccessFull).toBe(true);
+    expect(streamResponse.body.previewOnly).toBe(false);
   });
 });

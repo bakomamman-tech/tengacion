@@ -94,6 +94,7 @@ const serializeCreatorProfile = ({
     heroBannerUrl: profile?.heroBannerUrl || profile?.coverImageUrl || "",
     coverImageUrl: profile?.coverImageUrl || "",
     paymentModeDefault: profile?.paymentModeDefault || "NG",
+    subscriptionPrice: Number(profile?.subscriptionPrice ?? 2000) || 2000,
     genres: normalizeGenres(profile?.genres),
     links: buildSocialLinks(profile?.socialHandles),
     contentCounts,

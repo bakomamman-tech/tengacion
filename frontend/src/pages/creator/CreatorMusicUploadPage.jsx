@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 
-import CreatorContentCategoryNav from "../../components/creator/CreatorContentCategoryNav";
 import CreatorFanPageWorkspacePreview from "../../components/creator/CreatorFanPageWorkspacePreview";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import CreatorUploadSupportPanels from "../../components/creator/upload/CreatorUploadSupportPanels";
@@ -54,16 +53,6 @@ export default function CreatorMusicUploadPage() {
       </div>
 
       <aside className="creator-page-side">
-        <section className="creator-panel card">
-          <div className="creator-panel-head">
-            <div>
-              <h2>Content Categories</h2>
-              <p>Each category opens its own dedicated upload experience with strict separation in fields, validation, and routing.</p>
-            </div>
-          </div>
-          <CreatorContentCategoryNav creatorTypes={creatorProfile?.creatorTypes} />
-        </section>
-
         <CreatorUploadSupportPanels
           creatorProfile={creatorProfile}
           dashboard={dashboard}

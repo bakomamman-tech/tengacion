@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 
-import CreatorContentCategoryNav from "../../components/creator/CreatorContentCategoryNav";
 import CreatorFanPageWorkspacePreview from "../../components/creator/CreatorFanPageWorkspacePreview";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import CreatorUploadSupportPanels from "../../components/creator/upload/CreatorUploadSupportPanels";
@@ -54,16 +53,6 @@ export default function CreatorBooksUploadPage() {
       </div>
 
       <aside className="creator-page-side">
-        <section className="creator-panel card">
-          <div className="creator-panel-head">
-            <div>
-              <h2>Content Categories</h2>
-              <p>Use the dedicated studio for each content type so creators always know exactly where to publish next.</p>
-            </div>
-          </div>
-          <CreatorContentCategoryNav creatorTypes={creatorProfile?.creatorTypes} />
-        </section>
-
         <CreatorUploadSupportPanels
           creatorProfile={creatorProfile}
           dashboard={dashboard}

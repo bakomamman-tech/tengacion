@@ -1408,6 +1408,17 @@ textarea {
   font-size: 1.42rem;
 }
 
+.creator-fan-preview__support-card .creator-fan-preview__secondary-action {
+  background: rgba(215, 170, 88, 0.18);
+  color: #3f311d;
+  border-color: rgba(185, 135, 53, 0.28);
+}
+
+.creator-fan-preview__support-card .creator-fan-preview__secondary-action:hover {
+  background: rgba(215, 170, 88, 0.24);
+  border-color: rgba(185, 135, 53, 0.38);
+}
+
 .creator-fan-preview__mini-card {
   background: rgba(255, 247, 233, 0.08);
 }

@@ -113,6 +113,10 @@ const fallbackAvatar = (name) =>
 let messageBeepContext = null;
 const playIncomingMessageBeep = () => {
   try {
+    if (typeof window === "undefined") {
+      return;
+    }
+
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) {
       return;
@@ -128,41 +132,80 @@ const playIncomingMessageBeep = () => {
     }
 
     const now = ctx.currentTime;
-    const gain = ctx.createGain();
+    const masterGain = ctx.createGain();
+    const bodyGain = ctx.createGain();
+    const shimmerGain = ctx.createGain();
+    const echoGain = ctx.createGain();
+    const strikeFilter = ctx.createBiquadFilter();
     const toneOsc = ctx.createOscillator();
+    const bodyOsc = ctx.createOscillator();
     const shimmerOsc = ctx.createOscillator();
+    const echoOsc = ctx.createOscillator();
     const noise = ctx.createBufferSource();
-    const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate);
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.035, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < data.length; i += 1) {
-      data[i] = (Math.random() * 2 - 1) * 0.3;
+      data[i] = (Math.random() * 2 - 1) * 0.14;
     }
     noise.buffer = buffer;
 
+    strikeFilter.type = "bandpass";
+    strikeFilter.frequency.setValueAtTime(1550, now);
+    strikeFilter.Q.setValueAtTime(3.5, now);
+
     toneOsc.type = "triangle";
-    toneOsc.frequency.setValueAtTime(2200, now);
-    toneOsc.frequency.exponentialRampToValueAtTime(950, now + 0.2);
+    toneOsc.frequency.setValueAtTime(1840, now);
+    toneOsc.frequency.exponentialRampToValueAtTime(980, now + 0.18);
+
+    bodyOsc.type = "sine";
+    bodyOsc.frequency.setValueAtTime(1320, now + 0.01);
+    bodyOsc.frequency.exponentialRampToValueAtTime(780, now + 0.28);
 
     shimmerOsc.type = "sine";
-    shimmerOsc.frequency.setValueAtTime(3200, now);
-    shimmerOsc.frequency.exponentialRampToValueAtTime(1600, now + 0.12);
+    shimmerOsc.frequency.setValueAtTime(2780, now);
+    shimmerOsc.frequency.exponentialRampToValueAtTime(1760, now + 0.16);
 
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.28, now + 0.008);
-    gain.gain.exponentialRampToValueAtTime(0.18, now + 0.18);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+    echoOsc.type = "triangle";
+    echoOsc.frequency.setValueAtTime(1460, now + 0.055);
+    echoOsc.frequency.exponentialRampToValueAtTime(920, now + 0.23);
 
-    toneOsc.connect(gain);
-    shimmerOsc.connect(gain);
-    noise.connect(gain);
-    gain.connect(ctx.destination);
+    masterGain.gain.setValueAtTime(0.0001, now);
+    masterGain.gain.exponentialRampToValueAtTime(0.22, now + 0.01);
+    masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+
+    bodyGain.gain.setValueAtTime(0.0001, now);
+    bodyGain.gain.exponentialRampToValueAtTime(0.22, now + 0.012);
+    bodyGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.26);
+
+    shimmerGain.gain.setValueAtTime(0.0001, now);
+    shimmerGain.gain.exponentialRampToValueAtTime(0.12, now + 0.008);
+    shimmerGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+    echoGain.gain.setValueAtTime(0.0001, now);
+    echoGain.gain.exponentialRampToValueAtTime(0.09, now + 0.07);
+    echoGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+
+    toneOsc.connect(bodyGain);
+    bodyOsc.connect(bodyGain);
+    shimmerOsc.connect(shimmerGain);
+    echoOsc.connect(echoGain);
+    noise.connect(strikeFilter);
+    bodyGain.connect(masterGain);
+    shimmerGain.connect(masterGain);
+    echoGain.connect(masterGain);
+    strikeFilter.connect(masterGain);
+    masterGain.connect(ctx.destination);
 
     toneOsc.start(now);
+    bodyOsc.start(now);
     shimmerOsc.start(now);
     noise.start(now);
-    toneOsc.stop(now + 0.26);
-    shimmerOsc.stop(now + 0.16);
-    noise.stop(now + 0.08);
+    echoOsc.start(now + 0.055);
+    toneOsc.stop(now + 0.22);
+    bodyOsc.stop(now + 0.3);
+    shimmerOsc.stop(now + 0.18);
+    echoOsc.stop(now + 0.28);
+    noise.stop(now + 0.05);
   } catch {
     // Ignore browser audio restrictions silently.
   }
@@ -456,7 +499,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
   });
   const [sheetHeight, setSheetHeight] = useState(() => {
     const vh = getViewportHeight();
-    return vh ? Math.round(vh * 0.72) : 560;
+    return vh ? Math.round(vh * 0.82) : 640;
   });
   const [isDraggingSheet, setIsDraggingSheet] = useState(false);
   const [desktopOffset, setDesktopOffset] = useState({ x: 0, y: 0 });
@@ -500,8 +543,8 @@ export default function Messenger({ user, onClose, onMinimize }) {
   const getMobileBounds = useCallback(() => {
     const vh = getViewportHeight();
     return {
-      min: Math.round(vh * 0.46),
-      max: Math.round(vh * 0.92),
+      min: Math.round(vh * 0.62),
+      max: Math.round(vh * 0.96),
     };
   }, []);
 
@@ -530,7 +573,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
 
       if (mobile) {
         setSheetHeight((prev) => {
-          const base = prev || Math.round(getViewportHeight() * 0.72);
+          const base = prev || Math.round(getViewportHeight() * 0.82);
           return clampSheetHeight(base);
         });
       }

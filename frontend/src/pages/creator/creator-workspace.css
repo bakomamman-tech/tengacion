@@ -1198,12 +1198,19 @@ textarea {
 }
 
 .creator-fan-preview__chrome,
-.creator-fan-preview__section-head,
 .creator-fan-preview__mini-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.creator-fan-preview__section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
 .creator-fan-preview__chip {
@@ -1417,7 +1424,14 @@ textarea {
   background: rgba(49, 93, 67, 0.16);
 }
 
-.creator-fan-preview__section-head span,
+.creator-fan-preview__section-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 220px;
+}
+
+.creator-fan-preview__section-label,
 .creator-fan-preview__mini-head span {
   color: rgba(246, 239, 223, 0.64);
   font-size: 0.8rem;
@@ -1425,10 +1439,19 @@ textarea {
   text-transform: uppercase;
 }
 
-.creator-fan-preview__section-head strong,
+.creator-fan-preview__section-label,
+.creator-fan-preview__section-title {
+  display: block;
+}
+
+.creator-fan-preview__section-title,
 .creator-fan-preview__mini-body strong {
   font-size: 1rem;
   line-height: 1.35;
+}
+
+.creator-fan-preview__section-head .creator-fan-preview__secondary-action {
+  flex-shrink: 0;
 }
 
 .creator-fan-preview__feature-row,

@@ -161,9 +161,9 @@ export default function CreatorFanPageWorkspacePreview({
       <div className="creator-fan-preview__grid">
         <article className="creator-fan-preview__music-card">
           <div className="creator-fan-preview__section-head">
-            <div>
-              <span>{activeSection.label}</span>
-              <strong>{activeSection.title}</strong>
+            <div className="creator-fan-preview__section-copy">
+              <span className="creator-fan-preview__section-label">{activeSection.label}</span>
+              <strong className="creator-fan-preview__section-title">{activeSection.title}</strong>
             </div>
             <button
               type="button"

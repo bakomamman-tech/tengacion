@@ -298,6 +298,27 @@ export default function Navbar({
     });
   };
 
+  const openMessengerInbox = () => {
+    setShowMessengerMenu(false);
+
+    const payload = {
+      contactId: "",
+      contact: null,
+    };
+
+    if (typeof onOpenMessenger === "function") {
+      onOpenMessenger(payload);
+      return;
+    }
+
+    navigate("/home", {
+      state: {
+        openMessenger: true,
+        messengerTargetId: "",
+      },
+    });
+  };
+
   const openCreateFlow = (flow = "post") => {
     if (flow === "story") {
       if (typeof onOpenCreatePost === "function") {
@@ -982,6 +1003,7 @@ export default function Navbar({
                 <MessengerInboxDropdown
                   id="navbar-messenger-menu"
                   onSelectContact={openMessengerConversation}
+                  onOpenInbox={openMessengerInbox}
                 />
               )}
             </div>

@@ -168,12 +168,28 @@ router.get("/contacts", auth, async (req, res) => {
         },
       },
     ]);
+    const unreadMessages = await Message.aggregate([
+      {
+        $match: {
+          receiverId: meObjectId,
+          status: { $in: ["sent", "delivered"] },
+          deletedFor: { $ne: meObjectId },
+        },
+      },
+      {
+        $group: {
+          _id: "$senderId",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
     console.log("[DB READ]", {
       collection: "messages",
       route: "GET /api/messages/contacts",
       meId,
       friendCount: friendIds.length,
       latestRows: latestMessages.length,
+      unreadRows: unreadMessages.length,
     });
 
     const contactIds = new Set(friendIds);
@@ -205,6 +221,7 @@ router.get("/contacts", auth, async (req, res) => {
     }
 
     const latestByUserId = new Map();
+    const unreadCountByUserId = new Map();
     for (const row of latestMessages) {
       const msg = row.message;
       const senderId = toIdString(msg.senderId);
@@ -218,6 +235,13 @@ router.get("/contacts", auth, async (req, res) => {
         text: preview,
         time: msg.time || new Date(msg.createdAt).getTime(),
       });
+    }
+    for (const row of unreadMessages) {
+      const senderId = toIdString(row?._id);
+      if (!senderId) {
+        continue;
+      }
+      unreadCountByUserId.set(senderId, Number(row?.count) || 0);
     }
 
     const onlineUsers = req.app.get("onlineUsers");
@@ -235,6 +259,7 @@ router.get("/contacts", auth, async (req, res) => {
           lastMessage: latest?.text || "",
           lastMessageAt: latest?.time || 0,
           online: onlineUsers ? onlineUsers.has(id) : false,
+          unreadCount: unreadCountByUserId.get(id) || 0,
         };
       })
       .sort((a, b) => {
@@ -265,6 +290,21 @@ router.get("/:otherUserId", auth, async (req, res) => {
 
     const conversationId = buildConversationId(me, other);
     const meObjectId = new mongoose.Types.ObjectId(me);
+    const otherObjectId = new mongoose.Types.ObjectId(other);
+
+    await Message.updateMany(
+      {
+        conversationId,
+        senderId: otherObjectId,
+        receiverId: meObjectId,
+        status: { $in: ["sent", "delivered"] },
+        deletedFor: { $ne: meObjectId },
+      },
+      {
+        $set: { status: "read" },
+      }
+    );
+
     const messages = await Message.find({
       conversationId,
       deletedFor: { $ne: meObjectId },

@@ -3638,6 +3638,10 @@ html.dark-mode .nav-notification-btn:hover {
   gap: 8px;
 }
 
+.nav-messenger-head-actions-wrap {
+  position: relative;
+}
+
 .nav-messenger-icon-btn {
   width: 38px;
   height: 38px;
@@ -3660,6 +3664,42 @@ html.dark-mode .nav-notification-btn:hover {
   width: 18px;
   height: 18px;
   fill: currentColor;
+}
+
+.nav-messenger-icon-btn[aria-expanded="true"] {
+  background: #e4edf9;
+}
+
+.nav-messenger-actions-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 208px;
+  padding: 8px;
+  border-radius: 18px;
+  border: 1px solid rgba(189, 203, 224, 0.9);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow:
+    0 20px 40px rgba(17, 31, 56, 0.16),
+    0 6px 16px rgba(17, 31, 56, 0.08);
+  z-index: 2;
+}
+
+.nav-messenger-actions-menu button {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: #223246;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  padding: 11px 12px;
+  cursor: pointer;
+}
+
+.nav-messenger-actions-menu button:hover {
+  background: #eef4fb;
 }
 
 .nav-messenger-search {
@@ -3697,6 +3737,9 @@ html.dark-mode .nav-notification-btn:hover {
 }
 
 .nav-messenger-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: none;
   border-radius: 999px;
   background: transparent;
@@ -3710,6 +3753,31 @@ html.dark-mode .nav-notification-btn:hover {
 .nav-messenger-filter.active {
   background: #e7f3ff;
   color: #1877f2;
+}
+
+.nav-messenger-filter small {
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(24, 119, 242, 0.12);
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0 5px;
+}
+
+.nav-messenger-compose-note {
+  margin: 2px 18px 0;
+  padding: 9px 14px;
+  border-radius: 14px;
+  background: rgba(231, 243, 255, 0.82);
+  color: #335374;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .nav-messenger-list {
@@ -3808,6 +3876,14 @@ html.dark-mode .nav-notification-btn:hover {
   flex: 1 1 auto;
 }
 
+.nav-messenger-preview-row {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .nav-messenger-row {
   display: flex;
   align-items: baseline;
@@ -3834,7 +3910,7 @@ html.dark-mode .nav-notification-btn:hover {
 
 .nav-messenger-copy p,
 .nav-messenger-copy small {
-  margin: 4px 0 0;
+  margin: 0;
   display: block;
   color: #5f6c80;
   font-size: 14px;
@@ -3842,6 +3918,152 @@ html.dark-mode .nav-notification-btn:hover {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.nav-messenger-item.has-unread .nav-messenger-row strong,
+.nav-messenger-item.has-unread .nav-messenger-copy p {
+  color: #172232;
+}
+
+.nav-messenger-item.has-unread .nav-messenger-copy p {
+  font-weight: 700;
+}
+
+.nav-messenger-unread-badge {
+  flex: 0 0 auto;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #1877f2;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0 6px;
+}
+
+.nav-messenger-item-controls {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.nav-messenger-item-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 154px;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(189, 203, 224, 0.9);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow:
+    0 18px 36px rgba(17, 31, 56, 0.16),
+    0 6px 16px rgba(17, 31, 56, 0.08);
+  z-index: 2;
+}
+
+.nav-messenger-item-menu button {
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #223246;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.nav-messenger-item-menu button:hover {
+  background: #eef4fb;
+}
+
+.nav-messenger-directory-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: none;
+  border-radius: 18px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.nav-messenger-directory-item + .nav-messenger-directory-item {
+  margin-top: 4px;
+}
+
+.nav-messenger-directory-item:hover {
+  background: rgba(240, 244, 250, 0.92);
+}
+
+.nav-messenger-directory-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #dbe8ff 0%, #eef3fb 100%);
+  color: #1d4f91;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  font-weight: 900;
+  flex: 0 0 auto;
+}
+
+.nav-messenger-directory-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.nav-messenger-directory-copy strong {
+  display: block;
+  color: #12161d;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.nav-messenger-directory-copy span {
+  display: block;
+  margin-top: 2px;
+  color: #1877f2;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.nav-messenger-directory-copy p {
+  margin: 4px 0 0;
+  color: #5f6c80;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.nav-messenger-directory-cta {
+  flex: 0 0 auto;
+  color: #1877f2;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.nav-messenger-footer-link {
+  border: none;
+  border-top: 1px solid rgba(214, 223, 235, 0.9);
+  background: rgba(255, 255, 255, 0.96);
+  color: #1877f2;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 14px 18px 16px;
+  cursor: pointer;
+}
+
+.nav-messenger-footer-link:hover {
+  background: #f4f8fd;
 }
 
 .nav-notification-btn[aria-expanded="true"] {

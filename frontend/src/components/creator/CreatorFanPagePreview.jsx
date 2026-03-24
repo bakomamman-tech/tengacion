@@ -201,11 +201,13 @@ export default function CreatorFanPagePreview({
                 className="creator-fan-page__image--row"
               />
               <div className="creator-fan-page__release-copy">
-                <strong>{release.title}</strong>
-                <span>{release.subtitle || data.creatorName}</span>
+                <strong className="creator-fan-page__release-title">{release.title}</strong>
+                <span className="creator-fan-page__release-artist">{release.subtitle || data.creatorName}</span>
               </div>
-              <small>{release.statusLabel}</small>
-              <small>{release.secondaryLine || release.duration || ""}</small>
+              <div className="creator-fan-page__release-meta">
+                <small>{release.statusLabel}</small>
+                <small>{release.secondaryLine || release.duration || ""}</small>
+              </div>
               <button
                 type="button"
                 className="creator-fan-page__button creator-fan-page__button--icon"

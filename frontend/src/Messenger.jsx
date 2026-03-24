@@ -1281,6 +1281,9 @@ export default function Messenger({ user, onClose, onMinimize }) {
     const value = text.trim();
     if (!value) {return;}
     setText("");
+    setShowEmojiPicker(false);
+    setShowReactions(false);
+    setGifOpen(false);
     await sendPayload({ text: value, type: "text" });
   };
 
@@ -1464,6 +1467,8 @@ export default function Messenger({ user, onClose, onMinimize }) {
     }
     await sendPayload({ text: emoji, type: "text" });
     setShowReactions(false);
+    setShowEmojiPicker(false);
+    setGifOpen(false);
   };
 
   const clearReplySelection = useCallback(() => {
@@ -1760,6 +1765,9 @@ export default function Messenger({ user, onClose, onMinimize }) {
         }
       : {}),
   };
+  const hasTypedText = Boolean(text.trim());
+  const composerBusy = isRecording || isSendingVoice || Boolean(voicePreview);
+  const canSendText = hasTypedText && !composerBusy;
 
   return (
     <div
@@ -2563,6 +2571,153 @@ export default function Messenger({ user, onClose, onMinimize }) {
                 <button onClick={send} disabled={!text.trim() || isRecording || Boolean(voicePreview)}>
                   Send
                 </button>
+                <div className="messenger-composer-row">
+                  <div className="messenger-composer-tools" aria-label="Chat tools">
+                    <button
+                      type="button"
+                      className={`messenger-composer-btn${isRecording ? " is-active" : ""}`}
+                      onClick={isRecording ? stopVoiceNote : startVoiceNote}
+                      title="Voice message"
+                      aria-label="Voice message"
+                      disabled={Boolean(voicePreview)}
+                    >
+                      <svg
+                        className="messenger-mic-icon"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path d="M12 3.5a3.5 3.5 0 0 0-3.5 3.5v5a3.5 3.5 0 0 0 7 0V7A3.5 3.5 0 0 0 12 3.5Z" />
+                        <path d="M6.5 11.5a5.5 5.5 0 1 0 11 0" />
+                        <path d="M12 17v3.5" />
+                        <path d="M9 20.5h6" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className="messenger-composer-btn"
+                      onClick={openAttachmentPicker}
+                      title="Attach photo or file"
+                      aria-label="Attach photo or file"
+                      disabled={isRecording || isSendingVoice}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4.5 7.5A1.5 1.5 0 0 1 6 6h12a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 18 18H6a1.5 1.5 0 0 1-1.5-1.5z" />
+                        <path d="M8.25 10.25h.01" />
+                        <path d="m19.5 15-4.71-4.71a1.5 1.5 0 0 0-2.12 0L7.5 15.46" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className={`messenger-composer-btn${showReactions ? " is-active" : ""}`}
+                      onClick={() => {
+                        setShowReactions((prev) => !prev);
+                        setShowEmojiPicker(false);
+                        setGifOpen(false);
+                      }}
+                      title="Quick reactions"
+                      aria-label="Quick reactions"
+                      disabled={isRecording || isSendingVoice}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="8.5" />
+                        <path d="M9 10h.01" />
+                        <path d="M15 10h.01" />
+                        <path d="M8.8 14.1c1 .95 2.08 1.4 3.2 1.4 1.12 0 2.2-.45 3.2-1.4" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className={`messenger-composer-btn messenger-composer-btn--gif${gifOpen ? " is-active" : ""}`}
+                      onClick={() => {
+                        setGifOpen((prev) => !prev);
+                        setShowEmojiPicker(false);
+                        setShowReactions(false);
+                      }}
+                      title="GIF"
+                      aria-label="GIF"
+                      disabled={isRecording || isSendingVoice}
+                    >
+                      GIF
+                    </button>
+                    <button
+                      type="button"
+                      className="messenger-composer-btn"
+                      onClick={() => setShareOpen(true)}
+                      title="Share"
+                      aria-label="Share"
+                      disabled={isRecording || isSendingVoice || !selectedId}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 12h8" />
+                        <path d="m12 8 4 4-4 4" />
+                        <path d="M5 6.5A1.5 1.5 0 0 1 6.5 5h7A1.5 1.5 0 0 1 15 6.5V8" />
+                        <path d="M19 15.5A1.5 1.5 0 0 1 17.5 17h-7A1.5 1.5 0 0 1 9 15.5V14" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="messenger-composer-entry">
+                    <input
+                      ref={composerInputRef}
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && send()}
+                      placeholder="Aa"
+                      disabled={isRecording}
+                    />
+                  </div>
+
+                  <div className="messenger-composer-trailing">
+                    <button
+                      type="button"
+                      className={`messenger-composer-btn${showEmojiPicker ? " is-active" : ""}`}
+                      onClick={() => {
+                        setShowEmojiPicker((prev) => !prev);
+                        setGifOpen(false);
+                        setShowReactions(false);
+                      }}
+                      title="Emoji"
+                      aria-label="Emoji"
+                      disabled={isRecording || isSendingVoice}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="8.5" />
+                        <path d="M9 10h.01" />
+                        <path d="M15 10h.01" />
+                        <path d="M8.75 14c.85 1.25 1.95 1.9 3.25 1.9S14.4 15.25 15.25 14" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className={`messenger-composer-btn messenger-composer-btn--primary${
+                        canSendText ? " is-send" : ""
+                      }`}
+                      onClick={() => {
+                        if (canSendText) {
+                          send();
+                          return;
+                        }
+                        if (!composerBusy) {
+                          sendQuickReaction("\u{1F44D}");
+                        }
+                      }}
+                      title={canSendText ? "Send message" : "Send like"}
+                      aria-label={canSendText ? "Send message" : "Send like"}
+                      disabled={composerBusy && !canSendText}
+                    >
+                      {canSendText ? (
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M4 20 20 12 4 4l2 6 8 2-8 2z" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M11 21H7.5A2.5 2.5 0 0 1 5 18.5V11h6z" />
+                          <path d="M11 11 13.6 5.8A2.2 2.2 0 0 1 15.57 4 1.43 1.43 0 0 1 17 5.43V9h1.53A2.47 2.47 0 0 1 21 11.47a2.5 2.5 0 0 1-.12.77l-1.54 5.12A2.5 2.5 0 0 1 16.95 19H11" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             </>
           )}

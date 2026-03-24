@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { resolveImage, searchGlobal } from "./api";
 import CreateMenuDropdown from "./components/CreateMenuDropdown";
+import MessengerInboxDropdown from "./components/MessengerInboxDropdown";
 import NotificationsDropdown from "./components/NotificationsDropdown";
 import { Icon } from "./Icon";
 import { useAuth } from "./context/AuthContext";
@@ -131,6 +132,7 @@ export default function Navbar({
   const [searchOpen, setSearchOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [showMessengerMenu, setShowMessengerMenu] = useState(false);
   const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
   const [createSearch, setCreateSearch] = useState("");
 
@@ -138,6 +140,8 @@ export default function Navbar({
   const menuRef = useRef(null);
   const createMenuRef = useRef(null);
   const createMenuButtonRef = useRef(null);
+  const messengerMenuRef = useRef(null);
+  const messengerButtonRef = useRef(null);
   const notificationMenuRef = useRef(null);
   const notificationButtonRef = useRef(null);
 
@@ -151,6 +155,9 @@ export default function Navbar({
       }
       if (createMenuRef.current && !createMenuRef.current.contains(event.target)) {
         setShowCreateMenu(false);
+      }
+      if (messengerMenuRef.current && !messengerMenuRef.current.contains(event.target)) {
+        setShowMessengerMenu(false);
       }
       if (
         notificationMenuRef.current &&
@@ -173,6 +180,10 @@ export default function Navbar({
           setShowCreateMenu(false);
           createMenuButtonRef.current?.focus();
         }
+        if (showMessengerMenu) {
+          setShowMessengerMenu(false);
+          messengerButtonRef.current?.focus();
+        }
       }
     };
 
@@ -183,13 +194,14 @@ export default function Navbar({
       document.removeEventListener("mousedown", close);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [showCreateMenu, showNotificationsMenu]);
+  }, [showCreateMenu, showMessengerMenu, showNotificationsMenu]);
 
   useEffect(() => {
     setShowMenu(false);
     setMenuView("root");
     setSearchOpen(false);
     setShowCreateMenu(false);
+    setShowMessengerMenu(false);
     setShowNotificationsMenu(false);
   }, [location.pathname, location.search]);
 
@@ -257,11 +269,33 @@ export default function Navbar({
   };
 
   const openMessenger = () => {
+    setShowMenu(false);
+    setMenuView("root");
+    setShowCreateMenu(false);
+    setShowNotificationsMenu(false);
+    setSearchOpen(false);
+    setShowMessengerMenu((open) => !open);
+  };
+
+  const openMessengerConversation = (contact) => {
+    setShowMessengerMenu(false);
+
+    const payload = {
+      contactId: contact?._id || "",
+      contact,
+    };
+
     if (typeof onOpenMessenger === "function") {
-      onOpenMessenger();
+      onOpenMessenger(payload);
       return;
     }
-    navigate("/home", { state: { openMessenger: true } });
+
+    navigate("/home", {
+      state: {
+        openMessenger: true,
+        messengerTargetId: payload.contactId,
+      },
+    });
   };
 
   const openCreateFlow = (flow = "post") => {
@@ -294,6 +328,7 @@ export default function Navbar({
     setShowMenu(false);
     setMenuView("root");
     setShowCreateMenu(false);
+    setShowMessengerMenu(false);
     setSearchOpen(false);
     setShowNotificationsMenu((open) => {
       const next = !open;
@@ -930,14 +965,26 @@ export default function Navbar({
               )}
             </div>
 
-            <button
-              className="nav-circle-btn"
-              onClick={openMessenger}
-              aria-label="Messages"
-              title="Messages"
-            >
-              <Icon name="message" size={18} />
-            </button>
+            <div className="nav-messenger-anchor" ref={messengerMenuRef}>
+              <button
+                ref={messengerButtonRef}
+                className="nav-circle-btn"
+                onClick={openMessenger}
+                aria-label="Messages"
+                title="Messages"
+                aria-expanded={showMessengerMenu}
+                aria-controls="navbar-messenger-menu"
+              >
+                <Icon name="message" size={18} />
+              </button>
+
+              {showMessengerMenu && (
+                <MessengerInboxDropdown
+                  id="navbar-messenger-menu"
+                  onSelectContact={openMessengerConversation}
+                />
+              )}
+            </div>
 
             <div className="nav-notification-anchor" ref={notificationMenuRef}>
               <button

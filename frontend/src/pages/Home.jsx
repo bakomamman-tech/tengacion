@@ -964,6 +964,7 @@ export default function Home({ user }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMinimized, setChatMinimized] = useState(false);
   const [chatDockMeta, setChatDockMeta] = useState(null);
+  const [selectedChatId, setSelectedChatId] = useState("");
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerInitialFile, setComposerInitialFile] = useState(null);
   const [composerInitialMode, setComposerInitialMode] = useState("");
@@ -1222,6 +1223,7 @@ export default function Home({ user }) {
     }
 
     if (shouldOpenMessenger) {
+      setSelectedChatId(String(location.state?.messengerTargetId || ""));
       setChatOpen(true);
       setChatMinimized(false);
     }
@@ -1515,7 +1517,14 @@ export default function Home({ user }) {
       <Navbar
         user={currentUser}
         onLogout={logout}
-        onOpenMessenger={() => {
+        onOpenMessenger={(payload = {}) => {
+          setSelectedChatId(String(payload?.contactId || ""));
+          if (payload?.contact) {
+            setChatDockMeta({
+              name: payload.contact?.name || payload.contact?.username || "Messenger",
+              avatar: payload.contact?.avatar || "",
+            });
+          }
           setChatOpen(true);
           setChatMinimized(false);
         }}
@@ -1537,6 +1546,7 @@ export default function Home({ user }) {
           <Sidebar
             user={currentUser}
             openChat={() => {
+              setSelectedChatId("");
               setChatOpen(true);
               setChatMinimized(false);
             }}
@@ -1802,7 +1812,10 @@ export default function Home({ user }) {
             <section className="messenger-panel">
               <Messenger
                 user={currentUser}
+                initialSelectedId={selectedChatId}
+                conversationOnly={Boolean(selectedChatId)}
                 onClose={() => {
+                  setSelectedChatId("");
                   setChatOpen(false);
                   setChatMinimized(false);
                 }}

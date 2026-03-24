@@ -474,7 +474,14 @@ export default function GamingPage({ user }) {
       <Navbar
         user={user}
         onLogout={handleLogout}
-        onOpenMessenger={() => navigate("/home", { state: { openMessenger: true } })}
+        onOpenMessenger={(payload = {}) =>
+          navigate("/home", {
+            state: {
+              openMessenger: true,
+              messengerTargetId: payload?.contactId || "",
+            },
+          })
+        }
         onOpenCreatePost={(target = "post") =>
           navigate("/home", {
             state:

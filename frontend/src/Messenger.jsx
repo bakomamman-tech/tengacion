@@ -442,14 +442,21 @@ const isForConversation = (message, meId, otherId) => {
   return (a === meId && b === otherId) || (a === otherId && b === meId);
 };
 
-export default function Messenger({ user, onClose, onMinimize }) {
+export default function Messenger({
+  user,
+  onClose,
+  onMinimize,
+  initialSelectedId = "",
+  conversationOnly = false,
+}) {
   const { confirm } = useDialog();
   const navigate = useNavigate();
   const meId = useMemo(() => toIdString(user?._id || user?.id), [user]);
+  const preferredSelectedId = useMemo(() => toIdString(initialSelectedId), [initialSelectedId]);
 
   const [text, setText] = useState("");
   const [contacts, setContacts] = useState([]);
-  const [selectedId, setSelectedId] = useState("");
+  const [selectedId, setSelectedId] = useState(() => preferredSelectedId);
   const [messages, setMessages] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState(new Set());
   const [loadingContacts, setLoadingContacts] = useState(true);
@@ -528,6 +535,13 @@ export default function Messenger({ user, onClose, onMinimize }) {
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
+
+  useEffect(() => {
+    if (!preferredSelectedId) {
+      return;
+    }
+    setSelectedId(preferredSelectedId);
+  }, [preferredSelectedId]);
 
   useEffect(() => {
     setReplyTarget(null);
@@ -915,7 +929,17 @@ export default function Messenger({ user, onClose, onMinimize }) {
         if (!alive) {return;}
         const list = Array.isArray(data) ? data : [];
         setContacts(list);
-        setSelectedId((prev) => prev || list[0]?._id || "");
+        setSelectedId((prev) => {
+          const normalizedPrev = toIdString(prev);
+          const nextPreferredId = preferredSelectedId;
+          if (nextPreferredId && list.some((entry) => toIdString(entry?._id) === nextPreferredId)) {
+            return nextPreferredId;
+          }
+          if (normalizedPrev && list.some((entry) => toIdString(entry?._id) === normalizedPrev)) {
+            return normalizedPrev;
+          }
+          return toIdString(list[0]?._id);
+        });
       } catch (err) {
         if (!alive) {return;}
         setContacts([]);
@@ -1536,7 +1560,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
       );
       setError(err?.message || "Failed to react to message");
     }
-  }, [meId]);
+  }, [meId, preferredSelectedId]);
 
   const sendGif = async (gifUrl) => {
     if (!gifUrl) {
@@ -1765,15 +1789,32 @@ export default function Messenger({ user, onClose, onMinimize }) {
         }
       : {}),
   };
+  const selectedStatusLabel = selectedContact
+    ? typingByUserId[selectedContact._id]
+      ? "Typing..."
+      : recordingByUserId[selectedContact._id]
+        ? "Recording..."
+        : onlineUsers.has(selectedContact._id)
+          ? "Online"
+          : "Offline"
+    : "";
+  const selectedStatusMeta =
+    selectedContact?.status?.emoji || selectedContact?.status?.text
+      ? `${selectedContact?.status?.emoji || ""} ${selectedContact?.status?.text || ""}`.trim()
+      : "";
+  const selectedHeaderName =
+    selectedContact?.name || selectedContact?.username || "Messenger";
   const hasTypedText = Boolean(text.trim());
   const composerBusy = isRecording || isSendingVoice || Boolean(voicePreview);
   const canSendText = hasTypedText && !composerBusy;
 
   return (
     <div
-      className={`messenger ${isMobileSheet ? "mobile-sheet" : "desktop-draggable"} ${
-        isDraggingSheet || isDraggingDesktop ? "dragging" : ""
-      } ${isDraggingDesktop ? "desktop-dragging" : ""}`}
+      className={`messenger ${conversationOnly ? "messenger--conversation-only" : ""} ${
+        isMobileSheet ? "mobile-sheet" : "desktop-draggable"
+      } ${isDraggingSheet || isDraggingDesktop ? "dragging" : ""} ${
+        isDraggingDesktop ? "desktop-dragging" : ""
+      }`}
       style={messengerStyle}
     >
       <div className="messenger-header">
@@ -1785,8 +1826,18 @@ export default function Messenger({ user, onClose, onMinimize }) {
         />
 
         <div className="messenger-header-main" onPointerDown={onDesktopHeaderPointerDown}>
-          <div className="mh-left">
-            <strong>Messenger</strong>
+          <div className={`mh-left${conversationOnly ? " mh-left--conversation" : ""}`}>
+            {conversationOnly && selectedContact ? (
+              <div className="mh-chat-copy">
+                <strong>{selectedHeaderName}</strong>
+                <span>
+                  {selectedStatusLabel}
+                  {selectedStatusMeta ? ` - ${selectedStatusMeta}` : ""}
+                </span>
+              </div>
+            ) : (
+              <strong>Messenger</strong>
+            )}
           </div>
           <div className="mh-actions">
             <button
@@ -1840,7 +1891,8 @@ export default function Messenger({ user, onClose, onMinimize }) {
         {headerNotice && <div className="messenger-header-notice">{headerNotice}</div>}
       </div>
 
-      <div className="messenger-body">
+      <div className={`messenger-body${conversationOnly ? " messenger-body--conversation-only" : ""}`}>
+        {!conversationOnly && (
         <aside className="messenger-threads">
           <div className="threads-title">Chats</div>
 
@@ -1874,6 +1926,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
               );
             })}
         </aside>
+        )}
 
         <section className="messenger-chat">
           {!selectedContact && (
@@ -1882,6 +1935,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
 
           {selectedContact && (
             <>
+              {!conversationOnly && (
               <div className="chat-topbar" ref={chatMenuRef}>
                 <button
                   type="button"
@@ -1980,8 +2034,9 @@ export default function Messenger({ user, onClose, onMinimize }) {
                   </div>
                 )}
               </div>
+              )}
 
-              {watchOpen && (
+              {watchOpen && !conversationOnly && (
                 <div className="messenger-watch-box">
                   <div className="messenger-watch-controls">
                     <input
@@ -2075,7 +2130,7 @@ export default function Messenger({ user, onClose, onMinimize }) {
                           );
                         }}
                       >
-                        {!isMe && (
+                        {!isMe && !conversationOnly && (
                           <img
                             src={m.senderAvatar || getAvatar(selectedContact)}
                             className="msg-avatar"

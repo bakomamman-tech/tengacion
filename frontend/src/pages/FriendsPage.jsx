@@ -424,6 +424,7 @@ export default function FriendsPage({ user }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMinimized, setChatMinimized] = useState(false);
   const [chatDockMeta, setChatDockMeta] = useState(null);
+  const [selectedChatId, setSelectedChatId] = useState("");
 
   const loadHub = useCallback(async ({ silent = false } = {}) => {
     try {
@@ -1138,7 +1139,14 @@ export default function FriendsPage({ user }) {
       <Navbar
         user={user}
         onLogout={logout}
-        onOpenMessenger={() => {
+        onOpenMessenger={(payload = {}) => {
+          setSelectedChatId(String(payload?.contactId || ""));
+          if (payload?.contact) {
+            setChatDockMeta({
+              name: payload.contact?.name || payload.contact?.username || "Messenger",
+              avatar: payload.contact?.avatar || "",
+            });
+          }
           setChatOpen(true);
           setChatMinimized(false);
         }}
@@ -1162,6 +1170,7 @@ export default function FriendsPage({ user }) {
           <Sidebar
             user={user}
             openChat={() => {
+              setSelectedChatId("");
               setChatOpen(true);
               setChatMinimized(false);
             }}
@@ -1285,7 +1294,10 @@ export default function FriendsPage({ user }) {
         <section className="messenger-panel">
           <Messenger
             user={user}
+            initialSelectedId={selectedChatId}
+            conversationOnly={Boolean(selectedChatId)}
             onClose={() => {
+              setSelectedChatId("");
               setChatOpen(false);
               setChatMinimized(false);
             }}

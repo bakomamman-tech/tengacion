@@ -494,7 +494,14 @@ export default function ReelsPage({ user }) {
         user={user}
         onLogout={handleLogout}
         onOpenCreatePost={handleCreateFlow}
-        onOpenMessenger={() => navigate("/home", { state: { openMessenger: true } })}
+        onOpenMessenger={(payload = {}) =>
+          navigate("/home", {
+            state: {
+              openMessenger: true,
+              messengerTargetId: payload?.contactId || "",
+            },
+          })
+        }
       />
 
       <div className="reels-page-shell">

@@ -2614,8 +2614,8 @@ export default function Messenger({ user, onClose, onMinimize }) {
                         setShowEmojiPicker(false);
                         setGifOpen(false);
                       }}
-                      title="Quick reactions"
-                      aria-label="Quick reactions"
+                      title="Emoji"
+                      aria-label="Emoji"
                       disabled={isRecording || isSendingVoice}
                     >
                       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -2668,25 +2668,6 @@ export default function Messenger({ user, onClose, onMinimize }) {
                   </div>
 
                   <div className="messenger-composer-trailing">
-                    <button
-                      type="button"
-                      className={`messenger-composer-btn${showEmojiPicker ? " is-active" : ""}`}
-                      onClick={() => {
-                        setShowEmojiPicker((prev) => !prev);
-                        setGifOpen(false);
-                        setShowReactions(false);
-                      }}
-                      title="Emoji"
-                      aria-label="Emoji"
-                      disabled={isRecording || isSendingVoice}
-                    >
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <circle cx="12" cy="12" r="8.5" />
-                        <path d="M9 10h.01" />
-                        <path d="M15 10h.01" />
-                        <path d="M8.75 14c.85 1.25 1.95 1.9 3.25 1.9S14.4 15.25 15.25 14" />
-                      </svg>
-                    </button>
                     <button
                       type="button"
                       className={`messenger-composer-btn messenger-composer-btn--primary${

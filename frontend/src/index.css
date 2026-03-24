@@ -9632,7 +9632,7 @@ html.dark-mode .composer-tag-empty.error {
 
 .msg-bubble {
   width: fit-content;
-  max-width: min(74%, 360px);
+  max-width: min(84%, 520px);
   border-radius: 18px;
   padding: 10px 12px;
   border: 1px solid var(--border);

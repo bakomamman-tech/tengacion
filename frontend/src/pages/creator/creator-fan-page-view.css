@@ -424,7 +424,6 @@
 }
 
 .creator-fan-page__feature-copy h4,
-.creator-fan-page__release-copy strong,
 .creator-fan-page__book-copy strong {
   overflow-wrap: anywhere;
 }
@@ -455,9 +454,9 @@
 
 .creator-fan-page__release-row {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) minmax(100px, auto) auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   padding: 12px 14px;
   border-radius: 20px;
   background: rgba(255, 247, 233, 0.03);
@@ -502,35 +501,30 @@
 }
 
 .creator-fan-page__release-title,
-.creator-fan-page__release-artist {
+.creator-fan-page__release-artist,
+.creator-fan-page__release-submeta {
   display: block;
   min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .creator-fan-page__release-title {
-  font-size: 1.08rem;
-  line-height: 1.08;
+  font-size: 1.06rem;
+  line-height: 1.12;
   letter-spacing: -0.02em;
 }
 
 .creator-fan-page__release-artist {
-  font-size: 0.98rem;
+  font-size: 0.96rem;
   line-height: 1.2;
   letter-spacing: 0.01em;
 }
 
-.creator-fan-page__release-meta {
-  display: grid;
-  gap: 4px;
-  justify-items: end;
-  align-content: center;
-  min-width: 0;
-  text-align: right;
-}
-
-.creator-fan-page__release-meta small {
-  display: block;
-  line-height: 1.15;
+.creator-fan-page__release-submeta {
+  color: rgba(243, 234, 214, 0.62);
+  font-size: 0.8rem;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
 }
 
 .creator-fan-page__video-row-copy {
@@ -824,10 +818,6 @@
 
   .creator-fan-page__release-row {
     grid-template-columns: auto auto minmax(0, 1fr);
-  }
-
-  .creator-fan-page__release-meta {
-    display: none;
   }
 
   .creator-fan-page__top-actions {

@@ -203,10 +203,11 @@ export default function CreatorFanPagePreview({
               <div className="creator-fan-page__release-copy">
                 <strong className="creator-fan-page__release-title">{release.title}</strong>
                 <span className="creator-fan-page__release-artist">{release.subtitle || data.creatorName}</span>
-              </div>
-              <div className="creator-fan-page__release-meta">
-                <small>{release.statusLabel}</small>
-                <small>{release.secondaryLine || release.duration || ""}</small>
+                <small className="creator-fan-page__release-submeta">
+                  {[release.statusLabel, release.secondaryLine || release.duration || ""]
+                    .filter(Boolean)
+                    .join(" | ")}
+                </small>
               </div>
               <button
                 type="button"

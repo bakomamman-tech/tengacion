@@ -9140,7 +9140,7 @@ html.dark-mode .composer-tag-empty.error {
   right: 16px;
   bottom: 16px;
   top: auto;
-  width: min(92vw, 620px);
+  width: min(90vw, 452px);
   z-index: 200;
   isolation: isolate;
 }
@@ -9168,7 +9168,7 @@ html.dark-mode .composer-tag-empty.error {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding: 0 16px;
+  padding: 0 12px;
   position: relative;
   z-index: 210;
 }
@@ -9219,10 +9219,10 @@ html.dark-mode .composer-tag-empty.error {
 }
 
 .mh-close {
-  width: 38px;
-  height: 38px;
-  min-width: 38px;
-  min-height: 38px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
   border: 1px solid var(--border);
   border-radius: 50%;
   background: var(--surface);
@@ -9239,13 +9239,13 @@ html.dark-mode .composer-tag-empty.error {
 .mh-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .mh-action-btn {
-  width: 38px;
-  height: 38px;
-  min-width: 38px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
   border: 1px solid var(--border) !important;
   border-radius: 999px !important;
   background: var(--surface) !important;
@@ -9262,8 +9262,8 @@ html.dark-mode .composer-tag-empty.error {
 }
 
 .mh-action-btn svg {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
   fill: currentColor;
 }
 
@@ -9275,7 +9275,7 @@ html.dark-mode .composer-tag-empty.error {
 
 .messenger-body {
   display: grid;
-  grid-template-columns: 158px 1fr;
+  grid-template-columns: 110px 1fr;
   min-height: 0;
   flex: 1;
 }
@@ -9284,15 +9284,15 @@ html.dark-mode .composer-tag-empty.error {
   border-right: 1px solid var(--border);
   background: var(--surface-soft);
   overflow: auto;
-  padding: 10px;
+  padding: 8px 6px;
 }
 
 .threads-title {
-  font-size: 13px;
+  font-size: 11px;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.9px;
-  margin-bottom: 10px;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
 }
 
 .threads-state {
@@ -9304,14 +9304,14 @@ html.dark-mode .composer-tag-empty.error {
   width: 100%;
   border: none;
   background: transparent;
-  border-radius: 14px;
+  border-radius: 12px;
   color: var(--text);
   cursor: pointer;
   text-align: left;
-  padding: 10px;
-  margin-bottom: 8px;
+  padding: 8px 6px;
+  margin-bottom: 6px;
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .thread-item:hover,
@@ -9325,8 +9325,8 @@ html.dark-mode .composer-tag-empty.error {
 }
 
 .thread-avatar {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
 }
 
@@ -9348,7 +9348,7 @@ html.dark-mode .composer-tag-empty.error {
 }
 
 .thread-name {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
   overflow: hidden;
@@ -9356,8 +9356,8 @@ html.dark-mode .composer-tag-empty.error {
 }
 
 .thread-last {
-  font-size: 13px;
-  line-height: 1.35;
+  font-size: 11px;
+  line-height: 1.25;
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
@@ -9377,12 +9377,12 @@ html.dark-mode .composer-tag-empty.error {
 }
 
 .chat-topbar {
-  height: 72px;
+  height: 64px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 14px;
+  gap: 8px;
+  padding: 0 10px;
   position: relative;
   z-index: 1;
 }
@@ -9392,8 +9392,8 @@ html.dark-mode .composer-tag-empty.error {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 10px;
+  gap: 10px;
+  padding: 6px 8px;
   border: 0;
   border-radius: 14px;
   background: transparent;
@@ -9415,8 +9415,8 @@ html.dark-mode .composer-tag-empty.error {
 }
 
 .chat-top-avatar {
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   flex: 0 0 auto;
 }
@@ -9436,7 +9436,7 @@ html.dark-mode .composer-tag-empty.error {
 }
 
 .chat-top-name {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 900;
   line-height: 1.2;
   min-width: 0;
@@ -9447,7 +9447,7 @@ html.dark-mode .composer-tag-empty.error {
 
 .chat-top-status {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -9584,6 +9584,8 @@ html.dark-mode .composer-tag-empty.error {
 
 .chat-topbar .messenger-action-btn {
   margin-left: auto;
+  padding: 7px 10px !important;
+  font-size: 12px;
 }
 
 .messenger-messages {
@@ -13205,7 +13207,7 @@ html.dark-mode .password-toggle-btn:hover {
     right: 12px;
     bottom: 12px;
     top: auto;
-    width: min(94vw, 620px);
+    width: min(92vw, 520px);
     z-index: 200;
   }
 

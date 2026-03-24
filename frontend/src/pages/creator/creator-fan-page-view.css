@@ -496,35 +496,38 @@
 
 .creator-fan-page__release-copy {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
+  align-content: center;
 }
 
 .creator-fan-page__release-title,
-.creator-fan-page__release-artist,
-.creator-fan-page__release-submeta {
+.creator-fan-page__release-artist {
   display: block;
   min-width: 0;
-  overflow-wrap: break-word;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .creator-fan-page__release-title {
-  font-size: 1.06rem;
-  line-height: 1.12;
+  font-size: 1.04rem;
+  line-height: 1.16;
   letter-spacing: -0.02em;
 }
 
 .creator-fan-page__release-artist {
-  font-size: 0.96rem;
+  font-size: 0.93rem;
   line-height: 1.2;
   letter-spacing: 0.01em;
 }
 
-.creator-fan-page__release-submeta {
-  color: rgba(243, 234, 214, 0.62);
-  font-size: 0.8rem;
-  line-height: 1.2;
-  letter-spacing: 0.02em;
+.creator-fan-page__release-row .creator-fan-page__button--icon {
+  min-height: 40px;
+  padding: 0 14px;
 }
 
 .creator-fan-page__video-row-copy {

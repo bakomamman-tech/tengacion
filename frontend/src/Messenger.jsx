@@ -1828,12 +1828,20 @@ export default function Messenger({
         <div className="messenger-header-main" onPointerDown={onDesktopHeaderPointerDown}>
           <div className={`mh-left${conversationOnly ? " mh-left--conversation" : ""}`}>
             {conversationOnly && selectedContact ? (
-              <div className="mh-chat-copy">
-                <strong>{selectedHeaderName}</strong>
-                <span>
-                  {selectedStatusLabel}
-                  {selectedStatusMeta ? ` - ${selectedStatusMeta}` : ""}
-                </span>
+              <div className="mh-chat-contact">
+                <div className="mh-chat-avatar-wrap">
+                  <img src={getAvatar(selectedContact)} alt="" className="mh-chat-avatar" />
+                  {onlineUsers.has(selectedContact._id) ? (
+                    <span className="mh-chat-online-dot" />
+                  ) : null}
+                </div>
+                <div className="mh-chat-copy">
+                  <strong>{selectedHeaderName}</strong>
+                  <span>
+                    {selectedStatusLabel}
+                    {selectedStatusMeta ? ` - ${selectedStatusMeta}` : ""}
+                  </span>
+                </div>
               </div>
             ) : (
               <strong>Messenger</strong>

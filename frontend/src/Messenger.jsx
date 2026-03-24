@@ -3200,38 +3200,38 @@ export default function Messenger({
                       placeholder="Aa"
                       disabled={isRecording}
                     />
-                  </div>
 
-                  <div className="messenger-composer-trailing">
-                    <button
-                      type="button"
-                      className={`messenger-composer-btn messenger-composer-btn--primary${
-                        canSendText ? " is-send" : ""
-                      }`}
-                      onClick={() => {
-                        if (canSendText) {
-                          send();
-                          return;
-                        }
-                        if (!composerBusy) {
-                          sendQuickReaction("\u{1F44D}");
-                        }
-                      }}
-                      title={canSendText ? "Send message" : "Send like"}
-                      aria-label={canSendText ? "Send message" : "Send like"}
-                      disabled={composerBusy && !canSendText}
-                    >
-                      {canSendText ? (
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M4 20 20 12 4 4l2 6 8 2-8 2z" />
-                        </svg>
-                      ) : (
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M11 21H7.5A2.5 2.5 0 0 1 5 18.5V11h6z" />
-                          <path d="M11 11 13.6 5.8A2.2 2.2 0 0 1 15.57 4 1.43 1.43 0 0 1 17 5.43V9h1.53A2.47 2.47 0 0 1 21 11.47a2.5 2.5 0 0 1-.12.77l-1.54 5.12A2.5 2.5 0 0 1 16.95 19H11" />
-                        </svg>
-                      )}
-                    </button>
+                    <div className="messenger-composer-trailing">
+                      <button
+                        type="button"
+                        className={`messenger-composer-btn messenger-composer-btn--primary${
+                          canSendText ? " is-send" : ""
+                        }`}
+                        onClick={() => {
+                          if (canSendText) {
+                            send();
+                            return;
+                          }
+                          if (!composerBusy) {
+                            sendQuickReaction("\u{1F44D}");
+                          }
+                        }}
+                        title={canSendText ? "Send message" : "Send like"}
+                        aria-label={canSendText ? "Send message" : "Send like"}
+                        disabled={composerBusy && !canSendText}
+                      >
+                        {canSendText ? (
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 20 20 12 4 4l2 6 8 2-8 2z" />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M11 21H7.5A2.5 2.5 0 0 1 5 18.5V11h6z" />
+                            <path d="M11 11 13.6 5.8A2.2 2.2 0 0 1 15.57 4 1.43 1.43 0 0 1 17 5.43V9h1.53A2.47 2.47 0 0 1 21 11.47a2.5 2.5 0 0 1-.12.77l-1.54 5.12A2.5 2.5 0 0 1 16.95 19H11" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

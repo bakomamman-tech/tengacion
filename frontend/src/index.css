@@ -10652,13 +10652,12 @@ html.dark-mode .composer-tag-empty.error {
 .messenger-composer-row {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 8px;
 }
 
-.messenger-composer-tools,
-.messenger-composer-trailing {
+.messenger-composer-tools {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -10675,14 +10674,14 @@ html.dark-mode .composer-tag-empty.error {
 }
 
 .messenger-composer-entry {
-  flex: 1 1 auto;
   min-width: 0;
-  min-height: 42px;
+  min-height: 44px;
   display: flex;
   align-items: center;
+  gap: 8px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--surface-soft) 84%, white 16%);
-  padding: 0 18px;
+  padding: 0 8px 0 18px;
   overflow: hidden;
   clip-path: inset(0 round 999px);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 82%, white 18%);
@@ -10695,11 +10694,21 @@ html.dark-mode .composer-tag-empty.error {
     0 0 0 3px color-mix(in srgb, var(--brand) 12%, transparent);
 }
 
+.messenger-composer-trailing {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+  padding-left: 10px;
+  border-left: 1px solid color-mix(in srgb, var(--border) 82%, white 18%);
+}
+
 .messenger-composer-entry input {
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
-  min-height: 42px;
+  min-height: 44px;
   border: none;
   border-radius: inherit;
   outline: none;
@@ -14333,7 +14342,7 @@ html.dark-mode .password-toggle-btn:hover {
   }
 
   .messenger-composer-entry {
-    padding: 0 12px;
+    padding: 0 6px 0 12px;
   }
 
   .messenger-composer-btn {

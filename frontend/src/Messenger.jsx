@@ -2277,14 +2277,14 @@ export default function Messenger({ user, onClose, onMinimize }) {
                               ))}
                             </div>
                           ) : null}
-                          <div className="msg-time">
-                            {new Date(m.time).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                            {m.pending ? " - Sending" : ""}
-                            {m.failed ? " - Failed" : ""}
-                          </div>
+                        </div>
+                        <div className="msg-time">
+                          {new Date(m.time).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                          {m.pending ? " - Sending" : ""}
+                          {m.failed ? " - Failed" : ""}
                         </div>
                         {!m.pending ? (
                           <div className={`msg-tools msg-tools--${isMe ? "me" : "them"}${toolsVisible ? " is-visible" : ""}`}>

@@ -10237,22 +10237,30 @@ html.dark-mode .composer-tag-empty.error {
   margin-bottom: 8px;
   padding: 8px 10px;
   border-radius: 14px;
-  background: color-mix(in srgb, var(--surface-soft) 84%, transparent);
-  border-left: 3px solid color-mix(in srgb, var(--brand) 62%, white 38%);
+  background: rgba(17, 31, 54, 0.14);
+  border-left: 3px solid color-mix(in srgb, var(--brand) 54%, white 46%);
+  color: inherit;
 }
 
 .message-row.them .msg-reply-preview {
-  background: rgba(255, 255, 255, 0.52);
+  background: rgba(17, 31, 54, 0.08);
+}
+
+.message-row.me .msg-reply-preview {
+  background: rgba(10, 18, 30, 0.28);
+  border-left-color: rgba(255, 255, 255, 0.44);
 }
 
 .msg-reply-preview small {
   font-size: 11px;
-  opacity: 0.82;
+  color: inherit;
+  opacity: 0.88;
 }
 
 .msg-reply-preview strong {
   font-size: 12px;
   line-height: 1.35;
+  color: inherit;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

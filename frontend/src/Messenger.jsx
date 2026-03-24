@@ -39,6 +39,38 @@ const MESSAGE_ACTION_EMOJIS = [
   "\u{1F389}",
   "\u{1F44F}",
 ];
+const FALLBACK_GIFS = [
+  {
+    id: "fallback-cheer",
+    title: "Cheer",
+    url: "https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif",
+  },
+  {
+    id: "fallback-excited",
+    title: "Excited",
+    url: "https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif",
+  },
+  {
+    id: "fallback-laugh",
+    title: "Laugh",
+    url: "https://media.giphy.com/media/ASd0Ukj0y3qMM/giphy.gif",
+  },
+  {
+    id: "fallback-hype",
+    title: "Hype",
+    url: "https://media.giphy.com/media/111ebonMs90YLu/giphy.gif",
+  },
+  {
+    id: "fallback-yes",
+    title: "Yes",
+    url: "https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.gif",
+  },
+  {
+    id: "fallback-wow",
+    title: "Wow",
+    url: "https://media.giphy.com/media/xT9IgG50Fb7Mi0prBC/giphy.gif",
+  },
+];
 
 const toIdString = (value) => {
   if (!value) {return "";}
@@ -550,7 +582,7 @@ export default function Messenger({
   const [showReactions, setShowReactions] = useState(false);
   const [gifOpen, setGifOpen] = useState(false);
   const [gifQuery, setGifQuery] = useState("");
-  const [gifResults, setGifResults] = useState([]);
+  const [gifResults, setGifResults] = useState(FALLBACK_GIFS);
   const [gifError, setGifError] = useState("");
   const [headerNotice, setHeaderNotice] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -968,8 +1000,8 @@ export default function Messenger({
 
     const key = import.meta.env.VITE_GIPHY_API_KEY;
     if (!key) {
-      setGifError("GIF search requires VITE_GIPHY_API_KEY");
-      setGifResults([]);
+      setGifError("Showing sample GIFs. Add VITE_GIPHY_API_KEY to enable search.");
+      setGifResults(FALLBACK_GIFS);
       return undefined;
     }
 
@@ -987,21 +1019,26 @@ export default function Messenger({
           return;
         }
         const list = Array.isArray(payload?.data) ? payload.data : [];
-        setGifResults(
-          list
-            .map((entry) => ({
-              id: entry.id,
-              title: entry.title || "GIF",
-              url:
-                entry?.images?.fixed_height?.url ||
-                entry?.images?.original?.url ||
-                "",
-            }))
-            .filter((entry) => entry.url)
-        );
+        const nextResults = list
+          .map((entry) => ({
+            id: entry.id,
+            title: entry.title || "GIF",
+            url:
+              entry?.images?.fixed_height?.url ||
+              entry?.images?.original?.url ||
+              "",
+          }))
+          .filter((entry) => entry.url);
+        if (nextResults.length > 0) {
+          setGifResults(nextResults);
+          return;
+        }
+        setGifError("No GIFs matched that search.");
+        setGifResults(FALLBACK_GIFS);
       } catch {
         if (alive) {
-          setGifError("Failed to load GIFs");
+          setGifError("Live GIF search is unavailable right now. Showing sample GIFs.");
+          setGifResults(FALLBACK_GIFS);
         }
       }
     }, 260);

@@ -368,6 +368,44 @@ router.patch("/:messageId/delete-for-me", auth, async (req, res) => {
   }
 });
 
+/*
+  Unsend a message for everyone in the conversation.
+  Only the sender can unsend their own message.
+*/
+router.patch("/:messageId/unsend", auth, async (req, res) => {
+  try {
+    const meId = req.user.id;
+    const messageId = req.params.messageId;
+
+    if (!mongoose.Types.ObjectId.isValid(messageId)) {
+      return res.status(400).json({ error: "Invalid message id" });
+    }
+
+    const message = await Message.findById(messageId).select("senderId receiverId");
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    const senderId = toIdString(message.senderId);
+    const receiverId = toIdString(message.receiverId);
+    if (meId !== senderId) {
+      return res.status(403).json({ error: "Only the sender can unsend this message" });
+    }
+
+    await Message.deleteOne({ _id: messageId });
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(senderId).to(receiverId).emit("message:unsent", { messageId });
+    }
+
+    return res.json({ success: true, messageId });
+  } catch (err) {
+    console.error("Unsend message error:", err);
+    return res.status(500).json({ error: "Failed to unsend message" });
+  }
+});
+
 router.post("/:messageId/react", auth, async (req, res) => {
   try {
     const meId = req.user.id;

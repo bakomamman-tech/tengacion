@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import {
   blockUser,
+  createReport,
   deleteMessageForMe,
   getChatContacts,
   getConversationMessages,
@@ -10,12 +11,14 @@ import {
   resolveImage,
   sendChatMessage,
   shareMessageToFollowers,
+  unsendChatMessage,
   uploadChatAttachment,
 } from "./api";
 import { connectSocket, disconnectSocket } from "./socket";
 import ContentCardMessage from "./components/ContentCardMessage";
 import ShareContentModal from "./components/ShareContentModal";
 import { useDialog } from "./components/ui/useDialog";
+import { createReportDialogConfig } from "./constants/reportReasons";
 
 const MOBILE_SHEET_QUERY = "(max-width: 640px)";
 const QUICK_REACTIONS = [
@@ -109,6 +112,35 @@ const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "User"
   )}&size=96&background=DFE8F6&color=1D3A6D`;
+
+const PINNED_MESSAGE_STORAGE_KEY = "tengacion:messenger:pinned-messages";
+
+const readPinnedMessages = () => {
+  if (typeof window === "undefined") {
+    return {};
+  }
+  try {
+    const raw = window.localStorage.getItem(PINNED_MESSAGE_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const writePinnedMessages = (nextValue) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.setItem(
+      PINNED_MESSAGE_STORAGE_KEY,
+      JSON.stringify(nextValue && typeof nextValue === "object" ? nextValue : {})
+    );
+  } catch {
+    // Ignore storage failures so chat stays usable.
+  }
+};
 
 let messageBeepContext = null;
 const playIncomingMessageBeep = () => {
@@ -348,6 +380,57 @@ const buildReplyTarget = (message) => {
   };
 };
 
+const buildForwardPayload = (message) => {
+  if (!message) {
+    return null;
+  }
+
+  const attachments = Array.isArray(message?.attachments)
+    ? message.attachments
+        .map((file) => ({
+          ...file,
+          url: sanitizeAttachmentUrl(file?.url, file?.type),
+        }))
+        .filter((file) => file.url)
+    : [];
+
+  if (message?.type === "contentCard") {
+    return {
+      type: "contentCard",
+      text: "",
+      metadata: { ...(message?.metadata || {}) },
+      attachments,
+    };
+  }
+
+  if (String(message?.text || "").trim() || attachments.length > 0) {
+    return {
+      type: message?.type === "voice" ? "voice" : "text",
+      text: String(message?.text || ""),
+      attachments,
+    };
+  }
+
+  return null;
+};
+
+const buildPinnedMessageEntry = (message, meId) => {
+  const messageId = toIdString(message?._id);
+  if (!messageId) {
+    return null;
+  }
+
+  return {
+    messageId,
+    senderLabel:
+      toIdString(message?.senderId) === toIdString(meId)
+        ? "You"
+        : message?.senderName || "Friend",
+    previewText: getReplyPreviewText(message),
+    time: Number(message?.time) || Date.now(),
+  };
+};
+
 const toggleReactionEntries = (entries = [], userId = "", emoji = "") => {
   const normalizedUserId = toIdString(userId);
   const nextEmoji = String(emoji || "").trim();
@@ -449,7 +532,7 @@ export default function Messenger({
   initialSelectedId = "",
   conversationOnly = false,
 }) {
-  const { confirm } = useDialog();
+  const { confirm, prompt } = useDialog();
   const navigate = useNavigate();
   const meId = useMemo(() => toIdString(user?._id || user?.id), [user]);
   const preferredSelectedId = useMemo(() => toIdString(initialSelectedId), [initialSelectedId]);
@@ -478,6 +561,7 @@ export default function Messenger({
   const [activeMessageId, setActiveMessageId] = useState("");
   const [hoveredMessageId, setHoveredMessageId] = useState("");
   const [openMessageReactionId, setOpenMessageReactionId] = useState("");
+  const [openMessageMenuId, setOpenMessageMenuId] = useState("");
   const [openVoiceMenuId, setOpenVoiceMenuId] = useState("");
   const [voicePlaybackById, setVoicePlaybackById] = useState({});
   const [typingByUserId, setTypingByUserId] = useState({});
@@ -486,6 +570,10 @@ export default function Messenger({
   const [watchUrl, setWatchUrl] = useState("");
   const [chatMenuOpen, setChatMenuOpen] = useState(false);
   const [isBlockingUser, setIsBlockingUser] = useState(false);
+  const [shareDraftPayload, setShareDraftPayload] = useState(null);
+  const [pinnedMessagesByChat, setPinnedMessagesByChat] = useState(() =>
+    readPinnedMessages()
+  );
   const recorderRef = useRef(null);
   const recorderChunksRef = useRef([]);
   const recordMimeRef = useRef("audio/webm");
@@ -495,6 +583,7 @@ export default function Messenger({
   const recordingCancelledRef = useRef(false);
   const voiceMenuRef = useRef(null);
   const chatMenuRef = useRef(null);
+  const messageMenuRef = useRef(null);
   const voiceAudioRefs = useRef(new Map());
   const mediaInputRef = useRef(null);
   const composerInputRef = useRef(null);
@@ -548,6 +637,7 @@ export default function Messenger({
     setActiveMessageId("");
     setHoveredMessageId("");
     setOpenMessageReactionId("");
+    setOpenMessageMenuId("");
   }, [selectedId]);
 
   useEffect(() => {
@@ -829,6 +919,33 @@ export default function Messenger({
     };
   }, [openVoiceMenuId]);
 
+  useEffect(() => {
+    if (!openMessageMenuId) {
+      return undefined;
+    }
+
+    const onPointerDown = (event) => {
+      if (messageMenuRef.current?.contains(event.target)) {
+        return;
+      }
+      setOpenMessageMenuId("");
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setOpenMessageMenuId("");
+      }
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [openMessageMenuId]);
+
   useEffect(() => () => {
     if (recordingIntervalRef.current) {
       clearInterval(recordingIntervalRef.current);
@@ -916,6 +1033,22 @@ export default function Messenger({
     });
   }, []);
 
+  const updateConversationPreview = useCallback((contactId, nextMessages = []) => {
+    setContacts((prev) =>
+      prev.map((contact) => {
+        if (toIdString(contact?._id) !== toIdString(contactId)) {
+          return contact;
+        }
+        const latest = nextMessages[nextMessages.length - 1] || null;
+        return {
+          ...contact,
+          lastMessage: latest ? getMessagePreviewText(latest) : "",
+          lastMessageAt: latest?.time || 0,
+        };
+      })
+    );
+  }, []);
+
   useEffect(() => {
     let alive = true;
 
@@ -988,6 +1121,34 @@ export default function Messenger({
       alive = false;
     };
   }, [selectedId]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      return;
+    }
+
+    const pinnedEntry = pinnedMessagesByChat[selectedId];
+    if (!pinnedEntry?.messageId) {
+      return;
+    }
+
+    const exists = messages.some(
+      (message) => toIdString(message?._id) === toIdString(pinnedEntry.messageId)
+    );
+    if (exists) {
+      return;
+    }
+
+    setPinnedMessagesByChat((current) => {
+      if (!current?.[selectedId]) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[selectedId];
+      writePinnedMessages(next);
+      return next;
+    });
+  }, [messages, pinnedMessagesByChat, selectedId]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -1092,9 +1253,32 @@ export default function Messenger({
       if (!targetId) {
         return;
       }
-      setMessages((prev) =>
-        prev.filter((message) => toIdString(message?._id) !== targetId)
-      );
+      setMessages((prev) => {
+        const next = prev.filter((message) => toIdString(message?._id) !== targetId);
+        updateConversationPreview(selectedIdRef.current, next);
+        return next;
+      });
+    });
+    socket.on("message:unsent", ({ messageId }) => {
+      const targetId = toIdString(messageId);
+      if (!targetId) {
+        return;
+      }
+      setMessages((prev) => {
+        const next = prev.filter((message) => toIdString(message?._id) !== targetId);
+        updateConversationPreview(selectedIdRef.current, next);
+        return next;
+      });
+      setPinnedMessagesByChat((current) => {
+        const chatId = selectedIdRef.current;
+        if (!chatId || current?.[chatId]?.messageId !== targetId) {
+          return current;
+        }
+        const next = { ...current };
+        delete next[chatId];
+        writePinnedMessages(next);
+        return next;
+      });
     });
     socket.on("message:reaction", ({ messageId, reactions }) => {
       const targetId = toIdString(messageId);
@@ -1127,6 +1311,7 @@ export default function Messenger({
       socket.off("chat:message", handleIncomingMessage);
       socket.off("chat:sent");
       socket.off("message:deleted_for_me");
+      socket.off("message:unsent");
       socket.off("message:reaction");
       socket.off("chat:typing");
       socket.off("chat:recording");
@@ -1137,7 +1322,7 @@ export default function Messenger({
       disconnectSocket();
       socketRef.current = null;
     };
-  }, [meId, moveContactToTop]);
+  }, [meId, moveContactToTop, updateConversationPreview]);
 
   useEffect(() => {
     const socket = socketRef.current;
@@ -1495,6 +1680,11 @@ export default function Messenger({
     setGifOpen(false);
   };
 
+  const openShareComposer = useCallback((payload = null) => {
+    setShareDraftPayload(payload && typeof payload === "object" ? payload : null);
+    setShareOpen(true);
+  }, []);
+
   const clearReplySelection = useCallback(() => {
     setReplyTarget(null);
   }, []);
@@ -1506,6 +1696,7 @@ export default function Messenger({
     setReplyTarget(buildReplyTarget(message));
     setActiveMessageId(toIdString(message?._id));
     setOpenMessageReactionId("");
+    setOpenMessageMenuId("");
     window.requestAnimationFrame(() => {
       composerInputRef.current?.focus();
     });
@@ -1561,6 +1752,163 @@ export default function Messenger({
       setError(err?.message || "Failed to react to message");
     }
   }, [meId, preferredSelectedId]);
+
+  const handleForwardMessage = useCallback((message) => {
+    const payload = buildForwardPayload(message);
+    if (!payload) {
+      toast.error("This message cannot be forwarded");
+      return;
+    }
+    setOpenMessageMenuId("");
+    openShareComposer(payload);
+  }, [openShareComposer]);
+
+  const handleTogglePinnedMessage = useCallback((message) => {
+    const chatId = toIdString(selectedIdRef.current);
+    const nextEntry = buildPinnedMessageEntry(message, meId);
+    if (!chatId || !nextEntry) {
+      return;
+    }
+
+    setPinnedMessagesByChat((current) => {
+      const existing = current?.[chatId];
+      const next = { ...(current || {}) };
+      const isSame = existing?.messageId === nextEntry.messageId;
+
+      if (isSame) {
+        delete next[chatId];
+        toast.success("Message unpinned");
+      } else {
+        next[chatId] = nextEntry;
+        toast.success("Message pinned");
+      }
+
+      writePinnedMessages(next);
+      return next;
+    });
+    setOpenMessageMenuId("");
+  }, [meId]);
+
+  const focusPinnedMessage = useCallback(() => {
+    const chatId = toIdString(selectedIdRef.current);
+    const pinned = pinnedMessagesByChat?.[chatId];
+    const messageId = toIdString(pinned?.messageId);
+    if (!messageId) {
+      return;
+    }
+
+    const node = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!(node instanceof HTMLElement)) {
+      toast.error("Pinned message is no longer available");
+      return;
+    }
+
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+    setActiveMessageId(messageId);
+  }, [pinnedMessagesByChat]);
+
+  const clearPinnedMessage = useCallback(() => {
+    const chatId = toIdString(selectedIdRef.current);
+    if (!chatId) {
+      return;
+    }
+
+    setPinnedMessagesByChat((current) => {
+      if (!current?.[chatId]) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[chatId];
+      writePinnedMessages(next);
+      return next;
+    });
+    toast.success("Pinned message removed");
+  }, []);
+
+  const handleRemoveMessage = useCallback(async (message) => {
+    const messageId = toIdString(message?._id);
+    if (!messageId || message?.pending) {
+      return;
+    }
+
+    const isMyMessage = toIdString(message?.senderId) === meId;
+    const confirmed = await confirm({
+      title: isMyMessage ? "Unsend this message?" : "Remove this message for you?",
+      description: isMyMessage
+        ? "The message will disappear from both sides of the conversation."
+        : "This will remove the message from your view only.",
+      confirmLabel: isMyMessage ? "Unsend" : "Remove",
+      cancelLabel: "Cancel",
+      confirmVariant: "destructive",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    setOpenMessageMenuId("");
+    setMessages((prev) => {
+      const next = prev.filter((entry) => toIdString(entry?._id) !== messageId);
+      updateConversationPreview(selectedIdRef.current, next);
+      return next;
+    });
+    setPinnedMessagesByChat((current) => {
+      const chatId = toIdString(selectedIdRef.current);
+      if (!chatId || current?.[chatId]?.messageId !== messageId) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[chatId];
+      writePinnedMessages(next);
+      return next;
+    });
+
+    try {
+      if (isMyMessage) {
+        await unsendChatMessage(messageId);
+        toast.success("Message unsent");
+      } else {
+        await deleteMessageForMe(messageId);
+        toast.success("Message removed");
+      }
+    } catch (err) {
+      const fallbackError = err?.message || "Failed to update this message";
+      setError(fallbackError);
+      toast.error(fallbackError);
+      try {
+        const data = await getConversationMessages(selectedIdRef.current);
+        const next = Array.isArray(data) ? data.map(normalizeMessage) : [];
+        setMessages(next);
+        updateConversationPreview(selectedIdRef.current, next);
+      } catch {
+        // Keep the current view if the refresh fails.
+      }
+    }
+  }, [confirm, meId, updateConversationPreview]);
+
+  const handleReportMessage = useCallback(async (message) => {
+    const messageId = toIdString(message?._id);
+    if (!messageId) {
+      return;
+    }
+
+    const reason = await prompt(createReportDialogConfig("message", "harassment"));
+    if (!reason) {
+      return;
+    }
+
+    try {
+      await createReport({
+        targetType: "message",
+        targetId: messageId,
+        reason: String(reason || "").trim().toLowerCase(),
+      });
+      setOpenMessageMenuId("");
+      toast.success("Report submitted");
+    } catch (err) {
+      toast.error(err?.message || "Failed to submit report");
+    }
+  }, [prompt]);
 
   const sendGif = async (gifUrl) => {
     if (!gifUrl) {
@@ -1747,11 +2095,13 @@ export default function Messenger({
         await sendPayload(shareInput.payload, { receiverId: recipientId });
       }
       setShareOpen(false);
+      setShareDraftPayload(null);
       return;
     }
 
     await sendPayload(shareInput?.payload || shareInput);
     setShareOpen(false);
+    setShareDraftPayload(null);
   };
 
   const shareToFollowers = async (payload) => {
@@ -1804,6 +2154,7 @@ export default function Messenger({
       : "";
   const selectedHeaderName =
     selectedContact?.name || selectedContact?.username || "Messenger";
+  const pinnedEntry = selectedId ? pinnedMessagesByChat?.[selectedId] || null : null;
   const hasTypedText = Boolean(text.trim());
   const composerBusy = isRecording || isSendingVoice || Boolean(voicePreview);
   const canSendText = hasTypedText && !composerBusy;
@@ -2044,6 +2395,28 @@ export default function Messenger({
               </div>
               )}
 
+              {pinnedEntry ? (
+                <div className="messenger-pinned-banner">
+                  <button
+                    type="button"
+                    className="messenger-pinned-banner__main"
+                    onClick={focusPinnedMessage}
+                  >
+                    <small>Pinned by you</small>
+                    <strong>{pinnedEntry.senderLabel}: {pinnedEntry.previewText}</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className="messenger-pinned-banner__close"
+                    onClick={clearPinnedMessage}
+                    aria-label="Remove pinned message"
+                    title="Remove pinned message"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : null}
+
               {watchOpen && !conversationOnly && (
                 <div className="messenger-watch-box">
                   <div className="messenger-watch-controls">
@@ -2126,10 +2499,14 @@ export default function Messenger({
                     const toolsVisible =
                       hoveredMessageId === messageKey
                       || activeMessageId === messageKey
-                      || openMessageReactionId === messageKey;
+                      || openMessageReactionId === messageKey
+                      || openMessageMenuId === messageKey;
+                    const messageMenuOpen = openMessageMenuId === messageKey;
+                    const isPinnedMessage = pinnedEntry?.messageId === messageKey;
                     return (
                       <div
                         key={m._id || m.clientId}
+                        data-message-id={messageKey}
                         className={`message-row ${bubbleClass}${toolsVisible ? " is-tools-open" : ""}`}
                         onMouseEnter={() => setHoveredMessageId(messageKey)}
                         onMouseLeave={() => {
@@ -2148,7 +2525,7 @@ export default function Messenger({
 
                         <div className="msg-stack">
                         <div
-                          className="msg-bubble"
+                          className={`msg-bubble${isPinnedMessage ? " is-pinned" : ""}`}
                           onClick={() =>
                             setActiveMessageId((current) =>
                               current === messageKey ? "" : messageKey
@@ -2351,12 +2728,69 @@ export default function Messenger({
                         </div>
                         {!m.pending ? (
                           <div className={`msg-tools msg-tools--${isMe ? "me" : "them"}${toolsVisible ? " is-visible" : ""}`}>
+                            <div className="msg-tool-menu-wrap" ref={messageMenuOpen ? messageMenuRef : null}>
+                              <button
+                                type="button"
+                                className="msg-tool-btn"
+                                aria-label="More message actions"
+                                title="More"
+                                aria-haspopup="menu"
+                                aria-expanded={messageMenuOpen}
+                                onClick={() => {
+                                  setOpenMessageReactionId("");
+                                  setOpenMessageMenuId((current) =>
+                                    current === messageKey ? "" : messageKey
+                                  );
+                                }}
+                              >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <circle cx="12" cy="5.5" r="1.5" />
+                                  <circle cx="12" cy="12" r="1.5" />
+                                  <circle cx="12" cy="18.5" r="1.5" />
+                                </svg>
+                              </button>
+                              {messageMenuOpen ? (
+                                <div className={`msg-tool-menu msg-tool-menu--${isMe ? "me" : "them"}`} role="menu">
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => handleRemoveMessage(m)}
+                                  >
+                                    {isMe ? "Unsend" : "Remove for you"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => handleForwardMessage(m)}
+                                  >
+                                    Forward
+                                  </button>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => handleTogglePinnedMessage(m)}
+                                  >
+                                    {isPinnedMessage ? "Unpin" : "Pin"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => handleReportMessage(m)}
+                                  >
+                                    Report
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
                             <button
                               type="button"
                               className="msg-tool-btn"
                               aria-label="Reply to message"
                               title="Reply"
-                              onClick={() => selectReplyTarget(m)}
+                              onClick={() => {
+                                setOpenMessageMenuId("");
+                                selectReplyTarget(m);
+                              }}
                             >
                               <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M10 8 5 12l5 4" />
@@ -2369,11 +2803,12 @@ export default function Messenger({
                                 className="msg-tool-btn"
                                 aria-label="React to message"
                                 title="React"
-                                onClick={() =>
+                                onClick={() => {
+                                  setOpenMessageMenuId("");
                                   setOpenMessageReactionId((current) =>
                                     current === messageKey ? "" : messageKey
-                                  )
-                                }
+                                  );
+                                }}
                               >
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                   <circle cx="12" cy="12" r="9" />
@@ -2551,7 +2986,7 @@ export default function Messenger({
                   <button
                     type="button"
                     className="messenger-action-btn"
-                    onClick={() => setShareOpen(true)}
+                    onClick={() => openShareComposer()}
                     title="Share"
                     aria-label="Share"
                     disabled={isRecording || isSendingVoice || !selectedId}
@@ -2705,7 +3140,7 @@ export default function Messenger({
                     <button
                       type="button"
                       className="messenger-composer-btn"
-                      onClick={() => setShareOpen(true)}
+                      onClick={() => openShareComposer()}
                       title="Share"
                       aria-label="Share"
                       disabled={isRecording || isSendingVoice || !selectedId}
@@ -2780,10 +3215,14 @@ export default function Messenger({
 
       <ShareContentModal
         open={shareOpen}
-        onClose={() => setShareOpen(false)}
+        onClose={() => {
+          setShareOpen(false);
+          setShareDraftPayload(null);
+        }}
         onSubmit={shareContent}
         contacts={contacts}
         onShareFollowers={shareToFollowers}
+        initialPayload={shareDraftPayload}
       />
     </div>
   );

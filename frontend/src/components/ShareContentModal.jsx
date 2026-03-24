@@ -24,6 +24,7 @@ export default function ShareContentModal({
   onSubmit,
   contacts = [],
   onShareFollowers,
+  initialPayload = null,
 }) {
   const [itemType, setItemType] = useState("track");
   const [itemId, setItemId] = useState("");
@@ -38,6 +39,7 @@ export default function ShareContentModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [shareStatus, setShareStatus] = useState("");
+  const isForwardMode = Boolean(initialPayload && typeof initialPayload === "object");
 
   useEffect(() => {
     if (!open) {
@@ -47,7 +49,42 @@ export default function ShareContentModal({
     setShareStatus("");
     setSearch("");
     setSelectedRecipients([]);
-  }, [open]);
+
+    if (!isForwardMode) {
+      setItemType("track");
+      setItemId("");
+      setTitle("");
+      setDescription("");
+      setPrice(0);
+      setCoverImageUrl("");
+      setShareText("Check this out on Tengacion");
+      setShareUrl(buildDefaultShareUrl());
+      return;
+    }
+
+    const payload = initialPayload || {};
+    const firstAttachmentUrl =
+      Array.isArray(payload?.attachments) && payload.attachments[0]?.url
+        ? String(payload.attachments[0].url)
+        : "";
+
+    if (payload?.type === "contentCard") {
+      setItemType(payload?.metadata?.itemType === "book" ? "book" : "track");
+      setItemId(String(payload?.metadata?.itemId || ""));
+      setTitle(String(payload?.metadata?.title || ""));
+      setDescription(String(payload?.metadata?.description || ""));
+      setPrice(Number(payload?.metadata?.price) || 0);
+      setCoverImageUrl(String(payload?.metadata?.coverImageUrl || ""));
+      setShareText(String(payload?.metadata?.title || "Forwarded from Messenger"));
+      setShareUrl(firstAttachmentUrl || buildDefaultShareUrl());
+      return;
+    }
+
+    setShareText(
+      String(payload?.text || "").trim() || "Forwarded from Messenger"
+    );
+    setShareUrl(firstAttachmentUrl || buildDefaultShareUrl());
+  }, [initialPayload, isForwardMode, open]);
 
   useEffect(() => {
     if (!open) {
@@ -81,6 +118,22 @@ export default function ShareContentModal({
   }, [contacts, search]);
 
   const payload = useMemo(() => {
+    if (isForwardMode) {
+      return {
+        ...initialPayload,
+        text: String(initialPayload?.text || ""),
+        type:
+          initialPayload?.type === "contentCard"
+            ? "contentCard"
+            : initialPayload?.type === "voice"
+              ? "voice"
+              : "text",
+        attachments: Array.isArray(initialPayload?.attachments)
+          ? initialPayload.attachments
+          : [],
+      };
+    }
+
     const cleanId = itemId.trim();
     if (cleanId) {
       return {
@@ -103,7 +156,7 @@ export default function ShareContentModal({
       type: "text",
       text: text || shareUrl.trim() || "Shared from Tengacion",
     };
-  }, [coverImageUrl, description, itemId, itemType, previewType, price, shareText, shareUrl, title]);
+  }, [coverImageUrl, description, initialPayload, isForwardMode, itemId, itemType, previewType, price, shareText, shareUrl, title]);
 
   if (!open) {
     return null;
@@ -258,8 +311,14 @@ export default function ShareContentModal({
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-lg font-semibold text-slate-900">Share</h3>
-            <p className="text-sm text-slate-600">Share inside Tengacion or to external apps.</p>
+            <h3 className="text-lg font-semibold text-slate-900">
+              {isForwardMode ? "Forward message" : "Share"}
+            </h3>
+            <p className="text-sm text-slate-600">
+              {isForwardMode
+                ? "Send this message to friends, followers, or another app."
+                : "Share inside Tengacion or to external apps."}
+            </p>
           </div>
           <button
             type="button"
@@ -272,62 +331,80 @@ export default function ShareContentModal({
         </div>
 
         <div className="grid gap-3">
-          <label className="grid gap-1">
-            <span className="text-xs font-medium text-slate-600">Share text</span>
-            <input
-              value={shareText}
-              onChange={(event) => setShareText(event.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none"
-            />
-          </label>
-
-          <label className="grid gap-1">
-            <span className="text-xs font-medium text-slate-600">Share URL</span>
-            <input
-              value={shareUrl}
-              onChange={(event) => setShareUrl(event.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none"
-            />
-          </label>
-
-          <details className="rounded-lg border border-slate-200 p-3">
-            <summary className="cursor-pointer text-sm font-semibold text-slate-800">
-              Attach Tengacion content card (optional)
-            </summary>
-            <div className="mt-3 grid gap-3">
-              <label className="grid gap-1">
-                <span className="text-xs font-medium text-slate-600">Type</span>
-                <select
-                  value={itemType}
-                  onChange={(event) => setItemType(event.target.value)}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none"
-                >
-                  <option value="track">Track</option>
-                  <option value="book">Book</option>
-                </select>
-              </label>
-
-              <label className="grid gap-1">
-                <span className="text-xs font-medium text-slate-600">Item ID</span>
-                <div className="flex gap-2">
-                  <input
-                    value={itemId}
-                    onChange={(event) => setItemId(event.target.value)}
-                    placeholder="Mongo item id"
-                    className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={loadItem}
-                    disabled={loading}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                  >
-                    {loading ? "Loading..." : "Load"}
-                  </button>
-                </div>
-              </label>
+          {isForwardMode ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Message preview
+              </p>
+              <p className="mt-2 text-sm text-slate-700">
+                {payload?.type === "contentCard"
+                  ? payload?.metadata?.title || "Shared content"
+                  : String(payload?.text || "").trim()
+                    || (Array.isArray(payload?.attachments) && payload.attachments.length > 0
+                      ? `Attachment${payload.attachments.length > 1 ? "s" : ""}`
+                      : "Forwarded message")}
+              </p>
             </div>
-          </details>
+          ) : (
+            <>
+              <label className="grid gap-1">
+                <span className="text-xs font-medium text-slate-600">Share text</span>
+                <input
+                  value={shareText}
+                  onChange={(event) => setShareText(event.target.value)}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none"
+                />
+              </label>
+
+              <label className="grid gap-1">
+                <span className="text-xs font-medium text-slate-600">Share URL</span>
+                <input
+                  value={shareUrl}
+                  onChange={(event) => setShareUrl(event.target.value)}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none"
+                />
+              </label>
+
+              <details className="rounded-lg border border-slate-200 p-3">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-800">
+                  Attach Tengacion content card (optional)
+                </summary>
+                <div className="mt-3 grid gap-3">
+                  <label className="grid gap-1">
+                    <span className="text-xs font-medium text-slate-600">Type</span>
+                    <select
+                      value={itemType}
+                      onChange={(event) => setItemType(event.target.value)}
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none"
+                    >
+                      <option value="track">Track</option>
+                      <option value="book">Book</option>
+                    </select>
+                  </label>
+
+                  <label className="grid gap-1">
+                    <span className="text-xs font-medium text-slate-600">Item ID</span>
+                    <div className="flex gap-2">
+                      <input
+                        value={itemId}
+                        onChange={(event) => setItemId(event.target.value)}
+                        placeholder="Mongo item id"
+                        className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={loadItem}
+                        disabled={loading}
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                      >
+                        {loading ? "Loading..." : "Load"}
+                      </button>
+                    </div>
+                  </label>
+                </div>
+              </details>
+            </>
+          )}
 
           <div className="rounded-lg border border-slate-200 p-3">
             <p className="mb-2 text-sm font-semibold text-slate-800">Share inside Tengacion</p>

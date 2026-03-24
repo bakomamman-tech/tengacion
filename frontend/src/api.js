@@ -1745,6 +1745,12 @@ export const deleteMessageForMe = (messageId) =>
     headers: getAuthHeaders(),
   });
 
+export const unsendChatMessage = (messageId) =>
+  request(`${API_BASE}/messages/${encodeURIComponent(messageId || "")}/unsend`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+  });
+
 export const reactToChatMessage = (messageId, emoji) =>
   request(`${API_BASE}/messages/${encodeURIComponent(messageId || "")}/react`, {
     method: "POST",

@@ -71,6 +71,8 @@ const FALLBACK_GIFS = [
     url: "https://media.giphy.com/media/xT9IgG50Fb7Mi0prBC/giphy.gif",
   },
 ];
+const VOICE_PREVIEW_AUDIO_ID = "__voice_preview__";
+const VOICE_WAVE_BARS = [0.38, 0.72, 0.46, 0.84, 0.52, 0.94, 0.4, 0.76, 0.58, 0.88, 0.44, 0.68];
 
 const toIdString = (value) => {
   if (!value) {return "";}
@@ -92,6 +94,31 @@ const formatDuration = (inputSeconds) => {
   const seconds = total % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 };
+
+function VoiceWaveform({ progressPct = 0, isPlaying = false, className = "" }) {
+  const classes = ["msg-voice-wave", isPlaying ? "is-playing" : "", className]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <div className={classes} aria-hidden="true">
+      {VOICE_WAVE_BARS.map((scale, index) => {
+        const threshold = ((index + 1) / VOICE_WAVE_BARS.length) * 100;
+        const isActive = progressPct >= threshold;
+        return (
+          <span
+            key={`${className || "voice"}-${index}`}
+            className={`msg-voice-wave-bar${isActive ? " is-active" : ""}`}
+            style={{
+              "--voice-bar-scale": String(scale),
+              "--voice-bar-index": String(index),
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 const sanitizeAttachmentUrl = (rawUrl, type) => {
   const resolved = resolveImage(rawUrl || "");
@@ -1568,6 +1595,20 @@ export default function Messenger({
   }, []);
 
   const clearVoicePreview = useCallback(() => {
+    const previewAudio = voiceAudioRefs.current.get(VOICE_PREVIEW_AUDIO_ID);
+    if (previewAudio) {
+      previewAudio.pause();
+      previewAudio.currentTime = 0;
+      voiceAudioRefs.current.delete(VOICE_PREVIEW_AUDIO_ID);
+    }
+    setVoicePlaybackById((prev) => {
+      if (!prev?.[VOICE_PREVIEW_AUDIO_ID]) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next[VOICE_PREVIEW_AUDIO_ID];
+      return next;
+    });
     setVoicePreview((prev) => {
       if (prev?.url) {
         URL.revokeObjectURL(prev.url);
@@ -2027,13 +2068,26 @@ export default function Messenger({
       audio.pause();
       return;
     }
+    if (audio.readyState === 0) {
+      audio.load();
+    }
+    if (audio.duration && audio.currentTime >= Math.max(audio.duration - 0.05, 0)) {
+      audio.currentTime = 0;
+      handleVoiceAudioEvent(audioId, {
+        currentTime: 0,
+        duration: audio.duration || 0,
+      });
+    }
+    audio.muted = false;
+    audio.volume = 1;
     pauseOtherVoiceNotes(audioId);
     try {
       await audio.play();
     } catch {
+      handleVoiceAudioEvent(audioId, { isPlaying: false });
       setError("Unable to play voice note");
     }
-  }, [pauseOtherVoiceNotes]);
+  }, [handleVoiceAudioEvent, pauseOtherVoiceNotes]);
 
   const downloadVoiceNote = useCallback((url, timeValue) => {
     const resolved = resolveImage(url);
@@ -2195,6 +2249,14 @@ export default function Messenger({
   const hasTypedText = Boolean(text.trim());
   const composerBusy = isRecording || isSendingVoice || Boolean(voicePreview);
   const canSendText = hasTypedText && !composerBusy;
+  const previewPlayback = voicePlaybackById[VOICE_PREVIEW_AUDIO_ID] || {};
+  const previewCurrentTime = Number(previewPlayback.currentTime) || 0;
+  const previewStoredDuration = Number(voicePreview?.durationSeconds) || 0;
+  const previewMediaDuration = Number(previewPlayback.duration) || 0;
+  const previewDuration = Math.max(previewStoredDuration, previewMediaDuration, 0);
+  const previewProgressPct =
+    previewDuration > 0 ? Math.min(100, (previewCurrentTime / previewDuration) * 100) : 0;
+  const previewIsPlaying = Boolean(previewPlayback.isPlaying);
 
   return (
     <div
@@ -2529,6 +2591,16 @@ export default function Messenger({
                   messages.map((m) => {
                     const isMe = toIdString(m.senderId) === meId;
                     const messageKey = toIdString(m._id || m.clientId);
+                    const hasAudioAttachment = Array.isArray(m.attachments)
+                      && m.attachments.some((file) => file?.type === "audio");
+                    const isTextOnlyMessage =
+                      Boolean(String(m.text || "").trim())
+                      && (!Array.isArray(m.attachments) || m.attachments.length === 0)
+                      && m.type !== "contentCard";
+                    const isVoiceOnlyMessage =
+                      m.type === "voice"
+                      && !String(m.text || "").trim()
+                      && hasAudioAttachment;
                     const bubbleClass = `${isMe ? "me" : "them"} ${
                       m.failed ? "failed" : ""
                     }`;
@@ -2562,7 +2634,9 @@ export default function Messenger({
 
                         <div className="msg-stack">
                         <div
-                          className={`msg-bubble${isPinnedMessage ? " is-pinned" : ""}`}
+                          className={`msg-bubble${isPinnedMessage ? " is-pinned" : ""}${
+                            isVoiceOnlyMessage ? " msg-bubble--voice" : ""
+                          }${isTextOnlyMessage ? " msg-bubble--text" : ""}`}
                           onClick={() =>
                             setActiveMessageId((current) =>
                               current === messageKey ? "" : messageKey
@@ -2605,6 +2679,7 @@ export default function Messenger({
                                   }
                                   if (file.type === "audio") {
                                     const audioId = `${messageKey}:${index}`;
+                                    const resolvedAudioUrl = resolveImage(file.url);
                                     const playback = voicePlaybackById[audioId] || {};
                                     const currentTime = Number(playback.currentTime) || 0;
                                     const storedDuration = Number(file.durationSeconds) || 0;
@@ -2646,35 +2721,41 @@ export default function Messenger({
                                           onPause={() =>
                                             handleVoiceAudioEvent(audioId, { isPlaying: false })
                                           }
-                                          onEnded={() =>
+                                          onEnded={() => {
+                                            const audio = voiceAudioRefs.current.get(audioId);
+                                            if (audio) {
+                                              audio.currentTime = 0;
+                                            }
                                             handleVoiceAudioEvent(audioId, {
                                               isPlaying: false,
                                               currentTime: 0,
-                                            })
-                                          }
+                                            });
+                                          }}
                                           className="msg-voice-audio-hidden"
                                         >
-                                          <source src={resolveImage(file.url)} type={inferAudioMimeFromUrl(file.url)} />
+                                          <source src={resolvedAudioUrl} type={inferAudioMimeFromUrl(file.url)} />
                                         </audio>
                                         <button
                                           type="button"
-                                          className="msg-voice-play-btn"
+                                          className={`msg-voice-play-btn${isPlaying ? " is-playing" : ""}`}
                                           onClick={() => toggleVoiceNotePlayback(audioId)}
                                           aria-label={isPlaying ? "Pause voice note" : "Play voice note"}
                                           title={isPlaying ? "Pause" : "Play"}
                                         >
-                                          {isPlaying ? "Pause" : "Play"}
+                                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            {isPlaying ? (
+                                              <>
+                                                <path d="M9 7.5v9" />
+                                                <path d="M15 7.5v9" />
+                                              </>
+                                            ) : (
+                                              <path d="m9 7 7 5-7 5z" />
+                                            )}
+                                          </svg>
                                         </button>
-                                        <div className="msg-voice-meta">
-                                          <div className="msg-voice-progress-track">
-                                            <span
-                                              className="msg-voice-progress-fill"
-                                              style={{ width: `${progressPct}%` }}
-                                            />
-                                          </div>
-                                          <div className="msg-voice-time">
-                                            {formatDuration(currentTime)} / {formatDuration(duration)}
-                                          </div>
+                                        <VoiceWaveform progressPct={progressPct} isPlaying={isPlaying} />
+                                        <div className="msg-voice-time">
+                                          {formatDuration(duration || currentTime)}
                                         </div>
                                         <div className="msg-voice-menu-wrap" ref={menuOpen ? voiceMenuRef : null}>
                                           <button
@@ -2900,23 +2981,27 @@ export default function Messenger({
                 ) : null}
                 {(isRecording || voicePreview) && (
                   <div className="messenger-voice-recorder">
-                    <div className="messenger-voice-status">
-                      <span className={`messenger-voice-dot ${isRecording ? "live" : ""}`} />
-                      <strong>{isRecording ? "Recording" : "Voice preview"}</strong>
-                      <span>{formatDuration(recordingSeconds)}</span>
-                    </div>
                     <div className="messenger-voice-controls">
                       {isRecording ? (
                         <>
-                          <button
-                            type="button"
-                            className="messenger-action-btn active"
-                            onClick={stopVoiceNote}
-                            aria-label="Stop recording"
-                            title="Stop recording"
-                          >
-                            Stop
-                          </button>
+                          <div className="msg-voice-card msg-voice-card--preview msg-voice-card--recording">
+                            <button
+                              type="button"
+                              className="msg-voice-play-btn msg-voice-play-btn--stop"
+                              onClick={stopVoiceNote}
+                              aria-label="Stop recording"
+                              title="Stop recording"
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <rect x="8" y="8" width="8" height="8" rx="1.5" />
+                              </svg>
+                            </button>
+                            <VoiceWaveform progressPct={100} isPlaying className="is-recorder" />
+                            <div className="msg-voice-time">
+                              <span className="messenger-voice-dot live" />
+                              <span>{formatDuration(recordingSeconds)}</span>
+                            </div>
+                          </div>
                           <button
                             type="button"
                             className="messenger-action-btn"
@@ -2929,12 +3014,81 @@ export default function Messenger({
                         </>
                       ) : (
                         <>
-                          <audio
-                            controls
-                            className="messenger-voice-preview-audio"
-                          >
-                            <source src={voicePreview?.url || ""} type={voicePreview?.mimeType || "audio/webm"} />
-                          </audio>
+                          <div className="msg-voice-card msg-voice-card--preview">
+                            <audio
+                              ref={(node) => {
+                                if (node) {
+                                  voiceAudioRefs.current.set(VOICE_PREVIEW_AUDIO_ID, node);
+                                } else {
+                                  voiceAudioRefs.current.delete(VOICE_PREVIEW_AUDIO_ID);
+                                }
+                              }}
+                              preload="metadata"
+                              onLoadedMetadata={(event) =>
+                                handleVoiceAudioEvent(VOICE_PREVIEW_AUDIO_ID, {
+                                  duration: event.currentTarget.duration || 0,
+                                })
+                              }
+                              onTimeUpdate={(event) =>
+                                handleVoiceAudioEvent(VOICE_PREVIEW_AUDIO_ID, {
+                                  currentTime: event.currentTarget.currentTime || 0,
+                                  duration:
+                                    event.currentTarget.duration ||
+                                    previewPlayback.duration ||
+                                    0,
+                                })
+                              }
+                              onPlay={() => {
+                                pauseOtherVoiceNotes(VOICE_PREVIEW_AUDIO_ID);
+                                handleVoiceAudioEvent(VOICE_PREVIEW_AUDIO_ID, { isPlaying: true });
+                              }}
+                              onPause={() =>
+                                handleVoiceAudioEvent(VOICE_PREVIEW_AUDIO_ID, { isPlaying: false })
+                              }
+                              onEnded={() => {
+                                const audio = voiceAudioRefs.current.get(VOICE_PREVIEW_AUDIO_ID);
+                                if (audio) {
+                                  audio.currentTime = 0;
+                                }
+                                handleVoiceAudioEvent(VOICE_PREVIEW_AUDIO_ID, {
+                                  isPlaying: false,
+                                  currentTime: 0,
+                                });
+                              }}
+                              className="msg-voice-audio-hidden"
+                            >
+                              <source
+                                src={voicePreview?.url || ""}
+                                type={voicePreview?.mimeType || "audio/webm"}
+                              />
+                            </audio>
+                            <button
+                              type="button"
+                              className={`msg-voice-play-btn${previewIsPlaying ? " is-playing" : ""}`}
+                              onClick={() => toggleVoiceNotePlayback(VOICE_PREVIEW_AUDIO_ID)}
+                              aria-label={previewIsPlaying ? "Pause preview" : "Play preview"}
+                              title={previewIsPlaying ? "Pause preview" : "Play preview"}
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                {previewIsPlaying ? (
+                                  <>
+                                    <path d="M9 7.5v9" />
+                                    <path d="M15 7.5v9" />
+                                  </>
+                                ) : (
+                                  <path d="m9 7 7 5-7 5z" />
+                                )}
+                              </svg>
+                            </button>
+                            <VoiceWaveform
+                              progressPct={previewProgressPct}
+                              isPlaying={previewIsPlaying}
+                              className="is-preview"
+                            />
+                            <div className="msg-voice-time">
+                              {formatDuration(previewDuration || recordingSeconds)}
+                            </div>
+                          </div>
                           <button
                             type="button"
                             className="messenger-action-btn"

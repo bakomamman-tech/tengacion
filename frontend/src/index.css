@@ -9140,7 +9140,7 @@ html.dark-mode .composer-tag-empty.error {
   right: 16px;
   bottom: 16px;
   top: auto;
-  width: min(96vw, 720px);
+  width: min(92vw, 620px);
   z-index: 200;
   isolation: isolate;
 }
@@ -9275,7 +9275,7 @@ html.dark-mode .composer-tag-empty.error {
 
 .messenger-body {
   display: grid;
-  grid-template-columns: 196px 1fr;
+  grid-template-columns: 158px 1fr;
   min-height: 0;
   flex: 1;
 }
@@ -9284,7 +9284,7 @@ html.dark-mode .composer-tag-empty.error {
   border-right: 1px solid var(--border);
   background: var(--surface-soft);
   overflow: auto;
-  padding: 12px;
+  padding: 10px;
 }
 
 .threads-title {
@@ -13205,7 +13205,7 @@ html.dark-mode .password-toggle-btn:hover {
     right: 12px;
     bottom: 12px;
     top: auto;
-    width: min(96vw, 700px);
+    width: min(94vw, 620px);
     z-index: 200;
   }
 

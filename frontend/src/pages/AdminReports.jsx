@@ -1,692 +1,664 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import AdminShell from "../components/AdminShell";
-import { getSessionAccessToken } from "../authSession";
 import {
-  adminApproveModerationItem,
-  adminBanUser,
-  adminGetModerationItem,
-  adminListModerationItems,
-  adminQuarantineModerationItem,
-  adminRejectModerationItem,
-  adminRemoveModerationItem,
-  adminSuspendUser,
-} from "../api";
+  applyModerationCaseAction,
+  banUser,
+  fetchModerationCase,
+  fetchModerationCases,
+  fetchModerationReviewUrl,
+  fetchModerationStats,
+  fetchModerationUploader,
+  forceLogoutUser,
+  scanRecentMedia,
+  scanSearchMatches,
+  suspendUser,
+  unbanUser,
+  unsuspendUser,
+} from "../services/adminModerationService";
 
-const STATUS_TABS = [
-  { value: "", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "quarantined", label: "Quarantined" },
-  { value: "rejected", label: "Rejected" },
-  { value: "approved", label: "Approved" },
+const CATEGORIES = [
+  ["", "All"],
+  ["suspected_child_exploitation", "CSAM / Child Exploitation"],
+  ["explicit_pornography", "Explicit Porn"],
+  ["graphic_gore", "Graphic Gore"],
+  ["animal_cruelty", "Animal Cruelty"],
+  ["user_reported_sensitive_content", "Reported Content"],
 ];
 
-const STATUS_STYLE = {
-  pending: { background: "rgba(210, 162, 77, 0.18)", color: "#f0c78a" },
-  quarantined: { background: "rgba(71, 129, 176, 0.18)", color: "#a8d3ff" },
-  rejected: { background: "rgba(172, 78, 78, 0.2)", color: "#f0b3b3" },
-  approved: { background: "rgba(79, 141, 101, 0.18)", color: "#bfe9cf" },
-  blocked: { background: "rgba(172, 78, 78, 0.2)", color: "#f0b3b3" },
+const STAT_CARDS = [
+  ["pendingReview", "Pending Review", "Cases waiting for a decision"],
+  ["blockedExplicit", "Blocked Explicit", "Explicit porn blocked by the pipeline"],
+  ["suspectedCsam", "Suspected CSAM", "Escalated child exploitation risk"],
+  ["restrictedGore", "Restricted Gore", "Blurred or restricted graphic media"],
+  ["animalCruelty", "Animal Cruelty", "Blocked animal cruelty content"],
+  ["repeatViolators", "Repeat Violators", "Users above the strike threshold"],
+];
+
+const STATUS_OPTIONS = [
+  ["", "All statuses"],
+  ["pending", "Pending"],
+  ["quarantined", "Quarantined"],
+  ["HOLD_FOR_REVIEW", "Hold for Review"],
+  ["RESTRICTED_BLURRED", "Restricted Blur"],
+  ["BLOCK_EXPLICIT_ADULT", "Blocked Explicit"],
+  ["BLOCK_SUSPECTED_CHILD_EXPLOITATION", "Suspected CSAM"],
+  ["BLOCK_EXTREME_GORE", "Blocked Gore"],
+  ["BLOCK_ANIMAL_CRUELTY", "Blocked Animal Cruelty"],
+  ["BLOCK_REPEAT_VIOLATOR", "Repeat Violator"],
+  ["ALLOW", "Allowed"],
+  ["approved", "Approved"],
+  ["rejected", "Rejected"],
+];
+
+const ACTION_LABELS = {
+  approve: "Approve",
+  restore_content: "Restore Content",
+  hold_for_review: "Hold for Review",
+  reject: "Reject",
+  delete_media: "Remove Content",
+  restrict_with_warning: "Restrict With Blur",
+  blur_preview: "Blur Preview",
+  preserve_evidence: "Preserve Evidence",
+  escalate_case: "Escalate",
+  suspend_user: "Suspend User",
+  ban_user: "Ban User",
 };
 
+const QUICK_ACTIONS = ["approve", "reject", "delete_media", "escalate_case", "suspend_user", "ban_user"];
+const DETAIL_ACTIONS = [
+  "approve",
+  "restore_content",
+  "hold_for_review",
+  "reject",
+  "delete_media",
+  "restrict_with_warning",
+  "blur_preview",
+  "preserve_evidence",
+  "escalate_case",
+  "suspend_user",
+  "ban_user",
+];
+
 const formatDateTime = (value) => {
-  if (!value) return "-";
+  if (!value) {
+    return "-";
+  }
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString();
 };
-
-const formatConfidence = (value) => {
-  const confidence = Number(value);
-  if (!Number.isFinite(confidence)) {
-    return "-";
-  }
-  return `${Math.round(confidence * 100)}%`;
+const formatNumber = (value) => Number(value || 0).toLocaleString();
+const formatScore = (value) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? `${Math.round(num)}` : "-";
 };
-
 const normalizeText = (value) => String(value || "").trim();
-
+const titleCase = (value = "") =>
+  String(value || "")
+    .replace(/_/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1))
+    .join(" ");
+const getLabel = (value = "") => {
+  const entry = CATEGORIES.find(([key]) => key === value);
+  return entry?.[1] || titleCase(value || "unknown");
+};
+const getTone = (status = "") => {
+  const s = String(status || "").toUpperCase();
+  if (s === "ALLOW" || s === "APPROVED" || s === "approved") {
+    return "good";
+  }
+  if (s.includes("BLOCK") || s === "REJECTED" || s === "rejected") {
+    return "danger";
+  }
+  if (s === "RESTRICTED_BLURRED" || s === "HOLD_FOR_REVIEW" || s === "PENDING" || s === "pending" || s === "quarantined") {
+    return "warn";
+  }
+  return "neutral";
+};
+const getStatusLabel = (status = "") => {
+  const value = String(status || "").trim();
+  if (!value) {
+    return "unknown";
+  }
+  if (value === "ALLOW") {
+    return "allowed";
+  }
+  return value.replace(/_/g, " ").replace(/\b[a-z]/g, (m) => m.toUpperCase());
+};
 const getMediaKind = (item = {}) => {
-  const mimeType = normalizeText(item.mimeType || item.media?.[0]?.mimeType || "").toLowerCase();
-  if (mimeType.startsWith("video/")) {
+  const mediaType = normalizeText(item?.subject?.mediaType || item?.media?.[0]?.mediaType || "").toLowerCase();
+  const mimeType = normalizeText(item?.media?.[0]?.mimeType || "").toLowerCase();
+  if (mediaType === "video" || mimeType.startsWith("video/")) {
     return "video";
   }
-  if (mimeType.startsWith("image/")) {
+  if (mediaType === "image" || mimeType.startsWith("image/")) {
     return "image";
   }
-  return item.previewKind || "file";
+  return mediaType || "file";
 };
+const getUploaderLabel = (uploader = {}) => normalizeText(uploader.displayName || uploader.name || uploader.username || uploader.email || "unknown");
+const getActionLabel = (action = "") => ACTION_LABELS[action] || titleCase(action);
+const getActionReason = (item = {}, note = "") =>
+  normalizeText(note) || normalizeText(item?.reviewerNote || item?.latestDecisionSummary?.reason || item?.reason || "") || "Moderation review";
+const canUseAction = (item = {}, action = "") => Array.isArray(item?.availableActions) && item.availableActions.includes(action);
+const getQueueSummary = (payload = {}) => ({
+  page: Number(payload?.page || 1),
+  limit: Number(payload?.limit || 20),
+  total: Number(payload?.total || 0),
+  cases: Array.isArray(payload?.cases) ? payload.cases : [],
+});
 
-const getStatusStyle = (status = "") => STATUS_STYLE[String(status || "").toLowerCase()] || STATUS_STYLE.pending;
+function Badge({ status }) {
+  const tone = getTone(status);
+  return <span className={`adminx-badge ${tone === "good" ? "adminx-badge--good" : tone === "warn" ? "adminx-badge--warn" : tone === "danger" ? "adminx-badge--danger" : ""}`}>{getStatusLabel(status)}</span>;
+}
 
-const StatusBadge = ({ status = "" }) => {
-  const style = getStatusStyle(status);
-  return (
-    <span
-      className="adminx-badge"
-      style={{
-        background: style.background,
-        color: style.color,
-        border: "1px solid rgba(255,255,255,0.08)",
-      }}
-    >
-      {String(status || "unknown").replace(/_/g, " ")}
-    </span>
-  );
-};
+function StatSkeleton() {
+  return <article className="adminx-stat-card" aria-hidden="true"><div style={{ width: "58%", height: 16, borderRadius: 999, background: "rgba(255,255,255,0.06)" }} /><div style={{ marginTop: 10, width: "40%", height: 30, borderRadius: 999, background: "rgba(255,255,255,0.06)" }} /><div style={{ marginTop: 12, width: "78%", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.05)" }} /></article>;
+}
 
-const MediaPreview = ({ item }) => {
-  const [imageSrc, setImageSrc] = useState("");
+function QueueSkeleton() {
+  return <article className="adminx-panel" aria-hidden="true" style={{ display: "grid", gap: 12 }}><div className="adminx-row"><div style={{ width: 72, height: 72, borderRadius: 18, background: "rgba(255,255,255,0.06)" }} /><div style={{ flex: 1, display: "grid", gap: 8 }}><div style={{ width: "72%", height: 16, borderRadius: 999, background: "rgba(255,255,255,0.06)" }} /><div style={{ width: "48%", height: 12, borderRadius: 999, background: "rgba(255,255,255,0.05)" }} /><div style={{ width: "88%", height: 12, borderRadius: 999, background: "rgba(255,255,255,0.05)" }} /></div></div><div style={{ height: 42, borderRadius: 14, background: "rgba(255,255,255,0.05)" }} /><div className="adminx-row" style={{ gap: 8, flexWrap: "wrap" }}><div style={{ width: 72, height: 34, borderRadius: 999, background: "rgba(255,255,255,0.05)" }} /><div style={{ width: 88, height: 34, borderRadius: 999, background: "rgba(255,255,255,0.05)" }} /><div style={{ width: 92, height: 34, borderRadius: 999, background: "rgba(255,255,255,0.05)" }} /></div></article>;
+}
+
+function PreviewCard({ item, onView, loading }) {
+  const previewUrl = normalizeText(item?.media?.[0]?.restrictedPreviewUrl || "");
   const kind = getMediaKind(item);
-  const previewUrl = normalizeText(item?.previewUrl || item?.fileUrl || item?.media?.[0]?.previewUrl || "");
-  const needsAuthPreview = previewUrl.startsWith("/api/admin/moderation/items/");
-
-  useEffect(() => {
-    let active = true;
-    let objectUrl = "";
-
-    if (!previewUrl || kind !== "image") {
-      setImageSrc("");
-      return () => {};
-    }
-
-    if (!needsAuthPreview) {
-      setImageSrc(previewUrl);
-      return () => {};
-    }
-
-    const controller = new AbortController();
-    (async () => {
-      try {
-        const token = getSessionAccessToken();
-        const response = await fetch(previewUrl, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          throw new Error("Preview unavailable");
-        }
-        const blob = await response.blob();
-        objectUrl = URL.createObjectURL(blob);
-        if (active) {
-          setImageSrc(objectUrl);
-        }
-      } catch {
-        if (active) {
-          setImageSrc("");
-        }
-      }
-    })();
-
-    return () => {
-      active = false;
-      controller.abort();
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [kind, needsAuthPreview, previewUrl]);
-
-  if (kind === "image" && (imageSrc || (previewUrl && !needsAuthPreview))) {
-    return (
-      <div
-        className="adminx-panel"
-        style={{
-          padding: 0,
-          overflow: "hidden",
-          background: "linear-gradient(180deg, rgba(24, 26, 32, 0.9), rgba(13, 15, 19, 0.96))",
-          minHeight: 220,
-        }}
-      >
-        <img
-          src={imageSrc || previewUrl}
-          alt={normalizeText(item?.subject?.title || "Moderation preview")}
-          style={{
-            width: "100%",
-            height: 220,
-            objectFit: "cover",
-            display: "block",
-            background: "#111",
-          }}
-        />
-      </div>
-    );
-  }
-
-  if (kind === "image" && needsAuthPreview) {
-    return (
-      <div
-        className="adminx-panel"
-        style={{
-          minHeight: 220,
-          padding: 16,
-          display: "grid",
-          placeItems: "center",
-          background: "linear-gradient(135deg, rgba(13, 16, 22, 0.96), rgba(34, 39, 48, 0.98))",
-          border: "1px dashed rgba(255,255,255,0.12)",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontWeight: 700, color: "#efe5d7" }}>Private image preview</div>
-          <div className="adminx-muted">Fetching the quarantined asset with your admin session.</div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div
-      className="adminx-panel"
-      style={{
-        minHeight: 220,
-        padding: 16,
-        overflow: "hidden",
-        background:
-          "linear-gradient(135deg, rgba(13, 16, 22, 0.96), rgba(34, 39, 48, 0.98)), radial-gradient(circle at top right, rgba(191, 120, 60, 0.35), transparent 35%)",
-      }}
-    >
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, minHeight: 120 }}>
-        {[0, 1, 2].map((index) => (
-          <div
-            key={index}
-            style={{
-              borderRadius: 14,
-              background: index === 1
-                ? "linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04))"
-                : "linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03))",
-              border: "1px solid rgba(255,255,255,0.08)",
-              minHeight: 120,
-            }}
-          />
-        ))}
-      </div>
-      <div
-        style={{
-          marginTop: 14,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          color: "#efe5d7",
-        }}
-      >
-        <div>
-          <div style={{ fontWeight: 700 }}>Video preview</div>
-          <div className="adminx-muted">Frame strip placeholder while the private source stays isolated.</div>
-        </div>
-        <span className="adminx-badge">private review</span>
+    <div className="adminx-panel" style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ minHeight: 240, display: "grid", placeItems: "center", background: "radial-gradient(circle at top right, rgba(63,218,122,0.14), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))" }}>
+        {previewUrl && kind === "image" ? (
+          <img src={previewUrl} alt={normalizeText(item?.subject?.title || "Moderation preview")} style={{ width: "100%", height: 240, objectFit: "cover" }} />
+        ) : (
+          <div style={{ padding: 24, textAlign: "center" }}>
+            <div style={{ fontWeight: 800 }}>{kind === "video" ? "Video preview protected" : "Protected preview"}</div>
+            <div className="adminx-muted" style={{ marginTop: 8 }}>Use View to open the signed review URL.</div>
+            <button type="button" className="adminx-btn adminx-btn--primary" style={{ marginTop: 14 }} onClick={onView} disabled={loading}>{loading ? "Opening..." : "View"}</button>
+          </div>
+        )}
       </div>
     </div>
   );
-};
+}
 
-const ModerationListItem = ({ item, active, onSelect }) => {
-  const labels = Array.isArray(item?.labels) ? item.labels : [];
+function CaseCard({ item, active, busyKey, onSelect, onView, onAction }) {
+  const title = normalizeText(item?.subject?.title || item?.subject?.description || "Untitled moderation case");
   const uploader = item?.uploader || {};
-  const mediaKind = getMediaKind(item);
-  const createdAt = formatDateTime(item?.createdAt);
-
+  const quickActions = QUICK_ACTIONS.filter((action) => canUseAction(item, action));
   return (
-    <button
-      type="button"
-      className={`adminx-panel ${active ? "is-active" : ""}`}
-      style={{
-        textAlign: "left",
-        width: "100%",
-        display: "grid",
-        gap: 10,
-        border: active ? "1px solid rgba(188, 131, 63, 0.8)" : undefined,
-      }}
-      onClick={() => onSelect(item)}
-    >
-      <div className="adminx-row" style={{ alignItems: "flex-start", gap: 12 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.3 }}>
-            {normalizeText(item?.subject?.title || item?.subject?.description || "Untitled upload")}
+    <article className="adminx-panel" style={{ display: "grid", gap: 12, border: active ? "1px solid rgba(63,218,122,0.44)" : undefined }}>
+      <button type="button" onClick={() => onSelect(item)} className="adminx-row" style={{ width: "100%", padding: 0, border: 0, background: "transparent", textAlign: "left", alignItems: "flex-start" }}>
+        <div style={{ width: 72, minWidth: 72, height: 72, borderRadius: 18, overflow: "hidden", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          {item?.media?.[0]?.restrictedPreviewUrl ? <img src={item.media[0].restrictedPreviewUrl} alt={title} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "grid", placeItems: "center", fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9ec4ad" }}>{getMediaKind(item)}</div>}
+        </div>
+        <div style={{ flex: 1, minWidth: 0, display: "grid", gap: 8 }}>
+          <div className="adminx-row" style={{ alignItems: "flex-start" }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 800, lineHeight: 1.3 }}>{title}</div>
+              <div className="adminx-muted" style={{ marginTop: 4 }}>{getLabel(item?.queue)} | {titleCase(item?.subject?.targetType || "upload")} | {getMediaKind(item)}</div>
+            </div>
+            <Badge status={item?.status} />
           </div>
-          <div className="adminx-muted" style={{ marginTop: 4 }}>
-            {normalizeText(item?.subject?.targetType || item?.targetType || "upload")} | {mediaKind} | {normalizeText(item?.mimeType || "unknown")}
+          <div className="adminx-row" style={{ flexWrap: "wrap", gap: 8, justifyContent: "flex-start" }}>
+            <span className="adminx-badge">uploader: {getUploaderLabel(uploader)}</span>
+            <span className="adminx-badge">score: {formatScore(item?.priorityScore)}</span>
+            <span className="adminx-badge">created: {formatDateTime(item?.createdAt)}</span>
+          </div>
+          <div className="adminx-row" style={{ flexWrap: "wrap", gap: 8, justifyContent: "flex-start" }}>
+            {(item?.riskLabels || []).slice(0, 3).map((label) => <span key={label} className="adminx-badge">{label}</span>)}
+            {Array.isArray(item?.riskLabels) && item.riskLabels.length > 3 ? <span className="adminx-muted">+{item.riskLabels.length - 3} more</span> : null}
           </div>
         </div>
-        <StatusBadge status={item?.status} />
+      </button>
+      <div className="adminx-action-row" style={{ flexWrap: "wrap", gap: 8 }}>
+        <button type="button" className="adminx-btn" onClick={() => onView(item)} disabled={Boolean(busyKey)}>{busyKey === `view:${item._id}` ? "Opening..." : "View"}</button>
+        {quickActions.map((action) => <button key={action} type="button" className={`adminx-btn ${action === "approve" ? "adminx-btn--primary" : action === "reject" || action === "delete_media" || action === "ban_user" ? "adminx-btn--danger" : ""}`} onClick={() => onAction(item, action)} disabled={Boolean(busyKey)}>{busyKey === `${action}:${item._id}` ? "Working..." : getActionLabel(action)}</button>)}
       </div>
-      <div className="adminx-row" style={{ flexWrap: "wrap", gap: 8 }}>
-        {labels.slice(0, 3).map((label) => (
-          <span key={label} className="adminx-badge">
-            {label}
-          </span>
-        ))}
-        {labels.length > 3 ? <span className="adminx-muted">+{labels.length - 3} more</span> : null}
-      </div>
-      <div className="adminx-row" style={{ flexWrap: "wrap", gap: 10 }}>
-        <span className="adminx-muted">
-          uploader: {uploader.displayName || uploader.username || uploader.email || "unknown"}
-        </span>
-        <span className="adminx-muted">confidence: {formatConfidence(item?.confidence)}</span>
-        <span className="adminx-muted">{createdAt}</span>
-      </div>
-    </button>
+    </article>
   );
-};
+}
+
+function ActionRow({ item, busyKey, actions, onAction }) {
+  const visibleActions = actions.filter((action) => canUseAction(item, action));
+  if (!item || visibleActions.length === 0) {
+    return <div className="adminx-empty">No moderation actions available for this case.</div>;
+  }
+  return (
+    <div className="adminx-action-row" style={{ flexWrap: "wrap", gap: 8 }}>
+      {visibleActions.map((action) => (
+        <button
+          key={action}
+          type="button"
+          className={`adminx-btn ${action === "approve" ? "adminx-btn--primary" : action === "reject" || action === "delete_media" || action === "ban_user" ? "adminx-btn--danger" : ""}`}
+          onClick={() => onAction(item, action)}
+          disabled={Boolean(busyKey)}
+        >
+          {busyKey === `${action}:${item._id}` ? "Working..." : getActionLabel(action)}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function AdminReportsPage({ user }) {
-  const navigate = useNavigate();
-  const { caseId } = useParams();
+  const { caseId: routeCaseId } = useParams();
+  const [category, setCategory] = useState("");
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(12);
-  const [items, setItems] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState("");
+  const [queue, setQueue] = useState({ page: 1, limit: 12, total: 0, cases: [] });
+  const [queueLoading, setQueueLoading] = useState(true);
+  const [queueError, setQueueError] = useState("");
+  const [selectedCaseId, setSelectedCaseId] = useState(routeCaseId || "");
+  const [selectedCase, setSelectedCase] = useState(null);
+  const [selectedUploader, setSelectedUploader] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState(caseId || "");
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [reason, setReason] = useState("");
-  const [actionLoading, setActionLoading] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [detailError, setDetailError] = useState("");
+  const [note, setNote] = useState("");
+  const [busyKey, setBusyKey] = useState("");
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil((Number(total) || 0) / limit)), [total, limit]);
+  const queueCases = useMemo(() => getQueueSummary(queue).cases, [queue]);
+  const totalPages = useMemo(() => Math.max(1, Math.ceil((Number(queue?.total) || 0) / Number(limit || 1))), [limit, queue?.total]);
+  const selectedQueueCase = useMemo(() => queueCases.find((entry) => String(entry?._id) === String(selectedCaseId)) || null, [queueCases, selectedCaseId]);
+  const visibleCase = selectedCase || selectedQueueCase || null;
+  const detailActions = useMemo(() => DETAIL_ACTIONS.filter((action) => canUseAction(visibleCase, action)), [visibleCase]);
+  const selectedUploaderUser = selectedUploader?.user || null;
 
-  const loadItems = useCallback(async () => {
-    setLoading(true);
-    setErrorMessage("");
+  const loadStats = useCallback(async () => {
+    setStatsLoading(true);
+    setStatsError("");
     try {
-      const payload = await adminListModerationItems({
-        status,
-        page,
-        limit,
-        search: deferredSearch,
-      });
-      const nextItems = Array.isArray(payload?.items) ? payload.items : [];
-      setItems(nextItems);
-      setTotal(Number(payload?.total || 0));
-
-      const nextSelectedId = selectedId || caseId || nextItems[0]?._id || "";
-      if (nextSelectedId && nextSelectedId !== selectedId) {
-        setSelectedId(nextSelectedId);
-      } else if (!nextSelectedId) {
-        setSelectedItem(null);
-      }
+      setStats(await fetchModerationStats());
     } catch (error) {
-      const message = error?.message || "Failed to load moderation items";
-      setErrorMessage(message);
+      const message = error?.message || "Failed to load moderation stats";
+      setStatsError(message);
       toast.error(message);
-      setItems([]);
-      setTotal(0);
     } finally {
-      setLoading(false);
+      setStatsLoading(false);
     }
-  }, [caseId, deferredSearch, limit, page, selectedId, status]);
+  }, []);
 
-  const loadDetail = useCallback(async (itemId) => {
-    if (!itemId) {
-      setSelectedItem(null);
+  const loadQueue = useCallback(async () => {
+    setQueueLoading(true);
+    setQueueError("");
+    try {
+      const payload = await fetchModerationCases({ page, limit, queue: category, status, search: deferredSearch });
+      setQueue(getQueueSummary(payload));
+    } catch (error) {
+      const message = error?.message || "Failed to load moderation queue";
+      setQueueError(message);
+      toast.error(message);
+    } finally {
+      setQueueLoading(false);
+    }
+  }, [category, deferredSearch, limit, page, status]);
+
+  const loadCase = useCallback(async (caseId) => {
+    if (!caseId) {
+      setSelectedCase(null);
+      setSelectedUploader(null);
+      setDetailError("");
+      setNote("");
       return;
     }
-
     setDetailLoading(true);
+    setDetailError("");
     try {
-      const payload = await adminGetModerationItem(itemId);
-      setSelectedItem(payload || null);
+      const [casePayload, uploaderPayload] = await Promise.all([fetchModerationCase(caseId), fetchModerationUploader(caseId)]);
+      setSelectedCase(casePayload || null);
+      setSelectedUploader(uploaderPayload || null);
+      setNote(normalizeText(casePayload?.reviewerNote || casePayload?.latestDecisionSummary?.reason || casePayload?.reason || ""));
     } catch (error) {
-      const message = error?.message || "Failed to load moderation item";
+      const message = error?.message || "Failed to load moderation case";
+      setDetailError(message);
       toast.error(message);
-      setErrorMessage(message);
-      setSelectedItem(null);
     } finally {
       setDetailLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    setSelectedId(caseId || "");
-  }, [caseId]);
-
-  useEffect(() => {
-    loadItems();
-  }, [loadItems]);
-
-  useEffect(() => {
-    loadDetail(selectedId);
-  }, [loadDetail, selectedId]);
-
-  useEffect(() => {
-    if (!selectedId && items.length > 0) {
-      setSelectedId(items[0]._id);
+  const refreshAll = useCallback(async () => {
+    setBusyKey("refresh");
+    try {
+      await Promise.all([loadStats(), loadQueue(), selectedCaseId ? loadCase(selectedCaseId) : Promise.resolve()]);
+      toast.success("Moderation dashboard refreshed");
+    } finally {
+      setBusyKey("");
     }
-  }, [items, selectedId]);
+  }, [loadCase, loadQueue, loadStats, selectedCaseId]);
 
-  const selectedItemInList = useMemo(
-    () => items.find((entry) => String(entry._id) === String(selectedId)) || null,
-    [items, selectedId]
-  );
-
-  const selected = selectedItem || selectedItemInList || null;
-  const uploaderId = selected?.uploader?.userId || "";
-  const canSuspendUploader = Boolean(uploaderId);
-
-  const refresh = useCallback(async () => {
-    await loadItems();
-    if (selectedId) {
-      await loadDetail(selectedId);
-    }
-  }, [loadDetail, loadItems, selectedId]);
-
-  const handleSelect = (item) => {
-    const nextId = item?._id || "";
-    setSelectedId(nextId);
-    navigate(nextId ? `/admin/moderation/cases/${nextId}` : "/admin/moderation");
-  };
-
-  const applyAction = useCallback(
-    async (actionName, handler) => {
-      if (!selected?._id) {
-        return;
-      }
-
-      try {
-        setActionLoading(actionName);
-        const payload = await handler(selected._id, { reason });
-        toast.success(payload?.message || `${actionName} completed`);
-        setReason("");
-        await refresh();
-      } catch (error) {
-        const message = error?.message || `Failed to ${actionName}`;
-        toast.error(message);
-      } finally {
-        setActionLoading("");
-      }
-    },
-    [reason, refresh, selected?._id]
-  );
-
-  const handleSuspendUploader = useCallback(async () => {
-    if (!uploaderId) {
+  const selectCase = useCallback((item) => {
+    if (!item?._id) {
       return;
     }
+    setSelectedCaseId(item._id);
+    setSelectedCase(item);
+    setSelectedUploader(null);
+    setDetailError("");
+    setNote(normalizeText(item?.reviewerNote || item?.latestDecisionSummary?.reason || item?.reason || ""));
+  }, []);
 
-    try {
-      setActionLoading("suspend");
-      const payload = await adminSuspendUser(uploaderId, reason);
-      toast.success(payload?.message || "Uploader suspended");
-      setReason("");
-      await refresh();
-    } catch (error) {
-      toast.error(error?.message || "Failed to suspend uploader");
-    } finally {
-      setActionLoading("");
-    }
-  }, [refresh, reason, uploaderId]);
-
-  const handleBanUploader = useCallback(async () => {
-    if (!uploaderId) {
+  const handleView = useCallback(async (item) => {
+    if (!item?._id) {
       return;
     }
-
+    setBusyKey(`view:${item._id}`);
     try {
-      setActionLoading("ban");
-      const payload = await adminBanUser(uploaderId, reason);
-      toast.success(payload?.message || "Uploader banned");
-      setReason("");
-      await refresh();
+      selectCase(item);
+      const response = await fetchModerationReviewUrl(item._id, { mediaRole: item?.media?.[0]?.role || "", mediaIndex: 0 });
+      if (response?.url) {
+        window.open(response.url, "_blank", "noopener,noreferrer");
+      } else {
+        toast.error("Review URL unavailable for this case");
+      }
     } catch (error) {
-      toast.error(error?.message || "Failed to ban uploader");
+      toast.error(error?.message || "Failed to open review media");
     } finally {
-      setActionLoading("");
+      setBusyKey("");
     }
-  }, [reason, refresh, uploaderId]);
+  }, [selectCase]);
 
-  const actionButtons = useMemo(
-    () => [
-      {
-        key: "approve",
-        label: "Approve",
-        className: "adminx-btn--primary",
-        onClick: () => applyAction("approve", adminApproveModerationItem),
-      },
-      {
-        key: "reject",
-        label: "Reject",
-        className: "adminx-btn--danger",
-        onClick: () => applyAction("reject", adminRejectModerationItem),
-      },
-      {
-        key: "remove",
-        label: "Delete Media",
-        className: "",
-        onClick: () => applyAction("remove", adminRemoveModerationItem),
-      },
-      {
-        key: "quarantine",
-        label: "Hold for Review",
-        className: "",
-        onClick: () => applyAction("quarantine", adminQuarantineModerationItem),
-      },
-    ],
-    [applyAction]
-  );
+  const runCaseAction = useCallback(async (item, action) => {
+    if (!item?._id) {
+      return;
+    }
+    const reason = getActionReason(item, note);
+    setBusyKey(`${action}:${item._id}`);
+    try {
+      await applyModerationCaseAction(item._id, action, { reason });
+      toast.success(`${getActionLabel(action)} completed`);
+      setNote("");
+      await Promise.all([loadStats(), loadQueue(), loadCase(item._id)]);
+    } catch (error) {
+      toast.error(error?.message || `Failed to ${getActionLabel(action).toLowerCase()}`);
+    } finally {
+      setBusyKey("");
+    }
+  }, [loadCase, loadQueue, loadStats, note]);
+
+  const handleScanRecent = useCallback(async () => {
+    setBusyKey("scan_recent");
+    try {
+      const response = await scanRecentMedia({ limit });
+      toast.success(`Scanned ${formatNumber(response?.scannedCount)} recent items. ${formatNumber(response?.approvedCount)} approved, ${formatNumber(response?.blockedCount)} blocked, ${formatNumber(response?.reviewCount)} sent to review.`);
+      await Promise.all([loadStats(), loadQueue(), selectedCaseId ? loadCase(selectedCaseId) : Promise.resolve()]);
+    } catch (error) {
+      toast.error(error?.message || "Failed to scan recent media");
+    } finally {
+      setBusyKey("");
+    }
+  }, [limit, loadCase, loadQueue, loadStats, selectedCaseId]);
+
+  const handleScanSearch = useCallback(async () => {
+    const searchTerm = normalizeText(search);
+    if (!searchTerm) {
+      toast.error("Enter a search term before scanning matches");
+      return;
+    }
+    setBusyKey("scan_search");
+    try {
+      const response = await scanSearchMatches({ search: searchTerm, limit });
+      toast.success(`Scanned ${formatNumber(response?.scannedCount)} matching items. ${formatNumber(response?.approvedCount)} approved, ${formatNumber(response?.blockedCount)} blocked, ${formatNumber(response?.reviewCount)} sent to review.`);
+      await Promise.all([loadStats(), loadQueue(), selectedCaseId ? loadCase(selectedCaseId) : Promise.resolve()]);
+    } catch (error) {
+      toast.error(error?.message || "Failed to scan search matches");
+    } finally {
+      setBusyKey("");
+    }
+  }, [limit, loadCase, loadQueue, loadStats, search, selectedCaseId]);
+
+  const handleUserAction = useCallback(async (action) => {
+    const uploaderId = selectedUploaderUser?._id || visibleCase?.uploader?.userId || "";
+    if (!uploaderId) {
+      toast.error("Uploader profile is unavailable");
+      return;
+    }
+    const reason = getActionReason(visibleCase, note);
+    const runners = { ban: banUser, suspend: suspendUser, unban: unbanUser, unsuspend: unsuspendUser, "force-logout": forceLogoutUser };
+    const runner = runners[action];
+    if (!runner) {
+      toast.error("Unsupported user action");
+      return;
+    }
+    setBusyKey(`${action}:${uploaderId}`);
+    try {
+      await runner(uploaderId, reason);
+      toast.success(`${getActionLabel(action)} completed`);
+      await Promise.all([loadStats(), loadQueue(), loadCase(selectedCaseId || visibleCase?._id || uploaderId)]);
+    } catch (error) {
+      toast.error(error?.message || `Failed to ${getActionLabel(action).toLowerCase()}`);
+    } finally {
+      setBusyKey("");
+    }
+  }, [loadCase, loadQueue, loadStats, note, selectedCaseId, selectedUploaderUser, visibleCase]);
+
+  useEffect(() => { setSelectedCaseId(routeCaseId || ""); }, [routeCaseId]);
+  useEffect(() => { loadStats(); }, [loadStats]);
+  useEffect(() => { loadQueue(); }, [loadQueue]);
+  useEffect(() => {
+    if (!selectedCaseId && queueCases.length > 0) {
+      const first = queueCases[0];
+      setSelectedCaseId(first._id);
+      setSelectedCase(first);
+      setNote(normalizeText(first?.reviewerNote || first?.latestDecisionSummary?.reason || first?.reason || ""));
+    }
+  }, [queueCases, selectedCaseId]);
+  useEffect(() => {
+    if (selectedCaseId) {
+      loadCase(selectedCaseId);
+    } else {
+      setSelectedCase(null);
+      setSelectedUploader(null);
+      setDetailError("");
+    }
+  }, [loadCase, selectedCaseId]);
 
   return (
     <AdminShell
       title="Moderation"
-      subtitle="Review uploads before they go public. Explicit sexual content, CSAM, violent gore, and animal cruelty can be blocked or quarantined from this console."
+      subtitle="Review sexual content blocking, CSAM escalation, violent media restriction, animal cruelty review, and repeat-violator enforcement from the Tengacion console."
       user={user}
       actions={(
         <>
-          <button type="button" className="adminx-btn" onClick={refresh} disabled={loading}>
-            Refresh
+          <button type="button" className="adminx-btn" onClick={refreshAll} disabled={Boolean(busyKey) || statsLoading || queueLoading || detailLoading}>
+            {busyKey === "refresh" ? "Refreshing..." : "Refresh"}
+          </button>
+          <button type="button" className="adminx-btn" onClick={handleScanRecent} disabled={Boolean(busyKey) || statsLoading || queueLoading || detailLoading}>
+            {busyKey === "scan_recent" ? "Scanning..." : "Scan Recent Media"}
+          </button>
+          <button type="button" className="adminx-btn" onClick={handleScanSearch} disabled={Boolean(busyKey) || !normalizeText(search) || statsLoading || queueLoading || detailLoading}>
+            {busyKey === "scan_search" ? "Scanning..." : "Scan Search Matches"}
           </button>
         </>
       )}
     >
+      <section className="adminx-stats-grid">
+        {statsLoading && !stats ? STAT_CARDS.map(([key]) => <StatSkeleton key={key} />) : STAT_CARDS.map(([key, label, helper]) => (
+          <article key={key} className="adminx-stat-card">
+            <div className="adminx-kpi-label">{label}</div>
+            <div className="adminx-kpi-value">{formatNumber(stats?.[key])}</div>
+            <div className="adminx-kpi-trend">{helper}</div>
+          </article>
+        ))}
+      </section>
+
       <section className="adminx-panel adminx-panel--span-12" style={{ display: "grid", gap: 14 }}>
+        <div className="adminx-panel-head" style={{ marginBottom: 0 }}>
+          <div>
+            <h2 className="adminx-panel-title">Queue Filters</h2>
+            <span className="adminx-section-meta">Keep the existing moderation layout, but drive it from real queue data and search.</span>
+          </div>
+          <div className="adminx-row" style={{ gap: 10, flexWrap: "wrap" }}>
+            <span className="adminx-badge">Total {formatNumber(queue?.total)}</span>
+            <span className="adminx-badge">Page {page} / {totalPages}</span>
+            {stats?.repeatViolatorThreshold ? <span className="adminx-badge">Repeat threshold {formatNumber(stats.repeatViolatorThreshold)}</span> : null}
+          </div>
+        </div>
+
         <div className="adminx-filter-row" style={{ flexWrap: "wrap", gap: 10 }}>
-          {STATUS_TABS.map((tab) => (
+          {CATEGORIES.map(([value, label]) => (
             <button
-              key={tab.value || "all"}
+              key={value || "all"}
               type="button"
-              className={`adminx-btn ${status === tab.value ? "adminx-btn--primary" : ""}`}
-              onClick={() => {
-                setStatus(tab.value);
-                setPage(1);
-              }}
+              className={`adminx-tab ${category === value ? "is-active" : ""}`}
+              onClick={() => { setCategory(value); setPage(1); }}
             >
-              {tab.label}
+              {label}
             </button>
           ))}
         </div>
 
-        <div className="adminx-filter-row" style={{ gap: 12, flexWrap: "wrap" }}>
+        <div className="adminx-filter-row" style={{ flexWrap: "wrap", gap: 10 }}>
           <input
             className="adminx-input"
+            style={{ minWidth: 280, flex: "1 1 320px" }}
             value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-            placeholder="Search uploader, labels, title, file type"
-            style={{ minWidth: 280, flex: "1 1 280px" }}
+            onChange={(event) => { setSearch(event.target.value); setPage(1); }}
+            placeholder="Search uploads, uploader, filename, or moderation reason"
           />
-          <select
-            className="adminx-select"
-            value={limit}
-            onChange={(event) => {
-              setLimit(Number(event.target.value) || 12);
-              setPage(1);
-            }}
-          >
-            {[8, 12, 20, 40].map((entry) => (
-              <option key={entry} value={entry}>
-                {entry} per page
-              </option>
-            ))}
+          <select className="adminx-select" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}>
+            {STATUS_OPTIONS.map(([value, label]) => <option key={value || "all-statuses"} value={value}>{label}</option>)}
+          </select>
+          <select className="adminx-select" value={limit} onChange={(event) => { setLimit(Number(event.target.value) || 12); setPage(1); }}>
+            {[8, 12, 20, 40].map((value) => <option key={value} value={value}>{value} per page</option>)}
           </select>
         </div>
 
-        <div className="adminx-row" style={{ flexWrap: "wrap", gap: 10 }}>
-          <span className="adminx-muted">Total items: {Number(total || 0).toLocaleString()}</span>
-          <span className="adminx-muted">Page {page} of {totalPages}</span>
-          <span className="adminx-muted">Selected: {selected?._id || "none"}</span>
+        <div className="adminx-row" style={{ flexWrap: "wrap", gap: 8 }}>
+          <span className="adminx-muted">Search updates the queue in real time.</span>
+          <span className="adminx-muted">Scan Search Matches uses the exact text in the search box.</span>
         </div>
 
-        {errorMessage ? (
-          <div className="adminx-panel" style={{ borderColor: "rgba(172, 78, 78, 0.55)" }}>
-            {errorMessage}
-          </div>
-        ) : null}
+        {statsError ? <div className="adminx-error">{statsError}</div> : null}
+        {queueError ? <div className="adminx-error">{queueError}</div> : null}
       </section>
 
-      <section className="adminx-panel adminx-panel--span-5" style={{ display: "grid", gap: 12 }}>
-        <div className="adminx-row">
-          <h2 className="adminx-panel-title" style={{ margin: 0 }}>Queue</h2>
-          {loading ? <span className="adminx-muted">Loading...</span> : null}
-        </div>
+      <section className="adminx-analytics-grid">
+        <section className="adminx-panel adminx-panel--span-7" style={{ display: "grid", gap: 14 }}>
+          <div className="adminx-panel-head" style={{ marginBottom: 0 }}>
+            <div>
+              <h2 className="adminx-panel-title">Moderation Queue</h2>
+              <span className="adminx-section-meta">{queueLoading ? "Refreshing cases..." : `${formatNumber(queueCases.length)} results on this page`}</span>
+            </div>
+            {busyKey === "refresh" ? <span className="adminx-badge">Refreshing</span> : null}
+          </div>
 
-        <div style={{ display: "grid", gap: 12 }}>
-          {items.map((item) => (
-            <ModerationListItem
-              key={item._id}
-              item={item}
-              active={String(item._id) === String(selectedId)}
-              onSelect={handleSelect}
-            />
-          ))}
-          {!loading && items.length === 0 ? (
-            <div className="adminx-empty">No moderation items found for the current filters.</div>
+          {queueLoading && queueCases.length === 0 ? (
+            <div className="adminx-list-grid">{[0, 1, 2].map((entry) => <QueueSkeleton key={entry} />)}</div>
+          ) : (
+            <div className="adminx-list-grid">
+              {queueCases.map((item) => <CaseCard key={item._id} item={item} active={String(item._id) === String(selectedCaseId)} busyKey={busyKey} onSelect={selectCase} onView={handleView} onAction={runCaseAction} />)}
+              {!queueLoading && queueCases.length === 0 ? <div className="adminx-empty">No moderation cases found for the current filters.</div> : null}
+            </div>
+          )}
+
+          <div className="adminx-row" style={{ justifyContent: "space-between", gap: 8 }}>
+            <button type="button" className="adminx-btn" disabled={page <= 1 || Boolean(busyKey)} onClick={() => setPage((current) => Math.max(1, current - 1))}>Previous</button>
+            <span className="adminx-muted">Page {page} of {totalPages}</span>
+            <button type="button" className="adminx-btn" disabled={page >= totalPages || Boolean(busyKey)} onClick={() => setPage((current) => Math.min(totalPages, current + 1))}>Next</button>
+          </div>
+        </section>
+
+        <section className="adminx-panel adminx-panel--span-5" style={{ display: "grid", gap: 14 }}>
+          <div className="adminx-panel-head" style={{ marginBottom: 0 }}>
+            <div>
+              <h2 className="adminx-panel-title">{normalizeText(visibleCase?.subject?.title || "Moderation detail")}</h2>
+              <span className="adminx-section-meta">{normalizeText(visibleCase?.subject?.targetType || "upload")} | {getLabel(visibleCase?.queue)} | {getMediaKind(visibleCase)}</span>
+            </div>
+            <Badge status={visibleCase?.status} />
+          </div>
+
+          {detailLoading && !visibleCase ? <div className="adminx-loading">Loading moderation case...</div> : null}
+          {detailError ? <div className="adminx-error">{detailError}</div> : null}
+          {!detailLoading && !visibleCase ? <div className="adminx-empty">Select a moderation case to review the media, warnings, and enforcement controls.</div> : null}
+
+          {visibleCase ? (
+            <>
+              <PreviewCard item={visibleCase} onView={() => handleView(visibleCase)} loading={busyKey === `view:${visibleCase._id}`} />
+
+              <div className="adminx-panel" style={{ display: "grid", gap: 12 }}>
+                <div className="adminx-row" style={{ flexWrap: "wrap", gap: 10 }}>
+                  <span className="adminx-badge">Uploader: {getUploaderLabel(visibleCase?.uploader)}</span>
+                  <span className="adminx-badge">Priority: {formatScore(visibleCase?.priorityScore)}</span>
+                  <span className="adminx-badge">Created: {formatDateTime(visibleCase?.createdAt)}</span>
+                  <span className="adminx-badge">Updated: {formatDateTime(visibleCase?.updatedAt)}</span>
+                </div>
+                <div className="adminx-row" style={{ flexWrap: "wrap", gap: 10 }}>
+                  <span className="adminx-muted">Workflow: {getStatusLabel(visibleCase?.workflowState)}</span>
+                  <span className="adminx-muted">Severity: {getStatusLabel(visibleCase?.severity)}</span>
+                  <span className="adminx-muted">Source: {normalizeText(visibleCase?.detectionSource || "automated_upload_scan")}</span>
+                </div>
+                <div className="adminx-muted">{normalizeText(visibleCase?.subject?.description || visibleCase?.reason || "No case summary provided.")}</div>
+                {visibleCase?.publicWarningLabel ? <span className="adminx-badge adminx-badge--warn" style={{ alignSelf: "flex-start" }}>{visibleCase.publicWarningLabel}</span> : null}
+              </div>
+
+              <div>
+                <strong>Risk labels</strong>
+                <div className="adminx-action-row" style={{ flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+                  {(visibleCase?.riskLabels || []).map((label) => <span key={label} className="adminx-badge">{label}</span>)}
+                  {Array.isArray(visibleCase?.riskLabels) && visibleCase.riskLabels.length === 0 ? <span className="adminx-muted">No labels</span> : null}
+                </div>
+              </div>
+
+              <div>
+                <strong>Moderation note</strong>
+                <div className="adminx-muted" style={{ marginTop: 4, marginBottom: 8 }}>This note is stored in the audit trail and sent to the uploader in Messenger with the moderation warning.</div>
+                <textarea className="adminx-textarea" rows={4} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Write the warning or review note the uploader should receive" />
+              </div>
+
+              <div>
+                <strong>Case actions</strong>
+                <div style={{ marginTop: 10 }}>
+                  <ActionRow item={visibleCase} busyKey={busyKey} actions={detailActions} onAction={runCaseAction} />
+                </div>
+              </div>
+
+              <div className="adminx-panel" style={{ display: "grid", gap: 12 }}>
+                <div className="adminx-row" style={{ flexWrap: "wrap", gap: 10 }}>
+                  <span className="adminx-muted">Target ID: {normalizeText(visibleCase?.subject?.targetId || "-")}</span>
+                  <span className="adminx-muted">Linked reports: {formatNumber(visibleCase?.linkedReportsCount)}</span>
+                  <span className="adminx-muted">Reviewed at: {formatDateTime(visibleCase?.reviewedAt)}</span>
+                </div>
+                <div className="adminx-muted">Reviewed by: {getUploaderLabel(visibleCase?.reviewedBy || {}) || "Unreviewed"}</div>
+                <div className="adminx-muted">{normalizeText(visibleCase?.reviewerNote || "No reviewer note stored yet.")}</div>
+              </div>
+
+              <div className="adminx-panel" style={{ display: "grid", gap: 12 }}>
+                <div className="adminx-panel-head" style={{ marginBottom: 0 }}>
+                  <div>
+                    <h3 className="adminx-panel-title">Uploader enforcement</h3>
+                    <span className="adminx-section-meta">Real user account controls pulled from the admin backend.</span>
+                  </div>
+                </div>
+
+                {selectedUploaderUser ? (
+                  <>
+                    <div className="adminx-row" style={{ flexWrap: "wrap", gap: 8, justifyContent: "flex-start" }}>
+                      <span className="adminx-badge">State: {selectedUploaderUser.isBanned ? "Banned" : selectedUploaderUser.isSuspended ? "Suspended" : "Active"}</span>
+                      <span className="adminx-badge">Strikes: {formatNumber(selectedUploader?.strike?.count)}</span>
+                      <span className="adminx-badge">Cases: {formatNumber(selectedUploader?.moderationCaseCount)}</span>
+                    </div>
+                    <div className="adminx-row" style={{ flexWrap: "wrap", gap: 8, justifyContent: "flex-start" }}>
+                      {!selectedUploaderUser.isBanned ? <button type="button" className="adminx-btn adminx-btn--danger" onClick={() => handleUserAction("ban")} disabled={Boolean(busyKey)}>{busyKey === `ban:${selectedUploaderUser._id}` ? "Banning..." : "Ban User"}</button> : <button type="button" className="adminx-btn" onClick={() => handleUserAction("unban")} disabled={Boolean(busyKey)}>{busyKey === `unban:${selectedUploaderUser._id}` ? "Unbanning..." : "Unban User"}</button>}
+                      {!selectedUploaderUser.isSuspended ? <button type="button" className="adminx-btn" onClick={() => handleUserAction("suspend")} disabled={Boolean(busyKey)}>{busyKey === `suspend:${selectedUploaderUser._id}` ? "Suspending..." : "Suspend User"}</button> : <button type="button" className="adminx-btn" onClick={() => handleUserAction("unsuspend")} disabled={Boolean(busyKey)}>{busyKey === `unsuspend:${selectedUploaderUser._id}` ? "Unsuspending..." : "Unsuspend User"}</button>}
+                      <button type="button" className="adminx-btn" onClick={() => handleUserAction("force-logout")} disabled={Boolean(busyKey)}>{busyKey === `force-logout:${selectedUploaderUser._id}` ? "Logging out..." : "Force Logout"}</button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="adminx-empty">No uploader profile is attached to this case.</div>
+                )}
+              </div>
+            </>
           ) : null}
-        </div>
-
-        <div className="adminx-row" style={{ justifyContent: "space-between", gap: 8 }}>
-          <button
-            type="button"
-            className="adminx-btn"
-            disabled={page <= 1}
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
-          >
-            Previous
-          </button>
-          <button
-            type="button"
-            className="adminx-btn"
-            disabled={page >= totalPages}
-            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-          >
-            Next
-          </button>
-        </div>
-      </section>
-
-      <section className="adminx-panel adminx-panel--span-7" style={{ display: "grid", gap: 16 }}>
-        <div className="adminx-row" style={{ alignItems: "flex-start" }}>
-          <div>
-            <h2 className="adminx-panel-title" style={{ margin: 0 }}>
-              {normalizeText(selected?.subject?.title || "Moderation detail")}
-            </h2>
-            <div className="adminx-muted" style={{ marginTop: 4 }}>
-              {normalizeText(selected?.subject?.targetType || "upload")} | {normalizeText(selected?.subject?.mediaType || getMediaKind(selected))}
-            </div>
-          </div>
-          <StatusBadge status={selected?.status} />
-        </div>
-
-        {detailLoading ? <div className="adminx-loading">Loading moderation item...</div> : null}
-        {!detailLoading && !selected ? (
-          <div className="adminx-empty">Select an item from the queue to review its details and take action.</div>
-        ) : null}
-
-        {!detailLoading && selected ? (
-          <div style={{ display: "grid", gap: 16 }}>
-            <MediaPreview item={selected} />
-
-            <div className="adminx-panel" style={{ display: "grid", gap: 10 }}>
-              <div className="adminx-row" style={{ flexWrap: "wrap", gap: 10 }}>
-                <div className="adminx-muted">Uploader: {selected?.uploader?.displayName || selected?.uploader?.username || selected?.uploader?.email || "unknown"}</div>
-                <div className="adminx-muted">File type: {normalizeText(selected?.mimeType || getMediaKind(selected))}</div>
-                <div className="adminx-muted">Confidence: {formatConfidence(selected?.confidence)}</div>
-              </div>
-              <div className="adminx-row" style={{ flexWrap: "wrap", gap: 10 }}>
-                <div className="adminx-muted">Created: {formatDateTime(selected?.createdAt)}</div>
-                <div className="adminx-muted">Updated: {formatDateTime(selected?.updatedAt)}</div>
-                <div className="adminx-muted">Visibility: {normalizeText(selected?.visibility || "private")}</div>
-                <div className="adminx-muted">Storage stage: {normalizeText(selected?.storageStage || "temporary")}</div>
-              </div>
-              <div className="adminx-muted">
-                Reason: {normalizeText(selected?.reason || "No moderation reason provided")}
-              </div>
-            </div>
-
-            <div>
-              <strong>Labels</strong>
-              <div className="adminx-action-row" style={{ flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-                {(selected?.labels || []).map((label) => (
-                  <span key={label} className="adminx-badge">
-                    {label}
-                  </span>
-                ))}
-                {(selected?.labels || []).length === 0 ? <span className="adminx-muted">No labels</span> : null}
-              </div>
-            </div>
-
-            <div>
-              <strong>Moderation note</strong>
-              <div className="adminx-muted" style={{ marginTop: 4, marginBottom: 8 }}>
-                This note is stored in the audit trail and sent to the uploader in Messenger with the moderation warning.
-              </div>
-              <textarea
-                className="adminx-textarea"
-                rows={4}
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-                placeholder="Write the warning you want the uploader to see"
-              />
-            </div>
-
-            <div className="adminx-action-row" style={{ flexWrap: "wrap", gap: 10 }}>
-              {actionButtons.map((entry) => (
-                <button
-                  key={entry.key}
-                  type="button"
-                  className={`adminx-btn ${entry.className || ""}`}
-                  onClick={entry.onClick}
-                  disabled={Boolean(actionLoading)}
-                >
-                  {actionLoading === entry.key ? "Working..." : entry.label}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="adminx-btn"
-                onClick={handleSuspendUploader}
-                disabled={Boolean(actionLoading) || !canSuspendUploader}
-              >
-                {actionLoading === "suspend" ? "Suspending..." : "Suspend User"}
-              </button>
-              <button
-                type="button"
-                className="adminx-btn adminx-btn--danger"
-                onClick={handleBanUploader}
-                disabled={Boolean(actionLoading) || !canSuspendUploader}
-              >
-                {actionLoading === "ban" ? "Banning..." : "Ban User"}
-              </button>
-            </div>
-
-            <div className="adminx-panel" style={{ display: "grid", gap: 8 }}>
-              <div className="adminx-row" style={{ flexWrap: "wrap", gap: 10 }}>
-                <span className="adminx-muted">Target ID: {normalizeText(selected?.targetId || selected?.subject?.targetId || "-")}</span>
-                <span className="adminx-muted">Reviewed at: {formatDateTime(selected?.reviewedAt)}</span>
-              </div>
-              <div className="adminx-muted">
-                Reviewed by: {selected?.reviewedBy?.name || selected?.reviewedBy?.username || selected?.reviewedBy?.email || "Unreviewed"}
-              </div>
-              <div className="adminx-muted">
-                Preview URL stays private unless a public target has already been approved.
-              </div>
-            </div>
-          </div>
-        ) : null}
+        </section>
       </section>
     </AdminShell>
   );

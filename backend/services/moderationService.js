@@ -23,6 +23,7 @@ const {
   CRITICAL_STATUS_SET,
   QUEUE_REVIEW_PERMISSION_MAP,
   RESTRICTED_PUBLIC_STATUSES,
+  MODERATION_REPEAT_VIOLATOR_STRIKE_THRESHOLD,
 } = require("../config/moderation");
 const { writeAuditLog } = require("./auditLogService");
 const { sendModerationMessengerWarning } = require("./moderationMessengerService");
@@ -782,6 +783,24 @@ const buildAdminCasePayload = (caseDoc = {}, user = null) => ({
     status: String(caseDoc?.escalation?.status || ""),
     escalatedAt: caseDoc?.escalation?.escalatedAt || null,
   },
+  reviewedBy: caseDoc?.reviewedBy
+    ? {
+        _id: toId(caseDoc.reviewedBy),
+        name: String(caseDoc?.reviewedBy?.name || caseDoc?.reviewedBy?.displayName || ""),
+        username: String(caseDoc?.reviewedBy?.username || ""),
+        email: String(caseDoc?.reviewedBy?.email || caseDoc?.latestDecisionSummary?.adminEmail || ""),
+      }
+    : caseDoc?.reviewer
+      ? {
+          _id: toId(caseDoc.reviewer),
+          name: String(caseDoc?.latestDecisionSummary?.adminEmail || ""),
+          username: "",
+          email: String(caseDoc?.latestDecisionSummary?.adminEmail || ""),
+        }
+      : null,
+  reviewedAt: caseDoc?.reviewedAt || caseDoc?.latestDecisionSummary?.decidedAt || null,
+  reviewerNote: String(caseDoc?.reviewerNote || caseDoc?.latestDecisionSummary?.reason || ""),
+  internalNotes: String(caseDoc?.internalNotes || ""),
   evidence: {
     preservedAt: caseDoc?.evidence?.preservedAt || null,
     notes: String(caseDoc?.evidence?.notes || ""),
@@ -1559,15 +1578,16 @@ const listModerationCases = async ({
     query.$or = [{ severity: "CRITICAL" }, { priorityScore: { $gte: 90 } }];
   }
   if (search) {
+    const escapedSearch = escapeRegex(search);
     query.$and = [
       ...(Array.isArray(query.$and) ? query.$and : []),
       {
         $or: [
-          { "subject.title": { $regex: search, $options: "i" } },
-          { "subject.description": { $regex: search, $options: "i" } },
-          { "uploader.email": { $regex: search, $options: "i" } },
-          { "uploader.username": { $regex: search, $options: "i" } },
-          { riskLabels: { $elemMatch: { $regex: search, $options: "i" } } },
+          { "subject.title": { $regex: escapedSearch, $options: "i" } },
+          { "subject.description": { $regex: escapedSearch, $options: "i" } },
+          { "uploader.email": { $regex: escapedSearch, $options: "i" } },
+          { "uploader.username": { $regex: escapedSearch, $options: "i" } },
+          { riskLabels: { $elemMatch: { $regex: escapedSearch, $options: "i" } } },
         ],
       },
     ];
@@ -1591,22 +1611,43 @@ const listModerationCases = async ({
 };
 
 const getModerationSummary = async ({ user }) => {
-  const [queueSummary, statusSummary, workflowSummary, criticalCount, repeatViolators] =
-    await Promise.all([
-      ModerationCase.aggregate([
-        { $group: { _id: "$queue", count: { $sum: 1 } } },
-      ]),
-      ModerationCase.aggregate([
-        { $group: { _id: "$status", count: { $sum: 1 } } },
-      ]),
-      ModerationCase.aggregate([
-        { $group: { _id: "$workflowState", count: { $sum: 1 } } },
-      ]),
-      ModerationCase.countDocuments({
-        $or: [{ severity: "CRITICAL" }, { priorityScore: { $gte: 90 } }],
-      }),
-      ModerationCase.countDocuments({ status: "BLOCK_REPEAT_VIOLATOR" }),
-    ]);
+  const repeatViolatorThreshold = MODERATION_REPEAT_VIOLATOR_STRIKE_THRESHOLD;
+  const [
+    queueSummary,
+    statusSummary,
+    workflowSummary,
+    criticalCount,
+    pendingReview,
+    blockedExplicit,
+    suspectedCsam,
+    restrictedGore,
+    animalCruelty,
+    repeatViolators,
+  ] = await Promise.all([
+    ModerationCase.aggregate([
+      { $group: { _id: "$queue", count: { $sum: 1 } } },
+    ]),
+    ModerationCase.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
+    ModerationCase.aggregate([
+      { $group: { _id: "$workflowState", count: { $sum: 1 } } },
+    ]),
+    ModerationCase.countDocuments({
+      $or: [{ severity: "CRITICAL" }, { priorityScore: { $gte: 90 } }],
+    }),
+    ModerationCase.countDocuments({
+      workflowState: { $in: ["OPEN", "UNDER_REVIEW", "ESCALATED"] },
+    }),
+    ModerationCase.countDocuments({ status: "BLOCK_EXPLICIT_ADULT" }),
+    ModerationCase.countDocuments({ status: "BLOCK_SUSPECTED_CHILD_EXPLOITATION" }),
+    ModerationCase.countDocuments({
+      queue: "graphic_gore",
+      status: "RESTRICTED_BLURRED",
+    }),
+    ModerationCase.countDocuments({ status: "BLOCK_ANIMAL_CRUELTY" }),
+    UserStrike.countDocuments({ count: { $gte: repeatViolatorThreshold } }),
+  ]);
 
   const toMap = (rows = []) =>
     rows.reduce((acc, row) => {
@@ -1620,7 +1661,13 @@ const getModerationSummary = async ({ user }) => {
     statuses: toMap(statusSummary),
     workflowStates: toMap(workflowSummary),
     criticalCount,
+    pendingReview,
+    blockedExplicit,
+    suspectedCsam,
+    restrictedGore,
+    animalCruelty,
     repeatViolators,
+    repeatViolatorThreshold,
   };
 };
 
@@ -1713,7 +1760,34 @@ const scanContentForModeration = async ({
     .slice(0, normalizedLimit);
 
   const cases = [];
+  let approvedCount = 0;
+  let blockedCount = 0;
+  let reviewCount = 0;
+  let restrictedCount = 0;
   let flaggedCount = 0;
+
+  const tallyScanResult = (result = {}) => {
+    const status = String(result?.moderationCase?.status || result?.moderationDecision?.status || "").toUpperCase();
+    if (!status || status === "ALLOW") {
+      approvedCount += 1;
+      return;
+    }
+
+    if (status === "RESTRICTED_BLURRED") {
+      restrictedCount += 1;
+      flaggedCount += 1;
+      return;
+    }
+
+    if (status === "HOLD_FOR_REVIEW" || status === "PENDING" || status === "QUARANTINED") {
+      reviewCount += 1;
+      flaggedCount += 1;
+      return;
+    }
+
+    blockedCount += 1;
+    flaggedCount += 1;
+  };
 
   for (const candidate of candidates) {
     if (candidate.type === "post") {
@@ -1754,9 +1828,7 @@ const scanContentForModeration = async ({
       if (result?.moderationCase) {
         cases.push(buildAdminCasePayload(result.moderationCase, user));
       }
-      if (result?.moderationDecision?.status && result.moderationDecision.status !== "ALLOW") {
-        flaggedCount += 1;
-      }
+      tallyScanResult(result);
       continue;
     }
 
@@ -1797,14 +1869,16 @@ const scanContentForModeration = async ({
       if (result?.moderationCase) {
         cases.push(buildAdminCasePayload(result.moderationCase, user));
       }
-      if (result?.moderationDecision?.status && result.moderationDecision.status !== "ALLOW") {
-        flaggedCount += 1;
-      }
+      tallyScanResult(result);
     }
   }
 
   return {
     scannedCount: candidates.length,
+    approvedCount,
+    blockedCount,
+    reviewCount,
+    restrictedCount,
     flaggedCount,
     cases,
   };
@@ -2028,6 +2102,8 @@ const performModerationAction = async ({
 
   moderationCase.status = nextStatus;
   moderationCase.workflowState = nextWorkflowState;
+  moderationCase.reviewedBy = actorId || null;
+  moderationCase.reviewedAt = new Date();
   moderationCase.reviewer = actorId || null;
   moderationCase.reviewerNote = normalizedReason;
   moderationCase.visibilityDecision =

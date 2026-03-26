@@ -24,7 +24,7 @@ const listQueue = async (req, res) => {
     user: getActor(req),
     page: req.query.page,
     limit: req.query.limit,
-    queue: req.params.category || req.query.queue || "",
+    queue: req.params.category || req.query.category || req.query.queue || "",
     status: req.query.status || "",
     workflowState: req.query.workflowState || "",
     severity: req.query.severity || "",
@@ -130,10 +130,10 @@ const scanContent = async (req, res) => {
   const payload = await scanContentForModeration({
     user: getActor(req),
     req,
-    search: req.body?.search || "",
-    limit: req.body?.limit ?? 20,
+    search: req.body?.search || req.query.search || "",
+    limit: req.body?.limit ?? req.query.limit ?? 20,
     includeManualReview:
-      String(req.body?.includeManualReview ?? "true").toLowerCase() !== "false",
+      String(req.body?.includeManualReview ?? req.query.includeManualReview ?? "true").toLowerCase() !== "false",
   });
   res.json({ success: true, ...payload });
 };

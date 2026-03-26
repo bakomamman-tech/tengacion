@@ -24,6 +24,8 @@ const ModerationCase = require("../models/ModerationCase");
 const Post = require("../models/Post");
 const UserStrike = require("../models/UserStrike");
 const Video = require("../models/Video");
+const { MODERATION_REPEAT_VIOLATOR_STRIKE_THRESHOLD } = require("../config/moderation");
+const { STEP_UP_COOKIE_NAME, signStepUpToken } = require("../services/authTokens");
 const { saveUploadedMedia } = require("../services/mediaStore");
 const {
   createOrUpdateModerationCase,
@@ -911,6 +913,300 @@ describe("moderation routes and enforcement", () => {
     expect(warningMessages.length).toBeGreaterThanOrEqual(2);
     expect(warningMessages.some((entry) => String(entry.text || "").includes("Temporary restriction"))).toBe(true);
     expect(warningMessages.some((entry) => String(entry.text || "").includes("Severe repeat violation"))).toBe(true);
+  });
+
+  test("admin moderation stats and filtered cases reflect real moderation data", async () => {
+    const uploader = {
+      userId: regularUser._id,
+      email: regularUser.email,
+      username: regularUser.username,
+      displayName: regularUser.name,
+    };
+
+    const pendingCase = await createUploadModerationCase({
+      targetType: "creator_upload",
+      targetId: "stats-pending-1",
+      queue: "explicit_pornography",
+      title: "Pending explicit review",
+      description: "Pending explicit review",
+      media: [{ mediaType: "image", originalFilename: "pending-explicit.jpg" }],
+      uploader,
+      detectionSource: "automated_upload_scan",
+      status: "pending",
+      reason: "Pending explicit review",
+      confidence: 0.42,
+      subject: {
+        title: "Pending explicit review",
+        description: "Pending explicit review",
+        mediaType: "image",
+        createdAt: new Date(),
+      },
+    });
+
+    await createUploadModerationCase({
+      targetType: "creator_upload",
+      targetId: "stats-blocked-1",
+      queue: "explicit_pornography",
+      title: "Blocked explicit review",
+      description: "Blocked explicit review",
+      media: [{ mediaType: "image", originalFilename: "blocked-explicit.jpg" }],
+      uploader,
+      detectionSource: "automated_upload_scan",
+      status: "BLOCK_EXPLICIT_ADULT",
+      reason: "Blocked explicit review",
+      confidence: 0.98,
+      subject: {
+        title: "Blocked explicit review",
+        description: "Blocked explicit review",
+        mediaType: "image",
+        createdAt: new Date(),
+      },
+    });
+
+    await createUploadModerationCase({
+      targetType: "creator_upload",
+      targetId: "stats-csam-1",
+      queue: "suspected_child_exploitation",
+      title: "CSAM suspect case",
+      description: "CSAM suspect case",
+      media: [{ mediaType: "image", originalFilename: "csam.jpg" }],
+      uploader,
+      detectionSource: "automated_upload_scan",
+      status: "BLOCK_SUSPECTED_CHILD_EXPLOITATION",
+      reason: "CSAM suspect case",
+      confidence: 0.99,
+      subject: {
+        title: "CSAM suspect case",
+        description: "CSAM suspect case",
+        mediaType: "image",
+        createdAt: new Date(),
+      },
+    });
+
+    await createUploadModerationCase({
+      targetType: "creator_upload",
+      targetId: "stats-gore-1",
+      queue: "graphic_gore",
+      title: "Restricted gore case",
+      description: "Restricted gore case",
+      media: [{ mediaType: "image", originalFilename: "gore.jpg" }],
+      uploader,
+      detectionSource: "automated_upload_scan",
+      status: "RESTRICTED_BLURRED",
+      reason: "Restricted gore case",
+      confidence: 0.7,
+      subject: {
+        title: "Restricted gore case",
+        description: "Restricted gore case",
+        mediaType: "image",
+        createdAt: new Date(),
+      },
+    });
+
+    await createUploadModerationCase({
+      targetType: "creator_upload",
+      targetId: "stats-animal-1",
+      queue: "animal_cruelty",
+      title: "Animal cruelty case",
+      description: "Animal cruelty case",
+      media: [{ mediaType: "image", originalFilename: "animal.jpg" }],
+      uploader,
+      detectionSource: "automated_upload_scan",
+      status: "BLOCK_ANIMAL_CRUELTY",
+      reason: "Animal cruelty case",
+      confidence: 0.94,
+      subject: {
+        title: "Animal cruelty case",
+        description: "Animal cruelty case",
+        mediaType: "image",
+        createdAt: new Date(),
+      },
+    });
+
+    await UserStrike.create({
+      userId: regularUser._id,
+      count: MODERATION_REPEAT_VIOLATOR_STRIKE_THRESHOLD,
+      lastActionAt: new Date(),
+      lastActionType: "ban_user",
+      lastSeverity: "high",
+      lastEnforcementAction: "permanent_ban",
+    });
+
+    const statsResponse = await request(app)
+      .get("/api/admin/moderation/stats")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(statsResponse.body).toMatchObject({
+      pendingReview: 1,
+      blockedExplicit: 1,
+      suspectedCsam: 1,
+      restrictedGore: 1,
+      animalCruelty: 1,
+      repeatViolators: 1,
+      repeatViolatorThreshold: MODERATION_REPEAT_VIOLATOR_STRIKE_THRESHOLD,
+    });
+
+    const casesResponse = await request(app)
+      .get("/api/admin/moderation/cases")
+      .query({
+        category: "explicit_pornography",
+        status: "pending",
+        search: "Pending explicit",
+        limit: 20,
+      })
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(casesResponse.body.total).toBe(1);
+    expect(casesResponse.body.cases).toHaveLength(1);
+    expect(casesResponse.body.cases[0]._id).toBe(pendingCase._id.toString());
+    expect(casesResponse.body.cases[0].queue).toBe("explicit_pornography");
+  });
+
+  test("admin scan recent alias processes recent media", async () => {
+    await Post.create({
+      author: regularUser._id,
+      text: "Family picnic at the park",
+      privacy: "public",
+      visibility: "public",
+      media: [{ url: "https://cdn.test/media/family-pic.jpg", type: "image" }],
+    });
+
+    await Video.create({
+      userId: regularUser._id.toString(),
+      name: regularUser.name,
+      username: regularUser.username,
+      videoUrl: "https://cdn.test/media/explicit-family-video.mp4",
+      coverImageUrl: "https://cdn.test/media/explicit-family-cover.jpg",
+      caption: "xxx porn clip",
+      description: "explicit porn example",
+    });
+
+    const response = await request(app)
+      .post("/api/admin/moderation/scan/recent")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ limit: 20 })
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.scannedCount).toBe(2);
+    expect(response.body.approvedCount).toBe(1);
+    expect(response.body.blockedCount).toBe(1);
+    expect(Array.isArray(response.body.cases)).toBe(true);
+    expect(response.body.cases).toHaveLength(1);
+  });
+
+  test("admin scan search alias scans content for matching users", async () => {
+    const matchedUser = await User.create({
+      name: "Search Match Person",
+      username: "search_match_person",
+      email: "search.match@test.com",
+      password: "Password123!",
+    });
+
+    await Post.create({
+      author: matchedUser._id,
+      text: "Search match safe post",
+      privacy: "public",
+      visibility: "public",
+      media: [{ url: "https://cdn.test/media/search-safe.jpg", type: "image" }],
+    });
+
+    await Video.create({
+      userId: matchedUser._id.toString(),
+      name: matchedUser.name,
+      username: matchedUser.username,
+      videoUrl: "https://cdn.test/media/search-explicit.mp4",
+      coverImageUrl: "https://cdn.test/media/search-explicit-cover.jpg",
+      caption: "search explicit",
+      description: "xxx porn search hit",
+    });
+
+    const response = await request(app)
+      .post("/api/admin/moderation/scan/search")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ search: matchedUser.name, limit: 20 })
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.scannedCount).toBe(2);
+    expect(response.body.flaggedCount).toBe(2);
+    expect(response.body.cases).toHaveLength(2);
+  });
+
+  test("repeat violators and direct user enforcement routes reflect real account state", async () => {
+    await UserStrike.create({
+      userId: regularUser._id,
+      count: MODERATION_REPEAT_VIOLATOR_STRIKE_THRESHOLD,
+      lastActionAt: new Date(),
+      lastActionType: "ban_user",
+      lastSeverity: "high",
+      lastEnforcementAction: "permanent_ban",
+    });
+
+    const repeatResponse = await request(app)
+      .get("/api/admin/moderation/repeat-violators")
+      .query({ search: "Regular", limit: 20 })
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(repeatResponse.body.total).toBe(1);
+    expect(repeatResponse.body.users).toHaveLength(1);
+    expect(repeatResponse.body.users[0].user.username).toBe("regular_user");
+    expect(repeatResponse.body.users[0].strikeCount).toBe(MODERATION_REPEAT_VIOLATOR_STRIKE_THRESHOLD);
+
+    const adminSession = jwt.verify(adminToken, process.env.JWT_SECRET);
+    const stepUpToken = signStepUpToken({
+      userId: primaryAdmin._id,
+      sessionId: adminSession.sid,
+    });
+    const stepUpCookie = `${STEP_UP_COOKIE_NAME}=${stepUpToken}`;
+
+    const actionUser = await User.create({
+      name: "Queue Action User",
+      username: "queue_action_user",
+      email: "queue-action@test.com",
+      password: "Password123!",
+    });
+
+    await request(app)
+      .post(`/api/admin/users/${actionUser._id}/suspend`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ reason: "Temporary restriction" })
+      .expect(200);
+
+    let refreshedUser = await User.findById(actionUser._id).lean();
+    expect(refreshedUser.isSuspended).toBe(true);
+    expect(refreshedUser.isActive).toBe(false);
+
+    await request(app)
+      .post(`/api/admin/users/${actionUser._id}/unsuspend`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", stepUpCookie)
+      .send({ reason: "Lifted after review" })
+      .expect(200);
+
+    refreshedUser = await User.findById(actionUser._id).lean();
+    expect(refreshedUser.isSuspended).toBe(false);
+    expect(refreshedUser.isActive).toBe(true);
+
+    await request(app)
+      .post(`/api/admin/users/${actionUser._id}/ban`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ reason: "Severe violation" })
+      .expect(200);
+
+    await request(app)
+      .post(`/api/admin/users/${actionUser._id}/unban`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", stepUpCookie)
+      .send({ reason: "Cleared after appeal" })
+      .expect(200);
+
+    refreshedUser = await User.findById(actionUser._id).lean();
+    expect(refreshedUser.isBanned).toBe(false);
+    expect(refreshedUser.isActive).toBe(true);
   });
 
   test("blocked moderated media cannot be fetched from the public media endpoint", async () => {

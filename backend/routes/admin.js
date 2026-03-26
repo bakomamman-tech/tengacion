@@ -267,6 +267,7 @@ const applyUserStrikes = async ({ targetUserId, reportId, count = 1, reason = ""
 };
 
 router.use(auth, requireRole(ADMIN_ROLES));
+router.use("/moderation", require("./moderation"));
 router.use("/news", require("./newsAdmin.routes"));
 
 router.get("/users", async (req, res) => {
@@ -472,6 +473,9 @@ router.post("/users/:id/unban", requireStepUp({ adminOnly: true }), async (req, 
     target.banReason = "";
     target.bannedAt = null;
     target.bannedBy = null;
+    if (!target.isSuspended) {
+      target.isActive = true;
+    }
     await target.save();
 
     await writeAuditLog({
@@ -486,6 +490,42 @@ router.post("/users/:id/unban", requireStepUp({ adminOnly: true }), async (req, 
     return res.json({ success: true });
   } catch (err) {
     console.error("Admin unban error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
+router.post("/users/:id/unsuspend", requireStepUp({ adminOnly: true }), async (req, res) => {
+  try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+    const target = await User.findById(req.params.id);
+    if (!assertCanManageTarget({ actorRole: req.user.role, target, res })) {
+      return;
+    }
+
+    target.isSuspended = false;
+    target.suspendedAt = null;
+    target.suspendedUntil = null;
+    target.suspensionReason = "";
+    target.tokenVersion = (Number(target.tokenVersion) || 0) + 1;
+    if (!target.isBanned) {
+      target.isActive = true;
+    }
+    await target.save();
+
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.user.unsuspend",
+      targetType: "User",
+      targetId: toId(target._id),
+      reason: String(req.body?.reason || ""),
+    });
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Admin unsuspend error:", req.requestId, err);
     return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
   }
 });

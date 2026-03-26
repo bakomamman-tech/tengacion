@@ -3,7 +3,7 @@ const express = require("express");
 const auth = require("../middleware/auth");
 const creatorAuth = require("../middleware/creatorAuth");
 const optionalAuth = require("../middleware/optionalAuth");
-const upload = require("../utils/upload");
+const upload = require("../middleware/privateUpload");
 const moderateUpload = require("../middleware/moderateUpload");
 const { createAlbum } = require("../controllers/albumsController");
 const { createBookUpload, createMusicUpload, createPodcastUpload } = require("../controllers/creatorUploadsController");
@@ -98,6 +98,7 @@ router.post(
     sourceType: "creator_video_upload",
     titleFields: ["title", "caption"],
     descriptionFields: ["description", "caption"],
+    deferDecisionResponse: true,
   }),
   createCreatorVideo
 );

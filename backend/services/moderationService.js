@@ -1,5 +1,7 @@
 const crypto = require("crypto");
 const fs = require("fs");
+const fsp = require("fs/promises");
+const path = require("path");
 const mongoose = require("mongoose");
 
 const Album = require("../models/Album");
@@ -292,6 +294,131 @@ const buildVideoScanMedia = (video = {}, req = null) => {
       originalFilename: normalizeText(`${video?._id || "video"}-upload`, 260),
     },
   ];
+};
+
+const readInspectionSnippet = async (localPath = "") => {
+  const normalizedPath = String(localPath || "").trim();
+  if (!normalizedPath || !fs.existsSync(normalizedPath)) {
+    return "";
+  }
+
+  const handle = await fsp.open(normalizedPath, "r");
+  try {
+    const buffer = Buffer.alloc(8192);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    if (!bytesRead) {
+      return "";
+    }
+    return normalizeText(buffer.subarray(0, bytesRead).toString("utf8"), 4000);
+  } finally {
+    await handle.close().catch(() => null);
+  }
+};
+
+const normalizeImageModerationResult = (policyDecision = {}, { localPath = "", mimeType = "", uploaderId = "" } = {}) => {
+  const status = String(policyDecision.status || "ALLOW");
+  const labels = uniqueStrings([
+    ...(Array.isArray(policyDecision.riskLabels) ? policyDecision.riskLabels : []),
+    mimeType ? `mime:${String(mimeType).toLowerCase()}` : "",
+    uploaderId ? `uploader:${uploaderId}` : "",
+  ]).filter(Boolean);
+  const severity = String(policyDecision.severity || "").toUpperCase();
+  const confidence = Math.max(
+    0.05,
+    Math.min(0.99, Number(policyDecision.priorityScore || 0) / 100 || 0.08)
+  );
+
+  if (status === "ALLOW") {
+    return {
+      decision: "approve",
+      labels,
+      reason: policyDecision.summary || "Content passed moderation checks.",
+      confidence,
+    };
+  }
+
+  const isExplicitSexual =
+    status === "BLOCK_SUSPECTED_CHILD_EXPLOITATION" ||
+    status === "BLOCK_EXPLICIT_ADULT";
+  if (isExplicitSexual) {
+    return {
+      decision: "reject",
+      labels,
+      reason: policyDecision.summary || "This upload violates Tengacion safety rules and could not be published.",
+      confidence: Math.max(confidence, 0.96),
+    };
+  }
+
+  if (
+    status === "BLOCK_EXTREME_GORE" ||
+    status === "BLOCK_ANIMAL_CRUELTY" ||
+    (status === "RESTRICTED_BLURRED" && ["HIGH", "CRITICAL"].includes(severity))
+  ) {
+    return {
+      decision: "reject",
+      labels,
+      reason: policyDecision.summary || "This upload violates Tengacion safety rules and could not be published.",
+      confidence: Math.max(confidence, 0.9),
+    };
+  }
+
+  if (status === "RESTRICTED_BLURRED" || status === "HOLD_FOR_REVIEW") {
+    const lowerLabels = labels.map((entry) => String(entry).toLowerCase());
+    const sensitive = lowerLabels.some((entry) => entry.includes("graphic_gore") || entry.includes("animal_cruelty"));
+    return {
+      decision: sensitive ? "quarantine" : "quarantine",
+      labels,
+      reason: policyDecision.summary || "Your upload is under review by the Tengacion moderation team.",
+      confidence: Math.max(confidence, sensitive ? 0.72 : 0.62),
+    };
+  }
+
+  return {
+    decision: "quarantine",
+    labels,
+    reason: policyDecision.summary || "Your upload is under review by the Tengacion moderation team.",
+    confidence: Math.max(confidence, 0.55),
+  };
+};
+
+const analyzeImage = async ({ localPath = "", mimeType = "", uploaderId = "" } = {}) => {
+  try {
+    const normalizedPath = String(localPath || "").trim();
+    const snippet = await readInspectionSnippet(normalizedPath);
+    const fileName = path.basename(normalizedPath || "uploaded-image");
+    const policyDecision = evaluateModerationPolicy({
+      title: fileName,
+      description: snippet,
+      metadata: {
+        mimeType,
+        localPath: normalizedPath,
+        uploaderId,
+      },
+      media: [
+        {
+          originalFilename: fileName,
+          sourceUrl: normalizedPath || fileName,
+          previewUrl: snippet || fileName,
+          mimeType,
+          mediaType: mimeType.startsWith("video/") ? "video" : "image",
+        },
+      ],
+      detectionSource: "automated_upload_scan",
+    });
+
+    return normalizeImageModerationResult(policyDecision, {
+      localPath: normalizedPath,
+      mimeType,
+      uploaderId,
+    });
+  } catch {
+    return {
+      decision: "quarantine",
+      labels: ["inspection_failed"],
+      reason: "Unable to inspect uploaded file.",
+      confidence: 0.2,
+    };
+  }
 };
 
 const mergeVisibilityWithModeration = (baselineAccess = {}, moderationDecision = {}) => {
@@ -2038,4 +2165,5 @@ module.exports = {
   scanContentForModeration,
   suspendUserAccount,
   banUserAccount,
+  analyzeImage,
 };

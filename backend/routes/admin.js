@@ -1,4 +1,5 @@
 const express = require("express");
+const fs = require("fs");
 const mongoose = require("mongoose");
 const auth = require("../middleware/auth");
 const requireRole = require("../middleware/requireRole");
@@ -10,6 +11,7 @@ const Post = require("../models/Post");
 const Message = require("../models/Message");
 const Report = require("../models/Report");
 const UserStrike = require("../models/UserStrike");
+const ModerationCase = require("../models/ModerationCase");
 const CreatorProfile = require("../models/CreatorProfile");
 const Track = require("../models/Track");
 const Album = require("../models/Album");
@@ -19,6 +21,16 @@ const Purchase = require("../models/Purchase");
 const { writeAuditLog } = require("../services/auditLogService");
 const { disconnectUserSockets } = require("../utils/realtimeSessions");
 const { buildAdminDashboard } = require("../services/adminDashboardService");
+const {
+  applyModerationAction,
+  getModerationItem,
+  listModerationItems,
+  resolvePrivateMediaPath,
+} = require("../services/uploadModerationService");
+const {
+  banUserAccount,
+  suspendUserAccount,
+} = require("../services/moderationService");
 const {
   buildCreatorFinanceRepository,
 } = require("../services/creatorFinanceRepositoryService");
@@ -100,6 +112,92 @@ const assertCanManageTarget = ({ actorRole, target, res }) => {
   }
 
   return true;
+};
+
+const applyAdminUserSafetyAction = async ({
+  req,
+  res,
+  targetId,
+  action,
+  reason,
+}) => {
+  if (!isValidId(targetId)) {
+    res.status(400).json({ error: "Invalid user id" });
+    return null;
+  }
+
+  const target = await User.findById(targetId);
+  if (toId(target?._id) === req.user.id) {
+    res.status(400).json({ error: `You cannot ${action} yourself` });
+    return null;
+  }
+
+  if (!assertCanManageTarget({ actorRole: req.user.role, target, res })) {
+    return null;
+  }
+
+  const normalizedReason = String(reason || "").trim() || "Moderation action";
+
+  if (action === "suspend") {
+    await suspendUserAccount({
+      targetUserId: target._id,
+      actorId: req.user.id,
+      reason: normalizedReason,
+      req,
+    });
+  } else if (action === "ban") {
+    await banUserAccount({
+      targetUserId: target._id,
+      actorId: req.user.id,
+      reason: normalizedReason,
+      req,
+    });
+  } else {
+    res.status(400).json({ error: "Unsupported user action" });
+    return null;
+  }
+
+  await writeAuditLog({
+    req,
+    actorId: req.user.id,
+    action: `admin.user.${action}`,
+    targetType: "User",
+    targetId: toId(target._id),
+    reason: normalizedReason,
+    metadata: {
+      action,
+    },
+  });
+
+  if (action === "ban") {
+    await logAnalyticsEvent({
+      type: "account_banned",
+      userId: target._id,
+      actorRole: target.role,
+      targetId: target._id,
+      targetType: "user",
+      metadata: { reason: normalizedReason, bannedBy: req.user.id },
+    }).catch(() => null);
+  }
+
+  return target;
+};
+
+const applyUploadModerationRouteAction = async ({ req, res, itemId, action }) => {
+  if (!isValidId(itemId)) {
+    res.status(400).json({ error: "Invalid moderation item id" });
+    return null;
+  }
+
+  const item = await applyModerationAction({
+    itemId,
+    action,
+    reason: req.body?.reason || "",
+    actor: req.user,
+    req,
+  });
+
+  return item;
 };
 
 const STRIKE_RULES = {
@@ -309,52 +407,38 @@ router.patch("/users/:id", requireStepUp({ adminOnly: true }), async (req, res) 
   }
 });
 
-router.post(
-  "/users/:id/ban",
-  requirePermissions(["ban_user_accounts"]),
-  requireStepUp({ adminOnly: true }),
-  async (req, res) => {
+router.post("/users/:id/suspend", async (req, res) => {
   try {
-    if (!isValidId(req.params.id)) {
-      return res.status(400).json({ error: "Invalid user id" });
-    }
-    const target = await User.findById(req.params.id);
-    if (toId(target?._id) === req.user.id) {
-      return res.status(400).json({ error: "You cannot ban yourself" });
-    }
-    if (!assertCanManageTarget({ actorRole: req.user.role, target, res })) {
+    const target = await applyAdminUserSafetyAction({
+      req,
+      res,
+      targetId: req.params.id,
+      action: "suspend",
+      reason: req.body?.reason || "",
+    });
+    if (!target) {
       return;
     }
-    const reason = String(req.body?.reason || "").trim();
-    if (!reason) return res.status(400).json({ error: "Reason is required" });
 
-    target.isBanned = true;
-    target.banReason = reason;
-    target.bannedAt = new Date();
-    target.bannedBy = new mongoose.Types.ObjectId(req.user.id);
-    target.tokenVersion = (Number(target.tokenVersion) || 0) + 1;
-    await target.save();
-    disconnectUserSockets(req.app, target._id, {
-      code: "ACCOUNT_BANNED",
-      message: "Your account was banned.",
-    });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Admin suspend error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
 
-    await writeAuditLog({
+router.post("/users/:id/ban", async (req, res) => {
+  try {
+    const target = await applyAdminUserSafetyAction({
       req,
-      actorId: req.user.id,
-      action: "admin.user.ban",
-      targetType: "User",
-      targetId: toId(target._id),
-      reason,
+      res,
+      targetId: req.params.id,
+      action: "ban",
+      reason: req.body?.reason || "",
     });
-    await logAnalyticsEvent({
-      type: "account_banned",
-      userId: target._id,
-      actorRole: target.role,
-      targetId: target._id,
-      targetType: "user",
-      metadata: { reason, bannedBy: req.user.id },
-    }).catch(() => null);
+    if (!target) {
+      return;
+    }
 
     return res.json({ success: true });
   } catch (err) {
@@ -516,6 +600,136 @@ router.delete("/users/:id", requireStepUp({ adminOnly: true }), async (req, res)
   } catch (err) {
     console.error("Admin soft-delete error:", req.requestId, err);
     return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
+router.get("/moderation/items", async (req, res) => {
+  try {
+    const payload = await listModerationItems({
+      status: String(req.query.status || "").trim(),
+      page: req.query.page,
+      limit: req.query.limit,
+      search: req.query.search || "",
+    });
+    return res.json(payload);
+  } catch (err) {
+    const code = err?.status || 500;
+    return res.status(code).json({ error: err.message || "Failed to load moderation items" });
+  }
+});
+
+router.get("/moderation/items/:id", async (req, res) => {
+  try {
+    const payload = await getModerationItem(req.params.id);
+    return res.json(payload);
+  } catch (err) {
+    const code = err?.status || 500;
+    return res.status(code).json({ error: err.message || "Failed to load moderation item" });
+  }
+});
+
+router.get("/moderation/items/:id/preview", async (req, res) => {
+  try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: "Invalid moderation item id" });
+    }
+
+    const item = await ModerationCase.findById(req.params.id)
+      .select("_id fileUrl mimeType media")
+      .lean();
+    if (!item) {
+      return res.status(404).json({ error: "Moderation item not found" });
+    }
+
+    const fileUrl = String(item.fileUrl || item.media?.[0]?.sourceUrl || item.media?.[0]?.previewUrl || "").trim();
+    if (!fileUrl.startsWith("private://")) {
+      return res.status(404).json({ error: "Preview unavailable" });
+    }
+
+    const filePath = resolvePrivateMediaPath(fileUrl);
+    if (!filePath || !fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "Preview unavailable" });
+    }
+
+    res.set("Cache-Control", "no-store");
+    const mimeType = String(item.mimeType || item.media?.[0]?.mimeType || "application/octet-stream");
+    res.type(mimeType);
+    return res.sendFile(filePath);
+  } catch (err) {
+    const code = err?.status || 500;
+    return res.status(code).json({ error: err.message || "Failed to load preview" });
+  }
+});
+
+router.post("/moderation/items/:id/approve", async (req, res) => {
+  try {
+    const item = await applyUploadModerationRouteAction({
+      req,
+      res,
+      itemId: req.params.id,
+      action: "approve",
+    });
+    if (!item) {
+      return;
+    }
+    return res.json({ success: true, item });
+  } catch (err) {
+    const code = err?.status || 500;
+    return res.status(code).json({ error: err.message || "Failed to approve item" });
+  }
+});
+
+router.post("/moderation/items/:id/reject", async (req, res) => {
+  try {
+    const item = await applyUploadModerationRouteAction({
+      req,
+      res,
+      itemId: req.params.id,
+      action: "reject",
+    });
+    if (!item) {
+      return;
+    }
+    return res.json({ success: true, item });
+  } catch (err) {
+    const code = err?.status || 500;
+    return res.status(code).json({ error: err.message || "Failed to reject item" });
+  }
+});
+
+router.post("/moderation/items/:id/remove", async (req, res) => {
+  try {
+    const item = await applyUploadModerationRouteAction({
+      req,
+      res,
+      itemId: req.params.id,
+      action: "remove",
+    });
+    if (!item) {
+      return;
+    }
+    return res.json({ success: true, item });
+  } catch (err) {
+    const code = err?.status || 500;
+    return res.status(code).json({ error: err.message || "Failed to remove item" });
+  }
+});
+
+router.post("/moderation/items/:id/quarantine", async (req, res) => {
+  try {
+    const item = await applyUploadModerationRouteAction({
+      req,
+      res,
+      itemId: req.params.id,
+      action: "quarantine",
+    });
+    if (!item) {
+      return;
+    }
+    return res.json({ success: true, item });
+  } catch (err) {
+    const code = err?.status || 500;
+    return res.status(code).json({ error: err.message || "Failed to quarantine item" });
   }
 });
 

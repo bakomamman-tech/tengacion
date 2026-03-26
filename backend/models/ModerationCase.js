@@ -137,6 +137,50 @@ const CaseHistoryEntrySchema = new mongoose.Schema(
   { _id: false }
 );
 
+const AdminActionHistoryEntrySchema = new mongoose.Schema(
+  {
+    action: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 80,
+    },
+    actorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    actorEmail: {
+      type: String,
+      default: "",
+      trim: true,
+      lowercase: true,
+      maxlength: 160,
+    },
+    reason: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000,
+    },
+    previousStatus: {
+      type: String,
+      enum: MODERATION_STATUSES,
+      default: "pending",
+    },
+    newStatus: {
+      type: String,
+      enum: MODERATION_STATUSES,
+      default: "pending",
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
 const ModerationCaseSchema = new mongoose.Schema(
   {
     queue: {
@@ -145,10 +189,66 @@ const ModerationCaseSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    targetType: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 40,
+      index: true,
+    },
+    targetId: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+      index: true,
+    },
+    fileUrl: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1200,
+      index: true,
+    },
+    mimeType: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+      index: true,
+    },
+    labels: {
+      type: [String],
+      default: [],
+    },
+    reason: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 2000,
+    },
+    confidence: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 1,
+    },
     status: {
       type: String,
       enum: MODERATION_STATUSES,
-      required: true,
+      default: "pending",
+      index: true,
+    },
+    visibility: {
+      type: String,
+      enum: ["private", "public", "blocked"],
+      default: "private",
+      index: true,
+    },
+    storageStage: {
+      type: String,
+      enum: ["temporary", "quarantine", "permanent"],
+      default: "temporary",
       index: true,
     },
     workflowState: {
@@ -167,6 +267,20 @@ const ModerationCaseSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       index: true,
+    },
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    reviewedAt: {
+      type: Date,
+      default: null,
+    },
+    adminActionHistory: {
+      type: [AdminActionHistoryEntrySchema],
+      default: [],
     },
     riskLabels: {
       type: [String],
@@ -412,12 +526,20 @@ ModerationCaseSchema.index(
   { name: "moderation_target_lookup" }
 );
 ModerationCaseSchema.index(
+  { targetType: 1, targetId: 1, updatedAt: -1 },
+  { name: "moderation_upload_target_lookup" }
+);
+ModerationCaseSchema.index(
   { "media.mediaId": 1, updatedAt: -1 },
   { name: "moderation_media_lookup" }
 );
 ModerationCaseSchema.index(
   { queue: 1, severity: -1, priorityScore: -1, createdAt: -1 },
   { name: "moderation_queue_lookup" }
+);
+ModerationCaseSchema.index(
+  { status: 1, updatedAt: -1 },
+  { name: "moderation_status_lookup" }
 );
 
 module.exports = mongoose.model("ModerationCase", ModerationCaseSchema);

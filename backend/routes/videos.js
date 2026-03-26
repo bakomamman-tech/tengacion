@@ -1,7 +1,7 @@
 const express = require("express");
 const auth = require("../middleware/auth");
 const creatorAuth = require("../middleware/creatorAuth");
-const upload = require("../utils/upload");
+const upload = require("../middleware/privateUpload");
 const moderateUpload = require("../middleware/moderateUpload");
 const {
   createVideoUploadPayload,
@@ -58,6 +58,7 @@ router.post(
     sourceType: "creator_video_upload",
     titleFields: ["title", "caption"],
     descriptionFields: ["description", "caption"],
+    deferDecisionResponse: true,
   }),
   createCreatorVideo
 );
@@ -82,6 +83,7 @@ router.put(
     sourceType: "creator_video_upload",
     titleFields: ["title", "caption"],
     descriptionFields: ["description", "caption"],
+    deferDecisionResponse: true,
   }),
   updateCreatorVideo
 );

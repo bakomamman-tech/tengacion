@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../../../backend/middleware/auth");
-const upload = require("../../../backend/utils/upload");
+const upload = require("../../../backend/middleware/privateUpload");
+const moderateUpload = require("../../../backend/middleware/moderateUpload");
 const postController = require("../controllers/postController");
 const optionalAuth = require("../middleware/optionalAuth");
 
@@ -12,6 +13,12 @@ router.post(
     { name: "image", maxCount: 1 },
     { name: "file", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "post",
+    titleFields: ["text", "title", "caption"],
+    descriptionFields: ["text", "description", "caption"],
+    deferDecisionResponse: true,
+  }),
   postController.createPost
 );
 router.get("/", optionalAuth, postController.getFeed);

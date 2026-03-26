@@ -282,7 +282,7 @@ const PostSchema = new mongoose.Schema(
 
     visibility: {
       type: String,
-      enum: ["public", "friends", "close_friends", "private"],
+      enum: ["public", "friends", "close_friends", "private", "blocked"],
       default: "public",
       index: true,
     },
@@ -430,9 +430,55 @@ const PostSchema = new mongoose.Schema(
 
     moderationStatus: {
       type: String,
-      default: "ALLOW",
+      enum: [
+        "pending",
+        "approved",
+        "rejected",
+        "quarantined",
+        "ALLOW",
+        "HOLD_FOR_REVIEW",
+        "RESTRICTED_BLURRED",
+        "BLOCK_EXPLICIT_ADULT",
+        "BLOCK_SUSPECTED_CHILD_EXPLOITATION",
+        "BLOCK_EXTREME_GORE",
+        "BLOCK_ANIMAL_CRUELTY",
+        "BLOCK_REPEAT_VIOLATOR",
+      ],
+      default: "pending",
       trim: true,
       maxlength: 80,
+      index: true,
+    },
+    moderationLabels: {
+      type: [String],
+      default: [],
+    },
+    moderationReason: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 2000,
+    },
+    moderationConfidence: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 1,
+    },
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    reviewedAt: {
+      type: Date,
+      default: null,
+    },
+    storageStage: {
+      type: String,
+      enum: ["temporary", "quarantine", "permanent"],
+      default: "temporary",
       index: true,
     },
     moderationCaseId: {

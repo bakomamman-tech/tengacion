@@ -1,6 +1,13 @@
 const crypto = require("crypto");
 const fsp = require("fs/promises");
-const { createOrUpdateModerationCase } = require("../services/moderationService");
+const { analyzeImage } = require("../services/moderationService");
+const { analyzeVideo } = require("../services/videoModerationService");
+const {
+  createUploadModerationCase,
+} = require("../services/uploadModerationService");
+const {
+  moveToQuarantineStorage,
+} = require("../services/storageQuarantineService");
 
 const toMediaType = (file = {}) => {
   const mime = String(file?.mimetype || "").toLowerCase();
@@ -26,6 +33,68 @@ const flattenFiles = (files) => {
 const normalizeValue = (value = "", maxLength = 1000) =>
   String(value || "").trim().replace(/\s+/g, " ").slice(0, maxLength);
 
+const uniqueStrings = (values = []) => [...new Set(values.filter(Boolean).map((entry) => String(entry)))];
+
+const toFileDescriptor = (file = {}) => {
+  const mime = String(file?.mimetype || "").toLowerCase();
+  const mediaType = mime.startsWith("video/")
+    ? "video"
+    : mime.startsWith("image/")
+      ? "image"
+      : "image";
+  return {
+    role: file?.fieldname || "primary",
+    mediaType,
+    mimeType: file?.mimetype || "",
+    originalFilename: file?.originalname || file?.filename || "",
+    fileSizeBytes: Number(file?.size || 0),
+    file,
+  };
+};
+
+const chooseWorstDecision = (results = []) => {
+  const normalized = Array.isArray(results) ? results.filter(Boolean) : [];
+  if (normalized.length === 0) {
+    return {
+      decision: "approve",
+      labels: [],
+      reason: "No media file to moderate.",
+      confidence: 0,
+      perFile: [],
+    };
+  }
+
+  const labels = uniqueStrings(normalized.flatMap((entry) => entry.labels || []));
+  const confidence = Math.max(...normalized.map((entry) => Number(entry.confidence || 0)), 0);
+  const reject = normalized.find((entry) => entry.decision === "reject");
+  const quarantine = normalized.find((entry) => entry.decision === "quarantine");
+  const decision = reject ? "reject" : quarantine ? "quarantine" : "approve";
+  const reason =
+    (reject && reject.reason) ||
+    (quarantine && quarantine.reason) ||
+    normalized[0].reason ||
+    "Content passed moderation checks.";
+
+  return {
+    decision,
+    labels,
+    reason,
+    confidence,
+    perFile: normalized,
+  };
+};
+
+const analyzeUploadFile = async (file = {}, uploaderId = "") => {
+  const mime = String(file?.mimetype || "").toLowerCase();
+  if (mime.startsWith("video/")) {
+    return analyzeVideo({ localPath: file?.path || "", mimeType: mime, uploaderId });
+  }
+  if (mime.startsWith("image/")) {
+    return analyzeImage({ localPath: file?.path || "", mimeType: mime, uploaderId });
+  }
+  return analyzeImage({ localPath: file?.path || "", mimeType: mime, uploaderId });
+};
+
 const cleanupFiles = async (files = []) => {
   await Promise.all(
     (Array.isArray(files) ? files : [])
@@ -38,6 +107,7 @@ const moderateUpload = ({
   sourceType = "upload",
   titleFields = ["title", "caption", "text"],
   descriptionFields = ["description", "details", "lyrics", "showNotes"],
+  deferDecisionResponse = false,
 } = {}) =>
   async (req, res, next) => {
     if (String(process.env.MODERATION_ENABLED || "true").toLowerCase() === "false") {
@@ -50,65 +120,97 @@ const moderateUpload = ({
         return next();
       }
 
-      const title = titleFields
-        .map((field) => normalizeValue(req.body?.[field], 240))
-        .find(Boolean) || "";
-      const description = descriptionFields
-        .map((field) => normalizeValue(req.body?.[field], 3000))
-        .find(Boolean) || "";
+      const title =
+        titleFields
+          .map((field) => normalizeValue(req.body?.[field], 240))
+          .find(Boolean) || "";
+      const description =
+        descriptionFields
+          .map((field) => normalizeValue(req.body?.[field], 3000))
+          .find(Boolean) || "";
+
+      const perFileResults = [];
+      for (const file of files) {
+        perFileResults.push({
+          ...toFileDescriptor(file),
+          ...(await analyzeUploadFile(file, req.user?.id || req.user?._id || "")),
+        });
+      }
+      const moderationUpload = chooseWorstDecision(perFileResults);
+      req.moderationUpload = {
+        ...moderationUpload,
+        sourceType,
+        files,
+        generatedAt: new Date().toISOString(),
+      };
+
+      if (deferDecisionResponse || moderationUpload.decision === "approve") {
+        return next();
+      }
+
       const uploader = {
         userId: req.user?.id || req.user?._id || null,
         email: req.user?.email || "",
         username: req.user?.username || "",
         displayName: req.user?.name || "",
       };
-      const targetId = `pending:${sourceType}:${req.user?.id || "anonymous"}:${crypto.randomUUID()}`;
-
-      const { moderationDecision, moderationCase } = await createOrUpdateModerationCase({
-        targetType: sourceType,
-        targetId,
-        title,
-        description,
-        metadata: req.body || {},
-        media: files.map((file) => ({
+      const tempTargetId = `pending:${sourceType}:${req.user?.id || "anonymous"}:${crypto.randomUUID()}`;
+      const movedMedia = [];
+      for (const file of files) {
+        const quarantined = await moveToQuarantineStorage({
+          file,
+          caseId: tempTargetId,
+          stage: "quarantine",
+        });
+        movedMedia.push({
           role: file?.fieldname || "primary",
-          mediaType: toMediaType(file),
+          mediaType: file?.mimetype?.startsWith("video/") ? "video" : "image",
           mimeType: file?.mimetype || "",
+          sourceUrl: quarantined.fileUrl,
+          previewUrl: quarantined.fileUrl,
           originalFilename: file?.originalname || file?.filename || "",
           fileSizeBytes: Number(file?.size || 0),
-          file,
-        })),
-        uploader,
-        detectionSource: "automated_upload_scan",
-        req,
-      });
-
-      req.moderationUpload = {
-        moderationDecision,
-        moderationCaseId: moderationCase?._id?.toString() || "",
-      };
-
-      if (moderationDecision?.status === "ALLOW") {
-        return next();
-      }
-
-      if (
-        moderationDecision?.status === "BLOCK_SUSPECTED_CHILD_EXPLOITATION"
-        || moderationDecision?.status === "BLOCK_EXPLICIT_ADULT"
-      ) {
-        await cleanupFiles(files);
-        return res.status(422).json({
-          error: "This upload violates Tengacion's safety rules and cannot be published.",
-          moderationStatus: moderationDecision.status,
-          reviewRequired: false,
         });
       }
 
-      await cleanupFiles(files);
-      return res.status(202).json({
-        message: "This media is under review because it may contain sensitive or prohibited content.",
-        moderationStatus: moderationDecision?.status || "HOLD_FOR_REVIEW",
-        reviewRequired: true,
+      const moderationCase = await createUploadModerationCase({
+        targetType: sourceType,
+        targetId: tempTargetId,
+        uploader,
+        fileUrl: movedMedia[0]?.sourceUrl || "",
+        mimeType: movedMedia[0]?.mimeType || "",
+        labels: moderationUpload.labels || [],
+        reason: moderationUpload.reason || "",
+        confidence: moderationUpload.confidence || 0,
+        status: moderationUpload.decision === "quarantine" ? "quarantined" : "rejected",
+        visibility: moderationUpload.decision === "quarantine" ? "private" : "blocked",
+        storageStage: "quarantine",
+        subject: {
+          title,
+          description,
+          mediaType: movedMedia[0]?.mediaType || "image",
+          createdAt: new Date(),
+        },
+        media: movedMedia,
+        file: files[0] || null,
+      });
+
+      req.moderationUpload = {
+        ...req.moderationUpload,
+        moderationCaseId: moderationCase?._id?.toString() || "",
+      };
+
+      return res.status(moderationUpload.decision === "quarantine" ? 202 : 422).json({
+        error:
+          moderationUpload.decision === "quarantine"
+            ? undefined
+            : "This upload violates Tengacion safety rules and could not be published.",
+        message:
+          moderationUpload.decision === "quarantine"
+            ? "Your upload is under review by the Tengacion moderation team."
+            : undefined,
+        moderationStatus: moderationUpload.decision === "quarantine" ? "quarantined" : "rejected",
+        reviewRequired: moderationUpload.decision === "quarantine",
       });
     } catch (error) {
       return next(error);

@@ -13,6 +13,7 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "test_secret_key_for_moderati
 require("../../apps/api/config/env");
 
 const moderationRoutes = require("../routes/moderation");
+const adminRoutes = require("../routes/admin");
 const mediaRoutes = require("../routes/media");
 const postsRoutes = require("../../apps/api/routes/posts");
 const errorHandler = require("../../apps/api/middleware/errorHandler");
@@ -26,6 +27,9 @@ const { saveUploadedMedia } = require("../services/mediaStore");
 const {
   createOrUpdateModerationCase,
 } = require("../services/moderationService");
+const {
+  createUploadModerationCase,
+} = require("../services/uploadModerationService");
 
 let mongod;
 let app;
@@ -62,6 +66,15 @@ const issueSessionToken = async (userId) => {
   );
 };
 
+const makeTempUploadFile = async ({ prefix, filename, contents }) => {
+  const filePath = path.join(
+    os.tmpdir(),
+    `${prefix}-${Date.now()}-${Math.round(Math.random() * 1e6)}-${filename}`
+  );
+  await fs.writeFile(filePath, Buffer.from(contents));
+  return filePath;
+};
+
 beforeAll(async () => {
   mongod = await MongoMemoryServer.create({
     instance: { launchTimeout: 60000 },
@@ -81,6 +94,7 @@ beforeAll(async () => {
     disconnectUserSessionsExcept: () => 0,
   });
   app.use("/api/media", mediaRoutes);
+  app.use("/api/admin", adminRoutes);
   app.use("/api/moderation", moderationRoutes);
   app.use("/api/posts", postsRoutes);
   app.use(errorHandler);
@@ -337,6 +351,243 @@ describe("moderation routes and enforcement", () => {
     } finally {
       await fs.unlink(tempFilePath).catch(() => null);
     }
+  });
+
+  test("multipart explicit video uploads are blocked before a post is created", async () => {
+    const tempFilePath = await makeTempUploadFile({
+      prefix: "tengacion-explicit-video",
+      filename: "porn-video.mp4",
+      contents: "explicit porn test video bytes",
+    });
+
+    try {
+      const response = await request(app)
+        .post("/api/posts")
+        .set("Authorization", `Bearer ${userToken}`)
+        .field("text", "Video upload")
+        .attach("file", tempFilePath, {
+          filename: "porn-video.mp4",
+          contentType: "video/mp4",
+        })
+        .expect(422);
+
+      expect(response.body).toMatchObject({
+        moderationStatus: "BLOCK_EXPLICIT_ADULT",
+        reviewRequired: false,
+      });
+      expect(await Post.countDocuments()).toBe(0);
+
+      const moderationCase = await ModerationCase.findOne({
+        queue: "upload_moderation",
+        "subject.targetType": "post_upload",
+        "subject.mediaType": "video",
+      }).lean();
+      expect(moderationCase).toBeTruthy();
+      expect(moderationCase.status).toBe("rejected");
+      expect(moderationCase.visibility).toBe("blocked");
+      expect(String(moderationCase.fileUrl || "")).toContain("private://");
+    } finally {
+      await fs.unlink(tempFilePath).catch(() => null);
+    }
+  });
+
+  test("gory uploads are quarantined and kept private", async () => {
+    const tempFilePath = await makeTempUploadFile({
+      prefix: "tengacion-gore",
+      filename: "gore-review.jpg",
+      contents: "graphic violence scene",
+    });
+
+    try {
+      const response = await request(app)
+        .post("/api/posts")
+        .set("Authorization", `Bearer ${userToken}`)
+        .field("text", "graphic violence scene")
+        .attach("file", tempFilePath, {
+          filename: "gore-review.jpg",
+          contentType: "image/jpeg",
+        })
+        .expect(202);
+
+      expect(response.body).toMatchObject({
+        moderationStatus: "quarantined",
+        reviewRequired: true,
+      });
+      expect(await Post.countDocuments()).toBe(0);
+
+      const moderationCase = await ModerationCase.findOne({
+        queue: "upload_moderation",
+        "subject.targetType": "post_upload",
+        "subject.mediaType": "image",
+      }).lean();
+      expect(moderationCase).toBeTruthy();
+      expect(moderationCase.status).toBe("quarantined");
+      expect(moderationCase.visibility).toBe("private");
+      expect(moderationCase.storageStage).toBe("quarantine");
+      expect(String(moderationCase.fileUrl || "")).toContain("private://");
+    } finally {
+      await fs.unlink(tempFilePath).catch(() => null);
+    }
+  });
+
+  test("safe uploads are approved and published", async () => {
+    const tempFilePath = await makeTempUploadFile({
+      prefix: "tengacion-safe",
+      filename: "family-pic.jpg",
+      contents: "family picnic at the park",
+    });
+
+    try {
+      const response = await request(app)
+        .post("/api/posts")
+        .set("Authorization", `Bearer ${userToken}`)
+        .field("text", "Family picnic at the park")
+        .attach("file", tempFilePath, {
+          filename: "family-pic.jpg",
+          contentType: "image/jpeg",
+        })
+        .expect(201);
+
+      expect(response.body.visibility).toBe("public");
+      expect(response.body.moderationStatus).toBe("approved");
+      expect(await Post.countDocuments()).toBe(1);
+
+      const post = await Post.findOne({ text: "Family picnic at the park" }).lean();
+      expect(post).toBeTruthy();
+      expect(post.visibility).toBe("public");
+      expect(post.moderationStatus).toBe("approved");
+
+      const moderationCase = await ModerationCase.findOne({
+        queue: "upload_moderation",
+        targetType: "post",
+        targetId: post._id.toString(),
+      }).lean();
+      expect(moderationCase).toBeTruthy();
+      expect(moderationCase.status).toBe("approved");
+      expect(moderationCase.visibility).toBe("public");
+    } finally {
+      await fs.unlink(tempFilePath).catch(() => null);
+    }
+  });
+
+  test("admin approve and reject moderation items update target content", async () => {
+    const approvedPost = await Post.create({
+      author: regularUser._id,
+      text: "Queued image",
+      visibility: "private",
+      privacy: "public",
+      moderationStatus: "pending",
+      storageStage: "temporary",
+      media: [{ url: "https://cdn.test/media/queued-safe.jpg", type: "image" }],
+    });
+
+    const approvedCase = await createUploadModerationCase({
+      targetType: "post",
+      targetId: approvedPost._id.toString(),
+      uploader: {
+        userId: regularUser._id,
+        email: regularUser.email,
+        username: regularUser.username,
+        displayName: regularUser.name,
+      },
+      fileUrl: "https://cdn.test/media/queued-safe.jpg",
+      mimeType: "image/jpeg",
+      labels: ["manual_review"],
+      reason: "Pending admin review",
+      confidence: 0.42,
+      status: "pending",
+      visibility: "private",
+      storageStage: "temporary",
+      subject: {
+        title: "Queued image",
+        description: "Queued image",
+        mediaType: "image",
+        createdAt: new Date(),
+      },
+      media: [
+        {
+          role: "primary",
+          mediaType: "image",
+          mimeType: "image/jpeg",
+          sourceUrl: "https://cdn.test/media/queued-safe.jpg",
+          previewUrl: "https://cdn.test/media/queued-safe.jpg",
+          originalFilename: "queued-safe.jpg",
+          fileSizeBytes: 123,
+        },
+      ],
+    });
+
+    await request(app)
+      .post(`/api/admin/moderation/items/${approvedCase._id}/approve`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ reason: "Looks safe" })
+      .expect(200);
+
+    const approvedCaseAfter = await ModerationCase.findById(approvedCase._id).lean();
+    const approvedPostAfter = await Post.findById(approvedPost._id).lean();
+
+    expect(approvedCaseAfter.status).toBe("approved");
+    expect(approvedPostAfter.visibility).toBe("public");
+    expect(approvedPostAfter.moderationStatus).toBe("approved");
+
+    const rejectedPost = await Post.create({
+      author: regularUser._id,
+      text: "Queued image for rejection",
+      visibility: "private",
+      privacy: "public",
+      moderationStatus: "pending",
+      storageStage: "temporary",
+      media: [{ url: "https://cdn.test/media/queued-reject.jpg", type: "image" }],
+    });
+
+    const rejectedCase = await createUploadModerationCase({
+      targetType: "post",
+      targetId: rejectedPost._id.toString(),
+      uploader: {
+        userId: regularUser._id,
+        email: regularUser.email,
+        username: regularUser.username,
+        displayName: regularUser.name,
+      },
+      fileUrl: "https://cdn.test/media/queued-reject.jpg",
+      mimeType: "image/jpeg",
+      labels: ["manual_review"],
+      reason: "Pending admin review",
+      confidence: 0.42,
+      status: "pending",
+      visibility: "private",
+      storageStage: "temporary",
+      subject: {
+        title: "Queued image for rejection",
+        description: "Queued image for rejection",
+        mediaType: "image",
+        createdAt: new Date(),
+      },
+      media: [
+        {
+          role: "primary",
+          mediaType: "image",
+          mimeType: "image/jpeg",
+          sourceUrl: "https://cdn.test/media/queued-reject.jpg",
+          previewUrl: "https://cdn.test/media/queued-reject.jpg",
+          originalFilename: "queued-reject.jpg",
+          fileSizeBytes: 123,
+        },
+      ],
+    });
+
+    await request(app)
+      .post(`/api/admin/moderation/items/${rejectedCase._id}/reject`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ reason: "Violates safety rules" })
+      .expect(200);
+
+    const rejectedCaseAfter = await ModerationCase.findById(rejectedCase._id).lean();
+    const rejectedPostAfter = await Post.findById(rejectedPost._id).lean();
+
+    expect(rejectedCaseAfter.status).toBe("rejected");
+    expect(rejectedPostAfter.visibility).toBe("blocked");
+    expect(rejectedPostAfter.moderationStatus).toBe("rejected");
   });
 
   test("Admin@tengacion can access the moderation queue", async () => {

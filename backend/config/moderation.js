@@ -13,6 +13,10 @@ const MODERATION_PERMISSIONS = [
 ];
 
 const MODERATION_STATUSES = [
+  "pending",
+  "approved",
+  "rejected",
+  "quarantined",
   "ALLOW",
   "HOLD_FOR_REVIEW",
   "RESTRICTED_BLURRED",
@@ -24,6 +28,7 @@ const MODERATION_STATUSES = [
 ];
 
 const MODERATION_QUEUES = [
+  "upload_moderation",
   "suspected_child_exploitation",
   "explicit_pornography",
   "graphic_gore",
@@ -119,6 +124,9 @@ const ACTION_PERMISSION_MAP = {
 };
 
 const BLOCKED_PUBLIC_STATUSES = new Set([
+  "pending",
+  "rejected",
+  "quarantined",
   "HOLD_FOR_REVIEW",
   "BLOCK_EXPLICIT_ADULT",
   "BLOCK_SUSPECTED_CHILD_EXPLOITATION",

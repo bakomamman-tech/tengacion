@@ -2,11 +2,12 @@ const express = require("express");
 const mongoose = require("mongoose");
 const Message = require("../models/Message");
 const User = require("../models/User");
-const upload = require("../utils/upload");
+const upload = require("../middleware/privateUpload");
 const auth = require("../middleware/auth");
 const moderateUpload = require("../middleware/moderateUpload");
 const { persistChatMessage } = require("../services/chatService");
 const { createNotification } = require("../services/notificationService");
+const { saveUploadedMedia } = require("../services/mediaStore");
 const {
   toIdString,
   avatarToUrl,
@@ -60,8 +61,9 @@ router.post(
     return res.status(400).json({ error: "No file uploaded" });
   }
 
+  const uploaded = await saveUploadedMedia(req.file);
   return res.json({
-    url: `/uploads/${req.file.filename}`,
+    url: uploaded.url,
     type: toAttachmentType(req.file.mimetype),
     name: req.file.originalname || req.file.filename,
     size: Number(req.file.size) || 0,

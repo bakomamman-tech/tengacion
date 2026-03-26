@@ -1842,6 +1842,54 @@ export const adminSoftDeleteUser = (userId, reason = "") =>
     body: JSON.stringify({ reason }),
   });
 
+const adminModerationItemAction = (itemId, action, payload = {}) =>
+  request(`${API_BASE}/admin/moderation/items/${encodeURIComponent(itemId || "")}/${action}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const adminListModerationItems = ({ status = "", page = 1, limit = 20, search = "" } = {}) => {
+  const params = new URLSearchParams();
+  params.set("page", String(page));
+  params.set("limit", String(limit));
+  if (status) {params.set("status", String(status));}
+  if (search) {params.set("search", String(search));}
+  return request(`${API_BASE}/admin/moderation/items?${params.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminGetModerationItem = (itemId) =>
+  request(`${API_BASE}/admin/moderation/items/${encodeURIComponent(itemId || "")}`, {
+    headers: getAuthHeaders(),
+  });
+
+export const adminApproveModerationItem = (itemId, payload = {}) =>
+  adminModerationItemAction(itemId, "approve", payload);
+
+export const adminRejectModerationItem = (itemId, payload = {}) =>
+  adminModerationItemAction(itemId, "reject", payload);
+
+export const adminRemoveModerationItem = (itemId, payload = {}) =>
+  adminModerationItemAction(itemId, "remove", payload);
+
+export const adminQuarantineModerationItem = (itemId, payload = {}) =>
+  adminModerationItemAction(itemId, "quarantine", payload);
+
+export const adminSuspendUser = (userId, reason = "") =>
+  request(`${API_BASE}/admin/users/${encodeURIComponent(userId || "")}/suspend`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ reason }),
+  });
+
 export const adminGetAuditLogs = ({ page = 1, limit = 30, action = "", targetType = "" } = {}) => {
   const params = new URLSearchParams();
   params.set("page", String(page));

@@ -1,4 +1,10 @@
 const asyncHandler = require("../middleware/asyncHandler");
+const {
+  createUploadModerationCase,
+} = require("../services/uploadModerationService");
+const {
+  moveToQuarantineStorage,
+} = require("../services/storageQuarantineService");
 const User = require("../models/User");
 const Video = require("../models/Video");
 const { saveUploadedFile } = require("../services/mediaStore");
@@ -15,6 +21,32 @@ const {
 } = require("../services/creatorUploadValidation");
 
 const sendBadRequest = (res, error) => res.status(400).json({ error });
+
+const persistUploadAsset = async ({ file = null, decision = "approve", caseId = "" }) => {
+  if (!file) {
+    return { url: "", fileUrl: "", storageStage: "temporary" };
+  }
+
+  if (decision === "approve") {
+    const uploaded = await saveUploadedFile(file);
+    return {
+      url: uploaded,
+      fileUrl: uploaded,
+      storageStage: "permanent",
+    };
+  }
+
+  const quarantined = await moveToQuarantineStorage({
+    file,
+    caseId,
+    stage: "quarantine",
+  });
+  return {
+    url: quarantined.fileUrl,
+    fileUrl: quarantined.fileUrl,
+    storageStage: "quarantine",
+  };
+};
 
 const parseNonNegativeNumber = (value, { fallback = 0 } = {}) => {
   if (value === "" || value === undefined || value === null) {
@@ -73,16 +105,6 @@ const resolveUploadFields = async ({ req, current = null }) => {
   const thumbnailFile = req.files?.thumbnail?.[0] || null;
   const previewClipFile = req.files?.previewClip?.[0] || null;
 
-  if (videoFile) {
-    videoUrl = await saveUploadedFile(videoFile);
-  }
-  if (thumbnailFile) {
-    coverImageUrl = await saveUploadedFile(thumbnailFile);
-  }
-  if (previewClipFile) {
-    previewClipUrl = await saveUploadedFile(previewClipFile);
-  }
-
   return {
     videoUrl,
     coverImageUrl,
@@ -108,7 +130,7 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
   const price = parseNonNegativeNumber(req.body?.price, { fallback: 0 });
   const durationSec = parseNonNegativeNumber(req.body?.durationSec, { fallback: 0 });
   const requestedStatus = resolveRequestedStatus(req.body);
-  const {
+  let {
     videoUrl,
     coverImageUrl,
     previewClipUrl,
@@ -119,7 +141,7 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
     req,
   });
 
-  if (!videoUrl) {
+  if (!videoUrl && !videoFile) {
     return sendBadRequest(res, "Video file or videoUrl is required");
   }
   if (!Number.isFinite(price)) {
@@ -156,6 +178,144 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
     return sendBadRequest(res, thumbnailError);
   }
 
+  const moderationUploadDecision = req.moderationUpload || {
+    decision: "approve",
+    labels: [],
+    reason: "",
+    confidence: 0,
+  };
+
+  if (videoFile || thumbnailFile || previewClipFile) {
+    if (moderationUploadDecision.decision !== "approve") {
+      const tempTargetId = `pending:creator_video_upload:${req.user.id}:${new Date().getTime()}`;
+      const videoAsset = videoFile
+        ? await persistUploadAsset({
+            file: videoFile,
+            decision: "quarantine",
+            caseId: tempTargetId,
+          })
+        : { url: videoUrl, fileUrl: videoUrl };
+      const coverAsset = thumbnailFile
+        ? await persistUploadAsset({
+            file: thumbnailFile,
+            decision: "quarantine",
+            caseId: tempTargetId,
+          })
+        : { url: coverImageUrl, fileUrl: coverImageUrl };
+      const previewAsset = previewClipFile
+        ? await persistUploadAsset({
+            file: previewClipFile,
+            decision: "quarantine",
+            caseId: tempTargetId,
+          })
+        : { url: previewClipUrl, fileUrl: previewClipUrl };
+
+      await createUploadModerationCase({
+        targetType: "creator_video_upload",
+        targetId: tempTargetId,
+        uploader: {
+          userId: req.user.id,
+          email: user.email || "",
+          username: user.username || "",
+          displayName: user.name || "",
+        },
+        fileUrl: videoAsset.fileUrl || coverAsset.fileUrl || previewAsset.fileUrl || "",
+        mimeType: videoFile?.mimetype || thumbnailFile?.mimetype || previewClipFile?.mimetype || "",
+        labels: moderationUploadDecision.labels || [],
+        reason: moderationUploadDecision.reason || "",
+        confidence: moderationUploadDecision.confidence || 0,
+        status: moderationUploadDecision.decision === "quarantine" ? "quarantined" : "rejected",
+        visibility: moderationUploadDecision.decision === "quarantine" ? "private" : "blocked",
+        storageStage: "quarantine",
+        subject: {
+          title: title || description || "Music video",
+          description,
+          mediaType: "video",
+          createdAt: new Date(),
+        },
+        media: [
+          {
+            role: "primary",
+            mediaType: "video",
+            mimeType: videoFile?.mimetype || "",
+            sourceUrl: videoAsset.fileUrl || "",
+            previewUrl: previewAsset.fileUrl || videoAsset.fileUrl || "",
+            originalFilename: videoFile?.originalname || videoFile?.filename || "",
+            fileSizeBytes: Number(videoFile?.size || 0),
+          },
+          ...(thumbnailFile
+            ? [
+                {
+                  role: "thumbnail",
+                  mediaType: "image",
+                  mimeType: thumbnailFile.mimetype || "",
+                  sourceUrl: coverAsset.fileUrl || "",
+                  previewUrl: coverAsset.fileUrl || "",
+                  originalFilename: thumbnailFile.originalname || thumbnailFile.filename || "",
+                  fileSizeBytes: Number(thumbnailFile.size || 0),
+                },
+              ]
+            : []),
+          ...(previewClipFile
+            ? [
+                {
+                  role: "preview_clip",
+                  mediaType: "video",
+                  mimeType: previewClipFile.mimetype || "",
+                  sourceUrl: previewAsset.fileUrl || "",
+                  previewUrl: previewAsset.fileUrl || "",
+                  originalFilename: previewClipFile.originalname || previewClipFile.filename || "",
+                  fileSizeBytes: Number(previewClipFile.size || 0),
+                },
+              ]
+            : []),
+        ],
+        file: videoFile || thumbnailFile || previewClipFile || null,
+      });
+
+      return res.status(moderationUploadDecision.decision === "quarantine" ? 202 : 422).json({
+        error:
+          moderationUploadDecision.decision === "quarantine"
+            ? undefined
+            : "This upload violates Tengacion safety rules and could not be published.",
+        message:
+          moderationUploadDecision.decision === "quarantine"
+            ? "Your upload is under review by the Tengacion moderation team."
+            : undefined,
+        moderationStatus: moderationUploadDecision.decision === "quarantine" ? "quarantined" : "rejected",
+        reviewRequired: moderationUploadDecision.decision === "quarantine",
+      });
+    }
+
+    if (videoFile) {
+      const persisted = await persistUploadAsset({
+        file: videoFile,
+        decision: "approve",
+        caseId: `approved:creator_video_upload:${req.user.id}:${new Date().getTime()}`,
+      });
+      videoUrl = persisted.url;
+    }
+    if (thumbnailFile) {
+      const persisted = await persistUploadAsset({
+        file: thumbnailFile,
+        decision: "approve",
+        caseId: `approved:creator_video_upload:${req.user.id}:${new Date().getTime()}`,
+      });
+      coverImageUrl = persisted.url;
+    }
+    if (previewClipFile) {
+      const persisted = await persistUploadAsset({
+        file: previewClipFile,
+        decision: "approve",
+        caseId: `approved:creator_video_upload:${req.user.id}:${new Date().getTime()}`,
+      });
+      previewClipUrl = persisted.url;
+    }
+  }
+
+  if (!videoUrl) {
+    return sendBadRequest(res, "Video file or videoUrl is required");
+  }
   if (requestedStatus === "published" && price > 0 && !previewClipUrl) {
     return sendBadRequest(res, "A preview clip is required before publishing a paid music video");
   }
@@ -199,9 +359,59 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
     contentFingerprintHash: verification.contentFingerprintHash,
     contentFileHash: verification.contentFileHash,
     isPublished: verification.publishedStatus === "published",
+    visibility: verification.publishedStatus === "published" ? "public" : "private",
+    moderationStatus: "approved",
+    moderationLabels: moderationUploadDecision.labels || [],
+    moderationReason: moderationUploadDecision.reason || "",
+    moderationConfidence: Number(moderationUploadDecision.confidence || 0),
+    reviewedBy: null,
+    reviewedAt: null,
+    storageStage: "permanent",
     archivedAt: null,
     likes: [],
     comments: [],
+  });
+
+  await createUploadModerationCase({
+    targetType: "video",
+    targetId: video._id.toString(),
+    uploader: {
+      userId: req.user.id,
+      email: user.email || "",
+      username: user.username || "",
+      displayName: user.name || "",
+    },
+    fileUrl: video.videoUrl || "",
+    mimeType: videoFile?.mimetype || video.videoFormat || "",
+    labels: moderationUploadDecision.labels || [],
+    reason: moderationUploadDecision.reason || "",
+    confidence: moderationUploadDecision.confidence || 0,
+    status: "approved",
+    visibility: verification.publishedStatus === "published" ? "public" : "private",
+    storageStage: "permanent",
+    subject: {
+      title: video.caption || title || description || "Music video",
+      description: video.description || description || "",
+      mediaType: "video",
+      createdAt: video.createdAt || new Date(),
+      baselineAccess: {
+        isPublished: verification.publishedStatus === "published",
+        publishedStatus: verification.publishedStatus,
+        albumStatus: "",
+      },
+    },
+    media: [
+      {
+        role: "primary",
+        mediaType: "video",
+        mimeType: videoFile?.mimetype || video.videoFormat || "",
+        sourceUrl: video.videoUrl || "",
+        previewUrl: video.coverImageUrl || video.videoUrl || "",
+        originalFilename: videoFile?.originalname || videoFile?.filename || "",
+        fileSizeBytes: Number(videoFile?.size || 0),
+      },
+    ],
+    file: videoFile || null,
   });
 
   await logAnalyticsEvent({
@@ -257,9 +467,6 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
     current: video,
   });
 
-  if (!videoUrl) {
-    return sendBadRequest(res, "Video file or videoUrl is required");
-  }
   if (!Number.isFinite(price)) {
     return sendBadRequest(res, "price must be a valid non-negative number");
   }
@@ -292,6 +499,145 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
   });
   if (thumbnailError) {
     return sendBadRequest(res, thumbnailError);
+  }
+
+  const moderationUploadDecision = req.moderationUpload || {
+    decision: "approve",
+    labels: [],
+    reason: "",
+    confidence: 0,
+  };
+
+  if (videoFile || thumbnailFile || previewClipFile) {
+    if (moderationUploadDecision.decision !== "approve") {
+      const tempTargetId = `pending:creator_video_upload:${req.user.id}:${new Date().getTime()}`;
+      const videoAsset = videoFile
+        ? await persistUploadAsset({
+            file: videoFile,
+            decision: "quarantine",
+            caseId: tempTargetId,
+          })
+        : { url: videoUrl, fileUrl: videoUrl };
+      const coverAsset = thumbnailFile
+        ? await persistUploadAsset({
+            file: thumbnailFile,
+            decision: "quarantine",
+            caseId: tempTargetId,
+          })
+        : { url: coverImageUrl, fileUrl: coverImageUrl };
+      const previewAsset = previewClipFile
+        ? await persistUploadAsset({
+            file: previewClipFile,
+            decision: "quarantine",
+            caseId: tempTargetId,
+          })
+        : { url: previewClipUrl, fileUrl: previewClipUrl };
+
+      await createUploadModerationCase({
+        targetType: "creator_video_upload",
+        targetId: tempTargetId,
+        uploader: {
+          userId: req.user.id,
+          email: user.email || "",
+          username: user.username || "",
+          displayName: user.name || "",
+        },
+        fileUrl: videoAsset.fileUrl || coverAsset.fileUrl || previewAsset.fileUrl || "",
+        mimeType: videoFile?.mimetype || thumbnailFile?.mimetype || previewClipFile?.mimetype || "",
+        labels: moderationUploadDecision.labels || [],
+        reason: moderationUploadDecision.reason || "",
+        confidence: moderationUploadDecision.confidence || 0,
+        status: moderationUploadDecision.decision === "quarantine" ? "quarantined" : "rejected",
+        visibility: moderationUploadDecision.decision === "quarantine" ? "private" : "blocked",
+        storageStage: "quarantine",
+        subject: {
+          title: title || description || "Music video",
+          description,
+          mediaType: "video",
+          createdAt: new Date(),
+        },
+        media: [
+          {
+            role: "primary",
+            mediaType: "video",
+            mimeType: videoFile?.mimetype || "",
+            sourceUrl: videoAsset.fileUrl || "",
+            previewUrl: previewAsset.fileUrl || videoAsset.fileUrl || "",
+            originalFilename: videoFile?.originalname || videoFile?.filename || "",
+            fileSizeBytes: Number(videoFile?.size || 0),
+          },
+          ...(thumbnailFile
+            ? [
+                {
+                  role: "thumbnail",
+                  mediaType: "image",
+                  mimeType: thumbnailFile.mimetype || "",
+                  sourceUrl: coverAsset.fileUrl || "",
+                  previewUrl: coverAsset.fileUrl || "",
+                  originalFilename: thumbnailFile.originalname || thumbnailFile.filename || "",
+                  fileSizeBytes: Number(thumbnailFile.size || 0),
+                },
+              ]
+            : []),
+          ...(previewClipFile
+            ? [
+                {
+                  role: "preview_clip",
+                  mediaType: "video",
+                  mimeType: previewClipFile.mimetype || "",
+                  sourceUrl: previewAsset.fileUrl || "",
+                  previewUrl: previewAsset.fileUrl || "",
+                  originalFilename: previewClipFile.originalname || previewClipFile.filename || "",
+                  fileSizeBytes: Number(previewClipFile.size || 0),
+                },
+              ]
+            : []),
+        ],
+        file: videoFile || thumbnailFile || previewClipFile || null,
+      });
+
+      return res.status(moderationUploadDecision.decision === "quarantine" ? 202 : 422).json({
+        error:
+          moderationUploadDecision.decision === "quarantine"
+            ? undefined
+            : "This upload violates Tengacion safety rules and could not be published.",
+        message:
+          moderationUploadDecision.decision === "quarantine"
+            ? "Your upload is under review by the Tengacion moderation team."
+            : undefined,
+        moderationStatus: moderationUploadDecision.decision === "quarantine" ? "quarantined" : "rejected",
+        reviewRequired: moderationUploadDecision.decision === "quarantine",
+      });
+    }
+
+    if (videoFile) {
+      const persisted = await persistUploadAsset({
+        file: videoFile,
+        decision: "approve",
+        caseId: `approved:creator_video_upload:${req.user.id}:${new Date().getTime()}`,
+      });
+      videoUrl = persisted.url;
+    }
+    if (thumbnailFile) {
+      const persisted = await persistUploadAsset({
+        file: thumbnailFile,
+        decision: "approve",
+        caseId: `approved:creator_video_upload:${req.user.id}:${new Date().getTime()}`,
+      });
+      coverImageUrl = persisted.url;
+    }
+    if (previewClipFile) {
+      const persisted = await persistUploadAsset({
+        file: previewClipFile,
+        decision: "approve",
+        caseId: `approved:creator_video_upload:${req.user.id}:${new Date().getTime()}`,
+      });
+      previewClipUrl = persisted.url;
+    }
+  }
+
+  if (!videoUrl && !videoFile) {
+    return sendBadRequest(res, "Video file or videoUrl is required");
   }
 
   if (requestedStatus === "published" && price > 0 && !previewClipUrl) {
@@ -333,8 +679,57 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
     video.contentFileHash = verification.contentFileHash;
   }
   video.isPublished = verification.publishedStatus === "published";
+  video.visibility = verification.publishedStatus === "published" ? "public" : "private";
+  video.moderationStatus = "approved";
+  video.moderationLabels = moderationUploadDecision.labels || [];
+  video.moderationReason = moderationUploadDecision.reason || "";
+  video.moderationConfidence = Number(moderationUploadDecision.confidence || 0);
+  video.reviewedBy = null;
+  video.reviewedAt = null;
+  video.storageStage = "permanent";
 
   await video.save();
+  await createUploadModerationCase({
+    targetType: "video",
+    targetId: video._id.toString(),
+    uploader: {
+      userId: req.user.id,
+      email: user.email || "",
+      username: user.username || "",
+      displayName: user.name || "",
+    },
+    fileUrl: video.videoUrl || "",
+    mimeType: videoFile?.mimetype || video.videoFormat || "",
+    labels: moderationUploadDecision.labels || [],
+    reason: moderationUploadDecision.reason || "",
+    confidence: moderationUploadDecision.confidence || 0,
+    status: "approved",
+    visibility: verification.publishedStatus === "published" ? "public" : "private",
+    storageStage: "permanent",
+    subject: {
+      title: video.caption || title || description || "Music video",
+      description: video.description || description || "",
+      mediaType: "video",
+      createdAt: video.createdAt || new Date(),
+      baselineAccess: {
+        isPublished: verification.publishedStatus === "published",
+        publishedStatus: verification.publishedStatus,
+        albumStatus: "",
+      },
+    },
+    media: [
+      {
+        role: "primary",
+        mediaType: "video",
+        mimeType: videoFile?.mimetype || video.videoFormat || "",
+        sourceUrl: video.videoUrl || "",
+        previewUrl: video.coverImageUrl || video.videoUrl || "",
+        originalFilename: videoFile?.originalname || videoFile?.filename || "",
+        fileSizeBytes: Number(videoFile?.size || 0),
+      },
+    ],
+    file: videoFile || null,
+  });
   return res.json(toVideoPayload(video));
 });
 

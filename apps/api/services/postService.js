@@ -4,6 +4,12 @@ const Post = require("../models/Post");
 const User = require("../../../backend/models/User");
 const { createNotification } = require("../../../backend/services/notificationService");
 const { saveUploadedMedia } = require("../../../backend/services/mediaStore");
+const {
+  moveToQuarantineStorage,
+} = require("../../../backend/services/storageQuarantineService");
+const {
+  createUploadModerationCase,
+} = require("../../../backend/services/uploadModerationService");
 const ApiError = require("../utils/ApiError");
 const {
   MAX_VIDEO_BYTES,
@@ -40,6 +46,73 @@ const inferMediaKind = (file) => {
   }
 
   return "image";
+};
+
+const mapLegacyModerationStatusToDecision = (status = "") => {
+  const normalized = String(status || "").trim();
+  if (!normalized) {
+    return {
+      decision: "approve",
+      labels: [],
+      reason: "",
+      confidence: 0,
+    };
+  }
+
+  if (normalized === "BLOCK_SUSPECTED_CHILD_EXPLOITATION" || normalized === "BLOCK_EXPLICIT_ADULT") {
+    return {
+      decision: "reject",
+      labels: [normalized.toLowerCase()],
+      reason: "This upload violates Tengacion safety rules and could not be published.",
+      confidence: 0.98,
+    };
+  }
+
+  if (
+    normalized === "BLOCK_EXTREME_GORE" ||
+    normalized === "BLOCK_ANIMAL_CRUELTY" ||
+    normalized === "HOLD_FOR_REVIEW" ||
+    normalized === "RESTRICTED_BLURRED"
+  ) {
+    return {
+      decision: "quarantine",
+      labels: [normalized.toLowerCase()],
+      reason: "Your upload is under review by the Tengacion moderation team.",
+      confidence: 0.78,
+    };
+  }
+
+  return {
+    decision: "approve",
+    labels: [],
+    reason: "",
+    confidence: 0,
+  };
+};
+
+const mergeModerationDecisions = ({ nextDecision = null, legacyStatus = "" } = {}) => {
+  const legacyDecision = mapLegacyModerationStatusToDecision(legacyStatus);
+  if (!nextDecision || !nextDecision.decision) {
+    return legacyDecision;
+  }
+
+  if (legacyDecision.decision === "reject") {
+    return legacyDecision;
+  }
+
+  if (legacyDecision.decision === "quarantine" && nextDecision.decision === "approve") {
+    return legacyDecision;
+  }
+
+  if (nextDecision.decision === "reject") {
+    return nextDecision;
+  }
+
+  if (nextDecision.decision === "quarantine") {
+    return nextDecision;
+  }
+
+  return nextDecision;
 };
 
 const ALLOWED_POST_TYPES = new Set(["text", "image", "video", "reel", "poll", "quiz", "checkin"]);
@@ -644,7 +717,7 @@ const toPostPayload = (post, viewerId) => {
 };
 
 class PostService {
-  static async createPost({ userId, body, files, io = null, onlineUsers = null }) {
+  static async createPost({ userId, body, files, moderationUpload = null, io = null, onlineUsers = null }) {
     const viewerId = userId;
     const text = normalizeText(body?.text || "", 240);
     const sharedPost = await buildSharedPostMeta(body?.sharedPost);
@@ -781,51 +854,106 @@ class PostService {
       };
     }
 
+    let legacyPreflightModerationDecision = null;
     if (uploadFile) {
       const preflightModerationMedia = buildPostModerationMedia({
         media: [],
         uploadFile,
       });
-      const { moderationDecision: preflightModerationDecision } =
-        await createOrUpdateModerationCase({
-          targetType: "post_upload",
-          targetId: `pending:${viewerId}:${new mongoose.Types.ObjectId().toString()}`,
+      const preflightResult = await createOrUpdateModerationCase({
+        targetType: "post_upload",
+        targetId: `pending:${viewerId}:${new mongoose.Types.ObjectId().toString()}`,
+        title: text.slice(0, 240),
+        description: text,
+        metadata: {
+          type,
+          visibility,
+          privacy,
+          feeling,
+          location,
+          tags,
+          hashtags,
+        },
+        media: preflightModerationMedia,
+        uploader: {
+          userId: viewerId,
+          email: viewer?.email || "",
+          username: viewer?.username || "",
+          displayName: viewer?.name || "",
+        },
+        detectionSource: "automated_upload_scan",
+        req: null,
+        subjectMediaType: inferMediaKind(uploadFile),
+      });
+      legacyPreflightModerationDecision = preflightResult.moderationDecision || null;
+    }
+
+    const moderationUploadDecision = mergeModerationDecisions({
+      nextDecision: moderationUpload || null,
+      legacyStatus: legacyPreflightModerationDecision?.status || "",
+    });
+
+    if (uploadFile && moderationUploadDecision.decision !== "approve") {
+      const tempTargetId = `pending:post_upload:${viewerId}:${new mongoose.Types.ObjectId().toString()}`;
+      const quarantined = await moveToQuarantineStorage({
+        file: uploadFile,
+        caseId: tempTargetId,
+        stage: "quarantine",
+      });
+      await createUploadModerationCase({
+        targetType: "post_upload",
+        targetId: tempTargetId,
+        uploader: {
+          userId: viewerId,
+          email: viewer?.email || "",
+          username: viewer?.username || "",
+          displayName: viewer?.name || "",
+        },
+        fileUrl: quarantined.fileUrl,
+        mimeType: uploadFile.mimetype || "",
+        labels: moderationUploadDecision.labels || [],
+        reason: moderationUploadDecision.reason || "",
+        confidence: moderationUploadDecision.confidence || 0,
+        status: moderationUploadDecision.decision === "quarantine" ? "quarantined" : "rejected",
+        visibility: moderationUploadDecision.decision === "quarantine" ? "private" : "blocked",
+        storageStage: "quarantine",
+        subject: {
           title: text.slice(0, 240),
           description: text,
-          metadata: {
-            type,
-            visibility,
-            privacy,
-            feeling,
-            location,
-            tags,
-            hashtags,
+          mediaType: inferMediaKind(uploadFile),
+          createdAt: new Date(),
+        },
+        media: [
+          {
+            role: "primary",
+            mediaType: inferMediaKind(uploadFile),
+            mimeType: uploadFile.mimetype || "",
+            sourceUrl: quarantined.fileUrl,
+            previewUrl: quarantined.fileUrl,
+            originalFilename: uploadFile.originalname || uploadFile.filename || "",
+            fileSizeBytes: Number(uploadFile.size || 0),
           },
-          media: preflightModerationMedia,
-          uploader: {
-            userId: viewerId,
-            email: viewer?.email || "",
-            username: viewer?.username || "",
-            displayName: viewer?.name || "",
-          },
-          detectionSource: "automated_upload_scan",
-          req: null,
-          subjectMediaType: inferMediaKind(uploadFile),
-        });
+        ],
+        file: uploadFile,
+      });
 
-      if (
-        preflightModerationDecision?.status === "BLOCK_SUSPECTED_CHILD_EXPLOITATION"
-        || preflightModerationDecision?.status === "BLOCK_EXPLICIT_ADULT"
-      ) {
-        await cleanupTempUpload(uploadFile);
+      if (moderationUploadDecision.decision === "reject") {
         return {
           success: false,
-          moderationStatus: preflightModerationDecision.status,
+          moderationStatus: legacyPreflightModerationDecision?.status || "rejected",
           reviewRequired: false,
-          message: "This upload violates Tengacion's safety rules and cannot be published.",
+          message: "This upload violates Tengacion safety rules and could not be published.",
           httpStatus: 422,
         };
       }
+
+      return {
+        success: true,
+        moderationStatus: "quarantined",
+        reviewRequired: true,
+        message: "Your upload is under review by the Tengacion moderation team.",
+        httpStatus: 202,
+      };
     }
 
     const media = [];
@@ -884,6 +1012,13 @@ class PostService {
       mentions,
       poll: type === "poll" ? poll : undefined,
       quiz: type === "quiz" ? quiz : undefined,
+      moderationStatus: "approved",
+      moderationLabels: moderationUploadDecision.labels || [],
+      moderationReason: moderationUploadDecision.reason || "",
+      moderationConfidence: Number(moderationUploadDecision.confidence || 0),
+      reviewedBy: null,
+      reviewedAt: null,
+      storageStage: "permanent",
     });
 
     const post = await withPostAuthor(Post.findById(created._id)).lean();
@@ -917,6 +1052,49 @@ class PostService {
       req: null,
     });
 
+    let uploadModerationCase = null;
+    if (uploadFile) {
+      uploadModerationCase = await createUploadModerationCase({
+        targetType: "post",
+        targetId: created._id.toString(),
+        uploader: {
+          userId: viewerId,
+          email: viewer?.email || "",
+          username: viewer?.username || "",
+          displayName: viewer?.name || "",
+        },
+        fileUrl: media[0]?.url || "",
+        mimeType: uploadFile.mimetype || "",
+        labels: moderationUploadDecision.labels || [],
+        reason: moderationUploadDecision.reason || "",
+        confidence: moderationUploadDecision.confidence || 0,
+        status: "approved",
+        visibility,
+        storageStage: "permanent",
+        subject: {
+          title: text.slice(0, 240),
+          description: text,
+          mediaType: inferMediaKind(uploadFile),
+          createdAt: created.createdAt || new Date(),
+          baselineAccess: {
+            isPublished: true,
+            publishedStatus: "published",
+            albumStatus: "",
+          },
+        },
+        media: moderationMedia.map((entry, index) => ({
+          role: entry.role || (index === 0 ? "primary" : `attachment_${index + 1}`),
+          mediaType: entry.mediaType || inferMediaKind(uploadFile),
+          mimeType: entry.mimeType || uploadFile.mimetype || "",
+          sourceUrl: entry.sourceUrl || entry.previewUrl || media[0]?.url || "",
+          previewUrl: entry.previewUrl || media[0]?.url || "",
+          originalFilename: entry.originalFilename || uploadFile.originalname || uploadFile.filename || "",
+          fileSizeBytes: Number(entry.fileSizeBytes || uploadFile.size || 0),
+        })),
+        file: uploadFile,
+      });
+    }
+
     if (moderationCase?._id) {
       await Post.updateOne(
         { _id: created._id },
@@ -929,6 +1107,28 @@ class PostService {
             blurPreviewUrl: moderationCase.media?.[0]?.restrictedPreviewUrl || "",
             originalVisibility: visibility,
             reviewRequired: moderationCase.status === "HOLD_FOR_REVIEW",
+          },
+        }
+      );
+    }
+    if (uploadModerationCase?._id) {
+      await Post.updateOne(
+        { _id: created._id },
+        {
+          $set: {
+            moderationStatus: "approved",
+            moderationLabels: moderationUploadDecision.labels || [],
+            moderationReason: moderationUploadDecision.reason || "",
+            moderationConfidence: Number(moderationUploadDecision.confidence || 0),
+            moderationCaseId: uploadModerationCase._id,
+            reviewedBy: null,
+            reviewedAt: null,
+            visibility,
+            storageStage: "permanent",
+            sensitiveContent: false,
+            sensitiveType: "",
+            blurPreviewUrl: "",
+            reviewRequired: false,
           },
         }
       );

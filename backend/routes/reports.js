@@ -12,6 +12,7 @@ const Post = require("../models/Post");
 const Message = require("../models/Message");
 const UserStrike = require("../models/UserStrike");
 const { incrementDailyMetric, logAnalyticsEvent } = require("../services/analyticsService");
+const { createOrUpdateModerationCase } = require("../services/moderationService");
 
 const router = express.Router();
 
@@ -71,6 +72,44 @@ const resolveTargetOwnerId = async ({ targetType, targetId }) => {
   return "";
 };
 
+const buildModerationMedia = ({ targetType, target }) => {
+  if (!target) return [];
+  if (targetType === "post") {
+    const media = Array.isArray(target.media) ? target.media : [];
+    const normalized = media.map((entry, index) => ({
+      role: index === 0 ? "primary" : `attachment_${index + 1}`,
+      mediaType: entry?.type || "image",
+      sourceUrl: entry?.url || "",
+      previewUrl: entry?.url || "",
+      originalFilename: "",
+      mimeType: "",
+    }));
+    if (target.video?.playbackUrl || target.video?.url) {
+      normalized.push({
+        role: "video",
+        mediaType: "video",
+        sourceUrl: target.video.playbackUrl || target.video.url,
+        previewUrl: target.video.thumbnailUrl || target.video.playbackUrl || target.video.url,
+        originalFilename: "",
+        mimeType: target.video.mimeType || "",
+      });
+    }
+    return normalized;
+  }
+  if (targetType === "message") {
+    return (Array.isArray(target.attachments) ? target.attachments : []).map((entry, index) => ({
+      role: index === 0 ? "primary" : `attachment_${index + 1}`,
+      mediaType: entry?.type || "file",
+      sourceUrl: entry?.url || "",
+      previewUrl: entry?.url || "",
+      originalFilename: entry?.name || "",
+      mimeType: "",
+      fileSizeBytes: Number(entry?.size || 0),
+    }));
+  }
+  return [];
+};
+
 router.post("/", auth, reportLimiter, async (req, res) => {
   try {
     const targetType = String(req.body?.targetType || "").toLowerCase();
@@ -111,6 +150,42 @@ router.post("/", auth, reportLimiter, async (req, res) => {
       details,
       status: "open",
     });
+    const targetOwnerId = await resolveTargetOwnerId({ targetType, targetId });
+    const ownerUser = targetOwnerId ? await User.findById(targetOwnerId).lean() : null;
+    const moderationTargetTitle =
+      targetType === "user"
+        ? ownerUser?.name || ownerUser?.username || "Reported user"
+        : String(target?.text || target?.caption || target?.title || target?.username || "").slice(0, 240);
+    const moderationDescription =
+      targetType === "user"
+        ? details
+        : String(target?.text || target?.description || details || "").slice(0, 3000);
+
+    const { moderationCase } = await createOrUpdateModerationCase({
+      targetType,
+      targetId,
+      title: moderationTargetTitle,
+      description: moderationDescription,
+      metadata: {
+        details,
+        reason,
+      },
+      media: buildModerationMedia({ targetType, target }),
+      uploader: {
+        userId: ownerUser?._id || targetOwnerId || null,
+        email: ownerUser?.email || "",
+        username: ownerUser?.username || "",
+        displayName: ownerUser?.name || "",
+      },
+      detectionSource: "user_report",
+      reportReason: reason,
+      linkedReportIds: [report._id],
+      req,
+    });
+    if (moderationCase?._id) {
+      report.moderationCaseId = moderationCase._id;
+      await report.save();
+    }
     await incrementDailyMetric("reportsCount", 1).catch(() => null);
     await logAnalyticsEvent({
       type: "content_reported",

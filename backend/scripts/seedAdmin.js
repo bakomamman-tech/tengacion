@@ -6,6 +6,14 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 const connectDB = require("../config/db");
 const User = require("../models/User");
+const {
+  PRIMARY_MODERATION_ADMIN_EMAIL,
+  PRIMARY_MODERATION_ADMIN_NAME,
+} = require("../config/moderation");
+const {
+  buildPrimaryAdminLookup,
+  buildPrimaryAdminUpdate,
+} = require("../services/moderationAdminService");
 
 const requiredEnv = (key) => {
   const value = String(process.env[key] || "").trim();
@@ -42,72 +50,59 @@ const ensureUniqueUsername = async (base) => {
 };
 
 const run = async () => {
-  const email = normalizeEmail(requiredEnv("ADMIN_EMAIL"));
+  const email = normalizeEmail(process.env.ADMIN_EMAIL || PRIMARY_MODERATION_ADMIN_EMAIL);
   const password = requiredEnv("ADMIN_PASSWORD");
-  const displayName = String(process.env.ADMIN_DISPLAY_NAME || "Tengacion Admin").trim();
+  const displayName = String(
+    process.env.ADMIN_DISPLAY_NAME || PRIMARY_MODERATION_ADMIN_NAME || "Admin@tengacion"
+  ).trim();
 
   await connectDB();
 
   try {
-    let user = await User.findOne({ email }).select("+password");
+    let user = await User.findOne(buildPrimaryAdminLookup()).select("+password");
+    if (!user && email) {
+      user = await User.findOne({ email }).select("+password");
+    }
 
     if (!user) {
       const username = await ensureUniqueUsername(toUsernameBase(email));
       user = await User.create({
-        name: displayName || "Tengacion Admin",
+        ...buildPrimaryAdminUpdate({}, { displayName }),
+        name: displayName || "Admin@tengacion",
         username,
         email,
-        password, // hashed by User pre-save hook
-        role: "super_admin",
+        password,
         isVerified: true,
-        isActive: true,
-        isBanned: false,
-        isDeleted: false,
       });
 
-      console.log(`✅ Admin ready: ${email} role=${user.role}`);
+      console.log(`Admin ready: ${email} role=${user.role}`);
       return;
     }
 
-    let changed = false;
-    const setPayload = {};
-    const unsetPayload = {};
-
-    if (!["admin", "super_admin"].includes(String(user.role || "").toLowerCase())) {
-      setPayload.role = "super_admin";
-      changed = true;
-    }
-    if (!user.isActive) {
-      setPayload.isActive = true;
-      changed = true;
-    }
-    if (user.isBanned) {
-      setPayload.isBanned = false;
-      setPayload.banReason = "";
-      unsetPayload.bannedAt = "";
-      unsetPayload.bannedBy = "";
-      changed = true;
-    }
-    if (user.isDeleted) {
-      setPayload.isDeleted = false;
-      unsetPayload.deletedAt = "";
-      changed = true;
-    }
-    if (!String(user.name || "").trim()) {
-      setPayload.name = displayName || "Tengacion Admin";
-      changed = true;
+    const setPayload = {
+      ...buildPrimaryAdminUpdate(user, { displayName }),
+      isVerified: true,
+    };
+    if (email) {
+      setPayload.email = email;
     }
 
-    if (changed) {
-      const update = { $set: setPayload };
-      if (Object.keys(unsetPayload).length > 0) {
-        update.$unset = unsetPayload;
+    await User.collection.updateOne(
+      { _id: user._id },
+      {
+        $set: setPayload,
+        $unset: {
+          bannedAt: "",
+          bannedBy: "",
+          deletedAt: "",
+          suspendedAt: "",
+          suspendedBy: "",
+        },
       }
-      await User.collection.updateOne({ _id: user._id }, update);
-      user = await User.findById(user._id).lean();
-    }
+    );
 
-    console.log(`✅ Admin ready: ${email} role=${user.role}`);
+    user = await User.findById(user._id).lean();
+    console.log(`Admin ready: ${email || user.email} role=${user.role}`);
   } finally {
     await mongoose.disconnect();
   }

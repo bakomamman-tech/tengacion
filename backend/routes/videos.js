@@ -2,6 +2,7 @@ const express = require("express");
 const auth = require("../middleware/auth");
 const creatorAuth = require("../middleware/creatorAuth");
 const upload = require("../utils/upload");
+const moderateUpload = require("../middleware/moderateUpload");
 const {
   createVideoUploadPayload,
   MAX_VIDEO_BYTES,
@@ -53,6 +54,11 @@ router.post(
     { name: "thumbnail", maxCount: 1 },
     { name: "previewClip", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "creator_video_upload",
+    titleFields: ["title", "caption"],
+    descriptionFields: ["description", "caption"],
+  }),
   createCreatorVideo
 );
 
@@ -72,6 +78,11 @@ router.put(
     { name: "thumbnail", maxCount: 1 },
     { name: "previewClip", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "creator_video_upload",
+    titleFields: ["title", "caption"],
+    descriptionFields: ["description", "caption"],
+  }),
   updateCreatorVideo
 );
 

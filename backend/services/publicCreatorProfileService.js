@@ -86,6 +86,9 @@ const buildTrackPreviewSource = (track, canAccessFull) => {
   if (!track) {
     return "";
   }
+  if (toCleanString(track.moderationStatus) === "RESTRICTED_BLURRED" && !canAccessFull) {
+    return toCleanString(track.blurPreviewUrl);
+  }
   if (canAccessFull) {
     return toCleanString(track.audioUrl);
   }
@@ -95,6 +98,9 @@ const buildTrackPreviewSource = (track, canAccessFull) => {
 const buildVideoPreviewSource = (video, canAccessFull) => {
   if (!video) {
     return "";
+  }
+  if (toCleanString(video.moderationStatus) === "RESTRICTED_BLURRED" && !canAccessFull) {
+    return toCleanString(video.blurPreviewUrl);
   }
   if (canAccessFull) {
     return toCleanString(video.videoUrl);
@@ -106,6 +112,9 @@ const buildBookPreviewSource = (book, canAccessFull) => {
   if (!book) {
     return "";
   }
+  if (toCleanString(book.moderationStatus) === "RESTRICTED_BLURRED" && !canAccessFull) {
+    return toCleanString(book.blurPreviewUrl);
+  }
   if (canAccessFull) {
     return toCleanString(book.contentUrl || book.fileUrl);
   }
@@ -116,6 +125,9 @@ const buildBookPreviewSource = (book, canAccessFull) => {
 };
 
 const buildAlbumPreviewSource = (album, canAccessFull) => {
+  if (toCleanString(album?.moderationStatus) === "RESTRICTED_BLURRED" && !canAccessFull) {
+    return toCleanString(album?.blurPreviewUrl);
+  }
   const firstTrack = Array.isArray(album?.tracks) ? album.tracks[0] : null;
   if (!firstTrack) {
     return "";
@@ -150,7 +162,11 @@ const mapTrackItem = ({ track, req, viewerId, ownerAccess, entitlements, creator
           .filter(Boolean)
           .join(" ")
       : toCleanString(track.genre),
-    coverUrl: toCleanString(track.coverImageUrl || track.coverUrl),
+    coverUrl: toCleanString(
+      track.moderationStatus === "RESTRICTED_BLURRED"
+        ? track.blurPreviewUrl || track.coverImageUrl || track.coverUrl
+        : track.coverImageUrl || track.coverUrl
+    ),
     previewUrl: buildSignedUrl({
       req,
       sourceUrl: previewSource,
@@ -214,7 +230,11 @@ const mapAlbumItem = ({ album, req, viewerId, ownerAccess, entitlements, creator
     title: toCleanString(album.title),
     description: toCleanString(album.description),
     subtitle: `${numberOrZero(album.totalTracks || tracks.length)} ${numberOrZero(album.totalTracks || tracks.length) === 1 ? "track" : "tracks"}`,
-    coverUrl: toCleanString(album.coverUrl),
+    coverUrl: toCleanString(
+      album.moderationStatus === "RESTRICTED_BLURRED"
+        ? album.blurPreviewUrl || album.coverUrl
+        : album.coverUrl
+    ),
     previewUrl: buildSignedUrl({
       req,
       sourceUrl: previewSource,
@@ -270,7 +290,11 @@ const mapVideoItem = ({ video, req, viewerId, ownerAccess, entitlements, creator
     title: toCleanString(video.caption || "Music video"),
     description: toCleanString(video.description || video.caption),
     subtitle: numberOrZero(video.viewsCount) ? `${numberOrZero(video.viewsCount).toLocaleString()} views` : "Music video",
-    coverUrl: toCleanString(video.coverImageUrl),
+    coverUrl: toCleanString(
+      video.moderationStatus === "RESTRICTED_BLURRED"
+        ? video.blurPreviewUrl || video.coverImageUrl
+        : video.coverImageUrl
+    ),
     previewUrl: buildSignedUrl({
       req,
       sourceUrl: previewSource,
@@ -327,7 +351,11 @@ const mapBookItem = ({ book, req, viewerId, ownerAccess, entitlements, creatorSu
     title: toCleanString(book.title),
     description: toCleanString(book.description),
     subtitle: [toCleanString(book.genre), toCleanString(book.fileFormat).toUpperCase()].filter(Boolean).join(" • "),
-    coverUrl: toCleanString(book.coverImageUrl || book.coverUrl),
+    coverUrl: toCleanString(
+      book.moderationStatus === "RESTRICTED_BLURRED"
+        ? book.blurPreviewUrl || book.coverImageUrl || book.coverUrl
+        : book.coverImageUrl || book.coverUrl
+    ),
     previewUrl: buildSignedUrl({
       req,
       sourceUrl: previewSource,

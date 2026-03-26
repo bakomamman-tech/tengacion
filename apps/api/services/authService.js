@@ -31,6 +31,7 @@ const {
   scoreLoginRisk,
   updateTrustedDevice,
 } = require("../../../backend/services/loginRisk");
+const { getEffectivePermissions } = require("../../../backend/services/permissionService");
 
 const USERNAME_REGEX = /^[a-zA-Z0-9._]{3,30}$/;
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
@@ -243,7 +244,7 @@ const maskEmail = (email = "") => {
 };
 
 const isAdminRole = (role = "") =>
-  ["admin", "super_admin"].includes(String(role || "").toLowerCase());
+  ["admin", "super_admin", "trust_safety_admin"].includes(String(role || "").toLowerCase());
 
 const EMAIL_CHALLENGE_PURPOSE_COPY = {
   login_mfa: {
@@ -263,7 +264,7 @@ const MFA_SUMMARY_SELECT =
 const MFA_SECRET_SELECT = `${MFA_SUMMARY_SELECT} +twoFactor.secretCipher`;
 const MFA_SETUP_SECRET_SELECT = `${MFA_SECRET_SELECT} +twoFactor.pendingSecretCipher`;
 const USER_PROFILE_SELECT =
-  "_id name username email role avatar cover audioPrefs emailVerified isActive isBanned isDeleted lastLogin lastLoginAt lastSeenAt";
+  "_id name username email role permissions moderationProfile avatar cover audioPrefs emailVerified isActive isBanned isDeleted isSuspended lastLogin lastLoginAt lastSeenAt";
 const SESSION_SELECT =
   "sessions.sessionId sessions.deviceName sessions.ip sessions.userAgent sessions.country sessions.city sessions.fingerprint sessions.createdAt sessions.lastSeenAt sessions.revokedAt";
 const SESSION_SELECT_WITH_HASH = `${SESSION_SELECT} +sessions.refreshTokenHash`;
@@ -289,6 +290,9 @@ const assertUserCanSignIn = (user) => {
   }
   if (user.isBanned) {
     throw ApiError.forbidden("Your account is banned");
+  }
+  if (user.isSuspended) {
+    throw ApiError.forbidden("Your account is suspended");
   }
 };
 
@@ -329,6 +333,11 @@ const buildProfilePayload = (user) => {
     delete payload.twoFactor.pendingSecretCipher;
   }
   payload.twoFactor = buildMfaSummary(payload);
+  payload.permissions = [...getEffectivePermissions(payload)];
+  payload.moderationProfile = payload.moderationProfile || {
+    isPrimaryAuthority: false,
+    escalationEmail: "",
+  };
   return payload;
 };
 

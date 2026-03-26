@@ -10,7 +10,7 @@ const ADMIN_ITEMS = [
   { key: "messages", label: "Messages", path: "/admin/messages" },
   { key: "campaigns", label: "Campaigns", path: "/admin/campaigns" },
   { key: "transactions", label: "Transactions", path: "/admin/transactions" },
-  { key: "reports", label: "Reports", path: "/admin/reports" },
+  { key: "reports", label: "Moderation", path: "/admin/reports" },
   { key: "analytics", label: "Analytics", path: "/admin/analytics" },
   { key: "settings", label: "Settings", path: "/admin/settings" },
 ];
@@ -22,6 +22,7 @@ export default function AdminShell({ title, subtitle = "", user, actions = null,
   const activePath = useMemo(() => {
     if (location.pathname === "/admin") {return "/admin/dashboard";}
     if (location.pathname.startsWith("/admin/creators/")) {return "/admin/content";}
+    if (location.pathname.startsWith("/admin/moderation")) {return "/admin/reports";}
     return ADMIN_ITEMS.find((item) => location.pathname.startsWith(item.path))?.path || "/admin/dashboard";
   }, [location.pathname]);
 

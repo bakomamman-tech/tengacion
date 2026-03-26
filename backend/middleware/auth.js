@@ -4,6 +4,7 @@ const {
   authenticateAccessToken,
   extractBearerToken,
 } = require("../services/sessionAuth");
+const { getEffectivePermissions } = require("../services/permissionService");
 
 /**
  * Authentication middleware
@@ -24,7 +25,12 @@ const auth = asyncHandler(async (req, res, next) => {
     req.user = {
       id: authContext.userId,
       _id: authContext.user._id,
+      name: authContext.user.name || "",
+      username: authContext.user.username || "",
+      email: authContext.user.email || "",
       role: authContext.user.role || "user",
+      permissions: [...getEffectivePermissions(authContext.user)],
+      moderationProfile: authContext.user.moderationProfile || {},
       tokenVersion: authContext.tokenVersion,
       sessionId: authContext.sessionId,
       twoFactor: {

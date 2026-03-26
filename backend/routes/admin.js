@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const auth = require("../middleware/auth");
 const requireRole = require("../middleware/requireRole");
 const requireStepUp = require("../middleware/requireStepUp");
+const requirePermissions = require("../middleware/requirePermissions");
 const User = require("../models/User");
 const AuditLog = require("../models/AuditLog");
 const Post = require("../models/Post");
@@ -308,7 +309,11 @@ router.patch("/users/:id", requireStepUp({ adminOnly: true }), async (req, res) 
   }
 });
 
-router.post("/users/:id/ban", requireStepUp({ adminOnly: true }), async (req, res) => {
+router.post(
+  "/users/:id/ban",
+  requirePermissions(["ban_user_accounts"]),
+  requireStepUp({ adminOnly: true }),
+  async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id" });
@@ -514,7 +519,7 @@ router.delete("/users/:id", requireStepUp({ adminOnly: true }), async (req, res)
   }
 });
 
-router.get("/audit-logs", async (req, res) => {
+router.get("/audit-logs", requirePermissions(["view_audit_logs"]), async (req, res) => {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 30));
@@ -567,7 +572,7 @@ router.get("/audit-logs", async (req, res) => {
   }
 });
 
-router.get("/reports", async (req, res) => {
+router.get("/reports", requirePermissions(["view_moderation_queue"]), async (req, res) => {
   try {
     const status = String(req.query.status || "").trim();
     const page = Math.max(1, Number(req.query.page) || 1);
@@ -600,7 +605,7 @@ router.get("/reports", async (req, res) => {
   }
 });
 
-router.get("/reports/:id", async (req, res) => {
+router.get("/reports/:id", requirePermissions(["view_moderation_queue"]), async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid report id" });
@@ -619,7 +624,7 @@ router.get("/reports/:id", async (req, res) => {
   }
 });
 
-router.patch("/reports/:id", async (req, res) => {
+router.patch("/reports/:id", requirePermissions(["view_moderation_queue"]), async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid report id" });
@@ -657,7 +662,7 @@ router.patch("/reports/:id", async (req, res) => {
   }
 });
 
-router.post("/moderation/action", async (req, res) => {
+router.post("/moderation/action", requirePermissions(["view_moderation_queue"]), async (req, res) => {
   try {
     const action = String(req.body?.action || "").trim().toLowerCase();
     const targetType = String(req.body?.targetType || "").trim().toLowerCase();
@@ -775,6 +780,10 @@ router.get("/content", async (req, res) => {
           createdAt: getCreatedAt(row),
           metricValue: getMetric(row),
           status: row.isPublished === false ? "draft" : "published",
+          moderationStatus: row.moderationStatus || "ALLOW",
+          reviewRequired: Boolean(row.reviewRequired),
+          sensitiveType: row.sensitiveType || "",
+          sensitiveContent: Boolean(row.sensitiveContent),
         });
       }
     };

@@ -610,7 +610,7 @@ export default function App() {
           <Route
             path="/admin/audit-logs"
             element={
-              <AdminRoute user={user}>
+              <AdminRoute user={user} requiredPermissions={["view_audit_logs"]}>
                 <AdminPanel user={user} />
               </AdminRoute>
             }
@@ -618,7 +618,23 @@ export default function App() {
           <Route
             path="/admin/reports"
             element={
-              <AdminRoute user={user}>
+              <AdminRoute user={user} requiredPermissions={["view_moderation_queue"]}>
+                <AdminReportsPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/moderation"
+            element={
+              <AdminRoute user={user} requiredPermissions={["view_moderation_queue"]}>
+                <AdminReportsPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/moderation/cases/:caseId"
+            element={
+              <AdminRoute user={user} requiredPermissions={["view_moderation_queue"]}>
                 <AdminReportsPage user={user} />
               </AdminRoute>
             }

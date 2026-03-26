@@ -11,7 +11,7 @@ class SessionAuthError extends Error {
 }
 
 const DEFAULT_USER_SELECT =
-  "_id role isActive isBanned isDeleted tokenVersion sessions twoFactor";
+  "_id name username email role permissions moderationProfile isActive isBanned isDeleted isSuspended tokenVersion sessions twoFactor";
 
 const extractBearerToken = (authHeader = "") => {
   const header = String(authHeader || "").trim();
@@ -68,6 +68,9 @@ const validateSessionClaims = async (decoded, { touchSession = false } = {}) => 
 
   if (user.isBanned) {
     throw new SessionAuthError("Account is banned", "ACCOUNT_BANNED", 403);
+  }
+  if (user.isSuspended) {
+    throw new SessionAuthError("Account is suspended", "ACCOUNT_SUSPENDED", 403);
   }
 
   const tokenVersion = Number(user.tokenVersion) || 0;

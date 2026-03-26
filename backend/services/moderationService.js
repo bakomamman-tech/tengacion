@@ -1,0 +1,1581 @@
+const crypto = require("crypto");
+const fs = require("fs");
+const mongoose = require("mongoose");
+
+const Album = require("../models/Album");
+const Book = require("../models/Book");
+const CreatorProfile = require("../models/CreatorProfile");
+const MediaHash = require("../models/MediaHash");
+const ModerationCase = require("../models/ModerationCase");
+const ModerationDecisionLog = require("../models/ModerationDecisionLog");
+const Post = require("../models/Post");
+const Report = require("../models/Report");
+const Track = require("../models/Track");
+const User = require("../models/User");
+const UserStrike = require("../models/UserStrike");
+const Video = require("../models/Video");
+const {
+  ACTION_PERMISSION_MAP,
+  BLOCKED_PUBLIC_STATUSES,
+  CRITICAL_QUEUE_SET,
+  CRITICAL_STATUS_SET,
+  QUEUE_REVIEW_PERMISSION_MAP,
+  RESTRICTED_PUBLIC_STATUSES,
+} = require("../config/moderation");
+const { writeAuditLog } = require("./auditLogService");
+const { buildSignedMediaUrl } = require("./mediaSigner");
+const { findPrimaryModerationAdmin } = require("./moderationAdminService");
+const {
+  buildRestrictedPreviewPath,
+  evaluateModerationPolicy,
+} = require("./moderationPolicyService");
+const { createNotification } = require("./notificationService");
+const { hasAllPermissions } = require("./permissionService");
+const { disconnectUserSockets } = require("../utils/realtimeSessions");
+const sendSecurityEmail = require("../utils/sendSecurityEmail");
+
+const ACTIVE_REVIEW_STATES = ["OPEN", "UNDER_REVIEW", "ESCALATED"];
+const CASE_ACTIONS = [
+  "approve",
+  "reject",
+  "restrict_with_warning",
+  "blur_preview",
+  "suspend_user",
+  "ban_user",
+  "preserve_evidence",
+  "escalate_case",
+];
+
+const TARGET_MODEL_MAP = {
+  album: Album,
+  book: Book,
+  post: Post,
+  track: Track,
+  video: Video,
+};
+
+const toId = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (value._id) return value._id.toString();
+  if (typeof value.toString === "function") return value.toString();
+  return "";
+};
+
+const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
+const uniqueStrings = (values = []) => [...new Set(values.filter(Boolean).map((entry) => String(entry)))];
+const normalizeText = (value = "", maxLength = 2000) =>
+  String(value || "").trim().replace(/\s+/g, " ").slice(0, maxLength);
+
+const extractMediaIdFromSource = (value = "") => {
+  const match = String(value || "").match(/\/api\/media\/([a-f0-9]{24})(?:$|[/?#])/i);
+  return match?.[1] || "";
+};
+
+const hashFileFromDisk = (filePath) =>
+  new Promise((resolve, reject) => {
+    const digest = crypto.createHash("sha256");
+    const stream = fs.createReadStream(filePath);
+    stream.on("error", reject);
+    stream.on("data", (chunk) => digest.update(chunk));
+    stream.on("end", () => resolve(digest.digest("hex")));
+  });
+
+const computeUploadHash = async (file = null) => {
+  if (!file?.path || !fs.existsSync(file.path)) {
+    return crypto
+      .createHash("sha256")
+      .update(
+        JSON.stringify({
+          name: file?.originalname || "",
+          mimeType: file?.mimetype || "",
+          size: Number(file?.size || 0),
+        })
+      )
+      .digest("hex");
+  }
+
+  try {
+    return await hashFileFromDisk(file.path);
+  } catch {
+    return "";
+  }
+};
+
+const buildSourceReferenceHash = (asset = {}) =>
+  crypto
+    .createHash("sha256")
+    .update(
+      JSON.stringify({
+        sourceUrl: asset.sourceUrl || "",
+        previewUrl: asset.previewUrl || "",
+        mediaType: asset.mediaType || "",
+        mimeType: asset.mimeType || "",
+        originalFilename: asset.originalFilename || "",
+        fileSizeBytes: Number(asset.fileSizeBytes || 0),
+      })
+    )
+    .digest("hex");
+
+const buildFingerprintHash = ({ title = "", description = "", asset = {}, sourceHash = "" }) =>
+  crypto
+    .createHash("sha256")
+    .update(
+      JSON.stringify({
+        title: normalizeText(title, 400),
+        description: normalizeText(description, 1200),
+        mediaType: asset.mediaType || "",
+        sourceHash,
+      })
+    )
+    .digest("hex");
+
+const buildCaseMediaEntries = ({ media = [], req, queue = "", severity = "" }) =>
+  (Array.isArray(media) ? media : []).map((asset) => {
+    const supportsRestrictedPreview =
+      !["suspected_child_exploitation", "explicit_pornography"].includes(String(queue || ""));
+
+    return {
+      role: normalizeText(asset.role || "primary", 40),
+      mediaId: normalizeText(asset.mediaId || extractMediaIdFromSource(asset.sourceUrl), 120),
+      mediaType: normalizeText(asset.mediaType || "unknown", 40),
+      mimeType: normalizeText(asset.mimeType || "", 120),
+      sourceUrl: normalizeText(asset.sourceUrl || "", 1200),
+      previewUrl: normalizeText(asset.previewUrl || "", 1200),
+      restrictedPreviewUrl: supportsRestrictedPreview
+        ? (
+          normalizeText(asset.restrictedPreviewUrl || "", 1200)
+          || buildRestrictedPreviewPath({ req, category: queue, severity })
+        )
+        : "",
+      originalFilename: normalizeText(asset.originalFilename || "", 260),
+      fileSizeBytes: Number(asset.fileSizeBytes || 0),
+      hashIds: [],
+      fileHash: asset.fileHash || "",
+      fingerprintHash: asset.fingerprintHash || "",
+    };
+  });
+
+const stripTransientMediaFields = (media = []) =>
+  media.map((asset) => ({
+    role: asset.role,
+    mediaId: asset.mediaId,
+    mediaType: asset.mediaType,
+    mimeType: asset.mimeType,
+    sourceUrl: asset.sourceUrl,
+    previewUrl: asset.previewUrl,
+    restrictedPreviewUrl: asset.restrictedPreviewUrl,
+    originalFilename: asset.originalFilename,
+    fileSizeBytes: asset.fileSizeBytes,
+    hashIds: asset.hashIds || [],
+  }));
+
+const deriveBaselineAccess = (targetType, target = {}) => {
+  if (targetType === "album") {
+    return {
+      isPublished: target.isPublished !== false,
+      publishedStatus: String(
+        target.publishedStatus || (target.isPublished === false ? "blocked" : "published")
+      ),
+      albumStatus: String(target.status || (target.isPublished === false ? "draft" : "published")),
+    };
+  }
+
+  if (["track", "book", "video"].includes(targetType)) {
+    return {
+      isPublished: target.isPublished !== false,
+      publishedStatus: String(
+        target.publishedStatus || (target.isPublished === false ? "blocked" : "published")
+      ),
+      albumStatus: "",
+    };
+  }
+
+  return {
+    isPublished: true,
+    publishedStatus: "published",
+    albumStatus: "",
+  };
+};
+
+const mergeVisibilityWithModeration = (baselineAccess = {}, moderationDecision = {}) => {
+  const status = String(moderationDecision?.status || "ALLOW");
+  if (status === "ALLOW") {
+    return {
+      isPublished: Boolean(baselineAccess?.isPublished),
+      publishedStatus: String(baselineAccess?.publishedStatus || "published"),
+      albumStatus: String(
+        baselineAccess?.albumStatus || (baselineAccess?.isPublished ? "published" : "draft")
+      ),
+    };
+  }
+
+  if (status === "RESTRICTED_BLURRED") {
+    return {
+      isPublished: true,
+      publishedStatus: "published",
+      albumStatus: "published",
+    };
+  }
+
+  return {
+    isPublished: false,
+    publishedStatus: status === "HOLD_FOR_REVIEW" ? "under_review" : "blocked",
+    albumStatus: "draft",
+  };
+};
+
+const resolveTargetOwnerId = async ({ targetType, targetId, targetDoc = null }) => {
+  if (targetType === "post") {
+    const post = targetDoc || (await Post.findById(targetId).select("author").lean());
+    return toId(post?.author);
+  }
+
+  if (targetType === "video") {
+    const video =
+      targetDoc
+      || (await Video.findById(targetId).select("userId creatorProfileId").lean());
+    if (video?.creatorProfileId) {
+      const creator = await CreatorProfile.findById(video.creatorProfileId).select("userId").lean();
+      return toId(creator?.userId) || toId(video?.userId);
+    }
+    return toId(video?.userId);
+  }
+
+  if (["track", "book", "album"].includes(targetType)) {
+    const model = TARGET_MODEL_MAP[targetType];
+    const target =
+      targetDoc || (await model.findById(targetId).select("creatorId").lean());
+    const creator = await CreatorProfile.findById(target?.creatorId).select("userId").lean();
+    return toId(creator?.userId);
+  }
+
+  return "";
+};
+
+const getLatestCaseMapForTargets = async (targetType, targetIds = []) => {
+  const normalizedIds = uniqueStrings(targetIds);
+  if (!targetType || normalizedIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await ModerationCase.find({
+    "subject.targetType": String(targetType),
+    "subject.targetId": { $in: normalizedIds },
+  })
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .lean();
+
+  const map = new Map();
+  rows.forEach((row) => {
+    const key = String(row?.subject?.targetId || "");
+    if (key && !map.has(key)) {
+      map.set(key, row);
+    }
+  });
+  return map;
+};
+
+const getLatestCaseForTarget = async (targetType, targetId) => {
+  if (!targetType || !targetId) {
+    return null;
+  }
+  return ModerationCase.findOne({
+    "subject.targetType": String(targetType),
+    "subject.targetId": String(targetId),
+  })
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .lean();
+};
+
+const isHiddenFromPublic = (caseDoc = null) =>
+  Boolean(caseDoc && BLOCKED_PUBLIC_STATUSES.has(String(caseDoc.status || "")));
+
+const isRestrictedForPublic = (caseDoc = null) =>
+  Boolean(caseDoc && RESTRICTED_PUBLIC_STATUSES.has(String(caseDoc.status || "")));
+
+const filterPublicItems = async (targetType, items = []) => {
+  const caseMap = await getLatestCaseMapForTargets(
+    targetType,
+    (Array.isArray(items) ? items : []).map((entry) => toId(entry?._id || entry?.id))
+  );
+
+  const visibleItems = (Array.isArray(items) ? items : []).filter((entry) => {
+    const key = toId(entry?._id || entry?.id);
+    return !isHiddenFromPublic(caseMap.get(key));
+  });
+
+  return { items: visibleItems, caseMap };
+};
+
+const getPublicModerationOverlay = (caseDoc = null, req = null) => {
+  if (!isRestrictedForPublic(caseDoc)) {
+    return null;
+  }
+
+  const firstAsset = Array.isArray(caseDoc?.media) ? caseDoc.media[0] : null;
+  return {
+    status: String(caseDoc?.status || ""),
+    severity: String(caseDoc?.severity || "HIGH"),
+    warningLabel: normalizeText(caseDoc?.publicWarningLabel || "Sensitive content", 160),
+    placeholderUrl:
+      normalizeText(firstAsset?.restrictedPreviewUrl || "", 1200)
+      || buildRestrictedPreviewPath({
+        req,
+        category: caseDoc?.queue || "graphic_gore",
+        severity: caseDoc?.severity || "HIGH",
+      }),
+    riskLabels: Array.isArray(caseDoc?.riskLabels) ? caseDoc.riskLabels : [],
+  };
+};
+
+const buildCaseViewPermissions = (caseDoc = null) => {
+  if (!caseDoc) {
+    return [];
+  }
+
+  const required = ["view_moderation_queue"];
+  const queuePermissions = QUEUE_REVIEW_PERMISSION_MAP[String(caseDoc.queue || "")] || [];
+  const needsQuarantineReview =
+    Boolean(caseDoc?.quarantine?.isQuarantined)
+    && !queuePermissions.includes("review_quarantined_media");
+
+  if (needsQuarantineReview) {
+    required.push("review_quarantined_media");
+  }
+
+  return uniqueStrings([...required, ...queuePermissions]);
+};
+
+const buildCaseActionPermissions = (caseDoc = null, action = "") =>
+  uniqueStrings([
+    ...buildCaseViewPermissions(caseDoc),
+    ...(ACTION_PERMISSION_MAP[String(action || "")] || []),
+  ]);
+
+const assertCasePermissions = ({ user, caseDoc, action = "" }) => {
+  const required = action
+    ? buildCaseActionPermissions(caseDoc, action)
+    : buildCaseViewPermissions(caseDoc);
+  if (!hasAllPermissions(user, required)) {
+    const error = new Error("Forbidden");
+    error.status = 403;
+    error.missingPermissions = required;
+    throw error;
+  }
+};
+
+const buildAvailableActions = (caseDoc = null, user = null) =>
+  CASE_ACTIONS.filter((action) => {
+    if (
+      ["restrict_with_warning", "blur_preview"].includes(action)
+      && ["suspected_child_exploitation", "explicit_pornography"].includes(
+        String(caseDoc?.queue || "")
+      )
+    ) {
+      return false;
+    }
+    return hasAllPermissions(user, buildCaseActionPermissions(caseDoc, action));
+  });
+
+const persistMediaHashes = async ({ moderationCase, title = "", description = "", media = [] }) => {
+  const assetRecords = [];
+  for (const asset of media) {
+    const referenceHash = buildSourceReferenceHash(asset);
+    const fingerprintHash = asset.fingerprintHash || buildFingerprintHash({
+      title,
+      description,
+      asset,
+      sourceHash: referenceHash,
+    });
+    if (asset.fileHash) {
+      assetRecords.push({
+        moderationCaseId: moderationCase._id,
+        targetType: moderationCase.subject.targetType,
+        targetId: moderationCase.subject.targetId,
+        mediaRole: asset.role,
+        algorithm: "sha256",
+        hashKind: "content_file",
+        hashValue: asset.fileHash,
+        sourceUrl: asset.sourceUrl,
+        mimeType: asset.mimeType,
+        originalFilename: asset.originalFilename,
+      });
+    }
+    assetRecords.push(
+      {
+        moderationCaseId: moderationCase._id,
+        targetType: moderationCase.subject.targetType,
+        targetId: moderationCase.subject.targetId,
+        mediaRole: asset.role,
+        algorithm: "sha256",
+        hashKind: "source_reference",
+        hashValue: referenceHash,
+        sourceUrl: asset.sourceUrl,
+        mimeType: asset.mimeType,
+        originalFilename: asset.originalFilename,
+      },
+      {
+        moderationCaseId: moderationCase._id,
+        targetType: moderationCase.subject.targetType,
+        targetId: moderationCase.subject.targetId,
+        mediaRole: asset.role,
+        algorithm: "sha256",
+        hashKind: "fingerprint",
+        hashValue: fingerprintHash,
+        sourceUrl: asset.sourceUrl,
+        mimeType: asset.mimeType,
+        originalFilename: asset.originalFilename,
+      }
+    );
+  }
+
+  if (assetRecords.length === 0) {
+    return moderationCase.media || [];
+  }
+
+  const created = await MediaHash.create(assetRecords);
+  const createdByAsset = new Map();
+  created.forEach((doc) => {
+    const key = `${String(doc.mediaRole || "")}:${String(doc.hashKind || "")}:${String(doc.hashValue || "")}`;
+    createdByAsset.set(key, doc);
+  });
+
+  return (moderationCase.media || []).map((asset) => {
+    const baseAsset = asset?.toObject ? asset.toObject() : asset;
+    const referenceHash = buildSourceReferenceHash(baseAsset);
+    const fingerprintHash = buildFingerprintHash({
+      title,
+      description,
+      asset: baseAsset,
+      sourceHash: referenceHash,
+    });
+    const hashIds = [];
+    if (baseAsset.fileHash) {
+      hashIds.push(
+        createdByAsset.get(`${baseAsset.role}:content_file:${baseAsset.fileHash}`)?._id
+      );
+    }
+    hashIds.push(
+      createdByAsset.get(`${baseAsset.role}:source_reference:${referenceHash}`)?._id,
+      createdByAsset.get(`${baseAsset.role}:fingerprint:${fingerprintHash}`)?._id
+    );
+    return {
+      ...baseAsset,
+      hashIds: hashIds.filter(Boolean),
+    };
+  });
+};
+
+const buildAdminCasePayload = (caseDoc = {}, user = null) => ({
+  _id: toId(caseDoc._id),
+  queue: String(caseDoc.queue || ""),
+  status: String(caseDoc.status || ""),
+  workflowState: String(caseDoc.workflowState || ""),
+  severity: String(caseDoc.severity || ""),
+  priorityScore: Number(caseDoc.priorityScore || 0),
+  riskLabels: Array.isArray(caseDoc.riskLabels) ? caseDoc.riskLabels : [],
+  createdAt: caseDoc.createdAt || null,
+  updatedAt: caseDoc.updatedAt || null,
+  detectionSource: String(caseDoc.detectionSource || ""),
+  publicWarningLabel: String(caseDoc.publicWarningLabel || ""),
+  uploader: {
+    userId: toId(caseDoc?.uploader?.userId),
+    email: String(caseDoc?.uploader?.email || ""),
+    username: String(caseDoc?.uploader?.username || ""),
+    displayName: String(caseDoc?.uploader?.displayName || ""),
+  },
+  subject: {
+    targetType: String(caseDoc?.subject?.targetType || ""),
+    targetId: String(caseDoc?.subject?.targetId || ""),
+    title: String(caseDoc?.subject?.title || ""),
+    description: String(caseDoc?.subject?.description || ""),
+    mediaType: String(caseDoc?.subject?.mediaType || ""),
+    createdAt: caseDoc?.subject?.createdAt || null,
+  },
+  media: (Array.isArray(caseDoc?.media) ? caseDoc.media : []).map((asset) => ({
+    role: String(asset.role || ""),
+    mediaId: String(asset.mediaId || ""),
+    mediaType: String(asset.mediaType || ""),
+    mimeType: String(asset.mimeType || ""),
+    originalFilename: String(asset.originalFilename || ""),
+    restrictedPreviewUrl: String(asset.restrictedPreviewUrl || ""),
+    hasReviewSource: Boolean(asset.sourceUrl),
+  })),
+  quarantine: {
+    isQuarantined: Boolean(caseDoc?.quarantine?.isQuarantined),
+    quarantinedAt: caseDoc?.quarantine?.quarantinedAt || null,
+    neverGeneratePreview: Boolean(caseDoc?.quarantine?.neverGeneratePreview),
+  },
+  escalation: {
+    required: Boolean(caseDoc?.escalation?.required),
+    status: String(caseDoc?.escalation?.status || ""),
+    escalatedAt: caseDoc?.escalation?.escalatedAt || null,
+  },
+  evidence: {
+    preservedAt: caseDoc?.evidence?.preservedAt || null,
+    notes: String(caseDoc?.evidence?.notes || ""),
+  },
+  linkedReportsCount: Array.isArray(caseDoc?.linkedReportIds) ? caseDoc.linkedReportIds.length : 0,
+  latestDecisionSummary: caseDoc?.latestDecisionSummary || null,
+  history: (Array.isArray(caseDoc?.history) ? caseDoc.history : [])
+    .slice(-6)
+    .reverse()
+    .map((entry) => ({
+      actionType: String(entry.actionType || ""),
+      adminUserId: toId(entry.adminUserId),
+      adminEmail: String(entry.adminEmail || ""),
+      previousStatus: String(entry.previousStatus || ""),
+      newStatus: String(entry.newStatus || ""),
+      reason: String(entry.reason || ""),
+      createdAt: entry.createdAt || null,
+    })),
+  availableActions: buildAvailableActions(caseDoc, user),
+});
+
+const maybeNotifyPrimaryAdmin = async ({ moderationCase, req }) => {
+  if (
+    !CRITICAL_QUEUE_SET.has(String(moderationCase.queue || ""))
+    && !CRITICAL_STATUS_SET.has(String(moderationCase.status || ""))
+  ) {
+    return;
+  }
+
+  const primaryAdmin = await findPrimaryModerationAdmin();
+  if (!primaryAdmin?._id) {
+    return;
+  }
+
+  await createNotification({
+    recipient: primaryAdmin._id,
+    sender: moderationCase?.uploader?.userId || primaryAdmin._id,
+    type: "system",
+    text: `Critical moderation case: ${String(moderationCase.subject?.title || moderationCase.queue || "Sensitive content")}`,
+    metadata: {
+      previewText: moderationCase.publicWarningLabel || moderationCase.status,
+      link: "/admin/reports",
+    },
+  }).catch(() => null);
+
+  if (String(process.env.MODERATION_ALERT_EMAIL_ENABLED || "").toLowerCase() === "true") {
+    const toEmail = primaryAdmin.moderationProfile?.escalationEmail || primaryAdmin.email;
+    if (toEmail) {
+      await sendSecurityEmail({
+        to: toEmail,
+        subject: "Critical Tengacion moderation alert",
+        html: `
+          <div style="font-family: Arial; padding: 12px;">
+            <h2>Critical moderation case opened</h2>
+            <p>Queue: <strong>${moderationCase.queue}</strong></p>
+            <p>Status: <strong>${moderationCase.status}</strong></p>
+            <p>Target: ${moderationCase.subject?.targetType || "media"} ${moderationCase.subject?.title || ""}</p>
+            <p>Open the moderation dashboard to review the case.</p>
+          </div>
+        `,
+      }).catch(() => null);
+    }
+  }
+};
+
+const applyModerationStatusToTarget = async ({
+  targetType,
+  targetId,
+  status,
+  baselineAccess = {},
+  moderationCaseId = null,
+  sensitiveType = "",
+  blurPreviewUrl = "",
+}) => {
+  const normalizedTargetType = String(targetType || "");
+  if (!normalizedTargetType || !targetId) {
+    return null;
+  }
+
+  const model = TARGET_MODEL_MAP[normalizedTargetType];
+  if (!model) {
+    return null;
+  }
+
+  const doc = await model.findById(targetId);
+  if (!doc) {
+    return null;
+  }
+
+  const nextAccess = mergeVisibilityWithModeration(baselineAccess, { status });
+  if (Object.prototype.hasOwnProperty.call(doc, "isPublished")) {
+    doc.isPublished = nextAccess.isPublished;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(doc, "publishedStatus")) {
+    doc.publishedStatus = nextAccess.publishedStatus;
+  }
+  if (normalizedTargetType === "album") {
+    doc.status = nextAccess.albumStatus;
+  }
+  if (Object.prototype.hasOwnProperty.call(doc, "moderationStatus")) {
+    doc.moderationStatus = status;
+  }
+  if (Object.prototype.hasOwnProperty.call(doc, "moderationCaseId")) {
+    doc.moderationCaseId = moderationCaseId || null;
+  }
+  if (Object.prototype.hasOwnProperty.call(doc, "sensitiveContent")) {
+    doc.sensitiveContent = status !== "ALLOW";
+  }
+  if (Object.prototype.hasOwnProperty.call(doc, "sensitiveType")) {
+    doc.sensitiveType = sensitiveType || status;
+  }
+  if (Object.prototype.hasOwnProperty.call(doc, "blurPreviewUrl") && blurPreviewUrl) {
+    doc.blurPreviewUrl = blurPreviewUrl;
+  }
+  if (Object.prototype.hasOwnProperty.call(doc, "reviewRequired")) {
+    doc.reviewRequired = status === "HOLD_FOR_REVIEW";
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(doc, "originalVisibility")
+    && !String(doc.originalVisibility || "").trim()
+    && Object.prototype.hasOwnProperty.call(doc, "visibility")
+  ) {
+    doc.originalVisibility = String(doc.visibility || "");
+  }
+
+  await doc.save();
+  return doc;
+};
+
+const recordUserStrike = async ({
+  targetUserId,
+  moderationCaseId,
+  actionType,
+  targetType,
+  targetId,
+  reason,
+  actorId,
+  count = 1,
+  reasonCategory = "",
+  severity = "medium",
+  actionTaken = "warning",
+  expiresAt = null,
+}) => {
+  if (!targetUserId) {
+    return null;
+  }
+
+  return UserStrike.findOneAndUpdate(
+    { userId: targetUserId },
+    {
+      $inc: { count: Number(count) || 1 },
+      $push: {
+        history: {
+          moderationCaseId,
+          actionType,
+          reasonCategory,
+          severity,
+          actionTaken,
+          actorId,
+          targetType,
+          targetId,
+          count: Number(count) || 1,
+          reason: normalizeText(reason, 300),
+          expiresAt: expiresAt || null,
+          createdAt: new Date(),
+        },
+      },
+      $set: {
+        lastActionAt: new Date(),
+        lastActionType: actionType,
+        lastSeverity: severity,
+        lastEnforcementAction: actionTaken,
+        lastModeratorId: actorId || null,
+      },
+    },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+};
+
+const suspendUserAccount = async ({ targetUserId, actorId, reason, req }) => {
+  const user = await User.findById(targetUserId);
+  if (!user) {
+    return null;
+  }
+
+  user.isSuspended = true;
+  user.isActive = false;
+  user.suspensionReason = normalizeText(reason, 300);
+  user.suspendedAt = new Date();
+  user.suspendedUntil = null;
+  user.suspendedBy = actorId || null;
+  user.tokenVersion = (Number(user.tokenVersion) || 0) + 1;
+  await user.save();
+  disconnectUserSockets(req?.app, user._id, {
+    code: "ACCOUNT_SUSPENDED",
+    message: "Your account was suspended.",
+  });
+  return user;
+};
+
+const banUserAccount = async ({ targetUserId, actorId, reason, req }) => {
+  const user = await User.findById(targetUserId);
+  if (!user) {
+    return null;
+  }
+
+  user.isBanned = true;
+  user.isActive = false;
+  user.isSuspended = false;
+  user.suspensionReason = "";
+  user.suspendedAt = null;
+  user.suspendedUntil = null;
+  user.suspendedBy = null;
+  user.banReason = normalizeText(reason, 300);
+  user.bannedAt = new Date();
+  user.bannedBy = actorId || null;
+  user.tokenVersion = (Number(user.tokenVersion) || 0) + 1;
+  await user.save();
+  disconnectUserSockets(req?.app, user._id, {
+    code: "ACCOUNT_BANNED",
+    message: "Your account was banned.",
+  });
+  return user;
+};
+
+const resolveRejectStatus = (caseDoc = {}) => {
+  switch (String(caseDoc.queue || "")) {
+    case "suspected_child_exploitation":
+      return "BLOCK_SUSPECTED_CHILD_EXPLOITATION";
+    case "explicit_pornography":
+      return "BLOCK_EXPLICIT_ADULT";
+    case "graphic_gore":
+      return "BLOCK_EXTREME_GORE";
+    case "animal_cruelty":
+      return "BLOCK_ANIMAL_CRUELTY";
+    default:
+      return "HOLD_FOR_REVIEW";
+  }
+};
+
+const syncLinkedReports = async ({ moderationCase, action, actorId }) => {
+  const reportIds = Array.isArray(moderationCase?.linkedReportIds)
+    ? moderationCase.linkedReportIds.filter(Boolean)
+    : [];
+  if (reportIds.length === 0) {
+    return;
+  }
+
+  const nextStatus =
+    action === "approve"
+      ? "dismissed"
+      : action === "preserve_evidence" || action === "escalate_case"
+        ? "reviewing"
+        : "actioned";
+
+  await Report.updateMany(
+    { _id: { $in: reportIds } },
+    {
+      $set: {
+        status: nextStatus,
+        actionTaken: normalizeText(action, 500),
+        assignedTo: actorId || null,
+      },
+    }
+  );
+};
+
+const buildDecisionFromMatchedCase = (matchedCase = null) => {
+  if (!matchedCase?._id) {
+    return null;
+  }
+
+  return {
+    queue: String(matchedCase.queue || ""),
+    status: String(matchedCase.status || "HOLD_FOR_REVIEW"),
+    severity: String(matchedCase.severity || "HIGH"),
+    priorityScore: Math.max(Number(matchedCase.priorityScore || 0), 95),
+    riskLabels: uniqueStrings([
+      "duplicate_ban_match",
+      ...(Array.isArray(matchedCase.riskLabels) ? matchedCase.riskLabels : []),
+    ]),
+    quarantineMedia:
+      String(matchedCase.status || "") !== "RESTRICTED_BLURRED",
+    neverGeneratePreview:
+      String(matchedCase.status || "") === "BLOCK_SUSPECTED_CHILD_EXPLOITATION"
+      || String(matchedCase.status || "") === "BLOCK_EXPLICIT_ADULT",
+    requiresEscalation:
+      String(matchedCase.status || "") === "BLOCK_SUSPECTED_CHILD_EXPLOITATION",
+    workflowState:
+      String(matchedCase.status || "") === "BLOCK_SUSPECTED_CHILD_EXPLOITATION"
+        ? "ESCALATED"
+        : "OPEN",
+    publicWarningLabel:
+      String(matchedCase.publicWarningLabel || "") || "Matched previously prohibited media",
+    summary: `Upload matched previously moderated media in ${matchedCase.queue || "the trust and safety queue"}.`,
+    matchedCaseId: toId(matchedCase._id),
+  };
+};
+
+const findMatchedHashDecision = async ({ title = "", description = "", media = [] }) => {
+  const candidates = [];
+
+  for (const asset of Array.isArray(media) ? media : []) {
+    if (asset.fileHash) {
+      candidates.push({
+        hashKind: "content_file",
+        hashValue: asset.fileHash,
+      });
+    }
+    const sourceReferenceHash = buildSourceReferenceHash(asset);
+    const fingerprintHash = buildFingerprintHash({
+      title,
+      description,
+      asset,
+      sourceHash: sourceReferenceHash,
+    });
+    candidates.push(
+      {
+        hashKind: "source_reference",
+        hashValue: sourceReferenceHash,
+      },
+      {
+        hashKind: "fingerprint",
+        hashValue: fingerprintHash,
+      }
+    );
+  }
+
+  const normalizedCandidates = candidates.filter(
+    (entry) => entry.hashKind && entry.hashValue
+  );
+  if (normalizedCandidates.length === 0) {
+    return null;
+  }
+
+  const hashDocs = await MediaHash.find({
+    $or: normalizedCandidates.map((entry) => ({
+      hashKind: entry.hashKind,
+      hashValue: entry.hashValue,
+    })),
+    moderationCaseId: { $ne: null },
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  if (hashDocs.length === 0) {
+    return null;
+  }
+
+  const caseIds = uniqueStrings(hashDocs.map((doc) => toId(doc.moderationCaseId))).filter(
+    isValidObjectId
+  );
+  if (caseIds.length === 0) {
+    return null;
+  }
+
+  const matchedCases = await ModerationCase.find({
+    _id: { $in: caseIds },
+  })
+    .sort({ updatedAt: -1, priorityScore: -1 })
+    .lean();
+
+  const matchedCase = matchedCases.find(
+    (entry) =>
+      BLOCKED_PUBLIC_STATUSES.has(String(entry.status || ""))
+      || RESTRICTED_PUBLIC_STATUSES.has(String(entry.status || ""))
+  );
+
+  if (!matchedCase) {
+    return null;
+  }
+
+  return buildDecisionFromMatchedCase(matchedCase);
+};
+
+const coerceMediaForModeration = async ({ media = [] }) => {
+  const normalized = [];
+
+  for (const asset of Array.isArray(media) ? media : []) {
+    const fileHash =
+      asset.fileHash
+      || (asset.file ? await computeUploadHash(asset.file) : "");
+    normalized.push({
+      role: asset.role || "primary",
+      mediaId: asset.mediaId || "",
+      mediaType: asset.mediaType || "",
+      mimeType: asset.mimeType || asset.file?.mimetype || "",
+      sourceUrl: asset.sourceUrl || "",
+      previewUrl: asset.previewUrl || "",
+      restrictedPreviewUrl: asset.restrictedPreviewUrl || "",
+      originalFilename:
+        asset.originalFilename || asset.file?.originalname || asset.file?.filename || "",
+      fileSizeBytes: Number(asset.fileSizeBytes || asset.file?.size || 0),
+      fileHash,
+      fingerprintHash: asset.fingerprintHash || "",
+    });
+  }
+
+  return normalized;
+};
+
+const buildModelSignalsFromDecision = (decision = {}) => {
+  const labels = Array.isArray(decision.riskLabels) ? decision.riskLabels.map(String) : [];
+  const hasLabel = (value) => labels.includes(value);
+
+  return {
+    nudityScore: hasLabel("explicit_pornography") ? 0.99 : 0,
+    sexualActivityScore: hasLabel("explicit_pornography") ? 0.97 : 0,
+    minorRiskScore: hasLabel("suspected_child_exploitation") ? 0.99 : 0,
+    goreScore: hasLabel("graphic_gore") ? 0.9 : 0,
+    bloodScore: hasLabel("graphic_gore") ? 0.85 : 0,
+    animalCrueltyScore: hasLabel("animal_cruelty") ? 0.92 : 0,
+    coercionScore: hasLabel("sadistic") ? 0.8 : 0,
+    ocrFlags: labels.filter((entry) => entry.includes("ocr:")),
+    duplicateBanMatch: hasLabel("duplicate_ban_match"),
+    repeatOffenderScore:
+      decision.status === "BLOCK_REPEAT_VIOLATOR"
+        ? 1
+        : hasLabel("duplicate_ban_match")
+          ? 0.8
+          : 0,
+  };
+};
+
+const createOrUpdateModerationCase = async ({
+  targetType,
+  targetId,
+  title = "",
+  description = "",
+  metadata = {},
+  media = [],
+  uploader = {},
+  detectionSource = "automated_upload_scan",
+  reportReason = "",
+  linkedReportIds = [],
+  req = null,
+  targetDoc = null,
+  subjectMediaType = "",
+}) => {
+  const normalizedTargetType = normalizeText(targetType, 40);
+  const normalizedTargetId = normalizeText(targetId, 120);
+  if (!normalizedTargetType || !normalizedTargetId) {
+    return {
+      moderationDecision: { status: "ALLOW", queue: "", severity: "LOW" },
+      moderationCase: null,
+    };
+  }
+
+  const sourceTarget = targetDoc
+    || (TARGET_MODEL_MAP[normalizedTargetType]
+      ? await TARGET_MODEL_MAP[normalizedTargetType].findById(normalizedTargetId).lean()
+      : null);
+  const baselineAccess = deriveBaselineAccess(normalizedTargetType, sourceTarget || {});
+  const normalizedMedia = await coerceMediaForModeration({ media });
+  const caseMediaEntries = buildCaseMediaEntries({
+    media: normalizedMedia,
+    req,
+  });
+
+  let moderationDecision = evaluateModerationPolicy({
+    title,
+    description,
+    metadata,
+    media: caseMediaEntries,
+    reportReason,
+    detectionSource,
+  });
+
+  const matchedHashDecision = await findMatchedHashDecision({
+    title,
+    description,
+    media: normalizedMedia,
+  });
+  if (
+    matchedHashDecision
+    && (
+      moderationDecision.status === "ALLOW"
+      || BLOCKED_PUBLIC_STATUSES.has(String(matchedHashDecision.status || ""))
+      || RESTRICTED_PUBLIC_STATUSES.has(String(matchedHashDecision.status || ""))
+    )
+  ) {
+    moderationDecision = {
+      ...moderationDecision,
+      ...matchedHashDecision,
+      riskLabels: uniqueStrings([
+        ...(moderationDecision.riskLabels || []),
+        ...(matchedHashDecision.riskLabels || []),
+      ]),
+    };
+  }
+
+  const shouldCreateCase =
+    moderationDecision.status !== "ALLOW"
+    || detectionSource === "user_report"
+    || linkedReportIds.length > 0;
+
+  if (!shouldCreateCase) {
+    return {
+      moderationDecision,
+      moderationCase: null,
+      publicOverlay: getPublicModerationOverlay(null, req),
+      baselineAccess,
+    };
+  }
+
+  const latestCase = await getLatestCaseForTarget(normalizedTargetType, normalizedTargetId);
+  const uploaderInfo = {
+    userId: uploader.userId || (await resolveTargetOwnerId({
+      targetType: normalizedTargetType,
+      targetId: normalizedTargetId,
+      targetDoc: sourceTarget,
+    })) || null,
+    email: normalizeText(uploader.email || "", 160).toLowerCase(),
+    username: normalizeText(uploader.username || "", 80),
+    displayName: normalizeText(uploader.displayName || uploader.name || "", 160),
+  };
+
+  const nextMedia = buildCaseMediaEntries({
+    media: normalizedMedia,
+    req,
+    queue: moderationDecision.queue,
+    severity: moderationDecision.severity,
+  });
+
+  const nextPayload = {
+    queue: moderationDecision.queue || "user_reported_sensitive_content",
+    status: moderationDecision.status || "HOLD_FOR_REVIEW",
+    workflowState: moderationDecision.workflowState || "OPEN",
+    severity: moderationDecision.severity || "MEDIUM",
+    priorityScore: Number(moderationDecision.priorityScore || 0),
+    riskLabels: uniqueStrings(moderationDecision.riskLabels || []),
+    detectionSource,
+    visibilityDecision:
+      moderationDecision.status === "ALLOW"
+        ? "allowed"
+        : moderationDecision.status === "RESTRICTED_BLURRED"
+          ? "restricted"
+          : moderationDecision.status === "HOLD_FOR_REVIEW"
+            ? "review"
+            : "blocked",
+    modelSignals: buildModelSignalsFromDecision(moderationDecision),
+    subject: {
+      targetType: normalizedTargetType,
+      targetId: normalizedTargetId,
+      title: normalizeText(title, 240),
+      description: normalizeText(description, 3000),
+      mediaType: normalizeText(
+        subjectMediaType || nextMedia[0]?.mediaType || sourceTarget?.mediaType || "unknown",
+        40
+      ),
+      createdAt: sourceTarget?.createdAt || sourceTarget?.time || null,
+      baselineAccess,
+    },
+    uploader: {
+      userId: uploaderInfo.userId && isValidObjectId(uploaderInfo.userId)
+        ? uploaderInfo.userId
+        : null,
+      email: uploaderInfo.email,
+      username: uploaderInfo.username,
+      displayName: uploaderInfo.displayName,
+    },
+    media: stripTransientMediaFields(nextMedia),
+    quarantine: {
+      isQuarantined: Boolean(moderationDecision.quarantineMedia),
+      quarantinedAt: moderationDecision.quarantineMedia ? new Date() : null,
+      neverGeneratePreview: Boolean(moderationDecision.neverGeneratePreview),
+    },
+    escalation: {
+      required: Boolean(moderationDecision.requiresEscalation),
+      status: moderationDecision.requiresEscalation ? "pending_review" : "not_required",
+      escalatedAt: moderationDecision.requiresEscalation ? new Date() : null,
+      escalatedBy: null,
+      notes: matchedHashDecision?.matchedCaseId
+        ? `Matched previously moderated media case ${matchedHashDecision.matchedCaseId}.`
+        : "",
+    },
+    publicWarningLabel: normalizeText(moderationDecision.publicWarningLabel || "", 160),
+    internalNotes: normalizeText(moderationDecision.summary || "", 4000),
+    linkedReportIds: uniqueStrings([
+      ...(Array.isArray(latestCase?.linkedReportIds) ? latestCase.linkedReportIds.map(toId) : []),
+      ...linkedReportIds.map(toId),
+    ])
+      .filter(isValidObjectId)
+      .map((entry) => new mongoose.Types.ObjectId(entry)),
+  };
+
+  let moderationCase;
+  const shouldReuseCase =
+    latestCase
+    && String(latestCase.subject?.targetType || "") === normalizedTargetType
+    && String(latestCase.subject?.targetId || "") === normalizedTargetId
+    && ACTIVE_REVIEW_STATES.includes(String(latestCase.workflowState || ""))
+    && latestCase.status !== "ALLOW";
+
+  if (shouldReuseCase) {
+    Object.assign(latestCase, nextPayload);
+    moderationCase = await latestCase.save();
+  } else {
+    moderationCase = await ModerationCase.create(nextPayload);
+  }
+
+  const persistedMedia = await persistMediaHashes({
+    moderationCase,
+    title,
+    description,
+    media: nextMedia,
+  });
+
+  moderationCase.media = stripTransientMediaFields(persistedMedia);
+  await moderationCase.save();
+
+  await applyModerationStatusToTarget({
+    targetType: normalizedTargetType,
+    targetId: normalizedTargetId,
+    status: moderationCase.status,
+    baselineAccess,
+    moderationCaseId: moderationCase._id,
+    sensitiveType: moderationCase.queue,
+    blurPreviewUrl: moderationCase.media?.[0]?.restrictedPreviewUrl || "",
+  });
+
+  await syncLinkedReports({
+    moderationCase,
+    action: moderationDecision.status === "ALLOW" ? "approve" : "reject",
+    actorId: null,
+  });
+
+  await maybeNotifyPrimaryAdmin({ moderationCase, req });
+
+  return {
+    moderationDecision,
+    moderationCase,
+    publicOverlay: getPublicModerationOverlay(moderationCase, req),
+    baselineAccess,
+  };
+};
+
+const listModerationCases = async ({
+  user,
+  page = 1,
+  limit = 20,
+  queue = "",
+  status = "",
+  workflowState = "",
+  severity = "",
+  search = "",
+  criticalOnly = false,
+}) => {
+  const normalizedPage = Math.max(1, Number(page) || 1);
+  const normalizedLimit = Math.max(1, Math.min(100, Number(limit) || 20));
+  const skip = (normalizedPage - 1) * normalizedLimit;
+
+  const query = {};
+  if (queue) query.queue = String(queue);
+  if (status) query.status = String(status);
+  if (workflowState) query.workflowState = String(workflowState);
+  if (severity) query.severity = String(severity);
+  if (criticalOnly) {
+    query.$or = [{ severity: "CRITICAL" }, { priorityScore: { $gte: 90 } }];
+  }
+  if (search) {
+    query.$and = [
+      ...(Array.isArray(query.$and) ? query.$and : []),
+      {
+        $or: [
+          { "subject.title": { $regex: search, $options: "i" } },
+          { "subject.description": { $regex: search, $options: "i" } },
+          { "uploader.email": { $regex: search, $options: "i" } },
+          { "uploader.username": { $regex: search, $options: "i" } },
+          { riskLabels: { $elemMatch: { $regex: search, $options: "i" } } },
+        ],
+      },
+    ];
+  }
+
+  const [rows, total] = await Promise.all([
+    ModerationCase.find(query)
+      .sort({ priorityScore: -1, severity: -1, updatedAt: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(normalizedLimit)
+      .lean(),
+    ModerationCase.countDocuments(query),
+  ]);
+
+  return {
+    page: normalizedPage,
+    limit: normalizedLimit,
+    total,
+    cases: rows.map((entry) => buildAdminCasePayload(entry, user)),
+  };
+};
+
+const getModerationSummary = async ({ user }) => {
+  const [queueSummary, statusSummary, workflowSummary, criticalCount, repeatViolators] =
+    await Promise.all([
+      ModerationCase.aggregate([
+        { $group: { _id: "$queue", count: { $sum: 1 } } },
+      ]),
+      ModerationCase.aggregate([
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
+      ModerationCase.aggregate([
+        { $group: { _id: "$workflowState", count: { $sum: 1 } } },
+      ]),
+      ModerationCase.countDocuments({
+        $or: [{ severity: "CRITICAL" }, { priorityScore: { $gte: 90 } }],
+      }),
+      ModerationCase.countDocuments({ status: "BLOCK_REPEAT_VIOLATOR" }),
+    ]);
+
+  const toMap = (rows = []) =>
+    rows.reduce((acc, row) => {
+      acc[String(row._id || "unknown")] = Number(row.count || 0);
+      return acc;
+    }, {});
+
+  return {
+    permissions: [...buildCaseViewPermissions(null), ...buildAvailableActions(null, user)],
+    queues: toMap(queueSummary),
+    statuses: toMap(statusSummary),
+    workflowStates: toMap(workflowSummary),
+    criticalCount,
+    repeatViolators,
+  };
+};
+
+const getModerationCaseDetail = async ({ caseId, user }) => {
+  if (!isValidObjectId(caseId)) {
+    const error = new Error("Invalid moderation case id");
+    error.status = 400;
+    throw error;
+  }
+
+  const moderationCase = await ModerationCase.findById(caseId).lean();
+  if (!moderationCase) {
+    const error = new Error("Moderation case not found");
+    error.status = 404;
+    throw error;
+  }
+
+  assertCasePermissions({ user, caseDoc: moderationCase });
+  return buildAdminCasePayload(moderationCase, user);
+};
+
+const generateModerationReviewUrl = async ({
+  caseId,
+  user,
+  req,
+  mediaRole = "",
+  mediaIndex = 0,
+}) => {
+  if (!isValidObjectId(caseId)) {
+    const error = new Error("Invalid moderation case id");
+    error.status = 400;
+    throw error;
+  }
+
+  const moderationCase = await ModerationCase.findById(caseId).lean();
+  if (!moderationCase) {
+    const error = new Error("Moderation case not found");
+    error.status = 404;
+    throw error;
+  }
+
+  assertCasePermissions({ user, caseDoc: moderationCase });
+
+  const mediaList = Array.isArray(moderationCase.media) ? moderationCase.media : [];
+  const selectedAsset =
+    mediaList.find((entry) => mediaRole && String(entry.role || "") === String(mediaRole))
+    || mediaList[Number(mediaIndex) || 0]
+    || mediaList[0];
+
+  if (!selectedAsset) {
+    const error = new Error("No reviewable media found");
+    error.status = 404;
+    throw error;
+  }
+
+  const sourceUrl =
+    selectedAsset.sourceUrl
+    || selectedAsset.previewUrl
+    || selectedAsset.restrictedPreviewUrl;
+  if (!sourceUrl) {
+    const error = new Error("Review URL unavailable for this case");
+    error.status = 404;
+    throw error;
+  }
+
+  return {
+    url: buildSignedMediaUrl({
+      sourceUrl,
+      userId: req?.user?.id || user?._id || "",
+      itemType: "moderation_case",
+      itemId: toId(moderationCase._id),
+      expiresInSec: 300,
+      allowDownload: false,
+      req,
+    }),
+    mediaRole: selectedAsset.role || "primary",
+  };
+};
+
+const performModerationAction = async ({
+  caseId,
+  action,
+  reason = "",
+  user,
+  req = null,
+  metadata = {},
+}) => {
+  if (!isValidObjectId(caseId)) {
+    const error = new Error("Invalid moderation case id");
+    error.status = 400;
+    throw error;
+  }
+
+  const moderationCase = await ModerationCase.findById(caseId);
+  if (!moderationCase) {
+    const error = new Error("Moderation case not found");
+    error.status = 404;
+    throw error;
+  }
+
+  const normalizedAction = normalizeText(action, 80).toLowerCase();
+  assertCasePermissions({ user, caseDoc: moderationCase, action: normalizedAction });
+
+  const actorId = user?._id || user?.id || null;
+  const actorEmail = String(user?.email || "").toLowerCase();
+  const previousStatus = String(moderationCase.status || "ALLOW");
+  let nextStatus = previousStatus;
+  let nextWorkflowState = String(moderationCase.workflowState || "OPEN");
+  const normalizedReason = normalizeText(reason, 1000);
+  const baselineAccess = moderationCase.subject?.baselineAccess || {};
+
+  if (normalizedAction === "approve") {
+    nextStatus = "ALLOW";
+    nextWorkflowState = "RESOLVED";
+    moderationCase.quarantine.isQuarantined = false;
+    moderationCase.quarantine.quarantinedAt = null;
+    moderationCase.publicWarningLabel = "";
+  } else if (normalizedAction === "reject") {
+    nextStatus = resolveRejectStatus(moderationCase);
+    nextWorkflowState = "RESOLVED";
+  } else if (
+    normalizedAction === "restrict_with_warning"
+    || normalizedAction === "blur_preview"
+  ) {
+    if (["suspected_child_exploitation", "explicit_pornography"].includes(String(moderationCase.queue || ""))) {
+      const error = new Error("Restricted blurred display is not allowed for sexual exploitation or explicit adult content");
+      error.status = 400;
+      throw error;
+    }
+    nextStatus = "RESTRICTED_BLURRED";
+    nextWorkflowState = "RESOLVED";
+    moderationCase.quarantine.isQuarantined = false;
+    moderationCase.media = (Array.isArray(moderationCase.media) ? moderationCase.media : []).map(
+      (asset) => ({
+        ...asset,
+        restrictedPreviewUrl:
+          asset.restrictedPreviewUrl
+          || buildRestrictedPreviewPath({
+            req,
+            category: moderationCase.queue,
+            severity: moderationCase.severity,
+          }),
+      })
+    );
+  } else if (normalizedAction === "preserve_evidence") {
+    moderationCase.evidence.preservedAt = new Date();
+    moderationCase.evidence.preservedBy = actorId || null;
+    moderationCase.evidence.notes = normalizedReason;
+    nextWorkflowState = nextWorkflowState === "RESOLVED" ? "UNDER_REVIEW" : nextWorkflowState;
+  } else if (normalizedAction === "escalate_case") {
+    moderationCase.escalation.required = true;
+    moderationCase.escalation.status = "escalated";
+    moderationCase.escalation.escalatedAt = new Date();
+    moderationCase.escalation.escalatedBy = actorId || null;
+    moderationCase.escalation.notes = normalizedReason;
+    nextWorkflowState = "ESCALATED";
+  } else if (normalizedAction === "suspend_user") {
+    await suspendUserAccount({
+      targetUserId: moderationCase.uploader?.userId,
+      actorId,
+      reason: normalizedReason || "Suspended after moderation review",
+      req,
+    });
+    await recordUserStrike({
+      targetUserId: moderationCase.uploader?.userId,
+      moderationCaseId: moderationCase._id,
+      actionType: normalizedAction,
+      reasonCategory: moderationCase.queue,
+      severity: moderationCase.severity?.toLowerCase?.() || "high",
+      actionTaken: "temporary_suspend",
+      targetType: moderationCase.subject?.targetType,
+      targetId: moderationCase.subject?.targetId,
+      reason: normalizedReason,
+      actorId,
+      count: 1,
+    });
+    nextStatus = resolveRejectStatus(moderationCase);
+    nextWorkflowState = "RESOLVED";
+  } else if (normalizedAction === "ban_user") {
+    await banUserAccount({
+      targetUserId: moderationCase.uploader?.userId,
+      actorId,
+      reason: normalizedReason || "Banned after moderation review",
+      req,
+    });
+    await recordUserStrike({
+      targetUserId: moderationCase.uploader?.userId,
+      moderationCaseId: moderationCase._id,
+      actionType: normalizedAction,
+      reasonCategory: moderationCase.queue,
+      severity: "critical",
+      actionTaken: "permanent_ban",
+      targetType: moderationCase.subject?.targetType,
+      targetId: moderationCase.subject?.targetId,
+      reason: normalizedReason,
+      actorId,
+      count: 3,
+    });
+    nextStatus = "BLOCK_REPEAT_VIOLATOR";
+    nextWorkflowState = "RESOLVED";
+  } else {
+    const error = new Error("Unsupported moderation action");
+    error.status = 400;
+    throw error;
+  }
+
+  moderationCase.status = nextStatus;
+  moderationCase.workflowState = nextWorkflowState;
+  moderationCase.reviewer = actorId || null;
+  moderationCase.reviewerNote = normalizedReason;
+  moderationCase.visibilityDecision =
+    nextStatus === "ALLOW"
+      ? "allowed"
+      : nextStatus === "RESTRICTED_BLURRED"
+        ? "restricted"
+        : nextStatus === "HOLD_FOR_REVIEW"
+          ? "review"
+          : "blocked";
+  moderationCase.latestDecisionSummary = {
+    actionType: normalizedAction,
+    adminUserId: actorId || null,
+    adminEmail: actorEmail,
+    previousStatus,
+    newStatus: nextStatus,
+    reason: normalizedReason,
+    decidedAt: new Date(),
+  };
+  moderationCase.history.push({
+    actionType: normalizedAction,
+    adminUserId: actorId || null,
+    adminEmail: actorEmail,
+    previousStatus,
+    newStatus: nextStatus,
+    reason: normalizedReason,
+    createdAt: new Date(),
+  });
+
+  await moderationCase.save();
+
+  await applyModerationStatusToTarget({
+    targetType: moderationCase.subject?.targetType,
+    targetId: moderationCase.subject?.targetId,
+    status: moderationCase.status,
+    baselineAccess,
+    moderationCaseId: moderationCase._id,
+    sensitiveType: moderationCase.queue,
+    blurPreviewUrl: moderationCase.media?.[0]?.restrictedPreviewUrl || "",
+  });
+
+  await ModerationDecisionLog.create({
+    moderationCaseId: moderationCase._id,
+    adminUserId: actorId,
+    adminEmail: actorEmail,
+    actionType: normalizedAction,
+    targetMediaId: moderationCase.media?.[0]?.mediaId || "",
+    targetUserId: moderationCase.uploader?.userId || null,
+    previousStatus,
+    newStatus: nextStatus,
+    reason: normalizedReason,
+    metadata: metadata || {},
+  });
+
+  await syncLinkedReports({
+    moderationCase,
+    action: normalizedAction,
+    actorId,
+  });
+
+  await writeAuditLog({
+    req,
+    actorId,
+    action: `moderation.${normalizedAction}`,
+    targetType: "ModerationCase",
+    targetId: toId(moderationCase._id),
+    reason: normalizedReason,
+    metadata: {
+      previousStatus,
+      newStatus: nextStatus,
+      targetUserId: toId(moderationCase.uploader?.userId),
+      targetContentId: moderationCase.subject?.targetId || "",
+    },
+  }).catch(() => null);
+
+  if (
+    moderationCase.uploader?.userId
+    && ["reject", "suspend_user", "ban_user"].includes(normalizedAction)
+  ) {
+    await createNotification({
+      recipient: moderationCase.uploader.userId,
+      sender: actorId || moderationCase.uploader.userId,
+      type: "system",
+      text:
+        normalizedAction === "ban_user"
+          ? "Your account has been restricted for violating platform safety rules."
+          : normalizedAction === "suspend_user"
+            ? "Your account has been restricted for violating platform safety rules."
+            : "This upload violates Tengacion's safety rules and cannot be published.",
+      metadata: {
+        link: "/home",
+        previewText:
+          normalizedAction === "approve"
+            ? "Content approved"
+            : "Moderation action completed",
+      },
+    }).catch(() => null);
+  }
+
+  if (normalizedAction === "escalate_case") {
+    await maybeNotifyPrimaryAdmin({ moderationCase, req });
+  }
+
+  return buildAdminCasePayload(moderationCase.toObject(), user);
+};
+
+module.exports = {
+  ACTIVE_REVIEW_STATES,
+  assertCasePermissions,
+  buildAdminCasePayload,
+  buildCaseActionPermissions,
+  buildCaseViewPermissions,
+  buildPublicModerationOverlay: getPublicModerationOverlay,
+  buildSourceReferenceHash,
+  buildFingerprintHash,
+  buildAvailableActions,
+  createOrUpdateModerationCase,
+  deriveBaselineAccess,
+  filterPublicItems,
+  generateModerationReviewUrl,
+  getLatestCaseForTarget,
+  getLatestCaseMapForTargets,
+  getModerationCaseDetail,
+  getModerationSummary,
+  getPublicModerationOverlay,
+  isHiddenFromPublic,
+  isRestrictedForPublic,
+  listModerationCases,
+  mergeVisibilityWithModeration,
+  performModerationAction,
+  recordUserStrike,
+  resolveRejectStatus,
+  suspendUserAccount,
+  banUserAccount,
+};

@@ -4,6 +4,7 @@ const User = require("../models/User");
 const upload = require("../utils/upload");
 const Post = require("../models/Post");
 const auth = require("../middleware/auth");
+const moderateUpload = require("../middleware/moderateUpload");
 const { saveUploadedMedia } = require("../services/mediaStore");
 const { createNotification } = require("../services/notificationService");
 const {
@@ -895,6 +896,11 @@ router.post(
     { name: "image", maxCount: 1 },
     { name: "file", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "profile_avatar",
+    titleFields: ["text"],
+    descriptionFields: ["text"],
+  }),
   async (req, res) => {
     try {
       const existing = await User.findById(req.user.id).lean();
@@ -962,6 +968,11 @@ router.post(
     { name: "image", maxCount: 1 },
     { name: "file", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "profile_cover",
+    titleFields: ["text"],
+    descriptionFields: ["text"],
+  }),
   async (req, res) => {
     try {
       const existing = await User.findById(req.user.id).lean();

@@ -4,6 +4,7 @@ const Message = require("../models/Message");
 const User = require("../models/User");
 const upload = require("../utils/upload");
 const auth = require("../middleware/auth");
+const moderateUpload = require("../middleware/moderateUpload");
 const { persistChatMessage } = require("../services/chatService");
 const { createNotification } = require("../services/notificationService");
 const {
@@ -45,7 +46,16 @@ const canSendDirectMessage = ({ sender, receiver }) => {
   return true;
 };
 
-router.post("/upload", auth, upload.single("file"), async (req, res) => {
+router.post(
+  "/upload",
+  auth,
+  upload.single("file"),
+  moderateUpload({
+    sourceType: "chat_attachment",
+    titleFields: ["text"],
+    descriptionFields: ["text"],
+  }),
+  async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
   }

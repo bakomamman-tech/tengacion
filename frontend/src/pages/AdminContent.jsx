@@ -67,6 +67,7 @@ export default function AdminContentPage({ user }) {
                 <th>Type</th>
                 <th>Title</th>
                 <th>Status</th>
+                <th>Moderation</th>
                 <th>Performance</th>
                 <th>Created</th>
               </tr>
@@ -77,12 +78,17 @@ export default function AdminContentPage({ user }) {
                   <td>{entry.type}</td>
                   <td>{entry.title}</td>
                   <td>{entry.status}</td>
+                  <td>
+                    <div>{entry.moderationStatus || "ALLOW"}</div>
+                    {entry.reviewRequired ? <div className="adminx-muted">review required</div> : null}
+                    {entry.sensitiveType ? <div className="adminx-muted">{entry.sensitiveType}</div> : null}
+                  </td>
                   <td>{Number(entry.metricValue || 0).toLocaleString()}</td>
                   <td>{dateTime(entry.createdAt)}</td>
                 </tr>
               ))}
               {!(payload.items || []).length ? (
-                <tr><td colSpan={5} className="adminx-table-empty">No content found.</td></tr>
+                <tr><td colSpan={6} className="adminx-table-empty">No content found.</td></tr>
               ) : null}
             </tbody>
           </table>

@@ -284,6 +284,41 @@ const TrackSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    moderationStatus: {
+      type: String,
+      default: "ALLOW",
+      trim: true,
+      maxlength: 80,
+      index: true,
+    },
+    moderationCaseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ModerationCase",
+      default: null,
+      index: true,
+    },
+    sensitiveContent: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    sensitiveType: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 80,
+    },
+    blurPreviewUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    originalVisibility: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 40,
+    },
     contentFingerprintHash: {
       type: String,
       default: "",

@@ -4,6 +4,7 @@ const auth = require("../middleware/auth");
 const creatorAuth = require("../middleware/creatorAuth");
 const optionalAuth = require("../middleware/optionalAuth");
 const upload = require("../utils/upload");
+const moderateUpload = require("../middleware/moderateUpload");
 const { createAlbum } = require("../controllers/albumsController");
 const { createBookUpload, createMusicUpload, createPodcastUpload } = require("../controllers/creatorUploadsController");
 const {
@@ -39,6 +40,11 @@ router.post(
     { name: "preview", maxCount: 1 },
     { name: "cover", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "creator_music_upload",
+    titleFields: ["title"],
+    descriptionFields: ["description", "lyrics"],
+  }),
   createMusicUpload
 );
 
@@ -51,6 +57,11 @@ router.post(
     { name: "preview", maxCount: 1 },
     { name: "cover", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "creator_music_upload",
+    titleFields: ["title"],
+    descriptionFields: ["description", "lyrics"],
+  }),
   createMusicUpload
 );
 
@@ -66,6 +77,11 @@ router.post(
     { name: "previews", maxCount: 25 },
     { name: "previews[]", maxCount: 25 },
   ]),
+  moderateUpload({
+    sourceType: "creator_album_upload",
+    titleFields: ["title"],
+    descriptionFields: ["description"],
+  }),
   createAlbum
 );
 
@@ -78,6 +94,11 @@ router.post(
     { name: "thumbnail", maxCount: 1 },
     { name: "previewClip", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "creator_video_upload",
+    titleFields: ["title", "caption"],
+    descriptionFields: ["description", "caption"],
+  }),
   createCreatorVideo
 );
 
@@ -93,6 +114,11 @@ router.post(
     { name: "cover", maxCount: 1 },
     { name: "transcript", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "creator_podcast_upload",
+    titleFields: ["title", "podcastSeries"],
+    descriptionFields: ["description", "showNotes"],
+  }),
   createPodcastUpload
 );
 
@@ -108,6 +134,11 @@ router.post(
     { name: "cover", maxCount: 1 },
     { name: "transcript", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "creator_podcast_upload",
+    titleFields: ["title", "podcastSeries"],
+    descriptionFields: ["description", "showNotes"],
+  }),
   createPodcastUpload
 );
 
@@ -120,6 +151,11 @@ router.post(
     { name: "content", maxCount: 1 },
     { name: "preview", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "creator_book_upload",
+    titleFields: ["title", "authorName"],
+    descriptionFields: ["description", "previewExcerptText"],
+  }),
   createBookUpload
 );
 

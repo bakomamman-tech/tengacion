@@ -9,7 +9,7 @@ exports.createPost = catchAsync(async (req, res) => {
     io: req.app.get("io"),
     onlineUsers: req.app.get("onlineUsers"),
   });
-  res.status(201).json(payload);
+  res.status(Number(payload?.httpStatus) || 201).json(payload);
 });
 
 exports.getFeed = catchAsync(async (req, res) => {

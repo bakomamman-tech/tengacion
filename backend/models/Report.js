@@ -43,6 +43,12 @@ const ReportSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    moderationCaseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ModerationCase",
+      default: null,
+      index: true,
+    },
     actionTaken: {
       type: String,
       default: "",

@@ -224,6 +224,18 @@
   min-width: 150px;
 }
 
+.adminx-textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--tg-btn-secondary-border);
+  background: var(--tg-btn-secondary-bg);
+  color: var(--tg-btn-secondary-text);
+  box-shadow: var(--tg-btn-shadow-soft);
+}
+
 .adminx-content {
   display: grid;
   gap: 18px;

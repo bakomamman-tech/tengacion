@@ -3,6 +3,7 @@ const Story = require("../models/Story");
 const User = require("../models/User");
 const Message = require("../models/Message");
 const upload = require("../utils/upload");
+const moderateUpload = require("../middleware/moderateUpload");
 const { saveUploadedFile } = require("../services/mediaStore");
 const { createNotification } = require("../services/notificationService");
 const {
@@ -105,7 +106,16 @@ const loadVisibleStories = async (viewerId) => {
 
 /* ================= CREATE STORY (TEXT/IMAGE/VIDEO) ================= */
 
-router.post("/", auth, upload.any(), async (req, res) => {
+router.post(
+  "/",
+  auth,
+  upload.any(),
+  moderateUpload({
+    sourceType: "story",
+    titleFields: ["caption", "text"],
+    descriptionFields: ["caption", "text"],
+  }),
+  async (req, res) => {
   try {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: "User not found" });

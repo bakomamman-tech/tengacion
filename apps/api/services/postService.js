@@ -12,6 +12,12 @@ const userRepository = require("../repositories/userRepository");
 const postRepository = require("../repositories/postRepository");
 const { resolveMentionUserIds } = require("../../../backend/utils/mentions");
 const { incrementDailyMetric, logAnalyticsEvent, touchUserActivity } = require("../../../backend/services/analyticsService");
+const {
+  createOrUpdateModerationCase,
+  getLatestCaseForTarget,
+  getLatestCaseMapForTargets,
+  getPublicModerationOverlay,
+} = require("../../../backend/services/moderationService");
 
 const toIdString = (value) => {
   if (!value) return "";
@@ -343,6 +349,98 @@ const getPostPreviewImage = (post = {}) => {
   return "";
 };
 
+const buildPostModerationMedia = ({
+  media = [],
+  video = null,
+  uploadFile = null,
+}) => {
+  const entries = (Array.isArray(media) ? media : []).map((entry, index) => ({
+    role: index === 0 ? "primary" : `attachment_${index + 1}`,
+    mediaType: entry?.type || "image",
+    sourceUrl: entry?.url || "",
+    previewUrl: entry?.url || "",
+    mimeType: entry?.type === "video" ? "video/mp4" : "image/jpeg",
+    originalFilename:
+      uploadFile?.originalname || uploadFile?.filename || "",
+    fileSizeBytes: Number(uploadFile?.size || 0),
+    file: uploadFile && index === 0 ? uploadFile : null,
+  }));
+
+  if (video?.playbackUrl || video?.url) {
+    entries.push({
+      role: "video",
+      mediaType: "video",
+      sourceUrl: video.playbackUrl || video.url,
+      previewUrl: video.thumbnailUrl || video.playbackUrl || video.url,
+      mimeType: video.mimeType || uploadFile?.mimetype || "video/mp4",
+      originalFilename:
+        uploadFile?.originalname || uploadFile?.filename || "",
+      fileSizeBytes: Number(uploadFile?.size || video.sizeBytes || 0),
+      file: uploadFile && (video.playbackUrl || video.url) ? uploadFile : null,
+    });
+  }
+
+  return entries;
+};
+
+const attachPostModerationOverlays = async (posts = [], viewerId = null, req = null) => {
+  const normalizedPosts = Array.isArray(posts) ? posts : [];
+  if (normalizedPosts.length === 0) {
+    return [];
+  }
+
+  const caseMap = await getLatestCaseMapForTargets(
+    "post",
+    normalizedPosts.map((post) => post?._id).filter(Boolean)
+  );
+
+  return normalizedPosts
+    .filter((post) => {
+      const caseDoc = caseMap.get(toIdString(post?._id)) || null;
+      return !caseDoc || !["HOLD_FOR_REVIEW", "BLOCK_EXPLICIT_ADULT", "BLOCK_SUSPECTED_CHILD_EXPLOITATION", "BLOCK_EXTREME_GORE", "BLOCK_ANIMAL_CRUELTY", "BLOCK_REPEAT_VIOLATOR"].includes(String(caseDoc.status || ""));
+    })
+    .map((post) => {
+      const caseDoc = caseMap.get(toIdString(post?._id)) || null;
+      const payload = toPostPayload(post, viewerId);
+      if (caseDoc) {
+        payload.moderationStatus = String(caseDoc.status || "");
+        payload.sensitiveContent = caseDoc.status !== "ALLOW";
+        payload.sensitiveType = String(caseDoc.queue || "");
+        payload.blurPreviewUrl = post.blurPreviewUrl || caseDoc.media?.[0]?.restrictedPreviewUrl || "";
+        payload.reviewRequired = caseDoc.status === "HOLD_FOR_REVIEW";
+        payload.moderationOverlay = getPublicModerationOverlay(caseDoc, req);
+        if (caseDoc.status === "RESTRICTED_BLURRED" && payload.blurPreviewUrl) {
+          payload.image = payload.blurPreviewUrl;
+          payload.media = Array.isArray(payload.media)
+            ? payload.media.map((entry, index) => ({
+              ...entry,
+              url: index === 0 ? payload.blurPreviewUrl : entry.url,
+              isBlurred: index === 0,
+            }))
+            : [];
+          if (payload.video) {
+            payload.video = {
+              ...payload.video,
+              url: "",
+              playbackUrl: "",
+              thumbnailUrl: payload.blurPreviewUrl,
+              restricted: true,
+            };
+          }
+          payload.autoplayDisabled = true;
+        }
+      } else {
+        payload.moderationStatus = String(post?.moderationStatus || "ALLOW");
+        payload.sensitiveContent = Boolean(post?.sensitiveContent);
+        payload.sensitiveType = String(post?.sensitiveType || "");
+        payload.blurPreviewUrl = String(post?.blurPreviewUrl || "");
+        payload.reviewRequired = Boolean(post?.reviewRequired);
+        payload.moderationOverlay = null;
+      }
+      return payload;
+    });
+};
+
 const parseSharedPostPayload = (value) => {
   if (!value) {
     return null;
@@ -508,6 +606,11 @@ const toPostPayload = (post, viewerId) => {
     updatedAt: post.updatedAt,
     edited: Boolean(post.edited),
     isOwner: Boolean(viewerId && authorId && authorId === viewerId.toString()),
+    moderationStatus: String(post.moderationStatus || "ALLOW"),
+    sensitiveContent: Boolean(post.sensitiveContent),
+    sensitiveType: String(post.sensitiveType || ""),
+    blurPreviewUrl: String(post.blurPreviewUrl || ""),
+    reviewRequired: Boolean(post.reviewRequired),
     user: {
       _id: authorId,
       name: author.name || "",
@@ -714,6 +817,52 @@ class PostService {
     });
 
     const post = await withPostAuthor(Post.findById(created._id)).lean();
+    const moderationMedia = buildPostModerationMedia({
+      media,
+      video: ["video", "reel"].includes(type) ? videoMeta : null,
+      uploadFile,
+    });
+    const { moderationDecision, moderationCase } = await createOrUpdateModerationCase({
+      targetType: "post",
+      targetId: created._id.toString(),
+      title: text.slice(0, 240),
+      description: text,
+      metadata: {
+        type,
+        visibility,
+        privacy,
+        feeling,
+        location,
+        tags,
+        hashtags,
+      },
+      media: moderationMedia,
+      uploader: {
+        userId: viewerId,
+        email: viewer?.email || "",
+        username: viewer?.username || "",
+        displayName: viewer?.name || "",
+      },
+      detectionSource: "automated_upload_scan",
+      req: null,
+    });
+
+    if (moderationCase?._id) {
+      await Post.updateOne(
+        { _id: created._id },
+        {
+          $set: {
+            moderationStatus: moderationCase.status,
+            moderationCaseId: moderationCase._id,
+            sensitiveContent: moderationCase.status !== "ALLOW",
+            sensitiveType: moderationCase.queue,
+            blurPreviewUrl: moderationCase.media?.[0]?.restrictedPreviewUrl || "",
+            originalVisibility: visibility,
+            reviewRequired: moderationCase.status === "HOLD_FOR_REVIEW",
+          },
+        }
+      );
+    }
     await incrementDailyMetric("postsCount", 1).catch(() => null);
     await touchUserActivity({ userId: viewerId, seenAt: new Date() }).catch(() => null);
     await logAnalyticsEvent({
@@ -744,7 +893,38 @@ class PostService {
       });
     }
 
-    return toPostPayload(post, viewerId);
+    if (
+      moderationDecision?.status === "BLOCK_SUSPECTED_CHILD_EXPLOITATION"
+      || moderationDecision?.status === "BLOCK_EXPLICIT_ADULT"
+    ) {
+      return {
+        success: false,
+        moderationStatus: moderationDecision.status,
+        reviewRequired: false,
+        message: "This upload violates Tengacion's safety rules and cannot be published.",
+        httpStatus: 422,
+      };
+    }
+
+    if (
+      moderationDecision?.status === "HOLD_FOR_REVIEW"
+      || moderationDecision?.status === "RESTRICTED_BLURRED"
+      || moderationDecision?.status === "BLOCK_EXTREME_GORE"
+      || moderationDecision?.status === "BLOCK_ANIMAL_CRUELTY"
+      || moderationDecision?.status === "BLOCK_REPEAT_VIOLATOR"
+    ) {
+      return {
+        success: true,
+        moderationStatus: moderationDecision.status,
+        reviewRequired: true,
+        postId: created._id.toString(),
+        message: "This media is under review because it may contain sensitive or prohibited content.",
+        httpStatus: 202,
+      };
+    }
+
+    const refreshedPost = await withPostAuthor(Post.findById(created._id)).lean();
+    return toPostPayload(refreshedPost, viewerId);
   }
 
   static async getFeed({ userId, search }) {
@@ -838,7 +1018,7 @@ class PostService {
     }
 
     const posts = await withPostAuthor(Post.find(query).sort({ createdAt: -1 })).lean();
-    return posts.map((post) => toPostPayload(post, viewerId));
+    return attachPostModerationOverlays(posts, viewerId);
   }
 
   static async getPostById({ viewerId, postId }) {
@@ -851,7 +1031,45 @@ class PostService {
       throw ApiError.notFound("Post not found");
     }
 
-    return toPostPayload(post, viewerId);
+    const moderationCase = await getLatestCaseForTarget("post", postId);
+    if (
+      moderationCase
+      && ["HOLD_FOR_REVIEW", "BLOCK_EXPLICIT_ADULT", "BLOCK_SUSPECTED_CHILD_EXPLOITATION", "BLOCK_EXTREME_GORE", "BLOCK_ANIMAL_CRUELTY", "BLOCK_REPEAT_VIOLATOR"].includes(String(moderationCase.status || ""))
+    ) {
+      throw ApiError.notFound("Post not found");
+    }
+
+    const payload = toPostPayload(post, viewerId);
+    if (moderationCase) {
+      payload.moderationStatus = String(moderationCase.status || "");
+      payload.sensitiveContent = moderationCase.status !== "ALLOW";
+      payload.sensitiveType = String(moderationCase.queue || "");
+      payload.blurPreviewUrl = post.blurPreviewUrl || moderationCase.media?.[0]?.restrictedPreviewUrl || "";
+      payload.reviewRequired = moderationCase.status === "HOLD_FOR_REVIEW";
+      payload.moderationOverlay = getPublicModerationOverlay(moderationCase);
+      if (moderationCase.status === "RESTRICTED_BLURRED" && payload.blurPreviewUrl) {
+        payload.image = payload.blurPreviewUrl;
+        payload.media = Array.isArray(payload.media)
+          ? payload.media.map((entry, index) => ({
+            ...entry,
+            url: index === 0 ? payload.blurPreviewUrl : entry.url,
+            isBlurred: index === 0,
+          }))
+          : [];
+        if (payload.video) {
+          payload.video = {
+            ...payload.video,
+            url: "",
+            playbackUrl: "",
+            thumbnailUrl: payload.blurPreviewUrl,
+            restricted: true,
+          };
+        }
+        payload.autoplayDisabled = true;
+      }
+    }
+
+    return payload;
   }
 
   static async getUserPosts({ viewerId, username }) {
@@ -884,7 +1102,7 @@ class PostService {
       Post.find({ author: profileUser._id, ...privacyFilter }).sort({ createdAt: -1 })
     ).lean();
 
-    return posts.map((post) => toPostPayload(post, viewerId));
+    return attachPostModerationOverlays(posts, viewerId);
   }
 
   static async updatePost({ userId, postId, text }) {

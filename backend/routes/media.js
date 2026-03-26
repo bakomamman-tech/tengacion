@@ -108,6 +108,51 @@ router.head("/delivery/:token", async (req, res) => {
   }
 });
 
+router.get("/moderation-placeholder.svg", (req, res) => {
+  const category = String(req.query.category || "sensitive_content")
+    .replace(/[^a-z0-9_ -]/gi, " ")
+    .trim()
+    .slice(0, 40);
+  const severity = String(req.query.severity || "HIGH")
+    .replace(/[^a-z0-9_ -]/gi, " ")
+    .trim()
+    .slice(0, 20);
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-label="Sensitive content placeholder">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#120f14" />
+          <stop offset="100%" stop-color="#2f1f1f" />
+        </linearGradient>
+        <filter id="grain">
+          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" />
+          <feColorMatrix type="saturate" values="0" />
+          <feComponentTransfer>
+            <feFuncA type="table" tableValues="0 0.16" />
+          </feComponentTransfer>
+        </filter>
+      </defs>
+      <rect width="1200" height="675" fill="url(#bg)" />
+      <rect width="1200" height="675" filter="url(#grain)" opacity="0.55" />
+      <rect x="110" y="110" width="980" height="455" rx="32" fill="rgba(0,0,0,0.28)" stroke="rgba(255,255,255,0.12)" />
+      <text x="600" y="290" text-anchor="middle" font-size="32" font-family="Arial, sans-serif" fill="#f4d6d6">
+        Sensitive media hidden pending trust and safety rules
+      </text>
+      <text x="600" y="340" text-anchor="middle" font-size="22" font-family="Arial, sans-serif" fill="#ffd7a8">
+        ${category || "sensitive_content"} | severity ${severity || "HIGH"}
+      </text>
+      <text x="600" y="400" text-anchor="middle" font-size="18" font-family="Arial, sans-serif" fill="#f8efe6">
+        Violent or graphic content may be shown only with restricted blurred previews
+      </text>
+    </svg>
+  `.trim();
+
+  res.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=300");
+  res.send(svg);
+});
+
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;

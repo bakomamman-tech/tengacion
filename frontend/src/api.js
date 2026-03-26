@@ -1863,6 +1863,74 @@ export const adminListReports = ({ page = 1, limit = 20, status = "" } = {}) => 
   });
 };
 
+export const adminGetModerationStats = () =>
+  request(`${API_BASE}/moderation/stats`, {
+    headers: getAuthHeaders(),
+  });
+
+export const adminListModerationCases = ({
+  page = 1,
+  limit = 20,
+  queue = "",
+  status = "",
+  workflowState = "",
+  severity = "",
+  search = "",
+  critical = false,
+} = {}) => {
+  const params = new URLSearchParams();
+  params.set("page", String(page));
+  params.set("limit", String(limit));
+  if (queue) {params.set("queue", String(queue));}
+  if (status) {params.set("status", String(status));}
+  if (workflowState) {params.set("workflowState", String(workflowState));}
+  if (severity) {params.set("severity", String(severity));}
+  if (search) {params.set("search", String(search));}
+  if (critical) {params.set("critical", "true");}
+  return request(`${API_BASE}/moderation/queue?${params.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminGetModerationCase = (caseId) =>
+  request(`${API_BASE}/moderation/cases/${encodeURIComponent(caseId || "")}`, {
+    headers: getAuthHeaders(),
+  });
+
+export const adminGetModerationReviewUrl = (caseId, payload = {}) =>
+  request(`${API_BASE}/moderation/cases/${encodeURIComponent(caseId || "")}/review-url`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const adminApplyModerationAction = (caseId, action, payload = {}) =>
+  request(`${API_BASE}/moderation/cases/${encodeURIComponent(caseId || "")}/actions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({
+      action,
+      ...(payload || {}),
+    }),
+  });
+
+export const adminGetModerationAuditLogs = ({ page = 1, limit = 30, action = "", caseId = "" } = {}) => {
+  const params = new URLSearchParams();
+  params.set("page", String(page));
+  params.set("limit", String(limit));
+  if (action) {params.set("action", String(action));}
+  if (caseId) {params.set("caseId", String(caseId));}
+  return request(`${API_BASE}/moderation/audit-logs?${params.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
 export const adminGetReport = (reportId) =>
   request(`${API_BASE}/admin/reports/${encodeURIComponent(reportId || "")}`, {
     headers: getAuthHeaders(),

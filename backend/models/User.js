@@ -169,8 +169,32 @@ const UserSchema = new mongoose.Schema(
     /* ================= ACCOUNT ================= */
     role: {
       type: String,
-      enum: ["user", "artist", "admin", "moderator", "super_admin"],
+      enum: ["user", "artist", "admin", "moderator", "super_admin", "trust_safety_admin"],
       default: "user",
+    },
+
+    permissions: [
+      {
+        type: String,
+        trim: true,
+        lowercase: true,
+        maxlength: 80,
+      },
+    ],
+
+    moderationProfile: {
+      isPrimaryAuthority: {
+        type: Boolean,
+        default: false,
+        index: true,
+      },
+      escalationEmail: {
+        type: String,
+        default: "",
+        trim: true,
+        lowercase: true,
+        maxlength: 160,
+      },
     },
 
     isArtist: {
@@ -192,6 +216,35 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
       index: true,
+    },
+
+    isSuspended: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    suspensionReason: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 300,
+    },
+
+    suspendedAt: {
+      type: Date,
+      default: null,
+    },
+
+    suspendedUntil: {
+      type: Date,
+      default: null,
+    },
+
+    suspendedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
 
     banReason: {

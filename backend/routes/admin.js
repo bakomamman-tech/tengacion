@@ -21,6 +21,7 @@ const Purchase = require("../models/Purchase");
 const { writeAuditLog } = require("../services/auditLogService");
 const { disconnectUserSockets } = require("../utils/realtimeSessions");
 const { buildAdminDashboard } = require("../services/adminDashboardService");
+const { sendModerationMessengerWarning } = require("../services/moderationMessengerService");
 const {
   applyModerationAction,
   getModerationItem,
@@ -168,6 +169,16 @@ const applyAdminUserSafetyAction = async ({
       action,
     },
   });
+
+  await sendModerationMessengerWarning({
+    req,
+    actor: req.user,
+    recipientId: target._id,
+    action: action === "ban" ? "ban_user" : "suspend_user",
+    reason: normalizedReason,
+    scope: "user",
+    clientSeed: toId(target._id),
+  }).catch(() => null);
 
   if (action === "ban") {
     await logAnalyticsEvent({

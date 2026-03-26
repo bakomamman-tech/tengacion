@@ -4,6 +4,7 @@ const ModerationCase = require("../models/ModerationCase");
 const Post = require("../models/Post");
 const Video = require("../models/Video");
 const { writeAuditLog } = require("./auditLogService");
+const { sendModerationMessengerWarning } = require("./moderationMessengerService");
 const {
   buildPrivateFileUrl,
   deleteStoredMedia,
@@ -660,6 +661,19 @@ const applyModerationAction = async ({
       targetType: moderationCase.targetType || moderationCase.subject?.targetType || "",
       targetId: moderationCase.targetId || moderationCase.subject?.targetId || "",
     },
+  }).catch(() => null);
+
+  await sendModerationMessengerWarning({
+    req,
+    actor,
+    recipientId: moderationCase.uploader?.userId || "",
+    action: normalizedAction,
+    reason: normalizedReason || moderationCase.reason || "",
+    scope: "content",
+    subjectTitle: moderationCase.subject?.title || moderationCase.targetId || moderationCase.subject?.targetId || "",
+    subjectDescription: moderationCase.subject?.description || "",
+    labels: Array.isArray(moderationCase.labels) ? moderationCase.labels : [],
+    clientSeed: toId(moderationCase._id),
   }).catch(() => null);
 
   return buildCaseDTO(moderationCase.toObject());

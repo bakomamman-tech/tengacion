@@ -25,6 +25,7 @@ const {
   RESTRICTED_PUBLIC_STATUSES,
 } = require("../config/moderation");
 const { writeAuditLog } = require("./auditLogService");
+const { sendModerationMessengerWarning } = require("./moderationMessengerService");
 const { buildSignedMediaUrl } = require("./mediaSigner");
 const { findPrimaryModerationAdmin } = require("./moderationAdminService");
 const {
@@ -2103,29 +2104,18 @@ const performModerationAction = async ({
     },
   }).catch(() => null);
 
-  if (
-    moderationCase.uploader?.userId
-    && ["reject", "delete_media", "suspend_user", "ban_user"].includes(normalizedAction)
-  ) {
-    await createNotification({
-      recipient: moderationCase.uploader.userId,
-      sender: actorId || moderationCase.uploader.userId,
-      type: "system",
-      text:
-        normalizedAction === "ban_user"
-          ? "Your account has been restricted for violating platform safety rules."
-          : normalizedAction === "suspend_user"
-            ? "Your account has been restricted for violating platform safety rules."
-            : "This upload violates Tengacion's safety rules and cannot be published.",
-      metadata: {
-        link: "/home",
-        previewText:
-          normalizedAction === "approve"
-            ? "Content approved"
-            : "Moderation action completed",
-      },
-    }).catch(() => null);
-  }
+  await sendModerationMessengerWarning({
+    req,
+    actor: user,
+    recipientId: moderationCase.uploader?.userId || "",
+    action: normalizedAction,
+    reason: normalizedReason,
+    scope: ["suspend_user", "ban_user"].includes(normalizedAction) ? "user" : "content",
+    subjectTitle: moderationCase.subject?.title || moderationCase.queue || "",
+    subjectDescription: moderationCase.subject?.description || "",
+    labels: Array.isArray(moderationCase.labels) ? moderationCase.labels : [],
+    clientSeed: toId(moderationCase._id),
+  }).catch(() => null);
 
   if (normalizedAction === "escalate_case") {
     await maybeNotifyPrimaryAdmin({ moderationCase, req });

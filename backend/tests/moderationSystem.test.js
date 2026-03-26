@@ -18,6 +18,7 @@ const mediaRoutes = require("../routes/media");
 const postsRoutes = require("../../apps/api/routes/posts");
 const errorHandler = require("../../apps/api/middleware/errorHandler");
 const User = require("../models/User");
+const Message = require("../models/Message");
 const ModerationAuditLog = require("../models/ModerationAuditLog");
 const ModerationCase = require("../models/ModerationCase");
 const Post = require("../models/Post");
@@ -693,6 +694,16 @@ describe("moderation routes and enforcement", () => {
     expect(auditRows).toHaveLength(1);
     expect(auditRows[0].adminEmail).toBe("admin@tengacion.com");
     expect(auditRows[0].actionType).toBe("reject");
+
+    const warningMessage = await Message.findOne({
+      receiverId: regularUser._id,
+      senderId: primaryAdmin._id,
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    expect(warningMessage).toBeTruthy();
+    expect(warningMessage.text).toContain("Rejected by trust and safety");
   });
 
   test("hold for review action updates the case and keeps the post hidden", async () => {
@@ -889,6 +900,17 @@ describe("moderation routes and enforcement", () => {
     expect(strike.lastEnforcementAction).toBe("permanent_ban");
     expect(strike.history.some((entry) => entry.actionTaken === "temporary_suspend")).toBe(true);
     expect(strike.history.some((entry) => entry.actionTaken === "permanent_ban")).toBe(true);
+
+    const warningMessages = await Message.find({
+      receiverId: regularUser._id,
+      senderId: primaryAdmin._id,
+    })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    expect(warningMessages.length).toBeGreaterThanOrEqual(2);
+    expect(warningMessages.some((entry) => String(entry.text || "").includes("Temporary restriction"))).toBe(true);
+    expect(warningMessages.some((entry) => String(entry.text || "").includes("Severe repeat violation"))).toBe(true);
   });
 
   test("blocked moderated media cannot be fetched from the public media endpoint", async () => {

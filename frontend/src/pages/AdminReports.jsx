@@ -454,13 +454,13 @@ export default function AdminReportsPage({ user }) {
       },
       {
         key: "remove",
-        label: "Remove",
+        label: "Delete Media",
         className: "",
         onClick: () => applyAction("remove", adminRemoveModerationItem),
       },
       {
         key: "quarantine",
-        label: "Quarantine",
+        label: "Hold for Review",
         className: "",
         onClick: () => applyAction("quarantine", adminQuarantineModerationItem),
       },
@@ -631,12 +631,15 @@ export default function AdminReportsPage({ user }) {
 
             <div>
               <strong>Moderation note</strong>
+              <div className="adminx-muted" style={{ marginTop: 4, marginBottom: 8 }}>
+                This note is stored in the audit trail and sent to the uploader in Messenger with the moderation warning.
+              </div>
               <textarea
                 className="adminx-textarea"
                 rows={4}
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
-                placeholder="Optional note for the audit trail"
+                placeholder="Write the warning you want the uploader to see"
               />
             </div>
 
@@ -658,7 +661,7 @@ export default function AdminReportsPage({ user }) {
                 onClick={handleSuspendUploader}
                 disabled={Boolean(actionLoading) || !canSuspendUploader}
               >
-                {actionLoading === "suspend" ? "Suspending..." : "Suspend uploader"}
+                {actionLoading === "suspend" ? "Suspending..." : "Suspend User"}
               </button>
               <button
                 type="button"
@@ -666,7 +669,7 @@ export default function AdminReportsPage({ user }) {
                 onClick={handleBanUploader}
                 disabled={Boolean(actionLoading) || !canSuspendUploader}
               >
-                {actionLoading === "ban" ? "Banning..." : "Ban uploader"}
+                {actionLoading === "ban" ? "Banning..." : "Ban User"}
               </button>
             </div>
 

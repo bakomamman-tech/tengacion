@@ -38,6 +38,12 @@ router.post(
   asyncHandler(moderationController.applyAction)
 );
 
+router.post(
+  "/scan",
+  requireModerationPermission(["view_moderation_queue"]),
+  asyncHandler(moderationController.scanContent)
+);
+
 [
   "approve",
   "reject",

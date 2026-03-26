@@ -21,6 +21,7 @@ const ModerationAuditLog = require("../models/ModerationAuditLog");
 const ModerationCase = require("../models/ModerationCase");
 const Post = require("../models/Post");
 const UserStrike = require("../models/UserStrike");
+const Video = require("../models/Video");
 const { saveUploadedMedia } = require("../services/mediaStore");
 const {
   createOrUpdateModerationCase,
@@ -355,6 +356,47 @@ describe("moderation routes and enforcement", () => {
 
     expect(Array.isArray(response.body.cases)).toBe(true);
     expect(response.body.cases.length).toBeGreaterThan(0);
+  });
+
+  test("admin scan can pull a matched user's image and video content into manual review", async () => {
+    const matchedUser = await User.create({
+      name: "Stephen Daniel Kurah",
+      username: "stephen_kurah",
+      email: "stephen.kurah@test.com",
+      password: "Password123!",
+    });
+
+    await Post.create({
+      author: matchedUser._id,
+      text: "Summer memories",
+      media: [{ url: "https://cdn.test/media/photo-safe.jpg", type: "image" }],
+      privacy: "public",
+      visibility: "public",
+    });
+
+    await Video.create({
+      userId: matchedUser._id.toString(),
+      name: matchedUser.name,
+      username: matchedUser.username,
+      videoUrl: "https://cdn.test/media/video-safe.mp4",
+      caption: "Clip upload",
+      description: "Recent upload",
+    });
+
+    const response = await request(app)
+      .post("/api/moderation/scan")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ search: "Stephen Daniel Kurah", includeManualReview: true, limit: 10 })
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.scannedCount).toBeGreaterThanOrEqual(2);
+    expect(response.body.flaggedCount).toBeGreaterThanOrEqual(2);
+    expect(Array.isArray(response.body.cases)).toBe(true);
+    expect(response.body.cases.length).toBeGreaterThanOrEqual(2);
+    expect(
+      response.body.cases.every((entry) => entry.status === "HOLD_FOR_REVIEW")
+    ).toBe(true);
   });
 
   test("ordinary admin and normal user cannot access the moderation queue", async () => {

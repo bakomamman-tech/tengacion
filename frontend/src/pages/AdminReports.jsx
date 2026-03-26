@@ -7,6 +7,7 @@ import {
   adminGetModerationReviewUrl,
   adminGetModerationStats,
   adminListModerationCases,
+  adminRunModerationScan,
 } from "../api";
 
 const QUEUE_TABS = [
@@ -67,6 +68,9 @@ export default function AdminReportsPage({ user }) {
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState("");
+  const [reviewLoading, setReviewLoading] = useState("");
+  const [scanLoading, setScanLoading] = useState(false);
   const [message, setMessage] = useState("");
 
   const loadQueue = useCallback(async () => {
@@ -144,6 +148,7 @@ export default function AdminReportsPage({ user }) {
   const handleAction = async (action) => {
     if (!selectedCase?._id) return;
     try {
+      setActionLoading(action);
       const payload = await adminApplyModerationAction(selectedCase._id, action, {
         reason,
       });
@@ -153,18 +158,60 @@ export default function AdminReportsPage({ user }) {
       await Promise.all([loadQueue(), loadCaseDetail(nextCaseId)]);
     } catch (error) {
       setMessage(error?.message || "Moderation action failed");
+    } finally {
+      setActionLoading("");
     }
   };
 
   const handleReviewAsset = async (mediaIndex = 0) => {
     if (!selectedCase?._id) return;
+    let reviewTab = null;
     try {
+      setReviewLoading(String(mediaIndex));
+      reviewTab = window.open("", "_blank", "noopener,noreferrer");
       const payload = await adminGetModerationReviewUrl(selectedCase._id, { mediaIndex });
       if (payload?.url) {
-        window.open(payload.url, "_blank", "noopener,noreferrer");
+        if (reviewTab) {
+          reviewTab.location.href = payload.url;
+        } else {
+          window.location.assign(payload.url);
+        }
       }
     } catch (error) {
+      if (reviewTab) {
+        reviewTab.close();
+      }
       setMessage(error?.message || "Failed to open review asset");
+    } finally {
+      setReviewLoading("");
+    }
+  };
+
+  const handleScan = async ({ searchOnly = false } = {}) => {
+    try {
+      setScanLoading(true);
+      const payload = await adminRunModerationScan({
+        search: searchOnly ? search : "",
+        limit: 20,
+        includeManualReview: true,
+      });
+      const scanned = Number(payload?.scannedCount || 0);
+      const flagged = Number(payload?.flaggedCount || 0);
+      const firstCaseId = payload?.cases?.[0]?._id || "";
+      setMessage(
+        flagged > 0
+          ? `Scan completed. ${flagged} item(s) queued for moderation from ${scanned} scanned.`
+          : `Scan completed. No flagged items found across ${scanned} scanned item(s).`
+      );
+      await loadQueue();
+      if (firstCaseId) {
+        setSelectedCaseId(firstCaseId);
+        navigate(`/admin/moderation/cases/${firstCaseId}`);
+      }
+    } catch (error) {
+      setMessage(error?.message || "Moderation scan failed");
+    } finally {
+      setScanLoading(false);
     }
   };
 
@@ -173,7 +220,24 @@ export default function AdminReportsPage({ user }) {
       title="Moderation"
       subtitle="Trust and safety queue for sexual content blocking, CSAM escalation, violent media restriction, and animal cruelty review."
       user={user}
-      actions={<button type="button" className="adminx-btn" onClick={loadQueue}>Refresh</button>}
+      actions={(
+        <>
+          <button type="button" className="adminx-btn" onClick={loadQueue} disabled={loading || scanLoading}>
+            Refresh
+          </button>
+          <button type="button" className="adminx-btn" onClick={() => handleScan()} disabled={scanLoading}>
+            {scanLoading ? "Scanning..." : "Scan Recent Media"}
+          </button>
+          <button
+            type="button"
+            className="adminx-btn adminx-btn--primary"
+            onClick={() => handleScan({ searchOnly: true })}
+            disabled={scanLoading || !search.trim()}
+          >
+            {scanLoading ? "Scanning..." : "Scan Search Matches"}
+          </button>
+        </>
+      )}
     >
       <section className="adminx-panel adminx-panel--span-12">
         <div className="adminx-filter-row" style={{ gap: 12, flexWrap: "wrap" }}>
@@ -305,7 +369,7 @@ export default function AdminReportsPage({ user }) {
                       {asset.role} | {asset.mediaType} | {asset.originalFilename || "stored asset"}
                     </div>
                     <button type="button" className="adminx-btn" onClick={() => handleReviewAsset(index)}>
-                      Review Asset
+                      {reviewLoading === String(index) ? "Opening..." : "Review Asset"}
                     </button>
                   </div>
                 ))}
@@ -331,9 +395,9 @@ export default function AdminReportsPage({ user }) {
                   type="button"
                   className={`adminx-btn ${entry.action === "ban_user" || entry.action === "reject" ? "adminx-btn--danger" : ""}`}
                   onClick={() => handleAction(entry.action)}
-                  disabled={!selectedCaseActions.has(entry.action)}
+                  disabled={!selectedCaseActions.has(entry.action) || Boolean(actionLoading)}
                 >
-                  {entry.label}
+                  {actionLoading === entry.action ? "Working..." : entry.label}
                 </button>
               ))}
             </div>

@@ -1920,6 +1920,16 @@ export const adminApplyModerationAction = (caseId, action, payload = {}) =>
     }),
   });
 
+export const adminRunModerationScan = (payload = {}) =>
+  request(`${API_BASE}/moderation/scan`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
 export const adminGetModerationAuditLogs = ({ page = 1, limit = 30, action = "", caseId = "" } = {}) => {
   const params = new URLSearchParams();
   params.set("page", String(page));

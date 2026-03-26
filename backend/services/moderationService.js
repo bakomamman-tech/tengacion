@@ -66,6 +66,7 @@ const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 const uniqueStrings = (values = []) => [...new Set(values.filter(Boolean).map((entry) => String(entry)))];
 const normalizeText = (value = "", maxLength = 2000) =>
   String(value || "").trim().replace(/\s+/g, " ").slice(0, maxLength);
+const escapeRegex = (value = "") => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const extractMediaIdFromSource = (value = "") => {
   const match = String(value || "").match(/\/api\/media\/([a-f0-9]{24})(?:$|[/?#])/i);
@@ -196,6 +197,89 @@ const deriveBaselineAccess = (targetType, target = {}) => {
     publishedStatus: "published",
     albumStatus: "",
   };
+};
+
+const toAbsoluteSourceUrl = (value = "", req = null) => {
+  const raw = normalizeText(value, 1200);
+  if (!raw) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(raw)) {
+    return raw;
+  }
+
+  if (raw.startsWith("/") && req && typeof req.get === "function") {
+    return `${req.protocol}://${req.get("host")}${raw}`;
+  }
+
+  return raw;
+};
+
+const buildPostScanMedia = (post = {}, req = null) => {
+  const assets = [];
+  const mediaList = Array.isArray(post?.media) ? post.media : [];
+
+  mediaList.forEach((asset, index) => {
+    const sourceUrl = toAbsoluteSourceUrl(asset?.url || "", req);
+    if (!sourceUrl) {
+      return;
+    }
+
+    assets.push({
+      role: index === 0 ? "primary" : `attachment_${index + 1}`,
+      mediaId: extractMediaIdFromSource(sourceUrl),
+      mediaType: normalizeText(asset?.type || "image", 40),
+      mimeType: normalizeText(
+        asset?.type === "video" ? "video/mp4" : asset?.type === "image" ? "image/jpeg" : "",
+        120
+      ),
+      sourceUrl,
+      previewUrl: sourceUrl,
+      originalFilename: normalizeText(`${post?._id || "post"}-${index + 1}`, 260),
+    });
+  });
+
+  const videoSourceUrl = toAbsoluteSourceUrl(
+    post?.video?.playbackUrl || post?.video?.url || "",
+    req
+  );
+  if (videoSourceUrl) {
+    assets.push({
+      role: "video",
+      mediaId: extractMediaIdFromSource(videoSourceUrl),
+      mediaType: "video",
+      mimeType: normalizeText(post?.video?.mimeType || "video/mp4", 120),
+      sourceUrl: videoSourceUrl,
+      previewUrl: toAbsoluteSourceUrl(
+        post?.video?.thumbnailUrl || post?.video?.playbackUrl || post?.video?.url || "",
+        req
+      ),
+      originalFilename: normalizeText(`${post?._id || "post"}-video`, 260),
+      fileSizeBytes: Number(post?.video?.sizeBytes || 0),
+    });
+  }
+
+  return assets;
+};
+
+const buildVideoScanMedia = (video = {}, req = null) => {
+  const sourceUrl = toAbsoluteSourceUrl(video?.videoUrl || "", req);
+  if (!sourceUrl) {
+    return [];
+  }
+
+  return [
+    {
+      role: "primary",
+      mediaId: extractMediaIdFromSource(sourceUrl),
+      mediaType: "video",
+      mimeType: normalizeText(video?.videoFormat || "video/mp4", 120),
+      sourceUrl,
+      previewUrl: toAbsoluteSourceUrl(video?.coverImageUrl || video?.previewClipUrl || video?.videoUrl || "", req),
+      originalFilename: normalizeText(`${video?._id || "video"}-upload`, 260),
+    },
+  ];
 };
 
 const mergeVisibilityWithModeration = (baselineAccess = {}, moderationDecision = {}) => {
@@ -964,6 +1048,8 @@ const createOrUpdateModerationCase = async ({
   req = null,
   targetDoc = null,
   subjectMediaType = "",
+  forceReview = false,
+  manualReviewReason = "",
 }) => {
   const normalizedTargetType = normalizeText(targetType, 40);
   const normalizedTargetId = normalizeText(targetId, 120);
@@ -1014,6 +1100,27 @@ const createOrUpdateModerationCase = async ({
         ...(moderationDecision.riskLabels || []),
         ...(matchedHashDecision.riskLabels || []),
       ]),
+    };
+  }
+
+  if (forceReview && moderationDecision.status === "ALLOW") {
+    moderationDecision = {
+      queue: "user_reported_sensitive_content",
+      status: "HOLD_FOR_REVIEW",
+      severity: "HIGH",
+      priorityScore: 66,
+      riskLabels: uniqueStrings([
+        "admin_manual_review_requested",
+        normalizeText(manualReviewReason, 120).toLowerCase().replace(/\s+/g, "_"),
+      ].filter(Boolean)),
+      quarantineMedia: false,
+      neverGeneratePreview: false,
+      requiresEscalation: false,
+      workflowState: "OPEN",
+      publicWarningLabel: "Sensitive content under review",
+      summary:
+        normalizeText(manualReviewReason, 500)
+        || "An administrator requested a manual moderation review for this content.",
     };
   }
 
@@ -1249,6 +1356,192 @@ const getModerationSummary = async ({ user }) => {
     workflowStates: toMap(workflowSummary),
     criticalCount,
     repeatViolators,
+  };
+};
+
+const scanContentForModeration = async ({
+  user,
+  req = null,
+  search = "",
+  limit = 20,
+  includeManualReview = false,
+}) => {
+  const normalizedSearch = normalizeText(search, 160);
+  const normalizedLimit = Math.max(1, Math.min(50, Number(limit) || 20));
+  const regex = normalizedSearch ? new RegExp(escapeRegex(normalizedSearch), "i") : null;
+
+  const matchedUsers = regex
+    ? await User.find(
+      {
+        $or: [
+          { name: regex },
+          { username: regex },
+          { email: regex },
+        ],
+      },
+      "_id name username email"
+    ).lean()
+    : [];
+
+  const matchedUserIds = matchedUsers.map((entry) => entry._id);
+  const matchedUserIdStrings = matchedUsers.map((entry) => toId(entry._id));
+
+  const postMediaConditions = [
+    { "media.0": { $exists: true } },
+    { "video.playbackUrl": { $exists: true, $ne: "" } },
+    { "video.url": { $exists: true, $ne: "" } },
+  ];
+  const postQuery = {
+    $and: [
+      { $or: postMediaConditions },
+    ],
+  };
+  if (regex) {
+    const postSearchConditions = [{ text: regex }];
+    if (matchedUserIds.length > 0) {
+      postSearchConditions.push({ author: { $in: matchedUserIds } });
+    }
+    postQuery.$and.push({ $or: postSearchConditions });
+  }
+
+  const videoQuery = {
+    videoUrl: { $exists: true, $ne: "" },
+  };
+  if (regex) {
+    const videoSearchConditions = [
+      { caption: regex },
+      { description: regex },
+      { name: regex },
+      { username: regex },
+    ];
+    if (matchedUserIdStrings.length > 0) {
+      videoSearchConditions.push({ userId: { $in: matchedUserIdStrings } });
+    }
+    videoQuery.$or = videoSearchConditions;
+  }
+
+  const [posts, videos] = await Promise.all([
+    Post.find(postQuery)
+      .sort({ createdAt: -1 })
+      .limit(normalizedLimit)
+      .populate("author", "_id name username email")
+      .lean(),
+    Video.find(videoQuery)
+      .sort({ time: -1, createdAt: -1 })
+      .limit(normalizedLimit)
+      .lean(),
+  ]);
+
+  const candidates = [
+    ...posts.map((entry) => ({
+      sortAt: entry?.createdAt || entry?.updatedAt || new Date(0),
+      type: "post",
+      value: entry,
+    })),
+    ...videos.map((entry) => ({
+      sortAt: entry?.time || entry?.createdAt || entry?.updatedAt || new Date(0),
+      type: "video",
+      value: entry,
+    })),
+  ]
+    .sort((left, right) => new Date(right.sortAt).getTime() - new Date(left.sortAt).getTime())
+    .slice(0, normalizedLimit);
+
+  const cases = [];
+  let flaggedCount = 0;
+
+  for (const candidate of candidates) {
+    if (candidate.type === "post") {
+      const post = candidate.value;
+      const media = buildPostScanMedia(post, req);
+      if (media.length === 0) {
+        continue;
+      }
+
+      const result = await createOrUpdateModerationCase({
+        targetType: "post",
+        targetId: toId(post._id),
+        title: normalizeText(post?.text || "", 240),
+        description: normalizeText(post?.text || "", 3000),
+        metadata: {
+          type: post?.type || "",
+          visibility: post?.visibility || "",
+          privacy: post?.privacy || "",
+          scanSource: "admin_dashboard_scan",
+        },
+        media,
+        uploader: {
+          userId: post?.author?._id || post?.author || null,
+          email: post?.author?.email || "",
+          username: post?.author?.username || "",
+          displayName: post?.author?.name || "",
+        },
+        detectionSource: "admin_manual_scan",
+        req,
+        targetDoc: post,
+        subjectMediaType: media[0]?.mediaType || "image",
+        forceReview: includeManualReview && Boolean(normalizedSearch),
+        manualReviewReason: normalizedSearch
+          ? `Admin scan requested for "${normalizedSearch}"`
+          : "Admin scan requested",
+      });
+
+      if (result?.moderationCase) {
+        cases.push(buildAdminCasePayload(result.moderationCase, user));
+      }
+      if (result?.moderationDecision?.status && result.moderationDecision.status !== "ALLOW") {
+        flaggedCount += 1;
+      }
+      continue;
+    }
+
+    if (candidate.type === "video") {
+      const video = candidate.value;
+      const media = buildVideoScanMedia(video, req);
+      if (media.length === 0) {
+        continue;
+      }
+
+      const result = await createOrUpdateModerationCase({
+        targetType: "video",
+        targetId: toId(video._id),
+        title: normalizeText(video?.caption || video?.name || "", 240),
+        description: normalizeText(video?.description || "", 3000),
+        metadata: {
+          creatorCategory: video?.creatorCategory || "",
+          contentType: video?.contentType || "",
+          scanSource: "admin_dashboard_scan",
+        },
+        media,
+        uploader: {
+          userId: video?.userId || null,
+          email: "",
+          username: video?.username || "",
+          displayName: video?.name || "",
+        },
+        detectionSource: "admin_manual_scan",
+        req,
+        targetDoc: video,
+        subjectMediaType: "video",
+        forceReview: includeManualReview && Boolean(normalizedSearch),
+        manualReviewReason: normalizedSearch
+          ? `Admin scan requested for "${normalizedSearch}"`
+          : "Admin scan requested",
+      });
+
+      if (result?.moderationCase) {
+        cases.push(buildAdminCasePayload(result.moderationCase, user));
+      }
+      if (result?.moderationDecision?.status && result.moderationDecision.status !== "ALLOW") {
+        flaggedCount += 1;
+      }
+    }
+  }
+
+  return {
+    scannedCount: candidates.length,
+    flaggedCount,
+    cases,
   };
 };
 
@@ -1590,6 +1883,7 @@ module.exports = {
   performModerationAction,
   recordUserStrike,
   resolveRejectStatus,
+  scanContentForModeration,
   suspendUserAccount,
   banUserAccount,
 };

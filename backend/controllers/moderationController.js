@@ -5,6 +5,7 @@ const {
   getModerationSummary,
   listModerationCases,
   performModerationAction,
+  scanContentForModeration,
 } = require("../services/moderationService");
 
 const getActor = (req) => ({
@@ -116,11 +117,24 @@ const applyAction = async (req, res) => {
   res.json({ success: true, case: payload });
 };
 
+const scanContent = async (req, res) => {
+  const payload = await scanContentForModeration({
+    user: getActor(req),
+    req,
+    search: req.body?.search || "",
+    limit: req.body?.limit ?? 20,
+    includeManualReview:
+      String(req.body?.includeManualReview ?? "true").toLowerCase() !== "false",
+  });
+  res.json({ success: true, ...payload });
+};
+
 module.exports = {
   applyAction,
   getAuditLogs,
   getCase,
   getReviewUrl,
+  scanContent,
   getStats,
   listQueue,
 };

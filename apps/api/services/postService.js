@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const fsp = require("fs/promises");
 const Post = require("../models/Post");
 const User = require("../../../backend/models/User");
 const { createNotification } = require("../../../backend/services/notificationService");
@@ -155,6 +156,14 @@ const toStringArray = (value, maxItems = 8, maxLength = 60, stripAt = false) => 
     .map((entry) => (stripAt ? entry.replace(/^@+/, "") : entry))
     .filter(Boolean)
     .slice(0, maxItems);
+};
+
+const cleanupTempUpload = async (file = null) => {
+  if (!file?.path) {
+    return;
+  }
+
+  await fsp.unlink(file.path).catch(() => null);
 };
 
 const escapeRegex = (value = "") => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -377,6 +386,20 @@ const buildPostModerationMedia = ({
         uploadFile?.originalname || uploadFile?.filename || "",
       fileSizeBytes: Number(uploadFile?.size || video.sizeBytes || 0),
       file: uploadFile && (video.playbackUrl || video.url) ? uploadFile : null,
+    });
+  }
+
+  if (entries.length === 0 && uploadFile) {
+    entries.push({
+      role: "primary",
+      mediaType: inferMediaKind(uploadFile),
+      sourceUrl: "",
+      previewUrl: "",
+      mimeType: uploadFile?.mimetype || "application/octet-stream",
+      originalFilename:
+        uploadFile?.originalname || uploadFile?.filename || "",
+      fileSizeBytes: Number(uploadFile?.size || 0),
+      file: uploadFile,
     });
   }
 
@@ -756,6 +779,53 @@ class PostService {
         correctOptionId,
         answers: [],
       };
+    }
+
+    if (uploadFile) {
+      const preflightModerationMedia = buildPostModerationMedia({
+        media: [],
+        uploadFile,
+      });
+      const { moderationDecision: preflightModerationDecision } =
+        await createOrUpdateModerationCase({
+          targetType: "post_upload",
+          targetId: `pending:${viewerId}:${new mongoose.Types.ObjectId().toString()}`,
+          title: text.slice(0, 240),
+          description: text,
+          metadata: {
+            type,
+            visibility,
+            privacy,
+            feeling,
+            location,
+            tags,
+            hashtags,
+          },
+          media: preflightModerationMedia,
+          uploader: {
+            userId: viewerId,
+            email: viewer?.email || "",
+            username: viewer?.username || "",
+            displayName: viewer?.name || "",
+          },
+          detectionSource: "automated_upload_scan",
+          req: null,
+          subjectMediaType: inferMediaKind(uploadFile),
+        });
+
+      if (
+        preflightModerationDecision?.status === "BLOCK_SUSPECTED_CHILD_EXPLOITATION"
+        || preflightModerationDecision?.status === "BLOCK_EXPLICIT_ADULT"
+      ) {
+        await cleanupTempUpload(uploadFile);
+        return {
+          success: false,
+          moderationStatus: preflightModerationDecision.status,
+          reviewRequired: false,
+          message: "This upload violates Tengacion's safety rules and cannot be published.",
+          httpStatus: 422,
+        };
+      }
     }
 
     const media = [];

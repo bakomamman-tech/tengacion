@@ -10,11 +10,47 @@ const {
   proxyRemoteMedia,
   streamGridFsMedia,
 } = require("../services/mediaDeliveryService");
+const { buildRestrictedPreviewPath } = require("../services/moderationPolicyService");
+const {
+  getLatestCaseForMediaId,
+  isHiddenFromPublic,
+  isRestrictedForPublic,
+} = require("../services/moderationService");
 const { verifySignedMediaToken } = require("../services/mediaSigner");
 
 const router = express.Router();
 
 const SIGNED_CACHE_CONTROL = "private, max-age=300, stale-while-revalidate=86400";
+
+const resolvePublicMediaAccess = async ({ mediaId, req }) => {
+  const moderationCase = await getLatestCaseForMediaId(mediaId);
+  if (!moderationCase) {
+    return { type: "allow", moderationCase: null, redirectUrl: "" };
+  }
+
+  if (isHiddenFromPublic(moderationCase)) {
+    return { type: "hidden", moderationCase, redirectUrl: "" };
+  }
+
+  if (isRestrictedForPublic(moderationCase)) {
+    const matchingAsset = (Array.isArray(moderationCase.media) ? moderationCase.media : []).find(
+      (entry) => String(entry?.mediaId || "") === String(mediaId || "")
+    );
+    return {
+      type: "restricted",
+      moderationCase,
+      redirectUrl:
+        String(matchingAsset?.restrictedPreviewUrl || "").trim()
+        || buildRestrictedPreviewPath({
+          req,
+          category: moderationCase.queue,
+          severity: moderationCase.severity,
+        }),
+    };
+  }
+
+  return { type: "allow", moderationCase, redirectUrl: "" };
+};
 
 const serveSignedMedia = async (req, res, { token, headOnly = false }) => {
   const payload = verifySignedMediaToken(token);
@@ -160,6 +196,14 @@ router.get("/:id", async (req, res) => {
       return res.status(404).send("Media not found");
     }
 
+    const publicAccess = await resolvePublicMediaAccess({ mediaId: id, req });
+    if (publicAccess.type === "hidden") {
+      return res.status(404).send("Media not found");
+    }
+    if (publicAccess.type === "restricted" && publicAccess.redirectUrl) {
+      return res.redirect(307, publicAccess.redirectUrl);
+    }
+
     const streamed = await streamGridFsMedia({
       req,
       res,
@@ -180,6 +224,14 @@ router.head("/:id", async (req, res) => {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(404).end();
+    }
+
+    const publicAccess = await resolvePublicMediaAccess({ mediaId: id, req });
+    if (publicAccess.type === "hidden") {
+      return res.status(404).end();
+    }
+    if (publicAccess.type === "restricted" && publicAccess.redirectUrl) {
+      return res.redirect(307, publicAccess.redirectUrl);
     }
 
     const streamed = await streamGridFsMedia({

@@ -412,6 +412,10 @@ ModerationCaseSchema.index(
   { name: "moderation_target_lookup" }
 );
 ModerationCaseSchema.index(
+  { "media.mediaId": 1, updatedAt: -1 },
+  { name: "moderation_media_lookup" }
+);
+ModerationCaseSchema.index(
   { queue: 1, severity: -1, priorityScore: -1, createdAt: -1 },
   { name: "moderation_queue_lookup" }
 );

@@ -1,4 +1,7 @@
 const express = require("express");
+const fs = require("fs/promises");
+const os = require("os");
+const path = require("path");
 const request = require("supertest");
 const mongoose = require("mongoose");
 const { MongoMemoryServer } = require("mongodb-memory-server");
@@ -10,12 +13,15 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "test_secret_key_for_moderati
 require("../../apps/api/config/env");
 
 const moderationRoutes = require("../routes/moderation");
+const mediaRoutes = require("../routes/media");
 const postsRoutes = require("../../apps/api/routes/posts");
 const errorHandler = require("../../apps/api/middleware/errorHandler");
 const User = require("../models/User");
 const ModerationAuditLog = require("../models/ModerationAuditLog");
 const ModerationCase = require("../models/ModerationCase");
+const Post = require("../models/Post");
 const UserStrike = require("../models/UserStrike");
+const { saveUploadedMedia } = require("../services/mediaStore");
 const {
   createOrUpdateModerationCase,
 } = require("../services/moderationService");
@@ -73,6 +79,7 @@ beforeAll(async () => {
     disconnectSession: () => 0,
     disconnectUserSessionsExcept: () => 0,
   });
+  app.use("/api/media", mediaRoutes);
   app.use("/api/moderation", moderationRoutes);
   app.use("/api/posts", postsRoutes);
   app.use(errorHandler);
@@ -295,6 +302,42 @@ describe("moderation decision engine", () => {
 });
 
 describe("moderation routes and enforcement", () => {
+  test("multipart explicit image uploads are blocked before a post is created", async () => {
+    const tempFilePath = path.join(
+      os.tmpdir(),
+      `tengacion-explicit-${Date.now()}-${Math.round(Math.random() * 1e6)}.jpg`
+    );
+    await fs.writeFile(tempFilePath, Buffer.from("explicit test image bytes"));
+
+    try {
+      const response = await request(app)
+        .post("/api/posts")
+        .set("Authorization", `Bearer ${userToken}`)
+        .field("text", "Vacation upload")
+        .attach("file", tempFilePath, {
+          filename: "porn.jpg",
+          contentType: "image/jpeg",
+        })
+        .expect(422);
+
+      expect(response.body).toMatchObject({
+        moderationStatus: "BLOCK_EXPLICIT_ADULT",
+        reviewRequired: false,
+      });
+      expect(await Post.countDocuments()).toBe(0);
+
+      const moderationCase = await ModerationCase.findOne({
+        queue: "explicit_pornography",
+        "subject.targetType": "post_upload",
+      }).lean();
+      expect(moderationCase).toBeTruthy();
+      expect(moderationCase.status).toBe("BLOCK_EXPLICIT_ADULT");
+      expect(moderationCase.quarantine.isQuarantined).toBe(true);
+    } finally {
+      await fs.unlink(tempFilePath).catch(() => null);
+    }
+  });
+
   test("Admin@tengacion can access the moderation queue", async () => {
     await createOrUpdateModerationCase({
       targetType: "creator_upload",
@@ -391,6 +434,53 @@ describe("moderation routes and enforcement", () => {
     expect(strike.lastEnforcementAction).toBe("permanent_ban");
     expect(strike.history.some((entry) => entry.actionTaken === "temporary_suspend")).toBe(true);
     expect(strike.history.some((entry) => entry.actionTaken === "permanent_ban")).toBe(true);
+  });
+
+  test("blocked moderated media cannot be fetched from the public media endpoint", async () => {
+    const tempFilePath = path.join(
+      os.tmpdir(),
+      `tengacion-blocked-media-${Date.now()}-${Math.round(Math.random() * 1e6)}.jpg`
+    );
+    const fileBuffer = Buffer.from("blocked media test bytes");
+    await fs.writeFile(tempFilePath, fileBuffer);
+
+    try {
+      const uploaded = await saveUploadedMedia({
+        path: tempFilePath,
+        originalname: "blocked-media.jpg",
+        mimetype: "image/jpeg",
+        size: fileBuffer.length,
+      });
+
+      const created = await createOrUpdateModerationCase({
+        targetType: "post",
+        targetId: new mongoose.Types.ObjectId().toString(),
+        title: "explicit porn",
+        media: [
+          {
+            mediaType: "image",
+            sourceUrl: uploaded.url,
+            previewUrl: uploaded.url,
+            originalFilename: "blocked-media.jpg",
+            mimeType: "image/jpeg",
+            fileSizeBytes: fileBuffer.length,
+          },
+        ],
+        uploader: {
+          userId: regularUser._id,
+          email: regularUser.email,
+          username: regularUser.username,
+          displayName: regularUser.name,
+        },
+        detectionSource: "automated_upload_scan",
+      });
+
+      expect(created.moderationDecision.status).toBe("BLOCK_EXPLICIT_ADULT");
+
+      await request(app).get(uploaded.url).expect(404);
+    } finally {
+      await fs.unlink(tempFilePath).catch(() => null);
+    }
   });
 
   test("explicit adult post creation is blocked with a safe user-facing message", async () => {

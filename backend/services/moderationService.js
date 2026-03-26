@@ -288,6 +288,19 @@ const getLatestCaseForTarget = async (targetType, targetId) => {
     .lean();
 };
 
+const getLatestCaseForMediaId = async (mediaId) => {
+  const normalizedMediaId = normalizeText(mediaId, 120);
+  if (!normalizedMediaId) {
+    return null;
+  }
+
+  return ModerationCase.findOne({
+    "media.mediaId": normalizedMediaId,
+  })
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .lean();
+};
+
 const isHiddenFromPublic = (caseDoc = null) =>
   Boolean(caseDoc && BLOCKED_PUBLIC_STATUSES.has(String(caseDoc.status || "")));
 
@@ -592,7 +605,7 @@ const applyModerationStatusToTarget = async ({
   }
 
   const model = TARGET_MODEL_MAP[normalizedTargetType];
-  if (!model) {
+  if (!model || !isValidObjectId(targetId)) {
     return null;
   }
 
@@ -1565,6 +1578,7 @@ module.exports = {
   filterPublicItems,
   generateModerationReviewUrl,
   getLatestCaseForTarget,
+  getLatestCaseForMediaId,
   getLatestCaseMapForTargets,
   getModerationCaseDetail,
   getModerationSummary,

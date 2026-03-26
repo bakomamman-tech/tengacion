@@ -444,6 +444,168 @@ describe("moderation routes and enforcement", () => {
     expect(auditRows[0].actionType).toBe("reject");
   });
 
+  test("hold for review action updates the case and keeps the post hidden", async () => {
+    const post = await Post.create({
+      author: regularUser._id,
+      text: "Documentary post",
+      visibility: "public",
+      privacy: "public",
+      media: [{ url: "https://cdn.test/media/gore-image.jpg", type: "image" }],
+    });
+
+    const created = await createOrUpdateModerationCase({
+      targetType: "post",
+      targetId: post._id.toString(),
+      title: "documentary on graphic violence",
+      description: "news coverage of beheading",
+      media: [{ mediaType: "image", sourceUrl: "https://cdn.test/media/gore-image.jpg" }],
+      uploader: {
+        userId: regularUser._id,
+        email: regularUser.email,
+        username: regularUser.username,
+        displayName: regularUser.name,
+      },
+      detectionSource: "automated_upload_scan",
+      targetDoc: post,
+    });
+
+    await request(app)
+      .post(`/api/moderation/cases/${created.moderationCase._id}/actions`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ action: "hold_for_review", reason: "Needs an additional reviewer" })
+      .expect(200);
+
+    const refreshedCase = await ModerationCase.findById(created.moderationCase._id).lean();
+    const refreshedPost = await Post.findById(post._id).lean();
+
+    expect(refreshedCase.status).toBe("HOLD_FOR_REVIEW");
+    expect(refreshedCase.workflowState).toBe("UNDER_REVIEW");
+    expect(refreshedPost.moderationStatus).toBe("HOLD_FOR_REVIEW");
+    expect(refreshedPost.reviewRequired).toBe(true);
+    expect(refreshedPost.visibility).toBe("private");
+    expect(refreshedPost.originalVisibility).toBe("public");
+  });
+
+  test("restore content action republishes previously blocked content", async () => {
+    const post = await Post.create({
+      author: regularUser._id,
+      text: "Borderline clip",
+      visibility: "public",
+      privacy: "public",
+      media: [{ url: "https://cdn.test/media/review-image.jpg", type: "image" }],
+    });
+
+    const created = await createOrUpdateModerationCase({
+      targetType: "post",
+      targetId: post._id.toString(),
+      title: "graphic violence scene",
+      description: "bloody fight clip",
+      media: [{ mediaType: "image", sourceUrl: "https://cdn.test/media/review-image.jpg" }],
+      uploader: {
+        userId: regularUser._id,
+        email: regularUser.email,
+        username: regularUser.username,
+        displayName: regularUser.name,
+      },
+      detectionSource: "automated_upload_scan",
+      targetDoc: post,
+    });
+
+    await request(app)
+      .post(`/api/moderation/cases/${created.moderationCase._id}/actions`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ action: "reject", reason: "Hidden pending further action" })
+      .expect(200);
+
+    await request(app)
+      .post(`/api/moderation/cases/${created.moderationCase._id}/actions`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ action: "restore_content", reason: "Allowed after manual review" })
+      .expect(200);
+
+    const refreshedCase = await ModerationCase.findById(created.moderationCase._id).lean();
+    const refreshedPost = await Post.findById(post._id).lean();
+
+    expect(refreshedCase.status).toBe("ALLOW");
+    expect(refreshedPost.moderationStatus).toBe("ALLOW");
+    expect(refreshedPost.reviewRequired).toBe(false);
+    expect(refreshedPost.visibility).toBe("public");
+  });
+
+  test("delete media action blocks the video and archives it from public use", async () => {
+    const video = await Video.create({
+      userId: regularUser._id.toString(),
+      name: regularUser.name,
+      username: regularUser.username,
+      videoUrl: "https://cdn.test/media/violent-video.mp4",
+      coverImageUrl: "https://cdn.test/media/violent-video-cover.jpg",
+      caption: "Investigation clip",
+      description: "graphic violence and bloodshed",
+    });
+
+    const created = await createOrUpdateModerationCase({
+      targetType: "video",
+      targetId: video._id.toString(),
+      title: "graphic violence and bloodshed",
+      description: "violent upload",
+      media: [{ mediaType: "video", sourceUrl: video.videoUrl, previewUrl: video.coverImageUrl }],
+      uploader: {
+        userId: regularUser._id,
+        email: regularUser.email,
+        username: regularUser.username,
+        displayName: regularUser.name,
+      },
+      detectionSource: "automated_upload_scan",
+      targetDoc: video,
+    });
+
+    await request(app)
+      .post(`/api/moderation/cases/${created.moderationCase._id}/actions`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ action: "delete_media", reason: "Remove from public access" })
+      .expect(200);
+
+    const refreshedCase = await ModerationCase.findById(created.moderationCase._id).lean();
+    const refreshedVideo = await Video.findById(video._id).lean();
+
+    expect(refreshedCase.latestDecisionSummary.actionType).toBe("delete_media");
+    expect(refreshedVideo.moderationStatus).toBe("BLOCK_EXTREME_GORE");
+    expect(refreshedVideo.publishedStatus).toBe("blocked");
+    expect(refreshedVideo.archivedAt).toBeTruthy();
+  });
+
+  test("moderation uploader detail route returns the uploader account state", async () => {
+    const created = await createOrUpdateModerationCase({
+      targetType: "creator_upload",
+      targetId: "queue-case-uploader-1",
+      title: "graphic violence",
+      media: [{ mediaType: "image", originalFilename: "queue-uploader.jpg" }],
+      uploader: {
+        userId: regularUser._id,
+        email: regularUser.email,
+        username: regularUser.username,
+        displayName: regularUser.name,
+      },
+      detectionSource: "automated_upload_scan",
+    });
+
+    await request(app)
+      .post(`/api/moderation/cases/${created.moderationCase._id}/actions`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ action: "suspend_user", reason: "Temporary restriction" })
+      .expect(200);
+
+    const response = await request(app)
+      .get(`/api/moderation/cases/${created.moderationCase._id}/uploader`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(response.body.user).toBeTruthy();
+    expect(response.body.user.username).toBe("regular_user");
+    expect(response.body.user.isSuspended).toBe(true);
+    expect(response.body.strike.count).toBeGreaterThanOrEqual(1);
+  });
+
   test("suspend and ban actions write strike records", async () => {
     const created = await createOrUpdateModerationCase({
       targetType: "creator_upload",

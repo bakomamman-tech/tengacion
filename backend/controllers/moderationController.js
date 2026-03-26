@@ -2,6 +2,7 @@ const ModerationAuditLog = require("../models/ModerationAuditLog");
 const {
   generateModerationReviewUrl,
   getModerationCaseDetail,
+  getModerationCaseUploaderDetail,
   getModerationSummary,
   listModerationCases,
   performModerationAction,
@@ -44,6 +45,14 @@ const getCase = async (req, res) => {
 
 const getStats = async (req, res) => {
   const payload = await getModerationSummary({
+    user: getActor(req),
+  });
+  res.json(payload);
+};
+
+const getUploader = async (req, res) => {
+  const payload = await getModerationCaseUploaderDetail({
+    caseId: req.params.id,
     user: getActor(req),
   });
   res.json(payload);
@@ -133,6 +142,7 @@ module.exports = {
   applyAction,
   getAuditLogs,
   getCase,
+  getUploader,
   getReviewUrl,
   scanContent,
   getStats,

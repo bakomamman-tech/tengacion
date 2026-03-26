@@ -106,7 +106,10 @@ const QUEUE_REVIEW_PERMISSION_MAP = {
 
 const ACTION_PERMISSION_MAP = {
   approve: ["approve_safe_content"],
+  restore_content: ["approve_safe_content"],
+  hold_for_review: ["reject_prohibited_content"],
   reject: ["reject_prohibited_content"],
+  delete_media: ["reject_prohibited_content"],
   restrict_with_warning: ["approve_safe_content"],
   blur_preview: ["approve_safe_content"],
   suspend_user: ["suspend_user_accounts"],

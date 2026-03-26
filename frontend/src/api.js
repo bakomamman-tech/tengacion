@@ -1897,6 +1897,11 @@ export const adminGetModerationCase = (caseId) =>
     headers: getAuthHeaders(),
   });
 
+export const adminGetModerationUploader = (caseId) =>
+  request(`${API_BASE}/moderation/cases/${encodeURIComponent(caseId || "")}/uploader`, {
+    headers: getAuthHeaders(),
+  });
+
 export const adminGetModerationReviewUrl = (caseId, payload = {}) =>
   request(`${API_BASE}/moderation/cases/${encodeURIComponent(caseId || "")}/review-url`, {
     method: "POST",

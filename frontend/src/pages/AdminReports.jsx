@@ -3,9 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import AdminShell from "../components/AdminShell";
 import {
   adminApplyModerationAction,
+  adminGetModerationAuditLogs,
   adminGetModerationCase,
   adminGetModerationReviewUrl,
   adminGetModerationStats,
+  adminGetModerationUploader,
   adminListModerationCases,
   adminRunModerationScan,
 } from "../api";
@@ -33,7 +35,10 @@ const STATUS_OPTIONS = [
 
 const ACTIONS = [
   { action: "approve", label: "Approve" },
+  { action: "restore_content", label: "Restore Content" },
+  { action: "hold_for_review", label: "Hold for Review" },
   { action: "reject", label: "Reject" },
+  { action: "delete_media", label: "Delete Media" },
   { action: "restrict_with_warning", label: "Restrict With Blur" },
   { action: "preserve_evidence", label: "Preserve Evidence" },
   { action: "escalate_case", label: "Escalate" },
@@ -71,6 +76,12 @@ export default function AdminReportsPage({ user }) {
   const [actionLoading, setActionLoading] = useState("");
   const [reviewLoading, setReviewLoading] = useState("");
   const [scanLoading, setScanLoading] = useState(false);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditHistoryVisible, setAuditHistoryVisible] = useState(false);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [uploaderLoading, setUploaderLoading] = useState(false);
+  const [uploaderVisible, setUploaderVisible] = useState(false);
+  const [uploaderDetail, setUploaderDetail] = useState(null);
   const [message, setMessage] = useState("");
 
   const loadQueue = useCallback(async () => {
@@ -89,11 +100,17 @@ export default function AdminReportsPage({ user }) {
       setListPayload(queuePayload || { cases: [], total: 0, page: 1, limit: 20 });
 
       const cases = Array.isArray(queuePayload?.cases) ? queuePayload.cases : [];
-      const preferredCaseId = caseId || selectedCaseId || cases[0]?._id || "";
+      const caseIds = new Set(cases.map((entry) => String(entry?._id || "")));
+      const preferredCaseId =
+        caseId
+        || (caseIds.has(String(selectedCaseId || "")) ? selectedCaseId : "")
+        || cases[0]?._id
+        || "";
       if (preferredCaseId) {
         setSelectedCaseId(preferredCaseId);
       } else {
         setSelectedCase(null);
+        setSelectedCaseId("");
       }
     } catch (error) {
       setMessage(error?.message || "Failed to load moderation queue");
@@ -127,10 +144,23 @@ export default function AdminReportsPage({ user }) {
   }, [loadQueue]);
 
   useEffect(() => {
+    if (caseId) {
+      setSelectedCaseId(caseId);
+    }
+  }, [caseId]);
+
+  useEffect(() => {
     if (selectedCaseId) {
       loadCaseDetail(selectedCaseId);
     }
   }, [selectedCaseId, loadCaseDetail]);
+
+  useEffect(() => {
+    setAuditHistoryVisible(false);
+    setAuditLogs([]);
+    setUploaderVisible(false);
+    setUploaderDetail(null);
+  }, [selectedCaseId]);
 
   const queueCounts = stats?.queues || {};
   const statusCounts = stats?.statuses || {};
@@ -139,11 +169,48 @@ export default function AdminReportsPage({ user }) {
     () => new Set(Array.isArray(selectedCase?.availableActions) ? selectedCase.availableActions : []),
     [selectedCase]
   );
+  const canViewAuditHistory = useMemo(() => {
+    const role = String(user?.role || "").toLowerCase();
+    const permissions = new Set(
+      Array.isArray(user?.permissions)
+        ? user.permissions.map((entry) => String(entry || "").trim().toLowerCase()).filter(Boolean)
+        : []
+    );
+    return role === "super_admin" || role === "trust_safety_admin" || permissions.has("view_audit_logs");
+  }, [user]);
 
   const onSelectCase = (entry) => {
     setSelectedCaseId(entry?._id || "");
     navigate(entry?._id ? `/admin/moderation/cases/${entry._id}` : "/admin/moderation");
   };
+
+  const loadAuditHistory = useCallback(async (nextCaseId = selectedCase?._id) => {
+    if (!nextCaseId) return;
+    try {
+      setAuditLoading(true);
+      const payload = await adminGetModerationAuditLogs({ caseId: nextCaseId, limit: 50 });
+      setAuditLogs(Array.isArray(payload?.logs) ? payload.logs : []);
+      setAuditHistoryVisible(true);
+    } catch (error) {
+      setMessage(error?.message || "Failed to load audit history");
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [selectedCase?._id]);
+
+  const loadUploaderDetail = useCallback(async (nextCaseId = selectedCase?._id) => {
+    if (!nextCaseId) return;
+    try {
+      setUploaderLoading(true);
+      const payload = await adminGetModerationUploader(nextCaseId);
+      setUploaderDetail(payload || null);
+      setUploaderVisible(true);
+    } catch (error) {
+      setMessage(error?.message || "Failed to load uploader profile");
+    } finally {
+      setUploaderLoading(false);
+    }
+  }, [selectedCase?._id]);
 
   const handleAction = async (action) => {
     if (!selectedCase?._id) return;
@@ -155,7 +222,12 @@ export default function AdminReportsPage({ user }) {
       setMessage(`Action "${action}" applied.`);
       setReason("");
       const nextCaseId = payload?.case?._id || selectedCase._id;
-      await Promise.all([loadQueue(), loadCaseDetail(nextCaseId)]);
+      await Promise.all([
+        loadQueue(),
+        loadCaseDetail(nextCaseId),
+        auditHistoryVisible ? loadAuditHistory(nextCaseId) : Promise.resolve(),
+        uploaderVisible ? loadUploaderDetail(nextCaseId) : Promise.resolve(),
+      ]);
     } catch (error) {
       setMessage(error?.message || "Moderation action failed");
     } finally {
@@ -213,6 +285,24 @@ export default function AdminReportsPage({ user }) {
     } finally {
       setScanLoading(false);
     }
+  };
+
+  const toggleAuditHistory = async () => {
+    if (!selectedCase?._id) return;
+    if (auditHistoryVisible) {
+      setAuditHistoryVisible(false);
+      return;
+    }
+    await loadAuditHistory(selectedCase._id);
+  };
+
+  const toggleUploaderProfile = async () => {
+    if (!selectedCase?._id) return;
+    if (uploaderVisible) {
+      setUploaderVisible(false);
+      return;
+    }
+    await loadUploaderDetail(selectedCase._id);
   };
 
   return (
@@ -368,7 +458,12 @@ export default function AdminReportsPage({ user }) {
                     <div className="adminx-muted">
                       {asset.role} | {asset.mediaType} | {asset.originalFilename || "stored asset"}
                     </div>
-                    <button type="button" className="adminx-btn" onClick={() => handleReviewAsset(index)}>
+                    <button
+                      type="button"
+                      className="adminx-btn"
+                      onClick={() => handleReviewAsset(index)}
+                      disabled={reviewLoading === String(index)}
+                    >
                       {reviewLoading === String(index) ? "Opening..." : "Review Asset"}
                     </button>
                   </div>
@@ -393,7 +488,7 @@ export default function AdminReportsPage({ user }) {
                 <button
                   key={entry.action}
                   type="button"
-                  className={`adminx-btn ${entry.action === "ban_user" || entry.action === "reject" ? "adminx-btn--danger" : ""}`}
+                  className={`adminx-btn ${["ban_user", "reject", "delete_media"].includes(entry.action) ? "adminx-btn--danger" : ""}`}
                   onClick={() => handleAction(entry.action)}
                   disabled={!selectedCaseActions.has(entry.action) || Boolean(actionLoading)}
                 >
@@ -401,6 +496,97 @@ export default function AdminReportsPage({ user }) {
                 </button>
               ))}
             </div>
+
+            <div className="adminx-action-row" style={{ flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="adminx-btn"
+                onClick={toggleUploaderProfile}
+                disabled={uploaderLoading || !selectedCase?.uploader?.userId}
+              >
+                {uploaderLoading ? "Loading Profile..." : uploaderVisible ? "Hide Uploader Profile" : "Open Uploader Profile"}
+              </button>
+              <button
+                type="button"
+                className="adminx-btn"
+                onClick={toggleAuditHistory}
+                disabled={auditLoading || !canViewAuditHistory}
+              >
+                {auditLoading ? "Loading Audit..." : auditHistoryVisible ? "Hide Audit History" : "View Audit History"}
+              </button>
+            </div>
+
+            {uploaderVisible ? (
+              <div>
+                <strong>Uploader Profile</strong>
+                <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                  {uploaderDetail?.user ? (
+                    <div className="adminx-panel">
+                      <div className="adminx-row">
+                        <strong>{uploaderDetail.user.displayName || uploaderDetail.user.username || "Unknown user"}</strong>
+                        <span className={`adminx-badge ${uploaderDetail.user.isBanned ? "adminx-badge--danger" : ""}`}>
+                          {uploaderDetail.user.isBanned
+                            ? "Banned"
+                            : uploaderDetail.user.isSuspended
+                              ? "Suspended"
+                              : uploaderDetail.user.isActive
+                                ? "Active"
+                                : "Restricted"}
+                        </span>
+                      </div>
+                      <div className="adminx-muted">
+                        @{uploaderDetail.user.username || "unknown"} | {uploaderDetail.user.email || "No email"}
+                      </div>
+                      <div className="adminx-muted">
+                        role: {uploaderDetail.user.role} | moderation cases: {Number(uploaderDetail?.moderationCaseCount || 0).toLocaleString()}
+                      </div>
+                      {uploaderDetail?.strike ? (
+                        <div className="adminx-muted">
+                          strikes: {Number(uploaderDetail.strike.count || 0).toLocaleString()} | last enforcement: {uploaderDetail.strike.lastEnforcementAction || "none"}
+                        </div>
+                      ) : (
+                        <div className="adminx-muted">No strike history found.</div>
+                      )}
+                      {uploaderDetail.user.suspensionReason ? (
+                        <div className="adminx-muted">
+                          suspension: {uploaderDetail.user.suspensionReason} ({formatDateTime(uploaderDetail.user.suspendedAt)})
+                        </div>
+                      ) : null}
+                      {uploaderDetail.user.banReason ? (
+                        <div className="adminx-muted">
+                          ban: {uploaderDetail.user.banReason} ({formatDateTime(uploaderDetail.user.bannedAt)})
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="adminx-muted">No uploader profile is attached to this moderation case.</div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            {auditHistoryVisible ? (
+              <div>
+                <strong>Audit History</strong>
+                <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                  {(auditLogs || []).map((entry) => (
+                    <div key={entry._id} className="adminx-panel">
+                      <div className="adminx-row">
+                        <strong>{entry.action}</strong>
+                        <span className="adminx-muted">{formatDateTime(entry.createdAt)}</span>
+                      </div>
+                      <div className="adminx-muted">
+                        {`${entry.oldStatus || "-"} -> ${entry.newStatus || "-"}`}
+                      </div>
+                      <div className="adminx-muted">
+                        {entry.adminEmail || "Unknown admin"} | {entry.reason || "No reason provided"}
+                      </div>
+                    </div>
+                  ))}
+                  {!(auditLogs || []).length ? <div className="adminx-muted">No audit history found for this case.</div> : null}
+                </div>
+              </div>
+            ) : null}
 
             <div>
               <strong>Enforcement History</strong>

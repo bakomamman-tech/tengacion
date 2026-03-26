@@ -37,7 +37,10 @@ const sendSecurityEmail = require("../utils/sendSecurityEmail");
 const ACTIVE_REVIEW_STATES = ["OPEN", "UNDER_REVIEW", "ESCALATED"];
 const CASE_ACTIONS = [
   "approve",
+  "restore_content",
+  "hold_for_review",
   "reject",
+  "delete_media",
   "restrict_with_warning",
   "blur_preview",
   "suspend_user",
@@ -67,6 +70,15 @@ const uniqueStrings = (values = []) => [...new Set(values.filter(Boolean).map((e
 const normalizeText = (value = "", maxLength = 2000) =>
   String(value || "").trim().replace(/\s+/g, " ").slice(0, maxLength);
 const escapeRegex = (value = "") => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const docHasPath = (doc = null, path = "") =>
+  Boolean(
+    doc
+    && (
+      (typeof doc.$__schema?.path === "function" && doc.$__schema.path(path))
+      || (typeof doc.schema?.path === "function" && doc.schema.path(path))
+      || Object.prototype.hasOwnProperty.call(doc, path)
+    )
+  );
 
 const extractMediaIdFromSource = (value = "") => {
   const match = String(value || "").match(/\/api\/media\/([a-f0-9]{24})(?:$|[/?#])/i);
@@ -472,6 +484,39 @@ const buildAvailableActions = (caseDoc = null, user = null) =>
     ) {
       return false;
     }
+    if (
+      action === "hold_for_review"
+      && ["suspected_child_exploitation", "explicit_pornography"].includes(
+        String(caseDoc?.queue || "")
+      )
+    ) {
+      return false;
+    }
+    if (
+      ["approve", "restore_content"].includes(action)
+      && String(caseDoc?.status || "") === "ALLOW"
+    ) {
+      return false;
+    }
+    if (
+      action === "hold_for_review"
+      && String(caseDoc?.status || "") === "HOLD_FOR_REVIEW"
+      && String(caseDoc?.workflowState || "") === "UNDER_REVIEW"
+    ) {
+      return false;
+    }
+    if (
+      action === "delete_media"
+      && String(caseDoc?.status || "") === "BLOCK_REPEAT_VIOLATOR"
+    ) {
+      return false;
+    }
+    if (
+      action === "escalate_case"
+      && String(caseDoc?.workflowState || "") === "ESCALATED"
+    ) {
+      return false;
+    }
     return hasAllPermissions(user, buildCaseActionPermissions(caseDoc, action));
   });
 
@@ -682,6 +727,7 @@ const applyModerationStatusToTarget = async ({
   moderationCaseId = null,
   sensitiveType = "",
   blurPreviewUrl = "",
+  action = "",
 }) => {
   const normalizedTargetType = String(targetType || "");
   if (!normalizedTargetType || !targetId) {
@@ -699,44 +745,135 @@ const applyModerationStatusToTarget = async ({
   }
 
   const nextAccess = mergeVisibilityWithModeration(baselineAccess, { status });
-  if (Object.prototype.hasOwnProperty.call(doc, "isPublished")) {
+  if (docHasPath(doc, "isPublished")) {
     doc.isPublished = nextAccess.isPublished;
   }
 
-  if (Object.prototype.hasOwnProperty.call(doc, "publishedStatus")) {
+  if (docHasPath(doc, "publishedStatus")) {
     doc.publishedStatus = nextAccess.publishedStatus;
   }
   if (normalizedTargetType === "album") {
     doc.status = nextAccess.albumStatus;
   }
-  if (Object.prototype.hasOwnProperty.call(doc, "moderationStatus")) {
+  if (docHasPath(doc, "moderationStatus")) {
     doc.moderationStatus = status;
   }
-  if (Object.prototype.hasOwnProperty.call(doc, "moderationCaseId")) {
+  if (docHasPath(doc, "moderationCaseId")) {
     doc.moderationCaseId = moderationCaseId || null;
   }
-  if (Object.prototype.hasOwnProperty.call(doc, "sensitiveContent")) {
+  if (docHasPath(doc, "sensitiveContent")) {
     doc.sensitiveContent = status !== "ALLOW";
   }
-  if (Object.prototype.hasOwnProperty.call(doc, "sensitiveType")) {
+  if (docHasPath(doc, "sensitiveType")) {
     doc.sensitiveType = sensitiveType || status;
   }
-  if (Object.prototype.hasOwnProperty.call(doc, "blurPreviewUrl") && blurPreviewUrl) {
+  if (docHasPath(doc, "blurPreviewUrl") && blurPreviewUrl) {
     doc.blurPreviewUrl = blurPreviewUrl;
   }
-  if (Object.prototype.hasOwnProperty.call(doc, "reviewRequired")) {
+  if (
+    docHasPath(doc, "blurPreviewUrl")
+    && status !== "RESTRICTED_BLURRED"
+  ) {
+    doc.blurPreviewUrl = "";
+  }
+  if (docHasPath(doc, "reviewRequired")) {
     doc.reviewRequired = status === "HOLD_FOR_REVIEW";
   }
   if (
-    Object.prototype.hasOwnProperty.call(doc, "originalVisibility")
-    && !String(doc.originalVisibility || "").trim()
-    && Object.prototype.hasOwnProperty.call(doc, "visibility")
+    docHasPath(doc, "originalVisibility")
+    && docHasPath(doc, "visibility")
   ) {
-    doc.originalVisibility = String(doc.visibility || "");
+    const currentVisibility = String(doc.visibility || "");
+    if (!String(doc.originalVisibility || "").trim()) {
+      doc.originalVisibility = currentVisibility;
+    }
+
+    if (status === "ALLOW") {
+      doc.visibility = String(doc.originalVisibility || baselineAccess?.visibility || currentVisibility || "public");
+    } else if (status !== "RESTRICTED_BLURRED") {
+      doc.visibility = "private";
+    }
+  }
+
+  if (docHasPath(doc, "archivedAt")) {
+    if (action === "delete_media") {
+      doc.archivedAt = doc.archivedAt || new Date();
+    } else if (["approve", "restore_content"].includes(String(action || ""))) {
+      doc.archivedAt = null;
+    }
   }
 
   await doc.save();
   return doc;
+};
+
+const getModerationCaseUploaderDetail = async ({ caseId, user }) => {
+  if (!isValidObjectId(caseId)) {
+    const error = new Error("Invalid moderation case id");
+    error.status = 400;
+    throw error;
+  }
+
+  const moderationCase = await ModerationCase.findById(caseId).lean();
+  if (!moderationCase) {
+    const error = new Error("Moderation case not found");
+    error.status = 404;
+    throw error;
+  }
+
+  assertCasePermissions({ user, caseDoc: moderationCase });
+
+  const uploaderId = moderationCase?.uploader?.userId;
+  if (!uploaderId || !isValidObjectId(uploaderId)) {
+    return {
+      user: null,
+      strike: null,
+      moderationCaseCount: 0,
+    };
+  }
+
+  const [uploader, strike, moderationCaseCount] = await Promise.all([
+    User.findById(uploaderId)
+      .select(
+        "_id name username email role isActive isBanned isSuspended suspendedAt suspendedUntil suspensionReason bannedAt banReason createdAt lastLogin moderationProfile"
+      )
+      .lean(),
+    UserStrike.findOne({ userId: uploaderId }).lean(),
+    ModerationCase.countDocuments({ "uploader.userId": uploaderId }),
+  ]);
+
+  return {
+    user: uploader
+      ? {
+        _id: toId(uploader._id),
+        displayName: String(uploader.name || ""),
+        username: String(uploader.username || ""),
+        email: String(uploader.email || ""),
+        role: String(uploader.role || "user"),
+        isActive: Boolean(uploader.isActive),
+        isBanned: Boolean(uploader.isBanned),
+        isSuspended: Boolean(uploader.isSuspended),
+        suspendedAt: uploader.suspendedAt || null,
+        suspendedUntil: uploader.suspendedUntil || null,
+        suspensionReason: String(uploader.suspensionReason || ""),
+        bannedAt: uploader.bannedAt || null,
+        banReason: String(uploader.banReason || ""),
+        createdAt: uploader.createdAt || null,
+        lastLoginAt: uploader.lastLogin || null,
+        moderationProfile: uploader.moderationProfile || {},
+      }
+      : null,
+    strike: strike
+      ? {
+        count: Number(strike.count || 0),
+        lastActionAt: strike.lastActionAt || null,
+        lastActionType: String(strike.lastActionType || ""),
+        lastSeverity: String(strike.lastSeverity || ""),
+        lastEnforcementAction: String(strike.lastEnforcementAction || ""),
+      }
+      : null,
+    moderationCaseCount: Number(moderationCaseCount || 0),
+  };
 };
 
 const recordUserStrike = async ({
@@ -1653,13 +1790,26 @@ const performModerationAction = async ({
   const normalizedReason = normalizeText(reason, 1000);
   const baselineAccess = moderationCase.subject?.baselineAccess || {};
 
-  if (normalizedAction === "approve") {
+  if (normalizedAction === "approve" || normalizedAction === "restore_content") {
     nextStatus = "ALLOW";
     nextWorkflowState = "RESOLVED";
     moderationCase.quarantine.isQuarantined = false;
     moderationCase.quarantine.quarantinedAt = null;
     moderationCase.publicWarningLabel = "";
+  } else if (normalizedAction === "hold_for_review") {
+    if (["suspected_child_exploitation", "explicit_pornography"].includes(String(moderationCase.queue || ""))) {
+      const error = new Error("Hold for review is not allowed for suspected child exploitation or explicit adult content");
+      error.status = 400;
+      throw error;
+    }
+    nextStatus = "HOLD_FOR_REVIEW";
+    nextWorkflowState = "UNDER_REVIEW";
+    moderationCase.quarantine.isQuarantined = true;
+    moderationCase.quarantine.quarantinedAt = moderationCase.quarantine.quarantinedAt || new Date();
   } else if (normalizedAction === "reject") {
+    nextStatus = resolveRejectStatus(moderationCase);
+    nextWorkflowState = "RESOLVED";
+  } else if (normalizedAction === "delete_media") {
     nextStatus = resolveRejectStatus(moderationCase);
     nextWorkflowState = "RESOLVED";
   } else if (
@@ -1789,6 +1939,7 @@ const performModerationAction = async ({
     moderationCaseId: moderationCase._id,
     sensitiveType: moderationCase.queue,
     blurPreviewUrl: moderationCase.media?.[0]?.restrictedPreviewUrl || "",
+    action: normalizedAction,
   });
 
   await ModerationDecisionLog.create({
@@ -1827,7 +1978,7 @@ const performModerationAction = async ({
 
   if (
     moderationCase.uploader?.userId
-    && ["reject", "suspend_user", "ban_user"].includes(normalizedAction)
+    && ["reject", "delete_media", "suspend_user", "ban_user"].includes(normalizedAction)
   ) {
     await createNotification({
       recipient: moderationCase.uploader.userId,
@@ -1874,6 +2025,7 @@ module.exports = {
   getLatestCaseForMediaId,
   getLatestCaseMapForTargets,
   getModerationCaseDetail,
+  getModerationCaseUploaderDetail,
   getModerationSummary,
   getPublicModerationOverlay,
   isHiddenFromPublic,

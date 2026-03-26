@@ -26,6 +26,12 @@ router.get(
   asyncHandler(moderationController.getCase)
 );
 
+router.get(
+  "/cases/:id/uploader",
+  requireModerationPermission(["view_moderation_queue"]),
+  asyncHandler(moderationController.getUploader)
+);
+
 router.post(
   "/cases/:id/review-url",
   requireModerationPermission(["view_moderation_queue"]),
@@ -46,7 +52,10 @@ router.post(
 
 [
   "approve",
+  "restore_content",
+  "hold_for_review",
   "reject",
+  "delete_media",
   "restrict_with_warning",
   "blur_preview",
   "preserve_evidence",
@@ -65,6 +74,9 @@ router.post(
 });
 
 [
+  ["restore", "restore_content"],
+  ["hold", "hold_for_review"],
+  ["delete-media", "delete_media"],
   ["restrict", "restrict_with_warning"],
   ["preserve-evidence", "preserve_evidence"],
   ["escalate", "escalate_case"],

@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import AdminShell from "../components/AdminShell";
@@ -264,6 +264,9 @@ export default function AdminReportsPage({ user }) {
   const [detailError, setDetailError] = useState("");
   const [note, setNote] = useState("");
   const [busyKey, setBusyKey] = useState("");
+  const statsRequestRef = useRef(0);
+  const queueRequestRef = useRef(0);
+  const detailRequestRef = useRef(0);
 
   const queueCases = useMemo(() => getQueueSummary(queue).cases, [queue]);
   const totalPages = useMemo(() => Math.max(1, Math.ceil((Number(queue?.total) || 0) / Number(limit || 1))), [limit, queue?.total]);
@@ -271,57 +274,98 @@ export default function AdminReportsPage({ user }) {
   const visibleCase = selectedCase || selectedQueueCase || null;
   const detailActions = useMemo(() => DETAIL_ACTIONS.filter((action) => canUseAction(visibleCase, action)), [visibleCase]);
   const selectedUploaderUser = selectedUploader?.user || null;
+  const hasActiveFilters = Boolean(category || status || normalizeText(search) || page !== 1 || Number(limit) !== 12);
+  const selectionIsOutsideCurrentQueue = Boolean(selectedCaseId && visibleCase && !selectedQueueCase && !routeCaseId);
+
+  const resetFilters = useCallback(() => {
+    setCategory("");
+    setStatus("");
+    setSearch("");
+    setPage(1);
+    setLimit(12);
+    setDetailError("");
+  }, []);
 
   const loadStats = useCallback(async () => {
+    const requestId = statsRequestRef.current + 1;
+    statsRequestRef.current = requestId;
     setStatsLoading(true);
     setStatsError("");
     try {
-      setStats(await fetchModerationStats());
+      const payload = await fetchModerationStats();
+      if (statsRequestRef.current === requestId) {
+        setStats(payload);
+      }
     } catch (error) {
+      if (statsRequestRef.current !== requestId) {
+        return;
+      }
       const message = error?.message || "Failed to load moderation stats";
       setStatsError(message);
       toast.error(message);
     } finally {
-      setStatsLoading(false);
+      if (statsRequestRef.current === requestId) {
+        setStatsLoading(false);
+      }
     }
   }, []);
 
   const loadQueue = useCallback(async () => {
+    const requestId = queueRequestRef.current + 1;
+    queueRequestRef.current = requestId;
     setQueueLoading(true);
     setQueueError("");
     try {
       const payload = await fetchModerationCases({ page, limit, queue: category, status, search: deferredSearch });
-      setQueue(getQueueSummary(payload));
+      if (queueRequestRef.current === requestId) {
+        setQueue(getQueueSummary(payload));
+      }
     } catch (error) {
+      if (queueRequestRef.current !== requestId) {
+        return;
+      }
       const message = error?.message || "Failed to load moderation queue";
       setQueueError(message);
       toast.error(message);
     } finally {
-      setQueueLoading(false);
+      if (queueRequestRef.current === requestId) {
+        setQueueLoading(false);
+      }
     }
   }, [category, deferredSearch, limit, page, status]);
 
   const loadCase = useCallback(async (caseId) => {
     if (!caseId) {
+      detailRequestRef.current += 1;
       setSelectedCase(null);
       setSelectedUploader(null);
       setDetailError("");
       setNote("");
+      setDetailLoading(false);
       return;
     }
+    const requestId = detailRequestRef.current + 1;
+    detailRequestRef.current = requestId;
     setDetailLoading(true);
     setDetailError("");
     try {
       const [casePayload, uploaderPayload] = await Promise.all([fetchModerationCase(caseId), fetchModerationUploader(caseId)]);
-      setSelectedCase(casePayload || null);
-      setSelectedUploader(uploaderPayload || null);
-      setNote(normalizeText(casePayload?.reviewerNote || casePayload?.latestDecisionSummary?.reason || casePayload?.reason || ""));
+      if (detailRequestRef.current === requestId) {
+        setSelectedCase(casePayload || null);
+        setSelectedUploader(uploaderPayload || null);
+        setNote(normalizeText(casePayload?.reviewerNote || casePayload?.latestDecisionSummary?.reason || casePayload?.reason || ""));
+      }
     } catch (error) {
+      if (detailRequestRef.current !== requestId) {
+        return;
+      }
       const message = error?.message || "Failed to load moderation case";
       setDetailError(message);
       toast.error(message);
     } finally {
-      setDetailLoading(false);
+      if (detailRequestRef.current === requestId) {
+        setDetailLoading(false);
+      }
     }
   }, []);
 
@@ -500,6 +544,7 @@ export default function AdminReportsPage({ user }) {
             <span className="adminx-badge">Total {formatNumber(queue?.total)}</span>
             <span className="adminx-badge">Page {page} / {totalPages}</span>
             {stats?.repeatViolatorThreshold ? <span className="adminx-badge">Repeat threshold {formatNumber(stats.repeatViolatorThreshold)}</span> : null}
+            {selectionIsOutsideCurrentQueue ? <span className="adminx-badge adminx-badge--warn">Selected case is outside the current page</span> : null}
           </div>
         </div>
 
@@ -530,12 +575,26 @@ export default function AdminReportsPage({ user }) {
           <select className="adminx-select" value={limit} onChange={(event) => { setLimit(Number(event.target.value) || 12); setPage(1); }}>
             {[8, 12, 20, 40].map((value) => <option key={value} value={value}>{value} per page</option>)}
           </select>
+          <button type="button" className="adminx-link-btn" onClick={resetFilters} disabled={!hasActiveFilters || Boolean(busyKey)}>
+            Reset Filters
+          </button>
         </div>
 
         <div className="adminx-row" style={{ flexWrap: "wrap", gap: 8 }}>
           <span className="adminx-muted">Search updates the queue in real time.</span>
           <span className="adminx-muted">Scan Search Matches uses the exact text in the search box.</span>
         </div>
+
+        {hasActiveFilters ? (
+          <div className="adminx-row" style={{ flexWrap: "wrap", gap: 8 }}>
+            <span className="adminx-muted">Active filters:</span>
+            {category ? <span className="adminx-badge">Category: {getLabel(category)}</span> : null}
+            {status ? <span className="adminx-badge">Status: {getStatusLabel(status)}</span> : null}
+            {normalizeText(search) ? <span className="adminx-badge">Search: {normalizeText(search)}</span> : null}
+            {page !== 1 ? <span className="adminx-badge">Page: {page}</span> : null}
+            {Number(limit) !== 12 ? <span className="adminx-badge">Per page: {formatNumber(limit)}</span> : null}
+          </div>
+        ) : null}
 
         {statsError ? <div className="adminx-error">{statsError}</div> : null}
         {queueError ? <div className="adminx-error">{queueError}</div> : null}
@@ -579,6 +638,14 @@ export default function AdminReportsPage({ user }) {
           {detailLoading && !visibleCase ? <div className="adminx-loading">Loading moderation case...</div> : null}
           {detailError ? <div className="adminx-error">{detailError}</div> : null}
           {!detailLoading && !visibleCase ? <div className="adminx-empty">Select a moderation case to review the media, warnings, and enforcement controls.</div> : null}
+          {selectionIsOutsideCurrentQueue ? (
+            <div className="adminx-panel" style={{ padding: 14 }}>
+              <div className="adminx-row" style={{ flexWrap: "wrap", gap: 8 }}>
+                <span className="adminx-badge adminx-badge--warn">Current case is not in the filtered queue</span>
+                <button type="button" className="adminx-link-btn" onClick={resetFilters} disabled={Boolean(busyKey)}>Clear filters to bring it back</button>
+              </div>
+            </div>
+          ) : null}
 
           {visibleCase ? (
             <>

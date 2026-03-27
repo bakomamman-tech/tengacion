@@ -266,6 +266,20 @@ describe("AdminReportsPage", () => {
       )
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Reset Filters" }));
+
+    await waitFor(() =>
+      expect(fetchModerationCases).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 1,
+          limit: 12,
+          queue: "",
+          status: "",
+          search: "",
+        })
+      )
+    );
+
     vi.mocked(fetchModerationStats).mockClear();
     vi.mocked(fetchModerationCases).mockClear();
     vi.mocked(fetchModerationCase).mockClear();
@@ -276,9 +290,9 @@ describe("AdminReportsPage", () => {
     await waitFor(() => expect(fetchModerationStats).toHaveBeenCalledTimes(1));
     expect(fetchModerationCases).toHaveBeenCalledWith(
       expect.objectContaining({
-        queue: "explicit_pornography",
+        queue: "",
         status: "",
-        search: "Pending explicit",
+        search: "",
       })
     );
     expect(fetchModerationCase).toHaveBeenCalledWith("case-1");

@@ -3248,18 +3248,6 @@ export default function Messenger({
                     </div>
                   </div>
                 )}
-                <input
-                  ref={composerInputRef}
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && send()}
-                  placeholder="Aa"
-                  disabled={isRecording}
-                />
-
-                <button onClick={send} disabled={!text.trim() || isRecording || Boolean(voicePreview)}>
-                  Send
-                </button>
                 <div className="messenger-composer-row">
                   <div className="messenger-composer-tools" aria-label="Chat tools">
                     <button
@@ -3328,21 +3316,6 @@ export default function Messenger({
                     >
                       GIF
                     </button>
-                    <button
-                      type="button"
-                      className="messenger-composer-btn"
-                      onClick={() => openShareComposer()}
-                      title="Share"
-                      aria-label="Share"
-                      disabled={isRecording || isSendingVoice || !selectedId}
-                    >
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M8 12h8" />
-                        <path d="m12 8 4 4-4 4" />
-                        <path d="M5 6.5A1.5 1.5 0 0 1 6.5 5h7A1.5 1.5 0 0 1 15 6.5V8" />
-                        <path d="M19 15.5A1.5 1.5 0 0 1 17.5 17h-7A1.5 1.5 0 0 1 9 15.5V14" />
-                      </svg>
-                    </button>
                   </div>
 
                   <div className="messenger-composer-entry">
@@ -3354,39 +3327,35 @@ export default function Messenger({
                       placeholder="Aa"
                       disabled={isRecording}
                     />
-
-                    <div className="messenger-composer-trailing">
-                      <button
-                        type="button"
-                        className={`messenger-composer-btn messenger-composer-btn--primary${
-                          canSendText ? " is-send" : ""
-                        }`}
-                        onClick={() => {
-                          if (canSendText) {
-                            send();
-                            return;
-                          }
-                          if (!composerBusy) {
-                            sendQuickReaction("\u{1F44D}");
-                          }
-                        }}
-                        title={canSendText ? "Send message" : "Send like"}
-                        aria-label={canSendText ? "Send message" : "Send like"}
-                        disabled={composerBusy && !canSendText}
-                      >
-                        {canSendText ? (
-                          <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M4 20 20 12 4 4l2 6 8 2-8 2z" />
-                          </svg>
-                        ) : (
-                          <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M11 21H7.5A2.5 2.5 0 0 1 5 18.5V11h6z" />
-                            <path d="M11 11 13.6 5.8A2.2 2.2 0 0 1 15.57 4 1.43 1.43 0 0 1 17 5.43V9h1.53A2.47 2.47 0 0 1 21 11.47a2.5 2.5 0 0 1-.12.77l-1.54 5.12A2.5 2.5 0 0 1 16.95 19H11" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
                   </div>
+
+                  <button
+                    type="button"
+                    className={`messenger-composer-send${canSendText ? " is-send" : ""}`}
+                    onClick={() => {
+                      if (canSendText) {
+                        send();
+                        return;
+                      }
+                      if (!composerBusy) {
+                        sendQuickReaction("\u{1F44D}");
+                      }
+                    }}
+                    title={canSendText ? "Send message" : "Send like"}
+                    aria-label={canSendText ? "Send message" : "Send like"}
+                    disabled={composerBusy && !canSendText}
+                  >
+                    {canSendText ? (
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 20 20 12 4 4l2 6 8 2-8 2z" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M11 21H7.5A2.5 2.5 0 0 1 5 18.5V11h6z" />
+                        <path d="M11 11 13.6 5.8A2.2 2.2 0 0 1 15.57 4 1.43 1.43 0 0 1 17 5.43V9h1.53A2.47 2.47 0 0 1 21 11.47a2.5 2.5 0 0 1-.12.77l-1.54 5.12A2.5 2.5 0 0 1 16.95 19H11" />
+                      </svg>
+                    )}
+                  </button>
                 </div>
               </div>
             </>

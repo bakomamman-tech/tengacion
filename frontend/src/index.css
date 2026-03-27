@@ -10718,8 +10718,8 @@ html.dark-mode .composer-tag-empty.error {
 .messenger-input {
   border-top: 1px solid var(--border);
   display: grid;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 12px;
+  padding: 10px 12px 12px;
   flex-shrink: 0;
   background: var(--surface);
   position: relative;
@@ -10779,7 +10779,7 @@ html.dark-mode .composer-tag-empty.error {
 .messenger-composer-row {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
 }
@@ -10787,7 +10787,7 @@ html.dark-mode .composer-tag-empty.error {
 .messenger-composer-tools {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .messenger-composer-tools {
@@ -10802,16 +10802,18 @@ html.dark-mode .composer-tag-empty.error {
 
 .messenger-composer-entry {
   min-width: 0;
-  min-height: 44px;
+  min-height: 42px;
   display: flex;
   align-items: center;
   gap: 8px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface-soft) 84%, white 16%);
-  padding: 0 8px 0 18px;
+  background: color-mix(in srgb, var(--surface-soft) 90%, white 10%);
+  padding: 0 8px 0 16px;
   overflow: hidden;
   clip-path: inset(0 round 999px);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 82%, white 18%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--border) 84%, white 16%),
+    0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .messenger-composer-entry:focus-within {
@@ -10821,21 +10823,11 @@ html.dark-mode .composer-tag-empty.error {
     0 0 0 3px color-mix(in srgb, var(--brand) 12%, transparent);
 }
 
-.messenger-composer-trailing {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 4px;
-  padding-left: 10px;
-  border-left: 1px solid color-mix(in srgb, var(--border) 82%, white 18%);
-}
-
 .messenger-composer-entry input {
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
-  min-height: 44px;
+  min-height: 42px;
   border: none;
   border-radius: inherit;
   outline: none;
@@ -10891,14 +10883,48 @@ html.dark-mode .composer-tag-empty.error {
   letter-spacing: 0.02em;
 }
 
-.messenger-composer-btn--primary {
-  background: transparent !important;
+.messenger-composer-send {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-soft) 78%, white 22%) !important;
+  color: var(--brand) !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--border) 72%, white 28%),
+    0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.messenger-composer-btn--primary.is-send {
-  background: linear-gradient(135deg, var(--btn-bg), var(--btn-bg-hover)) !important;
-  color: var(--btn-text) !important;
+.messenger-composer-send svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.messenger-composer-send:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--surface-soft) 68%, white 32%) !important;
+}
+
+.messenger-composer-send.is-send {
+  background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 82%, black 18%)) !important;
+  color: #fff !important;
   box-shadow: 0 10px 20px rgba(43, 26, 18, 0.16) !important;
+}
+
+.messenger-composer-send:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .messenger-pinned-banner {
@@ -14481,6 +14507,17 @@ html.dark-mode .password-toggle-btn:hover {
   .messenger-composer-btn--gif {
     min-width: 34px;
     padding: 0 7px !important;
+  }
+
+  .messenger-composer-send {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+  }
+
+  .messenger-composer-send svg {
+    width: 17px;
+    height: 17px;
   }
 
   .form-row {

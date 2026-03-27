@@ -83,6 +83,8 @@ if (process.env.NODE_ENV !== "test") {
   const { repairUserSecurityFields } = require("./scripts/repairUserSecurityFields");
   const { runBirthdayRecognition } = require("./services/birthdayService");
   const { startNewsSchedulers } = require("./services/newsSchedulerService");
+  const { cleanupUploadDir } = require("./services/uploadCleanupService");
+  const privateUpload = require("./middleware/privateUpload");
 
   const io = new Server(server, {
     cors: {
@@ -612,6 +614,8 @@ if (process.env.NODE_ENV !== "test") {
       await connectDB();
 
       try {
+        await cleanupUploadDir({ logger: console });
+        await cleanupUploadDir({ uploadDir: privateUpload.uploadDir, logger: console });
         await repairUserProfileIndexes({ logger: console });
         await repairUserMediaFields({ logger: console });
         await repairUserSecurityFields({ logger: console });

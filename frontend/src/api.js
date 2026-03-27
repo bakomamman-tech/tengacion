@@ -383,7 +383,6 @@ export const login = (email, password) =>
     suppressAuthFailure: true,
     body: JSON.stringify({
       email,
-      emailOrUsername: email,
       password,
       deviceName: getDeviceName(),
     }),

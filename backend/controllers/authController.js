@@ -417,12 +417,14 @@ exports.register = async (req, res) => {
 
 /* ================= LOGIN ================= */
 exports.login = async (req, res) => {
-  const identifier = (req.body.emailOrUsername || "").trim().toLowerCase();
+  const identifier = (req.body.email || "").trim().toLowerCase();
   const password = req.body.password || "";
 
-  const user = await User.findOne({
-    $or: [{ email: identifier }, { username: identifier }],
-  }).select("+password");
+  if (!identifier || !password) {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
+
+  const user = await User.findOne({ email: identifier }).select("+password");
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
     await logAnalyticsEvent({

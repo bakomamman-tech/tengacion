@@ -241,7 +241,9 @@ export default function Login() {
               <div className="form-group">
                 <input
                   type="email"
-                  placeholder="Email or username"
+                  placeholder="Email"
+                  name="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   disabled={loading}

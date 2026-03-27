@@ -831,16 +831,14 @@ class AuthService {
     return finalizeLogin(user, normalizedSessionMeta);
   }
 
-  static async login({ emailOrUsername, email, username, password, sessionMeta = {} }) {
-    const identifier = sanitizeIdentifier(emailOrUsername || email || username);
+  static async login({ email, password, sessionMeta = {} }) {
+    const identifier = sanitizeIdentifier(email);
     if (!identifier || !password) {
-      throw ApiError.badRequest("Email/username and password are required");
+      throw ApiError.badRequest("Email and password are required");
     }
 
     const user = await userRepository
-      .findOne({
-        $or: [{ email: identifier }, { username: identifier }],
-      })
+      .findOne({ email: identifier })
       .select(LOGIN_USER_SELECT);
 
     if (!user || !(await bcrypt.compare(password, user.password))) {

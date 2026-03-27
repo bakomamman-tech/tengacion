@@ -154,6 +154,26 @@ describe("MFA and suspicious-login security", () => {
     expect(sendSecurityEmail).toHaveBeenCalled();
   });
 
+  test("rejects username-only login attempts", async () => {
+    await User.create({
+      name: "Email Login User",
+      username: "email_login_user",
+      email: "email-login@test.com",
+      password: "Password123!",
+    });
+
+    await expect(
+      AuthService.login({
+        username: "email_login_user",
+        password: "Password123!",
+        sessionMeta: makeSessionMeta(),
+      })
+    ).rejects.toMatchObject({
+      message: "Email and password are required",
+      statusCode: 400,
+    });
+  });
+
   test("supports email-code MFA for login and step-up verification", async () => {
     const user = await User.create({
       name: "Email MFA User",

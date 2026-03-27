@@ -71,7 +71,7 @@ exports.register = catchAsync(async (req, res) => {
 
 exports.login = catchAsync(async (req, res) => {
   const payload = await AuthService.login({
-    emailOrUsername: req.body.emailOrUsername || req.body.email || req.body.username,
+    email: req.body.email,
     password: req.body.password,
     sessionMeta: {
       deviceName: req.body?.deviceName || "",

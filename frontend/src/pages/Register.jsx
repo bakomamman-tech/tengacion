@@ -4,6 +4,10 @@ import toast from "react-hot-toast";
 import { register as registerApi } from "../api";
 import AuthPasswordField from "../components/AuthPasswordField";
 import { useAuth } from "../context/AuthContext";
+import {
+  isValidInternationalPhoneNumber,
+  normalizePhoneNumber,
+} from "../utils/phone";
 
 const MONTH_OPTIONS = [
   "January",
@@ -21,7 +25,6 @@ const MONTH_OPTIONS = [
 ];
 
 const isValidEmail = (value) => /^\S+@\S+\.\S+$/.test(value);
-const isLikelyPhone = (value) => /^\+?[0-9][0-9\s()-]{6,}$/.test(value);
 
 const calculateAge = (dateValue) => {
   const today = new Date();
@@ -48,7 +51,8 @@ export default function Register() {
     year: "",
     gender: "",
     username: "",
-    contact: "",
+    email: "",
+    phone: "",
     password: "",
   });
   const [loading, setLoading] = useState(false);
@@ -80,7 +84,8 @@ export default function Register() {
     const firstName = form.firstName.trim();
     const lastName = form.lastName.trim();
     const username = form.username.trim().toLowerCase();
-    const contact = form.contact.trim();
+    const email = form.email.trim().toLowerCase();
+    const phone = normalizePhoneNumber(form.phone);
     const password = form.password;
     const gender = form.gender.trim().toLowerCase();
 
@@ -122,8 +127,13 @@ export default function Register() {
       return;
     }
 
-    if (!contact) {
-      toast.error("Enter your mobile number or email address.");
+    if (!email) {
+      toast.error("Enter your email address.");
+      return;
+    }
+
+    if (!phone) {
+      toast.error("Enter your mobile number.");
       return;
     }
 
@@ -132,17 +142,13 @@ export default function Register() {
       return;
     }
 
-    let email = "";
-    let phone = "";
+    if (!isValidEmail(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
 
-    if (isValidEmail(contact)) {
-      email = contact.toLowerCase();
-    } else if (isLikelyPhone(contact)) {
-      phone = contact;
-      const cleanDigits = contact.replace(/[^0-9]/g, "");
-      email = `${username}.${cleanDigits || Date.now()}@mobile.tengacion.local`;
-    } else {
-      toast.error("Please enter a valid email or phone number.");
+    if (!isValidInternationalPhoneNumber(phone)) {
+      toast.error("Please enter a valid international mobile number.");
       return;
     }
 
@@ -161,7 +167,7 @@ export default function Register() {
 
       if (payload?.token && payload?.user) {
         login(payload.token, payload.user, payload.sessionId);
-        toast.success(phone ? "Account created. You are now signed in." : "Account created.");
+        toast.success("Account created. You are now signed in.");
         navigate("/home", { replace: true });
         return;
       }
@@ -282,18 +288,32 @@ export default function Register() {
           </div>
 
           <div className="register-fb-section">
-            <label className="register-fb-label">Mobile number or email address</label>
+            <label className="register-fb-label">Email address</label>
             <input
-              type="text"
+              type="email"
               className="register-fb-input"
-              placeholder="Mobile number or email address"
-              value={form.contact}
-              onChange={(event) => setValue("contact", event.target.value)}
+              placeholder="you@example.com"
+              value={form.email}
+              onChange={(event) => setValue("email", event.target.value)}
               autoComplete="email"
+              required
+            />
+          </div>
+
+          <div className="register-fb-section">
+            <label className="register-fb-label">Mobile number</label>
+            <input
+              type="tel"
+              inputMode="tel"
+              className="register-fb-input"
+              placeholder="+234 800 000 0000"
+              value={form.phone}
+              onChange={(event) => setValue("phone", event.target.value)}
+              autoComplete="tel"
+              required
             />
             <p className="register-fb-helper-note">
-              You may receive notifications from us.{" "}
-              <a href="#why-contact">Learn why we ask for your contact information</a>
+              Use an international number with your country code if needed.
             </p>
           </div>
 

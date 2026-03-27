@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { register as registerApi } from "./api";
 import { setSessionAccessToken } from "./authSession";
+import {
+  isValidInternationalPhoneNumber,
+  normalizePhoneNumber,
+} from "./utils/phone";
 
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -73,9 +77,11 @@ const registerSchema = z
     email: z.string().email("Enter a valid email address"),
     phone: z
       .string()
-      .min(7, "Phone number is too short")
-      .max(15, "Phone number is too long")
-      .regex(/^[0-9+ ]+$/, "Phone can only contain numbers and +"),
+      .trim()
+      .refine(
+        (value) => isValidInternationalPhoneNumber(value),
+        "Enter a valid international mobile number"
+      ),
     country: z.string().min(2, "Country is required"),
     dob: z.string().min(1, "Date of birth is required"),
     gender: z.enum(["male", "female", "custom"], {
@@ -460,7 +466,7 @@ export default function Register({ onBack }) {
         username: values.username,
         email: values.email,
         password: values.password,
-        phone: values.phone,
+        phone: normalizePhoneNumber(values.phone),
         country: values.country,
         dob: values.dob,
         gender: values.gender === "custom" ? values.customGender : values.gender,
@@ -655,12 +661,13 @@ export default function Register({ onBack }) {
                   className="space-y-4"
                 >
                   <div>
-                    <label className="text-sm text-slate-300">Email</label>
+                    <label className="text-sm text-slate-300">Email address</label>
                     <input
                       {...register("email")}
                       type="email"
                       className="w-full mt-1 p-3 rounded-xl bg-slate-950 border border-slate-800 outline-none focus:border-blue-500"
                       placeholder="you@email.com"
+                      required
                     />
                     {errors.email && (
                       <p className="text-xs text-red-300 mt-1">{errors.email.message}</p>
@@ -668,15 +675,22 @@ export default function Register({ onBack }) {
                   </div>
 
                   <div>
-                    <label className="text-sm text-slate-300">Phone</label>
+                    <label className="text-sm text-slate-300">Mobile number</label>
                     <input
                       {...register("phone")}
+                      type="tel"
+                      inputMode="tel"
                       className="w-full mt-1 p-3 rounded-xl bg-slate-950 border border-slate-800 outline-none focus:border-blue-500"
                       placeholder="+234 800 000 0000"
+                      autoComplete="tel"
+                      required
                     />
                     {errors.phone && (
                       <p className="text-xs text-red-300 mt-1">{errors.phone.message}</p>
                     )}
+                    <p className="text-xs text-slate-500 mt-2">
+                      International numbers are accepted.
+                    </p>
                   </div>
 
                   <div>

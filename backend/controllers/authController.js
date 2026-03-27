@@ -4,6 +4,7 @@ const User = require("../models/User");
 const Otp = require("../models/Otp");
 const sendOtpEmail = require("../utils/sendOtpEmail");
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
+const { isValidPhoneNumber, normalizePhoneNumber } = require("../utils/phone");
 
 const generateToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
@@ -253,8 +254,12 @@ exports.register = async (req, res) => {
     const email = (req.body.email || "").trim().toLowerCase();
     const password = req.body.password || "";
 
-    if (!username || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+    const phone = normalizePhoneNumber(req.body.phone);
+
+    if (!username || !email || !phone || !password) {
+      return res
+        .status(400)
+        .json({ message: "Username, email, mobile number, and password are required" });
     }
 
     if (password.length < 8) {
@@ -272,6 +277,12 @@ exports.register = async (req, res) => {
 
     if (!EMAIL_REGEX.test(email)) {
       return res.status(400).json({ message: "Please use a valid email address" });
+    }
+
+    if (!isValidPhoneNumber(phone)) {
+      return res
+        .status(400)
+        .json({ message: "Please enter a valid international mobile number" });
     }
 
     const [usernameExists, emailExists] = await Promise.all([
@@ -305,7 +316,6 @@ exports.register = async (req, res) => {
     }
 
     const displayName = rawName || username;
-    const phone = (req.body.phone || "").trim();
     const country = (req.body.country || "").trim();
     const dob = req.body.dob || "";
     const gender = req.body.gender || "";

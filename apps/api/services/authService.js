@@ -10,6 +10,7 @@ const sendOtpEmail = require("../../../backend/utils/sendOtpEmail");
 const sendSecurityEmail = require("../../../backend/utils/sendSecurityEmail");
 const { normalizeMediaValue } = require("../../../backend/utils/userMedia");
 const { normalizeAudioPrefs } = require("../../../backend/utils/audioPrefs");
+const { isValidPhoneNumber, normalizePhoneNumber } = require("../../../backend/utils/phone");
 const {
   hashToken,
   signAccessToken,
@@ -211,7 +212,7 @@ const sanitizeRegistrationPayload = (payload = {}) => {
   const username = (payload.username || "").trim().toLowerCase();
   const email = (payload.email || "").trim().toLowerCase();
   const password = payload.password || "";
-  const phone = (payload.phone || "").trim();
+  const phone = normalizePhoneNumber(payload.phone);
   const country = (payload.country || "").trim();
   const dob = payload.dob || "";
   const gender = payload.gender || "";
@@ -726,8 +727,8 @@ class AuthService {
       gender,
     } = sanitizeRegistrationPayload(payload);
 
-    if (!username || !email || !password) {
-      throw ApiError.badRequest("Name, username, and password are required");
+    if (!username || !email || !phone || !password) {
+      throw ApiError.badRequest("Username, email, mobile number, and password are required");
     }
     if (password.length < 8) {
       throw ApiError.badRequest("Password must be at least 8 characters");
@@ -739,6 +740,9 @@ class AuthService {
     }
     if (!EMAIL_REGEX.test(email)) {
       throw ApiError.badRequest("Please use a valid email address");
+    }
+    if (!isValidPhoneNumber(phone)) {
+      throw ApiError.badRequest("Please enter a valid international mobile number");
     }
 
     const [usernameExists, emailExists] = await Promise.all([

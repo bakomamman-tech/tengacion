@@ -56,6 +56,7 @@ export default function AdminSettingsPage({ user }) {
     { id: "notifications", label: "Notification Settings", description: "Notification preferences", path: "/settings/notifications" },
     { id: "audit", label: "Audit Logs", description: "Review admin actions", path: "/admin/audit-logs" },
     { id: "reports", label: "Reports", description: "Open the moderation queue", path: "/admin/reports" },
+    { id: "storage", label: "Storage Cleanup", description: "Inspect collection sizes and remove stale data", path: "/admin/storage" },
   ];
 
   return (

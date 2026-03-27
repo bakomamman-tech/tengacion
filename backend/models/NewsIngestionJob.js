@@ -1,4 +1,9 @@
 const mongoose = require("mongoose");
+const {
+  buildExpiryDate,
+  newsIngestionJobRetentionDays,
+  sanitizePlainObject,
+} = require("../config/storage");
 
 const NewsIngestionJobSchema = new mongoose.Schema(
   {
@@ -66,9 +71,30 @@ const NewsIngestionJobSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    expiresAt: {
+      type: Date,
+      default: () =>
+        buildExpiryDate({
+          createdAt: new Date(),
+          retentionDays: newsIngestionJobRetentionDays,
+        }),
+    },
   },
   { timestamps: true }
 );
+
+NewsIngestionJobSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+NewsIngestionJobSchema.pre("validate", function () {
+  if (this.metadata && typeof this.metadata === "object") {
+    this.metadata = sanitizePlainObject(this.metadata, {
+      maxDepth: 1,
+      maxKeys: 8,
+      maxStringLength: 220,
+      maxArrayLength: 4,
+    });
+  }
+});
 
 NewsIngestionJobSchema.methods.toJSON = function () {
   const obj = this.toObject();

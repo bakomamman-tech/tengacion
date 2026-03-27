@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { key: "messages", label: "Messages", icon: "messages", path: "/admin/messages", dotKey: "messages" },
   { key: "campaigns", label: "Campaigns", icon: "campaigns", path: "/admin/campaigns", dotKey: "campaigns" },
   { key: "settings", label: "Settings", icon: "settings", path: "/admin/settings", dotKey: "settings" },
+  { key: "storage", label: "Storage", icon: "settings", path: "/admin/storage" },
 ];
 
 export default function AdminSidebar({ activeKey = "dashboard", navDots = {}, avatarSrc = "", onClose }) {

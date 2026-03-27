@@ -50,6 +50,12 @@ const {
   backfillDailyAnalytics,
   logAnalyticsEvent,
 } = require("../services/analyticsService");
+const {
+  getStorageActionCatalog,
+  getStorageOverview,
+  previewCleanup,
+  runCleanup,
+} = require("../services/storageMaintenanceService");
 
 const router = express.Router();
 
@@ -1373,5 +1379,38 @@ router.post(
     }
   }
 );
+
+router.get("/storage/overview", async (_req, res) => {
+  try {
+    return res.json({
+      actions: getStorageActionCatalog(),
+      ...(await getStorageOverview()),
+    });
+  } catch (err) {
+    console.error("Admin storage overview error:", err);
+    return res.status(500).json({ error: err.message || "Failed to load storage overview" });
+  }
+});
+
+router.post("/storage/cleanup/preview", async (req, res) => {
+  try {
+    const actions = req.body?.actions || [];
+    return res.json(await previewCleanup(actions));
+  } catch (err) {
+    console.error("Admin storage cleanup preview error:", err);
+    return res.status(500).json({ error: err.message || "Failed to preview storage cleanup" });
+  }
+});
+
+router.post("/storage/cleanup/run", requireStepUp({ adminOnly: true }), async (req, res) => {
+  try {
+    const actions = req.body?.actions || [];
+    const dryRun = Boolean(req.body?.dryRun);
+    return res.json(await runCleanup(actions, { dryRun }));
+  } catch (err) {
+    console.error("Admin storage cleanup run error:", err);
+    return res.status(500).json({ error: err.message || "Failed to run storage cleanup" });
+  }
+});
 
 module.exports = router;

@@ -1,4 +1,9 @@
 const mongoose = require("mongoose");
+const {
+  limitArray,
+  sanitizePlainObject,
+  truncate,
+} = require("../config/storage");
 
 const MessageSchema = new mongoose.Schema(
   {
@@ -250,15 +255,21 @@ const MessageSchema = new mongoose.Schema(
 
 // Indexes for fast chat loading
 MessageSchema.index({ conversationId: 1, createdAt: -1 });
-MessageSchema.index({ senderId: 1, receiverId: 1 });
-MessageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
-MessageSchema.index({ receiverId: 1, senderId: 1, createdAt: -1 });
+MessageSchema.index(
+  { conversationId: 1, senderId: 1, clientId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      clientId: { $type: "string", $ne: "" },
+    },
+    name: "message_client_idempotency",
+  }
+);
 
 MessageSchema.pre("validate", function () {
   if (this.type === "text") {
-    const clean = String(this.text || "").trim();
-    const hasAttachments =
-      Array.isArray(this.attachments) && this.attachments.length > 0;
+    const clean = truncate(this.text || "", 2000);
+    const hasAttachments = Array.isArray(this.attachments) && this.attachments.length > 0;
     if (!clean && !hasAttachments) {
       throw new Error("Text message cannot be empty");
     }
@@ -273,6 +284,29 @@ MessageSchema.pre("validate", function () {
     if (!hasCard) {
       throw new Error("Content card metadata is required");
     }
+  }
+
+  if (Array.isArray(this.attachments)) {
+    this.attachments = limitArray(this.attachments, 5).map((file) => ({
+      url: truncate(file?.url || "", 1200),
+      type: truncate(file?.type || "", 20),
+      name: truncate(file?.name || "", 260),
+      size: Number(file?.size) || 0,
+      durationSeconds: Number(file?.durationSeconds) || 0,
+    }));
+  }
+
+  if (this.metadata && typeof this.metadata === "object") {
+    const nextMetadata = sanitizePlainObject(this.metadata, {
+      maxDepth: 2,
+      maxKeys: 12,
+      maxStringLength: 500,
+      maxArrayLength: 4,
+    });
+    if (this.metadata.type && !nextMetadata.type) {
+      nextMetadata.type = truncate(this.metadata.type, 40);
+    }
+    this.metadata = nextMetadata;
   }
 });
 

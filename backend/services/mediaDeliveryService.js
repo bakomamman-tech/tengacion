@@ -1,8 +1,11 @@
+const fs = require("fs");
+const fsp = require("fs/promises");
 const path = require("path");
 const { Readable } = require("stream");
 const mongoose = require("mongoose");
 
 const { getBucket, bucketName } = require("./mediaStore");
+const { resolvePermanentMediaPath, inferContentTypeFromName } = require("./mediaStoragePaths");
 
 const MEDIA_ID_PATTERN = /\/api\/media\/([a-f0-9]{24})(?:$|[/?#])/i;
 
@@ -164,6 +167,95 @@ const getMediaFileDoc = async (objectId) => {
 
 const resolveFilenameFromFileDoc = (fileDoc = {}) =>
   sanitizeFilename(fileDoc?.metadata?.originalName || fileDoc?.filename || "media");
+
+const resolveLocalMediaPath = (sourceUrl = "") => resolvePermanentMediaPath(sourceUrl);
+
+const resolveLocalMediaDetails = async (sourceUrl = "") => {
+  const filePath = resolveLocalMediaPath(sourceUrl);
+  if (!filePath) {
+    return null;
+  }
+
+  const stat = await fsp.stat(filePath).catch(() => null);
+  if (!stat || !stat.isFile()) {
+    return null;
+  }
+
+  const filename = sanitizeFilename(path.basename(filePath) || "media");
+  const contentType = inferContentTypeFromFilename(filename) || inferContentTypeFromName(filename);
+  return {
+    filePath,
+    filename,
+    contentType: contentType || "application/octet-stream",
+    length: toSafeLength(stat.size),
+  };
+};
+
+const streamLocalMedia = async ({
+  req,
+  res,
+  sourceUrl,
+  disposition = "inline",
+  cacheControl = "public, max-age=31536000, immutable",
+  headOnly = false,
+}) => {
+  const details = await resolveLocalMediaDetails(sourceUrl);
+  if (!details) {
+    return false;
+  }
+
+  const { filePath, filename, contentType, length } = details;
+  const range = parseRange(req.headers.range, length);
+
+  if (range) {
+    const { start, end } = range;
+    const chunkSize = end - start + 1;
+    setResponseHeaders({
+      res,
+      fileSize: chunkSize,
+      mimeType: contentType,
+      filename,
+      disposition,
+      cacheControl,
+      contentRange: `bytes ${start}-${end}/${length}`,
+      passthroughStatus: 206,
+    });
+    if (headOnly) {
+      return res.end();
+    }
+
+    const stream = fs.createReadStream(filePath, { start, end });
+    stream.on("error", () => res.end());
+    stream.pipe(res);
+    return true;
+  }
+
+  if (req.headers.range) {
+    res.status(416);
+    res.setHeader("Content-Range", `bytes */${length}`);
+    res.end();
+    return true;
+  }
+
+  setResponseHeaders({
+    res,
+    fileSize: length,
+    mimeType: contentType,
+    filename,
+    disposition,
+    cacheControl,
+    passthroughStatus: 200,
+  });
+
+  if (headOnly) {
+    return res.end();
+  }
+
+  const stream = fs.createReadStream(filePath);
+  stream.on("error", () => res.end());
+  stream.pipe(res);
+  return true;
+};
 
 const setResponseHeaders = ({
   res,
@@ -333,6 +425,16 @@ const proxyRemoteMedia = async ({
 };
 
 const openMediaSourceStream = async (sourceUrl = "") => {
+  const localDetails = await resolveLocalMediaDetails(sourceUrl).catch(() => null);
+  if (localDetails) {
+    return {
+      stream: fs.createReadStream(localDetails.filePath),
+      filename: localDetails.filename,
+      contentType: localDetails.contentType,
+      length: localDetails.length,
+    };
+  }
+
   const objectId = extractMediaObjectId(sourceUrl);
   if (objectId) {
     const fileDoc = await getMediaFileDoc(objectId);
@@ -384,6 +486,48 @@ const openMediaSourceStream = async (sourceUrl = "") => {
   };
 };
 
+const streamSourceMedia = async ({
+  req,
+  res,
+  sourceUrl,
+  disposition = "inline",
+  cacheControl = "private, max-age=300, stale-while-revalidate=86400",
+  headOnly = false,
+}) => {
+  const localStreamed = await streamLocalMedia({
+    req,
+    res,
+    sourceUrl,
+    disposition,
+    cacheControl,
+    headOnly,
+  });
+  if (localStreamed) {
+    return true;
+  }
+
+  const objectId = extractMediaObjectId(sourceUrl);
+  if (objectId) {
+    return streamGridFsMedia({
+      req,
+      res,
+      objectId,
+      disposition,
+      cacheControl,
+      headOnly,
+    });
+  }
+
+  return proxyRemoteMedia({
+    req,
+    res,
+    sourceUrl,
+    disposition,
+    cacheControl,
+    headOnly,
+  });
+};
+
 module.exports = {
   extractMediaObjectId,
   extensionFromContentType,
@@ -392,6 +536,8 @@ module.exports = {
   parseRange,
   proxyRemoteMedia,
   sanitizeFilename,
+  streamLocalMedia,
   streamGridFsMedia,
+  streamSourceMedia,
   toSafeLength,
 };

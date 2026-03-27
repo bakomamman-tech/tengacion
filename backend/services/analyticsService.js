@@ -11,6 +11,11 @@ const Purchase = require("../models/Purchase");
 const Report = require("../models/Report");
 const Message = require("../models/Message");
 const Post = require("../models/Post");
+const {
+  buildExpiryDate,
+  analyticsEventRetentionDays,
+  sanitizePlainObject,
+} = require("../config/storage");
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_ALERT_THRESHOLDS = {
@@ -112,15 +117,26 @@ const logAnalyticsEvent = async ({
   if (!type) return null;
 
   const payload = {
-    type: String(type).trim(),
+    type: String(type).trim().slice(0, 80),
     userId: mongoose.Types.ObjectId.isValid(userId) ? userId : null,
-    actorRole: String(actorRole || "").trim().toLowerCase(),
+    actorRole: String(actorRole || "").trim().toLowerCase().slice(0, 40),
     targetId: targetId || null,
-    targetType: String(targetType || "").trim().toLowerCase(),
-    contentType: String(contentType || "").trim().toLowerCase(),
-    metadata: metadata && typeof metadata === "object" ? metadata : {},
+    targetType: String(targetType || "").trim().toLowerCase().slice(0, 40),
+    contentType: String(contentType || "").trim().toLowerCase().slice(0, 40),
+    metadata: metadata && typeof metadata === "object"
+      ? sanitizePlainObject(metadata, {
+          maxDepth: 2,
+          maxKeys: 16,
+          maxStringLength: 400,
+          maxArrayLength: 8,
+        })
+      : {},
     createdAt,
     updatedAt: createdAt,
+    expiresAt: buildExpiryDate({
+      createdAt,
+      retentionDays: analyticsEventRetentionDays,
+    }),
   };
 
   const event = await AnalyticsEvent.create(payload).catch(() => null);

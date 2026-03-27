@@ -12,10 +12,15 @@ const notifyCriticalModerationCase = async ({ moderationCase }) => {
     sender: moderationCase?.uploader?.userId || admin._id,
     type: "system",
     text: "Critical moderation case requires review",
+    entity: {
+      id: moderationCase._id,
+      model: "ModerationCase",
+    },
     metadata: {
       previewText: moderationCase.publicWarningLabel || moderationCase.status,
       link: "/admin/reports",
       moderationCaseId: moderationCase._id.toString(),
+      dedupeKey: `moderation_case:${moderationCase._id.toString()}`,
     },
   });
 };

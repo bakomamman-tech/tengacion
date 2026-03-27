@@ -62,7 +62,7 @@ const NewsPublisherContractSchema = new mongoose.Schema(
     allowedCountries: [{ type: String, trim: true, maxlength: 120 }],
     allowedStates: [{ type: String, trim: true, maxlength: 120 }],
     startAt: { type: Date, default: Date.now },
-    expiresAt: { type: Date, default: null, index: true },
+    expiresAt: { type: Date, default: null },
     signedBy: { type: String, default: "", trim: true, maxlength: 160 },
     notes: { type: String, default: "", trim: true, maxlength: 1200 },
   },

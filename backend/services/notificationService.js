@@ -1,5 +1,12 @@
 const Notification = require("../models/Notification");
 const User = require("../models/User");
+const {
+  buildExpiryDate,
+  notificationReadRetentionDays,
+  notificationUnreadRetentionDays,
+  sanitizePlainObject,
+  truncate,
+} = require("../config/storage");
 
 const typeToPrefKey = {
   like: "likes",
@@ -11,6 +18,38 @@ const typeToPrefKey = {
   message: "messages",
   report_update: "reports",
   system: "system",
+};
+
+const normalizeNotificationMetadata = (metadata = {}) => {
+  const { dedupeKey: _dedupeKey, ...rest } = metadata || {};
+  return sanitizePlainObject(rest, {
+    maxDepth: 1,
+    maxKeys: 8,
+    maxStringLength: 400,
+    maxArrayLength: 4,
+  });
+};
+
+const buildNotificationDedupeKey = ({ recipient, sender, type, text, entity, metadata }) => {
+  if (!metadata?.dedupeKey && !entity?.id) {
+    return "";
+  }
+
+  const pieces = [
+    String(type || "").trim().toLowerCase(),
+    String(recipient || "").trim(),
+    String(sender || "").trim(),
+  ];
+
+  if (entity?.id) {
+    pieces.push(String(entity.id).trim());
+  }
+
+  if (metadata?.dedupeKey) {
+    pieces.push(String(metadata.dedupeKey).trim());
+  }
+
+  return pieces.filter(Boolean).join(":").slice(0, 160);
 };
 
 /**
@@ -36,18 +75,57 @@ exports.createNotification = async ({
       return null;
     }
 
+    const normalizedType = String(type || "").trim().toLowerCase();
+    const safeText = truncate(text, 500);
+    const safeMetadata = normalizeNotificationMetadata(metadata);
+    const dedupeKey = buildNotificationDedupeKey({
+      recipient,
+      sender,
+      type: normalizedType,
+      text: safeText,
+      entity,
+      metadata: safeMetadata,
+    });
+    const now = new Date();
+    const unreadExpiresAt = buildExpiryDate({
+      createdAt: now,
+      retentionDays: notificationUnreadRetentionDays,
+    });
+
+    const existing = dedupeKey
+      ? await Notification.findOne({ recipient, dedupeKey }).lean()
+      : null;
+    if (existing) {
+      return Notification.findById(existing._id)
+        .populate("sender", "_id name username avatar");
+    }
+
     const notification = await Notification.create({
       recipient,
       sender,
-      type,
-      text,
+      type: normalizedType,
+      text: safeText,
       entity,
-      metadata,
+      metadata: safeMetadata,
+      dedupeKey: dedupeKey || undefined,
+      read: false,
+      readAt: null,
+      expiresAt: unreadExpiresAt,
+    }).catch(async (err) => {
+      if (err?.code === 11000 && dedupeKey) {
+        return Notification.findOne({ recipient, dedupeKey });
+      }
+      throw err;
     });
+
+    if (!notification) {
+      return null;
+    }
 
     const unreadCount = await Notification.countDocuments({
       recipient,
       read: false,
+      expiresAt: { $gt: new Date() },
     });
 
     // Backward-compatible event + new payload event.

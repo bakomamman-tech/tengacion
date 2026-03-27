@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { buildExpiryDate, auditLogRetentionDays, sanitizePlainObject } = require("../config/storage");
 
 const AuditLogSchema = new mongoose.Schema(
   {
@@ -39,6 +40,14 @@ const AuditLogSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    expiresAt: {
+      type: Date,
+      default: () =>
+        buildExpiryDate({
+          createdAt: new Date(),
+          retentionDays: auditLogRetentionDays,
+        }),
+    },
     ip: {
       type: String,
       default: "",
@@ -56,5 +65,17 @@ const AuditLogSchema = new mongoose.Schema(
 );
 
 AuditLogSchema.index({ createdAt: -1 });
+AuditLogSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+AuditLogSchema.pre("validate", function () {
+  if (this.metadata && typeof this.metadata === "object") {
+    this.metadata = sanitizePlainObject(this.metadata, {
+      maxDepth: 2,
+      maxKeys: 12,
+      maxStringLength: 400,
+      maxArrayLength: 6,
+    });
+  }
+});
 
 module.exports = mongoose.model("AuditLog", AuditLogSchema);

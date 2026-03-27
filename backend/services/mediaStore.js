@@ -3,7 +3,16 @@ const fsp = require("fs/promises");
 const path = require("path");
 const mongoose = require("mongoose");
 const { pipeline } = require("stream/promises");
+
 const { incrementDailyMetric, logAnalyticsEvent } = require("./analyticsService");
+const {
+  PERMANENT_MEDIA_DIR,
+  buildPermanentMediaFilename,
+  buildPermanentMediaPublicId,
+  buildPermanentMediaUrl,
+  ensurePermanentMediaDir,
+  inferContentTypeFromName,
+} = require("./mediaStoragePaths");
 
 const bucketName = "uploads";
 
@@ -20,24 +29,6 @@ const toSafeFilename = (value = "") => {
   return safe || `upload_${Date.now()}`;
 };
 
-const inferContentTypeFromName = (filename = "") => {
-  const lower = String(filename || "").toLowerCase();
-  if (/\.(mp4|m4v)$/i.test(lower)) return "video/mp4";
-  if (/\.webm$/i.test(lower)) return "video/webm";
-  if (/\.ogg$/i.test(lower)) return "video/ogg";
-  if (/\.mov$/i.test(lower)) return "video/quicktime";
-  if (/\.avi$/i.test(lower)) return "video/x-msvideo";
-  if (/\.mkv$/i.test(lower)) return "video/x-matroska";
-  if (/\.png$/i.test(lower)) return "image/png";
-  if (/\.(jpg|jpeg)$/i.test(lower)) return "image/jpeg";
-  if (/\.gif$/i.test(lower)) return "image/gif";
-  if (/\.webp$/i.test(lower)) return "image/webp";
-  if (/\.bmp$/i.test(lower)) return "image/bmp";
-  if (/\.svg$/i.test(lower)) return "image/svg+xml";
-  if (/\.avif$/i.test(lower)) return "image/avif";
-  return "";
-};
-
 const resolveContentType = (file) => {
   const mime = String(file?.mimetype || "").toLowerCase();
   if (mime && mime !== "application/octet-stream") {
@@ -49,6 +40,20 @@ const resolveContentType = (file) => {
     inferContentTypeFromName(file?.filename || "") ||
     "application/octet-stream"
   );
+};
+
+const moveFile = async (sourcePath, destPath) => {
+  await fsp.mkdir(path.dirname(destPath), { recursive: true });
+  try {
+    await fsp.rename(sourcePath, destPath);
+  } catch (error) {
+    if (!error || error.code !== "EXDEV") {
+      throw error;
+    }
+
+    await fsp.copyFile(sourcePath, destPath);
+    await fsp.unlink(sourcePath).catch(() => null);
+  }
 };
 
 const persistUpload = async (file) => {
@@ -65,35 +70,25 @@ const persistUpload = async (file) => {
     throw new Error("Uploaded file could not be read from temporary storage");
   }
 
-  const bucket = getBucket();
-  const filename = toSafeFilename(file.originalname || path.basename(sourcePath));
   const contentType = resolveContentType(file);
-  const uploadStream = bucket.openUploadStream(filename, {
-    contentType,
-    metadata: {
-      source: "tengacion-upload",
-      originalName: file.originalname || "",
-      contentDisposition: "inline",
-    },
-  });
-
-  await pipeline(fs.createReadStream(sourcePath), uploadStream);
-
-  try {
-    await fsp.unlink(sourcePath);
-  } catch {
-    // Non-fatal: local temp cleanup best-effort.
-  }
-
   const resourceType = contentType.startsWith("video/")
     ? "video"
     : contentType.startsWith("image/")
       ? "image"
       : "raw";
 
+  await ensurePermanentMediaDir();
+
+  const filename = buildPermanentMediaFilename({
+    originalName: file.originalname || path.basename(sourcePath),
+    contentType,
+  });
+  const destPath = path.join(PERMANENT_MEDIA_DIR, filename);
+  await moveFile(sourcePath, destPath);
+
   return {
-    url: `/api/media/${uploadStream.id.toString()}`,
-    public_id: uploadStream.id.toString(),
+    url: buildPermanentMediaUrl(filename),
+    public_id: buildPermanentMediaPublicId(filename),
     resource_type: resourceType,
   };
 };

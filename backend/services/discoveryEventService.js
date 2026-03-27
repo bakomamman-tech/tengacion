@@ -1,6 +1,11 @@
 const crypto = require("crypto");
 const RecommendationLog = require("../models/RecommendationLog");
 const { logAnalyticsEvent } = require("./analyticsService");
+const {
+  sanitizePlainObject,
+  limitArray,
+  truncate,
+} = require("../config/storage");
 
 const ALLOWED_EVENT_TYPES = new Set([
   "feed_impression",
@@ -44,23 +49,35 @@ const createRecommendationLog = async ({
     requestId,
     userId,
     surface: normalizeText(surface, 60),
-    candidateIds: (Array.isArray(candidates) ? candidates : [])
+    candidateIds: limitArray(Array.isArray(candidates) ? candidates : [], 25)
       .map((candidate) => String(candidate?.candidateId || ""))
+      .map((value) => truncate(value, 120))
       .filter(Boolean),
-    rankedIds: (Array.isArray(rankedItems) ? rankedItems : [])
+    rankedIds: limitArray(Array.isArray(rankedItems) ? rankedItems : [], 40)
       .map((item) => `${String(item?.entityType || "")}:${String(item?.id || "")}`)
+      .map((value) => truncate(value, 160))
       .filter(Boolean),
-    featuresSnapshot: {
+    featuresSnapshot: sanitizePlainObject({
       topCreators: Array.isArray(affinity?.topCreators) ? affinity.topCreators.slice(0, 8) : [],
       preferredContentTypes: Array.isArray(affinity?.preferredContentTypes)
         ? affinity.preferredContentTypes.slice(0, 6)
         : [],
       topTopics: Array.isArray(affinity?.topTopics) ? affinity.topTopics.slice(0, 6) : [],
       recentSignals: affinity?.recentSignals || {},
-    },
-    responseMeta: {
+    }, {
+      maxDepth: 2,
+      maxKeys: 16,
+      maxStringLength: 280,
+      maxArrayLength: 8,
+    }),
+    responseMeta: sanitizePlainObject({
       itemCount: Array.isArray(rankedItems) ? rankedItems.length : 0,
-    },
+    }, {
+      maxDepth: 1,
+      maxKeys: 8,
+      maxStringLength: 120,
+      maxArrayLength: 4,
+    }),
     servedAt: new Date(),
   });
 

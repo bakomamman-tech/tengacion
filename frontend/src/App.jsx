@@ -45,6 +45,7 @@ const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalytics"));
 const AdminMessagesPage = lazy(() => import("./pages/AdminMessages"));
 const AdminCampaignsPage = lazy(() => import("./pages/AdminCampaigns"));
 const AdminSettingsPage = lazy(() => import("./pages/AdminSettings"));
+const AdminStoragePage = lazy(() => import("./pages/AdminStorage"));
 const CreatorPage = lazy(() => import("./pages/CreatorPage"));
 const CreatorSongs = lazy(() => import("./pages/CreatorSongs"));
 const CreatorHubPage = lazy(() => import("./pages/CreatorHubPage"));
@@ -668,6 +669,14 @@ export default function App() {
             element={
               <AdminRoute user={user}>
                 <AdminSettingsPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/storage"
+            element={
+              <AdminRoute user={user}>
+                <AdminStoragePage user={user} />
               </AdminRoute>
             }
           />

@@ -84,6 +84,7 @@ if (process.env.NODE_ENV !== "test") {
   const { runBirthdayRecognition } = require("./services/birthdayService");
   const { startNewsSchedulers } = require("./services/newsSchedulerService");
   const { cleanupUploadDir } = require("./services/uploadCleanupService");
+  const { runCleanup } = require("./services/storageMaintenanceService");
   const privateUpload = require("./middleware/privateUpload");
 
   const io = new Server(server, {
@@ -93,6 +94,38 @@ if (process.env.NODE_ENV !== "test") {
     },
     transports: ["polling", "websocket"],
   });
+
+  const DEFAULT_STORAGE_CLEANUP_ACTIONS = [
+    "staleNotifications",
+    "expiredAuthArtifacts",
+    "staleLogs",
+    "temporaryUploads",
+    "orphanedMedia",
+    "duplicateMedia",
+  ];
+
+  const runStorageCleanupJob = async (reason = "scheduled") => {
+    try {
+      const result = await runCleanup(DEFAULT_STORAGE_CLEANUP_ACTIONS);
+      console.log("[storage-cleanup]", {
+        reason,
+        totals: result.totals,
+        actions: result.actions,
+      });
+      return result;
+    } catch (error) {
+      console.error("[storage-cleanup] failed", { reason, message: error?.message || error });
+      return null;
+    }
+  };
+
+  setTimeout(() => {
+    runStorageCleanupJob("startup").catch(() => null);
+  }, 5 * 60 * 1000);
+
+  setInterval(() => {
+    runStorageCleanupJob("interval").catch(() => null);
+  }, 24 * 60 * 60 * 1000);
 
   const onlineUsers = new Map();
   const sessionSockets = new Map();

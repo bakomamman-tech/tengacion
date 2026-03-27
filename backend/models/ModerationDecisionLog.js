@@ -1,5 +1,10 @@
 const mongoose = require("mongoose");
 const { MODERATION_STATUSES } = require("../config/moderation");
+const {
+  buildExpiryDate,
+  moderationDecisionRetentionDays,
+  sanitizePlainObject,
+} = require("../config/storage");
 
 const ModerationDecisionLogSchema = new mongoose.Schema(
   {
@@ -62,10 +67,30 @@ const ModerationDecisionLogSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    expiresAt: {
+      type: Date,
+      default: () =>
+        buildExpiryDate({
+          createdAt: new Date(),
+          retentionDays: moderationDecisionRetentionDays,
+        }),
+    },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
 ModerationDecisionLogSchema.index({ createdAt: -1 });
+ModerationDecisionLogSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+ModerationDecisionLogSchema.pre("validate", function () {
+  if (this.metadata && typeof this.metadata === "object") {
+    this.metadata = sanitizePlainObject(this.metadata, {
+      maxDepth: 2,
+      maxKeys: 12,
+      maxStringLength: 400,
+      maxArrayLength: 6,
+    });
+  }
+});
 
 module.exports = mongoose.model("ModerationDecisionLog", ModerationDecisionLogSchema);

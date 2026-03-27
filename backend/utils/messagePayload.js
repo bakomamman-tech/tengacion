@@ -1,4 +1,9 @@
 const mongoose = require("mongoose");
+const {
+  limitArray,
+  sanitizePlainObject,
+  truncate,
+} = require("../config/storage");
 
 const MESSAGE_TYPES = ["text", "contentCard", "voice"];
 const CONTENT_CARD_ITEM_TYPES = ["track", "book"];
@@ -60,11 +65,11 @@ const normalizeMessage = (message) => {
           }
         : null,
     attachments: Array.isArray(message.attachments)
-      ? message.attachments
+      ? limitArray(message.attachments, 5)
           .map((file) => ({
-            url: String(file?.url || "").trim(),
-            type: String(file?.type || "").trim(),
-            name: String(file?.name || "").trim(),
+            url: truncate(file?.url || "", 1200),
+            type: truncate(file?.type || "", 20),
+            name: truncate(file?.name || "", 260),
             size: Number(file?.size) || 0,
             durationSeconds: Number(file?.durationSeconds) || 0,
           }))
@@ -109,13 +114,11 @@ const normalizeIncomingMessagePayload = (payload = {}) => {
     payload.replyTo?.messageId || payload.replyToMessageId || ""
   ).trim();
   const attachments = Array.isArray(payload.attachments)
-    ? payload.attachments
+    ? limitArray(payload.attachments, 5)
         .map((file) => ({
-          url: String(file?.url || "").trim(),
-          type: String(file?.type || "")
-            .trim()
-            .toLowerCase(),
-          name: String(file?.name || "").trim(),
+          url: truncate(file?.url || "", 1200),
+          type: truncate(file?.type || "", 20).toLowerCase(),
+          name: truncate(file?.name || "", 260),
           size: Number(file?.size) || 0,
           durationSeconds: Number(file?.durationSeconds) || 0,
         }))
@@ -129,9 +132,9 @@ const normalizeIncomingMessagePayload = (payload = {}) => {
     const previewType = String(payload.metadata?.previewType || "")
       .trim()
       .toLowerCase();
-    const title = String(payload.metadata?.title || "").trim();
-    const description = String(payload.metadata?.description || "").trim();
-    const coverImageUrl = String(payload.metadata?.coverImageUrl || "").trim();
+    const title = truncate(payload.metadata?.title || "", 200);
+    const description = truncate(payload.metadata?.description || "", 500);
+    const coverImageUrl = truncate(payload.metadata?.coverImageUrl || "", 1200);
     const price = Number(payload.metadata?.price || 0);
 
     if (!CONTENT_CARD_ITEM_TYPES.includes(itemType)) {
@@ -173,7 +176,7 @@ const normalizeIncomingMessagePayload = (payload = {}) => {
   }
 
   return {
-    text,
+    text: truncate(text, 2000),
     clientId,
     type,
     metadata,

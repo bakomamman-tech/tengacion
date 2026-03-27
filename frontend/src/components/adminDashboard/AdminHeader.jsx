@@ -12,6 +12,7 @@ const defaultQuickLinks = [
   { id: "messages", label: "Messages", description: "Monitor message traffic", path: "/admin/messages" },
   { id: "campaigns", label: "Campaigns", description: "Revenue and creator performance", path: "/admin/campaigns" },
   { id: "settings", label: "Settings", description: "Security and admin controls", path: "/admin/settings" },
+  { id: "storage", label: "Storage", description: "Inspect collection sizes and cleanup actions", path: "/admin/storage" },
 ];
 
 export default function AdminHeader({

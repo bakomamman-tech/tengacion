@@ -1,4 +1,9 @@
 const mongoose = require("mongoose");
+const {
+  buildExpiryDate,
+  notificationReadRetentionDays,
+  notificationUnreadRetentionDays,
+} = require("../config/storage");
 
 const NotificationSchema = new mongoose.Schema(
   {
@@ -50,6 +55,12 @@ const NotificationSchema = new mongoose.Schema(
       default: "",
     },
 
+    dedupeKey: {
+      type: String,
+      trim: true,
+      maxlength: 160,
+    },
+
     /* ================= TARGET ENTITY ================= */
 
     entity: {
@@ -73,6 +84,21 @@ const NotificationSchema = new mongoose.Schema(
       index: true,
     },
 
+    readAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+
+    expiresAt: {
+      type: Date,
+      default: () =>
+        buildExpiryDate({
+          createdAt: new Date(),
+          retentionDays: notificationUnreadRetentionDays,
+        }),
+    },
+
     /* ================= EXTRAS ================= */
 
     // Preview helpers for UI
@@ -94,6 +120,17 @@ NotificationSchema.index({ recipient: 1, createdAt: -1 });
 
 // Fast unread count
 NotificationSchema.index({ recipient: 1, read: 1 });
+NotificationSchema.index(
+  { recipient: 1, dedupeKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      dedupeKey: { $type: "string", $ne: "" },
+    },
+    name: "notification_dedupe_lookup",
+  }
+);
+NotificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 /* ================= CLEAN JSON ================= */
 NotificationSchema.methods.toJSON = function () {

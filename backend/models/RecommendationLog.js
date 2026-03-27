@@ -1,4 +1,10 @@
 const mongoose = require("mongoose");
+const {
+  buildExpiryDate,
+  recommendationLogRetentionDays,
+  sanitizePlainObject,
+  limitArray,
+} = require("../config/storage");
 
 const RecommendationFeedbackSchema = new mongoose.Schema(
   {
@@ -90,10 +96,40 @@ const RecommendationLogSchema = new mongoose.Schema(
       default: Date.now,
       index: true,
     },
+    expiresAt: {
+      type: Date,
+      default: () =>
+        buildExpiryDate({
+          createdAt: new Date(),
+          retentionDays: recommendationLogRetentionDays,
+        }),
+    },
   },
   { timestamps: true }
 );
 
 RecommendationLogSchema.index({ userId: 1, servedAt: -1 });
+RecommendationLogSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+RecommendationLogSchema.pre("validate", function () {
+  this.candidateIds = limitArray(this.candidateIds, 25).map((value) => String(value || "").slice(0, 120)).filter(Boolean);
+  this.rankedIds = limitArray(this.rankedIds, 40).map((value) => String(value || "").slice(0, 160)).filter(Boolean);
+  if (this.featuresSnapshot && typeof this.featuresSnapshot === "object") {
+    this.featuresSnapshot = sanitizePlainObject(this.featuresSnapshot, {
+      maxDepth: 2,
+      maxKeys: 16,
+      maxStringLength: 300,
+      maxArrayLength: 6,
+    });
+  }
+  if (this.responseMeta && typeof this.responseMeta === "object") {
+    this.responseMeta = sanitizePlainObject(this.responseMeta, {
+      maxDepth: 1,
+      maxKeys: 8,
+      maxStringLength: 200,
+      maxArrayLength: 4,
+    });
+  }
+});
 
 module.exports = mongoose.model("RecommendationLog", RecommendationLogSchema);

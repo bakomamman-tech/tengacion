@@ -1,4 +1,10 @@
 const mongoose = require("mongoose");
+const {
+  buildExpiryDate,
+  newsFeedImpressionRetentionDays,
+  sanitizePlainObject,
+  limitArray,
+} = require("../config/storage");
 
 const NewsFeedImpressionSchema = new mongoose.Schema(
   {
@@ -55,6 +61,14 @@ const NewsFeedImpressionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    expiresAt: {
+      type: Date,
+      default: () =>
+        buildExpiryDate({
+          createdAt: new Date(),
+          retentionDays: newsFeedImpressionRetentionDays,
+        }),
+    },
   },
   { timestamps: true }
 );
@@ -62,6 +76,19 @@ const NewsFeedImpressionSchema = new mongoose.Schema(
 NewsFeedImpressionSchema.index({ userId: 1, createdAt: -1 });
 NewsFeedImpressionSchema.index({ storyId: 1, action: 1, createdAt: -1 });
 NewsFeedImpressionSchema.index({ clusterId: 1, action: 1, createdAt: -1 });
+NewsFeedImpressionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+NewsFeedImpressionSchema.pre("validate", function () {
+  this.topicTags = limitArray(this.topicTags, 12).map((entry) => String(entry || "").slice(0, 80)).filter(Boolean);
+  if (this.metadata && typeof this.metadata === "object") {
+    this.metadata = sanitizePlainObject(this.metadata, {
+      maxDepth: 1,
+      maxKeys: 10,
+      maxStringLength: 220,
+      maxArrayLength: 6,
+    });
+  }
+});
 
 NewsFeedImpressionSchema.methods.toJSON = function () {
   const obj = this.toObject();

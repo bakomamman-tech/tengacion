@@ -840,9 +840,14 @@ const maybeNotifyPrimaryAdmin = async ({ moderationCase, req }) => {
     sender: moderationCase?.uploader?.userId || primaryAdmin._id,
     type: "system",
     text: `Critical moderation case: ${String(moderationCase.subject?.title || moderationCase.queue || "Sensitive content")}`,
+    entity: {
+      id: moderationCase._id,
+      model: "ModerationCase",
+    },
     metadata: {
       previewText: moderationCase.publicWarningLabel || moderationCase.status,
       link: "/admin/reports",
+      dedupeKey: `moderation_case:${moderationCase._id.toString()}`,
     },
   }).catch(() => null);
 

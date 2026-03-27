@@ -13,6 +13,7 @@ const ADMIN_ITEMS = [
   { key: "reports", label: "Moderation", path: "/admin/reports" },
   { key: "analytics", label: "Analytics", path: "/admin/analytics" },
   { key: "settings", label: "Settings", path: "/admin/settings" },
+  { key: "storage", label: "Storage", path: "/admin/storage" },
 ];
 
 export default function AdminShell({ title, subtitle = "", user, actions = null, children }) {
@@ -23,6 +24,7 @@ export default function AdminShell({ title, subtitle = "", user, actions = null,
     if (location.pathname === "/admin") {return "/admin/dashboard";}
     if (location.pathname.startsWith("/admin/creators/")) {return "/admin/content";}
     if (location.pathname.startsWith("/admin/moderation")) {return "/admin/reports";}
+    if (location.pathname.startsWith("/admin/storage")) {return "/admin/storage";}
     return ADMIN_ITEMS.find((item) => location.pathname.startsWith(item.path))?.path || "/admin/dashboard";
   }, [location.pathname]);
 

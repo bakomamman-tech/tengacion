@@ -37,7 +37,7 @@ const runBirthdayRecognition = async ({ logger = console } = {}) => {
     }
 
     const conversationId = [userId, userId].sort().join("_");
-    await Message.create({
+    const message = await Message.create({
       conversationId,
       senderId: user._id,
       receiverId: user._id,
@@ -58,7 +58,10 @@ const runBirthdayRecognition = async ({ logger = console } = {}) => {
       sender: user._id,
       type: "system",
       text: `Happy Birthday, ${user.name || user.username || "Friend"} 🎉`,
-      entity: { id: null, model: null },
+      entity: {
+        id: message._id,
+        model: "Message",
+      },
       metadata: {
         previewImage: BIRTHDAY_CAKE_IMAGE,
         previewText: "Wishing you a joyful day from Tengacion.",

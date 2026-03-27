@@ -7,8 +7,8 @@ const {
   streamAlbumArchive,
 } = require("../services/albumArchiveService");
 const {
-  proxyRemoteMedia,
   streamGridFsMedia,
+  streamSourceMedia,
 } = require("../services/mediaDeliveryService");
 const { buildRestrictedPreviewPath } = require("../services/moderationPolicyService");
 const {
@@ -74,23 +74,7 @@ const serveSignedMedia = async (req, res, { token, headOnly = false }) => {
     return;
   }
 
-  const localMediaIdMatch = sourceUrl.match(/\/api\/media\/([a-f0-9]{24})(?:$|[/?#])/i);
-  if (localMediaIdMatch?.[1] && mongoose.Types.ObjectId.isValid(localMediaIdMatch[1])) {
-    const streamed = await streamGridFsMedia({
-      req,
-      res,
-      objectId: new mongoose.Types.ObjectId(localMediaIdMatch[1]),
-      disposition,
-      cacheControl: SIGNED_CACHE_CONTROL,
-      headOnly,
-    });
-    if (!streamed) {
-      return res.status(404).json({ error: "Media not found" });
-    }
-    return;
-  }
-
-  const proxied = await proxyRemoteMedia({
+  const streamed = await streamSourceMedia({
     req,
     res,
     sourceUrl,
@@ -98,7 +82,7 @@ const serveSignedMedia = async (req, res, { token, headOnly = false }) => {
     cacheControl: SIGNED_CACHE_CONTROL,
     headOnly,
   });
-  if (!proxied) {
+  if (!streamed) {
     return res.status(404).json({ error: "Media not found" });
   }
 };

@@ -1,5 +1,6 @@
 const Notification = require("../models/Notification");
 const User = require("../models/User");
+const { buildExpiryDate, notificationReadRetentionDays } = require("../config/storage");
 const asyncHandler = require("../middleware/asyncHandler");
 const paginate = require("../utils/paginate");
 
@@ -7,6 +8,10 @@ const getUnreadCountForUser = (userId) =>
   Notification.countDocuments({
     recipient: userId,
     read: false,
+    $or: [
+      { expiresAt: { $gt: new Date() } },
+      { expiresAt: { $exists: false } },
+    ],
   });
 
 /**
@@ -16,9 +21,16 @@ const getUnreadCountForUser = (userId) =>
  */
 exports.getNotifications = asyncHandler(async (req, res) => {
   const { page, limit, skip } = paginate(req);
+  const now = new Date();
 
-  const query = { recipient: req.user.id };
-  const unreadQuery = { recipient: req.user.id, read: false };
+  const activeExpiryFilter = {
+    $or: [
+      { expiresAt: { $gt: now } },
+      { expiresAt: { $exists: false } },
+    ],
+  };
+  const query = { recipient: req.user.id, ...activeExpiryFilter };
+  const unreadQuery = { recipient: req.user.id, read: false, ...activeExpiryFilter };
 
   const [items, total, unreadCount] = await Promise.all([
     Notification.find(query)
@@ -55,7 +67,14 @@ exports.markAsRead = asyncHandler(async (req, res) => {
       _id: req.params.id,
       recipient: req.user.id,
     },
-    { read: true },
+    {
+      read: true,
+      readAt: new Date(),
+      expiresAt: buildExpiryDate({
+        createdAt: new Date(),
+        retentionDays: notificationReadRetentionDays,
+      }),
+    },
     { new: true }
   ).populate("sender", "_id name username avatar");
 
@@ -81,7 +100,14 @@ exports.markAsRead = asyncHandler(async (req, res) => {
 exports.markAllAsRead = asyncHandler(async (req, res) => {
   await Notification.updateMany(
     { recipient: req.user.id, read: false },
-    { read: true }
+    {
+      read: true,
+      readAt: new Date(),
+      expiresAt: buildExpiryDate({
+        createdAt: new Date(),
+        retentionDays: notificationReadRetentionDays,
+      }),
+    }
   );
 
   res.json({

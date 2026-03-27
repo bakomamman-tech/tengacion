@@ -289,8 +289,12 @@ router.post("/:id/reply", auth, async (req, res) => {
       sender: senderId,
       type: "reply",
       text: "replied to your story",
-      entity: { id: story._id, model: "Post" },
-      metadata: { link: "/home", previewText: text },
+      entity: { id: message._id, model: "Message" },
+      metadata: {
+        link: "/home",
+        previewText: text,
+        dedupeKey: `story_reply:${story._id.toString()}:${message._id.toString()}`,
+      },
       io: req.app.get("io"),
       onlineUsers: req.app.get("onlineUsers"),
     });

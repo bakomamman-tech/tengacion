@@ -4,6 +4,7 @@ const os = require("os");
 const path = require("path");
 const mongoose = require("mongoose");
 const { saveUploadedMedia, getBucket } = require("./mediaStore");
+const { resolvePermanentMediaPath } = require("./mediaStoragePaths");
 
 const PRIVATE_STORAGE_ROOT = path.join(os.tmpdir(), "tengacion-private-media");
 const TEMP_STORAGE_ROOT = path.join(PRIVATE_STORAGE_ROOT, "temporary");
@@ -70,6 +71,10 @@ const getSourcePath = (file = {}, filePath = "", fileUrl = "") => {
   if (filePath) {
     return filePath;
   }
+  const permanentPath = resolvePermanentMediaPath(fileUrl);
+  if (permanentPath) {
+    return permanentPath;
+  }
   if (String(fileUrl || "").startsWith("private://")) {
     return resolvePrivateMediaPath(fileUrl);
   }
@@ -131,8 +136,25 @@ const promoteToPermanentStorage = async ({
   return saveUploadedMedia(syntheticFile);
 };
 
-const deletePermanentStorage = async (publicId = "") => {
-  const normalized = String(publicId || "").trim();
+const deletePermanentStorage = async (input = "") => {
+  const payload =
+    input && typeof input === "object"
+      ? {
+          publicId: String(input.publicId || input.public_id || "").trim(),
+          fileUrl: String(input.fileUrl || "").trim(),
+        }
+      : {
+          publicId: String(input || "").trim(),
+          fileUrl: String(input || "").trim(),
+        };
+
+  const localPath = resolvePermanentMediaPath(payload.fileUrl || payload.publicId);
+  if (localPath && fs.existsSync(localPath)) {
+    await fsp.unlink(localPath).catch(() => null);
+    return true;
+  }
+
+  const normalized = String(payload.publicId || "").trim();
   if (!normalized || !mongoose.Types.ObjectId.isValid(normalized)) {
     return false;
   }
@@ -157,14 +179,11 @@ const deleteStoredMedia = async ({
     await fsp.unlink(sourcePath).catch(() => null);
   }
 
-  if (publicId || String(fileUrl || "").startsWith("/api/media/")) {
-    const resolvedPublicId =
-      publicId ||
-      String(fileUrl || "").match(/\/api\/media\/([a-f0-9]{24})(?:$|[/?#])/i)?.[1] ||
-      "";
-    if (resolvedPublicId) {
-      await deletePermanentStorage(resolvedPublicId);
-    }
+  if (publicId || fileUrl) {
+    await deletePermanentStorage({
+      publicId,
+      fileUrl,
+    });
   }
 
   return true;

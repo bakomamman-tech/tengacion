@@ -69,7 +69,7 @@ const BackIcon = () => (
   </svg>
 );
 
-const MessengerGlyph = ({ size = 20 }) => (
+const MessengerGlyph = ({ size = 22 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
     <circle cx="12" cy="12" r="11" fill="#1877f2" />
     <path

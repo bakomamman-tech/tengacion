@@ -69,7 +69,7 @@ const BackIcon = () => (
   </svg>
 );
 
-const MessengerGlyph = ({ size = 22 }) => (
+const MessengerGlyph = ({ size = 44 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
     <circle cx="12" cy="12" r="11" fill="#1877f2" />
     <path
@@ -1000,12 +1000,13 @@ export default function Navbar({
               <button
                 ref={messengerButtonRef}
                 className="nav-circle-btn"
+                style={{ width: 48, height: 48 }}
                 onClick={openMessenger}
                 aria-label="Messages"
-              title="Messages"
-              aria-expanded={showMessengerMenu}
-              aria-controls="navbar-messenger-menu"
-            >
+                title="Messages"
+                aria-expanded={showMessengerMenu}
+                aria-controls="navbar-messenger-menu"
+              >
                 <MessengerGlyph />
               </button>
 

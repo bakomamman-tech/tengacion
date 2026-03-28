@@ -7,7 +7,7 @@ const auth = require("../middleware/auth");
 const moderateUpload = require("../middleware/moderateUpload");
 const { persistChatMessage } = require("../services/chatService");
 const { createNotification } = require("../services/notificationService");
-const { saveUploadedMedia } = require("../services/mediaStore");
+const { saveUploadedMediaToGridFs } = require("../services/mediaStore");
 const {
   toIdString,
   avatarToUrl,
@@ -61,9 +61,10 @@ router.post(
     return res.status(400).json({ error: "No file uploaded" });
   }
 
-  const uploaded = await saveUploadedMedia(req.file);
+  const uploaded = await saveUploadedMediaToGridFs(req.file);
   return res.json({
     url: uploaded.url,
+    public_id: uploaded.public_id,
     type: toAttachmentType(req.file.mimetype),
     name: req.file.originalname || req.file.filename,
     size: Number(req.file.size) || 0,

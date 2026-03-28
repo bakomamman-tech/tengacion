@@ -120,9 +120,62 @@ const saveUploadedMedia = async (file) => {
   }
 };
 
+const saveUploadedMediaToGridFs = async (file) => {
+  if (!file) {
+    return {
+      url: "",
+      public_id: "",
+      resource_type: "raw",
+    };
+  }
+
+  const sourcePath = file.path || "";
+  if (!sourcePath || !fs.existsSync(sourcePath)) {
+    throw new Error("Uploaded file could not be read from temporary storage");
+  }
+
+  const contentType = resolveContentType(file);
+  const resourceType = contentType.startsWith("video/")
+    ? "video"
+    : contentType.startsWith("image/")
+      ? "image"
+      : contentType.startsWith("audio/")
+        ? "audio"
+        : "raw";
+
+  const bucket = getBucket();
+  const filename = toSafeFilename(file.originalname || path.basename(sourcePath));
+  const uploadStream = bucket.openUploadStream(filename, {
+    contentType,
+    metadata: {
+      originalName: file.originalname || path.basename(sourcePath),
+      source: "messenger",
+      uploadedAt: new Date(),
+    },
+  });
+
+  try {
+    await pipeline(fs.createReadStream(sourcePath), uploadStream);
+  } finally {
+    await fsp.unlink(sourcePath).catch(() => null);
+  }
+
+  const publicId = uploadStream.id?.toString?.() || String(uploadStream.id || "");
+  if (!publicId) {
+    throw new Error("Failed to store uploaded media");
+  }
+
+  return {
+    url: `/api/media/${publicId}`,
+    public_id: publicId,
+    resource_type: resourceType,
+  };
+};
+
 module.exports = {
   getBucket,
   saveUploadedFile,
   saveUploadedMedia,
+  saveUploadedMediaToGridFs,
   bucketName,
 };

@@ -55,6 +55,10 @@ exports.verifyOtp = catchAsync(async (req, res) => {
 exports.register = catchAsync(async (req, res) => {
   const payload = await AuthService.register({
     ...req.body,
+    reminderContext: {
+      io: req.app.get("io"),
+      onlineUsers: req.app.get("onlineUsers"),
+    },
     sessionMeta: {
       deviceName: req.body?.deviceName || "",
       ip: req.ip || req.headers["x-forwarded-for"] || "",
@@ -73,6 +77,10 @@ exports.login = catchAsync(async (req, res) => {
   const payload = await AuthService.login({
     email: req.body.email,
     password: req.body.password,
+    reminderContext: {
+      io: req.app.get("io"),
+      onlineUsers: req.app.get("onlineUsers"),
+    },
     sessionMeta: {
       deviceName: req.body?.deviceName || "",
       ip: req.ip || req.headers["x-forwarded-for"] || "",
@@ -102,6 +110,10 @@ exports.verifyAuthChallenge = catchAsync(async (req, res) => {
   const payload = await AuthService.verifyAuthChallenge({
     challengeToken: req.body?.challengeToken,
     code: req.body?.code,
+    reminderContext: {
+      io: req.app.get("io"),
+      onlineUsers: req.app.get("onlineUsers"),
+    },
   });
   applyAuthCookies(res, payload);
   res.json(payload);

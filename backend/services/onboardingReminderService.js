@@ -192,7 +192,7 @@ const ensureOnboardingReminderMessage = async ({
     },
     metadata: {
       previewText: reminder.text.slice(0, 120),
-      link: "/home",
+      link: reminder.actionLink,
     },
     io,
     onlineUsers,

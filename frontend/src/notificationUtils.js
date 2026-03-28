@@ -132,9 +132,10 @@ export const getNotificationTarget = (entry) => {
   const entityId = String(item?.entity?.id || "");
 
   if (item.type === "message" || entityModel === "message") {
+    const path = item.link || "/home";
     return {
-      path: item.link || "/home",
-      state: { openMessenger: true },
+      path,
+      ...(path === "/home" ? { state: { openMessenger: true } } : {}),
     };
   }
 

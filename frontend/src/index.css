@@ -10295,6 +10295,36 @@ html.dark-mode .composer-tag-empty.error {
   color: #1c1e21;
 }
 
+.msg-reminder-cta {
+  display: flex;
+  margin-top: 10px;
+}
+
+.msg-reminder-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: 0 8px 16px rgba(17, 31, 54, 0.12);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+
+.msg-reminder-link:hover,
+.msg-reminder-link:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(17, 31, 54, 0.18);
+  filter: brightness(1.03);
+}
+
 .msg-time {
   position: absolute;
   left: calc(100% + 12px);

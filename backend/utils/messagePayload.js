@@ -35,12 +35,27 @@ const avatarToUrl = (avatar) => {
 const buildConversationId = (a, b) =>
   [toIdString(a), toIdString(b)].sort().join("_");
 
+const normalizeOnboardingReminderMetadata = (metadata = {}) => {
+  const payload = metadata?.payload && typeof metadata.payload === "object" ? metadata.payload : {};
+
+  return {
+    type: "onboardingReminder",
+    payload: {
+      stateKey: String(payload.stateKey || ""),
+      needsProfile: Boolean(payload.needsProfile),
+      needsEmailVerification: Boolean(payload.needsEmailVerification),
+      actionLink: String(payload.actionLink || ""),
+    },
+  };
+};
+
 const normalizeMessage = (message) => {
   const senderDoc =
     message?.senderId && typeof message.senderId === "object"
       ? message.senderId
       : null;
   const replyTo = message?.replyTo || null;
+  const metadataType = String(message?.metadata?.type || "").trim();
 
   return {
     _id: toIdString(message._id),
@@ -63,6 +78,8 @@ const normalizeMessage = (message) => {
             price: Number(message.metadata.price) || 0,
             coverImageUrl: message.metadata.coverImageUrl || "",
           }
+        : metadataType === "onboardingReminder" && message.metadata
+          ? normalizeOnboardingReminderMetadata(message.metadata)
         : null,
     attachments: Array.isArray(message.attachments)
       ? limitArray(message.attachments, 5)

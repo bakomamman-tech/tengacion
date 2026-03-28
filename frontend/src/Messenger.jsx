@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   blockUser,
   createReport,
@@ -302,75 +302,124 @@ const playIncomingMessageBeep = () => {
   }
 };
 
-const normalizeMessage = (message) => ({
-  _id: toIdString(message?._id),
-  senderId: toIdString(message?.senderId),
-  receiverId: toIdString(message?.receiverId),
-  senderName: message?.senderName || "",
-  senderAvatar: resolveImage(message?.senderAvatar || ""),
-  text: message?.text || "",
-  type:
-    message?.type === "contentCard"
-      ? "contentCard"
-      : message?.type === "voice"
-        ? "voice"
-        : "text",
-  metadata: message?.metadata
-    ? {
-        itemType: message.metadata.itemType || "",
-        itemId: toIdString(message.metadata.itemId),
-        previewType: message.metadata.previewType || "",
-        title: message.metadata.title || "",
-        description: message.metadata.description || "",
-        price: Number(message.metadata.price) || 0,
-        coverImageUrl: resolveImage(message.metadata.coverImageUrl || ""),
-      }
-    : null,
-  attachments: Array.isArray(message?.attachments)
-    ? message.attachments
-        .map((file) => ({
-          type: file?.type || "file",
-          url: sanitizeAttachmentUrl(file?.url || "", file?.type || "file"),
-          name: file?.name || "",
-          size: Number(file?.size) || 0,
-          durationSeconds: Number(file?.durationSeconds) || 0,
-        }))
-        .filter((file) => file.url)
-    : [],
-  replyTo:
-    message?.replyTo?.messageId
-      ? {
-          messageId: toIdString(message.replyTo.messageId),
-          senderId: toIdString(message.replyTo.senderId),
-          senderName: message.replyTo.senderName || "",
-          type:
-            message.replyTo.type === "contentCard"
-              ? "contentCard"
-              : message.replyTo.type === "voice"
-                ? "voice"
-                : "text",
-          text: message.replyTo.text || "",
-          contentTitle: message.replyTo.contentTitle || "",
-          attachmentType: String(message.replyTo.attachmentType || "").trim(),
-          attachmentCount: Number(message.replyTo.attachmentCount) || 0,
-        }
+const normalizeOnboardingReminderMetadata = (metadata = {}) => {
+  const payload = metadata?.payload && typeof metadata.payload === "object" ? metadata.payload : {};
+
+  return {
+    type: "onboardingReminder",
+    payload: {
+      stateKey: String(payload.stateKey || ""),
+      needsProfile: Boolean(payload.needsProfile),
+      needsEmailVerification: Boolean(payload.needsEmailVerification),
+      actionLink: String(payload.actionLink || ""),
+    },
+  };
+};
+
+const getOnboardingReminderActionLink = (payload = {}) => {
+  const actionLink = String(payload?.actionLink || "").trim();
+  if (actionLink) {
+    return actionLink;
+  }
+
+  return Boolean(payload?.needsEmailVerification) && !Boolean(payload?.needsProfile)
+    ? "/settings/security"
+    : "/onboarding";
+};
+
+const getOnboardingReminderCtaLabel = (payload = {}) => {
+  if (Boolean(payload?.needsProfile) && Boolean(payload?.needsEmailVerification)) {
+    return "Complete registration";
+  }
+
+  if (Boolean(payload?.needsProfile)) {
+    return "Complete profile";
+  }
+
+  if (Boolean(payload?.needsEmailVerification)) {
+    return "Verify email";
+  }
+
+  return "Continue registration";
+};
+
+const normalizeMessage = (message) => {
+  const metadataType = String(message?.metadata?.type || "").trim();
+
+  return {
+    _id: toIdString(message?._id),
+    senderId: toIdString(message?.senderId),
+    receiverId: toIdString(message?.receiverId),
+    senderName: message?.senderName || "",
+    senderAvatar: resolveImage(message?.senderAvatar || ""),
+    text: message?.text || "",
+    type:
+      message?.type === "contentCard"
+        ? "contentCard"
+        : message?.type === "voice"
+          ? "voice"
+          : "text",
+    metadata: message?.metadata
+      ? message?.type === "contentCard"
+        ? {
+            itemType: message.metadata.itemType || "",
+            itemId: toIdString(message.metadata.itemId),
+            previewType: message.metadata.previewType || "",
+            title: message.metadata.title || "",
+            description: message.metadata.description || "",
+            price: Number(message.metadata.price) || 0,
+            coverImageUrl: resolveImage(message.metadata.coverImageUrl || ""),
+          }
+        : metadataType === "onboardingReminder"
+          ? normalizeOnboardingReminderMetadata(message.metadata)
+          : null
       : null,
-  reactions: Array.isArray(message?.reactions)
-    ? message.reactions
-        .map((entry) => ({
-          userId: toIdString(entry?.userId),
-          emoji: String(entry?.emoji || "").trim(),
-          createdAt: entry?.createdAt || null,
-        }))
-        .filter((entry) => entry.userId && entry.emoji)
-    : [],
-  time:
-    message?.time ||
-    (message?.createdAt ? new Date(message.createdAt).getTime() : Date.now()),
-  clientId: message?.clientId || "",
-  pending: Boolean(message?.pending),
-  failed: Boolean(message?.failed),
-});
+    attachments: Array.isArray(message?.attachments)
+      ? message.attachments
+          .map((file) => ({
+            type: file?.type || "file",
+            url: sanitizeAttachmentUrl(file?.url || "", file?.type || "file"),
+            name: file?.name || "",
+            size: Number(file?.size) || 0,
+            durationSeconds: Number(file?.durationSeconds) || 0,
+          }))
+          .filter((file) => file.url)
+      : [],
+    replyTo:
+      message?.replyTo?.messageId
+        ? {
+            messageId: toIdString(message.replyTo.messageId),
+            senderId: toIdString(message.replyTo.senderId),
+            senderName: message.replyTo.senderName || "",
+            type:
+              message.replyTo.type === "contentCard"
+                ? "contentCard"
+                : message.replyTo.type === "voice"
+                  ? "voice"
+                  : "text",
+            text: message.replyTo.text || "",
+            contentTitle: message.replyTo.contentTitle || "",
+            attachmentType: String(message.replyTo.attachmentType || "").trim(),
+            attachmentCount: Number(message.replyTo.attachmentCount) || 0,
+          }
+        : null,
+    reactions: Array.isArray(message?.reactions)
+      ? message.reactions
+          .map((entry) => ({
+            userId: toIdString(entry?.userId),
+            emoji: String(entry?.emoji || "").trim(),
+            createdAt: entry?.createdAt || null,
+          }))
+          .filter((entry) => entry.userId && entry.emoji)
+      : [],
+    time:
+      message?.time ||
+      (message?.createdAt ? new Date(message.createdAt).getTime() : Date.now()),
+    clientId: message?.clientId || "",
+    pending: Boolean(message?.pending),
+    failed: Boolean(message?.failed),
+  };
+};
 
 const getMessagePreviewText = (message) => {
   if (message?.type === "contentCard") {
@@ -2612,6 +2661,16 @@ export default function Messenger({
                       || openMessageMenuId === messageKey;
                     const messageMenuOpen = openMessageMenuId === messageKey;
                     const isPinnedMessage = pinnedEntry?.messageId === messageKey;
+                    const onboardingReminderPayload =
+                      !isMe && m.metadata?.type === "onboardingReminder"
+                        ? m.metadata.payload || {}
+                        : null;
+                    const onboardingReminderLink = onboardingReminderPayload
+                      ? getOnboardingReminderActionLink(onboardingReminderPayload)
+                      : "";
+                    const onboardingReminderLabel = onboardingReminderPayload
+                      ? getOnboardingReminderCtaLabel(onboardingReminderPayload)
+                      : "";
                     return (
                       <div
                         key={m._id || m.clientId}
@@ -2654,6 +2713,17 @@ export default function Messenger({
                           ) : (
                             <>
                               {m.text ? <div className="msg-text">{m.text}</div> : null}
+                              {onboardingReminderLink ? (
+                                <div className="msg-reminder-cta">
+                                  <Link
+                                    to={onboardingReminderLink}
+                                    className="msg-reminder-link"
+                                    onClick={(event) => event.stopPropagation()}
+                                  >
+                                    {onboardingReminderLabel}
+                                  </Link>
+                                </div>
+                              ) : null}
                               {Array.isArray(m.attachments) &&
                                 m.attachments.map((file, index) => {
                                   const key = `${m._id || m.clientId}-att-${index}`;

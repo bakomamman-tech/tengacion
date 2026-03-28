@@ -8,6 +8,7 @@ const Otp = require("../../../backend/models/Otp");
 const AuthChallenge = require("../../../backend/models/AuthChallenge");
 const sendOtpEmail = require("../../../backend/utils/sendOtpEmail");
 const sendSecurityEmail = require("../../../backend/utils/sendSecurityEmail");
+const { ensureOnboardingReminderMessage } = require("../../../backend/services/onboardingReminderService");
 const { normalizeMediaValue } = require("../../../backend/utils/userMedia");
 const { normalizeAudioPrefs } = require("../../../backend/utils/audioPrefs");
 const { isValidPhoneNumber, normalizePhoneNumber } = require("../../../backend/utils/phone");
@@ -551,7 +552,12 @@ const sendLoginAlert = async (user, sessionMeta = {}, risk = {}) => {
 const finalizeLogin = async (
   user,
   sessionMeta = {},
-  { markMfaVerified = false, loginRisk = null } = {}
+  {
+    markMfaVerified = false,
+    loginRisk = null,
+    sendOnboardingReminder = true,
+    reminderContext = {},
+  } = {}
 ) => {
   const tokens = attachNewSession(user, sessionMeta);
   updateTrustedDevice(user, sessionMeta);
@@ -563,6 +569,17 @@ const finalizeLogin = async (
     user.twoFactor.lastVerifiedAt = new Date();
   }
   await user.save();
+  if (sendOnboardingReminder) {
+    try {
+      await ensureOnboardingReminderMessage({
+        userId: user._id,
+        io: reminderContext.io || null,
+        onlineUsers: reminderContext.onlineUsers || null,
+      });
+    } catch (error) {
+      console.warn("Onboarding reminder failed:", error);
+    }
+  }
   sendLoginAlert(user, sessionMeta, loginRisk).catch(() => null);
 
   return {
@@ -716,6 +733,7 @@ class AuthService {
 
   static async register(payload = {}) {
     const normalizedSessionMeta = normalizeSessionMeta(payload.sessionMeta || {});
+    const reminderContext = payload.reminderContext || {};
     const {
       rawName,
       username,
@@ -832,10 +850,13 @@ class AuthService {
       // Non-fatal.
     }
 
-    return finalizeLogin(user, normalizedSessionMeta);
+    return finalizeLogin(user, normalizedSessionMeta, {
+      sendOnboardingReminder: false,
+      reminderContext,
+    });
   }
 
-  static async login({ email, password, sessionMeta = {} }) {
+  static async login({ email, password, sessionMeta = {}, reminderContext = {} }) {
     const identifier = sanitizeIdentifier(email);
     if (!identifier || !password) {
       throw ApiError.badRequest("Email and password are required");
@@ -902,10 +923,13 @@ class AuthService {
       });
     }
 
-    return finalizeLogin(user, normalizedSessionMeta, { loginRisk: risk });
+    return finalizeLogin(user, normalizedSessionMeta, {
+      loginRisk: risk,
+      reminderContext,
+    });
   }
 
-  static async verifyAuthChallenge({ challengeToken, code }) {
+  static async verifyAuthChallenge({ challengeToken, code, reminderContext = {} }) {
     if (!challengeToken || !code) {
       throw ApiError.badRequest("Challenge token and code are required");
     }
@@ -960,6 +984,7 @@ class AuthService {
         isSuspicious: Number(challenge.riskScore || 0) >= 60,
         shouldNotify: Array.isArray(challenge.riskReasons) && challenge.riskReasons.length > 0,
       },
+      reminderContext,
     });
   }
 

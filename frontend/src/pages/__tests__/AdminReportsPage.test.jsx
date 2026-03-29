@@ -232,6 +232,7 @@ describe("AdminReportsPage", () => {
       reviewCount: 0,
       restrictedCount: 0,
       flaggedCount: 1,
+      accountsFlagged: 0,
       cases: [moderationCase],
     });
     vi.mocked(scanSearchMatches).mockResolvedValue({
@@ -241,6 +242,7 @@ describe("AdminReportsPage", () => {
       reviewCount: 0,
       restrictedCount: 0,
       flaggedCount: 1,
+      accountsFlagged: 0,
       cases: [moderationCase],
     });
     vi.mocked(banUser).mockResolvedValue({ success: true });

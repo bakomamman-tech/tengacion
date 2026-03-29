@@ -425,7 +425,11 @@ export default function AdminReportsPage({ user }) {
     setBusyKey("scan_recent");
     try {
       const response = await scanRecentMedia({ limit });
-      toast.success(`Scanned ${formatNumber(response?.scannedCount)} recent items. ${formatNumber(response?.approvedCount)} approved, ${formatNumber(response?.blockedCount)} blocked, ${formatNumber(response?.reviewCount)} sent to review.`);
+      const accountsFlagged = Number(response?.accountsFlagged || 0);
+      const accountNote = accountsFlagged > 0
+        ? ` ${formatNumber(accountsFlagged)} accounts flagged.`
+        : "";
+      toast.success(`Scanned ${formatNumber(response?.scannedCount)} recent items. ${formatNumber(response?.approvedCount)} approved, ${formatNumber(response?.blockedCount)} blocked, ${formatNumber(response?.reviewCount)} sent to review.${accountNote}`);
       await Promise.all([loadStats(), loadQueue(), selectedCaseId ? loadCase(selectedCaseId) : Promise.resolve()]);
     } catch (error) {
       toast.error(error?.message || "Failed to scan recent media");
@@ -443,7 +447,11 @@ export default function AdminReportsPage({ user }) {
     setBusyKey("scan_search");
     try {
       const response = await scanSearchMatches({ search: searchTerm, limit });
-      toast.success(`Scanned ${formatNumber(response?.scannedCount)} matching items. ${formatNumber(response?.approvedCount)} approved, ${formatNumber(response?.blockedCount)} blocked, ${formatNumber(response?.reviewCount)} sent to review.`);
+      const accountsFlagged = Number(response?.accountsFlagged || 0);
+      const accountNote = accountsFlagged > 0
+        ? ` ${formatNumber(accountsFlagged)} accounts flagged.`
+        : "";
+      toast.success(`Scanned ${formatNumber(response?.scannedCount)} matching items. ${formatNumber(response?.approvedCount)} approved, ${formatNumber(response?.blockedCount)} blocked, ${formatNumber(response?.reviewCount)} sent to review.${accountNote}`);
       await Promise.all([loadStats(), loadQueue(), selectedCaseId ? loadCase(selectedCaseId) : Promise.resolve()]);
     } catch (error) {
       toast.error(error?.message || "Failed to scan search matches");

@@ -10,8 +10,10 @@ const CreatorProfile = require("../models/CreatorProfile");
 const MediaHash = require("../models/MediaHash");
 const ModerationCase = require("../models/ModerationCase");
 const ModerationDecisionLog = require("../models/ModerationDecisionLog");
+const Message = require("../models/Message");
 const Post = require("../models/Post");
 const Report = require("../models/Report");
+const Story = require("../models/Story");
 const Track = require("../models/Track");
 const User = require("../models/User");
 const UserStrike = require("../models/UserStrike");
@@ -56,9 +58,12 @@ const CASE_ACTIONS = [
 const TARGET_MODEL_MAP = {
   album: Album,
   book: Book,
+  message: Message,
   post: Post,
+  story: Story,
   track: Track,
   video: Video,
+  user: User,
 };
 
 const toId = (value) => {
@@ -298,6 +303,572 @@ const buildVideoScanMedia = (video = {}, req = null) => {
   ];
 };
 
+const flattenScanValues = (values = [], seen = new Set()) =>
+  (Array.isArray(values) ? values : [values]).flatMap((entry) => {
+    if (entry === null || entry === undefined) {
+      return [];
+    }
+    if (entry instanceof Date) {
+      return [entry];
+    }
+    if (Array.isArray(entry)) {
+      return flattenScanValues(entry, seen);
+    }
+    if (entry && typeof entry === "object") {
+      if (seen.has(entry)) {
+        return [];
+      }
+      seen.add(entry);
+      return flattenScanValues(Object.values(entry), seen);
+    }
+    return [entry];
+  });
+
+const buildScanText = (...values) =>
+  uniqueStrings(
+    flattenScanValues(values)
+      .map((entry) => normalizeText(entry, 4000))
+      .filter(Boolean)
+  ).join(" | ");
+
+const buildScanAsset = (url = "", {
+  req = null,
+  role = "primary",
+  mediaType = "image",
+  mimeType = "",
+  originalFilename = "",
+  fileSizeBytes = 0,
+} = {}) => {
+  const sourceUrl = toAbsoluteSourceUrl(url, req);
+  if (!sourceUrl) {
+    return null;
+  }
+
+  const inferredMediaType = normalizeText(
+    mediaType || (String(mimeType || "").toLowerCase().startsWith("video/") ? "video" : "image"),
+    40
+  ) || "image";
+  const inferredMimeType = normalizeText(
+    mimeType || (inferredMediaType === "video" ? "video/mp4" : "image/jpeg"),
+    120
+  );
+  const filename = normalizeText(
+    originalFilename || path.basename(sourceUrl.split("?")[0] || ""),
+    260
+  );
+
+  return {
+    role: normalizeText(role || "primary", 40),
+    mediaId: extractMediaIdFromSource(sourceUrl),
+    mediaType: inferredMediaType,
+    mimeType: inferredMimeType,
+    sourceUrl,
+    previewUrl: sourceUrl,
+    originalFilename: filename,
+    fileSizeBytes: Number(fileSizeBytes || 0),
+  };
+};
+
+const buildStoryScanMedia = (story = {}, req = null) => {
+  const assets = [];
+  const storyMedia = story?.media || {};
+  const mainUrl =
+    storyMedia?.url
+    || story?.mediaUrl
+    || story?.image
+    || story?.thumbnailUrl
+    || "";
+
+  const mainAsset = buildScanAsset(mainUrl, {
+    req,
+    role: "primary",
+    mediaType: storyMedia?.type || story?.mediaType || "image",
+    mimeType: storyMedia?.type === "video" ? "video/mp4" : "image/jpeg",
+    originalFilename: `${story?._id || "story"}-${storyMedia?.type || story?.mediaType || "image"}`,
+  });
+  if (mainAsset) {
+    assets.push(mainAsset);
+  }
+
+  const thumbAsset = buildScanAsset(story?.thumbnailUrl || "", {
+    req,
+    role: "thumbnail",
+    mediaType: "image",
+    originalFilename: `${story?._id || "story"}-thumbnail`,
+  });
+  if (thumbAsset) {
+    assets.push(thumbAsset);
+  }
+
+  const avatarAsset = buildScanAsset(story?.avatar || "", {
+    req,
+    role: "author_avatar",
+    mediaType: "image",
+    originalFilename: `${story?._id || "story"}-avatar`,
+  });
+  if (avatarAsset) {
+    assets.push(avatarAsset);
+  }
+
+  return assets;
+};
+
+const buildMessageScanMedia = (message = {}, req = null) => {
+  const assets = [];
+  const attachments = Array.isArray(message?.attachments) ? message.attachments : [];
+
+  attachments.slice(0, 4).forEach((attachment, index) => {
+    const asset = buildScanAsset(attachment?.url || "", {
+      req,
+      role: index === 0 ? "primary" : `attachment_${index + 1}`,
+      mediaType: attachment?.type || "file",
+      mimeType:
+        attachment?.type === "video"
+          ? "video/mp4"
+          : attachment?.type === "image"
+            ? "image/jpeg"
+            : "",
+      originalFilename: attachment?.name || `${message?._id || "message"}-${index + 1}`,
+      fileSizeBytes: attachment?.size || 0,
+    });
+    if (asset) {
+      assets.push(asset);
+    }
+  });
+
+  const cardAsset = buildScanAsset(message?.metadata?.coverImageUrl || "", {
+    req,
+    role: "content_card",
+    mediaType: "image",
+    originalFilename: `${message?._id || "message"}-card`,
+  });
+  if (cardAsset) {
+    assets.push(cardAsset);
+  }
+
+  return assets;
+};
+
+const buildBookScanMedia = (book = {}, req = null) => {
+  const urls = [
+    book?.coverImageUrl,
+    book?.coverUrl,
+    book?.previewUrl,
+    book?.contentUrl,
+    book?.fileUrl,
+  ].filter(Boolean);
+
+  return urls
+    .map((url, index) => buildScanAsset(url, {
+      req,
+      role: index === 0 ? "primary" : `attachment_${index + 1}`,
+      mediaType: "image",
+      originalFilename: `${book?._id || "book"}-${index + 1}`,
+    }))
+    .filter(Boolean);
+};
+
+const buildTrackScanMedia = (track = {}, req = null) => {
+  const urls = [
+    track?.coverImageUrl,
+    track?.coverUrl,
+    track?.previewUrl,
+    track?.previewSampleUrl,
+    track?.videoUrl,
+    track?.previewClipUrl,
+    track?.audioUrl,
+    track?.fullAudioUrl,
+  ].filter(Boolean);
+
+  return urls
+    .map((url, index) => buildScanAsset(url, {
+      req,
+      role: index === 0 ? "primary" : `attachment_${index + 1}`,
+      mediaType: String(url || "").match(/\.(mp4|mov|webm|m4v)(\?|$)/i) ? "video" : "image",
+      mimeType: String(url || "").match(/\.(mp4|mov|webm|m4v)(\?|$)/i) ? "video/mp4" : "",
+      originalFilename: `${track?._id || "track"}-${index + 1}`,
+    }))
+    .filter(Boolean);
+};
+
+const buildAlbumScanMedia = (album = {}, req = null) => {
+  const assets = [];
+  const coverAsset = buildScanAsset(album?.coverUrl || "", {
+    req,
+    role: "primary",
+    mediaType: "image",
+    originalFilename: `${album?._id || "album"}-cover`,
+  });
+  if (coverAsset) {
+    assets.push(coverAsset);
+  }
+
+  const trackAssets = (Array.isArray(album?.tracks) ? album.tracks : []).slice(0, 4).flatMap((track, index) => {
+    const urls = [
+      track?.previewUrl,
+      track?.trackUrl,
+    ].filter(Boolean);
+    return urls.map((url, urlIndex) => buildScanAsset(url, {
+      req,
+      role: index === 0 && urlIndex === 0 ? "attachment_1" : `attachment_${index * 2 + urlIndex + 1}`,
+      mediaType: String(url || "").match(/\.(mp4|mov|webm|m4v)(\?|$)/i) ? "video" : "audio",
+      mimeType: String(url || "").match(/\.(mp4|mov|webm|m4v)(\?|$)/i) ? "video/mp4" : "audio/mpeg",
+      originalFilename: `${album?._id || "album"}-${index + 1}-${urlIndex + 1}`,
+    }));
+  }).filter(Boolean);
+
+  return [...assets, ...trackAssets];
+};
+
+const buildUserScanMedia = (user = {}, creatorProfile = null, req = null) => {
+  const assets = [];
+  const profile = creatorProfile || {};
+  const urls = [
+    user?.avatar?.url,
+    user?.cover?.url,
+    profile?.coverImageUrl,
+    profile?.heroBannerUrl,
+  ].filter(Boolean);
+
+  urls.forEach((url, index) => {
+    const asset = buildScanAsset(url, {
+      req,
+      role: index === 0 ? "primary" : `attachment_${index + 1}`,
+      mediaType: "image",
+      originalFilename: `${user?._id || "user"}-${index + 1}`,
+    });
+    if (asset) {
+      assets.push(asset);
+    }
+  });
+
+  return assets;
+};
+
+const buildPostScanCandidate = (post = {}, req = null) => {
+  const media = buildPostScanMedia(post, req);
+  const author = post?.author || {};
+  return {
+    targetType: "post",
+    targetId: toId(post?._id),
+    title: normalizeText(post?.text || post?.sharedPost?.originalText || post?.subject?.title || "Post", 240),
+    description: buildScanText(
+      post?.text,
+      post?.location,
+      post?.feeling,
+      post?.tags,
+      post?.moreOptions,
+      post?.callToAction?.value,
+      post?.sharedPost?.originalText,
+      post?.sharedPost?.previewImage,
+      post?.subject?.description
+    ),
+    media,
+    metadata: {
+      type: post?.type || "",
+      visibility: post?.visibility || "",
+      privacy: post?.privacy || "",
+      scanSource: "admin_dashboard_scan",
+    },
+    uploader: {
+      userId: author?._id || post?.author || null,
+      email: String(author?.email || ""),
+      username: String(author?.username || ""),
+      displayName: String(author?.name || ""),
+    },
+    detectionSource: "admin_dashboard_scan",
+    sortAt: post?.createdAt || post?.updatedAt || new Date(0),
+    targetDoc: post,
+    subjectMediaType: media[0]?.mediaType || post?.type || "unknown",
+  };
+};
+
+const buildStoryScanCandidate = (story = {}, req = null) => {
+  const media = buildStoryScanMedia(story, req);
+  return {
+    targetType: "story",
+    targetId: toId(story?._id),
+    title: normalizeText(story?.text || story?.name || story?.username || "Story", 240),
+    description: buildScanText(
+      story?.text,
+      story?.name,
+      story?.username,
+      story?.mediaUrl,
+      story?.thumbnailUrl
+    ),
+    media,
+    metadata: {
+      visibility: story?.visibility || "",
+      scanSource: "admin_dashboard_scan",
+    },
+    uploader: {
+      userId: story?.authorId || story?.userId || null,
+      email: "",
+      username: String(story?.username || ""),
+      displayName: String(story?.name || ""),
+    },
+    detectionSource: "admin_dashboard_scan",
+    sortAt: story?.time || story?.createdAt || story?.updatedAt || new Date(0),
+    targetDoc: story,
+    subjectMediaType: media[0]?.mediaType || story?.mediaType || "image",
+  };
+};
+
+const buildMessageScanCandidate = (message = {}, req = null) => {
+  const media = buildMessageScanMedia(message, req);
+  return {
+    targetType: "message",
+    targetId: toId(message?._id),
+    title: normalizeText(
+      message?.text
+      || message?.metadata?.title
+      || message?.replyTo?.text
+      || `Message in ${message?.conversationId || "conversation"}`,
+      240
+    ),
+    description: buildScanText(
+      message?.text,
+      message?.metadata?.title,
+      message?.metadata?.description,
+      message?.metadata?.payload,
+      message?.replyTo?.text,
+      message?.replyTo?.contentTitle,
+      message?.senderName,
+      message?.attachments?.map((attachment) => attachment?.name),
+      message?.attachments?.map((attachment) => attachment?.url)
+    ),
+    media,
+    metadata: {
+      conversationId: message?.conversationId || "",
+      messageType: message?.type || "text",
+      scanSource: "admin_dashboard_scan",
+    },
+    uploader: {
+      userId: message?.senderId || null,
+      email: "",
+      username: "",
+      displayName: String(message?.senderName || ""),
+    },
+    detectionSource: "admin_dashboard_scan",
+    sortAt: message?.createdAt || message?.updatedAt || Number(message?.time || 0) || new Date(0),
+    targetDoc: message,
+    subjectMediaType: media[0]?.mediaType || "message",
+  };
+};
+
+const buildVideoScanCandidate = (video = {}, req = null) => {
+  const media = buildVideoScanMedia(video, req);
+  return {
+    targetType: "video",
+    targetId: toId(video?._id),
+    title: normalizeText(video?.caption || video?.name || "Video", 240),
+    description: buildScanText(
+      video?.caption,
+      video?.description,
+      video?.name,
+      video?.username,
+      video?.creatorCategory,
+      video?.contentType
+    ),
+    media,
+    metadata: {
+      creatorCategory: video?.creatorCategory || "",
+      contentType: video?.contentType || "",
+      scanSource: "admin_dashboard_scan",
+    },
+    uploader: {
+      userId: video?.userId || null,
+      email: "",
+      username: String(video?.username || ""),
+      displayName: String(video?.name || ""),
+    },
+    detectionSource: "admin_dashboard_scan",
+    sortAt: video?.time || video?.createdAt || video?.updatedAt || new Date(0),
+    targetDoc: video,
+    subjectMediaType: "video",
+  };
+};
+
+const buildBookScanCandidate = (book = {}, creatorProfile = null, req = null) => {
+  const media = buildBookScanMedia(book, req);
+  return {
+    targetType: "book",
+    targetId: toId(book?._id),
+    title: normalizeText(book?.title || "Book", 240),
+    description: buildScanText(
+      book?.description,
+      book?.subtitle,
+      book?.authorName,
+      book?.genre,
+      book?.language,
+      book?.tableOfContents,
+      book?.previewExcerptText,
+      book?.readingAge,
+      book?.audience,
+      book?.edition,
+      book?.isbn,
+      book?.tags,
+      book?.previewUrl,
+      book?.fileUrl,
+      book?.contentUrl
+    ),
+    media,
+    metadata: {
+      creatorCategory: book?.creatorCategory || "",
+      contentType: book?.contentType || "",
+      scanSource: "admin_dashboard_scan",
+    },
+    uploader: {
+      userId: creatorProfile?.userId || null,
+      email: "",
+      username: "",
+      displayName: String(creatorProfile?.displayName || creatorProfile?.fullName || book?.authorName || ""),
+    },
+    detectionSource: "admin_dashboard_scan",
+    sortAt: book?.updatedAt || book?.createdAt || new Date(0),
+    targetDoc: book,
+    subjectMediaType: media[0]?.mediaType || "image",
+  };
+};
+
+const buildTrackScanCandidate = (track = {}, creatorProfile = null, req = null) => {
+  const media = buildTrackScanMedia(track, req);
+  return {
+    targetType: "track",
+    targetId: toId(track?._id),
+    title: normalizeText(track?.title || "Track", 240),
+    description: buildScanText(
+      track?.description,
+      track?.genre,
+      track?.artistName,
+      track?.releaseType,
+      track?.explicitContent ? "explicit content" : "",
+      track?.featuringArtists,
+      track?.producerCredits,
+      track?.songwriterCredits,
+      track?.lyrics,
+      track?.showNotes,
+      track?.podcastSeries,
+      track?.podcastCategory,
+      track?.contentType
+    ),
+    media,
+    metadata: {
+      creatorCategory: track?.creatorCategory || "",
+      contentType: track?.contentType || "",
+      scanSource: "admin_dashboard_scan",
+    },
+    uploader: {
+      userId: creatorProfile?.userId || null,
+      email: "",
+      username: "",
+      displayName: String(creatorProfile?.displayName || creatorProfile?.fullName || track?.artistName || ""),
+    },
+    detectionSource: "admin_dashboard_scan",
+    sortAt: track?.updatedAt || track?.createdAt || new Date(0),
+    targetDoc: track,
+    subjectMediaType: media[0]?.mediaType || "audio",
+  };
+};
+
+const buildAlbumScanCandidate = (album = {}, creatorProfile = null, req = null) => {
+  const media = buildAlbumScanMedia(album, req);
+  return {
+    targetType: "album",
+    targetId: toId(album?._id),
+    title: normalizeText(album?.title || "Album", 240),
+    description: buildScanText(
+      album?.description,
+      album?.releaseType,
+      album?.status,
+      album?.tracks?.map((track) => track?.title),
+      album?.tracks?.map((track) => track?.trackUrl),
+      album?.tracks?.map((track) => track?.previewUrl)
+    ),
+    media,
+    metadata: {
+      creatorCategory: album?.creatorCategory || "",
+      contentType: album?.contentType || "",
+      scanSource: "admin_dashboard_scan",
+    },
+    uploader: {
+      userId: creatorProfile?.userId || null,
+      email: "",
+      username: "",
+      displayName: String(creatorProfile?.displayName || creatorProfile?.fullName || ""),
+    },
+    detectionSource: "admin_dashboard_scan",
+    sortAt: album?.updatedAt || album?.createdAt || new Date(0),
+    targetDoc: album,
+    subjectMediaType: media[0]?.mediaType || "image",
+  };
+};
+
+const buildUserAccountScanCandidate = (user = {}, creatorProfile = null, req = null) => {
+  const profile = creatorProfile || {};
+  const media = buildUserScanMedia(user, profile, req);
+  const targetId = toId(user?._id || profile?.userId);
+  if (!targetId) {
+    return null;
+  }
+
+  const displayName = String(
+    user?.name
+    || profile?.displayName
+    || profile?.fullName
+    || user?.username
+    || "User"
+  );
+
+  return {
+    targetType: "user",
+    targetId,
+    title: normalizeText(displayName, 240),
+    description: buildScanText(
+      user?.name,
+      user?.username,
+      user?.email,
+      user?.bio,
+      user?.status?.text,
+      user?.currentCity,
+      user?.hometown,
+      user?.workplace,
+      user?.education,
+      user?.website,
+      user?.gender,
+      user?.pronouns,
+      profile?.displayName,
+      profile?.fullName,
+      profile?.bio,
+      profile?.tagline,
+      profile?.country,
+      profile?.countryOfResidence,
+      profile?.socialHandles,
+      profile?.musicProfile,
+      profile?.booksProfile,
+      profile?.podcastsProfile,
+      profile?.links
+    ),
+    media,
+    metadata: {
+      scanSource: "admin_dashboard_scan",
+      accountType: profile?._id ? "creator_profile" : "user",
+      userStatus: user?.isBanned ? "banned" : user?.isSuspended ? "suspended" : "active",
+      creatorProfileId: toId(profile?._id || ""),
+    },
+    uploader: {
+      userId: targetId,
+      email: String(user?.email || ""),
+      username: String(user?.username || ""),
+      displayName,
+    },
+    detectionSource: "admin_dashboard_scan",
+    sortAt: user?.updatedAt || profile?.updatedAt || user?.createdAt || profile?.createdAt || new Date(0),
+    targetDoc: user,
+    subjectMediaType: media[0]?.mediaType || "image",
+  };
+};
+
 const readInspectionSnippet = async (localPath = "") => {
   const normalizedPath = String(localPath || "").trim();
   if (!normalizedPath || !fs.existsSync(normalizedPath)) {
@@ -451,6 +1022,10 @@ const mergeVisibilityWithModeration = (baselineAccess = {}, moderationDecision =
 };
 
 const resolveTargetOwnerId = async ({ targetType, targetId, targetDoc = null }) => {
+  if (targetType === "user") {
+    return toId(targetDoc?._id || targetId);
+  }
+
   if (targetType === "post") {
     const post = targetDoc || (await Post.findById(targetId).select("author").lean());
     return toId(post?.author);
@@ -1686,83 +2261,416 @@ const scanContentForModeration = async ({
   const normalizedSearch = normalizeText(search, 160);
   const normalizedLimit = Math.max(1, Math.min(50, Number(limit) || 20));
   const regex = normalizedSearch ? new RegExp(escapeRegex(normalizedSearch), "i") : null;
+  const [matchedUsers, matchedCreatorProfiles] = regex
+    ? await Promise.all([
+      User.find(
+        {
+          $or: [
+            { name: regex },
+            { username: regex },
+            { email: regex },
+            { bio: regex },
+            { "status.text": regex },
+            { currentCity: regex },
+            { hometown: regex },
+            { workplace: regex },
+            { education: regex },
+            { website: regex },
+          ],
+        },
+        "_id name username email"
+      ).lean(),
+      CreatorProfile.find(
+        {
+          $or: [
+            { displayName: regex },
+            { fullName: regex },
+            { bio: regex },
+            { tagline: regex },
+            { country: regex },
+            { countryOfResidence: regex },
+            { "musicProfile.artistBio": regex },
+            { "booksProfile.authorBio": regex },
+            { "podcastsProfile.description": regex },
+            { "podcastsProfile.themeOrTopic": regex },
+          ],
+        },
+        "_id userId displayName fullName"
+      ).lean(),
+    ])
+    : [[], []];
 
-  const matchedUsers = regex
-    ? await User.find(
-      {
+  const matchedUserIds = uniqueStrings([
+    ...matchedUsers.map((entry) => toId(entry._id)),
+    ...matchedCreatorProfiles.map((entry) => toId(entry.userId)),
+  ]).filter(Boolean);
+  const matchedCreatorProfileIds = uniqueStrings(matchedCreatorProfiles.map((entry) => toId(entry._id))).filter(Boolean);
+
+  const userQuery = regex
+    ? {
         $or: [
           { name: regex },
           { username: regex },
           { email: regex },
+          { bio: regex },
+          { "status.text": regex },
+          { currentCity: regex },
+          { hometown: regex },
+          { workplace: regex },
+          { education: regex },
+          { website: regex },
+          { "avatar.url": regex },
+          { "cover.url": regex },
         ],
-      },
-      "_id name username email"
-    ).lean()
-    : [];
+      }
+    : { isDeleted: { $ne: true } };
 
-  const matchedUserIds = matchedUsers.map((entry) => entry._id);
-  const matchedUserIdStrings = matchedUsers.map((entry) => toId(entry._id));
+  const creatorProfileQuery = regex
+    ? {
+        $or: [
+          { displayName: regex },
+          { fullName: regex },
+          { bio: regex },
+          { tagline: regex },
+          { country: regex },
+          { countryOfResidence: regex },
+          { "musicProfile.artistBio": regex },
+          { "booksProfile.authorBio": regex },
+          { "podcastsProfile.description": regex },
+          { "podcastsProfile.themeOrTopic": regex },
+        ],
+      }
+    : {};
 
-  const postMediaConditions = [
-    { "media.0": { $exists: true } },
-    { "video.playbackUrl": { $exists: true, $ne: "" } },
-    { "video.url": { $exists: true, $ne: "" } },
-  ];
-  const postQuery = {
-    $and: [
-      { $or: postMediaConditions },
-    ],
-  };
-  if (regex) {
-    const postSearchConditions = [{ text: regex }];
-    if (matchedUserIds.length > 0) {
-      postSearchConditions.push({ author: { $in: matchedUserIds } });
-    }
-    postQuery.$and.push({ $or: postSearchConditions });
-  }
+  const postQuery = regex
+    ? {
+        $or: [
+          { text: regex },
+          { location: regex },
+          { feeling: regex },
+          { tags: regex },
+          { moreOptions: regex },
+          { "sharedPost.originalText": regex },
+          { "sharedPost.previewImage": regex },
+          ...(matchedUserIds.length > 0 ? [{ author: { $in: matchedUserIds } }] : []),
+        ],
+      }
+    : {
+        $or: [
+          { text: { $exists: true, $ne: "" } },
+          { "media.0": { $exists: true } },
+          { "video.playbackUrl": { $exists: true, $ne: "" } },
+          { "video.url": { $exists: true, $ne: "" } },
+          { "sharedPost.originalText": { $exists: true, $ne: "" } },
+        ],
+      };
 
-  const videoQuery = {
-    videoUrl: { $exists: true, $ne: "" },
-  };
-  if (regex) {
-    const videoSearchConditions = [
-      { caption: regex },
-      { description: regex },
-      { name: regex },
-      { username: regex },
-    ];
-    if (matchedUserIdStrings.length > 0) {
-      videoSearchConditions.push({ userId: { $in: matchedUserIdStrings } });
-    }
-    videoQuery.$or = videoSearchConditions;
-  }
+  const storyQuery = regex
+    ? {
+        $or: [
+          { text: regex },
+          { name: regex },
+          { username: regex },
+          { mediaUrl: regex },
+          { thumbnailUrl: regex },
+          ...(matchedUserIds.length > 0 ? [{ authorId: { $in: matchedUserIds } }] : []),
+          ...(matchedUserIds.length > 0 ? [{ userId: { $in: matchedUserIds } }] : []),
+        ],
+      }
+    : {
+        $or: [
+          { text: { $exists: true, $ne: "" } },
+          { "media.url": { $exists: true, $ne: "" } },
+          { mediaUrl: { $exists: true, $ne: "" } },
+          { thumbnailUrl: { $exists: true, $ne: "" } },
+        ],
+      };
 
-  const [posts, videos] = await Promise.all([
+  const messageQuery = regex
+    ? {
+        $or: [
+          { text: regex },
+          { senderName: regex },
+          { "metadata.title": regex },
+          { "metadata.description": regex },
+          { "replyTo.text": regex },
+          { "replyTo.contentTitle": regex },
+          { "attachments.name": regex },
+          { "attachments.url": regex },
+          ...(matchedUserIds.length > 0 ? [{ senderId: { $in: matchedUserIds } }] : []),
+          ...(matchedUserIds.length > 0 ? [{ receiverId: { $in: matchedUserIds } }] : []),
+        ],
+      }
+    : {
+        isSystem: { $ne: true },
+        $or: [
+          { text: { $exists: true, $ne: "" } },
+          { "attachments.0": { $exists: true } },
+          { "metadata.title": { $exists: true, $ne: "" } },
+          { "metadata.description": { $exists: true, $ne: "" } },
+        ],
+      };
+
+  const videoQuery = regex
+    ? {
+        $or: [
+          { caption: regex },
+          { description: regex },
+          { name: regex },
+          { username: regex },
+          { videoUrl: regex },
+          { coverImageUrl: regex },
+          { previewClipUrl: regex },
+          ...(matchedUserIds.length > 0 ? [{ userId: { $in: matchedUserIds } }] : []),
+        ],
+      }
+    : {
+        videoUrl: { $exists: true, $ne: "" },
+      };
+
+  const bookQuery = regex
+    ? {
+        $or: [
+          { title: regex },
+          { description: regex },
+          { authorName: regex },
+          { subtitle: regex },
+          { genre: regex },
+          { language: regex },
+          { tableOfContents: regex },
+          { previewExcerptText: regex },
+          { tags: regex },
+          { coverImageUrl: regex },
+          { coverUrl: regex },
+          { contentUrl: regex },
+          { fileUrl: regex },
+          { previewUrl: regex },
+          ...(matchedCreatorProfileIds.length > 0 ? [{ creatorId: { $in: matchedCreatorProfileIds } }] : []),
+        ],
+      }
+    : {
+        $or: [
+          { title: { $exists: true, $ne: "" } },
+          { description: { $exists: true, $ne: "" } },
+          { coverImageUrl: { $exists: true, $ne: "" } },
+          { coverUrl: { $exists: true, $ne: "" } },
+          { contentUrl: { $exists: true, $ne: "" } },
+          { fileUrl: { $exists: true, $ne: "" } },
+          { previewUrl: { $exists: true, $ne: "" } },
+        ],
+      };
+
+  const trackQuery = regex
+    ? {
+        $or: [
+          { title: regex },
+          { description: regex },
+          { artistName: regex },
+          { genre: regex },
+          { lyrics: regex },
+          { showNotes: regex },
+          { podcastSeries: regex },
+          { podcastCategory: regex },
+          { featuringArtists: regex },
+          { producerCredits: regex },
+          { songwriterCredits: regex },
+          { coverImageUrl: regex },
+          { coverUrl: regex },
+          { audioUrl: regex },
+          { fullAudioUrl: regex },
+          { videoUrl: regex },
+          { previewClipUrl: regex },
+          { previewSampleUrl: regex },
+          ...(matchedCreatorProfileIds.length > 0 ? [{ creatorId: { $in: matchedCreatorProfileIds } }] : []),
+        ],
+      }
+    : {
+        $or: [
+          { title: { $exists: true, $ne: "" } },
+          { description: { $exists: true, $ne: "" } },
+          { audioUrl: { $exists: true, $ne: "" } },
+          { fullAudioUrl: { $exists: true, $ne: "" } },
+          { videoUrl: { $exists: true, $ne: "" } },
+          { previewClipUrl: { $exists: true, $ne: "" } },
+          { previewSampleUrl: { $exists: true, $ne: "" } },
+          { coverImageUrl: { $exists: true, $ne: "" } },
+          { coverUrl: { $exists: true, $ne: "" } },
+        ],
+      };
+
+  const albumQuery = regex
+    ? {
+        $or: [
+          { title: regex },
+          { description: regex },
+          { releaseType: regex },
+          { status: regex },
+          { "tracks.title": regex },
+          { "tracks.trackUrl": regex },
+          { "tracks.previewUrl": regex },
+          { coverUrl: regex },
+          ...(matchedCreatorProfileIds.length > 0 ? [{ creatorId: { $in: matchedCreatorProfileIds } }] : []),
+        ],
+      }
+    : {
+        $or: [
+          { title: { $exists: true, $ne: "" } },
+          { description: { $exists: true, $ne: "" } },
+          { coverUrl: { $exists: true, $ne: "" } },
+          { "tracks.0": { $exists: true } },
+        ],
+      };
+
+  const [posts, stories, messages, videos, books, tracks, albums, users, creatorProfiles] = await Promise.all([
     Post.find(postQuery)
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, updatedAt: -1 })
       .limit(normalizedLimit)
-      .populate("author", "_id name username email")
+      .populate("author", "_id name username email bio currentCity hometown workplace education website gender pronouns avatar cover status")
+      .lean(),
+    Story.find(storyQuery)
+      .sort({ time: -1, updatedAt: -1, createdAt: -1 })
+      .limit(normalizedLimit)
+      .populate("authorId", "_id name username email bio currentCity hometown workplace education website gender pronouns avatar cover status")
+      .lean(),
+    Message.find(messageQuery)
+      .sort({ createdAt: -1, time: -1, updatedAt: -1 })
+      .limit(normalizedLimit)
+      .populate("senderId", "_id name username email bio currentCity hometown workplace education website gender pronouns avatar cover status")
+      .populate("receiverId", "_id name username email bio currentCity hometown workplace education website gender pronouns avatar cover status")
       .lean(),
     Video.find(videoQuery)
-      .sort({ time: -1, createdAt: -1 })
+      .sort({ time: -1, createdAt: -1, updatedAt: -1 })
       .limit(normalizedLimit)
+      .lean(),
+    Book.find(bookQuery)
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .limit(normalizedLimit)
+      .populate("creatorId", "_id userId displayName fullName bio tagline country countryOfResidence coverImageUrl heroBannerUrl")
+      .lean(),
+    Track.find(trackQuery)
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .limit(normalizedLimit)
+      .populate("creatorId", "_id userId displayName fullName bio tagline country countryOfResidence coverImageUrl heroBannerUrl")
+      .lean(),
+    Album.find(albumQuery)
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .limit(normalizedLimit)
+      .populate("creatorId", "_id userId displayName fullName bio tagline country countryOfResidence coverImageUrl heroBannerUrl")
+      .lean(),
+    User.find(userQuery)
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .limit(normalizedLimit)
+      .select("_id name username email bio currentCity hometown workplace education website gender pronouns status avatar cover isBanned isSuspended updatedAt createdAt")
+      .lean(),
+    CreatorProfile.find(creatorProfileQuery)
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .limit(normalizedLimit)
+      .select("_id userId displayName fullName bio tagline country countryOfResidence musicProfile booksProfile podcastsProfile links coverImageUrl heroBannerUrl updatedAt createdAt")
       .lean(),
   ]);
 
-  const candidates = [
-    ...posts.map((entry) => ({
-      sortAt: entry?.createdAt || entry?.updatedAt || new Date(0),
-      type: "post",
-      value: entry,
-    })),
-    ...videos.map((entry) => ({
-      sortAt: entry?.time || entry?.createdAt || entry?.updatedAt || new Date(0),
-      type: "video",
-      value: entry,
-    })),
-  ]
-    .sort((left, right) => new Date(right.sortAt).getTime() - new Date(left.sortAt).getTime())
-    .slice(0, normalizedLimit);
+  const candidateMap = new Map();
+  const dedupeMediaAssets = (assets = []) => {
+    const seen = new Set();
+    return (Array.isArray(assets) ? assets : []).filter((asset = {}) => {
+      const key = [
+        String(asset.sourceUrl || ""),
+        String(asset.role || ""),
+        String(asset.mediaId || ""),
+      ].join("|");
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  };
+
+  const addCandidate = (candidate = {}) => {
+    const targetType = String(candidate.targetType || "");
+    const targetId = toId(candidate.targetId || "");
+    if (!targetType || !targetId) {
+      return;
+    }
+
+    const normalizedCandidate = {
+      ...candidate,
+      targetType,
+      targetId,
+      title: normalizeText(candidate.title || "", 240),
+      description: normalizeText(candidate.description || "", 3000),
+      media: dedupeMediaAssets(candidate.media || []),
+      metadata: candidate.metadata || {},
+      uploader: candidate.uploader || {},
+      detectionSource: String(candidate.detectionSource || "admin_dashboard_scan"),
+      subjectMediaType: String(candidate.subjectMediaType || "unknown"),
+      sortAt: candidate.sortAt || new Date(0),
+    };
+
+    const key = `${targetType}:${targetId}`;
+    const existing = candidateMap.get(key);
+    if (!existing) {
+      candidateMap.set(key, normalizedCandidate);
+      return;
+    }
+
+    existing.title = existing.title || normalizedCandidate.title;
+    existing.description = buildScanText(existing.description, normalizedCandidate.description);
+    existing.media = dedupeMediaAssets([...(existing.media || []), ...normalizedCandidate.media]);
+    existing.metadata = { ...(existing.metadata || {}), ...(normalizedCandidate.metadata || {}) };
+    if (!existing.uploader?.userId && normalizedCandidate.uploader?.userId) {
+      existing.uploader = normalizedCandidate.uploader;
+    }
+    if (!existing.targetDoc && normalizedCandidate.targetDoc) {
+      existing.targetDoc = normalizedCandidate.targetDoc;
+    }
+    if (!existing.subjectMediaType && normalizedCandidate.subjectMediaType) {
+      existing.subjectMediaType = normalizedCandidate.subjectMediaType;
+    }
+    const existingSort = new Date(existing.sortAt || 0).getTime();
+    const candidateSort = new Date(normalizedCandidate.sortAt || 0).getTime();
+    if (candidateSort > existingSort) {
+      existing.sortAt = normalizedCandidate.sortAt;
+    }
+  };
+
+  const creatorProfileByUserId = new Map(
+    creatorProfiles.map((entry) => [toId(entry?.userId), entry]).filter(([key]) => Boolean(key))
+  );
+  const creatorProfileById = new Map(
+    creatorProfiles.map((entry) => [toId(entry?._id), entry]).filter(([key]) => Boolean(key))
+  );
+  const userById = new Map(users.map((entry) => [toId(entry?._id), entry]).filter(([key]) => Boolean(key)));
+  const storyAuthorById = new Map();
+  stories.forEach((story) => {
+    const author = story?.authorId || {};
+    const authorId = toId(author?._id || story?.authorId || story?.userId || "");
+    if (authorId && !storyAuthorById.has(authorId)) {
+      storyAuthorById.set(authorId, author);
+    }
+  });
+  const messageSenderById = new Map();
+  [...messages].forEach((message) => {
+    const sender = message?.senderId || {};
+    const senderId = toId(sender?._id || message?.senderId || "");
+    if (senderId && !messageSenderById.has(senderId)) {
+      messageSenderById.set(senderId, sender);
+    }
+  });
+
+  posts.forEach((entry) => addCandidate(buildPostScanCandidate(entry, req)));
+  stories.forEach((entry) => addCandidate(buildStoryScanCandidate(entry, req)));
+  messages.forEach((entry) => addCandidate(buildMessageScanCandidate(entry, req)));
+  videos.forEach((entry) => addCandidate(buildVideoScanCandidate(entry, req)));
+  books.forEach((entry) => addCandidate(buildBookScanCandidate(entry, creatorProfileById.get(toId(entry?.creatorId)) || null, req)));
+  tracks.forEach((entry) => addCandidate(buildTrackScanCandidate(entry, creatorProfileById.get(toId(entry?.creatorId)) || null, req)));
+  albums.forEach((entry) => addCandidate(buildAlbumScanCandidate(entry, creatorProfileById.get(toId(entry?.creatorId)) || null, req)));
+  users.forEach((entry) => addCandidate(buildUserAccountScanCandidate(entry, creatorProfileByUserId.get(toId(entry?._id)) || null, req)));
+  creatorProfiles.forEach((entry) => addCandidate(buildUserAccountScanCandidate(userById.get(toId(entry?.userId)) || {}, entry, req)));
+
+  const candidates = [...candidateMap.values()].sort(
+    (left, right) => new Date(right.sortAt || 0).getTime() - new Date(left.sortAt || 0).getTime()
+  );
 
   const cases = [];
   let approvedCount = 0;
@@ -1770,8 +2678,9 @@ const scanContentForModeration = async ({
   let reviewCount = 0;
   let restrictedCount = 0;
   let flaggedCount = 0;
+  const flaggedAccountIds = new Set();
 
-  const tallyScanResult = (result = {}) => {
+  const tallyScanResult = (candidate = {}, result = {}) => {
     const status = String(result?.moderationCase?.status || result?.moderationDecision?.status || "").toUpperCase();
     if (!status || status === "ALLOW") {
       approvedCount += 1;
@@ -1781,101 +2690,45 @@ const scanContentForModeration = async ({
     if (status === "RESTRICTED_BLURRED") {
       restrictedCount += 1;
       flaggedCount += 1;
-      return;
-    }
-
-    if (status === "HOLD_FOR_REVIEW" || status === "PENDING" || status === "QUARANTINED") {
+    } else if (status === "HOLD_FOR_REVIEW" || status === "PENDING" || status === "QUARANTINED") {
       reviewCount += 1;
       flaggedCount += 1;
-      return;
+    } else {
+      blockedCount += 1;
+      flaggedCount += 1;
     }
 
-    blockedCount += 1;
-    flaggedCount += 1;
+    if (String(candidate?.targetType || "") === "user" && result?.moderationCase?._id) {
+      flaggedAccountIds.add(String(candidate.targetId || ""));
+    }
   };
 
   for (const candidate of candidates) {
-    if (candidate.type === "post") {
-      const post = candidate.value;
-      const media = buildPostScanMedia(post, req);
-      if (media.length === 0) {
-        continue;
-      }
+    const result = await createOrUpdateModerationCase({
+      targetType: candidate.targetType,
+      targetId: candidate.targetId,
+      title: candidate.title,
+      description: candidate.description,
+      metadata: {
+        ...(candidate.metadata || {}),
+        scanSource: "admin_dashboard_scan",
+      },
+      media: candidate.media || [],
+      uploader: candidate.uploader || {},
+      detectionSource: candidate.detectionSource || "admin_dashboard_scan",
+      req,
+      targetDoc: candidate.targetDoc || null,
+      subjectMediaType: candidate.subjectMediaType || "",
+      forceReview: includeManualReview && Boolean(normalizedSearch),
+      manualReviewReason: normalizedSearch
+        ? `Admin scan requested for "${normalizedSearch}"`
+        : "Admin scan requested",
+    });
 
-      const result = await createOrUpdateModerationCase({
-        targetType: "post",
-        targetId: toId(post._id),
-        title: normalizeText(post?.text || "", 240),
-        description: normalizeText(post?.text || "", 3000),
-        metadata: {
-          type: post?.type || "",
-          visibility: post?.visibility || "",
-          privacy: post?.privacy || "",
-          scanSource: "admin_dashboard_scan",
-        },
-        media,
-        uploader: {
-          userId: post?.author?._id || post?.author || null,
-          email: post?.author?.email || "",
-          username: post?.author?.username || "",
-          displayName: post?.author?.name || "",
-        },
-        detectionSource: "admin_manual_scan",
-        req,
-        targetDoc: post,
-        subjectMediaType: media[0]?.mediaType || "image",
-        forceReview: includeManualReview && Boolean(normalizedSearch),
-        manualReviewReason: normalizedSearch
-          ? `Admin scan requested for "${normalizedSearch}"`
-          : "Admin scan requested",
-      });
-
-      if (result?.moderationCase) {
-        cases.push(buildAdminCasePayload(result.moderationCase, user));
-      }
-      tallyScanResult(result);
-      continue;
+    if (result?.moderationCase) {
+      cases.push(buildAdminCasePayload(result.moderationCase, user));
     }
-
-    if (candidate.type === "video") {
-      const video = candidate.value;
-      const media = buildVideoScanMedia(video, req);
-      if (media.length === 0) {
-        continue;
-      }
-
-      const result = await createOrUpdateModerationCase({
-        targetType: "video",
-        targetId: toId(video._id),
-        title: normalizeText(video?.caption || video?.name || "", 240),
-        description: normalizeText(video?.description || "", 3000),
-        metadata: {
-          creatorCategory: video?.creatorCategory || "",
-          contentType: video?.contentType || "",
-          scanSource: "admin_dashboard_scan",
-        },
-        media,
-        uploader: {
-          userId: video?.userId || null,
-          email: "",
-          username: video?.username || "",
-          displayName: video?.name || "",
-        },
-        detectionSource: "admin_manual_scan",
-        req,
-        targetDoc: video,
-        subjectMediaType: "video",
-        forceReview: includeManualReview && Boolean(normalizedSearch),
-        manualReviewReason: normalizedSearch
-          ? `Admin scan requested for "${normalizedSearch}"`
-          : "Admin scan requested",
-      });
-
-      if (result?.moderationCase) {
-        cases.push(buildAdminCasePayload(result.moderationCase, user));
-      }
-      tallyScanResult(result);
-    }
+    tallyScanResult(candidate, result);
   }
 
   return {
@@ -1885,6 +2738,7 @@ const scanContentForModeration = async ({
     reviewCount,
     restrictedCount,
     flaggedCount,
+    accountsFlagged: flaggedAccountIds.size,
     cases,
   };
 };

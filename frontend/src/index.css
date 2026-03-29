@@ -10441,6 +10441,54 @@ html.dark-mode .composer-tag-empty.error {
   transform: translate3d(0, -50%, 0);
 }
 
+.msg-meta--them {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translate3d(-4px, -50%, 0);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  background: transparent;
+  z-index: 1;
+}
+
+.message-row:hover .msg-meta--them,
+.message-row.is-tools-open .msg-meta--them,
+.msg-meta--them.is-visible {
+  opacity: 1;
+  transform: translate3d(0, -50%, 0);
+  pointer-events: auto;
+}
+
+.message-row:hover .msg-meta--them .msg-tools,
+.message-row.is-tools-open .msg-meta--them .msg-tools,
+.msg-meta--them.is-visible .msg-tools {
+  position: static;
+  bottom: auto;
+  left: auto;
+  right: auto;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+.message-row:hover .msg-meta--them .msg-time,
+.message-row.is-tools-open .msg-meta--them .msg-time,
+.msg-meta--them.is-visible .msg-time {
+  position: static;
+  left: auto;
+  top: auto;
+  transform: none;
+  opacity: 1;
+  pointer-events: none;
+  background: transparent;
+}
+
 .msg-reaction-summary {
   display: flex;
   flex-wrap: wrap;
@@ -14575,6 +14623,33 @@ html.dark-mode .password-toggle-btn:hover {
   .msg-tools {
     position: static;
     transform: none;
+  }
+
+  .msg-meta--them {
+    position: static;
+    left: auto;
+    top: auto;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .message-row:hover .msg-meta--them .msg-tools,
+  .message-row.is-tools-open .msg-meta--them .msg-tools,
+  .msg-meta--them.is-visible .msg-tools,
+  .message-row:hover .msg-meta--them .msg-time,
+  .message-row.is-tools-open .msg-meta--them .msg-time,
+  .msg-meta--them.is-visible .msg-time {
+    position: static;
+    left: auto;
+    right: auto;
+    top: auto;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .msg-tools--me {

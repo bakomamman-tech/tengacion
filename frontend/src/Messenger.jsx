@@ -2671,6 +2671,135 @@ export default function Messenger({
                     const onboardingReminderLabel = onboardingReminderPayload
                       ? getOnboardingReminderCtaLabel(onboardingReminderPayload)
                       : "";
+                    const messageTime = (
+                      <div className="msg-time">
+                        {new Date(m.time).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {m.pending ? " - Sending" : ""}
+                        {m.failed ? " - Failed" : ""}
+                      </div>
+                    );
+
+                    const renderMessageTools = () => (
+                      <div
+                        className={`msg-tools msg-tools--${isMe ? "me" : "them"}${toolsVisible ? " is-visible" : ""}`}
+                      >
+                        <div
+                          className="msg-tool-menu-wrap"
+                          ref={messageMenuOpen ? messageMenuRef : null}
+                        >
+                          <button
+                            type="button"
+                            className="msg-tool-btn"
+                            aria-label="More message actions"
+                            title="More"
+                            aria-haspopup="menu"
+                            aria-expanded={messageMenuOpen}
+                            onClick={() => {
+                              setOpenMessageReactionId("");
+                              setOpenMessageMenuId((current) =>
+                                current === messageKey ? "" : messageKey
+                              );
+                            }}
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <circle cx="12" cy="5.5" r="1.5" />
+                              <circle cx="12" cy="12" r="1.5" />
+                              <circle cx="12" cy="18.5" r="1.5" />
+                            </svg>
+                          </button>
+                          {messageMenuOpen ? (
+                            <div
+                              className={`msg-tool-menu msg-tool-menu--${isMe ? "me" : "them"}`}
+                              role="menu"
+                            >
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => handleRemoveMessage(m)}
+                              >
+                                {isMe ? "Unsend" : "Remove for you"}
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => handleForwardMessage(m)}
+                              >
+                                Forward
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => handleTogglePinnedMessage(m)}
+                              >
+                                {isPinnedMessage ? "Unpin" : "Pin"}
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => handleReportMessage(m)}
+                              >
+                                Report
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          className="msg-tool-btn"
+                          aria-label="Reply to message"
+                          title="Reply"
+                          onClick={() => {
+                            setOpenMessageMenuId("");
+                            selectReplyTarget(m);
+                          }}
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M10 8 5 12l5 4" />
+                            <path d="M6 12h9a5 5 0 0 1 5 5" />
+                          </svg>
+                        </button>
+                        <div className="msg-tool-picker-wrap">
+                          <button
+                            type="button"
+                            className="msg-tool-btn"
+                            aria-label="React to message"
+                            title="React"
+                            onClick={() => {
+                              setOpenMessageMenuId("");
+                              setOpenMessageReactionId((current) =>
+                                current === messageKey ? "" : messageKey
+                              );
+                            }}
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <circle cx="12" cy="12" r="9" />
+                              <path d="M9 10h.01" />
+                              <path d="M15 10h.01" />
+                              <path d="M8.5 14c1 1.3 2.1 2 3.5 2s2.5-.7 3.5-2" />
+                            </svg>
+                          </button>
+                          {openMessageReactionId === messageKey ? (
+                            <div
+                              className={`msg-reaction-picker msg-reaction-picker--${isMe ? "me" : "them"}`}
+                            >
+                              {MESSAGE_ACTION_EMOJIS.map((emoji) => (
+                                <button
+                                  key={`${messageKey}-${emoji}`}
+                                  type="button"
+                                  className="msg-reaction-picker-btn"
+                                  onClick={() => reactToMessageBubble(m, emoji)}
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
                     return (
                       <div
                         key={m._id || m.clientId}
@@ -2906,122 +3035,19 @@ export default function Messenger({
                             </div>
                           ) : null}
                         </div>
-                        <div className="msg-time">
-                          {new Date(m.time).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                          {m.pending ? " - Sending" : ""}
-                          {m.failed ? " - Failed" : ""}
-                        </div>
-                        {!m.pending ? (
-                          <div className={`msg-tools msg-tools--${isMe ? "me" : "them"}${toolsVisible ? " is-visible" : ""}`}>
-                            <div className="msg-tool-menu-wrap" ref={messageMenuOpen ? messageMenuRef : null}>
-                              <button
-                                type="button"
-                                className="msg-tool-btn"
-                                aria-label="More message actions"
-                                title="More"
-                                aria-haspopup="menu"
-                                aria-expanded={messageMenuOpen}
-                                onClick={() => {
-                                  setOpenMessageReactionId("");
-                                  setOpenMessageMenuId((current) =>
-                                    current === messageKey ? "" : messageKey
-                                  );
-                                }}
-                              >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <circle cx="12" cy="5.5" r="1.5" />
-                                  <circle cx="12" cy="12" r="1.5" />
-                                  <circle cx="12" cy="18.5" r="1.5" />
-                                </svg>
-                              </button>
-                              {messageMenuOpen ? (
-                                <div className={`msg-tool-menu msg-tool-menu--${isMe ? "me" : "them"}`} role="menu">
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => handleRemoveMessage(m)}
-                                  >
-                                    {isMe ? "Unsend" : "Remove for you"}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => handleForwardMessage(m)}
-                                  >
-                                    Forward
-                                  </button>
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => handleTogglePinnedMessage(m)}
-                                  >
-                                    {isPinnedMessage ? "Unpin" : "Pin"}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => handleReportMessage(m)}
-                                  >
-                                    Report
-                                  </button>
-                                </div>
-                              ) : null}
-                            </div>
-                            <button
-                              type="button"
-                              className="msg-tool-btn"
-                              aria-label="Reply to message"
-                              title="Reply"
-                              onClick={() => {
-                                setOpenMessageMenuId("");
-                                selectReplyTarget(m);
-                              }}
-                            >
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M10 8 5 12l5 4" />
-                                <path d="M6 12h9a5 5 0 0 1 5 5" />
-                              </svg>
-                            </button>
-                            <div className="msg-tool-picker-wrap">
-                              <button
-                                type="button"
-                                className="msg-tool-btn"
-                                aria-label="React to message"
-                                title="React"
-                                onClick={() => {
-                                  setOpenMessageMenuId("");
-                                  setOpenMessageReactionId((current) =>
-                                    current === messageKey ? "" : messageKey
-                                  );
-                                }}
-                              >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <circle cx="12" cy="12" r="9" />
-                                  <path d="M9 10h.01" />
-                                  <path d="M15 10h.01" />
-                                  <path d="M8.5 14c1 1.3 2.1 2 3.5 2s2.5-.7 3.5-2" />
-                                </svg>
-                              </button>
-                              {openMessageReactionId === messageKey ? (
-                                <div className={`msg-reaction-picker msg-reaction-picker--${isMe ? "me" : "them"}`}>
-                                  {MESSAGE_ACTION_EMOJIS.map((emoji) => (
-                                    <button
-                                      key={`${messageKey}-${emoji}`}
-                                      type="button"
-                                      className="msg-reaction-picker-btn"
-                                      onClick={() => reactToMessageBubble(m, emoji)}
-                                    >
-                                      {emoji}
-                                    </button>
-                                  ))}
-                                </div>
-                              ) : null}
-                            </div>
+                        {isMe ? (
+                          <>
+                            {messageTime}
+                            {!m.pending ? renderMessageTools() : null}
+                          </>
+                        ) : (
+                          <div
+                            className={`msg-meta msg-meta--them${toolsVisible ? " is-visible" : ""}`}
+                          >
+                            {!m.pending ? renderMessageTools() : null}
+                            {messageTime}
                           </div>
-                        ) : null}
+                        )}
                         </div>
                       </div>
                     );

@@ -6,6 +6,7 @@ import {
   evaluateCalculatorExpression,
   formatCalculatorNumber,
 } from "./calculatorUtils";
+import "./CalculatorPage.css";
 
 const KEYPAD_ROWS = [
   [
@@ -119,6 +120,80 @@ function deleteLastToken(value) {
   }
 
   return current.slice(0, -1);
+}
+
+function getKeyToneClass(button) {
+  switch (button.action) {
+    case "clear":
+      return "calculator-key--tone-danger";
+    case "delete":
+      return "calculator-key--tone-secondary";
+    case "sign":
+      return "calculator-key--tone-sky";
+    case "digit":
+    case "decimal":
+      return "calculator-key--tone-number";
+    case "openParen":
+    case "closeParen":
+      return "calculator-key--tone-bracket";
+    case "operator":
+      switch (button.value) {
+        case "÷":
+          return "calculator-key--tone-orange";
+        case "×":
+          return "calculator-key--tone-teal";
+        case "-":
+          return "calculator-key--tone-violet";
+        case "+":
+          return "calculator-key--tone-coral";
+        case "^":
+          return "calculator-key--tone-indigo";
+        default:
+          return "calculator-key--tone-operator";
+      }
+    case "function":
+      switch (button.value) {
+        case "sin(":
+          return "calculator-key--tone-blue";
+        case "cos(":
+          return "calculator-key--tone-indigo";
+        case "tan(":
+          return "calculator-key--tone-violet";
+        case "log(":
+          return "calculator-key--tone-cyan";
+        case "ln(":
+          return "calculator-key--tone-mint";
+        case "√(":
+          return "calculator-key--tone-teal";
+        default:
+          return "calculator-key--tone-science";
+      }
+    case "constant":
+      switch (button.value) {
+        case "π":
+          return "calculator-key--tone-azure";
+        case "Ans":
+          return "calculator-key--tone-green";
+        case "e":
+          return "calculator-key--tone-lime";
+        default:
+          return "calculator-key--tone-science";
+      }
+    case "postfix":
+      if (button.value === "%") {
+        return "calculator-key--tone-amber";
+      }
+      if (button.value === "!") {
+        return "calculator-key--tone-plum";
+      }
+      return "calculator-key--tone-science";
+    case "square":
+      return "calculator-key--tone-plum";
+    case "equals":
+      return "calculator-key--tone-equals";
+    default:
+      return "calculator-key--tone-science";
+  }
 }
 
 export default function CalculatorPage({ user }) {
@@ -551,7 +626,7 @@ export default function CalculatorPage({ user }) {
       title="Calculator"
       subtitle="A modern scientific calculator built into Tengacion so users can stay in the app whenever they need quick math."
     >
-      <section className="card quick-section-card">
+      <section className="card quick-section-card calculator-neo">
         <div className="quick-section-head calculator-section-head">
           <div>
             <h2>Scientific workspace</h2>
@@ -624,6 +699,7 @@ export default function CalculatorPage({ user }) {
                   className={[
                     "calculator-key",
                     button.variant ? `calculator-key--${button.variant}` : "",
+                    getKeyToneClass(button),
                     button.className || "",
                   ]
                     .filter(Boolean)

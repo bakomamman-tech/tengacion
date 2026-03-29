@@ -58,7 +58,7 @@ const mockAdminUser = {
 const moderationCase = {
   _id: "case-1",
   queue: "explicit_pornography",
-  status: "pending",
+  status: "BLOCK_EXPLICIT_ADULT",
   workflowState: "OPEN",
   severity: "HIGH",
   priorityScore: 92,
@@ -135,6 +135,29 @@ const moderationCase = {
     "suspend_user",
     "ban_user",
   ],
+};
+
+const resolvedModerationCase = {
+  ...moderationCase,
+  workflowState: "RESOLVED",
+  reviewedAt: "2026-03-26T09:12:00.000Z",
+  reviewedBy: {
+    _id: "admin-1",
+    name: "Admin User",
+    username: "admin",
+    email: "admin@tengacion.com",
+  },
+  latestDecisionSummary: {
+    ...moderationCase.latestDecisionSummary,
+    actionType: "reject",
+    adminUserId: "admin-1",
+    previousStatus: "pending",
+    newStatus: "BLOCK_EXPLICIT_ADULT",
+    reason: "Resolved explicit review",
+    decidedAt: "2026-03-26T09:12:00.000Z",
+  },
+  reviewerNote: "Resolved explicit review",
+  internalNotes: "Resolved explicit review",
 };
 
 const uploaderPayload = {
@@ -337,4 +360,37 @@ describe("AdminReportsPage", () => {
       })
     );
   }, 15000);
+
+  it("shows blocked explicit cases as pending until they are resolved", async () => {
+    const pendingModerationCase = {
+      ...moderationCase,
+      workflowState: "OPEN",
+    };
+
+    vi.mocked(fetchModerationCases).mockResolvedValueOnce({
+      ...queuePayload,
+      cases: [pendingModerationCase],
+    });
+    vi.mocked(fetchModerationCase).mockResolvedValueOnce(pendingModerationCase);
+    vi.mocked(fetchModerationUploader).mockResolvedValueOnce(uploaderPayload);
+
+    renderPage();
+
+    const badge = (await screen.findAllByText(/BLOCK EXPLICIT ADULT/i, { selector: ".adminx-case-badge" }))[0];
+    expect(badge.className).toContain("adminx-case-badge--pending");
+  });
+
+  it("turns the blocked explicit badge green after the case is resolved", async () => {
+    vi.mocked(fetchModerationCases).mockResolvedValueOnce({
+      ...queuePayload,
+      cases: [resolvedModerationCase],
+    });
+    vi.mocked(fetchModerationCase).mockResolvedValueOnce(resolvedModerationCase);
+    vi.mocked(fetchModerationUploader).mockResolvedValueOnce(uploaderPayload);
+
+    renderPage();
+
+    const badge = (await screen.findAllByText(/BLOCK EXPLICIT ADULT/i, { selector: ".adminx-case-badge" }))[0];
+    expect(badge.className).toContain("adminx-case-badge--resolved");
+  });
 });

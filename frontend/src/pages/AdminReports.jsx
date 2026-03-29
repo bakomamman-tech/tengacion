@@ -105,19 +105,6 @@ const getLabel = (value = "") => {
   const entry = CATEGORIES.find(([key]) => key === value);
   return entry?.[1] || titleCase(value || "unknown");
 };
-const getTone = (status = "") => {
-  const s = String(status || "").toUpperCase();
-  if (s === "ALLOW" || s === "APPROVED" || s === "approved") {
-    return "good";
-  }
-  if (s.includes("BLOCK") || s === "REJECTED" || s === "rejected") {
-    return "danger";
-  }
-  if (s === "RESTRICTED_BLURRED" || s === "HOLD_FOR_REVIEW" || s === "PENDING" || s === "pending" || s === "quarantined") {
-    return "warn";
-  }
-  return "neutral";
-};
 const getStatusLabel = (status = "") => {
   const value = String(status || "").trim();
   if (!value) {
@@ -151,9 +138,15 @@ const getQueueSummary = (payload = {}) => ({
   cases: Array.isArray(payload?.cases) ? payload.cases : [],
 });
 
-function Badge({ status }) {
-  const tone = getTone(status);
-  return <span className={`adminx-badge ${tone === "good" ? "adminx-badge--good" : tone === "warn" ? "adminx-badge--warn" : tone === "danger" ? "adminx-badge--danger" : ""}`}>{getStatusLabel(status)}</span>;
+function Badge({ status, workflowState }) {
+  const isResolved = String(workflowState || "").toUpperCase() === "RESOLVED";
+  const toneClass = isResolved ? "adminx-case-badge--resolved" : "adminx-case-badge--pending";
+
+  return (
+    <span className={`adminx-badge adminx-case-badge ${toneClass}`}>
+      {getStatusLabel(status)}
+    </span>
+  );
 }
 
 function StatSkeleton() {
@@ -200,7 +193,7 @@ function CaseCard({ item, active, busyKey, onSelect, onView, onAction }) {
               <div style={{ fontWeight: 800, lineHeight: 1.3 }}>{title}</div>
               <div className="adminx-muted" style={{ marginTop: 4 }}>{getLabel(item?.queue)} | {titleCase(item?.subject?.targetType || "upload")} | {getMediaKind(item)}</div>
             </div>
-            <Badge status={item?.status} />
+            <Badge status={item?.status} workflowState={item?.workflowState} />
           </div>
           <div className="adminx-row" style={{ flexWrap: "wrap", gap: 8, justifyContent: "flex-start" }}>
             <span className="adminx-badge">uploader: {getUploaderLabel(uploader)}</span>
@@ -632,7 +625,7 @@ export default function AdminReportsPage({ user }) {
               <h2 className="adminx-panel-title">{normalizeText(visibleCase?.subject?.title || "Moderation detail")}</h2>
               <span className="adminx-section-meta">{normalizeText(visibleCase?.subject?.targetType || "upload")} | {getLabel(visibleCase?.queue)} | {getMediaKind(visibleCase)}</span>
             </div>
-            <Badge status={visibleCase?.status} />
+            <Badge status={visibleCase?.status} workflowState={visibleCase?.workflowState} />
           </div>
 
           {detailLoading && !visibleCase ? <div className="adminx-loading">Loading moderation case...</div> : null}

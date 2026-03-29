@@ -11,6 +11,7 @@ import RecentPostsCard from "../components/adminDashboard/RecentPostsCard";
 import TopUsersCard from "../components/adminDashboard/TopUsersCard";
 import KPICompactCard from "../components/adminDashboard/KPICompactCard";
 import AudienceAgeCard from "../components/adminDashboard/AudienceAgeCard";
+import DashboardSummaryPanel from "../components/adminDashboard/DashboardSummaryPanel";
 import { loadAdminDashboard } from "../services/adminDashboard";
 
 import "./admin-dashboard.css";
@@ -160,6 +161,8 @@ export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
               transition={{ duration: 0.35, ease: "easeOut" }}
             >
               <DashboardNotice mode={content.dataMode} error={content.error} />
+
+              <DashboardSummaryPanel dashboard={content} onNavigate={navigate} />
 
               <section className="tdash-stats-grid">
                 {(content.overview?.cards || []).map((card) => (

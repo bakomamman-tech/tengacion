@@ -490,6 +490,96 @@
   color: #8ff0b0;
 }
 
+.adminx-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 10, 6, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.adminx-modal__dialog {
+  width: min(680px, 100%);
+  border-radius: 28px;
+  padding: 22px;
+  background: linear-gradient(180deg, rgba(18, 36, 28, 0.98), rgba(10, 23, 18, 0.98));
+  border: 1px solid rgba(140, 255, 190, 0.22);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.42);
+}
+
+.adminx-modal__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.adminx-modal__head h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.adminx-modal__head p {
+  margin: 6px 0 0;
+  color: var(--adminx-muted);
+  line-height: 1.55;
+}
+
+.adminx-modal__close {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--adminx-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--adminx-text);
+  font-weight: 700;
+}
+
+.adminx-modal__meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  color: var(--adminx-muted);
+  font-size: 0.94rem;
+}
+
+.adminx-modal__meta strong {
+  color: var(--adminx-text);
+}
+
+.adminx-modal__form {
+  display: grid;
+  gap: 14px;
+}
+
+.adminx-modal__field {
+  display: grid;
+  gap: 8px;
+  color: var(--adminx-text);
+}
+
+.adminx-modal__field .adminx-textarea {
+  min-height: 180px;
+}
+
+.adminx-modal__error {
+  margin: 0;
+  color: #ffb4b4;
+}
+
+.adminx-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 1280px) {
   .adminx-stat-card { grid-column: span 4; }
   .adminx-panel--span-4,
@@ -538,5 +628,26 @@
 
   .adminx-title {
     font-size: 1.8rem;
+  }
+
+  .adminx-modal {
+    padding: 14px;
+  }
+
+  .adminx-modal__dialog {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .adminx-modal__head {
+    flex-direction: column;
+  }
+
+  .adminx-modal__actions {
+    flex-direction: column-reverse;
+  }
+
+  .adminx-modal__actions .adminx-btn {
+    width: 100%;
   }
 }

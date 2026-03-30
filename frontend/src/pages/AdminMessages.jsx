@@ -3,7 +3,12 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
 import AdminShell from "../components/AdminShell";
-import { adminGetComplaints, adminGetMessagesOverview, adminUpdateComplaint } from "../api";
+import {
+  adminGetComplaints,
+  adminGetMessagesOverview,
+  adminUpdateComplaint,
+  sendChatMessageDirect,
+} from "../api";
 
 const RANGE_OPTIONS = [
   { value: "7d", label: "Last 7 days" },
@@ -42,6 +47,10 @@ export default function AdminMessagesPage({ user }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
+  const [replyTarget, setReplyTarget] = useState(null);
+  const [replyText, setReplyText] = useState("");
+  const [replyBusy, setReplyBusy] = useState(false);
+  const [replyError, setReplyError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -68,6 +77,29 @@ export default function AdminMessagesPage({ user }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!replyTarget) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setReplyTarget(null);
+        setReplyText("");
+        setReplyError("");
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [replyTarget]);
 
   const cards = useMemo(
     () => [
@@ -122,6 +154,56 @@ export default function AdminMessagesPage({ user }) {
       setBusyId("");
     }
   };
+
+  const openReplyComposer = useCallback((complaint) => {
+    if (!complaint?.reporter?._id) {
+      return;
+    }
+
+    const reporterName = complaint.reporter.name || complaint.reporter.username || "user";
+    setReplyTarget(complaint);
+    setReplyText(`Hi ${reporterName}, `);
+    setReplyError("");
+  }, []);
+
+  const closeReplyComposer = useCallback(() => {
+    setReplyTarget(null);
+    setReplyText("");
+    setReplyError("");
+    setReplyBusy(false);
+  }, []);
+
+  const sendReply = useCallback(
+    async (event) => {
+      event.preventDefault();
+
+      if (!replyTarget?.reporter?._id || replyBusy) {
+        return;
+      }
+
+      const message = String(replyText || "").trim();
+      if (!message) {
+        setReplyError("Message is required");
+        return;
+      }
+
+      try {
+        setReplyBusy(true);
+        setReplyError("");
+        await sendChatMessageDirect({
+          receiverId: replyTarget.reporter._id,
+          text: message,
+        });
+        toast.success("Reply sent to user");
+        closeReplyComposer();
+      } catch (err) {
+        setReplyError(err?.message || "Failed to send reply");
+      } finally {
+        setReplyBusy(false);
+      }
+    },
+    [closeReplyComposer, replyBusy, replyTarget, replyText]
+  );
 
   return (
     <AdminShell
@@ -244,6 +326,15 @@ export default function AdminMessagesPage({ user }) {
                           Open source
                         </button>
                       ) : null}
+                      {complaint.reporter?._id ? (
+                        <button
+                          type="button"
+                          className="adminx-btn adminx-btn--primary"
+                          onClick={() => openReplyComposer(complaint)}
+                        >
+                          Reply user
+                        </button>
+                      ) : null}
                       {complaint.status !== "reviewing" ? (
                         <button
                           type="button"
@@ -284,6 +375,69 @@ export default function AdminMessagesPage({ user }) {
             </div>
           </section>
         </>
+      ) : null}
+
+      {replyTarget ? (
+        <div className="adminx-modal" role="presentation" onMouseDown={closeReplyComposer}>
+          <div
+            className="adminx-modal__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="adminx-reply-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="adminx-modal__head">
+              <div>
+                <h3 id="adminx-reply-title">Reply to user</h3>
+                <p>
+                  Send a message straight to{" "}
+                  {replyTarget.reporter?.name || replyTarget.reporter?.username || "this user"}
+                  {" "}and it will appear in their Messenger.
+                </p>
+              </div>
+              <button type="button" className="adminx-modal__close" onClick={closeReplyComposer} aria-label="Close reply composer">
+                X
+              </button>
+            </div>
+
+            <div className="adminx-modal__meta">
+              <span>
+                <strong>Complaint:</strong> {replyTarget.subject || "Complaint"}
+              </span>
+              <span>
+                <strong>Recipient:</strong>{" "}
+                {replyTarget.reporter?.name || replyTarget.reporter?.username || "Unknown user"}
+                {replyTarget.reporter?.username ? ` @${replyTarget.reporter.username}` : ""}
+              </span>
+            </div>
+
+            <form className="adminx-modal__form" onSubmit={sendReply}>
+              <label className="adminx-modal__field">
+                Message
+                <textarea
+                  className="adminx-textarea"
+                  value={replyText}
+                  onChange={(event) => setReplyText(event.target.value)}
+                  placeholder="Write back to the user..."
+                  rows={6}
+                  maxLength={2000}
+                  required
+                />
+              </label>
+
+              {replyError ? <p className="adminx-modal__error">{replyError}</p> : null}
+
+              <div className="adminx-modal__actions">
+                <button type="button" className="adminx-btn" onClick={closeReplyComposer}>
+                  Cancel
+                </button>
+                <button type="submit" className="adminx-btn adminx-btn--primary" disabled={replyBusy}>
+                  {replyBusy ? "Sending..." : "Send reply"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       ) : null}
     </AdminShell>
   );

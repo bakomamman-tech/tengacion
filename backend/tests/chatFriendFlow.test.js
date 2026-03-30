@@ -1,4 +1,5 @@
 const request = require("supertest");
+const crypto = require("crypto");
 const mongoose = require("mongoose");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 
@@ -8,6 +9,7 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "1234567890123456789012345678
 const app = require("../app");
 const User = require("../models/User");
 const Message = require("../models/Message");
+const { signAccessToken } = require("../services/authTokens");
 
 describe("chat + friend request flow", () => {
   let mongod;
@@ -249,6 +251,67 @@ describe("chat + friend request flow", () => {
         }),
       ])
     );
+  });
+
+  test("admin replies can reach a user even when normal messaging is restricted", async () => {
+    const admin = await User.create({
+      name: "Admin Reply",
+      username: "admin_reply",
+      email: "admin.reply@test.com",
+      password: "Password123!",
+      role: "super_admin",
+      emailVerified: true,
+    });
+
+    const adminSessionId = crypto.randomUUID();
+    await User.updateOne(
+      { _id: admin._id },
+      {
+        $set: {
+          sessions: [
+            {
+              sessionId: adminSessionId,
+              deviceName: "jest-admin-session",
+              ip: "127.0.0.1",
+              userAgent: "jest",
+              createdAt: new Date(),
+              lastSeenAt: new Date(),
+            },
+          ],
+        },
+      }
+    );
+
+    const adminToken = signAccessToken({
+      userId: admin._id.toString(),
+      tokenVersion: admin.tokenVersion || 0,
+      sessionId: adminSessionId,
+    });
+
+    userB.privacy.allowMessagesFrom = "no_one";
+    await userB.save();
+
+    const sendResponse = await request(app)
+      .post("/api/chat/messages")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        receiverId: userB._id.toString(),
+        text: "Admin follow-up message",
+      })
+      .expect(201);
+
+    expect(sendResponse.body).toMatchObject({
+      senderId: admin._id.toString(),
+      receiverId: userB._id.toString(),
+      text: "Admin follow-up message",
+    });
+
+    const loaded = await request(app)
+      .get(`/api/messages/${admin._id.toString()}`)
+      .set("Authorization", `Bearer ${tokenB}`)
+      .expect(200);
+
+    expect(loaded.body.some((entry) => String(entry._id) === sendResponse.body._id)).toBe(true);
   });
 
   test("friends hub returns requests, friends, suggestions, birthdays, and close friends", async () => {

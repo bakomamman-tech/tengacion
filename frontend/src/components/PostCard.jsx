@@ -369,6 +369,7 @@ export default function PostCard({
   const reactionsCount = likesCount;
   const commentsLabel = liveCommentsCount === 1 ? "comment" : "comments";
   const sharesLabel = shareCount === 1 ? "share" : "shares";
+  const commentsPanelId = `post-comments-${post?._id || "panel"}`;
 
   const isOwner = !!post?.isOwner;
 
@@ -1051,6 +1052,8 @@ export default function PostCard({
               });
             }}
             aria-pressed={showComments}
+            aria-expanded={showComments}
+            aria-controls={commentsPanelId}
           >
             <span className="btn-emoji">{"\u{1F4AC}"}</span>
             <span>Comment</span>
@@ -1068,7 +1071,10 @@ export default function PostCard({
         </div>
 
         {/* COMMENTS */}
-        <div className={`post-comments-wrap ${showComments ? "open" : ""}`}>
+        <div
+          id={commentsPanelId}
+          className={`post-comments-wrap ${showComments ? "open" : ""}`}
+        >
           {showComments && (
             <div className="post-comments">
               <PostComments

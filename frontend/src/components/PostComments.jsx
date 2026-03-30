@@ -248,45 +248,60 @@ export default function PostComments({
 
   return (
     <div className="comments comments-v2">
-      {comments.map((comment) => (
-        <article key={comment.id} className="comment comment-v2">
-          <div className="comment-author">{comment.authorName}</div>
-          {comment.text && <p>{comment.text}</p>}
-          {comment.mediaPreview && (
-            <img
-              className="comment-inline-media"
-              src={comment.mediaPreview}
-              alt="Comment attachment preview"
-            />
-          )}
-          <Button
-            size="xs"
-            variant="utility"
-            className="comment-report-btn"
-            onClick={async () => {
-              const reason = await prompt(
-                createReportDialogConfig("comment", "harassment")
-              );
-              if (!reason) {
-                return;
-              }
+      <div className="comments-v2-header">
+        <div className="comments-v2-header-copy">
+          <div className="comments-v2-title">Comments</div>
+          <div className="comments-v2-sort" aria-hidden="true">
+            Most relevant <span className="comments-v2-caret">▾</span>
+          </div>
+        </div>
 
-              try {
-                await createReport({
-                  targetType: "comment",
-                  targetId: comment.id,
-                  reason: String(reason).trim().toLowerCase(),
-                });
-                toast.success("Comment report submitted");
-              } catch (err) {
-                toast.error(err?.message || "Failed to report comment");
-              }
-            }}
-          >
-            Report
-          </Button>
-        </article>
-      ))}
+        <div className="comments-v2-count">
+          {baseCount} {baseCount === 1 ? "comment" : "comments"}
+        </div>
+      </div>
+
+      <div className="comments-v2-list">
+        {comments.map((comment) => (
+          <article key={comment.id} className="comment comment-v2">
+            <div className="comment-author">{comment.authorName}</div>
+            {comment.text && <p>{comment.text}</p>}
+            {comment.mediaPreview && (
+              <img
+                className="comment-inline-media"
+                src={comment.mediaPreview}
+                alt="Comment attachment preview"
+              />
+            )}
+            <Button
+              size="xs"
+              variant="utility"
+              className="comment-report-btn"
+              onClick={async () => {
+                const reason = await prompt(
+                  createReportDialogConfig("comment", "harassment")
+                );
+                if (!reason) {
+                  return;
+                }
+
+                try {
+                  await createReport({
+                    targetType: "comment",
+                    targetId: comment.id,
+                    reason: String(reason).trim().toLowerCase(),
+                  });
+                  toast.success("Comment report submitted");
+                } catch (err) {
+                  toast.error(err?.message || "Failed to report comment");
+                }
+              }}
+            >
+              Report
+            </Button>
+          </article>
+        ))}
+      </div>
 
       <div className="comment-composer-shell">
         <img src="/avatar.png" alt="me" />

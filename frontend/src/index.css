@@ -8681,7 +8681,7 @@ html.dark-mode .create-post-quick-btn--reel {
   margin-top: 12px;
   display: flex;
   align-items: stretch;
-  gap: 8px;
+  gap: 6px;
 }
 
 .reaction-wrapper {
@@ -8733,21 +8733,22 @@ html.dark-mode .create-post-quick-btn--reel {
   transform: scale(0.97);
 }
 
-.action-btn {
+.post-actions .action-btn {
   flex: 1 1 0;
   width: 100%;
   border: 1px solid var(--glass-action-border);
   background: var(--glass-action-fill);
-  border-radius: 18px;
+  border-radius: 12px;
   color: color-mix(in srgb, var(--text) 68%, #667085 32%);
-  min-height: 46px;
-  padding: 10px 16px;
+  min-height: 38px;
+  padding: 7px 12px;
   cursor: pointer;
   font-weight: 700;
+  font-size: 0.92rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   white-space: nowrap;
   position: relative;
   overflow: hidden;
@@ -8757,7 +8758,7 @@ html.dark-mode .create-post-quick-btn--reel {
   transition: transform 0.24s ease, background 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, color 0.24s ease, opacity 0.24s ease;
 }
 
-.action-btn::before {
+.post-actions .action-btn::before {
   content: "";
   position: absolute;
   inset: 1px;
@@ -8767,53 +8768,53 @@ html.dark-mode .create-post-quick-btn--reel {
   opacity: 0.9;
 }
 
-.action-btn > * {
+.post-actions .action-btn > * {
   position: relative;
   z-index: 1;
 }
 
-.action-btn.active-like {
+.post-actions .action-btn.active-like {
   background: var(--glass-action-fill-selected);
   border-color: var(--glass-action-border-strong);
   color: color-mix(in srgb, #2563eb 70%, var(--text));
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-action-highlight) 90%, transparent), 0 10px 20px rgba(37, 99, 235, 0.1);
 }
 
-.action-btn.active {
+.post-actions .action-btn.active {
   background: var(--glass-action-fill-hover);
   border-color: color-mix(in srgb, var(--glass-action-border) 72%, rgba(148, 163, 184, 0.4));
   color: var(--text);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-action-highlight) 90%, transparent), var(--glass-action-shadow);
 }
 
-.action-btn:hover:not(:disabled) {
+.post-actions .action-btn:hover:not(:disabled) {
   background: var(--glass-action-fill-hover);
   border-color: color-mix(in srgb, var(--glass-action-border) 70%, rgba(148, 163, 184, 0.45));
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-action-highlight) 90%, transparent), var(--glass-action-shadow-hover);
   transform: translateY(-1px);
 }
 
-.action-btn.active-like:hover:not(:disabled) {
+.post-actions .action-btn.active-like:hover:not(:disabled) {
   background: var(--glass-action-fill-selected);
   border-color: color-mix(in srgb, var(--glass-action-border-strong) 82%, var(--glass-action-border));
 }
 
-.action-btn.active:hover:not(:disabled) {
+.post-actions .action-btn.active:hover:not(:disabled) {
   background: var(--glass-action-fill-hover);
 }
 
-.action-btn:active:not(:disabled) {
+.post-actions .action-btn:active:not(:disabled) {
   background: var(--glass-action-fill-active);
   transform: translateY(0) scale(0.98);
 }
 
-.action-btn:focus-visible,
+.post-actions .action-btn:focus-visible,
 .reaction-bar button:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--glass-action-ring), inset 0 1px 0 color-mix(in srgb, var(--glass-action-highlight) 90%, transparent), var(--glass-action-shadow-hover);
 }
 
-.action-btn:disabled {
+.post-actions .action-btn:disabled {
   opacity: 0.62;
   cursor: not-allowed;
   pointer-events: none;
@@ -8821,23 +8822,23 @@ html.dark-mode .create-post-quick-btn--reel {
   box-shadow: inset 0 1px 0 var(--glass-action-highlight), var(--glass-action-shadow);
 }
 
-.btn-emoji {
-  font-size: 16px;
+.post-actions .btn-emoji {
+  font-size: 14px;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-html.dark-mode .action-btn {
+html.dark-mode .post-actions .action-btn {
   color: color-mix(in srgb, var(--text) 84%, #cbd5e1 16%);
 }
 
-html.dark-mode .action-btn::before {
+html.dark-mode .post-actions .action-btn::before {
   opacity: 0.45;
 }
 
-html.dark-mode .action-btn.active-like {
+html.dark-mode .post-actions .action-btn.active-like {
   color: #dbeafe;
 }
 
@@ -8849,6 +8850,15 @@ html.dark-mode .action-btn.active-like {
 
 .post-comments-wrap.open {
   max-height: 1000px;
+  margin-top: 10px;
+}
+
+.post-comments {
+  border: 1px solid color-mix(in srgb, var(--border) 86%, #ffffff 14%);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 242, 234, 0.92) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 14px 32px rgba(83, 53, 24, 0.08);
+  padding: 12px;
 }
 
 .comments {
@@ -8865,8 +8875,60 @@ html.dark-mode .action-btn.active-like {
 }
 
 .comments-v2 {
-  border-top: 1px solid var(--border);
-  padding-top: 10px;
+  margin-top: 0;
+  gap: 10px;
+}
+
+.comments-v2-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 82%, #ffffff 18%);
+}
+
+.comments-v2-header-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.comments-v2-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #263142;
+  letter-spacing: 0.01em;
+}
+
+.comments-v2-sort {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #6d7a8d;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.comments-v2-caret {
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.comments-v2-count {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #6f5b43;
+  white-space: nowrap;
+  padding-top: 2px;
+}
+
+.comments-v2-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .comment-v2 {
@@ -8933,7 +8995,9 @@ html.dark-mode .comment-report-btn {
 }
 
 .comment-composer-shell {
-  margin-top: 8px;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 82%, #ffffff 18%);
   display: flex;
   gap: 8px;
   align-items: flex-start;
@@ -15080,15 +15144,15 @@ html.dark-mode .password-toggle-btn:hover {
   }
 
   .post-actions {
-    gap: 8px;
+    gap: 6px;
   }
 
-  .action-btn {
-    min-height: 42px;
-    padding: 9px 10px;
+  .post-actions .action-btn {
+    min-height: 38px;
+    padding: 8px 10px;
     font-size: 13px;
-    gap: 6px;
-    border-radius: 14px;
+    gap: 5px;
+    border-radius: 12px;
   }
 }
 

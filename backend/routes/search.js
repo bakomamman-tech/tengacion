@@ -7,19 +7,25 @@ const Room = require("../models/Room");
 const router = express.Router();
 
 const sanitizeQuery = (value = "") => String(value || "").trim().slice(0, 80);
+const normalizeAccountQuery = (value = "") => sanitizeQuery(value).replace(/^@+\s*/, "");
 
 router.get("/", auth, async (req, res) => {
   try {
     const q = sanitizeQuery(req.query?.q);
+    const accountQuery = normalizeAccountQuery(q);
     const type = String(req.query?.type || "users").toLowerCase();
     if (!q) return res.json({ type, data: [] });
 
     if (type === "users") {
+      if (!accountQuery) {
+        return res.json({ type, data: [] });
+      }
+
       const users = await User.find(
         {
           $or: [
-            { username: { $regex: q, $options: "i" } },
-            { name: { $regex: q, $options: "i" } },
+            { username: { $regex: accountQuery, $options: "i" } },
+            { name: { $regex: accountQuery, $options: "i" } },
           ],
         },
         "_id name username avatar"

@@ -1944,12 +1944,14 @@ textarea:focus {
   position: absolute;
   left: 0;
   top: calc(100% + 8px);
-  width: min(360px, 90vw);
+  width: min(400px, 90vw);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  overflow: hidden;
+  overflow: hidden auto;
+  max-height: min(60vh, 520px);
+  overscroll-behavior: contain;
   z-index: 12;
 }
 
@@ -1962,7 +1964,7 @@ textarea:focus {
   align-items: center;
   gap: 10px;
   text-align: left;
-  padding: 10px 12px;
+  padding: 11px 12px;
   cursor: pointer;
 }
 
@@ -1974,12 +1976,39 @@ textarea:focus {
   width: 36px;
   height: 36px;
   border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.sd-item-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sd-item-name {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sd-item-handle {
+  font-size: 0.83rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sd-loading,
 .sd-empty {
   padding: 12px;
   color: var(--muted);
+  font-size: 0.92rem;
 }
 
 .nav-tab,

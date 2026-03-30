@@ -138,7 +138,7 @@ export default function Navbar({
   const [showMenu, setShowMenu] = useState(false);
   const [menuView, setMenuView] = useState("root");
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState({ users: [], posts: [] });
+  const [results, setResults] = useState([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
@@ -223,31 +223,33 @@ export default function Navbar({
 
   const performSearch = useCallback(async (value) => {
     if (!value.trim()) {
-      setResults({ users: [], posts: [] });
+      setResults([]);
       setSearchOpen(false);
       return;
     }
 
     try {
       setLoading(true);
-      const [usersPayload, postsPayload] = await Promise.all([
-        searchGlobal({ q: value, type: "users" }),
-        searchGlobal({ q: value, type: "posts" }),
-      ]);
-      const users = usersPayload?.data || [];
-      const posts = postsPayload?.data || [];
-
-      setResults({
-        users: Array.isArray(users) ? users.slice(0, 5) : [],
-        posts: Array.isArray(posts) ? posts.slice(0, 5) : [],
-      });
+      const payload = await searchGlobal({ q: value, type: "users" });
+      const users = payload?.data || [];
+      setResults(Array.isArray(users) ? users.slice(0, 8) : []);
       setSearchOpen(true);
     } catch {
-      setResults({ users: [], posts: [] });
+      setResults([]);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const openSearchPage = useCallback(() => {
+    const value = query.trim();
+    if (!value) {
+      return;
+    }
+
+    setSearchOpen(false);
+    navigate(`/search?q=${encodeURIComponent(value)}&type=users`);
+  }, [navigate, query]);
 
   useEffect(() => {
     const timeout = setTimeout(() => performSearch(query), 250);
@@ -881,10 +883,16 @@ export default function Navbar({
           <div className="search-box" ref={searchRef}>
             <input
               className="nav-search"
-              placeholder="Search Tengacion"
+              placeholder="Search people or @username"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               aria-label="Search"
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  openSearchPage();
+                }
+              }}
             />
 
             {searchOpen && (
@@ -892,7 +900,7 @@ export default function Navbar({
                 {loading && <div className="sd-loading">Searching...</div>}
 
                 {!loading &&
-                  results.users.map((entry) => (
+                  results.map((entry) => (
                     <button
                       key={entry._id}
                       className="sd-item"
@@ -906,29 +914,17 @@ export default function Navbar({
                         className="sd-avatar"
                         alt=""
                       />
-                      <span>{entry.name}</span>
+                      <span className="sd-item-copy">
+                        <strong className="sd-item-name">{entry.name}</strong>
+                        <span className="sd-item-handle">
+                          @{entry.username || "username"}
+                        </span>
+                      </span>
                     </button>
                   ))}
 
                 {!loading &&
-                  results.posts.map((entry) => (
-                    <button
-                      key={entry._id}
-                      className="sd-item"
-                      onClick={() => {
-                        navigate("/home");
-                        setSearchOpen(false);
-                      }}
-                    >
-                      <span>{entry.text?.slice(0, 50) || "View post"}</span>
-                    </button>
-                  ))}
-
-                {!loading &&
-                  !results.users.length &&
-                  !results.posts.length && (
-                    <div className="sd-empty">No results found</div>
-                  )}
+                  !results.length && <div className="sd-empty">No matching accounts found</div>}
               </div>
             )}
           </div>

@@ -80,4 +80,36 @@ describe("PostCard comment toggle", () => {
     expect(screen.getByText(/most relevant/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/comment as you/i)).toBeInTheDocument();
   });
+
+  it("does not show the recommendation reason chip in the feed header", () => {
+    render(
+      <PostCard
+        post={{
+          _id: "post-2",
+          text: "A recommended post in the feed.",
+          createdAt: "2026-03-30T10:00:00.000Z",
+          user: {
+            name: "Admin User",
+            username: "admin",
+            profilePic: "",
+          },
+          comments: [],
+          likesCount: 4,
+          shareCount: 0,
+          likedByViewer: false,
+        }}
+        discoveryMeta={{
+          requestId: "req-1",
+          entityId: "post-2",
+          entityType: "post",
+          reason: "friend_connection",
+          reasonLabel: "From someone you know",
+          authorUserId: "user-1",
+        }}
+      />
+    );
+
+    expect(screen.queryByText(/from someone you know/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/@admin/i)).toBeInTheDocument();
+  });
 });

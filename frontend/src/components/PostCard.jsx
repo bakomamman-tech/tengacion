@@ -726,18 +726,7 @@ export default function PostCard({
                 )}
               </p>
               <p className="post-time">{timeLabel}</p>
-              {authorHandle && !discoveryMeta?.reasonLabel && (
-                <p className="post-time">@{authorHandle}</p>
-              )}
-              {discoveryMeta?.reasonLabel && (
-                <button
-                  type="button"
-                  className="post-reason-pill"
-                  onClick={explainRecommendation}
-                >
-                  {discoveryMeta.reasonLabel}
-                </button>
-              )}
+              {authorHandle && <p className="post-time">@{authorHandle}</p>}
             </div>
           </div>
 

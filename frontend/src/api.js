@@ -808,6 +808,44 @@ export const getCreatorPublicContent = (creatorId) =>
 export const getCreatorHub = (creatorId) =>
   getPublicCreatorProfile(creatorId);
 
+const buildQueryString = (params = {}) => {
+  const searchParams = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+    searchParams.set(key, String(value));
+  });
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+};
+
+export const getCreatorSummaryFeed = ({
+  category = "all",
+  page = 1,
+  limit = 12,
+  mode = "mixed",
+} = {}) =>
+  request(`${API_BASE}/creators/feed${buildQueryString({ category, page, limit, mode })}`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
+export const getCreatorDiscovery = ({
+  category = "all",
+  search = "",
+  sort = "popular",
+  page = 1,
+  limit = 12,
+} = {}) =>
+  request(
+    `${API_BASE}/creators/discover${buildQueryString({ category, search, sort, page, limit })}`,
+    {
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    }
+  );
+
 export const toggleFollowCreator = (creatorId) =>
   request(`${API_BASE}/creators/${encodeURIComponent(creatorId || "")}/follow`, {
     method: "PUT",

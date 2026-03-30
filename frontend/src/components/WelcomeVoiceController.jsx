@@ -14,6 +14,8 @@ const PROTECTED_ROUTE_PATTERNS = [
   "/posts/:postId/share",
   "/dashboard",
   "/creator",
+  "/find-creators",
+  "/creators",
   "/creator/register",
   "/creator/fan-page-view",
   "/creator/dashboard",

@@ -2,6 +2,7 @@ const express = require("express");
 const auth = require("../middleware/auth");
 const optionalAuth = require("../middleware/optionalAuth");
 const {
+  getCreatorDiscoveryDirectory,
   getMyCreatorProfile,
   upsertMyCreatorProfile,
   getCreatorById,
@@ -9,6 +10,7 @@ const {
   getCreatorBooks,
   getCreatorAlbums,
   getCreatorVideos,
+  getCreatorSummaryFeed,
   getCreatorHub,
   toggleFollowCreator,
   archiveMyCreatorContent,
@@ -20,6 +22,8 @@ const router = express.Router();
 router.get("/me", auth, getMyCreatorProfile);
 router.post("/me", auth, upsertMyCreatorProfile);
 
+router.get("/feed", optionalAuth, getCreatorSummaryFeed);
+router.get("/discover", optionalAuth, getCreatorDiscoveryDirectory);
 router.get("/:creatorId", getCreatorById);
 router.get("/:creatorId/hub", optionalAuth, getCreatorHub);
 router.get("/:creatorId/public", optionalAuth, getCreatorHub);

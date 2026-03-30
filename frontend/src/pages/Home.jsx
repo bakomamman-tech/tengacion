@@ -9,6 +9,7 @@ import NewsDetailDrawer from "../features/news/components/NewsDetailDrawer";
 import NewsStoryCard from "../features/news/components/NewsStoryCard";
 import { useNewsFeed } from "../features/news/hooks/useNewsFeed";
 import { useNewsPreferences } from "../features/news/hooks/useNewsPreferences";
+import CreatorSummaryFeed from "../components/creatorDiscovery/CreatorSummaryFeed";
 
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
@@ -1560,6 +1561,8 @@ export default function Home({ user }) {
               onChange={onQuickMediaPick}
             />
           </div>
+
+          <CreatorSummaryFeed />
 
           <section className="card feed-surface-card">
             <div className="feed-surface-tabs" role="tablist" aria-label="Feed surfaces">

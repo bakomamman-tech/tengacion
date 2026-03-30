@@ -53,11 +53,12 @@ export default function CreatorAudioPreviewPlayer({
   onPlayingChange,
   autoplayRequest = 0,
   variant = "workspace",
+  initialSourceMode = "full",
 }) {
   const audioRef = useRef(null);
   const lastAutoplayRequestRef = useRef(autoplayRequest);
 
-  const [sourceMode, setSourceMode] = useState("full");
+  const [sourceMode, setSourceMode] = useState(initialSourceMode);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -145,6 +146,10 @@ export default function CreatorAudioPreviewPlayer({
       setSourceMode(availableSources[0].key);
     }
   }, [availableSources, sourceMode]);
+
+  useEffect(() => {
+    setSourceMode(initialSourceMode);
+  }, [initialSourceMode, itemId]);
 
   useEffect(() => {
     const audio = audioRef.current;

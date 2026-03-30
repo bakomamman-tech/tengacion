@@ -55,8 +55,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <ThemeProvider>
         <AuthProvider>
           <NotificationsProvider>
-            <CreatorPlayerProvider>
-              <BrowserRouter>
+            <BrowserRouter>
+              <CreatorPlayerProvider>
                 <DialogProvider>
                   <App />
                   <Toaster
@@ -85,8 +85,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                     }}
                   />
                 </DialogProvider>
-              </BrowserRouter>
-            </CreatorPlayerProvider>
+              </CreatorPlayerProvider>
+            </BrowserRouter>
           </NotificationsProvider>
         </AuthProvider>
       </ThemeProvider>

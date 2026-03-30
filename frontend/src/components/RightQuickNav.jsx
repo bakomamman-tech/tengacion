@@ -24,6 +24,13 @@ const NAV_ITEMS = [
     icon: "dashboard",
   },
   {
+    key: "find-creators",
+    label: "Find Creators",
+    path: "/find-creators",
+    description: "Browse creators and fan pages",
+    icon: "creator",
+  },
+  {
     key: "memories",
     label: "Memories",
     path: "/memories",
@@ -92,6 +99,14 @@ function QuickNavIcon({ name }) {
           <rect x="6.5" y="13" width="2.8" height="4.5" rx="1" fill="currentColor" />
           <rect x="10.6" y="9.8" width="2.8" height="7.7" rx="1" fill="currentColor" />
           <rect x="14.7" y="6.7" width="2.8" height="10.8" rx="1" fill="currentColor" />
+        </svg>
+      );
+    case "creator":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10" cy="10" r="4.2" />
+          <path d="M3.8 20a6.5 6.5 0 0 1 12.4 0" />
+          <path d="m15.8 14.2 1.6 1.6 2.7-2.7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "memories":

@@ -12,6 +12,10 @@ const { buildAlbumArchiveUrl } = require("../services/albumArchiveService");
 const { hasEntitlement } = require("../services/entitlementService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const { buildCreatorPublicPayload } = require("../services/publicCreatorProfileService");
+const {
+  buildCreatorDiscoveryDirectory,
+  buildCreatorSummaryFeed,
+} = require("../services/creatorDiscoveryService");
 
 const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
@@ -432,6 +436,32 @@ exports.getCreatorVideos = asyncHandler(async (req, res) => {
       createdAt: video.createdAt || video.time || null,
     }))
   );
+});
+
+exports.getCreatorSummaryFeed = asyncHandler(async (req, res) => {
+  const payload = await buildCreatorSummaryFeed({
+    req,
+    viewerId: req.user?.id || "",
+    category: req.query?.category || "all",
+    page: req.query?.page || 1,
+    limit: req.query?.limit || 12,
+    mode: req.query?.mode || "mixed",
+  });
+
+  return res.json(payload);
+});
+
+exports.getCreatorDiscoveryDirectory = asyncHandler(async (req, res) => {
+  const payload = await buildCreatorDiscoveryDirectory({
+    viewerId: req.user?.id || "",
+    category: req.query?.category || "all",
+    search: req.query?.search || "",
+    sort: req.query?.sort || "popular",
+    page: req.query?.page || 1,
+    limit: req.query?.limit || 12,
+  });
+
+  return res.json(payload);
 });
 
 exports.getCreatorHub = asyncHandler(async (req, res) => {

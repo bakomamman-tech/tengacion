@@ -77,6 +77,15 @@ export default function Sidebar({ user, openChat, openProfile }) {
         </button>
 
         <button
+          className={sidebarBtnClass(
+            location.pathname.startsWith("/find-creators") || location.pathname === "/creators"
+          )}
+          onClick={() => navigate("/find-creators")}
+        >
+          Find Creators
+        </button>
+
+        <button
           className={sidebarBtnClass(location.pathname === "/notifications")}
           onClick={() => navigate("/notifications")}
         >

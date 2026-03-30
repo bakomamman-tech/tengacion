@@ -640,6 +640,7 @@ export default function Navbar({
     { id: "home", label: "Home", path: "/home" },
     { id: "trending", label: "Trending", path: "/trending" },
     { id: "news", label: "News", path: "/news" },
+    { id: "findCreators", label: "Find Creators", path: "/find-creators" },
     { id: "creator", label: "Creator", path: "/creator" },
     { id: "gaming", label: "Gaming", path: "/gaming" },
     { id: "reels", label: "Reels", path: "/reels" },
@@ -842,6 +843,9 @@ export default function Navbar({
     }
     if (tab.id === "creator") {
       return location.pathname.startsWith("/creator") || location.pathname === "/dashboard/creator";
+    }
+    if (tab.id === "findCreators") {
+      return location.pathname.startsWith("/find-creators") || location.pathname === "/creators";
     }
     if (tab.id === "news") {
       return location.pathname.startsWith("/news");

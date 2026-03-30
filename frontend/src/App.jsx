@@ -19,6 +19,7 @@ const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const Search = lazy(() => import("./pages/Search"));
 const Home = lazy(() => import("./pages/Home"));
+const FindCreatorsPage = lazy(() => import("./pages/FindCreatorsPage"));
 const PostDetail = lazy(() => import("./pages/PostDetail"));
 const PostSharePage = lazy(() => import("./pages/PostShare"));
 const ProfileEditor = lazy(() => import("./ProfileEditor"));
@@ -136,6 +137,22 @@ export default function App() {
           <Route path="/copyright-policy" element={<CopyrightPolicyPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/community-guidelines" element={<CommunityGuidelinesPage />} />
+          <Route
+            path="/find-creators"
+            element={
+              <ProtectedRoute user={user}>
+                <FindCreatorsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/creators"
+            element={
+              <ProtectedRoute user={user}>
+                <FindCreatorsPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/creators/:creatorId" element={<CreatorPage />} />
           <Route path="/creators/:creatorId/songs" element={<CreatorSongs />} />
           <Route path="/creators/:creatorId/music" element={<CreatorHubPage />} />

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { savePlayerProgress } from "../api";
+import CreatorPreviewModal from "../components/creatorDiscovery/CreatorPreviewModal";
 
 const SESSION_KEY = "creator_hub_player_state_v1";
 
@@ -47,6 +48,8 @@ export function CreatorPlayerProvider({ children }) {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [unlockRequired, setUnlockRequired] = useState(false);
+  const [previewItem, setPreviewItem] = useState(null);
+  const [previewRequestId, setPreviewRequestId] = useState(0);
 
   useEffect(() => {
     try {
@@ -170,6 +173,21 @@ export function CreatorPlayerProvider({ children }) {
       return;
     }
     audio.pause();
+  }, []);
+
+  const openPreview = useCallback((item) => {
+    if (!item) {
+      return;
+    }
+    setPreviewItem({
+      ...item,
+      initialSourceMode: String(item?.initialSourceMode || "preview").toLowerCase(),
+    });
+    setPreviewRequestId((value) => value + 1);
+  }, []);
+
+  const closePreview = useCallback(() => {
+    setPreviewItem(null);
   }, []);
 
   const seekTo = useCallback((nextPosition) => {
@@ -335,6 +353,10 @@ export function CreatorPlayerProvider({ children }) {
       setQueue,
       setCurrentItem,
       setCurrentIndex,
+      previewItem,
+      previewRequestId,
+      openPreview,
+      closePreview,
     }),
     [
       currentItem,
@@ -354,8 +376,22 @@ export function CreatorPlayerProvider({ children }) {
       seekTo,
       moveQueueItem,
       removeQueueItem,
+      previewItem,
+      previewRequestId,
+      openPreview,
+      closePreview,
     ]
   );
 
-  return <CreatorPlayerContext.Provider value={value}>{children}</CreatorPlayerContext.Provider>;
+  return (
+    <CreatorPlayerContext.Provider value={value}>
+      {children}
+      <CreatorPreviewModal
+        key={previewRequestId}
+        open={Boolean(previewItem)}
+        item={previewItem}
+        onClose={closePreview}
+      />
+    </CreatorPlayerContext.Provider>
+  );
 }

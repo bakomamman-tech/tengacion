@@ -24,9 +24,11 @@ server.requestTimeout = requestTimeoutMs;
 server.headersTimeout = requestTimeoutMs + 5000;
 server.keepAliveTimeout = 65000;
 console.log(`Node ${process.version} starting in ${process.cwd()}`);
-console.log(
-  `dotenv loaded for backend (NODE_ENV=${config.NODE_ENV || "unknown"}, PORT=${config.PORT || "unset"})`
-);
+console.log("Backend runtime config", {
+  nodeEnv: config.nodeEnv || config.NODE_ENV || "unknown",
+  port: config.port || config.PORT || "unset",
+  allowedOrigins: Array.isArray(config.allowedOrigins) ? config.allowedOrigins.length : 0,
+});
 
 const parsedSocketAuthCacheMs = Number(process.env.SOCKET_AUTH_CACHE_MS || 30000);
 const SOCKET_AUTH_CACHE_MS =
@@ -89,7 +91,7 @@ if (process.env.NODE_ENV !== "test") {
 
   const io = new Server(server, {
     cors: {
-      origin: true,
+      origin: config.allowedOrigins,
       credentials: true,
     },
     transports: ["polling", "websocket"],
@@ -612,7 +614,7 @@ if (process.env.NODE_ENV !== "test") {
     });
   });
 
-  const PORT = process.env.PORT || config?.PORT || 5000;
+  const PORT = process.env.PORT || config?.PORT || config?.port || 5000;
 
   const handleServerError = (error) => {
     if (!error || !error.code) {

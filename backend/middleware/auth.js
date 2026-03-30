@@ -15,28 +15,23 @@ const { getEffectivePermissions } = require("../services/permissionService");
  */
 const auth = asyncHandler(async (req, res, next) => {
   const authHeader = req.headers.authorization || "";
-  if (!authHeader.startsWith("Bearer ")) {
+  const token = extractBearerToken(authHeader);
+  if (!token) {
     return res.status(401).json({ error: "No token" });
   }
-
-  const token = extractBearerToken(authHeader);
   try {
     const authContext = await authenticateAccessToken(token, { touchSession: true });
     req.user = {
       id: authContext.userId,
       _id: authContext.user._id,
-      name: authContext.user.name || "",
-      username: authContext.user.username || "",
-      email: authContext.user.email || "",
       role: authContext.user.role || "user",
       permissions: [...getEffectivePermissions(authContext.user)],
-      moderationProfile: authContext.user.moderationProfile || {},
+      isActive: Boolean(authContext.user.isActive),
+      isBanned: Boolean(authContext.user.isBanned),
+      isDeleted: Boolean(authContext.user.isDeleted),
+      isSuspended: Boolean(authContext.user.isSuspended),
       tokenVersion: authContext.tokenVersion,
       sessionId: authContext.sessionId,
-      twoFactor: {
-        enabled: Boolean(authContext.user?.twoFactor?.enabled),
-        method: authContext.user?.twoFactor?.method || "none",
-      },
     };
     req.userId = authContext.userId;
     next();

@@ -149,4 +149,61 @@ describe("sessionAuth", () => {
       statusCode: 401,
     });
   });
+
+  test("rejects sessions issued before password change or forced logout markers", async () => {
+    const user = await User.create({
+      name: "Revoked Session User",
+      username: "revoked_session_user",
+      email: "revoked-session@test.com",
+      password: "Password123!",
+    });
+
+    const { token } = await issueSessionToken(user._id);
+
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          passwordChangedAt: new Date(Date.now() + 60 * 1000),
+        },
+      }
+    );
+
+    await expect(authenticateAccessToken(token)).rejects.toMatchObject({
+      code: "PASSWORD_CHANGED",
+      statusCode: 401,
+    });
+
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $unset: { passwordChangedAt: 1 },
+        $set: {
+          forceLogoutAt: new Date(Date.now() + 60 * 1000),
+        },
+      }
+    );
+
+    await expect(authenticateAccessToken(token)).rejects.toMatchObject({
+      code: "FORCE_LOGOUT",
+      statusCode: 401,
+    });
+  });
+
+  test("rejects sessions when the user must reauthenticate", async () => {
+    const user = await User.create({
+      name: "Reauth User",
+      username: "reauth_user",
+      email: "reauth@test.com",
+      password: "Password123!",
+      mustReauth: true,
+    });
+
+    const { token } = await issueSessionToken(user._id);
+
+    await expect(authenticateAccessToken(token)).rejects.toMatchObject({
+      code: "MUST_REAUTH",
+      statusCode: 401,
+    });
+  });
 });

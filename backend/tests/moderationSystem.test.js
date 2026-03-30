@@ -1209,6 +1209,7 @@ describe("moderation routes and enforcement", () => {
     await request(app)
       .post(`/api/admin/users/${actionUser._id}/suspend`)
       .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", stepUpCookie)
       .send({ reason: "Temporary restriction" })
       .expect(200);
 
@@ -1230,6 +1231,7 @@ describe("moderation routes and enforcement", () => {
     await request(app)
       .post(`/api/admin/users/${actionUser._id}/ban`)
       .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", stepUpCookie)
       .send({ reason: "Severe violation" })
       .expect(200);
 
@@ -1243,6 +1245,32 @@ describe("moderation routes and enforcement", () => {
     refreshedUser = await User.findById(actionUser._id).lean();
     expect(refreshedUser.isBanned).toBe(false);
     expect(refreshedUser.isActive).toBe(true);
+
+    await request(app)
+      .delete(`/api/admin/users/${primaryAdmin._id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", stepUpCookie)
+      .expect(400);
+
+    const ordinaryAdminSession = jwt.verify(ordinaryAdminToken, process.env.JWT_SECRET);
+    const ordinaryAdminStepUpToken = signStepUpToken({
+      userId: ordinaryAdmin._id,
+      sessionId: ordinaryAdminSession.sid,
+    });
+    const ordinaryAdminStepUpCookie = `${STEP_UP_COOKIE_NAME}=${ordinaryAdminStepUpToken}`;
+
+    await request(app)
+      .get(`/api/admin/users/${primaryAdmin._id}`)
+      .set("Authorization", `Bearer ${ordinaryAdminToken}`)
+      .set("Cookie", ordinaryAdminStepUpCookie)
+      .expect(403);
+
+    await request(app)
+      .post(`/api/admin/users/${primaryAdmin._id}/ban`)
+      .set("Authorization", `Bearer ${ordinaryAdminToken}`)
+      .set("Cookie", ordinaryAdminStepUpCookie)
+      .send({ reason: "Forbidden escalation test" })
+      .expect(403);
   });
 
   test("blocked moderated media cannot be fetched from the public media endpoint", async () => {

@@ -61,9 +61,26 @@ const {
 
 const router = express.Router();
 
+let rateLimit;
+try {
+  rateLimit = require("express-rate-limit");
+} catch (_error) {
+  console.warn("express-rate-limit not installed; admin route rate limiting disabled");
+  rateLimit = () => (_req, _res, next) => next();
+}
+
 const ADMIN_ROLES = ["admin", "super_admin"];
 const SUPER_ADMIN_ROLES = ["super_admin"];
 const ADMIN_MANAGEABLE_ROLES = new Set(["user"]);
+const adminMutationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) =>
+    req.user?.id ? `user:${req.user.id}` : rateLimit.ipKeyGenerator(req.ip || ""),
+  message: { error: "Too many admin actions. Please try again later." },
+});
 
 const toId = (value) => {
   if (!value) return "";
@@ -322,6 +339,7 @@ router.get("/users", async (req, res) => {
     const search = String(req.query.search || "").trim();
     const role = String(req.query.role || "").trim().toLowerCase();
     const banned = String(req.query.banned || "").trim().toLowerCase();
+    const requesterRole = String(req.user?.role || "admin").toLowerCase();
 
     const query = {};
     if (search) {
@@ -331,14 +349,18 @@ router.get("/users", async (req, res) => {
         { email: { $regex: search, $options: "i" } },
       ];
     }
-    if (role) {
+    if (requesterRole !== "super_admin") {
+      if (role && role !== "user") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      query.role = "user";
+    } else if (role) {
       query.role = role;
     }
     if (banned === "true" || banned === "false") {
       query.isBanned = banned === "true";
     }
 
-    const requesterRole = String(req.user?.role || "admin").toLowerCase();
     const [rows, total] = await Promise.all([
       User.find(query)
         .sort({ createdAt: -1 })
@@ -376,6 +398,9 @@ router.get("/users/:id", async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
+    if (!assertCanManageTarget({ actorRole: req.user.role, target: user, res })) {
+      return;
+    }
 
     const [postsCount] = await Promise.all([
       Post.countDocuments({ author: user._id }).catch(() => 0),
@@ -401,7 +426,11 @@ router.get("/users/:id", async (req, res) => {
   }
 });
 
-router.patch("/users/:id", requireStepUp({ adminOnly: true }), async (req, res) => {
+router.patch(
+  "/users/:id",
+  requireStepUp({ adminOnly: true }),
+  adminMutationLimiter,
+  async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id" });
@@ -463,7 +492,7 @@ router.patch("/users/:id", requireStepUp({ adminOnly: true }), async (req, res) 
   }
 });
 
-router.post("/users/:id/suspend", async (req, res) => {
+router.post("/users/:id/suspend", requireStepUp({ adminOnly: true }), adminMutationLimiter, async (req, res) => {
   try {
     const target = await applyAdminUserSafetyAction({
       req,
@@ -483,7 +512,7 @@ router.post("/users/:id/suspend", async (req, res) => {
   }
 });
 
-router.post("/users/:id/ban", async (req, res) => {
+router.post("/users/:id/ban", requireStepUp({ adminOnly: true }), adminMutationLimiter, async (req, res) => {
   try {
     const target = await applyAdminUserSafetyAction({
       req,
@@ -503,7 +532,11 @@ router.post("/users/:id/ban", async (req, res) => {
   }
 });
 
-router.post("/users/:id/unban", requireStepUp({ adminOnly: true }), async (req, res) => {
+router.post(
+  "/users/:id/unban",
+  requireStepUp({ adminOnly: true }),
+  adminMutationLimiter,
+  async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id" });
@@ -538,7 +571,11 @@ router.post("/users/:id/unban", requireStepUp({ adminOnly: true }), async (req, 
   }
 });
 
-router.post("/users/:id/unsuspend", requireStepUp({ adminOnly: true }), async (req, res) => {
+router.post(
+  "/users/:id/unsuspend",
+  requireStepUp({ adminOnly: true }),
+  adminMutationLimiter,
+  async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id" });
@@ -574,7 +611,11 @@ router.post("/users/:id/unsuspend", requireStepUp({ adminOnly: true }), async (r
   }
 });
 
-router.post("/users/:id/force-logout", requireStepUp({ adminOnly: true }), async (req, res) => {
+router.post(
+  "/users/:id/force-logout",
+  requireStepUp({ adminOnly: true }),
+  adminMutationLimiter,
+  async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id" });
@@ -586,6 +627,7 @@ router.post("/users/:id/force-logout", requireStepUp({ adminOnly: true }), async
     if (!assertCanManageTarget({ actorRole: req.user.role, target, res })) {
       return;
     }
+    target.forceLogoutAt = new Date();
     target.tokenVersion = (Number(target.tokenVersion) || 0) + 1;
     await target.save();
     disconnectUserSockets(req.app, target._id, {
@@ -609,7 +651,11 @@ router.post("/users/:id/force-logout", requireStepUp({ adminOnly: true }), async
   }
 });
 
-router.post("/users/:id/reset-password", requireStepUp({ adminOnly: true }), async (req, res) => {
+router.post(
+  "/users/:id/reset-password",
+  requireStepUp({ adminOnly: true }),
+  adminMutationLimiter,
+  async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id" });
@@ -637,7 +683,11 @@ router.post("/users/:id/reset-password", requireStepUp({ adminOnly: true }), asy
   }
 });
 
-router.delete("/users/:id", requireStepUp({ adminOnly: true }), async (req, res) => {
+router.delete(
+  "/users/:id",
+  requireStepUp({ adminOnly: true }),
+  adminMutationLimiter,
+  async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id" });
@@ -933,7 +983,11 @@ router.get("/reports/:id", requirePermissions(["view_moderation_queue"]), async 
   }
 });
 
-router.patch("/reports/:id", requirePermissions(["view_moderation_queue"]), async (req, res) => {
+router.patch(
+  "/reports/:id",
+  requirePermissions(["view_moderation_queue"]),
+  adminMutationLimiter,
+  async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid report id" });
@@ -971,7 +1025,11 @@ router.patch("/reports/:id", requirePermissions(["view_moderation_queue"]), asyn
   }
 });
 
-router.post("/moderation/action", requirePermissions(["view_moderation_queue"]), async (req, res) => {
+router.post(
+  "/moderation/action",
+  requirePermissions(["view_moderation_queue"]),
+  adminMutationLimiter,
+  async (req, res) => {
   try {
     const action = String(req.body?.action || "").trim().toLowerCase();
     const targetType = String(req.body?.targetType || "").trim().toLowerCase();
@@ -1261,7 +1319,12 @@ router.get("/creators/:id", async (req, res) => {
   }
 });
 
-router.post("/analytics/backfill", requireRole(SUPER_ADMIN_ROLES), async (req, res) => {
+router.post(
+  "/analytics/backfill",
+  requireRole(SUPER_ADMIN_ROLES),
+  requireStepUp({ adminOnly: true }),
+  adminMutationLimiter,
+  async (req, res) => {
   try {
     const startDate = String(req.body?.startDate || "").trim();
     const endDate = String(req.body?.endDate || "").trim();
@@ -1384,7 +1447,11 @@ router.get("/messages/complaints", requireRole(ADMIN_ROLES), async (req, res) =>
   }
 });
 
-router.patch("/messages/complaints/:id", requireRole(ADMIN_ROLES), async (req, res) => {
+router.patch(
+  "/messages/complaints/:id",
+  requireRole(ADMIN_ROLES),
+  adminMutationLimiter,
+  async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid complaint id" });
@@ -1507,6 +1574,8 @@ router.get("/analytics/reports-summary", async (req, res) => {
 router.post(
   "/users/:id/promote-super-admin",
   requireRole(SUPER_ADMIN_ROLES),
+  requireStepUp({ adminOnly: true }),
+  adminMutationLimiter,
   async (req, res) => {
     try {
       if (!isValidId(req.params.id)) {
@@ -1514,6 +1583,9 @@ router.post(
       }
       const target = await User.findById(req.params.id);
       if (!target) return res.status(404).json({ error: "User not found" });
+      if (toId(target?._id) === req.user.id) {
+        return res.status(400).json({ error: "You cannot promote your own account" });
+      }
       target.role = "super_admin";
       await target.save();
       await writeAuditLog({
@@ -1554,7 +1626,11 @@ router.post("/storage/cleanup/preview", async (req, res) => {
   }
 });
 
-router.post("/storage/cleanup/run", requireStepUp({ adminOnly: true }), async (req, res) => {
+router.post(
+  "/storage/cleanup/run",
+  requireStepUp({ adminOnly: true }),
+  adminMutationLimiter,
+  async (req, res) => {
   try {
     const actions = req.body?.actions || [];
     const dryRun = Boolean(req.body?.dryRun);

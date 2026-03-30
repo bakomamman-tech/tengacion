@@ -1,10 +1,17 @@
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
+const { config } = require("../config/env");
 
 const base64UrlEncode = (value) => Buffer.from(value).toString("base64url");
 const base64UrlDecode = (value) => Buffer.from(value, "base64url").toString("utf8");
 
-const getSecret = () => process.env.MEDIA_SIGNING_SECRET || process.env.JWT_SECRET;
+const getSecret = () => {
+  const secret = config.MEDIA_SIGNING_SECRET || config.JWT_SECRET;
+  if (!secret && config.NODE_ENV === "production") {
+    throw new Error("MEDIA_SIGNING_SECRET is required");
+  }
+  return secret;
+};
 
 const createStableExpiry = (expiresInSec = 300) => {
   const ttl = Math.max(30, Number(expiresInSec) || 300);

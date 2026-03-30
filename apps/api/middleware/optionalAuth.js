@@ -5,11 +5,10 @@ const {
 
 const optionalAuth = async (req, _res, next) => {
   const authHeader = req.headers.authorization || "";
-  if (!authHeader.startsWith("Bearer ")) {
+  const token = extractBearerToken(authHeader);
+  if (!token) {
     return next();
   }
-
-  const token = extractBearerToken(authHeader);
 
   try {
     const authContext = await authenticateAccessToken(token, { touchSession: false });

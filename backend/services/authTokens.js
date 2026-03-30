@@ -11,8 +11,17 @@ const REFRESH_COOKIE_NAME = "tg_refresh";
 const STEP_UP_COOKIE_NAME = "tg_stepup";
 
 const accessTokenSecret = config.JWT_SECRET;
-const refreshTokenSecret = config.JWT_REFRESH_SECRET || config.JWT_SECRET;
-const challengeTokenSecret = process.env.AUTH_CHALLENGE_SECRET || config.JWT_SECRET;
+const refreshTokenSecret = config.JWT_REFRESH_SECRET || (config.isProduction ? "" : config.JWT_SECRET);
+const challengeTokenSecret =
+  config.AUTH_CHALLENGE_SECRET || (config.isProduction ? "" : config.JWT_SECRET);
+
+if (config.isProduction && !refreshTokenSecret) {
+  throw new Error("JWT_REFRESH_SECRET is required in production");
+}
+
+if (config.isProduction && !challengeTokenSecret) {
+  throw new Error("AUTH_CHALLENGE_SECRET is required in production");
+}
 
 const baseCookieOptions = {
   httpOnly: true,

@@ -6,17 +6,32 @@ const rateLimit = require("express-rate-limit");
 const auth = require("./middleware/auth");
 const upload = require("./utils/upload");
 const errorHandler = require("../apps/api/middleware/errorHandler");
+const { config } = require("./config/env");
 const User = require("./models/User");
 const { normalizeUserMediaDocument } = require("./utils/userMedia");
 
 const app = express();
-const isProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production";
+const isProduction = config.isProduction;
+const requestBodyLimit = "2mb";
 
 app.set("trust proxy", 1);
+app.disable("x-powered-by");
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 240,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 180,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -54,7 +69,7 @@ app.use("/api", (req, res, next) => {
 
 app.use(
   cors({
-    origin: true,
+    origin: config.allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -68,7 +83,7 @@ app.use((req, res, next) => {
 
 app.use(
   express.json({
-    limit: "10mb",
+    limit: requestBodyLimit,
     verify: (req, _res, buf) => {
       if (req.originalUrl === "/api/payments/webhook/paystack") {
         req.rawBody = buf.toString("utf8");
@@ -77,7 +92,7 @@ app.use(
   })
 );
 
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "512kb", parameterLimit: 1000 }));
 app.use("/uploads", express.static(upload.uploadDir));
 
 app.get("/api/health", (req, res) => {
@@ -93,8 +108,8 @@ app.get("/api/me", auth, async (req, res) => {
   return res.json(user);
 });
 
-app.use("/api/auth", require("./routes/auth"));
-app.use("/api/admin", require("../apps/api/routes/admin"));
+app.use("/api/auth", authLimiter, require("./routes/auth"));
+app.use("/api/admin", adminLimiter, require("../apps/api/routes/admin"));
 app.use("/api/moderation", require("./routes/moderation"));
 app.use("/api/users", require("./routes/users"));
 app.use("/api/posts", require("./routes/posts"));
@@ -126,6 +141,17 @@ app.use("/api/rooms", require("./routes/rooms"));
 app.use("/api/checkin", require("./routes/checkin"));
 app.use("/api/discovery", require("./routes/discovery"));
 app.use("/api/news", require("./routes/news.routes"));
+
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api")) {
+    return res.status(404).json({
+      success: false,
+      message: "API route not found",
+    });
+  }
+
+  return next();
+});
 
 app.get("/socket.io", (_, res) => res.send("socket ok"));
 

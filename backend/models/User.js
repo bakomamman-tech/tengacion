@@ -364,6 +364,16 @@ const UserSchema = new mongoose.Schema(
 
     passwordChangedAt: Date,
 
+    forceLogoutAt: {
+      type: Date,
+      default: null,
+    },
+
+    mustReauth: {
+      type: Boolean,
+      default: false,
+    },
+
     joined: {
       type: Date,
       default: Date.now,

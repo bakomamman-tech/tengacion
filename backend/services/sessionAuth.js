@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { config } = require("../config/env");
 
 class SessionAuthError extends Error {
   constructor(message, code = "UNAUTHORIZED", statusCode = 401) {
@@ -11,7 +12,7 @@ class SessionAuthError extends Error {
 }
 
 const DEFAULT_USER_SELECT =
-  "_id name username email role permissions moderationProfile isActive isBanned isDeleted isSuspended tokenVersion sessions twoFactor";
+  "_id name username email role permissions moderationProfile isActive isBanned isDeleted isSuspended tokenVersion sessions twoFactor passwordChangedAt forceLogoutAt mustReauth";
 
 const extractBearerToken = (authHeader = "") => {
   const header = String(authHeader || "").trim();
@@ -19,8 +20,9 @@ const extractBearerToken = (authHeader = "") => {
     return "";
   }
 
-  if (header.startsWith("Bearer ")) {
-    return header.slice("Bearer ".length).trim();
+  const bearerMatch = header.match(/^Bearer\s+(.+)$/i);
+  if (bearerMatch && bearerMatch[1]) {
+    return bearerMatch[1].trim();
   }
 
   return header;
@@ -33,7 +35,7 @@ const verifySessionToken = (token) => {
   }
 
   try {
-    const decoded = jwt.verify(rawToken, process.env.JWT_SECRET);
+    const decoded = jwt.verify(rawToken, config.JWT_SECRET);
     if (decoded?.kind && decoded.kind !== "access") {
       throw new SessionAuthError("Invalid token", "INVALID_TOKEN", 401);
     }
@@ -81,6 +83,29 @@ const validateSessionClaims = async (decoded, { touchSession = false } = {}) => 
       "TOKEN_VERSION_MISMATCH",
       401
     );
+  }
+
+  const issuedAtMs = Number(decoded?.iat || 0) * 1000;
+  const passwordChangedAtMs = new Date(user.passwordChangedAt || 0).getTime();
+  if (passwordChangedAtMs && issuedAtMs && passwordChangedAtMs > issuedAtMs) {
+    throw new SessionAuthError(
+      "Session revoked. Please login again.",
+      "PASSWORD_CHANGED",
+      401
+    );
+  }
+
+  const forceLogoutAtMs = new Date(user.forceLogoutAt || 0).getTime();
+  if (forceLogoutAtMs && issuedAtMs && forceLogoutAtMs > issuedAtMs) {
+    throw new SessionAuthError(
+      "Session revoked. Please login again.",
+      "FORCE_LOGOUT",
+      401
+    );
+  }
+
+  if (user.mustReauth) {
+    throw new SessionAuthError("Session revoked. Please login again.", "MUST_REAUTH", 401);
   }
 
   const claimSessionId = String(decoded.sid || "").trim();

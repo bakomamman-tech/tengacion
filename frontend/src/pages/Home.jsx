@@ -23,13 +23,10 @@ import {
   createPostWithUploadProgress,
   getDiscoveryHome,
   getFeed,
-  getMyStreaks,
   getProfile,
-  getLiveSessions,
   getUsers,
   muteUser,
   resolveImage,
-  submitDailyCheckIn,
   toggleFollowCreator,
   trackDiscoveryEvents,
 } from "../api";
@@ -960,7 +957,6 @@ export default function Home({ user }) {
   const [feedSurface, setFeedSurface] = useState("for_you");
   const [feedUsesDiscovery, setFeedUsesDiscovery] = useState(false);
   const [feedFallback, setFeedFallback] = useState(false);
-  const [liveSessions, setLiveSessions] = useState([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMinimized, setChatMinimized] = useState(false);
   const [chatDockMeta, setChatDockMeta] = useState(null);
@@ -969,9 +965,6 @@ export default function Home({ user }) {
   const [composerInitialFile, setComposerInitialFile] = useState(null);
   const [composerInitialMode, setComposerInitialMode] = useState("");
   const [storyCreatorSignal, setStoryCreatorSignal] = useState(0);
-  const [checkInText, setCheckInText] = useState("");
-  const [checkInStreak, setCheckInStreak] = useState({ count: 0, lastCheckInAt: null });
-  const [checkInBusy, setCheckInBusy] = useState(false);
   const [selectedNewsCard, setSelectedNewsCard] = useState(null);
   const [visiblePostCount, setVisiblePostCount] = useState(INITIAL_VISIBLE_POSTS);
   const loadMoreRef = useRef(null);
@@ -1130,19 +1123,13 @@ export default function Home({ user }) {
     const load = async () => {
       try {
         setLoading(true);
-        const [me, liveResult, streakResult] = await Promise.all([
-          getProfile(),
-          getLiveSessions(),
-          getMyStreaks().catch(() => ({ checkIn: { count: 0, lastCheckInAt: null } })),
-        ]);
+        const me = await getProfile();
 
         if (!alive) {
           return;
         }
 
         setProfile(me);
-        setLiveSessions(Array.isArray(liveResult?.sessions) ? liveResult.sessions : []);
-        setCheckInStreak(streakResult?.checkIn || { count: 0, lastCheckInAt: null });
       } catch {
         if (alive) {
           toast.error("Failed to load home");
@@ -1254,51 +1241,6 @@ export default function Home({ user }) {
     observer.observe(target);
     return () => observer.disconnect();
   }, [feedItems.length]);
-
-  useEffect(() => {
-    const viewerId = profile?._id || user?._id;
-    if (!viewerId) {
-      return;
-    }
-
-    const socket = connectSocket({ userId: viewerId });
-    if (!socket) {
-      return;
-    }
-
-    const handleLiveCreated = (session) => {
-      setLiveSessions((prev) => [
-        session,
-        ...prev.filter((entry) => entry.roomName !== session.roomName),
-      ]);
-    };
-
-    const handleLiveEnded = (payload) => {
-      setLiveSessions((prev) =>
-        prev.filter((entry) => entry.roomName !== payload.roomName)
-      );
-    };
-
-    const handleLiveViewers = (payload) => {
-      setLiveSessions((prev) =>
-        prev.map((entry) =>
-          entry.roomName === payload.roomName
-            ? { ...entry, viewerCount: payload.viewerCount }
-            : entry
-        )
-      );
-    };
-
-    socket.on("live:created", handleLiveCreated);
-    socket.on("live:ended", handleLiveEnded);
-    socket.on("live:viewers", handleLiveViewers);
-
-    return () => {
-      socket.off("live:created", handleLiveCreated);
-      socket.off("live:ended", handleLiveEnded);
-      socket.off("live:viewers", handleLiveViewers);
-    };
-  }, [profile?._id, user?._id]);
 
   const logout = () => {
     navigate("/");
@@ -1496,22 +1438,6 @@ export default function Home({ user }) {
     [enqueueDiscoveryEvents]
   );
 
-  const runCheckIn = async () => {
-    if (checkInBusy) {return;}
-    try {
-      setCheckInBusy(true);
-      const payload = await submitDailyCheckIn(checkInText);
-      const nextStreak = payload?.streak || { count: 0, lastCheckInAt: null };
-      setCheckInStreak(nextStreak);
-      setCheckInText("");
-      await loadFeedSurface(feedSurface);
-    } catch {
-      // Keep existing UX stable.
-    } finally {
-      setCheckInBusy(false);
-    }
-  };
-
   return (
     <>
       <Navbar
@@ -1565,55 +1491,6 @@ export default function Home({ user }) {
             </section>
           )}
           {!loading && <Stories user={currentUser} openCreateSignal={storyCreatorSignal} />}
-          {!loading && (
-            <section className="card checkin-card">
-              <div className="checkin-head">
-                <strong>Daily check-in</strong>
-                <span>🔥 {Number(checkInStreak?.count) || 0}-day streak</span>
-              </div>
-              <div className="checkin-row">
-                <input
-                  value={checkInText}
-                  onChange={(event) => setCheckInText(event.target.value)}
-                  placeholder="Share today's check-in..."
-                  maxLength={180}
-                />
-                <button type="button" onClick={runCheckIn} disabled={checkInBusy}>
-                  {checkInBusy ? "Saving..." : "Check in"}
-                </button>
-              </div>
-            </section>
-          )}
-          {!loading && liveSessions.length > 0 && (
-            <section className="live-now-bar live-now-section live-preview-panel">
-              <div className="live-now-header">
-                <h3>Live now</h3>
-                <button
-                  type="button"
-                  className="live-now-button"
-                  onClick={() => navigate("/live")}
-                >
-                  View directory
-                </button>
-              </div>
-              <div className="live-now-list">
-                {liveSessions.slice(0, 4).map((session) => (
-                  <button
-                    key={session.roomName}
-                    type="button"
-                    className="live-now-card"
-                    onClick={() => navigate(`/live/watch/${session.roomName}`)}
-                  >
-                    <div className="live-now-title">{session.title || "Live"}</div>
-                    <div className="live-now-meta">
-                      {session.host?.name || session.host?.username || "Creator"} ·{" "}
-                      {session.viewerCount || 0} viewers
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
 
           <div className="card create-post" onClick={() => openComposer()}>
             <div className="create-post-row">

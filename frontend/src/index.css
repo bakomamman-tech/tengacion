@@ -325,6 +325,45 @@ html.dark-mode .go-live-start-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #efc481 0%, #d79b52 100%) !important;
 }
 
+html.dark-mode .go-live-report {
+  border-color: rgba(247, 215, 170, 0.16);
+  background: linear-gradient(180deg, rgba(45, 31, 24, 0.97) 0%, rgba(31, 21, 16, 0.96) 100%);
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 248, 236, 0.05);
+}
+
+html.dark-mode .go-live-report__head h3 {
+  color: #fff4e2;
+}
+
+html.dark-mode .go-live-report__head p {
+  color: #dfc5a5;
+}
+
+html.dark-mode .go-live-report__status {
+  background: linear-gradient(180deg, #efc481 0%, #d79b52 100%);
+  color: #24160c;
+  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.28);
+}
+
+html.dark-mode .go-live-report__metric {
+  border-color: rgba(247, 215, 170, 0.14);
+  background: rgba(35, 25, 18, 0.86);
+}
+
+html.dark-mode .go-live-report__metric-label {
+  color: #f0c98f;
+}
+
+html.dark-mode .go-live-report__metric-value {
+  color: #fff4e2;
+}
+
+html.dark-mode .go-live-report__metric-note {
+  color: #e1c5a0;
+}
+
 .go-live-controls {
   display: flex;
   justify-content: space-between;
@@ -338,6 +377,87 @@ html.dark-mode .go-live-start-btn:hover:not(:disabled) {
   padding: 1rem;
   background: #fff;
   text-align: left;
+}
+
+.go-live-report {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid rgba(188, 146, 97, 0.22);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(255, 251, 245, 0.98) 0%, rgba(248, 238, 226, 0.95) 100%);
+  box-shadow:
+    0 14px 28px rgba(92, 56, 20, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
+}
+
+.go-live-report__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.go-live-report__head h3 {
+  margin: 0.25rem 0 0;
+  font-size: 1.05rem;
+  color: #5d3514;
+}
+
+.go-live-report__head p {
+  margin: 0.35rem 0 0;
+  color: #6b7280;
+  font-size: 0.92rem;
+}
+
+.go-live-report__status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2ecf7c 0%, #199f59 100%);
+  color: #f5fff9;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 10px 20px rgba(25, 159, 89, 0.18);
+}
+
+.go-live-report__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.go-live-report__metric {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid rgba(188, 146, 97, 0.18);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.8rem;
+}
+
+.go-live-report__metric-label {
+  color: #8d653e;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.go-live-report__metric-value {
+  color: #41230e;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.go-live-report__metric-note {
+  color: #76624d;
+  font-size: 0.82rem;
 }
 
 .go-live-video {
@@ -394,6 +514,22 @@ html.dark-mode .go-live-start-btn:hover:not(:disabled) {
   100% {
     opacity: 0;
     transform: translateY(-90px) scale(1.2);
+  }
+}
+
+@media (max-width: 760px) {
+  .go-live-report__head {
+    flex-direction: column;
+  }
+
+  .go-live-report__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .go-live-report__grid {
+    grid-template-columns: 1fr;
   }
 }
 

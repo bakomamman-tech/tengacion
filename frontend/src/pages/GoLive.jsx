@@ -9,6 +9,19 @@ import { resolveLivekitWsUrl } from "../livekitConfig";
 import LiveControlsBar from "../components/live/LiveControlsBar";
 import LiveChatDrawer from "../components/live/LiveChatDrawer";
 
+const formatElapsedTime = (value) => {
+  const total = Math.max(0, Number(value) || 0);
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+
+  if (hrs > 0) {
+    return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+
+  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+};
+
 export default function GoLive() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -299,6 +312,47 @@ export default function GoLive() {
     return filters.length ? filters.join(" ") : "none";
   }, [blurEnabled, selectedFilter]);
 
+  const liveReportSummary = useMemo(() => {
+    if (!liveSession) {
+      return null;
+    }
+
+    const startedAt = liveSession.startedAt
+      ? new Intl.DateTimeFormat(undefined, {
+          hour: "numeric",
+          minute: "numeric",
+        }).format(new Date(liveSession.startedAt))
+      : "";
+
+    return {
+      title: liveSession.title || "Streaming now",
+      host: liveSession.host?.name || liveSession.host?.username || "Host",
+      startedAt,
+      metrics: [
+        {
+          label: "Viewers now",
+          value: String(viewerCount || 0),
+          note: "Watching live",
+        },
+        {
+          label: "Duration",
+          value: formatElapsedTime(elapsedSec),
+          note: "Stream time",
+        },
+        {
+          label: "Chat",
+          value: String(chatMessages.length),
+          note: "Messages received",
+        },
+        {
+          label: "Reactions",
+          value: String(reactions.length),
+          note: "Emoji bursts",
+        },
+      ],
+    };
+  }, [chatMessages.length, elapsedSec, liveSession, reactions.length, viewerCount]);
+
   return (
     <main className="go-live-page">
       <header className="go-live-header">
@@ -342,6 +396,31 @@ export default function GoLive() {
 
       {liveSession && (
         <section className="go-live-preview">
+          {liveReportSummary && (
+            <div className="go-live-report">
+              <div className="go-live-report__head">
+                <div>
+                  <p className="go-live-label">Live report summary</p>
+                  <h3>{liveReportSummary.title}</h3>
+                  <p>
+                    {liveReportSummary.startedAt
+                      ? `Started at ${liveReportSummary.startedAt} - hosting as ${liveReportSummary.host}`
+                      : `Hosting as ${liveReportSummary.host}`}
+                  </p>
+                </div>
+                <span className="go-live-report__status">Live</span>
+              </div>
+              <div className="go-live-report__grid">
+                {liveReportSummary.metrics.map((metric) => (
+                  <article key={metric.label} className="go-live-report__metric">
+                    <span className="go-live-report__metric-label">{metric.label}</span>
+                    <strong className="go-live-report__metric-value">{metric.value}</strong>
+                    <span className="go-live-report__metric-note">{metric.note}</span>
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
           <p className="go-live-label">You're live now</p>
           <div className="go-live-video-wrap">
             <video

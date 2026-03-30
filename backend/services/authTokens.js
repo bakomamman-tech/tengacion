@@ -11,17 +11,23 @@ const REFRESH_COOKIE_NAME = "tg_refresh";
 const STEP_UP_COOKIE_NAME = "tg_stepup";
 
 const accessTokenSecret = config.JWT_SECRET;
-const refreshTokenSecret = config.JWT_REFRESH_SECRET || (config.isProduction ? "" : config.JWT_SECRET);
-const challengeTokenSecret =
-  config.AUTH_CHALLENGE_SECRET || (config.isProduction ? "" : config.JWT_SECRET);
 
-if (config.isProduction && !refreshTokenSecret) {
-  throw new Error("JWT_REFRESH_SECRET is required in production");
-}
+const resolveSecret = (value, name) => {
+  const secret = String(value || "").trim();
+  if (secret) {
+    return secret;
+  }
 
-if (config.isProduction && !challengeTokenSecret) {
-  throw new Error("AUTH_CHALLENGE_SECRET is required in production");
-}
+  if (config.isProduction) {
+    throw new Error(`${name} is required in production`);
+  }
+
+  return config.JWT_SECRET;
+};
+
+const getRefreshTokenSecret = () => resolveSecret(config.JWT_REFRESH_SECRET, "JWT_REFRESH_SECRET");
+const getChallengeTokenSecret = () =>
+  resolveSecret(config.AUTH_CHALLENGE_SECRET, "AUTH_CHALLENGE_SECRET");
 
 const baseCookieOptions = {
   httpOnly: true,
@@ -53,7 +59,7 @@ const signRefreshToken = ({ userId, tokenVersion = 0, sessionId = "" }) =>
       sid: String(sessionId || ""),
       kind: "refresh",
     },
-    refreshTokenSecret,
+    getRefreshTokenSecret(),
     { expiresIn: REFRESH_TOKEN_TTL }
   );
 
@@ -77,12 +83,12 @@ const signChallengeToken = ({ challengeId, userId, purpose }) =>
       purpose: String(purpose || ""),
       kind: "auth_challenge",
     },
-    challengeTokenSecret,
+    getChallengeTokenSecret(),
     { expiresIn: CHALLENGE_TOKEN_TTL }
   );
 
 const verifyRefreshToken = (token) => {
-  const decoded = jwt.verify(String(token || "").trim(), refreshTokenSecret);
+  const decoded = jwt.verify(String(token || "").trim(), getRefreshTokenSecret());
   if (decoded?.kind !== "refresh") {
     throw new Error("Invalid refresh token");
   }
@@ -98,7 +104,7 @@ const verifyStepUpToken = (token) => {
 };
 
 const verifyChallengeToken = (token) => {
-  const decoded = jwt.verify(String(token || "").trim(), challengeTokenSecret);
+  const decoded = jwt.verify(String(token || "").trim(), getChallengeTokenSecret());
   if (decoded?.kind !== "auth_challenge") {
     throw new Error("Invalid challenge token");
   }

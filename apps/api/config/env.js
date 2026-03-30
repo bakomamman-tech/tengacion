@@ -138,14 +138,6 @@ if (!Number.isInteger(port) || port <= 0) {
   missing.push("PORT");
 }
 
-if (isProduction && !jwtRefreshSecretInput) {
-  missing.push("JWT_REFRESH_SECRET");
-}
-
-if (isProduction && !authChallengeSecretInput) {
-  missing.push("AUTH_CHALLENGE_SECRET");
-}
-
 if (isProduction && !mediaSigningSecretInput) {
   missing.push("MEDIA_SIGNING_SECRET");
 }
@@ -165,8 +157,8 @@ const config = {
   port,
   mongoUri,
   jwtSecret,
-  jwtRefreshSecret: jwtRefreshSecretInput || (isProduction ? "" : jwtSecret),
-  authChallengeSecret: authChallengeSecretInput || (isProduction ? "" : jwtSecret),
+  jwtRefreshSecret: jwtRefreshSecretInput || "",
+  authChallengeSecret: authChallengeSecretInput || "",
   mediaSigningSecret: mediaSigningSecretInput || (isProduction ? "" : jwtSecret),
   allowedOrigins,
   clientUrl: toText(process.env.CLIENT_URL),
@@ -200,8 +192,8 @@ const config = {
   PORT: port,
   MONGO_URI: mongoUri,
   JWT_SECRET: jwtSecret,
-  JWT_REFRESH_SECRET: jwtRefreshSecretInput || (isProduction ? "" : jwtSecret),
-  AUTH_CHALLENGE_SECRET: authChallengeSecretInput || (isProduction ? "" : jwtSecret),
+  JWT_REFRESH_SECRET: jwtRefreshSecretInput || "",
+  AUTH_CHALLENGE_SECRET: authChallengeSecretInput || "",
   MEDIA_SIGNING_SECRET: mediaSigningSecretInput || (isProduction ? "" : jwtSecret),
   CLIENT_URL: toText(process.env.CLIENT_URL),
   FRONTEND_URL: toText(process.env.FRONTEND_URL),

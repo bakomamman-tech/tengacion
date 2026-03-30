@@ -26,9 +26,21 @@ server.keepAliveTimeout = 65000;
 console.log(`Node ${process.version} starting in ${process.cwd()}`);
 console.log("Backend runtime config", {
   nodeEnv: config.nodeEnv || config.NODE_ENV || "unknown",
-  port: config.port || config.PORT || "unset",
+  port: process.env.PORT || config.port || config.PORT || "unset",
   allowedOrigins: Array.isArray(config.allowedOrigins) ? config.allowedOrigins.length : 0,
 });
+
+const missingAuthSecrets = [
+  !String(config.JWT_REFRESH_SECRET || "").trim() ? "JWT_REFRESH_SECRET" : "",
+  !String(config.AUTH_CHALLENGE_SECRET || "").trim() ? "AUTH_CHALLENGE_SECRET" : "",
+].filter(Boolean);
+
+if (missingAuthSecrets.length > 0) {
+  console.warn(
+    "Missing auth token env vars. Refresh and step-up flows will fail until these are set:",
+    missingAuthSecrets.join(", ")
+  );
+}
 
 const parsedSocketAuthCacheMs = Number(process.env.SOCKET_AUTH_CACHE_MS || 30000);
 const SOCKET_AUTH_CACHE_MS =

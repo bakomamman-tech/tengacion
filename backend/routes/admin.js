@@ -10,6 +10,7 @@ const AuditLog = require("../models/AuditLog");
 const Post = require("../models/Post");
 const Message = require("../models/Message");
 const Report = require("../models/Report");
+const AdminComplaint = require("../models/AdminComplaint");
 const UserStrike = require("../models/UserStrike");
 const ModerationCase = require("../models/ModerationCase");
 const CreatorProfile = require("../models/CreatorProfile");
@@ -19,6 +20,7 @@ const Book = require("../models/Book");
 const Video = require("../models/Video");
 const Purchase = require("../models/Purchase");
 const { writeAuditLog } = require("../services/auditLogService");
+const { createNotification } = require("../services/notificationService");
 const { disconnectUserSockets } = require("../utils/realtimeSessions");
 const { buildAdminDashboard } = require("../services/adminDashboardService");
 const { sendModerationMessengerWarning } = require("../services/moderationMessengerService");
@@ -82,6 +84,42 @@ const getAnalyticsFilters = (req) => ({
   endDate: String(req.query.endDate || "").trim(),
   category: String(req.query.category || "all").trim().toLowerCase(),
   interval: String(req.query.interval || "daily").trim().toLowerCase(),
+});
+const normalizeComplaintStatus = (value = "") => {
+  const next = String(value || "").trim().toLowerCase();
+  return ["open", "reviewing", "resolved", "dismissed"].includes(next) ? next : "";
+};
+const mapComplaint = (entry = {}) => ({
+  _id: toId(entry._id),
+  subject: String(entry.subject || ""),
+  category: String(entry.category || "general"),
+  details: String(entry.details || ""),
+  sourcePath: String(entry.sourcePath || ""),
+  sourceLabel: String(entry.sourceLabel || ""),
+  priority: String(entry.priority || "medium"),
+  priorityScore: Number(entry.priorityScore || 0),
+  status: String(entry.status || "open"),
+  adminNote: String(entry.adminNote || ""),
+  createdAt: entry.createdAt || null,
+  updatedAt: entry.updatedAt || null,
+  reviewedAt: entry.reviewedAt || null,
+  resolvedAt: entry.resolvedAt || null,
+  reporter: entry.reporterId
+    ? {
+        _id: toId(entry.reporterId._id || entry.reporterId),
+        name: String(entry.reporterId.name || ""),
+        username: String(entry.reporterId.username || ""),
+        avatar: entry.reporterId.avatar || "",
+      }
+    : null,
+  reviewedBy: entry.reviewedBy
+    ? {
+        _id: toId(entry.reviewedBy._id || entry.reviewedBy),
+        name: String(entry.reviewedBy.name || ""),
+        username: String(entry.reviewedBy.username || ""),
+        email: String(entry.reviewedBy.email || ""),
+      }
+    : null,
 });
 
 const toAdminUserDTO = (user, requesterRole = "admin") => ({
@@ -1297,6 +1335,120 @@ router.get("/messages/overview", async (req, res) => {
   } catch (err) {
     const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
     return res.status(code).json({ error: err.message || "Failed to load message analytics" });
+  }
+});
+
+router.get("/messages/complaints", requireRole(ADMIN_ROLES), async (req, res) => {
+  try {
+    const limit = clamp(req.query.limit, 1, 50, 8);
+    const page = clamp(req.query.page, 1, 1000, 1);
+    const status = normalizeComplaintStatus(req.query.status);
+    const query = status ? { status } : {};
+    const skip = (page - 1) * limit;
+
+    const [complaints, total, open, reviewing, resolved, dismissed, critical, high] = await Promise.all([
+      AdminComplaint.find(query)
+        .populate("reporterId", "_id name username avatar")
+        .populate("reviewedBy", "_id name username email")
+        .sort({ priorityScore: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      AdminComplaint.countDocuments(query),
+      AdminComplaint.countDocuments({ status: "open" }),
+      AdminComplaint.countDocuments({ status: "reviewing" }),
+      AdminComplaint.countDocuments({ status: "resolved" }),
+      AdminComplaint.countDocuments({ status: "dismissed" }),
+      AdminComplaint.countDocuments({ priority: "critical" }),
+      AdminComplaint.countDocuments({ priority: "high" }),
+    ]);
+
+    return res.json({
+      summary: {
+        total,
+        open,
+        reviewing,
+        resolved,
+        dismissed,
+        critical,
+        high,
+      },
+      complaints: complaints.map(mapComplaint),
+      page,
+      limit,
+      pages: Math.max(1, Math.ceil(total / limit)),
+    });
+  } catch (err) {
+    console.error("Admin complaints list error:", req.requestId, err);
+    return res.status(500).json({ error: "Failed to load admin complaints" });
+  }
+});
+
+router.patch("/messages/complaints/:id", requireRole(ADMIN_ROLES), async (req, res) => {
+  try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: "Invalid complaint id" });
+    }
+
+    const complaint = await AdminComplaint.findById(req.params.id)
+      .populate("reporterId", "_id name username avatar")
+      .populate("reviewedBy", "_id name username email");
+    if (!complaint) {
+      return res.status(404).json({ error: "Complaint not found" });
+    }
+
+    const nextStatus = normalizeComplaintStatus(req.body?.status) || complaint.status;
+    const note = String(req.body?.adminNote || "").trim().slice(0, 1000);
+    const previousStatus = String(complaint.status || "open");
+    const statusChanged = nextStatus && nextStatus !== complaint.status;
+    const wasClosed = ["resolved", "dismissed"].includes(String(complaint.status || "").toLowerCase());
+    const willClose = ["resolved", "dismissed"].includes(nextStatus);
+
+    if (statusChanged) {
+      complaint.status = nextStatus;
+      complaint.reviewedBy = req.user.id;
+      complaint.reviewedAt = new Date();
+      if (nextStatus === "resolved") {
+        complaint.resolvedAt = new Date();
+      }
+    }
+    if (note) {
+      complaint.adminNote = note;
+    }
+
+    await complaint.save();
+
+    if (statusChanged && willClose && !wasClosed && complaint.reporterId?._id) {
+      await createNotification({
+        recipient: complaint.reporterId._id,
+        sender: req.user.id,
+        type: "system",
+        text: `Your Report To Admin message was marked ${nextStatus}.`,
+        metadata: {
+          previewText: note || complaint.subject,
+          link: "/home",
+          dedupeKey: `admin_complaint_status:${complaint._id.toString()}:${nextStatus}`,
+        },
+      }).catch(() => null);
+    }
+
+    await writeAuditLog({
+      req,
+      actorId: req.user.id,
+      action: "admin.complaint.update",
+      targetType: "AdminComplaint",
+      targetId: toId(complaint._id),
+      reason: note || nextStatus,
+      metadata: {
+        previousStatus,
+        newStatus: nextStatus,
+      },
+    }).catch(() => null);
+
+    return res.json({ success: true, complaint: mapComplaint(complaint) });
+  } catch (err) {
+    console.error("Admin complaint update error:", req.requestId, err);
+    return res.status(500).json({ error: "Failed to update complaint" });
   }
 });
 

@@ -7340,6 +7340,12 @@ html.dark-mode .create-menu-empty {
   font-weight: 700;
 }
 
+.friend-requests-body {
+  display: grid;
+  gap: 10px;
+  flex: 1;
+}
+
 .friend-request-item {
   border-top: 1px solid var(--border);
   padding-top: 10px;
@@ -7410,11 +7416,217 @@ html.dark-mode .create-menu-empty {
   border-color: var(--border-strong);
 }
 
+.friend-request-btn.report-admin {
+  border-color: transparent;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 82%, #c79a54 18%), color-mix(in srgb, var(--brand-strong) 88%, #6a3b10 12%));
+  color: #fff;
+  box-shadow: 0 16px 28px rgba(153, 103, 25, 0.16);
+}
+
+.friend-request-btn.report-admin:hover {
+  box-shadow: 0 18px 32px rgba(153, 103, 25, 0.2);
+}
+
+.friend-requests-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+}
+
+.friend-requests-footer {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.friend-requests-footer-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.friend-requests-footer-copy strong {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.friend-requests-footer-copy span {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.report-admin-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(32, 20, 10, 0.42);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.report-admin-modal__dialog {
+  width: min(100%, 560px);
+  border-radius: 24px;
+  border: 1px solid var(--border-strong);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%);
+  box-shadow: 0 30px 60px rgba(36, 22, 12, 0.22);
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+}
+
+.report-admin-modal__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.report-admin-modal__head h4 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.report-admin-modal__head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.report-admin-modal__close {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 86%, var(--surface-soft) 14%);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.report-admin-modal__form {
+  display: grid;
+  gap: 14px;
+}
+
+.report-admin-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.report-admin-modal__form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.report-admin-modal__form input,
+.report-admin-modal__form select,
+.report-admin-modal__form textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-soft) 78%, var(--surface) 22%);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.report-admin-modal__form textarea {
+  resize: vertical;
+  min-height: 140px;
+}
+
+.report-admin-modal__form input:focus,
+.report-admin-modal__form select:focus,
+.report-admin-modal__form textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--brand) 60%, var(--border));
+  box-shadow: 0 0 0 3px rgba(196, 140, 74, 0.14);
+}
+
+.report-admin-modal__note {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 82%, var(--surface-soft) 18%);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.report-admin-modal__note strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.report-admin-modal__note span {
+  word-break: break-all;
+}
+
+.report-admin-modal__error {
+  margin: 0;
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.report-admin-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.friend-requests-card .friend-request-btn,
+.friend-requests-card .btn-link {
+  font-size: 13px;
+}
+
 .friend-request-btn:disabled,
 .search-person-btn:disabled,
 .profile-head-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .friend-requests-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .friend-request-btn.report-admin {
+    width: 100%;
+  }
+
+  .report-admin-modal__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-admin-modal__actions {
+    flex-direction: column;
+  }
+
+  .report-admin-modal__actions .friend-request-btn {
+    width: 100%;
+  }
 }
 
 /* Feed + posts */

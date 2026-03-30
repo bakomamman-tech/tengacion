@@ -672,6 +672,16 @@ export const getFriendRequests = () =>
     headers: getAuthHeaders(),
   });
 
+export const submitAdminComplaint = (payload = {}) =>
+  request(`${API_BASE}/support/complaints`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
 export const getFriendsHub = () =>
   request(`${API_BASE}/users/me/friends-hub`, {
     headers: getAuthHeaders(),
@@ -2100,6 +2110,27 @@ export const adminGetMessagesOverview = (params = {}) => {
     timeoutMs: 45000,
   });
 };
+
+export const adminGetComplaints = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/messages/complaints?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminUpdateComplaint = (complaintId, payload = {}) =>
+  request(`${API_BASE}/admin/messages/complaints/${encodeURIComponent(complaintId || "")}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
 
 export const adminGetAnalyticsTopCreators = (params = {}) => {
   const query = new URLSearchParams();

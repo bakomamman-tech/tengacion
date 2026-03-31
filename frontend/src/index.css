@@ -1971,6 +1971,11 @@ textarea:focus {
   animation: navSlide 0.35s ease both;
 }
 
+.topNavRow {
+  min-height: 72px;
+  height: auto;
+}
+
 .nav-left,
 .nav-right,
 .nav-center,
@@ -1999,7 +2004,7 @@ textarea:focus {
   flex: 1 1 auto;
   min-width: 0 !important;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .nav-pill-group,
@@ -2016,6 +2021,25 @@ textarea:focus {
   max-width: 100%;
   padding: 6px 2px;
   -webkit-overflow-scrolling: touch;
+}
+
+.topNavRow .nav-pill-group,
+.topNavRow .pillGroup {
+  padding: 6px 6px;
+}
+
+.topNavRow .nav-tab,
+.topNavRow .pillLink {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  height: 40px;
+  line-height: 1;
+  padding: 0 15px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .nav-pill-group::-webkit-scrollbar,

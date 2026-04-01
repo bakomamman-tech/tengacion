@@ -13,6 +13,15 @@ const { normalizeUserMediaDocument } = require("./utils/userMedia");
 const app = express();
 const isProduction = config.isProduction;
 const requestBodyLimit = "2mb";
+const allowedOriginSet = new Set(config.allowedOrigins);
+const corsOrigin = (origin, callback) => {
+  if (!origin || allowedOriginSet.has(origin)) {
+    callback(null, true);
+    return;
+  }
+
+  callback(null, false);
+};
 
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
@@ -69,7 +78,7 @@ app.use("/api", (req, res, next) => {
 
 app.use(
   cors({
-    origin: config.allowedOrigins,
+    origin: corsOrigin,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

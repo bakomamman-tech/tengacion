@@ -11,4 +11,14 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: APP_URL
+        value: https://tengacion.com
+      - key: CLIENT_URL
+        value: https://tengacion.com
+      - key: CORS_ORIGIN
+        value: https://tengacion.com,https://www.tengacion.com,http://localhost:5173
+      - key: PAYSTACK_CALLBACK_URL
+        value: https://tengacion.com/payment/verify
+      - key: VITE_API_URL
+        value: /api
 

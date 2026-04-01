@@ -190,7 +190,12 @@ const makeTokenHash = (token = "") =>
   crypto.createHash("sha256").update(String(token)).digest("hex");
 const makeRawToken = (size = 32) => crypto.randomBytes(size).toString("hex");
 const generateSessionId = () => crypto.randomUUID();
-const getBaseUrl = () => process.env.APP_ORIGIN || process.env.WEB_ORIGIN || "http://localhost:5173";
+const getBaseUrl = () =>
+  config.APP_URL ||
+  config.CLIENT_URL ||
+  config.APP_ORIGIN ||
+  config.WEB_ORIGIN ||
+  "http://localhost:5173";
 
 const formatSession = (entry) => ({
   sessionId: entry?.sessionId || "",

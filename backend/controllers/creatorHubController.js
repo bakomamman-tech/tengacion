@@ -18,6 +18,7 @@ const {
   initializeTransaction,
 } = require("../services/paymentProviders/paystack");
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
+const { config } = require("../config/env");
 
 const isValidId = (value) => mongoose.Types.ObjectId.isValid(value);
 
@@ -269,7 +270,7 @@ exports.createCheckout = asyncHandler(async (req, res) => {
       email: user.email,
       amountNgn: amount,
       reference: providerRef,
-      callbackUrl: process.env.PAYSTACK_CALLBACK_URL || "",
+      callbackUrl: config.PAYSTACK_CALLBACK_URL || "",
       metadata: {
         app: "tengacion",
         itemType: item.itemType,

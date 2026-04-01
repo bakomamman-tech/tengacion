@@ -47,8 +47,10 @@ export const buildPostShareUrl = (postId = "") => {
   const cleanId = String(postId || "").trim();
   const base =
     typeof window !== "undefined" && window.location?.origin
-      ? window.location.origin
-      : "https://tengacion.onrender.com";
+      ? window.location.hostname === "www.tengacion.com"
+        ? "https://tengacion.com"
+        : window.location.origin
+      : "https://tengacion.com";
   if (!cleanId) {
     return "";
   }

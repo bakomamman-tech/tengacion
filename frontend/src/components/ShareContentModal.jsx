@@ -12,9 +12,12 @@ const EXTERNAL_TARGETS = [
 
 const buildDefaultShareUrl = () => {
   if (typeof window === "undefined") {
-    return "https://tengacion.onrender.com/home";
+    return "https://tengacion.com/home";
   }
-  const base = window.location.origin || "https://tengacion.onrender.com";
+  const base =
+    window.location.hostname === "www.tengacion.com"
+      ? "https://tengacion.com"
+      : window.location.origin || "https://tengacion.com";
   return `${base}/home`;
 };
 

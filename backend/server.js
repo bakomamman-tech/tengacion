@@ -15,6 +15,15 @@ const Message = require("./models/Message");
 const { config } = require("./config/env");
 const app = require("./app");
 const server = http.createServer(app);
+const allowedOriginSet = new Set(config.allowedOrigins);
+const corsOrigin = (origin, callback) => {
+  if (!origin || allowedOriginSet.has(origin)) {
+    callback(null, true);
+    return;
+  }
+
+  callback(null, false);
+};
 const parsedRequestTimeoutMs = Number(process.env.REQUEST_TIMEOUT_MS || 10 * 60 * 1000);
 const requestTimeoutMs =
   Number.isFinite(parsedRequestTimeoutMs) && parsedRequestTimeoutMs >= 30000
@@ -103,7 +112,7 @@ if (process.env.NODE_ENV !== "test") {
 
   const io = new Server(server, {
     cors: {
-      origin: config.allowedOrigins,
+      origin: corsOrigin,
       credentials: true,
     },
     transports: ["polling", "websocket"],

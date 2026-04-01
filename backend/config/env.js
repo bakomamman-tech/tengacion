@@ -2,7 +2,21 @@ const path = require("path");
 const dotenv = require("dotenv");
 
 const envFile = process.env.NODE_ENV === "test" ? ".env.test" : ".env";
-dotenv.config({ path: path.resolve(process.cwd(), envFile) });
+const envCandidates = [
+  path.resolve(process.cwd(), envFile),
+  path.resolve(__dirname, "..", "..", envFile),
+];
+
+for (const envPath of envCandidates) {
+  const result = dotenv.config({ path: envPath });
+  if (!result.error) {
+    break;
+  }
+
+  if (result.error.code !== "ENOENT") {
+    throw result.error;
+  }
+}
 
 const toText = (value) =>
   typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim();
@@ -84,24 +98,82 @@ const authChallengeSecretInput = toText(process.env.AUTH_CHALLENGE_SECRET);
 const mediaSigningSecretInput = toText(process.env.MEDIA_SIGNING_SECRET);
 const port = parsePort(process.env.PORT, isProduction ? NaN : 5000);
 
-const configuredOrigins = parseOriginList(
-  process.env.ALLOWED_FRONTEND_ORIGINS,
-  process.env.FRONTEND_ORIGINS,
-  process.env.CLIENT_URL,
-  process.env.FRONTEND_URL,
-  process.env.APP_ORIGIN,
-  process.env.WEB_ORIGIN
-);
+const defaultAppUrl = isProduction ? "https://tengacion.com" : "http://localhost:5173";
+const appUrl =
+  normalizeOrigin(
+    process.env.APP_URL ||
+      process.env.APP_ORIGIN ||
+      process.env.WEB_ORIGIN ||
+      process.env.CLIENT_URL ||
+      process.env.FRONTEND_URL ||
+      defaultAppUrl
+  ) || defaultAppUrl;
+const clientUrl =
+  normalizeOrigin(process.env.CLIENT_URL || process.env.FRONTEND_URL || appUrl) || appUrl;
+
+const appOrigin = (() => {
+  try {
+    return new URL(appUrl);
+  } catch {
+    return null;
+  }
+})();
+
+const wwwAppUrl =
+  appOrigin &&
+  !["localhost", "127.0.0.1", "[::1]"].includes(appOrigin.hostname) &&
+  !appOrigin.hostname.startsWith("www.")
+    ? `${appOrigin.protocol}//www.${appOrigin.hostname}${appOrigin.port ? `:${appOrigin.port}` : ""}`
+    : "";
+
 const defaultDevOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
 ];
-const allowedOrigins = [
-  ...configuredOrigins,
-  ...(isProduction ? [] : defaultDevOrigins),
-].filter((origin, index, list) => origin && list.indexOf(origin) === index);
+
+const configuredOrigins = parseOriginList(
+  process.env.CORS_ORIGIN,
+  process.env.ALLOWED_FRONTEND_ORIGINS,
+  process.env.FRONTEND_ORIGINS,
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  process.env.APP_URL,
+  process.env.APP_ORIGIN,
+  process.env.WEB_ORIGIN
+);
+
+const allowedOrigins = Array.from(
+  new Set(
+    [
+      ...configuredOrigins,
+      appUrl,
+      clientUrl,
+      ...(wwwAppUrl ? [wwwAppUrl] : []),
+      ...(isProduction ? [] : defaultDevOrigins),
+    ].filter(Boolean)
+  )
+);
+
+const corsOrigin = allowedOrigins.join(",");
+
+const resolveCallbackUrl = (value, fallbackBase) => {
+  const raw = toText(value);
+  if (!raw) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(raw)) {
+    return raw;
+  }
+
+  if (raw.startsWith("/")) {
+    return `${fallbackBase}${raw}`;
+  }
+
+  return "";
+};
 
 const livekitApiKey = toText(process.env.LIVEKIT_API_KEY);
 const livekitApiSecret = toText(process.env.LIVEKIT_API_SECRET);
@@ -113,7 +185,8 @@ const awsRegion = toText(process.env.AWS_REGION);
 const awsS3Bucket = toText(process.env.AWS_S3_BUCKET);
 const awsS3MediaUrl = toText(process.env.AWS_S3_MEDIA_URL);
 const paystackSecretKey = toText(process.env.PAYSTACK_SECRET_KEY);
-const paystackCallbackUrl = toText(process.env.PAYSTACK_CALLBACK_URL);
+const paystackCallbackUrl =
+  resolveCallbackUrl(process.env.PAYSTACK_CALLBACK_URL, appUrl) || `${appUrl}/payment/verify`;
 const paystackBaseUrl = toText(process.env.PAYSTACK_BASE_URL) || "https://api.paystack.co";
 const paystackCurrency = toText(process.env.PAYSTACK_CURRENCY) || "NGN";
 const stripeSecretKey = toText(process.env.STRIPE_SECRET_KEY);
@@ -145,10 +218,6 @@ if (isProduction && !paystackSecretKey) {
   missing.push("PAYSTACK_SECRET_KEY");
 }
 
-if (isProduction && allowedOrigins.length === 0) {
-  missing.push("FRONTEND_ORIGINS or CLIENT_URL or FRONTEND_URL");
-}
-
 if (missing.length > 0) {
   throw new Error(`Missing required env variables: ${missing.join(", ")}`);
 }
@@ -162,12 +231,13 @@ const config = {
   port,
   mongoUri,
   jwtSecret,
-  jwtRefreshSecret: jwtRefreshSecretInput || "",
+  jwtRefreshSecret,
   authChallengeSecret: authChallengeSecretInput || "",
   mediaSigningSecret,
+  appUrl,
+  clientUrl,
+  corsOrigin,
   allowedOrigins,
-  clientUrl: toText(process.env.CLIENT_URL),
-  frontendUrl: toText(process.env.FRONTEND_URL),
   awsAccessKeyId,
   awsSecretAccessKey,
   awsRegion,
@@ -191,8 +261,8 @@ const config = {
         }
       : undefined,
   USE_LOCAL_VIDEO_MOCK: toBool(process.env.USE_LOCAL_VIDEO_MOCK || "false"),
-  LOCAL_VIDEO_MOCK_URL: toText(process.env.LOCAL_VIDEO_MOCK_URL) ||
-    "https://storage.googleapis.com/free-videos/sample.mp4",
+  LOCAL_VIDEO_MOCK_URL:
+    toText(process.env.LOCAL_VIDEO_MOCK_URL) || "https://storage.googleapis.com/free-videos/sample.mp4",
 
   NODE_ENV: nodeEnv,
   PORT: port,
@@ -201,8 +271,13 @@ const config = {
   JWT_REFRESH_SECRET: jwtRefreshSecretInput || "",
   AUTH_CHALLENGE_SECRET: authChallengeSecretInput || "",
   MEDIA_SIGNING_SECRET: mediaSigningSecret,
-  CLIENT_URL: toText(process.env.CLIENT_URL),
-  FRONTEND_URL: toText(process.env.FRONTEND_URL),
+  APP_URL: appUrl,
+  CLIENT_URL: clientUrl,
+  CORS_ORIGIN: corsOrigin,
+  APP_ORIGIN: appUrl,
+  WEB_ORIGIN: clientUrl,
+  FRONTEND_URL: clientUrl,
+  ALLOWED_FRONTEND_ORIGINS: corsOrigin,
   AWS_ACCESS_KEY_ID: awsAccessKeyId,
   AWS_SECRET_ACCESS_KEY: awsSecretAccessKey,
   AWS_REGION: awsRegion,
@@ -216,7 +291,6 @@ const config = {
   STRIPE_PUBLISHABLE_KEY: stripePublishableKey,
   STRIPE_WEBHOOK_SECRET: stripeWebhookSecret,
   REQUIRE_EMAIL_OTP: requireEmailOtp,
-  ALLOWED_FRONTEND_ORIGINS: allowedOrigins.join(","),
   LIVEKIT_API_KEY: livekitApiKey,
   LIVEKIT_API_SECRET: livekitApiSecret,
   LIVEKIT_HOST: livekitHost,

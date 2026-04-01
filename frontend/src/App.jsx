@@ -176,6 +176,14 @@ export default function App() {
           <Route path="/books/:bookId" element={<BookDetail />} />
           <Route path="/albums/:albumId" element={<AlbumDetail />} />
           <Route
+            path="/payment/verify"
+            element={
+              <ProtectedRoute user={user}>
+                <PaymentCallbackPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/payments/callback"
             element={
               <ProtectedRoute user={user}>

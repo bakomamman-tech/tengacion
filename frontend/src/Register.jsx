@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { register as registerApi } from "./api";
+import { API_BASE, register as registerApi, uploadAvatar } from "./api";
 import { setSessionAccessToken } from "./authSession";
 import {
   isValidInternationalPhoneNumber,
@@ -17,7 +17,6 @@ import { motion, AnimatePresence } from "framer-motion";
  * - If you have VITE_API_URL set, it uses it
  * - Otherwise, fallback to your current domain
  */
-const API_BASE = import.meta.env.VITE_API_URL || "https://tengacion.onrender.com";
 
 /**
  * ✅ Helpers
@@ -243,7 +242,7 @@ export default function Register({ onBack }) {
 
         try {
           const res = await fetch(
-            `${API_BASE}/api/auth/check-username?username=${encodeURIComponent(val)}`
+            `${API_BASE}/auth/check-username?username=${encodeURIComponent(val)}`
           );
           const json = await res.json();
 
@@ -328,7 +327,7 @@ export default function Register({ onBack }) {
     setOtpLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/request-otp`, {
+      const res = await fetch(`${API_BASE}/auth/request-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: emailToSend }),
@@ -356,7 +355,7 @@ export default function Register({ onBack }) {
     setOtpLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
+      const res = await fetch(`${API_BASE}/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: otpSentTo, otp: otpCode }),
@@ -381,7 +380,7 @@ export default function Register({ onBack }) {
   /**
    * ✅ After signup success: photo upload
    * Endpoint expected:
-   * POST /api/users/upload-avatar
+   * POST /api/users/me/avatar
    * Header: Authorization Bearer token
    * Body: multipart/form-data with "avatar"
    */
@@ -401,27 +400,9 @@ export default function Register({ onBack }) {
     setPhotoLoading(true);
 
     try {
-      const fd = new FormData();
-      fd.append("avatar", photoFile);
-
-      const res = await fetch(`${API_BASE}/api/users/upload-avatar`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${createdToken}`,
-        },
-        body: fd,
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        setPhotoError(json?.message || "Upload failed.");
-        return;
-      }
-
-      // Update local storage user if returned
-      if (json?.user) {
-        localStorage.setItem("user", JSON.stringify(json.user));
+      const updatedUser = await uploadAvatar(photoFile);
+      if (updatedUser) {
+        localStorage.setItem("user", JSON.stringify(updatedUser));
       }
 
       // Done ✅

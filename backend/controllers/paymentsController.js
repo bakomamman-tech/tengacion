@@ -14,6 +14,7 @@ const {
   verifyWebhookSignature,
 } = require("../services/paymentProviders/paystack");
 const { logAnalyticsEvent } = require("../services/analyticsService");
+const { config } = require("../config/env");
 
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -128,7 +129,7 @@ exports.initializePayment = asyncHandler(async (req, res) => {
   const returnUrl = String(req.body?.returnUrl || "").trim();
   const callbackUrl = /^https?:\/\//i.test(returnUrl)
     ? returnUrl
-    : process.env.PAYSTACK_CALLBACK_URL || "";
+    : config.PAYSTACK_CALLBACK_URL || "";
 
   const purchase = await Purchase.create({
     userId,

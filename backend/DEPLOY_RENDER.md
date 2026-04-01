@@ -27,7 +27,11 @@ The server now runs a preflight check (`backend/scripts/preflight.js`) before co
 | `LIVEKIT_HOST` | Optional fallback if `LIVEKIT_WS_URL` is not set | 🟠 Warning if missing |
 | `LIVEKIT_API_KEY` | LiveKit server API key for token minting | 🟠 Warning if missing |
 | `LIVEKIT_API_SECRET` | LiveKit server API secret for token minting | 🟠 Warning if missing |
-| `FRONTEND_URL` | Optional, used for CORS/redirect hints | 🟠 Warning if missing |
+| `APP_URL` | Canonical public app URL used for links and email callbacks | 🟠 Warning if missing |
+| `CLIENT_URL` | Frontend origin used for redirects and shared links | 🟠 Warning if missing |
+| `CORS_ORIGIN` | Comma-separated CORS allowlist for production and localhost | 🟠 Warning if missing |
+| `PAYSTACK_CALLBACK_URL` | Canonical Paystack return URL | 🟠 Warning if missing |
+| `VITE_API_URL` | Frontend API base used during the Vite build | 🟠 Warning if missing |
 | `PAYSTACK_SECRET_KEY` | Paystack production secret key | 🟠 Warning if missing |
 | `STRIPE_SECRET_KEY` | Stripe secret key | 🟠 Warning if missing |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret | 🟠 Warning if missing |

@@ -1,5 +1,17 @@
 const normalizeValue = (value = "") => String(value || "").trim().toLowerCase();
 
+const getCanonicalOrigin = () => {
+  if (typeof window === "undefined") {
+    return "https://tengacion.com";
+  }
+
+  if (window.location?.hostname === "www.tengacion.com") {
+    return "https://tengacion.com";
+  }
+
+  return window.location.origin || "https://tengacion.com";
+};
+
 export const normalizePurchaseType = (value = "") => {
   const type = normalizeValue(value);
 
@@ -35,7 +47,7 @@ export const buildPaystackCallbackUrl = ({
     return "";
   }
 
-  const url = new URL("/payments/callback", window.location.origin);
+  const url = new URL("/payment/verify", getCanonicalOrigin());
   if (returnTo) {
     url.searchParams.set("returnTo", String(returnTo));
   }
@@ -58,7 +70,7 @@ export const safeReturnTo = (value = "/purchases") => {
     if (resolved.origin !== window.location.origin) {
       return "/purchases";
     }
-    if (resolved.pathname === "/payments/callback") {
+    if (resolved.pathname === "/payments/callback" || resolved.pathname === "/payment/verify") {
       return "/purchases";
     }
     return `${resolved.pathname}${resolved.search}${resolved.hash}` || "/purchases";

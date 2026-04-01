@@ -141,6 +141,10 @@ if (isProduction && !mediaSigningSecretInput) {
   missing.push("MEDIA_SIGNING_SECRET");
 }
 
+if (isProduction && !paystackSecretKey) {
+  missing.push("PAYSTACK_SECRET_KEY");
+}
+
 if (isProduction && allowedOrigins.length === 0) {
   missing.push("FRONTEND_ORIGINS or CLIENT_URL or FRONTEND_URL");
 }

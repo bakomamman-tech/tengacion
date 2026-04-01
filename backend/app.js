@@ -85,7 +85,11 @@ app.use(
   express.json({
     limit: requestBodyLimit,
     verify: (req, _res, buf) => {
-      if (req.originalUrl === "/api/payments/webhook/paystack") {
+      const normalizedUrl = String(req.originalUrl || "").split("?")[0];
+      if (
+        normalizedUrl === "/api/payments/webhook/paystack" ||
+        normalizedUrl === "/api/payments/paystack/webhook"
+      ) {
         req.rawBody = buf.toString("utf8");
       }
     },

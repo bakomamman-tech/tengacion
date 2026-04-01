@@ -158,4 +158,24 @@ describe("Posts feed", () => {
     expect(stored).toBeTruthy();
     expect(stored.video.url).toBe(videoPayload.video.url);
   });
+
+  test("GET /api/posts treats image posts with empty video subdocs as images", async () => {
+    await Post.create({
+      author: artist._id,
+      text: "Updated profile picture",
+      media: [{ url: "https://cdn.test/media/photo.jpg", type: "image" }],
+      privacy: "public",
+    });
+
+    const response = await request(app).get("/api/posts").expect(200);
+
+    expect(Array.isArray(response.body)).toBe(true);
+    expect(response.body).toHaveLength(1);
+    expect(response.body[0]).toMatchObject({
+      text: "Updated profile picture",
+      type: "image",
+      image: "https://cdn.test/media/photo.jpg",
+    });
+    expect(response.body[0].video).toBeNull();
+  });
 });

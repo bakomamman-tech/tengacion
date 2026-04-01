@@ -942,6 +942,8 @@ router.post(
           author: safeUser._id,
           text: "Updated profile picture",
           media: [{ url: uploaded.url, type: "image" }],
+          type: "image",
+          video: null,
           privacy: "public",
         });
       } catch (postErr) {
@@ -1016,6 +1018,8 @@ router.post(
           author: safeUser._id,
           text: "Updated cover photo",
           media: [{ url: uploaded.url, type: "image" }],
+          type: "image",
+          video: null,
           privacy: "public",
         });
       } catch (postErr) {

@@ -250,9 +250,6 @@ export default function PostCard({
       ? (firstMediaEntry.type || "").toLowerCase()
       : "";
   const legacyMediaUrl = post?.image || post?.photo || "";
-  const postVideoSource = resolveImage(
-    post.video?.playbackUrl || post.video?.url || mediaUrlCandidate || legacyMediaUrl
-  );
   const postMediaUrl = resolveImage(mediaUrlCandidate || legacyMediaUrl);
   const hasVideoExtension = /\.(mp4|webm|ogg|mov|m4v)(?:\?.*)?$/i.test(
     postMediaUrl || ""
@@ -263,8 +260,13 @@ export default function PostCard({
   const explicitVideo = mediaTypeCandidate === "video" || hasVideoExtension;
   const explicitImage = mediaTypeCandidate === "image" || hasImageExtension;
   const [forceVideoRender, setForceVideoRender] = useState(false);
-  const videoPayload = post.video || null;
+  const videoPayload = post.video && typeof post.video === "object" ? post.video : null;
   const hasVideoPayload = Boolean(videoPayload?.url || videoPayload?.playbackUrl);
+  const postVideoSource = hasVideoPayload
+    ? resolveImage(videoPayload.playbackUrl || videoPayload.url)
+    : explicitVideo
+      ? postMediaUrl
+      : "";
   const shouldRenderVideo = explicitVideo || hasVideoPayload || forceVideoRender;
   const shouldRenderImage = explicitImage || !explicitVideo;
   const videoPoster = resolveImage(videoPayload?.thumbnailUrl || "");
@@ -434,7 +436,7 @@ export default function PostCard({
     if (videoRef.current) {
       videoRef.current.pause();
     }
-  }, [post?._id, postMediaUrl, mediaTypeCandidate]);
+  }, [post?._id, postMediaUrl, mediaTypeCandidate, postVideoSource]);
 
   useEffect(() => {
     if (!isRecommendedPost || !articleRef.current) {
@@ -921,7 +923,11 @@ export default function PostCard({
                   src={postMediaUrl}
                   alt="post"
                   className="post-image"
-                  onError={() => setForceVideoRender(true)}
+                  onError={() => {
+                    if (explicitVideo || hasVideoPayload) {
+                      setForceVideoRender(true);
+                    }
+                  }}
                 />
               ) : null}
             </div>

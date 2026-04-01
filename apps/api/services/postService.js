@@ -417,8 +417,9 @@ const avatarToUrl = (avatar) => {
 const withPostAuthor = (query) => query.populate("author", "name username avatar");
 
 const getPostPreviewImage = (post = {}) => {
-  if (post?.video?.thumbnailUrl) {
-    return normalizeVideoUrl(post.video.thumbnailUrl);
+  const videoPayload = buildVideoMeta(post?.video);
+  if (videoPayload?.thumbnailUrl) {
+    return normalizeVideoUrl(videoPayload.thumbnailUrl);
   }
 
   const mediaList = Array.isArray(post?.media) ? post.media : [];
@@ -593,10 +594,11 @@ const buildSharedPostMeta = async (value) => {
   }
 
   const originalAuthor = originalPost.author || {};
+  const originalVideo = buildVideoMeta(originalPost?.video);
   const previewMediaType =
     originalPost.type === "reel"
       ? "reel"
-      : originalPost?.video?.playbackUrl || originalPost?.video?.url
+      : originalVideo
         ? "video"
         : Array.isArray(originalPost?.media) && originalPost.media.length > 0
           ? originalPost.media[0]?.type || "image"
@@ -621,8 +623,20 @@ const toPostPayload = (post, viewerId) => {
   const firstMedia = Array.isArray(post.media) && post.media.length > 0 ? post.media[0] : null;
   const likes = Array.isArray(post.likes) ? post.likes : [];
   const comments = Array.isArray(post.comments) ? post.comments : [];
-  const videoPayload = post.video || null;
-  const postType = post.type || (videoPayload ? "video" : "text");
+  const videoPayload = buildVideoMeta(post.video);
+  const firstMediaType = String(firstMedia?.type || "").toLowerCase();
+  const inferredType =
+    videoPayload
+      ? "video"
+      : firstMediaType === "video"
+        ? "video"
+        : firstMediaType === "image" || Boolean(firstMedia?.url)
+          ? "image"
+          : "text";
+  const postType =
+    post.type && post.type !== "text"
+      ? post.type
+      : inferredType;
   const taggedUsers = (Array.isArray(post.taggedUsers) ? post.taggedUsers : [])
     .map((entry) => {
       const userId = toIdString(entry?.userId || entry?.user || entry?._id);

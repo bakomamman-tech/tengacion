@@ -58,6 +58,7 @@ const {
   previewCleanup,
   runCleanup,
 } = require("../services/storageMaintenanceService");
+const { normalizeMediaValue } = require("../utils/userMedia");
 
 const router = express.Router();
 
@@ -106,6 +107,7 @@ const normalizeComplaintStatus = (value = "") => {
   const next = String(value || "").trim().toLowerCase();
   return ["open", "reviewing", "resolved", "dismissed"].includes(next) ? next : "";
 };
+const avatarToUrl = (avatar) => normalizeMediaValue(avatar).url;
 const mapComplaint = (entry = {}) => ({
   _id: toId(entry._id),
   subject: String(entry.subject || ""),
@@ -126,7 +128,7 @@ const mapComplaint = (entry = {}) => ({
         _id: toId(entry.reporterId._id || entry.reporterId),
         name: String(entry.reporterId.name || ""),
         username: String(entry.reporterId.username || ""),
-        avatar: entry.reporterId.avatar || "",
+        avatar: avatarToUrl(entry.reporterId.avatar),
       }
     : null,
   reviewedBy: entry.reviewedBy
@@ -1300,7 +1302,7 @@ router.get("/creators/:id", async (req, res) => {
             name: creator.userId.name || "",
             username: creator.userId.username || "",
             email: creator.userId.email || "",
-            avatar: creator.userId.avatar?.url || creator.userId.avatar || "",
+            avatar: avatarToUrl(creator.userId.avatar),
           }
         : null,
       stats: {

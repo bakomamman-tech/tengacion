@@ -3,11 +3,13 @@ const auth = require("../middleware/auth");
 const User = require("../models/User");
 const Post = require("../models/Post");
 const Room = require("../models/Room");
+const { normalizeMediaValue } = require("../utils/userMedia");
 
 const router = express.Router();
 
 const sanitizeQuery = (value = "") => String(value || "").trim().slice(0, 80);
 const normalizeAccountQuery = (value = "") => sanitizeQuery(value).replace(/^@+\s*/, "");
+const avatarToUrl = (avatar) => normalizeMediaValue(avatar).url;
 
 router.get("/", auth, async (req, res) => {
   try {
@@ -32,7 +34,13 @@ router.get("/", auth, async (req, res) => {
       )
         .limit(30)
         .lean();
-      return res.json({ type, data: users });
+      return res.json({
+        type,
+        data: users.map((user) => ({
+          ...user,
+          avatar: avatarToUrl(user.avatar),
+        })),
+      });
     }
 
     if (type === "posts") {
@@ -50,7 +58,19 @@ router.get("/", auth, async (req, res) => {
         .sort({ createdAt: -1 })
         .limit(30)
         .lean();
-      return res.json({ type, data: posts });
+      return res.json({
+        type,
+        data: posts.map((post) => ({
+          ...post,
+          author:
+            post?.author && typeof post.author === "object"
+              ? {
+                  ...post.author,
+                  avatar: avatarToUrl(post.author.avatar),
+                }
+              : post.author,
+        })),
+      });
     }
 
     if (type === "hashtags") {

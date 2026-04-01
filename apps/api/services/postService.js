@@ -4,6 +4,7 @@ const Post = require("../models/Post");
 const User = require("../../../backend/models/User");
 const { createNotification } = require("../../../backend/services/notificationService");
 const { saveUploadedMedia } = require("../../../backend/services/mediaStore");
+const { normalizeMediaValue } = require("../../../backend/utils/userMedia");
 const {
   moveToQuarantineStorage,
 } = require("../../../backend/services/storageQuarantineService");
@@ -410,9 +411,7 @@ const extractHashtags = (text = "") => {
 };
 
 const avatarToUrl = (avatar) => {
-  if (!avatar) return "";
-  if (typeof avatar === "string") return avatar;
-  return avatar.url || "";
+  return normalizeMediaValue(avatar).url;
 };
 
 const withPostAuthor = (query) => query.populate("author", "name username avatar");

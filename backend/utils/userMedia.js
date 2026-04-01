@@ -3,11 +3,18 @@ const DEFAULT_MEDIA = Object.freeze({
   public_id: "",
 });
 
+const LEGACY_TEMP_MEDIA_PREFIXES = ["/uploads/tmp_avatar_", "/uploads/tmp_cover_"];
+
 const toStringValue = (value) => {
   if (value == null) {
     return "";
   }
   return String(value).trim();
+};
+
+const isLegacyTempMediaUrl = (value = "") => {
+  const normalized = toStringValue(value).toLowerCase();
+  return LEGACY_TEMP_MEDIA_PREFIXES.some((prefix) => normalized.startsWith(prefix));
 };
 
 const normalizeMediaValue = (value) => {
@@ -16,15 +23,23 @@ const normalizeMediaValue = (value) => {
   }
 
   if (typeof value === "string") {
+    const url = toStringValue(value);
+    if (!url || isLegacyTempMediaUrl(url)) {
+      return { ...DEFAULT_MEDIA };
+    }
     return {
-      url: toStringValue(value),
+      url,
       public_id: "",
     };
   }
 
   if (typeof value === "object") {
+    const url = toStringValue(value.url);
+    if (!url || isLegacyTempMediaUrl(url)) {
+      return { ...DEFAULT_MEDIA };
+    }
     return {
-      url: toStringValue(value.url),
+      url,
       public_id: toStringValue(value.public_id),
     };
   }
@@ -48,6 +63,7 @@ const normalizeUserMediaDocument = (userDoc) => {
 
 module.exports = {
   DEFAULT_MEDIA,
+  isLegacyTempMediaUrl,
   normalizeMediaValue,
   mediaToUrl,
   normalizeUserMediaDocument,

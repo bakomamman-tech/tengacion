@@ -6,6 +6,7 @@ const upload = require("../middleware/privateUpload");
 const moderateUpload = require("../middleware/moderateUpload");
 const { saveUploadedFile } = require("../services/mediaStore");
 const { createNotification } = require("../services/notificationService");
+const { normalizeMediaValue } = require("../utils/userMedia");
 const {
   SessionAuthError,
   authenticateAccessToken,
@@ -15,9 +16,7 @@ const {
 const router = express.Router();
 
 const avatarToUrl = (avatar) => {
-  if (!avatar) return "";
-  if (typeof avatar === "string") return avatar;
-  return avatar.url || "";
+  return normalizeMediaValue(avatar).url;
 };
 
 const toIdString = (value) => {

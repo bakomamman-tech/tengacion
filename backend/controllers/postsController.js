@@ -2,6 +2,7 @@ const Post = require("../models/Post");
 const asyncHandler = require("../middleware/asyncHandler");
 const paginate = require("../utils/paginate");
 const { createNotification } = require("../services/notificationService");
+const { normalizeMediaValue } = require("../utils/userMedia");
 
 /* =====================================================
    📰 GET FEED (PUBLIC POSTS)
@@ -21,9 +22,20 @@ exports.getFeed = asyncHandler(async (req, res) => {
     Post.countDocuments(query),
   ]);
 
+  const normalizedPosts = posts.map((post) => ({
+    ...post,
+    author:
+      post?.author && typeof post.author === "object"
+        ? {
+            ...post.author,
+            avatar: normalizeMediaValue(post.author.avatar),
+          }
+        : post?.author,
+  }));
+
   res.json({
     success: true,
-    data: posts,
+    data: normalizedPosts,
     pagination: {
       page,
       limit,

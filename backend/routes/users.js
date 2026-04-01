@@ -5,7 +5,7 @@ const upload = require("../middleware/privateUpload");
 const Post = require("../models/Post");
 const auth = require("../middleware/auth");
 const moderateUpload = require("../middleware/moderateUpload");
-const { saveUploadedMedia } = require("../services/mediaStore");
+const { saveUploadedMediaToGridFs } = require("../services/mediaStore");
 const { createNotification } = require("../services/notificationService");
 const {
   normalizeMediaValue,
@@ -915,7 +915,9 @@ router.post(
         return res.status(400).json({ error: "Only image files are allowed" });
       }
 
-      const uploaded = await saveUploadedMedia(selectedFile);
+      const uploaded = await saveUploadedMediaToGridFs(selectedFile, {
+        source: "profile_avatar",
+      });
       const avatar = normalizeMediaValue(uploaded);
       const safeUser = await User.findByIdAndUpdate(
         req.user.id,
@@ -987,7 +989,9 @@ router.post(
         return res.status(400).json({ error: "Only image files are allowed" });
       }
 
-      const uploaded = await saveUploadedMedia(selectedFile);
+      const uploaded = await saveUploadedMediaToGridFs(selectedFile, {
+        source: "profile_cover",
+      });
       const cover = normalizeMediaValue(uploaded);
       const safeUser = await User.findByIdAndUpdate(
         req.user.id,

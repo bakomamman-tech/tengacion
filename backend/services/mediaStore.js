@@ -120,7 +120,7 @@ const saveUploadedMedia = async (file) => {
   }
 };
 
-const saveUploadedMediaToGridFs = async (file) => {
+const saveUploadedMediaToGridFs = async (file, options = {}) => {
   if (!file) {
     return {
       url: "",
@@ -128,6 +128,8 @@ const saveUploadedMediaToGridFs = async (file) => {
       resource_type: "raw",
     };
   }
+
+  const { source = "messenger", metadata: extraMetadata = {} } = options || {};
 
   const sourcePath = file.path || "";
   if (!sourcePath || !fs.existsSync(sourcePath)) {
@@ -149,8 +151,9 @@ const saveUploadedMediaToGridFs = async (file) => {
     contentType,
     metadata: {
       originalName: file.originalname || path.basename(sourcePath),
-      source: "messenger",
+      source,
       uploadedAt: new Date(),
+      ...extraMetadata,
     },
   });
 

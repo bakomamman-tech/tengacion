@@ -4,6 +4,7 @@ const {
   sanitizePlainObject,
   truncate,
 } = require("../config/storage");
+const { normalizeMediaValue } = require("./userMedia");
 
 const MESSAGE_TYPES = ["text", "contentCard", "voice"];
 const CONTENT_CARD_ITEM_TYPES = ["track", "book"];
@@ -23,13 +24,7 @@ const toIdString = (value) => {
 };
 
 const avatarToUrl = (avatar) => {
-  if (!avatar) {
-    return "";
-  }
-  if (typeof avatar === "string") {
-    return avatar;
-  }
-  return avatar.url || "";
+  return normalizeMediaValue(avatar).url;
 };
 
 const buildConversationId = (a, b) =>

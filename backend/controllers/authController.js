@@ -64,6 +64,11 @@ const setByPath = (target, path, value) => {
   cursor[keys[keys.length - 1]] = value;
 };
 
+const buildTransparentMediaFallback = (stamp) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="transparent"/><!--${stamp}--></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
+
 const buildFieldFallback = (field) => {
   const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -71,10 +76,10 @@ const buildFieldFallback = (field) => {
   if (field === "country") return `tmp_country_${stamp}`;
   if (field === "joined") return new Date(Date.now() + Math.floor(Math.random() * 1000));
   if (field === "dob") return new Date(Date.now() - Math.floor(Math.random() * 1000000000));
-  if (field === "avatar") return { public_id: "", url: `/uploads/tmp_avatar_${stamp}.png` };
-  if (field === "cover") return { public_id: "", url: `/uploads/tmp_cover_${stamp}.png` };
-  if (field === "avatar.url") return `/uploads/tmp_avatar_${stamp}.png`;
-  if (field === "cover.url") return `/uploads/tmp_cover_${stamp}.png`;
+  if (field === "avatar") return { public_id: "", url: buildTransparentMediaFallback(stamp) };
+  if (field === "cover") return { public_id: "", url: buildTransparentMediaFallback(stamp) };
+  if (field === "avatar.url") return buildTransparentMediaFallback(stamp);
+  if (field === "cover.url") return buildTransparentMediaFallback(stamp);
   if (field === "gender") return `unspecified_${stamp}`;
   if (field === "pronouns") return `n/a_${stamp}`;
 

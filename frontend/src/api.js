@@ -958,6 +958,11 @@ export const initPayment = ({ itemType, itemId, returnUrl }) =>
     body: JSON.stringify({ itemType, itemId, returnUrl }),
   });
 
+export const verifyPaystackPayment = (reference) =>
+  request(`${API_BASE}/payments/paystack/verify/${encodeURIComponent(reference || "")}`, {
+    headers: getAuthHeaders(),
+  });
+
 export const initiatePayment = ({ itemType, itemId, provider = "paystack", returnUrl = "" }) =>
   request(`${API_BASE}/payments/initiate`, {
     method: "POST",

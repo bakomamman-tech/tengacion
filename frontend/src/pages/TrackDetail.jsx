@@ -5,6 +5,11 @@ import { checkEntitlement, getTrack, getTrackStream, initPayment } from "../api"
 import PaywallModal from "../components/PaywallModal";
 import { useAuth } from "../context/AuthContext";
 import useEntitlementSocket from "../hooks/useEntitlementSocket";
+import {
+  buildPaystackCallbackUrl,
+  resolveOwnedPurchaseLabel,
+  resolvePurchaseCtaLabel,
+} from "../utils/purchaseUx";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -206,6 +211,15 @@ export default function TrackDetail() {
     }
   };
 
+  const openPlayer = () => {
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+    audio.scrollIntoView({ behavior: "smooth", block: "center" });
+    audio.play().catch(() => null);
+  };
+
   const buyNow = async () => {
     if (!track) {
       return;
@@ -220,7 +234,11 @@ export default function TrackDetail() {
     try {
       setPaying(true);
       setPayError("");
-      const returnUrl = `${window.location.origin}${location.pathname}`;
+      const returnUrl = buildPaystackCallbackUrl({
+        returnTo: `${location.pathname}${location.search}`,
+        itemType: "track",
+        itemId: track._id,
+      });
       const payment = await initPayment({
         itemType: "track",
         itemId: track._id,
@@ -304,14 +322,35 @@ export default function TrackDetail() {
           </div>
         </div>
 
-        {!stream?.allowedFullAccess ? (
-          <button
-            type="button"
-            className="mt-4 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-            onClick={() => setPaywallOpen(true)}
-          >
-            Buy to unlock
-          </button>
+        <div className="mt-4">
+          {!stream?.allowedFullAccess ? (
+            <>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-2xl border border-brand-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(231,244,234,0.92))] px-5 py-2.5 text-sm font-semibold text-brand-900 shadow-[0_14px_28px_rgba(18,44,30,0.08)] transition hover:-translate-y-0.5 hover:bg-white"
+                onClick={() => setPaywallOpen(true)}
+              >
+                {resolvePurchaseCtaLabel(track)}
+              </button>
+              <p className="mt-2 text-xs text-slate-500">
+                Pay securely with Paystack using card, USSD, or bank transfer.
+              </p>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-2xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(15,64,39,0.24)] transition hover:bg-brand-700"
+              onClick={openPlayer}
+            >
+              {resolveOwnedPurchaseLabel(track)}
+            </button>
+          )}
+        </div>
+
+        {payError ? (
+          <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            {payError}
+          </div>
         ) : null}
       </article>
 

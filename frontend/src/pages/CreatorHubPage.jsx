@@ -7,6 +7,7 @@ import {
   getDownloadUrl,
   getPublicCreatorProfile,
   getStreamUrl,
+  initPayment,
   resolveImage,
   toggleFollowCreator,
 } from "../api";
@@ -14,6 +15,12 @@ import CreatorHero from "../components/creator/media/CreatorHero";
 import CreatorContentShelf from "../components/creator/media/CreatorContentShelf";
 import { useAuth } from "../context/AuthContext";
 import useEntitlementSocket from "../hooks/useEntitlementSocket";
+import {
+  buildPaystackCallbackUrl,
+  normalizePurchaseType,
+  resolveOwnedPurchaseLabel,
+  resolvePurchaseCtaLabel,
+} from "../utils/purchaseUx";
 import "./creator-public.css";
 
 const PUBLIC_TABS = [
@@ -206,6 +213,8 @@ export default function CreatorHubPage() {
   const [payload, setPayload] = useState(null);
   const [activePreview, setActivePreview] = useState(null);
   const [followBusy, setFollowBusy] = useState(false);
+  const [buyingItemKey, setBuyingItemKey] = useState("");
+  const [purchaseError, setPurchaseError] = useState("");
 
   const activeTab = useMemo(() => resolveTab(location.pathname), [location.pathname]);
   const requestedPreviewId = useMemo(() => new URLSearchParams(location.search).get("previewItem") || "", [location.search]);
@@ -327,7 +336,33 @@ export default function CreatorHubPage() {
     if (!item?.id || !requireViewer()) {
       return;
     }
+
+    const itemType = normalizePurchaseType(item.itemType || item.productType || "");
+    const itemKey = `${itemType || "item"}:${item.id}`;
+    const returnUrl = buildPaystackCallbackUrl({
+      returnTo: `${location.pathname}${location.search}`,
+      itemType,
+      itemId: item.id,
+    });
+
     try {
+      setPurchaseError("");
+      setBuyingItemKey(itemKey);
+
+      if (["track", "book", "podcast"].includes(itemType)) {
+        const payment = await initPayment({
+          itemType,
+          itemId: item.id,
+          returnUrl,
+        });
+        if (!payment?.authorization_url) {
+          throw new Error("Payment link is missing");
+        }
+        toast.success("Secure checkout opened. We'll verify the payment before unlocking this content.");
+        window.location.assign(payment.authorization_url);
+        return;
+      }
+
       const checkout = await createCheckout({
         itemType: item.itemType,
         itemId: item.id,
@@ -340,7 +375,11 @@ export default function CreatorHubPage() {
         throw new Error("Checkout unavailable");
       }
     } catch (err) {
-      toast.error(err?.message || "Could not start checkout.");
+      const message = err?.message || "Could not start checkout.";
+      setPurchaseError(message);
+      toast.error(message);
+    } finally {
+      setBuyingItemKey("");
     }
   };
 
@@ -443,6 +482,10 @@ export default function CreatorHubPage() {
   };
 
   const featuredItem = featured?.item || null;
+  const featuredItemType = featuredItem
+    ? normalizePurchaseType(featuredItem.itemType || featuredItem.productType || "")
+    : "";
+  const featuredPurchaseKey = featuredItem ? `${featuredItemType || "item"}:${featuredItem.id}` : "";
 
   useEffect(() => {
     if (!requestedPreviewId) {
@@ -511,6 +554,7 @@ export default function CreatorHubPage() {
         onStream={handleStream}
         onDownload={handleDownload}
         onBuy={handleBuy}
+        purchaseBusyKey={buyingItemKey}
       />
       <CreatorContentShelf
         title="Albums & EPs"
@@ -522,6 +566,7 @@ export default function CreatorHubPage() {
         onStream={handleStream}
         onDownload={handleDownload}
         onBuy={handleBuy}
+        purchaseBusyKey={buyingItemKey}
       />
       <CreatorContentShelf
         title="Video Premieres"
@@ -533,6 +578,7 @@ export default function CreatorHubPage() {
         onStream={handleStream}
         onDownload={handleDownload}
         onBuy={handleBuy}
+        purchaseBusyKey={buyingItemKey}
       />
       <section className="creator-public-series">
         <div className="creator-public-series__copy">
@@ -555,6 +601,7 @@ export default function CreatorHubPage() {
         onStream={handleStream}
         onDownload={handleDownload}
         onBuy={handleBuy}
+        purchaseBusyKey={buyingItemKey}
       />
       <CreatorContentShelf
         title="Book Publishing"
@@ -566,6 +613,7 @@ export default function CreatorHubPage() {
         onStream={handleStream}
         onDownload={handleDownload}
         onBuy={handleBuy}
+        purchaseBusyKey={buyingItemKey}
       />
     </>
   );
@@ -584,6 +632,7 @@ export default function CreatorHubPage() {
             onStream={handleStream}
             onDownload={handleDownload}
             onBuy={handleBuy}
+            purchaseBusyKey={buyingItemKey}
           />
           <CreatorContentShelf
             title="Video releases"
@@ -595,6 +644,7 @@ export default function CreatorHubPage() {
             onStream={handleStream}
             onDownload={handleDownload}
             onBuy={handleBuy}
+            purchaseBusyKey={buyingItemKey}
           />
         </>
       );
@@ -602,17 +652,18 @@ export default function CreatorHubPage() {
 
     if (activeTab === "albums") {
       return (
-        <CreatorContentShelf
-          title="Albums & EPs"
-          subtitle="Full projects and collectible releases."
-          creatorId={creator.id}
-          items={music.albums}
-          emptyMessage="No albums or EPs published yet."
-          onPreview={handlePreview}
-          onStream={handleStream}
-          onDownload={handleDownload}
-          onBuy={handleBuy}
-        />
+          <CreatorContentShelf
+            title="Albums & EPs"
+            subtitle="Full projects and collectible releases."
+            creatorId={creator.id}
+            items={music.albums}
+            emptyMessage="No albums or EPs published yet."
+            onPreview={handlePreview}
+            onStream={handleStream}
+            onDownload={handleDownload}
+            onBuy={handleBuy}
+            purchaseBusyKey={buyingItemKey}
+          />
       );
     }
 
@@ -640,6 +691,7 @@ export default function CreatorHubPage() {
             onStream={handleStream}
             onDownload={handleDownload}
             onBuy={handleBuy}
+            purchaseBusyKey={buyingItemKey}
           />
         </>
       );
@@ -647,17 +699,18 @@ export default function CreatorHubPage() {
 
     if (activeTab === "books") {
       return (
-        <CreatorContentShelf
-          title="Published books"
-          subtitle="Books, manuscripts, and digital releases."
-          creatorId={creator.id}
-          items={books}
-          emptyMessage="No books published yet."
-          onPreview={handlePreview}
-          onStream={handleStream}
-          onDownload={handleDownload}
-          onBuy={handleBuy}
-        />
+          <CreatorContentShelf
+            title="Published books"
+            subtitle="Books, manuscripts, and digital releases."
+            creatorId={creator.id}
+            items={books}
+            emptyMessage="No books published yet."
+            onPreview={handlePreview}
+            onStream={handleStream}
+            onDownload={handleDownload}
+            onBuy={handleBuy}
+            purchaseBusyKey={buyingItemKey}
+          />
       );
     }
 
@@ -714,22 +767,32 @@ export default function CreatorHubPage() {
                     ) : null}
                     {featuredItem.canStream ? (
                       <button type="button" className="creator-primary-btn" onClick={() => handleStream(featuredItem)}>
-                        {featuredItem.mediaType === "document" ? "Read now" : "Stream now"}
+                        {resolveOwnedPurchaseLabel(featuredItem)}
                       </button>
                     ) : null}
                     {featuredItem.canDownload ? (
                       <button type="button" className="creator-ghost-btn" onClick={() => handleDownload(featuredItem)}>
-                        Download
+                        {featuredItemType === "album" ? "Download bundle" : resolveOwnedPurchaseLabel(featuredItem)}
                       </button>
                     ) : null}
                     {featuredItem.canBuy ? (
-                      <button type="button" className="creator-ghost-btn" onClick={() => handleBuy(featuredItem)}>
-                        Buy for {formatMoney(featuredItem.price)}
+                      <button
+                        type="button"
+                        className="creator-ghost-btn"
+                        onClick={() => handleBuy(featuredItem)}
+                        disabled={buyingItemKey === featuredPurchaseKey}
+                      >
+                        {resolvePurchaseCtaLabel(featuredItem, { busy: buyingItemKey === featuredPurchaseKey })}
                       </button>
                     ) : null}
                   </>
                 ) : null}
               </div>
+              {purchaseError ? (
+                <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-800">
+                  {purchaseError}
+                </div>
+              ) : null}
             </div>
 
             <div className="creator-public-preview">

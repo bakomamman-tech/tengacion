@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
@@ -12,6 +12,11 @@ import {
 import PaywallModal from "../components/PaywallModal";
 import { useAuth } from "../context/AuthContext";
 import useEntitlementSocket from "../hooks/useEntitlementSocket";
+import {
+  buildPaystackCallbackUrl,
+  resolveOwnedPurchaseLabel,
+  resolvePurchaseCtaLabel,
+} from "../utils/purchaseUx";
 
 export default function BookDetail() {
   const { bookId } = useParams();
@@ -29,6 +34,7 @@ export default function BookDetail() {
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
+  const readerRef = useRef(null);
 
   const isLoggedIn = Boolean(user?._id);
 
@@ -170,7 +176,11 @@ export default function BookDetail() {
     try {
       setPaying(true);
       setPayError("");
-      const returnUrl = `${window.location.origin}${location.pathname}`;
+      const returnUrl = buildPaystackCallbackUrl({
+        returnTo: `${location.pathname}${location.search}`,
+        itemType: "book",
+        itemId: book._id,
+      });
       const payment = await initPayment({
         itemType: "book",
         itemId: book._id,
@@ -185,6 +195,10 @@ export default function BookDetail() {
       setPayError(err.message || "Failed to start payment");
       setPaying(false);
     }
+  };
+
+  const openReader = () => {
+    readerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const selectedChapter = useMemo(
@@ -242,18 +256,39 @@ export default function BookDetail() {
             NGN {Number(book.price || 0).toLocaleString()}
           </p>
 
-          {!book.canReadFull ? (
-            <button
-              type="button"
-              className="mt-3 w-full rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-              onClick={() => setPaywallOpen(true)}
-            >
-              Buy to unlock full book
-            </button>
+          <div className="mt-3">
+            {!book.canReadFull ? (
+              <>
+                <button
+                  type="button"
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-brand-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(231,244,234,0.92))] px-4 py-2.5 text-sm font-semibold text-brand-900 shadow-[0_14px_28px_rgba(18,44,30,0.08)] transition hover:-translate-y-0.5 hover:bg-white"
+                  onClick={() => setPaywallOpen(true)}
+                >
+                  {resolvePurchaseCtaLabel(book)}
+                </button>
+                <p className="mt-2 text-xs text-slate-500">
+                  Pay securely with Paystack using card, USSD, or bank transfer.
+                </p>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-center rounded-2xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(15,64,39,0.24)] transition hover:bg-brand-700"
+                onClick={openReader}
+              >
+                {resolveOwnedPurchaseLabel(book)}
+              </button>
+            )}
+          </div>
+
+          {payError ? (
+            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+              {payError}
+            </div>
           ) : null}
         </aside>
 
-        <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <article ref={readerRef} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Chapters</h2>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {chapters.map((chapter) => (

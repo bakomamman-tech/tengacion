@@ -10,6 +10,7 @@ export default function CreatorContentShelf({
   onStream,
   onDownload,
   onBuy,
+  purchaseBusyKey = "",
 }) {
   return (
     <section className="creator-public-shelf">
@@ -31,6 +32,7 @@ export default function CreatorContentShelf({
               onStream={onStream}
               onDownload={onDownload}
               onBuy={onBuy}
+              purchaseBusyKey={purchaseBusyKey}
             />
           ))}
         </div>

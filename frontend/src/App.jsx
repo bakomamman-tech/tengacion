@@ -54,6 +54,8 @@ const ArtistProfileRoute = lazy(() => import("@web/features/creator/ArtistPage")
 const TrackDetail = lazy(() => import("./pages/TrackDetail"));
 const BookDetail = lazy(() => import("./pages/BookDetail"));
 const AlbumDetail = lazy(() => import("./pages/AlbumDetail"));
+const PaymentCallbackPage = lazy(() => import("./pages/payments/PaymentCallbackPage"));
+const MyPurchasesPage = lazy(() => import("./pages/purchases/MyPurchasesPage"));
 const Trending = lazy(() => import("./pages/Trending"));
 const Rooms = lazy(() => import("./pages/Rooms"));
 const LiveDirectory = lazy(() => import("./pages/LiveDirectory"));
@@ -173,6 +175,22 @@ export default function App() {
           <Route path="/tracks/:trackId" element={<TrackDetail />} />
           <Route path="/books/:bookId" element={<BookDetail />} />
           <Route path="/albums/:albumId" element={<AlbumDetail />} />
+          <Route
+            path="/payments/callback"
+            element={
+              <ProtectedRoute user={user}>
+                <PaymentCallbackPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/purchases"
+            element={
+              <ProtectedRoute user={user}>
+                <MyPurchasesPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/artist/:username"
             element={

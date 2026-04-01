@@ -495,45 +495,51 @@ export default function CreatorAudioPreviewPlayer({
           </div>
         </div>
 
-        {showSourceRow ? (
-          <div className="creator-audio-preview-player__modes" role="tablist" aria-label="Choose playback source">
-            {purchaseLocked ? (
-              <button
-                type="button"
-                className="creator-audio-preview-player__mode-btn creator-audio-preview-player__mode-btn--purchase"
-                onClick={handleBuyFullTrack}
-                disabled={checkoutBusy}
-              >
-                {checkoutBusy ? "Opening secure checkout..." : "Buy Full Track"}
-              </button>
-            ) : null}
-            {availableSources.map((entry) => {
-              const isActive = entry.key === activeSourceMode;
-              return (
-                <button
-                  key={entry.key}
-                  type="button"
-                  className={`creator-audio-preview-player__mode-btn${isActive ? " is-active" : ""}`}
-                  aria-pressed={isActive}
-                  onClick={() => setSourceMode(entry.key)}
-                >
-                  {entry.label}
-                </button>
-              );
-            })}
-            {canDownloadRelease ? (
-              <button
-                type="button"
-                className="creator-audio-preview-player__mode-btn creator-audio-preview-player__mode-btn--download"
-                onClick={handleDownloadRelease}
-                disabled={downloadBusy}
-              >
-                {downloadBusy ? "Preparing..." : "Download"}
-              </button>
-            ) : null}
+        {purchaseLocked ? (
+          <div className="creator-audio-preview-player__top-actions">
+            <button
+              type="button"
+              className="creator-audio-preview-player__mode-btn creator-audio-preview-player__mode-btn--purchase creator-audio-preview-player__buy-button"
+              onClick={handleBuyFullTrack}
+              disabled={checkoutBusy}
+            >
+              {checkoutBusy ? "Opening secure checkout..." : "Buy Full Track"}
+            </button>
+            <small className="creator-audio-preview-player__top-copy">
+              Unlock uninterrupted playback and downloads.
+            </small>
           </div>
         ) : null}
       </div>
+
+      {showSourceRow ? (
+        <div className="creator-audio-preview-player__modes" role="tablist" aria-label="Choose playback source">
+          {availableSources.map((entry) => {
+            const isActive = entry.key === activeSourceMode;
+            return (
+              <button
+                key={entry.key}
+                type="button"
+                className={`creator-audio-preview-player__mode-btn${isActive ? " is-active" : ""}`}
+                aria-pressed={isActive}
+                onClick={() => setSourceMode(entry.key)}
+              >
+                {entry.label}
+              </button>
+            );
+          })}
+          {canDownloadRelease ? (
+            <button
+              type="button"
+              className="creator-audio-preview-player__mode-btn creator-audio-preview-player__mode-btn--download"
+              onClick={handleDownloadRelease}
+              disabled={downloadBusy}
+            >
+              {downloadBusy ? "Preparing..." : "Download"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="creator-audio-preview-player__controls">
         <div className="creator-audio-preview-player__buttons">

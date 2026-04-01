@@ -122,6 +122,74 @@ describe("CreatorFanPagePreview", () => {
     ).toBeInTheDocument();
   }, 10000);
 
+  it("shows a buy full track button to public visitors", () => {
+    mockedUseAuth.mockReturnValue({
+      user: {
+        _id: "viewer-user-2",
+        id: "viewer-user-2",
+      },
+      loading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <CreatorFanPagePreview
+          creatorProfile={{
+            _id: "507f1f77bcf86cd799439011",
+            displayName: "Creator Example",
+            creatorTypes: ["music", "bookPublishing", "podcast"],
+            user: {
+              _id: "creator-user-1",
+              followersCount: 2048,
+            },
+          }}
+          dashboard={{
+            categories: {
+              music: { uploads: 3 },
+              bookPublishing: { uploads: 2 },
+              podcast: { uploads: 1 },
+            },
+            content: {
+              music: {
+                tracks: [
+                  {
+                    title: "Golden Echoes",
+                    artistName: "Creator Example",
+                    price: 500,
+                    audioUrl: "https://cdn.example.com/golden-echoes.mp3",
+                    previewUrl: "https://cdn.example.com/golden-echoes-preview.mp3",
+                    durationSec: 185,
+                    publishedStatus: "published",
+                  },
+                ],
+                videos: [
+                  {
+                    _id: "video-1",
+                    title: "Golden Echoes Live",
+                    description: "A cinematic live performance film.",
+                    coverImageUrl: "https://cdn.example.com/golden-echoes-live.jpg",
+                    videoUrl: "https://cdn.example.com/golden-echoes-live.mp4",
+                    previewClipUrl: "https://cdn.example.com/golden-echoes-live-preview.mp4",
+                    durationSec: 214,
+                    publishedStatus: "published",
+                  },
+                ],
+              },
+              books: {
+                items: [{ title: "The Quiet Fire", authorName: "Creator Example", price: 2500 }],
+              },
+              podcasts: {
+                episodes: [{ title: "The Process", podcastSeries: "Creator Sessions" }],
+              },
+            },
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("button", { name: /buy full track/i })).toBeInTheDocument();
+  }, 10000);
+
   it("opens a dedicated functional video player from the videos tab", async () => {
     const user = userEvent.setup();
 

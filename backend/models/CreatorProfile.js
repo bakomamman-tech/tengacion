@@ -16,6 +16,7 @@ const SocialHandlesSchema = new mongoose.Schema(
     linkedin: { type: String, default: "", trim: true, maxlength: 120 },
     x: { type: String, default: "", trim: true, maxlength: 120 },
     threads: { type: String, default: "", trim: true, maxlength: 120 },
+    spotify: { type: String, default: "", trim: true, maxlength: 120 },
     youtube: { type: String, default: "", trim: true, maxlength: 120 },
   },
   { _id: false }
@@ -99,14 +100,15 @@ const CreatorProfileSchema = new mongoose.Schema(
     socialHandles: {
       type: SocialHandlesSchema,
       default: () => ({
-        facebook: "",
-        instagram: "",
-        linkedin: "",
-        x: "",
-        threads: "",
-        youtube: "",
-      }),
-    },
+      facebook: "",
+      instagram: "",
+      linkedin: "",
+      x: "",
+      threads: "",
+      spotify: "",
+      youtube: "",
+    }),
+  },
     musicProfile: {
       type: MusicProfileSchema,
       default: () => ({

@@ -13,6 +13,7 @@ const socialHandleSchema = z.object({
   linkedin: z.string().optional(),
   x: z.string().optional(),
   threads: z.string().optional(),
+  spotify: z.string().optional(),
   youtube: z.string().optional(),
 });
 
@@ -71,6 +72,7 @@ const DEFAULT_VALUES = {
     linkedin: "",
     x: "",
     threads: "",
+    spotify: "",
     youtube: "",
   },
   musicProfile: {
@@ -298,6 +300,10 @@ export default function CreatorAccountSettingsForm({
           <label>
             <span>Threads</span>
             <input {...register("socialHandles.threads")} placeholder="threads handle or profile URL" />
+          </label>
+          <label>
+            <span>Spotify</span>
+            <input {...register("socialHandles.spotify")} placeholder="spotify artist or profile URL" />
           </label>
           <label>
             <span>YouTube</span>

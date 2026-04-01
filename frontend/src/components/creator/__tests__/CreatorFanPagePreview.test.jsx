@@ -24,6 +24,16 @@ describe("CreatorFanPagePreview", () => {
             _id: "507f1f77bcf86cd799439011",
             displayName: "Creator Example",
             creatorTypes: ["music", "bookPublishing", "podcast"],
+            links: [
+              {
+                label: "spotify",
+                url: "https://open.spotify.com/artist/creator-example",
+              },
+              {
+                label: "youtube",
+                url: "https://www.youtube.com/@creator-example",
+              },
+            ],
             user: {
               followersCount: 2048,
             },
@@ -77,6 +87,8 @@ describe("CreatorFanPagePreview", () => {
     expect(screen.getAllByRole("button", { name: /follow/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: /donate/i }).length).toBeGreaterThan(0);
     expect(screen.getByText(/unlock exclusive content/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /stream on spotify/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /stream on youtube/i })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /subscribe for .*2,000\/month/i })
     ).toBeInTheDocument();

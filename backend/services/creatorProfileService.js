@@ -41,6 +41,7 @@ const normalizeSocialHandles = (handles = {}) => ({
   linkedin: normalizeSocialHandleValue(handles?.linkedin),
   x: normalizeSocialHandleValue(handles?.x),
   threads: normalizeSocialHandleValue(handles?.threads),
+  spotify: normalizeSocialHandleValue(handles?.spotify),
   youtube: normalizeSocialHandleValue(handles?.youtube),
 });
 

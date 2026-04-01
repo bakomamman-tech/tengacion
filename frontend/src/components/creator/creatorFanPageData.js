@@ -76,6 +76,27 @@ const sortPreviewEntries = (entries = []) =>
 
 const resolveFallbackImage = (value = "") => resolveImage(value || "") || "";
 
+const normalizeExternalUrl = (value = "", fallbackPrefix = "") => {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return "";
+  }
+  if (/^https?:\/\//i.test(normalized) || /^spotify:/i.test(normalized)) {
+    return normalized;
+  }
+  if (/^(www\.|open\.spotify\.com|spotify\.com|youtube\.com|www\.youtube\.com|m\.youtube\.com|youtu\.be)/i.test(normalized)) {
+    return `https://${normalized}`;
+  }
+  return fallbackPrefix ? `${fallbackPrefix}${normalized}` : normalized;
+};
+
+const findLinkUrl = (links = [], label = "") =>
+  String(
+    (Array.isArray(links)
+      ? links.find((entry) => String(entry?.label || "").trim().toLowerCase() === String(label || "").trim().toLowerCase())
+      : null)?.url || ""
+  ).trim();
+
 export const formatCreatorFanPageFollowerCount = (value = 0) =>
   Number(value || 0).toLocaleString("en-US");
 
@@ -485,6 +506,18 @@ export function buildCreatorFanPageData({ creatorProfile, dashboard } = {}) {
     videos: buildPublicPath({ creatorProfileId, categoryKey: "music" }),
   };
 
+  const creatorLinks = Array.isArray(creatorProfile?.links) ? creatorProfile.links : [];
+  const spotifyUrl =
+    normalizeExternalUrl(
+      findLinkUrl(creatorLinks, "spotify") || creatorProfile?.socialHandles?.spotify,
+      "https://open.spotify.com/artist/"
+    ) || publicPaths.music;
+  const youtubeUrl =
+    normalizeExternalUrl(
+      findLinkUrl(creatorLinks, "youtube") || creatorProfile?.socialHandles?.youtube,
+      "https://www.youtube.com/@"
+    ) || publicPaths.videos;
+
   const fallbackMusic = buildFallbackItem({
     tabKey: "music",
     creatorName,
@@ -749,14 +782,16 @@ export function buildCreatorFanPageData({ creatorProfile, dashboard } = {}) {
     ],
     platforms: [
       {
-        label: "Open music page",
+        label: "Stream on Spotify",
         tone: "dark",
-        path: publicPaths.music || UPLOAD_PATHS.music,
+        path: spotifyUrl,
+        url: spotifyUrl,
       },
       {
-        label: "Open podcast page",
+        label: "Stream on Youtube",
         tone: "green",
-        path: publicPaths.podcasts || UPLOAD_PATHS.podcast,
+        path: youtubeUrl,
+        url: youtubeUrl,
       },
     ],
     supporterCopy:

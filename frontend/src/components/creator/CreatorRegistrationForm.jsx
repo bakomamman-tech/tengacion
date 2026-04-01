@@ -15,6 +15,7 @@ const socialHandleSchema = z.object({
   linkedin: z.string().optional(),
   x: z.string().optional(),
   threads: z.string().optional(),
+  spotify: z.string().optional(),
   youtube: z.string().optional(),
 });
 
@@ -52,6 +53,7 @@ const DEFAULT_VALUES = {
     linkedin: "",
     x: "",
     threads: "",
+    spotify: "",
     youtube: "",
   },
   creatorTypes: [],
@@ -315,8 +317,12 @@ export default function CreatorRegistrationForm({
                 <input {...register("socialHandles.threads")} placeholder="threads handle" />
               </label>
               <label>
+                <span>Spotify</span>
+                <input {...register("socialHandles.spotify")} placeholder="spotify artist or profile URL" />
+              </label>
+              <label>
                 <span>YouTube</span>
-                <input {...register("socialHandles.youtube")} placeholder="youtube handle" />
+                <input {...register("socialHandles.youtube")} placeholder="youtube handle or channel URL" />
               </label>
             </div>
           </section>

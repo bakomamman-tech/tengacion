@@ -20,6 +20,16 @@ describe("CreatorFanPageViewPage", () => {
       creatorProfile: {
         displayName: "Creator Example",
         creatorTypes: ["music", "bookPublishing", "podcast"],
+        links: [
+          {
+            label: "spotify",
+            url: "https://open.spotify.com/artist/creator-example",
+          },
+          {
+            label: "youtube",
+            url: "https://www.youtube.com/@creator-example",
+          },
+        ],
         user: {
           followersCount: 2048,
         },
@@ -59,6 +69,7 @@ describe("CreatorFanPageViewPage", () => {
       "/creator/dashboard"
     );
     expect(screen.getByText(/popular releases/i)).toBeInTheDocument();
-    expect(screen.getByText(/listen on youtube \/ spotify/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /stream on spotify/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /stream on youtube/i })).toBeInTheDocument();
   });
 });

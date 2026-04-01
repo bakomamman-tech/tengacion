@@ -32,8 +32,11 @@ const resolveSocialUrl = (value = "", fallbackPrefix = "") => {
   if (!normalized) {
     return "";
   }
-  if (/^https?:\/\//i.test(normalized)) {
+  if (/^https?:\/\//i.test(normalized) || /^spotify:/i.test(normalized)) {
     return normalized;
+  }
+  if (/^(www\.|open\.spotify\.com|spotify\.com|youtube\.com|www\.youtube\.com|m\.youtube\.com|youtu\.be)/i.test(normalized)) {
+    return `https://${normalized}`;
   }
   return `${fallbackPrefix}${normalized}`;
 };
@@ -52,8 +55,11 @@ const buildSocialLinks = (socialHandles = {}) => {
     handles.threads
       ? { label: "threads", url: resolveSocialUrl(handles.threads, "https://www.threads.net/@") }
       : null,
+    handles.spotify
+      ? { label: "spotify", url: resolveSocialUrl(handles.spotify, "https://open.spotify.com/artist/") }
+      : null,
     handles.youtube
-      ? { label: "youtube", url: resolveSocialUrl(handles.youtube, "https://youtube.com/@") }
+      ? { label: "youtube", url: resolveSocialUrl(handles.youtube, "https://www.youtube.com/@") }
       : null,
   ].filter(Boolean);
 };

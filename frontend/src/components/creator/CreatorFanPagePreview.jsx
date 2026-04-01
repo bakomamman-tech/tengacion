@@ -24,6 +24,8 @@ const getSectionActionLabel = (sectionKey = "") => {
   return "Stream all";
 };
 
+const isExternalUrl = (value = "") => /^(https?:\/\/|spotify:)/i.test(String(value || "").trim());
+
 function FanPageImage({
   src,
   alt,
@@ -81,6 +83,10 @@ export default function CreatorFanPagePreview({
 
   const openPath = (path = "", options = undefined) => {
     if (!path) {
+      return;
+    }
+    if (isExternalUrl(path)) {
+      window.open(path, "_blank", "noopener,noreferrer");
       return;
     }
     navigate(path, options);
@@ -415,7 +421,7 @@ export default function CreatorFanPagePreview({
         <div className="creator-fan-page__panel-head">
           <div>
             <span>Platforms</span>
-            <h3>Listen on YouTube / Spotify</h3>
+            <h3>Stream on Spotify / Youtube</h3>
           </div>
         </div>
         <div className="creator-fan-page__rail-actions">
@@ -424,7 +430,7 @@ export default function CreatorFanPagePreview({
               key={platform.label}
               type="button"
               className={`creator-fan-page__platform-button creator-fan-page__platform-button--${platform.tone}`}
-              onClick={() => openPath(platform.path)}
+              onClick={() => openPath(platform.url || platform.path)}
             >
               {platform.label}
             </button>

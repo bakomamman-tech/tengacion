@@ -317,7 +317,7 @@ export default function CreatorRegistrationForm({
                 <input {...register("socialHandles.threads")} placeholder="threads handle" />
               </label>
               <label>
-                <span>Spotify</span>
+                <span>Spotify Link</span>
                 <input {...register("socialHandles.spotify")} placeholder="spotify artist or profile URL" />
               </label>
               <label>

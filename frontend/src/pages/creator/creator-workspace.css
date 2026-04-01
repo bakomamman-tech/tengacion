@@ -78,6 +78,11 @@ textarea {
 
 .creator-register-shell {
   padding: 32px 24px 48px;
+  --creator-text: #1c140d;
+  --creator-muted: #4b3d30;
+  --creator-panel: rgba(255, 252, 247, 0.9);
+  --creator-panel-strong: rgba(255, 250, 243, 0.98);
+  --creator-border: rgba(95, 76, 33, 0.16);
 }
 
 .creator-register-hero {
@@ -1390,6 +1395,12 @@ textarea {
     radial-gradient(circle at top right, rgba(215, 170, 88, 0.16), transparent 34%),
     linear-gradient(180deg, rgba(255, 247, 233, 0.96), rgba(244, 233, 214, 0.9));
   color: var(--creator-text);
+}
+
+.creator-register-form input::placeholder,
+.creator-register-form textarea::placeholder {
+  color: rgba(75, 61, 48, 0.7);
+  opacity: 1;
 }
 
 .creator-fan-preview__support-card p {

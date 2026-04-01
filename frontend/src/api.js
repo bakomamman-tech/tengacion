@@ -1507,17 +1507,32 @@ export const getStories = () =>
     headers: getAuthHeaders(),
   });
 
-export const createStory = (formData) =>
+const appendStoryMusicAttachment = (formData, musicAttachment = null) => {
+  if (!formData || !musicAttachment) {
+    return formData;
+  }
+
+  try {
+    formData.append("musicAttachment", JSON.stringify(musicAttachment));
+  } catch {
+    // Ignore serialization failures and fall back to the regular upload payload.
+  }
+
+  return formData;
+};
+
+export const createStory = (formData, { musicAttachment = null } = {}) =>
   request(`${API_BASE}/stories`, {
     method: "POST",
     headers: getAuthHeaders(),
-    body: formData,
+    body: appendStoryMusicAttachment(formData, musicAttachment),
   });
 
 export const createStoryWithUploadProgress = ({
   file,
   caption = "",
   visibility = "friends",
+  musicAttachment = null,
   onProgress,
   timeoutMs = 180000,
 }) =>
@@ -1581,6 +1596,7 @@ export const createStoryWithUploadProgress = ({
       form.append("caption", String(caption));
     }
     form.append("visibility", String(visibility || "friends"));
+    appendStoryMusicAttachment(form, musicAttachment);
     xhr.send(form);
   });
 

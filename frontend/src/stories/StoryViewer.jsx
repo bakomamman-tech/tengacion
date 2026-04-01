@@ -42,9 +42,13 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
   const seenRef = useRef(new Set());
   const timerRef = useRef(null);
   const videoRef = useRef(null);
+  const soundtrackRef = useRef(null);
   const [replyText, setReplyText] = useState("");
   const [replyBusy, setReplyBusy] = useState(false);
   const [reactionBusy, setReactionBusy] = useState("");
+  const [soundtrackPlaying, setSoundtrackPlaying] = useState(false);
+  const [soundtrackProgress, setSoundtrackProgress] = useState(0);
+  const [soundtrackError, setSoundtrackError] = useState("");
 
   const quickReactions = [
     "\u2764\uFE0F",
@@ -57,6 +61,7 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
   const activeStory = orderedStories[index] || story;
   const mediaType = activeStory?.mediaType || "image";
   const mediaUrl = resolveImage(activeStory?.mediaUrl || activeStory?.image);
+  const soundtrack = activeStory?.musicAttachment || null;
   const avatarSrc = activeStory?.avatar
     ? resolveImage(activeStory.avatar)
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -136,6 +141,30 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
   }, [mediaType, index]);
 
   useEffect(() => {
+    const audio = soundtrackRef.current;
+    if (!audio) {
+      return undefined;
+    }
+
+    audio.pause();
+    setSoundtrackPlaying(false);
+    setSoundtrackProgress(0);
+    setSoundtrackError("");
+
+    if (!soundtrack?.previewUrl) {
+      audio.removeAttribute("src");
+      audio.load();
+      return undefined;
+    }
+
+    audio.src = soundtrack.previewUrl;
+    audio.load();
+    return () => {
+      audio.pause();
+    };
+  }, [activeStory?._id, soundtrack?.itemId, soundtrack?.previewUrl]);
+
+  useEffect(() => {
     const onKeyDown = (event) => {
       if (event.key === "Escape") {
         onClose?.();
@@ -184,9 +213,36 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
     }
   };
 
+  const handleSoundtrackToggle = async () => {
+    const audio = soundtrackRef.current;
+    if (!audio || !soundtrack?.previewUrl) {
+      return;
+    }
+
+    if (soundtrackPlaying) {
+      audio.pause();
+      setSoundtrackPlaying(false);
+      return;
+    }
+
+    try {
+      setSoundtrackProgress(0);
+      audio.currentTime = 0;
+      await audio.play();
+      setSoundtrackError("");
+      setSoundtrackPlaying(true);
+    } catch {
+      setSoundtrackPlaying(false);
+      setSoundtrackError("Preview blocked by your browser. Tap play again.");
+    }
+  };
+
   return (
     <div className="story-viewer-overlay" onClick={onClose}>
-      <div className="story-viewer" onClick={(event) => event.stopPropagation()}>
+      <div
+        className={`story-viewer${soundtrack?.previewUrl ? " story-viewer--with-soundtrack" : ""}`}
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="story-viewer-progress-row">
           {orderedStories.map((entry, idx) => {
             const fill = idx < index ? 1 : idx > index ? 0 : progress;
@@ -240,6 +296,52 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
             <div className="story-viewer-text-only">{activeStory?.text || "Story"}</div>
           )}
         </div>
+
+        {soundtrack?.previewUrl ? (
+          <div className="story-viewer-soundtrack">
+            <div className="story-viewer-soundtrack__head">
+              <img
+                src={resolveImage(soundtrack.coverImage) || soundtrack.coverImage || mediaUrl}
+                alt={soundtrack.title || "Soundtrack"}
+              />
+              <div className="story-viewer-soundtrack__copy">
+                <span>{soundtrack.summaryLabel || "Music"}</span>
+                <strong>{soundtrack.title || "Creator soundtrack"}</strong>
+                <small>
+                  {soundtrack.creatorName || "Tengacion creator"} - {soundtrack.previewLimitSec || 30}
+                  s preview
+                </small>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleSoundtrackToggle}
+                className="story-viewer-soundtrack__control"
+              >
+                {soundtrackPlaying ? "Pause" : "Play"}
+              </Button>
+            </div>
+            <div className="story-viewer-soundtrack__progress">
+              <span style={{ "--music-progress": `${Math.round(soundtrackProgress * 100)}%` }} />
+            </div>
+            {soundtrackError ? <p className="story-viewer-soundtrack__error">{soundtrackError}</p> : null}
+            <audio
+              ref={soundtrackRef}
+              hidden
+              onEnded={() => {
+                setSoundtrackPlaying(false);
+                setSoundtrackProgress(1);
+              }}
+              onPause={() => setSoundtrackPlaying(false)}
+              onPlay={() => setSoundtrackPlaying(true)}
+              onTimeUpdate={(event) => {
+                const duration = event.currentTarget.duration || 0;
+                const now = event.currentTarget.currentTime || 0;
+                setSoundtrackProgress(duration > 0 ? Math.min(1, now / duration) : 0);
+              }}
+            />
+          </div>
+        ) : null}
 
         {activeStory?.text && mediaUrl && (
           <p className="story-viewer-text-caption">{activeStory.text}</p>

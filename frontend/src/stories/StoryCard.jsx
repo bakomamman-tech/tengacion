@@ -12,6 +12,7 @@ export default function StoryCard({
   const [open, setOpen] = useState(false);
   const cover = resolveImage(story?.thumbnailUrl || story?.mediaUrl || story?.image);
   const mediaType = story?.mediaType || (String(story?.mediaUrl || "").includes(".mp4") ? "video" : "image");
+  const soundtrack = story?.musicAttachment || null;
 
   const avatarSrc = story?.avatar
     ? resolveImage(story.avatar)
@@ -53,6 +54,12 @@ export default function StoryCard({
         {hasUnseen && !isOwner && (
           <span className="story-updated-pill">Updated</span>
         )}
+
+        {soundtrack?.previewUrl ? (
+          <span className="story-card__music">
+            {soundtrack.title || soundtrack.creatorName || soundtrack.summaryLabel || "Music"}
+          </span>
+        ) : null}
 
         {story?.visibility === "close_friends" && (
           <span className="story-privacy-pill">🔒 Close Friends</span>

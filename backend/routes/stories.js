@@ -6,6 +6,10 @@ const upload = require("../middleware/privateUpload");
 const moderateUpload = require("../middleware/moderateUpload");
 const { saveUploadedFile } = require("../services/mediaStore");
 const { createNotification } = require("../services/notificationService");
+const {
+  hydrateStoryMusicAttachment,
+  resolveStoryMusicSelection,
+} = require("../services/storyMusicService");
 const { normalizeMediaValue } = require("../utils/userMedia");
 const {
   SessionAuthError,
@@ -58,7 +62,7 @@ const inferStoryMediaType = (file = null) => {
   return "image";
 };
 
-const loadVisibleStories = async (viewerId) => {
+const loadVisibleStories = async (viewerId, req = null) => {
   const user = await User.findById(viewerId).lean();
   if (!user) {
     return null;
@@ -96,6 +100,10 @@ const loadVisibleStories = async (viewerId) => {
         mediaUrl,
         mediaType,
         thumbnailUrl: story.thumbnailUrl || (mediaType === "image" ? mediaUrl : ""),
+        musicAttachment: hydrateStoryMusicAttachment(story.musicAttachment, {
+          req,
+          viewerId: viewerIdString,
+        }),
         createdAt: story.time || story.createdAt,
         seenBy,
         viewerSeen: seenBy.includes(viewerIdString),
@@ -115,55 +123,70 @@ router.post(
     descriptionFields: ["caption", "text"],
   }),
   async (req, res) => {
-  try {
-    const user = await User.findById(req.userId);
-    if (!user) return res.status(404).json({ error: "User not found" });
-    const files = Array.isArray(req.files) ? req.files : [];
-    const mediaFile = files.find((entry) =>
-      ["media", "image", "video"].includes(String(entry?.fieldname || "").toLowerCase())
-    ) || files[0];
-    const storyMediaUrl = mediaFile ? await saveUploadedFile(mediaFile) : "";
-    const mediaType = inferStoryMediaType(mediaFile);
-    const caption = String(req.body?.caption || req.body?.text || "").trim();
+    try {
+      const user = await User.findById(req.userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
 
-    const visibility = String(req.body?.visibility || "friends").toLowerCase();
-    const normalizedVisibility = ["public", "friends", "close_friends"].includes(visibility)
-      ? visibility
-      : "friends";
+      const files = Array.isArray(req.files) ? req.files : [];
+      const mediaFile =
+        files.find((entry) =>
+          ["media", "image", "video"].includes(String(entry?.fieldname || "").toLowerCase())
+        ) || files[0];
+      const storyMediaUrl = mediaFile ? await saveUploadedFile(mediaFile) : "";
+      const mediaType = inferStoryMediaType(mediaFile);
+      const caption = String(req.body?.caption || req.body?.text || "").trim();
+      const rawMusicAttachment = req.body?.musicAttachment;
+      const musicAttachment = await resolveStoryMusicSelection(rawMusicAttachment);
+      if (String(rawMusicAttachment || "").trim() && !musicAttachment) {
+        return res.status(400).json({ error: "Selected soundtrack is unavailable" });
+      }
 
-    const story = await Story.create({
-      userId: user._id.toString(),
-      authorId: user._id,
-      name: user.name,
-      username: user.username,
-      avatar: avatarToUrl(user.avatar),
-      text: caption,
-      visibility: normalizedVisibility,
-      media: {
-        url: storyMediaUrl,
-        public_id: "",
-        type: mediaType,
-      },
-      image: storyMediaUrl,
-      mediaUrl: storyMediaUrl,
-      mediaType,
-      thumbnailUrl: mediaType === "image" ? storyMediaUrl : "",
-      time: new Date(),
-      seenBy: [],
-    });
+      const visibility = String(req.body?.visibility || "friends").toLowerCase();
+      const normalizedVisibility = ["public", "friends", "close_friends"].includes(visibility)
+        ? visibility
+        : "friends";
 
-    res.json(story);
-  } catch (err) {
-    console.error("Story create error:", err);
-    res.status(500).json({ error: "Failed to create story" });
+      const story = await Story.create({
+        userId: user._id.toString(),
+        authorId: user._id,
+        name: user.name,
+        username: user.username,
+        avatar: avatarToUrl(user.avatar),
+        text: caption,
+        visibility: normalizedVisibility,
+        media: {
+          url: storyMediaUrl,
+          public_id: "",
+          type: mediaType,
+        },
+        image: storyMediaUrl,
+        mediaUrl: storyMediaUrl,
+        mediaType,
+        thumbnailUrl: mediaType === "image" ? storyMediaUrl : "",
+        musicAttachment,
+        time: new Date(),
+        seenBy: [],
+      });
+
+      return res.json({
+        ...story.toObject(),
+        musicAttachment: hydrateStoryMusicAttachment(story.musicAttachment, {
+          req,
+          viewerId: req.userId,
+        }),
+      });
+    } catch (err) {
+      console.error("Story create error:", err);
+      res.status(500).json({ error: "Failed to create story" });
+    }
   }
-});
+);
 
 /* ================= GET STORIES (ME + FRIENDS) ================= */
 
 router.get("/", auth, async (req, res) => {
   try {
-    const payload = await loadVisibleStories(req.userId);
+    const payload = await loadVisibleStories(req.userId, req);
     if (!payload) return res.status(404).json({ error: "User not found" });
     res.json(payload);
   } catch (err) {
@@ -199,7 +222,7 @@ router.post("/:id/seen", auth, async (req, res) => {
 /* ================= STORIES FEED ALIAS ================= */
 router.get("/feed", auth, async (req, res) => {
   try {
-    const payload = await loadVisibleStories(req.userId);
+    const payload = await loadVisibleStories(req.userId, req);
     if (!payload) return res.status(404).json({ error: "User not found" });
     return res.json(payload);
   } catch (err) {

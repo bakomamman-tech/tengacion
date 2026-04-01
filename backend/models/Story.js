@@ -1,5 +1,31 @@
 const mongoose = require("mongoose");
 
+const StoryMusicAttachmentSchema = new mongoose.Schema(
+  {
+    itemType: {
+      type: String,
+      enum: ["track", "album"],
+      default: "",
+      trim: true,
+    },
+    itemId: { type: String, default: "", trim: true },
+    creatorId: { type: String, default: "", trim: true },
+    creatorUserId: { type: String, default: "", trim: true },
+    creatorName: { type: String, default: "", trim: true },
+    creatorUsername: { type: String, default: "", trim: true },
+    creatorAvatar: { type: String, default: "", trim: true },
+    title: { type: String, default: "", trim: true },
+    coverImage: { type: String, default: "", trim: true },
+    sourceUrl: { type: String, default: "", trim: true },
+    previewStartSec: { type: Number, default: 0, min: 0 },
+    previewLimitSec: { type: Number, default: 30, min: 1 },
+    durationSec: { type: Number, default: 0, min: 0 },
+    releaseType: { type: String, default: "music", trim: true },
+    summaryLabel: { type: String, default: "Music", trim: true },
+  },
+  { _id: false }
+);
+
 const StorySchema = new mongoose.Schema({
   userId: String,
   authorId: {
@@ -28,6 +54,10 @@ const StorySchema = new mongoose.Schema({
     default: "image",
   },
   thumbnailUrl: String,
+  musicAttachment: {
+    type: StoryMusicAttachmentSchema,
+    default: null,
+  },
   text: String,
   visibility: {
     type: String,

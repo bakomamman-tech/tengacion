@@ -1,5 +1,34 @@
 import ShareActions from "./ShareActions";
 
+const normalizeExternalUrl = (value = "") => {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return "";
+  }
+  if (/^https?:\/\//i.test(normalized)) {
+    return normalized;
+  }
+  if (
+    /^(www\.|open\.spotify\.com|spotify\.com|youtube\.com|www\.youtube\.com|m\.youtube\.com|youtu\.be)/i.test(
+      normalized
+    )
+  ) {
+    return `https://${normalized}`;
+  }
+  return normalized;
+};
+
+const resolveLinkUrl = (links = [], label = "") =>
+  normalizeExternalUrl(
+    String(
+      (Array.isArray(links)
+        ? links.find((entry) =>
+            String(entry?.label || "").trim().toLowerCase().includes(String(label || "").trim().toLowerCase())
+          )
+        : null)?.url || ""
+    ).trim()
+  );
+
 export default function CreatorHero({
   creator,
   stats,
@@ -13,6 +42,20 @@ export default function CreatorHero({
   if (!creator) {
     return null;
   }
+
+  const creatorLinks = Array.isArray(creator.links) ? creator.links : [];
+  const streamLinks = [
+    {
+      label: "Stream on Spotify",
+      tone: "spotify",
+      href: resolveLinkUrl(creatorLinks, "spotify"),
+    },
+    {
+      label: "Stream on Youtube",
+      tone: "youtube",
+      href: resolveLinkUrl(creatorLinks, "youtube"),
+    },
+  ].filter((entry) => Boolean(entry.href));
 
   return (
     <section
@@ -39,27 +82,45 @@ export default function CreatorHero({
           </div>
         </div>
 
-        <div className="creator-public-hero__actions">
-          {isOwner ? (
-            <button type="button" className="creator-primary-btn" onClick={onOpenStudio}>
-              Open Creator Studio
-            </button>
-          ) : (
-            <>
-              <button type="button" className="creator-primary-btn" onClick={onFollow}>
-                {isFollowing ? "Following" : "Follow creator"}
+        <div className="creator-public-hero__action-stack">
+          <div className="creator-public-hero__actions">
+            {isOwner ? (
+              <button type="button" className="creator-primary-btn" onClick={onOpenStudio}>
+                Open Creator Studio
               </button>
-              <button type="button" className="creator-secondary-btn" onClick={onSubscribe}>
-                {subscriptionLabel}
-              </button>
-            </>
-          )}
-          <ShareActions
-            className="creator-secondary-btn"
-            title={creator.displayName}
-            text="Visit this Tengacion creator page."
-            url={`${window.location.origin}/creators/${creator.id}`}
-          />
+            ) : (
+              <>
+                <button type="button" className="creator-primary-btn" onClick={onFollow}>
+                  {isFollowing ? "Following" : "Follow creator"}
+                </button>
+                <button type="button" className="creator-secondary-btn" onClick={onSubscribe}>
+                  {subscriptionLabel}
+                </button>
+              </>
+            )}
+            <ShareActions
+              className="creator-secondary-btn"
+              title={creator.displayName}
+              text="Visit this Tengacion creator page."
+              url={`${window.location.origin}/creators/${creator.id}`}
+            />
+          </div>
+
+          {streamLinks.length ? (
+            <div className="creator-public-hero__stream-links" aria-label="Streaming links">
+              {streamLinks.map((entry) => (
+                <a
+                  key={entry.label}
+                  className={`creator-public-hero__stream-link creator-public-hero__stream-link--${entry.tone}`}
+                  href={entry.href}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {entry.label}
+                </a>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

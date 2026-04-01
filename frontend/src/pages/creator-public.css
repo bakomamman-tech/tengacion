@@ -252,6 +252,65 @@
   flex-wrap: wrap;
 }
 
+.creator-public-hero__action-stack {
+  display: grid;
+  gap: 14px;
+  justify-items: end;
+  width: 100%;
+  max-width: 420px;
+}
+
+.creator-public-hero__stream-links {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.creator-public-hero__stream-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  font-weight: 700;
+  backdrop-filter: blur(18px) saturate(128%);
+  -webkit-backdrop-filter: blur(18px) saturate(128%);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
+}
+
+.creator-public-hero__stream-link:hover {
+  transform: translateY(-1px);
+}
+
+.creator-public-hero__stream-link--spotify {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05)),
+    linear-gradient(180deg, rgba(34, 111, 69, 0.96), rgba(20, 66, 42, 0.92));
+  border-color: rgba(120, 194, 137, 0.32);
+  color: #effaf2;
+  box-shadow:
+    0 14px 28px rgba(12, 38, 24, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.creator-public-hero__stream-link--youtube {
+  background:
+    linear-gradient(180deg, rgba(242, 250, 244, 0.92), rgba(223, 239, 228, 0.72));
+  border-color: rgba(78, 138, 101, 0.2);
+  color: #1d3929;
+  box-shadow:
+    0 12px 24px rgba(18, 44, 30, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
 .creator-public-tabs {
   display: flex;
   gap: 10px;
@@ -642,6 +701,15 @@
 
   .creator-public-hero__identity {
     grid-template-columns: 1fr;
+  }
+
+  .creator-public-hero__action-stack {
+    justify-items: start;
+    max-width: 100%;
+  }
+
+  .creator-public-hero__stream-links {
+    justify-content: flex-start;
   }
 
   .creator-public-shelf__grid {

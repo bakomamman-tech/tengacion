@@ -124,6 +124,19 @@
   font-weight: 700;
 }
 
+.creator-audio-preview-player__mode-btn--purchase {
+  background: linear-gradient(135deg, #e0b255, #b57d22);
+  border-color: transparent;
+  color: #261d10;
+  font-weight: 700;
+}
+
+.creator-audio-preview-player__mode-btn--download {
+  background: rgba(255, 247, 233, 0.12);
+  border-color: rgba(255, 247, 233, 0.12);
+  color: #f7eedb;
+}
+
 .creator-audio-preview-player__mode-btn,
 .creator-audio-preview-player__control-btn {
   cursor: pointer;
@@ -188,6 +201,13 @@
 .creator-audio-preview-player__meta small {
   width: 100%;
   color: rgba(247, 238, 219, 0.78);
+}
+
+.creator-audio-preview-player__error {
+  display: block;
+  margin-top: 8px;
+  color: #ffd6d6;
+  font-size: 0.82rem;
 }
 
 .creator-audio-preview-player__media {

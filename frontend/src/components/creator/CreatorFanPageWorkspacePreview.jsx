@@ -333,6 +333,9 @@ export default function CreatorFanPageWorkspacePreview({
         <CreatorAudioPreviewPlayer
           item={currentItem}
           creatorName={data.creatorName}
+          creatorUserId={
+            data.creatorUserId || creatorProfile?.user?._id || creatorProfile?.user?.id || ""
+          }
           queueLength={queue.length}
           queueIndex={activeIndex}
           onPrevious={() => movePlayer(-1)}

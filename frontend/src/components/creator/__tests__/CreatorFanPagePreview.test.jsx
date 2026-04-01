@@ -6,10 +6,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import CreatorFanPagePreview from "../CreatorFanPagePreview";
 
+const mockedUseAuth = vi.hoisted(() => vi.fn());
+
+vi.mock("../../../context/AuthContext", () => ({
+  useAuth: mockedUseAuth,
+}));
+
 describe("CreatorFanPagePreview", () => {
   beforeEach(() => {
     vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    mockedUseAuth.mockReturnValue({
+      user: {
+        _id: "creator-user-1",
+        id: "creator-user-1",
+      },
+      loading: false,
+    });
   });
 
   afterEach(() => {
@@ -24,6 +37,10 @@ describe("CreatorFanPagePreview", () => {
             _id: "507f1f77bcf86cd799439011",
             displayName: "Creator Example",
             creatorTypes: ["music", "bookPublishing", "podcast"],
+            user: {
+              _id: "creator-user-1",
+              followersCount: 2048,
+            },
             links: [
               {
                 label: "spotify",
@@ -34,9 +51,6 @@ describe("CreatorFanPagePreview", () => {
                 url: "https://www.youtube.com/@creator-example",
               },
             ],
-            user: {
-              followersCount: 2048,
-            },
           }}
           dashboard={{
             categories: {
@@ -100,6 +114,10 @@ describe("CreatorFanPagePreview", () => {
       screen.getByRole("button", { name: /play golden echoes/i })
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("button", { name: /full track/i })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /buy full track/i })).not.toBeInTheDocument();
+    expect(
       screen.getByRole("slider", { name: /seek within golden echoes/i })
     ).toBeInTheDocument();
   }, 10000);
@@ -115,6 +133,7 @@ describe("CreatorFanPagePreview", () => {
             displayName: "Creator Example",
             creatorTypes: ["music", "bookPublishing", "podcast"],
             user: {
+              _id: "creator-user-1",
               followersCount: 2048,
             },
           }}

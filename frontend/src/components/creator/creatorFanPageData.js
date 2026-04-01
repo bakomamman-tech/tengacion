@@ -682,6 +682,7 @@ export function buildCreatorFanPageData({ creatorProfile, dashboard } = {}) {
 
   return {
     creatorId: creatorProfileId,
+    creatorUserId: String(creatorProfile?.user?._id || creatorProfile?.user?.id || "").trim(),
     creatorName,
     avatarUrl,
     heroUrl,

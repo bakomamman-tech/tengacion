@@ -52,6 +52,10 @@ export default function PaymentCallbackPage() {
       clearRetry();
       window.setTimeout(() => {
         if (!cancelled) {
+          if (typeof window !== "undefined" && window.location) {
+            window.location.replace(returnTo);
+            return;
+          }
           navigate(returnTo, { replace: true });
         }
       }, 1200);

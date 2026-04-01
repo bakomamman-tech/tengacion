@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-
+import { checkEntitlement, getDownloadUrl, initPayment } from "../../api";
+import { useAuth } from "../../context/AuthContext";
+import {
+  buildPaystackCallbackUrl,
+  normalizePurchaseType,
+} from "../../utils/purchaseUx";
 import { formatCurrency } from "./creatorConfig";
 import "./CreatorAudioPreviewPlayer.css";
 
@@ -46,6 +51,7 @@ const getEmptyStateCopy = (itemType = "") => {
 export default function CreatorAudioPreviewPlayer({
   item,
   creatorName = "Creator",
+  creatorUserId = "",
   queueLength = 0,
   queueIndex = 0,
   onPrevious,
@@ -54,26 +60,71 @@ export default function CreatorAudioPreviewPlayer({
   autoplayRequest = 0,
   variant = "workspace",
   initialSourceMode = "full",
+  onBuyFullTrack,
+  onDownload,
 }) {
   const audioRef = useRef(null);
   const lastAutoplayRequestRef = useRef(autoplayRequest);
+  const auth = useAuth();
+  const user = auth?.user;
+  const currentUserId = String(user?._id || user?.id || "").trim();
+  const resolvedCreatorUserId = String(
+    creatorUserId || item?.creatorUserId || item?.creator?.user?._id || item?.creator?.user?.id || ""
+  ).trim();
+  const isCreatorOwner = Boolean(
+    resolvedCreatorUserId && currentUserId && resolvedCreatorUserId === currentUserId
+  );
+  const lastAccessRef = useRef(
+    Boolean(
+      isCreatorOwner ||
+        item?.canAccessFull ||
+        item?.canPlayFull ||
+        item?.downloadUrl ||
+        item?.canDownload
+    )
+  );
+  const isLoggedIn = Boolean(user?._id || user?.id);
 
   const [sourceMode, setSourceMode] = useState(initialSourceMode);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackError, setPlaybackError] = useState("");
+  const [purchaseError, setPurchaseError] = useState("");
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [downloadBusy, setDownloadBusy] = useState(false);
+  const [hasFullAccess, setHasFullAccess] = useState(
+    Boolean(
+      isCreatorOwner ||
+        item?.canAccessFull ||
+        item?.canPlayFull ||
+        item?.downloadUrl ||
+        item?.canDownload
+    )
+  );
 
   const itemId = String(item?.id || item?._id || item?.title || "");
+  const purchaseId = String(item?.id || item?._id || "").trim();
   const itemType = String(item?.itemType || "").trim().toLowerCase();
+  const purchaseItemType = normalizePurchaseType(
+    item?.purchaseItemType || item?.itemType || item?.productType || item?.mediaType
+  );
+  const isPublicVariant = variant === "public";
   const canPlayAudio =
     Boolean(item?.isPlayableAudio) && AUDIO_PLAYER_ITEM_TYPES.has(itemType);
 
   const fullSource = canPlayAudio ? String(item?.audioUrl || "") : "";
   const previewSource = canPlayAudio ? String(item?.previewAudioUrl || "") : "";
+  const purchaseLocked =
+    isPublicVariant
+    && canPlayAudio
+    && Boolean(fullSource)
+    && Number(item?.price || 0) > 0
+    && !(hasFullAccess || isCreatorOwner);
+  const canDownloadRelease = isPublicVariant && canPlayAudio && (hasFullAccess || isCreatorOwner);
   const availableSources = [];
 
-  if (fullSource) {
+  if (fullSource && (!purchaseLocked || !isPublicVariant)) {
     availableSources.push({
       key: "full",
       label: "Full Track",
@@ -91,7 +142,6 @@ export default function CreatorAudioPreviewPlayer({
     });
   }
 
-  const hasMultipleSources = availableSources.length > 1;
   const activeSourceMode = availableSources.some((entry) => entry.key === sourceMode)
     ? sourceMode
     : availableSources[0]?.key || "";
@@ -130,11 +180,83 @@ export default function CreatorAudioPreviewPlayer({
     (Number(item?.price || 0) > 0 ? formatCurrency(item.price) : "Free release");
   const helperText =
     playbackError ||
+    purchaseError ||
     (canPlayAudio
-      ? previewWindowEnabled
-        ? "Preview sample starts at the selected chorus and stops after 30 seconds."
+      ? purchaseLocked
+        ? "Buy the full track to unlock uninterrupted playback and downloads."
+        : previewWindowEnabled
+          ? "Preview sample starts at the selected chorus and stops after 30 seconds."
         : activeSourceLabel || "Release preview ready"
       : getEmptyStateCopy(itemType));
+
+  useEffect(() => {
+    setHasFullAccess(
+      Boolean(
+        isCreatorOwner ||
+          item?.canAccessFull ||
+          item?.canPlayFull ||
+          item?.downloadUrl ||
+          item?.canDownload
+      )
+    );
+    setPurchaseError("");
+    setCheckoutBusy(false);
+    setDownloadBusy(false);
+  }, [
+    isCreatorOwner,
+    item?.canAccessFull,
+    item?.canDownload,
+    item?.canPlayFull,
+    item?.downloadUrl,
+    itemId,
+  ]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (
+      !isPublicVariant
+      || !isLoggedIn
+      || isCreatorOwner
+      || !purchaseId
+      || !["track", "podcast"].includes(purchaseItemType)
+    ) {
+      return undefined;
+    }
+
+    const loadEntitlement = async () => {
+      try {
+        const entitlement = await checkEntitlement({
+          itemType: purchaseItemType,
+          itemId: purchaseId,
+        });
+        if (!cancelled && entitlement?.entitled) {
+          setHasFullAccess(true);
+        }
+      } catch {
+        // Leave the current state in place; the user can still purchase from this page.
+      }
+    };
+
+    loadEntitlement();
+    return () => {
+      cancelled = true;
+    };
+  }, [isCreatorOwner, isLoggedIn, isPublicVariant, purchaseId, purchaseItemType]);
+
+  useEffect(() => {
+    if (!isPublicVariant || !hasFullAccess || !fullSource) {
+      lastAccessRef.current = hasFullAccess;
+      return;
+    }
+
+    const unlockedNow = !lastAccessRef.current && hasFullAccess;
+    lastAccessRef.current = hasFullAccess;
+
+    if (unlockedNow && sourceMode !== "full") {
+      setSourceMode("full");
+    }
+  }, [fullSource, hasFullAccess, isPublicVariant, sourceMode]);
 
   useEffect(() => {
     if (!availableSources.length) {
@@ -259,7 +381,86 @@ export default function CreatorAudioPreviewPlayer({
     setCurrentTime(nextTime);
   };
 
+  const handleBuyFullTrack = async () => {
+    if (typeof onBuyFullTrack === "function") {
+      await onBuyFullTrack(item);
+      return;
+    }
+
+    if (!purchaseId || !["track", "podcast"].includes(purchaseItemType)) {
+      setPurchaseError("Purchase details are unavailable.");
+      return;
+    }
+
+    if (!isLoggedIn) {
+      setPurchaseError("Please sign in to unlock this release.");
+      return;
+    }
+
+    try {
+      setCheckoutBusy(true);
+      setPurchaseError("");
+
+      const returnUrl = buildPaystackCallbackUrl({
+        returnTo: `${window.location.pathname}${window.location.search}`,
+        itemType: purchaseItemType,
+        itemId: purchaseId,
+      });
+
+      const payment = await initPayment({
+        itemType: purchaseItemType,
+        itemId: purchaseId,
+        returnUrl,
+      });
+
+      if (!payment?.authorization_url) {
+        throw new Error("Payment link is missing");
+      }
+
+      window.location.assign(payment.authorization_url);
+    } catch (error) {
+      setPurchaseError(error?.message || "Could not start checkout.");
+    } finally {
+      setCheckoutBusy(false);
+    }
+  };
+
+  const handleDownloadRelease = async () => {
+    if (typeof onDownload === "function") {
+      await onDownload(item);
+      return;
+    }
+
+    if (!purchaseId || !["track", "podcast"].includes(purchaseItemType)) {
+      setPurchaseError("Download details are unavailable.");
+      return;
+    }
+
+    try {
+      setDownloadBusy(true);
+      setPurchaseError("");
+
+      if (item?.downloadUrl) {
+        window.open(item.downloadUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      const payload = await getDownloadUrl(purchaseItemType, purchaseId);
+      if (!payload?.downloadUrl) {
+        throw new Error("Download unavailable");
+      }
+
+      window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      setPurchaseError(error?.message || "Could not prepare download.");
+    } finally {
+      setDownloadBusy(false);
+    }
+  };
+
   const disableQueueNavigation = queueLength <= 1;
+  const showSourceRow =
+    purchaseLocked || canDownloadRelease || availableSources.length > 1;
 
   return (
     <div
@@ -280,7 +481,11 @@ export default function CreatorAudioPreviewPlayer({
               </span>
               {canPlayAudio ? (
                 <span className="creator-audio-preview-player__badge creator-audio-preview-player__badge--accent">
-                  {activeSourceMode === "preview" ? "Preview Sample" : "Full Track"}
+                  {activeSourceMode === "preview"
+                    ? "Preview Sample"
+                    : purchaseLocked
+                      ? "Buy Full Track"
+                      : "Full Track"}
                 </span>
               ) : null}
             </div>
@@ -290,8 +495,18 @@ export default function CreatorAudioPreviewPlayer({
           </div>
         </div>
 
-        {hasMultipleSources ? (
+        {showSourceRow ? (
           <div className="creator-audio-preview-player__modes" role="tablist" aria-label="Choose playback source">
+            {purchaseLocked ? (
+              <button
+                type="button"
+                className="creator-audio-preview-player__mode-btn creator-audio-preview-player__mode-btn--purchase"
+                onClick={handleBuyFullTrack}
+                disabled={checkoutBusy}
+              >
+                {checkoutBusy ? "Opening secure checkout..." : "Buy Full Track"}
+              </button>
+            ) : null}
             {availableSources.map((entry) => {
               const isActive = entry.key === activeSourceMode;
               return (
@@ -306,6 +521,16 @@ export default function CreatorAudioPreviewPlayer({
                 </button>
               );
             })}
+            {canDownloadRelease ? (
+              <button
+                type="button"
+                className="creator-audio-preview-player__mode-btn creator-audio-preview-player__mode-btn--download"
+                onClick={handleDownloadRelease}
+                disabled={downloadBusy}
+              >
+                {downloadBusy ? "Preparing..." : "Download"}
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -363,6 +588,10 @@ export default function CreatorAudioPreviewPlayer({
             {formatTime(displayedDuration || mediaDuration || 0)}
           </span>
         </div>
+
+        {purchaseError ? (
+          <small className="creator-audio-preview-player__error">{purchaseError}</small>
+        ) : null}
       </div>
 
       <div className="creator-audio-preview-player__meta">

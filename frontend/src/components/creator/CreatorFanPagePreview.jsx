@@ -670,6 +670,9 @@ export default function CreatorFanPagePreview({
           <CreatorAudioPreviewPlayer
             item={currentItem || data.music}
             creatorName={data.creatorName}
+            creatorUserId={
+              data.creatorUserId || creatorProfile?.user?._id || creatorProfile?.user?.id || ""
+            }
             queueLength={queue.length}
             queueIndex={activeIndex}
             onPrevious={() => movePlayer(-1)}

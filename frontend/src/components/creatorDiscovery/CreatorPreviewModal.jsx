@@ -53,6 +53,7 @@ export default function CreatorPreviewModal({ open = false, item = null, onClose
     () => ({
       id: item?.contentId || item?.id || item?.title || "",
       itemType: String(item?.itemType || item?.feedItemType || "track").toLowerCase(),
+      creatorUserId: String(item?.creatorUserId || item?.creator?.userId || item?.creator?.user?._id || "").trim(),
       title: item?.title || "Preview",
       subtitle: item?.creatorName || "Creator",
       coverUrl: item?.coverImage || item?.creatorAvatar || "",

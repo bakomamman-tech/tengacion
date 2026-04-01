@@ -1564,6 +1564,40 @@ export default function Home({ user }) {
 
           <CreatorSummaryFeed />
 
+          {chatOpen && (
+            <section
+              className="messenger-panel messenger-panel--inline"
+              style={{
+                position: "relative",
+                right: "auto",
+                left: "auto",
+                top: "auto",
+                bottom: "auto",
+                width: "100%",
+                maxWidth: "100%",
+                marginBottom: "16px",
+                alignSelf: "stretch",
+                zIndex: 8,
+              }}
+            >
+              <Messenger
+                user={currentUser}
+                initialSelectedId={selectedChatId}
+                conversationOnly={Boolean(selectedChatId)}
+                onClose={() => {
+                  setSelectedChatId("");
+                  setChatOpen(false);
+                  setChatMinimized(false);
+                }}
+                onMinimize={(meta) => {
+                  setChatDockMeta(meta || null);
+                  setChatOpen(false);
+                  setChatMinimized(true);
+                }}
+              />
+            </section>
+          )}
+
           <section className="card feed-surface-card">
             <div className="feed-surface-tabs" role="tablist" aria-label="Feed surfaces">
               {FEED_SURFACES.map((surface) => (
@@ -1688,25 +1722,6 @@ export default function Home({ user }) {
         <aside className="home-right-rail">
           <RightQuickNav />
           <FriendRequests />
-          {chatOpen && (
-            <section className="messenger-panel">
-              <Messenger
-                user={currentUser}
-                initialSelectedId={selectedChatId}
-                conversationOnly={Boolean(selectedChatId)}
-                onClose={() => {
-                  setSelectedChatId("");
-                  setChatOpen(false);
-                  setChatMinimized(false);
-                }}
-                onMinimize={(meta) => {
-                  setChatDockMeta(meta || null);
-                  setChatOpen(false);
-                  setChatMinimized(true);
-                }}
-              />
-            </section>
-          )}
           {!chatOpen && chatMinimized && (
             <button
               type="button"

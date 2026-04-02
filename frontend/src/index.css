@@ -11829,6 +11829,28 @@ html.dark-mode .messenger-messages {
   background: linear-gradient(180deg, rgba(30, 20, 15, 0.2), rgba(22, 14, 10, 0.56));
 }
 
+html.dark-mode .message-row.them .msg-bubble {
+  background:
+    radial-gradient(circle at top left, rgba(255, 236, 195, 0.18), transparent 36%),
+    linear-gradient(135deg, rgba(78, 49, 27, 0.98), rgba(128, 78, 30, 0.94));
+  border-color: rgba(255, 214, 153, 0.3);
+  color: #fff7ea;
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+html.dark-mode .message-row.them .msg-text {
+  color: #fff7ea;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(40, 22, 8, 0.42);
+}
+
+html.dark-mode .message-row.them .msg-reply-preview {
+  background: rgba(255, 244, 219, 0.08);
+  border-left-color: rgba(255, 221, 160, 0.78);
+}
+
 html.dark-mode .messenger-header-notice,
 html.dark-mode .threads-state,
 html.dark-mode .thread-item,

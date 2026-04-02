@@ -9094,6 +9094,18 @@ html.dark-mode .post-actions .action-btn.active-like {
   letter-spacing: 0.01em;
 }
 
+.comments-v2--panel .comments-v2-header-copy {
+  width: 100%;
+}
+
+.comments-v2--panel .comments-v2-title {
+  font-size: 1.22rem;
+  font-weight: 900;
+  line-height: 1.15;
+  color: #1e160f;
+  letter-spacing: 0;
+}
+
 .comments-v2-sort {
   font-size: 0.8rem;
   font-weight: 700;
@@ -9127,20 +9139,20 @@ html.dark-mode .post-actions .action-btn.active-like {
   position: fixed;
   inset: 0;
   z-index: 78;
-  padding: 18px;
+  padding: 28px 18px;
   background: rgba(18, 9, 4, 0.72);
   backdrop-filter: blur(12px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  overflow: auto;
 }
 
 .comments-v2--panel {
-  width: min(760px, 100%);
-  height: min(86vh, 840px);
-  max-height: calc(100vh - 36px);
+  width: min(700px, calc(100vw - 36px));
+  height: min(82vh, 820px);
+  max-height: calc(100vh - 56px);
   margin: 0;
-  padding: 18px;
+  padding: 16px 18px 18px;
   border: 1px solid color-mix(in srgb, var(--border) 84%, #ffffff 16%);
   border-radius: 26px;
   background: linear-gradient(180deg, rgba(255, 250, 244, 0.98), rgba(246, 238, 228, 0.97));
@@ -9153,18 +9165,18 @@ html.dark-mode .post-actions .action-btn.active-like {
 }
 
 .comments-v2--panel .comments-v2-header {
-  flex-shrink: 0;
-  padding-bottom: 14px;
-}
-
-.comments-v2-header-actions {
-  display: flex;
+  position: relative;
+  justify-content: center;
   align-items: center;
-  gap: 10px;
   flex-shrink: 0;
+  padding: 6px 52px 14px;
 }
 
 .comments-v2-close {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
   width: 36px;
   height: 36px;
   min-width: 36px;
@@ -9182,10 +9194,35 @@ html.dark-mode .post-actions .action-btn.active-like {
   background: rgba(255, 255, 255, 0.98);
 }
 
+.comments-v2-header-copy {
+  align-items: center;
+  text-align: center;
+  gap: 3px;
+}
+
+.comments-v2-kicker {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a5e31;
+}
+
+.comments-v2-subtitle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #6f5b43;
+}
+
 .comments-v2--panel .comments-v2-list {
   flex: 1 1 auto;
   overflow: auto;
   padding-right: 6px;
+  padding-top: 4px;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
@@ -9479,6 +9516,14 @@ html.dark-mode .comments-v2--panel {
 
 html.dark-mode .comments-v2-title {
   color: #fff1e1;
+}
+
+html.dark-mode .comments-v2-kicker {
+  color: #f0c99c;
+}
+
+html.dark-mode .comments-v2-subtitle {
+  color: #ddc3ad;
 }
 
 html.dark-mode .comments-v2-sort {

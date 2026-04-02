@@ -1113,6 +1113,7 @@ export default function PostCard({
               panelClassName="post-comments-panel"
               onClose={() => setShowComments(false)}
               postOwnerId={postAuthorId}
+              postOwnerName={username}
             />
           </div>
         ) : null}

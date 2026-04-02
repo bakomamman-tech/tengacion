@@ -412,9 +412,12 @@ export default function PostComments({
   panelClassName = "",
   onClose,
   postOwnerId = "",
+  postOwnerName = "",
 }) {
   const { user } = useAuth() || {};
   const currentUserId = String(user?._id || user?.id || "").trim();
+  const postOwnerDisplayName = String(postOwnerName || "").trim();
+  const postOwnerTitle = postOwnerDisplayName ? `${postOwnerDisplayName}'s Post` : "Comments";
   const { prompt } = useDialog();
   const [comments, setComments] = useState(() =>
     buildCommentTree(flattenCommentInput(Array.isArray(initialComments) ? initialComments : []))
@@ -679,35 +682,29 @@ export default function PostComments({
       className={`comments comments-v2 comments-v2--panel ${panelClassName}`.trim()}
       role="dialog"
       aria-modal="true"
-      aria-labelledby={`${panelId || "comments"}-title`}
+      aria-label={postOwnerDisplayName ? `${postOwnerTitle} comments` : "Comments"}
       tabIndex={-1}
       onMouseDown={(event) => event.stopPropagation()}
     >
       <div className="comments-v2-header">
         <div className="comments-v2-header-copy">
-          <div id={`${panelId || "comments"}-title`} className="comments-v2-title">
-            Comments
-          </div>
-          <div className="comments-v2-sort" aria-hidden="true">
-            Most relevant <span className="comments-v2-caret">▾</span>
+          <div className="comments-v2-kicker">Comments</div>
+          <div className="comments-v2-title">{postOwnerTitle}</div>
+          <div className="comments-v2-subtitle">
+            {totalCount} {commentCountLabel}
           </div>
         </div>
 
-        <div className="comments-v2-header-actions">
-          <div className="comments-v2-count">
-            {totalCount} {commentCountLabel}
-          </div>
-          {onClose ? (
-            <button
-              type="button"
-              className="comments-v2-close"
-              onClick={onClose}
-              aria-label="Close comments"
-            >
-              X
-            </button>
-          ) : null}
-        </div>
+        {onClose ? (
+          <button
+            type="button"
+            className="comments-v2-close"
+            onClick={onClose}
+            aria-label="Close comments"
+          >
+            X
+          </button>
+        ) : null}
       </div>
 
       <div className="comments-v2-list">

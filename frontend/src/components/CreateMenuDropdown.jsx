@@ -5,6 +5,13 @@ const SearchIcon = () => (
   </svg>
 );
 
+const CloseIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M6 6l12 12" />
+    <path d="M18 6L6 18" />
+  </svg>
+);
+
 function MenuIcon({ name }) {
   switch (name) {
     case "ads":
@@ -249,6 +256,7 @@ export default function CreateMenuDropdown({
   menuSections,
   createItems,
   onItemClick,
+  onClose,
 }) {
   const visibleSections = (Array.isArray(menuSections) ? menuSections : []).filter(
     (section) => Array.isArray(section.items) && section.items.length
@@ -260,6 +268,15 @@ export default function CreateMenuDropdown({
         <div className="create-menu-main">
           <div className="create-menu-top">
             <h3>Menu</h3>
+            <button
+              type="button"
+              className="create-menu-close"
+              onClick={onClose}
+              aria-label="Close menu"
+              title="Close menu"
+            >
+              <CloseIcon />
+            </button>
           </div>
 
           <label className="create-menu-search-shell">

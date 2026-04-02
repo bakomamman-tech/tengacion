@@ -853,10 +853,17 @@ export default function Navbar({
     return false;
   };
 
-  const onCreateMenuItemClick = (item) => {
-    item.handler?.();
+  const closeCreateMenu = (focusTrigger = false) => {
     setShowCreateMenu(false);
     setCreateSearch("");
+    if (focusTrigger) {
+      createMenuButtonRef.current?.focus();
+    }
+  };
+
+  const onCreateMenuItemClick = (item) => {
+    item.handler?.();
+    closeCreateMenu();
   };
 
   const onAccountMenuItemClick = (item) => {
@@ -992,6 +999,7 @@ export default function Navbar({
                   menuSections={filteredMenuSections}
                   createItems={filteredCreateActions}
                   onItemClick={onCreateMenuItemClick}
+                  onClose={() => closeCreateMenu(true)}
                 />
               )}
             </div>

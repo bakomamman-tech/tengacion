@@ -1565,21 +1565,7 @@ export default function Home({ user }) {
           <CreatorSummaryFeed />
 
           {chatOpen && (
-            <section
-              className="messenger-panel messenger-panel--inline"
-              style={{
-                position: "relative",
-                right: "auto",
-                left: "auto",
-                top: "auto",
-                bottom: "auto",
-                width: "100%",
-                maxWidth: "100%",
-                marginBottom: "16px",
-                alignSelf: "stretch",
-                zIndex: 8,
-              }}
-            >
+            <section className="messenger-panel">
               <Messenger
                 user={currentUser}
                 initialSelectedId={selectedChatId}

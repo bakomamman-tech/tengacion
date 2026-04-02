@@ -262,6 +262,10 @@ export default function PostCard({
   );
   const explicitVideo = mediaTypeCandidate === "video" || hasVideoExtension;
   const explicitImage = mediaTypeCandidate === "image" || hasImageExtension;
+  const postMediaBackdropStyle =
+    postMediaUrl && (explicitImage || !explicitVideo)
+      ? { "--post-media-image": `url("${String(postMediaUrl).replace(/"/g, '\\"')}")` }
+      : undefined;
   const [forceVideoRender, setForceVideoRender] = useState(false);
   const videoPayload = post.video && typeof post.video === "object" ? post.video : null;
   const hasVideoPayload = Boolean(videoPayload?.url || videoPayload?.playbackUrl);
@@ -934,7 +938,10 @@ export default function PostCard({
           )}
 
           {hasAnyMedia && (
-            <div className="post-media">
+            <div
+              className={`post-media${postMediaBackdropStyle ? " post-media--image" : ""}`}
+              style={postMediaBackdropStyle}
+            >
               {shouldRenderVideo && postVideoSource ? (
                 <div className="post-video-wrapper" ref={videoWrapperRef}>
                   <VideoPlayer
@@ -975,16 +982,18 @@ export default function PostCard({
                   )}
                 </div>
               ) : shouldRenderImage ? (
-                <img
-                  src={postMediaUrl}
-                  alt="post"
-                  className="post-image"
-                  onError={() => {
-                    if (explicitVideo || hasVideoPayload) {
-                      setForceVideoRender(true);
-                    }
-                  }}
-                />
+                <div className="post-media__frame">
+                  <img
+                    src={postMediaUrl}
+                    alt="post"
+                    className="post-image"
+                    onError={() => {
+                      if (explicitVideo || hasVideoPayload) {
+                        setForceVideoRender(true);
+                      }
+                    }}
+                  />
+                </div>
               ) : null}
             </div>
           )}

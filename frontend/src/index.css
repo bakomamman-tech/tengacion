@@ -8761,17 +8761,60 @@ html.dark-mode .create-post-quick-btn--reel {
   margin-top: 10px;
   border-radius: 14px;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.14));
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(13, 8, 6, 0.12));
+}
+
+.post-media--image {
+  min-height: clamp(260px, 34vw, 560px);
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(17, 10, 8, 0.18), rgba(17, 10, 8, 0.28));
+}
+
+.post-media--image::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  background-image: var(--post-media-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  filter: blur(34px) saturate(120%);
+  transform: scale(1.12);
+  opacity: 0.9;
+}
+
+.post-media--image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(12, 8, 6, 0.18), transparent 18%, transparent 82%, rgba(12, 8, 6, 0.18)),
+    linear-gradient(180deg, rgba(12, 8, 6, 0.08), rgba(12, 8, 6, 0.02) 45%, rgba(12, 8, 6, 0.12));
+  pointer-events: none;
+  z-index: 0;
+}
+
+.post-media__frame {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .post-image {
   width: 100%;
   height: auto;
-  max-height: 520px;
+  max-height: 560px;
   object-fit: contain;
   display: block;
   margin: 0 auto;
-  background: #130b08;
+  background: transparent;
+  position: relative;
+  z-index: 1;
 }
 
 .post-video {

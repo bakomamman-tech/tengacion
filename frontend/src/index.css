@@ -15627,6 +15627,77 @@ html.dark-mode .password-toggle-btn:hover {
     gap: 6px;
   }
 
+  .create-menu-dropdown {
+    position: fixed;
+    top: 50vh;
+    top: 50dvh;
+    left: 50vw;
+    right: auto;
+    transform: translate(-50%, -50%);
+    width: min(420px, calc(100vw - 16px));
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+    padding: 12px;
+    overflow: auto;
+  }
+
+  .create-menu-grid {
+    gap: 12px;
+  }
+
+  .create-menu-top,
+  .create-menu-side-head {
+    margin-bottom: 12px;
+  }
+
+  .create-menu-top h3,
+  .create-menu-side-head h3 {
+    font-size: 16px;
+  }
+
+  .create-menu-search-shell {
+    min-height: 42px;
+    margin-bottom: 12px;
+    padding: 0 12px;
+  }
+
+  .create-menu-search {
+    padding: 10px 0;
+  }
+
+  .create-menu-dropdown .create-menu-section,
+  .create-menu-side-card {
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .create-menu-section-head {
+    margin-bottom: 8px;
+  }
+
+  .create-menu-section h4 {
+    font-size: 11px;
+  }
+
+  .create-menu-list {
+    gap: 6px;
+  }
+
+  .create-menu-dropdown .create-menu-item {
+    padding: 8px 10px;
+    gap: 10px;
+  }
+
+  .create-menu-dropdown .create-menu-item-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .create-menu-dropdown .create-menu-item--create {
+    min-height: 54px;
+    padding: 8px;
+  }
+
   .nav-notif-dropdown {
     right: 0;
     width: min(100vw - 20px, 360px);

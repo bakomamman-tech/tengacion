@@ -705,6 +705,10 @@ export default function Messenger({
     const vh = getViewportHeight();
     return vh ? Math.round(vh * 0.82) : 640;
   });
+  const [mobileView, setMobileView] = useState(() =>
+    conversationOnly || preferredSelectedId ? "chat" : "inbox"
+  );
+  const [mobileSearch, setMobileSearch] = useState("");
   const [isDraggingSheet, setIsDraggingSheet] = useState(false);
   const [desktopOffset, setDesktopOffset] = useState({ x: 0, y: 0 });
   const [isDraggingDesktop, setIsDraggingDesktop] = useState(false);
@@ -713,6 +717,9 @@ export default function Messenger({
   const selectedIdRef = useRef("");
   const endRef = useRef(null);
   const sheetHeightRef = useRef(sheetHeight);
+  const initialAutoSelectRef = useRef(
+    typeof window === "undefined" ? true : !window.matchMedia(MOBILE_SHEET_QUERY).matches
+  );
   const dragRef = useRef({
     active: false,
     startY: 0,
@@ -961,6 +968,72 @@ export default function Messenger({
     [contacts, selectedId]
   );
 
+  const mobileContacts = useMemo(() => {
+    const query = mobileSearch.trim().toLowerCase();
+    const visible = contacts.filter((contact) => {
+      if (!query) {
+        return true;
+      }
+
+      return [contact?.name, contact?.username, contact?.lastMessage, contact?.status?.text].some(
+        (value) =>
+          String(value || "")
+            .toLowerCase()
+            .includes(query)
+      );
+    });
+
+    return [...visible].sort((a, b) => {
+      const aId = toIdString(a?._id);
+      const bId = toIdString(b?._id);
+      const aUnread = Number(a?.unreadCount) || 0;
+      const bUnread = Number(b?.unreadCount) || 0;
+      const aOnline = onlineUsers.has(aId);
+      const bOnline = onlineUsers.has(bId);
+      const aRecent = Number(a?.lastMessageAt) || 0;
+      const bRecent = Number(b?.lastMessageAt) || 0;
+      const aScore = (aUnread > 0 ? 3 : 0) + (aOnline ? 2 : 0) + (aRecent > 0 ? 1 : 0);
+      const bScore = (bUnread > 0 ? 3 : 0) + (bOnline ? 2 : 0) + (bRecent > 0 ? 1 : 0);
+
+      if (bScore !== aScore) {
+        return bScore - aScore;
+      }
+
+      return String(a?.name || a?.username || "").localeCompare(String(b?.name || b?.username || ""));
+    });
+  }, [contacts, mobileSearch, onlineUsers]);
+
+  const mobileHotContacts = useMemo(() => {
+    const shortlist = mobileContacts.filter((contact) => {
+      const contactId = toIdString(contact?._id);
+      const unreadCount = Number(contact?.unreadCount) || 0;
+      return Boolean(contactId) && (onlineUsers.has(contactId) || unreadCount > 0 || contactId === selectedId);
+    });
+
+    return shortlist.slice(0, 8);
+  }, [mobileContacts, onlineUsers, selectedId]);
+
+  const mobileUnreadCount = useMemo(
+    () => contacts.reduce((sum, contact) => sum + (Number(contact?.unreadCount) || 0), 0),
+    [contacts]
+  );
+
+  const mobileActiveCount = useMemo(
+    () =>
+      contacts.reduce((sum, contact) => sum + (onlineUsers.has(toIdString(contact?._id)) ? 1 : 0), 0),
+    [contacts, onlineUsers]
+  );
+
+  useEffect(() => {
+    if (!isMobileSheet || conversationOnly) {
+      return;
+    }
+
+    if (!selectedId) {
+      setMobileView("inbox");
+    }
+  }, [conversationOnly, isMobileSheet, selectedId]);
+
   useEffect(() => {
     if (!headerNotice) {
       return undefined;
@@ -1184,7 +1257,10 @@ export default function Messenger({
           if (normalizedPrev && list.some((entry) => toIdString(entry?._id) === normalizedPrev)) {
             return normalizedPrev;
           }
-          return toIdString(list[0]?._id);
+          if (conversationOnly || initialAutoSelectRef.current) {
+            return toIdString(list[0]?._id);
+          }
+          return "";
         });
       } catch (err) {
         if (!alive) {return;}
@@ -1200,7 +1276,7 @@ export default function Messenger({
     return () => {
       alive = false;
     };
-  }, [meId]);
+  }, [conversationOnly, meId, preferredSelectedId]);
 
   useEffect(() => {
     let alive = true;
@@ -2138,6 +2214,39 @@ export default function Messenger({
     }
   }, [handleVoiceAudioEvent, pauseOtherVoiceNotes]);
 
+  const openConversation = useCallback(
+    (contactId) => {
+      const nextId = toIdString(contactId);
+      if (!nextId) {
+        return;
+      }
+
+      setSelectedId(nextId);
+      setChatMenuOpen(false);
+      setOpenMessageMenuId("");
+      setOpenMessageReactionId("");
+      setOpenVoiceMenuId("");
+
+      if (isMobileSheet && !conversationOnly) {
+        setMobileView("chat");
+      }
+    },
+    [conversationOnly, isMobileSheet]
+  );
+
+  const goToInbox = useCallback(() => {
+    if (!isMobileSheet || conversationOnly) {
+      return;
+    }
+
+    setChatMenuOpen(false);
+    setOpenMessageMenuId("");
+    setOpenMessageReactionId("");
+    setOpenVoiceMenuId("");
+    setWatchOpen(false);
+    setMobileView("inbox");
+  }, [conversationOnly, isMobileSheet]);
+
   const downloadVoiceNote = useCallback((url, timeValue) => {
     const resolved = resolveImage(url);
     if (!resolved) {
@@ -2208,6 +2317,9 @@ export default function Messenger({
 
       setContacts(remainingContacts);
       setSelectedId((current) => (current === targetId ? nextSelectedId : current));
+      if (isMobileSheet && !conversationOnly) {
+        setMobileView(nextSelectedId ? "chat" : "inbox");
+      }
       if (selectedIdRef.current === targetId) {
         setMessages([]);
         setText("");
@@ -2222,7 +2334,7 @@ export default function Messenger({
     } finally {
       setIsBlockingUser(false);
     }
-  }, [confirm, contacts, isBlockingUser, selectedContact]);
+  }, [confirm, contacts, conversationOnly, isBlockingUser, isMobileSheet, selectedContact]);
 
   const shareContent = async (shareInput) => {
     if (shareInput?.mode === "friends") {
@@ -2294,6 +2406,9 @@ export default function Messenger({
       : "";
   const selectedHeaderName =
     selectedContact?.name || selectedContact?.username || "Messenger";
+  const displayContacts = isMobileSheet && !conversationOnly ? mobileContacts : contacts;
+  const showMobileInbox = isMobileSheet && !conversationOnly && mobileView === "inbox";
+  const showMobileChat = isMobileSheet && !conversationOnly && mobileView === "chat";
   const pinnedEntry = selectedId ? pinnedMessagesByChat?.[selectedId] || null : null;
   const hasTypedText = Boolean(text.trim());
   const composerBusy = isRecording || isSendingVoice || Boolean(voicePreview);
@@ -2398,25 +2513,118 @@ export default function Messenger({
         {headerNotice && <div className="messenger-header-notice">{headerNotice}</div>}
       </div>
 
-      <div className={`messenger-body${conversationOnly ? " messenger-body--conversation-only" : ""}`}>
-        {!conversationOnly && (
-        <aside className="messenger-threads">
+      <div
+        className={`messenger-body${conversationOnly ? " messenger-body--conversation-only" : ""} ${
+          showMobileInbox ? " messenger-body--mobile-inbox" : ""
+        } ${showMobileChat ? " messenger-body--mobile-chat" : ""}`}
+      >
+        {!conversationOnly && (!isMobileSheet || mobileView === "inbox") && (
+        <aside className={`messenger-threads${isMobileSheet ? " messenger-threads--mobile" : ""}`}>
           <div className="threads-title">Chats</div>
+
+          {isMobileSheet ? (
+            <div className="messenger-mobile-hero">
+              <div className="messenger-mobile-hero__copy">
+                <small>Active now</small>
+                <strong>
+                  {mobileActiveCount > 0
+                    ? `${mobileActiveCount} friends online`
+                    : "Your inbox is waiting"}
+                </strong>
+                <span>
+                  {mobileUnreadCount > 0
+                    ? `${mobileUnreadCount} unread message${mobileUnreadCount === 1 ? "" : "s"} ready to catch up on.`
+                    : "Jump between conversations without losing your place."}
+                </span>
+              </div>
+
+              <div className="messenger-mobile-hero__avatars" aria-hidden="true">
+                {mobileHotContacts.slice(0, 4).map((contact, index) => {
+                  const contactId = toIdString(contact?._id);
+                  return (
+                    <span
+                      key={`${contactId || "mobile-hot"}-${index}`}
+                      className="messenger-mobile-hero__avatar"
+                      style={{ marginLeft: index === 0 ? "0" : "-10px" }}
+                    >
+                      <img src={getAvatar(contact)} alt="" />
+                      {onlineUsers.has(contactId) ? <i /> : null}
+                    </span>
+                  );
+                })}
+                {mobileHotContacts.length > 4 ? (
+                  <span className="messenger-mobile-hero__more">+{mobileHotContacts.length - 4}</span>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {isMobileSheet ? (
+            <label className="messenger-mobile-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M10 4a6 6 0 1 0 3.89 10.57l4.27 4.27 1.41-1.41-4.27-4.27A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z" />
+              </svg>
+              <input
+                type="search"
+                value={mobileSearch}
+                onChange={(event) => setMobileSearch(event.target.value)}
+                placeholder="Search chats or friends"
+              />
+            </label>
+          ) : null}
+
+          {isMobileSheet && mobileHotContacts.length > 0 ? (
+            <div className="messenger-mobile-strip" aria-label="Active chats">
+              {mobileHotContacts.map((contact) => {
+                const contactId = toIdString(contact?._id);
+                const unreadCount = Number(contact?.unreadCount) || 0;
+                const active = contactId === selectedId;
+                return (
+                  <button
+                    key={contactId}
+                    type="button"
+                    className={`messenger-mobile-chip${active ? " active" : ""}`}
+                    onClick={() => openConversation(contactId)}
+                  >
+                    <span className="messenger-mobile-chip__avatar">
+                      <img src={getAvatar(contact)} alt="" />
+                      {onlineUsers.has(contactId) ? <i /> : null}
+                    </span>
+                    <span className="messenger-mobile-chip__copy">
+                      <strong>{contact.name || contact.username || "Friend"}</strong>
+                      <small>
+                        {unreadCount > 0
+                          ? `${unreadCount} unread`
+                          : contact.lastMessage || "Tap to open"}
+                      </small>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
 
           {loadingContacts && <div className="threads-state">Loading chats...</div>}
 
-          {!loadingContacts && contacts.length === 0 && (
-            <div className="threads-state">No active conversations.</div>
+          {!loadingContacts && displayContacts.length === 0 && (
+            <div className="threads-state">
+              {isMobileSheet && mobileSearch.trim()
+                ? "No chats match that search yet."
+                : "No active conversations."}
+            </div>
           )}
 
           {!loadingContacts &&
-            contacts.map((contact) => {
+            displayContacts.map((contact) => {
               const active = contact._id === selectedId;
+              const unreadCount = Number(contact?.unreadCount) || 0;
               return (
                 <button
                   key={contact._id}
-                  className={`thread-item ${active ? "active" : ""}`}
-                  onClick={() => setSelectedId(contact._id)}
+                  className={`thread-item ${active ? "active" : ""}${
+                    isMobileSheet ? " thread-item--mobile" : ""
+                  }`}
+                  onClick={() => openConversation(contact._id)}
                 >
                   <div className="thread-avatar-wrap">
                     <img src={getAvatar(contact)} className="thread-avatar" alt="" />
@@ -2428,6 +2636,12 @@ export default function Messenger({
                     <div className="thread-last">
                       {contact.lastMessage || "Start chatting"}
                     </div>
+                    {isMobileSheet ? (
+                      <div className="thread-meta-foot">
+                        <span>{onlineUsers.has(contact._id) ? "Active now" : "Recent"}</span>
+                        {unreadCount > 0 ? <strong>{unreadCount > 9 ? "9+" : unreadCount}</strong> : null}
+                      </div>
+                    ) : null}
                   </div>
                 </button>
               );
@@ -2435,15 +2649,63 @@ export default function Messenger({
         </aside>
         )}
 
-        <section className="messenger-chat">
+        <section className={`messenger-chat${showMobileChat ? " messenger-chat--mobile" : ""}`}>
           {!selectedContact && (
             <div className="chat-empty">Select a chat to start messaging.</div>
           )}
 
           {selectedContact && (
             <>
+              {showMobileChat ? (
+                <div className="messenger-mobile-switcher">
+                  <button
+                    type="button"
+                    className="messenger-mobile-back"
+                    onClick={goToInbox}
+                    aria-label="Back to chats"
+                    title="Back to chats"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M15 6 9 12l6 6" />
+                    </svg>
+                    <span>All chats</span>
+                  </button>
+
+                  <div className="messenger-mobile-switcher__rail" aria-label="Recent chats">
+                    {mobileHotContacts.map((contact) => {
+                      const contactId = toIdString(contact?._id);
+                      const unreadCount = Number(contact?.unreadCount) || 0;
+                      const active = contactId === selectedId;
+                      return (
+                        <button
+                          key={contactId}
+                          type="button"
+                          className={`messenger-mobile-switcher__chip${active ? " active" : ""}`}
+                          onClick={() => openConversation(contactId)}
+                        >
+                          <span className="messenger-mobile-switcher__avatar">
+                            <img src={getAvatar(contact)} alt="" />
+                            {onlineUsers.has(contactId) ? <i /> : null}
+                          </span>
+                          <span className="messenger-mobile-switcher__copy">
+                            <strong>{contact.name || contact.username || "Friend"}</strong>
+                            <small>
+                              {unreadCount > 0
+                                ? `${unreadCount} unread`
+                                : onlineUsers.has(contactId)
+                                  ? "Active now"
+                                  : "Recent"}
+                            </small>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
               {!conversationOnly && (
-              <div className="chat-topbar" ref={chatMenuRef}>
+              <div className={`chat-topbar${isMobileSheet ? " chat-topbar--mobile" : ""}`} ref={chatMenuRef}>
                 <button
                   type="button"
                   className={`chat-top-profile-btn ${chatMenuOpen ? "active" : ""}`}
@@ -2490,7 +2752,7 @@ export default function Messenger({
                   title="Watch Together"
                   aria-label="Watch Together"
                 >
-                  Watch Together
+                  {isMobileSheet ? "Watch" : "Watch Together"}
                 </button>
 
                 {chatMenuOpen && (

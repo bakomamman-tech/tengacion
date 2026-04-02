@@ -178,4 +178,80 @@ describe("Posts feed", () => {
     });
     expect(response.body[0].video).toBeNull();
   });
+
+  test("comments support threaded replies and author edits", async () => {
+    const commenter = await User.create({
+      name: "Commenter User",
+      username: "commenter_user",
+      email: "commenter_user@test.com",
+      password: "Password123!",
+    });
+    const commenterToken = await issueSessionToken(commenter._id);
+
+    const post = await Post.create({
+      author: artist._id,
+      text: "A post that needs replies",
+      privacy: "public",
+    });
+
+    const topLevelComment = await request(app)
+      .post(`/api/posts/${post._id}/comment`)
+      .set("Authorization", `Bearer ${commenterToken}`)
+      .send({ text: "Looks great!" })
+      .expect(201);
+
+    expect(topLevelComment.body.comment).toMatchObject({
+      text: "Looks great!",
+      authorName: "Commenter User",
+      authorUsername: "commenter_user",
+      parentCommentId: "",
+      edited: false,
+    });
+
+    const replyComment = await request(app)
+      .post(`/api/posts/${post._id}/comment`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        text: "Thanks for the kind words.",
+        parentCommentId: topLevelComment.body.comment._id,
+      })
+      .expect(201);
+
+    expect(replyComment.body.comment).toMatchObject({
+      text: "Thanks for the kind words.",
+      parentCommentId: topLevelComment.body.comment._id,
+    });
+    expect(replyComment.body.commentsCount).toBe(2);
+
+    const threaded = await request(app)
+      .get(`/api/posts/${post._id}/comments?threaded=true`)
+      .expect(200);
+
+    expect(threaded.body).toHaveLength(1);
+    expect(threaded.body[0]).toMatchObject({
+      _id: topLevelComment.body.comment._id,
+      replies: expect.any(Array),
+    });
+    expect(threaded.body[0].replies).toHaveLength(1);
+    expect(threaded.body[0].replies[0]).toMatchObject({
+      text: "Thanks for the kind words.",
+    });
+
+    const updatedComment = await request(app)
+      .put(`/api/posts/${post._id}/comments/${topLevelComment.body.comment._id}`)
+      .set("Authorization", `Bearer ${commenterToken}`)
+      .send({ text: "Looks amazing!" })
+      .expect(200);
+
+    expect(updatedComment.body.comment).toMatchObject({
+      text: "Looks amazing!",
+      edited: true,
+    });
+
+    await request(app)
+      .put(`/api/posts/${post._id}/comments/${topLevelComment.body.comment._id}`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ text: "Should not work" })
+      .expect(403);
+  });
 });

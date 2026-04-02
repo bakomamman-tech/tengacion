@@ -23,8 +23,11 @@ vi.mock("../ui/useDialog", () => ({
 vi.mock("../../api", () => ({
   apiRequest: vi.fn(),
   createReport: vi.fn(),
+  createPostComment: vi.fn(),
   initPayment: vi.fn(),
+  getPostComments: vi.fn().mockResolvedValue([]),
   resolveImage: (value) => value,
+  updatePostComment: vi.fn(),
 }));
 
 vi.mock("../share/postShareUtils", () => ({
@@ -49,7 +52,7 @@ describe("PostCard comment toggle", () => {
     vi.restoreAllMocks();
   });
 
-  it("opens the compact Facebook-style comment container when Comment is clicked", async () => {
+  it("opens the Facebook-style comment popup when Comment is clicked", async () => {
     const user = userEvent.setup();
 
     render(
@@ -77,7 +80,7 @@ describe("PostCard comment toggle", () => {
     await user.click(commentButton);
 
     expect(commentButton).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText(/most relevant/i)).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /comments/i })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/comment as you/i)).toBeInTheDocument();
   });
 

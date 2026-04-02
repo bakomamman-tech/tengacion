@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { apiRequest, createReport } from "../api";
+import {
+  createPostComment,
+  createReport,
+  getPostComments,
+  resolveImage,
+  updatePostComment,
+} from "../api";
+import { useAuth } from "../context/AuthContext";
 import { createReportDialogConfig } from "../constants/reportReasons";
 import Button from "./ui/Button";
 import { useDialog } from "./ui/useDialog";
@@ -20,35 +27,183 @@ const EMOJIS = [
 const GIF_TOKENS = ["[GIF: Celebration]", "[GIF: Laugh]", "[GIF: Wow]"];
 const STICKER_TOKENS = ["[Sticker: Fire]", "[Sticker: Clap]", "[Sticker: Star]"];
 
-const normalizeComment = (comment, index) => {
+const normalizeComment = (comment, parentCommentId = "") => {
   if (!comment || typeof comment !== "object") {
     return null;
   }
 
-  const id = comment._id || comment.id || `${index}-${Date.now()}`;
-  const authorRaw = comment.author;
-  const authorName =
-    comment.authorName ||
-    comment.userName ||
-    (authorRaw && typeof authorRaw === "object" ? authorRaw.name : "") ||
-    "User";
+  const author = comment.author && typeof comment.author === "object" ? comment.author : {};
+  const id = String(comment._id || comment.id || "").trim();
+  if (!id) {
+    return null;
+  }
+
+  const authorId = String(comment.authorId || author._id || author.id || comment.author || "").trim();
+  const authorName = String(
+    comment.authorName || author.name || comment.userName || "User"
+  ).trim();
+  const authorUsername = String(
+    comment.authorUsername || author.username || ""
+  )
+    .trim()
+    .replace(/^@+/, "");
+  const authorAvatar = String(comment.authorAvatar || resolveImage(author.avatar) || "").trim();
 
   return {
     id,
-    authorName,
+    authorId,
+    authorName: authorName || "User",
+    authorUsername,
+    authorAvatar,
     text: typeof comment.text === "string" ? comment.text : "",
+    parentCommentId: String(comment.parentCommentId || parentCommentId || "").trim(),
     createdAt: comment.createdAt || null,
-    mediaPreview: comment.mediaPreview || "",
+    updatedAt: comment.updatedAt || null,
+    edited: Boolean(comment.edited),
+    editedAt: comment.editedAt || null,
+    mediaPreview: String(comment.mediaPreview || "").trim(),
+    replies: [],
   };
 };
 
-const readFileAsDataUrl = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-    reader.onerror = () => reject(new Error("Failed to read image"));
-    reader.readAsDataURL(file);
+const flattenCommentInput = (items = [], parentCommentId = "", output = [], seen = new Set()) => {
+  (Array.isArray(items) ? items : []).forEach((comment) => {
+    const normalized = normalizeComment(comment, parentCommentId);
+    if (!normalized || seen.has(normalized.id)) {
+      return;
+    }
+
+    seen.add(normalized.id);
+    output.push(normalized);
+
+    if (Array.isArray(comment?.replies) && comment.replies.length > 0) {
+      flattenCommentInput(comment.replies, normalized.id, output, seen);
+    }
   });
+
+  return output;
+};
+
+const buildCommentTree = (comments = []) => {
+  const nodes = new Map();
+  const roots = [];
+
+  comments.forEach((comment) => {
+    if (!comment?.id) {
+      return;
+    }
+
+    nodes.set(String(comment.id), { ...comment, replies: [] });
+  });
+
+  comments.forEach((comment) => {
+    const node = nodes.get(String(comment?.id || ""));
+    if (!node) {
+      return;
+    }
+
+    const parentId = String(comment?.parentCommentId || "").trim();
+    if (parentId && nodes.has(parentId)) {
+      nodes.get(parentId).replies.push(node);
+      return;
+    }
+
+    roots.push(node);
+  });
+
+  return roots;
+};
+
+const countCommentTree = (comments = []) =>
+  (Array.isArray(comments) ? comments : []).reduce((total, comment) => {
+    const replyCount = countCommentTree(comment?.replies || []);
+    return total + 1 + replyCount;
+  }, 0);
+
+const insertCommentIntoTree = (comments = [], comment) => {
+  const node = { ...comment, replies: [] };
+  const parentId = String(comment?.parentCommentId || "").trim();
+
+  if (!parentId) {
+    return { nodes: [...comments, node], inserted: true };
+  }
+
+  let inserted = false;
+  const nextNodes = (Array.isArray(comments) ? comments : []).map((entry) => {
+    if (String(entry.id || "") === parentId) {
+      inserted = true;
+      return { ...entry, replies: [...(entry.replies || []), node] };
+    }
+
+    if (!Array.isArray(entry.replies) || entry.replies.length === 0) {
+      return entry;
+    }
+
+    const childResult = insertCommentIntoTree(entry.replies, comment);
+    if (childResult.inserted) {
+      inserted = true;
+      return childResult.nodes === entry.replies ? entry : { ...entry, replies: childResult.nodes };
+    }
+
+    return entry;
+  });
+
+  if (!inserted) {
+    return { nodes: [...comments, node], inserted: true };
+  }
+
+  return { nodes: nextNodes, inserted: true };
+};
+
+const updateCommentInTree = (comments = [], updatedComment) => {
+  let updated = false;
+  const nextNodes = (Array.isArray(comments) ? comments : []).map((entry) => {
+    if (String(entry.id || "") === String(updatedComment?.id || "")) {
+      updated = true;
+      return { ...entry, ...updatedComment, replies: entry.replies || [] };
+    }
+
+    if (!Array.isArray(entry.replies) || entry.replies.length === 0) {
+      return entry;
+    }
+
+    const childResult = updateCommentInTree(entry.replies, updatedComment);
+    if (childResult.updated) {
+      updated = true;
+      return childResult.nodes === entry.replies ? entry : { ...entry, replies: childResult.nodes };
+    }
+
+    return entry;
+  });
+
+  return { nodes: updated ? nextNodes : comments, updated };
+};
+
+const formatCommentTime = (value) => {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const diff = Date.now() - date.getTime();
+  if (diff < 60_000) {
+    return "Just now";
+  }
+  if (diff < 3_600_000) {
+    return `${Math.max(1, Math.round(diff / 60_000))}m`;
+  }
+  if (diff < 86_400_000) {
+    return `${Math.max(1, Math.round(diff / 3_600_000))}h`;
+  }
+  if (diff < 604_800_000) {
+    return `${Math.max(1, Math.round(diff / 86_400_000))}d`;
+  }
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+};
 
 function ToolIcon({ name }) {
   const icons = {
@@ -113,17 +268,156 @@ function SendIcon() {
   );
 }
 
+function CommentItem({
+  comment,
+  depth = 0,
+  currentUserId = "",
+  canReply = false,
+  editingCommentId = "",
+  editingDraft = "",
+  savingCommentId = "",
+  onEditingDraftChange = () => {},
+  onReply = () => {},
+  onStartEdit = () => {},
+  onCancelEdit = () => {},
+  onSaveEdit = () => {},
+  onReport = () => {},
+}) {
+  const isMine = Boolean(currentUserId && String(currentUserId) === String(comment.authorId || ""));
+  const isEditing = String(editingCommentId || "") === String(comment.id || "");
+  const avatar = resolveImage(comment.authorAvatar) || "/avatar.png";
+  const timeLabel = formatCommentTime(comment.createdAt);
+  const saving = String(savingCommentId || "") === String(comment.id || "");
+
+  return (
+    <article className={`comment-v2 comment-v2--depth-${depth}`}>
+      <div className="comment-v2-row">
+        <img className="comment-v2-avatar" src={avatar} alt="" />
+
+        <div className="comment-v2-body">
+          <div className="comment-v2-meta">
+            <strong>{comment.authorName || "User"}</strong>
+            {comment.authorUsername ? <span>@{comment.authorUsername}</span> : null}
+            {timeLabel ? <span>{timeLabel}</span> : null}
+            {comment.edited ? <span>Edited</span> : null}
+          </div>
+
+          {isEditing ? (
+            <div className="comment-v2-editor">
+              <textarea
+                className="comment-v2-editor-input"
+                value={editingDraft}
+                onChange={(event) => onEditingDraftChange(event.target.value)}
+                rows={3}
+                autoFocus
+              />
+
+              <div className="comment-v2-editor-actions">
+                <button
+                  type="button"
+                  className="comment-inline-action"
+                  onClick={onCancelEdit}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="comment-inline-action comment-inline-action--primary"
+                  onClick={() => onSaveEdit(comment)}
+                  disabled={!editingDraft.trim() || saving}
+                >
+                  {saving ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {comment.text ? <p className="comment-v2-text">{comment.text}</p> : null}
+              {comment.mediaPreview ? (
+                <img
+                  className="comment-inline-media"
+                  src={comment.mediaPreview}
+                  alt="Comment attachment preview"
+                />
+              ) : null}
+
+              <div className="comment-v2-actions">
+                {canReply ? (
+                  <button
+                    type="button"
+                    className="comment-inline-action"
+                    onClick={() => onReply(comment)}
+                  >
+                    Reply
+                  </button>
+                ) : null}
+
+                {isMine ? (
+                  <button
+                    type="button"
+                    className="comment-inline-action"
+                    onClick={() => onStartEdit(comment)}
+                  >
+                    Edit
+                  </button>
+                ) : null}
+
+                <Button
+                  size="xs"
+                  variant="utility"
+                  className="comment-report-btn"
+                  onClick={() => onReport(comment)}
+                >
+                  Report
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {Array.isArray(comment.replies) && comment.replies.length > 0 ? (
+        <div className="comment-v2-children">
+          {comment.replies.map((reply) => (
+            <CommentItem
+              key={reply.id}
+              comment={reply}
+              depth={depth + 1}
+              currentUserId={currentUserId}
+              canReply={canReply}
+              editingCommentId={editingCommentId}
+              editingDraft={editingDraft}
+              savingCommentId={savingCommentId}
+              onEditingDraftChange={onEditingDraftChange}
+              onReply={onReply}
+              onStartEdit={onStartEdit}
+              onCancelEdit={onCancelEdit}
+              onSaveEdit={onSaveEdit}
+              onReport={onReport}
+            />
+          ))}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 export default function PostComments({
   postId,
   initialComments = [],
   initialCount = 0,
   onCountChange,
+  panelId,
+  panelClassName = "",
+  onClose,
+  postOwnerId = "",
 }) {
+  const { user } = useAuth() || {};
+  const currentUserId = String(user?._id || user?.id || "").trim();
   const { prompt } = useDialog();
   const [comments, setComments] = useState(() =>
-    (Array.isArray(initialComments) ? initialComments : [])
-      .map((comment, index) => normalizeComment(comment, index))
-      .filter(Boolean)
+    buildCommentTree(flattenCommentInput(Array.isArray(initialComments) ? initialComments : []))
   );
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -131,28 +425,81 @@ export default function PostComments({
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [pickedImage, setPickedImage] = useState("");
   const [error, setError] = useState("");
+  const [replyTarget, setReplyTarget] = useState(null);
+  const [editingCommentId, setEditingCommentId] = useState("");
+  const [editingDraft, setEditingDraft] = useState("");
+  const [savingCommentId, setSavingCommentId] = useState("");
   const imageInputRef = useRef(null);
 
-  useEffect(() => {
-    const normalized = (Array.isArray(initialComments) ? initialComments : [])
-      .map((comment, index) => normalizeComment(comment, index))
-      .filter(Boolean);
-    setComments(normalized);
-  }, [postId, initialComments]);
+  const isPostOwner = Boolean(
+    currentUserId &&
+      String(postOwnerId || "").trim() &&
+      currentUserId === String(postOwnerId || "").trim()
+  );
+  const canReply = isPostOwner;
 
-  const baseCount = useMemo(() => {
-    const fallback = comments.length;
+  useEffect(() => {
+    const normalized = buildCommentTree(
+      flattenCommentInput(Array.isArray(initialComments) ? initialComments : [])
+    );
+    setComments(normalized);
+    setReplyTarget(null);
+    setEditingCommentId("");
+    setEditingDraft("");
+    setPickedImage("");
+    setText("");
+    setError("");
+  }, [postId]);
+
+  useEffect(() => {
+    let alive = true;
+
+    const loadComments = async () => {
+      if (!postId) {
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const data = await getPostComments(postId, { threaded: true });
+        if (!alive) {
+          return;
+        }
+
+        const normalized = buildCommentTree(flattenCommentInput(Array.isArray(data) ? data : []));
+        setComments(normalized);
+      } catch (err) {
+        if (!alive) {
+          return;
+        }
+
+        setError(err?.message || "Failed to load comments");
+      } finally {
+        if (alive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadComments();
+
+    return () => {
+      alive = false;
+    };
+  }, [postId]);
+
+  const totalCount = useMemo(() => {
+    const fromTree = countCommentTree(comments);
     const safeInitial = Number(initialCount);
     if (!Number.isFinite(safeInitial) || safeInitial < 0) {
-      return fallback;
+      return fromTree;
     }
-
-    return Math.max(safeInitial, fallback);
-  }, [initialCount, comments.length]);
+    return Math.max(safeInitial, fromTree);
+  }, [comments, initialCount]);
 
   useEffect(() => {
-    onCountChange?.(baseCount);
-  }, [baseCount, onCountChange]);
+    onCountChange?.(totalCount);
+  }, [onCountChange, totalCount]);
 
   const closePickers = () => {
     setShowEmojiPicker(false);
@@ -161,6 +508,85 @@ export default function PostComments({
 
   const clearPickedImage = () => {
     setPickedImage("");
+  };
+
+  const handleReport = async (comment) => {
+    const reason = await prompt(createReportDialogConfig("comment", "harassment"));
+    if (!reason) {
+      return;
+    }
+
+    try {
+      await createReport({
+        targetType: "comment",
+        targetId: comment.id,
+        reason: String(reason).trim().toLowerCase(),
+      });
+      toast.success("Comment report submitted");
+    } catch (err) {
+      toast.error(err?.message || "Failed to report comment");
+    }
+  };
+
+  const handleStartReply = (comment) => {
+    if (!canReply) {
+      return;
+    }
+
+    setReplyTarget(comment);
+    setEditingCommentId("");
+    setEditingDraft("");
+    setError("");
+    closePickers();
+  };
+
+  const handleStartEdit = (comment) => {
+    if (!comment?.id || !currentUserId || String(currentUserId) !== String(comment.authorId || "")) {
+      return;
+    }
+
+    setEditingCommentId(comment.id);
+    setEditingDraft(comment.text || "");
+    setReplyTarget(null);
+    setError("");
+    closePickers();
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCommentId("");
+    setEditingDraft("");
+  };
+
+  const handleSaveEdit = async (comment) => {
+    const textValue = String(editingDraft || "").trim();
+    if (!comment?.id || !textValue || savingCommentId) {
+      return;
+    }
+
+    try {
+      setSavingCommentId(comment.id);
+      setError("");
+
+      const data = await updatePostComment(postId, comment.id, {
+        text: textValue,
+      });
+
+      const updated = normalizeComment(data?.comment, comment.parentCommentId);
+      if (updated) {
+        setComments((current) => {
+          const result = updateCommentInTree(current, updated);
+          return result.nodes;
+        });
+      }
+
+      setEditingCommentId("");
+      setEditingDraft("");
+      toast.success("Comment updated");
+    } catch (err) {
+      setError(err?.message || "Failed to update comment");
+    } finally {
+      setSavingCommentId("");
+    }
   };
 
   const submit = async () => {
@@ -173,38 +599,28 @@ export default function PostComments({
       setError("");
 
       const payloadText = text.trim() || "Image reply";
-      const data = await apiRequest(`/api/posts/${postId}/comment`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: payloadText }),
+      const data = await createPostComment(postId, {
+        text: payloadText,
+        parentCommentId: replyTarget?.id || null,
       });
 
-      const serverComment = normalizeComment(data?.comment, Date.now()) || {
-        id: Date.now().toString(),
-        authorName: "You",
-        text: payloadText,
-        createdAt: new Date().toISOString(),
-        mediaPreview: "",
-      };
+      const serverComment = normalizeComment(data?.comment, replyTarget?.id || "");
+      const nextComment = serverComment
+        ? {
+            ...serverComment,
+            mediaPreview: pickedImage || serverComment.mediaPreview || "",
+          }
+        : null;
 
-      const nextComment = {
-        ...serverComment,
-        authorName: "You",
-        mediaPreview: pickedImage || "",
-      };
-
-      setComments((prev) => [...prev, nextComment]);
-      const nextCount = Number(data?.commentsCount);
-      const fallbackCount = comments.length + 1;
-      onCountChange?.(
-        Number.isFinite(nextCount) && nextCount >= 0 ? nextCount : fallbackCount
-      );
+      if (nextComment) {
+        setComments((current) => insertCommentIntoTree(current, nextComment).nodes);
+      }
 
       setText("");
       setPickedImage("");
+      setReplyTarget(null);
       closePickers();
+      toast.success(replyTarget ? "Reply posted" : "Comment posted");
     } catch (err) {
       setError(err.message || "Failed to send comment");
     } finally {
@@ -238,78 +654,114 @@ export default function PostComments({
     }
 
     try {
-      const dataUrl = await readFileAsDataUrl(file);
+      const reader = new FileReader();
+      const dataUrl = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+        reader.onerror = () => reject(new Error("Failed to read image"));
+        reader.readAsDataURL(file);
+      });
+
       setPickedImage(dataUrl);
       setError("");
     } catch {
       setError("Failed to read image");
+    } finally {
+      event.target.value = "";
     }
   };
 
+  const replyLabel = replyTarget?.authorName ? `Reply to ${replyTarget.authorName}` : "Comment as you...";
+  const commentCountLabel = totalCount === 1 ? "comment" : "comments";
+
   return (
-    <div className="comments comments-v2">
+    <div
+      id={panelId}
+      className={`comments comments-v2 comments-v2--panel ${panelClassName}`.trim()}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={`${panelId || "comments"}-title`}
+      tabIndex={-1}
+      onMouseDown={(event) => event.stopPropagation()}
+    >
       <div className="comments-v2-header">
         <div className="comments-v2-header-copy">
-          <div className="comments-v2-title">Comments</div>
+          <div id={`${panelId || "comments"}-title`} className="comments-v2-title">
+            Comments
+          </div>
           <div className="comments-v2-sort" aria-hidden="true">
             Most relevant <span className="comments-v2-caret">▾</span>
           </div>
         </div>
 
-        <div className="comments-v2-count">
-          {baseCount} {baseCount === 1 ? "comment" : "comments"}
+        <div className="comments-v2-header-actions">
+          <div className="comments-v2-count">
+            {totalCount} {commentCountLabel}
+          </div>
+          {onClose ? (
+            <button
+              type="button"
+              className="comments-v2-close"
+              onClick={onClose}
+              aria-label="Close comments"
+            >
+              X
+            </button>
+          ) : null}
         </div>
       </div>
 
       <div className="comments-v2-list">
-        {comments.map((comment) => (
-          <article key={comment.id} className="comment comment-v2">
-            <div className="comment-author">{comment.authorName}</div>
-            {comment.text && <p>{comment.text}</p>}
-            {comment.mediaPreview && (
-              <img
-                className="comment-inline-media"
-                src={comment.mediaPreview}
-                alt="Comment attachment preview"
-              />
-            )}
-            <Button
-              size="xs"
-              variant="utility"
-              className="comment-report-btn"
-              onClick={async () => {
-                const reason = await prompt(
-                  createReportDialogConfig("comment", "harassment")
-                );
-                if (!reason) {
-                  return;
-                }
+        {loading && comments.length === 0 ? (
+          <div className="comments-v2-empty">Loading comments...</div>
+        ) : null}
 
-                try {
-                  await createReport({
-                    targetType: "comment",
-                    targetId: comment.id,
-                    reason: String(reason).trim().toLowerCase(),
-                  });
-                  toast.success("Comment report submitted");
-                } catch (err) {
-                  toast.error(err?.message || "Failed to report comment");
-                }
-              }}
-            >
-              Report
-            </Button>
-          </article>
+        {!loading && comments.length === 0 ? (
+          <div className="comments-v2-empty">No comments yet. Be the first to share one.</div>
+        ) : null}
+
+        {comments.map((comment) => (
+          <CommentItem
+            key={comment.id}
+            comment={comment}
+            currentUserId={currentUserId}
+            canReply={canReply}
+            editingCommentId={editingCommentId}
+            editingDraft={editingDraft}
+            savingCommentId={savingCommentId}
+            onEditingDraftChange={setEditingDraft}
+            onReply={handleStartReply}
+            onStartEdit={handleStartEdit}
+            onCancelEdit={handleCancelEdit}
+            onSaveEdit={handleSaveEdit}
+            onReport={handleReport}
+          />
         ))}
       </div>
 
       <div className="comment-composer-shell">
-        <img src="/avatar.png" alt="me" />
+        <img src={resolveImage(user?.avatar) || "/avatar.png"} alt="me" />
 
         <div className="comment-composer-main">
+          {replyTarget ? (
+            <div className="comment-reply-banner">
+              <div className="comment-reply-banner__copy">
+                <small>Replying to {replyTarget.authorName || "comment"}</small>
+                <strong>{replyTarget.text || "Comment reply"}</strong>
+              </div>
+              <button
+                type="button"
+                className="comment-reply-banner__close"
+                onClick={() => setReplyTarget(null)}
+                aria-label="Cancel reply"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : null}
+
           <div className="comment-input-row">
             <input
-              placeholder="Comment as you..."
+              placeholder={replyLabel}
               value={text}
               onChange={(event) => setText(event.target.value)}
               onKeyDown={(event) => {
@@ -332,14 +784,14 @@ export default function PostComments({
             </button>
           </div>
 
-          {pickedImage && (
+          {pickedImage ? (
             <div className="comment-picked-media">
               <img src={pickedImage} alt="Picked comment attachment" />
               <button type="button" onClick={clearPickedImage}>
                 Remove
               </button>
             </div>
-          )}
+          ) : null}
 
           <div className="comment-tools-row">
             <button
@@ -398,7 +850,7 @@ export default function PostComments({
             onChange={pickImage}
           />
 
-          {showEmojiPicker && (
+          {showEmojiPicker ? (
             <div className="comment-picker-row emoji">
               {EMOJIS.map((emoji) => (
                 <button key={emoji} type="button" onClick={() => addEmoji(emoji)}>
@@ -406,9 +858,9 @@ export default function PostComments({
                 </button>
               ))}
             </div>
-          )}
+          ) : null}
 
-          {showGifPicker && (
+          {showGifPicker ? (
             <div className="comment-picker-row gif">
               {GIF_TOKENS.map((token) => (
                 <button key={token} type="button" onClick={() => addGifToken(token)}>
@@ -416,9 +868,9 @@ export default function PostComments({
                 </button>
               ))}
             </div>
-          )}
+          ) : null}
 
-          {error && <p className="comment-error">{error}</p>}
+          {error ? <p className="comment-error">{error}</p> : null}
         </div>
       </div>
     </div>

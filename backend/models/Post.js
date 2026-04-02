@@ -84,6 +84,16 @@ const CommentSchema = new mongoose.Schema(
       min: 0,
     },
 
+    edited: {
+      type: Boolean,
+      default: false,
+    },
+
+    editedAt: {
+      type: Date,
+      default: null,
+    },
+
     replies: {
       type: [ReplySchema],
       default: [],

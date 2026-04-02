@@ -414,7 +414,126 @@ const avatarToUrl = (avatar) => {
   return normalizeMediaValue(avatar).url;
 };
 
-const withPostAuthor = (query) => query.populate("author", "name username avatar");
+const normalizeCommentAuthor = (author = {}) => {
+  const source = author && typeof author === "object" ? author : {};
+  const authorId = toIdString(source._id || source.id || "");
+  return {
+    _id: authorId,
+    name: normalizeText(source.name || "", 120),
+    username: normalizeUsername(source.username || ""),
+    avatar: avatarToUrl(source.avatar),
+  };
+};
+
+const normalizeCommentItem = (comment = {}, parentCommentId = null) => {
+  const author = comment?.author && typeof comment.author === "object" ? comment.author : null;
+  const authorInfo = normalizeCommentAuthor(author || {});
+  const rawAuthorId =
+    comment?.author && typeof comment.author === "object"
+      ? comment.author._id || comment.author.id || ""
+      : comment.author || "";
+  const authorId = authorInfo._id || toIdString(rawAuthorId);
+  const reactions = Array.isArray(comment.reactions)
+    ? comment.reactions
+        .map((reaction) => ({
+          userId: toIdString(reaction?.userId || reaction?.user || reaction?.author),
+          emoji: String(reaction?.emoji || "").trim().slice(0, 8),
+          createdAt: reaction?.createdAt || null,
+        }))
+        .filter((entry) => entry.userId || entry.emoji)
+    : [];
+
+  return {
+    _id: toIdString(comment._id || comment.id),
+    author: authorId
+      ? {
+          ...authorInfo,
+          _id: authorId,
+        }
+      : null,
+    authorId,
+    authorName: authorInfo.name || normalizeText(comment.authorName || comment.userName || "", 120) || "User",
+    authorUsername: authorInfo.username || normalizeUsername(comment.authorUsername || ""),
+    authorAvatar: authorInfo.avatar || normalizeText(comment.authorAvatar || "", 500),
+    text: normalizeText(comment.text || "", 2000),
+    parentCommentId: toIdString(comment.parentCommentId || parentCommentId || ""),
+    mentions: Array.isArray(comment.mentions) ? comment.mentions.map((id) => toIdString(id)).filter(Boolean) : [],
+    hashtags: Array.isArray(comment.hashtags)
+      ? comment.hashtags.map((tag) => normalizeText(String(tag || ""), 60).toLowerCase()).filter(Boolean)
+      : [],
+    audience: comment.audience || "friends",
+    likes: Array.isArray(comment.likes) ? comment.likes.map((id) => toIdString(id)).filter(Boolean) : [],
+    reactions,
+    reactionsCount: Number(comment.reactionsCount) || reactions.length || 0,
+    edited: Boolean(comment.edited),
+    editedAt: comment.editedAt || null,
+    createdAt: comment.createdAt || null,
+    updatedAt: comment.updatedAt || null,
+    mediaPreview: normalizeText(comment.mediaPreview || "", 500),
+  };
+};
+
+const flattenCommentTree = (comments = [], parentCommentId = null, output = [], seen = new Set()) => {
+  if (!Array.isArray(comments)) {
+    return output;
+  }
+
+  for (const comment of comments) {
+    if (!comment || typeof comment !== "object") {
+      continue;
+    }
+
+    const normalized = normalizeCommentItem(comment, parentCommentId);
+    if (!normalized._id || seen.has(normalized._id)) {
+      continue;
+    }
+
+    seen.add(normalized._id);
+    output.push(normalized);
+
+    if (Array.isArray(comment.replies) && comment.replies.length > 0) {
+      flattenCommentTree(comment.replies, normalized._id, output, seen);
+    }
+  }
+
+  return output;
+};
+
+const buildThreadedComments = (comments = []) => {
+  const normalizedComments = Array.isArray(comments) ? comments : [];
+  const nodes = new Map();
+  const roots = [];
+
+  normalizedComments.forEach((comment) => {
+    if (!comment?._id) {
+      return;
+    }
+    nodes.set(String(comment._id), { ...comment, replies: [] });
+  });
+
+  normalizedComments.forEach((comment) => {
+    const node = nodes.get(String(comment?._id || ""));
+    if (!node) {
+      return;
+    }
+
+    const parentId = String(comment?.parentCommentId || "").trim();
+    if (parentId && nodes.has(parentId)) {
+      nodes.get(parentId).replies.push(node);
+      return;
+    }
+
+    roots.push(node);
+  });
+
+  return roots;
+};
+
+const withPostAuthor = (query) =>
+  query
+    .populate("author", "name username avatar")
+    .populate("comments.author", "name username avatar")
+    .populate("comments.replies.author", "name username avatar");
 
 const getPostPreviewImage = (post = {}) => {
   const videoPayload = buildVideoMeta(post?.video);
@@ -622,7 +741,7 @@ const toPostPayload = (post, viewerId) => {
   const author = post.author || {};
   const firstMedia = Array.isArray(post.media) && post.media.length > 0 ? post.media[0] : null;
   const likes = Array.isArray(post.likes) ? post.likes : [];
-  const comments = Array.isArray(post.comments) ? post.comments : [];
+  const comments = flattenCommentTree(Array.isArray(post.comments) ? post.comments : []);
   const videoPayload = buildVideoMeta(post.video);
   const firstMediaType = String(firstMedia?.type || "").toLowerCase();
   const inferredType =
@@ -1355,6 +1474,12 @@ class PostService {
     return payload;
   }
 
+  static async getComments({ viewerId, postId, threaded = false }) {
+    const payload = await PostService.getPostById({ viewerId, postId });
+    const comments = Array.isArray(payload?.comments) ? payload.comments : [];
+    return threaded ? buildThreadedComments(comments) : comments;
+  }
+
   static async getUserPosts({ viewerId, username }) {
     const normalized = (username || "").trim().toLowerCase();
     if (!normalized) throw ApiError.badRequest("Username is required");
@@ -1483,7 +1608,7 @@ class PostService {
     const post = await postRepository.findById(postId);
     if (!post) throw ApiError.notFound("Post not found");
 
-    const parentCommentId = text?.parentCommentId || null;
+    const parentCommentId = String(text?.parentCommentId || "").trim();
     const bodyText = typeof text === "object" ? text?.text : text;
     const normalizedText = normalizeText(bodyText, 500);
     if (!normalizedText) {
@@ -1491,20 +1616,31 @@ class PostService {
     }
 
     const mentions = await resolveMentionUserIds(normalizedText);
+    const parentComment =
+      parentCommentId && mongoose.Types.ObjectId.isValid(parentCommentId)
+        ? post.comments.id(parentCommentId)
+        : null;
 
-    post.comments.push({
+    if (parentCommentId && !parentComment) {
+      throw ApiError.notFound("Parent comment not found");
+    }
+
+    const latestComment = post.comments.create({
       author: userId,
       text: normalizedText,
-      parentCommentId,
+      parentCommentId: parentCommentId || null,
       mentions,
       reactions: [],
       reactionsCount: 0,
+      edited: false,
+      editedAt: null,
     });
+    post.comments.push(latestComment);
     post.commentsCount = post.comments.length;
     await post.save();
 
     await createNotification({
-      recipient: post.author,
+      recipient: toIdString(post.author),
       sender: userId,
       type: "comment",
       text: "commented on your post",
@@ -1516,7 +1652,26 @@ class PostService {
       onlineUsers,
     });
 
-    const latestComment = post.comments[post.comments.length - 1];
+    const parentCommentAuthorId = toIdString(parentComment?.author || "");
+    if (parentCommentAuthorId) {
+      await createNotification({
+        recipient: parentCommentAuthorId,
+        sender: userId,
+        type: "reply",
+        text: "replied to your comment",
+        entity: {
+          id: post._id,
+          model: "Post",
+        },
+        metadata: {
+          dedupeKey: `comment_reply:${post._id.toString()}:${latestComment._id.toString()}`,
+          parentCommentId: parentCommentId || "",
+        },
+        io,
+        onlineUsers,
+      });
+    }
+
     await incrementDailyMetric("commentsCount", 1).catch(() => null);
 
     for (const mentionedUserId of mentions) {
@@ -1535,10 +1690,59 @@ class PostService {
       });
     }
 
+    const refreshedPost = await withPostAuthor(Post.findById(post._id)).lean();
+    const refreshedComments = flattenCommentTree(refreshedPost?.comments || []);
+    const createdComment =
+      refreshedComments.find((entry) => String(entry._id) === String(latestComment._id)) ||
+      normalizeCommentItem(latestComment);
+
     return {
       success: true,
-      comment: latestComment,
+      comment: createdComment,
       commentsCount: post.commentsCount,
+    };
+  }
+
+  static async updateComment({ userId, postId, commentId, text, io, onlineUsers }) {
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      throw ApiError.badRequest("Invalid post id");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(commentId)) {
+      throw ApiError.badRequest("Invalid comment id");
+    }
+
+    const post = await postRepository.findById(postId);
+    if (!post) throw ApiError.notFound("Post not found");
+
+    const comment = post.comments.id(commentId);
+    if (!comment) throw ApiError.notFound("Comment not found");
+
+    const commentAuthorId = toIdString(comment.author);
+    if (commentAuthorId !== String(userId)) {
+      throw ApiError.forbidden("You can only edit your own comment");
+    }
+
+    const normalizedText = normalizeText(text, 500);
+    if (!normalizedText) {
+      throw ApiError.badRequest("Comment text is required");
+    }
+
+    comment.text = normalizedText;
+    comment.edited = true;
+    comment.editedAt = new Date();
+    await post.save();
+
+    const refreshed = await withPostAuthor(Post.findById(post._id)).lean();
+    const refreshedComments = flattenCommentTree(refreshed?.comments || []);
+    const updatedComment =
+      refreshedComments.find((entry) => String(entry._id) === String(commentId)) ||
+      normalizeCommentItem(comment);
+
+    return {
+      success: true,
+      comment: updatedComment,
+      commentsCount: Number(refreshed?.commentsCount) || refreshedComments.length,
     };
   }
 

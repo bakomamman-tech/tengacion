@@ -85,6 +85,18 @@ exports.addComment = catchAsync(async (req, res) => {
   res.status(201).json(payload);
 });
 
+exports.updateComment = catchAsync(async (req, res) => {
+  const payload = await PostService.updateComment({
+    userId: req.user.id,
+    postId: req.params.id,
+    commentId: req.params.commentId,
+    text: req.body.text,
+    io: req.app.get("io"),
+    onlineUsers: req.app.get("onlineUsers"),
+  });
+  res.json(payload);
+});
+
 exports.votePoll = catchAsync(async (req, res) => {
   const payload = await PostService.votePoll({
     userId: req.user.id,
@@ -104,29 +116,10 @@ exports.answerQuiz = catchAsync(async (req, res) => {
 });
 
 exports.getComments = catchAsync(async (req, res) => {
-  const payload = await PostService.getPostById({
+  const comments = await PostService.getComments({
     viewerId: req.user?.id,
     postId: req.params.id,
+    threaded: String(req.query.threaded || "").toLowerCase() === "true",
   });
-  const comments = Array.isArray(payload?.comments) ? payload.comments : [];
-  if (String(req.query.threaded || "").toLowerCase() !== "true") {
-    res.json(comments);
-    return;
-  }
-
-  const byParent = new Map();
-  comments.forEach((comment) => {
-    const parentId = comment?.parentCommentId ? String(comment.parentCommentId) : "root";
-    if (!byParent.has(parentId)) byParent.set(parentId, []);
-    byParent.get(parentId).push({ ...comment, replies: [] });
-  });
-
-  const roots = byParent.get("root") || [];
-  const attachReplies = (node) => {
-    const children = byParent.get(String(node._id || "")) || [];
-    node.replies = children;
-    children.forEach(attachReplies);
-  };
-  roots.forEach(attachReplies);
-  res.json(roots);
+  res.json(comments);
 });

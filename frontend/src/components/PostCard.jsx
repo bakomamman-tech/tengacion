@@ -9,6 +9,7 @@ import {
   truncateText,
 } from "./share/postShareUtils";
 import { apiRequest, createReport, initPayment, resolveImage } from "../api";
+import { useAuth } from "../context/AuthContext";
 import { createReportDialogConfig } from "../constants/reportReasons";
 import VideoPlayer from "./media/VideoPlayer";
 import { useDialog } from "./ui/useDialog";
@@ -203,6 +204,7 @@ export default function PostCard({
   onRecommendationAction,
 }) {
   const { confirm, prompt } = useDialog();
+  const { user: currentUser } = useAuth() || {};
   /* SYSTEM POST SHORT-CIRCUIT */
   const isSystemPost = isSystem || post?.system;
   const isRecommendedPost = Boolean(discoveryMeta?.requestId);
@@ -372,8 +374,13 @@ export default function PostCard({
   const commentsLabel = liveCommentsCount === 1 ? "comment" : "comments";
   const sharesLabel = shareCount === 1 ? "share" : "shares";
   const commentsPanelId = `post-comments-${post?._id || "panel"}`;
-
-  const isOwner = !!post?.isOwner;
+  const currentUserId = String(currentUser?._id || currentUser?.id || "").trim();
+  const postAuthorId = String(
+    post?.user?._id || post?.authorId || post?.author?._id || post?.author || ""
+  ).trim();
+  const isOwner = Boolean(
+    post?.isOwner || (currentUserId && postAuthorId && currentUserId === postAuthorId)
+  );
 
   const runRecommendationAction = useCallback(
     async (payload = {}) => {
@@ -420,6 +427,28 @@ export default function PostCard({
   useEffect(() => {
     setShareCount(Number(post?.shareCount) || 0);
   }, [post?._id, post?.shareCount]);
+
+  useEffect(() => {
+    if (!showComments) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setShowComments(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [showComments]);
 
   useEffect(() => {
     hasTrackedImpressionRef.current = false;
@@ -627,6 +656,7 @@ export default function PostCard({
       return;
     }
 
+    setShowComments(false);
     setShareOpen(true);
   };
 
@@ -788,6 +818,7 @@ export default function PostCard({
                   <>
                     <button
                       onClick={() => {
+                        setShowComments(false);
                         setEditOpen(true);
                         setMenuOpen(false);
                       }}
@@ -1035,6 +1066,7 @@ export default function PostCard({
               setShowComments((state) => {
                 const nextState = !state;
                 if (nextState) {
+                  setMenuOpen(false);
                   void runRecommendationAction({
                     action: "open_comments",
                     eventType: "post_opened",
@@ -1066,21 +1098,24 @@ export default function PostCard({
         </div>
 
         {/* COMMENTS */}
-        <div
-          id={commentsPanelId}
-          className={`post-comments-wrap ${showComments ? "open" : ""}`}
-        >
-          {showComments && (
-            <div className="post-comments">
-              <PostComments
-                postId={post?._id}
-                initialComments={post?.comments}
-                initialCount={baseCommentsCount}
-                onCountChange={setLiveCommentsCount}
-              />
-            </div>
-          )}
-        </div>
+        {showComments ? (
+          <div
+            className="post-comments-overlay"
+            role="presentation"
+            onMouseDown={() => setShowComments(false)}
+          >
+            <PostComments
+              postId={post?._id}
+              initialComments={post?.comments}
+              initialCount={baseCommentsCount}
+              onCountChange={setLiveCommentsCount}
+              panelId={commentsPanelId}
+              panelClassName="post-comments-panel"
+              onClose={() => setShowComments(false)}
+              postOwnerId={postAuthorId}
+            />
+          </div>
+        ) : null}
       </article>
 
       {editOpen && (

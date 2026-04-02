@@ -1455,6 +1455,39 @@ export const getPostById = (postId) =>
     headers: getAuthHeaders(),
   });
 
+export const getPostComments = (postId, { threaded = true } = {}) =>
+  request(
+    `${API_BASE}/posts/${encodeURIComponent(postId || "")}/comments${
+      threaded ? "?threaded=true" : ""
+    }`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+
+export const createPostComment = (postId, payload = {}) =>
+  request(`${API_BASE}/posts/${encodeURIComponent(postId || "")}/comment`, {
+    method: "POST",
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const updatePostComment = (postId, commentId, payload = {}) =>
+  request(
+    `${API_BASE}/posts/${encodeURIComponent(postId || "")}/comments/${encodeURIComponent(commentId || "")}`,
+    {
+      method: "PUT",
+      headers: {
+        ...getAuthHeaders(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload || {}),
+    }
+  );
+
 export const likePost = (id) =>
   request(`${API_BASE}/posts/${id}/like`, {
     method: "POST",

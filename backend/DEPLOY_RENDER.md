@@ -22,7 +22,7 @@ The server now runs a preflight check (`backend/scripts/preflight.js`) before co
 | `JWT_SECRET` | JWT signing secret (≥32 chars) | 🔴 Required |
 | `JWT_REFRESH_SECRET` | Refresh-token signing secret | 🔴 Required for login/refresh flows |
 | `AUTH_CHALLENGE_SECRET` | Challenge/step-up signing secret | 🔴 Required for MFA/step-up flows |
-| `MEDIA_SIGNING_SECRET` | Media signing JWT secret (≥32 chars) | 🔴 Required |
+| `MEDIA_SIGNING_SECRET` | Media signing JWT secret (falls back to `JWT_SECRET` when missing) | 🟠 Warning if missing |
 | `LIVEKIT_WS_URL` | LiveKit signaling WebSocket URL (production should be `wss://...`) | 🟠 Warning if missing |
 | `LIVEKIT_HOST` | Optional fallback if `LIVEKIT_WS_URL` is not set | 🟠 Warning if missing |
 | `LIVEKIT_API_KEY` | LiveKit server API key for token minting | 🟠 Warning if missing |

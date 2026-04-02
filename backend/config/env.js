@@ -210,20 +210,12 @@ if (!Number.isInteger(port) || port <= 0) {
   missing.push("PORT");
 }
 
-if (isProduction && !mediaSigningSecretInput) {
-  missing.push("MEDIA_SIGNING_SECRET");
-}
-
-if (isProduction && !paystackSecretKey) {
-  missing.push("PAYSTACK_SECRET_KEY");
-}
-
 if (missing.length > 0) {
   throw new Error(`Missing required env variables: ${missing.join(", ")}`);
 }
 
 const jwtRefreshSecret = jwtRefreshSecretInput || (isProduction ? "" : jwtSecret);
-const mediaSigningSecret = mediaSigningSecretInput || (isProduction ? "" : jwtSecret);
+const mediaSigningSecret = mediaSigningSecretInput || jwtSecret;
 
 const config = {
   nodeEnv,

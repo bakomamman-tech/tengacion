@@ -219,6 +219,31 @@
   letter-spacing: -0.03em;
 }
 
+.creator-public-page :is(h1, h2, h3, h4) {
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.creator-public-page h1 {
+  font-size: clamp(2.45rem, 3.6vw, 3.7rem);
+  line-height: 1.03;
+}
+
+.creator-public-page h2 {
+  font-size: clamp(1.65rem, 2.2vw, 2.15rem);
+  line-height: 1.08;
+}
+
+.creator-public-page h3 {
+  font-size: clamp(1.25rem, 1.35vw, 1.45rem);
+  line-height: 1.12;
+}
+
+.creator-public-page h4 {
+  font-size: clamp(1.05rem, 1.1vw, 1.15rem);
+  line-height: 1.14;
+}
+
 .creator-public-hero__tagline {
   color: rgba(248, 243, 231, 0.84);
   line-height: 1.7;

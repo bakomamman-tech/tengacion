@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
 
 import PostComments from "./PostComments";
@@ -660,6 +661,30 @@ export default function PostCard({
     setShareOpen(true);
   };
 
+  const commentsLayer =
+    showComments && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            className="post-comments-overlay"
+            role="presentation"
+            onMouseDown={() => setShowComments(false)}
+          >
+            <PostComments
+              postId={post?._id}
+              initialComments={post?.comments}
+              initialCount={baseCommentsCount}
+              onCountChange={setLiveCommentsCount}
+              panelId={commentsPanelId}
+              panelClassName="post-comments-panel"
+              onClose={() => setShowComments(false)}
+              postOwnerId={postAuthorId}
+              postOwnerName={username}
+            />
+          </div>,
+          document.body
+        )
+      : null;
+
   const deletePost = async () => {
     if (deleting) {
       return;
@@ -1098,25 +1123,6 @@ export default function PostCard({
         </div>
 
         {/* COMMENTS */}
-        {showComments ? (
-          <div
-            className="post-comments-overlay"
-            role="presentation"
-            onMouseDown={() => setShowComments(false)}
-          >
-            <PostComments
-              postId={post?._id}
-              initialComments={post?.comments}
-              initialCount={baseCommentsCount}
-              onCountChange={setLiveCommentsCount}
-              panelId={commentsPanelId}
-              panelClassName="post-comments-panel"
-              onClose={() => setShowComments(false)}
-              postOwnerId={postAuthorId}
-              postOwnerName={username}
-            />
-          </div>
-        ) : null}
       </article>
 
       {editOpen && (
@@ -1136,6 +1142,8 @@ export default function PostCard({
         onShareCountChange={setShareCount}
         onShareCreated={onShareCreated}
       />
+
+      {commentsLayer}
     </>
   );
 }

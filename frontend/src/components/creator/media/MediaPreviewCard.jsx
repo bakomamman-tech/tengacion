@@ -11,6 +11,7 @@ const formatPrice = (value = 0) =>
 export default function MediaPreviewCard({
   item,
   creatorId,
+  featured = false,
   onPreview,
   onStream,
   onDownload,
@@ -29,8 +30,12 @@ export default function MediaPreviewCard({
   const buyLabel = resolvePurchaseCtaLabel(item, { busy: isBuyBusy });
 
   return (
-    <article className={`creator-public-card creator-public-card--${item.mediaType || "audio"}`}>
-      <div className="creator-public-card__media">
+    <article
+      className={`creator-public-card creator-public-card--${item.mediaType || "audio"}${
+        featured ? " creator-public-card--featured" : ""
+      }`}
+    >
+      <div className={`creator-public-card__media${featured ? " creator-public-card__media--featured" : ""}`}>
         {item.coverUrl ? (
           <img src={item.coverUrl} alt={item.title} />
         ) : (

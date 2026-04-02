@@ -11,6 +11,7 @@ export default function CreatorContentShelf({
   onDownload,
   onBuy,
   purchaseBusyKey = "",
+  featured = false,
 }) {
   return (
     <section className="creator-public-shelf">
@@ -28,6 +29,7 @@ export default function CreatorContentShelf({
               key={`${item.itemType}-${item.id}`}
               item={item}
               creatorId={creatorId}
+              featured={featured}
               onPreview={onPreview}
               onStream={onStream}
               onDownload={onDownload}

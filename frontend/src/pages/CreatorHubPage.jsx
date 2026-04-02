@@ -549,6 +549,7 @@ export default function CreatorHubPage() {
         subtitle="Fresh tracks ready to preview, stream, download, or buy."
         creatorId={creator.id}
         items={music.tracks}
+        featured
         emptyMessage="No music has been published yet."
         onPreview={handlePreview}
         onStream={handleStream}

@@ -158,6 +158,13 @@
   align-items: center;
 }
 
+.creator-public-hero__identity > div {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+}
+
 .creator-public-hero__avatar {
   display: grid;
   place-items: center;
@@ -247,6 +254,8 @@
 .creator-public-hero__tagline {
   color: rgba(248, 243, 231, 0.84);
   line-height: 1.7;
+  max-width: 34ch;
+  margin-inline: auto;
 }
 
 .creator-public-featured p,
@@ -262,6 +271,7 @@
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 16px;
+  justify-content: center;
 }
 
 .creator-public-hero__meta span {
@@ -274,7 +284,8 @@
 .creator-public-hero__actions {
   display: flex;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
 }
 
 .creator-public-hero__action-stack {
@@ -282,7 +293,7 @@
   gap: 14px;
   justify-items: end;
   width: 100%;
-  max-width: 420px;
+  max-width: 560px;
 }
 
 .creator-public-hero__stream-links {
@@ -334,6 +345,14 @@
   box-shadow:
     0 12px 24px rgba(18, 44, 30, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
+.creator-public-hero .creator-primary-btn,
+.creator-public-hero .creator-secondary-btn,
+.creator-public-hero .creator-share-btn {
+  white-space: nowrap;
+  padding-inline: 16px;
+  font-size: 0.95rem;
 }
 
 .creator-public-tabs {
@@ -810,6 +829,21 @@
   .creator-public-hero__action-stack {
     justify-items: start;
     max-width: 100%;
+  }
+
+  .creator-public-hero__actions {
+    flex-wrap: wrap;
+  }
+
+  .creator-public-hero__identity > div {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .creator-public-hero__tagline,
+  .creator-public-hero__meta {
+    margin-inline: 0;
+    justify-content: flex-start;
   }
 
   .creator-public-hero__stream-links {

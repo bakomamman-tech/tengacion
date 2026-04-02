@@ -8761,14 +8761,17 @@ html.dark-mode .create-post-quick-btn--reel {
   margin-top: 10px;
   border-radius: 14px;
   overflow: hidden;
-  background: var(--surface-soft);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.14));
 }
 
 .post-image {
   width: 100%;
+  height: auto;
   max-height: 520px;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  margin: 0 auto;
+  background: #130b08;
 }
 
 .post-video {

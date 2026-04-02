@@ -392,12 +392,16 @@
 }
 
 .creator-public-preview {
-  padding: 18px;
-  border-radius: 24px;
+  padding: 20px 20px 18px;
+  border-radius: 28px;
   background:
+    radial-gradient(circle at top, rgba(58, 95, 69, 0.18), transparent 28%),
     linear-gradient(180deg, rgba(17, 31, 23, 0.96), rgba(17, 28, 22, 0.94));
   color: #f8f3e7;
   min-height: 320px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 22px 42px rgba(6, 10, 8, 0.18);
 }
 
 .creator-public-preview__head p,
@@ -410,7 +414,16 @@
 .creator-public-preview__head strong {
   display: block;
   margin: 6px 0 4px;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
+  line-height: 1.15;
+}
+
+.creator-public-preview__head {
+  text-align: center;
+}
+
+.creator-public-preview__head > div {
+  width: 100%;
 }
 
 .creator-public-preview__player,
@@ -428,13 +441,14 @@
 
 .creator-public-preview__audio {
   display: grid;
-  gap: 16px;
-  margin-top: 18px;
+  gap: 18px;
+  margin-top: 16px;
 }
 
 .creator-public-preview__audio-copy {
   display: grid;
   gap: 10px;
+  padding: 0 4px;
 }
 
 .creator-public-preview__audio-copy small {
@@ -445,9 +459,21 @@
 .creator-public-preview__audio img,
 .creator-public-preview__cover img {
   width: 100%;
-  max-height: 320px;
-  object-fit: cover;
-  border-radius: 18px;
+  height: auto;
+  max-height: min(58vh, 520px);
+  object-fit: contain;
+  display: block;
+  box-sizing: border-box;
+  margin-inline: auto;
+  padding: 14px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.14), transparent 30%),
+    linear-gradient(180deg, rgba(30, 45, 37, 0.92), rgba(12, 21, 16, 0.94));
+  border: 1px solid rgba(255, 246, 224, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 18px 36px rgba(0, 0, 0, 0.16);
 }
 
 .creator-public-preview__empty {
@@ -718,5 +744,17 @@
 
   .creator-public-preview__frame {
     min-height: 280px;
+  }
+
+  .creator-public-preview {
+    padding: 16px;
+    border-radius: 24px;
+  }
+
+  .creator-public-preview__audio img,
+  .creator-public-preview__cover img {
+    max-height: min(52vh, 420px);
+    padding: 10px;
+    border-radius: 20px;
   }
 }

@@ -1744,6 +1744,74 @@ textarea {
   gap: 22px;
 }
 
+.creator-shell .creator-sidebar-label,
+.creator-shell .creator-sidebar-link--parent {
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.creator-shell .creator-sidebar-label {
+  color: rgba(245, 240, 227, 0.86);
+}
+
+.creator-shell .creator-sidebar-link--parent {
+  font-size: 0.98rem;
+  color: #fff7ea;
+}
+
+.creator-page-grid:not(.creator-upload-page) :is(h1, h2, h3, h4) {
+  margin-top: 0;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--creator-text);
+}
+
+.creator-page-grid:not(.creator-upload-page) h1 {
+  font-size: clamp(2.2rem, 2.8vw, 2.8rem);
+  line-height: 1.04;
+}
+
+.creator-page-grid:not(.creator-upload-page) h2 {
+  font-size: clamp(1.55rem, 1.95vw, 2.05rem);
+  line-height: 1.08;
+}
+
+.creator-page-grid:not(.creator-upload-page) h3 {
+  font-size: clamp(1.12rem, 1.22vw, 1.28rem);
+  line-height: 1.12;
+}
+
+.creator-page-grid:not(.creator-upload-page) h4 {
+  font-size: clamp(0.98rem, 1.05vw, 1.08rem);
+  line-height: 1.14;
+}
+
+.creator-page-grid:not(.creator-upload-page) .creator-panel-head h2,
+.creator-page-grid:not(.creator-upload-page) .creator-upload-launch-card h3 {
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+
+.creator-page-grid:not(.creator-upload-page) .creator-panel-head h2 {
+  font-size: clamp(1.45rem, 1.8vw, 1.95rem);
+}
+
+.creator-page-grid:not(.creator-upload-page) .creator-upload-launch-card h3 {
+  font-size: clamp(1.12rem, 1.25vw, 1.35rem);
+}
+
+.creator-page-grid:not(.creator-upload-page) .creator-quick-action span {
+  font-size: 1.02rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.creator-page-grid:not(.creator-upload-page) .creator-quick-action small {
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
 .creator-page-stack {
   display: grid;
   gap: 22px;

@@ -5,6 +5,7 @@ const optionalAuth = require("../middleware/optionalAuth");
 const upload = require("../utils/upload");
 const {
   createTrack,
+  deleteTrack,
   getTrackById,
   getTrackStream,
   updateTrack,
@@ -41,5 +42,6 @@ router.put(
 
 router.get("/:trackId", optionalAuth, getTrackById);
 router.get("/:trackId/stream", optionalAuth, getTrackStream);
+router.delete("/:trackId", auth, creatorAuth, deleteTrack);
 
 module.exports = router;

@@ -31,6 +31,7 @@ const Story = require("../models/Story");
 const Message = require("../models/Message");
 const User = require("../models/User");
 const UserStrike = require("../models/UserStrike");
+const { getMediaAuditSummary } = require("./mediaAuditService");
 const { deleteStoredMedia } = require("./storageQuarantineService");
 
 const STORAGE_WASTE_PATTERNS = [
@@ -257,6 +258,7 @@ const buildCollectionOverview = async (collectionName, model = null) => {
 const getStorageOverview = async () => {
   const collections = await mongoose.connection.db.listCollections().toArray();
   const models = modelByCollectionName();
+  const mediaSummary = await getMediaAuditSummary();
 
   const rows = [];
   for (const entry of collections) {
@@ -272,6 +274,7 @@ const getStorageOverview = async () => {
       storageSizeBytes: rows.reduce((total, row) => total + (row.storageSizeBytes || 0), 0),
       totalIndexSizeBytes: rows.reduce((total, row) => total + (row.totalIndexSizeBytes || 0), 0),
     },
+    mediaSummary,
   };
 };
 

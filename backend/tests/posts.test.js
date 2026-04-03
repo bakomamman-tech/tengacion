@@ -306,6 +306,44 @@ describe("Posts feed", () => {
     expect(response.body[0].video).toBeNull();
   });
 
+  test("DELETE /api/posts removes cloudinary-backed media after the record is deleted", async () => {
+    const post = await Post.create({
+      author: artist._id,
+      text: "delete me",
+      media: [
+        {
+          publicId: "tengacion/posts/images/delete-me",
+          public_id: "tengacion/posts/images/delete-me",
+          url: "https://res.cloudinary.com/test-cloud/image/upload/v1/tengacion/posts/images/delete-me.jpg",
+          secureUrl:
+            "https://res.cloudinary.com/test-cloud/image/upload/v1/tengacion/posts/images/delete-me.jpg",
+          secure_url:
+            "https://res.cloudinary.com/test-cloud/image/upload/v1/tengacion/posts/images/delete-me.jpg",
+          resourceType: "image",
+          resource_type: "image",
+          provider: "cloudinary",
+          type: "image",
+        },
+      ],
+      type: "image",
+      privacy: "public",
+    });
+
+    await request(app)
+      .delete(`/api/posts/${post._id}`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .expect(200);
+
+    expect(await Post.findById(post._id).lean()).toBeNull();
+    expect(cloudinary.uploader.destroy).toHaveBeenCalledWith(
+      "tengacion/posts/images/delete-me",
+      expect.objectContaining({
+        resource_type: "image",
+        invalidate: true,
+      })
+    );
+  });
+
   test("comments support threaded replies and author edits", async () => {
     const commenter = await User.create({
       name: "Commenter User",

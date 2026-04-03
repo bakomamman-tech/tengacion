@@ -7,7 +7,10 @@ const auth = require("../middleware/auth");
 const moderateUpload = require("../middleware/moderateUpload");
 const { persistChatMessage } = require("../services/chatService");
 const { createNotification } = require("../services/notificationService");
-const { saveUploadedMediaToGridFs } = require("../services/mediaStore");
+const {
+  deleteUploadedMediaBatch,
+  saveUploadedMedia,
+} = require("../services/mediaStore");
 const {
   toIdString,
   avatarToUrl,
@@ -24,6 +27,21 @@ const toAttachmentType = (mimetype = "") => {
   if (type.startsWith("video/")) return "video";
   if (type.startsWith("audio/")) return "audio";
   return "file";
+};
+
+const resolveChatAttachmentSource = (mimetype = "") => {
+  const type = toAttachmentType(mimetype);
+  if (type === "image") return "chat_attachment_image";
+  if (type === "video") return "chat_attachment_video";
+  if (type === "audio") return "chat_attachment_audio";
+  return "chat_attachment_document";
+};
+
+const resolveChatAttachmentResourceType = (mimetype = "") => {
+  const type = toAttachmentType(mimetype);
+  if (type === "image") return "image";
+  if (type === "video" || type === "audio") return "video";
+  return "raw";
 };
 
 const canSendDirectMessage = ({ sender, receiver }) => {
@@ -57,19 +75,37 @@ router.post(
     descriptionFields: ["text"],
   }),
   async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
 
-  const uploaded = await saveUploadedMediaToGridFs(req.file);
-  return res.json({
-    url: uploaded.url,
-    public_id: uploaded.public_id,
-    type: toAttachmentType(req.file.mimetype),
-    name: req.file.originalname || req.file.filename,
-    size: Number(req.file.size) || 0,
-  });
-});
+      const uploaded = await saveUploadedMedia(req.file, {
+        source: resolveChatAttachmentSource(req.file.mimetype),
+        resourceType: resolveChatAttachmentResourceType(req.file.mimetype),
+      });
+      return res.json({
+        url: uploaded.secureUrl || uploaded.url,
+        secureUrl: uploaded.secureUrl || uploaded.url,
+        secure_url: uploaded.secureUrl || uploaded.url,
+        publicId: uploaded.publicId || uploaded.public_id,
+        public_id: uploaded.public_id,
+        resourceType: uploaded.resourceType || uploaded.resource_type,
+        resource_type: uploaded.resourceType || uploaded.resource_type,
+        provider: uploaded.provider || "cloudinary",
+        folder: uploaded.folder || "",
+        type: toAttachmentType(req.file.mimetype),
+        name: req.file.originalname || req.file.filename,
+        size: Number(req.file.size) || 0,
+      });
+    } catch (err) {
+      console.error("Chat attachment upload failed:", err);
+      return res.status(err?.statusCode || 500).json({
+        error: err?.message || "Attachment upload failed",
+      });
+    }
+  }
+);
 
 router.post("/share/followers", auth, async (req, res) => {
   try {
@@ -353,7 +389,7 @@ router.patch("/:messageId/delete-for-me", auth, async (req, res) => {
       return res.status(400).json({ error: "Invalid message id" });
     }
 
-    const message = await Message.findById(messageId).select("senderId receiverId");
+    const message = await Message.findById(messageId).select("senderId receiverId attachments");
     if (!message) {
       return res.status(404).json({ error: "Message not found" });
     }
@@ -394,7 +430,7 @@ router.patch("/:messageId/unsend", auth, async (req, res) => {
       return res.status(400).json({ error: "Invalid message id" });
     }
 
-    const message = await Message.findById(messageId).select("senderId receiverId");
+    const message = await Message.findById(messageId).select("senderId receiverId attachments");
     if (!message) {
       return res.status(404).json({ error: "Message not found" });
     }
@@ -405,6 +441,7 @@ router.patch("/:messageId/unsend", auth, async (req, res) => {
       return res.status(403).json({ error: "Only the sender can unsend this message" });
     }
 
+    await deleteUploadedMediaBatch(message.attachments || []).catch(() => null);
     await Message.deleteOne({ _id: messageId });
 
     const io = req.app.get("io");

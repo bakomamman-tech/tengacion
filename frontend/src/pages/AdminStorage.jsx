@@ -117,6 +117,8 @@ export default function AdminStoragePage({ user }) {
 
   const collections = overview.collections || [];
   const totals = overview.totals || {};
+  const mediaSummary = overview.mediaSummary || { totals: {}, bySource: [] };
+  const mediaTotals = mediaSummary.totals || {};
 
   return (
     <AdminShell
@@ -160,6 +162,73 @@ export default function AdminStoragePage({ user }) {
               <div className="adminx-kpi-label">Index Size</div>
               <div className="adminx-kpi-value">{formatBytes(totals.totalIndexSizeBytes)}</div>
             </article>
+          </div>
+
+          <div className="adminx-analytics-grid" style={{ marginTop: 20 }}>
+            <section className="adminx-panel adminx-panel--span-6">
+              <div className="adminx-panel-head">
+                <h2 className="adminx-panel-title">Media Providers</h2>
+                <span className="adminx-section-meta">Track Cloudinary adoption while legacy local media still exists</span>
+              </div>
+              <div className="adminx-stats-grid">
+                <article className="adminx-stat-card">
+                  <div className="adminx-kpi-label">Cloudinary</div>
+                  <div className="adminx-kpi-value">{formatNumber(mediaTotals.cloudinary)}</div>
+                </article>
+                <article className="adminx-stat-card">
+                  <div className="adminx-kpi-label">Legacy Local</div>
+                  <div className="adminx-kpi-value">{formatNumber(mediaTotals.legacyLocal)}</div>
+                </article>
+                <article className="adminx-stat-card">
+                  <div className="adminx-kpi-label">Other Remote</div>
+                  <div className="adminx-kpi-value">{formatNumber(mediaTotals.otherRemote)}</div>
+                </article>
+                <article className="adminx-stat-card">
+                  <div className="adminx-kpi-label">Malformed</div>
+                  <div className="adminx-kpi-value">{formatNumber(mediaTotals.malformed)}</div>
+                </article>
+              </div>
+            </section>
+
+            <section className="adminx-panel adminx-panel--span-6">
+              <div className="adminx-panel-head">
+                <h2 className="adminx-panel-title">Media Source Breakdown</h2>
+                <span className="adminx-section-meta">Each row shows how a live model currently stores media references</span>
+              </div>
+              <div className="adminx-table-wrap">
+                <table className="adminx-table">
+                  <thead>
+                    <tr>
+                      <th>Source</th>
+                      <th>Assets</th>
+                      <th>Cloudinary</th>
+                      <th>Legacy Local</th>
+                      <th>Malformed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(mediaSummary.bySource || []).length ? (
+                      mediaSummary.bySource.map((row) => (
+                        <tr key={row.key}>
+                          <td>
+                            <strong>{row.label}</strong>
+                            <div className="adminx-muted">{row.modelName}</div>
+                          </td>
+                          <td>{formatNumber(row.assets)}</td>
+                          <td>{formatNumber(row.cloudinary)}</td>
+                          <td>{formatNumber(row.legacyLocal)}</td>
+                          <td>{formatNumber(row.malformed)}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="adminx-table-empty">No media-bearing sources detected.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </div>
 
           <div className="adminx-analytics-grid">

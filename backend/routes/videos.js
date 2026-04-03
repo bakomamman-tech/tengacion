@@ -10,6 +10,7 @@ const {
 const asyncHandler = require("../middleware/asyncHandler");
 const {
   createCreatorVideo,
+  deleteCreatorVideo,
   likeCreatorVideo,
   listCreatorVideos,
   updateCreatorVideo,
@@ -92,6 +93,13 @@ router.post(
   "/:id/like",
   auth,
   likeCreatorVideo
+);
+
+router.delete(
+  "/:id",
+  auth,
+  creatorAuth,
+  deleteCreatorVideo
 );
 
 module.exports = router;

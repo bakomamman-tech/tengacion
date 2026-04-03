@@ -3,7 +3,7 @@ const auth = require("../middleware/auth");
 const creatorAuth = require("../middleware/creatorAuth");
 const optionalAuth = require("../middleware/optionalAuth");
 const upload = require("../utils/upload");
-const { createAlbum, getAlbumById, updateAlbum } = require("../controllers/albumsController");
+const { createAlbum, deleteAlbum, getAlbumById, updateAlbum } = require("../controllers/albumsController");
 
 const router = express.Router();
 
@@ -34,5 +34,6 @@ router.put(
 );
 
 router.get("/:albumId", optionalAuth, getAlbumById);
+router.delete("/:albumId", auth, creatorAuth, deleteAlbum);
 
 module.exports = router;

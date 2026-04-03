@@ -352,4 +352,57 @@ describe("creator upload routes", () => {
 
     expect(await Book.countDocuments()).toBe(0);
   });
+
+  test("DELETE /api/tracks/:trackId removes associated cloudinary assets", async () => {
+    const { token } = await createUserAndProfile();
+
+    const createResponse = await request(app)
+      .post("/api/creator/music")
+      .set("Authorization", `Bearer ${token}`)
+      .field("title", "Delete Me")
+      .field("artistName", "Creator Example")
+      .field("genre", "Afrobeats")
+      .field("description", "Cleanup path")
+      .field("releaseType", "single")
+      .field("price", "0")
+      .field("publishedStatus", "draft")
+      .attach("audio", Buffer.from("music-audio"), {
+        filename: "delete-me.mp3",
+        contentType: "audio/mpeg",
+      })
+      .attach("preview", Buffer.from("music-preview"), {
+        filename: "delete-me-preview.mp3",
+        contentType: "audio/mpeg",
+      })
+      .attach("cover", Buffer.from("music-cover"), {
+        filename: "delete-me-cover.webp",
+        contentType: "image/webp",
+      })
+      .expect(201);
+
+    const savedTrack = await Track.findById(createResponse.body._id).lean();
+    expect(savedTrack).toBeTruthy();
+
+    cloudinary.uploader.destroy.mockClear();
+
+    await request(app)
+      .delete(`/api/tracks/${savedTrack._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(await Track.findById(savedTrack._id).lean()).toBeNull();
+    expect(cloudinary.uploader.destroy).toHaveBeenCalledTimes(3);
+    expect(cloudinary.uploader.destroy).toHaveBeenCalledWith(
+      "tengacion/creators/audio/mock-1",
+      expect.objectContaining({ resource_type: "video", invalidate: true })
+    );
+    expect(cloudinary.uploader.destroy).toHaveBeenCalledWith(
+      "tengacion/creators/audio/mock-2",
+      expect.objectContaining({ resource_type: "video", invalidate: true })
+    );
+    expect(cloudinary.uploader.destroy).toHaveBeenCalledWith(
+      "tengacion/creators/music-covers/mock-3",
+      expect.objectContaining({ resource_type: "image", invalidate: true })
+    );
+  });
 });

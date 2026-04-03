@@ -1,12 +1,20 @@
 const { deleteUploadedMedia } = require("../services/mediaStore");
-const { isCloudinaryMediaValue, mediaToPublicId, normalizeMediaValue } = require("./userMedia");
+const {
+  getMediaPreviewUrl,
+  getMediaUrl,
+  isCloudinaryMediaValue,
+  mediaToPublicId,
+  normalizeMediaValue,
+} = require("./userMedia");
 
 const toMediaDocument = (value = null) => normalizeMediaValue(value);
 
 const mediaDocumentToUrl = (value = null, fallback = "") => {
-  const normalized = normalizeMediaValue(value);
-  return normalized.secureUrl || normalized.url || String(fallback || "").trim();
+  return getMediaUrl(value) || String(fallback || "").trim();
 };
+
+const mediaDocumentToPreviewUrl = (value = null, fallback = "") =>
+  getMediaPreviewUrl(value) || String(fallback || "").trim();
 
 const cleanupReplacedMedia = async (previous = null, next = null) => {
   if (!isCloudinaryMediaValue(previous)) {
@@ -24,6 +32,7 @@ const cleanupReplacedMedia = async (previous = null, next = null) => {
 
 module.exports = {
   cleanupReplacedMedia,
+  mediaDocumentToPreviewUrl,
   mediaDocumentToUrl,
   toMediaDocument,
 };

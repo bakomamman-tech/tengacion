@@ -1698,6 +1698,15 @@ export default function Messenger({
           attachments: [
             {
               url: uploaded?.url || "",
+              secureUrl: uploaded?.secureUrl || uploaded?.secure_url || uploaded?.url || "",
+              secure_url: uploaded?.secureUrl || uploaded?.secure_url || uploaded?.url || "",
+              publicId: uploaded?.publicId || uploaded?.public_id || "",
+              public_id: uploaded?.publicId || uploaded?.public_id || "",
+              resourceType: uploaded?.resourceType || uploaded?.resource_type || "",
+              resource_type: uploaded?.resourceType || uploaded?.resource_type || "",
+              provider: uploaded?.provider || "",
+              folder: uploaded?.folder || "",
+              legacyPath: uploaded?.legacyPath || "",
               type: uploaded?.type || "file",
               name: uploaded?.name || file.name || "attachment",
               size: Number(uploaded?.size) || file.size || 0,

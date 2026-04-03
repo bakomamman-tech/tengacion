@@ -4,7 +4,7 @@ const asyncHandler = require("../middleware/asyncHandler");
 const Album = require("../models/Album");
 const CreatorProfile = require("../models/CreatorProfile");
 const { buildAlbumArchiveUrl } = require("../services/albumArchiveService");
-const { saveUploadedMedia } = require("../services/mediaStore");
+const { deleteUploadedMediaBatch, saveUploadedMedia } = require("../services/mediaStore");
 const { hasEntitlement } = require("../services/entitlementService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const { logAnalyticsEvent } = require("../services/analyticsService");
@@ -28,6 +28,15 @@ const normalizeFilenameToTitle = (filename = "") =>
     .replace(/[_-]+/g, " ")
     .trim()
     .slice(0, 180);
+
+const collectAlbumMediaAssets = (album = {}) => {
+  const assets = [album?.coverMedia || album?.coverUrl];
+  (Array.isArray(album?.tracks) ? album.tracks : []).forEach((track) => {
+    assets.push(track?.trackMedia || track?.trackUrl);
+    assets.push(track?.previewMedia || track?.previewUrl);
+  });
+  return assets.filter(Boolean);
+};
 
 const toAlbumListPayload = (album) => ({
   _id: album._id.toString(),
@@ -400,4 +409,26 @@ exports.getAlbumById = asyncHandler(async (req, res) => {
       : "",
     tracks,
   });
+});
+
+exports.deleteAlbum = asyncHandler(async (req, res) => {
+  const { albumId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(albumId)) {
+    return res.status(400).json({ error: "Invalid album id" });
+  }
+  if (!creatorHasCategory(req.creatorProfile, "music")) {
+    return res.status(403).json({ error: "Music publishing is not enabled on this creator profile" });
+  }
+
+  const deleted = await Album.findOneAndDelete({
+    _id: albumId,
+    creatorId: req.creatorProfile._id,
+  }).lean();
+  if (!deleted) {
+    return res.status(404).json({ error: "Album not found" });
+  }
+
+  await deleteUploadedMediaBatch(collectAlbumMediaAssets(deleted)).catch(() => null);
+
+  return res.json({ success: true, albumId: deleted._id.toString() });
 });

@@ -348,6 +348,14 @@ describe("admin storage endpoints", () => {
 
     expect(Array.isArray(overview.body.actions)).toBe(true);
     expect(Array.isArray(overview.body.collections)).toBe(true);
+    expect(overview.body.mediaSummary).toMatchObject({
+      totals: expect.objectContaining({
+        cloudinary: expect.any(Number),
+        legacyLocal: expect.any(Number),
+        malformed: expect.any(Number),
+      }),
+      bySource: expect.any(Array),
+    });
 
     const runResponse = await request(app)
       .post("/api/admin/storage/cleanup/run")

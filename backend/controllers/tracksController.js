@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const asyncHandler = require("../middleware/asyncHandler");
 const Track = require("../models/Track");
 const CreatorProfile = require("../models/CreatorProfile");
-const { saveUploadedMedia } = require("../services/mediaStore");
+const { deleteUploadedMediaBatch, saveUploadedMedia } = require("../services/mediaStore");
 const { hasEntitlement } = require("../services/entitlementService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const { logAnalyticsEvent } = require("../services/analyticsService");
@@ -31,6 +31,15 @@ const inferUploadedFormat = (file) => {
   }
   return String(file?.mimetype || "").split("/")[1] || "";
 };
+
+const collectTrackMediaAssets = (track = {}) => [
+  track?.audioMedia || track?.audioUrl,
+  track?.previewMedia || track?.previewUrl,
+  track?.coverMedia || track?.coverImageUrl || track?.coverUrl,
+  track?.videoMedia || track?.videoUrl,
+  track?.previewClipMedia || track?.previewClipUrl,
+  track?.transcriptMedia || track?.transcriptUrl,
+].filter(Boolean);
 
 const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   _id: track._id.toString(),
@@ -558,4 +567,24 @@ exports.getTrackStream = asyncHandler(async (req, res) => {
     previewLimitSec: Number(track.previewLimitSec || 30),
     streamUrl,
   });
+});
+
+exports.deleteTrack = asyncHandler(async (req, res) => {
+  const { trackId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(trackId)) {
+    return res.status(400).json({ error: "Invalid track id" });
+  }
+
+  const deleted = await Track.findOneAndDelete({
+    _id: trackId,
+    creatorId: req.creatorProfile._id,
+  }).lean();
+  if (!deleted) {
+    return res.status(404).json({ error: "Track not found" });
+  }
+
+  await Post.deleteMany({ "audio.trackId": deleted._id }).catch(() => null);
+  await deleteUploadedMediaBatch(collectTrackMediaAssets(deleted)).catch(() => null);
+
+  return res.json({ success: true, trackId: deleted._id.toString() });
 });

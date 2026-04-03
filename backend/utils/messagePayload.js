@@ -4,7 +4,7 @@ const {
   sanitizePlainObject,
   truncate,
 } = require("../config/storage");
-const { normalizeMediaValue } = require("./userMedia");
+const { getMediaUrl, mediaToPublicId, normalizeMediaValue } = require("./userMedia");
 
 const MESSAGE_TYPES = ["text", "contentCard", "voice"];
 const CONTENT_CARD_ITEM_TYPES = ["track", "book"];
@@ -24,7 +24,37 @@ const toIdString = (value) => {
 };
 
 const avatarToUrl = (avatar) => {
-  return normalizeMediaValue(avatar).url;
+  return getMediaUrl(avatar);
+};
+
+const normalizeAttachment = (file = {}) => {
+  const normalizedMedia = normalizeMediaValue(file);
+  const url = getMediaUrl(normalizedMedia);
+  const publicId = mediaToPublicId(normalizedMedia);
+  const resourceType = String(
+    normalizedMedia.resourceType ||
+      normalizedMedia.resource_type ||
+      file?.resourceType ||
+      file?.resource_type ||
+      ""
+  ).trim();
+
+  return {
+    url: truncate(url || file?.url || "", 1200),
+    secureUrl: truncate(url || file?.secureUrl || file?.secure_url || file?.url || "", 1200),
+    secure_url: truncate(url || file?.secureUrl || file?.secure_url || file?.url || "", 1200),
+    publicId: truncate(publicId || file?.publicId || file?.public_id || "", 240),
+    public_id: truncate(publicId || file?.publicId || file?.public_id || "", 240),
+    resourceType: truncate(resourceType, 40),
+    resource_type: truncate(resourceType, 40),
+    provider: truncate(normalizedMedia.provider || file?.provider || "", 40).toLowerCase(),
+    folder: truncate(normalizedMedia.folder || file?.folder || "", 240),
+    legacyPath: truncate(normalizedMedia.legacyPath || file?.legacyPath || "", 1200),
+    type: truncate(file?.type || "", 20).toLowerCase(),
+    name: truncate(file?.name || normalizedMedia.originalFilename || "", 260),
+    size: Number(file?.size) || 0,
+    durationSeconds: Number(file?.durationSeconds) || 0,
+  };
 };
 
 const buildConversationId = (a, b) =>
@@ -78,13 +108,7 @@ const normalizeMessage = (message) => {
         : null,
     attachments: Array.isArray(message.attachments)
       ? limitArray(message.attachments, 5)
-          .map((file) => ({
-            url: truncate(file?.url || "", 1200),
-            type: truncate(file?.type || "", 20),
-            name: truncate(file?.name || "", 260),
-            size: Number(file?.size) || 0,
-            durationSeconds: Number(file?.durationSeconds) || 0,
-          }))
+          .map((file) => normalizeAttachment(file))
           .filter((file) => file.url)
       : [],
     replyTo:
@@ -127,13 +151,7 @@ const normalizeIncomingMessagePayload = (payload = {}) => {
   ).trim();
   const attachments = Array.isArray(payload.attachments)
     ? limitArray(payload.attachments, 5)
-        .map((file) => ({
-          url: truncate(file?.url || "", 1200),
-          type: truncate(file?.type || "", 20).toLowerCase(),
-          name: truncate(file?.name || "", 260),
-          size: Number(file?.size) || 0,
-          durationSeconds: Number(file?.durationSeconds) || 0,
-        }))
+        .map((file) => normalizeAttachment(file))
         .filter((file) => file.url)
     : [];
 

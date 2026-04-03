@@ -26,6 +26,8 @@ const EMPTY_MEDIA = Object.freeze({
   duration: 0,
   originalFilename: "",
   folder: "",
+  provider: "",
+  legacyPath: "",
 });
 
 const SOURCE_FOLDER_MAP = Object.freeze({
@@ -35,6 +37,10 @@ const SOURCE_FOLDER_MAP = Object.freeze({
   book_content: "tengacion/books/files",
   book_cover: "tengacion/books/covers",
   book_preview: "tengacion/books/previews",
+  chat_attachment_audio: "tengacion/messages/audio",
+  chat_attachment_document: "tengacion/messages/files",
+  chat_attachment_image: "tengacion/messages/images",
+  chat_attachment_video: "tengacion/messages/videos",
   creator_book_content: "tengacion/books/files",
   creator_book_cover: "tengacion/books/covers",
   creator_book_preview: "tengacion/books/previews",
@@ -164,6 +170,8 @@ const normalizeCloudinaryUpload = (
     duration: Number(result.duration || 0) || 0,
     originalFilename: toText(originalFilename || result.original_filename),
     folder: toText(result.folder || folder),
+    provider: "cloudinary",
+    legacyPath: "",
   };
 };
 
@@ -223,9 +231,28 @@ const deleteCloudinaryAsset = async (input = {}, options = {}) => {
     return false;
   }
 
-  const payload = typeof input === "string" ? { publicId: input } : input || {};
-  const publicId = toText(payload.publicId || payload.public_id);
+  const payload =
+    typeof input === "string"
+      ? {
+          publicId: inferCloudinaryPublicIdFromUrl(input) || input,
+          url: isCloudinaryUrl(input) ? input : "",
+        }
+      : input || {};
+  const publicId = toText(
+    payload.publicId || payload.public_id || inferCloudinaryPublicIdFromUrl(payload.secureUrl || payload.secure_url || payload.url)
+  );
   if (!publicId) {
+    return false;
+  }
+
+  const url = toText(payload.secureUrl || payload.secure_url || payload.url);
+  const provider = toText(payload.provider).toLowerCase();
+  const legacyPath = toText(payload.legacyPath);
+  const isCloudinaryManaged =
+    provider === "cloudinary" ||
+    isCloudinaryUrl(url) ||
+    (!legacyPath && publicId.startsWith("tengacion/"));
+  if (!isCloudinaryManaged) {
     return false;
   }
 
@@ -242,6 +269,61 @@ const deleteCloudinaryAsset = async (input = {}, options = {}) => {
   return ["ok", "not found"].includes(toText(result?.result).toLowerCase());
 };
 
+const deleteCloudinaryAssets = async (inputs = [], options = {}) => {
+  const queue = Array.isArray(inputs) ? inputs : [inputs];
+  const seen = new Set();
+  const results = [];
+
+  for (const entry of queue) {
+    const payload = typeof entry === "string" ? { publicId: entry } : entry || {};
+    const publicId = toText(
+      payload.publicId
+      || payload.public_id
+      || inferCloudinaryPublicIdFromUrl(payload.secureUrl || payload.secure_url || payload.url)
+    );
+    const resourceType =
+      normalizeResourceType(payload.resourceType || payload.resource_type || options.resourceType)
+      || inferResourceTypeFromUrl(payload.secureUrl || payload.secure_url || payload.url)
+      || "image";
+
+    if (!publicId) {
+      results.push({ publicId: "", resourceType, deleted: false, skipped: true });
+      continue;
+    }
+
+    const dedupeKey = `${resourceType}:${publicId}`;
+    if (seen.has(dedupeKey)) {
+      continue;
+    }
+    seen.add(dedupeKey);
+
+    try {
+      const deleted = await deleteCloudinaryAsset(payload, options);
+      results.push({ publicId, resourceType, deleted, skipped: false });
+    } catch (error) {
+      console.error("[cloudinary] asset cleanup failed", {
+        publicId,
+        resourceType,
+        message: error?.message || "Unknown error",
+      });
+      results.push({
+        publicId,
+        resourceType,
+        deleted: false,
+        skipped: false,
+        error: error?.message || "Unknown error",
+      });
+    }
+  }
+
+  return {
+    attempted: results.filter((entry) => !entry.skipped).length,
+    deleted: results.filter((entry) => entry.deleted).length,
+    failed: results.filter((entry) => !entry.skipped && !entry.deleted).length,
+    results,
+  };
+};
+
 const isCloudinaryUrl = (value = "") =>
   /(^https?:\/\/)?res\.cloudinary\.com\//i.test(toText(value));
 
@@ -249,6 +331,7 @@ module.exports = {
   EMPTY_MEDIA,
   createUploadConfigError,
   deleteCloudinaryAsset,
+  deleteCloudinaryAssets,
   inferCloudinaryPublicIdFromUrl,
   inferResourceTypeFromMime,
   inferResourceTypeFromUrl,

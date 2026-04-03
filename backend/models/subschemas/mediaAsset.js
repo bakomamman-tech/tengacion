@@ -23,6 +23,8 @@ const createMediaAssetSchema = ({
     duration: { type: Number, default: 0, min: 0 },
     originalFilename: { type: String, default: "", trim: true },
     folder: { type: String, default: "", trim: true },
+    provider: { type: String, default: "", trim: true },
+    legacyPath: { type: String, default: "", trim: true },
     ...extraFields,
   };
 
@@ -52,6 +54,8 @@ const createMediaAssetSchema = ({
     this.format = toTrimmedString(this.format);
     this.originalFilename = toTrimmedString(this.originalFilename);
     this.folder = toTrimmedString(this.folder);
+    this.provider = toTrimmedString(this.provider).toLowerCase();
+    this.legacyPath = toTrimmedString(this.legacyPath);
 
     if (includeType && !toTrimmedString(this.type)) {
       this.type = defaultType;

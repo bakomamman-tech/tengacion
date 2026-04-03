@@ -3,7 +3,10 @@ const fsp = require("fs/promises");
 const Post = require("../models/Post");
 const User = require("../../../backend/models/User");
 const { createNotification } = require("../../../backend/services/notificationService");
-const { deleteUploadedMedia, saveUploadedMedia } = require("../../../backend/services/mediaStore");
+const {
+  deleteUploadedMediaBatch,
+  saveUploadedMedia,
+} = require("../../../backend/services/mediaStore");
 const { normalizeMediaValue } = require("../../../backend/utils/userMedia");
 const {
   moveToQuarantineStorage,
@@ -173,47 +176,47 @@ const buildVideoMeta = (payload) => {
   };
 };
 
-const buildPostMediaEntry = (asset = {}, type = "image") => ({
-  publicId: String(asset.publicId || asset.public_id || "").trim(),
-  public_id: String(asset.publicId || asset.public_id || "").trim(),
-  url: normalizeVideoUrl(asset.secureUrl || asset.secure_url || asset.url),
-  secureUrl: normalizeVideoUrl(asset.secureUrl || asset.secure_url || asset.url),
-  secure_url: normalizeVideoUrl(asset.secureUrl || asset.secure_url || asset.url),
-  resourceType: String(asset.resourceType || asset.resource_type || type).trim(),
-  resource_type: String(asset.resourceType || asset.resource_type || type).trim(),
-  format: String(asset.format || "").trim(),
-  bytes: Number(asset.bytes || 0) || 0,
-  width: Number(asset.width || 0) || 0,
-  height: Number(asset.height || 0) || 0,
-  duration: Number(asset.duration || 0) || 0,
-  originalFilename: String(asset.originalFilename || "").trim(),
-  folder: String(asset.folder || "").trim(),
-  type,
-});
+const buildPostMediaEntry = (asset = {}, type = "image") => {
+  const normalized = normalizeMediaValue(asset);
+  return {
+    ...normalized,
+    type,
+  };
+};
 
-const buildCloudinaryVideoMeta = (asset = {}, uploadFile = null, fallback = null) => ({
-  publicId: String(asset.publicId || asset.public_id || "").trim(),
-  public_id: String(asset.publicId || asset.public_id || "").trim(),
-  url: normalizeVideoUrl(asset.secureUrl || asset.secure_url || asset.url || fallback?.url),
-  secureUrl: normalizeVideoUrl(asset.secureUrl || asset.secure_url || asset.url || fallback?.url),
-  secure_url: normalizeVideoUrl(asset.secureUrl || asset.secure_url || asset.url || fallback?.url),
-  playbackUrl: normalizeVideoUrl(asset.secureUrl || asset.secure_url || asset.url || fallback?.playbackUrl || fallback?.url),
-  thumbnailUrl: normalizeVideoUrl(fallback?.thumbnailUrl),
-  duration: Number(asset.duration || fallback?.duration || 0) || 0,
-  width: Number(asset.width || fallback?.width || 0) || 0,
-  height: Number(asset.height || fallback?.height || 0) || 0,
-  sizeBytes: Number(asset.bytes || uploadFile?.size || fallback?.sizeBytes || 0) || 0,
-  mimeType:
-    normalizeMimeType(asset.resourceType === "video" ? uploadFile?.mimetype : "")
-    || normalizeMimeType(uploadFile?.mimetype)
-    || normalizeMimeType(fallback?.mimeType),
-  resourceType: String(asset.resourceType || asset.resource_type || "video").trim(),
-  resource_type: String(asset.resourceType || asset.resource_type || "video").trim(),
-  format: String(asset.format || "").trim(),
-  bytes: Number(asset.bytes || uploadFile?.size || fallback?.sizeBytes || 0) || 0,
-  originalFilename: String(asset.originalFilename || uploadFile?.originalname || "").trim(),
-  folder: String(asset.folder || "").trim(),
-});
+const buildCloudinaryVideoMeta = (asset = {}, uploadFile = null, fallback = null) => {
+  const normalized = normalizeMediaValue(asset);
+  return {
+    ...normalized,
+    url: normalizeVideoUrl(normalized.secureUrl || normalized.secure_url || normalized.url || fallback?.url),
+    secureUrl: normalizeVideoUrl(normalized.secureUrl || normalized.secure_url || normalized.url || fallback?.url),
+    secure_url: normalizeVideoUrl(normalized.secureUrl || normalized.secure_url || normalized.url || fallback?.url),
+    playbackUrl: normalizeVideoUrl(
+      normalized.secureUrl ||
+        normalized.secure_url ||
+        normalized.url ||
+        fallback?.playbackUrl ||
+        fallback?.url
+    ),
+    thumbnailUrl: normalizeVideoUrl(fallback?.thumbnailUrl),
+    duration: Number(normalized.duration || fallback?.duration || 0) || 0,
+    width: Number(normalized.width || fallback?.width || 0) || 0,
+    height: Number(normalized.height || fallback?.height || 0) || 0,
+    sizeBytes: Number(normalized.bytes || uploadFile?.size || fallback?.sizeBytes || 0) || 0,
+    mimeType:
+      normalizeMimeType(normalized.resourceType === "video" ? uploadFile?.mimetype : "")
+      || normalizeMimeType(uploadFile?.mimetype)
+      || normalizeMimeType(fallback?.mimeType),
+    resourceType: String(normalized.resourceType || normalized.resource_type || "video").trim(),
+    resource_type: String(normalized.resourceType || normalized.resource_type || "video").trim(),
+    format: String(normalized.format || "").trim(),
+    bytes: Number(normalized.bytes || uploadFile?.size || fallback?.sizeBytes || 0) || 0,
+    originalFilename: String(normalized.originalFilename || uploadFile?.originalname || "").trim(),
+    folder: String(normalized.folder || "").trim(),
+    provider: String(normalized.provider || "").trim(),
+    legacyPath: String(normalized.legacyPath || "").trim(),
+  };
+};
 
 const collectPostCloudinaryAssets = (post = {}) => {
   const assets = [];
@@ -1606,9 +1609,7 @@ class PostService {
     const deleted = await postRepository.findOneAndDelete({ _id: postId, author: userId });
     if (!deleted) throw ApiError.notFound("Post not found");
 
-    await Promise.all(
-      collectPostCloudinaryAssets(deleted).map((asset) => deleteUploadedMedia(asset))
-    ).catch(() => null);
+    await deleteUploadedMediaBatch(collectPostCloudinaryAssets(deleted)).catch(() => null);
 
     return { success: true };
   }

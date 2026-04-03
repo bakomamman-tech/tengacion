@@ -21,9 +21,23 @@ const toMediaType = (file = {}) => {
   return "file";
 };
 
+const isFileLike = (value) =>
+  Boolean(
+    value
+    && typeof value === "object"
+    && !Array.isArray(value)
+    && (
+      typeof value.originalname === "string"
+      || typeof value.mimetype === "string"
+      || typeof value.fieldname === "string"
+      || Buffer.isBuffer(value.buffer)
+    )
+  );
+
 const flattenFiles = (files) => {
   if (!files) return [];
   if (Array.isArray(files)) return files.filter(Boolean);
+  if (isFileLike(files)) return [files];
   if (typeof files === "object") {
     return Object.entries(files).flatMap(([fieldName, list]) =>
       (Array.isArray(list) ? list : [list])

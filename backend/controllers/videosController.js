@@ -1,4 +1,5 @@
 const asyncHandler = require("../middleware/asyncHandler");
+const mongoose = require("mongoose");
 const {
   createUploadModerationCase,
 } = require("../services/uploadModerationService");
@@ -7,7 +8,7 @@ const {
 } = require("../services/storageQuarantineService");
 const User = require("../models/User");
 const Video = require("../models/Video");
-const { saveUploadedMedia } = require("../services/mediaStore");
+const { deleteUploadedMediaBatch, saveUploadedMedia } = require("../services/mediaStore");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
@@ -79,6 +80,12 @@ const resolveRequestedStatus = (body = {}) => {
   }
   return "published";
 };
+
+const collectVideoMediaAssets = (video = {}) => [
+  video?.videoMedia || video?.videoUrl,
+  video?.coverMedia || video?.coverImageUrl,
+  video?.previewClipMedia || video?.previewClipUrl,
+].filter(Boolean);
 
 const toVideoPayload = (video) => ({
   _id: String(video?._id || ""),
@@ -787,4 +794,22 @@ exports.likeCreatorVideo = asyncHandler(async (req, res) => {
   }
 
   return res.json(toVideoPayload(video));
+});
+
+exports.deleteCreatorVideo = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ error: "Invalid video id" });
+  }
+
+  const deleted = await Video.findOneAndDelete({
+    _id: req.params.id,
+    creatorProfileId: req.creatorProfile?._id || null,
+  }).lean();
+  if (!deleted) {
+    return res.status(404).json({ error: "Video not found" });
+  }
+
+  await deleteUploadedMediaBatch(collectVideoMediaAssets(deleted)).catch(() => null);
+
+  return res.json({ success: true, videoId: String(deleted._id || "") });
 });

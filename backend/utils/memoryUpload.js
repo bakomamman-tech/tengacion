@@ -32,6 +32,7 @@ const AUDIO_MIME_TYPES = new Set([
   "audio/mp4",
   "audio/mpeg",
   "audio/ogg",
+  "audio/webm",
   "audio/wav",
   "audio/wave",
   "audio/x-aac",
@@ -82,6 +83,18 @@ const buildUploadDir = (candidates = [], fallbackDirName = "tengacion-uploads") 
 const toText = (value) => String(value || "").trim();
 
 const getExtension = (file = {}) => path.extname(toText(file.originalname)).toLowerCase();
+const isFileLike = (value) =>
+  Boolean(
+    value
+    && typeof value === "object"
+    && !Array.isArray(value)
+    && (
+      typeof value.originalname === "string"
+      || typeof value.mimetype === "string"
+      || typeof value.fieldname === "string"
+      || Buffer.isBuffer(value.buffer)
+    )
+  );
 
 const describeSizeLimit = (maxBytes = 0) =>
   maxBytes === IMAGE_MAX_BYTES ? "10MB" : "100MB";
@@ -118,6 +131,7 @@ const classifyFile = (file = {}) => {
 const flattenFiles = (files) => {
   if (!files) return [];
   if (Array.isArray(files)) return files.filter(Boolean);
+  if (isFileLike(files)) return [files];
   if (typeof files === "object") {
     return Object.values(files).flatMap((entry) =>
       (Array.isArray(entry) ? entry : [entry]).filter(Boolean)

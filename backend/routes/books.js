@@ -6,6 +6,7 @@ const upload = require("../utils/upload");
 const {
   createBook,
   createChapter,
+  deleteBook,
   getBookById,
   getBookChapters,
   getBookChapterById,
@@ -41,5 +42,6 @@ router.post("/:bookId/chapters", auth, creatorAuth, createChapter);
 router.get("/:bookId", optionalAuth, getBookById);
 router.get("/:bookId/chapters", optionalAuth, getBookChapters);
 router.get("/:bookId/chapters/:chapterId", optionalAuth, getBookChapterById);
+router.delete("/:bookId", auth, creatorAuth, deleteBook);
 
 module.exports = router;

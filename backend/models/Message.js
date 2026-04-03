@@ -4,6 +4,29 @@ const {
   sanitizePlainObject,
   truncate,
 } = require("../config/storage");
+const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
+
+const MessageAttachmentSchema = createMediaAssetSchema({
+  includeType: true,
+  typeEnum: ["image", "video", "file", "audio"],
+  defaultType: "file",
+  name: {
+    type: String,
+    default: "",
+    trim: true,
+    maxlength: 260,
+  },
+  size: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  durationSeconds: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+});
 
 const MessageSchema = new mongoose.Schema(
   {
@@ -111,18 +134,10 @@ const MessageSchema = new mongoose.Schema(
       index: true
     },
 
-    attachments: [
-      {
-        url: String,
-        type: {
-          type: String,
-          enum: ["image", "video", "file", "audio"]
-        },
-        name: String,
-        size: Number,
-        durationSeconds: Number
-      }
-    ],
+    attachments: {
+      type: [MessageAttachmentSchema],
+      default: [],
+    },
 
     replyTo: {
       messageId: {
@@ -289,6 +304,15 @@ MessageSchema.pre("validate", function () {
   if (Array.isArray(this.attachments)) {
     this.attachments = limitArray(this.attachments, 5).map((file) => ({
       url: truncate(file?.url || "", 1200),
+      secureUrl: truncate(file?.secureUrl || file?.secure_url || file?.url || "", 1200),
+      secure_url: truncate(file?.secureUrl || file?.secure_url || file?.url || "", 1200),
+      publicId: truncate(file?.publicId || file?.public_id || "", 240),
+      public_id: truncate(file?.publicId || file?.public_id || "", 240),
+      resourceType: truncate(file?.resourceType || file?.resource_type || "", 40),
+      resource_type: truncate(file?.resourceType || file?.resource_type || "", 40),
+      provider: truncate(file?.provider || "", 40).toLowerCase(),
+      folder: truncate(file?.folder || "", 240),
+      legacyPath: truncate(file?.legacyPath || "", 1200),
       type: truncate(file?.type || "", 20),
       name: truncate(file?.name || "", 260),
       size: Number(file?.size) || 0,

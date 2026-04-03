@@ -7,6 +7,7 @@ const { incrementDailyMetric, logAnalyticsEvent } = require("./analyticsService"
 const {
   EMPTY_MEDIA,
   deleteCloudinaryAsset,
+  deleteCloudinaryAssets,
   inferResourceTypeFromMime,
   uploadFileToCloudinary,
 } = require("./cloudinaryMediaService");
@@ -129,9 +130,23 @@ const deleteUploadedMedia = async (media = {}, options = {}) => {
   }
 };
 
+const deleteUploadedMediaBatch = async (mediaList = [], options = {}) => {
+  try {
+    return await deleteCloudinaryAssets(mediaList, options);
+  } catch {
+    return {
+      attempted: 0,
+      deleted: 0,
+      failed: 0,
+      results: [],
+    };
+  }
+};
+
 module.exports = {
   bucketName,
   deleteUploadedMedia,
+  deleteUploadedMediaBatch,
   getBucket,
   saveUploadedFile,
   saveUploadedMedia,

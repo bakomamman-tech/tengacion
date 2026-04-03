@@ -3,7 +3,7 @@ const asyncHandler = require("../middleware/asyncHandler");
 const Book = require("../models/Book");
 const Chapter = require("../models/Chapter");
 const CreatorProfile = require("../models/CreatorProfile");
-const { saveUploadedMedia } = require("../services/mediaStore");
+const { deleteUploadedMediaBatch, saveUploadedMedia } = require("../services/mediaStore");
 const { hasEntitlement } = require("../services/entitlementService");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
@@ -11,6 +11,12 @@ const { creatorHasCategory } = require("../services/creatorProfileService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 
 // TODO(phase2): add audiobook media support alongside chapter text content.
+
+const collectBookMediaAssets = (book = {}) => [
+  book?.coverMedia || book?.coverImageUrl,
+  book?.contentMedia || book?.contentUrl || book?.fileUrl,
+  book?.previewMedia || book?.previewUrl,
+].filter(Boolean);
 
 const toBookPayload = (book) => ({
   _id: book._id.toString(),
@@ -542,4 +548,27 @@ exports.getBookChapterById = asyncHandler(async (req, res) => {
     isFree: Boolean(chapter.isFree),
     locked: false,
   });
+});
+
+exports.deleteBook = asyncHandler(async (req, res) => {
+  const { bookId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return res.status(400).json({ error: "Invalid book id" });
+  }
+  if (!creatorHasCategory(req.creatorProfile, "books")) {
+    return res.status(403).json({ error: "Books publishing is not enabled on this creator profile" });
+  }
+
+  const deleted = await Book.findOneAndDelete({
+    _id: bookId,
+    creatorId: req.creatorProfile._id,
+  }).lean();
+  if (!deleted) {
+    return res.status(404).json({ error: "Book not found" });
+  }
+
+  await Chapter.deleteMany({ bookId: deleted._id }).catch(() => null);
+  await deleteUploadedMediaBatch(collectBookMediaAssets(deleted)).catch(() => null);
+
+  return res.json({ success: true, bookId: deleted._id.toString() });
 });

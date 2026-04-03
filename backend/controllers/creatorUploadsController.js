@@ -3,10 +3,11 @@ const Book = require("../models/Book");
 const CreatorProfile = require("../models/CreatorProfile");
 const Post = require("../models/Post");
 const Track = require("../models/Track");
-const { saveUploadedFile } = require("../services/mediaStore");
+const { saveUploadedMedia } = require("../services/mediaStore");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const { mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 const {
   AUDIO_EXTENSIONS,
   AUDIO_MIME_TYPES,
@@ -45,10 +46,10 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   audioFormat: track.audioFormat || "",
   mediaType: track.mediaType || (track.videoUrl ? "video" : "audio"),
   videoFormat: track.videoFormat || "",
-  previewUrl: track.previewUrl || "",
+  previewUrl: mediaDocumentToUrl(track.previewMedia, track.previewUrl || ""),
   previewStartSec: Number(track.previewStartSec || 0),
   previewLimitSec: Number(track.previewLimitSec || 30),
-  coverImageUrl: track.coverImageUrl || "",
+  coverImageUrl: mediaDocumentToUrl(track.coverMedia, track.coverImageUrl || ""),
   durationSec: Number(track.durationSec) || 0,
   createdAt: track.createdAt,
   updatedAt: track.updatedAt,
@@ -65,7 +66,7 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   episodeType: track.episodeType || "free",
   guestNames: Array.isArray(track.guestNames) ? track.guestNames : [],
   showNotes: track.showNotes || "",
-  transcriptUrl: track.transcriptUrl || "",
+  transcriptUrl: mediaDocumentToUrl(track.transcriptMedia, track.transcriptUrl || ""),
   episodeTags: Array.isArray(track.episodeTags) ? track.episodeTags : [],
   creator:
     track.creatorId && typeof track.creatorId === "object"
@@ -78,8 +79,8 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
       : null,
   ...(includeAudio
     ? {
-        audioUrl: track.audioUrl || "",
-        videoUrl: track.videoUrl || "",
+        audioUrl: mediaDocumentToUrl(track.audioMedia, track.audioUrl || ""),
+        videoUrl: mediaDocumentToUrl(track.videoMedia, track.videoUrl || ""),
       }
     : {}),
 });
@@ -100,9 +101,9 @@ const toBookPayload = (book) => ({
   audience: book.audience || "",
   readingAge: book.readingAge || "",
   tableOfContents: book.tableOfContents || "",
-  coverImageUrl: book.coverImageUrl || "",
-  contentUrl: book.contentUrl || "",
-  previewUrl: book.previewUrl || "",
+  coverImageUrl: mediaDocumentToUrl(book.coverMedia, book.coverImageUrl || ""),
+  contentUrl: mediaDocumentToUrl(book.contentMedia, book.contentUrl || ""),
+  previewUrl: mediaDocumentToUrl(book.previewMedia, book.previewUrl || ""),
   fileFormat: book.fileFormat || "",
   createdAt: book.createdAt,
   updatedAt: book.updatedAt,
@@ -230,9 +231,25 @@ exports.createMusicUpload = asyncHandler(async (req, res) => {
   }
 
   const creatorName = req.creatorProfile.displayName || req.creatorProfile.fullName || "";
-  const audioUrl = await saveUploadedFile(audioFile);
-  const previewUrl = previewFile ? await saveUploadedFile(previewFile) : "";
-  const coverImageUrl = coverFile ? await saveUploadedFile(coverFile) : "";
+  const audioMedia = await saveUploadedMedia(audioFile, {
+    source: "creator_music_audio",
+    resourceType: "video",
+  });
+  const previewMedia = previewFile
+    ? await saveUploadedMedia(previewFile, {
+        source: "creator_music_preview",
+        resourceType: "video",
+      })
+    : null;
+  const coverMedia = coverFile
+    ? await saveUploadedMedia(coverFile, {
+        source: "creator_music_cover",
+        resourceType: "image",
+      })
+    : null;
+  const audioUrl = mediaDocumentToUrl(audioMedia);
+  const previewUrl = mediaDocumentToUrl(previewMedia);
+  const coverImageUrl = mediaDocumentToUrl(coverMedia);
 
   const verification = await evaluateVerification({
     creatorProfileId: req.creatorProfile._id,
@@ -258,10 +275,13 @@ exports.createMusicUpload = asyncHandler(async (req, res) => {
     priceNGN: parsed.data.price,
     audioUrl,
     fullAudioUrl: audioUrl,
+    audioMedia: toMediaDocument(audioMedia),
     previewUrl,
     previewSampleUrl: previewUrl,
+    previewMedia: previewMedia ? toMediaDocument(previewMedia) : null,
     coverImageUrl,
     coverUrl: coverImageUrl,
+    coverMedia: coverMedia ? toMediaDocument(coverMedia) : null,
     durationSec: parsed.data.durationSec,
     genre: parsed.data.genre,
     artistName: parsed.data.artistName || creatorName,
@@ -408,10 +428,32 @@ exports.createPodcastUpload = asyncHandler(async (req, res) => {
     );
   }
 
-  const mediaUrl = await saveUploadedFile(mediaFile);
-  const previewUrl = previewFile ? await saveUploadedFile(previewFile) : "";
-  const coverImageUrl = coverFile ? await saveUploadedFile(coverFile) : "";
-  const transcriptUrl = transcriptFile ? await saveUploadedFile(transcriptFile) : "";
+  const mediaUpload = await saveUploadedMedia(mediaFile, {
+    source: mediaType === "video" ? "creator_podcast_video" : "creator_podcast_audio",
+    resourceType: "video",
+  });
+  const previewMedia = previewFile
+    ? await saveUploadedMedia(previewFile, {
+        source: "creator_podcast_preview",
+        resourceType: mediaType === "video" ? "video" : "video",
+      })
+    : null;
+  const coverMedia = coverFile
+    ? await saveUploadedMedia(coverFile, {
+        source: "creator_podcast_cover",
+        resourceType: "image",
+      })
+    : null;
+  const transcriptMedia = transcriptFile
+    ? await saveUploadedMedia(transcriptFile, {
+        source: "creator_podcast_transcript",
+        resourceType: "raw",
+      })
+    : null;
+  const mediaUrl = mediaDocumentToUrl(mediaUpload);
+  const previewUrl = mediaDocumentToUrl(previewMedia);
+  const coverImageUrl = mediaDocumentToUrl(coverMedia);
+  const transcriptUrl = mediaDocumentToUrl(transcriptMedia);
   const finalPrice = parsed.data.episodeType === "premium" ? parsed.data.price : 0;
 
   const verification = await evaluateVerification({
@@ -439,13 +481,18 @@ exports.createPodcastUpload = asyncHandler(async (req, res) => {
     priceNGN: finalPrice,
     audioUrl: mediaUrl,
     fullAudioUrl: mediaUrl,
+    audioMedia: toMediaDocument(mediaUpload),
     mediaType,
     videoUrl: mediaType === "video" ? mediaUrl : "",
+    videoMedia: mediaType === "video" ? toMediaDocument(mediaUpload) : null,
     previewUrl,
     previewSampleUrl: previewUrl,
+    previewMedia: previewMedia ? toMediaDocument(previewMedia) : null,
     previewClipUrl: mediaType === "video" ? previewUrl : "",
+    previewClipMedia: mediaType === "video" && previewMedia ? toMediaDocument(previewMedia) : null,
     coverImageUrl,
     coverUrl: coverImageUrl,
+    coverMedia: coverMedia ? toMediaDocument(coverMedia) : null,
     durationSec: parsed.data.durationSec,
     previewStartSec: 0,
     previewLimitSec: 30,
@@ -463,6 +510,7 @@ exports.createPodcastUpload = asyncHandler(async (req, res) => {
     guestNames: parsed.data.guestNames,
     showNotes: parsed.data.showNotes,
     transcriptUrl,
+    transcriptMedia: transcriptMedia ? toMediaDocument(transcriptMedia) : null,
     episodeTags: parsed.data.episodeTags,
     isFree: finalPrice <= 0,
     publishedStatus: verification.publishedStatus,
@@ -565,9 +613,25 @@ exports.createBookUpload = asyncHandler(async (req, res) => {
     return sendBadRequest(res, "The selected file format does not match the uploaded manuscript");
   }
 
-  const contentUrl = await saveUploadedFile(contentFile);
-  const coverImageUrl = coverFile ? await saveUploadedFile(coverFile) : "";
-  const previewUrl = previewFile ? await saveUploadedFile(previewFile) : "";
+  const contentMedia = await saveUploadedMedia(contentFile, {
+    source: "creator_book_content",
+    resourceType: "raw",
+  });
+  const coverMedia = coverFile
+    ? await saveUploadedMedia(coverFile, {
+        source: "creator_book_cover",
+        resourceType: "image",
+      })
+    : null;
+  const previewMedia = previewFile
+    ? await saveUploadedMedia(previewFile, {
+        source: "creator_book_preview",
+        resourceType: "raw",
+      })
+    : null;
+  const contentUrl = mediaDocumentToUrl(contentMedia);
+  const coverImageUrl = mediaDocumentToUrl(coverMedia);
+  const previewUrl = mediaDocumentToUrl(previewMedia);
   const authorName =
     parsed.data.authorName ||
     req.creatorProfile.booksProfile?.penName ||
@@ -609,9 +673,12 @@ exports.createBookUpload = asyncHandler(async (req, res) => {
     tableOfContents: parsed.data.tableOfContents,
     coverImageUrl,
     coverUrl: coverImageUrl,
+    coverMedia: coverMedia ? toMediaDocument(coverMedia) : null,
     contentUrl,
     fileUrl: contentUrl,
+    contentMedia: toMediaDocument(contentMedia),
     previewUrl,
+    previewMedia: previewMedia ? toMediaDocument(previewMedia) : null,
     fileFormat: finalFormat,
     contentType: finalFormat === "pdf" ? "pdf_book" : "ebook",
     copyrightDeclared: parsed.data.copyrightDeclared,

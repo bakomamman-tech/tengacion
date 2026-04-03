@@ -1,4 +1,7 @@
 const mongoose = require("mongoose");
+const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
+
+const MediaAssetSchema = createMediaAssetSchema();
 
 const VideoSchema = new mongoose.Schema({
   userId: String,
@@ -7,7 +10,9 @@ const VideoSchema = new mongoose.Schema({
   avatar: String,
 
   videoUrl: String,   // uploaded OR link
+  videoMedia: { type: MediaAssetSchema, default: null },
   coverImageUrl: { type: String, default: "" },
+  coverMedia: { type: MediaAssetSchema, default: null },
   caption: String,
   description: { type: String, default: "" },
   durationSec: { type: Number, default: 0 },
@@ -17,6 +22,7 @@ const VideoSchema = new mongoose.Schema({
   priceGlobal: { type: Number, default: 0, min: 0 },
   isFree: { type: Boolean, default: true },
   previewClipUrl: { type: String, default: "" },
+  previewClipMedia: { type: MediaAssetSchema, default: null },
   isPublished: { type: Boolean, default: true, index: true },
   visibility: {
     type: String,
@@ -175,6 +181,12 @@ const VideoSchema = new mongoose.Schema({
 });
 
 VideoSchema.pre("validate", function syncVideoFields(next) {
+  const videoMediaUrl = this.videoMedia?.secureUrl || this.videoMedia?.url || "";
+  const coverMediaUrl = this.coverMedia?.secureUrl || this.coverMedia?.url || "";
+  const previewClipMediaUrl = this.previewClipMedia?.secureUrl || this.previewClipMedia?.url || "";
+  if (!this.videoUrl && videoMediaUrl) this.videoUrl = videoMediaUrl;
+  if (!this.coverImageUrl && coverMediaUrl) this.coverImageUrl = coverMediaUrl;
+  if (!this.previewClipUrl && previewClipMediaUrl) this.previewClipUrl = previewClipMediaUrl;
   this.creatorCategory = "music";
   this.contentType = "music_video";
   if (this.publishedStatus === "published") this.isPublished = true;

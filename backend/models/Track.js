@@ -1,4 +1,7 @@
 const mongoose = require("mongoose");
+const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
+
+const MediaAssetSchema = createMediaAssetSchema();
 
 const TrackSchema = new mongoose.Schema(
   {
@@ -40,15 +43,27 @@ const TrackSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    audioMedia: {
+      type: MediaAssetSchema,
+      default: null,
+    },
     previewUrl: {
       type: String,
       default: "",
       trim: true,
     },
+    previewMedia: {
+      type: MediaAssetSchema,
+      default: null,
+    },
     coverImageUrl: {
       type: String,
       default: "",
       trim: true,
+    },
+    coverMedia: {
+      type: MediaAssetSchema,
+      default: null,
     },
     coverUrl: {
       type: String,
@@ -147,10 +162,18 @@ const TrackSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    videoMedia: {
+      type: MediaAssetSchema,
+      default: null,
+    },
     previewClipUrl: {
       type: String,
       default: "",
       trim: true,
+    },
+    previewClipMedia: {
+      type: MediaAssetSchema,
+      default: null,
     },
     videoFormat: {
       type: String,
@@ -219,6 +242,10 @@ const TrackSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+    },
+    transcriptMedia: {
+      type: MediaAssetSchema,
+      default: null,
     },
     episodeTags: [
       {
@@ -343,12 +370,27 @@ const TrackSchema = new mongoose.Schema(
 );
 
 TrackSchema.pre("validate", function syncStandardFields(next) {
+  const audioMediaUrl = this.audioMedia?.secureUrl || this.audioMedia?.url || "";
+  const previewMediaUrl = this.previewMedia?.secureUrl || this.previewMedia?.url || "";
+  const coverMediaUrl = this.coverMedia?.secureUrl || this.coverMedia?.url || "";
+  const videoMediaUrl = this.videoMedia?.secureUrl || this.videoMedia?.url || "";
+  const previewClipMediaUrl = this.previewClipMedia?.secureUrl || this.previewClipMedia?.url || "";
+  const transcriptMediaUrl = this.transcriptMedia?.secureUrl || this.transcriptMedia?.url || "";
   if (!Number.isFinite(this.price) && Number.isFinite(this.priceNGN)) {
     this.price = this.priceNGN;
   }
   if (!Number.isFinite(this.priceNGN) && Number.isFinite(this.price)) {
     this.priceNGN = this.price;
   }
+  if (!this.audioUrl && audioMediaUrl) this.audioUrl = audioMediaUrl;
+  if (!this.fullAudioUrl && audioMediaUrl) this.fullAudioUrl = audioMediaUrl;
+  if (!this.previewUrl && previewMediaUrl) this.previewUrl = previewMediaUrl;
+  if (!this.previewSampleUrl && previewMediaUrl) this.previewSampleUrl = previewMediaUrl;
+  if (!this.coverImageUrl && coverMediaUrl) this.coverImageUrl = coverMediaUrl;
+  if (!this.coverUrl && coverMediaUrl) this.coverUrl = coverMediaUrl;
+  if (!this.videoUrl && videoMediaUrl) this.videoUrl = videoMediaUrl;
+  if (!this.previewClipUrl && previewClipMediaUrl) this.previewClipUrl = previewClipMediaUrl;
+  if (!this.transcriptUrl && transcriptMediaUrl) this.transcriptUrl = transcriptMediaUrl;
   if (!this.coverImageUrl && this.coverUrl) this.coverImageUrl = this.coverUrl;
   if (!this.coverUrl && this.coverImageUrl) this.coverUrl = this.coverImageUrl;
   if (!this.audioUrl && this.fullAudioUrl) this.audioUrl = this.fullAudioUrl;

@@ -4,8 +4,8 @@ const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { config } = require("../config/env");
 
-const MAX_VIDEO_BYTES = 200 * 1024 * 1024; // 200 MB
-const ALLOWED_MIME_TYPES = new Set(["video/mp4", "video/webm"]);
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
+const ALLOWED_MIME_TYPES = new Set(["video/mp4", "video/quicktime", "video/webm"]);
 
 const useLocalVideoMock = Boolean(config.USE_LOCAL_VIDEO_MOCK);
 const localMockFileUrl = config.LOCAL_VIDEO_MOCK_URL || "";
@@ -52,11 +52,11 @@ const normalizeMimeType = (value) => {
 const validateVideoUpload = ({ contentType, sizeBytes }) => {
   const mime = normalizeMimeType(contentType);
   if (!ALLOWED_MIME_TYPES.has(mime)) {
-    throw new Error("Only MP4 and WebM videos are allowed");
+    throw new Error("Only MP4, MOV, and WebM videos are allowed");
   }
 
   if (typeof sizeBytes === "number" && sizeBytes > MAX_VIDEO_BYTES) {
-    throw new Error("Video exceeds maximum allowed size (200MB)");
+    throw new Error("Video exceeds maximum allowed size (100MB)");
   }
 };
 

@@ -4,7 +4,7 @@ const User = require("../models/User");
 const Message = require("../models/Message");
 const upload = require("../middleware/privateUpload");
 const moderateUpload = require("../middleware/moderateUpload");
-const { saveUploadedFile } = require("../services/mediaStore");
+const { saveUploadedMedia } = require("../services/mediaStore");
 const { createNotification } = require("../services/notificationService");
 const {
   hydrateStoryMusicAttachment,
@@ -132,7 +132,13 @@ router.post(
         files.find((entry) =>
           ["media", "image", "video"].includes(String(entry?.fieldname || "").toLowerCase())
         ) || files[0];
-      const storyMediaUrl = mediaFile ? await saveUploadedFile(mediaFile) : "";
+      const uploadedMedia = mediaFile
+        ? await saveUploadedMedia(mediaFile, {
+            source: inferStoryMediaType(mediaFile) === "video" ? "story_video" : "story_image",
+            resourceType: inferStoryMediaType(mediaFile) === "video" ? "video" : "image",
+          })
+        : null;
+      const storyMediaUrl = uploadedMedia?.secureUrl || uploadedMedia?.url || "";
       const mediaType = inferStoryMediaType(mediaFile);
       const caption = String(req.body?.caption || req.body?.text || "").trim();
       const rawMusicAttachment = req.body?.musicAttachment;
@@ -155,8 +161,7 @@ router.post(
         text: caption,
         visibility: normalizedVisibility,
         media: {
-          url: storyMediaUrl,
-          public_id: "",
+          ...(uploadedMedia || { url: storyMediaUrl, public_id: "" }),
           type: mediaType,
         },
         image: storyMediaUrl,

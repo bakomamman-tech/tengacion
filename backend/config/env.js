@@ -179,6 +179,9 @@ const livekitApiKey = toText(process.env.LIVEKIT_API_KEY);
 const livekitApiSecret = toText(process.env.LIVEKIT_API_SECRET);
 const livekitHost = toText(process.env.LIVEKIT_HOST);
 const livekitWsUrl = toText(process.env.LIVEKIT_WS_URL);
+const cloudinaryCloudName = toText(process.env.CLOUDINARY_CLOUD_NAME);
+const cloudinaryApiKey = toText(process.env.CLOUDINARY_API_KEY);
+const cloudinaryApiSecret = toText(process.env.CLOUDINARY_API_SECRET);
 const awsAccessKeyId = toText(process.env.AWS_ACCESS_KEY_ID);
 const awsSecretAccessKey = toText(process.env.AWS_SECRET_ACCESS_KEY);
 const awsRegion = toText(process.env.AWS_REGION);
@@ -230,6 +233,21 @@ const config = {
   clientUrl,
   corsOrigin,
   allowedOrigins,
+  cloudinaryCloudName,
+  cloudinaryApiKey,
+  cloudinaryApiSecret,
+  cloudinary:
+    cloudinaryCloudName || cloudinaryApiKey || cloudinaryApiSecret
+      ? {
+          cloudName: cloudinaryCloudName,
+          apiKey: cloudinaryApiKey,
+          configured: Boolean(cloudinaryCloudName && cloudinaryApiKey && cloudinaryApiSecret),
+        }
+      : {
+          cloudName: "",
+          apiKey: "",
+          configured: false,
+        },
   awsAccessKeyId,
   awsSecretAccessKey,
   awsRegion,
@@ -270,6 +288,9 @@ const config = {
   WEB_ORIGIN: clientUrl,
   FRONTEND_URL: clientUrl,
   ALLOWED_FRONTEND_ORIGINS: corsOrigin,
+  CLOUDINARY_CLOUD_NAME: cloudinaryCloudName,
+  CLOUDINARY_API_KEY: cloudinaryApiKey,
+  CLOUDINARY_API_SECRET: cloudinaryApiSecret,
   AWS_ACCESS_KEY_ID: awsAccessKeyId,
   AWS_SECRET_ACCESS_KEY: awsSecretAccessKey,
   AWS_REGION: awsRegion,

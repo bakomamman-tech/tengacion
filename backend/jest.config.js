@@ -4,5 +4,5 @@ module.exports = {
   roots: ["tests"],
   // Increase timeout because mongodb-memory-server can take a while to spin up.
   testTimeout: 180000,
-  setupFilesAfterEnv: [],
+  setupFilesAfterEnv: ["<rootDir>/tests/setupCloudinaryMock.js"],
 };

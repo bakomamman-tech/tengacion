@@ -3,7 +3,7 @@ const fsp = require("fs/promises");
 const Post = require("../models/Post");
 const User = require("../../../backend/models/User");
 const { createNotification } = require("../../../backend/services/notificationService");
-const { saveUploadedMedia } = require("../../../backend/services/mediaStore");
+const { deleteUploadedMedia, saveUploadedMedia } = require("../../../backend/services/mediaStore");
 const { normalizeMediaValue } = require("../../../backend/utils/userMedia");
 const {
   moveToQuarantineStorage,
@@ -151,6 +151,8 @@ const buildVideoMeta = (payload) => {
   }
 
   const url =
+    normalizeVideoUrl(payload.secureUrl) ||
+    normalizeVideoUrl(payload.secure_url) ||
     normalizeVideoUrl(payload.url) ||
     normalizeVideoUrl(payload.fileUrl) ||
     normalizeVideoUrl(payload.playbackUrl);
@@ -171,6 +173,80 @@ const buildVideoMeta = (payload) => {
   };
 };
 
+const buildPostMediaEntry = (asset = {}, type = "image") => ({
+  publicId: String(asset.publicId || asset.public_id || "").trim(),
+  public_id: String(asset.publicId || asset.public_id || "").trim(),
+  url: normalizeVideoUrl(asset.secureUrl || asset.secure_url || asset.url),
+  secureUrl: normalizeVideoUrl(asset.secureUrl || asset.secure_url || asset.url),
+  secure_url: normalizeVideoUrl(asset.secureUrl || asset.secure_url || asset.url),
+  resourceType: String(asset.resourceType || asset.resource_type || type).trim(),
+  resource_type: String(asset.resourceType || asset.resource_type || type).trim(),
+  format: String(asset.format || "").trim(),
+  bytes: Number(asset.bytes || 0) || 0,
+  width: Number(asset.width || 0) || 0,
+  height: Number(asset.height || 0) || 0,
+  duration: Number(asset.duration || 0) || 0,
+  originalFilename: String(asset.originalFilename || "").trim(),
+  folder: String(asset.folder || "").trim(),
+  type,
+});
+
+const buildCloudinaryVideoMeta = (asset = {}, uploadFile = null, fallback = null) => ({
+  publicId: String(asset.publicId || asset.public_id || "").trim(),
+  public_id: String(asset.publicId || asset.public_id || "").trim(),
+  url: normalizeVideoUrl(asset.secureUrl || asset.secure_url || asset.url || fallback?.url),
+  secureUrl: normalizeVideoUrl(asset.secureUrl || asset.secure_url || asset.url || fallback?.url),
+  secure_url: normalizeVideoUrl(asset.secureUrl || asset.secure_url || asset.url || fallback?.url),
+  playbackUrl: normalizeVideoUrl(asset.secureUrl || asset.secure_url || asset.url || fallback?.playbackUrl || fallback?.url),
+  thumbnailUrl: normalizeVideoUrl(fallback?.thumbnailUrl),
+  duration: Number(asset.duration || fallback?.duration || 0) || 0,
+  width: Number(asset.width || fallback?.width || 0) || 0,
+  height: Number(asset.height || fallback?.height || 0) || 0,
+  sizeBytes: Number(asset.bytes || uploadFile?.size || fallback?.sizeBytes || 0) || 0,
+  mimeType:
+    normalizeMimeType(asset.resourceType === "video" ? uploadFile?.mimetype : "")
+    || normalizeMimeType(uploadFile?.mimetype)
+    || normalizeMimeType(fallback?.mimeType),
+  resourceType: String(asset.resourceType || asset.resource_type || "video").trim(),
+  resource_type: String(asset.resourceType || asset.resource_type || "video").trim(),
+  format: String(asset.format || "").trim(),
+  bytes: Number(asset.bytes || uploadFile?.size || fallback?.sizeBytes || 0) || 0,
+  originalFilename: String(asset.originalFilename || uploadFile?.originalname || "").trim(),
+  folder: String(asset.folder || "").trim(),
+});
+
+const collectPostCloudinaryAssets = (post = {}) => {
+  const assets = [];
+
+  (Array.isArray(post?.media) ? post.media : []).forEach((entry) => {
+    const publicId = String(entry?.publicId || entry?.public_id || "").trim();
+    if (!publicId) {
+      return;
+    }
+
+    assets.push({
+      publicId,
+      public_id: publicId,
+      resourceType: String(entry?.resourceType || entry?.resource_type || entry?.type || "image").trim(),
+      resource_type: String(entry?.resourceType || entry?.resource_type || entry?.type || "image").trim(),
+      url: normalizeVideoUrl(entry?.secureUrl || entry?.secure_url || entry?.url),
+    });
+  });
+
+  const videoPublicId = String(post?.video?.publicId || post?.video?.public_id || "").trim();
+  if (videoPublicId) {
+    assets.push({
+      publicId: videoPublicId,
+      public_id: videoPublicId,
+      resourceType: String(post?.video?.resourceType || post?.video?.resource_type || "video").trim(),
+      resource_type: String(post?.video?.resourceType || post?.video?.resource_type || "video").trim(),
+      url: normalizeVideoUrl(post?.video?.secureUrl || post?.video?.secure_url || post?.video?.url || post?.video?.playbackUrl),
+    });
+  }
+
+  return assets;
+};
+
 const validateVideoMeta = (video) => {
   if (!video) {
     return;
@@ -181,7 +257,7 @@ const validateVideoMeta = (video) => {
   }
 
   if (video.sizeBytes > MAX_VIDEO_BYTES) {
-    throw ApiError.badRequest("Video exceeds maximum allowed size (200MB)");
+    throw ApiError.badRequest("Video exceeds maximum allowed size (100MB)");
   }
 };
 
@@ -1090,27 +1166,15 @@ class PostService {
 
     const media = [];
     if (uploadFile) {
-      const persisted = await saveUploadedMedia(uploadFile);
-      const persistedKind = inferMediaKind(uploadFile);
-      media.push({
-        public_id: persisted.public_id || "",
-        url: persisted.url,
-        type: persistedKind,
+      const persisted = await saveUploadedMedia(uploadFile, {
+        source: uploadKind === "video" ? "post_video" : "post_image",
+        resourceType: uploadKind === "video" ? "video" : "image",
       });
+      const persistedKind = inferMediaKind(uploadFile);
+      media.push(buildPostMediaEntry(persisted, persistedKind));
 
       if (persistedKind === "video") {
-        videoMeta = {
-          url: persisted.url,
-          playbackUrl: persisted.url,
-          thumbnailUrl: "",
-          duration: videoMeta?.duration || 0,
-          width: videoMeta?.width || 0,
-          height: videoMeta?.height || 0,
-          sizeBytes: Number(uploadFile.size) || videoMeta?.sizeBytes || 0,
-          mimeType:
-            normalizeMimeType(uploadFile.mimetype) ||
-            normalizeMimeType(videoMeta?.mimeType),
-        };
+        videoMeta = buildCloudinaryVideoMeta(persisted, uploadFile, videoMeta);
       }
     } else if (type === "video" && videoMeta?.playbackUrl) {
       media.push({
@@ -1541,6 +1605,11 @@ class PostService {
 
     const deleted = await postRepository.findOneAndDelete({ _id: postId, author: userId });
     if (!deleted) throw ApiError.notFound("Post not found");
+
+    await Promise.all(
+      collectPostCloudinaryAssets(deleted).map((asset) => deleteUploadedMedia(asset))
+    ).catch(() => null);
+
     return { success: true };
   }
 

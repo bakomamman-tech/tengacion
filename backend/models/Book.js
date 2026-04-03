@@ -1,4 +1,7 @@
 const mongoose = require("mongoose");
+const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
+
+const MediaAssetSchema = createMediaAssetSchema();
 
 const BookSchema = new mongoose.Schema(
   {
@@ -52,6 +55,10 @@ const BookSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    coverMedia: {
+      type: MediaAssetSchema,
+      default: null,
+    },
     coverUrl: {
       type: String,
       default: "",
@@ -61,6 +68,10 @@ const BookSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+    },
+    contentMedia: {
+      type: MediaAssetSchema,
+      default: null,
     },
     genre: {
       type: String,
@@ -130,6 +141,10 @@ const BookSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+    },
+    previewMedia: {
+      type: MediaAssetSchema,
+      default: null,
     },
     previewExcerptText: {
       type: String,
@@ -257,8 +272,16 @@ const BookSchema = new mongoose.Schema(
 );
 
 BookSchema.pre("validate", function syncBookFields(next) {
+  const coverMediaUrl = this.coverMedia?.secureUrl || this.coverMedia?.url || "";
+  const contentMediaUrl = this.contentMedia?.secureUrl || this.contentMedia?.url || "";
+  const previewMediaUrl = this.previewMedia?.secureUrl || this.previewMedia?.url || "";
   if (!Number.isFinite(this.price) && Number.isFinite(this.priceNGN)) this.price = this.priceNGN;
   if (!Number.isFinite(this.priceNGN) && Number.isFinite(this.price)) this.priceNGN = this.price;
+  if (!this.coverImageUrl && coverMediaUrl) this.coverImageUrl = coverMediaUrl;
+  if (!this.coverUrl && coverMediaUrl) this.coverUrl = coverMediaUrl;
+  if (!this.contentUrl && contentMediaUrl) this.contentUrl = contentMediaUrl;
+  if (!this.fileUrl && contentMediaUrl) this.fileUrl = contentMediaUrl;
+  if (!this.previewUrl && previewMediaUrl) this.previewUrl = previewMediaUrl;
   if (!this.coverImageUrl && this.coverUrl) this.coverImageUrl = this.coverUrl;
   if (!this.coverUrl && this.coverImageUrl) this.coverUrl = this.coverImageUrl;
   if (!this.contentUrl && this.fileUrl) this.contentUrl = this.fileUrl;

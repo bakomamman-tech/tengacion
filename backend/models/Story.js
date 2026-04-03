@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
 
 const StoryMusicAttachmentSchema = new mongoose.Schema(
   {
@@ -26,6 +27,14 @@ const StoryMusicAttachmentSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const StoryMediaSchema = createMediaAssetSchema({
+  type: {
+    type: String,
+    enum: ["image", "video"],
+    default: "image",
+  },
+});
+
 const StorySchema = new mongoose.Schema({
   userId: String,
   authorId: {
@@ -39,13 +48,8 @@ const StorySchema = new mongoose.Schema({
   avatar: String,
   image: String,
   media: {
-    url: { type: String, default: "" },
-    public_id: { type: String, default: "" },
-    type: {
-      type: String,
-      enum: ["image", "video"],
-      default: "image",
-    },
+    type: StoryMediaSchema,
+    default: null,
   },
   mediaUrl: String,
   mediaType: {
@@ -128,6 +132,15 @@ const StorySchema = new mongoose.Schema({
     default: false,
     index: true,
   },
+});
+
+StorySchema.pre("validate", function syncStoryMedia(next) {
+  const mediaUrl = this.media?.secureUrl || this.media?.url || "";
+  if (!this.mediaUrl && mediaUrl) this.mediaUrl = mediaUrl;
+  if (!this.image && mediaUrl) this.image = mediaUrl;
+  if (!this.thumbnailUrl && this.media?.type === "image" && mediaUrl) this.thumbnailUrl = mediaUrl;
+  if (!this.mediaType && this.media?.type) this.mediaType = this.media.type;
+  if (typeof next === "function") next();
 });
 
 StorySchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });

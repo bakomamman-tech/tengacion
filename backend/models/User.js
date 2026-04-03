@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
 const { normalizeMediaValue } = require("../utils/userMedia");
 const { normalizeAudioPrefs, DEFAULT_WELCOME_VOICE_VOLUME } = require("../utils/audioPrefs");
 const { sanitizeCountryValue, sanitizePhoneValue } = require("../utils/profileFields");
@@ -145,25 +146,13 @@ const UserSchema = new mongoose.Schema(
     },
 
     avatar: {
-      type: new mongoose.Schema(
-        {
-          public_id: { type: String, default: "" },
-          url: { type: String, default: "" },
-        },
-        { _id: false }
-      ),
-      default: () => ({ public_id: "", url: "" }),
+      type: createMediaAssetSchema(),
+      default: () => normalizeMediaValue(),
     },
 
     cover: {
-      type: new mongoose.Schema(
-        {
-          public_id: { type: String, default: "" },
-          url: { type: String, default: "" },
-        },
-        { _id: false }
-      ),
-      default: () => ({ public_id: "", url: "" }),
+      type: createMediaAssetSchema(),
+      default: () => normalizeMediaValue(),
     },
 
     /* ================= ACCOUNT ================= */

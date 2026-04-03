@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 const request = require("supertest");
+const { v2: cloudinary } = require("cloudinary");
 
 process.env.NODE_ENV = "test";
 process.env.MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/tengacion-test";
@@ -129,6 +130,10 @@ describe("creator upload routes", () => {
         filename: "aurora-preview.mp3",
         contentType: "audio/mpeg",
       })
+      .attach("cover", Buffer.from("music-cover"), {
+        filename: "aurora-cover.webp",
+        contentType: "image/webp",
+      })
       .expect(201);
 
     expect(response.body.title).toBe("Aurora");
@@ -136,6 +141,15 @@ describe("creator upload routes", () => {
     expect(response.body.releaseType).toBe("single");
     expect(response.body.previewStartSec).toBe(75);
     expect(response.body.previewLimitSec).toBe(30);
+    expect(response.body.audioUrl).toContain(
+      "https://res.cloudinary.com/test-cloud/video/upload/"
+    );
+    expect(response.body.previewUrl).toContain(
+      "https://res.cloudinary.com/test-cloud/video/upload/"
+    );
+    expect(response.body.coverImageUrl).toContain(
+      "https://res.cloudinary.com/test-cloud/image/upload/"
+    );
 
     const savedTrack = await Track.findOne({ title: "Aurora" }).lean();
     expect(savedTrack).toBeTruthy();
@@ -143,6 +157,47 @@ describe("creator upload routes", () => {
     expect(savedTrack.contentType).toBe("track");
     expect(savedTrack.previewStartSec).toBe(75);
     expect(savedTrack.previewLimitSec).toBe(30);
+    expect(savedTrack.audioMedia).toMatchObject({
+      publicId: "tengacion/creators/audio/mock-1",
+      secureUrl: expect.stringContaining(
+        "https://res.cloudinary.com/test-cloud/video/upload/"
+      ),
+      resourceType: "video",
+      folder: "tengacion/creators/audio",
+      originalFilename: "aurora.mp3",
+    });
+    expect(savedTrack.previewMedia).toMatchObject({
+      publicId: "tengacion/creators/audio/mock-2",
+      resourceType: "video",
+      folder: "tengacion/creators/audio",
+      originalFilename: "aurora-preview.mp3",
+    });
+    expect(savedTrack.coverMedia).toMatchObject({
+      publicId: "tengacion/creators/music-covers/mock-3",
+      secureUrl: expect.stringContaining(
+        "https://res.cloudinary.com/test-cloud/image/upload/"
+      ),
+      resourceType: "image",
+      folder: "tengacion/creators/music-covers",
+      originalFilename: "aurora-cover.webp",
+    });
+
+    expect(cloudinary.uploader.upload_stream).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        folder: "tengacion/creators/audio",
+        resource_type: "video",
+      }),
+      expect.any(Function)
+    );
+    expect(cloudinary.uploader.upload_stream).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        folder: "tengacion/creators/music-covers",
+        resource_type: "image",
+      }),
+      expect.any(Function)
+    );
   });
 
   test("POST /api/creator/music/videos creates a music video upload with supported formats", async () => {
@@ -242,10 +297,20 @@ describe("creator upload routes", () => {
         filename: "video-episode.mp4",
         contentType: "video/mp4",
       })
+      .attach("cover", Buffer.from("podcast-cover"), {
+        filename: "video-episode-cover.png",
+        contentType: "image/png",
+      })
       .expect(201);
 
     expect(response.body.title).toBe("Video Episode One");
     expect(response.body.mediaType).toBe("video");
+    expect(response.body.videoUrl).toContain(
+      "https://res.cloudinary.com/test-cloud/video/upload/"
+    );
+    expect(response.body.coverImageUrl).toContain(
+      "https://res.cloudinary.com/test-cloud/image/upload/"
+    );
 
     const savedTrack = await Track.findOne({ title: "Video Episode One" }).lean();
     expect(savedTrack).toBeTruthy();
@@ -253,6 +318,18 @@ describe("creator upload routes", () => {
     expect(savedTrack.mediaType).toBe("video");
     expect(savedTrack.videoUrl).toBeTruthy();
     expect(savedTrack.audioUrl).toBe(savedTrack.videoUrl);
+    expect(savedTrack.videoMedia).toMatchObject({
+      publicId: "tengacion/podcasts/videos/mock-1",
+      resourceType: "video",
+      folder: "tengacion/podcasts/videos",
+      originalFilename: "video-episode.mp4",
+    });
+    expect(savedTrack.coverMedia).toMatchObject({
+      publicId: "tengacion/podcasts/covers/mock-2",
+      resourceType: "image",
+      folder: "tengacion/podcasts/covers",
+      originalFilename: "video-episode-cover.png",
+    });
   });
 
   test("POST /api/creator/books rejects unsupported manuscript file types", async () => {

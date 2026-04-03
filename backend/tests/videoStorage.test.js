@@ -38,6 +38,11 @@ describe("videoStorage full path", () => {
 
   test("throws when bucket is missing and mock is disabled", async () => {
     process.env.USE_LOCAL_VIDEO_MOCK = "false";
+    process.env.AWS_ACCESS_KEY_ID = "";
+    process.env.AWS_SECRET_ACCESS_KEY = "";
+    process.env.AWS_REGION = "";
+    process.env.AWS_S3_BUCKET = "";
+    process.env.AWS_S3_MEDIA_URL = "";
     applyBaseEnv();
     resetModules();
 

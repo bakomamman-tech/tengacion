@@ -3,11 +3,12 @@ const asyncHandler = require("../middleware/asyncHandler");
 const Book = require("../models/Book");
 const Chapter = require("../models/Chapter");
 const CreatorProfile = require("../models/CreatorProfile");
-const { saveUploadedFile } = require("../services/mediaStore");
+const { saveUploadedMedia } = require("../services/mediaStore");
 const { hasEntitlement } = require("../services/entitlementService");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 
 // TODO(phase2): add audiobook media support alongside chapter text content.
 
@@ -31,9 +32,9 @@ const toBookPayload = (book) => ({
   readingAge: book.readingAge || "",
   tableOfContents: book.tableOfContents || "",
   tags: Array.isArray(book.tags) ? book.tags : [],
-  coverImageUrl: book.coverImageUrl || "",
-  contentUrl: book.contentUrl || "",
-  previewUrl: book.previewUrl || "",
+  coverImageUrl: mediaDocumentToUrl(book.coverMedia, book.coverImageUrl || ""),
+  contentUrl: mediaDocumentToUrl(book.contentMedia, book.contentUrl || ""),
+  previewUrl: mediaDocumentToUrl(book.previewMedia, book.previewUrl || ""),
   fileFormat: book.fileFormat || "",
   previewExcerptText: book.previewExcerptText || "",
   copyrightDeclared: Boolean(book.copyrightDeclared),
@@ -108,6 +109,9 @@ exports.createBook = asyncHandler(async (req, res) => {
   let coverImageUrl = String(req.body?.coverImageUrl || "").trim();
   let contentUrl = String(req.body?.contentUrl || req.body?.fileUrl || "").trim();
   let previewUrl = String(req.body?.previewUrl || "").trim();
+  let coverMedia = null;
+  let contentMedia = null;
+  let previewMedia = null;
   const price = Number(req.body?.price);
   const genre = String(req.body?.genre || "").trim();
   const language = String(req.body?.language || "").trim();
@@ -134,14 +138,26 @@ exports.createBook = asyncHandler(async (req, res) => {
   }
 
   if (coverFile) {
-    coverImageUrl = await saveUploadedFile(coverFile);
+    coverMedia = await saveUploadedMedia(coverFile, {
+      source: "book_cover",
+      resourceType: "image",
+    });
+    coverImageUrl = mediaDocumentToUrl(coverMedia);
   }
 
   if (contentFile) {
-    contentUrl = await saveUploadedFile(contentFile);
+    contentMedia = await saveUploadedMedia(contentFile, {
+      source: "book_content",
+      resourceType: "raw",
+    });
+    contentUrl = mediaDocumentToUrl(contentMedia);
   }
   if (previewFile) {
-    previewUrl = await saveUploadedFile(previewFile);
+    previewMedia = await saveUploadedMedia(previewFile, {
+      source: "book_preview",
+      resourceType: "raw",
+    });
+    previewUrl = mediaDocumentToUrl(previewMedia);
   }
 
   if (!contentUrl) {
@@ -170,8 +186,11 @@ exports.createBook = asyncHandler(async (req, res) => {
     title,
     description,
     coverImageUrl,
+    coverMedia: coverMedia ? toMediaDocument(coverMedia) : null,
     contentUrl,
+    contentMedia: contentMedia ? toMediaDocument(contentMedia) : null,
     previewUrl,
+    previewMedia: previewMedia ? toMediaDocument(previewMedia) : null,
     price,
     genre,
     language,
@@ -256,18 +275,39 @@ exports.updateBook = asyncHandler(async (req, res) => {
   let coverImageUrl = String(req.body?.coverImageUrl || book.coverImageUrl || "").trim();
   let contentUrl = String(req.body?.contentUrl || req.body?.fileUrl || book.contentUrl || book.fileUrl || "").trim();
   let previewUrl = String(req.body?.previewUrl || book.previewUrl || "").trim();
+  let coverMedia = book.coverMedia || null;
+  let contentMedia = book.contentMedia || null;
+  let previewMedia = book.previewMedia || null;
+  const previousCoverMedia = book.coverMedia || null;
+  const previousContentMedia = book.contentMedia || null;
+  const previousPreviewMedia = book.previewMedia || null;
   const coverFile = req.files?.cover?.[0] || null;
   const contentFile = req.files?.content?.[0] || null;
   const previewFile = req.files?.preview?.[0] || null;
 
   if (coverFile) {
-    coverImageUrl = await saveUploadedFile(coverFile);
+    const uploadedCover = await saveUploadedMedia(coverFile, {
+      source: "book_cover",
+      resourceType: "image",
+    });
+    coverMedia = toMediaDocument(uploadedCover);
+    coverImageUrl = mediaDocumentToUrl(uploadedCover);
   }
   if (contentFile) {
-    contentUrl = await saveUploadedFile(contentFile);
+    const uploadedContent = await saveUploadedMedia(contentFile, {
+      source: "book_content",
+      resourceType: "raw",
+    });
+    contentMedia = toMediaDocument(uploadedContent);
+    contentUrl = mediaDocumentToUrl(uploadedContent);
   }
   if (previewFile) {
-    previewUrl = await saveUploadedFile(previewFile);
+    const uploadedPreview = await saveUploadedMedia(previewFile, {
+      source: "book_preview",
+      resourceType: "raw",
+    });
+    previewMedia = toMediaDocument(uploadedPreview);
+    previewUrl = mediaDocumentToUrl(uploadedPreview);
   }
   if (!contentUrl) {
     return res.status(400).json({ error: "content URL or upload is required" });
@@ -298,8 +338,11 @@ exports.updateBook = asyncHandler(async (req, res) => {
   book.fileFormat = fileFormat;
   book.previewExcerptText = previewExcerptText;
   book.coverImageUrl = coverImageUrl;
+  book.coverMedia = coverMedia;
   book.contentUrl = contentUrl;
+  book.contentMedia = contentMedia;
   book.previewUrl = previewUrl;
+  book.previewMedia = previewMedia;
   book.price = price;
   book.contentType = fileFormat === "pdf" ? "pdf_book" : "ebook";
   book.publishedStatus = verification.publishedStatus;
@@ -313,6 +356,11 @@ exports.updateBook = asyncHandler(async (req, res) => {
   book.isPublished = verification.publishedStatus === "published";
 
   await book.save();
+  await Promise.all([
+    coverFile ? cleanupReplacedMedia(previousCoverMedia, book.coverMedia) : Promise.resolve(false),
+    contentFile ? cleanupReplacedMedia(previousContentMedia, book.contentMedia) : Promise.resolve(false),
+    previewFile ? cleanupReplacedMedia(previousPreviewMedia, book.previewMedia) : Promise.resolve(false),
+  ]).catch(() => null);
 
   const hydrated = await Book.findById(book._id)
     .populate({

@@ -37,6 +37,7 @@ console.log("Backend runtime config", {
   nodeEnv: config.nodeEnv || config.NODE_ENV || "unknown",
   port: process.env.PORT || config.port || config.PORT || "unset",
   allowedOrigins: Array.isArray(config.allowedOrigins) ? config.allowedOrigins.length : 0,
+  cloudinaryReady: Boolean(config.cloudinary?.configured),
 });
 
 const missingAuthSecrets = [

@@ -4,12 +4,13 @@ const asyncHandler = require("../middleware/asyncHandler");
 const Album = require("../models/Album");
 const CreatorProfile = require("../models/CreatorProfile");
 const { buildAlbumArchiveUrl } = require("../services/albumArchiveService");
-const { saveUploadedFile } = require("../services/mediaStore");
+const { saveUploadedMedia } = require("../services/mediaStore");
 const { hasEntitlement } = require("../services/entitlementService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 
 const MAX_ALBUM_TRACKS = 25;
 const MAX_TRACK_FILE_SIZE_BYTES = 25 * 1024 * 1024;
@@ -34,7 +35,7 @@ const toAlbumListPayload = (album) => ({
   title: album.title || "",
   description: album.description || "",
   price: Number(album.price) || 0,
-  coverUrl: album.coverUrl || "",
+  coverUrl: mediaDocumentToUrl(album.coverMedia, album.coverUrl || ""),
   totalTracks: Number(album.totalTracks || album.tracks?.length || 0),
   status: album.status || "published",
   releaseType: album.releaseType || album.contentType || "album",
@@ -130,24 +131,40 @@ exports.createAlbum = asyncHandler(async (req, res) => {
     });
   }
 
-  const coverUrl = await saveUploadedFile(coverFile);
+  const coverMedia = await saveUploadedMedia(coverFile, {
+    source: "album_cover",
+    resourceType: "image",
+  });
+  const coverUrl = mediaDocumentToUrl(coverMedia);
   const previewsMatch = previewFiles.length > 0 && previewFiles.length === trackFiles.length;
   const previewUrls = [];
   if (previewsMatch) {
     for (const previewFile of previewFiles) {
-      const previewUrl = await saveUploadedFile(previewFile);
-      previewUrls.push(previewUrl);
+      const previewMedia = await saveUploadedMedia(previewFile, {
+        source: "album_preview",
+        resourceType: "video",
+      });
+      previewUrls.push({
+        url: mediaDocumentToUrl(previewMedia),
+        media: toMediaDocument(previewMedia),
+      });
     }
   }
 
   const tracks = [];
   for (let index = 0; index < trackFiles.length; index += 1) {
     const trackFile = trackFiles[index];
-    const trackUrl = await saveUploadedFile(trackFile);
+    const trackMedia = await saveUploadedMedia(trackFile, {
+      source: "album_track",
+      resourceType: "video",
+    });
+    const trackUrl = mediaDocumentToUrl(trackMedia);
     tracks.push({
       title: normalizeFilenameToTitle(trackFile.originalname) || `Track ${index + 1}`,
       trackUrl,
-      previewUrl: previewsMatch ? previewUrls[index] || "" : "",
+      trackMedia: toMediaDocument(trackMedia),
+      previewUrl: previewsMatch ? previewUrls[index]?.url || "" : "",
+      previewMedia: previewsMatch ? previewUrls[index]?.media || null : null,
       order: index + 1,
     });
   }
@@ -175,6 +192,7 @@ exports.createAlbum = asyncHandler(async (req, res) => {
     releaseType,
     contentType: releaseType,
     coverUrl,
+    coverMedia: toMediaDocument(coverMedia),
     tracks,
     status: verification.publishedStatus === "published" ? "published" : "draft",
     publishedStatus: verification.publishedStatus,
@@ -243,8 +261,15 @@ exports.updateAlbum = asyncHandler(async (req, res) => {
 
   const coverFile = req.files?.coverImage?.[0] || req.files?.cover?.[0] || null;
   let coverUrl = String(req.body?.coverUrl || album.coverUrl || "").trim();
+  let coverMedia = album.coverMedia || null;
+  const previousCoverMedia = album.coverMedia || null;
   if (coverFile) {
-    coverUrl = await saveUploadedFile(coverFile);
+    const uploadedCover = await saveUploadedMedia(coverFile, {
+      source: "album_cover",
+      resourceType: "image",
+    });
+    coverMedia = toMediaDocument(uploadedCover);
+    coverUrl = mediaDocumentToUrl(uploadedCover);
   }
   if (!coverUrl) {
     return res.status(400).json({ error: "coverImage is required and must be an image file" });
@@ -269,6 +294,7 @@ exports.updateAlbum = asyncHandler(async (req, res) => {
   album.description = description.slice(0, 4000);
   album.price = price;
   album.coverUrl = coverUrl;
+  album.coverMedia = coverMedia;
   album.releaseType = releaseType;
   album.contentType = releaseType;
   album.status = verification.publishedStatus === "published" ? "published" : "draft";
@@ -283,6 +309,7 @@ exports.updateAlbum = asyncHandler(async (req, res) => {
   album.isPublished = verification.publishedStatus === "published";
 
   await album.save();
+  await (coverFile ? cleanupReplacedMedia(previousCoverMedia, album.coverMedia) : Promise.resolve(false)).catch(() => null);
 
   return res.json({
     ...toAlbumListPayload(album),
@@ -328,14 +355,14 @@ exports.getAlbumById = asyncHandler(async (req, res) => {
   const tracks = (Array.isArray(album.tracks) ? album.tracks : [])
     .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
     .map((track, index) => {
-      const fullUrl = String(track.trackUrl || "");
-      const previewUrl = String(track.previewUrl || "");
+      const fullUrl = mediaDocumentToUrl(track.trackMedia, track.trackUrl || "");
+      const previewUrl = mediaDocumentToUrl(track.previewMedia, track.previewUrl || "");
       const sourceUrl = canPlayFull ? fullUrl : previewUrl;
       return {
         title: track.title || `Track ${index + 1}`,
         order: Number(track.order || index + 1),
         duration: Number(track.duration || 0),
-        previewUrl,
+        previewUrl: mediaDocumentToUrl(track.previewMedia, previewUrl),
         trackUrl: canPlayFull ? fullUrl : "",
         streamUrl: sourceUrl
           ? buildSignedMediaUrl({

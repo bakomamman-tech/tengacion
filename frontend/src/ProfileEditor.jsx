@@ -541,8 +541,8 @@ export default function ProfileEditor({ user }) {
       toast.error("Please select a valid image file");
       return;
     }
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error("Image is too large (max 15MB)");
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image is too large (max 10MB)");
       return;
     }
     const nextPreview = URL.createObjectURL(file);
@@ -576,8 +576,8 @@ export default function ProfileEditor({ user }) {
       toast.error("Please select a valid image file");
       return;
     }
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error("Image is too large (max 15MB)");
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image is too large (max 10MB)");
       return;
     }
     const nextPreview = URL.createObjectURL(file);

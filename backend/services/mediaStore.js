@@ -1,18 +1,15 @@
 const fs = require("fs");
-const fsp = require("fs/promises");
-const path = require("path");
 const mongoose = require("mongoose");
 const { pipeline } = require("stream/promises");
+const { Readable } = require("stream");
 
 const { incrementDailyMetric, logAnalyticsEvent } = require("./analyticsService");
 const {
-  PERMANENT_MEDIA_DIR,
-  buildPermanentMediaFilename,
-  buildPermanentMediaPublicId,
-  buildPermanentMediaUrl,
-  ensurePermanentMediaDir,
-  inferContentTypeFromName,
-} = require("./mediaStoragePaths");
+  EMPTY_MEDIA,
+  deleteCloudinaryAsset,
+  inferResourceTypeFromMime,
+  uploadFileToCloudinary,
+} = require("./cloudinaryMediaService");
 
 const bucketName = "uploads";
 
@@ -34,90 +31,49 @@ const resolveContentType = (file) => {
   if (mime && mime !== "application/octet-stream") {
     return mime;
   }
-
-  return (
-    inferContentTypeFromName(file?.originalname || "") ||
-    inferContentTypeFromName(file?.filename || "") ||
-    "application/octet-stream"
-  );
+  return "application/octet-stream";
 };
 
-const moveFile = async (sourcePath, destPath) => {
-  await fsp.mkdir(path.dirname(destPath), { recursive: true });
-  try {
-    await fsp.rename(sourcePath, destPath);
-  } catch (error) {
-    if (!error || error.code !== "EXDEV") {
-      throw error;
-    }
-
-    await fsp.copyFile(sourcePath, destPath);
-    await fsp.unlink(sourcePath).catch(() => null);
-  }
+const logUploadFailure = async (file, err) => {
+  await incrementDailyMetric("uploadFailuresCount", 1).catch(() => null);
+  await logAnalyticsEvent({
+    type: "upload_failed",
+    metadata: { message: err.message || "Upload failed", filename: file?.originalname || "" },
+  }).catch(() => null);
 };
 
-const persistUpload = async (file) => {
+const saveUploadedMedia = async (file, options = {}) => {
   if (!file) {
-    return {
-      url: "",
-      public_id: "",
-      resource_type: "raw",
-    };
+    return { ...EMPTY_MEDIA };
   }
 
-  const sourcePath = file.path || "";
-  if (!sourcePath || !fs.existsSync(sourcePath)) {
-    throw new Error("Uploaded file could not be read from temporary storage");
-  }
-
-  const contentType = resolveContentType(file);
-  const resourceType = contentType.startsWith("video/")
-    ? "video"
-    : contentType.startsWith("image/")
-      ? "image"
-      : "raw";
-
-  await ensurePermanentMediaDir();
-
-  const filename = buildPermanentMediaFilename({
-    originalName: file.originalname || path.basename(sourcePath),
-    contentType,
-  });
-  const destPath = path.join(PERMANENT_MEDIA_DIR, filename);
-  await moveFile(sourcePath, destPath);
-
-  return {
-    url: buildPermanentMediaUrl(filename),
-    public_id: buildPermanentMediaPublicId(filename),
-    resource_type: resourceType,
-  };
-};
-
-const saveUploadedFile = async (file) => {
   try {
-    const payload = await persistUpload(file);
-    return payload.url;
+    return await uploadFileToCloudinary(file, {
+      source: options.source,
+      folder: options.folder,
+      resourceType: options.resourceType || inferResourceTypeFromMime(file.mimetype),
+    });
   } catch (err) {
-    await incrementDailyMetric("uploadFailuresCount", 1).catch(() => null);
-    await logAnalyticsEvent({
-      type: "upload_failed",
-      metadata: { message: err.message || "Upload failed", filename: file?.originalname || "" },
-    }).catch(() => null);
+    await logUploadFailure(file, err);
     throw err;
   }
 };
 
-const saveUploadedMedia = async (file) => {
-  try {
-    return await persistUpload(file);
-  } catch (err) {
-    await incrementDailyMetric("uploadFailuresCount", 1).catch(() => null);
-    await logAnalyticsEvent({
-      type: "upload_failed",
-      metadata: { message: err.message || "Upload failed", filename: file?.originalname || "" },
-    }).catch(() => null);
-    throw err;
+const saveUploadedFile = async (file, options = {}) => {
+  const payload = await saveUploadedMedia(file, options);
+  return payload.secureUrl || payload.url || "";
+};
+
+const openGridFsSourceStream = (file = {}) => {
+  if (Buffer.isBuffer(file.buffer) && file.buffer.length > 0) {
+    return Readable.from(file.buffer);
   }
+
+  if (file.path && fs.existsSync(file.path)) {
+    return fs.createReadStream(file.path);
+  }
+
+  throw new Error("Uploaded file could not be read from request data");
 };
 
 const saveUploadedMediaToGridFs = async (file, options = {}) => {
@@ -130,12 +86,6 @@ const saveUploadedMediaToGridFs = async (file, options = {}) => {
   }
 
   const { source = "messenger", metadata: extraMetadata = {} } = options || {};
-
-  const sourcePath = file.path || "";
-  if (!sourcePath || !fs.existsSync(sourcePath)) {
-    throw new Error("Uploaded file could not be read from temporary storage");
-  }
-
   const contentType = resolveContentType(file);
   const resourceType = contentType.startsWith("video/")
     ? "video"
@@ -146,22 +96,18 @@ const saveUploadedMediaToGridFs = async (file, options = {}) => {
         : "raw";
 
   const bucket = getBucket();
-  const filename = toSafeFilename(file.originalname || path.basename(sourcePath));
+  const filename = toSafeFilename(file.originalname || file.filename || "upload");
   const uploadStream = bucket.openUploadStream(filename, {
     contentType,
     metadata: {
-      originalName: file.originalname || path.basename(sourcePath),
+      originalName: file.originalname || file.filename || filename,
       source,
       uploadedAt: new Date(),
       ...extraMetadata,
     },
   });
 
-  try {
-    await pipeline(fs.createReadStream(sourcePath), uploadStream);
-  } finally {
-    await fsp.unlink(sourcePath).catch(() => null);
-  }
+  await pipeline(openGridFsSourceStream(file), uploadStream);
 
   const publicId = uploadStream.id?.toString?.() || String(uploadStream.id || "");
   if (!publicId) {
@@ -175,10 +121,19 @@ const saveUploadedMediaToGridFs = async (file, options = {}) => {
   };
 };
 
+const deleteUploadedMedia = async (media = {}, options = {}) => {
+  try {
+    return await deleteCloudinaryAsset(media, options);
+  } catch {
+    return false;
+  }
+};
+
 module.exports = {
+  bucketName,
+  deleteUploadedMedia,
   getBucket,
   saveUploadedFile,
   saveUploadedMedia,
   saveUploadedMediaToGridFs,
-  bucketName,
 };

@@ -103,7 +103,17 @@ const hashFileFromDisk = (filePath) =>
     stream.on("end", () => resolve(digest.digest("hex")));
   });
 
+const hashBuffer = (buffer) =>
+  crypto
+    .createHash("sha256")
+    .update(Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || ""))
+    .digest("hex");
+
 const computeUploadHash = async (file = null) => {
+  if (Buffer.isBuffer(file?.buffer) && file.buffer.length > 0) {
+    return hashBuffer(file.buffer);
+  }
+
   if (!file?.path || !fs.existsSync(file.path)) {
     return crypto
       .createHash("sha256")

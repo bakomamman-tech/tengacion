@@ -8,6 +8,10 @@ const {
 const {
   moveToQuarantineStorage,
 } = require("../services/storageQuarantineService");
+const {
+  cleanupUploadTempFiles,
+  ensureUploadTempFile,
+} = require("../utils/uploadTempFile");
 
 const toMediaType = (file = {}) => {
   const mime = String(file?.mimetype || "").toLowerCase();
@@ -120,6 +124,10 @@ const moderateUpload = ({
         return next();
       }
 
+      await Promise.all(
+        files.map((file) => ensureUploadTempFile(file, { prefix: "moderation" }))
+      );
+
       const title =
         titleFields
           .map((field) => normalizeValue(req.body?.[field], 240))
@@ -214,6 +222,9 @@ const moderateUpload = ({
       });
     } catch (error) {
       return next(error);
+    } finally {
+      const files = flattenFiles(req.files || req.file);
+      await cleanupUploadTempFiles(files);
     }
   };
 

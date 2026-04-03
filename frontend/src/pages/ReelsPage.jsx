@@ -10,7 +10,7 @@ import {
   resolveImage,
 } from "../api";
 
-const MAX_REEL_BYTES = 200 * 1024 * 1024;
+const MAX_REEL_BYTES = 100 * 1024 * 1024;
 const VIDEO_EXT_RE = /\.(mp4|webm|ogg|mov|m4v)(?:\?.*)?$/i;
 const compactFormatter = new Intl.NumberFormat("en", {
   notation: "compact",
@@ -179,12 +179,12 @@ function ReelComposerModal({ user, onClose, onCreated }) {
     if (!nextFile) {
       return false;
     }
-    if (!["video/mp4", "video/webm"].includes(String(nextFile.type || "").toLowerCase())) {
-      setError("Only MP4 and WebM videos are supported for reels.");
+    if (!["video/mp4", "video/webm", "video/quicktime"].includes(String(nextFile.type || "").toLowerCase())) {
+      setError("Only MP4, MOV, and WebM videos are supported for reels.");
       return false;
     }
     if (nextFile.size > MAX_REEL_BYTES) {
-      setError("Reels must be 200MB or less.");
+      setError("Reels must be 100MB or less.");
       return false;
     }
     setError("");
@@ -246,7 +246,7 @@ function ReelComposerModal({ user, onClose, onCreated }) {
         <input
           ref={inputRef}
           type="file"
-          accept="video/mp4,video/webm"
+          accept="video/mp4,video/webm,video/quicktime"
           hidden
           onChange={handleFileChange}
         />
@@ -271,7 +271,7 @@ function ReelComposerModal({ user, onClose, onCreated }) {
           ) : (
             <div className="reels-composer-empty">
               <span>9:16 videos look best here.</span>
-              <small>MP4 or WebM, up to 200MB.</small>
+              <small>MP4, MOV, or WebM, up to 100MB.</small>
             </div>
           )}
 

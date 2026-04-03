@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
 
 /* ================= COMMENT SCHEMA ================= */
 const ReplySchema = new mongoose.Schema(
@@ -177,6 +178,36 @@ const SharedPostSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const PostMediaSchema = createMediaAssetSchema({
+  type: {
+    type: String,
+    enum: ["image", "video", "gif"],
+    default: "image",
+  },
+});
+
+const PostVideoSchema = createMediaAssetSchema({
+  playbackUrl: {
+    type: String,
+    trim: true,
+    default: "",
+  },
+  thumbnailUrl: {
+    type: String,
+    trim: true,
+    default: "",
+  },
+  sizeBytes: {
+    type: Number,
+    default: 0,
+  },
+  mimeType: {
+    type: String,
+    trim: true,
+    default: "",
+  },
+});
+
 /* ================= POST SCHEMA ================= */
 const PostSchema = new mongoose.Schema(
   {
@@ -311,53 +342,13 @@ const PostSchema = new mongoose.Schema(
       min: 0,
     },
 
-    media: [
-      {
-        public_id: String, // Cloudinary
-        url: String,
-        type: {
-          type: String,
-          enum: ["image", "video", "gif"],
-        },
-      },
-    ],
+    media: {
+      type: [PostMediaSchema],
+      default: [],
+    },
     video: {
-      url: {
-        type: String,
-        trim: true,
-        default: "",
-      },
-      playbackUrl: {
-        type: String,
-        trim: true,
-        default: "",
-      },
-      thumbnailUrl: {
-        type: String,
-        trim: true,
-        default: "",
-      },
-      duration: {
-        type: Number,
-        default: 0,
-      },
-      width: {
-        type: Number,
-        default: 0,
-      },
-      height: {
-        type: Number,
-        default: 0,
-      },
-      sizeBytes: {
-        type: Number,
-        default: 0,
-      },
-      mimeType: {
-        type: String,
-        trim: true,
-        default: "",
-      },
+      type: PostVideoSchema,
+      default: null,
     },
     audio: {
       trackId: {

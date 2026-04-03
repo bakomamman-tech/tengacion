@@ -3,6 +3,7 @@ const request = require("supertest");
 const mongoose = require("mongoose");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 const jwt = require("jsonwebtoken");
+const { v2: cloudinary } = require("cloudinary");
 
 process.env.NODE_ENV = "test";
 require("../../apps/api/config/env");
@@ -129,6 +130,76 @@ describe("Posts feed", () => {
     expect(stored.author.toString()).toBe(artist._id.toString());
   });
 
+  test("POST /api/posts uploads an image to Cloudinary and stores metadata", async () => {
+    const response = await request(app)
+      .post("/api/posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .field("text", "Family picnic at the beach")
+      .attach("image", Buffer.from("image-bytes"), {
+        filename: "family-pic.png",
+        contentType: "image/png",
+      })
+      .expect(201);
+
+    expect(response.body.type).toBe("image");
+    expect(response.body.image).toContain("https://res.cloudinary.com/test-cloud/image/upload/");
+
+    const stored = await Post.findById(response.body._id).lean();
+    expect(stored).toBeTruthy();
+    expect(stored.media).toHaveLength(1);
+    expect(stored.media[0]).toMatchObject({
+      publicId: "tengacion/posts/images/mock-1",
+      secureUrl: expect.stringContaining(
+        "https://res.cloudinary.com/test-cloud/image/upload/"
+      ),
+      resourceType: "image",
+      originalFilename: "family-pic.png",
+      folder: "tengacion/posts/images",
+      type: "image",
+    });
+    expect(String(stored.media[0].url || "")).not.toContain("/uploads/");
+
+    expect(cloudinary.uploader.upload_stream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folder: "tengacion/posts/images",
+        resource_type: "image",
+      }),
+      expect.any(Function)
+    );
+  });
+
+  test("POST /api/posts rejects unsupported upload types", async () => {
+    const response = await request(app)
+      .post("/api/posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .field("text", "Unsupported upload")
+      .attach("file", Buffer.from("not-allowed"), {
+        filename: "payload.exe",
+        contentType: "application/x-msdownload",
+      })
+      .expect(400);
+
+    expect(response.body.message).toMatch(/Unsupported file type/i);
+    expect(await Post.countDocuments()).toBe(0);
+    expect(cloudinary.uploader.upload_stream).not.toHaveBeenCalled();
+  });
+
+  test("POST /api/posts rejects oversized image uploads", async () => {
+    const response = await request(app)
+      .post("/api/posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .field("text", "Oversized photo")
+      .attach("image", Buffer.alloc(10 * 1024 * 1024 + 1, 1), {
+        filename: "too-large.png",
+        contentType: "image/png",
+      })
+      .expect(413);
+
+    expect(response.body.message).toMatch(/10MB or smaller/i);
+    expect(await Post.countDocuments()).toBe(0);
+    expect(cloudinary.uploader.upload_stream).not.toHaveBeenCalled();
+  });
+
   test("POST /api/posts accepts video payload", async () => {
     const videoPayload = {
       type: "video",
@@ -157,6 +228,62 @@ describe("Posts feed", () => {
     const stored = await Post.findOne({ _id: response.body._id });
     expect(stored).toBeTruthy();
     expect(stored.video.url).toBe(videoPayload.video.url);
+  });
+
+  test("POST /api/posts uploads a video to Cloudinary and stores metadata", async () => {
+    const response = await request(app)
+      .post("/api/posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .field("text", "Road trip highlights")
+      .attach("file", Buffer.from("video-bytes"), {
+        filename: "road-trip.mp4",
+        contentType: "video/mp4",
+      })
+      .expect(201);
+
+    expect(response.body.type).toBe("video");
+    expect(response.body.video).toMatchObject({
+      url: expect.stringContaining("https://res.cloudinary.com/test-cloud/video/upload/"),
+      playbackUrl: expect.stringContaining(
+        "https://res.cloudinary.com/test-cloud/video/upload/"
+      ),
+    });
+
+    const stored = await Post.findById(response.body._id).lean();
+    expect(stored).toBeTruthy();
+    expect(stored.media).toHaveLength(1);
+    expect(stored.media[0]).toMatchObject({
+      publicId: "tengacion/posts/videos/mock-1",
+      secureUrl: expect.stringContaining(
+        "https://res.cloudinary.com/test-cloud/video/upload/"
+      ),
+      resourceType: "video",
+      originalFilename: "road-trip.mp4",
+      folder: "tengacion/posts/videos",
+      type: "video",
+    });
+    expect(stored.video).toMatchObject({
+      publicId: "tengacion/posts/videos/mock-1",
+      secureUrl: expect.stringContaining(
+        "https://res.cloudinary.com/test-cloud/video/upload/"
+      ),
+      playbackUrl: expect.stringContaining(
+        "https://res.cloudinary.com/test-cloud/video/upload/"
+      ),
+      resourceType: "video",
+      mimeType: "video/mp4",
+      originalFilename: "road-trip.mp4",
+      folder: "tengacion/posts/videos",
+    });
+    expect(String(stored.video.url || "")).not.toContain("/uploads/");
+
+    expect(cloudinary.uploader.upload_stream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folder: "tengacion/posts/videos",
+        resource_type: "video",
+      }),
+      expect.any(Function)
+    );
   });
 
   test("GET /api/posts treats image posts with empty video subdocs as images", async () => {

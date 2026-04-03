@@ -1,4 +1,7 @@
 const mongoose = require("mongoose");
+const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
+
+const MediaAssetSchema = createMediaAssetSchema();
 
 const AlbumTrackSchema = new mongoose.Schema(
   {
@@ -13,10 +16,18 @@ const AlbumTrackSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    trackMedia: {
+      type: MediaAssetSchema,
+      default: null,
+    },
     previewUrl: {
       type: String,
       default: "",
       trim: true,
+    },
+    previewMedia: {
+      type: MediaAssetSchema,
+      default: null,
     },
     duration: {
       type: Number,
@@ -71,6 +82,10 @@ const AlbumSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+    },
+    coverMedia: {
+      type: MediaAssetSchema,
+      default: null,
     },
     releaseType: {
       type: String,
@@ -205,8 +220,20 @@ const AlbumSchema = new mongoose.Schema(
 );
 
 AlbumSchema.pre("validate", function syncAlbumFields(next) {
+  const coverMediaUrl = this.coverMedia?.secureUrl || this.coverMedia?.url || "";
   if (!Number.isFinite(this.price) && Number.isFinite(this.priceNGN)) this.price = this.priceNGN;
   if (!Number.isFinite(this.priceNGN) && Number.isFinite(this.price)) this.priceNGN = this.price;
+  if (!this.coverUrl && coverMediaUrl) this.coverUrl = coverMediaUrl;
+  if (Array.isArray(this.tracks)) {
+    this.tracks = this.tracks.map((track) => {
+      const nextTrack = track && typeof track.toObject === "function" ? track.toObject() : { ...(track || {}) };
+      const trackMediaUrl = nextTrack.trackMedia?.secureUrl || nextTrack.trackMedia?.url || "";
+      const previewMediaUrl = nextTrack.previewMedia?.secureUrl || nextTrack.previewMedia?.url || "";
+      if (!nextTrack.trackUrl && trackMediaUrl) nextTrack.trackUrl = trackMediaUrl;
+      if (!nextTrack.previewUrl && previewMediaUrl) nextTrack.previewUrl = previewMediaUrl;
+      return nextTrack;
+    });
+  }
   if (Number.isFinite(this.totalTracks) && this.totalTracks <= 0 && Array.isArray(this.tracks)) {
     this.totalTracks = this.tracks.length;
   }

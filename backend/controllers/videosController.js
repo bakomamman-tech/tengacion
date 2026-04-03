@@ -7,10 +7,11 @@ const {
 } = require("../services/storageQuarantineService");
 const User = require("../models/User");
 const Video = require("../models/Video");
-const { saveUploadedFile } = require("../services/mediaStore");
+const { saveUploadedMedia } = require("../services/mediaStore");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 const {
   IMAGE_EXTENSIONS,
   IMAGE_MIME_TYPES,
@@ -24,14 +25,18 @@ const sendBadRequest = (res, error) => res.status(400).json({ error });
 
 const persistUploadAsset = async ({ file = null, decision = "approve", caseId = "" }) => {
   if (!file) {
-    return { url: "", fileUrl: "", storageStage: "temporary" };
+    return { url: "", fileUrl: "", media: null, storageStage: "temporary" };
   }
 
   if (decision === "approve") {
-    const uploaded = await saveUploadedFile(file);
+    const uploaded = await saveUploadedMedia(file, {
+      source: file?.mimetype?.startsWith("image/") ? "creator_video_cover" : "creator_video",
+      resourceType: file?.mimetype?.startsWith("image/") ? "image" : "video",
+    });
     return {
-      url: uploaded,
-      fileUrl: uploaded,
+      url: mediaDocumentToUrl(uploaded),
+      fileUrl: mediaDocumentToUrl(uploaded),
+      media: toMediaDocument(uploaded),
       storageStage: "permanent",
     };
   }
@@ -44,6 +49,7 @@ const persistUploadAsset = async ({ file = null, decision = "approve", caseId = 
   return {
     url: quarantined.fileUrl,
     fileUrl: quarantined.fileUrl,
+    media: null,
     storageStage: "quarantine",
   };
 };
@@ -78,9 +84,9 @@ const toVideoPayload = (video) => ({
   _id: String(video?._id || ""),
   title: String(video?.caption || "Music video"),
   description: String(video?.description || video?.caption || ""),
-  videoUrl: String(video?.videoUrl || ""),
-  coverImageUrl: String(video?.coverImageUrl || ""),
-  previewClipUrl: String(video?.previewClipUrl || ""),
+  videoUrl: mediaDocumentToUrl(video?.videoMedia, video?.videoUrl || ""),
+  coverImageUrl: mediaDocumentToUrl(video?.coverMedia, video?.coverImageUrl || ""),
+  previewClipUrl: mediaDocumentToUrl(video?.previewClipMedia, video?.previewClipUrl || ""),
   price: Number(video?.price || 0),
   isFree: Boolean(video?.isFree),
   durationSec: Number(video?.durationSec || 0),
@@ -140,6 +146,9 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
   } = await resolveUploadFields({
     req,
   });
+  let videoMedia = null;
+  let coverMedia = null;
+  let previewClipMedia = null;
 
   if (!videoUrl && !videoFile) {
     return sendBadRequest(res, "Video file or videoUrl is required");
@@ -294,6 +303,7 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
         caseId: `approved:creator_video_upload:${req.user.id}:${new Date().getTime()}`,
       });
       videoUrl = persisted.url;
+      videoMedia = persisted.media;
     }
     if (thumbnailFile) {
       const persisted = await persistUploadAsset({
@@ -302,6 +312,7 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
         caseId: `approved:creator_video_upload:${req.user.id}:${new Date().getTime()}`,
       });
       coverImageUrl = persisted.url;
+      coverMedia = persisted.media;
     }
     if (previewClipFile) {
       const persisted = await persistUploadAsset({
@@ -310,6 +321,7 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
         caseId: `approved:creator_video_upload:${req.user.id}:${new Date().getTime()}`,
       });
       previewClipUrl = persisted.url;
+      previewClipMedia = persisted.media;
     }
   }
 
@@ -342,8 +354,11 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
     avatar: user.avatar,
     creatorProfileId: req.creatorProfile?._id || null,
     videoUrl,
+    videoMedia,
     coverImageUrl,
+    coverMedia,
     previewClipUrl,
+    previewClipMedia,
     caption: title || description || "",
     description,
     durationSec,
@@ -445,6 +460,11 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
     return res.status(403).json({ error: "Music publishing is not enabled on this creator profile" });
   }
 
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
   const video = await Video.findById(req.params.id);
   if (!video || String(video.creatorProfileId || "") !== String(req.creatorProfile?._id || "")) {
     return res.status(404).json({ error: "Video not found" });
@@ -466,6 +486,15 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
     req,
     current: video,
   });
+  let nextVideoUrl = videoUrl;
+  let nextCoverImageUrl = coverImageUrl;
+  let nextPreviewClipUrl = previewClipUrl;
+  let videoMedia = video.videoMedia || null;
+  let coverMedia = video.coverMedia || null;
+  let previewClipMedia = video.previewClipMedia || null;
+  const previousVideoMedia = video.videoMedia || null;
+  const previousCoverMedia = video.coverMedia || null;
+  const previousPreviewClipMedia = video.previewClipMedia || null;
 
   if (!Number.isFinite(price)) {
     return sendBadRequest(res, "price must be a valid non-negative number");
@@ -616,7 +645,8 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
         decision: "approve",
         caseId: `approved:creator_video_upload:${req.user.id}:${new Date().getTime()}`,
       });
-      videoUrl = persisted.url;
+      nextVideoUrl = persisted.url;
+      videoMedia = persisted.media;
     }
     if (thumbnailFile) {
       const persisted = await persistUploadAsset({
@@ -624,7 +654,8 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
         decision: "approve",
         caseId: `approved:creator_video_upload:${req.user.id}:${new Date().getTime()}`,
       });
-      coverImageUrl = persisted.url;
+      nextCoverImageUrl = persisted.url;
+      coverMedia = persisted.media;
     }
     if (previewClipFile) {
       const persisted = await persistUploadAsset({
@@ -632,15 +663,16 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
         decision: "approve",
         caseId: `approved:creator_video_upload:${req.user.id}:${new Date().getTime()}`,
       });
-      previewClipUrl = persisted.url;
+      nextPreviewClipUrl = persisted.url;
+      previewClipMedia = persisted.media;
     }
   }
 
-  if (!videoUrl && !videoFile) {
+  if (!nextVideoUrl && !videoFile) {
     return sendBadRequest(res, "Video file or videoUrl is required");
   }
 
-  if (requestedStatus === "published" && price > 0 && !previewClipUrl) {
+  if (requestedStatus === "published" && price > 0 && !nextPreviewClipUrl) {
     return sendBadRequest(res, "A preview clip is required before publishing a paid music video");
   }
 
@@ -654,14 +686,17 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
     primaryFile: videoFile || thumbnailFile || null,
     metadata: {
       creatorId: req.creatorProfile?._id?.toString?.() || "",
-      hasPreviewClip: Boolean(previewClipUrl),
+      hasPreviewClip: Boolean(nextPreviewClipUrl),
       durationSec,
     },
   });
 
-  video.videoUrl = videoUrl;
-  video.coverImageUrl = coverImageUrl;
-  video.previewClipUrl = previewClipUrl;
+  video.videoUrl = nextVideoUrl;
+  video.videoMedia = videoMedia;
+  video.coverImageUrl = nextCoverImageUrl;
+  video.coverMedia = coverMedia;
+  video.previewClipUrl = nextPreviewClipUrl;
+  video.previewClipMedia = previewClipMedia;
   video.caption = title || description || "";
   video.description = description;
   video.price = price;
@@ -689,6 +724,13 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
   video.storageStage = "permanent";
 
   await video.save();
+  await Promise.all([
+    videoFile ? cleanupReplacedMedia(previousVideoMedia, video.videoMedia) : Promise.resolve(false),
+    thumbnailFile ? cleanupReplacedMedia(previousCoverMedia, video.coverMedia) : Promise.resolve(false),
+    previewClipFile
+      ? cleanupReplacedMedia(previousPreviewClipMedia, video.previewClipMedia)
+      : Promise.resolve(false),
+  ]).catch(() => null);
   await createUploadModerationCase({
     targetType: "video",
     targetId: video._id.toString(),

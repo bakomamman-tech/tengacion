@@ -2,13 +2,14 @@ const mongoose = require("mongoose");
 const asyncHandler = require("../middleware/asyncHandler");
 const Track = require("../models/Track");
 const CreatorProfile = require("../models/CreatorProfile");
-const { saveUploadedFile } = require("../services/mediaStore");
+const { saveUploadedMedia } = require("../services/mediaStore");
 const { hasEntitlement } = require("../services/entitlementService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const Post = require("../models/Post");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 
 const resolveRequestedStatus = (body = {}) => {
   const value = String(
@@ -52,10 +53,10 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   audioFormat: track.audioFormat || "",
   mediaType: track.mediaType || (track.videoUrl ? "video" : "audio"),
   videoFormat: track.videoFormat || "",
-  previewUrl: track.previewUrl || "",
+  previewUrl: mediaDocumentToUrl(track.previewMedia, track.previewUrl || ""),
   previewStartSec: Number(track.previewStartSec || 0),
   previewLimitSec: Number(track.previewLimitSec || 30),
-  coverImageUrl: track.coverImageUrl || "",
+  coverImageUrl: mediaDocumentToUrl(track.coverMedia, track.coverImageUrl || ""),
   durationSec: Number(track.durationSec) || 0,
   createdAt: track.createdAt,
   updatedAt: track.updatedAt,
@@ -72,7 +73,7 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   episodeType: track.episodeType || "free",
   guestNames: Array.isArray(track.guestNames) ? track.guestNames : [],
   showNotes: track.showNotes || "",
-  transcriptUrl: track.transcriptUrl || "",
+  transcriptUrl: mediaDocumentToUrl(track.transcriptMedia, track.transcriptUrl || ""),
   episodeTags: Array.isArray(track.episodeTags) ? track.episodeTags : [],
   creator:
     track.creatorId && typeof track.creatorId === "object"
@@ -85,8 +86,8 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
       : null,
   ...(includeAudio
     ? {
-        audioUrl: track.audioUrl || "",
-        videoUrl: track.videoUrl || "",
+        audioUrl: mediaDocumentToUrl(track.audioMedia, track.audioUrl || ""),
+        videoUrl: mediaDocumentToUrl(track.videoMedia, track.videoUrl || ""),
       }
     : {}),
 });
@@ -153,20 +154,35 @@ exports.createTrack = asyncHandler(async (req, res) => {
   let audioUrl = String(req.body?.audioUrl || "").trim();
   let previewUrl = String(req.body?.previewUrl || "").trim();
   let coverImageUrl = String(req.body?.coverImageUrl || "").trim();
+  let audioMedia = null;
+  let previewMedia = null;
+  let coverMedia = null;
 
   const audioFile = req.files?.audio?.[0] || null;
   const previewFile = req.files?.preview?.[0] || null;
   const coverFile = req.files?.cover?.[0] || null;
 
   if (audioFile) {
-    audioUrl = await saveUploadedFile(audioFile);
+    audioMedia = await saveUploadedMedia(audioFile, {
+      source: kind === "podcast" ? "creator_podcast_audio" : "creator_music_audio",
+      resourceType: "video",
+    });
+    audioUrl = mediaDocumentToUrl(audioMedia);
   }
 
   if (previewFile) {
-    previewUrl = await saveUploadedFile(previewFile);
+    previewMedia = await saveUploadedMedia(previewFile, {
+      source: kind === "podcast" ? "creator_podcast_preview" : "creator_music_preview",
+      resourceType: "video",
+    });
+    previewUrl = mediaDocumentToUrl(previewMedia);
   }
   if (coverFile) {
-    coverImageUrl = await saveUploadedFile(coverFile);
+    coverMedia = await saveUploadedMedia(coverFile, {
+      source: kind === "podcast" ? "creator_podcast_cover" : "creator_music_cover",
+      resourceType: "image",
+    });
+    coverImageUrl = mediaDocumentToUrl(coverMedia);
   }
 
 
@@ -201,10 +217,13 @@ exports.createTrack = asyncHandler(async (req, res) => {
     description,
     price,
     audioUrl,
+    audioMedia: audioMedia ? toMediaDocument(audioMedia) : null,
     previewUrl,
+    previewMedia: previewMedia ? toMediaDocument(previewMedia) : null,
     previewStartSec,
     previewLimitSec: 30,
     coverImageUrl,
+    coverMedia: coverMedia ? toMediaDocument(coverMedia) : null,
     durationSec: Number.isFinite(durationSec) && durationSec > 0 ? durationSec : 0,
     genre,
     kind,
@@ -318,26 +337,58 @@ exports.updateTrack = asyncHandler(async (req, res) => {
   let previewUrl = String(req.body?.previewUrl || track.previewUrl || "").trim();
   let previewClipUrl = String(req.body?.previewClipUrl || track.previewClipUrl || "").trim();
   let coverImageUrl = String(req.body?.coverImageUrl || track.coverImageUrl || "").trim();
+  let audioMedia = track.audioMedia || null;
+  let videoMedia = track.videoMedia || null;
+  let previewMedia = track.previewMedia || null;
+  let previewClipMedia = track.previewClipMedia || null;
+  let coverMedia = track.coverMedia || null;
+
+  const previousAudioMedia = track.audioMedia || null;
+  const previousVideoMedia = track.videoMedia || null;
+  const previousPreviewMedia = track.previewMedia || null;
+  const previousPreviewClipMedia = track.previewClipMedia || null;
+  const previousCoverMedia = track.coverMedia || null;
 
   const mediaFile = req.files?.media?.[0] || req.files?.audio?.[0] || req.files?.video?.[0] || null;
   const previewFile = req.files?.preview?.[0] || req.files?.previewClip?.[0] || null;
   const coverFile = req.files?.cover?.[0] || null;
 
   if (mediaFile) {
-    const uploadedMediaUrl = await saveUploadedFile(mediaFile);
-    audioUrl = uploadedMediaUrl;
+    const uploadedMedia = await saveUploadedMedia(mediaFile, {
+      source:
+        nextKind === "podcast"
+          ? mediaType === "video"
+            ? "creator_podcast_video"
+            : "creator_podcast_audio"
+          : "creator_music_audio",
+      resourceType: mediaType === "video" ? "video" : "video",
+    });
+    audioMedia = toMediaDocument(uploadedMedia);
+    audioUrl = mediaDocumentToUrl(uploadedMedia);
     if (mediaType === "video") {
-      videoUrl = uploadedMediaUrl;
+      videoMedia = toMediaDocument(uploadedMedia);
+      videoUrl = audioUrl;
     }
   }
   if (previewFile) {
-    previewUrl = await saveUploadedFile(previewFile);
+    const uploadedPreview = await saveUploadedMedia(previewFile, {
+      source: nextKind === "podcast" ? "creator_podcast_preview" : "creator_music_preview",
+      resourceType: mediaType === "video" ? "video" : "video",
+    });
+    previewMedia = toMediaDocument(uploadedPreview);
+    previewUrl = mediaDocumentToUrl(uploadedPreview);
     if (mediaType === "video") {
+      previewClipMedia = toMediaDocument(uploadedPreview);
       previewClipUrl = previewUrl;
     }
   }
   if (coverFile) {
-    coverImageUrl = await saveUploadedFile(coverFile);
+    const uploadedCover = await saveUploadedMedia(coverFile, {
+      source: nextKind === "podcast" ? "creator_podcast_cover" : "creator_music_cover",
+      resourceType: "image",
+    });
+    coverMedia = toMediaDocument(uploadedCover);
+    coverImageUrl = mediaDocumentToUrl(uploadedCover);
   }
 
   if (!audioUrl) {
@@ -375,12 +426,17 @@ exports.updateTrack = asyncHandler(async (req, res) => {
   track.price = price;
   track.audioUrl = audioUrl;
   track.fullAudioUrl = audioUrl;
+  track.audioMedia = audioMedia;
   track.mediaType = mediaType;
   track.videoUrl = mediaType === "video" ? (videoUrl || audioUrl) : "";
+  track.videoMedia = mediaType === "video" ? (videoMedia || audioMedia) : null;
   track.previewUrl = previewUrl;
   track.previewSampleUrl = previewUrl;
+  track.previewMedia = previewMedia;
   track.previewClipUrl = mediaType === "video" ? (previewClipUrl || previewUrl) : "";
+  track.previewClipMedia = mediaType === "video" ? (previewClipMedia || previewMedia) : null;
   track.coverImageUrl = coverImageUrl;
+  track.coverMedia = coverMedia;
   track.durationSec = Number.isFinite(durationSec) && durationSec >= 0 ? durationSec : 0;
   track.previewStartSec = previewStartSec;
   track.previewLimitSec = 30;
@@ -404,6 +460,21 @@ exports.updateTrack = asyncHandler(async (req, res) => {
   track.isPublished = verification.publishedStatus === "published";
 
   await track.save();
+  await Promise.all([
+    mediaFile ? cleanupReplacedMedia(previousAudioMedia, track.audioMedia) : Promise.resolve(false),
+    (mediaFile || previousVideoMedia) && mediaType === "video"
+      ? cleanupReplacedMedia(previousVideoMedia, track.videoMedia)
+      : previousVideoMedia && mediaType !== "video"
+        ? cleanupReplacedMedia(previousVideoMedia, null)
+      : Promise.resolve(false),
+    previewFile ? cleanupReplacedMedia(previousPreviewMedia, track.previewMedia) : Promise.resolve(false),
+    (previewFile || previousPreviewClipMedia) && mediaType === "video"
+      ? cleanupReplacedMedia(previousPreviewClipMedia, track.previewClipMedia)
+      : previousPreviewClipMedia && mediaType !== "video"
+        ? cleanupReplacedMedia(previousPreviewClipMedia, null)
+      : Promise.resolve(false),
+    coverFile ? cleanupReplacedMedia(previousCoverMedia, track.coverMedia) : Promise.resolve(false),
+  ]).catch(() => null);
 
   const hydrated = await Track.findById(track._id)
     .populate({

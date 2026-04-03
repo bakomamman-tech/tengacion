@@ -5,29 +5,37 @@ const {
 
 describe("user media normalization", () => {
   test("treats legacy temp avatar and cover urls as empty media", () => {
-    expect(normalizeMediaValue("/uploads/tmp_avatar_123.png")).toEqual({
+    expect(normalizeMediaValue("/uploads/tmp_avatar_123.png")).toMatchObject({
       url: "",
+      secureUrl: "",
+      publicId: "",
       public_id: "",
     });
     expect(normalizeMediaValue({
       url: "/uploads/tmp_cover_456.jpg",
       public_id: "legacy-cover",
-    })).toEqual({
+    })).toMatchObject({
       url: "",
+      secureUrl: "",
+      publicId: "",
       public_id: "",
     });
   });
 
   test("preserves durable media urls", () => {
-    expect(normalizeMediaValue("/api/media/64f000000000000000000001")).toEqual({
+    expect(normalizeMediaValue("/api/media/64f000000000000000000001")).toMatchObject({
       url: "/api/media/64f000000000000000000001",
+      secureUrl: "/api/media/64f000000000000000000001",
+      publicId: "",
       public_id: "",
     });
     expect(normalizeMediaValue({
       url: "https://cdn.example.com/avatar.jpg",
       public_id: "media/avatar.jpg",
-    })).toEqual({
+    })).toMatchObject({
       url: "https://cdn.example.com/avatar.jpg",
+      secureUrl: "https://cdn.example.com/avatar.jpg",
+      publicId: "media/avatar.jpg",
       public_id: "media/avatar.jpg",
     });
   });

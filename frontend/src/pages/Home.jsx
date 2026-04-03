@@ -452,18 +452,18 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
 
   const applyPickedFile = (file) => {
     if (!file) {return false;}
-    const maxVideoBytes = 200 * 1024 * 1024;
+    const maxVideoBytes = 100 * 1024 * 1024;
     if (isReelMode && !file.type.startsWith("video/")) {
       setError("Reels must be uploaded as MP4 or WebM video");
       return false;
     }
     if (file.type.startsWith("video/")) {
-      if (!["video/mp4", "video/webm"].includes(file.type)) {
-        setError("Only MP4 and WebM videos are supported");
+      if (!["video/mp4", "video/webm", "video/quicktime"].includes(file.type)) {
+        setError("Only MP4, MOV, and WebM videos are supported");
         return false;
       }
       if (file.size > maxVideoBytes) {
-        setError("Video exceeds maximum allowed size (200MB)");
+        setError("Video exceeds maximum allowed size (100MB)");
         return false;
       }
     }
@@ -495,12 +495,12 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
     if (!selectedFile) {
       throw new Error("Select a video before posting");
     }
-    if (!["video/mp4", "video/webm"].includes(selectedFile.type)) {
-      throw new Error("Only MP4 and WebM videos are supported");
+    if (!["video/mp4", "video/webm", "video/quicktime"].includes(selectedFile.type)) {
+      throw new Error("Only MP4, MOV, and WebM videos are supported");
     }
-    const maxVideoBytes = 200 * 1024 * 1024;
+    const maxVideoBytes = 100 * 1024 * 1024;
     if (selectedFile.size > maxVideoBytes) {
-      throw new Error("Video exceeds maximum allowed size (200MB)");
+      throw new Error("Video exceeds maximum allowed size (100MB)");
     }
 
     setUploadingVideo(true);
@@ -930,7 +930,7 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
           ref={fileRef}
           type="file"
           hidden
-          accept={isReelMode ? "video/mp4,video/webm" : "image/*,video/mp4,video/webm"}
+          accept={isReelMode ? "video/mp4,video/webm,video/quicktime" : "image/*,video/mp4,video/webm,video/quicktime"}
           onChange={handleFileChange}
         />
 
@@ -1261,7 +1261,7 @@ export default function Home({ user }) {
     }
     const isMedia =
       String(file.type || "").startsWith("image/") ||
-      ["video/mp4", "video/webm"].includes(String(file.type || "").toLowerCase());
+      ["video/mp4", "video/webm", "video/quicktime"].includes(String(file.type || "").toLowerCase());
     if (!isMedia) {
       toast.error("Only images, MP4, or WebM are supported.");
       return;
@@ -1557,7 +1557,7 @@ export default function Home({ user }) {
               ref={quickMediaRef}
               type="file"
               hidden
-              accept="image/*,video/mp4,video/webm"
+              accept="image/*,video/mp4,video/webm,video/quicktime"
               onChange={onQuickMediaPick}
             />
           </div>

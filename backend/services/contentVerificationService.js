@@ -41,7 +41,26 @@ const hashFileFromDisk = (filePath) =>
     stream.on("end", () => resolve(hash.digest("hex")));
   });
 
+const hashBuffer = async (buffer) =>
+  createHash("sha256")
+    .update(Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || ""))
+    .digest("hex");
+
 const getFileHash = async (file) => {
+  if (Buffer.isBuffer(file?.buffer) && file.buffer.length > 0) {
+    try {
+      return await hashBuffer(file.buffer);
+    } catch {
+      return createHash("sha256")
+        .update([
+          path.basename(String(file.originalname || "")),
+          String(file.size || 0),
+          String(file.mimetype || ""),
+        ].join("|"))
+        .digest("hex");
+    }
+  }
+
   if (!file?.path) {
     return "";
   }

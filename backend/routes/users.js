@@ -5,9 +5,11 @@ const upload = require("../middleware/privateUpload");
 const Post = require("../models/Post");
 const auth = require("../middleware/auth");
 const moderateUpload = require("../middleware/moderateUpload");
-const { saveUploadedMediaToGridFs } = require("../services/mediaStore");
+const { deleteUploadedMedia, saveUploadedMedia } = require("../services/mediaStore");
 const { createNotification } = require("../services/notificationService");
 const {
+  isCloudinaryMediaValue,
+  mediaToPublicId,
   normalizeMediaValue,
   mediaToUrl,
   normalizeUserMediaDocument,
@@ -111,6 +113,19 @@ const isBirthdayToday = (birthday = {}) => {
   if (!day || !month) return false;
   const now = new Date();
   return now.getDate() === day && now.getMonth() + 1 === month;
+};
+
+const deleteExistingCloudinaryMedia = async (media = null) => {
+  if (!isCloudinaryMediaValue(media)) {
+    return false;
+  }
+
+  const publicId = mediaToPublicId(media);
+  if (!publicId) {
+    return false;
+  }
+
+  return deleteUploadedMedia(media);
 };
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -915,8 +930,9 @@ router.post(
         return res.status(400).json({ error: "Only image files are allowed" });
       }
 
-      const uploaded = await saveUploadedMediaToGridFs(selectedFile, {
+      const uploaded = await saveUploadedMedia(selectedFile, {
         source: "profile_avatar",
+        resourceType: "image",
       });
       const avatar = normalizeMediaValue(uploaded);
       const safeUser = await User.findByIdAndUpdate(
@@ -927,6 +943,7 @@ router.post(
       if (!safeUser) {
         return res.status(404).json({ error: "User not found" });
       }
+      await deleteExistingCloudinaryMedia(existing.avatar).catch(() => null);
       normalizeUserMediaDocument(safeUser);
       if (process.env.NODE_ENV !== "production") {
         console.log("[UPLOAD][avatar]", {
@@ -941,7 +958,7 @@ router.post(
         await Post.create({
           author: safeUser._id,
           text: "Updated profile picture",
-          media: [{ url: uploaded.url, type: "image" }],
+          media: [{ ...uploaded, type: "image" }],
           type: "image",
           video: null,
           privacy: "public",
@@ -991,8 +1008,9 @@ router.post(
         return res.status(400).json({ error: "Only image files are allowed" });
       }
 
-      const uploaded = await saveUploadedMediaToGridFs(selectedFile, {
+      const uploaded = await saveUploadedMedia(selectedFile, {
         source: "profile_cover",
+        resourceType: "image",
       });
       const cover = normalizeMediaValue(uploaded);
       const safeUser = await User.findByIdAndUpdate(
@@ -1003,6 +1021,7 @@ router.post(
       if (!safeUser) {
         return res.status(404).json({ error: "User not found" });
       }
+      await deleteExistingCloudinaryMedia(existing.cover).catch(() => null);
       normalizeUserMediaDocument(safeUser);
       if (process.env.NODE_ENV !== "production") {
         console.log("[UPLOAD][cover]", {
@@ -1017,7 +1036,7 @@ router.post(
         await Post.create({
           author: safeUser._id,
           text: "Updated cover photo",
-          media: [{ url: uploaded.url, type: "image" }],
+          media: [{ ...uploaded, type: "image" }],
           type: "image",
           video: null,
           privacy: "public",

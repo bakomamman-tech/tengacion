@@ -2338,7 +2338,7 @@ export const resolveImage = (path) => {
   }
 
   if (typeof path === "object") {
-    return resolveImage(path.url || "");
+    return resolveImage(path.secureUrl || path.secure_url || path.url || "");
   }
 
   if (path.startsWith("http")) {

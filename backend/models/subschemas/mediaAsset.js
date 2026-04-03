@@ -9,6 +9,7 @@ const createMediaAssetSchema = ({
   ...extraFields
 } = {}) => {
   const definition = {
+    assetId: { type: String, default: "", trim: true },
     publicId: { type: String, default: "", trim: true },
     public_id: { type: String, default: "", trim: true },
     url: { type: String, default: "", trim: true },
@@ -40,6 +41,7 @@ const createMediaAssetSchema = ({
   const schema = new mongoose.Schema(definition, { _id: false });
 
   schema.pre("validate", function syncAliases() {
+    this.assetId = toTrimmedString(this.assetId);
     const publicId = toTrimmedString(this.publicId || this.public_id);
     const secureUrl = toTrimmedString(this.secureUrl || this.secure_url || this.url);
     const resourceType = toTrimmedString(this.resourceType || this.resource_type);

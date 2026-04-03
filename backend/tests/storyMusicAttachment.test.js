@@ -13,8 +13,13 @@ const CreatorProfile = require("../models/CreatorProfile");
 const Story = require("../models/Story");
 const Track = require("../models/Track");
 const User = require("../models/User");
+const {
+  classifyRecordMedia,
+  LEGACY_MEDIA_SOURCES,
+} = require("../services/mediaAuditService");
 
 let mongod;
+const storySource = LEGACY_MEDIA_SOURCES.find((entry) => entry.key === "Story");
 
 const issueSessionToken = async (userId) => {
   const sessionId = new mongoose.Types.ObjectId().toString();
@@ -212,5 +217,74 @@ describe("story music attachment", () => {
 
     expect(response.body.error).toBe("Selected soundtrack is unavailable");
     expect(await Story.countDocuments()).toBe(0);
+  });
+
+  test("new stories do not persist legacy avatar or soundtrack snapshot paths", async () => {
+    const creator = await createCreator();
+
+    await User.updateOne(
+      { _id: creator.user._id },
+      {
+        $set: {
+          avatar: {
+            url: "/uploads/legacy/story-avatar.jpg",
+            secureUrl: "/uploads/legacy/story-avatar.jpg",
+            legacyPath: "/uploads/legacy/story-avatar.jpg",
+          },
+        },
+      }
+    );
+
+    const track = await Track.create({
+      creatorId: creator.profile._id,
+      title: "Legacy Snapshot Track",
+      description: "Old local preview that should not be copied into new stories",
+      price: 0,
+      currency: "NGN",
+      audioUrl: "https://cdn.tengacion.test/tracks/legacy-snapshot-full.mp3",
+      previewUrl: "/uploads/legacy/legacy-snapshot-preview.mp3",
+      coverImageUrl: "/uploads/legacy/legacy-snapshot-cover.jpg",
+      artistName: "Sound Creator",
+      releaseType: "single",
+      previewStartSec: 0,
+      previewLimitSec: 30,
+      durationSec: 120,
+      isPublished: true,
+      archivedAt: null,
+    });
+
+    const response = await request(app)
+      .post("/api/stories")
+      .set("Authorization", `Bearer ${creator.token}`)
+      .field("caption", "Legacy snapshot sanitized")
+      .field(
+        "musicAttachment",
+        JSON.stringify({
+          itemType: "track",
+          itemId: track._id.toString(),
+        })
+      )
+      .attach("media", Buffer.from("story-image-binary"), {
+        filename: "story.jpg",
+        contentType: "image/jpeg",
+      })
+      .expect(200);
+
+    expect(response.body.avatar).toBe("/uploads/legacy/story-avatar.jpg");
+    expect(response.body.musicAttachment.previewUrl).toContain("/api/media/delivery/");
+
+    const savedStory = await Story.findById(response.body._id).lean();
+    expect(savedStory).toBeTruthy();
+    expect(savedStory.avatar).toBe("");
+    expect(savedStory.media).toMatchObject({
+      provider: "cloudinary",
+      publicId: "tengacion/stories/images/mock-1",
+      legacyPath: "",
+    });
+    expect(savedStory.musicAttachment).toMatchObject({
+      sourceUrl: "",
+      coverImage: "",
+    });
+    expect(classifyRecordMedia(savedStory, storySource).status).toBe("cloudinary");
   });
 });

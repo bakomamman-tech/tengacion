@@ -306,6 +306,7 @@ MessageSchema.pre("validate", function () {
       url: truncate(file?.url || "", 1200),
       secureUrl: truncate(file?.secureUrl || file?.secure_url || file?.url || "", 1200),
       secure_url: truncate(file?.secureUrl || file?.secure_url || file?.url || "", 1200),
+      assetId: truncate(file?.assetId || file?.asset_id || "", 240),
       publicId: truncate(file?.publicId || file?.public_id || "", 240),
       public_id: truncate(file?.publicId || file?.public_id || "", 240),
       resourceType: truncate(file?.resourceType || file?.resource_type || "", 40),

@@ -8,6 +8,10 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "1234567890123456789012345678
 
 const app = require("../app");
 const User = require("../models/User");
+const {
+  classifyRecordMedia,
+  LEGACY_MEDIA_SOURCES,
+} = require("../services/mediaAuditService");
 
 const loginUser = async (email, password) => {
   const response = await request(app)
@@ -22,6 +26,7 @@ describe("user media uploads", () => {
   let mongod;
   let user;
   let token;
+  const userSource = LEGACY_MEDIA_SOURCES.find((entry) => entry.key === "User");
 
   beforeAll(async () => {
     mongod = await MongoMemoryServer.create({
@@ -84,7 +89,9 @@ describe("user media uploads", () => {
 
     expect(response.body.media).toMatchObject({
       provider: "cloudinary",
+      assetId: "asset-1",
       publicId: "tengacion/profiles/mock-1",
+      legacyPath: "",
     });
     expect(cloudinary.uploader.destroy).toHaveBeenCalledWith(
       "tengacion/profiles/existing-avatar",
@@ -120,8 +127,74 @@ describe("user media uploads", () => {
 
     expect(response.body.media).toMatchObject({
       provider: "cloudinary",
+      assetId: "asset-1",
       publicId: "tengacion/profiles/mock-1",
+      legacyPath: "",
     });
     expect(cloudinary.uploader.destroy).not.toHaveBeenCalled();
+
+    const refreshed = await User.findById(user._id).lean();
+    expect(classifyRecordMedia(refreshed, userSource).status).toBe("cloudinary");
+  });
+
+  test("uploading a new cover photo stores cloudinary-only media fields", async () => {
+    const response = await request(app)
+      .post("/api/users/me/cover")
+      .set("Authorization", `Bearer ${token}`)
+      .attach("image", Buffer.from("cover-image"), {
+        filename: "cover.jpg",
+        contentType: "image/jpeg",
+      })
+      .expect(200);
+
+    expect(response.body.media).toMatchObject({
+      provider: "cloudinary",
+      assetId: "asset-1",
+      publicId: "tengacion/covers/mock-1",
+      legacyPath: "",
+    });
+
+    const refreshed = await User.findById(user._id).lean();
+    expect(refreshed.cover).toMatchObject({
+      provider: "cloudinary",
+      assetId: "asset-1",
+      publicId: "tengacion/covers/mock-1",
+      legacyPath: "",
+    });
+    expect(classifyRecordMedia(refreshed, userSource).status).toBe("cloudinary");
+  });
+
+  test("legacy profile media still responds safely", async () => {
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          avatar: {
+            url: "/uploads/legacy/avatar.jpg",
+            secureUrl: "/uploads/legacy/avatar.jpg",
+            legacyPath: "/uploads/legacy/avatar.jpg",
+          },
+          cover: {
+            url: "/uploads/legacy/cover.jpg",
+            secureUrl: "/uploads/legacy/cover.jpg",
+            legacyPath: "/uploads/legacy/cover.jpg",
+          },
+        },
+      }
+    );
+
+    const response = await request(app)
+      .get("/api/me")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body.avatar).toMatchObject({
+      url: "/uploads/legacy/avatar.jpg",
+      legacyPath: "/uploads/legacy/avatar.jpg",
+    });
+    expect(response.body.cover).toMatchObject({
+      url: "/uploads/legacy/cover.jpg",
+      legacyPath: "/uploads/legacy/cover.jpg",
+    });
   });
 });

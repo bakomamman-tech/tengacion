@@ -12,6 +12,7 @@ try {
 }
 
 const EMPTY_MEDIA = Object.freeze({
+  assetId: "",
   publicId: "",
   public_id: "",
   url: "",
@@ -156,6 +157,7 @@ const normalizeCloudinaryUpload = (
     || "raw";
 
   return {
+    assetId: toText(result.asset_id),
     publicId,
     public_id: publicId,
     url: secureUrl,

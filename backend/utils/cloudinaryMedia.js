@@ -4,10 +4,14 @@ const {
   getMediaUrl,
   isCloudinaryMediaValue,
   mediaToPublicId,
+  normalizeCloudinaryMediaValue,
   normalizeMediaValue,
 } = require("./userMedia");
 
-const toMediaDocument = (value = null) => normalizeMediaValue(value);
+const toMediaDocument = (value = null) => {
+  const normalized = normalizeCloudinaryMediaValue(value);
+  return isCloudinaryMediaValue(normalized) ? normalized : normalizeMediaValue(value);
+};
 
 const mediaDocumentToUrl = (value = null, fallback = "") => {
   return getMediaUrl(value) || String(fallback || "").trim();

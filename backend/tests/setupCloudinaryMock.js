@@ -26,6 +26,7 @@ jest.mock("cloudinary", () => {
         const publicId = `${folder}/mock-${uploadNumber}`;
         const bytes = Buffer.concat(chunks).length;
         const result = {
+          asset_id: `asset-${uploadNumber}`,
           public_id: publicId,
           secure_url: buildSecureUrl(publicId, resourceType, format),
           url: buildSecureUrl(publicId, resourceType, format),

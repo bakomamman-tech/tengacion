@@ -10,7 +10,7 @@ const {
   hydrateStoryMusicAttachment,
   resolveStoryMusicSelection,
 } = require("../services/storyMusicService");
-const { normalizeMediaValue } = require("../utils/userMedia");
+const { normalizeMediaValue, sanitizeMediaUrlForNewWrite } = require("../utils/userMedia");
 const {
   SessionAuthError,
   authenticateAccessToken,
@@ -76,8 +76,19 @@ const loadVisibleStories = async (viewerId, req = null) => {
   const stories = await Story.find({ userId: { $in: ids }, expiresAt: { $gt: new Date() } })
     .sort({ time: -1 })
     .lean();
+  const authorIds = [...new Set(
+    stories
+      .map((story) => toIdString(story.authorId || story.userId))
+      .filter(Boolean)
+  )];
+  const authors = authorIds.length > 0
+    ? await User.find({ _id: { $in: authorIds } }).select("_id avatar").lean()
+    : [];
+  const authorAvatarMap = new Map(
+    authors.map((entry) => [toIdString(entry._id), avatarToUrl(entry.avatar)])
+  );
 
-  return stories
+  return Promise.all(stories
     .filter((story) => {
       const ownerId = toIdString(story.userId);
       if (ownerId === viewerIdString) return true;
@@ -86,21 +97,23 @@ const loadVisibleStories = async (viewerId, req = null) => {
       if (story.visibility === "close_friends") return closeFriendIds.includes(ownerId);
       return false;
     })
-    .map((story) => {
+    .map(async (story) => {
       const seenBy = Array.isArray(story.seenBy)
         ? story.seenBy.map((id) => toIdString(id))
         : [];
       const mediaUrl = story.mediaUrl || story.image || "";
       const mediaType = story.mediaType || story?.media?.type || "image";
+      const ownerId = toIdString(story.authorId || story.userId);
       return {
         ...story,
         id: toIdString(story._id),
         userId: toIdString(story.userId),
-        userAvatar: story.avatar || "",
+        avatar: authorAvatarMap.get(ownerId) || story.avatar || "",
+        userAvatar: authorAvatarMap.get(ownerId) || story.avatar || "",
         mediaUrl,
         mediaType,
         thumbnailUrl: story.thumbnailUrl || (mediaType === "image" ? mediaUrl : ""),
-        musicAttachment: hydrateStoryMusicAttachment(story.musicAttachment, {
+        musicAttachment: await hydrateStoryMusicAttachment(story.musicAttachment, {
           req,
           viewerId: viewerIdString,
         }),
@@ -108,7 +121,7 @@ const loadVisibleStories = async (viewerId, req = null) => {
         seenBy,
         viewerSeen: seenBy.includes(viewerIdString),
       };
-    });
+    }));
 };
 
 /* ================= CREATE STORY (TEXT/IMAGE/VIDEO) ================= */
@@ -152,12 +165,14 @@ router.post(
         ? visibility
         : "friends";
 
+      const storedAvatar = sanitizeMediaUrlForNewWrite(avatarToUrl(user.avatar));
+
       const story = await Story.create({
         userId: user._id.toString(),
         authorId: user._id,
         name: user.name,
         username: user.username,
-        avatar: avatarToUrl(user.avatar),
+        avatar: storedAvatar,
         text: caption,
         visibility: normalizedVisibility,
         media: {
@@ -175,7 +190,9 @@ router.post(
 
       return res.json({
         ...story.toObject(),
-        musicAttachment: hydrateStoryMusicAttachment(story.musicAttachment, {
+        avatar: avatarToUrl(user.avatar),
+        userAvatar: avatarToUrl(user.avatar),
+        musicAttachment: await hydrateStoryMusicAttachment(story.musicAttachment, {
           req,
           viewerId: req.userId,
         }),

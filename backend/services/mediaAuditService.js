@@ -27,6 +27,7 @@ const LEGACY_UPLOAD_PATTERN = /(^|\/)(?:public\/)?uploads(\/|$)/i;
 const ABS_LOCAL_PATH_PATTERN = /^(?:[a-z]:\\|\/(?:var|srv|home|tmp|opt|app|usr|uploads|public)\/)/i;
 const LOCAL_RELATIVE_MEDIA_PATTERN =
   /^(?![a-z][a-z0-9+.-]*:)(?!\/\/)(?:\.{1,2}[\\/])?[^?#]+\.(?:aac|aiff|avi|avif|bmp|doc|docx|epub|flac|gif|heic|jpeg|jpg|m4a|m4v|mobi|mov|mp3|mp4|ogg|pdf|png|svg|txt|wav|webm|webp)(?:[?#].*)?$/i;
+const MEDIA_METADATA_ONLY_KEYS = new Set(["filename", "originalfilename", "originalname"]);
 const MEDIA_OBJECT_HINT_KEYS = new Set([
   "attachment",
   "attachments",
@@ -249,6 +250,9 @@ const inspectStringValue = (value, fieldPath = "", keyHint = "") => {
   }
 
   const normalizedKey = toText(keyHint).toLowerCase();
+  if (MEDIA_METADATA_ONLY_KEYS.has(normalizedKey)) {
+    return finalizeInspection(accumulator, fieldPath);
+  }
   if (normalizedKey === "provider") {
     if (CLOUDINARY_PROVIDER_PATTERN.test(text)) {
       addInspectionStatus(accumulator, "cloudinary", fieldPath);

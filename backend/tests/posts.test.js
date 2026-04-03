@@ -12,11 +12,16 @@ const postsRoutes = require("../../apps/api/routes/posts");
 const errorHandler = require("../../apps/api/middleware/errorHandler");
 const User = require("../models/User");
 const Post = require("../models/Post");
+const {
+  classifyRecordMedia,
+  LEGACY_MEDIA_SOURCES,
+} = require("../services/mediaAuditService");
 
 let mongod;
 let app;
 let authToken;
 let artist;
+const postSource = LEGACY_MEDIA_SOURCES.find((entry) => entry.key === "Post");
 
 const issueSessionToken = async (userId) => {
   const sessionId = new mongoose.Types.ObjectId().toString();
@@ -148,6 +153,7 @@ describe("Posts feed", () => {
     expect(stored).toBeTruthy();
     expect(stored.media).toHaveLength(1);
     expect(stored.media[0]).toMatchObject({
+      assetId: "asset-1",
       publicId: "tengacion/posts/images/mock-1",
       secureUrl: expect.stringContaining(
         "https://res.cloudinary.com/test-cloud/image/upload/"
@@ -156,8 +162,10 @@ describe("Posts feed", () => {
       originalFilename: "family-pic.png",
       folder: "tengacion/posts/images",
       type: "image",
+      legacyPath: "",
     });
     expect(String(stored.media[0].url || "")).not.toContain("/uploads/");
+    expect(classifyRecordMedia(stored, postSource).status).toBe("cloudinary");
 
     expect(cloudinary.uploader.upload_stream).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -253,6 +261,7 @@ describe("Posts feed", () => {
     expect(stored).toBeTruthy();
     expect(stored.media).toHaveLength(1);
     expect(stored.media[0]).toMatchObject({
+      assetId: "asset-1",
       publicId: "tengacion/posts/videos/mock-1",
       secureUrl: expect.stringContaining(
         "https://res.cloudinary.com/test-cloud/video/upload/"
@@ -261,8 +270,10 @@ describe("Posts feed", () => {
       originalFilename: "road-trip.mp4",
       folder: "tengacion/posts/videos",
       type: "video",
+      legacyPath: "",
     });
     expect(stored.video).toMatchObject({
+      assetId: "asset-1",
       publicId: "tengacion/posts/videos/mock-1",
       secureUrl: expect.stringContaining(
         "https://res.cloudinary.com/test-cloud/video/upload/"
@@ -274,8 +285,10 @@ describe("Posts feed", () => {
       mimeType: "video/mp4",
       originalFilename: "road-trip.mp4",
       folder: "tengacion/posts/videos",
+      legacyPath: "",
     });
     expect(String(stored.video.url || "")).not.toContain("/uploads/");
+    expect(classifyRecordMedia(stored, postSource).status).toBe("cloudinary");
 
     expect(cloudinary.uploader.upload_stream).toHaveBeenCalledWith(
       expect.objectContaining({

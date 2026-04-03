@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
+const { sanitizeLegacyMediaFieldsForNewWrite } = require("../utils/userMedia");
 
 const StoryMusicAttachmentSchema = new mongoose.Schema(
   {
@@ -140,6 +141,11 @@ StorySchema.pre("validate", function syncStoryMedia(next) {
   if (!this.image && mediaUrl) this.image = mediaUrl;
   if (!this.thumbnailUrl && this.media?.type === "image" && mediaUrl) this.thumbnailUrl = mediaUrl;
   if (!this.mediaType && this.media?.type) this.mediaType = this.media.type;
+  sanitizeLegacyMediaFieldsForNewWrite(this, {
+    cloudinaryMedia: [
+      { mediaPath: "media", urlPaths: ["mediaUrl", "image", "thumbnailUrl"] },
+    ],
+  });
   if (typeof next === "function") next();
 });
 

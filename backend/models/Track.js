@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
+const { sanitizeLegacyMediaFieldsForNewWrite } = require("../utils/userMedia");
 
 const MediaAssetSchema = createMediaAssetSchema();
 
@@ -397,6 +398,16 @@ TrackSchema.pre("validate", function syncStandardFields(next) {
   if (!this.fullAudioUrl && this.audioUrl) this.fullAudioUrl = this.audioUrl;
   if (!this.previewUrl && this.previewSampleUrl) this.previewUrl = this.previewSampleUrl;
   if (!this.previewSampleUrl && this.previewUrl) this.previewSampleUrl = this.previewUrl;
+  sanitizeLegacyMediaFieldsForNewWrite(this, {
+    cloudinaryMedia: [
+      { mediaPath: "audioMedia", urlPaths: ["audioUrl", "fullAudioUrl"] },
+      { mediaPath: "previewMedia", urlPaths: ["previewUrl", "previewSampleUrl"] },
+      { mediaPath: "coverMedia", urlPaths: ["coverImageUrl", "coverUrl"] },
+      { mediaPath: "videoMedia", urlPaths: ["videoUrl"] },
+      { mediaPath: "previewClipMedia", urlPaths: ["previewClipUrl"] },
+      { mediaPath: "transcriptMedia", urlPaths: ["transcriptUrl"] },
+    ],
+  });
   if (!Number.isFinite(this.previewStartSec) || this.previewStartSec < 0) this.previewStartSec = 0;
   if (!Number.isFinite(this.previewLimitSec) || this.previewLimitSec <= 0) this.previewLimitSec = 30;
   if (!Number.isFinite(this.playsCount) && Number.isFinite(this.playCount)) this.playsCount = this.playCount;

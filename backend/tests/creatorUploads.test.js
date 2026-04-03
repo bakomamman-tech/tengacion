@@ -14,9 +14,14 @@ const CreatorProfile = require("../models/CreatorProfile");
 const Track = require("../models/Track");
 const User = require("../models/User");
 const Video = require("../models/Video");
+const {
+  classifyRecordMedia,
+  LEGACY_MEDIA_SOURCES,
+} = require("../services/mediaAuditService");
 
 let mongod;
 let sequence = 0;
+const trackSource = LEGACY_MEDIA_SOURCES.find((entry) => entry.key === "Track");
 
 const issueSessionToken = async (userId) => {
   const sessionId = new mongoose.Types.ObjectId().toString();
@@ -158,6 +163,7 @@ describe("creator upload routes", () => {
     expect(savedTrack.previewStartSec).toBe(75);
     expect(savedTrack.previewLimitSec).toBe(30);
     expect(savedTrack.audioMedia).toMatchObject({
+      assetId: "asset-1",
       publicId: "tengacion/creators/audio/mock-1",
       secureUrl: expect.stringContaining(
         "https://res.cloudinary.com/test-cloud/video/upload/"
@@ -165,14 +171,18 @@ describe("creator upload routes", () => {
       resourceType: "video",
       folder: "tengacion/creators/audio",
       originalFilename: "aurora.mp3",
+      legacyPath: "",
     });
     expect(savedTrack.previewMedia).toMatchObject({
+      assetId: "asset-2",
       publicId: "tengacion/creators/audio/mock-2",
       resourceType: "video",
       folder: "tengacion/creators/audio",
       originalFilename: "aurora-preview.mp3",
+      legacyPath: "",
     });
     expect(savedTrack.coverMedia).toMatchObject({
+      assetId: "asset-3",
       publicId: "tengacion/creators/music-covers/mock-3",
       secureUrl: expect.stringContaining(
         "https://res.cloudinary.com/test-cloud/image/upload/"
@@ -180,7 +190,12 @@ describe("creator upload routes", () => {
       resourceType: "image",
       folder: "tengacion/creators/music-covers",
       originalFilename: "aurora-cover.webp",
+      legacyPath: "",
     });
+    expect(savedTrack.fullAudioUrl).toBe(savedTrack.audioUrl);
+    expect(savedTrack.previewSampleUrl).toBe(savedTrack.previewUrl);
+    expect(savedTrack.coverUrl).toBe(savedTrack.coverImageUrl);
+    expect(classifyRecordMedia(savedTrack, trackSource).status).toBe("cloudinary");
 
     expect(cloudinary.uploader.upload_stream).toHaveBeenNthCalledWith(
       1,

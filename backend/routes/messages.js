@@ -88,6 +88,7 @@ router.post(
         url: uploaded.secureUrl || uploaded.url,
         secureUrl: uploaded.secureUrl || uploaded.url,
         secure_url: uploaded.secureUrl || uploaded.url,
+        assetId: uploaded.assetId || "",
         publicId: uploaded.publicId || uploaded.public_id,
         public_id: uploaded.public_id,
         resourceType: uploaded.resourceType || uploaded.resource_type,

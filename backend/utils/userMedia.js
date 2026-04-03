@@ -1,4 +1,5 @@
 const DEFAULT_MEDIA = Object.freeze({
+  assetId: "",
   publicId: "",
   public_id: "",
   url: "",
@@ -59,6 +60,8 @@ const inferLegacyPath = (value = "") => {
   return LEGACY_LOCAL_MEDIA_PATTERN.test(normalized) ? normalized : "";
 };
 
+const isLegacyLocalMediaUrl = (value = "") => Boolean(inferLegacyPath(value));
+
 const normalizeProvider = (value = "", { publicId = "", url = "", legacyPath = "" } = {}) => {
   const provider = toStringValue(value).toLowerCase();
   if (provider === "cloudinary") {
@@ -84,6 +87,7 @@ const normalizeMediaValue = (value) => {
     const legacyPath = inferLegacyPath(url);
     return {
       ...DEFAULT_MEDIA,
+      assetId: "",
       publicId,
       public_id: publicId,
       url,
@@ -95,6 +99,7 @@ const normalizeMediaValue = (value) => {
   }
 
   if (typeof value === "object") {
+    const assetId = toStringValue(value.assetId || value.asset_id);
     const url = toStringValue(value.secureUrl || value.secure_url || value.url || value.legacyPath);
     const publicId = toStringValue(value.publicId || value.public_id || inferCloudinaryPublicIdFromUrl(url));
     const resourceType = toStringValue(value.resourceType || value.resource_type);
@@ -105,6 +110,7 @@ const normalizeMediaValue = (value) => {
     }
     return {
       ...DEFAULT_MEDIA,
+      assetId,
       publicId,
       public_id: publicId,
       url,
@@ -125,6 +131,38 @@ const normalizeMediaValue = (value) => {
   }
 
   return { ...DEFAULT_MEDIA };
+};
+
+const normalizeCloudinaryMediaValue = (value) => {
+  const normalized = normalizeMediaValue(value);
+  if (!isCloudinaryMediaValue(normalized)) {
+    return normalized;
+  }
+
+  const url = toStringValue(normalized.secureUrl || normalized.url);
+  const publicId = toStringValue(normalized.publicId || inferCloudinaryPublicIdFromUrl(url));
+  const resourceType = toStringValue(normalized.resourceType || normalized.resource_type);
+
+  return {
+    ...DEFAULT_MEDIA,
+    assetId: toStringValue(normalized.assetId || value?.assetId || value?.asset_id),
+    publicId,
+    public_id: publicId,
+    url,
+    secureUrl: url,
+    secure_url: url,
+    resourceType,
+    resource_type: resourceType,
+    format: toStringValue(normalized.format),
+    bytes: toNumberValue(normalized.bytes),
+    width: toNumberValue(normalized.width),
+    height: toNumberValue(normalized.height),
+    duration: toNumberValue(normalized.duration),
+    originalFilename: toStringValue(normalized.originalFilename),
+    folder: toStringValue(normalized.folder),
+    provider: "cloudinary",
+    legacyPath: "",
+  };
 };
 
 const getMediaUrl = (value) => {
@@ -163,6 +201,117 @@ const isCloudinaryMediaValue = (value) => {
   );
 };
 
+const sanitizeMediaUrlForNewWrite = (value = "") =>
+  isLegacyLocalMediaUrl(value) ? "" : toStringValue(value);
+
+const tokenizePath = (path = "") =>
+  String(path || "")
+    .match(/[^.[\]]+/g)
+    ?.filter(Boolean) || [];
+
+const getPathValue = (target, path) => {
+  if (!target || !path) {
+    return undefined;
+  }
+
+  if (typeof target.get === "function") {
+    try {
+      return target.get(path);
+    } catch {
+      // Fall through to plain object traversal when the document path lookup fails.
+    }
+  }
+
+  return tokenizePath(path).reduce((current, segment) => {
+    if (current == null) {
+      return undefined;
+    }
+    return current[segment];
+  }, target);
+};
+
+const setPathValue = (target, path, value) => {
+  if (!target || !path) {
+    return;
+  }
+
+  if (typeof target.set === "function") {
+    target.set(path, value);
+    return;
+  }
+
+  const segments = tokenizePath(path);
+  if (!segments.length) {
+    return;
+  }
+
+  let cursor = target;
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const segment = segments[index];
+    const nextSegment = segments[index + 1];
+    if (cursor[segment] == null || typeof cursor[segment] !== "object") {
+      cursor[segment] = /^\d+$/.test(nextSegment) ? [] : {};
+    }
+    cursor = cursor[segment];
+  }
+
+  cursor[segments[segments.length - 1]] = value;
+};
+
+const shouldSyncCloudinaryAlias = (currentValue, nextUrl = "") => {
+  const current = toStringValue(currentValue);
+  const replacement = toStringValue(nextUrl);
+  if (!replacement) {
+    return false;
+  }
+  return !current || isLegacyLocalMediaUrl(current);
+};
+
+const sanitizeLegacyMediaFieldsForNewWrite = (
+  recordOrPatch,
+  { cloudinaryMedia = [], clearLegacyStringPaths = [] } = {}
+) => {
+  if (!recordOrPatch || typeof recordOrPatch !== "object") {
+    return recordOrPatch;
+  }
+
+  (Array.isArray(cloudinaryMedia) ? cloudinaryMedia : []).forEach((rule = {}) => {
+    const mediaPath = toStringValue(rule.mediaPath);
+    if (!mediaPath) {
+      return;
+    }
+
+    const normalizedMedia = normalizeCloudinaryMediaValue(getPathValue(recordOrPatch, mediaPath));
+    if (!isCloudinaryMediaValue(normalizedMedia)) {
+      return;
+    }
+
+    setPathValue(recordOrPatch, mediaPath, normalizedMedia);
+    const canonicalUrl = getMediaUrl(normalizedMedia);
+    (Array.isArray(rule.urlPaths) ? rule.urlPaths : []).forEach((urlPath) => {
+      const normalizedUrlPath = toStringValue(urlPath);
+      if (!normalizedUrlPath) {
+        return;
+      }
+      if (shouldSyncCloudinaryAlias(getPathValue(recordOrPatch, normalizedUrlPath), canonicalUrl)) {
+        setPathValue(recordOrPatch, normalizedUrlPath, canonicalUrl);
+      }
+    });
+  });
+
+  (Array.isArray(clearLegacyStringPaths) ? clearLegacyStringPaths : []).forEach((path) => {
+    const normalizedPath = toStringValue(path);
+    if (!normalizedPath) {
+      return;
+    }
+    if (isLegacyLocalMediaUrl(getPathValue(recordOrPatch, normalizedPath))) {
+      setPathValue(recordOrPatch, normalizedPath, "");
+    }
+  });
+
+  return recordOrPatch;
+};
+
 const normalizeUserMediaDocument = (userDoc) => {
   if (!userDoc) {
     return userDoc;
@@ -180,12 +329,17 @@ module.exports = {
   getMediaPreviewUrl,
   getMediaUrl,
   inferCloudinaryPublicIdFromUrl,
+  isLegacyLocalMediaUrl,
   isCloudinaryMediaValue,
+  isCloudinaryMedia: isCloudinaryMediaValue,
   isCloudinaryUrl,
   isLegacyLocalMediaValue,
   isLegacyTempMediaUrl,
   mediaToPublicId,
+  normalizeCloudinaryMediaValue,
   normalizeMediaValue,
   mediaToUrl,
   normalizeUserMediaDocument,
+  sanitizeLegacyMediaFieldsForNewWrite,
+  sanitizeMediaUrlForNewWrite,
 };

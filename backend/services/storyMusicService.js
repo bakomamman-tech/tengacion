@@ -1,6 +1,7 @@
 const Album = require("../models/Album");
 const Track = require("../models/Track");
 const { buildSignedMediaUrl } = require("./mediaSigner");
+const { sanitizeLegacyMediaFieldsForNewWrite } = require("../utils/userMedia");
 
 const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
@@ -60,7 +61,7 @@ const normalizeSelection = (value) => {
 
 const normalizeStoryMusicSelection = normalizeSelection;
 
-const resolveTrackAttachment = async (selection) => {
+const resolveTrackAttachment = async (selection, { sanitizeForWrite = true } = {}) => {
   const track = await Track.findOne({ _id: selection.itemId, ...ACTIVE_TRACK_FILTER }).lean();
   if (!track) {
     return null;
@@ -76,7 +77,7 @@ const resolveTrackAttachment = async (selection) => {
     return null;
   }
 
-  return {
+  const attachment = {
     itemType: "track",
     itemId: String(track._id),
     creatorId: toCleanString(track.creatorId?.toString?.() || track.creatorId || selection.creatorId),
@@ -93,9 +94,17 @@ const resolveTrackAttachment = async (selection) => {
     releaseType: toCleanString(track.releaseType || "single") || "single",
     summaryLabel: "Music",
   };
+
+  if (sanitizeForWrite) {
+    sanitizeLegacyMediaFieldsForNewWrite(attachment, {
+      clearLegacyStringPaths: ["creatorAvatar", "coverImage", "sourceUrl"],
+    });
+  }
+
+  return attachment;
 };
 
-const resolveAlbumAttachment = async (selection) => {
+const resolveAlbumAttachment = async (selection, { sanitizeForWrite = true } = {}) => {
   const album = await Album.findOne({ _id: selection.itemId, ...ACTIVE_ALBUM_FILTER }).lean();
   if (!album) {
     return null;
@@ -111,7 +120,7 @@ const resolveAlbumAttachment = async (selection) => {
     return null;
   }
 
-  return {
+  const attachment = {
     itemType: "album",
     itemId: String(album._id),
     creatorId: toCleanString(album.creatorId?.toString?.() || album.creatorId || selection.creatorId),
@@ -128,37 +137,51 @@ const resolveAlbumAttachment = async (selection) => {
     releaseType: toCleanString(album.releaseType || "album") || "album",
     summaryLabel: "Music",
   };
+
+  if (sanitizeForWrite) {
+    sanitizeLegacyMediaFieldsForNewWrite(attachment, {
+      clearLegacyStringPaths: ["creatorAvatar", "coverImage", "sourceUrl"],
+    });
+  }
+
+  return attachment;
 };
 
-const resolveStoryMusicSelection = async (value) => {
+const resolveStoryMusicSelection = async (value, { sanitizeForWrite = true } = {}) => {
   const selection = normalizeSelection(value);
   if (!selection) {
     return null;
   }
 
   if (selection.itemType === "track") {
-    return resolveTrackAttachment(selection);
+    return resolveTrackAttachment(selection, { sanitizeForWrite });
   }
 
   if (selection.itemType === "album") {
-    return resolveAlbumAttachment(selection);
+    return resolveAlbumAttachment(selection, { sanitizeForWrite });
   }
 
   return null;
 };
 
-const hydrateStoryMusicAttachment = (attachment = {}, { req, viewerId = "" } = {}) => {
+const hydrateStoryMusicAttachment = async (attachment = {}, { req, viewerId = "" } = {}) => {
   if (!attachment || typeof attachment !== "object") {
     return null;
   }
 
-  const sourceUrl = toCleanString(attachment.sourceUrl);
+  const liveAttachment =
+    (!toCleanString(attachment.sourceUrl) || !toCleanString(attachment.coverImage))
+      ? await resolveStoryMusicSelection(attachment, { sanitizeForWrite: false })
+      : null;
+  const effectiveAttachment = liveAttachment || attachment;
+
+  const sourceUrl = toCleanString(effectiveAttachment.sourceUrl || attachment.sourceUrl);
   const previewUrl =
     sourceUrl && req
       ? buildSignedMediaUrl({
           sourceUrl,
-          itemType: attachment.itemType || "track",
-          itemId: attachment.itemId || "",
+          itemType: effectiveAttachment.itemType || attachment.itemType || "track",
+          itemId: effectiveAttachment.itemId || attachment.itemId || "",
           userId: viewerId,
           req,
           expiresInSec: 10 * 60,
@@ -166,20 +189,22 @@ const hydrateStoryMusicAttachment = (attachment = {}, { req, viewerId = "" } = {
       : "";
 
   return {
-    itemType: toCleanString(attachment.itemType),
-    itemId: toCleanString(attachment.itemId),
-    creatorId: toCleanString(attachment.creatorId),
-    creatorUserId: toCleanString(attachment.creatorUserId),
-    creatorName: toCleanString(attachment.creatorName),
-    creatorUsername: toCleanString(attachment.creatorUsername),
-    creatorAvatar: toCleanString(attachment.creatorAvatar),
-    title: toCleanString(attachment.title),
-    coverImage: toCleanString(attachment.coverImage),
-    previewStartSec: Math.max(0, Number(attachment.previewStartSec || 0)),
-    previewLimitSec: clampPreviewLimit(attachment.previewLimitSec || DEFAULT_PREVIEW_LIMIT),
-    durationSec: Math.max(0, Number(attachment.durationSec || 0)),
-    releaseType: toCleanString(attachment.releaseType || "music") || "music",
-    summaryLabel: toCleanString(attachment.summaryLabel || "Music") || "Music",
+    itemType: toCleanString(effectiveAttachment.itemType || attachment.itemType),
+    itemId: toCleanString(effectiveAttachment.itemId || attachment.itemId),
+    creatorId: toCleanString(effectiveAttachment.creatorId || attachment.creatorId),
+    creatorUserId: toCleanString(effectiveAttachment.creatorUserId || attachment.creatorUserId),
+    creatorName: toCleanString(effectiveAttachment.creatorName || attachment.creatorName),
+    creatorUsername: toCleanString(effectiveAttachment.creatorUsername || attachment.creatorUsername),
+    creatorAvatar: toCleanString(effectiveAttachment.creatorAvatar || attachment.creatorAvatar),
+    title: toCleanString(effectiveAttachment.title || attachment.title),
+    coverImage: toCleanString(effectiveAttachment.coverImage || attachment.coverImage),
+    previewStartSec: Math.max(0, Number(effectiveAttachment.previewStartSec || attachment.previewStartSec || 0)),
+    previewLimitSec: clampPreviewLimit(
+      effectiveAttachment.previewLimitSec || attachment.previewLimitSec || DEFAULT_PREVIEW_LIMIT
+    ),
+    durationSec: Math.max(0, Number(effectiveAttachment.durationSec || attachment.durationSec || 0)),
+    releaseType: toCleanString(effectiveAttachment.releaseType || attachment.releaseType || "music") || "music",
+    summaryLabel: toCleanString(effectiveAttachment.summaryLabel || attachment.summaryLabel || "Music") || "Music",
     previewUrl,
   };
 };

@@ -72,6 +72,17 @@ describe("user media normalization", () => {
     expect(isLegacyLocalMediaValue(legacyMedia)).toBe(true);
   });
 
+  test("prefers the cloudinary url for mixed legacy records", () => {
+    const mixedMedia = {
+      publicId: "tengacion/profiles/avatar-2",
+      secureUrl: "https://res.cloudinary.com/test-cloud/image/upload/v1/tengacion/profiles/avatar-2.jpg",
+      legacyPath: "/uploads/legacy/avatar-2.jpg",
+    };
+
+    expect(getMediaUrl(mixedMedia)).toBe(mixedMedia.secureUrl);
+    expect(getMediaPreviewUrl(mixedMedia)).toBe(mixedMedia.secureUrl);
+  });
+
   test("cloudinary cleanup no-ops for legacy media without a public id", async () => {
     const result = await deleteCloudinaryAssets([
       { url: "/uploads/legacy/avatar-1.jpg", legacyPath: "/uploads/legacy/avatar-1.jpg" },

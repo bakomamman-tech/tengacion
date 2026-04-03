@@ -1700,6 +1700,7 @@ export default function Messenger({
               url: uploaded?.url || "",
               secureUrl: uploaded?.secureUrl || uploaded?.secure_url || uploaded?.url || "",
               secure_url: uploaded?.secureUrl || uploaded?.secure_url || uploaded?.url || "",
+              assetId: uploaded?.assetId || "",
               publicId: uploaded?.publicId || uploaded?.public_id || "",
               public_id: uploaded?.publicId || uploaded?.public_id || "",
               resourceType: uploaded?.resourceType || uploaded?.resource_type || "",

@@ -43,6 +43,7 @@ const normalizeAttachment = (file = {}) => {
     url: truncate(url || file?.url || "", 1200),
     secureUrl: truncate(url || file?.secureUrl || file?.secure_url || file?.url || "", 1200),
     secure_url: truncate(url || file?.secureUrl || file?.secure_url || file?.url || "", 1200),
+    assetId: truncate(normalizedMedia.assetId || file?.assetId || file?.asset_id || "", 240),
     publicId: truncate(publicId || file?.publicId || file?.public_id || "", 240),
     public_id: truncate(publicId || file?.publicId || file?.public_id || "", 240),
     resourceType: truncate(resourceType, 40),

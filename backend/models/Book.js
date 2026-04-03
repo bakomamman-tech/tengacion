@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
+const { sanitizeLegacyMediaFieldsForNewWrite } = require("../utils/userMedia");
 
 const MediaAssetSchema = createMediaAssetSchema();
 
@@ -286,6 +287,13 @@ BookSchema.pre("validate", function syncBookFields(next) {
   if (!this.coverUrl && this.coverImageUrl) this.coverUrl = this.coverImageUrl;
   if (!this.contentUrl && this.fileUrl) this.contentUrl = this.fileUrl;
   if (!this.fileUrl && this.contentUrl) this.fileUrl = this.contentUrl;
+  sanitizeLegacyMediaFieldsForNewWrite(this, {
+    cloudinaryMedia: [
+      { mediaPath: "coverMedia", urlPaths: ["coverImageUrl", "coverUrl"] },
+      { mediaPath: "contentMedia", urlPaths: ["contentUrl", "fileUrl"] },
+      { mediaPath: "previewMedia", urlPaths: ["previewUrl"] },
+    ],
+  });
   this.creatorCategory = "books";
   if (this.fileFormat && String(this.fileFormat).toLowerCase() === "pdf") {
     this.contentType = "pdf_book";

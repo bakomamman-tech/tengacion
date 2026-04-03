@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
+const { sanitizeLegacyMediaFieldsForNewWrite } = require("../utils/userMedia");
 
 const MediaAssetSchema = createMediaAssetSchema();
 
@@ -224,6 +225,9 @@ AlbumSchema.pre("validate", function syncAlbumFields(next) {
   if (!Number.isFinite(this.price) && Number.isFinite(this.priceNGN)) this.price = this.priceNGN;
   if (!Number.isFinite(this.priceNGN) && Number.isFinite(this.price)) this.priceNGN = this.price;
   if (!this.coverUrl && coverMediaUrl) this.coverUrl = coverMediaUrl;
+  sanitizeLegacyMediaFieldsForNewWrite(this, {
+    cloudinaryMedia: [{ mediaPath: "coverMedia", urlPaths: ["coverUrl"] }],
+  });
   if (Array.isArray(this.tracks)) {
     this.tracks = this.tracks.map((track) => {
       const nextTrack = track && typeof track.toObject === "function" ? track.toObject() : { ...(track || {}) };
@@ -231,6 +235,12 @@ AlbumSchema.pre("validate", function syncAlbumFields(next) {
       const previewMediaUrl = nextTrack.previewMedia?.secureUrl || nextTrack.previewMedia?.url || "";
       if (!nextTrack.trackUrl && trackMediaUrl) nextTrack.trackUrl = trackMediaUrl;
       if (!nextTrack.previewUrl && previewMediaUrl) nextTrack.previewUrl = previewMediaUrl;
+      sanitizeLegacyMediaFieldsForNewWrite(nextTrack, {
+        cloudinaryMedia: [
+          { mediaPath: "trackMedia", urlPaths: ["trackUrl"] },
+          { mediaPath: "previewMedia", urlPaths: ["previewUrl"] },
+        ],
+      });
       return nextTrack;
     });
   }

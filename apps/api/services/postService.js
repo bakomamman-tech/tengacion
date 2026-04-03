@@ -7,7 +7,10 @@ const {
   deleteUploadedMediaBatch,
   saveUploadedMedia,
 } = require("../../../backend/services/mediaStore");
-const { normalizeMediaValue } = require("../../../backend/utils/userMedia");
+const {
+  normalizeMediaValue,
+  sanitizeLegacyMediaFieldsForNewWrite,
+} = require("../../../backend/utils/userMedia");
 const {
   moveToQuarantineStorage,
 } = require("../../../backend/services/storageQuarantineService");
@@ -777,7 +780,7 @@ const buildSharedPostMeta = async (value) => {
   }
 
   if (originalPost.sharedPost && typeof originalPost.sharedPost === "object") {
-    return {
+    return sanitizeLegacyMediaFieldsForNewWrite({
       originalPostId: originalPost.sharedPost.originalPostId || originalPost._id,
       originalAuthorId: originalPost.sharedPost.originalAuthorId || null,
       originalAuthorName: normalizeText(originalPost.sharedPost.originalAuthorName || "", 120),
@@ -788,7 +791,9 @@ const buildSharedPostMeta = async (value) => {
       previewMediaType: ["image", "video", "reel"].includes(originalPost.sharedPost.previewMediaType)
         ? originalPost.sharedPost.previewMediaType
         : "text",
-    };
+    }, {
+      clearLegacyStringPaths: ["originalAuthorAvatar", "previewImage"],
+    });
   }
 
   const originalAuthor = originalPost.author || {};
@@ -802,7 +807,7 @@ const buildSharedPostMeta = async (value) => {
           ? originalPost.media[0]?.type || "image"
           : "text";
 
-  return {
+  return sanitizeLegacyMediaFieldsForNewWrite({
     originalPostId: originalPost._id,
     originalAuthorId: originalAuthor?._id || null,
     originalAuthorName: normalizeText(originalAuthor?.name || "", 120),
@@ -813,7 +818,9 @@ const buildSharedPostMeta = async (value) => {
     previewMediaType: ["image", "video", "reel"].includes(previewMediaType)
       ? previewMediaType
       : "text",
-  };
+  }, {
+    clearLegacyStringPaths: ["originalAuthorAvatar", "previewImage"],
+  });
 };
 
 const toPostPayload = (post, viewerId) => {

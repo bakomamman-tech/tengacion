@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
+const { sanitizeLegacyMediaFieldsForNewWrite } = require("../utils/userMedia");
 
 const MediaAssetSchema = createMediaAssetSchema();
 
@@ -187,6 +188,13 @@ VideoSchema.pre("validate", function syncVideoFields(next) {
   if (!this.videoUrl && videoMediaUrl) this.videoUrl = videoMediaUrl;
   if (!this.coverImageUrl && coverMediaUrl) this.coverImageUrl = coverMediaUrl;
   if (!this.previewClipUrl && previewClipMediaUrl) this.previewClipUrl = previewClipMediaUrl;
+  sanitizeLegacyMediaFieldsForNewWrite(this, {
+    cloudinaryMedia: [
+      { mediaPath: "videoMedia", urlPaths: ["videoUrl"] },
+      { mediaPath: "coverMedia", urlPaths: ["coverImageUrl"] },
+      { mediaPath: "previewClipMedia", urlPaths: ["previewClipUrl"] },
+    ],
+  });
   this.creatorCategory = "music";
   this.contentType = "music_video";
   if (this.publishedStatus === "published") this.isPublished = true;

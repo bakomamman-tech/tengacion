@@ -54,6 +54,8 @@ describe("registration contact validation", () => {
         name: "Missing Phone",
         username: "missing_phone",
         email: "missing@example.com",
+        country: "Nigeria",
+        stateOfOrigin: "Lagos",
         password: "Password123!",
       })
     ).rejects.toMatchObject({
@@ -68,6 +70,8 @@ describe("registration contact validation", () => {
       username: "global_user",
       email: "global.user@example.com",
       phone: "+234 803 123 4567",
+      country: "Nigeria",
+      stateOfOrigin: "Lagos",
       password: "Password123!",
     });
 
@@ -76,12 +80,31 @@ describe("registration contact validation", () => {
       user: expect.objectContaining({
         email: "global.user@example.com",
         phone: "+234 803 123 4567",
+        country: "Nigeria",
+        stateOfOrigin: "Lagos",
       }),
     });
 
     const stored = await User.findOne({ email: "global.user@example.com" }).lean();
     expect(stored).toBeTruthy();
     expect(stored.phone).toBe("+234 803 123 4567");
+    expect(stored.country).toBe("Nigeria");
+    expect(stored.stateOfOrigin).toBe("Lagos");
     expect(sendSecurityEmail).toHaveBeenCalled();
+  });
+
+  test("requires country and state of origin", async () => {
+    await expect(
+      AuthService.register({
+        name: "Missing Location",
+        username: "missing_location",
+        email: "missing.location@example.com",
+        phone: "+234 803 123 4567",
+        password: "Password123!",
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: "Country and state of origin are required",
+    });
   });
 });

@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
 const { normalizeMediaValue } = require("../utils/userMedia");
 const { normalizeAudioPrefs, DEFAULT_WELCOME_VOICE_VOLUME } = require("../utils/audioPrefs");
-const { sanitizeCountryValue, sanitizePhoneValue } = require("../utils/profileFields");
+const { sanitizeCountryValue, sanitizePhoneValue, sanitizeStateValue } = require("../utils/profileFields");
 
 const UserSchema = new mongoose.Schema(
   {
@@ -77,6 +77,13 @@ const UserSchema = new mongoose.Schema(
     phone: { type: String, default: "" },
 
     country: { type: String, default: "" },
+
+    stateOfOrigin: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
 
     dob: {
       type: Date,
@@ -580,6 +587,7 @@ UserSchema.methods.toJSON = function () {
   delete obj.__v;
   obj.phone = sanitizePhoneValue(obj.phone);
   obj.country = sanitizeCountryValue(obj.country);
+  obj.stateOfOrigin = sanitizeStateValue(obj.stateOfOrigin);
   obj.avatar = normalizeMediaValue(obj.avatar);
   obj.cover = normalizeMediaValue(obj.cover);
   obj.audioPrefs = normalizeAudioPrefs(obj.audioPrefs);

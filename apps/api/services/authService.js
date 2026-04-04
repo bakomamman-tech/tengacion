@@ -136,6 +136,7 @@ const tryLegacyInsertFallback = async ({
   password,
   phone,
   country,
+  stateOfOrigin,
   dob,
   gender,
 }) => {
@@ -148,6 +149,7 @@ const tryLegacyInsertFallback = async ({
     password: passwordHash,
     phone: phone || "",
     country: country || "",
+    stateOfOrigin: stateOfOrigin || "",
     bio: "",
     gender: (gender || "").trim(),
     pronouns: "",
@@ -225,9 +227,10 @@ const sanitizeRegistrationPayload = (payload = {}) => {
   const password = payload.password || "";
   const phone = normalizePhoneNumber(payload.phone);
   const country = (payload.country || "").trim();
+  const stateOfOrigin = (payload.stateOfOrigin || "").trim();
   const dob = payload.dob || "";
   const gender = payload.gender || "";
-  return { rawName, username, email, password, phone, country, dob, gender };
+  return { rawName, username, email, password, phone, country, stateOfOrigin, dob, gender };
 };
 
 const sanitizeIdentifier = (value = "") => (value || "").trim().toLowerCase();
@@ -751,12 +754,16 @@ class AuthService {
       password,
       phone,
       country,
+      stateOfOrigin,
       dob,
       gender,
     } = sanitizeRegistrationPayload(payload);
 
     if (!username || !email || !phone || !password) {
       throw ApiError.badRequest("Username, email, mobile number, and password are required");
+    }
+    if (!country || !stateOfOrigin) {
+      throw ApiError.badRequest("Country and state of origin are required");
     }
     if (password.length < 8) {
       throw ApiError.badRequest("Password must be at least 8 characters");
@@ -807,6 +814,7 @@ class AuthService {
       joined: new Date(),
       phone: phone || undefined,
       country: country || undefined,
+      stateOfOrigin: stateOfOrigin || undefined,
       dob: dob ? new Date(dob) : undefined,
       gender: gender || undefined,
     };
@@ -828,6 +836,7 @@ class AuthService {
         password,
         phone,
         country,
+        stateOfOrigin,
         dob,
         gender,
       });

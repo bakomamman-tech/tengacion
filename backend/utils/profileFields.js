@@ -17,8 +17,11 @@ const sanitizePhoneValue = (value) => clearPlaceholderValue(value, "tmp_phone_")
 
 const sanitizeCountryValue = (value) => clearPlaceholderValue(value, "tmp_country_");
 
+const sanitizeStateValue = (value) => trimTextValue(value);
+
 module.exports = {
   trimTextValue,
   sanitizePhoneValue,
   sanitizeCountryValue,
+  sanitizeStateValue,
 };

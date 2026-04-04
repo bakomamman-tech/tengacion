@@ -14108,6 +14108,11 @@ html.dark-mode .password-toggle-btn:hover {
   background: var(--surface);
 }
 
+.register-fb-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 .register-fb-select {
   appearance: none;
   background:
@@ -14122,6 +14127,21 @@ html.dark-mode .password-toggle-btn:hover {
   color: var(--muted);
   font-size: 15px;
   line-height: 1.35;
+}
+
+.register-fb-security-note {
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--brand) 20%, var(--border));
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--brand) 10%, var(--surface)) 0%, var(--surface) 100%);
+}
+
+.register-fb-security-note p {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.45;
 }
 
 .register-fb-helper-note a,

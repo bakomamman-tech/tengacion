@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { register as registerApi } from "../api";
 import AuthPasswordField from "../components/AuthPasswordField";
+import { COUNTRY_OPTIONS, getRegionsForCountry } from "../constants/countries";
 import { useAuth } from "../context/AuthContext";
 import {
   isValidInternationalPhoneNumber,
@@ -23,6 +24,8 @@ const MONTH_OPTIONS = [
   "November",
   "December",
 ];
+
+const REGION_FALLBACK_OPTION = "Other / Not listed";
 
 const isValidEmail = (value) => /^\S+@\S+\.\S+$/.test(value);
 
@@ -53,6 +56,8 @@ export default function Register() {
     username: "",
     email: "",
     phone: "",
+    country: "",
+    stateOfOrigin: "",
     password: "",
   });
   const [loading, setLoading] = useState(false);
@@ -66,6 +71,21 @@ export default function Register() {
     const count = 31;
     return Array.from({ length: count }, (_, idx) => String(idx + 1));
   }, []);
+
+  const matchedRegionOptions = useMemo(
+    () => getRegionsForCountry(form.country),
+    [form.country]
+  );
+
+  const stateOptions = useMemo(() => {
+    if (matchedRegionOptions.length > 0) {
+      return matchedRegionOptions;
+    }
+    if (!form.country) {
+      return [];
+    }
+    return [REGION_FALLBACK_OPTION];
+  }, [form.country, matchedRegionOptions]);
 
   if (user) {
     return <Navigate to="/home" replace />;
@@ -87,6 +107,8 @@ export default function Register() {
     const email = form.email.trim().toLowerCase();
     const phone = normalizePhoneNumber(form.phone);
     const password = form.password;
+    const country = form.country.trim();
+    const stateOfOrigin = form.stateOfOrigin.trim();
     const gender = form.gender.trim().toLowerCase();
 
     if (!firstName || !lastName) {
@@ -137,6 +159,16 @@ export default function Register() {
       return;
     }
 
+    if (!country) {
+      toast.error("Please select your country.");
+      return;
+    }
+
+    if (!stateOfOrigin) {
+      toast.error("Please select your state of origin.");
+      return;
+    }
+
     if (!password || password.length < 8) {
       toast.error("Password must be at least 8 characters.");
       return;
@@ -161,6 +193,8 @@ export default function Register() {
         email,
         password,
         phone,
+        country,
+        stateOfOrigin,
         dob: dateValue.toISOString(),
         gender,
       });
@@ -318,6 +352,49 @@ export default function Register() {
           </div>
 
           <div className="register-fb-section">
+            <label className="register-fb-label">Country and State of Origin</label>
+            <div className="register-fb-row two">
+              <select
+                className="register-fb-input register-fb-select"
+                value={form.country}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    country: event.target.value,
+                    stateOfOrigin: "",
+                  }))
+                }
+              >
+                <option value="">Select your country</option>
+                {COUNTRY_OPTIONS.map((country) => (
+                  <option key={country} value={country}>
+                    {country}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="register-fb-input register-fb-select"
+                value={form.stateOfOrigin}
+                onChange={(event) => setValue("stateOfOrigin", event.target.value)}
+                disabled={!form.country}
+              >
+                <option value="">
+                  {form.country ? "Select your state / region" : "Choose country first"}
+                </option>
+                {stateOptions.map((state) => (
+                  <option key={state} value={state}>
+                    {state}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="register-fb-helper-note">
+              Your country selection loads the available states or regions automatically.
+            </p>
+          </div>
+
+          <div className="register-fb-section">
             <label className="register-fb-label">Password</label>
             <AuthPasswordField
               className="register-fb-input"
@@ -330,11 +407,14 @@ export default function Register() {
             />
           </div>
 
-          <div className="register-fb-legal">
+          <div className="register-fb-security-note">
             <p>
-              People who use our service may have uploaded your contact information
-              to Tengacion.
+              For the security of your account, you are advised to choose a strong
+              password that has alphanumeric characters.
             </p>
+          </div>
+
+          <div className="register-fb-legal">
             <p>
               By tapping Submit, you agree to create an account and to
               Tengacion&apos;s <Link to="/terms">Terms</Link>,{" "}

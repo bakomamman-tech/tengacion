@@ -72,6 +72,8 @@ const validateRegisterBody = (req, res, next) => {
   const username = normalizeEmail(req.body?.username);
   const email = normalizeEmail(req.body?.email);
   const phone = trimText(req.body?.phone);
+  const country = trimText(req.body?.country);
+  const stateOfOrigin = trimText(req.body?.stateOfOrigin);
   const password = trimText(req.body?.password);
 
   if (!name) {
@@ -86,6 +88,12 @@ const validateRegisterBody = (req, res, next) => {
   if (!phone) {
     return reject(res, "Mobile number is required");
   }
+  if (!country) {
+    return reject(res, "Country is required");
+  }
+  if (!stateOfOrigin) {
+    return reject(res, "State of origin is required");
+  }
   if (!isStrongPassword(password)) {
     return reject(res, "Password must be at least 8 characters");
   }
@@ -94,6 +102,8 @@ const validateRegisterBody = (req, res, next) => {
   req.body.username = username;
   req.body.email = email;
   req.body.phone = phone;
+  req.body.country = country;
+  req.body.stateOfOrigin = stateOfOrigin;
   req.body.password = password;
   return next();
 };

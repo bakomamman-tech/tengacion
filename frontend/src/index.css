@@ -14036,8 +14036,8 @@ html.dark-mode .password-toggle-btn:hover {
 
 .register-fb-subtitle {
   margin: 8px 0 22px;
-  font-size: 33px;
-  font-size: clamp(16px, 1.65vw, 34px);
+  font-size: 20px;
+  font-size: clamp(14px, 1.1vw, 22px);
   line-height: 1.35;
   color: var(--muted);
 }

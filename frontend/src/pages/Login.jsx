@@ -128,67 +128,42 @@ export default function Login() {
   };
 
   return (
-    <div className="login-container login-container--welcome">
-      <div className="login-left login-left--welcome">
-        <div className="login-left-content">
-          <div className="login-logo-section login-logo-section--welcome">
-            <div className="login-logo">
-              <img
-                src="/tengacion_logo_512.png"
-                alt="Tengacion"
-                style={{ width: 60, height: 60 }}
-              />
-            </div>
-            <div className="login-hero-copy">
-              <h1 className="login-title">Tengacion</h1>
-              <p className="login-subtitle">Connect with friends and family members</p>
-            </div>
+    <div className="login-container">
+      <div className="login-left">
+        <div className="login-logo-section">
+          <div className="login-logo">
+            <img
+              src="/tengacion_logo_512.png"
+              alt="Tengacion"
+              style={{ width: 60, height: 60 }}
+            />
           </div>
+          <h1 className="login-title">Tengacion</h1>
+          <p className="login-subtitle">Connect with friends and family members</p>
+        </div>
 
-          <div className="login-features login-features--welcome">
-            <div className="feature-item">
-              <span className="feature-item-accent" aria-hidden="true"></span>
-              <div className="feature-item-copy">
-                <p>Share moments with your friends</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-item-accent" aria-hidden="true"></span>
-              <div className="feature-item-copy">
-                <p>Chat and stay connected</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-item-accent" aria-hidden="true"></span>
-              <div className="feature-item-copy">
-                <p>Build your community</p>
-              </div>
-            </div>
-            <div className="feature-item">
-              <span className="feature-item-accent" aria-hidden="true"></span>
-              <div className="feature-item-copy">
-                <p>Discover amazing stories</p>
-              </div>
-            </div>
+        <div className="login-features">
+          <div className="feature-item">
+            <p>Share moments with your friends</p>
           </div>
-
-          <div className="login-hero-orbit" aria-hidden="true">
-            <span className="login-hero-orbit__core"></span>
-            <span className="login-hero-orbit__ring login-hero-orbit__ring--one"></span>
-            <span className="login-hero-orbit__ring login-hero-orbit__ring--two"></span>
+          <div className="feature-item">
+            <p>Chat and stay connected</p>
+          </div>
+          <div className="feature-item">
+            <p>Build your community</p>
+          </div>
+          <div className="feature-item">
+            <p>Discover amazing stories</p>
           </div>
         </div>
       </div>
 
-      <div className="login-right login-right--welcome">
-        <form
-          className="login-box login-box--welcome"
-          onSubmit={challenge ? handleChallengeSubmit : handleLogin}
-        >
+      <div className="login-right">
+        <form className="login-box" onSubmit={challenge ? handleChallengeSubmit : handleLogin}>
           <h2>Log In</h2>
 
           {challenge ? (
-            <div className="account-note-card login-challenge-card">
+            <div className="account-note-card" style={{ marginBottom: 18 }}>
               <strong>
                 {challenge.purpose === "mfa_setup"
                   ? "Set up your authenticator app"

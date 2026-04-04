@@ -14015,67 +14015,160 @@ html.dark-mode .password-toggle-btn:hover {
 
 /* Facebook-style register */
 .register-fb-page {
+  --register-bg: #0d261b;
+  --register-bg-deep: #091912;
+  --register-glow: #6d9a65;
+  --register-cream: #f5efe3;
+  --register-cream-soft: #fbf7f0;
+  --register-cream-deep: #e8dfce;
+  --register-ink: #173025;
+  --register-muted: #5d7365;
+  --register-border: rgba(23, 68, 45, 0.16);
+  --register-border-strong: rgba(58, 110, 77, 0.3);
+  --register-accent: #3d8155;
+  --register-accent-strong: #69a871;
+  --register-accent-soft: rgba(105, 168, 113, 0.16);
   min-height: 100vh;
-  background: var(--bg);
-  padding: 28px 14px 40px;
+  background:
+    radial-gradient(circle at 14% 16%, rgba(109, 154, 101, 0.26) 0%, rgba(109, 154, 101, 0) 26%),
+    radial-gradient(circle at 85% 10%, rgba(255, 250, 241, 0.1) 0%, rgba(255, 250, 241, 0) 22%),
+    linear-gradient(180deg, #143624 0%, #102a1d 44%, var(--register-bg-deep) 100%);
+  padding: clamp(22px, 4vw, 44px) 16px 56px;
   display: flex;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.register-fb-page::before,
+.register-fb-page::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.register-fb-page::before {
+  width: 420px;
+  height: 420px;
+  top: -160px;
+  left: -120px;
+  background: radial-gradient(circle, rgba(129, 176, 121, 0.32) 0%, rgba(129, 176, 121, 0) 70%);
+}
+
+.register-fb-page::after {
+  width: 360px;
+  height: 360px;
+  right: -80px;
+  bottom: 40px;
+  background: radial-gradient(circle, rgba(255, 248, 230, 0.12) 0%, rgba(255, 248, 230, 0) 72%);
 }
 
 .register-fb-shell {
-  width: min(680px, 100%);
-  color: var(--text);
+  width: min(760px, 100%);
+  color: var(--register-cream);
+  position: relative;
+  padding: clamp(28px, 4vw, 46px);
+  border-radius: 38px;
+  background: linear-gradient(135deg, rgba(15, 44, 31, 0.97) 0%, rgba(9, 31, 22, 0.95) 56%, rgba(28, 63, 41, 0.9) 100%);
+  border: 1px solid rgba(202, 226, 190, 0.14);
+  box-shadow: 0 32px 80px rgba(3, 16, 10, 0.34);
+  overflow: hidden;
+}
+
+.register-fb-shell::before,
+.register-fb-shell::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.register-fb-shell::before {
+  inset: 0;
+  background:
+    radial-gradient(circle at top left, rgba(117, 164, 110, 0.2) 0%, rgba(117, 164, 110, 0) 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 38%);
+}
+
+.register-fb-shell::after {
+  width: 260px;
+  height: 260px;
+  right: -80px;
+  top: -60px;
+  border-radius: 32px;
+  background: linear-gradient(135deg, rgba(111, 167, 111, 0.15), rgba(245, 239, 227, 0.05));
+  transform: rotate(24deg);
 }
 
 .register-fb-title {
   margin: 0;
-  font-size: clamp(32px, 4vw, 52px);
-  line-height: 1.05;
+  font-size: clamp(34px, 4.8vw, 60px);
+  line-height: 0.98;
   letter-spacing: -0.015em;
+  position: relative;
+  z-index: 1;
+  text-wrap: balance;
 }
 
 .register-fb-subtitle {
-  margin: 8px 0 22px;
+  margin: 14px 0 26px;
   font-size: 20px;
-  font-size: clamp(14px, 1.1vw, 22px);
-  line-height: 1.35;
-  color: var(--muted);
+  font-size: clamp(14px, 1.2vw, 20px);
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--register-cream) 70%, var(--register-glow) 30%);
+  max-width: 46rem;
+  position: relative;
+  z-index: 1;
 }
 
 .register-fb-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
+  position: relative;
+  z-index: 1;
+  padding: clamp(22px, 3vw, 34px);
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(250, 246, 238, 0.98) 0%, rgba(238, 232, 220, 0.94) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 24px 48px rgba(6, 26, 18, 0.2);
 }
 
 .register-fb-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .register-fb-label {
-  font-size: 38px;
-  font-size: clamp(17px, 1.5vw, 40px);
+  font-size: clamp(16px, 1.15vw, 20px);
   font-weight: 700;
   line-height: 1.25;
-  color: var(--text);
+  letter-spacing: -0.01em;
+  color: var(--register-ink);
 }
 
 .register-fb-help {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 2px solid var(--border-strong);
+  border: 1px solid var(--register-border-strong);
+  background: rgba(109, 154, 101, 0.1);
   display: inline-grid;
   place-items: center;
   font-size: 18px;
   margin-left: 6px;
+  color: var(--register-accent);
 }
 
 .register-fb-row {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .register-fb-row.two {
@@ -14088,65 +14181,80 @@ html.dark-mode .password-toggle-btn:hover {
 
 .register-fb-input {
   width: 100%;
-  min-height: 54px;
-  border: 1px solid var(--border);
+  min-height: 58px;
+  border: 1px solid var(--register-border);
   border-radius: 18px;
-  background: var(--surface-soft);
-  color: var(--text);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(246, 240, 229, 0.94) 100%);
+  color: var(--register-ink);
   padding: 0 16px;
   font-size: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
   outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.register-fb-input::placeholder {
+  color: color-mix(in srgb, var(--register-muted) 68%, #ffffff 32%);
 }
 
 .register-fb-password-wrap .password-toggle-btn {
   right: 14px;
+  color: var(--register-muted);
+  background: rgba(61, 129, 85, 0.08);
 }
 
 .register-fb-input:focus {
-  border-color: color-mix(in srgb, var(--brand) 60%, var(--border));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent);
-  background: var(--surface);
+  border-color: color-mix(in srgb, var(--register-accent) 72%, white 28%);
+  box-shadow:
+    0 0 0 4px rgba(105, 168, 113, 0.18),
+    0 16px 28px rgba(20, 57, 39, 0.08);
+  background: rgba(255, 255, 255, 0.96);
+  transform: translateY(-1px);
 }
 
 .register-fb-input:disabled {
   cursor: not-allowed;
-  opacity: 0.72;
+  opacity: 0.65;
+  background: linear-gradient(180deg, rgba(248, 243, 234, 0.84) 0%, rgba(236, 230, 218, 0.86) 100%);
 }
 
 .register-fb-select {
   appearance: none;
   background:
-    linear-gradient(45deg, transparent 50%, var(--text) 50%) calc(100% - 26px) 50% / 9px 9px no-repeat,
-    linear-gradient(135deg, var(--text) 50%, transparent 50%) calc(100% - 20px) 50% / 9px 9px no-repeat,
-    var(--surface-soft);
+    linear-gradient(45deg, transparent 50%, var(--register-ink) 50%) calc(100% - 26px) 50% / 9px 9px no-repeat,
+    linear-gradient(135deg, var(--register-ink) 50%, transparent 50%) calc(100% - 20px) 50% / 9px 9px no-repeat,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(246, 240, 229, 0.94) 100%);
   padding-right: 40px;
 }
 
 .register-fb-helper-note {
   margin: 0;
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1.35;
+  color: var(--register-muted);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .register-fb-security-note {
-  padding: 14px 16px;
-  border: 1px solid color-mix(in srgb, var(--brand) 20%, var(--border));
-  border-radius: 18px;
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--brand) 10%, var(--surface)) 0%, var(--surface) 100%);
+  padding: 16px 18px;
+  border: 1px solid rgba(62, 129, 85, 0.18);
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(105, 168, 113, 0.14) 0%, rgba(255, 255, 255, 0.78) 100%);
 }
 
 .register-fb-security-note p {
   margin: 0;
-  color: var(--text);
+  color: var(--register-ink);
   font-size: 15px;
   line-height: 1.45;
 }
 
 .register-fb-helper-note a,
 .register-fb-legal a {
-  color: var(--brand-strong);
+  color: var(--register-accent);
   text-decoration: none;
   font-weight: 700;
 }
@@ -14160,52 +14268,83 @@ html.dark-mode .password-toggle-btn:hover {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding-top: 4px;
 }
 
 .register-fb-legal p {
   margin: 0;
-  font-size: 15px;
-  line-height: 1.45;
-  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--register-muted);
 }
 
 .register-fb-submit,
 .register-fb-secondary {
   width: 100%;
-  min-height: 52px;
+  min-height: 54px;
   border-radius: 999px;
-  font-size: 21px;
-  font-size: clamp(18px, 1.2vw, 22px);
+  font-size: clamp(17px, 1.05vw, 20px);
   font-weight: 800;
   cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .register-fb-submit {
   border: none;
-  color: #f7f1e8;
-  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  color: #f8f5ee;
+  background: linear-gradient(135deg, var(--register-accent) 0%, var(--register-accent-strong) 100%);
+  box-shadow: 0 18px 30px rgba(36, 98, 63, 0.26);
 }
 
 .register-fb-submit:hover {
-  filter: brightness(1.04);
+  filter: brightness(1.03);
+  transform: translateY(-1px);
 }
 
 .register-fb-submit:disabled {
-  background: color-mix(in srgb, var(--brand) 40%, var(--surface));
+  background: color-mix(in srgb, var(--register-accent) 52%, var(--register-cream-deep));
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .register-fb-secondary {
-  border: 1px solid var(--border);
-  color: var(--text);
-  background: var(--surface);
+  border: 1px solid rgba(32, 77, 52, 0.14);
+  color: var(--register-ink);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .register-fb-secondary:hover {
-  background: var(--surface-soft);
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(48, 99, 64, 0.24);
+  transform: translateY(-1px);
+}
+
+.register-fb-password-wrap .password-toggle-btn:hover {
+  background: rgba(61, 129, 85, 0.16);
+  color: var(--register-ink);
+}
+
+.register-fb-password-wrap .password-toggle-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(105, 168, 113, 0.18);
 }
 
 @media (max-width: 820px) {
+  .register-fb-shell {
+    padding: 22px;
+    border-radius: 28px;
+  }
+
+  .register-fb-form {
+    padding: 20px;
+    border-radius: 24px;
+  }
+
   .register-fb-row.three {
     grid-template-columns: 1fr 1fr;
   }
@@ -14213,7 +14352,17 @@ html.dark-mode .password-toggle-btn:hover {
 
 @media (max-width: 640px) {
   .register-fb-page {
-    padding: 12px 10px 28px;
+    padding: 14px 10px 30px;
+  }
+
+  .register-fb-shell {
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .register-fb-form {
+    padding: 16px;
+    border-radius: 20px;
   }
 
   .register-fb-row.two,
@@ -14222,7 +14371,7 @@ html.dark-mode .password-toggle-btn:hover {
   }
 
   .register-fb-input {
-    min-height: 50px;
+    min-height: 52px;
     border-radius: 14px;
   }
 

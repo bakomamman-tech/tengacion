@@ -1,12 +1,29 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const STORAGE_KEY = "tengacion.gaming.2048.state";
 const GRID_SIZE = 4;
+const MAX_HISTORY = 12;
+const SWIPE_THRESHOLD = 24;
 const DIRECTIONS = {
   up: "up",
   down: "down",
   left: "left",
   right: "right",
+};
+
+const TILE_META = {
+  0: { label: "", className: "empty" },
+  2: { label: "2", className: "v2" },
+  4: { label: "4", className: "v4" },
+  8: { label: "8", className: "v8" },
+  16: { label: "16", className: "v16" },
+  32: { label: "32", className: "v32" },
+  64: { label: "64", className: "v64" },
+  128: { label: "128", className: "v128" },
+  256: { label: "256", className: "v256" },
+  512: { label: "512", className: "v512" },
+  1024: { label: "1024", className: "v1024" },
+  2048: { label: "2048", className: "v2048" },
 };
 
 const createEmptyBoard = () =>
@@ -38,17 +55,21 @@ const addRandomTile = (board) => {
   return nextBoard;
 };
 
-const createFreshState = () => {
+const createFreshState = (bestScore = 0) => {
   let board = createEmptyBoard();
   board = addRandomTile(board);
   board = addRandomTile(board);
   return {
     board,
     score: 0,
-    bestScore: 0,
+    bestScore,
     moves: 0,
     highestTile: 4,
     gameOver: false,
+    won: false,
+    combo: 0,
+    lastGain: 0,
+    history: [],
   };
 };
 
@@ -62,15 +83,21 @@ const readStoredState = () => {
     if (!raw) {
       return createFreshState();
     }
+
     const parsed = JSON.parse(raw);
     const board = Array.isArray(parsed?.board) ? parsed.board : createFreshState().board;
+    const bestScore = Number(parsed?.bestScore) || 0;
     return {
       board,
       score: Number(parsed?.score) || 0,
-      bestScore: Number(parsed?.bestScore) || 0,
+      bestScore,
       moves: Number(parsed?.moves) || 0,
       highestTile: Number(parsed?.highestTile) || 4,
       gameOver: Boolean(parsed?.gameOver),
+      won: Boolean(parsed?.won),
+      combo: Number(parsed?.combo) || 0,
+      lastGain: Number(parsed?.lastGain) || 0,
+      history: Array.isArray(parsed?.history) ? parsed.history.slice(-MAX_HISTORY) : [],
     };
   } catch {
     return createFreshState();
@@ -81,6 +108,7 @@ const operateLine = (line) => {
   const compact = line.filter(Boolean);
   const merged = [];
   let scoreGain = 0;
+  let mergeCount = 0;
 
   for (let index = 0; index < compact.length; index += 1) {
     const current = compact[index];
@@ -90,6 +118,7 @@ const operateLine = (line) => {
       const combined = current * 2;
       merged.push(combined);
       scoreGain += combined;
+      mergeCount += 1;
       index += 1;
       continue;
     }
@@ -102,7 +131,7 @@ const operateLine = (line) => {
   }
 
   const moved = merged.some((value, index) => value !== line[index]);
-  return { line: merged, scoreGain, moved };
+  return { line: merged, scoreGain, mergeCount, moved };
 };
 
 const getColumn = (board, colIndex) => board.map((row) => row[colIndex]);
@@ -134,6 +163,7 @@ const moveBoard = (board, direction) => {
   const nextBoard = cloneBoard(board);
   let moved = false;
   let scoreGain = 0;
+  let mergeCount = 0;
 
   if (direction === DIRECTIONS.left || direction === DIRECTIONS.right) {
     nextBoard.forEach((row, rowIndex) => {
@@ -144,6 +174,7 @@ const moveBoard = (board, direction) => {
       nextBoard[rowIndex] = finalLine;
       moved = moved || operated.moved;
       scoreGain += operated.scoreGain;
+      mergeCount += operated.mergeCount;
     });
   }
 
@@ -157,17 +188,30 @@ const moveBoard = (board, direction) => {
       setColumn(nextBoard, colIndex, finalLine);
       moved = moved || operated.moved;
       scoreGain += operated.scoreGain;
+      mergeCount += operated.mergeCount;
     }
   }
 
-  return { nextBoard, moved, scoreGain };
+  return { nextBoard, moved, scoreGain, mergeCount };
 };
 
 const getHighestTile = (board) => Math.max(...board.flat());
 
+const buildSnapshot = (state) => ({
+  board: cloneBoard(state.board),
+  score: state.score,
+  moves: state.moves,
+  highestTile: state.highestTile,
+  gameOver: state.gameOver,
+  won: state.won,
+  combo: state.combo,
+});
+
 export default function Tengacion2048({ onSessionChange }) {
   const [state, setState] = useState(() => readStoredState());
-  const { board, score, bestScore, moves, highestTile, gameOver } = state;
+  const touchStartRef = useRef(null);
+  const { board, score, bestScore, moves, highestTile, gameOver, won, combo, lastGain, history } =
+    state;
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -178,15 +222,31 @@ export default function Tengacion2048({ onSessionChange }) {
   }, [state]);
 
   useEffect(() => {
-    onSessionChange?.(state);
+    onSessionChange?.({
+      ...state,
+      game: "2048-classic",
+    });
   }, [onSessionChange, state]);
 
   const startNewGame = () => {
+    setState((current) => createFreshState(Math.max(current.bestScore, current.score)));
+  };
+
+  const undoMove = () => {
     setState((current) => {
-      const fresh = createFreshState();
+      if (!current.history.length) {
+        return current;
+      }
+
+      const previous = current.history[current.history.length - 1];
       return {
-        ...fresh,
-        bestScore: Math.max(current.bestScore, current.score, fresh.bestScore),
+        ...current,
+        ...previous,
+        board: cloneBoard(previous.board),
+        bestScore: Math.max(current.bestScore, previous.score),
+        gameOver: false,
+        lastGain: 0,
+        history: current.history.slice(0, -1),
       };
     });
   };
@@ -197,24 +257,28 @@ export default function Tengacion2048({ onSessionChange }) {
         return current;
       }
 
-      const { nextBoard, moved, scoreGain } = moveBoard(current.board, direction);
+      const { nextBoard, moved, scoreGain, mergeCount } = moveBoard(current.board, direction);
       if (!moved) {
         return current;
       }
 
       const boardWithSpawn = addRandomTile(nextBoard);
       const nextScore = current.score + scoreGain;
-      const nextBestScore = Math.max(current.bestScore, nextScore);
       const nextHighestTile = Math.max(current.highestTile, getHighestTile(boardWithSpawn));
-      const nextGameOver = !hasMovesAvailable(boardWithSpawn);
+      const nextWon = current.won || nextHighestTile >= 2048;
+      const nextCombo = mergeCount ? current.combo + 1 : 0;
 
       return {
         board: boardWithSpawn,
         score: nextScore,
-        bestScore: nextBestScore,
+        bestScore: Math.max(current.bestScore, nextScore),
         moves: current.moves + 1,
         highestTile: nextHighestTile,
-        gameOver: nextGameOver,
+        gameOver: !hasMovesAvailable(boardWithSpawn),
+        won: nextWon,
+        combo: nextCombo,
+        lastGain: scoreGain,
+        history: [...current.history.slice(-(MAX_HISTORY - 1)), buildSnapshot(current)],
       };
     });
   };
@@ -241,26 +305,52 @@ export default function Tengacion2048({ onSessionChange }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const tileMeta = {
-    0: { label: "", className: "empty" },
-    2: { label: "2", className: "v2" },
-    4: { label: "4", className: "v4" },
-    8: { label: "8", className: "v8" },
-    16: { label: "16", className: "v16" },
-    32: { label: "32", className: "v32" },
-    64: { label: "64", className: "v64" },
-    128: { label: "128", className: "v128" },
-    256: { label: "256", className: "v256" },
-    512: { label: "512", className: "v512" },
-    1024: { label: "1024", className: "v1024" },
-    2048: { label: "2048", className: "v2048" },
+  const statusText = gameOver
+    ? "The board is locked. Undo the last move or start a fresh run."
+    : won
+      ? "You cleared 2048. Keep stacking for a bigger finish."
+      : highestTile >= 1024
+        ? "You are deep in the run now. One great merge can flip the board."
+        : lastGain > 0
+          ? `Last move banked ${lastGain} points. Keep your center open.`
+          : "Use arrow keys or swipe to pair matching tiles and build momentum.";
+
+  const nextTarget = highestTile >= 2048 ? highestTile * 2 : Math.max(8, highestTile * 2);
+
+  const handleTouchStart = (event) => {
+    const touch = event.changedTouches?.[0];
+    if (!touch) {
+      return;
+    }
+
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+    };
   };
 
-  const statusText = gameOver
-    ? "No more moves. Start a new run and beat your best."
-    : highestTile >= 2048
-      ? "You hit 2048. Keep going for a higher score."
-      : "Use your arrow keys or the controls below to combine matching tiles.";
+  const handleTouchEnd = (event) => {
+    const start = touchStartRef.current;
+    const touch = event.changedTouches?.[0];
+    touchStartRef.current = null;
+
+    if (!start || !touch) {
+      return;
+    }
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < SWIPE_THRESHOLD) {
+      return;
+    }
+
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+      handleMove(deltaX > 0 ? DIRECTIONS.right : DIRECTIONS.left);
+      return;
+    }
+
+    handleMove(deltaY > 0 ? DIRECTIONS.down : DIRECTIONS.up);
+  };
 
   return (
     <section className="game-2048-shell">
@@ -270,9 +360,15 @@ export default function Tengacion2048({ onSessionChange }) {
           <h3>2048 Classic</h3>
           <p>{statusText}</p>
         </div>
-        <button type="button" className="btn-secondary" onClick={startNewGame}>
-          New game
-        </button>
+
+        <div className="game-2048-head-actions">
+          <button type="button" className="btn-secondary" onClick={undoMove} disabled={!history.length}>
+            Undo
+          </button>
+          <button type="button" className="btn-secondary" onClick={startNewGame}>
+            New game
+          </button>
+        </div>
       </div>
 
       <div className="game-2048-stats">
@@ -294,30 +390,83 @@ export default function Tengacion2048({ onSessionChange }) {
         </div>
       </div>
 
-      <div className="game-2048-board" aria-label="2048 board">
-        {board.flat().map((value, index) => {
-          const meta = tileMeta[value] || { label: String(value), className: "v2048" };
-          return (
-            <div key={`${index}-${value}`} className={`game-2048-tile ${meta.className}`}>
-              {meta.label}
-            </div>
-          );
-        })}
+      <div className="game-2048-pulse">
+        <article>
+          <span>Next target</span>
+          <strong>{nextTarget}</strong>
+          <p>Build smaller pairs on the edge, then collapse them inward.</p>
+        </article>
+        <article>
+          <span>Merge streak</span>
+          <strong>{combo}</strong>
+          <p>{combo ? "You are chaining productive moves." : "Start a streak with back-to-back merges."}</p>
+        </article>
+        <article>
+          <span>Saved state</span>
+          <strong>{history.length}</strong>
+          <p>Undo remembers your last {history.length || 0} move{history.length === 1 ? "" : "s"}.</p>
+        </article>
       </div>
 
-      <div className="game-2048-controls" aria-label="2048 movement controls">
-        <button type="button" onClick={() => handleMove(DIRECTIONS.up)}>
-          Up
-        </button>
-        <button type="button" onClick={() => handleMove(DIRECTIONS.left)}>
-          Left
-        </button>
-        <button type="button" onClick={() => handleMove(DIRECTIONS.down)}>
-          Down
-        </button>
-        <button type="button" onClick={() => handleMove(DIRECTIONS.right)}>
-          Right
-        </button>
+      <div className="game-2048-stage">
+        <div className="game-2048-board-shell">
+          <div
+            className="game-2048-board"
+            aria-label="2048 board"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={() => {
+              touchStartRef.current = null;
+            }}
+          >
+            {board.flat().map((value, index) => {
+              const meta = TILE_META[value] || { label: String(value), className: "v2048" };
+              return (
+                <div key={`${index}-${value}`} className={`game-2048-tile ${meta.className}`}>
+                  {meta.label}
+                </div>
+              );
+            })}
+          </div>
+
+          {gameOver && (
+            <div className="game-2048-overlay">
+              <strong>Run over</strong>
+              <p>Undo to recover the board or launch a fresh climb.</p>
+            </div>
+          )}
+        </div>
+
+        <div className="game-2048-aside">
+          <div className="game-2048-aside-card">
+            <span>Control flow</span>
+            <p>
+              Arrow keys work on desktop. On mobile, swipe across the board to steer the tiles.
+            </p>
+          </div>
+          <div className="game-2048-aside-card">
+            <span>Run note</span>
+            <p>
+              {won
+                ? "2048 is already cleared, so this run is now about elegant board management."
+                : "Keep your largest tile anchored and avoid scattering medium-value stacks."}
+            </p>
+          </div>
+          <div className="game-2048-controls" aria-label="2048 movement controls">
+            <button type="button" onClick={() => handleMove(DIRECTIONS.up)}>
+              Up
+            </button>
+            <button type="button" onClick={() => handleMove(DIRECTIONS.left)}>
+              Left
+            </button>
+            <button type="button" onClick={() => handleMove(DIRECTIONS.down)}>
+              Down
+            </button>
+            <button type="button" onClick={() => handleMove(DIRECTIONS.right)}>
+              Right
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );

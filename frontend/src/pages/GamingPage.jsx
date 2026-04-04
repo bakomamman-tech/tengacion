@@ -14,10 +14,18 @@ const GAME_LIBRARY = [
     genre: "Puzzle",
     status: "Playable now",
     playable: true,
-    accent: "linear-gradient(145deg, #f6c96a 0%, #b86d18 100%)",
-    summary: "A clean local adaptation of the open-source 2048 web classic.",
+    accent: "linear-gradient(145deg, #f4cf79 0%, #b0681a 100%)",
+    summary: "A polished local take on the open-source 2048 web classic.",
     description:
-      "Combine matching tiles, chase bigger numbers, and build your best score directly inside Tengacion.",
+      "Stack matching tiles, chase smoother merges, and build a bigger browser-saved score without leaving Tengacion.",
+    difficulty: "Easy to learn",
+    session: "2-8 min",
+    controls: "Arrow keys or swipe",
+    highlights: [
+      "Undo support gives you room to recover smartly.",
+      "Runs stay saved in this browser, so your best score is always nearby.",
+      "Touch controls now work naturally on mobile.",
+    ],
     originalUrl: "https://gabrielecirulli.github.io/2048/",
     sourceUrl: "https://github.com/gabrielecirulli/2048",
   },
@@ -27,10 +35,18 @@ const GAME_LIBRARY = [
     genre: "Arcade",
     status: "Playable now",
     playable: true,
-    accent: "linear-gradient(145deg, #28a96b 0%, #103b27 100%)",
-    summary: "A fast original Tengacion snake run built for quick reflex sessions.",
+    accent: "linear-gradient(145deg, #3ccd87 0%, #0c4330 100%)",
+    summary: "A faster Tengacion original built for quick reflex sessions.",
     description:
-      "Guide the snake, collect glowing fruit, avoid collisions, and climb your best score in a lighter arcade lane.",
+      "Guide the snake, collect glowing fruit, avoid collisions, and switch between pacing modes depending on how hard you want the run to hit.",
+    difficulty: "Mode-based",
+    session: "1-6 min",
+    controls: "Arrow keys, WASD, or swipe",
+    highlights: [
+      "Three pace modes change how each run feels.",
+      "The board now supports touch steering for phone-first play.",
+      "Pause, resume, and restart flow feels cleaner mid-session.",
+    ],
     builtInLabel: "Built inside Tengacion",
   },
   {
@@ -39,10 +55,18 @@ const GAME_LIBRARY = [
     genre: "Arcade",
     status: "Prototype queue",
     playable: false,
-    accent: "linear-gradient(145deg, #283b67 0%, #11182f 100%)",
-    summary: "Fast reflex lanes, neon enemies, and score-chasing rounds.",
+    accent: "linear-gradient(145deg, #2b4b6e 0%, #101a2d 100%)",
+    summary: "Reflex lanes, neon enemies, and score-chasing night runs.",
     description:
-      "Arcade combat is on the roadmap. For now, save it to your list and we will slot it into the next playable wave.",
+      "This concept is positioned as a stylish combat lane with short rounds, escalating danger, and creator-grade visual polish.",
+    difficulty: "Medium-high",
+    session: "3-7 min",
+    controls: "Tap, dodge, boost",
+    highlights: [
+      "Designed for fast replays and compact rounds.",
+      "Visual direction leans cinematic instead of retro.",
+      "A strong candidate for the next playable arcade drop.",
+    ],
   },
   {
     id: "word-sprint",
@@ -50,10 +74,18 @@ const GAME_LIBRARY = [
     genre: "Word",
     status: "Prototype queue",
     playable: false,
-    accent: "linear-gradient(145deg, #4f8b67 0%, #1e3d2b 100%)",
-    summary: "A fast vocabulary run built for short play sessions.",
+    accent: "linear-gradient(145deg, #4e9f79 0%, #193c2c 100%)",
+    summary: "A timed vocabulary lane built for quick creative competition.",
     description:
-      "This lane will become a timed word game for creators and communities who like lighter competition.",
+      "Word Sprint is being shaped as a social, replayable challenge that fits creators, classrooms, and casual communities equally well.",
+    difficulty: "Adaptive",
+    session: "2-5 min",
+    controls: "Type and submit",
+    highlights: [
+      "Timed prompts keep rounds tense but readable.",
+      "Great fit for community tournaments and streaks.",
+      "Would give the page a lighter, social lane.",
+    ],
   },
   {
     id: "block-drop",
@@ -61,10 +93,18 @@ const GAME_LIBRARY = [
     genre: "Strategy",
     status: "Prototype queue",
     playable: false,
-    accent: "linear-gradient(145deg, #7843a8 0%, #2d1648 100%)",
-    summary: "A stack-and-clear concept that fits mobile and desktop equally well.",
+    accent: "linear-gradient(145deg, #6f6be8 0%, #241b5e 100%)",
+    summary: "A stack-and-clear concept with cleaner visual rhythm.",
     description:
-      "We are shaping a calmer strategy lane with clean visuals and satisfying combo loops.",
+      "This lane is being framed as a calmer strategy game with smooth combo feedback, satisfying clears, and a strong mobile silhouette.",
+    difficulty: "Climbs over time",
+    session: "4-10 min",
+    controls: "Tap, drag, rotate",
+    highlights: [
+      "Best suited to players who like compounding decision-making.",
+      "Would bring a more meditative lane to the hub.",
+      "The visual language is already a strong fit for Tengacion.",
+    ],
   },
   {
     id: "chess-room",
@@ -72,10 +112,18 @@ const GAME_LIBRARY = [
     genre: "Board",
     status: "Community request",
     playable: false,
-    accent: "linear-gradient(145deg, #767163 0%, #312d24 100%)",
-    summary: "A turn-based room experience for communities, clubs, and study groups.",
+    accent: "linear-gradient(145deg, #989179 0%, #373224 100%)",
+    summary: "A turn-based room for clubs, study circles, and small groups.",
     description:
-      "Saved here so players can signal interest before the full multiplayer board room is built.",
+      "Chess Room is being scoped as a social board experience where communities can learn, watch, and play without leaving Tengacion.",
+    difficulty: "Skill-based",
+    session: "10-25 min",
+    controls: "Tap and move",
+    highlights: [
+      "Strong crossover value for schools and fan communities.",
+      "Board rooms could become a natural home for commentary.",
+      "Saved interest helps signal demand for multiplayer lanes.",
+    ],
   },
   {
     id: "memory-atlas",
@@ -83,10 +131,18 @@ const GAME_LIBRARY = [
     genre: "Puzzle",
     status: "Concept",
     playable: false,
-    accent: "linear-gradient(145deg, #2a8fa5 0%, #143642 100%)",
-    summary: "Match symbols, reveal paths, and learn the board as it changes.",
+    accent: "linear-gradient(145deg, #2ca3bb 0%, #113844 100%)",
+    summary: "A calmer visual-memory lane built around patterns and recall.",
     description:
-      "A calmer visual-memory format designed for fast sessions and repeat play.",
+      "Memory Atlas is designed as a more atmospheric puzzle lane with shifting boards, light discovery, and repeatable short sessions.",
+    difficulty: "Focus-forward",
+    session: "2-6 min",
+    controls: "Tap and match",
+    highlights: [
+      "A softer option for players who want less arcade pressure.",
+      "Could look especially strong with the new green app palette.",
+      "Pairs well with repeat sessions and light score-chasing.",
+    ],
   },
 ];
 
@@ -94,17 +150,17 @@ const GAMING_VIEWS = [
   {
     id: "play",
     label: "Play games",
-    description: "Jump into playable web games and discover the next Tengacion originals.",
+    description: "Launch live games, inspect lanes, and jump between playable picks quickly.",
   },
   {
     id: "activity",
     label: "Gaming activity",
-    description: "Track your score, milestones, and recent gaming sessions.",
+    description: "Track score momentum, saved progress, and whichever lane you touched last.",
   },
   {
     id: "saved",
     label: "Saved games",
-    description: "Keep a short list of titles you want to return to later.",
+    description: "Keep a tidy shortlist of concepts and playable titles worth returning to.",
   },
 ];
 
@@ -159,7 +215,8 @@ export default function GamingPage({ user }) {
         return true;
       }
 
-      const haystack = `${game.title} ${game.genre} ${game.summary} ${game.description}`.toLowerCase();
+      const haystack =
+        `${game.title} ${game.genre} ${game.summary} ${game.description} ${game.difficulty} ${game.controls}`.toLowerCase();
       return haystack.includes(needle);
     });
   }, [activeCategory, deferredSearch]);
@@ -172,47 +229,80 @@ export default function GamingPage({ user }) {
     [savedGameIds]
   );
 
+  const playableCount = useMemo(
+    () => GAME_LIBRARY.filter((game) => game.playable).length,
+    []
+  );
+  const conceptCount = GAME_LIBRARY.length - playableCount;
+  const lastPlayedTitle = lastSession.game === "snake-xavia" ? "Snake Xavia" : "2048 Classic";
+
   const activityCards = [
+    {
+      title: "Last lane touched",
+      value: lastPlayedTitle,
+      meta: "The most recent playable game you interacted with on this device.",
+    },
     {
       title: "Best score",
       value: lastSession.bestScore || 0,
-      meta:
-        lastSession.game === "snake-xavia"
-          ? "Highest local Snake Xavia run saved on this browser"
-          : "Highest local 2048 run saved on this browser",
+      meta: `${lastPlayedTitle} personal best stored locally in this browser.`,
     },
     {
       title: "Latest score",
       value: lastSession.score || 0,
-      meta: "Your current or most recent session score",
+      meta: lastSession.gameOver ? "That run ended. There is room for a cleaner follow-up." : "The current run is still active.",
+    },
+    {
+      title: lastSession.game === "snake-xavia" ? "Longest snake" : "Top tile",
+      value: lastSession.highestTile || (lastSession.game === "snake-xavia" ? 3 : 4),
+      meta: lastSession.game === "snake-xavia" ? "Length reached on the current or latest run." : "Highest tile reached so far in the active browser save.",
+    },
+    {
+      title: "Session steps",
+      value: lastSession.moves || 0,
+      meta: "Movement count from the current or most recent session.",
     },
     {
       title: "Saved games",
       value: savedGames.length,
-      meta: "Titles pinned for quick access on this page",
-    },
-    {
-      title: lastSession.game === "snake-xavia" ? "Snake length" : "Top tile",
-      value: lastSession.highestTile || 4,
-      meta:
-        lastSession.gameOver
-          ? "Last run ended. Start another."
-          : "Current run is active.",
+      meta: "Shortlisted titles ready to reopen from this page.",
     },
   ];
 
   const spotlightCards = [
     {
-      title: "Puzzle lane is live",
-      copy: "2048 is fully playable inside Tengacion today while the rest of the catalog matures.",
+      title: `${featuredGame.title} is the current focus`,
+      copy: featuredGame.playable
+        ? `It is live right now with a cleaner stage, richer controls, and a more polished play loop.`
+        : `It is still a concept lane, but it now reads like a stronger part of the catalog instead of filler.`,
     },
     {
-      title: "Arcade lane is live",
-      copy: "Snake Xavia is now playable and gives the gaming page a faster reflex challenge.",
+      title: savedGames.length ? `${savedGames.length} saved lane${savedGames.length === 1 ? "" : "s"} ready` : "Start building a shortlist",
+      copy: savedGames.length
+        ? "You can switch between saved concepts and live games faster from the left rail."
+        : "Save any lane that feels promising and it will stay close for your next session.",
     },
     {
-      title: "Board games are being scoped",
-      copy: "Chess Room is a strong candidate for clubs, classes, and community groups.",
+      title: `${playableCount} live games, ${conceptCount} future lanes`,
+      copy: "The hub now feels like a real destination, not a waiting room, while the broader catalog keeps taking shape.",
+    },
+  ];
+
+  const heroMetrics = [
+    {
+      label: "Playable now",
+      value: playableCount,
+      meta: "Launch instantly",
+    },
+    {
+      label: "Concept lanes",
+      value: conceptCount,
+      meta: "Saved for future build",
+    },
+    {
+      label: "Saved by you",
+      value: savedGames.length,
+      meta: savedGames.length ? "Shortlist in progress" : "Start a shortlist",
     },
   ];
 
@@ -248,29 +338,57 @@ export default function GamingPage({ user }) {
       <section className="gaming-hero">
         <div className="gaming-hero-copy">
           <p className="gaming-kicker">Gaming hub</p>
-          <h1>Play something real while Tengacion builds its own originals.</h1>
+          <h1>Sharper games, cleaner sessions, and a real Tengacion play lane.</h1>
           <p>
-            The gaming lane now has a real destination, not a placeholder. Start with an
-            open-source web classic, save the concepts you want next, and use this page as the
-            launchpad for future Tengacion games.
+            The gaming page now behaves like a proper in-app destination. Pick a lane, jump into a
+            playable game instantly, save concepts worth returning to, and keep your local score
+            chase alive between sessions.
           </p>
+
+          <div className="gaming-hero-metrics">
+            {heroMetrics.map((item) => (
+              <article key={item.label} className="gaming-metric-card">
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <small>{item.meta}</small>
+              </article>
+            ))}
+          </div>
         </div>
 
-        <div className="gaming-hero-card" style={{ background: featuredGame.accent }}>
-          <span>{featuredGame.status}</span>
-          <strong>{featuredGame.title}</strong>
-          <p>{featuredGame.summary}</p>
-          <div className="gaming-hero-actions">
-            <button type="button" className="btn-primary" onClick={() => openGame(featuredGame.id)}>
-              {featuredGame.playable ? "Play now" : "Open preview"}
-            </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => toggleSavedGame(featuredGame.id)}
-            >
-              {savedGameIds.includes(featuredGame.id) ? "Saved" : "Save game"}
-            </button>
+        <div className="gaming-hero-stage">
+          <div className="gaming-hero-card" style={{ background: featuredGame.accent }}>
+            <span>{featuredGame.status}</span>
+            <strong>{featuredGame.title}</strong>
+            <p>{featuredGame.summary}</p>
+
+            <div className="gaming-card-meta">
+              <small>{featuredGame.genre}</small>
+              <small>{featuredGame.difficulty}</small>
+              <small>{featuredGame.session}</small>
+            </div>
+
+            <div className="gaming-hero-actions">
+              <button type="button" className="btn-primary" onClick={() => openGame(featuredGame.id)}>
+                {featuredGame.playable ? "Play now" : "Open preview"}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => toggleSavedGame(featuredGame.id)}
+              >
+                {savedGameIds.includes(featuredGame.id) ? "Saved" : "Save game"}
+              </button>
+            </div>
+          </div>
+
+          <div className="gaming-hero-notes">
+            {featuredGame.highlights.map((item) => (
+              <article key={item}>
+                <span />
+                <p>{item}</p>
+              </article>
+            ))}
           </div>
         </div>
       </section>
@@ -281,6 +399,7 @@ export default function GamingPage({ user }) {
             <p className="gaming-kicker">Top picks</p>
             <h2>Choose a game lane</h2>
           </div>
+
           <div className="gaming-chip-row">
             {GAME_CATEGORIES.map((category) => (
               <button
@@ -305,10 +424,19 @@ export default function GamingPage({ user }) {
             >
               <div className="gaming-game-card-art" style={{ background: game.accent }}>
                 <span>{game.genre}</span>
+                <strong>{game.playable ? "Live" : "Concept"}</strong>
               </div>
               <div className="gaming-game-card-body">
-                <strong>{game.title}</strong>
+                <div className="gaming-card-title-row">
+                  <strong>{game.title}</strong>
+                  {savedGameIds.includes(game.id) && <small className="gaming-card-save">Saved</small>}
+                </div>
                 <p>{game.summary}</p>
+                <div className="gaming-card-meta">
+                  <small>{game.difficulty}</small>
+                  <small>{game.controls}</small>
+                  <small>{game.session}</small>
+                </div>
               </div>
             </button>
           ))}
@@ -332,6 +460,25 @@ export default function GamingPage({ user }) {
           </div>
 
           <p className="gaming-panel-copy">{featuredGame.description}</p>
+
+          <div className="gaming-fact-grid">
+            <article className="gaming-fact-card">
+              <span>Difficulty</span>
+              <strong>{featuredGame.difficulty}</strong>
+            </article>
+            <article className="gaming-fact-card">
+              <span>Session</span>
+              <strong>{featuredGame.session}</strong>
+            </article>
+            <article className="gaming-fact-card">
+              <span>Controls</span>
+              <strong>{featuredGame.controls}</strong>
+            </article>
+            <article className="gaming-fact-card">
+              <span>Status</span>
+              <strong>{featuredGame.status}</strong>
+            </article>
+          </div>
 
           {featuredGame.playable ? (
             <>
@@ -357,6 +504,16 @@ export default function GamingPage({ user }) {
               <span>{featuredGame.status}</span>
               <h3>{featuredGame.title}</h3>
               <p>{featuredGame.description}</p>
+
+              <div className="gaming-highlight-list">
+                {featuredGame.highlights.map((item) => (
+                  <article key={item}>
+                    <span />
+                    <p>{item}</p>
+                  </article>
+                ))}
+              </div>
+
               <button
                 type="button"
                 className="btn-secondary"
@@ -369,8 +526,25 @@ export default function GamingPage({ user }) {
         </div>
 
         <div className="gaming-side-stack">
+          <div className="gaming-side-card gaming-side-card-focus">
+            <p className="gaming-kicker">Game intel</p>
+            <div className="gaming-intel-list">
+              {featuredGame.highlights.map((item) => (
+                <article key={item} className="gaming-intel-item">
+                  <span />
+                  <p>{item}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+
           <div className="gaming-side-card">
-            <p className="gaming-kicker">Quick stats</p>
+            <p className="gaming-kicker">Live session</p>
+            <div className="gaming-current-game">
+              <strong>{lastPlayedTitle}</strong>
+              <small>{lastSession.gameOver ? "Last run ended" : "Run in progress"}</small>
+            </div>
+
             <div className="gaming-stat-list">
               <div>
                 <span>Current score</span>
@@ -381,15 +555,11 @@ export default function GamingPage({ user }) {
                 <strong>{lastSession.bestScore || 0}</strong>
               </div>
               <div>
-                <span>{lastSession.game === "snake-xavia" ? "Snake length" : "Moves played"}</span>
-                <strong>
-                  {lastSession.game === "snake-xavia"
-                    ? lastSession.highestTile || 3
-                    : lastSession.moves || 0}
-                </strong>
+                <span>{lastSession.game === "snake-xavia" ? "Snake length" : "Top tile"}</span>
+                <strong>{lastSession.highestTile || (lastSession.game === "snake-xavia" ? 3 : 4)}</strong>
               </div>
               <div>
-                <span>{lastSession.game === "snake-xavia" ? "Steps" : "Moves played"}</span>
+                <span>Steps</span>
                 <strong>{lastSession.moves || 0}</strong>
               </div>
             </div>
@@ -452,10 +622,19 @@ export default function GamingPage({ user }) {
             >
               <div className="gaming-game-card-art" style={{ background: game.accent }}>
                 <span>{game.genre}</span>
+                <strong>{game.playable ? "Live" : "Concept"}</strong>
               </div>
               <div className="gaming-game-card-body">
-                <strong>{game.title}</strong>
+                <div className="gaming-card-title-row">
+                  <strong>{game.title}</strong>
+                  <small className="gaming-card-save">Saved</small>
+                </div>
                 <p>{game.summary}</p>
+                <div className="gaming-card-meta">
+                  <small>{game.difficulty}</small>
+                  <small>{game.controls}</small>
+                  <small>{game.session}</small>
+                </div>
               </div>
             </button>
           ))}
@@ -502,6 +681,15 @@ export default function GamingPage({ user }) {
               </div>
             </div>
 
+            <div className="gaming-sidebar-stats">
+              {heroMetrics.map((item) => (
+                <article key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </article>
+              ))}
+            </div>
+
             <label className="gaming-search-shell">
               <input
                 type="search"
@@ -535,17 +723,23 @@ export default function GamingPage({ user }) {
               </button>
             </div>
 
-            <div className="gaming-mini-list">
-              {savedGames.slice(0, 4).map((game) => (
-                <button key={game.id} type="button" onClick={() => openGame(game.id)}>
-                  <span className="swatch" style={{ background: game.accent }} />
-                  <div>
-                    <strong>{game.title}</strong>
-                    <small>{game.genre}</small>
-                  </div>
-                </button>
-              ))}
-            </div>
+            {savedGames.length ? (
+              <div className="gaming-mini-list">
+                {savedGames.slice(0, 4).map((game) => (
+                  <button key={game.id} type="button" onClick={() => openGame(game.id)}>
+                    <span className="swatch" style={{ background: game.accent }} />
+                    <div>
+                      <strong>{game.title}</strong>
+                      <small>{game.genre}</small>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="gaming-mini-empty">
+                Save a lane and it will show up here for quick return visits.
+              </div>
+            )}
           </div>
 
           <div className="gaming-sidebar-card">

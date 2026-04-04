@@ -17,9 +17,24 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-right" style={{ width: "100%" }}>
-        <form className="login-box" onSubmit={submit}>
+    <div className="login-container login-container--compact">
+      <div className="login-compact-shell">
+        <div className="login-compact-brand">
+          <div className="login-logo">
+            <img
+              src="/tengacion_logo_512.png"
+              alt="Tengacion"
+              style={{ width: 60, height: 60 }}
+            />
+          </div>
+          <div className="login-logo-section">
+            <h1 className="login-title">Tengacion</h1>
+            <p className="login-subtitle">Connect with friends and family members</p>
+          </div>
+        </div>
+
+        <div className="login-right login-right--full">
+          <form className="login-box login-box--compact" onSubmit={submit}>
           <h2>Forgot password</h2>
           <input
             type="email"
@@ -29,9 +44,10 @@ export default function ForgotPasswordPage() {
             onChange={(event) => setEmail(event.target.value)}
           />
           <button type="submit" className="login-btn">Send reset link</button>
-          {message ? <p>{message}</p> : null}
-          <Link to="/login">Back to login</Link>
-        </form>
+            {message ? <p className="login-status-message">{message}</p> : null}
+            <Link to="/login" className="register-login-link">Back to login</Link>
+          </form>
+        </div>
       </div>
     </div>
   );

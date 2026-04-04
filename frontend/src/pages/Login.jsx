@@ -177,41 +177,15 @@ export default function Login() {
                     : "Open your authenticator app and enter the current 6-digit code."}
               </p>
               {challenge.purpose === "mfa_setup" ? (
-                <div
-                  style={{
-                    marginTop: 14,
-                    display: "flex",
-                    justifyContent: "center",
-                  }}
-                >
+                <div className="auth-qr-wrap">
                   {qrCodeUrl ? (
                     <img
                       src={qrCodeUrl}
                       alt="Scan this QR code with your authenticator app"
-                      style={{
-                        width: 220,
-                        height: 220,
-                        background: "#fff",
-                        padding: 10,
-                        borderRadius: 18,
-                        border: "1px solid rgba(15, 23, 42, 0.08)",
-                      }}
+                      className="auth-qr-image"
                     />
                   ) : (
-                    <div
-                      style={{
-                        width: 220,
-                        minHeight: 220,
-                        display: "grid",
-                        placeItems: "center",
-                        background: "#f8fafc",
-                        borderRadius: 18,
-                        border: "1px solid rgba(15, 23, 42, 0.08)",
-                        padding: 18,
-                        textAlign: "center",
-                        color: "#475569",
-                      }}
-                    >
+                    <div className="auth-qr-placeholder">
                       {qrError || "Generating QR code..."}
                     </div>
                   )}
@@ -326,15 +300,7 @@ export default function Login() {
           <Link to="/forgot-password" className="forgot-password">
             Forgot password?
           </Link>
-          <div
-            style={{
-              marginTop: 12,
-              display: "flex",
-              gap: 10,
-              justifyContent: "center",
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="login-footer-links">
             <Link to="/terms">Terms</Link>
             <Link to="/privacy">Privacy</Link>
             <Link to="/community-guidelines">Guidelines</Link>

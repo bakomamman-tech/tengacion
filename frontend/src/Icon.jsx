@@ -1,5 +1,5 @@
 export const Icon = ({ name, size = 22, active }) => {
-  const color = active ? "#1877f2" : "currentColor";
+  const color = active ? "var(--brand)" : "currentColor";
 
   const icons = {
     home: (
@@ -40,3 +40,4 @@ export const Icon = ({ name, size = 22, active }) => {
     </svg>
   );
 };
+

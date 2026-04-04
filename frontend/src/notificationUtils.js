@@ -29,7 +29,7 @@ const NOTIFICATION_TYPE_LABELS = {
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "Tengacion"
-  )}&size=96&background=DFE8F6&color=1D3A6D`;
+  )}&size=96&background=E3EFE7&color=1B5838`;
 
 const isRecord = (value) => value && typeof value === "object";
 

@@ -170,7 +170,7 @@ const inferAudioMimeFromUrl = (url = "") => {
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "User"
-  )}&size=96&background=DFE8F6&color=1D3A6D`;
+  )}&size=96&background=E3EFE7&color=1B5838`;
 
 const PINNED_MESSAGE_STORAGE_KEY = "tengacion:messenger:pinned-messages";
 

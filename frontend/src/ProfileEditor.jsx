@@ -27,7 +27,7 @@ import { useDialog } from "./components/ui/useDialog";
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "User"
-  )}&size=240&background=DFE8F6&color=1D3A6D`;
+  )}&size=240&background=E3EFE7&color=1B5838`;
 
 const iconPathByName = {
   home: "M3 9.5L12 3l9 6.5V21a1 1 0 0 1-1 1h-6v-7h-4v7H4a1 1 0 0 1-1-1V9.5z",

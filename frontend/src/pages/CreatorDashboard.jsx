@@ -60,7 +60,7 @@ const percentNumber = new Intl.NumberFormat("en-US", {
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "Creator"
-  )}&size=120&background=DFE8F6&color=1D3A6D`;
+  )}&size=120&background=E3EFE7&color=1B5838`;
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 

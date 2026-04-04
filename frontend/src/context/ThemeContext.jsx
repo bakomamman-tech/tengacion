@@ -13,7 +13,7 @@ const readStoredTheme = () => {
   } catch {
     // Ignore storage access errors and fall back to dark.
   }
-  return "dark";
+  return "light";
 };
 
 export function ThemeProvider({ children }) {

@@ -15,7 +15,7 @@ const TABS = [
 ];
 
 const fallbackAvatar = (name) =>
-  `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "User")}&size=240&background=DFE8F6&color=1D3A6D`;
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "User")}&size=240&background=E3EFE7&color=1B5838`;
 
 export default function Search() {
   const [params, setParams] = useSearchParams();

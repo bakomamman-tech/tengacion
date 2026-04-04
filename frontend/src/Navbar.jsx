@@ -14,7 +14,7 @@ import { getNotificationTarget } from "./notificationUtils";
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "User"
-  )}&size=96&background=DFE8F6&color=1D3A6D`;
+  )}&size=96&background=E3EFE7&color=1B5838`;
 
 const GridIcon = ({ size = 18 }) => (
   <svg
@@ -71,7 +71,7 @@ const BackIcon = () => (
 
 const MessengerGlyph = ({ size = 44 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-    <circle cx="12" cy="12" r="11" fill="#1877f2" />
+    <circle cx="12" cy="12" r="11" fill="var(--brand)" />
     <path
       d="M14.9 7.2 8.8 12.7h3.2l-1.2 4.1 5.4-5.5H13z"
       fill="#fff"
@@ -1163,3 +1163,4 @@ export default function Navbar({
     </header>
   );
 }
+

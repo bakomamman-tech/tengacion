@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 const BOARD_SIZE = 14;
 const STORAGE_KEY = "tengacion.gaming.snake-xavia.state";
-const DEFAULT_DIFFICULTY = "classic";
+const DEFAULT_DIFFICULTY = "slow";
 const SWIPE_THRESHOLD = 24;
 const STARTING_SNAKE = [
   { x: 4, y: 7 },
@@ -10,33 +10,39 @@ const STARTING_SNAKE = [
   { x: 2, y: 7 },
 ];
 
+const LEGACY_LEVEL_MAP = {
+  cruise: "slow",
+  classic: "normal",
+  blitz: "fast",
+};
+
 const DIFFICULTIES = {
-  cruise: {
-    label: "Cruise",
-    baseSpeed: 176,
-    minSpeed: 116,
-    speedStep: 10,
-    scoreStep: 50,
+  slow: {
+    label: "Slow",
+    baseSpeed: 230,
+    minSpeed: 168,
+    speedStep: 8,
+    scoreStep: 56,
     foodScore: 8,
-    description: "Longer sessions with a calmer speed curve.",
+    description: "Best for learning the lane and making cleaner turns.",
   },
-  classic: {
-    label: "Classic",
-    baseSpeed: 150,
-    minSpeed: 94,
-    speedStep: 9,
-    scoreStep: 40,
+  normal: {
+    label: "Normal",
+    baseSpeed: 188,
+    minSpeed: 128,
+    speedStep: 8,
+    scoreStep: 48,
     foodScore: 10,
     description: "Balanced pace for quick score-chasing runs.",
   },
-  blitz: {
-    label: "Blitz",
-    baseSpeed: 126,
-    minSpeed: 76,
+  fast: {
+    label: "Fast",
+    baseSpeed: 156,
+    minSpeed: 104,
     speedStep: 8,
-    scoreStep: 32,
+    scoreStep: 42,
     foodScore: 12,
-    description: "Sharper starts and faster pressure ramps.",
+    description: "A sharper speed level for players who want more pressure.",
   },
 };
 
@@ -85,7 +91,10 @@ const getStoredSnapshot = () => {
 
     return {
       bestScore: Number(parsed?.bestScore) || 0,
-      difficulty: DIFFICULTIES[parsed?.difficulty] ? parsed.difficulty : DEFAULT_DIFFICULTY,
+      difficulty:
+        DIFFICULTIES[parsed?.difficulty]
+          ? parsed.difficulty
+          : LEGACY_LEVEL_MAP[parsed?.difficulty] || DEFAULT_DIFFICULTY,
     };
   } catch {
     const legacyBest = Number(window.localStorage.getItem(STORAGE_KEY));
@@ -307,13 +316,13 @@ export default function SnakeXavia({ onSessionChange }) {
   const speed = getSpeedForState(difficulty, score);
   const nextRampAt = Math.ceil((score + 1) / difficultyConfig.scoreStep) * difficultyConfig.scoreStep;
   const paceLabel =
-    speed <= 88 ? "Ferocious" : speed <= 110 ? "Fast" : speed <= 140 ? "Flowing" : "Steady";
+    speed <= 118 ? "High" : speed <= 150 ? "Elevated" : speed <= 190 ? "Balanced" : "Relaxed";
 
   const statusText = gameOver
     ? "You crashed. Spin up another run and chase a cleaner line."
     : paused
       ? "Paused. Press Space or tap any direction to continue."
-      : `${difficultyConfig.label} mode is live. Use arrow keys, WASD, or swipe to steer.`;
+      : `${difficultyConfig.label} speed is live. Use arrow keys, WASD, or swipe to steer.`;
 
   const handleTouchStart = (event) => {
     const touch = event.changedTouches?.[0];
@@ -358,28 +367,23 @@ export default function SnakeXavia({ onSessionChange }) {
           <h3>Snake Xavia</h3>
           <p>{statusText}</p>
         </div>
-        <div className="game-snake-head-actions">
-          <button type="button" className="btn-secondary" onClick={togglePause} disabled={gameOver}>
-            {paused ? "Resume" : "Pause"}
-          </button>
-          <button type="button" className="btn-secondary" onClick={startNewGame}>
-            New game
-          </button>
-        </div>
       </div>
 
       <div className="game-snake-toolbar">
-        <div className="game-snake-difficulty" role="tablist" aria-label="Snake difficulty">
-          {Object.entries(DIFFICULTIES).map(([key, option]) => (
-            <button
-              key={key}
-              type="button"
-              className={difficulty === key ? "active" : ""}
-              onClick={() => changeDifficulty(key)}
-            >
-              {option.label}
-            </button>
-          ))}
+        <div className="game-snake-speed-shell">
+          <span className="game-snake-speed-label">Speed level</span>
+          <div className="game-snake-difficulty" role="tablist" aria-label="Snake speed levels">
+            {Object.entries(DIFFICULTIES).map(([key, option]) => (
+              <button
+                key={key}
+                type="button"
+                className={difficulty === key ? "active" : ""}
+                onClick={() => changeDifficulty(key)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="game-snake-rhythm">
@@ -435,7 +439,7 @@ export default function SnakeXavia({ onSessionChange }) {
               <strong>{gameOver ? "Run ended" : "Run paused"}</strong>
               <p>
                 {gameOver
-                  ? "Tap New game to restart or switch modes for a different pace."
+                  ? "Tap New game to restart or switch speed levels for a different pace."
                   : "Tap Resume, press Space, or choose a direction to jump back in."}
               </p>
             </div>
@@ -444,7 +448,7 @@ export default function SnakeXavia({ onSessionChange }) {
 
         <div className="game-snake-aside">
           <div className="game-snake-aside-card">
-            <span>Mode note</span>
+            <span>Speed note</span>
             <p>{difficultyConfig.description}</p>
           </div>
           <div className="game-snake-aside-card">
@@ -463,6 +467,15 @@ export default function SnakeXavia({ onSessionChange }) {
             </button>
             <button type="button" onClick={() => queueDirection("right")}>
               Right
+            </button>
+          </div>
+
+          <div className="game-snake-bottom-actions">
+            <button type="button" className="btn-secondary" onClick={togglePause} disabled={gameOver}>
+              {paused ? "Resume" : "Pause"}
+            </button>
+            <button type="button" className="btn-secondary" onClick={startNewGame}>
+              New game
             </button>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { startTransition, useDeferredValue, useEffect, useMemo, useState } from 
 import { useNavigate } from "react-router-dom";
 
 import Navbar from "../Navbar";
+import ChessRoom from "../components/gaming/ChessRoom";
 import Tengacion2048 from "../components/gaming/Tengacion2048";
 import SnakeXavia from "../components/gaming/SnakeXavia";
 
@@ -110,20 +111,21 @@ const GAME_LIBRARY = [
     id: "chess-room",
     title: "Chess Room",
     genre: "Board",
-    status: "Community request",
-    playable: false,
+    status: "Playable now",
+    playable: true,
     accent: "linear-gradient(145deg, #989179 0%, #373224 100%)",
-    summary: "A turn-based room for clubs, study circles, and small groups.",
+    summary: "A polished local chess table for head-to-head play inside Tengacion.",
     description:
-      "Chess Room is being scoped as a social board experience where communities can learn, watch, and play without leaving Tengacion.",
+      "Play a full local chess match with legal moves, castling, promotion, move history, and a clean room-style board that stays saved on this device.",
     difficulty: "Skill-based",
-    session: "10-25 min",
-    controls: "Tap and move",
+    session: "8-40 min",
+    controls: "Tap pieces and squares",
     highlights: [
-      "Strong crossover value for schools and fan communities.",
-      "Board rooms could become a natural home for commentary.",
-      "Saved interest helps signal demand for multiplayer lanes.",
+      "Full legal move flow includes castling, promotion, and en passant.",
+      "Flip the board to suit over-the-table club play or teaching moments.",
+      "Room log and local saves keep the match easy to revisit.",
     ],
+    builtInLabel: "Built inside Tengacion",
   },
   {
     id: "memory-atlas",
@@ -194,6 +196,11 @@ export default function GamingPage({ user }) {
     highestTile: 4,
     gameOver: false,
     game: "2048-classic",
+    turn: "w",
+    materialLead: "Even board",
+    capturedWhiteValue: 0,
+    capturedBlackValue: 0,
+    status: "White to move",
   });
 
   const deferredSearch = useDeferredValue(search);
@@ -234,40 +241,83 @@ export default function GamingPage({ user }) {
     []
   );
   const conceptCount = GAME_LIBRARY.length - playableCount;
-  const lastPlayedTitle = lastSession.game === "snake-xavia" ? "Snake Xavia" : "2048 Classic";
-
-  const activityCards = [
-    {
-      title: "Last lane touched",
-      value: lastPlayedTitle,
-      meta: "The most recent playable game you interacted with on this device.",
-    },
-    {
-      title: "Best score",
-      value: lastSession.bestScore || 0,
-      meta: `${lastPlayedTitle} personal best stored locally in this browser.`,
-    },
-    {
-      title: "Latest score",
-      value: lastSession.score || 0,
-      meta: lastSession.gameOver ? "That run ended. There is room for a cleaner follow-up." : "The current run is still active.",
-    },
-    {
-      title: lastSession.game === "snake-xavia" ? "Longest snake" : "Top tile",
-      value: lastSession.highestTile || (lastSession.game === "snake-xavia" ? 3 : 4),
-      meta: lastSession.game === "snake-xavia" ? "Length reached on the current or latest run." : "Highest tile reached so far in the active browser save.",
-    },
-    {
-      title: "Session steps",
-      value: lastSession.moves || 0,
-      meta: "Movement count from the current or most recent session.",
-    },
-    {
-      title: "Saved games",
-      value: savedGames.length,
-      meta: "Shortlisted titles ready to reopen from this page.",
-    },
-  ];
+  const isChessSession = lastSession.game === "chess-room";
+  const lastPlayedTitle =
+    lastSession.game === "snake-xavia"
+      ? "Snake Xavia"
+      : lastSession.game === "chess-room"
+        ? "Chess Room"
+        : "2048 Classic";
+  const activityCards = isChessSession
+    ? [
+        {
+          title: "Last lane touched",
+          value: lastPlayedTitle,
+          meta: "The most recent live board room you opened on this device.",
+        },
+        {
+          title: "Side to move",
+          value: lastSession.turn === "b" ? "Black" : "White",
+          meta: "Whose turn it is in the current saved chess room.",
+        },
+        {
+          title: "Room state",
+          value: lastSession.status || "White to move",
+          meta: "Live match status from the local chess session.",
+        },
+        {
+          title: "Material lead",
+          value: lastSession.materialLead || "Even board",
+          meta: "Quick board read based on captured material.",
+        },
+        {
+          title: "Moves played",
+          value: lastSession.moves || 0,
+          meta: "Total legal moves made in the current room.",
+        },
+        {
+          title: "Saved games",
+          value: savedGames.length,
+          meta: "Shortlisted titles ready to reopen from this page.",
+        },
+      ]
+    : [
+        {
+          title: "Last lane touched",
+          value: lastPlayedTitle,
+          meta: "The most recent playable game you interacted with on this device.",
+        },
+        {
+          title: "Best score",
+          value: lastSession.bestScore || 0,
+          meta: `${lastPlayedTitle} personal best stored locally in this browser.`,
+        },
+        {
+          title: "Latest score",
+          value: lastSession.score || 0,
+          meta: lastSession.gameOver
+            ? "That run ended. There is room for a cleaner follow-up."
+            : "The current run is still active.",
+        },
+        {
+          title: lastSession.game === "snake-xavia" ? "Longest snake" : "Top tile",
+          value: lastSession.highestTile || (lastSession.game === "snake-xavia" ? 3 : 4),
+          meta:
+            lastSession.game === "snake-xavia"
+              ? "Length reached on the current or latest run."
+              : "Highest tile reached so far in the active browser save.",
+        },
+        {
+          title: "Session steps",
+          value: lastSession.moves || 0,
+          meta: "Movement count from the current or most recent session.",
+        },
+        {
+          title: "Saved games",
+          value: savedGames.length,
+          meta: "Shortlisted titles ready to reopen from this page.",
+        },
+      ];
 
   const spotlightCards = [
     {
@@ -326,6 +376,10 @@ export default function GamingPage({ user }) {
   };
 
   const renderPlayableGame = () => {
+    if (featuredGame.id === "chess-room") {
+      return <ChessRoom onSessionChange={setLastSession} />;
+    }
+
     if (featuredGame.id === "snake-xavia") {
       return <SnakeXavia onSessionChange={setLastSession} />;
     }
@@ -540,25 +594,43 @@ export default function GamingPage({ user }) {
             <p className="gaming-kicker">Live session</p>
             <div className="gaming-current-game">
               <strong>{lastPlayedTitle}</strong>
-              <small>{lastSession.gameOver ? "Last run ended" : "Run in progress"}</small>
+              <small>
+                {isChessSession
+                  ? lastSession.status || "White to move"
+                  : lastSession.gameOver
+                    ? "Last run ended"
+                    : "Run in progress"}
+              </small>
             </div>
 
             <div className="gaming-stat-list">
               <div>
-                <span>Current score</span>
-                <strong>{lastSession.score || 0}</strong>
+                <span>{isChessSession ? "Turn" : "Current score"}</span>
+                <strong>
+                  {isChessSession ? (lastSession.turn === "b" ? "Black" : "White") : lastSession.score || 0}
+                </strong>
               </div>
               <div>
-                <span>Best score</span>
-                <strong>{lastSession.bestScore || 0}</strong>
+                <span>{isChessSession ? "Moves" : "Best score"}</span>
+                <strong>{isChessSession ? lastSession.moves || 0 : lastSession.bestScore || 0}</strong>
               </div>
               <div>
-                <span>{lastSession.game === "snake-xavia" ? "Snake length" : "Top tile"}</span>
-                <strong>{lastSession.highestTile || (lastSession.game === "snake-xavia" ? 3 : 4)}</strong>
+                <span>
+                  {isChessSession
+                    ? "White capture"
+                    : lastSession.game === "snake-xavia"
+                      ? "Snake length"
+                      : "Top tile"}
+                </span>
+                <strong>
+                  {isChessSession
+                    ? lastSession.capturedWhiteValue || 0
+                    : lastSession.highestTile || (lastSession.game === "snake-xavia" ? 3 : 4)}
+                </strong>
               </div>
               <div>
-                <span>Steps</span>
-                <strong>{lastSession.moves || 0}</strong>
+                <span>{isChessSession ? "Black capture" : "Steps"}</span>
+                <strong>{isChessSession ? lastSession.capturedBlackValue || 0 : lastSession.moves || 0}</strong>
               </div>
             </div>
           </div>

@@ -2329,7 +2329,8 @@ textarea:focus {
 
 .gaming-kicker,
 .game-2048-kicker,
-.game-snake-kicker {
+.game-snake-kicker,
+.game-chess-kicker {
   margin: 0 0 10px;
   font-size: 12px;
   font-weight: 800;
@@ -2346,7 +2347,8 @@ textarea:focus {
 .gaming-empty-state h3,
 .gaming-coming-soon-card h3,
 .game-2048-head h3,
-.game-snake-head h3 {
+.game-snake-head h3,
+.game-chess-head h3 {
   margin: 0;
 }
 
@@ -2355,7 +2357,8 @@ textarea:focus {
 .gaming-section-head,
 .gaming-link-row,
 .game-2048-head,
-.game-snake-head {
+.game-snake-head,
+.game-chess-head {
   display: flex;
   align-items: start;
   justify-content: space-between;
@@ -2876,7 +2879,8 @@ textarea:focus {
 .gaming-stat-list,
 .game-2048-stats,
 .game-snake-stats,
-.game-2048-pulse {
+.game-2048-pulse,
+.game-chess-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -2886,7 +2890,8 @@ textarea:focus {
 .game-2048-stats > div,
 .gaming-activity-card,
 .game-2048-pulse article,
-.game-snake-stats > div {
+.game-snake-stats > div,
+.game-chess-stats > div {
   padding: 16px 18px;
   border-radius: 18px;
 }
@@ -2902,43 +2907,50 @@ textarea:focus {
 }
 
 .game-2048-shell,
-.game-snake-shell {
+.game-snake-shell,
+.game-chess-shell {
   display: grid;
   gap: 18px;
 }
 
 .game-2048-head,
-.game-snake-head {
+.game-snake-head,
+.game-chess-head {
   align-items: end;
 }
 
 .game-2048-head p,
-.game-snake-head p {
+.game-snake-head p,
+.game-chess-head p {
   margin: 8px 0 0;
   max-width: 560px;
 }
 
 .game-2048-head-actions,
-.game-snake-head-actions {
+.game-snake-head-actions,
+.game-chess-head-actions {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
 }
 
 .game-2048-stage,
-.game-snake-stage {
+.game-snake-stage,
+.game-chess-stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 0.48fr);
   gap: 16px;
 }
 
 .game-2048-board-shell,
-.game-snake-board-shell {
+.game-snake-board-shell,
+.game-chess-board-shell {
   position: relative;
 }
 
 .game-2048-board,
-.game-snake-board {
+.game-snake-board,
+.game-chess-board {
   position: relative;
   z-index: 0;
 }
@@ -2983,7 +2995,8 @@ textarea:focus {
 .game-2048-tile.v2048 { background: linear-gradient(145deg, #9ce6a5, #246843); color: #f8fff9; box-shadow: 0 16px 32px rgba(52, 156, 94, 0.3); }
 
 .game-2048-overlay,
-.game-snake-overlay {
+.game-snake-overlay,
+.game-chess-overlay {
   position: absolute;
   inset: 14px;
   display: grid;
@@ -2996,31 +3009,39 @@ textarea:focus {
 }
 
 .game-2048-overlay strong,
-.game-snake-overlay strong {
+.game-snake-overlay strong,
+.game-chess-overlay strong {
   font-size: 28px;
   line-height: 1;
 }
 
 .game-2048-overlay p,
-.game-snake-overlay p {
+.game-snake-overlay p,
+.game-chess-overlay p {
   margin: 0;
 }
 
 .game-2048-aside,
-.game-snake-aside {
+.game-snake-aside,
+.game-chess-aside {
   display: grid;
   gap: 12px;
 }
 
 .game-2048-aside-card,
 .game-snake-aside-card,
-.game-snake-rhythm {
+.game-snake-rhythm,
+.game-chess-room-note,
+.game-chess-side-card {
   padding: 16px 18px;
   border-radius: 20px;
+  border: 1px solid transparent;
 }
 
 .game-2048-aside-card p,
-.game-snake-aside-card p {
+.game-snake-aside-card p,
+.game-chess-room-note p,
+.game-chess-side-card p {
   margin: 8px 0 0;
 }
 
@@ -3119,6 +3140,236 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1) inset;
 }
 
+.game-chess-toolbar {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.game-chess-room-note {
+  display: grid;
+  gap: 6px;
+  max-width: 620px;
+  border: 1px solid transparent;
+}
+
+.game-chess-room-note span,
+.game-chess-side-card > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.game-chess-room-note strong,
+.game-chess-side-card strong {
+  display: block;
+}
+
+.game-chess-toolbar-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.game-chess-toolbar-actions .btn-secondary {
+  min-height: 42px;
+}
+
+.game-chess-turn-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.game-chess-stats > div {
+  border: 1px solid transparent;
+}
+
+.game-chess-stats strong {
+  display: block;
+  margin-top: 6px;
+}
+
+.game-chess-board {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  aspect-ratio: 1 / 1;
+  border-radius: 30px;
+}
+
+.game-chess-square {
+  position: relative;
+  padding: 0;
+  border: none;
+  border-radius: 18px;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease,
+    filter 0.14s ease,
+    background 0.14s ease;
+}
+
+.game-chess-square:hover {
+  transform: translateY(-1px);
+}
+
+.game-chess-square:focus-visible {
+  outline: 3px solid rgba(236, 214, 152, 0.56);
+  outline-offset: 2px;
+}
+
+.game-chess-piece {
+  position: relative;
+  z-index: 2;
+  font-size: clamp(26px, 4vw, 54px);
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+}
+
+.game-chess-piece.white {
+  color: #fff7eb;
+  text-shadow:
+    0 1px 0 rgba(20, 19, 17, 0.2),
+    0 10px 16px rgba(0, 0, 0, 0.18);
+}
+
+.game-chess-piece.black {
+  color: #191512;
+  text-shadow: 0 8px 16px rgba(0, 0, 0, 0.14);
+}
+
+.game-chess-rank-label,
+.game-chess-file-label {
+  position: absolute;
+  z-index: 3;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  opacity: 0.72;
+  color: rgba(23, 49, 38, 0.72);
+  pointer-events: none;
+}
+
+.game-chess-rank-label {
+  top: 6px;
+  left: 7px;
+}
+
+.game-chess-file-label {
+  right: 7px;
+  bottom: 6px;
+  text-transform: lowercase;
+}
+
+.game-chess-move-marker {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.game-chess-move-marker.is-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+
+.game-chess-move-marker.is-capture {
+  width: 62%;
+  height: 62%;
+  border-radius: 50%;
+  background: transparent;
+  border: 3px solid currentColor;
+}
+
+.game-chess-promotion-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.game-chess-promotion-grid button {
+  min-height: 82px;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  font-weight: 800;
+}
+
+.game-chess-promotion-grid span {
+  font-size: 34px;
+  line-height: 1;
+}
+
+.game-chess-captured-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 34px;
+}
+
+.game-chess-captured-row span {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+}
+
+.game-chess-captured-row small,
+.game-chess-history-list small {
+  color: var(--muted);
+}
+
+.game-chess-history-list {
+  display: grid;
+  gap: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.game-chess-history-list article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+}
+
+.game-chess-history-list article p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.game-chess-history-list article strong {
+  margin-top: 1px;
+}
+
 html:not(.dark-mode) .gaming-page-shell {
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), transparent 30%),
@@ -3167,7 +3418,14 @@ html:not(.dark-mode) .game-snake-stats > div,
 html:not(.dark-mode) .game-snake-difficulty button,
 html:not(.dark-mode) .game-snake-rhythm,
 html:not(.dark-mode) .game-snake-aside-card,
-html:not(.dark-mode) .game-snake-controls button {
+html:not(.dark-mode) .game-snake-controls button,
+html:not(.dark-mode) .game-chess-stats > div,
+html:not(.dark-mode) .game-chess-room-note,
+html:not(.dark-mode) .game-chess-side-card,
+html:not(.dark-mode) .game-chess-turn-pill,
+html:not(.dark-mode) .game-chess-promotion-grid button,
+html:not(.dark-mode) .game-chess-history-list article,
+html:not(.dark-mode) .game-chess-captured-row span {
   background: rgba(255, 255, 255, 0.72);
   border-color: rgba(71, 126, 89, 0.14);
 }
@@ -3184,7 +3442,8 @@ html:not(.dark-mode) .gaming-game-card.active,
 html:not(.dark-mode) .game-2048-controls button:hover,
 html:not(.dark-mode) .game-snake-controls button:hover,
 html:not(.dark-mode) .game-snake-difficulty button:hover,
-html:not(.dark-mode) .game-snake-difficulty button.active {
+html:not(.dark-mode) .game-snake-difficulty button.active,
+html:not(.dark-mode) .game-chess-promotion-grid button:hover {
   background: rgba(255, 255, 255, 0.94);
   border-color: rgba(54, 113, 74, 0.24);
   box-shadow: 0 16px 30px rgba(49, 106, 68, 0.1);
@@ -3210,6 +3469,53 @@ html:not(.dark-mode) .game-snake-overlay {
 
 html:not(.dark-mode) .game-snake-board {
   background: linear-gradient(180deg, rgba(112, 181, 126, 0.16), rgba(224, 244, 230, 0.4));
+}
+
+html:not(.dark-mode) .game-chess-board {
+  background: linear-gradient(180deg, rgba(112, 181, 126, 0.14), rgba(231, 212, 169, 0.18));
+}
+
+html:not(.dark-mode) .game-chess-square.light {
+  background: linear-gradient(145deg, #f3e6cb, #e7d8b7);
+}
+
+html:not(.dark-mode) .game-chess-square.dark {
+  background: linear-gradient(145deg, #7da37a, #3b5e45);
+}
+
+html:not(.dark-mode) .game-chess-square.is-selected {
+  box-shadow:
+    inset 0 0 0 3px rgba(44, 104, 72, 0.5),
+    0 12px 20px rgba(37, 87, 55, 0.16);
+}
+
+html:not(.dark-mode) .game-chess-square.is-last-move {
+  box-shadow: inset 0 0 0 2px rgba(231, 181, 68, 0.56);
+}
+
+html:not(.dark-mode) .game-chess-square.is-checked {
+  box-shadow:
+    inset 0 0 0 3px rgba(203, 86, 86, 0.58),
+    0 10px 22px rgba(173, 61, 61, 0.18);
+}
+
+html:not(.dark-mode) .game-chess-move-marker.is-dot {
+  background: rgba(23, 49, 38, 0.2);
+}
+
+html:not(.dark-mode) .game-chess-move-marker.is-capture {
+  color: rgba(138, 58, 29, 0.72);
+}
+
+html:not(.dark-mode) .game-chess-overlay {
+  background: rgba(247, 252, 247, 0.9);
+  border: 1px solid rgba(71, 126, 89, 0.16);
+}
+
+html:not(.dark-mode) .game-chess-turn-pill.is-alert {
+  background: rgba(255, 236, 221, 0.94);
+  border-color: rgba(190, 96, 64, 0.28);
+  color: #7f3a22;
 }
 
 html:not(.dark-mode) .game-snake-cell.empty {
@@ -3277,7 +3583,14 @@ html.dark-mode .game-snake-stats > div,
 html.dark-mode .game-snake-difficulty button,
 html.dark-mode .game-snake-rhythm,
 html.dark-mode .game-snake-aside-card,
-html.dark-mode .game-snake-controls button {
+html.dark-mode .game-snake-controls button,
+html.dark-mode .game-chess-stats > div,
+html.dark-mode .game-chess-room-note,
+html.dark-mode .game-chess-side-card,
+html.dark-mode .game-chess-turn-pill,
+html.dark-mode .game-chess-promotion-grid button,
+html.dark-mode .game-chess-history-list article,
+html.dark-mode .game-chess-captured-row span {
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(102, 166, 125, 0.14);
 }
@@ -3294,7 +3607,8 @@ html.dark-mode .gaming-game-card.active,
 html.dark-mode .game-2048-controls button:hover,
 html.dark-mode .game-snake-controls button:hover,
 html.dark-mode .game-snake-difficulty button:hover,
-html.dark-mode .game-snake-difficulty button.active {
+html.dark-mode .game-snake-difficulty button.active,
+html.dark-mode .game-chess-promotion-grid button:hover {
   background: rgba(101, 180, 132, 0.14);
   border-color: rgba(139, 208, 167, 0.24);
   box-shadow: 0 16px 28px rgba(0, 0, 0, 0.22);
@@ -3322,6 +3636,58 @@ html.dark-mode .game-snake-board {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(86, 189, 127, 0.1));
 }
 
+html.dark-mode .game-chess-board {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(214, 175, 103, 0.09));
+}
+
+html.dark-mode .game-chess-square.light {
+  background: linear-gradient(145deg, #cdbf9e, #a89471);
+}
+
+html.dark-mode .game-chess-square.dark {
+  background: linear-gradient(145deg, #4f684f, #1d2e22);
+}
+
+html.dark-mode .game-chess-square.is-selected {
+  box-shadow:
+    inset 0 0 0 3px rgba(140, 214, 171, 0.46),
+    0 14px 24px rgba(0, 0, 0, 0.26);
+}
+
+html.dark-mode .game-chess-square.is-last-move {
+  box-shadow: inset 0 0 0 2px rgba(234, 189, 84, 0.58);
+}
+
+html.dark-mode .game-chess-square.is-checked {
+  box-shadow:
+    inset 0 0 0 3px rgba(226, 96, 96, 0.62),
+    0 12px 24px rgba(123, 33, 33, 0.28);
+}
+
+html.dark-mode .game-chess-move-marker.is-dot {
+  background: rgba(255, 246, 220, 0.24);
+}
+
+html.dark-mode .game-chess-move-marker.is-capture {
+  color: rgba(255, 205, 146, 0.76);
+}
+
+html.dark-mode .game-chess-rank-label,
+html.dark-mode .game-chess-file-label {
+  color: rgba(255, 244, 223, 0.7);
+}
+
+html.dark-mode .game-chess-overlay {
+  background: rgba(6, 26, 18, 0.84);
+  border: 1px solid rgba(102, 166, 125, 0.16);
+}
+
+html.dark-mode .game-chess-turn-pill.is-alert {
+  background: rgba(99, 38, 27, 0.52);
+  border-color: rgba(226, 126, 104, 0.28);
+  color: #ffd8cf;
+}
+
 html.dark-mode .game-snake-cell.empty {
   background: rgba(255, 255, 255, 0.05);
 }
@@ -3343,7 +3709,8 @@ html.dark-mode .game-snake-cell.food {
   .gaming-hero,
   .gaming-play-grid,
   .game-2048-stage,
-  .game-snake-stage {
+  .game-snake-stage,
+  .game-chess-stage {
     grid-template-columns: 1fr;
   }
 
@@ -3373,7 +3740,9 @@ html.dark-mode .game-snake-cell.food {
   .gaming-rail-head,
   .game-2048-head,
   .game-snake-head,
-  .game-snake-toolbar {
+  .game-snake-toolbar,
+  .game-chess-head,
+  .game-chess-toolbar {
     flex-direction: column;
     align-items: stretch;
   }
@@ -3385,6 +3754,7 @@ html.dark-mode .game-snake-cell.food {
   .game-2048-stats,
   .game-2048-pulse,
   .game-snake-stats,
+  .game-chess-stats,
   .gaming-activity-grid {
     grid-template-columns: 1fr;
   }
@@ -3392,7 +3762,8 @@ html.dark-mode .game-snake-cell.food {
   .gaming-card-grid,
   .game-2048-controls,
   .game-snake-controls,
-  .game-snake-bottom-actions {
+  .game-snake-bottom-actions,
+  .game-chess-promotion-grid {
     grid-template-columns: 1fr;
   }
 

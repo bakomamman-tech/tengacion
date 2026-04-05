@@ -159,153 +159,163 @@ export default function Login() {
       </div>
 
       <div className="login-right">
-        <form className="login-box" onSubmit={challenge ? handleChallengeSubmit : handleLogin}>
-          <h2>Log In</h2>
+        <div className="login-right-stack">
+          <form className="login-box" onSubmit={challenge ? handleChallengeSubmit : handleLogin}>
+            <h2>Log In</h2>
 
-          {challenge ? (
-            <div className="account-note-card" style={{ marginBottom: 18 }}>
-              <strong>
-                {challenge.purpose === "mfa_setup"
-                  ? "Set up your authenticator app"
-                  : "Finish sign-in"}
-              </strong>
-              <p>
-                {challenge.purpose === "mfa_setup"
-                  ? "Admin accounts must enable two-factor authentication before login completes."
-                  : challenge.method === "email"
-                    ? `Enter the code sent to ${challenge.maskedEmail || "your email"}.`
-                    : "Open your authenticator app and enter the current 6-digit code."}
-              </p>
-              {challenge.purpose === "mfa_setup" ? (
-                <div className="auth-qr-wrap">
-                  {qrCodeUrl ? (
-                    <img
-                      src={qrCodeUrl}
-                      alt="Scan this QR code with your authenticator app"
-                      className="auth-qr-image"
-                    />
-                  ) : (
-                    <div className="auth-qr-placeholder">
-                      {qrError || "Generating QR code..."}
-                    </div>
-                  )}
+            {challenge ? (
+              <div className="account-note-card" style={{ marginBottom: 18 }}>
+                <strong>
+                  {challenge.purpose === "mfa_setup"
+                    ? "Set up your authenticator app"
+                    : "Finish sign-in"}
+                </strong>
+                <p>
+                  {challenge.purpose === "mfa_setup"
+                    ? "Admin accounts must enable two-factor authentication before login completes."
+                    : challenge.method === "email"
+                      ? `Enter the code sent to ${challenge.maskedEmail || "your email"}.`
+                      : "Open your authenticator app and enter the current 6-digit code."}
+                </p>
+                {challenge.purpose === "mfa_setup" ? (
+                  <div className="auth-qr-wrap">
+                    {qrCodeUrl ? (
+                      <img
+                        src={qrCodeUrl}
+                        alt="Scan this QR code with your authenticator app"
+                        className="auth-qr-image"
+                      />
+                    ) : (
+                      <div className="auth-qr-placeholder">
+                        {qrError || "Generating QR code..."}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+                {challenge.setup?.secret ? (
+                  <p className="account-inline-message">
+                    Manual key: {challenge.setup.secret}
+                  </p>
+                ) : null}
+                {challenge.purpose === "mfa_setup" ? (
+                  <p className="account-inline-message">
+                    In Google Authenticator, tap <strong>Scan a QR code</strong>. If scanning does
+                    not work, choose <strong>Enter a setup key</strong> and paste the manual key.
+                  </p>
+                ) : null}
+                {Array.isArray(challenge.riskReasons) && challenge.riskReasons.length > 0 ? (
+                  <p className="account-inline-message">
+                    Risk checks: {challenge.riskReasons.join(", ")}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {!challenge ? (
+              <>
+                <div className="form-group">
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    name="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    disabled={loading}
+                    required
+                    className="login-input"
+                  />
                 </div>
-              ) : null}
-              {challenge.setup?.secret ? (
-                <p className="account-inline-message">
-                  Manual key: {challenge.setup.secret}
-                </p>
-              ) : null}
-              {challenge.purpose === "mfa_setup" ? (
-                <p className="account-inline-message">
-                  In Google Authenticator, tap <strong>Scan a QR code</strong>. If scanning does
-                  not work, choose <strong>Enter a setup key</strong> and paste the manual key.
-                </p>
-              ) : null}
-              {Array.isArray(challenge.riskReasons) && challenge.riskReasons.length > 0 ? (
-                <p className="account-inline-message">
-                  Risk checks: {challenge.riskReasons.join(", ")}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
 
-          {!challenge ? (
-            <>
+                <div className="form-group">
+                  <AuthPasswordField
+                    placeholder="Password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    disabled={loading}
+                    required
+                    className="login-input"
+                    autoComplete="current-password"
+                    name="password"
+                  />
+                </div>
+              </>
+            ) : (
               <div className="form-group">
                 <input
-                  type="email"
-                  placeholder="Email"
-                  name="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  type="text"
+                  placeholder="6-digit code"
+                  value={verificationCode}
+                  onChange={(event) => setVerificationCode(event.target.value)}
                   disabled={loading}
                   required
                   className="login-input"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
                 />
               </div>
-
-              <div className="form-group">
-                <AuthPasswordField
-                  placeholder="Password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  disabled={loading}
-                  required
-                  className="login-input"
-                  autoComplete="current-password"
-                  name="password"
-                />
-              </div>
-            </>
-          ) : (
-            <div className="form-group">
-              <input
-                type="text"
-                placeholder="6-digit code"
-                value={verificationCode}
-                onChange={(event) => setVerificationCode(event.target.value)}
-                disabled={loading}
-                required
-                className="login-input"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-              />
-            </div>
-          )}
-
-          <button type="submit" disabled={loading} className="login-btn">
-            {loading ? (
-              <>
-                <span className="spinner-mini"></span>
-                {challenge ? "Verifying..." : "Logging in..."}
-              </>
-            ) : challenge ? (
-              "Verify and continue"
-            ) : (
-              "Log In"
             )}
-          </button>
 
-          {challenge ? (
-            <button
-              type="button"
-              onClick={() => {
-                setChallenge(null);
-                setVerificationCode("");
-              }}
-              className="signup-btn"
-              disabled={loading}
-            >
-              Back to password login
+            <button type="submit" disabled={loading} className="login-btn">
+              {loading ? (
+                <>
+                  <span className="spinner-mini"></span>
+                  {challenge ? "Verifying..." : "Logging in..."}
+                </>
+              ) : challenge ? (
+                "Verify and continue"
+              ) : (
+                "Log In"
+              )}
             </button>
-          ) : (
-            <>
-              <div className="login-divider">
-                <span>or</span>
-              </div>
 
+            {challenge ? (
               <button
                 type="button"
-                onClick={() => navigate("/register")}
+                onClick={() => {
+                  setChallenge(null);
+                  setVerificationCode("");
+                }}
                 className="signup-btn"
                 disabled={loading}
               >
-                Create new account
+                Back to password login
               </button>
-            </>
-          )}
+            ) : (
+              <>
+                <div className="login-divider">
+                  <span>or</span>
+                </div>
 
-          <Link to="/forgot-password" className="forgot-password">
-            Forgot password?
+                <button
+                  type="button"
+                  onClick={() => navigate("/register")}
+                  className="signup-btn"
+                  disabled={loading}
+                >
+                  Create new account
+                </button>
+              </>
+            )}
+
+            <Link to="/forgot-password" className="forgot-password">
+              Forgot password?
+            </Link>
+            <div className="login-footer-links">
+              <Link to="/terms">Terms</Link>
+              <Link to="/privacy">Privacy</Link>
+              <Link to="/community-guidelines">Guidelines</Link>
+            </div>
+          </form>
+
+          <Link to="/developer-contact" className="developer-contact-cta">
+            <span className="developer-contact-cta__eyebrow">Need direct assistance?</span>
+            <span className="developer-contact-cta__title">Contact The Developer:</span>
+            <span className="developer-contact-cta__arrow" aria-hidden="true">
+              View details
+            </span>
           </Link>
-          <div className="login-footer-links">
-            <Link to="/terms">Terms</Link>
-            <Link to="/privacy">Privacy</Link>
-            <Link to="/community-guidelines">Guidelines</Link>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );

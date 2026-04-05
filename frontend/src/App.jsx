@@ -31,6 +31,7 @@ const SoundSettings = lazy(() => import("./pages/SoundSettings"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPassword"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPassword"));
 const VerifyEmailPage = lazy(() => import("./pages/VerifyEmail"));
+const DeveloperContactPage = lazy(() => import("./pages/DeveloperContact"));
 const OnboardingPage = lazy(() => import("./pages/Onboarding"));
 const TermsPage = lazy(() => import("./pages/Terms"));
 const CopyrightPolicyPage = lazy(() => import("./pages/CopyrightPolicy"));
@@ -135,6 +136,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/developer-contact" element={<DeveloperContactPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/copyright-policy" element={<CopyrightPolicyPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />

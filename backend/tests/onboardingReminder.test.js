@@ -97,7 +97,7 @@ describe("onboarding reminder login flow", () => {
       stateKey: "profile_email",
       needsProfile: true,
       needsEmailVerification: true,
-      actionLink: "/onboarding",
+      actionLink: "/profile/incomplete_user",
     });
 
     const reminder = await Message.findOne({
@@ -112,9 +112,10 @@ describe("onboarding reminder login flow", () => {
       stateKey: "profile_email",
       needsProfile: true,
       needsEmailVerification: true,
-      actionLink: "/onboarding",
+      actionLink: "/profile/incomplete_user",
     });
-    expect(String(reminder.text || "")).toContain("complete your profile");
+    expect(String(reminder.text || "")).toContain("complete your profile bio-data");
+    expect(String(reminder.text || "")).toContain("Open your profile page");
     expect(String(reminder.text || "")).toContain("verify your email");
 
     const notification = await Notification.findOne({
@@ -124,8 +125,8 @@ describe("onboarding reminder login flow", () => {
     }).lean();
 
     expect(notification).toBeTruthy();
-    expect(notification.metadata?.link).toBe("/onboarding");
-    expect(String(notification.metadata?.previewText || "")).toContain("complete your profile");
+    expect(notification.metadata?.link).toBe("/profile/incomplete_user");
+    expect(String(notification.metadata?.previewText || "")).toContain("complete your profile bio-data");
   });
 
   test("keeps the reminder to one messenger thread across repeat logins", async () => {

@@ -264,6 +264,7 @@ export default function ProfileEditor({ user }) {
   const friendsRef = useRef(null);
   const postsRef = useRef(null);
   const tabsRef = useRef(null);
+  const profileReminderStateKeyRef = useRef("");
 
   const isOwner = Boolean(profile?.isOwner);
   const relationshipStatus = profile?.relationship?.status || "none";
@@ -434,12 +435,12 @@ export default function ProfileEditor({ user }) {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [moreMenuOpen]);
 
-  const jumpTo = (ref) => {
+  const jumpTo = useCallback((ref) => {
     if (!ref?.current) {
       return;
     }
     ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  }, []);
 
   const copySharedPostLink = useCallback(async () => {
     if (!sharedPost?.url) {
@@ -480,10 +481,48 @@ export default function ProfileEditor({ user }) {
     }
   };
 
-  const openEditDetails = () => {
+  const openEditDetails = useCallback(() => {
     setEditingDetails(true);
     setTimeout(() => jumpTo(aboutRef), 50);
-  };
+  }, [jumpTo]);
+
+  useEffect(() => {
+    if (!isOwner || !profile || !location.state?.openEditProfile) {
+      return;
+    }
+
+    const reminderStateKey = `${location.key}:${targetUsername}`;
+    if (profileReminderStateKeyRef.current === reminderStateKey) {
+      return;
+    }
+    profileReminderStateKeyRef.current = reminderStateKey;
+
+    setActiveTab("about");
+    setShowTipCard(false);
+    openEditDetails();
+
+    if (location.state?.fromMessengerReminder) {
+      toast.success("Your profile editor is ready. Add your bio-data and save.");
+    }
+
+    const nextState = { ...(location.state || {}) };
+    delete nextState.openEditProfile;
+    delete nextState.fromMessengerReminder;
+
+    navigate(location.pathname, {
+      replace: true,
+      state: Object.keys(nextState).length ? nextState : undefined,
+    });
+  }, [
+    isOwner,
+    location.key,
+    location.pathname,
+    location.state,
+    navigate,
+    openEditDetails,
+    profile,
+    targetUsername,
+  ]);
 
   const saveDetails = async () => {
     if (!isOwner || saving) {

@@ -328,12 +328,8 @@ const getOnboardingReminderActionLink = (payload = {}) => {
 };
 
 const getOnboardingReminderCtaLabel = (payload = {}) => {
-  if (Boolean(payload?.needsProfile) && Boolean(payload?.needsEmailVerification)) {
-    return "Complete registration";
-  }
-
   if (Boolean(payload?.needsProfile)) {
-    return "Complete profile";
+    return "Open profile editor";
   }
 
   if (Boolean(payload?.needsEmailVerification)) {
@@ -341,6 +337,80 @@ const getOnboardingReminderCtaLabel = (payload = {}) => {
   }
 
   return "Continue registration";
+};
+
+const getOnboardingReminderCardContent = ({
+  payload = {},
+  currentUserName = "",
+  fallbackText = "",
+} = {}) => {
+  const needsProfile = Boolean(payload?.needsProfile);
+  const needsEmailVerification = Boolean(payload?.needsEmailVerification);
+  const actionLink = getOnboardingReminderActionLink(payload);
+  const ctaLabel = getOnboardingReminderCtaLabel(payload);
+  const displayName = String(currentUserName || "").trim() || "your account";
+  const titlePrefix = displayName && displayName !== "your account" ? `${displayName}, ` : "";
+
+  if (needsProfile && needsEmailVerification) {
+    return {
+      actionLink,
+      ctaLabel,
+      eyebrow: "Finish setup",
+      title: `${titlePrefix}finish setting up your account`,
+      copy:
+        "Open your profile page, add the missing bio-data, then verify your email so the account is fully completed and ready to use.",
+      steps: [
+        "Add your bio, country, city, hometown, school, work, and website",
+        "Save the profile details from the edit panel",
+        "Verify your email after your profile details are in place",
+      ],
+      note: "This opens your profile page with the edit section ready.",
+    };
+  }
+
+  if (needsProfile) {
+    return {
+      actionLink,
+      ctaLabel,
+      eyebrow: "Profile setup",
+      title: `${titlePrefix}complete your profile details`,
+      copy:
+        "Open your profile page, add your bio-data, and save it so your Tengacion profile feels complete from the start.",
+      steps: [
+        "Write a short bio people can quickly understand",
+        "Add your country, city, hometown, school, or workplace",
+        "Save the update and return with a more complete profile",
+      ],
+      note: "You will land on your profile page with editing already opened.",
+    };
+  }
+
+  if (needsEmailVerification) {
+    return {
+      actionLink,
+      ctaLabel,
+      eyebrow: "Security check",
+      title: "Verify your email address",
+      copy:
+        "Your profile is already in motion. The next step is confirming your email so the account is fully secured.",
+      steps: [
+        "Open the security page",
+        "Verify your email address",
+        "Return to Tengacion with your account fully confirmed",
+      ],
+      note: "This takes you directly to the security area.",
+    };
+  }
+
+  return {
+    actionLink,
+    ctaLabel,
+    eyebrow: "Registration",
+    title: "Continue setting up your account",
+    copy: String(fallbackText || "").trim() || "Open the next step and finish the remaining setup.",
+    steps: [],
+    note: "",
+  };
 };
 
 const normalizeMessage = (message) => {
@@ -2917,7 +2987,8 @@ export default function Messenger({
                     const isTextOnlyMessage =
                       Boolean(String(m.text || "").trim())
                       && (!Array.isArray(m.attachments) || m.attachments.length === 0)
-                      && m.type !== "contentCard";
+                      && m.type !== "contentCard"
+                      && m.metadata?.type !== "onboardingReminder";
                     const isVoiceOnlyMessage =
                       m.type === "voice"
                       && !String(m.text || "").trim()
@@ -2940,9 +3011,19 @@ export default function Messenger({
                     const onboardingReminderLink = onboardingReminderPayload
                       ? getOnboardingReminderActionLink(onboardingReminderPayload)
                       : "";
-                    const onboardingReminderLabel = onboardingReminderPayload
-                      ? getOnboardingReminderCtaLabel(onboardingReminderPayload)
-                      : "";
+                    const onboardingReminderCard = onboardingReminderPayload
+                      ? getOnboardingReminderCardContent({
+                        payload: onboardingReminderPayload,
+                        currentUserName: user?.name || user?.username || "",
+                        fallbackText: m.text,
+                      })
+                      : null;
+                    const onboardingReminderLinkState = onboardingReminderPayload?.needsProfile
+                      ? {
+                        openEditProfile: true,
+                        fromMessengerReminder: true,
+                      }
+                      : undefined;
                     const messageTime = (
                       <div className="msg-time">
                         {new Date(m.time).toLocaleTimeString([], {
@@ -3096,7 +3177,9 @@ export default function Messenger({
                         <div
                           className={`msg-bubble${isPinnedMessage ? " is-pinned" : ""}${
                             isVoiceOnlyMessage ? " msg-bubble--voice" : ""
-                          }${isTextOnlyMessage ? " msg-bubble--text" : ""}`}
+                          }${isTextOnlyMessage ? " msg-bubble--text" : ""}${
+                            onboardingReminderCard ? " msg-bubble--reminder" : ""
+                          }`}
                           onClick={() =>
                             setActiveMessageId((current) =>
                               current === messageKey ? "" : messageKey
@@ -3113,18 +3196,81 @@ export default function Messenger({
                             <ContentCardMessage metadata={m.metadata} />
                           ) : (
                             <>
-                              {m.text ? <div className="msg-text">{m.text}</div> : null}
-                              {onboardingReminderLink ? (
-                                <div className="msg-reminder-cta">
-                                  <Link
-                                    to={onboardingReminderLink}
-                                    className="msg-reminder-link"
-                                    onClick={(event) => event.stopPropagation()}
-                                  >
-                                    {onboardingReminderLabel}
-                                  </Link>
+                              {onboardingReminderCard ? (
+                                <div className="msg-reminder-card">
+                                  <div className="msg-reminder-top">
+                                    <span className="msg-reminder-eyebrow">
+                                      {onboardingReminderCard.eyebrow}
+                                    </span>
+                                    <span className="msg-reminder-badge">
+                                      {onboardingReminderPayload?.needsProfile
+                                        ? "Bio-data"
+                                        : onboardingReminderPayload?.needsEmailVerification
+                                          ? "Security"
+                                          : "Next step"}
+                                    </span>
+                                  </div>
+                                  <div className="msg-reminder-title">
+                                    {onboardingReminderCard.title}
+                                  </div>
+                                  <div className="msg-reminder-copy">
+                                    {onboardingReminderCard.copy}
+                                  </div>
+                                  {onboardingReminderCard.steps.length ? (
+                                    <div className="msg-reminder-steps">
+                                      {onboardingReminderCard.steps.map((step, index) => (
+                                        <div
+                                          key={`${messageKey}-reminder-step-${index}`}
+                                          className="msg-reminder-step"
+                                        >
+                                          <span className="msg-reminder-step-index">
+                                            {index + 1}
+                                          </span>
+                                          <span className="msg-reminder-step-text">{step}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                  {onboardingReminderCard.note ? (
+                                    <div className="msg-reminder-note">
+                                      {onboardingReminderCard.note}
+                                    </div>
+                                  ) : null}
+                                  {onboardingReminderLink ? (
+                                    <div className="msg-reminder-cta">
+                                      <Link
+                                        to={onboardingReminderLink}
+                                        state={onboardingReminderLinkState}
+                                        className="msg-reminder-link"
+                                        onClick={(event) => event.stopPropagation()}
+                                      >
+                                        {onboardingReminderCard.ctaLabel}
+                                        <span
+                                          className="msg-reminder-link-arrow"
+                                          aria-hidden="true"
+                                        >
+                                          →
+                                        </span>
+                                      </Link>
+                                    </div>
+                                  ) : null}
                                 </div>
-                              ) : null}
+                              ) : (
+                                <>
+                                  {m.text ? <div className="msg-text">{m.text}</div> : null}
+                                  {onboardingReminderLink ? (
+                                    <div className="msg-reminder-cta">
+                                      <Link
+                                        to={onboardingReminderLink}
+                                        className="msg-reminder-link"
+                                        onClick={(event) => event.stopPropagation()}
+                                      >
+                                        {getOnboardingReminderCtaLabel(onboardingReminderPayload)}
+                                      </Link>
+                                    </div>
+                                  ) : null}
+                                </>
+                              )}
                               {Array.isArray(m.attachments) &&
                                 m.attachments.map((file, index) => {
                                   const key = `${m._id || m.clientId}-att-${index}`;

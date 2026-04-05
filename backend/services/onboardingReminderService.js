@@ -13,15 +13,19 @@ const ADMIN_ROLES = ["admin", "super_admin"];
 const buildReminderState = (user = {}) => {
   const needsProfile = !Boolean(user?.onboarding?.completed);
   const needsEmailVerification = !Boolean(user?.emailVerified);
+  const username = String(user?.username || "").trim();
+  const profileActionLink = username ? `/profile/${username}` : "/onboarding";
+  const displayName = String(user?.name || user?.username || "").trim();
+  const greeting = displayName ? `${displayName}, ` : "";
 
   if (needsProfile && needsEmailVerification) {
     return {
       key: "profile_email",
       needsProfile,
       needsEmailVerification,
-      actionLink: "/onboarding",
+      actionLink: profileActionLink,
       text:
-        "Your registration is still incomplete. Please complete your profile and verify your email as soon as possible to avoid being banned by the admin.",
+        `${greeting}complete your profile bio-data and verify your email to finish setting up your Tengacion account. Open your profile page to add your details and keep your account in good standing.`,
     };
   }
 
@@ -30,9 +34,9 @@ const buildReminderState = (user = {}) => {
       key: "profile",
       needsProfile,
       needsEmailVerification,
-      actionLink: "/onboarding",
+      actionLink: profileActionLink,
       text:
-        "Your registration is still incomplete. Please complete your profile as soon as possible to avoid being banned by the admin.",
+        `${greeting}complete your profile bio-data on your profile page so your Tengacion account feels complete and stays in good standing.`,
     };
   }
 
@@ -43,7 +47,7 @@ const buildReminderState = (user = {}) => {
       needsEmailVerification,
       actionLink: "/settings/security",
       text:
-        "Your registration is still incomplete. Please verify your email as soon as possible to avoid being banned by the admin.",
+        `${greeting}verify your email to finish securing your Tengacion account and keep everything in good standing.`,
     };
   }
 

@@ -12280,9 +12280,117 @@ html:not(.dark-mode) .message-row.them .msg-bubble {
   color: #1f241b;
 }
 
+.msg-bubble--reminder {
+  min-width: min(38ch, 100%);
+  padding: 0;
+  overflow: hidden;
+}
+
+.msg-reminder-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background:
+    radial-gradient(circle at top right, rgba(124, 183, 132, 0.24), transparent 32%),
+    linear-gradient(180deg, rgba(244, 248, 241, 0.98), rgba(232, 240, 232, 0.98));
+}
+
+.msg-reminder-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.msg-reminder-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #4d6b4f;
+}
+
+.msg-reminder-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(69, 108, 74, 0.1);
+  border: 1px solid rgba(69, 108, 74, 0.16);
+  color: #244128;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.msg-reminder-title {
+  color: #183121;
+  font-size: 20px;
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.msg-reminder-copy {
+  color: rgba(28, 45, 31, 0.88);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.msg-reminder-steps {
+  display: grid;
+  gap: 8px;
+}
+
+.msg-reminder-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.56);
+  border: 1px solid rgba(106, 139, 112, 0.18);
+}
+
+.msg-reminder-step-index {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #2f7145, #4d9361);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(47, 113, 69, 0.22);
+}
+
+.msg-reminder-step-text {
+  color: #213426;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.msg-reminder-note {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(69, 108, 74, 0.08);
+  border: 1px solid rgba(69, 108, 74, 0.12);
+  color: rgba(34, 54, 36, 0.86);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .msg-reminder-cta {
   display: flex;
-  margin-top: 10px;
+  margin-top: 2px;
 }
 
 .msg-reminder-link {
@@ -12301,6 +12409,11 @@ html:not(.dark-mode) .message-row.them .msg-bubble {
   text-decoration: none;
   box-shadow: 0 8px 16px rgba(17, 31, 54, 0.12);
   transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+
+.msg-reminder-link-arrow {
+  font-size: 15px;
+  line-height: 1;
 }
 
 .msg-reminder-link:hover,
@@ -13249,6 +13362,50 @@ html.dark-mode .message-row.them .msg-text {
 html.dark-mode .message-row.them .msg-reply-preview {
   background: rgba(255, 244, 219, 0.08);
   border-left-color: rgba(255, 221, 160, 0.78);
+}
+
+html.dark-mode .message-row.them .msg-bubble--reminder {
+  background: linear-gradient(180deg, rgba(11, 38, 27, 0.98), rgba(9, 27, 20, 0.98));
+  border-color: rgba(118, 184, 139, 0.28);
+}
+
+html.dark-mode .msg-reminder-card {
+  background:
+    radial-gradient(circle at top right, rgba(134, 212, 151, 0.24), transparent 34%),
+    linear-gradient(180deg, rgba(18, 54, 37, 0.98), rgba(12, 38, 27, 0.98));
+}
+
+html.dark-mode .msg-reminder-eyebrow {
+  color: #a6d8b2;
+}
+
+html.dark-mode .msg-reminder-badge {
+  background: rgba(174, 234, 195, 0.12);
+  border-color: rgba(174, 234, 195, 0.18);
+  color: #dcf4e2;
+}
+
+html.dark-mode .msg-reminder-title {
+  color: #f2fbf3;
+}
+
+html.dark-mode .msg-reminder-copy {
+  color: rgba(226, 244, 231, 0.88);
+}
+
+html.dark-mode .msg-reminder-step {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(174, 234, 195, 0.12);
+}
+
+html.dark-mode .msg-reminder-step-text,
+html.dark-mode .msg-reminder-note {
+  color: #dbeee0;
+}
+
+html.dark-mode .msg-reminder-note {
+  background: rgba(174, 234, 195, 0.06);
+  border-color: rgba(174, 234, 195, 0.12);
 }
 
 html.dark-mode .messenger-header-notice,

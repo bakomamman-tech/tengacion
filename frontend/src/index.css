@@ -2576,12 +2576,18 @@ textarea:focus {
   font-size: clamp(34px, 4vw, 60px);
   line-height: 0.94;
   max-width: 680px;
+  font-weight: 900;
 }
 
 .gaming-hero-copy p {
   max-width: 700px;
   color: var(--muted);
   font-size: 17px;
+}
+
+.gaming-hero-lede {
+  font-weight: 800;
+  color: color-mix(in srgb, var(--text) 78%, var(--muted) 22%) !important;
 }
 
 .gaming-hero-metrics {

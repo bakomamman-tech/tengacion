@@ -338,11 +338,9 @@ export default function GamingPage({ user }) {
       <section className="gaming-hero">
         <div className="gaming-hero-copy">
           <p className="gaming-kicker">Gaming hub</p>
-          <h1>Sharper games, cleaner sessions, and a real Tengacion play lane.</h1>
-          <p>
-            The gaming page now behaves like a proper in-app destination. Pick a lane, jump into a
-            playable game instantly, save concepts worth returning to, and keep your local score
-            chase alive between sessions.
+          <h1>Play faster. Save favorites. Keep the fun going.</h1>
+          <p className="gaming-hero-lede">
+            Jump into a game, save the ones you like, and pick up your score chase anytime.
           </p>
 
           <div className="gaming-hero-metrics">

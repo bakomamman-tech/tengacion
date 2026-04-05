@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import Navbar from "../Navbar";
 import ChessRoom from "../components/gaming/ChessRoom";
+import MemoryAtlas from "../components/gaming/MemoryAtlas";
 import Tengacion2048 from "../components/gaming/Tengacion2048";
 import SnakeXavia from "../components/gaming/SnakeXavia";
 import TengacionTetris from "../components/gaming/TengacionTetris";
@@ -132,20 +133,21 @@ const GAME_LIBRARY = [
     id: "memory-atlas",
     title: "Memory Atlas",
     genre: "Puzzle",
-    status: "Concept",
-    playable: false,
-    accent: "linear-gradient(145deg, #2ca3bb 0%, #113844 100%)",
-    summary: "A calmer visual-memory lane built around patterns and recall.",
+    status: "Playable now",
+    playable: true,
+    accent: "linear-gradient(145deg, #4bd8ff 0%, #2275d9 52%, #4b2ca8 100%)",
+    summary: "An atmospheric recall lane built around short reveals, clean matches, and chapter progression.",
     description:
-      "Memory Atlas is designed as a more atmospheric puzzle lane with shifting boards, light discovery, and repeatable short sessions.",
-    difficulty: "Focus-forward",
-    session: "2-6 min",
+      "Scan a glowing atlas board, watch it veil itself, and recover matching marker pairs across richer chapters that stay saved on this device.",
+    difficulty: "Pattern recall",
+    session: "2-7 min",
     controls: "Tap and match",
     highlights: [
-      "A softer option for players who want less arcade pressure.",
-      "Could look especially strong with the new green app palette.",
-      "Pairs well with repeat sessions and light score-chasing.",
+      "Each chapter starts with a brief reveal, then turns into a focused recall run.",
+      "Matching streaks reward cleaner memory reads instead of frantic tapping.",
+      "Local save state lets you reopen the atlas without losing your progress.",
     ],
+    builtInLabel: "Built inside Tengacion",
   },
   {
     id: "tengacion-tetris",
@@ -218,6 +220,9 @@ export default function GamingPage({ user }) {
     lines: 0,
     level: 1,
     combo: 0,
+    matches: 0,
+    chapter: 1,
+    streak: 0,
     lastPlaced: "T",
     gameOver: false,
     game: "2048-classic",
@@ -268,6 +273,7 @@ export default function GamingPage({ user }) {
   const conceptCount = GAME_LIBRARY.length - playableCount;
   const isChessSession = lastSession.game === "chess-room";
   const isTetrisSession = lastSession.game === "tengacion-tetris";
+  const isMemorySession = lastSession.game === "memory-atlas";
   const lastPlayedTitle =
     lastSession.game === "snake-xavia"
       ? "Snake Xavia"
@@ -275,6 +281,8 @@ export default function GamingPage({ user }) {
         ? "Chess Room"
         : lastSession.game === "tengacion-tetris"
           ? "Tetris"
+          : lastSession.game === "memory-atlas"
+            ? "Memory Atlas"
           : "2048 Classic";
   const activityCards = isChessSession
     ? [
@@ -309,6 +317,39 @@ export default function GamingPage({ user }) {
           meta: "Shortlisted titles ready to reopen from this page.",
         },
       ]
+    : isMemorySession
+      ? [
+          {
+            title: "Last lane touched",
+            value: lastPlayedTitle,
+            meta: "The most recent recall board you opened on this device.",
+          },
+          {
+            title: "Best score",
+            value: lastSession.bestScore || 0,
+            meta: "Highest Memory Atlas score stored locally in this browser.",
+          },
+          {
+            title: "Pairs banked",
+            value: lastSession.matches || 0,
+            meta: "Total marker pairs solved across the active saved atlas.",
+          },
+          {
+            title: "Chapter reached",
+            value: lastSession.chapter || 1,
+            meta: "How far the current atlas run has progressed.",
+          },
+          {
+            title: "Focus streak",
+            value: lastSession.streak ? `${lastSession.streak} clean` : "Build it",
+            meta: "Consecutive clean matches from the current route.",
+          },
+          {
+            title: "Saved games",
+            value: savedGames.length,
+            meta: "Shortlisted titles ready to reopen from this page.",
+          },
+        ]
     : isTetrisSession
       ? [
           {
@@ -439,6 +480,10 @@ export default function GamingPage({ user }) {
   const renderPlayableGame = () => {
     if (featuredGame.id === "chess-room") {
       return <ChessRoom onSessionChange={setLastSession} />;
+    }
+
+    if (featuredGame.id === "memory-atlas") {
+      return <MemoryAtlas onSessionChange={setLastSession} />;
     }
 
     if (featuredGame.id === "tengacion-tetris") {
@@ -662,6 +707,8 @@ export default function GamingPage({ user }) {
               <small>
                 {isChessSession
                   ? lastSession.status || "White to move"
+                  : isMemorySession
+                    ? lastSession.status || "Route in motion"
                   : isTetrisSession
                     ? lastSession.status || "Stack in motion"
                   : lastSession.gameOver
@@ -685,6 +732,8 @@ export default function GamingPage({ user }) {
                 <span>
                   {isChessSession
                     ? "White capture"
+                    : isMemorySession
+                      ? "Pairs banked"
                     : isTetrisSession
                       ? "Lines cleared"
                     : lastSession.game === "snake-xavia"
@@ -694,16 +743,28 @@ export default function GamingPage({ user }) {
                 <strong>
                   {isChessSession
                     ? lastSession.capturedWhiteValue || 0
+                    : isMemorySession
+                      ? lastSession.matches || 0
                     : isTetrisSession
                       ? lastSession.lines || 0
                     : lastSession.highestTile || (lastSession.game === "snake-xavia" ? 3 : 4)}
                 </strong>
               </div>
               <div>
-                <span>{isChessSession ? "Black capture" : isTetrisSession ? "Level" : "Steps"}</span>
+                <span>
+                  {isChessSession
+                    ? "Black capture"
+                    : isMemorySession
+                      ? "Chapter"
+                      : isTetrisSession
+                        ? "Level"
+                        : "Steps"}
+                </span>
                 <strong>
                   {isChessSession
                     ? lastSession.capturedBlackValue || 0
+                    : isMemorySession
+                      ? lastSession.chapter || 1
                     : isTetrisSession
                       ? lastSession.level || 1
                       : lastSession.moves || 0}

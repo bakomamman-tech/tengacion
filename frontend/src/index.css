@@ -3598,6 +3598,358 @@ textarea:focus {
   font-weight: 800;
 }
 
+.game-memory-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.game-memory-kicker {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--brand-strong) 74%, var(--muted) 26%);
+}
+
+.game-memory-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.game-memory-head h3 {
+  margin: 0;
+}
+
+.game-memory-head p {
+  margin: 8px 0 0;
+  max-width: 560px;
+  color: var(--muted);
+}
+
+.game-memory-head-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.game-memory-head-actions .btn-secondary {
+  min-height: 42px;
+}
+
+.game-memory-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.game-memory-stats > div,
+.game-memory-side-card {
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+}
+
+.game-memory-stats span,
+.game-memory-side-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.game-memory-stats strong,
+.game-memory-side-card strong {
+  display: block;
+  margin-top: 6px;
+}
+
+.game-memory-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.44fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.game-memory-board-shell {
+  position: relative;
+}
+
+.game-memory-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px;
+  border-radius: 32px;
+}
+
+.game-memory-card {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  perspective: 1000px;
+}
+
+.game-memory-card:disabled {
+  cursor: default;
+}
+
+.game-memory-card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 10px;
+  padding: 16px;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  transition: transform 0.45s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  border: 1px solid transparent;
+}
+
+.game-memory-card-front strong,
+.game-memory-card-back strong {
+  font-size: clamp(18px, 1.7vw, 24px);
+  letter-spacing: -0.03em;
+}
+
+.game-memory-card-front small,
+.game-memory-card-back small {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.game-memory-card-front span,
+.game-memory-card-back span {
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.game-memory-card-front {
+  transform: rotateY(0deg);
+}
+
+.game-memory-card-back {
+  transform: rotateY(180deg);
+}
+
+.game-memory-card.is-face-up .game-memory-card-front,
+.game-memory-card.is-matched .game-memory-card-front {
+  transform: rotateY(180deg);
+}
+
+.game-memory-card.is-face-up .game-memory-card-back,
+.game-memory-card.is-matched .game-memory-card-back {
+  transform: rotateY(360deg);
+}
+
+.game-memory-card.is-matched .game-memory-card-back {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 18px 34px color-mix(in srgb, var(--atlas-glow) 24%, transparent);
+}
+
+.game-memory-card.marker-aurora { --atlas-fill: linear-gradient(145deg, #b084ff, #4f5cff); --atlas-glow: #6b6cff; }
+.game-memory-card.marker-reef { --atlas-fill: linear-gradient(145deg, #7cf1e9, #249cc2); --atlas-glow: #3fbad7; }
+.game-memory-card.marker-ember { --atlas-fill: linear-gradient(145deg, #ffc28e, #ff6d42); --atlas-glow: #ff8148; }
+.game-memory-card.marker-nova { --atlas-fill: linear-gradient(145deg, #ffe08d, #ffae2f); --atlas-glow: #f8bd53; }
+.game-memory-card.marker-lotus { --atlas-fill: linear-gradient(145deg, #f6a0ff, #9c47cf); --atlas-glow: #c363e7; }
+.game-memory-card.marker-dune { --atlas-fill: linear-gradient(145deg, #f5d29e, #b97e34); --atlas-glow: #d39a55; }
+.game-memory-card.marker-cedar { --atlas-fill: linear-gradient(145deg, #9fe1b0, #2f925a); --atlas-glow: #47b774; }
+.game-memory-card.marker-glacier { --atlas-fill: linear-gradient(145deg, #b6ecff, #58a0ff); --atlas-glow: #69b0ff; }
+.game-memory-card.marker-tidal { --atlas-fill: linear-gradient(145deg, #7adfff, #2466ff); --atlas-glow: #3a82ff; }
+.game-memory-card.marker-lumen { --atlas-fill: linear-gradient(145deg, #fff7b0, #e4bc47); --atlas-glow: #efd06a; }
+.game-memory-card.marker-echo { --atlas-fill: linear-gradient(145deg, #c5ccff, #5966d8); --atlas-glow: #6f7ae3; }
+.game-memory-card.marker-onyx { --atlas-fill: linear-gradient(145deg, #89929d, #35414b); --atlas-glow: #5a6671; }
+
+.game-memory-card-back {
+  background: var(--atlas-fill);
+}
+
+.game-memory-overlay {
+  position: absolute;
+  inset: 18px;
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 28px;
+  text-align: center;
+  backdrop-filter: blur(14px);
+}
+
+.game-memory-overlay strong {
+  font-size: clamp(22px, 2.2vw, 30px);
+  letter-spacing: -0.04em;
+}
+
+.game-memory-overlay p,
+.game-memory-side-card p {
+  margin: 0;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.game-memory-overlay-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.game-memory-aside {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.game-memory-progress {
+  height: 10px;
+  margin-top: 14px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.game-memory-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+html:not(.dark-mode) .game-memory-stats > div,
+html:not(.dark-mode) .game-memory-side-card {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(71, 126, 89, 0.14);
+}
+
+html:not(.dark-mode) .game-memory-board {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.28), transparent 34%),
+    linear-gradient(180deg, rgba(83, 208, 232, 0.16), rgba(95, 88, 212, 0.18));
+}
+
+html:not(.dark-mode) .game-memory-card-front {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(236, 247, 250, 0.76));
+  border-color: rgba(76, 132, 157, 0.16);
+  box-shadow: 0 14px 26px rgba(40, 88, 104, 0.1);
+}
+
+html:not(.dark-mode) .game-memory-card-back {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #f8fbff;
+  box-shadow: 0 16px 28px color-mix(in srgb, var(--atlas-glow) 20%, rgba(31, 64, 89, 0.16));
+}
+
+html:not(.dark-mode) .game-memory-card-front small,
+html:not(.dark-mode) .game-memory-card-back small {
+  color: rgba(25, 59, 76, 0.66);
+}
+
+html:not(.dark-mode) .game-memory-card-back small,
+html:not(.dark-mode) .game-memory-card-back span {
+  color: rgba(245, 250, 255, 0.8);
+}
+
+html:not(.dark-mode) .game-memory-overlay {
+  background: rgba(247, 252, 247, 0.88);
+  border: 1px solid rgba(71, 126, 89, 0.16);
+}
+
+html:not(.dark-mode) .game-memory-progress {
+  background: rgba(27, 83, 61, 0.12);
+}
+
+html:not(.dark-mode) .game-memory-progress span {
+  background: linear-gradient(90deg, #46c9d8, #5a6ae4);
+}
+
+html.dark-mode .game-memory-stats > div,
+html.dark-mode .game-memory-side-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(102, 166, 125, 0.14);
+}
+
+html.dark-mode .game-memory-board {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(24, 55, 91, 0.52), rgba(54, 27, 92, 0.5));
+}
+
+html.dark-mode .game-memory-card-front {
+  background: linear-gradient(180deg, rgba(14, 43, 34, 0.94), rgba(9, 30, 24, 0.94));
+  border-color: rgba(120, 196, 226, 0.18);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.24);
+}
+
+html.dark-mode .game-memory-card-back {
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f8fbff;
+  box-shadow: 0 18px 32px color-mix(in srgb, var(--atlas-glow) 20%, rgba(5, 16, 29, 0.34));
+}
+
+html.dark-mode .game-memory-card-front small {
+  color: rgba(175, 229, 221, 0.68);
+}
+
+html.dark-mode .game-memory-card-back small,
+html.dark-mode .game-memory-card-back span {
+  color: rgba(244, 248, 255, 0.78);
+}
+
+html.dark-mode .game-memory-overlay {
+  background: rgba(6, 26, 18, 0.84);
+  border: 1px solid rgba(102, 166, 125, 0.16);
+}
+
+html.dark-mode .game-memory-progress {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html.dark-mode .game-memory-progress span {
+  background: linear-gradient(90deg, #56d0ff, #7c71ff);
+}
+
+@media (max-width: 1280px) {
+  .game-memory-stage {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .game-memory-head,
+  .game-memory-overlay-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .game-memory-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .game-memory-board {
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .game-memory-card-face {
+    border-radius: 20px;
+    padding: 14px;
+  }
+}
+
+@media (max-width: 560px) {
+  .game-memory-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 html:not(.dark-mode) .gaming-page-shell {
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), transparent 30%),

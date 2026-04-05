@@ -309,7 +309,6 @@ export default function Login() {
           </form>
 
           <Link to="/developer-contact" className="developer-contact-cta">
-            <span className="developer-contact-cta__eyebrow">Need direct assistance?</span>
             <span className="developer-contact-cta__title">Contact The Developer:</span>
             <span className="developer-contact-cta__arrow" aria-hidden="true">
               View details

@@ -2330,7 +2330,8 @@ textarea:focus {
 .gaming-kicker,
 .game-2048-kicker,
 .game-snake-kicker,
-.game-chess-kicker {
+.game-chess-kicker,
+.game-tetris-kicker {
   margin: 0 0 10px;
   font-size: 12px;
   font-weight: 800;
@@ -2348,7 +2349,8 @@ textarea:focus {
 .gaming-coming-soon-card h3,
 .game-2048-head h3,
 .game-snake-head h3,
-.game-chess-head h3 {
+.game-chess-head h3,
+.game-tetris-head h3 {
   margin: 0;
 }
 
@@ -2358,7 +2360,8 @@ textarea:focus {
 .gaming-link-row,
 .game-2048-head,
 .game-snake-head,
-.game-chess-head {
+.game-chess-head,
+.game-tetris-head {
   display: flex;
   align-items: start;
   justify-content: space-between;
@@ -2403,7 +2406,11 @@ textarea:focus {
 .game-snake-difficulty button,
 .game-snake-rhythm,
 .game-snake-aside-card,
-.game-snake-controls button {
+.game-snake-controls button,
+.game-tetris-stats > div,
+.game-tetris-side-card,
+.game-tetris-preview-card,
+.game-tetris-controls button {
   border: 1px solid transparent;
 }
 
@@ -2420,7 +2427,10 @@ textarea:focus {
 .game-2048-pulse span,
 .game-2048-aside-card span,
 .game-snake-stats span,
-.game-snake-aside-card span {
+.game-snake-aside-card span,
+.game-tetris-stats span,
+.game-tetris-side-card span,
+.game-tetris-preview-card span {
   display: block;
   color: var(--muted);
   font-size: 12px;
@@ -2433,7 +2443,8 @@ textarea:focus {
 .game-2048-stats strong,
 .game-2048-pulse strong,
 .game-snake-stats strong,
-.game-snake-rhythm strong {
+.game-snake-rhythm strong,
+.game-tetris-stats strong {
   display: block;
   margin-top: 8px;
   font-size: 28px;
@@ -2470,7 +2481,8 @@ textarea:focus {
 .gaming-chip,
 .game-2048-controls button,
 .game-snake-controls button,
-.game-snake-difficulty button {
+.game-snake-difficulty button,
+.game-tetris-controls button {
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -2507,7 +2519,10 @@ textarea:focus {
 .game-2048-aside-card p,
 .game-snake-head p,
 .game-snake-aside-card p,
-.gaming-highlight-list p {
+.gaming-highlight-list p,
+.game-tetris-head p,
+.game-tetris-side-card p,
+.game-tetris-preview-card small {
   color: var(--muted);
 }
 
@@ -2908,27 +2923,31 @@ textarea:focus {
 
 .game-2048-shell,
 .game-snake-shell,
-.game-chess-shell {
+.game-chess-shell,
+.game-tetris-shell {
   display: grid;
   gap: 18px;
 }
 
 .game-2048-head,
 .game-snake-head,
-.game-chess-head {
+.game-chess-head,
+.game-tetris-head {
   align-items: end;
 }
 
 .game-2048-head p,
 .game-snake-head p,
-.game-chess-head p {
+.game-chess-head p,
+.game-tetris-head p {
   margin: 8px 0 0;
   max-width: 560px;
 }
 
 .game-2048-head-actions,
 .game-snake-head-actions,
-.game-chess-head-actions {
+.game-chess-head-actions,
+.game-tetris-head-actions {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
@@ -2936,7 +2955,8 @@ textarea:focus {
 
 .game-2048-stage,
 .game-snake-stage,
-.game-chess-stage {
+.game-chess-stage,
+.game-tetris-stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 0.48fr);
   gap: 16px;
@@ -2944,13 +2964,15 @@ textarea:focus {
 
 .game-2048-board-shell,
 .game-snake-board-shell,
-.game-chess-board-shell {
+.game-chess-board-shell,
+.game-tetris-board-shell {
   position: relative;
 }
 
 .game-2048-board,
 .game-snake-board,
-.game-chess-board {
+.game-chess-board,
+.game-tetris-board {
   position: relative;
   z-index: 0;
 }
@@ -3370,6 +3392,212 @@ textarea:focus {
   margin-top: 1px;
 }
 
+.game-tetris-head {
+  align-items: end;
+}
+
+.game-tetris-head p {
+  margin: 8px 0 0;
+  max-width: 560px;
+}
+
+.game-tetris-head-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.game-tetris-head-actions .btn-secondary {
+  min-height: 42px;
+}
+
+.game-tetris-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.game-tetris-stats > div,
+.game-tetris-side-card,
+.game-tetris-preview-card {
+  padding: 16px 18px;
+  border-radius: 20px;
+}
+
+.game-tetris-stats strong,
+.game-tetris-side-card strong,
+.game-tetris-preview-card strong {
+  display: block;
+  margin-top: 6px;
+}
+
+.game-tetris-stage {
+  align-items: start;
+}
+
+.game-tetris-board {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 6px;
+  padding: 18px;
+  width: min(100%, 520px);
+  margin: 0 auto;
+  aspect-ratio: 10 / 20;
+  border-radius: 32px;
+}
+
+.game-tetris-cell {
+  aspect-ratio: 1 / 1;
+  border-radius: 13px;
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease,
+    opacity 0.14s ease,
+    filter 0.14s ease,
+    background 0.14s ease;
+}
+
+.game-tetris-cell[class*="piece-"],
+.game-tetris-preview-cell[class*="piece-"] {
+  background: var(--piece-fill);
+  color: var(--piece-outline);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 10px 18px color-mix(in srgb, var(--piece-glow) 28%, transparent);
+}
+
+.game-tetris-cell.is-active {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.game-tetris-cell.is-locked {
+  filter: saturate(0.9);
+}
+
+.game-tetris-cell.is-ghost {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px currentColor;
+  opacity: 0.42;
+}
+
+.game-tetris-cell.piece-i,
+.game-tetris-preview-cell.piece-i {
+  --piece-fill: linear-gradient(145deg, #90fbff, #25b6ff);
+  --piece-glow: #35bbff;
+  --piece-outline: #53d5ff;
+}
+
+.game-tetris-cell.piece-o,
+.game-tetris-preview-cell.piece-o {
+  --piece-fill: linear-gradient(145deg, #ffe885, #ffb126);
+  --piece-glow: #f8bf3d;
+  --piece-outline: #ffce55;
+}
+
+.game-tetris-cell.piece-t,
+.game-tetris-preview-cell.piece-t {
+  --piece-fill: linear-gradient(145deg, #d38cff, #8a3cff);
+  --piece-glow: #9041ff;
+  --piece-outline: #b26cff;
+}
+
+.game-tetris-cell.piece-s,
+.game-tetris-preview-cell.piece-s {
+  --piece-fill: linear-gradient(145deg, #8df7bc, #22ba6f);
+  --piece-glow: #2dcf7d;
+  --piece-outline: #6be09b;
+}
+
+.game-tetris-cell.piece-z,
+.game-tetris-preview-cell.piece-z {
+  --piece-fill: linear-gradient(145deg, #ff9da3, #ef4b6a);
+  --piece-glow: #eb5674;
+  --piece-outline: #ff8796;
+}
+
+.game-tetris-cell.piece-j,
+.game-tetris-preview-cell.piece-j {
+  --piece-fill: linear-gradient(145deg, #89a7ff, #3663f1);
+  --piece-glow: #4c6ef8;
+  --piece-outline: #7c92ff;
+}
+
+.game-tetris-cell.piece-l,
+.game-tetris-preview-cell.piece-l {
+  --piece-fill: linear-gradient(145deg, #ffc493, #ff7b37);
+  --piece-glow: #ff8a4c;
+  --piece-outline: #ffac6f;
+}
+
+.game-tetris-overlay {
+  position: absolute;
+  inset: 18px;
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 28px;
+  text-align: center;
+  backdrop-filter: blur(14px);
+}
+
+.game-tetris-overlay strong {
+  font-size: clamp(22px, 2.4vw, 30px);
+  letter-spacing: -0.04em;
+}
+
+.game-tetris-overlay p {
+  margin: 0;
+  line-height: 1.65;
+}
+
+.game-tetris-aside {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.game-tetris-side-card span,
+.game-tetris-preview-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.game-tetris-side-card p,
+.game-tetris-preview-card small {
+  display: block;
+  margin: 8px 0 0;
+  line-height: 1.6;
+}
+
+.game-tetris-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.game-tetris-preview-cell {
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+}
+
+.game-tetris-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.game-tetris-controls button {
+  min-height: 46px;
+  border-radius: 16px;
+  font-weight: 800;
+}
+
 html:not(.dark-mode) .gaming-page-shell {
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), transparent 30%),
@@ -3425,7 +3653,11 @@ html:not(.dark-mode) .game-chess-side-card,
 html:not(.dark-mode) .game-chess-turn-pill,
 html:not(.dark-mode) .game-chess-promotion-grid button,
 html:not(.dark-mode) .game-chess-history-list article,
-html:not(.dark-mode) .game-chess-captured-row span {
+html:not(.dark-mode) .game-chess-captured-row span,
+html:not(.dark-mode) .game-tetris-stats > div,
+html:not(.dark-mode) .game-tetris-side-card,
+html:not(.dark-mode) .game-tetris-preview-card,
+html:not(.dark-mode) .game-tetris-controls button {
   background: rgba(255, 255, 255, 0.72);
   border-color: rgba(71, 126, 89, 0.14);
 }
@@ -3443,7 +3675,8 @@ html:not(.dark-mode) .game-2048-controls button:hover,
 html:not(.dark-mode) .game-snake-controls button:hover,
 html:not(.dark-mode) .game-snake-difficulty button:hover,
 html:not(.dark-mode) .game-snake-difficulty button.active,
-html:not(.dark-mode) .game-chess-promotion-grid button:hover {
+html:not(.dark-mode) .game-chess-promotion-grid button:hover,
+html:not(.dark-mode) .game-tetris-controls button:hover {
   background: rgba(255, 255, 255, 0.94);
   border-color: rgba(54, 113, 74, 0.24);
   box-shadow: 0 16px 30px rgba(49, 106, 68, 0.1);
@@ -3473,6 +3706,12 @@ html:not(.dark-mode) .game-snake-board {
 
 html:not(.dark-mode) .game-chess-board {
   background: linear-gradient(180deg, rgba(112, 181, 126, 0.14), rgba(231, 212, 169, 0.18));
+}
+
+html:not(.dark-mode) .game-tetris-board {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.28), transparent 34%),
+    linear-gradient(180deg, rgba(113, 208, 247, 0.18), rgba(118, 77, 224, 0.18));
 }
 
 html:not(.dark-mode) .game-chess-square.light {
@@ -3512,6 +3751,11 @@ html:not(.dark-mode) .game-chess-overlay {
   border: 1px solid rgba(71, 126, 89, 0.16);
 }
 
+html:not(.dark-mode) .game-tetris-overlay {
+  background: rgba(247, 252, 247, 0.88);
+  border: 1px solid rgba(71, 126, 89, 0.16);
+}
+
 html:not(.dark-mode) .game-chess-turn-pill.is-alert {
   background: rgba(255, 236, 221, 0.94);
   border-color: rgba(190, 96, 64, 0.28);
@@ -3519,6 +3763,11 @@ html:not(.dark-mode) .game-chess-turn-pill.is-alert {
 }
 
 html:not(.dark-mode) .game-snake-cell.empty {
+  background: rgba(255, 255, 255, 0.46);
+}
+
+html:not(.dark-mode) .game-tetris-cell.empty,
+html:not(.dark-mode) .game-tetris-preview-cell.empty {
   background: rgba(255, 255, 255, 0.46);
 }
 
@@ -3590,7 +3839,11 @@ html.dark-mode .game-chess-side-card,
 html.dark-mode .game-chess-turn-pill,
 html.dark-mode .game-chess-promotion-grid button,
 html.dark-mode .game-chess-history-list article,
-html.dark-mode .game-chess-captured-row span {
+html.dark-mode .game-chess-captured-row span,
+html.dark-mode .game-tetris-stats > div,
+html.dark-mode .game-tetris-side-card,
+html.dark-mode .game-tetris-preview-card,
+html.dark-mode .game-tetris-controls button {
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(102, 166, 125, 0.14);
 }
@@ -3608,7 +3861,8 @@ html.dark-mode .game-2048-controls button:hover,
 html.dark-mode .game-snake-controls button:hover,
 html.dark-mode .game-snake-difficulty button:hover,
 html.dark-mode .game-snake-difficulty button.active,
-html.dark-mode .game-chess-promotion-grid button:hover {
+html.dark-mode .game-chess-promotion-grid button:hover,
+html.dark-mode .game-tetris-controls button:hover {
   background: rgba(101, 180, 132, 0.14);
   border-color: rgba(139, 208, 167, 0.24);
   box-shadow: 0 16px 28px rgba(0, 0, 0, 0.22);
@@ -3638,6 +3892,12 @@ html.dark-mode .game-snake-board {
 
 html.dark-mode .game-chess-board {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(214, 175, 103, 0.09));
+}
+
+html.dark-mode .game-tetris-board {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(38, 64, 104, 0.44), rgba(63, 29, 110, 0.42));
 }
 
 html.dark-mode .game-chess-square.light {
@@ -3682,6 +3942,11 @@ html.dark-mode .game-chess-overlay {
   border: 1px solid rgba(102, 166, 125, 0.16);
 }
 
+html.dark-mode .game-tetris-overlay {
+  background: rgba(6, 26, 18, 0.84);
+  border: 1px solid rgba(102, 166, 125, 0.16);
+}
+
 html.dark-mode .game-chess-turn-pill.is-alert {
   background: rgba(99, 38, 27, 0.52);
   border-color: rgba(226, 126, 104, 0.28);
@@ -3690,6 +3955,11 @@ html.dark-mode .game-chess-turn-pill.is-alert {
 
 html.dark-mode .game-snake-cell.empty {
   background: rgba(255, 255, 255, 0.05);
+}
+
+html.dark-mode .game-tetris-cell.empty,
+html.dark-mode .game-tetris-preview-cell.empty {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 html.dark-mode .game-snake-cell.body {
@@ -3710,7 +3980,8 @@ html.dark-mode .game-snake-cell.food {
   .gaming-play-grid,
   .game-2048-stage,
   .game-snake-stage,
-  .game-chess-stage {
+  .game-chess-stage,
+  .game-tetris-stage {
     grid-template-columns: 1fr;
   }
 
@@ -3742,7 +4013,8 @@ html.dark-mode .game-snake-cell.food {
   .game-snake-head,
   .game-snake-toolbar,
   .game-chess-head,
-  .game-chess-toolbar {
+  .game-chess-toolbar,
+  .game-tetris-head {
     flex-direction: column;
     align-items: stretch;
   }
@@ -3755,6 +4027,7 @@ html.dark-mode .game-snake-cell.food {
   .game-2048-pulse,
   .game-snake-stats,
   .game-chess-stats,
+  .game-tetris-stats,
   .gaming-activity-grid {
     grid-template-columns: 1fr;
   }
@@ -3763,7 +4036,8 @@ html.dark-mode .game-snake-cell.food {
   .game-2048-controls,
   .game-snake-controls,
   .game-snake-bottom-actions,
-  .game-chess-promotion-grid {
+  .game-chess-promotion-grid,
+  .game-tetris-controls {
     grid-template-columns: 1fr;
   }
 
@@ -3791,6 +4065,16 @@ html.dark-mode .game-snake-cell.food {
 
   .gaming-game-card-art {
     min-height: 148px;
+  }
+
+  .game-tetris-board {
+    padding: 14px;
+    gap: 5px;
+    border-radius: 26px;
+  }
+
+  .game-tetris-cell {
+    border-radius: 10px;
   }
 }
 

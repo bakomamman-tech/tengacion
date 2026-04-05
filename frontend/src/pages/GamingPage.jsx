@@ -5,6 +5,7 @@ import Navbar from "../Navbar";
 import ChessRoom from "../components/gaming/ChessRoom";
 import Tengacion2048 from "../components/gaming/Tengacion2048";
 import SnakeXavia from "../components/gaming/SnakeXavia";
+import TengacionTetris from "../components/gaming/TengacionTetris";
 
 const SAVED_GAMES_KEY = "tengacion.gaming.saved";
 
@@ -146,6 +147,26 @@ const GAME_LIBRARY = [
       "Pairs well with repeat sessions and light score-chasing.",
     ],
   },
+  {
+    id: "tengacion-tetris",
+    title: "Tetris",
+    genre: "Puzzle",
+    status: "Playable now",
+    playable: true,
+    accent: "linear-gradient(145deg, #42d4ff 0%, #2e7bff 48%, #6629d4 100%)",
+    summary: "A neon-glass stack lane built for fast clears, hard drops, and steady pressure.",
+    description:
+      "Guide falling tetrominoes through a polished Tengacion board, hold pieces for rescue plays, and chase cleaner line clears as the lane speeds up.",
+    difficulty: "Climbs over time",
+    session: "3-12 min",
+    controls: "Arrow keys, Space, C",
+    highlights: [
+      "Hold and preview panels let you plan beyond the next drop.",
+      "Level speed builds naturally, so clean stacking matters more each minute.",
+      "Mobile control buttons keep the run playable beyond desktop keyboards.",
+    ],
+    builtInLabel: "Built inside Tengacion",
+  },
 ];
 
 const GAMING_VIEWS = [
@@ -194,6 +215,10 @@ export default function GamingPage({ user }) {
     bestScore: 0,
     moves: 0,
     highestTile: 4,
+    lines: 0,
+    level: 1,
+    combo: 0,
+    lastPlaced: "T",
     gameOver: false,
     game: "2048-classic",
     turn: "w",
@@ -242,12 +267,15 @@ export default function GamingPage({ user }) {
   );
   const conceptCount = GAME_LIBRARY.length - playableCount;
   const isChessSession = lastSession.game === "chess-room";
+  const isTetrisSession = lastSession.game === "tengacion-tetris";
   const lastPlayedTitle =
     lastSession.game === "snake-xavia"
       ? "Snake Xavia"
       : lastSession.game === "chess-room"
         ? "Chess Room"
-        : "2048 Classic";
+        : lastSession.game === "tengacion-tetris"
+          ? "Tetris"
+          : "2048 Classic";
   const activityCards = isChessSession
     ? [
         {
@@ -281,6 +309,39 @@ export default function GamingPage({ user }) {
           meta: "Shortlisted titles ready to reopen from this page.",
         },
       ]
+    : isTetrisSession
+      ? [
+          {
+            title: "Last lane touched",
+            value: lastPlayedTitle,
+            meta: "The most recent live stack lane you opened on this device.",
+          },
+          {
+            title: "Best score",
+            value: lastSession.bestScore || 0,
+            meta: "Highest Tetris score saved locally in this browser.",
+          },
+          {
+            title: "Lines cleared",
+            value: lastSession.lines || 0,
+            meta: "Total completed rows from the active or latest run.",
+          },
+          {
+            title: "Level reached",
+            value: lastSession.level || 1,
+            meta: "Speed pressure rises every ten cleared lines.",
+          },
+          {
+            title: "Combo rhythm",
+            value: lastSession.combo ? `${lastSession.combo}x` : "Steady",
+            meta: "Back-to-back clears stack into a stronger scoring rhythm.",
+          },
+          {
+            title: "Saved games",
+            value: savedGames.length,
+            meta: "Shortlisted titles ready to reopen from this page.",
+          },
+        ]
     : [
         {
           title: "Last lane touched",
@@ -378,6 +439,10 @@ export default function GamingPage({ user }) {
   const renderPlayableGame = () => {
     if (featuredGame.id === "chess-room") {
       return <ChessRoom onSessionChange={setLastSession} />;
+    }
+
+    if (featuredGame.id === "tengacion-tetris") {
+      return <TengacionTetris onSessionChange={setLastSession} />;
     }
 
     if (featuredGame.id === "snake-xavia") {
@@ -597,6 +662,8 @@ export default function GamingPage({ user }) {
               <small>
                 {isChessSession
                   ? lastSession.status || "White to move"
+                  : isTetrisSession
+                    ? lastSession.status || "Stack in motion"
                   : lastSession.gameOver
                     ? "Last run ended"
                     : "Run in progress"}
@@ -618,6 +685,8 @@ export default function GamingPage({ user }) {
                 <span>
                   {isChessSession
                     ? "White capture"
+                    : isTetrisSession
+                      ? "Lines cleared"
                     : lastSession.game === "snake-xavia"
                       ? "Snake length"
                       : "Top tile"}
@@ -625,12 +694,20 @@ export default function GamingPage({ user }) {
                 <strong>
                   {isChessSession
                     ? lastSession.capturedWhiteValue || 0
+                    : isTetrisSession
+                      ? lastSession.lines || 0
                     : lastSession.highestTile || (lastSession.game === "snake-xavia" ? 3 : 4)}
                 </strong>
               </div>
               <div>
-                <span>{isChessSession ? "Black capture" : "Steps"}</span>
-                <strong>{isChessSession ? lastSession.capturedBlackValue || 0 : lastSession.moves || 0}</strong>
+                <span>{isChessSession ? "Black capture" : isTetrisSession ? "Level" : "Steps"}</span>
+                <strong>
+                  {isChessSession
+                    ? lastSession.capturedBlackValue || 0
+                    : isTetrisSession
+                      ? lastSession.level || 1
+                      : lastSession.moves || 0}
+                </strong>
               </div>
             </div>
           </div>

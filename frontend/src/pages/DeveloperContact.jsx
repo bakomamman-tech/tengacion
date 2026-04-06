@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import developerPortrait from "../assets/developer-contact-photo.jpg";
 
 const developerDetails = [
   {
@@ -21,12 +22,32 @@ export default function DeveloperContactPage() {
     <div className="login-container developer-contact-page">
       <div className="developer-contact-shell">
         <div className="developer-contact-hero">
-          <span className="developer-contact-badge">Tengacion Support</span>
-          <h1>Developer contact details</h1>
-          <p>
-            Reach the developer directly using the details below. This page is designed to be
-            quick to read and easy to access from the welcome screen.
-          </p>
+          <div className="developer-contact-portrait-shell">
+            <div className="developer-contact-portrait-card">
+              <div className="developer-contact-portrait-veil" aria-hidden="true" />
+              <div className="developer-contact-portrait-frame">
+                <img
+                  src={developerPortrait}
+                  alt="Stephen Daniel Kurah portrait"
+                  className="developer-contact-portrait"
+                />
+              </div>
+              <div className="developer-contact-portrait-copy">
+                <span className="developer-contact-portrait-label">Creator hero spotlight</span>
+                <strong>Stephen Daniel Kurah</strong>
+                <p>Developer support lead for Tengacion.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="developer-contact-hero-copy">
+            <span className="developer-contact-badge">Tengacion Support</span>
+            <h1>Developer contact details</h1>
+            <p>
+              Reach the developer directly using the details below. This page is designed to be
+              quick to read and easy to access from the welcome screen.
+            </p>
+          </div>
         </div>
 
         <div className="developer-contact-card">

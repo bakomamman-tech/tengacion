@@ -15887,7 +15887,7 @@ html.dark-mode .tg-share-inline-error {
 }
 
 .developer-contact-shell {
-  width: min(900px, 100%);
+  width: min(1120px, 100%);
   display: grid;
   gap: 24px;
   align-items: start;
@@ -15895,8 +15895,104 @@ html.dark-mode .tg-share-inline-error {
 }
 
 .developer-contact-hero {
-  max-width: 700px;
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: clamp(24px, 3vw, 38px);
+  align-items: center;
+  width: 100%;
   color: var(--auth-cream);
+}
+
+.developer-contact-portrait-shell {
+  min-width: 0;
+}
+
+.developer-contact-portrait-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at top right, rgba(220, 177, 90, 0.24), transparent 34%),
+    radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.12), transparent 30%),
+    linear-gradient(140deg, rgba(14, 34, 24, 0.95), rgba(22, 58, 40, 0.9));
+  border: 1px solid rgba(255, 247, 230, 0.16);
+  box-shadow:
+    0 26px 54px rgba(4, 22, 14, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.developer-contact-portrait-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 58%);
+  pointer-events: none;
+}
+
+.developer-contact-portrait-frame,
+.developer-contact-portrait-copy {
+  position: relative;
+  z-index: 1;
+}
+
+.developer-contact-portrait-frame {
+  overflow: hidden;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 247, 230, 0.14);
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(30, 45, 37, 0.92), rgba(12, 21, 16, 0.94));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 18px 36px rgba(0, 0, 0, 0.18);
+}
+
+.developer-contact-portrait {
+  display: block;
+  width: 100%;
+  aspect-ratio: 0.78;
+  object-fit: cover;
+  object-position: center 18%;
+}
+
+.developer-contact-portrait-copy {
+  display: grid;
+  gap: 6px;
+  color: #f8f3e7;
+}
+
+.developer-contact-portrait-label {
+  display: inline-flex;
+  width: fit-content;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(248, 243, 231, 0.88);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.developer-contact-portrait-copy strong {
+  font-size: clamp(1.2rem, 2vw, 1.5rem);
+  line-height: 1.1;
+}
+
+.developer-contact-portrait-copy p {
+  margin: 0;
+  color: rgba(248, 243, 231, 0.76);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.developer-contact-hero-copy {
+  max-width: 700px;
 }
 
 .developer-contact-badge {
@@ -15914,14 +16010,14 @@ html.dark-mode .tg-share-inline-error {
   text-transform: uppercase;
 }
 
-.developer-contact-hero h1 {
+.developer-contact-hero-copy h1 {
   margin: 0 0 10px;
   font-size: clamp(2.3rem, 4vw, 4rem);
   line-height: 0.95;
   letter-spacing: -0.04em;
 }
 
-.developer-contact-hero p {
+.developer-contact-hero-copy p {
   margin: 0;
   max-width: 40rem;
   color: color-mix(in srgb, var(--auth-cream) 74%, var(--auth-glow) 26%);
@@ -15996,6 +16092,16 @@ html.dark-mode .tg-share-inline-error {
 
 .developer-contact-back:hover {
   filter: brightness(1.05);
+}
+
+@media (max-width: 860px) {
+  .developer-contact-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .developer-contact-portrait-shell {
+    width: min(100%, 360px);
+  }
 }
 
 .login-box--compact {

@@ -3950,6 +3950,255 @@ html.dark-mode .game-memory-progress span {
   }
 }
 
+.game-mushroom-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.game-mushroom-kicker {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--brand-strong) 74%, var(--muted) 26%);
+}
+
+.game-mushroom-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.game-mushroom-head h3 {
+  margin: 0;
+}
+
+.game-mushroom-head p {
+  margin: 8px 0 0;
+  max-width: 560px;
+  color: var(--muted);
+}
+
+.game-mushroom-head-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.game-mushroom-head-actions .btn-secondary {
+  min-height: 42px;
+}
+
+.game-mushroom-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.game-mushroom-stats > div,
+.game-mushroom-side-card,
+.game-mushroom-controls button {
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+}
+
+.game-mushroom-stats span,
+.game-mushroom-side-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.game-mushroom-stats strong,
+.game-mushroom-side-card strong {
+  display: block;
+  margin-top: 6px;
+}
+
+.game-mushroom-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.42fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.game-mushroom-canvas-shell {
+  position: relative;
+  overflow: hidden;
+  border-radius: 34px;
+  border: 1px solid transparent;
+}
+
+.game-mushroom-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 960 / 420;
+  border-radius: inherit;
+}
+
+.game-mushroom-overlay {
+  position: absolute;
+  inset: 18px;
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 28px;
+  text-align: center;
+  backdrop-filter: blur(14px);
+}
+
+.game-mushroom-overlay strong {
+  font-size: clamp(22px, 2.2vw, 30px);
+  letter-spacing: -0.04em;
+}
+
+.game-mushroom-overlay p,
+.game-mushroom-side-card p {
+  margin: 0;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.game-mushroom-overlay-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.game-mushroom-aside {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.game-mushroom-progress {
+  height: 10px;
+  margin-top: 14px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.game-mushroom-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.game-mushroom-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.game-mushroom-controls button {
+  min-height: 50px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 800;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.game-mushroom-controls button:hover {
+  transform: translateY(-2px);
+}
+
+html:not(.dark-mode) .game-mushroom-stats > div,
+html:not(.dark-mode) .game-mushroom-side-card,
+html:not(.dark-mode) .game-mushroom-controls button {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(71, 126, 89, 0.14);
+}
+
+html:not(.dark-mode) .game-mushroom-canvas-shell {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.24), transparent 32%),
+    linear-gradient(180deg, rgba(255, 210, 112, 0.12), rgba(78, 142, 255, 0.14));
+  border-color: rgba(71, 126, 89, 0.14);
+  box-shadow: 0 22px 48px rgba(35, 84, 55, 0.14);
+}
+
+html:not(.dark-mode) .game-mushroom-overlay {
+  background: rgba(247, 252, 247, 0.88);
+  border: 1px solid rgba(71, 126, 89, 0.16);
+}
+
+html:not(.dark-mode) .game-mushroom-progress {
+  background: rgba(27, 83, 61, 0.12);
+}
+
+html:not(.dark-mode) .game-mushroom-progress span {
+  background: linear-gradient(90deg, #ffd15a, #ff7d4a 46%, #4b7cff 100%);
+}
+
+html:not(.dark-mode) .game-mushroom-controls button:hover {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(54, 113, 74, 0.24);
+  box-shadow: 0 16px 30px rgba(49, 106, 68, 0.1);
+}
+
+html.dark-mode .game-mushroom-stats > div,
+html.dark-mode .game-mushroom-side-card,
+html.dark-mode .game-mushroom-controls button {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(102, 166, 125, 0.14);
+}
+
+html.dark-mode .game-mushroom-canvas-shell {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.1), transparent 32%),
+    linear-gradient(180deg, rgba(48, 34, 85, 0.46), rgba(19, 54, 88, 0.46));
+  border-color: rgba(102, 166, 125, 0.16);
+  box-shadow: 0 26px 54px rgba(0, 0, 0, 0.32);
+}
+
+html.dark-mode .game-mushroom-overlay {
+  background: rgba(6, 26, 18, 0.84);
+  border: 1px solid rgba(102, 166, 125, 0.16);
+}
+
+html.dark-mode .game-mushroom-progress {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html.dark-mode .game-mushroom-progress span {
+  background: linear-gradient(90deg, #ffd86b, #ff8a57 44%, #6f8bff 100%);
+}
+
+html.dark-mode .game-mushroom-controls button:hover {
+  background: rgba(101, 180, 132, 0.14);
+  border-color: rgba(139, 208, 167, 0.24);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.22);
+}
+
+@media (max-width: 1280px) {
+  .game-mushroom-stage {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .game-mushroom-head,
+  .game-mushroom-overlay-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .game-mushroom-stats,
+  .game-mushroom-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .game-mushroom-canvas-shell {
+    border-radius: 26px;
+  }
+}
+
 html:not(.dark-mode) .gaming-page-shell {
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), transparent 30%),

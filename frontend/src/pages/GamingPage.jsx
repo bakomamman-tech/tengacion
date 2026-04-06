@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../Navbar";
 import ChessRoom from "../components/gaming/ChessRoom";
 import MemoryAtlas from "../components/gaming/MemoryAtlas";
+import MushroomRun from "../components/gaming/MushroomRun";
 import Tengacion2048 from "../components/gaming/Tengacion2048";
 import SnakeXavia from "../components/gaming/SnakeXavia";
 import TengacionTetris from "../components/gaming/TengacionTetris";
@@ -49,6 +50,26 @@ const GAME_LIBRARY = [
       "Three pace modes change how each run feels.",
       "The board now supports touch steering for phone-first play.",
       "Pause, resume, and restart flow feels cleaner mid-session.",
+    ],
+    builtInLabel: "Built inside Tengacion",
+  },
+  {
+    id: "mushroom-run",
+    title: "Mushroom Run",
+    genre: "Arcade",
+    status: "Playable now",
+    playable: true,
+    accent: "linear-gradient(145deg, #ffcb63 0%, #ff7f4e 44%, #4a88ff 100%)",
+    summary: "A bright side-scrolling platform lane built around coins, checkpoints, and stylish jumps.",
+    description:
+      "Sprint through a polished original plumber course, collect glowing coins, stomp past hazards, and reach the finale banner with enough hearts to score big.",
+    difficulty: "Rhythm-based",
+    session: "3-9 min",
+    controls: "Arrow keys, Space, P",
+    highlights: [
+      "Checkpoint banners keep runs fair while still rewarding cleaner movement.",
+      "Canvas visuals give the course a more playful, arcade-first feel inside Tengacion.",
+      "Best score, best distance, and course clears stay saved locally on this device.",
     ],
     builtInLabel: "Built inside Tengacion",
   },
@@ -223,6 +244,10 @@ export default function GamingPage({ user }) {
     matches: 0,
     chapter: 1,
     streak: 0,
+    coins: 0,
+    distance: 0,
+    hearts: 3,
+    wins: 0,
     lastPlaced: "T",
     gameOver: false,
     game: "2048-classic",
@@ -274,9 +299,12 @@ export default function GamingPage({ user }) {
   const isChessSession = lastSession.game === "chess-room";
   const isTetrisSession = lastSession.game === "tengacion-tetris";
   const isMemorySession = lastSession.game === "memory-atlas";
+  const isMushroomSession = lastSession.game === "mushroom-run";
   const lastPlayedTitle =
     lastSession.game === "snake-xavia"
       ? "Snake Xavia"
+      : lastSession.game === "mushroom-run"
+        ? "Mushroom Run"
       : lastSession.game === "chess-room"
         ? "Chess Room"
         : lastSession.game === "tengacion-tetris"
@@ -317,6 +345,39 @@ export default function GamingPage({ user }) {
           meta: "Shortlisted titles ready to reopen from this page.",
         },
       ]
+    : isMushroomSession
+      ? [
+          {
+            title: "Last lane touched",
+            value: lastPlayedTitle,
+            meta: "The most recent platform run you opened on this device.",
+          },
+          {
+            title: "Best score",
+            value: lastSession.bestScore || 0,
+            meta: "Highest Mushroom Run score stored locally in this browser.",
+          },
+          {
+            title: "Coins grabbed",
+            value: lastSession.coins || 0,
+            meta: "Coin pickups from the active or latest course run.",
+          },
+          {
+            title: "Furthest distance",
+            value: lastSession.distance || 0,
+            meta: "How far you pushed through the course before the latest stop.",
+          },
+          {
+            title: "Course clears",
+            value: lastSession.wins || 0,
+            meta: "Total times the finale banner has been reached on this device.",
+          },
+          {
+            title: "Saved games",
+            value: savedGames.length,
+            meta: "Shortlisted titles ready to reopen from this page.",
+          },
+        ]
     : isMemorySession
       ? [
           {
@@ -480,6 +541,10 @@ export default function GamingPage({ user }) {
   const renderPlayableGame = () => {
     if (featuredGame.id === "chess-room") {
       return <ChessRoom onSessionChange={setLastSession} />;
+    }
+
+    if (featuredGame.id === "mushroom-run") {
+      return <MushroomRun onSessionChange={setLastSession} />;
     }
 
     if (featuredGame.id === "memory-atlas") {
@@ -707,6 +772,8 @@ export default function GamingPage({ user }) {
               <small>
                 {isChessSession
                   ? lastSession.status || "White to move"
+                  : isMushroomSession
+                    ? lastSession.status || "Course in motion"
                   : isMemorySession
                     ? lastSession.status || "Route in motion"
                   : isTetrisSession
@@ -732,6 +799,8 @@ export default function GamingPage({ user }) {
                 <span>
                   {isChessSession
                     ? "White capture"
+                    : isMushroomSession
+                      ? "Coins"
                     : isMemorySession
                       ? "Pairs banked"
                     : isTetrisSession
@@ -743,6 +812,8 @@ export default function GamingPage({ user }) {
                 <strong>
                   {isChessSession
                     ? lastSession.capturedWhiteValue || 0
+                    : isMushroomSession
+                      ? lastSession.coins || 0
                     : isMemorySession
                       ? lastSession.matches || 0
                     : isTetrisSession
@@ -754,6 +825,8 @@ export default function GamingPage({ user }) {
                 <span>
                   {isChessSession
                     ? "Black capture"
+                    : isMushroomSession
+                      ? "Distance"
                     : isMemorySession
                       ? "Chapter"
                       : isTetrisSession
@@ -763,6 +836,8 @@ export default function GamingPage({ user }) {
                 <strong>
                   {isChessSession
                     ? lastSession.capturedBlackValue || 0
+                    : isMushroomSession
+                      ? lastSession.distance || 0
                     : isMemorySession
                       ? lastSession.chapter || 1
                     : isTetrisSession

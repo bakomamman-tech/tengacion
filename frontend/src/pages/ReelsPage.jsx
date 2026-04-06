@@ -57,14 +57,19 @@ const formatRelativeTime = (value) => {
 const getFirstMedia = (post) =>
   Array.isArray(post?.media) ? post.media[0] || null : post?.media || null;
 
+const getMediaUrl = (value) => {
+  if (!value) {
+    return "";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  return String(value.secureUrl || value.secure_url || value.url || "").trim();
+};
+
 const getReelVideoUrl = (post) => {
   const firstMedia = getFirstMedia(post);
-  const firstMediaUrl =
-    firstMedia && typeof firstMedia === "object"
-      ? firstMedia.url || ""
-      : typeof firstMedia === "string"
-        ? firstMedia
-        : "";
+  const firstMediaUrl = getMediaUrl(firstMedia);
 
   return resolveImage(
     post?.video?.playbackUrl || post?.video?.url || firstMediaUrl || post?.image || post?.photo || ""
@@ -73,12 +78,7 @@ const getReelVideoUrl = (post) => {
 
 const getReelPoster = (post) => {
   const firstMedia = getFirstMedia(post);
-  const firstMediaUrl =
-    firstMedia && typeof firstMedia === "object"
-      ? firstMedia.url || ""
-      : typeof firstMedia === "string"
-        ? firstMedia
-        : "";
+  const firstMediaUrl = getMediaUrl(firstMedia);
 
   return resolveImage(post?.video?.thumbnailUrl || post?.image || post?.photo || firstMediaUrl || "");
 };

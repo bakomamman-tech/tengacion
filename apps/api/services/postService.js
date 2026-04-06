@@ -187,6 +187,22 @@ const buildPostMediaEntry = (asset = {}, type = "image") => {
   };
 };
 
+const getMediaEntryUrl = (entry) => normalizeMediaValue(entry).url;
+
+const normalizePostMediaEntries = (media = []) =>
+  (Array.isArray(media) ? media : [])
+    .map((entry) => {
+      const normalizedType =
+        entry && typeof entry === "object"
+          ? String(entry.type || "").trim().toLowerCase()
+          : "";
+      return buildPostMediaEntry(
+        entry,
+        normalizedType === "video" || normalizedType === "gif" ? normalizedType : "image"
+      );
+    })
+    .filter((entry) => entry.url || entry.publicId || entry.legacyPath);
+
 const buildCloudinaryVideoMeta = (asset = {}, uploadFile = null, fallback = null) => {
   const normalized = normalizeMediaValue(asset);
   return {
@@ -625,8 +641,9 @@ const getPostPreviewImage = (post = {}) => {
 
   const mediaList = Array.isArray(post?.media) ? post.media : [];
   const firstMedia = mediaList[0];
-  if (firstMedia && typeof firstMedia === "object" && firstMedia.url) {
-    return normalizeVideoUrl(firstMedia.url);
+  const firstMediaUrl = getMediaEntryUrl(firstMedia);
+  if (firstMediaUrl) {
+    return normalizeVideoUrl(firstMediaUrl);
   }
 
   return "";
@@ -640,8 +657,8 @@ const buildPostModerationMedia = ({
   const entries = (Array.isArray(media) ? media : []).map((entry, index) => ({
     role: index === 0 ? "primary" : `attachment_${index + 1}`,
     mediaType: entry?.type || "image",
-    sourceUrl: entry?.url || "",
-    previewUrl: entry?.url || "",
+    sourceUrl: getMediaEntryUrl(entry),
+    previewUrl: getMediaEntryUrl(entry),
     mimeType: entry?.type === "video" ? "video/mp4" : "image/jpeg",
     originalFilename:
       uploadFile?.originalname || uploadFile?.filename || "",
@@ -825,7 +842,8 @@ const buildSharedPostMeta = async (value) => {
 
 const toPostPayload = (post, viewerId) => {
   const author = post.author || {};
-  const firstMedia = Array.isArray(post.media) && post.media.length > 0 ? post.media[0] : null;
+  const normalizedMedia = normalizePostMediaEntries(post.media);
+  const firstMedia = normalizedMedia.length > 0 ? normalizedMedia[0] : null;
   const likes = Array.isArray(post.likes) ? post.likes : [];
   const comments = flattenCommentTree(Array.isArray(post.comments) ? post.comments : []);
   const videoPayload = buildVideoMeta(post.video);
@@ -885,7 +903,7 @@ const toPostPayload = (post, viewerId) => {
     _id: post._id.toString(),
     text: post.text || "",
     image: firstMedia?.url || "",
-    media: Array.isArray(post.media) ? post.media : [],
+    media: normalizedMedia,
     type: postType,
     video: videoPayload,
     name: author.name || "",

@@ -63,6 +63,16 @@ export const getAuthorName = (post = {}) =>
 export const getAuthorUsername = (post = {}) =>
   String(post?.user?.username || post?.username || "").trim().replace(/^@+/, "");
 
+const getMediaUrl = (value) => {
+  if (!value) {
+    return "";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  return String(value.secureUrl || value.secure_url || value.url || "").trim();
+};
+
 export const truncateText = (value = "", limit = 180) => {
   const clean = String(value || "").trim();
   if (!clean) {
@@ -74,12 +84,7 @@ export const truncateText = (value = "", limit = 180) => {
 export const getPostPreviewImage = (post = {}) => {
   const mediaList = Array.isArray(post?.media) ? post.media : [];
   const firstMedia = mediaList[0];
-  const rawMediaUrl =
-    firstMedia && typeof firstMedia === "object"
-      ? firstMedia.url || ""
-      : typeof firstMedia === "string"
-        ? firstMedia
-        : "";
+  const rawMediaUrl = getMediaUrl(firstMedia);
 
   return (
     resolveImage(post?.video?.thumbnailUrl || "") ||

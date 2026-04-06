@@ -15,14 +15,18 @@ export const useAuth = () => useContext(AuthContext);
 
 const normalizeMediaField = (value) => {
   if (!value) {
-    return { url: "", public_id: "" };
+    return { url: "", secureUrl: "", public_id: "", publicId: "" };
   }
   if (typeof value === "string") {
-    return { url: value, public_id: "" };
+    return { url: value, secureUrl: value, public_id: "", publicId: "" };
   }
+  const url = String(value.secureUrl || value.secure_url || value.url || "");
+  const publicId = String(value.publicId || value.public_id || "");
   return {
-    url: String(value.url || ""),
-    public_id: String(value.public_id || ""),
+    url,
+    secureUrl: url,
+    public_id: publicId,
+    publicId,
   };
 };
 

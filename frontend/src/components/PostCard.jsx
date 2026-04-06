@@ -244,7 +244,7 @@ export default function PostCard({
     : post?.media;
   const mediaUrlCandidate =
     firstMediaEntry && typeof firstMediaEntry === "object"
-      ? firstMediaEntry.url || ""
+      ? firstMediaEntry.secureUrl || firstMediaEntry.secure_url || firstMediaEntry.url || ""
       : typeof firstMediaEntry === "string"
         ? firstMediaEntry
         : "";

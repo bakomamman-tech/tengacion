@@ -319,6 +319,30 @@ describe("Posts feed", () => {
     expect(response.body[0].video).toBeNull();
   });
 
+  test("GET /api/posts normalizes secureUrl-only media entries for legacy records", async () => {
+    await Post.create({
+      author: artist._id,
+      text: "Legacy secure url image",
+      media: [{ secureUrl: "https://cdn.test/media/legacy-photo.jpg", type: "image" }],
+      privacy: "public",
+    });
+
+    const response = await request(app).get("/api/posts").expect(200);
+
+    expect(Array.isArray(response.body)).toBe(true);
+    expect(response.body).toHaveLength(1);
+    expect(response.body[0]).toMatchObject({
+      text: "Legacy secure url image",
+      type: "image",
+      image: "https://cdn.test/media/legacy-photo.jpg",
+    });
+    expect(response.body[0].media[0]).toMatchObject({
+      url: "https://cdn.test/media/legacy-photo.jpg",
+      secureUrl: "https://cdn.test/media/legacy-photo.jpg",
+      type: "image",
+    });
+  });
+
   test("DELETE /api/posts removes cloudinary-backed media after the record is deleted", async () => {
     const post = await Post.create({
       author: artist._id,

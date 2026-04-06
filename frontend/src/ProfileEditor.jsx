@@ -104,6 +104,16 @@ const sanitizeCountryValue = (value) => {
 const formatProfileLocation = (currentCity, country) =>
   [trimProfileText(currentCity), sanitizeCountryValue(country)].filter(Boolean).join(", ");
 
+const getMediaUrl = (value) => {
+  if (!value) {
+    return "";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  return String(value.secureUrl || value.secure_url || value.url || "").trim();
+};
+
 const POST_FILTERS = [
   { id: "all", label: "All posts" },
   { id: "photos", label: "Photos" },
@@ -118,12 +128,7 @@ const getPostMediaKind = (post) => {
   }
 
   const hasVideo = mediaList.some((entry) => {
-    const rawUrl =
-      entry && typeof entry === "object"
-        ? entry.url || ""
-        : typeof entry === "string"
-          ? entry
-          : "";
+    const rawUrl = getMediaUrl(entry);
     return isVideoMedia(entry, rawUrl);
   });
 
@@ -133,13 +138,7 @@ const getPostMediaKind = (post) => {
 const isImageFile = (file) => Boolean(file?.type?.startsWith("image/"));
 
 const toMediaUrl = (value) => {
-  if (!value) {
-    return "";
-  }
-  if (typeof value === "string") {
-    return value;
-  }
-  return value.url || "";
+  return getMediaUrl(value);
 };
 
 const normalizeSharedPost = (value = {}) => {
@@ -296,12 +295,7 @@ export default function ProfileEditor({ user }) {
       .flatMap((post) => {
         const entries = Array.isArray(post?.media) ? post.media : [];
         return entries.map((entry, index) => {
-          const rawUrl =
-            entry && typeof entry === "object"
-              ? entry.url || ""
-              : typeof entry === "string"
-                ? entry
-                : "";
+          const rawUrl = getMediaUrl(entry);
           const url = resolveImage(rawUrl);
           return {
             id: `${post?._id || "post"}-${index}`,

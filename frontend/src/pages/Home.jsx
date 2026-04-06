@@ -22,7 +22,6 @@ import { connectSocket } from "../socket";
 import {
   createPost,
   createPostWithUploadProgress,
-  getDiscoveryHome,
   getFeed,
   getProfile,
   getUsers,
@@ -57,10 +56,6 @@ const HOME_NEWS_INTERVAL = Math.max(
   1,
   Number(import.meta.env.VITE_HOME_NEWS_INJECTION_INTERVAL || 8)
 );
-const FEED_SURFACES = [
-  { id: "for_you", label: "For You" },
-  { id: "following", label: "Following" },
-];
 
 const normalizeHandle = (value = "") =>
   String(value || "").trim().replace(/^@+/, "").replace(/\s+/g, "").toLowerCase().slice(0, 30);
@@ -955,9 +950,6 @@ export default function Home({ user }) {
   const [feedItems, setFeedItems] = useState([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState("");
-  const [feedSurface, setFeedSurface] = useState("for_you");
-  const [feedUsesDiscovery, setFeedUsesDiscovery] = useState(false);
-  const [feedFallback, setFeedFallback] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMinimized, setChatMinimized] = useState(false);
   const [chatDockMeta, setChatDockMeta] = useState(null);
@@ -975,7 +967,7 @@ export default function Home({ user }) {
   const discoveryQueueRef = useRef([]);
   const discoveryFlushTimerRef = useRef(null);
   const newsFeed = useNewsFeed({
-    tab: feedSurface === "following" ? "local" : "for-you",
+    tab: "local",
     limit: 12,
   });
   const newsPreferences = useNewsPreferences();
@@ -1039,59 +1031,24 @@ export default function Home({ user }) {
     [flushDiscoveryEvents]
   );
 
-  const loadFeedSurface = useCallback(async (
-    surface,
-    { silent = false, preserveVisibleCount = false } = {}
-  ) => {
+  const loadFeed = useCallback(async ({ silent = false, preserveVisibleCount = false } = {}) => {
     const requestSequence = ++feedRequestSequenceRef.current;
 
     if (!silent) {
       setFeedLoading(true);
       setFeedError("");
-      setFeedUsesDiscovery(false);
-      setFeedFallback(false);
     }
 
     try {
-      let nextItems = [];
-      let nextUsesDiscovery = false;
-      let nextFallback = false;
-
-      if (surface === "for_you") {
-        try {
-          const payload = await getDiscoveryHome({ limit: 28 });
-          if (requestSequence !== feedRequestSequenceRef.current) {
-            return;
-          }
-
-          nextItems = normalizeDiscoveryFeedItems(payload);
-          nextUsesDiscovery = true;
-          nextFallback = false;
-        } catch {
-          const fallbackFeed = await getFeed();
-          if (requestSequence !== feedRequestSequenceRef.current) {
-            return;
-          }
-
-          nextItems = normalizeLegacyFeedItems(fallbackFeed);
-          nextUsesDiscovery = false;
-          nextFallback = true;
-        }
-      } else {
-        const payload = await getFeed();
-        if (requestSequence !== feedRequestSequenceRef.current) {
-          return;
-        }
-
-        nextItems = normalizeLegacyFeedItems(payload);
-        nextUsesDiscovery = false;
-        nextFallback = false;
+      const payload = await getFeed();
+      if (requestSequence !== feedRequestSequenceRef.current) {
+        return;
       }
+
+      const nextItems = normalizeLegacyFeedItems(payload);
 
       if (requestSequence === feedRequestSequenceRef.current) {
         setFeedItems(nextItems);
-        setFeedUsesDiscovery(nextUsesDiscovery);
-        setFeedFallback(nextFallback);
         setFeedError("");
         lastFeedRefreshAtRef.current = Date.now();
         if (!preserveVisibleCount) {
@@ -1108,8 +1065,6 @@ export default function Home({ user }) {
       }
 
       setFeedItems([]);
-      setFeedUsesDiscovery(false);
-      setFeedFallback(false);
       setFeedError(err?.message || "Failed to load feed");
     } finally {
       if (!silent && requestSequence === feedRequestSequenceRef.current) {
@@ -1149,8 +1104,8 @@ export default function Home({ user }) {
   }, []);
 
   useEffect(() => {
-    void loadFeedSurface(feedSurface);
-  }, [feedSurface, loadFeedSurface]);
+    void loadFeed();
+  }, [loadFeed]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -1161,7 +1116,7 @@ export default function Home({ user }) {
       if (typeof document !== "undefined" && document.hidden) {
         return;
       }
-      void loadFeedSurface(feedSurface, {
+      void loadFeed({
         silent: true,
         preserveVisibleCount: true,
       });
@@ -1174,7 +1129,7 @@ export default function Home({ user }) {
       if (Date.now() - lastFeedRefreshAtRef.current < FEED_AUTO_REFRESH_MS) {
         return;
       }
-      void loadFeedSurface(feedSurface, {
+      void loadFeed({
         silent: true,
         preserveVisibleCount: true,
       });
@@ -1191,7 +1146,7 @@ export default function Home({ user }) {
         document.removeEventListener("visibilitychange", handleVisibilityChange);
       }
     };
-  }, [feedSurface, loadFeedSurface]);
+  }, [loadFeed]);
 
   useEffect(() => () => {
     if (typeof window !== "undefined" && discoveryFlushTimerRef.current) {
@@ -1584,34 +1539,6 @@ export default function Home({ user }) {
             </section>
           )}
 
-          <section className="card feed-surface-card">
-            <div className="feed-surface-tabs" role="tablist" aria-label="Feed surfaces">
-              {FEED_SURFACES.map((surface) => (
-                <button
-                  key={surface.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={feedSurface === surface.id}
-                  className={`feed-surface-tab ${
-                    feedSurface === surface.id ? "active" : ""
-                  }`}
-                  onClick={() => setFeedSurface(surface.id)}
-                >
-                  {surface.label}
-                </button>
-              ))}
-            </div>
-            <p className="feed-surface-note">
-              {feedSurface === "for_you"
-                ? feedFallback
-                  ? "For You is temporarily using the standard network feed while personalization reloads."
-                  : feedUsesDiscovery
-                    ? "For You blends your network, recent activity, and trust-aware ranking."
-                    : "Personalizing your feed."
-                : "Following shows the standard feed from accounts in your network."}
-            </p>
-          </section>
-
           <div className="tengacion-feed">
             {feedLoading ? (
               <>
@@ -1627,7 +1554,7 @@ export default function Home({ user }) {
                 <button
                   className="empty-feed-btn"
                   onClick={() => {
-                    void loadFeedSurface(feedSurface);
+                    void loadFeed();
                   }}
                 >
                   Try again

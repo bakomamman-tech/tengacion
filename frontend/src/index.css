@@ -10148,50 +10148,6 @@ html.dark-mode .create-post-quick-btn--reel {
   gap: 14px;
 }
 
-.feed-surface-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.feed-surface-tabs {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.feed-surface-tab {
-  border: 1px solid var(--border);
-  background: var(--surface-soft);
-  color: var(--text);
-  border-radius: 999px;
-  min-height: 38px;
-  padding: 0 14px;
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-}
-
-.feed-surface-tab:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-xs);
-}
-
-.feed-surface-tab.active {
-  border-color: color-mix(in srgb, var(--brand-strong) 42%, var(--border));
-  background: color-mix(in srgb, var(--brand-soft) 72%, var(--surface));
-  color: color-mix(in srgb, var(--brand-strong) 88%, var(--text) 12%);
-}
-
-.feed-surface-note {
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
 .search-person-row {
   display: flex;
   align-items: center;

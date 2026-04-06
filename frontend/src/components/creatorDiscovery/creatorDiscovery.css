@@ -329,6 +329,8 @@
 .creator-summary-card__category,
 .creator-discovery-card__category {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: fit-content;
   min-height: 28px;
   padding: 0 10px;
@@ -338,6 +340,8 @@
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  text-align: center;
+  font-weight: 800;
 }
 
 .creator-summary-card__summary {

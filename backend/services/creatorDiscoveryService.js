@@ -7,6 +7,7 @@ const Track = require("../models/Track");
 const User = require("../models/User");
 const { buildSignedMediaUrl } = require("./mediaSigner");
 const { getUserPaidPurchases } = require("./entitlementService");
+const { getMediaUrl } = require("../utils/userMedia");
 
 const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
@@ -169,6 +170,13 @@ const buildCreatorRoute = (creatorId) => `/creator/${String(creatorId || "").tri
 const buildSubscribeRoute = (creatorId) =>
   `/creators/${String(creatorId || "").trim()}/subscribe`;
 
+const resolveCreatorAvatar = (creatorProfile = {}, user = {}) =>
+  toCleanString(
+    creatorProfile?.coverImageUrl ||
+      getMediaUrl(user?.avatar || user?.profilePic) ||
+      creatorProfile?.heroBannerUrl
+  );
+
 const getCreatorProfileMeta = (creatorProfile) => {
   const user = creatorProfile?.userId || {};
   const creatorId = String(creatorProfile?._id || "").trim();
@@ -182,8 +190,7 @@ const getCreatorProfileMeta = (creatorProfile) => {
       user?.name ||
       "Creator",
     creatorUsername: toCleanString(user?.username || ""),
-    creatorAvatar:
-      toCleanString(user?.avatar || user?.profilePic || creatorProfile?.coverImageUrl) || "",
+    creatorAvatar: resolveCreatorAvatar(creatorProfile, user),
     creatorBanner:
       toCleanString(creatorProfile?.heroBannerUrl || creatorProfile?.coverImageUrl) || "",
     creatorBio:

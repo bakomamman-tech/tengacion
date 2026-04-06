@@ -1,7 +1,7 @@
-const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 const request = require("supertest");
+const jwt = require("jsonwebtoken");
 
 process.env.NODE_ENV = "test";
 process.env.MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/tengacion-test";
@@ -47,6 +47,8 @@ const seedCreator = async ({
   displayName,
   creatorTypes,
   subscriptionPrice = 2500,
+  coverImageUrl = "",
+  userAvatar = "",
 }) => {
   const user = await User.create({
     name,
@@ -56,6 +58,7 @@ const seedCreator = async ({
     role: "artist",
     isArtist: true,
     isVerified: true,
+    avatar: userAvatar || undefined,
   });
 
   const profile = await CreatorProfile.create({
@@ -74,6 +77,7 @@ const seedCreator = async ({
     status: "active",
     tagline: `${displayName} tagline`,
     subscriptionPrice,
+    coverImageUrl,
   });
 
   return { user, profile };
@@ -124,6 +128,10 @@ describe("creator discovery routes", () => {
       username: "music_creator",
       displayName: "Music Creator",
       creatorTypes: ["music"],
+      coverImageUrl: "https://cdn.test/music-creator-profile.jpg",
+      userAvatar: {
+        url: "https://cdn.test/user-avatar-should-not-win.jpg",
+      },
     });
     const { profile: bookCreator } = await seedCreator({
       name: "Book Creator",
@@ -173,6 +181,7 @@ describe("creator discovery routes", () => {
       creatorName: expect.any(String),
       creatorRoute: expect.stringContaining("/creator/"),
     });
+    expect(response.body.items.some((item) => item.creatorAvatar === "https://cdn.test/music-creator-profile.jpg")).toBe(true);
     expect(response.body.items.some((item) => item.previewUrl)).toBe(true);
   });
 

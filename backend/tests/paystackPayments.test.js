@@ -306,6 +306,47 @@ describe("Paystack payments", () => {
     expect(await Entitlement.countDocuments({ buyerId: viewer._id, itemType: "book", itemId: book._id })).toBe(0);
   });
 
+  test("verify can still settle an abandoned pending purchase", async () => {
+    mockPaystackResponse({
+      authorization_url: "https://paystack.test/authorize",
+      access_code: "ACCESS_ABANDONED",
+      reference: "TGN_TRACK_ABANDONED",
+    });
+
+    const initResponse = await request(app)
+      .post("/api/payments/paystack/initialize")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        productType: "music",
+        productId: track._id.toString(),
+      })
+      .expect(201);
+
+    await Purchase.updateOne(
+      { providerRef: initResponse.body.reference },
+      { $set: { status: "abandoned" } }
+    );
+
+    mockPaystackResponse({
+      id: 1,
+      status: "success",
+      reference: initResponse.body.reference,
+      amount: 2500 * 100,
+      currency: "NGN",
+    });
+
+    const verifyResponse = await request(app)
+      .get(`/api/payments/paystack/verify/${encodeURIComponent(initResponse.body.reference)}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+
+    expect(verifyResponse.body.accessGranted).toBe(true);
+
+    const stored = await Purchase.findOne({ providerRef: initResponse.body.reference }).lean();
+    expect(stored.status).toBe("paid");
+    expect(await Entitlement.countDocuments({ buyerId: viewer._id, itemType: "track", itemId: track._id })).toBe(1);
+  });
+
   test("duplicate webhook delivery is idempotent", async () => {
     mockPaystackResponse({
       authorization_url: "https://paystack.test/authorize",

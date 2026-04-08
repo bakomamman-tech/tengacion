@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { resolveImage } from "./api";
 import kadunaGotTalentPoster from "./assets/kaduna-got-talent-poster.jpg";
@@ -10,6 +11,7 @@ const fallbackAvatar = (name) =>
 export default function Sidebar({ user, openChat, openProfile }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isSponsoredExpanded, setIsSponsoredExpanded] = useState(false);
 
   const avatar = resolveImage(user?.avatar) || fallbackAvatar(user?.name);
 
@@ -123,21 +125,51 @@ export default function Sidebar({ user, openChat, openProfile }) {
         </button>
       </div>
 
-      <section className="sidebar-sponsored-card" aria-label="Sponsored Kaduna Got Talent advert">
+      <section
+        className={`sidebar-sponsored-card${isSponsoredExpanded ? " expanded" : " compact"}`}
+        aria-label="Sponsored Kaduna Got Talent advert"
+      >
         <div className="sidebar-sponsored-topline">
-          <span className="sidebar-sponsored-badge">Sponsored</span>
-          <strong>Kaduna Got Talent</strong>
+          <div className="sidebar-sponsored-heading">
+            <span className="sidebar-sponsored-badge">Sponsored</span>
+            <strong>Kaduna Got Talent</strong>
+          </div>
+
+          <button
+            type="button"
+            className="sidebar-sponsored-toggle"
+            onClick={() => setIsSponsoredExpanded((current) => !current)}
+            aria-expanded={isSponsoredExpanded}
+          >
+            {isSponsoredExpanded ? "Minimize" : "Preview"}
+          </button>
         </div>
 
-        <img
-          src={kadunaGotTalentPoster}
-          alt="Kaduna Got Talent flyer"
-          className="sidebar-sponsored-image"
-        />
+        {isSponsoredExpanded ? (
+          <>
+            <img
+              src={kadunaGotTalentPoster}
+              alt="Kaduna Got Talent flyer"
+              className="sidebar-sponsored-image"
+            />
 
-        <p className="sidebar-sponsored-copy">
-          Showcase your talent on Tengacion and apply for Kaduna Got Talent.
-        </p>
+            <p className="sidebar-sponsored-copy">
+              Showcase your talent on Tengacion and apply for Kaduna Got Talent.
+            </p>
+          </>
+        ) : (
+          <div className="sidebar-sponsored-compact-body">
+            <img
+              src={kadunaGotTalentPoster}
+              alt="Kaduna Got Talent flyer"
+              className="sidebar-sponsored-thumb"
+            />
+
+            <p className="sidebar-sponsored-copy">
+              Open the flyer when you want it, while keeping the left menu free to use.
+            </p>
+          </div>
+        )}
 
         <button
           type="button"

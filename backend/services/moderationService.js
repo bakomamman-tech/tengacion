@@ -1930,6 +1930,7 @@ const createOrUpdateModerationCase = async ({
   subjectMediaType = "",
   forceReview = false,
   manualReviewReason = "",
+  autoEnforce = true,
 }) => {
   const normalizedTargetType = normalizeText(targetType, 40);
   const normalizedTargetId = normalizeText(targetId, 120);
@@ -2124,21 +2125,23 @@ const createOrUpdateModerationCase = async ({
   moderationCase.media = stripTransientMediaFields(persistedMedia);
   await moderationCase.save();
 
-  await applyModerationStatusToTarget({
-    targetType: normalizedTargetType,
-    targetId: normalizedTargetId,
-    status: moderationCase.status,
-    baselineAccess,
-    moderationCaseId: moderationCase._id,
-    sensitiveType: moderationCase.queue,
-    blurPreviewUrl: moderationCase.media?.[0]?.restrictedPreviewUrl || "",
-  });
+  if (autoEnforce) {
+    await applyModerationStatusToTarget({
+      targetType: normalizedTargetType,
+      targetId: normalizedTargetId,
+      status: moderationCase.status,
+      baselineAccess,
+      moderationCaseId: moderationCase._id,
+      sensitiveType: moderationCase.queue,
+      blurPreviewUrl: moderationCase.media?.[0]?.restrictedPreviewUrl || "",
+    });
 
-  await syncLinkedReports({
-    moderationCase,
-    action: moderationDecision.status === "ALLOW" ? "approve" : "reject",
-    actorId: null,
-  });
+    await syncLinkedReports({
+      moderationCase,
+      action: moderationDecision.status === "ALLOW" ? "approve" : "reject",
+      actorId: null,
+    });
+  }
 
   await maybeNotifyPrimaryAdmin({ moderationCase, req });
 

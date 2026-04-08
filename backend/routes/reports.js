@@ -180,6 +180,9 @@ router.post("/", auth, reportLimiter, async (req, res) => {
       detectionSource: "user_report",
       reportReason: reason,
       linkedReportIds: [report._id],
+      // Match common social-network behavior: queue reported posts for review,
+      // but do not auto-hide them before a moderator takes action.
+      autoEnforce: targetType !== "post",
       req,
     });
     if (moderationCase?._id) {

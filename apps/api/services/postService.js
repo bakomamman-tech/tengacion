@@ -48,6 +48,10 @@ const toIdString = (value) => {
 
 const uniqueIds = (values) => [...new Set(values.filter(Boolean))];
 
+const shouldDeferPublicUserReportCase = (caseDoc = null) =>
+  String(caseDoc?.queue || "") === "user_reported_sensitive_content"
+  && String(caseDoc?.status || "") === "HOLD_FOR_REVIEW";
+
 const inferMediaKind = (file) => {
   const mime = String(file?.mimetype || "").toLowerCase();
   if (mime.startsWith("video/")) return "video";
@@ -717,12 +721,16 @@ const attachPostModerationOverlays = async (posts = [], viewerId = null, req = n
   return normalizedPosts
     .filter((post) => {
       const caseDoc = caseMap.get(toIdString(post?._id)) || null;
-      return !caseDoc || !isHiddenFromPublicStatus(caseDoc.status);
+      return (
+        !caseDoc
+        || shouldDeferPublicUserReportCase(caseDoc)
+        || !isHiddenFromPublicStatus(caseDoc.status)
+      );
     })
     .map((post) => {
       const caseDoc = caseMap.get(toIdString(post?._id)) || null;
       const payload = toPostPayload(post, viewerId);
-      if (caseDoc) {
+      if (caseDoc && !shouldDeferPublicUserReportCase(caseDoc)) {
         const publicSensitivity = resolvePublicSensitivity({
           moderationStatus: caseDoc.status,
           queue: caseDoc.queue,
@@ -1550,12 +1558,16 @@ class PostService {
     }
 
     const moderationCase = await getLatestCaseForTarget("post", postId);
-    if (moderationCase && isHiddenFromPublicStatus(moderationCase.status)) {
+    if (
+      moderationCase
+      && !shouldDeferPublicUserReportCase(moderationCase)
+      && isHiddenFromPublicStatus(moderationCase.status)
+    ) {
       throw ApiError.notFound("Post not found");
     }
 
     const payload = toPostPayload(post, viewerId);
-    if (moderationCase) {
+    if (moderationCase && !shouldDeferPublicUserReportCase(moderationCase)) {
       const publicSensitivity = resolvePublicSensitivity({
         moderationStatus: moderationCase.status,
         queue: moderationCase.queue,

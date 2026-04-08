@@ -45,10 +45,48 @@
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.0",
     "globals": "^15.0.0",
-    "jsdom": "^28.1.0",
+    "jsdom": "^29.0.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
-    "vite": "^7.2.4",
+    "vite": "^7.3.2",
     "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "flat-cache": {
+      "flatted": "3.4.2"
+    },
+    "socket.io-client": {
+      "socket.io-parser": "4.2.6"
+    },
+    "vite": {
+      "picomatch": "4.0.4",
+      "rollup": "4.60.1"
+    },
+    "fdir": {
+      "picomatch": "4.0.4"
+    },
+    "tinyglobby": {
+      "picomatch": "4.0.4"
+    },
+    "vitest": {
+      "picomatch": "4.0.4"
+    },
+    "micromatch": {
+      "picomatch": "2.3.2"
+    },
+    "anymatch": {
+      "picomatch": "2.3.2"
+    },
+    "readdirp": {
+      "picomatch": "2.3.2"
+    },
+    "eslint": {
+      "minimatch": {
+        "brace-expansion": "1.1.13"
+      }
+    },
+    "jsdom": {
+      "undici": "7.24.5"
+    }
   }
 }

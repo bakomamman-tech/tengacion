@@ -43,9 +43,9 @@
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
-    "jest": "^30.2.0",
+    "jest": "^30.3.0",
     "mongodb-memory-server": "^11.0.1",
-    "nodemon": "^3.1.11",
+    "nodemon": "^3.1.14",
     "supertest": "^7.2.2"
   },
   "engines": {
@@ -61,6 +61,26 @@
     },
     "socket.io": {
       "socket.io-parser": "4.2.6"
+    },
+    "jest-util": {
+      "picomatch": "4.0.4"
+    },
+    "micromatch": {
+      "picomatch": "2.3.2"
+    },
+    "anymatch": {
+      "picomatch": "2.3.2"
+    },
+    "readdirp": {
+      "picomatch": "2.3.2"
+    },
+    "mongodb-memory-server-core": {
+      "yauzl": "3.3.0"
+    },
+    "test-exclude": {
+      "minimatch": {
+        "brace-expansion": "1.1.13"
+      }
     },
     "archiver-utils": {
       "glob": {

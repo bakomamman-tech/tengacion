@@ -1,6 +1,7 @@
 import { useState } from "react";
 import StoryViewer from "./StoryViewer";
 import { resolveImage } from "../api";
+import { getStoryMedia } from "./storyMedia";
 
 export default function StoryCard({
   story,
@@ -10,8 +11,8 @@ export default function StoryCard({
   onSeen,
 }) {
   const [open, setOpen] = useState(false);
-  const cover = resolveImage(story?.thumbnailUrl || story?.mediaUrl || story?.image);
-  const mediaType = story?.mediaType || (String(story?.mediaUrl || "").includes(".mp4") ? "video" : "image");
+  const { mediaType, mediaUrl, thumbnailUrl } = getStoryMedia(story);
+  const cover = thumbnailUrl || mediaUrl;
   const soundtrack = story?.musicAttachment || null;
 
   const avatarSrc = story?.avatar

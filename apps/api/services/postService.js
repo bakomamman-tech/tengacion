@@ -32,6 +32,12 @@ const {
   getLatestCaseMapForTargets,
   getPublicModerationOverlay,
 } = require("../../../backend/services/moderationService");
+const {
+  isHiddenFromPublicStatus,
+  isRestrictedForPublicStatus,
+  normalizeModerationStatus,
+  resolvePublicSensitivity,
+} = require("../../../backend/utils/publicModeration");
 
 const toIdString = (value) => {
   if (!value) return "";
@@ -711,15 +717,19 @@ const attachPostModerationOverlays = async (posts = [], viewerId = null, req = n
   return normalizedPosts
     .filter((post) => {
       const caseDoc = caseMap.get(toIdString(post?._id)) || null;
-      return !caseDoc || !["HOLD_FOR_REVIEW", "BLOCK_EXPLICIT_ADULT", "BLOCK_SUSPECTED_CHILD_EXPLOITATION", "BLOCK_EXTREME_GORE", "BLOCK_ANIMAL_CRUELTY", "BLOCK_REPEAT_VIOLATOR"].includes(String(caseDoc.status || ""));
+      return !caseDoc || !isHiddenFromPublicStatus(caseDoc.status);
     })
     .map((post) => {
       const caseDoc = caseMap.get(toIdString(post?._id)) || null;
       const payload = toPostPayload(post, viewerId);
       if (caseDoc) {
-        payload.moderationStatus = String(caseDoc.status || "");
-        payload.sensitiveContent = caseDoc.status !== "ALLOW";
-        payload.sensitiveType = String(caseDoc.queue || "");
+        const publicSensitivity = resolvePublicSensitivity({
+          moderationStatus: caseDoc.status,
+          queue: caseDoc.queue,
+        });
+        payload.moderationStatus = publicSensitivity.moderationStatus;
+        payload.sensitiveContent = publicSensitivity.sensitiveContent;
+        payload.sensitiveType = publicSensitivity.sensitiveType;
         payload.blurPreviewUrl = post.blurPreviewUrl || caseDoc.media?.[0]?.restrictedPreviewUrl || "";
         payload.reviewRequired = caseDoc.status === "HOLD_FOR_REVIEW";
         payload.moderationOverlay = getPublicModerationOverlay(caseDoc, req);
@@ -744,9 +754,14 @@ const attachPostModerationOverlays = async (posts = [], viewerId = null, req = n
           payload.autoplayDisabled = true;
         }
       } else {
-        payload.moderationStatus = String(post?.moderationStatus || "ALLOW");
-        payload.sensitiveContent = Boolean(post?.sensitiveContent);
-        payload.sensitiveType = String(post?.sensitiveType || "");
+        const publicSensitivity = resolvePublicSensitivity({
+          moderationStatus: post?.moderationStatus,
+          sensitiveContent: post?.sensitiveContent,
+          sensitiveType: post?.sensitiveType,
+        });
+        payload.moderationStatus = publicSensitivity.moderationStatus;
+        payload.sensitiveContent = publicSensitivity.sensitiveContent;
+        payload.sensitiveType = publicSensitivity.sensitiveType;
         payload.blurPreviewUrl = String(post?.blurPreviewUrl || "");
         payload.reviewRequired = Boolean(post?.reviewRequired);
         payload.moderationOverlay = null;
@@ -898,6 +913,11 @@ const toPostPayload = (post, viewerId) => {
   const authorId = author?._id ? author._id.toString() : "";
   const viewerIdString = viewerId ? viewerId.toString() : "";
   const likedByViewer = Boolean(viewerIdString && likes.some((id) => id.toString() === viewerIdString));
+  const publicSensitivity = resolvePublicSensitivity({
+    moderationStatus: post?.moderationStatus,
+    sensitiveContent: post?.sensitiveContent,
+    sensitiveType: post?.sensitiveType,
+  });
 
   return {
     _id: post._id.toString(),
@@ -938,9 +958,9 @@ const toPostPayload = (post, viewerId) => {
     updatedAt: post.updatedAt,
     edited: Boolean(post.edited),
     isOwner: Boolean(viewerId && authorId && authorId === viewerId.toString()),
-    moderationStatus: String(post.moderationStatus || "ALLOW"),
-    sensitiveContent: Boolean(post.sensitiveContent),
-    sensitiveType: String(post.sensitiveType || ""),
+    moderationStatus: publicSensitivity.moderationStatus,
+    sensitiveContent: publicSensitivity.sensitiveContent,
+    sensitiveType: publicSensitivity.sensitiveType,
     blurPreviewUrl: String(post.blurPreviewUrl || ""),
     reviewRequired: Boolean(post.reviewRequired),
     user: {
@@ -1320,17 +1340,21 @@ class PostService {
     }
 
     if (moderationCase?._id) {
+      const publicSensitivity = resolvePublicSensitivity({
+        moderationStatus: moderationCase.status,
+        queue: moderationCase.queue,
+      });
       await Post.updateOne(
         { _id: created._id },
         {
           $set: {
-            moderationStatus: moderationCase.status,
+            moderationStatus: publicSensitivity.moderationStatus,
             moderationCaseId: moderationCase._id,
-            sensitiveContent: moderationCase.status !== "ALLOW",
-            sensitiveType: moderationCase.queue,
+            sensitiveContent: publicSensitivity.sensitiveContent,
+            sensitiveType: publicSensitivity.sensitiveType,
             blurPreviewUrl: moderationCase.media?.[0]?.restrictedPreviewUrl || "",
             originalVisibility: visibility,
-            reviewRequired: moderationCase.status === "HOLD_FOR_REVIEW",
+            reviewRequired: publicSensitivity.moderationStatus === "HOLD_FOR_REVIEW",
           },
         }
       );
@@ -1526,18 +1550,19 @@ class PostService {
     }
 
     const moderationCase = await getLatestCaseForTarget("post", postId);
-    if (
-      moderationCase
-      && ["HOLD_FOR_REVIEW", "BLOCK_EXPLICIT_ADULT", "BLOCK_SUSPECTED_CHILD_EXPLOITATION", "BLOCK_EXTREME_GORE", "BLOCK_ANIMAL_CRUELTY", "BLOCK_REPEAT_VIOLATOR"].includes(String(moderationCase.status || ""))
-    ) {
+    if (moderationCase && isHiddenFromPublicStatus(moderationCase.status)) {
       throw ApiError.notFound("Post not found");
     }
 
     const payload = toPostPayload(post, viewerId);
     if (moderationCase) {
-      payload.moderationStatus = String(moderationCase.status || "");
-      payload.sensitiveContent = moderationCase.status !== "ALLOW";
-      payload.sensitiveType = String(moderationCase.queue || "");
+      const publicSensitivity = resolvePublicSensitivity({
+        moderationStatus: moderationCase.status,
+        queue: moderationCase.queue,
+      });
+      payload.moderationStatus = publicSensitivity.moderationStatus;
+      payload.sensitiveContent = publicSensitivity.sensitiveContent;
+      payload.sensitiveType = publicSensitivity.sensitiveType;
       payload.blurPreviewUrl = post.blurPreviewUrl || moderationCase.media?.[0]?.restrictedPreviewUrl || "";
       payload.reviewRequired = moderationCase.status === "HOLD_FOR_REVIEW";
       payload.moderationOverlay = getPublicModerationOverlay(moderationCase);

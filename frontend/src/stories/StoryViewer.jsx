@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { markStorySeen, reactToStory, replyToStory, resolveImage } from "../api";
 import Button from "../components/ui/Button";
+import { getStoryMedia } from "./storyMedia";
 
 const IMAGE_DURATION_MS = 5000;
 
@@ -59,8 +60,7 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
   ];
 
   const activeStory = orderedStories[index] || story;
-  const mediaType = activeStory?.mediaType || "image";
-  const mediaUrl = resolveImage(activeStory?.mediaUrl || activeStory?.image);
+  const { mediaType, mediaUrl } = getStoryMedia(activeStory);
   const soundtrack = activeStory?.musicAttachment || null;
   const avatarSrc = activeStory?.avatar
     ? resolveImage(activeStory.avatar)

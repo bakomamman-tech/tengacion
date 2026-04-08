@@ -13,6 +13,9 @@ const errorHandler = require("../../apps/api/middleware/errorHandler");
 const User = require("../models/User");
 const Post = require("../models/Post");
 const {
+  createUploadModerationCase,
+} = require("../services/uploadModerationService");
+const {
   classifyRecordMedia,
   LEGACY_MEDIA_SOURCES,
 } = require("../services/mediaAuditService");
@@ -341,6 +344,116 @@ describe("Posts feed", () => {
       secureUrl: "https://cdn.test/media/legacy-photo.jpg",
       type: "image",
     });
+  });
+
+  test("GET /api/posts keeps approved upload-moderation posts non-sensitive", async () => {
+    const post = await Post.create({
+      author: artist._id,
+      text: "Approved upload should stay visible on mobile",
+      media: [{ url: "https://cdn.test/media/approved-photo.jpg", type: "image" }],
+      type: "image",
+      privacy: "public",
+      visibility: "public",
+      sensitiveContent: false,
+      sensitiveType: "",
+      moderationStatus: "approved",
+    });
+
+    await createUploadModerationCase({
+      targetType: "post",
+      targetId: post._id.toString(),
+      uploader: {
+        userId: artist._id,
+        email: artist.email,
+        username: artist.username,
+        displayName: artist.name,
+      },
+      fileUrl: "https://cdn.test/media/approved-photo.jpg",
+      mimeType: "image/jpeg",
+      labels: [],
+      reason: "",
+      confidence: 0.12,
+      status: "approved",
+      visibility: "public",
+      storageStage: "permanent",
+      subject: {
+        title: post.text,
+        description: post.text,
+        mediaType: "image",
+        createdAt: post.createdAt,
+      },
+      media: [
+        {
+          role: "primary",
+          mediaType: "image",
+          mimeType: "image/jpeg",
+          sourceUrl: "https://cdn.test/media/approved-photo.jpg",
+          previewUrl: "https://cdn.test/media/approved-photo.jpg",
+          originalFilename: "approved-photo.jpg",
+          fileSizeBytes: 1024,
+        },
+      ],
+    });
+
+    const response = await request(app).get("/api/posts").expect(200);
+
+    expect(response.body).toHaveLength(1);
+    expect(response.body[0]).toMatchObject({
+      _id: post._id.toString(),
+      moderationStatus: "approved",
+      sensitiveContent: false,
+      sensitiveType: "",
+      image: "https://cdn.test/media/approved-photo.jpg",
+    });
+  });
+
+  test("GET /api/posts/:id hides posts with pending upload-moderation cases", async () => {
+    const post = await Post.create({
+      author: artist._id,
+      text: "Pending upload should not be public",
+      media: [{ url: "https://cdn.test/media/pending-photo.jpg", type: "image" }],
+      type: "image",
+      privacy: "public",
+      visibility: "public",
+    });
+
+    await createUploadModerationCase({
+      targetType: "post",
+      targetId: post._id.toString(),
+      uploader: {
+        userId: artist._id,
+        email: artist.email,
+        username: artist.username,
+        displayName: artist.name,
+      },
+      fileUrl: "https://cdn.test/media/pending-photo.jpg",
+      mimeType: "image/jpeg",
+      labels: ["manual_review"],
+      reason: "Awaiting review",
+      confidence: 0.67,
+      status: "pending",
+      visibility: "blocked",
+      storageStage: "quarantine",
+      subject: {
+        title: post.text,
+        description: post.text,
+        mediaType: "image",
+        createdAt: post.createdAt,
+      },
+      media: [
+        {
+          role: "primary",
+          mediaType: "image",
+          mimeType: "image/jpeg",
+          sourceUrl: "https://cdn.test/media/pending-photo.jpg",
+          previewUrl: "https://cdn.test/media/pending-photo.jpg",
+          originalFilename: "pending-photo.jpg",
+          fileSizeBytes: 1024,
+        },
+      ],
+    });
+
+    await request(app).get(`/api/posts/${post._id}`).expect(404);
   });
 
   test("DELETE /api/posts removes cloudinary-backed media after the record is deleted", async () => {

@@ -38,6 +38,7 @@ const {
 const { createNotification } = require("./notificationService");
 const { hasAllPermissions } = require("./permissionService");
 const { disconnectUserSockets } = require("../utils/realtimeSessions");
+const { resolvePublicSensitivity } = require("../utils/publicModeration");
 const sendSecurityEmail = require("../utils/sendSecurityEmail");
 
 const ACTIVE_REVIEW_STATES = ["OPEN", "UNDER_REVIEW", "ESCALATED"];
@@ -1482,6 +1483,11 @@ const applyModerationStatusToTarget = async ({
   }
 
   const nextAccess = mergeVisibilityWithModeration(baselineAccess, { status });
+  const publicSensitivity = resolvePublicSensitivity({
+    moderationStatus: status,
+    sensitiveType,
+    queue: sensitiveType,
+  });
   if (docHasPath(doc, "isPublished")) {
     doc.isPublished = nextAccess.isPublished;
   }
@@ -1493,28 +1499,28 @@ const applyModerationStatusToTarget = async ({
     doc.status = nextAccess.albumStatus;
   }
   if (docHasPath(doc, "moderationStatus")) {
-    doc.moderationStatus = status;
+    doc.moderationStatus = publicSensitivity.moderationStatus;
   }
   if (docHasPath(doc, "moderationCaseId")) {
     doc.moderationCaseId = moderationCaseId || null;
   }
   if (docHasPath(doc, "sensitiveContent")) {
-    doc.sensitiveContent = status !== "ALLOW";
+    doc.sensitiveContent = publicSensitivity.sensitiveContent;
   }
   if (docHasPath(doc, "sensitiveType")) {
-    doc.sensitiveType = sensitiveType || status;
+    doc.sensitiveType = publicSensitivity.sensitiveType;
   }
   if (docHasPath(doc, "blurPreviewUrl") && blurPreviewUrl) {
     doc.blurPreviewUrl = blurPreviewUrl;
   }
   if (
     docHasPath(doc, "blurPreviewUrl")
-    && status !== "RESTRICTED_BLURRED"
+    && publicSensitivity.moderationStatus !== "RESTRICTED_BLURRED"
   ) {
     doc.blurPreviewUrl = "";
   }
   if (docHasPath(doc, "reviewRequired")) {
-    doc.reviewRequired = status === "HOLD_FOR_REVIEW";
+    doc.reviewRequired = publicSensitivity.moderationStatus === "HOLD_FOR_REVIEW";
   }
   if (
     docHasPath(doc, "originalVisibility")
@@ -1525,9 +1531,9 @@ const applyModerationStatusToTarget = async ({
       doc.originalVisibility = currentVisibility;
     }
 
-    if (status === "ALLOW") {
+    if (publicSensitivity.moderationStatus === "ALLOW" || publicSensitivity.moderationStatus === "approved") {
       doc.visibility = String(doc.originalVisibility || baselineAccess?.visibility || currentVisibility || "public");
-    } else if (status !== "RESTRICTED_BLURRED") {
+    } else if (publicSensitivity.moderationStatus !== "RESTRICTED_BLURRED") {
       doc.visibility = "private";
     }
   }

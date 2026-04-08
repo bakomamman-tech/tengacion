@@ -219,6 +219,98 @@ describe("story music attachment", () => {
     expect(await Story.countDocuments()).toBe(0);
   });
 
+  test("GET /api/stories normalizes nested story media fields for feed consumers", async () => {
+    const creator = await createCreator();
+    const viewer = await createViewer();
+
+    await User.updateOne(
+      { _id: viewer.user._id },
+      { $set: { friends: [creator.user._id.toString()] } }
+    );
+
+    await Story.create({
+      userId: creator.user._id.toString(),
+      authorId: creator.user._id,
+      name: creator.user.name,
+      username: creator.user.username,
+      avatar: "",
+      text: "Nested media fallback",
+      visibility: "friends",
+      media: {
+        provider: "cloudinary",
+        secureUrl: "https://cdn.tengacion.test/stories/nested-only.jpg",
+        publicId: "tengacion/stories/images/nested-only",
+        type: "image",
+      },
+      mediaUrl: "",
+      image: "",
+      thumbnailUrl: "",
+      time: new Date(),
+    });
+
+    const feedResponse = await request(app)
+      .get("/api/stories")
+      .set("Authorization", `Bearer ${viewer.token}`)
+      .expect(200);
+
+    const feedStory = feedResponse.body.find((entry) => entry.username === creator.user.username);
+    expect(feedStory).toBeTruthy();
+    expect(feedStory).toMatchObject({
+      mediaType: "image",
+      mediaUrl: "https://cdn.tengacion.test/stories/nested-only.jpg",
+      image: "https://cdn.tengacion.test/stories/nested-only.jpg",
+      thumbnailUrl: "https://cdn.tengacion.test/stories/nested-only.jpg",
+    });
+  });
+
+  test("GET /api/stories keeps approved upload-moderation stories non-sensitive", async () => {
+    const creator = await createCreator();
+    const viewer = await createViewer();
+
+    await User.updateOne(
+      { _id: viewer.user._id },
+      { $set: { friends: [creator.user._id.toString()] } }
+    );
+
+    await Story.create({
+      userId: creator.user._id.toString(),
+      authorId: creator.user._id,
+      name: creator.user.name,
+      username: creator.user.username,
+      avatar: "",
+      text: "Approved upload should stay visible on mobile",
+      visibility: "friends",
+      media: {
+        provider: "cloudinary",
+        secureUrl: "https://cdn.tengacion.test/stories/approved-story.jpg",
+        publicId: "tengacion/stories/images/approved-story",
+        type: "image",
+      },
+      mediaUrl: "https://cdn.tengacion.test/stories/approved-story.jpg",
+      image: "https://cdn.tengacion.test/stories/approved-story.jpg",
+      thumbnailUrl: "https://cdn.tengacion.test/stories/approved-story.jpg",
+      mediaType: "image",
+      moderationStatus: "approved",
+      sensitiveContent: true,
+      sensitiveType: "upload_moderation",
+      time: new Date(),
+    });
+
+    const feedResponse = await request(app)
+      .get("/api/stories")
+      .set("Authorization", `Bearer ${viewer.token}`)
+      .expect(200);
+
+    const feedStory = feedResponse.body.find((entry) => entry.username === creator.user.username);
+    expect(feedStory).toBeTruthy();
+    expect(feedStory).toMatchObject({
+      moderationStatus: "approved",
+      sensitiveContent: false,
+      sensitiveType: "",
+      mediaUrl: "https://cdn.tengacion.test/stories/approved-story.jpg",
+    });
+  });
+
   test("new stories do not persist legacy avatar or soundtrack snapshot paths", async () => {
     const creator = await createCreator();
 

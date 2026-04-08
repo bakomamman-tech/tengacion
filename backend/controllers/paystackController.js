@@ -13,6 +13,7 @@ const {
   validateWebhookSignature,
   verifyTransaction,
 } = require("../services/paystackService");
+const { sendCreatorPurchaseMessengerAlert } = require("../services/creatorSalesMessengerService");
 const { config } = require("../config/env");
 
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
@@ -320,6 +321,10 @@ exports.verifyPaystackPayment = asyncHandler(async (req, res) => {
   const result = await settlePurchasedAccess(purchase, { paidAt: new Date() });
   if (result.granted) {
     emitEntitlementGranted({ req, purchase: result.purchase });
+    await sendCreatorPurchaseMessengerAlert({
+      req,
+      purchase: result.purchase,
+    }).catch(() => null);
   }
 
   return res.json({
@@ -375,6 +380,10 @@ exports.handlePaystackWebhook = asyncHandler(async (req, res) => {
   const result = await settlePurchasedAccess(purchase, { paidAt: new Date() });
   if (result.granted) {
     emitEntitlementGranted({ req, purchase: result.purchase });
+    await sendCreatorPurchaseMessengerAlert({
+      req,
+      purchase: result.purchase,
+    }).catch(() => null);
   }
 
   return res.status(200).json({ received: true });

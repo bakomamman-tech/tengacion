@@ -17,6 +17,7 @@ const app = require("../app");
 const Book = require("../models/Book");
 const CreatorProfile = require("../models/CreatorProfile");
 const Entitlement = require("../models/Entitlement");
+const Message = require("../models/Message");
 const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const User = require("../models/User");
@@ -94,6 +95,17 @@ const createViewer = async () => {
   return { user, token };
 };
 
+const createAdmin = async () =>
+  User.create({
+    name: "Tengacion Admin",
+    username: "tengacion_admin",
+    email: "admin@example.com",
+    password: "Password123!",
+    role: "admin",
+    isVerified: true,
+    emailVerified: true,
+  });
+
 const mockPaystackResponse = (data) => {
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
@@ -135,6 +147,7 @@ describe("Paystack payments", () => {
     await mongoose.connection.db.dropDatabase();
     global.fetch = originalFetch;
 
+    await createAdmin();
     creator = await createCreator();
     ({ user: viewer, token: viewerToken } = await createViewer());
 
@@ -270,6 +283,15 @@ describe("Paystack payments", () => {
 
     const stored = await Purchase.findOne({ providerRef: initResponse.body.reference }).lean();
     expect(stored.status).toBe("paid");
+
+    const salesAlert = await Message.findOne({
+      receiverId: creator.user._id,
+      isSystem: true,
+    }).lean();
+    expect(salesAlert).toBeTruthy();
+    expect(salesAlert.senderName).toBe("Tengacion Sales");
+    expect(String(salesAlert.text || "")).toContain(track.title);
+    expect(String(salesAlert.text || "")).toContain("NGN 2,500");
   });
 
   test("amount mismatch blocks access", async () => {
@@ -404,6 +426,12 @@ describe("Paystack payments", () => {
 
     const stored = await Purchase.findOne({ providerRef: initResponse.body.reference }).lean();
     expect(stored.status).toBe("paid");
+    expect(
+      await Message.countDocuments({
+        receiverId: creator.user._id,
+        isSystem: true,
+      })
+    ).toBe(1);
   });
 
   test("webhook signature failure is rejected", async () => {

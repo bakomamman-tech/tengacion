@@ -697,6 +697,23 @@ export const submitAdminComplaint = (payload = {}) =>
     body: JSON.stringify(payload || {}),
   });
 
+export const getKadunaGotTalentApplication = () =>
+  request(`${API_BASE}/talent-show/kaduna-got-talent/application`, {
+    headers: getAuthHeaders(),
+    suppressAuthFailure: true,
+  });
+
+export const submitKadunaGotTalentApplication = (payload = {}) =>
+  request(`${API_BASE}/talent-show/kaduna-got-talent/application`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+    suppressAuthFailure: true,
+  });
+
 export const getFriendsHub = () =>
   request(`${API_BASE}/users/me/friends-hub`, {
     headers: getAuthHeaders(),

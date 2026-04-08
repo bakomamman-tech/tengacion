@@ -9250,6 +9250,79 @@ html.dark-mode .create-menu-empty {
   background-clip: padding-box;
 }
 
+.sidebar-sponsored-card {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top left, rgba(240, 173, 52, 0.28), transparent 34%),
+    linear-gradient(180deg, rgba(28, 45, 35, 0.96) 0%, rgba(17, 31, 24, 0.98) 100%);
+  border: 1px solid rgba(233, 198, 118, 0.28);
+  box-shadow: 0 18px 32px rgba(7, 20, 14, 0.32);
+  display: grid;
+  gap: 10px;
+  color: #fff5dc;
+}
+
+.sidebar-sponsored-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sidebar-sponsored-topline strong {
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+}
+
+.sidebar-sponsored-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 239, 197, 0.14);
+  border: 1px solid rgba(255, 222, 149, 0.22);
+  color: #ffe19c;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sidebar-sponsored-image {
+  width: 100%;
+  aspect-ratio: 3 / 4.4;
+  object-fit: cover;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 231, 182, 0.2);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.26);
+}
+
+.sidebar-sponsored-copy {
+  margin: 0;
+  color: rgba(255, 244, 219, 0.86);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.sidebar-sponsored-btn {
+  width: 100%;
+  min-height: 46px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ffcf54 0%, #f1a336 100%);
+  color: #241507;
+  font-size: 0.96rem;
+  font-weight: 800;
+  box-shadow: 0 14px 22px rgba(214, 132, 34, 0.28);
+}
+
+.sidebar-sponsored-btn:hover {
+  filter: brightness(1.04);
+}
+
 .friend-requests-card {
   padding: 14px;
   border-radius: 14px;
@@ -17018,6 +17091,104 @@ html.dark-mode .password-toggle-btn:hover {
   transform: translateY(-1px);
 }
 
+.register-fb-textarea {
+  min-height: 180px;
+  padding: 16px;
+  resize: vertical;
+}
+
+.talent-show-page {
+  --register-glow: #f0a94a;
+}
+
+.talent-show-register-shell {
+  width: min(1180px, 100%);
+}
+
+.talent-show-register-hero {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: center;
+  margin-bottom: 22px;
+  position: relative;
+  z-index: 1;
+}
+
+.talent-show-register-media,
+.talent-show-register-copy {
+  min-width: 0;
+}
+
+.talent-show-register-media {
+  display: grid;
+  gap: 12px;
+}
+
+.talent-show-register-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 221, 156, 0.14);
+  border: 1px solid rgba(255, 221, 156, 0.24);
+  color: #ffd78f;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.talent-show-register-poster {
+  width: 100%;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 241, 214, 0.18);
+  box-shadow: 0 24px 42px rgba(5, 16, 10, 0.34);
+}
+
+.talent-show-register-copy .register-fb-subtitle {
+  max-width: 100%;
+  margin-bottom: 18px;
+}
+
+.talent-show-register-highlights {
+  display: grid;
+  gap: 14px;
+}
+
+.talent-show-register-highlights div,
+.talent-show-register-status {
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: rgba(255, 247, 227, 0.08);
+  border: 1px solid rgba(255, 233, 182, 0.14);
+}
+
+.talent-show-register-highlights strong,
+.talent-show-register-status strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 1rem;
+}
+
+.talent-show-register-highlights span,
+.talent-show-register-status span {
+  color: rgba(247, 240, 224, 0.82);
+  line-height: 1.55;
+}
+
+.talent-show-register-form {
+  position: relative;
+  z-index: 1;
+}
+
+.talent-show-register-note {
+  border-color: rgba(240, 169, 74, 0.24);
+  background: linear-gradient(135deg, rgba(255, 215, 135, 0.16) 0%, rgba(255, 255, 255, 0.84) 100%);
+}
+
 .register-fb-password-wrap .password-toggle-btn:hover {
   background: rgba(61, 129, 85, 0.16);
   color: var(--register-ink);
@@ -17038,6 +17209,10 @@ html.dark-mode .password-toggle-btn:hover {
     border-radius: 24px;
   }
 
+  .talent-show-register-hero {
+    grid-template-columns: 1fr;
+  }
+
   .register-fb-row.three {
     grid-template-columns: 1fr 1fr;
   }
@@ -17056,6 +17231,10 @@ html.dark-mode .password-toggle-btn:hover {
   .register-fb-form {
     padding: 16px;
     border-radius: 20px;
+  }
+
+  .sidebar-sponsored-card {
+    border-radius: 18px;
   }
 
   .register-fb-row.two,

@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { resolveImage } from "./api";
+import kadunaGotTalentPoster from "./assets/kaduna-got-talent-poster.jpg";
 
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -121,6 +122,31 @@ export default function Sidebar({ user, openChat, openProfile }) {
           Calculator
         </button>
       </div>
+
+      <section className="sidebar-sponsored-card" aria-label="Sponsored Kaduna Got Talent advert">
+        <div className="sidebar-sponsored-topline">
+          <span className="sidebar-sponsored-badge">Sponsored</span>
+          <strong>Kaduna Got Talent</strong>
+        </div>
+
+        <img
+          src={kadunaGotTalentPoster}
+          alt="Kaduna Got Talent flyer"
+          className="sidebar-sponsored-image"
+        />
+
+        <p className="sidebar-sponsored-copy">
+          Showcase your talent on Tengacion and apply for Kaduna Got Talent.
+        </p>
+
+        <button
+          type="button"
+          className="sidebar-sponsored-btn"
+          onClick={() => navigate("/kaduna-got-talent/register")}
+        >
+          Register
+        </button>
+      </section>
     </aside>
   );
 }

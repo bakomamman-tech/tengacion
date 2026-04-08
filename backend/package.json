@@ -18,23 +18,23 @@
     "test": "cross-env NODE_PATH=./node_modules jest --runInBand"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.996.0",
-    "@aws-sdk/s3-request-presigner": "^3.996.0",
+    "@aws-sdk/client-s3": "^3.1026.0",
+    "@aws-sdk/s3-request-presigner": "^3.1026.0",
     "archiver": "^7.0.1",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^4.22.1",
-    "express-rate-limit": "^8.2.1",
-    "express-validator": "^7.3.1",
+    "express-rate-limit": "^8.3.2",
+    "express-validator": "^7.3.2",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "livekit-server-sdk": "^2.15.0",
     "mongoose": "^9.1.5",
-    "multer": "^2.0.2",
+    "multer": "^2.1.1",
     "multer-storage-cloudinary": "^2.2.1",
-    "nodemailer": "^7.0.13",
+    "nodemailer": "^8.0.5",
     "socket.io": "^4.8.3",
     "stripe": "^20.3.1",
     "streamifier": "^0.1.1",
@@ -50,5 +50,26 @@
   },
   "engines": {
     "node": ">=20 <23"
+  },
+  "overrides": {
+    "lodash": "4.18.1",
+    "@aws-sdk/xml-builder": {
+      "fast-xml-parser": "5.5.10"
+    },
+    "express": {
+      "path-to-regexp": "0.1.13"
+    },
+    "socket.io": {
+      "socket.io-parser": "4.2.6"
+    },
+    "archiver-utils": {
+      "glob": {
+        "minimatch": "9.0.7",
+        "brace-expansion": "5.0.5"
+      },
+      "readdir-glob": {
+        "brace-expansion": "2.0.3"
+      }
+    }
   }
 }

@@ -116,6 +116,8 @@ const parseResponse = async (response, { suppressAuthFailure = false } = {}) => 
     );
     error.status = response.status;
     error.details = data?.details || null;
+    error.retryAfterSeconds = Number(data?.retryAfterSeconds || 0);
+    error.payload = data;
     throw error;
   }
 

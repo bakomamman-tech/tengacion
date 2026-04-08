@@ -7,6 +7,29 @@ import { login as loginApi, verifyLoginChallenge } from "../api";
 import AuthPasswordField from "../components/AuthPasswordField";
 import { useAuth } from "../context/AuthContext";
 
+const formatRetryDelay = (seconds = 0) => {
+  const totalSeconds = Math.max(0, Number(seconds) || 0);
+  if (!totalSeconds) {
+    return "";
+  }
+
+  if (totalSeconds < 60) {
+    return `${totalSeconds} second${totalSeconds === 1 ? "" : "s"}`;
+  }
+
+  const minutes = Math.ceil(totalSeconds / 60);
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+};
+
+const getAuthErrorMessage = (error, fallbackMessage) => {
+  const retryDelay = formatRetryDelay(error?.retryAfterSeconds);
+  if (Number(error?.status) === 429 && retryDelay) {
+    return `${error?.message || fallbackMessage} Try again in ${retryDelay}.`;
+  }
+
+  return error?.message || fallbackMessage;
+};
+
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -94,7 +117,7 @@ export default function Login() {
 
       toast.error(payload?.error || "Invalid credentials");
     } catch (err) {
-      toast.error(err?.message || "Server connection failed");
+      toast.error(getAuthErrorMessage(err, "Server connection failed"));
     } finally {
       setLoading(false);
     }
@@ -121,7 +144,7 @@ export default function Login() {
       }
       toast.error("Verification failed");
     } catch (err) {
-      toast.error(err?.message || "Verification failed");
+      toast.error(getAuthErrorMessage(err, "Verification failed"));
     } finally {
       setLoading(false);
     }

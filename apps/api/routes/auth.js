@@ -1,8 +1,13 @@
+const crypto = require("crypto");
 const express = require("express");
 const router = express.Router();
 let rateLimit;
+let ipKeyGenerator = (ip) => String(ip || "");
 try {
   rateLimit = require("express-rate-limit");
+  if (typeof rateLimit.ipKeyGenerator === "function") {
+    ipKeyGenerator = rateLimit.ipKeyGenerator;
+  }
 } catch (_error) {
   console.warn("express-rate-limit not installed; rate limiting disabled");
   rateLimit = () => (_req, _res, next) => next();
@@ -18,6 +23,49 @@ const OTP_REGEX = /^\d{6}$/;
 const trimText = (value) => String(value || "").trim();
 const normalizeEmail = (value) => trimText(value).toLowerCase();
 const isStrongPassword = (value) => trimText(value).length >= 8;
+const hashLimiterIdentity = (value = "") =>
+  crypto.createHash("sha256").update(String(value || "")).digest("hex").slice(0, 16);
+const getIpRateKey = (req) => ipKeyGenerator(req.ip || req.socket?.remoteAddress || "");
+const buildScopedKey = (req, scope, identity = "") => {
+  const normalizedIdentity = trimText(identity);
+  const ipKey = getIpRateKey(req);
+  if (!normalizedIdentity) {
+    return `${scope}:${ipKey}`;
+  }
+  return `${scope}:${ipKey}:${hashLimiterIdentity(normalizedIdentity)}`;
+};
+const buildLimiterMessage = (message, req, windowMs) => {
+  const retryAfterHeader = Number(req.rateLimit?.resetTime)
+    ? Math.max(1, Math.ceil((Number(req.rateLimit.resetTime) - Date.now()) / 1000))
+    : Math.max(1, Math.ceil(Number(windowMs || 0) / 1000));
+
+  return {
+    error: message,
+    retryAfterSeconds: retryAfterHeader,
+  };
+};
+const createRateLimiter = ({
+  scope,
+  keyExtractor,
+  message,
+  windowMs,
+  skipSuccessfulRequests = false,
+  max,
+}) =>
+  rateLimit({
+    windowMs,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests,
+    requestWasSuccessful: (_req, res) => res.statusCode < 400,
+    keyGenerator: (req) => buildScopedKey(req, scope, keyExtractor?.(req)),
+    handler: (req, res, _next, options) => {
+      res
+        .status(options.statusCode)
+        .json(buildLimiterMessage(message, req, options.windowMs));
+    },
+  });
 
 const reject = (res, message) => res.status(400).json({ error: message });
 
@@ -173,75 +221,78 @@ const validatePasswordAndCodeBody = (req, res, next) => {
   return next();
 };
 
-const usernameCheckLimiter = rateLimit({
+const usernameCheckLimiter = createRateLimiter({
+  scope: "username-check",
+  keyExtractor: (req) => normalizeEmail(req.query?.username),
   windowMs: 15 * 60 * 1000,
   max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many username checks. Please try again later." },
+  message: "Too many username checks. Please try again later.",
 });
-const loginRateLimiter = rateLimit({
+const loginRateLimiter = createRateLimiter({
+  scope: "login",
+  keyExtractor: (req) => normalizeEmail(req.body?.email),
   windowMs: 15 * 60 * 1000,
   max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many login attempts. Please try again later." },
+  skipSuccessfulRequests: true,
+  message: "Too many login attempts. Please try again later.",
 });
-const registerRateLimiter = rateLimit({
+const registerRateLimiter = createRateLimiter({
+  scope: "register",
+  keyExtractor: (req) => normalizeEmail(req.body?.email),
   windowMs: 15 * 60 * 1000,
   max: 6,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many registration attempts. Please try again later." },
+  message: "Too many registration attempts. Please try again later.",
 });
-const refreshRateLimiter = rateLimit({
+const refreshRateLimiter = createRateLimiter({
+  scope: "refresh",
   windowMs: 15 * 60 * 1000,
   max: 120,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many session refreshes. Please try again later." },
+  skipSuccessfulRequests: true,
+  message: "Too many session refreshes. Please try again later.",
 });
-const forgotPasswordLimiter = rateLimit({
+const forgotPasswordLimiter = createRateLimiter({
+  scope: "forgot-password",
+  keyExtractor: (req) => normalizeEmail(req.body?.email),
   windowMs: 15 * 60 * 1000,
   max: 6,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many reset requests. Please try again later." },
+  message: "Too many reset requests. Please try again later.",
 });
-const resetPasswordLimiter = rateLimit({
+const resetPasswordLimiter = createRateLimiter({
+  scope: "reset-password",
+  keyExtractor: (req) => trimText(req.body?.token),
   windowMs: 15 * 60 * 1000,
   max: 6,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many password reset attempts. Please try again later." },
+  message: "Too many password reset attempts. Please try again later.",
 });
-const verifyEmailLimiter = rateLimit({
+const verifyEmailLimiter = createRateLimiter({
+  scope: "verify-email",
+  keyExtractor: (req) => normalizeEmail(req.body?.email),
   windowMs: 60 * 60 * 1000,
   max: 6,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many verification requests. Please try again later." },
+  message: "Too many verification requests. Please try again later.",
 });
-const otpRequestLimiter = rateLimit({
+const otpRequestLimiter = createRateLimiter({
+  scope: "otp-request",
+  keyExtractor: (req) => normalizeEmail(req.body?.email),
   windowMs: 15 * 60 * 1000,
   max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many OTP requests. Please try again later." },
+  message: "Too many OTP requests. Please try again later.",
 });
-const otpVerifyLimiter = rateLimit({
+const otpVerifyLimiter = createRateLimiter({
+  scope: "otp-verify",
+  keyExtractor: (req) => normalizeEmail(req.body?.email),
   windowMs: 15 * 60 * 1000,
   max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many OTP verification attempts. Please try again later." },
+  skipSuccessfulRequests: true,
+  message: "Too many OTP verification attempts. Please try again later.",
 });
-const authChallengeLimiter = rateLimit({
+const authChallengeLimiter = createRateLimiter({
+  scope: "auth-challenge",
+  keyExtractor: (req) => trimText(req.body?.challengeToken),
   windowMs: 15 * 60 * 1000,
   max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many challenge verification attempts. Please try again later." },
+  skipSuccessfulRequests: true,
+  message: "Too many challenge verification attempts. Please try again later.",
 });
 
 router.get("/check-username", usernameCheckLimiter, validateUsernameQuery, authController.checkUsername);

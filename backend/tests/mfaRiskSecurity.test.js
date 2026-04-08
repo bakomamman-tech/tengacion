@@ -198,6 +198,89 @@ describe("MFA and suspicious-login security", () => {
     });
   });
 
+  test("scopes login throttling per email so one user does not block another on the same IP", async () => {
+    await User.create([
+      {
+        name: "Locked User",
+        username: "locked_user",
+        email: "locked@test.com",
+        password: "Password123!",
+      },
+      {
+        name: "Healthy User",
+        username: "healthy_user",
+        email: "healthy@test.com",
+        password: "Password123!",
+      },
+    ]);
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const response = await request(app)
+        .post("/api/auth/login")
+        .set("x-forwarded-for", "102.89.1.10")
+        .send({
+          email: "locked@test.com",
+          password: "WrongPassword!",
+          deviceName: "Chrome on Windows",
+        });
+
+      expect(response.status).toBe(401);
+    }
+
+    const lockedResponse = await request(app)
+      .post("/api/auth/login")
+      .set("x-forwarded-for", "102.89.1.10")
+      .send({
+        email: "locked@test.com",
+        password: "WrongPassword!",
+        deviceName: "Chrome on Windows",
+      });
+
+    expect(lockedResponse.status).toBe(429);
+    expect(lockedResponse.body).toMatchObject({
+      error: expect.stringMatching(/too many login attempts/i),
+      retryAfterSeconds: expect.any(Number),
+    });
+
+    const healthyResponse = await request(app)
+      .post("/api/auth/login")
+      .set("x-forwarded-for", "102.89.1.10")
+      .send({
+        email: "healthy@test.com",
+        password: "Password123!",
+        deviceName: "Chrome on Windows",
+      });
+
+    expect(healthyResponse.status).toBe(200);
+    expect(healthyResponse.body.token).toBeTruthy();
+  });
+
+  test("does not count successful logins against the login throttle budget", async () => {
+    await User.create({
+      name: "Repeat Login User",
+      username: "repeat_login_user",
+      email: "repeat@test.com",
+      password: "Password123!",
+    });
+
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      const response = await request(app)
+        .post("/api/auth/login")
+        .set("x-forwarded-for", "102.89.1.11")
+        .set("user-agent", "Mozilla/5.0 Chrome/123.0")
+        .set("x-country-code", "NG")
+        .set("x-vercel-ip-city", "Lagos")
+        .send({
+          email: "repeat@test.com",
+          password: "Password123!",
+          deviceName: "Chrome on Windows",
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.token).toBeTruthy();
+    }
+  });
+
   test("rejects username-only login attempts", async () => {
     await User.create({
       name: "Email Login User",

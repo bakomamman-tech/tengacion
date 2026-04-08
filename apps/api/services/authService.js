@@ -480,7 +480,9 @@ const markChallengeFailure = async (challenge) => {
   challenge.attempts = Number(challenge.attempts || 0) + 1;
   await challenge.save();
   if (challenge.attempts >= Number(challenge.maxAttempts || 5)) {
-    throw ApiError.tooManyRequests("Too many invalid verification attempts");
+    throw ApiError.tooManyRequests(
+      "Too many invalid verification attempts. Return to login and request a new code."
+    );
   }
 };
 

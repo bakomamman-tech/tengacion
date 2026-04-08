@@ -221,10 +221,6 @@ export default function KadunaGotTalentRegisterPage({ user }) {
                 <span>Audition singers, dancers, comedians, magicians and more in one official registration flow.</span>
               </div>
               <div>
-                <strong>Bio-data plus talent details</strong>
-                <span>Use the same style as Tengacion registration, but focused on talent-show applications.</span>
-              </div>
-              <div>
                 <strong>Update-friendly application</strong>
                 <span>If you already applied from this account, you can return here and update your submission.</span>
               </div>

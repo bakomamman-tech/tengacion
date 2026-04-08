@@ -4,6 +4,8 @@ const request = require("supertest");
 
 process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "12345678901234567890123456789012";
+process.env.EMAIL_USER = process.env.EMAIL_USER || "test@tengacion.local";
+process.env.EMAIL_PASS = process.env.EMAIL_PASS || "test-app-password";
 require("../../apps/api/config/env");
 
 jest.mock("../utils/sendOtpEmail", () => jest.fn().mockResolvedValue(undefined));
@@ -152,6 +154,48 @@ describe("MFA and suspicious-login security", () => {
       expect.arrayContaining(["new_device", "new_ip", "new_country", "impossible_travel"])
     );
     expect(sendSecurityEmail).toHaveBeenCalled();
+  });
+
+  test("returns 503 instead of 500 when risky-login email delivery fails", async () => {
+    await User.create({
+      name: "Risk User",
+      username: "risk_user_http",
+      email: "risk-http@test.com",
+      password: "Password123!",
+    });
+
+    const safeLogin = await request(app)
+      .post("/api/auth/login")
+      .set("user-agent", "Mozilla/5.0 Chrome/123.0")
+      .set("x-country-code", "NG")
+      .set("x-vercel-ip-city", "Lagos")
+      .send({
+        email: "risk-http@test.com",
+        password: "Password123!",
+        deviceName: "Chrome on Windows",
+      });
+
+    expect(safeLogin.status).toBe(200);
+    expect(safeLogin.body.token).toBeTruthy();
+
+    sendSecurityEmail.mockRejectedValueOnce(new Error("Email service is not configured"));
+
+    const riskyLogin = await request(app)
+      .post("/api/auth/login")
+      .set("user-agent", "Mozilla/5.0 Safari/17.0")
+      .set("x-country-code", "US")
+      .set("x-vercel-ip-city", "New York")
+      .send({
+        email: "risk-http@test.com",
+        password: "Password123!",
+        deviceName: "Safari on iPhone",
+      });
+
+    expect(riskyLogin.status).toBe(503);
+    expect(riskyLogin.body).toMatchObject({
+      success: false,
+      message: expect.stringMatching(/email-based verification is temporarily unavailable/i),
+    });
   });
 
   test("rejects username-only login attempts", async () => {

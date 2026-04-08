@@ -38,6 +38,8 @@ const { getEffectivePermissions } = require("../../../backend/services/permissio
 const USERNAME_REGEX = /^[a-zA-Z0-9._]{3,30}$/;
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 const LOGIN_CHALLENGE_TTL_MS = 10 * 60 * 1000;
+const EMAIL_CHALLENGE_UNAVAILABLE_MESSAGE =
+  "Email-based verification is temporarily unavailable. Please try again later or contact support.";
 
 const extractDuplicateField = (err) => {
   if (!err) return "";
@@ -399,19 +401,30 @@ const sendChallengeEmail = async ({ user, challenge, purpose, code }) => {
     intro: "Use the code below to continue.",
   };
 
-  await sendSecurityEmail({
-    to: user.email,
-    subject: copy.subject,
-    html: `
-      <div style="font-family: Arial; padding: 12px;">
-        <h2>${copy.title}</h2>
-        <p>${copy.intro}</p>
-        <p>Your code is <strong style="font-size: 20px; letter-spacing: 3px;">${code}</strong></p>
-        <p>This code expires in 10 minutes.</p>
-        <p style="color:#64748b;font-size:13px;">Challenge: ${String(challenge._id || "")}</p>
-      </div>
-    `,
-  });
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw ApiError.serviceUnavailable(EMAIL_CHALLENGE_UNAVAILABLE_MESSAGE);
+  }
+
+  try {
+    await sendSecurityEmail({
+      to: user.email,
+      subject: copy.subject,
+      html: `
+        <div style="font-family: Arial; padding: 12px;">
+          <h2>${copy.title}</h2>
+          <p>${copy.intro}</p>
+          <p>Your code is <strong style="font-size: 20px; letter-spacing: 3px;">${code}</strong></p>
+          <p>This code expires in 10 minutes.</p>
+          <p style="color:#64748b;font-size:13px;">Challenge: ${String(challenge._id || "")}</p>
+        </div>
+      `,
+    });
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw ApiError.serviceUnavailable(EMAIL_CHALLENGE_UNAVAILABLE_MESSAGE);
+  }
 };
 
 const createAuthChallenge = async ({
@@ -436,8 +449,13 @@ const createAuthChallenge = async ({
   if (method === "email") {
     const code = buildOtpCode();
     challenge.codeHash = buildChallengeCodeHash(challenge._id.toString(), code);
-    await challenge.save();
-    await sendChallengeEmail({ user, challenge, purpose, code });
+    try {
+      await challenge.save();
+      await sendChallengeEmail({ user, challenge, purpose, code });
+    } catch (error) {
+      await challenge.deleteOne().catch(() => null);
+      throw error;
+    }
   }
 
   if (risk?.isSuspicious) {

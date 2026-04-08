@@ -14,6 +14,7 @@ const {
   verifyTransaction,
 } = require("../services/paystackService");
 const { sendCreatorPurchaseMessengerAlert } = require("../services/creatorSalesMessengerService");
+const { recordPurchaseSettlementEntries } = require("../services/walletService");
 const { config } = require("../config/env");
 
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
@@ -78,6 +79,21 @@ const emitEntitlementGranted = ({ req, purchase }) => {
     status: "paid",
     paidAt: purchase.paidAt || new Date(),
   });
+};
+
+const runSettlementSideEffects = async ({ req, purchase }) => {
+  emitEntitlementGranted({ req, purchase });
+
+  try {
+    await recordPurchaseSettlementEntries({ purchase, logger: console });
+  } catch (error) {
+    console.error("Failed to record wallet settlement:", error?.message || error);
+  }
+
+  await sendCreatorPurchaseMessengerAlert({
+    req,
+    purchase,
+  }).catch(() => null);
 };
 
 const isPublishablePayload = (payload = {}) => {
@@ -320,11 +336,7 @@ exports.verifyPaystackPayment = asyncHandler(async (req, res) => {
 
   const result = await settlePurchasedAccess(purchase, { paidAt: new Date() });
   if (result.granted) {
-    emitEntitlementGranted({ req, purchase: result.purchase });
-    await sendCreatorPurchaseMessengerAlert({
-      req,
-      purchase: result.purchase,
-    }).catch(() => null);
+    await runSettlementSideEffects({ req, purchase: result.purchase });
   }
 
   return res.json({
@@ -379,11 +391,7 @@ exports.handlePaystackWebhook = asyncHandler(async (req, res) => {
 
   const result = await settlePurchasedAccess(purchase, { paidAt: new Date() });
   if (result.granted) {
-    emitEntitlementGranted({ req, purchase: result.purchase });
-    await sendCreatorPurchaseMessengerAlert({
-      req,
-      purchase: result.purchase,
-    }).catch(() => null);
+    await runSettlementSideEffects({ req, purchase: result.purchase });
   }
 
   return res.status(200).json({ received: true });

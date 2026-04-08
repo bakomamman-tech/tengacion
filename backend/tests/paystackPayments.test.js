@@ -21,6 +21,7 @@ const Message = require("../models/Message");
 const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const User = require("../models/User");
+const WalletEntry = require("../models/WalletEntry");
 
 let mongod;
 const originalFetch = global.fetch;
@@ -130,6 +131,7 @@ describe("Paystack payments", () => {
   let creator;
   let viewer;
   let viewerToken;
+  let creatorToken;
   let track;
   let book;
 
@@ -149,6 +151,7 @@ describe("Paystack payments", () => {
 
     await createAdmin();
     creator = await createCreator();
+    creatorToken = await issueSessionToken(creator.user._id);
     ({ user: viewer, token: viewerToken } = await createViewer());
 
     track = await Track.create({
@@ -284,6 +287,12 @@ describe("Paystack payments", () => {
     const stored = await Purchase.findOne({ providerRef: initResponse.body.reference }).lean();
     expect(stored.status).toBe("paid");
 
+    const walletEntries = await WalletEntry.find({ sourceId: stored._id })
+      .sort({ entryType: 1 })
+      .lean();
+    expect(walletEntries).toHaveLength(2);
+    expect(walletEntries.map((entry) => entry.entryType)).toEqual(["platform_fee", "sale_credit"]);
+
     const salesAlert = await Message.findOne({
       receiverId: creator.user._id,
       isSystem: true,
@@ -292,6 +301,19 @@ describe("Paystack payments", () => {
     expect(salesAlert.senderName).toBe("Tengacion Sales");
     expect(String(salesAlert.text || "")).toContain(track.title);
     expect(String(salesAlert.text || "")).toContain("NGN 2,500");
+
+    const dashboardResponse = await request(app)
+      .get("/api/creator/dashboard")
+      .set("Authorization", `Bearer ${creatorToken}`)
+      .expect(200);
+
+    expect(dashboardResponse.body.summary).toMatchObject({
+      grossRevenue: 2500,
+      totalEarnings: 1000,
+      availableBalance: 1000,
+      pendingBalance: 0,
+      withdrawn: 0,
+    });
   });
 
   test("amount mismatch blocks access", async () => {
@@ -426,6 +448,7 @@ describe("Paystack payments", () => {
 
     const stored = await Purchase.findOne({ providerRef: initResponse.body.reference }).lean();
     expect(stored.status).toBe("paid");
+    expect(await WalletEntry.countDocuments({ sourceId: stored._id })).toBe(2);
     expect(
       await Message.countDocuments({
         receiverId: creator.user._id,

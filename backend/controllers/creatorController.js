@@ -6,6 +6,7 @@ const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const User = require("../models/User");
 const Video = require("../models/Video");
+const { buildCreatorWalletSummary } = require("../services/walletService");
 const {
   normalizeBooksProfile,
   calculateCreatorProfileCompletionScore,
@@ -275,7 +276,7 @@ const resolveCreatorTypes = ({ profile, content }) => {
   return inferCreatorTypesFromContent(content);
 };
 
-const buildEarningsSummary = (grossRevenue = 0) => {
+const buildLegacyEarningsSummary = (grossRevenue = 0) => {
   const totalEarnings = clampMoney(grossRevenue * CREATOR_SHARE_RATE);
   const withdrawn = clampMoney(totalEarnings * 0.35);
   const pendingBalance = clampMoney(totalEarnings * 0.25);
@@ -429,7 +430,19 @@ const getDashboardPayload = async ({ profile, user }) => {
   );
 
   const grossRevenue = purchases.reduce((sum, row) => sum + clampMoney(row.amount), 0);
-  const summary = buildEarningsSummary(grossRevenue);
+  const walletSummary = await buildCreatorWalletSummary({
+    creatorId: profile._id,
+    fallbackGrossRevenue: grossRevenue,
+  });
+  const summary = walletSummary.walletBacked
+    ? {
+        grossRevenue: clampMoney(walletSummary.grossRevenue),
+        totalEarnings: clampMoney(walletSummary.totalEarnings),
+        availableBalance: clampMoney(walletSummary.availableBalance),
+        pendingBalance: clampMoney(walletSummary.pendingBalance),
+        withdrawn: clampMoney(walletSummary.withdrawn),
+      }
+    : buildLegacyEarningsSummary(grossRevenue);
   const laneCounts = {
     music: {
       uploads: musicTracks.filter((entry) => entry.publishedStatus !== "draft").length

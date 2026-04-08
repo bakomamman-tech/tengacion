@@ -1,4 +1,5 @@
 const Purchase = require("../models/Purchase");
+const WalletEntry = require("../models/WalletEntry");
 const CreatorProfile = require("../models/CreatorProfile");
 const Track = require("../models/Track");
 const Book = require("../models/Book");
@@ -249,12 +250,35 @@ const createEmptyResponse = (dates) => ({
   recentEntries: [],
 });
 
-const buildCreatorFinanceRepository = async ({
-  range = "30d",
-  startDate = "",
-  endDate = "",
-} = {}) => {
-  const dates = buildDateRange({ range, startDate, endDate });
+const loadWalletRepositoryRows = async (dates) => {
+  const entries = await WalletEntry.find({
+    ownerType: "platform",
+    entryType: "platform_fee",
+    sourceType: "purchase",
+    effectiveAt: { $gte: dates.start, $lte: dates.end },
+  })
+    .sort({ effectiveAt: -1, createdAt: -1 })
+    .select("amount grossAmount currency sourceRef effectiveAt createdAt metadata")
+    .lean();
+
+  return entries.map((entry) => ({
+    _id: toId(entry?.metadata?.purchaseId || entry?._id),
+    creatorId: toId(entry?.metadata?.creatorId),
+    itemType: String(entry?.metadata?.itemType || "").trim().toLowerCase(),
+    itemId: toId(entry?.metadata?.itemId),
+    amount: roundMoney(entry?.grossAmount),
+    grossAmount: roundMoney(entry?.grossAmount),
+    repositoryAmount: roundMoney(entry?.amount),
+    creatorAmount: roundMoney(entry?.metadata?.creatorAmount),
+    currency: entry?.currency || "NGN",
+    provider: entry?.metadata?.provider || "paystack",
+    providerRef: entry?.sourceRef || entry?.metadata?.providerRef || "",
+    paidAt: entry?.effectiveAt || null,
+    createdAt: entry?.createdAt || entry?.effectiveAt || null,
+  }));
+};
+
+const loadPurchaseRepositoryRows = async (dates) => {
   const purchases = await Purchase.find({
     status: "paid",
     creatorId: { $ne: null },
@@ -266,12 +290,35 @@ const buildCreatorFinanceRepository = async ({
     )
     .lean();
 
-  if (!purchases.length) {
+  return purchases.map((purchase) => {
+    const grossAmount = roundMoney(purchase?.amount);
+    const repositoryAmount = computePlatformShare(grossAmount);
+    return {
+      ...purchase,
+      grossAmount,
+      repositoryAmount,
+      creatorAmount: roundMoney(grossAmount - repositoryAmount),
+    };
+  });
+};
+
+const buildCreatorFinanceRepository = async ({
+  range = "30d",
+  startDate = "",
+  endDate = "",
+} = {}) => {
+  const dates = buildDateRange({ range, startDate, endDate });
+  let repositoryRows = await loadWalletRepositoryRows(dates);
+  if (!repositoryRows.length) {
+    repositoryRows = await loadPurchaseRepositoryRows(dates);
+  }
+
+  if (!repositoryRows.length) {
     return createEmptyResponse(dates);
   }
 
   const { creatorsById, tracksById, booksById, albumsById, videosById } =
-    await loadLookupMaps(purchases);
+    await loadLookupMaps(repositoryRows);
 
   const breakdownMap = new Map(
     Object.values(CATEGORY_META).map((meta) => [meta.key, createCategoryBucket(meta)])
@@ -284,8 +331,8 @@ const buildCreatorFinanceRepository = async ({
   let creatorAmount = 0;
   let paidTransactions = 0;
 
-  purchases.forEach((purchase) => {
-    const amount = roundMoney(purchase?.amount);
+  repositoryRows.forEach((purchase) => {
+    const amount = roundMoney(purchase?.grossAmount || purchase?.amount);
     if (amount <= 0) {
       return;
     }
@@ -306,8 +353,8 @@ const buildCreatorFinanceRepository = async ({
       albumsById,
       videosById,
     });
-    const platformAllocation = computePlatformShare(amount);
-    const creatorAllocation = roundMoney(amount - platformAllocation);
+    const platformAllocation = roundMoney(purchase?.repositoryAmount || computePlatformShare(amount));
+    const creatorAllocation = roundMoney(purchase?.creatorAmount || (amount - platformAllocation));
 
     paidTransactions += 1;
     grossRevenue += amount;

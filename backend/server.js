@@ -108,6 +108,7 @@ if (process.env.NODE_ENV !== "test") {
   const { runBirthdayRecognition } = require("./services/birthdayService");
   const { startNewsSchedulers } = require("./services/newsSchedulerService");
   const { startPaymentMaintenance } = require("./services/paymentMaintenanceService");
+  const { startWalletMaintenance } = require("./services/walletService");
   const { cleanupUploadDir } = require("./services/uploadCleanupService");
   const { runCleanup } = require("./services/storageMaintenanceService");
   const privateUpload = require("./middleware/privateUpload");
@@ -679,6 +680,7 @@ if (process.env.NODE_ENV !== "test") {
         await repairUserSecurityFields({ logger: console });
         await runBirthdayRecognition({ logger: console });
         await startPaymentMaintenance({ logger: console });
+        await startWalletMaintenance({ logger: console });
         await startNewsSchedulers({ logger: console });
       } catch (err) {
         console.error("Startup repair failed:", err?.message || err);

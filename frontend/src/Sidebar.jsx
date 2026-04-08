@@ -1,19 +1,108 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { resolveImage } from "./api";
 import kadunaGotTalentPoster from "./assets/kaduna-got-talent-poster.jpg";
+
+const MOBILE_SIDEBAR_QUERY = "(max-width: 1020px)";
 
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
     name || "User"
   )}&size=96&background=E3EFE7&color=1B5838`;
 
+const getIsMobileSidebar = () => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false;
+  }
+
+  return window.matchMedia(MOBILE_SIDEBAR_QUERY).matches;
+};
+
+function SponsoredAdCard({ isExpanded, onToggle, onRegister }) {
+  return (
+    <section
+      className={`sidebar-sponsored-card${isExpanded ? " expanded" : " compact"}`}
+      aria-label="Sponsored Kaduna Got Talent advert"
+    >
+      <div className="sidebar-sponsored-topline">
+        <div className="sidebar-sponsored-heading">
+          <span className="sidebar-sponsored-badge">Sponsored</span>
+          <strong>Kaduna Got Talent</strong>
+        </div>
+
+        <button
+          type="button"
+          className="sidebar-sponsored-toggle"
+          onClick={onToggle}
+          aria-expanded={isExpanded}
+        >
+          {isExpanded ? "Minimize" : "Preview"}
+        </button>
+      </div>
+
+      {isExpanded ? (
+        <>
+          <img
+            src={kadunaGotTalentPoster}
+            alt="Kaduna Got Talent flyer"
+            className="sidebar-sponsored-image"
+          />
+
+          <p className="sidebar-sponsored-copy">
+            Showcase your talent on Tengacion and apply for Kaduna Got Talent.
+          </p>
+        </>
+      ) : (
+        <div className="sidebar-sponsored-compact-body">
+          <img
+            src={kadunaGotTalentPoster}
+            alt="Kaduna Got Talent flyer"
+            className="sidebar-sponsored-thumb"
+          />
+
+          <p className="sidebar-sponsored-copy">
+            Open the flyer when you want it, while keeping the left menu free to use.
+          </p>
+        </div>
+      )}
+
+      <button
+        type="button"
+        className="sidebar-sponsored-btn"
+        onClick={onRegister}
+      >
+        Register
+      </button>
+    </section>
+  );
+}
+
 export default function Sidebar({ user, openChat, openProfile }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isSponsoredExpanded, setIsSponsoredExpanded] = useState(false);
+  const [isMobileSidebar, setIsMobileSidebar] = useState(getIsMobileSidebar);
 
   const avatar = resolveImage(user?.avatar) || fallbackAvatar(user?.name);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia(MOBILE_SIDEBAR_QUERY);
+    const handleChange = (event) => setIsMobileSidebar(event.matches);
+
+    setIsMobileSidebar(mediaQuery.matches);
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+
+    mediaQuery.addListener(handleChange);
+    return () => mediaQuery.removeListener(handleChange);
+  }, []);
 
   const goProfile = () => {
     if (typeof openProfile === "function") {
@@ -28,6 +117,20 @@ export default function Sidebar({ user, openChat, openProfile }) {
 
   const isProfileRoute = location.pathname.startsWith("/profile/");
   const sidebarBtnClass = (isActive) => `sidebar-btn${isActive ? " active" : ""}`;
+  const toggleSponsoredAd = () => setIsSponsoredExpanded((current) => !current);
+  const openSponsoredAd = () => navigate("/kaduna-got-talent/register");
+
+  if (isMobileSidebar) {
+    return (
+      <div className="sidebar-mobile-sponsored">
+        <SponsoredAdCard
+          isExpanded={isSponsoredExpanded}
+          onToggle={toggleSponsoredAd}
+          onRegister={openSponsoredAd}
+        />
+      </div>
+    );
+  }
 
   return (
     <aside className="card sidebar-nav" role="navigation">
@@ -125,60 +228,11 @@ export default function Sidebar({ user, openChat, openProfile }) {
         </button>
       </div>
 
-      <section
-        className={`sidebar-sponsored-card${isSponsoredExpanded ? " expanded" : " compact"}`}
-        aria-label="Sponsored Kaduna Got Talent advert"
-      >
-        <div className="sidebar-sponsored-topline">
-          <div className="sidebar-sponsored-heading">
-            <span className="sidebar-sponsored-badge">Sponsored</span>
-            <strong>Kaduna Got Talent</strong>
-          </div>
-
-          <button
-            type="button"
-            className="sidebar-sponsored-toggle"
-            onClick={() => setIsSponsoredExpanded((current) => !current)}
-            aria-expanded={isSponsoredExpanded}
-          >
-            {isSponsoredExpanded ? "Minimize" : "Preview"}
-          </button>
-        </div>
-
-        {isSponsoredExpanded ? (
-          <>
-            <img
-              src={kadunaGotTalentPoster}
-              alt="Kaduna Got Talent flyer"
-              className="sidebar-sponsored-image"
-            />
-
-            <p className="sidebar-sponsored-copy">
-              Showcase your talent on Tengacion and apply for Kaduna Got Talent.
-            </p>
-          </>
-        ) : (
-          <div className="sidebar-sponsored-compact-body">
-            <img
-              src={kadunaGotTalentPoster}
-              alt="Kaduna Got Talent flyer"
-              className="sidebar-sponsored-thumb"
-            />
-
-            <p className="sidebar-sponsored-copy">
-              Open the flyer when you want it, while keeping the left menu free to use.
-            </p>
-          </div>
-        )}
-
-        <button
-          type="button"
-          className="sidebar-sponsored-btn"
-          onClick={() => navigate("/kaduna-got-talent/register")}
-        >
-          Register
-        </button>
-      </section>
+      <SponsoredAdCard
+        isExpanded={isSponsoredExpanded}
+        onToggle={toggleSponsoredAd}
+        onRegister={openSponsoredAd}
+      />
     </aside>
   );
 }

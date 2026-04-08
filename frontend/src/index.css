@@ -7135,6 +7135,10 @@ html.dark-mode .create-menu-empty {
   align-self: start;
 }
 
+.sidebar-mobile-sponsored {
+  display: none;
+}
+
 .feed {
   min-width: 0;
   display: flex;
@@ -18804,7 +18808,19 @@ html.dark-mode .password-toggle-btn:hover {
   }
 
   .sidebar {
-    display: none;
+    display: block;
+    position: static;
+    top: auto;
+  }
+
+  .sidebar-mobile-sponsored {
+    display: block;
+  }
+
+  .sidebar-mobile-sponsored .sidebar-sponsored-card {
+    margin-top: 0;
+    position: static;
+    bottom: auto;
   }
 
   .creator-left-rail {

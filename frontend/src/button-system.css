@@ -172,74 +172,74 @@ html:not(.dark-mode) {
     inset 0 1px 0 rgba(255, 255, 255, 0.88);
 }
 
-html.turquoise-mode {
-  --btn-bg: #00FFEF;
-  --btn-bg-hover: #38FFF2;
-  --btn-bg-active: #00d9cb;
-  --btn-bg-soft: #7df8ef;
-  --btn-text: #04363a;
-  --btn-focus: rgba(0, 255, 239, 0.22);
-  --glass-action-fill: linear-gradient(180deg, rgba(241, 255, 253, 0.96) 0%, rgba(173, 250, 241, 0.9) 100%);
-  --glass-action-fill-hover: linear-gradient(180deg, rgba(248, 255, 254, 0.98) 0%, rgba(190, 252, 245, 0.94) 100%);
-  --glass-action-fill-active: linear-gradient(180deg, rgba(230, 255, 251, 0.96) 0%, rgba(129, 241, 231, 0.92) 100%);
-  --glass-action-fill-selected: linear-gradient(180deg, rgba(236, 255, 252, 0.98) 0%, rgba(102, 236, 225, 0.94) 100%);
-  --glass-action-border: rgba(0, 255, 239, 0.18);
-  --glass-action-border-strong: rgba(0, 255, 239, 0.34);
-  --glass-action-highlight: rgba(255, 255, 255, 0.8);
-  --glass-action-shadow: 0 12px 26px rgba(0, 79, 83, 0.12);
-  --glass-action-shadow-hover: 0 18px 30px rgba(0, 79, 83, 0.16);
-  --glass-action-ring: rgba(0, 255, 239, 0.22);
-  --glass-reaction-fill: linear-gradient(180deg, rgba(244, 255, 254, 0.96) 0%, rgba(176, 251, 243, 0.92) 100%);
-  --glass-reaction-btn-fill: linear-gradient(180deg, rgba(239, 255, 253, 0.96) 0%, rgba(191, 252, 245, 0.94) 100%);
-  --tg-btn-shadow-soft: 0 10px 24px rgba(0, 79, 83, 0.12);
-  --tg-btn-shadow-hover: 0 16px 28px rgba(0, 79, 83, 0.16);
-  --tg-btn-shadow-press: 0 8px 18px rgba(0, 79, 83, 0.12);
+html.neon-purple-mode {
+  --btn-bg: linear-gradient(135deg, #7385ff 0%, #9e5cff 100%);
+  --btn-bg-hover: linear-gradient(135deg, #8492ff 0%, #ad73ff 100%);
+  --btn-bg-active: linear-gradient(135deg, #5c6be4 0%, #8549ee 100%);
+  --btn-bg-soft: #251d48;
+  --btn-text: #ffffff;
+  --btn-focus: rgba(158, 92, 255, 0.24);
+  --glass-action-fill: linear-gradient(180deg, rgba(25, 28, 44, 0.96) 0%, rgba(13, 16, 28, 0.94) 100%);
+  --glass-action-fill-hover: linear-gradient(180deg, rgba(31, 35, 56, 0.98) 0%, rgba(17, 20, 34, 0.96) 100%);
+  --glass-action-fill-active: linear-gradient(180deg, rgba(19, 22, 37, 0.98) 0%, rgba(10, 12, 22, 0.96) 100%);
+  --glass-action-fill-selected: linear-gradient(180deg, rgba(44, 37, 78, 0.96) 0%, rgba(21, 24, 42, 0.95) 100%);
+  --glass-action-border: rgba(126, 148, 255, 0.18);
+  --glass-action-border-strong: rgba(158, 92, 255, 0.32);
+  --glass-action-highlight: rgba(255, 255, 255, 0.08);
+  --glass-action-shadow: 0 14px 28px rgba(0, 0, 0, 0.32);
+  --glass-action-shadow-hover: 0 18px 34px rgba(0, 0, 0, 0.4);
+  --glass-action-ring: rgba(158, 92, 255, 0.22);
+  --glass-reaction-fill: linear-gradient(180deg, rgba(23, 26, 41, 0.96) 0%, rgba(13, 15, 27, 0.94) 100%);
+  --glass-reaction-btn-fill: linear-gradient(180deg, rgba(33, 36, 58, 0.92) 0%, rgba(17, 20, 35, 0.9) 100%);
+  --tg-btn-shadow-soft: 0 12px 24px rgba(0, 0, 0, 0.28);
+  --tg-btn-shadow-hover: 0 16px 28px rgba(0, 0, 0, 0.34);
+  --tg-btn-shadow-press: 0 8px 18px rgba(0, 0, 0, 0.26);
   --tg-btn-shadow-primary:
-    0 14px 26px rgba(0, 79, 83, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+    0 18px 32px rgba(103, 91, 255, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
   --tg-btn-shadow-primary-hover:
-    0 18px 32px rgba(0, 79, 83, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.88);
-  --tg-btn-shadow-danger: 0 12px 28px rgba(133, 67, 53, 0.16);
-  --tg-btn-ring: 0 0 0 3px rgba(0, 255, 239, 0.18);
-  --tg-btn-ring-strong: 0 0 0 4px rgba(0, 255, 239, 0.14);
-  --tg-btn-primary-bg: linear-gradient(180deg, #5CFFF5 0%, #00FFEF 100%);
-  --tg-btn-primary-bg-hover: linear-gradient(180deg, #7BFFF7 0%, #21FFF2 100%);
-  --tg-btn-primary-bg-active: linear-gradient(180deg, #19f4e6 0%, #00d9cb 100%);
-  --tg-btn-primary-border: rgba(0, 183, 173, 0.24);
-  --tg-btn-primary-text: #04363a;
-  --tg-btn-secondary-bg: linear-gradient(180deg, rgba(238, 255, 253, 0.98) 0%, rgba(150, 246, 237, 0.94) 100%);
-  --tg-btn-secondary-bg-hover: linear-gradient(180deg, rgba(245, 255, 254, 1) 0%, rgba(174, 250, 242, 0.96) 100%);
-  --tg-btn-secondary-bg-active: linear-gradient(180deg, rgba(230, 255, 251, 0.98) 0%, rgba(118, 237, 227, 0.94) 100%);
-  --tg-btn-secondary-border: rgba(0, 255, 239, 0.22);
-  --tg-btn-secondary-border-hover: rgba(0, 255, 239, 0.34);
-  --tg-btn-secondary-text: color-mix(in srgb, var(--text) 86%, var(--brand-strong) 14%);
-  --tg-btn-ghost-bg-hover: rgba(0, 255, 239, 0.14);
-  --tg-btn-ghost-bg-active: rgba(0, 255, 239, 0.2);
-  --tg-btn-ghost-text: color-mix(in srgb, var(--text) 82%, var(--brand-strong) 18%);
-  --tg-btn-outline-bg: rgba(233, 255, 252, 0.84);
-  --tg-btn-outline-bg-hover: rgba(244, 255, 254, 0.94);
-  --tg-btn-outline-bg-active: rgba(163, 247, 239, 0.94);
-  --tg-btn-outline-border: rgba(0, 255, 239, 0.3);
-  --tg-btn-outline-border-active: rgba(0, 255, 239, 0.44);
-  --tg-btn-outline-text: color-mix(in srgb, var(--text) 84%, var(--brand-strong) 16%);
-  --tg-btn-tab-bg: rgba(226, 255, 252, 0.7);
-  --tg-btn-tab-bg-hover: rgba(194, 252, 246, 0.9);
-  --tg-btn-tab-bg-active: linear-gradient(180deg, rgba(239, 255, 253, 0.98) 0%, rgba(96, 232, 221, 0.94) 100%);
-  --tg-btn-tab-border: rgba(0, 255, 239, 0.18);
-  --tg-btn-tab-border-active: rgba(0, 255, 239, 0.32);
-  --tg-btn-tab-text: color-mix(in srgb, var(--text) 74%, var(--muted) 26%);
-  --tg-btn-tab-text-active: color-mix(in srgb, var(--brand-strong) 78%, var(--text) 22%);
-  --tg-btn-icon-bg: linear-gradient(180deg, rgba(241, 255, 253, 0.94) 0%, rgba(146, 246, 236, 0.9) 100%);
-  --tg-btn-icon-bg-hover: linear-gradient(180deg, rgba(247, 255, 254, 0.98) 0%, rgba(176, 250, 242, 0.94) 100%);
-  --tg-btn-icon-bg-active: linear-gradient(180deg, rgba(232, 255, 252, 0.98) 0%, rgba(106, 235, 225, 0.94) 100%);
-  --tg-btn-icon-border: rgba(0, 255, 239, 0.24);
-  --tg-btn-icon-text: color-mix(in srgb, var(--text) 80%, var(--brand-strong) 20%);
-  --tg-btn-toolbar-bg: linear-gradient(180deg, rgba(235, 255, 252, 0.96) 0%, rgba(137, 245, 236, 0.94) 100%);
-  --tg-toast-bg: linear-gradient(180deg, rgba(241, 255, 253, 0.98) 0%, rgba(176, 250, 242, 0.94) 100%);
-  --tg-toast-border: rgba(0, 255, 239, 0.22);
-  --tg-toast-text: #0f3140;
-  --tg-toast-shadow: 0 18px 44px rgba(0, 79, 83, 0.18);
+    0 22px 36px rgba(103, 91, 255, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --tg-btn-shadow-danger: 0 14px 28px rgba(122, 34, 67, 0.26);
+  --tg-btn-ring: 0 0 0 3px rgba(158, 92, 255, 0.2);
+  --tg-btn-ring-strong: 0 0 0 4px rgba(115, 133, 255, 0.14);
+  --tg-btn-primary-bg: linear-gradient(135deg, #7385ff 0%, #9e5cff 100%);
+  --tg-btn-primary-bg-hover: linear-gradient(135deg, #8492ff 0%, #ad73ff 100%);
+  --tg-btn-primary-bg-active: linear-gradient(135deg, #5c6be4 0%, #8549ee 100%);
+  --tg-btn-primary-border: rgba(126, 148, 255, 0.22);
+  --tg-btn-primary-text: #ffffff;
+  --tg-btn-secondary-bg: linear-gradient(180deg, rgba(28, 31, 51, 0.98) 0%, rgba(15, 18, 30, 0.96) 100%);
+  --tg-btn-secondary-bg-hover: linear-gradient(180deg, rgba(34, 39, 62, 1) 0%, rgba(19, 22, 37, 0.98) 100%);
+  --tg-btn-secondary-bg-active: linear-gradient(180deg, rgba(22, 26, 43, 1) 0%, rgba(12, 14, 25, 0.98) 100%);
+  --tg-btn-secondary-border: rgba(126, 148, 255, 0.18);
+  --tg-btn-secondary-border-hover: rgba(158, 92, 255, 0.3);
+  --tg-btn-secondary-text: color-mix(in srgb, var(--text) 90%, var(--brand) 10%);
+  --tg-btn-ghost-bg-hover: rgba(158, 92, 255, 0.14);
+  --tg-btn-ghost-bg-active: rgba(158, 92, 255, 0.22);
+  --tg-btn-ghost-text: color-mix(in srgb, var(--text) 84%, var(--brand) 16%);
+  --tg-btn-outline-bg: rgba(18, 21, 36, 0.82);
+  --tg-btn-outline-bg-hover: rgba(24, 28, 46, 0.92);
+  --tg-btn-outline-bg-active: rgba(34, 29, 56, 0.94);
+  --tg-btn-outline-border: rgba(126, 148, 255, 0.22);
+  --tg-btn-outline-border-active: rgba(158, 92, 255, 0.34);
+  --tg-btn-outline-text: color-mix(in srgb, var(--text) 86%, var(--brand) 14%);
+  --tg-btn-tab-bg: rgba(20, 23, 39, 0.72);
+  --tg-btn-tab-bg-hover: rgba(29, 33, 54, 0.88);
+  --tg-btn-tab-bg-active: linear-gradient(135deg, rgba(115, 133, 255, 0.54) 0%, rgba(158, 92, 255, 0.5) 100%);
+  --tg-btn-tab-border: rgba(126, 148, 255, 0.16);
+  --tg-btn-tab-border-active: rgba(158, 92, 255, 0.3);
+  --tg-btn-tab-text: color-mix(in srgb, var(--text) 76%, var(--muted) 24%);
+  --tg-btn-tab-text-active: #ffffff;
+  --tg-btn-icon-bg: linear-gradient(180deg, rgba(30, 34, 56, 0.96) 0%, rgba(17, 20, 35, 0.94) 100%);
+  --tg-btn-icon-bg-hover: linear-gradient(180deg, rgba(37, 42, 67, 0.98) 0%, rgba(21, 24, 42, 0.96) 100%);
+  --tg-btn-icon-bg-active: linear-gradient(180deg, rgba(25, 29, 49, 0.98) 0%, rgba(14, 17, 29, 0.96) 100%);
+  --tg-btn-icon-border: rgba(126, 148, 255, 0.18);
+  --tg-btn-icon-text: color-mix(in srgb, var(--text) 84%, var(--brand) 16%);
+  --tg-btn-toolbar-bg: linear-gradient(180deg, rgba(20, 23, 40, 0.94) 0%, rgba(12, 15, 27, 0.92) 100%);
+  --tg-toast-bg: linear-gradient(180deg, rgba(22, 25, 42, 0.98) 0%, rgba(13, 16, 28, 0.96) 100%);
+  --tg-toast-border: rgba(126, 148, 255, 0.24);
+  --tg-toast-text: #eef1ff;
+  --tg-toast-shadow: 0 20px 48px rgba(0, 0, 0, 0.42);
 }
 
 button {
@@ -788,10 +788,10 @@ html.dark-mode .navbar {
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.24);
 }
 
-html.turquoise-mode .navbar {
-  border-color: rgba(0, 255, 239, 0.22);
-  background: linear-gradient(180deg, rgba(232, 255, 252, 0.96) 0%, rgba(103, 235, 225, 0.94) 100%);
-  box-shadow: 0 16px 32px rgba(0, 79, 83, 0.14);
+html.neon-purple-mode .navbar {
+  border-color: rgba(126, 148, 255, 0.16);
+  background: linear-gradient(180deg, rgba(18, 21, 36, 0.94) 0%, rgba(10, 12, 22, 0.9) 100%);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.32);
 }
 
 .nav-pill-group,
@@ -830,10 +830,10 @@ html.dark-mode .pillGroup {
   color: color-mix(in srgb, var(--text) 88%, var(--brand-strong) 12%);
 }
 
-html.turquoise-mode .nav-tab:hover,
-html.turquoise-mode .pillLink:hover {
-  background: rgba(0, 255, 239, 0.16);
-  border-color: rgba(0, 255, 239, 0.24);
+html.neon-purple-mode .nav-tab:hover,
+html.neon-purple-mode .pillLink:hover {
+  background: rgba(158, 92, 255, 0.14);
+  border-color: rgba(158, 92, 255, 0.24);
 }
 
 .nav-tab.active,
@@ -852,8 +852,8 @@ html.turquoise-mode .pillLink:hover {
   box-shadow: var(--tg-btn-shadow-soft);
 }
 
-html.turquoise-mode .nav-actions-shell {
-  border-color: rgba(0, 255, 239, 0.22);
+html.neon-purple-mode .nav-actions-shell {
+  border-color: rgba(126, 148, 255, 0.18);
 }
 
 .nav-circle-btn {

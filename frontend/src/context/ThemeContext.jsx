@@ -5,6 +5,7 @@ import {
   applyThemeToDocument,
   getNextTheme,
   isSupportedTheme,
+  normalizeThemeValue,
   readStoredTheme,
 } from "../themeConfig";
 
@@ -12,7 +13,7 @@ const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => readStoredTheme());
-  const isDark = theme === "dark";
+  const isDark = theme === "dark" || theme === "neon-purple";
 
   useEffect(() => {
     try {
@@ -27,7 +28,7 @@ export function ThemeProvider({ children }) {
 
   const setTheme = (nextTheme) => {
     if (isSupportedTheme(nextTheme)) {
-      setThemeState(nextTheme);
+      setThemeState(normalizeThemeValue(nextTheme));
     }
   };
 

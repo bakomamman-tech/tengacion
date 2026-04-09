@@ -282,9 +282,9 @@ export function DisplayAccessibilityPage({ user }) {
       description: "Deeper surfaces with softer glare for low-light browsing.",
     },
     {
-      value: "turquoise",
-      title: "Turquoise Mode",
-      description: "Bright turquoise-blue surfaces for a cooler and fresher daytime look.",
+      value: "neon-purple",
+      title: "Neon Purple Mode",
+      description: "Deep midnight surfaces with calculator-style neon purple glow in the background.",
     },
   ];
 
@@ -299,7 +299,7 @@ export function DisplayAccessibilityPage({ user }) {
     },
     {
       title: "Readable layout",
-      description: "Use browser zoom together with light, dark, or turquoise mode to improve readability on your device.",
+      description: "Use browser zoom together with light, dark, or Neon Purple Mode to improve readability on your device.",
     },
   ];
 

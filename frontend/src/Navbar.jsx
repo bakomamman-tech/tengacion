@@ -792,12 +792,12 @@ export default function Navbar({
           onClick: () => setTheme("light"),
         },
         {
-          id: "display-turquoise",
-          label: "Turquoise Mode",
-          description: "Use a bright turquoise-blue palette for a cooler daytime look.",
-          glyph: "TM",
-          badge: theme === "turquoise" ? "On" : "Off",
-          onClick: () => setTheme("turquoise"),
+          id: "display-neon-purple",
+          label: "Neon Purple Mode",
+          description: "Use a calculator-inspired neon purple glow with deep midnight surfaces.",
+          glyph: "NP",
+          badge: theme === "neon-purple" ? "On" : "Off",
+          onClick: () => setTheme("neon-purple"),
         },
         {
           id: "display-center",

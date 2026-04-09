@@ -1,4 +1,4 @@
-const CACHE_NAME = "tengacion-static-v3";
+const CACHE_NAME = "tengacion-static-v4";
 const OFFLINE_URL = "/offline.html";
 const ASSETS = [OFFLINE_URL, "/manifest.json"];
 
@@ -53,6 +53,8 @@ self.addEventListener("fetch", (event) => {
 
   if (request.method !== "GET") return;
   if (!(url.protocol === "http:" || url.protocol === "https:")) return;
+  // Let the browser fetch third-party assets like Cloudinary images directly.
+  if (url.origin !== self.location.origin) return;
 
   // Never cache API responses or auth-sensitive endpoints.
   if (url.pathname.startsWith("/api") || url.pathname.startsWith("/socket.io")) {

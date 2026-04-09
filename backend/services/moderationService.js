@@ -1118,6 +1118,10 @@ const isHiddenFromPublic = (caseDoc = null) =>
 const isRestrictedForPublic = (caseDoc = null) =>
   Boolean(caseDoc && RESTRICTED_PUBLIC_STATUSES.has(String(caseDoc.status || "")));
 
+const shouldDeferPublicUserReportCase = (caseDoc = null) =>
+  String(caseDoc?.queue || "") === "user_reported_sensitive_content"
+  && String(caseDoc?.status || "") === "HOLD_FOR_REVIEW";
+
 const filterPublicItems = async (targetType, items = []) => {
   const caseMap = await getLatestCaseMapForTargets(
     targetType,
@@ -3101,6 +3105,7 @@ module.exports = {
   getPublicModerationOverlay,
   isHiddenFromPublic,
   isRestrictedForPublic,
+  shouldDeferPublicUserReportCase,
   listModerationCases,
   mergeVisibilityWithModeration,
   performModerationAction,

@@ -262,9 +262,21 @@ export default function PostCard({
   );
   const explicitVideo = mediaTypeCandidate === "video" || hasVideoExtension;
   const explicitImage = mediaTypeCandidate === "image" || hasImageExtension;
+  const [imageRetryToken, setImageRetryToken] = useState(0);
+  const resolvedPostImageUrl = useMemo(() => {
+    if (!postMediaUrl) {
+      return "";
+    }
+    if (!imageRetryToken) {
+      return postMediaUrl;
+    }
+
+    const separator = postMediaUrl.includes("?") ? "&" : "?";
+    return `${postMediaUrl}${separator}img_retry=${imageRetryToken}`;
+  }, [imageRetryToken, postMediaUrl]);
   const postMediaBackdropStyle =
-    postMediaUrl && (explicitImage || !explicitVideo)
-      ? { "--post-media-image": `url("${String(postMediaUrl).replace(/"/g, '\\"')}")` }
+    resolvedPostImageUrl && (explicitImage || !explicitVideo)
+      ? { "--post-media-image": `url("${String(resolvedPostImageUrl).replace(/"/g, '\\"')}")` }
       : undefined;
   const [forceVideoRender, setForceVideoRender] = useState(false);
   const videoPayload = post.video && typeof post.video === "object" ? post.video : null;
@@ -464,6 +476,7 @@ export default function PostCard({
   useEffect(() => {
     setVideoError(false);
     setForceVideoRender(false);
+    setImageRetryToken(0);
     setIsPlaying(false);
     setIsBuffering(false);
     setIsInView(false);
@@ -984,10 +997,14 @@ export default function PostCard({
               ) : shouldRenderImage ? (
                 <div className="post-media__frame">
                   <img
-                    src={postMediaUrl}
+                    src={resolvedPostImageUrl}
                     alt="post"
                     className="post-image"
                     onError={() => {
+                      if (!imageRetryToken && /^https?:\/\//i.test(postMediaUrl || "")) {
+                        setImageRetryToken(Date.now());
+                        return;
+                      }
                       if (explicitVideo || hasVideoPayload) {
                         setForceVideoRender(true);
                       }

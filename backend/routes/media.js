@@ -15,6 +15,7 @@ const {
   getLatestCaseForMediaId,
   isHiddenFromPublic,
   isRestrictedForPublic,
+  shouldDeferPublicUserReportCase,
 } = require("../services/moderationService");
 const { verifySignedMediaToken } = require("../services/mediaSigner");
 
@@ -26,6 +27,10 @@ const resolvePublicMediaAccess = async ({ mediaId, req }) => {
   const moderationCase = await getLatestCaseForMediaId(mediaId);
   if (!moderationCase) {
     return { type: "allow", moderationCase: null, redirectUrl: "" };
+  }
+
+  if (shouldDeferPublicUserReportCase(moderationCase)) {
+    return { type: "allow", moderationCase, redirectUrl: "" };
   }
 
   if (isHiddenFromPublic(moderationCase)) {

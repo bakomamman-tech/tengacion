@@ -31,6 +31,7 @@ const {
   getLatestCaseForTarget,
   getLatestCaseMapForTargets,
   getPublicModerationOverlay,
+  shouldDeferPublicUserReportCase,
 } = require("../../../backend/services/moderationService");
 const {
   isHiddenFromPublicStatus,
@@ -47,10 +48,6 @@ const toIdString = (value) => {
 };
 
 const uniqueIds = (values) => [...new Set(values.filter(Boolean))];
-
-const shouldDeferPublicUserReportCase = (caseDoc = null) =>
-  String(caseDoc?.queue || "") === "user_reported_sensitive_content"
-  && String(caseDoc?.status || "") === "HOLD_FOR_REVIEW";
 
 const inferMediaKind = (file) => {
   const mime = String(file?.mimetype || "").toLowerCase();

@@ -10624,13 +10624,6 @@ html.dark-mode .create-post-quick-btn--reel {
   overflow-wrap: anywhere;
 }
 
-.post-text.is-collapsed {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
-  overflow: hidden;
-}
-
 .post-text-toggle-row {
   display: flex;
   justify-content: flex-end;

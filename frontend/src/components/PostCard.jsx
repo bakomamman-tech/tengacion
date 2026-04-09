@@ -41,6 +41,38 @@ const REACTIONS = [
 ];
 
 const COLLAPSED_POST_TEXT_LINES = 4;
+const COLLAPSED_POST_TEXT_CHARACTER_LIMIT = 280;
+
+const getCollapsedPostText = (value = "") => {
+  const normalized = String(value || "").replace(/\r\n/g, "\n");
+  if (!normalized.trim()) {
+    return { text: "", truncated: false };
+  }
+
+  let preview = normalized;
+  let truncated = false;
+  const lines = normalized.split("\n");
+
+  if (lines.length > COLLAPSED_POST_TEXT_LINES) {
+    preview = lines.slice(0, COLLAPSED_POST_TEXT_LINES).join("\n");
+    truncated = true;
+  }
+
+  if (preview.length > COLLAPSED_POST_TEXT_CHARACTER_LIMIT) {
+    preview = preview.slice(0, COLLAPSED_POST_TEXT_CHARACTER_LIMIT);
+    truncated = true;
+  }
+
+  if (truncated) {
+    const wordBoundaryPreview = preview.replace(/\s+\S*$/, "").trimEnd();
+    preview = wordBoundaryPreview || preview.trimEnd();
+  }
+
+  return {
+    text: preview,
+    truncated,
+  };
+};
 
 const inferVideoMimeType = (url = "", fallback = "") => {
   const normalizedFallback = String(fallback || "").toLowerCase();
@@ -232,9 +264,7 @@ export default function PostCard({
   const [deleting, setDeleting] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [feedbackBusy, setFeedbackBusy] = useState(false);
-  const postTextRef = useRef(null);
   const [isTextExpanded, setIsTextExpanded] = useState(false);
-  const [showTextToggle, setShowTextToggle] = useState(false);
 
   const timeLabel = post?.createdAt
     ? new Date(post.createdAt).toLocaleString()
@@ -403,6 +433,12 @@ export default function PostCard({
   const isOwner = Boolean(
     post?.isOwner || (currentUserId && postAuthorId && currentUserId === postAuthorId)
   );
+  const rawPostText = String(post?.text || "");
+  const collapsedPostText = useMemo(() => getCollapsedPostText(rawPostText), [rawPostText]);
+  const shouldShowTextToggle = collapsedPostText.truncated;
+  const visiblePostText = shouldShowTextToggle && !isTextExpanded
+    ? `${collapsedPostText.text}...`
+    : rawPostText;
 
   const runRecommendationAction = useCallback(
     async (payload = {}) => {
@@ -452,46 +488,6 @@ export default function PostCard({
 
   useEffect(() => {
     setIsTextExpanded(false);
-  }, [post?._id, post?.text]);
-
-  useEffect(() => {
-    const postText = String(post?.text || "").trim();
-    const element = postTextRef.current;
-
-    if (!postText || !element) {
-      setShowTextToggle(false);
-      return undefined;
-    }
-
-    const measureOverflow = () => {
-      const styles = window.getComputedStyle(element);
-      const fontSize = Number.parseFloat(styles.fontSize) || 16;
-      const resolvedLineHeight = Number.parseFloat(styles.lineHeight);
-      const lineHeight = Number.isFinite(resolvedLineHeight)
-        ? resolvedLineHeight
-        : fontSize * 1.5;
-      const collapsedHeight = lineHeight * COLLAPSED_POST_TEXT_LINES;
-      const hasOverflow = element.scrollHeight > collapsedHeight + 2;
-
-      setShowTextToggle(hasOverflow);
-      if (!hasOverflow) {
-        setIsTextExpanded(false);
-      }
-    };
-
-    measureOverflow();
-
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", measureOverflow);
-      return () => window.removeEventListener("resize", measureOverflow);
-    }
-
-    const observer = new ResizeObserver(() => {
-      measureOverflow();
-    });
-    observer.observe(element);
-
-    return () => observer.disconnect();
   }, [post?._id, post?.text]);
 
   useEffect(() => {
@@ -931,17 +927,12 @@ export default function PostCard({
         <div className="post-body">
           {post?.text && (
             <div
-              className={`post-text-block ${showTextToggle ? "has-toggle" : ""} ${
+              className={`post-text-block ${shouldShowTextToggle ? "has-toggle" : ""} ${
                 isTextExpanded ? "is-expanded" : ""
               }`}
             >
-              <p
-                ref={postTextRef}
-                className={`post-text ${!isTextExpanded ? "is-collapsed" : ""}`}
-              >
-                {post.text}
-              </p>
-              {showTextToggle && (
+              <p className="post-text">{visiblePostText}</p>
+              {shouldShowTextToggle && (
                 <div className="post-text-toggle-row">
                   <button
                     type="button"

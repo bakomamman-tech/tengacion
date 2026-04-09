@@ -3,11 +3,11 @@ import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
 
 import PostComments from "./PostComments";
+import ExpandablePostText from "./posts/ExpandablePostText";
 import PostShareModal from "./share/PostShareModal";
 import {
   buildPostShareUrl,
   fallbackAvatar,
-  truncateText,
 } from "./share/postShareUtils";
 import { apiRequest, createReport, initPayment, resolveImage } from "../api";
 import { useAuth } from "../context/AuthContext";
@@ -22,7 +22,12 @@ import { useDialog } from "./ui/useDialog";
 function SystemPost({ text }) {
   return (
     <article className="post-card system-post">
-      <p className="system-text">{text}</p>
+      <ExpandablePostText
+        text={text}
+        wrapperClassName="post-text-block"
+        className="system-text post-text"
+        toggleClassName="post-text-toggle"
+      />
     </article>
   );
 }
@@ -39,40 +44,6 @@ const REACTIONS = [
   { key: "sad", label: "\u{1F622}", name: "Sad" },
   { key: "angry", label: "\u{1F621}", name: "Angry" },
 ];
-
-const COLLAPSED_POST_TEXT_LINES = 4;
-const COLLAPSED_POST_TEXT_CHARACTER_LIMIT = 280;
-
-const getCollapsedPostText = (value = "") => {
-  const normalized = String(value || "").replace(/\r\n/g, "\n");
-  if (!normalized.trim()) {
-    return { text: "", truncated: false };
-  }
-
-  let preview = normalized;
-  let truncated = false;
-  const lines = normalized.split("\n");
-
-  if (lines.length > COLLAPSED_POST_TEXT_LINES) {
-    preview = lines.slice(0, COLLAPSED_POST_TEXT_LINES).join("\n");
-    truncated = true;
-  }
-
-  if (preview.length > COLLAPSED_POST_TEXT_CHARACTER_LIMIT) {
-    preview = preview.slice(0, COLLAPSED_POST_TEXT_CHARACTER_LIMIT);
-    truncated = true;
-  }
-
-  if (truncated) {
-    const wordBoundaryPreview = preview.replace(/\s+\S*$/, "").trimEnd();
-    preview = wordBoundaryPreview || preview.trimEnd();
-  }
-
-  return {
-    text: preview,
-    truncated,
-  };
-};
 
 const inferVideoMimeType = (url = "", fallback = "") => {
   const normalizedFallback = String(fallback || "").toLowerCase();
@@ -264,7 +235,6 @@ export default function PostCard({
   const [deleting, setDeleting] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [feedbackBusy, setFeedbackBusy] = useState(false);
-  const [isTextExpanded, setIsTextExpanded] = useState(false);
 
   const timeLabel = post?.createdAt
     ? new Date(post.createdAt).toLocaleString()
@@ -333,7 +303,6 @@ export default function PostCard({
   const [videoError, setVideoError] = useState(false);
   const videoRef = useRef(null);
   const videoWrapperRef = useRef(null);
-  const tags = Array.isArray(post?.tags) ? post.tags.filter(Boolean) : [];
   const taggedUsers = useMemo(() => {
     const nextTaggedUsers = (Array.isArray(post?.taggedUsers) ? post.taggedUsers : [])
       .map((entry) => normalizeTaggedUser(entry))
@@ -343,8 +312,9 @@ export default function PostCard({
       return nextTaggedUsers;
     }
 
+    const tags = Array.isArray(post?.tags) ? post.tags.filter(Boolean) : [];
     return tags.map((entry) => normalizeTaggedUser(entry)).filter(Boolean);
-  }, [post?.taggedUsers, tags]);
+  }, [post?.taggedUsers, post?.tags]);
   const primaryTaggedUser = taggedUsers[0] || null;
   const additionalTaggedCount = Math.max(0, taggedUsers.length - 1);
   const feeling = typeof post?.feeling === "string" ? post.feeling.trim() : "";
@@ -433,13 +403,6 @@ export default function PostCard({
   const isOwner = Boolean(
     post?.isOwner || (currentUserId && postAuthorId && currentUserId === postAuthorId)
   );
-  const rawPostText = String(post?.text || "");
-  const collapsedPostText = useMemo(() => getCollapsedPostText(rawPostText), [rawPostText]);
-  const shouldShowTextToggle = collapsedPostText.truncated;
-  const visiblePostText = shouldShowTextToggle && !isTextExpanded
-    ? `${collapsedPostText.text}...`
-    : rawPostText;
-
   const runRecommendationAction = useCallback(
     async (payload = {}) => {
       if (!isRecommendedPost || typeof onRecommendationAction !== "function") {
@@ -485,10 +448,6 @@ export default function PostCard({
   useEffect(() => {
     setShareCount(Number(post?.shareCount) || 0);
   }, [post?._id, post?.shareCount]);
-
-  useEffect(() => {
-    setIsTextExpanded(false);
-  }, [post?._id, post?.text]);
 
   useEffect(() => {
     if (!showComments) {
@@ -628,9 +587,7 @@ export default function PostCard({
     return reaction?.name || "Like";
   }, [likedByViewer, reaction]);
 
-  const postLink = useMemo(() => {
-    return buildPostShareUrl(post?._id);
-  }, [post?._id]);
+  const postLink = useMemo(() => buildPostShareUrl(post?._id), [post?._id]);
 
   const copyCurrentLink = async () => {
     if (!postLink) {
@@ -926,25 +883,13 @@ export default function PostCard({
         {/* BODY */}
         <div className="post-body">
           {post?.text && (
-            <div
-              className={`post-text-block ${shouldShowTextToggle ? "has-toggle" : ""} ${
-                isTextExpanded ? "is-expanded" : ""
-              }`}
-            >
-              <p className="post-text">{visiblePostText}</p>
-              {shouldShowTextToggle && (
-                <div className="post-text-toggle-row">
-                  <button
-                    type="button"
-                    className="post-text-toggle"
-                    aria-expanded={isTextExpanded}
-                    onClick={() => setIsTextExpanded((current) => !current)}
-                  >
-                    {isTextExpanded ? "Less" : "More"}
-                  </button>
-                </div>
-              )}
-            </div>
+            <ExpandablePostText
+              text={post.text}
+              wrapperClassName="post-text-block"
+              className="post-text"
+              toggleClassName="post-text-toggle"
+              collapsedLines={5}
+            />
           )}
 
           {hasSharedPost && (
@@ -967,9 +912,13 @@ export default function PostCard({
               </div>
 
               {sharedPostPreviewText ? (
-                <p className="post-shared-preview__text">
-                  {truncateText(sharedPostPreviewText, 280)}
-                </p>
+                <ExpandablePostText
+                  text={sharedPostPreviewText}
+                  wrapperClassName="post-shared-preview__text-block"
+                  className="post-shared-preview__text"
+                  toggleClassName="post-text-toggle"
+                  collapsedLines={5}
+                />
               ) : null}
 
               {sharedPostPreviewImage ? (

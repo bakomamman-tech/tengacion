@@ -1,10 +1,10 @@
 import { resolveImage } from "../../api";
+import ExpandablePostText from "../posts/ExpandablePostText";
 import {
   fallbackAvatar,
   getAuthorName,
   getAuthorUsername,
   getPostPreviewImage,
-  truncateText,
 } from "./postShareUtils";
 
 const formatTimeLabel = (value) => {
@@ -69,7 +69,15 @@ export default function SharePreviewCard({ post }) {
         </div>
       </div>
 
-      {post?.text ? <p className="tg-share-preview-text">{truncateText(post.text, 260)}</p> : null}
+      {post?.text ? (
+        <ExpandablePostText
+          text={post.text}
+          wrapperClassName="tg-share-preview-text-block"
+          className="tg-share-preview-text"
+          toggleClassName="post-text-toggle"
+          collapsedLines={5}
+        />
+      ) : null}
 
       {sharedSource ? (
         <div className="tg-share-preview-source">
@@ -85,9 +93,13 @@ export default function SharePreviewCard({ post }) {
             </div>
           </div>
           {sharedSource.text ? (
-            <p className="tg-share-preview-source__text">
-              {truncateText(sharedSource.text, 220)}
-            </p>
+            <ExpandablePostText
+              text={sharedSource.text}
+              wrapperClassName="tg-share-preview-source__text-block"
+              className="tg-share-preview-source__text"
+              toggleClassName="post-text-toggle"
+              collapsedLines={5}
+            />
           ) : null}
           {sharedSource.image ? (
             <div className="tg-share-preview-media">

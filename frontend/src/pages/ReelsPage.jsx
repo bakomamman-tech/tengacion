@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
 import Navbar from "../Navbar";
+import ExpandablePostText from "../components/posts/ExpandablePostText";
 import {
   createPostWithUploadProgress,
   getFeed,
@@ -317,7 +318,6 @@ export default function ReelsPage({ user }) {
   const [composerOpen, setComposerOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
   const [activeReelId, setActiveReelId] = useState("");
-  const [expandedCaptionId, setExpandedCaptionId] = useState("");
 
   const loadReels = useCallback(async () => {
     try {
@@ -576,10 +576,6 @@ export default function ReelsPage({ user }) {
                 const videoUrl = getReelVideoUrl(reel);
                 const posterUrl = getReelPoster(reel);
                 const caption = String(reel?.text || "").trim();
-                const shortCaption =
-                  caption.length > 120 && expandedCaptionId !== reelId
-                    ? `${caption.slice(0, 120).trim()}...`
-                    : caption;
                 const isActive = reelId === activeReelId;
                 const authorName = getDisplayName(reel);
                 const username = getUsername(reel);
@@ -634,22 +630,15 @@ export default function ReelsPage({ user }) {
                           </div>
                         </button>
 
-                        {shortCaption && (
-                          <div className="reel-caption-block">
-                            <p className="reel-caption">{shortCaption}</p>
-                            {caption.length > 120 && (
-                              <button
-                                type="button"
-                                className="reel-caption-toggle"
-                                onClick={() =>
-                                  setExpandedCaptionId((current) => (current === reelId ? "" : reelId))
-                                }
-                              >
-                                {expandedCaptionId === reelId ? "See less" : "See more"}
-                              </button>
-                            )}
-                          </div>
-                        )}
+                        {caption ? (
+                          <ExpandablePostText
+                            text={caption}
+                            wrapperClassName="reel-caption-block"
+                            className="reel-caption"
+                            toggleClassName="reel-caption-toggle"
+                            collapsedLines={5}
+                          />
+                        ) : null}
                       </div>
                     </div>
 

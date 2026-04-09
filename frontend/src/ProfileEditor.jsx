@@ -270,8 +270,7 @@ export default function ProfileEditor({ user }) {
   const displayAvatar =
     avatarPreview ||
     resolveImage(profile?.avatar) ||
-    resolveImage(user?.avatar) ||
-    fallbackAvatar(profile?.name);
+    fallbackAvatar(profile?.name || profile?.username || user?.name || user?.username);
   const displayCover = coverPreview || resolveImage(profile?.cover);
   const profileCountry = sanitizeCountryValue(profile?.country);
   const profileLocation = formatProfileLocation(profile?.currentCity, profileCountry);

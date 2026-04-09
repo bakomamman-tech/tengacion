@@ -1,4 +1,4 @@
-const CACHE_NAME = "tengacion-static-v4";
+const CACHE_NAME = "tengacion-static-v5";
 const OFFLINE_URL = "/offline.html";
 const ASSETS = [OFFLINE_URL, "/manifest.json"];
 

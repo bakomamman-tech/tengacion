@@ -56,8 +56,11 @@ describe("PostCard comment toggle", () => {
     Object.defineProperty(HTMLElement.prototype, "clientHeight", {
       configurable: true,
       get() {
-        if (this.classList?.contains("expandable-post-text__measure")) {
+        if (this.classList?.contains("expandable-post-text__measure--collapsed")) {
           return 96;
+        }
+        if (this.classList?.contains("expandable-post-text__measure")) {
+          return (this.textContent?.length || 0) > 180 ? 240 : 96;
         }
         return 0;
       },
@@ -66,6 +69,9 @@ describe("PostCard comment toggle", () => {
     Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
       configurable: true,
       get() {
+        if (this.classList?.contains("expandable-post-text__measure--collapsed")) {
+          return 96;
+        }
         if (this.classList?.contains("expandable-post-text__measure")) {
           return (this.textContent?.length || 0) > 180 ? 240 : 96;
         }

@@ -12,13 +12,22 @@ const scheduleFrame = (callback) => {
   return () => clearTimeout(timeoutId);
 };
 
-const isOverflowing = (node) => {
+const getNodeHeight = (node) => {
   if (!node) {
+    return 0;
+  }
+
+  const rectHeight = Number(node.getBoundingClientRect?.().height || 0);
+  return Math.max(rectHeight, Number(node.scrollHeight || 0), Number(node.clientHeight || 0));
+};
+
+const isOverflowing = (fullNode, collapsedNode) => {
+  if (!fullNode || !collapsedNode) {
     return false;
   }
 
-  const heightOverflow = node.scrollHeight - node.clientHeight > 1;
-  const widthOverflow = node.scrollWidth - node.clientWidth > 1;
+  const heightOverflow = getNodeHeight(fullNode) - getNodeHeight(collapsedNode) > 1;
+  const widthOverflow = Number(fullNode.scrollWidth || 0) - Number(collapsedNode.clientWidth || 0) > 1;
   return heightOverflow || widthOverflow;
 };
 
@@ -38,7 +47,8 @@ export default function ExpandablePostText({
   const TextTag = component;
   const contentId = useId();
   const wrapperRef = useRef(null);
-  const measureRef = useRef(null);
+  const fullMeasureRef = useRef(null);
+  const collapsedMeasureRef = useRef(null);
   const [expanded, setExpanded] = useState(false);
   const [canExpand, setCanExpand] = useState(false);
 
@@ -56,7 +66,7 @@ export default function ExpandablePostText({
     let resizeObserver = null;
 
     const updateOverflow = () => {
-      setCanExpand(isOverflowing(measureRef.current));
+      setCanExpand(isOverflowing(fullMeasureRef.current, collapsedMeasureRef.current));
     };
 
     const scheduleOverflowCheck = () => {
@@ -75,8 +85,12 @@ export default function ExpandablePostText({
         resizeObserver.observe(wrapperRef.current);
       }
 
-      if (measureRef.current) {
-        resizeObserver.observe(measureRef.current);
+      if (fullMeasureRef.current) {
+        resizeObserver.observe(fullMeasureRef.current);
+      }
+
+      if (collapsedMeasureRef.current) {
+        resizeObserver.observe(collapsedMeasureRef.current);
       }
     } else if (typeof window !== "undefined") {
       window.addEventListener("resize", scheduleOverflowCheck);
@@ -102,12 +116,20 @@ export default function ExpandablePostText({
   const contentClassName = joinClasses(
     "expandable-post-text__content",
     justify && "expandable-post-text__content--justified",
-    !expanded && canExpand && "expandable-post-text__content--collapsed",
+    !expanded && "expandable-post-text__content--collapsed",
     className
   );
 
-  const measureClassName = joinClasses(
+  const fullMeasureClassName = joinClasses(
     "expandable-post-text__measure",
+    "expandable-post-text__content",
+    justify && "expandable-post-text__content--justified",
+    className
+  );
+
+  const collapsedMeasureClassName = joinClasses(
+    "expandable-post-text__measure",
+    "expandable-post-text__measure--collapsed",
     "expandable-post-text__content",
     "expandable-post-text__content--collapsed",
     justify && "expandable-post-text__content--justified",
@@ -115,12 +137,26 @@ export default function ExpandablePostText({
   );
 
   return (
-      <div ref={wrapperRef} className={joinClasses("expandable-post-text", wrapperClassName)}>
+    <div ref={wrapperRef} className={joinClasses("expandable-post-text", wrapperClassName)}>
       <TextTag id={contentId} className={contentClassName} style={lineClampStyle}>
         {normalizedText}
       </TextTag>
 
-      <TextTag aria-hidden="true" className={measureClassName} ref={measureRef} style={lineClampStyle}>
+      <TextTag
+        aria-hidden="true"
+        className={fullMeasureClassName}
+        ref={fullMeasureRef}
+        style={lineClampStyle}
+      >
+        {normalizedText}
+      </TextTag>
+
+      <TextTag
+        aria-hidden="true"
+        className={collapsedMeasureClassName}
+        ref={collapsedMeasureRef}
+        style={lineClampStyle}
+      >
         {normalizedText}
       </TextTag>
 

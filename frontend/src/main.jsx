@@ -10,6 +10,13 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { CreatorPlayerProvider } from "./context/CreatorPlayerContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { DialogProvider } from "./components/ui/DialogProvider";
+import {
+  DEFAULT_THEME,
+  LEGACY_THEME_KEY,
+  THEME_KEY,
+  applyThemeToDocument,
+  readStoredTheme,
+} from "./themeConfig";
 
 import "./index.css";
 import "./button-system.css";
@@ -21,30 +28,16 @@ const initializeThemeEarly = () => {
     return;
   }
 
-  const KEY = "tengacion_theme";
-  const LEGACY_KEY = "tengacion-theme";
-  let theme = "dark";
+  const theme = readStoredTheme();
 
   try {
-    const stored = localStorage.getItem(KEY) || localStorage.getItem(LEGACY_KEY);
-    if (stored === "dark" || stored === "light") {
-      theme = stored;
-    } else {
-      localStorage.setItem(KEY, theme);
-    }
-    localStorage.removeItem(LEGACY_KEY);
+    localStorage.setItem(THEME_KEY, theme || DEFAULT_THEME);
+    localStorage.removeItem(LEGACY_THEME_KEY);
   } catch {
-    // Ignore storage access issues and keep dark default.
+    // Ignore storage access issues and keep the document theme in sync.
   }
 
-  const root = document.documentElement;
-  root.dataset.theme = theme;
-  root.style.colorScheme = theme;
-  if (theme === "dark") {
-    root.classList.add("dark-mode");
-  } else {
-    root.classList.remove("dark-mode");
-  }
+  applyThemeToDocument(theme, document.documentElement);
 };
 
 initializeThemeEarly();

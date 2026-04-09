@@ -1,20 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import {
+  THEME_KEY,
+  LEGACY_THEME_KEY,
+  applyThemeToDocument,
+  getNextTheme,
+  isSupportedTheme,
+  readStoredTheme,
+} from "../themeConfig";
 
 const ThemeContext = createContext();
-const THEME_KEY = "tengacion_theme";
-const LEGACY_THEME_KEY = "tengacion-theme";
-
-const readStoredTheme = () => {
-  try {
-    const stored = localStorage.getItem(THEME_KEY) || localStorage.getItem(LEGACY_THEME_KEY);
-    if (stored === "dark" || stored === "light") {
-      return stored;
-    }
-  } catch {
-    // Ignore storage access errors and fall back to dark.
-  }
-  return "light";
-};
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => readStoredTheme());
@@ -28,24 +22,17 @@ export function ThemeProvider({ children }) {
       // Ignore storage access errors.
     }
 
-    document.documentElement.dataset.theme = theme;
-    if (isDark) {
-      document.documentElement.classList.add("dark-mode");
-      document.documentElement.style.colorScheme = "dark";
-    } else {
-      document.documentElement.classList.remove("dark-mode");
-      document.documentElement.style.colorScheme = "light";
-    }
-  }, [isDark, theme]);
+    applyThemeToDocument(theme, document.documentElement);
+  }, [theme]);
 
   const setTheme = (nextTheme) => {
-    if (nextTheme === "dark" || nextTheme === "light") {
+    if (isSupportedTheme(nextTheme)) {
       setThemeState(nextTheme);
     }
   };
 
   const toggleTheme = () => {
-    setThemeState((current) => (current === "dark" ? "light" : "dark"));
+    setThemeState((current) => getNextTheme(current));
   };
 
   return (

@@ -10,6 +10,7 @@ import { useAuth } from "./context/AuthContext";
 import { useNotifications } from "./context/NotificationsContext";
 import { useTheme } from "./context/ThemeContext";
 import { getNotificationTarget } from "./notificationUtils";
+import { getThemeLabel } from "./themeConfig";
 
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -646,7 +647,7 @@ export default function Navbar({
     { id: "reels", label: "Reels", path: "/reels" },
   ];
 
-  const currentMode = theme === "dark" ? "Dark mode is on" : "Light mode is on";
+  const currentMode = `${getThemeLabel(theme)} is on`;
   const accountMenuPanels = {
     root: {
       items: [
@@ -789,6 +790,14 @@ export default function Navbar({
           glyph: "LM",
           badge: theme === "light" ? "On" : "Off",
           onClick: () => setTheme("light"),
+        },
+        {
+          id: "display-turquoise",
+          label: "Turquoise Mode",
+          description: "Use a bright turquoise-blue palette for a cooler daytime look.",
+          glyph: "TM",
+          badge: theme === "turquoise" ? "On" : "Off",
+          onClick: () => setTheme("turquoise"),
         },
         {
           id: "display-center",

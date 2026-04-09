@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import QuickAccessLayout from "../components/QuickAccessLayout";
 import { useTheme } from "../context/ThemeContext";
 import { normalizeWelcomeVoicePrefs } from "../services/welcomeVoice";
+import { getThemeLabel } from "../themeConfig";
 
 const FEEDBACK_STORAGE_KEY = "tengacion_feedback_draft";
 const FEEDBACK_TYPES = ["general", "bug", "idea", "safety"];
@@ -67,7 +68,7 @@ export function SettingsHubPage({ user }) {
   const overview = [
     {
       label: "Theme",
-      value: humanize(theme),
+      value: getThemeLabel(theme),
       note: "Appearance for your current session",
     },
     {
@@ -280,6 +281,11 @@ export function DisplayAccessibilityPage({ user }) {
       title: "Dark mode",
       description: "Deeper surfaces with softer glare for low-light browsing.",
     },
+    {
+      value: "turquoise",
+      title: "Turquoise Mode",
+      description: "Bright turquoise-blue surfaces for a cooler and fresher daytime look.",
+    },
   ];
 
   const supportNotes = [
@@ -293,7 +299,7 @@ export function DisplayAccessibilityPage({ user }) {
     },
     {
       title: "Readable layout",
-      description: "Use browser zoom together with light or dark mode to improve readability on your device.",
+      description: "Use browser zoom together with light, dark, or turquoise mode to improve readability on your device.",
     },
   ];
 

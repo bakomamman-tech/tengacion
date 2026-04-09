@@ -10613,9 +10613,48 @@ html.dark-mode .create-post-quick-btn--reel {
   margin-top: 10px;
 }
 
+.post-text-block {
+  position: relative;
+}
+
 .post-text {
   margin: 0;
   line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.post-text.is-collapsed {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+.post-text-toggle-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.post-text-toggle {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--brand);
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.post-text-toggle:hover,
+.post-text-toggle:focus-visible {
+  color: color-mix(in srgb, var(--brand) 82%, #ffffff 18%);
+  text-decoration: underline;
+}
+
+.post-text-toggle:focus-visible {
+  outline: none;
 }
 
 .post-meta-row {

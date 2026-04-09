@@ -40,6 +40,8 @@ const REACTIONS = [
   { key: "angry", label: "\u{1F621}", name: "Angry" },
 ];
 
+const COLLAPSED_POST_TEXT_LINES = 4;
+
 const inferVideoMimeType = (url = "", fallback = "") => {
   const normalizedFallback = String(fallback || "").toLowerCase();
   if (normalizedFallback.startsWith("video/")) {
@@ -230,6 +232,9 @@ export default function PostCard({
   const [deleting, setDeleting] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const postTextRef = useRef(null);
+  const [isTextExpanded, setIsTextExpanded] = useState(false);
+  const [showTextToggle, setShowTextToggle] = useState(false);
 
   const timeLabel = post?.createdAt
     ? new Date(post.createdAt).toLocaleString()
@@ -444,6 +449,50 @@ export default function PostCard({
   useEffect(() => {
     setShareCount(Number(post?.shareCount) || 0);
   }, [post?._id, post?.shareCount]);
+
+  useEffect(() => {
+    setIsTextExpanded(false);
+  }, [post?._id, post?.text]);
+
+  useEffect(() => {
+    const postText = String(post?.text || "").trim();
+    const element = postTextRef.current;
+
+    if (!postText || !element) {
+      setShowTextToggle(false);
+      return undefined;
+    }
+
+    const measureOverflow = () => {
+      const styles = window.getComputedStyle(element);
+      const fontSize = Number.parseFloat(styles.fontSize) || 16;
+      const resolvedLineHeight = Number.parseFloat(styles.lineHeight);
+      const lineHeight = Number.isFinite(resolvedLineHeight)
+        ? resolvedLineHeight
+        : fontSize * 1.5;
+      const collapsedHeight = lineHeight * COLLAPSED_POST_TEXT_LINES;
+      const hasOverflow = element.scrollHeight > collapsedHeight + 2;
+
+      setShowTextToggle(hasOverflow);
+      if (!hasOverflow) {
+        setIsTextExpanded(false);
+      }
+    };
+
+    measureOverflow();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", measureOverflow);
+      return () => window.removeEventListener("resize", measureOverflow);
+    }
+
+    const observer = new ResizeObserver(() => {
+      measureOverflow();
+    });
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [post?._id, post?.text]);
 
   useEffect(() => {
     if (!showComments) {
@@ -880,7 +929,32 @@ export default function PostCard({
 
         {/* BODY */}
         <div className="post-body">
-          {post?.text && <p className="post-text">{post.text}</p>}
+          {post?.text && (
+            <div
+              className={`post-text-block ${showTextToggle ? "has-toggle" : ""} ${
+                isTextExpanded ? "is-expanded" : ""
+              }`}
+            >
+              <p
+                ref={postTextRef}
+                className={`post-text ${!isTextExpanded ? "is-collapsed" : ""}`}
+              >
+                {post.text}
+              </p>
+              {showTextToggle && (
+                <div className="post-text-toggle-row">
+                  <button
+                    type="button"
+                    className="post-text-toggle"
+                    aria-expanded={isTextExpanded}
+                    onClick={() => setIsTextExpanded((current) => !current)}
+                  >
+                    {isTextExpanded ? "Less" : "More"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {hasSharedPost && (
             <div className="post-shared-preview">

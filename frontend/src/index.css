@@ -1832,41 +1832,41 @@ html.dark-mode {
 }
 
 html.turquoise-mode {
-  --bg: #cbeaf2;
-  --bg-layer: radial-gradient(circle at 12% 14%, #eefcff 0%, #d4f0f6 34%, #a9d6e0 100%);
-  --surface: #dff3f8;
-  --surface-soft: #ebf9fc;
-  --surface-strong: #c2e2ea;
+  --bg: #aeece7;
+  --bg-layer: radial-gradient(circle at 12% 14%, #ddfffc 0%, #8df8ef 34%, #49ddd3 100%);
+  --surface: #cffffa;
+  --surface-soft: #e2fffc;
+  --surface-strong: #92efe7;
   --bg-dark: #0b3140;
-  --text: #082e39;
-  --muted: #476d79;
-  --border: #93c6d1;
-  --border-strong: #68aebd;
-  --brand: #1195b7;
-  --brand-strong: #0b708d;
-  --brand-soft: #b6e1eb;
+  --text: #053438;
+  --muted: #37666a;
+  --border: #5fd9d0;
+  --border-strong: #1acfc3;
+  --brand: #00FFEF;
+  --brand-strong: #00b7ad;
+  --brand-soft: #8ffcf6;
   --danger: #cf6355;
   --success: #169cb9;
-  --shadow-xs: 0 1px 2px rgba(8, 52, 67, 0.1);
-  --shadow-sm: 0 14px 28px rgba(8, 52, 67, 0.1);
-  --shadow-md: 0 22px 48px rgba(8, 52, 67, 0.14);
-  --btn-bg: #1195b7;
-  --btn-bg-hover: #17a9ce;
-  --btn-bg-active: #0f7f9b;
-  --btn-bg-soft: #8fd3e3;
-  --btn-focus: rgba(26, 166, 200, 0.24);
-  --glass-action-fill: linear-gradient(180deg, rgba(247, 253, 255, 0.96) 0%, rgba(214, 239, 245, 0.9) 100%);
-  --glass-action-fill-hover: linear-gradient(180deg, rgba(251, 254, 255, 0.98) 0%, rgba(223, 244, 249, 0.94) 100%);
-  --glass-action-fill-active: linear-gradient(180deg, rgba(237, 249, 252, 0.96) 0%, rgba(196, 228, 237, 0.92) 100%);
-  --glass-action-fill-selected: linear-gradient(180deg, rgba(242, 251, 253, 0.98) 0%, rgba(184, 223, 233, 0.94) 100%);
-  --glass-action-border: rgba(26, 166, 200, 0.14);
-  --glass-action-border-strong: rgba(26, 166, 200, 0.28);
+  --shadow-xs: 0 1px 2px rgba(0, 79, 83, 0.1);
+  --shadow-sm: 0 14px 28px rgba(0, 79, 83, 0.12);
+  --shadow-md: 0 22px 48px rgba(0, 79, 83, 0.16);
+  --btn-bg: #00FFEF;
+  --btn-bg-hover: #38FFF2;
+  --btn-bg-active: #00d9cb;
+  --btn-bg-soft: #7df8ef;
+  --btn-focus: rgba(0, 255, 239, 0.22);
+  --glass-action-fill: linear-gradient(180deg, rgba(241, 255, 253, 0.96) 0%, rgba(173, 250, 241, 0.9) 100%);
+  --glass-action-fill-hover: linear-gradient(180deg, rgba(248, 255, 254, 0.98) 0%, rgba(190, 252, 245, 0.94) 100%);
+  --glass-action-fill-active: linear-gradient(180deg, rgba(230, 255, 251, 0.96) 0%, rgba(129, 241, 231, 0.92) 100%);
+  --glass-action-fill-selected: linear-gradient(180deg, rgba(236, 255, 252, 0.98) 0%, rgba(102, 236, 225, 0.94) 100%);
+  --glass-action-border: rgba(0, 255, 239, 0.18);
+  --glass-action-border-strong: rgba(0, 255, 239, 0.34);
   --glass-action-highlight: rgba(255, 255, 255, 0.8);
-  --glass-action-shadow: 0 12px 26px rgba(8, 52, 67, 0.1);
-  --glass-action-shadow-hover: 0 18px 30px rgba(8, 52, 67, 0.14);
-  --glass-action-ring: rgba(26, 166, 200, 0.2);
-  --glass-reaction-fill: linear-gradient(180deg, rgba(250, 254, 255, 0.96) 0%, rgba(213, 239, 245, 0.92) 100%);
-  --glass-reaction-btn-fill: linear-gradient(180deg, rgba(246, 252, 254, 0.96) 0%, rgba(220, 243, 248, 0.94) 100%);
+  --glass-action-shadow: 0 12px 26px rgba(0, 79, 83, 0.12);
+  --glass-action-shadow-hover: 0 18px 30px rgba(0, 79, 83, 0.16);
+  --glass-action-ring: rgba(0, 255, 239, 0.22);
+  --glass-reaction-fill: linear-gradient(180deg, rgba(244, 255, 254, 0.96) 0%, rgba(176, 251, 243, 0.92) 100%);
+  --glass-reaction-btn-fill: linear-gradient(180deg, rgba(239, 255, 253, 0.96) 0%, rgba(191, 252, 245, 0.94) 100%);
 }
 
 * {
@@ -6859,32 +6859,32 @@ html.dark-mode .nav-notif-type-badge {
 }
 
 html.turquoise-mode .create-menu-search-shell {
-  background: linear-gradient(180deg, rgba(240, 250, 253, 0.98) 0%, rgba(211, 238, 245, 0.94) 100%);
-  border-color: rgba(26, 166, 200, 0.18);
+  background: linear-gradient(180deg, rgba(233, 255, 252, 0.98) 0%, rgba(158, 247, 238, 0.94) 100%);
+  border-color: rgba(0, 255, 239, 0.24);
 }
 
 html.turquoise-mode .create-menu-search-shell:focus-within {
-  border-color: rgba(26, 166, 200, 0.34);
-  box-shadow: 0 0 0 3px rgba(26, 166, 200, 0.14);
-  background: rgba(245, 253, 255, 0.98);
+  border-color: rgba(0, 255, 239, 0.42);
+  box-shadow: 0 0 0 3px rgba(0, 255, 239, 0.16);
+  background: rgba(242, 255, 253, 0.98);
 }
 
 html.turquoise-mode .create-menu-dropdown .create-menu-section,
 html.turquoise-mode .create-menu-side-card {
-  border-color: rgba(26, 166, 200, 0.16);
-  background: linear-gradient(180deg, rgba(244, 252, 254, 0.98) 0%, rgba(210, 238, 245, 0.94) 100%);
-  box-shadow: 0 10px 26px rgba(8, 52, 67, 0.1);
+  border-color: rgba(0, 255, 239, 0.2);
+  background: linear-gradient(180deg, rgba(238, 255, 253, 0.98) 0%, rgba(153, 246, 237, 0.94) 100%);
+  box-shadow: 0 10px 26px rgba(0, 79, 83, 0.12);
 }
 
 html.turquoise-mode .create-menu-dropdown .create-menu-item:hover {
-  background: rgba(26, 166, 200, 0.12);
-  border-color: rgba(26, 166, 200, 0.18);
+  background: rgba(0, 255, 239, 0.16);
+  border-color: rgba(0, 255, 239, 0.24);
 }
 
 html.turquoise-mode .create-menu-dropdown .create-menu-item-icon {
-  background: linear-gradient(180deg, rgba(248, 253, 255, 0.98) 0%, rgba(193, 227, 236, 0.94) 100%);
-  border-color: rgba(26, 166, 200, 0.18);
-  color: #0c4d60;
+  background: linear-gradient(180deg, rgba(243, 255, 253, 0.98) 0%, rgba(117, 238, 227, 0.94) 100%);
+  border-color: rgba(0, 255, 239, 0.24);
+  color: #055359;
 }
 
 html.dark-mode .create-menu-search-shell {
@@ -9867,18 +9867,18 @@ html:not(.dark-mode) {
 html.turquoise-mode {
   --home-soft-btn-bg: linear-gradient(
     180deg,
-    rgba(241, 251, 254, 0.98) 0%,
-    rgba(209, 238, 245, 0.94) 100%
+    rgba(238, 255, 253, 0.98) 0%,
+    rgba(150, 246, 237, 0.94) 100%
   );
   --home-soft-btn-bg-hover: linear-gradient(
     180deg,
-    rgba(247, 253, 255, 1) 0%,
-    rgba(220, 244, 249, 0.98) 100%
+    rgba(245, 255, 254, 1) 0%,
+    rgba(174, 250, 242, 0.98) 100%
   );
-  --home-soft-btn-border: rgba(26, 166, 200, 0.18);
-  --home-soft-btn-border-strong: rgba(26, 166, 200, 0.32);
-  --home-soft-btn-shadow: 0 12px 24px rgba(8, 52, 67, 0.1);
-  --home-soft-btn-shadow-hover: 0 18px 30px rgba(8, 52, 67, 0.14);
+  --home-soft-btn-border: rgba(0, 255, 239, 0.22);
+  --home-soft-btn-border-strong: rgba(0, 255, 239, 0.36);
+  --home-soft-btn-shadow: 0 12px 24px rgba(0, 79, 83, 0.12);
+  --home-soft-btn-shadow-hover: 0 18px 30px rgba(0, 79, 83, 0.16);
   --home-soft-btn-text: color-mix(in srgb, var(--text) 84%, var(--brand-strong) 16%);
 }
 
@@ -9960,11 +9960,11 @@ html:not(.dark-mode) .quick-nav-item-icon {
 
 html.turquoise-mode .nav-pill-group,
 html.turquoise-mode .pillGroup {
-  border-color: rgba(26, 166, 200, 0.14);
+  border-color: rgba(0, 255, 239, 0.2);
   background: linear-gradient(
     180deg,
-    rgba(235, 249, 253, 0.94) 0%,
-    rgba(200, 232, 241, 0.86) 100%
+    rgba(231, 255, 252, 0.94) 0%,
+    rgba(123, 239, 230, 0.86) 100%
   );
 }
 
@@ -9973,23 +9973,23 @@ html.turquoise-mode .pillLink.active,
 html.turquoise-mode .sidebar-btn.active {
   background: linear-gradient(
     180deg,
-    rgba(245, 253, 255, 1) 0%,
-    rgba(184, 224, 235, 0.98) 100%
+    rgba(242, 255, 253, 1) 0%,
+    rgba(96, 232, 221, 0.98) 100%
   ) !important;
   border-color: var(--home-soft-btn-border-strong) !important;
   color: color-mix(in srgb, var(--brand-strong) 60%, var(--text) 40%) !important;
   box-shadow:
-    0 14px 26px rgba(8, 52, 67, 0.14),
+    0 14px 26px rgba(0, 79, 83, 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
 html.turquoise-mode .quick-nav-item-icon {
   background: linear-gradient(
     180deg,
-    rgba(245, 253, 255, 0.96) 0%,
-    rgba(191, 226, 236, 0.92) 100%
+    rgba(241, 255, 253, 0.96) 0%,
+    rgba(96, 230, 220, 0.92) 100%
   );
-  border: 1px solid rgba(26, 166, 200, 0.18);
+  border: 1px solid rgba(0, 255, 239, 0.24);
   color: var(--brand-strong);
 }
 

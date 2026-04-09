@@ -6407,8 +6407,11 @@ html.dark-mode .nav-notification-btn:hover {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--brand);
-  box-shadow: 0 0 0 4px rgba(42, 111, 79, 0.12);
+  background: #ef4444;
+  box-shadow:
+    0 0 0 4px rgba(239, 68, 68, 0.16),
+    0 0 14px rgba(239, 68, 68, 0.45);
+  animation: notifSignalPulse 1.8s ease-in-out infinite;
 }
 
 html.dark-mode .nav-notification-btn[aria-expanded="true"] {
@@ -17497,7 +17500,11 @@ html.dark-mode .password-toggle-btn:hover {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--brand);
+  background: #ef4444;
+  box-shadow:
+    0 0 0 3px rgba(239, 68, 68, 0.16),
+    0 0 10px rgba(239, 68, 68, 0.4);
+  animation: notifSignalPulse 1.8s ease-in-out infinite;
 }
 
 .notifications-page-v2 {
@@ -17800,10 +17807,27 @@ html.dark-mode .password-toggle-btn:hover {
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  background: var(--brand);
+  background: #ef4444;
+  box-shadow:
+    0 0 0 4px rgba(239, 68, 68, 0.16),
+    0 0 16px rgba(239, 68, 68, 0.45);
   margin-top: 22px;
   margin-left: 6px;
   flex-shrink: 0;
+  animation: notifSignalPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes notifSignalPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.12);
+    opacity: 0.78;
+  }
 }
 
 .notif-empty {

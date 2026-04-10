@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
-    "axios": "^1.13.2",
+    "axios": "^1.15.0",
     "country-list": "^2.4.1",
     "country-region-data": "^4.1.0",
     "framer-motion": "^12.29.2",

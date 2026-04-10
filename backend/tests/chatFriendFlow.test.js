@@ -381,4 +381,63 @@ describe("chat + friend request flow", () => {
     expect(response.body.suggestions.some((entry) => entry._id === userC._id.toString())).toBe(false);
     expect(response.body.suggestions.some((entry) => entry._id === userD._id.toString())).toBe(false);
   });
+
+  test("find friends directory lists every visible account with paging and relationship state", async () => {
+    userA.friends = [userB._id];
+    userA.friendRequests = [userC._id];
+    await userA.save();
+
+    userD.friendRequests = [userA._id];
+    await userD.save();
+
+    const firstPage = await request(app)
+      .get("/api/users/directory?page=1&limit=2")
+      .set("Authorization", `Bearer ${tokenA}`)
+      .expect(200);
+
+    expect(firstPage.body).toMatchObject({
+      page: 1,
+      limit: 2,
+      total: 4,
+      hasMore: true,
+    });
+    expect(firstPage.body.items).toHaveLength(2);
+    expect(firstPage.body.items[0]).toMatchObject({
+      _id: userB._id.toString(),
+      relationship: expect.objectContaining({
+        status: "friends",
+      }),
+    });
+    expect(firstPage.body.items[1]).toMatchObject({
+      _id: userC._id.toString(),
+      relationship: expect.objectContaining({
+        status: "request_received",
+      }),
+    });
+
+    const secondPage = await request(app)
+      .get("/api/users/directory?page=2&limit=2")
+      .set("Authorization", `Bearer ${tokenA}`)
+      .expect(200);
+
+    expect(secondPage.body).toMatchObject({
+      page: 2,
+      limit: 2,
+      total: 4,
+      hasMore: false,
+    });
+    expect(secondPage.body.items).toHaveLength(2);
+    expect(secondPage.body.items.some((entry) => entry._id === userD._id.toString())).toBe(true);
+    expect(secondPage.body.items.some((entry) => entry._id === userE._id.toString())).toBe(true);
+    expect(secondPage.body.items.find((entry) => entry._id === userD._id.toString())).toMatchObject({
+      relationship: expect.objectContaining({
+        status: "request_sent",
+      }),
+    });
+    expect(secondPage.body.items.find((entry) => entry._id === userE._id.toString())).toMatchObject({
+      relationship: expect.objectContaining({
+        status: "none",
+      }),
+    });
+  });
 });

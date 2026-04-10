@@ -21,6 +21,7 @@ const KadunaGotTalentRegisterPage = lazy(() => import("./pages/KadunaGotTalentRe
 const Search = lazy(() => import("./pages/Search"));
 const Home = lazy(() => import("./pages/Home"));
 const FindCreatorsPage = lazy(() => import("./pages/FindCreatorsPage"));
+const FindFriendsPage = lazy(() => import("./pages/FindFriendsPage"));
 const PostDetail = lazy(() => import("./pages/PostDetail"));
 const PostSharePage = lazy(() => import("./pages/PostShare"));
 const ProfileEditor = lazy(() => import("./ProfileEditor"));
@@ -148,6 +149,14 @@ export default function App() {
             element={
               <ProtectedRoute user={user}>
                 <FindCreatorsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/find-friends"
+            element={
+              <ProtectedRoute user={user}>
+                <FindFriendsPage user={user} />
               </ProtectedRoute>
             }
           />

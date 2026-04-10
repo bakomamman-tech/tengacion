@@ -7847,6 +7847,10 @@ html.dark-mode .create-menu-empty {
   color: #fff;
 }
 
+.friends-page-btn.ghost {
+  background: color-mix(in srgb, var(--surface-soft) 80%, transparent);
+}
+
 .friends-page-btn.subtle-danger {
   border-color: color-mix(in srgb, var(--danger) 24%, var(--border));
   color: color-mix(in srgb, var(--danger) 82%, var(--text));
@@ -7907,6 +7911,146 @@ html.dark-mode .create-menu-empty {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.find-friends-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--brand) 22%, transparent) 0, transparent 32%),
+    linear-gradient(135deg, color-mix(in srgb, var(--brand) 18%, var(--surface)) 0%, color-mix(in srgb, #173724 16%, var(--surface)) 100%);
+}
+
+.find-friends-hero::after {
+  content: "";
+  position: absolute;
+  right: -90px;
+  bottom: -120px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, #fff 28%, transparent) 0%, transparent 68%);
+  pointer-events: none;
+}
+
+.find-friends-hero__copy,
+.find-friends-hero__stats {
+  position: relative;
+  z-index: 1;
+}
+
+.find-friends-hero__copy {
+  display: grid;
+  gap: 10px;
+}
+
+.find-friends-hero__copy h2 {
+  margin: 0;
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.05;
+}
+
+.find-friends-hero__copy p {
+  margin: 0;
+  color: color-mix(in srgb, var(--text) 82%, var(--muted));
+  max-width: 58ch;
+}
+
+.find-friends-hero__stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.find-friends-search {
+  display: block;
+}
+
+.find-friends-search input {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
+  padding: 0 16px;
+}
+
+.find-friends-search input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+.find-friends-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.find-friends-card__footer {
+  display: grid;
+  gap: 6px;
+}
+
+.find-friends-card__hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.find-friends-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.find-friends-footer small {
+  color: var(--muted);
+}
+
+.find-friends-card--skeleton {
+  min-height: 196px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: start;
+}
+
+.find-friends-card__skeleton-avatar,
+.find-friends-card__skeleton-line {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--surface-soft) 70%, transparent) 0%,
+    color-mix(in srgb, var(--border) 28%, var(--surface-soft)) 50%,
+    color-mix(in srgb, var(--surface-soft) 70%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.15s linear infinite;
+}
+
+.find-friends-card__skeleton-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+}
+
+.find-friends-card__skeleton-copy {
+  display: grid;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.find-friends-card__skeleton-line {
+  height: 12px;
+  border-radius: 999px;
+}
+
+.find-friends-card__skeleton-line--wide {
+  width: 88%;
+}
+
+.find-friends-card__skeleton-line--short {
+  width: 52%;
 }
 
 .friends-tag {
@@ -9552,6 +9696,39 @@ html.dark-mode .create-menu-empty {
   display: grid;
   gap: 10px;
   flex: 1;
+}
+
+.friend-requests-find-friends {
+  margin-top: 2px;
+  border: 1px solid color-mix(in srgb, var(--brand) 18%, var(--border));
+  border-radius: 16px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand) 16%, var(--surface)) 0%,
+    color-mix(in srgb, var(--brand-strong) 12%, var(--surface)) 100%
+  );
+}
+
+.friend-requests-find-friends-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.friend-requests-find-friends-copy strong {
+  font-size: 13px;
+}
+
+.friend-requests-find-friends-copy span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.friend-requests-find-friends__button {
+  width: 100%;
 }
 
 .friend-request-item {

@@ -233,6 +233,20 @@ export default function FriendRequests() {
           ))}
       </div>
 
+      <div className="friend-requests-find-friends">
+        <div className="friend-requests-find-friends-copy">
+          <strong>Find Friends on Tengacion</strong>
+          <span>Browse every registered account and send a request to anyone you want to connect with.</span>
+        </div>
+        <button
+          type="button"
+          className="friend-request-btn confirm friend-requests-find-friends__button"
+          onClick={() => navigate("/find-friends")}
+        >
+          Find Friends
+        </button>
+      </div>
+
       <div className="friend-requests-footer">
         <div className="friend-requests-footer-copy">
           <strong>Need help or need a review?</strong>

@@ -220,6 +220,30 @@ const buildFriendsHubCard = ({
   };
 };
 
+const buildPeopleDirectoryCard = ({
+  entry,
+  viewerId,
+  viewerFriendIds = [],
+  viewerIncomingRequestIds = [],
+}) => {
+  const id = toIdString(entry?._id);
+  const relationship = buildRelationship({
+    viewerId,
+    viewerFriendIds,
+    viewerIncomingRequestIds,
+    targetId: id,
+    targetFriendIds: entry?.friends || [],
+    targetIncomingRequestIds: entry?.friendRequests || [],
+  });
+
+  return {
+    ...userListPayload(entry),
+    relationship,
+    relationshipStatus: relationship.status,
+    mutualFriendsCount: countMutualFriends(viewerFriendIds, entry?.friends || [], [viewerId, id]),
+  };
+};
+
 /* ================= MY PROFILE ================= */
 router.get("/me", auth, async (req, res) => {
   try {
@@ -441,6 +465,82 @@ router.get("/", auth, async (req, res) => {
     return res.json(payload);
   } catch {
     return res.status(500).json({ error: "Failed to load users" });
+  }
+});
+
+/* ================= PEOPLE DIRECTORY ================= */
+router.get("/directory", auth, async (req, res) => {
+  try {
+    const rawSearch = String(req.query.search || req.query.q || "").trim();
+    const search = rawSearch.replace(/^@+/, "");
+    const page = Math.max(1, Number.parseInt(String(req.query.page || "1"), 10) || 1);
+    const limit = Math.min(
+      50,
+      Math.max(1, Number.parseInt(String(req.query.limit || "18"), 10) || 18)
+    );
+
+    const me = await User.findById(req.user.id)
+      .select("_id friends friendRequests blocks blockedUsers")
+      .lean();
+
+    if (!me) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const viewerId = toIdString(me._id);
+    const viewerFriendIds = Array.isArray(me.friends)
+      ? me.friends.map((entry) => toIdString(entry)).filter(Boolean)
+      : [];
+    const viewerIncomingRequestIds = Array.isArray(me.friendRequests)
+      ? me.friendRequests.map((entry) => toIdString(entry)).filter(Boolean)
+      : [];
+    const excludedIds = Array.from(
+      new Set(
+        [
+          viewerId,
+          ...(Array.isArray(me.blocks) ? me.blocks : []),
+          ...(Array.isArray(me.blockedUsers) ? me.blockedUsers : []),
+        ]
+          .map((entry) => toIdString(entry))
+          .filter(Boolean)
+      )
+    );
+
+    const query = excludedIds.length > 0 ? { _id: { $nin: excludedIds } } : {};
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { username: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const total = await User.countDocuments(query);
+    const users = await User.find(query)
+      .select("_id name username avatar friends friendRequests")
+      .sort({ name: 1, username: 1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    const items = users.map((entry) =>
+      buildPeopleDirectoryCard({
+        entry,
+        viewerId,
+        viewerFriendIds,
+        viewerIncomingRequestIds,
+      })
+    );
+
+    return res.json({
+      page,
+      limit,
+      total,
+      hasMore: page * limit < total,
+      items,
+    });
+  } catch (err) {
+    console.error("People directory fetch failed:", err);
+    return res.status(500).json({ error: "Failed to load people directory" });
   }
 });
 

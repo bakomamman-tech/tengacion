@@ -7,9 +7,9 @@ import FriendRequests from "../FriendRequests";
 import {
   getFriendRequests,
   submitAdminComplaint,
-  acceptFriendRequest,
-  rejectFriendRequest,
 } from "../api";
+
+const navigateMock = vi.fn();
 
 vi.mock("../api", () => ({
   getFriendRequests: vi.fn(),
@@ -18,6 +18,14 @@ vi.mock("../api", () => ({
   rejectFriendRequest: vi.fn(),
   resolveImage: vi.fn((value) => value || ""),
 }));
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+  };
+});
 
 vi.mock("../context/AuthContext", () => ({
   useAuth: () => ({ user: { _id: "user-1", username: "reporter" } }),
@@ -48,6 +56,11 @@ describe("FriendRequests report flow", () => {
     );
 
     expect(await screen.findByText("Report To Admin")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /find friends/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /find friends/i }));
+
+    expect(navigateMock).toHaveBeenCalledWith("/find-friends");
 
     fireEvent.click(screen.getByRole("button", { name: /report to admin/i }));
 

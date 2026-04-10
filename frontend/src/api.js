@@ -586,6 +586,19 @@ export const getUsers = (search = "") =>
     }
   );
 
+export const getFriendDirectory = ({ search = "", page = 1, limit = 18 } = {}) => {
+  const params = new URLSearchParams();
+  if (search) {
+    params.set("search", search);
+  }
+  params.set("page", String(page || 1));
+  params.set("limit", String(limit || 18));
+
+  return request(`${API_BASE}/users/directory?${params.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
 /**
  * ✅ REQUIRED BY ProfileEditor.jsx
  * Update logged-in user's profile

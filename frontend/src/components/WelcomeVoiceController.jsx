@@ -35,6 +35,7 @@ const PROTECTED_ROUTE_PATTERNS = [
   "/notifications",
   "/profile/:username",
   "/search",
+  "/find-friends",
   "/friends",
   "/memories",
   "/saved",

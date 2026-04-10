@@ -107,6 +107,10 @@ describe("GoLive summary", () => {
       </MemoryRouter>
     );
 
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /start live stream/i })).not.toBeDisabled();
+    });
+
     fireEvent.change(screen.getByPlaceholderText(/share what you're about to do/i), {
       target: { value: "Morning Live" },
     });

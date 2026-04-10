@@ -1,9 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Room, createLocalAudioTrack, createLocalVideoTrack } from "livekit-client";
 
 import { useAuth } from "../context/AuthContext";
-import { startLiveSession, endLiveSession, getLiveConfig } from "../api";
+import {
+  endLiveSession,
+  getLiveConfig,
+  requestLiveToken,
+  startLiveSession,
+} from "../api";
 import { connectSocket } from "../socket";
 import { resolveLivekitWsUrl } from "../livekitConfig";
 import LiveControlsBar from "../components/live/LiveControlsBar";
@@ -27,9 +32,12 @@ export default function GoLive() {
   const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [liveSession, setLiveSession] = useState(null);
+  const [liveConfig, setLiveConfig] = useState(null);
+  const [liveQuota, setLiveQuota] = useState(null);
   const [viewerCount, setViewerCount] = useState(0);
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [configLoading, setConfigLoading] = useState(true);
   const [error, setError] = useState("");
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
@@ -41,9 +49,51 @@ export default function GoLive() {
   const [reactions, setReactions] = useState([]);
   const [elapsedSec, setElapsedSec] = useState(0);
   const videoRef = useRef(null);
+  const roomRef = useRef(null);
+  const liveSessionRef = useRef(null);
   const localTracksRef = useRef({ video: null, audio: null });
   const socketRef = useRef(null);
   const reactionTimeoutRef = useRef(new Map());
+
+  useEffect(() => {
+    roomRef.current = room;
+  }, [room]);
+
+  useEffect(() => {
+    liveSessionRef.current = liveSession;
+  }, [liveSession]);
+
+  const refreshLiveConfig = useCallback(async () => {
+    const config = await getLiveConfig();
+    setLiveConfig(config || null);
+    setLiveQuota(config?.quota || null);
+    return config || null;
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+
+    const loadLiveConfig = async () => {
+      try {
+        setConfigLoading(true);
+        await refreshLiveConfig();
+      } catch (err) {
+        if (alive) {
+          setError(err.message || "Failed to load live quota");
+        }
+      } finally {
+        if (alive) {
+          setConfigLoading(false);
+        }
+      }
+    };
+
+    loadLiveConfig();
+
+    return () => {
+      alive = false;
+    };
+  }, [refreshLiveConfig]);
 
   const handleStart = async () => {
     if (loading) {
@@ -52,22 +102,55 @@ export default function GoLive() {
     setError("");
     setLoading(true);
 
+    let startedFreshSession = false;
+    let sessionRoomName = null;
+
     try {
-      const result = await startLiveSession(title.trim());
-      const { session, token, livekit } = result;
-      const liveConfig = await getLiveConfig();
-      setViewerCount(session.viewerCount || 0);
-      setLiveSession(session);
-      await attachLiveKit(token, {
-        livekitConfig: liveConfig,
-        fallbackLivekit: livekit,
-      });
-    } catch (err) {
-      setError(err.message || "Failed to start live broadcast");
-      if (room) {
-        room.disconnect();
-        setRoom(null);
+      const config = liveConfig || (await refreshLiveConfig());
+      const activeSession = config?.activeSession;
+
+      if (activeSession?.roomName) {
+        sessionRoomName = activeSession.roomName;
+        const tokenResult = await requestLiveToken({
+          roomName: activeSession.roomName,
+          publish: true,
+        });
+        setViewerCount(activeSession.viewerCount || 0);
+        setLiveSession(activeSession);
+        setLiveQuota(activeSession.quota || config?.quota || null);
+        await attachLiveKit(tokenResult.token, {
+          livekitConfig: config,
+          fallbackLivekit: tokenResult.livekit,
+        });
+      } else {
+        const result = await startLiveSession(title.trim());
+        const { session, token, livekit } = result;
+        startedFreshSession = true;
+        sessionRoomName = session.roomName;
+        setViewerCount(session.viewerCount || 0);
+        setLiveSession(session);
+        setLiveQuota(session.quota || config?.quota || null);
+        await attachLiveKit(token, {
+          livekitConfig: config,
+          fallbackLivekit: livekit,
+        });
       }
+    } catch (err) {
+      if (startedFreshSession && sessionRoomName) {
+        await endLiveSession(sessionRoomName).catch(() => {});
+      }
+      releaseLocalTracks();
+      setError(err.message || "Failed to start live broadcast");
+      const currentRoom = roomRef.current;
+      if (currentRoom) {
+        currentRoom.disconnect();
+        setRoom(null);
+        roomRef.current = null;
+      }
+      setLiveSession(null);
+      liveSessionRef.current = null;
+      setViewerCount(0);
+      await refreshLiveConfig().catch(() => {});
     } finally {
       setLoading(false);
     }
@@ -109,10 +192,12 @@ export default function GoLive() {
     }
 
     setRoom(nextRoom);
+    roomRef.current = nextRoom;
   };
 
-  const stopLive = async () => {
+  const releaseLocalTracks = () => {
     const { video, audio } = localTracksRef.current;
+
     if (video) {
       video.detach();
       video.stop();
@@ -120,21 +205,39 @@ export default function GoLive() {
     if (audio) {
       audio.stop();
     }
-    localTracksRef.current = { video: null, audio: null };
 
-    if (room) {
-      room.disconnect();
+    localTracksRef.current = { video: null, audio: null };
+  };
+
+  const stopLive = useCallback(async () => {
+    const currentRoom = roomRef.current;
+    const currentSession = liveSessionRef.current;
+    releaseLocalTracks();
+
+    if (currentRoom) {
+      currentRoom.disconnect();
       setRoom(null);
+      roomRef.current = null;
     }
-    if (liveSession?.roomName) {
-      await endLiveSession(liveSession.roomName).catch(() => {});
+
+    if (currentSession?.roomName) {
+      await endLiveSession(currentSession.roomName).catch(() => {});
     }
+
     setLiveSession(null);
+    liveSessionRef.current = null;
+    setViewerCount(0);
     setIsChatOpen(false);
     setChatMessages([]);
     setReactions([]);
     setElapsedSec(0);
-  };
+
+    try {
+      await refreshLiveConfig();
+    } catch {
+      // Ignore refresh failures after the stream is stopped.
+    }
+  }, [refreshLiveConfig]);
 
   useEffect(() => {
     if (!liveSession?.roomName) {
@@ -214,6 +317,26 @@ export default function GoLive() {
     const timer = window.setInterval(tick, 1000);
     return () => window.clearInterval(timer);
   }, [liveSession?.startedAt]);
+
+  useEffect(() => {
+    const expiresAt = liveSession?.quota?.expiresAt;
+    if (!liveSession || liveSession.status !== "active" || !expiresAt) {
+      return undefined;
+    }
+
+    const deadline = new Date(expiresAt).getTime();
+    if (!Number.isFinite(deadline)) {
+      return undefined;
+    }
+
+    const delay = Math.max(0, deadline - Date.now());
+    const timer = window.setTimeout(() => {
+      setError("Your 30-second daily live limit has ended.");
+      void stopLive();
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [liveSession?.quota?.expiresAt, liveSession?.status, liveSession, stopLive]);
 
   const toggleMic = async () => {
     const audio = localTracksRef.current.audio;
@@ -323,6 +446,13 @@ export default function GoLive() {
           minute: "numeric",
         }).format(new Date(liveSession.startedAt))
       : "";
+    const quotaExpiresAt = liveSession.quota?.expiresAt
+      ? new Date(liveSession.quota.expiresAt).getTime()
+      : null;
+    const quotaRemainingMs =
+      liveSession.status === "active" && Number.isFinite(quotaExpiresAt)
+        ? Math.max(0, quotaExpiresAt - Date.now())
+        : 0;
 
     return {
       title: liveSession.title || "Streaming now",
@@ -338,6 +468,11 @@ export default function GoLive() {
           label: "Duration",
           value: formatElapsedTime(elapsedSec),
           note: "Stream time",
+        },
+        {
+          label: "Time left",
+          value: formatElapsedTime(Math.ceil(quotaRemainingMs / 1000)),
+          note: "Daily allowance",
         },
         {
           label: "Chat",
@@ -365,24 +500,51 @@ export default function GoLive() {
         </button>
       </header>
 
-        <section className="go-live-panel">
-          <label className="go-live-title-field">
-            <span className="go-live-field-label">Stream title</span>
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Share what you're about to do"
-            />
+      <section className="go-live-panel">
+        <label className="go-live-title-field">
+          <span className="go-live-field-label">Stream title</span>
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Share what you're about to do"
+          />
         </label>
+
+        <div className="go-live-limit-note">
+          <span>Daily allowance</span>
+          <strong>
+            {configLoading
+              ? "Checking quota..."
+              : liveSession
+                ? "Countdown shown below"
+                : liveQuota
+                  ? `${formatElapsedTime(liveQuota.remainingSecondsToday || 0)} left today`
+                  : "30 seconds per day"}
+          </strong>
+          {!liveSession && liveConfig?.activeSession && (
+            <span className="go-live-limit-warning">
+              You already have an active live session. Resume it instead of starting a new one.
+            </span>
+          )}
+          {!liveSession && liveQuota && !liveQuota.canGoLive && (
+            <span className="go-live-limit-warning">
+              You have used today's 30-second live allowance.
+            </span>
+          )}
+        </div>
 
         {!liveSession ? (
           <button
             type="button"
             className="primary go-live-start-btn"
-            disabled={loading}
+            disabled={loading || configLoading || (!liveConfig?.activeSession && liveQuota && !liveQuota.canGoLive)}
             onClick={handleStart}
           >
-            {loading ? "Starting…" : "Start live stream"}
+            {loading
+              ? "Starting..."
+              : liveConfig?.activeSession
+                ? "Resume live stream"
+                : "Start live stream"}
           </button>
         ) : (
           <div className="go-live-controls">
@@ -446,6 +608,17 @@ export default function GoLive() {
             viewerCount={viewerCount}
             hostName={liveSession.host?.name || liveSession.host?.username || "Host"}
             elapsedSec={elapsedSec}
+            quotaRemainingSec={
+              liveSession?.quota?.expiresAt
+                ? Math.max(
+                    0,
+                    Math.ceil(
+                      (new Date(liveSession.quota.expiresAt).getTime() - Date.now()) /
+                        1000
+                    )
+                  )
+                : undefined
+            }
             micEnabled={micEnabled}
             cameraEnabled={cameraEnabled}
             onToggleMic={toggleMic}

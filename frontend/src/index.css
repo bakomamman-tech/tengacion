@@ -307,6 +307,33 @@ html.dark-mode .live-preview-panel {
   color: rgba(246, 251, 247, 0.95) !important;
 }
 
+.go-live-limit-note {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px dashed rgba(42, 111, 79, 0.24);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.go-live-limit-note span {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.go-live-limit-note strong {
+  color: var(--brand-strong);
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.go-live-limit-warning {
+  color: #8a3f1f;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 html.dark-mode .go-live-panel label {
   color: #d7f1e2;
 }
@@ -323,6 +350,19 @@ html.dark-mode .go-live-start-btn {
 
 html.dark-mode .go-live-start-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #8bd8b0 0%, #62b787 100%) !important;
+}
+
+html.dark-mode .go-live-limit-note {
+  border-color: rgba(121, 207, 162, 0.2);
+  background: rgba(12, 23, 17, 0.74);
+}
+
+html.dark-mode .go-live-limit-note strong {
+  color: #effaf3;
+}
+
+html.dark-mode .go-live-limit-warning {
+  color: #f0b18d;
 }
 
 html.dark-mode .go-live-report {
@@ -574,6 +614,17 @@ html.dark-mode .go-live-report__metric-note {
   border-radius: 999px;
   background: #e7d3bc;
   padding: 2px 10px;
+}
+
+.live-controls-limit {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.42);
+  padding: 2px 10px;
+}
+
+html.dark-mode .live-controls-limit {
+  background: rgba(17, 29, 23, 0.92);
+  color: #effaf3;
 }
 
 .live-toolbar-wrap {

@@ -18,22 +18,23 @@ exports.createLiveSession = catchAsync(async (req, res) => {
     userId: req.user.id,
     title,
   });
+  const sessionPayload = LiveService.toPublic(session);
 
   const token = await LiveService.createToken({
     identity: req.user.id,
     name: session.hostName,
     roomName: session.roomName,
     canPublish: true,
+    ttl: `${Math.max(1, sessionPayload?.quota?.remainingMilliseconds || 0)}ms`,
   });
 
-  const payload = LiveService.toPublic(session);
   res.status(201).json({
-    session: payload,
+    session: sessionPayload,
     token,
     livekit,
   });
 
-  emitEvent(req, "live:created", payload);
+  emitEvent(req, "live:created", sessionPayload);
 });
 
 exports.endLiveSession = catchAsync(async (req, res) => {
@@ -69,28 +70,42 @@ exports.requestToken = catchAsync(async (req, res) => {
     throw ApiError.unauthorized("User not found");
   }
 
-  const session = await LiveService.findSessionByRoom(roomName);
+  const session = await LiveService.getActiveSessionByRoom(roomName);
   if (publish && session.hostUserId.toString() !== req.user.id.toString()) {
     throw ApiError.forbidden("Only the host can publish");
   }
+
+  const sessionPayload = LiveService.toPublic(session);
 
   const token = await LiveService.createToken({
     identity: req.user.id,
     name: user.name || user.username || "Guest",
     roomName,
     canPublish: Boolean(publish),
+    ttl: `${Math.max(1, sessionPayload?.quota?.remainingMilliseconds || 0)}ms`,
   });
 
   res.json({
     token,
-    session: LiveService.toPublic(session),
+    session: sessionPayload,
     livekit,
   });
 });
 
-exports.getLiveConfig = catchAsync(async (_req, res) => {
+exports.getLiveConfig = catchAsync(async (req, res) => {
   const livekit = ensureValidLivekitConfig();
-  res.json(livekit);
+  const payload = { ...livekit };
+
+  if (req.user?.id) {
+    const [quota, activeSession] = await Promise.all([
+      LiveService.getUserQuota(req.user.id),
+      LiveService.getHostActiveSession(req.user.id),
+    ]);
+    payload.quota = quota;
+    payload.activeSession = activeSession ? LiveService.toPublic(activeSession) : null;
+  }
+
+  res.json(payload);
 });
 
 exports.updateViewerCount = catchAsync(async (req, res) => {

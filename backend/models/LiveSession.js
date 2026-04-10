@@ -46,6 +46,15 @@ const LiveSessionSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    quotaLimitMs: {
+      type: Number,
+      default: 30000,
+      min: 0,
+    },
+    quotaExpiresAt: {
+      type: Date,
+      index: true,
+    },
     startedAt: {
       type: Date,
       default: Date.now,
@@ -60,6 +69,8 @@ const LiveSessionSchema = new mongoose.Schema(
 );
 
 LiveSessionSchema.index({ status: 1, startedAt: -1 });
+LiveSessionSchema.index({ hostUserId: 1, status: 1, startedAt: -1 });
+LiveSessionSchema.index({ status: 1, quotaExpiresAt: 1 });
 
 LiveSessionSchema.methods.toJSON = function () {
   const obj = this.toObject();

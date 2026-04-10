@@ -20,6 +20,7 @@ export default function LiveControlsBar({
   viewerCount,
   hostName,
   elapsedSec,
+  quotaRemainingSec,
   micEnabled,
   cameraEnabled,
   onToggleMic,
@@ -65,6 +66,11 @@ export default function LiveControlsBar({
         <div className="live-controls-stats">
           <span>{viewerCount || 0} live viewers</span>
           <span className="live-controls-timer">{formatElapsed(elapsedSec)}</span>
+          {Number.isFinite(quotaRemainingSec) && (
+            <span className="live-controls-limit">
+              {formatElapsed(quotaRemainingSec)} left today
+            </span>
+          )}
         </div>
       </div>
 

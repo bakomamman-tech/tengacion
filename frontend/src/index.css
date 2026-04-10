@@ -10685,6 +10685,9 @@ html.dark-mode .create-post-quick-btn--reel {
 .post-text {
   margin: 0;
   line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .post-text-toggle {

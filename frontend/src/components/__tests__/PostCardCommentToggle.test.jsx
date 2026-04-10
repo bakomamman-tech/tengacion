@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -168,8 +168,7 @@ describe("PostCard comment toggle", () => {
     expect(screen.getByText(/@admin/i)).toBeInTheDocument();
   });
 
-  it("shows a text More toggle only when post text overflows and swaps to Less after expanding", async () => {
-    const user = userEvent.setup();
+  it("renders the full post text without a More toggle", () => {
     const longPostText = Array.from({ length: 12 }, (_, index) => `Paragraph ${index + 1} with enough text to force an expanded preview.`).join("\n");
 
     render(
@@ -191,20 +190,13 @@ describe("PostCard comment toggle", () => {
       />
     );
 
-    let textToggle;
-    await waitFor(() => {
-      textToggle = screen
-        .queryAllByRole("button", { name: /^More$/i })
-        .find((button) => button.hasAttribute("aria-controls"));
-
-      expect(textToggle).toBeDefined();
-    });
-
-    expect(textToggle).toHaveAttribute("aria-expanded", "false");
-
-    await user.click(textToggle);
-
-    expect(screen.getByRole("button", { name: /^Less$/i })).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByText(/Paragraph 1 with enough text to force an expanded preview\./i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Paragraph 12 with enough text to force an expanded preview\./i)
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^More$/i })).not.toBeInTheDocument();
   });
 
   it("keeps short post text expanded by default without rendering a text toggle", () => {

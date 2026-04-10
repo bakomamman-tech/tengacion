@@ -22,12 +22,9 @@ import { useDialog } from "./ui/useDialog";
 function SystemPost({ text }) {
   return (
     <article className="post-card system-post">
-      <ExpandablePostText
-        text={text}
-        wrapperClassName="post-text-block"
-        className="system-text post-text"
-        toggleClassName="post-text-toggle"
-      />
+      <div className="post-text-block">
+        <p className="system-text post-text">{text}</p>
+      </div>
     </article>
   );
 }
@@ -883,13 +880,9 @@ export default function PostCard({
         {/* BODY */}
         <div className="post-body">
           {post?.text && (
-            <ExpandablePostText
-              text={post.text}
-              wrapperClassName="post-text-block"
-              className="post-text"
-              toggleClassName="post-text-toggle"
-              collapsedLines={5}
-            />
+            <div className="post-text-block">
+              <p className="post-text">{post.text}</p>
+            </div>
           )}
 
           {hasSharedPost && (

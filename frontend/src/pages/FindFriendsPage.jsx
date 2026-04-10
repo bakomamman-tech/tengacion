@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
-import Messenger from "../Messenger";
 import {
   cancelFriendRequest,
   getFriendDirectory,
@@ -133,7 +132,6 @@ function DirectorySkeleton() {
 
 export default function FindFriendsPage({ user }) {
   const navigate = useNavigate();
-  const messengerRef = useRef(null);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -312,9 +310,7 @@ export default function FindFriendsPage({ user }) {
         <aside className="sidebar">
           <Sidebar
             user={user}
-            openChat={() => {
-              messengerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
+            openChat={() => {}}
             openProfile={() => {
               if (user?.username) {
                 navigate(`/profile/${user.username}`);
@@ -435,10 +431,6 @@ export default function FindFriendsPage({ user }) {
             )}
           </section>
         </main>
-
-        <section className="messenger" ref={messengerRef}>
-          <Messenger user={user} />
-        </section>
       </div>
     </>
   );

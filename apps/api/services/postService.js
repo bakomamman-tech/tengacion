@@ -39,6 +39,7 @@ const {
   normalizeModerationStatus,
   resolvePublicSensitivity,
 } = require("../../../backend/utils/publicModeration");
+const { normalizeCommentText } = require("../../../backend/utils/commentText");
 
 const toIdString = (value) => {
   if (!value) return "";
@@ -614,7 +615,7 @@ const normalizeCommentItem = (comment = {}, parentCommentId = null) => {
     authorName: authorInfo.name || normalizeText(comment.authorName || comment.userName || "", 120) || "User",
     authorUsername: authorInfo.username || normalizeUsername(comment.authorUsername || ""),
     authorAvatar: authorInfo.avatar || normalizeText(comment.authorAvatar || "", 500),
-    text: normalizeText(comment.text || "", 2000),
+    text: normalizeCommentText(comment.text || ""),
     parentCommentId: toIdString(comment.parentCommentId || parentCommentId || ""),
     mentions: Array.isArray(comment.mentions) ? comment.mentions.map((id) => toIdString(id)).filter(Boolean) : [],
     hashtags: Array.isArray(comment.hashtags)
@@ -1851,7 +1852,7 @@ class PostService {
 
     const parentCommentId = String(text?.parentCommentId || "").trim();
     const bodyText = typeof text === "object" ? text?.text : text;
-    const normalizedText = normalizeText(bodyText, 500);
+    const normalizedText = normalizeCommentText(bodyText);
     if (!normalizedText) {
       throw ApiError.badRequest("Comment text is required");
     }
@@ -1964,7 +1965,7 @@ class PostService {
       throw ApiError.forbidden("You can only edit your own comment");
     }
 
-    const normalizedText = normalizeText(text, 2000);
+    const normalizedText = normalizeCommentText(text);
     if (!normalizedText) {
       throw ApiError.badRequest("Comment text is required");
     }

@@ -1,4 +1,5 @@
 const Post = require("../models/Post");
+const { normalizeCommentText } = require("../utils/commentText");
 
 /* ================= ADD COMMENT ================= */
 exports.addComment = async (req, res) => {
@@ -17,7 +18,7 @@ exports.addComment = async (req, res) => {
 
     const comment = {
       author: req.user._id,
-      text: text.trim(),
+      text: normalizeCommentText(text),
     };
 
     post.comments.push(comment);
@@ -58,7 +59,7 @@ exports.replyToComment = async (req, res) => {
 
     comment.replies.push({
       author: req.user._id,
-      text: text.trim(),
+      text: normalizeCommentText(text),
     });
 
     await post.save();

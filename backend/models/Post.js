@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { createMediaAssetSchema } = require("./subschemas/mediaAsset");
+const { COMMENT_MAX_CHARS } = require("../utils/commentText");
 
 /* ================= COMMENT SCHEMA ================= */
 const ReplySchema = new mongoose.Schema(
@@ -13,7 +14,7 @@ const ReplySchema = new mongoose.Schema(
     text: {
       type: String,
       trim: true,
-      maxlength: 1000,
+      maxlength: COMMENT_MAX_CHARS,
     },
   },
   { timestamps: true }
@@ -32,7 +33,7 @@ const CommentSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      maxlength: 2000,
+      maxlength: COMMENT_MAX_CHARS,
     },
 
     parentCommentId: {

@@ -143,6 +143,7 @@ describe("PostCard comment toggle", () => {
     expect(commentButton).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("dialog", { name: /comments/i })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/comment as you/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/comment as you/i).tagName).toBe("TEXTAREA");
   });
 
   it("opens the author's profile when the name is clicked", async () => {

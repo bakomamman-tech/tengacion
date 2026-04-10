@@ -26,6 +26,18 @@ const EMOJIS = [
 
 const GIF_TOKENS = ["[GIF: Celebration]", "[GIF: Laugh]", "[GIF: Wow]"];
 const STICKER_TOKENS = ["[Sticker: Fire]", "[Sticker: Clap]", "[Sticker: Star]"];
+const COMMENT_WORD_LIMIT = 5000;
+const COMMENT_PREVIEW_WORD_LIMIT = 60;
+
+const countWords = (value) => {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) {
+    return 0;
+  }
+
+  const matches = trimmed.match(/\S+/g);
+  return matches ? matches.length : 0;
+};
 
 const normalizeComment = (comment, parentCommentId = "") => {
   if (!comment || typeof comment !== "object") {
@@ -288,6 +300,16 @@ function CommentItem({
   const avatar = resolveImage(comment.authorAvatar) || "/avatar.png";
   const timeLabel = formatCommentTime(comment.createdAt);
   const saving = String(savingCommentId || "") === String(comment.id || "");
+  const [expanded, setExpanded] = useState(false);
+  const commentText = String(comment.text || "").trim();
+  const commentWordCount = countWords(commentText);
+  const shouldCollapse = commentWordCount > COMMENT_PREVIEW_WORD_LIMIT;
+  const previewText = shouldCollapse && !expanded
+    ? `${commentText
+        .split(/\s+/)
+        .slice(0, COMMENT_PREVIEW_WORD_LIMIT)
+        .join(" ")}...`
+    : commentText;
 
   return (
     <article className={`comment-v2 comment-v2--depth-${depth}`}>
@@ -333,7 +355,27 @@ function CommentItem({
             </div>
           ) : (
             <>
-              {comment.text ? <p className="comment-v2-text">{comment.text}</p> : null}
+              {commentText ? (
+                <>
+                  <p
+                    className={`comment-v2-text ${
+                      shouldCollapse && !expanded ? "comment-v2-text--collapsed" : ""
+                    }`}
+                  >
+                    {previewText}
+                  </p>
+                  {shouldCollapse ? (
+                    <button
+                      type="button"
+                      className="comment-inline-action comment-inline-action--primary comment-v2-more-toggle"
+                      onClick={() => setExpanded((value) => !value)}
+                      aria-expanded={expanded}
+                    >
+                      {expanded ? "Show less" : "More"}
+                    </button>
+                  ) : null}
+                </>
+              ) : null}
               {comment.mediaPreview ? (
                 <img
                   className="comment-inline-media"
@@ -433,6 +475,8 @@ export default function PostComments({
   const [editingDraft, setEditingDraft] = useState("");
   const [savingCommentId, setSavingCommentId] = useState("");
   const imageInputRef = useRef(null);
+  const commentWordCount = useMemo(() => countWords(text), [text]);
+  const isCommentOverLimit = commentWordCount > COMMENT_WORD_LIMIT;
 
   const isPostOwner = Boolean(
     currentUserId &&
@@ -593,7 +637,7 @@ export default function PostComments({
   };
 
   const submit = async () => {
-    if ((!text.trim() && !pickedImage) || loading) {
+    if ((!text.trim() && !pickedImage) || loading || isCommentOverLimit) {
       return;
     }
 
@@ -757,12 +801,14 @@ export default function PostComments({
           ) : null}
 
           <div className="comment-input-row">
-            <input
+            <textarea
+              className="comment-composer-textarea"
               placeholder={replyLabel}
               value={text}
               onChange={(event) => setText(event.target.value)}
+              rows={3}
               onKeyDown={(event) => {
-                if (event.key === "Enter") {
+                if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
                   event.preventDefault();
                   submit();
                 }
@@ -772,13 +818,22 @@ export default function PostComments({
             <button
               type="button"
               className={`comment-send-btn ${text.trim() || pickedImage ? "ready" : ""}`}
-              disabled={(!text.trim() && !pickedImage) || loading}
+              disabled={(!text.trim() && !pickedImage) || loading || isCommentOverLimit}
               onClick={submit}
               aria-label="Send comment"
               title="Send"
             >
               <SendIcon />
             </button>
+          </div>
+
+          <div className="comment-composer-meta">
+            <span className={isCommentOverLimit ? "comment-composer-meta__error" : ""}>
+              {isCommentOverLimit
+                ? `Comment text is limited to ${COMMENT_WORD_LIMIT.toLocaleString()} words`
+                : `${commentWordCount.toLocaleString()} / ${COMMENT_WORD_LIMIT.toLocaleString()} words`}
+            </span>
+            <span>Press Ctrl+Enter to send</span>
           </div>
 
           {pickedImage ? (

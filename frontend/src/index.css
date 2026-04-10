@@ -11563,6 +11563,15 @@ html.dark-mode .reaction-bar-btn.is-selected {
   line-height: 1.45;
   color: #1f2937;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.comment-v2-text--collapsed {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
 }
 
 .comments-v2--panel .comment-v2-text {
@@ -11612,6 +11621,8 @@ html.dark-mode .reaction-bar-btn.is-selected {
   background: rgba(251, 248, 243, 0.96);
   color: var(--text);
   outline: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .comment-v2-editor-input:focus {
@@ -11687,10 +11698,30 @@ html.dark-mode .reaction-bar-btn.is-selected {
   padding: 12px;
 }
 
-.comments-v2--panel .comment-input-row input {
-  min-height: 46px;
+.comments-v2--panel .comment-input-row {
+  align-items: flex-start;
+}
+
+.comments-v2--panel .comment-input-row textarea {
+  min-height: 72px;
   border: 1px solid color-mix(in srgb, var(--border) 82%, #ffffff 18%);
   background: rgba(255, 255, 255, 0.96);
+  resize: vertical;
+  max-height: 180px;
+  line-height: 1.45;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font: inherit;
+}
+
+.comments-v2--panel .comment-input-row textarea::placeholder {
+  color: #8b93a8;
+}
+
+.comments-v2--panel .comment-input-row textarea:focus {
+  border-color: color-mix(in srgb, var(--brand) 32%, #ffffff 68%);
+  box-shadow: 0 0 0 3px rgba(74, 92, 132, 0.1);
 }
 
 .comments-v2--panel .comment-send-btn {
@@ -11724,6 +11755,26 @@ html.dark-mode .reaction-bar-btn.is-selected {
 .comment-v2 p {
   margin: 4px 0 0;
   line-height: 1.4;
+}
+
+.comment-v2-more-toggle {
+  margin-top: 4px;
+  display: inline-flex;
+}
+
+.comment-composer-meta {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #6f7d92;
+}
+
+.comment-composer-meta__error {
+  color: #c24f40;
+  font-weight: 700;
 }
 
 .comment-author {
@@ -11874,10 +11925,18 @@ html.dark-mode .comments-v2--panel .comment-composer-main {
   background: rgba(255, 255, 255, 0.04);
 }
 
-html.dark-mode .comments-v2--panel .comment-input-row input {
+html.dark-mode .comments-v2--panel .comment-input-row textarea {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(242, 209, 172, 0.16);
   color: #fff7ee;
+}
+
+html.dark-mode .comments-v2--panel .comment-input-row textarea::placeholder {
+  color: rgba(146, 156, 179, 0.95);
+}
+
+html.dark-mode .comments-v2--panel .comment-input-row textarea:focus {
+  border-color: rgba(115, 132, 170, 0.55);
 }
 
 html.dark-mode .comments-v2--panel .comment-send-btn {
@@ -11887,6 +11946,10 @@ html.dark-mode .comments-v2--panel .comment-send-btn {
 
 html.dark-mode .comments-v2--panel .comment-send-btn.ready {
   background: linear-gradient(135deg, #5d9cff, #1d67d6);
+}
+
+html.dark-mode .comment-composer-meta {
+  color: #d5bea6;
 }
 
 html.dark-mode .comments-v2--panel .comment-tool-btn {

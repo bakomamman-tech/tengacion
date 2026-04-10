@@ -553,6 +553,7 @@ describe("Posts feed", () => {
       password: "Password123!",
     });
     const commenterToken = await issueSessionToken(commenter._id);
+    const longCommentText = Array.from({ length: 5000 }, () => "word").join(" ");
 
     const post = await Post.create({
       author: artist._id,
@@ -563,11 +564,11 @@ describe("Posts feed", () => {
     const topLevelComment = await request(app)
       .post(`/api/posts/${post._id}/comment`)
       .set("Authorization", `Bearer ${commenterToken}`)
-      .send({ text: "Looks great!" })
+      .send({ text: longCommentText })
       .expect(201);
 
     expect(topLevelComment.body.comment).toMatchObject({
-      text: "Looks great!",
+      text: longCommentText,
       authorName: "Commenter User",
       authorUsername: "commenter_user",
       parentCommentId: "",
@@ -598,6 +599,7 @@ describe("Posts feed", () => {
       _id: topLevelComment.body.comment._id,
       replies: expect.any(Array),
     });
+    expect(threaded.body[0].text).toBe(longCommentText);
     expect(threaded.body[0].replies).toHaveLength(1);
     expect(threaded.body[0].replies[0]).toMatchObject({
       text: "Thanks for the kind words.",

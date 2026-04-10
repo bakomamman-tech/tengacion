@@ -11699,20 +11699,26 @@ html.dark-mode .reaction-bar-btn.is-selected {
 }
 
 .comments-v2--panel .comment-input-row {
-  align-items: flex-start;
+  align-items: center;
 }
 
 .comments-v2--panel .comment-input-row textarea {
-  min-height: 72px;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  min-height: 46px;
+  max-height: 46px;
   border: 1px solid color-mix(in srgb, var(--border) 82%, #ffffff 18%);
   background: rgba(255, 255, 255, 0.96);
-  resize: vertical;
-  max-height: 180px;
+  resize: none;
   line-height: 1.45;
   overflow-y: auto;
   overflow-wrap: anywhere;
   word-break: break-word;
   font: inherit;
+  border-radius: 999px;
+  padding: 9px 12px;
 }
 
 .comments-v2--panel .comment-input-row textarea::placeholder {

@@ -10682,6 +10682,10 @@ html.dark-mode .create-post-quick-btn--reel {
   min-width: 0;
 }
 
+.post-shared-preview__text-block {
+  min-width: 0;
+}
+
 .post-text {
   margin: 0;
   line-height: 1.5;

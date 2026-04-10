@@ -199,6 +199,47 @@ describe("PostCard comment toggle", () => {
     expect(screen.queryByRole("button", { name: /^More$/i })).not.toBeInTheDocument();
   });
 
+  it("renders shared post preview text in full without a More toggle", () => {
+    const sharedPostText = Array.from(
+      { length: 10 },
+      (_, index) => `Shared paragraph ${index + 1} that should stay fully visible in the feed.`
+    ).join("\n");
+
+    render(
+      <PostCard
+        post={{
+          _id: "post-5",
+          text: "",
+          createdAt: "2026-03-30T10:00:00.000Z",
+          user: {
+            name: "Admin User",
+            username: "admin",
+            profilePic: "",
+          },
+          sharedPost: {
+            originalAuthorName: "Original Creator",
+            originalAuthorUsername: "origcreator",
+            originalText: sharedPostText,
+            previewMediaType: "text",
+            previewImage: "",
+          },
+          comments: [],
+          likesCount: 6,
+          shareCount: 1,
+          likedByViewer: false,
+        }}
+      />
+    );
+
+    expect(
+      screen.getByText(/Shared paragraph 1 that should stay fully visible in the feed\./i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Shared paragraph 10 that should stay fully visible in the feed\./i)
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^More$/i })).not.toBeInTheDocument();
+  });
+
   it("keeps short post text expanded by default without rendering a text toggle", () => {
     render(
       <PostCard

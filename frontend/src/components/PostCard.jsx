@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
 
 import PostComments from "./PostComments";
-import ExpandablePostText from "./posts/ExpandablePostText";
 import PostShareModal from "./share/PostShareModal";
 import {
   buildPostShareUrl,
@@ -905,13 +904,11 @@ export default function PostCard({
               </div>
 
               {sharedPostPreviewText ? (
-                <ExpandablePostText
-                  text={sharedPostPreviewText}
-                  wrapperClassName="post-shared-preview__text-block"
-                  className="post-shared-preview__text"
-                  toggleClassName="post-text-toggle"
-                  collapsedLines={5}
-                />
+                <div className="post-shared-preview__text-block">
+                  <p className="post-shared-preview__text post-text">
+                    {sharedPostPreviewText}
+                  </p>
+                </div>
               ) : null}
 
               {sharedPostPreviewImage ? (

@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   {
     key: "friends",
     label: "Friends",
-    path: "/friends",
+    path: "/find-friends",
     description: "People you know",
     icon: "friends",
   },

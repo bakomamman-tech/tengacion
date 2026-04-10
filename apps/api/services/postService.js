@@ -980,7 +980,7 @@ const toPostPayload = (post, viewerId) => {
 class PostService {
   static async createPost({ userId, body, files, moderationUpload = null, io = null, onlineUsers = null }) {
     const viewerId = userId;
-    const text = normalizeText(body?.text || "", 240);
+    const text = normalizeText(body?.text || "", 5000);
     const sharedPost = await buildSharedPostMeta(body?.sharedPost);
     const taggedUsers = await resolveTaggedUsers(body?.taggedUsers || body?.tags);
     const tags = taggedUsers.map((entry) => entry.username || entry.name).filter(Boolean);
@@ -1644,7 +1644,7 @@ class PostService {
       throw ApiError.badRequest("Invalid post id");
     }
 
-    const normalizedText = normalizeText(text, 500);
+    const normalizedText = normalizeText(text, 5000);
     if (!normalizedText) {
       throw ApiError.badRequest("Post text is required");
     }
@@ -1852,7 +1852,7 @@ class PostService {
       throw ApiError.forbidden("You can only edit your own comment");
     }
 
-    const normalizedText = normalizeText(text, 500);
+    const normalizedText = normalizeText(text, 2000);
     if (!normalizedText) {
       throw ApiError.badRequest("Comment text is required");
     }

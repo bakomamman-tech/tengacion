@@ -41,6 +41,29 @@ const REACTIONS = [
   { key: "angry", label: "\u{1F621}", name: "Angry" },
 ];
 
+const DEFAULT_REACTION = REACTIONS[0];
+const REACTION_LOOKUP = new Map(REACTIONS.map((reaction) => [reaction.key, reaction]));
+
+const normalizeReactionKey = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  const lower = raw.toLowerCase();
+  if (REACTION_LOOKUP.has(lower)) {
+    return lower;
+  }
+
+  const emojiMatch = REACTIONS.find((reaction) => reaction.label === raw);
+  return emojiMatch ? emojiMatch.key : "";
+};
+
+const getReactionByValue = (value = "") => {
+  const key = normalizeReactionKey(value);
+  return key ? REACTION_LOOKUP.get(key) || null : null;
+};
+
 const inferVideoMimeType = (url = "", fallback = "") => {
   const normalizedFallback = String(fallback || "").toLowerCase();
   if (normalizedFallback.startsWith("video/")) {
@@ -214,9 +237,10 @@ export default function PostCard({
   /* -------------------------------------------------- */
 
   const [reaction, setReaction] = useState(
-    post?.likedByViewer ? REACTIONS[0] : null
+    getReactionByValue(post?.viewerReaction) || (post?.likedByViewer ? DEFAULT_REACTION : null)
   );
   const [showReactions, setShowReactions] = useState(false);
+  const [hoveredReactionKey, setHoveredReactionKey] = useState("");
   const [showComments, setShowComments] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
@@ -231,6 +255,8 @@ export default function PostCard({
   const [deleting, setDeleting] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const reactionOpenTimerRef = useRef(null);
+  const reactionCloseTimerRef = useRef(null);
 
   const timeLabel = post?.createdAt
     ? new Date(post.createdAt).toLocaleString()
@@ -436,10 +462,24 @@ export default function PostCard({
 
   useEffect(() => {
     setLikesCount(baseLikesCount);
-    const nextLiked = Boolean(post?.likedByViewer);
+    const nextViewerReaction = getReactionByValue(post?.viewerReaction);
+    const nextLiked = Boolean(post?.likedByViewer || nextViewerReaction);
     setLikedByViewer(nextLiked);
-    setReaction(nextLiked ? REACTIONS[0] : null);
-  }, [baseLikesCount, post?._id, post?.likedByViewer]);
+    setReaction(nextViewerReaction || (nextLiked ? DEFAULT_REACTION : null));
+    setShowReactions(false);
+    setHoveredReactionKey("");
+  }, [baseLikesCount, post?._id, post?.likedByViewer, post?.viewerReaction]);
+
+  useEffect(() => () => {
+    if (reactionOpenTimerRef.current) {
+      window.clearTimeout(reactionOpenTimerRef.current);
+      reactionOpenTimerRef.current = null;
+    }
+    if (reactionCloseTimerRef.current) {
+      window.clearTimeout(reactionCloseTimerRef.current);
+      reactionCloseTimerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     setShareCount(Number(post?.shareCount) || 0);
@@ -575,13 +615,68 @@ export default function PostCard({
     current.load();
   };
 
+  const clearReactionCloseTimer = useCallback(() => {
+    if (!reactionCloseTimerRef.current) {
+      return;
+    }
+
+    window.clearTimeout(reactionCloseTimerRef.current);
+    reactionCloseTimerRef.current = null;
+  }, []);
+
+  const openReactionPicker = useCallback(() => {
+    clearReactionCloseTimer();
+    if (reactionOpenTimerRef.current) {
+      return;
+    }
+
+    reactionOpenTimerRef.current = window.setTimeout(() => {
+      setShowReactions(true);
+      reactionOpenTimerRef.current = null;
+    }, 100);
+  }, [clearReactionCloseTimer]);
+
+  const hideReactionPicker = useCallback(() => {
+    if (reactionOpenTimerRef.current) {
+      window.clearTimeout(reactionOpenTimerRef.current);
+      reactionOpenTimerRef.current = null;
+    }
+    clearReactionCloseTimer();
+    setShowReactions(false);
+    setHoveredReactionKey("");
+  }, [clearReactionCloseTimer]);
+
+  const scheduleHideReactionPicker = useCallback(() => {
+    if (reactionOpenTimerRef.current) {
+      window.clearTimeout(reactionOpenTimerRef.current);
+      reactionOpenTimerRef.current = null;
+    }
+    clearReactionCloseTimer();
+    reactionCloseTimerRef.current = window.setTimeout(() => {
+      setShowReactions(false);
+      setHoveredReactionKey("");
+      reactionCloseTimerRef.current = null;
+    }, 120);
+  }, [clearReactionCloseTimer]);
+
+  const activeReaction = hoveredReactionKey
+    ? REACTION_LOOKUP.get(hoveredReactionKey) || reaction
+    : reaction;
+
   const likeBtnLabel = useMemo(() => {
     if (!likedByViewer) {
       return "Like";
     }
 
-    return reaction?.name || "Like";
-  }, [likedByViewer, reaction]);
+    return activeReaction?.name || "Like";
+  }, [activeReaction, likedByViewer]);
+
+  const likeBtnEmoji = likedByViewer
+    ? activeReaction?.label || DEFAULT_REACTION.label
+    : DEFAULT_REACTION.label;
+  const likeBtnReactionKey = likedByViewer
+    ? activeReaction?.key || DEFAULT_REACTION.key
+    : "";
 
   const postLink = useMemo(() => buildPostShareUrl(post?._id), [post?._id]);
 
@@ -629,8 +724,17 @@ export default function PostCard({
       return;
     }
 
-    if (likedByViewer === shouldLike) {
-      setReaction(shouldLike ? selectedReaction || reaction || REACTIONS[0] : null);
+    const nextReaction = shouldLike ? (selectedReaction || reaction || DEFAULT_REACTION) : null;
+    const currentReactionKey = likedByViewer
+      ? reaction?.key || DEFAULT_REACTION.key
+      : "";
+    const nextReactionKey = nextReaction?.key || "";
+
+    hideReactionPicker();
+
+    if (currentReactionKey === nextReactionKey) {
+      setLikedByViewer(Boolean(nextReaction));
+      setReaction(nextReaction);
       return;
     }
 
@@ -639,9 +743,16 @@ export default function PostCard({
 
       const data = await apiRequest(`/api/posts/${post._id}/like`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          reactionKey: nextReactionKey,
+        }),
       });
 
-      const nextLiked = Boolean(data?.liked);
+      const nextLiked = Boolean(data?.liked ?? data?.likedByViewer ?? nextReactionKey);
+      const nextViewerReaction = getReactionByValue(data?.viewerReaction);
       setLikedByViewer(nextLiked);
       setLikesCount((current) => {
         const nextCount = Number(data?.likesCount);
@@ -650,7 +761,7 @@ export default function PostCard({
         }
         return Math.max(0, current + (nextLiked ? 1 : -1));
       });
-      setReaction(nextLiked ? selectedReaction || reaction || REACTIONS[0] : null);
+      setReaction(nextLiked ? nextViewerReaction || nextReaction || reaction || DEFAULT_REACTION : null);
       if (nextLiked) {
         void runRecommendationAction({
           action: "like",
@@ -1077,9 +1188,9 @@ export default function PostCard({
         {/* ACTIONS */}
         <div className="post-actions">
           <div
-            className="reaction-wrapper"
-            onMouseEnter={() => setShowReactions(true)}
-            onMouseLeave={() => setShowReactions(false)}
+            className={`reaction-wrapper${showReactions ? " is-open" : ""}`}
+            onMouseEnter={openReactionPicker}
+            onMouseLeave={scheduleHideReactionPicker}
           >
             {showReactions && (
               <div className="reaction-bar">
@@ -1087,10 +1198,21 @@ export default function PostCard({
                   <button
                     key={nextReaction.key}
                     type="button"
+                    data-reaction-key={nextReaction.key}
+                    className={`reaction-bar-btn reaction-bar-btn--${nextReaction.key}${reaction?.key === nextReaction.key ? " is-selected" : ""}`}
                     title={nextReaction.name}
                     aria-label={nextReaction.name}
+                    aria-pressed={reaction?.key === nextReaction.key}
+                    onMouseEnter={() => setHoveredReactionKey(nextReaction.key)}
+                    onMouseLeave={() => {
+                      setHoveredReactionKey((current) =>
+                        current === nextReaction.key ? "" : current
+                      );
+                    }}
+                    onFocus={() => setHoveredReactionKey(nextReaction.key)}
+                    onBlur={() => setHoveredReactionKey("")}
                     onClick={() => {
-                      setShowReactions(false);
+                      hideReactionPicker();
                       syncLike(true, nextReaction);
                     }}
                   >
@@ -1102,13 +1224,16 @@ export default function PostCard({
 
             <button
               type="button"
-              className={`action-btn ${likedByViewer ? "active-like" : ""}`}
-              onClick={() => syncLike(!likedByViewer, likedByViewer ? null : REACTIONS[0])}
+              className={`action-btn ${likedByViewer ? "active-like" : ""}${likedByViewer ? ` reaction-${likeBtnReactionKey}` : ""}`}
+              data-reaction-key={likeBtnReactionKey}
+              onClick={() => syncLike(!likedByViewer, likedByViewer ? null : DEFAULT_REACTION)}
               disabled={liking}
               aria-pressed={likedByViewer}
+              aria-expanded={showReactions}
+              aria-haspopup="true"
             >
               <span className="btn-emoji">
-                {likedByViewer ? reaction?.label || "\u{1F44D}" : "\u{1F44D}"}
+                {likeBtnEmoji}
               </span>
               <span>{likeBtnLabel}</span>
             </button>

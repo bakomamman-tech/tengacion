@@ -49,6 +49,60 @@ const toIdString = (value) => {
 
 const uniqueIds = (values) => [...new Set(values.filter(Boolean))];
 
+const POST_REACTIONS = [
+  { key: "like", emoji: "👍", name: "Like" },
+  { key: "love", emoji: "❤️", name: "Love" },
+  { key: "haha", emoji: "😂", name: "Haha" },
+  { key: "wow", emoji: "😮", name: "Wow" },
+  { key: "sad", emoji: "😢", name: "Sad" },
+  { key: "angry", emoji: "😡", name: "Angry" },
+];
+
+const DEFAULT_POST_REACTION_KEY = POST_REACTIONS[0].key;
+const POST_REACTION_BY_KEY = new Map(POST_REACTIONS.map((reaction) => [reaction.key, reaction]));
+const POST_REACTION_BY_EMOJI = new Map(POST_REACTIONS.map((reaction) => [reaction.emoji, reaction]));
+
+const normalizePostReactionKey = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  const lower = raw.toLowerCase();
+  if (POST_REACTION_BY_KEY.has(lower)) {
+    return lower;
+  }
+
+  const match = POST_REACTIONS.find((reaction) => reaction.emoji === raw);
+  return match ? match.key : "";
+};
+
+const postReactionKeyToEmoji = (value = "") => {
+  const key = normalizePostReactionKey(value);
+  return POST_REACTION_BY_KEY.get(key)?.emoji || "";
+};
+
+const postReactionEmojiToKey = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  const normalizedKey = normalizePostReactionKey(raw);
+  if (normalizedKey) {
+    return normalizedKey;
+  }
+
+  const match = POST_REACTION_BY_EMOJI.get(raw);
+  return match ? match.key : "";
+};
+
+const getPostLikeCount = (post) => {
+  const likes = Array.isArray(post?.likes) ? post.likes : [];
+  const reactions = Array.isArray(post?.reactions) ? post.reactions : [];
+  return Math.max(likes.length, reactions.length);
+};
+
 const inferMediaKind = (file) => {
   const mime = String(file?.mimetype || "").toLowerCase();
   if (mime.startsWith("video/")) return "video";
@@ -865,6 +919,15 @@ const toPostPayload = (post, viewerId) => {
   const normalizedMedia = normalizePostMediaEntries(post.media);
   const firstMedia = normalizedMedia.length > 0 ? normalizedMedia[0] : null;
   const likes = Array.isArray(post.likes) ? post.likes : [];
+  const reactions = Array.isArray(post.reactions)
+    ? post.reactions
+        .map((reaction) => ({
+          userId: toIdString(reaction?.userId || reaction?.user || reaction?.author),
+          emoji: String(reaction?.emoji || "").trim().slice(0, 8),
+          createdAt: reaction?.createdAt || null,
+        }))
+        .filter((entry) => entry.userId || entry.emoji)
+    : [];
   const comments = flattenCommentTree(Array.isArray(post.comments) ? post.comments : []);
   const videoPayload = buildVideoMeta(post.video);
   const firstMediaType = String(firstMedia?.type || "").toLowerCase();
@@ -913,11 +976,21 @@ const toPostPayload = (post, viewerId) => {
           previewMediaType: ["text", "image", "video", "reel"].includes(post.sharedPost.previewMediaType)
             ? post.sharedPost.previewMediaType
             : "text",
-        }
+      }
       : null;
   const authorId = author?._id ? author._id.toString() : "";
   const viewerIdString = viewerId ? viewerId.toString() : "";
-  const likedByViewer = Boolean(viewerIdString && likes.some((id) => id.toString() === viewerIdString));
+  const legacyLikedByViewer = Boolean(viewerIdString && likes.some((id) => id.toString() === viewerIdString));
+  const viewerReactionEntry = viewerIdString
+    ? reactions.find((reaction) => reaction.userId === viewerIdString)
+    : null;
+  const viewerReaction = viewerReactionEntry
+    ? postReactionEmojiToKey(viewerReactionEntry.emoji) || DEFAULT_POST_REACTION_KEY
+    : legacyLikedByViewer
+      ? DEFAULT_POST_REACTION_KEY
+      : "";
+  const likedByViewer = Boolean(viewerReaction);
+  const likesCount = getPostLikeCount(post);
   const publicSensitivity = resolvePublicSensitivity({
     moderationStatus: post?.moderationStatus,
     sensitiveContent: post?.sensitiveContent,
@@ -934,9 +1007,10 @@ const toPostPayload = (post, viewerId) => {
     name: author.name || "",
     username: author.username || "",
     avatar: avatarToUrl(author.avatar),
-    likes: likes.length,
-    likesCount: likes.length,
+    likes: likesCount,
+    likesCount,
     likedByViewer,
+    viewerReaction,
     shareCount: Number(post.shareCount) || 0,
     comments,
     commentsCount: post.commentsCount ?? comments.length,
@@ -1673,7 +1747,7 @@ class PostService {
     return { success: true };
   }
 
-  static async toggleLike({ userId, postId, io, onlineUsers }) {
+  static async toggleLike({ userId, postId, io, onlineUsers, reactionKey = null }) {
     if (!mongoose.Types.ObjectId.isValid(postId)) {
       throw ApiError.badRequest("Invalid post id");
     }
@@ -1683,32 +1757,70 @@ class PostService {
 
     const viewerId = userId.toString();
     const liked = post.likes.some((id) => id.toString() === viewerId);
+    const hasReactionPayload = reactionKey !== null;
+    const normalizedReactionKey = normalizePostReactionKey(reactionKey || "");
+    const currentReactionIndex = Array.isArray(post.reactions)
+      ? post.reactions.findIndex((entry) => toIdString(entry?.userId) === viewerId)
+      : -1;
+    const currentReactionKey = currentReactionIndex >= 0
+      ? postReactionEmojiToKey(post.reactions[currentReactionIndex]?.emoji) || DEFAULT_POST_REACTION_KEY
+      : liked
+        ? DEFAULT_POST_REACTION_KEY
+        : "";
+    const desiredReactionKey = hasReactionPayload
+      ? normalizedReactionKey
+      : (liked ? "" : DEFAULT_POST_REACTION_KEY);
 
-    if (liked) {
-      post.likes.pull(viewerId);
-    } else {
-      post.likes.addToSet(viewerId);
+    if (desiredReactionKey !== currentReactionKey) {
+      if (desiredReactionKey) {
+        const emoji = postReactionKeyToEmoji(desiredReactionKey);
+        if (currentReactionIndex >= 0) {
+          post.reactions[currentReactionIndex].emoji = emoji;
+          post.reactions[currentReactionIndex].createdAt = new Date();
+        } else {
+          post.reactions.push({
+            userId: viewerId,
+            emoji,
+            createdAt: new Date(),
+          });
+        }
 
-      await createNotification({
-        recipient: post.author,
-        sender: viewerId,
-        type: "like",
-        text: "liked your post",
-        entity: {
-          id: post._id,
-          model: "Post",
-        },
-        io,
-        onlineUsers,
-      });
+        post.likes.addToSet(viewerId);
+
+        if (!liked && currentReactionIndex < 0) {
+          await createNotification({
+            recipient: post.author,
+            sender: viewerId,
+            type: "like",
+            text: desiredReactionKey === DEFAULT_POST_REACTION_KEY ? "liked your post" : "reacted to your post",
+            entity: {
+              id: post._id,
+              model: "Post",
+            },
+            io,
+            onlineUsers,
+          });
+        }
+      } else {
+        if (currentReactionIndex >= 0) {
+          post.reactions.splice(currentReactionIndex, 1);
+        }
+        post.likes.pull(viewerId);
+      }
     }
 
     await post.save();
 
+    const nextLiked = Boolean(desiredReactionKey);
+    const likesCount = getPostLikeCount(post);
     return {
       success: true,
-      liked: !liked,
-      likesCount: post.likes.length,
+      liked: nextLiked,
+      likedByViewer: nextLiked,
+      likesCount,
+      viewerReaction: nextLiked
+        ? desiredReactionKey || currentReactionKey || DEFAULT_POST_REACTION_KEY
+        : "",
     };
   }
 

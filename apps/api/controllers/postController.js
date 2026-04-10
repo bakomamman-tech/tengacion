@@ -58,6 +58,12 @@ exports.toggleLike = catchAsync(async (req, res) => {
   const payload = await PostService.toggleLike({
     userId: req.user.id,
     postId: req.params.id,
+    reactionKey:
+      Object.prototype.hasOwnProperty.call(req.body || {}, "reactionKey") ||
+      Object.prototype.hasOwnProperty.call(req.body || {}, "emoji") ||
+      Object.prototype.hasOwnProperty.call(req.body || {}, "reaction")
+        ? String(req.body?.reactionKey || req.body?.emoji || req.body?.reaction || "").trim()
+        : null,
     io: req.app.get("io"),
     onlineUsers: req.app.get("onlineUsers"),
   });

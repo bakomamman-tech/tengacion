@@ -1507,10 +1507,20 @@ export const updatePostComment = (postId, commentId, payload = {}) =>
     }
   );
 
-export const likePost = (id) =>
+export const likePost = (id, reactionKey = null) =>
   request(`${API_BASE}/posts/${id}/like`, {
     method: "POST",
-    headers: getAuthHeaders(),
+    headers: {
+      ...getAuthHeaders(),
+      ...(reactionKey !== null && reactionKey !== undefined
+        ? { "Content-Type": "application/json" }
+        : {}),
+    },
+    ...(reactionKey !== null && reactionKey !== undefined
+      ? {
+          body: JSON.stringify({ reactionKey }),
+        }
+      : {}),
   });
 
 export const getLiveSessions = () =>

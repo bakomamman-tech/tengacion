@@ -241,6 +241,57 @@ describe("Posts feed", () => {
     expect(stored.video.url).toBe(videoPayload.video.url);
   });
 
+  test("POST /api/posts/:id/like persists emoji reactions and returns viewerReaction", async () => {
+    const post = await Post.create({
+      author: artist._id,
+      text: "Reaction test post",
+      privacy: "public",
+    });
+
+    const reacted = await request(app)
+      .post(`/api/posts/${post._id}/like`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ reactionKey: "love" })
+      .expect(200);
+
+    expect(reacted.body).toMatchObject({
+      success: true,
+      liked: true,
+      likedByViewer: true,
+      likesCount: 1,
+      viewerReaction: "love",
+    });
+
+    const stored = await Post.findById(post._id).lean();
+    expect(stored).toBeTruthy();
+    expect(stored.likes).toHaveLength(1);
+    expect(stored.reactions).toHaveLength(1);
+    expect(stored.reactions[0]).toMatchObject({
+      emoji: "\u{2764}\u{FE0F}",
+    });
+
+    const unreacted = await request(app)
+      .post(`/api/posts/${post._id}/like`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ reactionKey: "" })
+      .expect(200);
+
+    expect(unreacted.body).toMatchObject({
+      success: true,
+      liked: false,
+      likedByViewer: false,
+      likesCount: 0,
+      viewerReaction: "",
+    });
+
+    const refetched = await request(app).get(`/api/posts/${post._id}`).expect(200);
+    expect(refetched.body).toMatchObject({
+      likedByViewer: false,
+      viewerReaction: "",
+      likesCount: 0,
+    });
+  });
+
   test("POST /api/posts uploads a video to Cloudinary and stores metadata", async () => {
     const response = await request(app)
       .post("/api/posts")

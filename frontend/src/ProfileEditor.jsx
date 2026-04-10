@@ -22,6 +22,7 @@ import { createReportDialogConfig } from "./constants/reportReasons";
 import { useAuth } from "./context/AuthContext";
 import Navbar from "./Navbar";
 import PostCard from "./components/PostCard";
+import ProfileNameLink from "./components/ui/ProfileNameLink";
 import { useDialog } from "./components/ui/useDialog";
 
 const fallbackAvatar = (name) =>
@@ -137,9 +138,7 @@ const getPostMediaKind = (post) => {
 
 const isImageFile = (file) => Boolean(file?.type?.startsWith("image/"));
 
-const toMediaUrl = (value) => {
-  return getMediaUrl(value);
-};
+const toMediaUrl = (value) => getMediaUrl(value);
 
 const normalizeSharedPost = (value = {}) => {
   const postId = String(value?.postId || "").trim();
@@ -709,7 +708,14 @@ export default function ProfileEditor({ user }) {
             <div className="profile-share-banner__copy">
               <p className="profile-share-banner__eyebrow">Profile share ready</p>
               <strong>
-                From {sharedPost.authorName}
+                From{" "}
+                <ProfileNameLink
+                  username={sharedPost.authorUsername}
+                  className="profile-share-banner__author-link"
+                  ariaLabel={`Open ${sharedPost.authorName}'s profile`}
+                >
+                  {sharedPost.authorName}
+                </ProfileNameLink>
                 {sharedPost.authorUsername ? ` @${sharedPost.authorUsername}` : ""}
               </strong>
               <p>

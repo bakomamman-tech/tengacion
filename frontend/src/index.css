@@ -10543,6 +10543,33 @@ html.dark-mode .create-post-quick-btn--reel {
   text-underline-offset: 2px;
 }
 
+.profile-name-link {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  font: inherit;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    opacity 0.18s ease,
+    text-decoration-color 0.18s ease;
+}
+
+.profile-name-link:hover,
+.profile-name-link:focus-visible {
+  color: color-mix(in srgb, var(--brand) 84%, var(--text) 16%);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.profile-name-link__handle {
+  color: inherit;
+  opacity: 0.78;
+}
+
 .post-name-context {
   color: var(--muted);
   font-weight: 600;
@@ -11667,6 +11694,16 @@ html.dark-mode .reaction-bar-btn.is-selected {
   font-size: 12px;
   font-weight: 800;
   color: #6b5b48;
+}
+
+.comment-reply-banner__author {
+  font-weight: 900;
+  color: #7d5530;
+}
+
+.comment-reply-banner__author:hover,
+.comment-reply-banner__author:focus-visible {
+  color: #5f3d1f;
 }
 
 .comment-reply-banner__copy strong {

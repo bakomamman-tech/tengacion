@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import ProfileNameLink from "../components/ui/ProfileNameLink";
 import {
   getSearchSuggestions,
   getTrendingHashtags,
@@ -155,7 +156,14 @@ export default function Search() {
             results.map((entry) => (
               <article key={entry._id} className="card" style={{ padding: 10, marginBottom: 8 }}>
                 <div>
-                  <b>{entry?.author?.name || "User"}</b> @{entry?.author?.username || ""}
+                  <ProfileNameLink
+                    username={entry?.author?.username}
+                    className="search-post-author-link"
+                    ariaLabel={`Open ${entry?.author?.name || entry?.author?.username || "user"}'s profile`}
+                  >
+                    <b>{entry?.author?.name || "User"}</b>
+                  </ProfileNameLink>
+                  <div>@{entry?.author?.username || ""}</div>
                 </div>
                 <p style={{ margin: "8px 0" }}>{entry.text || "(no text)"}</p>
                 <button type="button" onClick={() => navigate(`/posts/${entry._id}`)}>

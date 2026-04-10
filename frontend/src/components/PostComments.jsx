@@ -11,6 +11,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { createReportDialogConfig } from "../constants/reportReasons";
 import Button from "./ui/Button";
+import ProfileNameLink from "./ui/ProfileNameLink";
 import { useDialog } from "./ui/useDialog";
 
 const EMOJIS = [
@@ -318,8 +319,14 @@ function CommentItem({
 
         <div className="comment-v2-body">
           <div className="comment-v2-meta">
-            <strong>{comment.authorName || "User"}</strong>
-            {comment.authorUsername ? <span>@{comment.authorUsername}</span> : null}
+            <ProfileNameLink
+              username={comment.authorUsername}
+              className="comment-author-link"
+              ariaLabel={`Open ${comment.authorName || comment.authorUsername || "user"}'s profile`}
+            >
+              <strong>{comment.authorName || "User"}</strong>
+              {comment.authorUsername ? <span>@{comment.authorUsername}</span> : null}
+            </ProfileNameLink>
             {timeLabel ? <span>{timeLabel}</span> : null}
             {comment.edited ? <span>Edited</span> : null}
           </div>
@@ -455,15 +462,18 @@ export default function PostComments({
   onClose,
   postOwnerId = "",
   postOwnerName = "",
+  postOwnerUsername = "",
 }) {
   const { user } = useAuth() || {};
   const currentUserId = String(user?._id || user?.id || "").trim();
   const postOwnerDisplayName = String(postOwnerName || "").trim();
-  const postOwnerTitle = postOwnerDisplayName ? `${postOwnerDisplayName}'s Post` : "Comments";
+  const postOwnerProfileUsername = String(postOwnerUsername || "").trim();
   const { prompt } = useDialog();
-  const [comments, setComments] = useState(() =>
-    buildCommentTree(flattenCommentInput(Array.isArray(initialComments) ? initialComments : []))
+  const initialCommentTree = useMemo(
+    () => buildCommentTree(flattenCommentInput(Array.isArray(initialComments) ? initialComments : [])),
+    [initialComments]
   );
+  const [comments, setComments] = useState(() => initialCommentTree);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -486,17 +496,14 @@ export default function PostComments({
   const canReply = isPostOwner;
 
   useEffect(() => {
-    const normalized = buildCommentTree(
-      flattenCommentInput(Array.isArray(initialComments) ? initialComments : [])
-    );
-    setComments(normalized);
+    setComments(initialCommentTree);
     setReplyTarget(null);
     setEditingCommentId("");
     setEditingDraft("");
     setPickedImage("");
     setText("");
     setError("");
-  }, [postId]);
+  }, [postId, initialCommentTree]);
 
   useEffect(() => {
     let alive = true;
@@ -726,14 +733,29 @@ export default function PostComments({
       className={`comments comments-v2 comments-v2--panel ${panelClassName}`.trim()}
       role="dialog"
       aria-modal="true"
-      aria-label={postOwnerDisplayName ? `${postOwnerTitle} comments` : "Comments"}
+      aria-label={postOwnerDisplayName ? `${postOwnerDisplayName}'s comments` : "Comments"}
       tabIndex={-1}
       onMouseDown={(event) => event.stopPropagation()}
     >
       <div className="comments-v2-header">
         <div className="comments-v2-header-copy">
           <div className="comments-v2-kicker">Comments</div>
-          <div className="comments-v2-title">{postOwnerTitle}</div>
+          <div className="comments-v2-title">
+            {postOwnerDisplayName ? (
+              <>
+                <ProfileNameLink
+                  username={postOwnerProfileUsername}
+                  className="comments-v2-title-link"
+                  ariaLabel={`Open ${postOwnerDisplayName}'s profile`}
+                >
+                  {postOwnerDisplayName}
+                </ProfileNameLink>
+                <span>'s Post</span>
+              </>
+            ) : (
+              "Comments"
+            )}
+          </div>
           <div className="comments-v2-subtitle">
             {totalCount} {commentCountLabel}
           </div>
@@ -786,7 +808,20 @@ export default function PostComments({
           {replyTarget ? (
             <div className="comment-reply-banner">
               <div className="comment-reply-banner__copy">
-                <small>Replying to {replyTarget.authorName || "comment"}</small>
+                <small>
+                  Replying to{" "}
+                  {replyTarget.authorUsername ? (
+                    <ProfileNameLink
+                      username={replyTarget.authorUsername}
+                      className="comment-reply-banner__author"
+                      ariaLabel={`Open ${replyTarget.authorName || replyTarget.authorUsername || "comment author"}'s profile`}
+                    >
+                      {replyTarget.authorName || "comment"}
+                    </ProfileNameLink>
+                  ) : (
+                    replyTarget.authorName || "comment"
+                  )}
+                </small>
                 <strong>{replyTarget.text || "Comment reply"}</strong>
               </div>
               <button

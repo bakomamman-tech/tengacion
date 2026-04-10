@@ -1,5 +1,6 @@
 import { resolveImage } from "../../api";
 import ExpandablePostText from "../posts/ExpandablePostText";
+import ProfileNameLink from "../ui/ProfileNameLink";
 import {
   fallbackAvatar,
   getAuthorName,
@@ -61,11 +62,15 @@ export default function SharePreviewCard({ post }) {
       <div className="tg-share-preview-author">
         <img src={authorAvatar} alt={authorName} />
         <div>
-          <strong>{authorName}</strong>
-          <span>
-            {authorUsername ? `@${authorUsername}` : "Tengacion creator"} ·{" "}
-            {formatTimeLabel(post?.createdAt)}
-          </span>
+          <ProfileNameLink
+            username={authorUsername}
+            ariaLabel={`Open ${authorName}'s profile`}
+            className="tg-share-preview-author__link"
+          >
+            <strong>{authorName}</strong>
+            <span>{authorUsername ? `@${authorUsername}` : "Tengacion creator"}</span>
+          </ProfileNameLink>
+          <small>{formatTimeLabel(post?.createdAt)}</small>
         </div>
       </div>
 
@@ -84,12 +89,18 @@ export default function SharePreviewCard({ post }) {
           <div className="tg-share-preview-source__author">
             <img src={sharedSource.authorAvatar} alt={sharedSource.authorName} />
             <div>
-              <strong>{sharedSource.authorName}</strong>
-              <span>
-                {sharedSource.authorUsername
-                  ? `@${sharedSource.authorUsername}`
-                  : "Original post"}
-              </span>
+              <ProfileNameLink
+                username={sharedSource.authorUsername}
+                ariaLabel={`Open ${sharedSource.authorName}'s profile`}
+                className="tg-share-preview-source__author-link"
+              >
+                <strong>{sharedSource.authorName}</strong>
+                <span>
+                  {sharedSource.authorUsername
+                    ? `@${sharedSource.authorUsername}`
+                    : "Original post"}
+                </span>
+              </ProfileNameLink>
             </div>
           </div>
           {sharedSource.text ? (

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import PostComments from "./PostComments";
+import ProfileNameLink from "./ui/ProfileNameLink";
 import PostShareModal from "./share/PostShareModal";
 import {
   buildPostShareUrl,
@@ -807,6 +808,7 @@ export default function PostCard({
               onClose={() => setShowComments(false)}
               postOwnerId={postAuthorId}
               postOwnerName={username}
+              postOwnerUsername={authorHandle}
             />
           </div>,
           document.body
@@ -898,9 +900,15 @@ export default function PostCard({
                 {primaryTaggedUser && (
                   <span className="post-name-context">
                     is with{" "}
-                    <span className="post-name-tagged-person">
-                      {getTaggedUserHeadline(primaryTaggedUser)}
-                    </span>
+                    <ProfileNameLink
+                      username={primaryTaggedUser.username}
+                      className="post-name-tagged-person post-name-tagged-person-link"
+                      ariaLabel={`Open ${
+                        getTaggedUserLabel(primaryTaggedUser) || "tagged user"
+                      }'s profile`}
+                    >
+                      {getTaggedUserLabel(primaryTaggedUser) || "Tagged person"}
+                    </ProfileNameLink>
                     {additionalTaggedCount > 0 &&
                       ` and ${additionalTaggedCount} other${
                         additionalTaggedCount === 1 ? "" : "s"
@@ -914,7 +922,13 @@ export default function PostCard({
                       <>
                         {" "}
                         from{" "}
-                        <span className="post-name-tagged-person">{sharedPostAuthorName}</span>
+                        <ProfileNameLink
+                          username={sharedPostAuthorHandle}
+                          className="post-name-tagged-person post-name-tagged-person-link"
+                          ariaLabel={`Open ${sharedPostAuthorName}'s profile`}
+                        >
+                          {sharedPostAuthorName}
+                        </ProfileNameLink>
                       </>
                     ) : null}
                   </span>

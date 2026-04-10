@@ -10527,6 +10527,22 @@ html.dark-mode .create-post-quick-btn--reel {
   color: var(--text);
 }
 
+.post-name-author-link {
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    opacity 0.18s ease,
+    text-decoration-color 0.18s ease;
+}
+
+.post-name-author-link:hover,
+.post-name-author-link:focus-visible {
+  color: color-mix(in srgb, var(--brand) 84%, var(--text) 16%);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .post-name-context {
   color: var(--muted);
   font-weight: 600;

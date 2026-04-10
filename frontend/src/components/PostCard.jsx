@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import PostComments from "./PostComments";
@@ -264,6 +265,7 @@ export default function PostCard({
 
   const username = post?.user?.name || post?.name || "Unknown User";
   const authorHandle = normalizeTagHandle(post?.user?.username || post?.username || "");
+  const authorProfilePath = authorHandle ? `/profile/${authorHandle}` : "";
   const avatar =
     resolveImage(post?.user?.profilePic || post?.avatar) || "/avatar.png";
   const firstMediaEntry = Array.isArray(post?.media)
@@ -882,7 +884,17 @@ export default function PostCard({
             <img className="post-avatar" src={avatar} alt="user" />
             <div className="post-user-meta">
               <p className="post-name">
-                <span className="post-name-author">{username}</span>
+                {authorProfilePath ? (
+                  <Link
+                    className="post-name-author post-name-author-link"
+                    to={authorProfilePath}
+                    aria-label={`Open ${username}'s profile`}
+                  >
+                    {username}
+                  </Link>
+                ) : (
+                  <span className="post-name-author">{username}</span>
+                )}
                 {primaryTaggedUser && (
                   <span className="post-name-context">
                     is with{" "}

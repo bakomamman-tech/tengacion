@@ -1,4 +1,5 @@
 import React from "react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -60,6 +61,15 @@ describe("PostCard reactions", () => {
     vi.restoreAllMocks();
   });
 
+  const renderPostCard = (post) =>
+    render(
+      <MemoryRouter initialEntries={["/home"]}>
+        <Routes>
+          <Route path="/home" element={<PostCard post={post} />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
   it("shows the persisted reaction and updates it when a new emoji is chosen", async () => {
     apiRequestMock.mockResolvedValueOnce({
       success: true,
@@ -71,25 +81,21 @@ describe("PostCard reactions", () => {
 
     const user = userEvent.setup();
 
-    render(
-      <PostCard
-        post={{
-          _id: "post-1",
-          text: "A post with reactions.",
-          createdAt: "2026-03-30T10:00:00.000Z",
-          user: {
-            name: "Admin User",
-            username: "admin",
-            profilePic: "",
-          },
-          comments: [],
-          likesCount: 4,
-          shareCount: 0,
-          likedByViewer: true,
-          viewerReaction: "love",
-        }}
-      />
-    );
+    renderPostCard({
+      _id: "post-1",
+      text: "A post with reactions.",
+      createdAt: "2026-03-30T10:00:00.000Z",
+      user: {
+        name: "Admin User",
+        username: "admin",
+        profilePic: "",
+      },
+      comments: [],
+      likesCount: 4,
+      shareCount: 0,
+      likedByViewer: true,
+      viewerReaction: "love",
+    });
 
     const likeButton = screen.getByRole("button", { name: /love/i });
     expect(likeButton).toHaveAttribute("aria-pressed", "true");

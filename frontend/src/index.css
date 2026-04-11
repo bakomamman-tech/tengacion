@@ -15698,10 +15698,10 @@ body.tg-share-modal-open {
 }
 
 .tg-share-modal-body {
-  padding: 20px 22px 12px;
+  padding: 18px 22px 10px;
   overflow-y: auto;
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
 .tg-share-status-card,
@@ -15976,14 +15976,15 @@ body.tg-share-modal-open {
 
 .tg-share-section {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .tg-share-quick-actions {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
   justify-items: center;
+  align-items: start;
 }
 
 .tg-share-quick-action {
@@ -15991,13 +15992,14 @@ body.tg-share-modal-open {
   background: linear-gradient(180deg, rgba(249, 250, 251, 0.98) 0%, rgba(241, 245, 249, 0.98) 100%);
   color: #344054;
   border-radius: 16px;
-  padding: 10px 8px 8px;
-  width: min(100%, 108px);
-  min-height: 90px;
+  padding: 8px 8px 6px;
+  width: min(100%, 100px);
+  min-height: 74px;
   display: grid;
   justify-items: center;
   align-content: start;
-  gap: 6px;
+  gap: 4px;
+  align-self: start;
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -16028,8 +16030,8 @@ body.tg-share-modal-open {
 }
 
 .tg-share-quick-action__icon {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   border-radius: 13px;
   display: grid;
   place-items: center;
@@ -16038,8 +16040,8 @@ body.tg-share-modal-open {
 }
 
 .tg-share-quick-action__icon svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .tg-share-quick-action__icon.messenger {
@@ -16069,10 +16071,10 @@ body.tg-share-modal-open {
 .tg-share-quick-action__label {
   display: block;
   max-width: 100%;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 800;
   text-align: center;
-  line-height: 1.15;
+  line-height: 1.05;
   letter-spacing: -0.02em;
   text-wrap: balance;
 }
@@ -16468,7 +16470,7 @@ html.dark-mode .tg-share-inline-error {
 
   .tg-share-quick-action {
     width: 100%;
-    min-height: 88px;
+    min-height: 68px;
   }
 
   .tg-share-modal-footer {

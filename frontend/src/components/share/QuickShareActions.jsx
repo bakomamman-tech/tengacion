@@ -95,6 +95,9 @@ export default function QuickShareActions({ items = [] }) {
             className="tg-share-quick-action"
             onClick={item.onClick}
             disabled={Boolean(item.disabled)}
+            data-kind={item.id}
+            aria-label={`Share via ${item.label}`}
+            title={`Share via ${item.label}`}
           >
             <span className={`tg-share-quick-action__icon ${item.id}`}>
               <ShareActionIcon kind={item.id} />

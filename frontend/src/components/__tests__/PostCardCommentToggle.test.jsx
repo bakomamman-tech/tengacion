@@ -273,6 +273,43 @@ describe("PostCard comment toggle", () => {
     expect(screen.queryByRole("button", { name: /^More$/i })).not.toBeInTheDocument();
   });
 
+  it("collapses long post text after 500 words and expands on More", async () => {
+    const user = userEvent.setup();
+    const longWordPostText = Array.from(
+      { length: 520 },
+      (_, index) => `Word${index + 1}`
+    ).join(" ");
+
+    renderPostCard({
+      post: {
+        _id: "post-6",
+        text: longWordPostText,
+        createdAt: "2026-03-30T10:00:00.000Z",
+        user: {
+          name: "Admin User",
+          username: "admin",
+          profilePic: "",
+        },
+        comments: [],
+        likesCount: 2,
+        shareCount: 0,
+        likedByViewer: false,
+      },
+    });
+
+    const moreButton = screen
+      .getAllByRole("button", { name: /^More$/i })
+      .find((button) => button.hasAttribute("aria-controls"));
+
+    expect(moreButton).toBeDefined();
+    expect(screen.queryByText(/Word520/i)).not.toBeInTheDocument();
+
+    await user.click(moreButton);
+
+    expect(await screen.findByText(/Word520/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Less$/i })).toBeInTheDocument();
+  });
+
   it("keeps short post text expanded by default without rendering a text toggle", () => {
     renderPostCard({
       post: {

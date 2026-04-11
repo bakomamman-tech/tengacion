@@ -1,6 +1,8 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 const joinClasses = (...values) => values.filter(Boolean).join(" ");
+
+const WORD_TOKEN_PATTERN = /\S+|\s+/g;
 
 const scheduleFrame = (callback) => {
   if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
@@ -31,34 +33,100 @@ const isOverflowing = (fullNode, collapsedNode) => {
   return heightOverflow || widthOverflow;
 };
 
+const countWords = (value = "") => {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) {
+    return 0;
+  }
+
+  return trimmed.split(/\s+/).filter(Boolean).length;
+};
+
+const truncateByWords = (value = "", limit = 500) => {
+  const clean = String(value || "");
+  const safeLimit = Math.max(1, Number(limit) || 500);
+  const wordCount = countWords(clean);
+
+  if (!clean.trim() || wordCount <= safeLimit) {
+    return {
+      hasOverflow: false,
+      preview: clean.trim(),
+      wordCount,
+    };
+  }
+
+  const tokens = clean.match(WORD_TOKEN_PATTERN) || [];
+  let wordsSeen = 0;
+  let preview = "";
+
+  for (const token of tokens) {
+    if (/^\s+$/.test(token)) {
+      if (wordsSeen > 0) {
+        preview += token;
+      }
+      continue;
+    }
+
+    if (wordsSeen >= safeLimit) {
+      break;
+    }
+
+    preview += token;
+    wordsSeen += 1;
+  }
+
+  return {
+    hasOverflow: true,
+    preview: `${preview.trimEnd()}...`,
+    wordCount,
+  };
+};
+
 export default function ExpandablePostText({
   text,
   component = "p",
   wrapperClassName = "",
   className = "",
   toggleClassName = "",
+  collapseMode = "lines",
   collapsedLines = 5,
+  collapsedWords = 500,
   moreLabel = "More",
   lessLabel = "Less",
   toggleAlign = "start",
   justify = true,
 }) {
   const normalizedText = String(text ?? "").replace(/\r\n/g, "\n");
+  const trimmedText = normalizedText.trim();
+  const isWordMode = collapseMode === "words";
   const TextTag = component;
   const contentId = useId();
   const wrapperRef = useRef(null);
   const fullMeasureRef = useRef(null);
   const collapsedMeasureRef = useRef(null);
   const [expanded, setExpanded] = useState(false);
-  const [canExpand, setCanExpand] = useState(false);
+  const [lineCanExpand, setLineCanExpand] = useState(false);
+
+  const wordSummary = useMemo(
+    () => truncateByWords(normalizedText, collapsedWords),
+    [collapsedWords, normalizedText]
+  );
+  const canExpand = isWordMode ? wordSummary.hasOverflow : lineCanExpand;
+  const renderedText =
+    !expanded && isWordMode && wordSummary.hasOverflow ? wordSummary.preview : normalizedText;
 
   useEffect(() => {
     setExpanded(false);
-  }, [normalizedText, collapsedLines]);
+  }, [collapseMode, collapsedLines, collapsedWords, normalizedText]);
 
   useEffect(() => {
-    if (!normalizedText.trim()) {
-      setCanExpand(false);
+    if (isWordMode) {
+      setLineCanExpand(false);
+      return undefined;
+    }
+
+    if (!trimmedText) {
+      setLineCanExpand(false);
       return undefined;
     }
 
@@ -66,7 +134,7 @@ export default function ExpandablePostText({
     let resizeObserver = null;
 
     const updateOverflow = () => {
-      setCanExpand(isOverflowing(fullMeasureRef.current, collapsedMeasureRef.current));
+      setLineCanExpand(isOverflowing(fullMeasureRef.current, collapsedMeasureRef.current));
     };
 
     const scheduleOverflowCheck = () => {
@@ -103,20 +171,21 @@ export default function ExpandablePostText({
         window.removeEventListener("resize", scheduleOverflowCheck);
       }
     };
-  }, [collapsedLines, normalizedText]);
+  }, [collapsedLines, isWordMode, normalizedText, trimmedText]);
 
-  if (!normalizedText.trim()) {
+  if (!trimmedText) {
     return null;
   }
 
   const lineClampStyle = {
     "--expandable-post-lines": collapsedLines,
   };
+  const contentStyle = isWordMode ? undefined : lineClampStyle;
 
   const contentClassName = joinClasses(
     "expandable-post-text__content",
     justify && "expandable-post-text__content--justified",
-    !expanded && "expandable-post-text__content--collapsed",
+    !isWordMode && !expanded && "expandable-post-text__content--collapsed",
     className
   );
 
@@ -138,27 +207,31 @@ export default function ExpandablePostText({
 
   return (
     <div ref={wrapperRef} className={joinClasses("expandable-post-text", wrapperClassName)}>
-      <TextTag id={contentId} className={contentClassName} style={lineClampStyle}>
-        {normalizedText}
+      <TextTag id={contentId} className={contentClassName} style={contentStyle}>
+        {renderedText}
       </TextTag>
 
-      <TextTag
-        aria-hidden="true"
-        className={fullMeasureClassName}
-        ref={fullMeasureRef}
-        style={lineClampStyle}
-      >
-        {normalizedText}
-      </TextTag>
+      {!isWordMode ? (
+        <>
+          <TextTag
+            aria-hidden="true"
+            className={fullMeasureClassName}
+            ref={fullMeasureRef}
+            style={lineClampStyle}
+          >
+            {normalizedText}
+          </TextTag>
 
-      <TextTag
-        aria-hidden="true"
-        className={collapsedMeasureClassName}
-        ref={collapsedMeasureRef}
-        style={lineClampStyle}
-      >
-        {normalizedText}
-      </TextTag>
+          <TextTag
+            aria-hidden="true"
+            className={collapsedMeasureClassName}
+            ref={collapsedMeasureRef}
+            style={lineClampStyle}
+          >
+            {normalizedText}
+          </TextTag>
+        </>
+      ) : null}
 
       {canExpand ? (
         <div

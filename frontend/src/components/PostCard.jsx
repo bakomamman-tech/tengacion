@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import PostComments from "./PostComments";
+import ExpandablePostText from "./posts/ExpandablePostText";
 import ProfileNameLink from "./ui/ProfileNameLink";
 import PostShareModal from "./share/PostShareModal";
 import {
@@ -45,6 +46,7 @@ const REACTIONS = [
 
 const DEFAULT_REACTION = REACTIONS[0];
 const REACTION_LOOKUP = new Map(REACTIONS.map((reaction) => [reaction.key, reaction]));
+const POST_TEXT_WORD_LIMIT = 500;
 
 const normalizeReactionKey = (value = "") => {
   const raw = String(value || "").trim();
@@ -1016,9 +1018,14 @@ export default function PostCard({
         {/* BODY */}
         <div className="post-body">
           {post?.text && (
-            <div className="post-text-block">
-              <p className="post-text">{post.text}</p>
-            </div>
+            <ExpandablePostText
+              text={post.text}
+              wrapperClassName="post-text-block"
+              className="post-text"
+              toggleClassName="post-text-toggle"
+              collapseMode="words"
+              collapsedWords={POST_TEXT_WORD_LIMIT}
+            />
           )}
 
           {hasSharedPost && (
@@ -1041,11 +1048,14 @@ export default function PostCard({
               </div>
 
               {sharedPostPreviewText ? (
-                <div className="post-shared-preview__text-block">
-                  <p className="post-shared-preview__text post-text">
-                    {sharedPostPreviewText}
-                  </p>
-                </div>
+                <ExpandablePostText
+                  text={sharedPostPreviewText}
+                  wrapperClassName="post-shared-preview__text-block"
+                  className="post-shared-preview__text post-text"
+                  toggleClassName="post-text-toggle"
+                  collapseMode="words"
+                  collapsedWords={POST_TEXT_WORD_LIMIT}
+                />
               ) : null}
 
               {sharedPostPreviewImage ? (

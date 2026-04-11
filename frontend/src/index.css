@@ -14419,8 +14419,8 @@ html:not(.dark-mode) .message-row.them .msg-bubble {
   white-space: pre-wrap;
   word-break: normal;
   overflow-wrap: break-word;
-  font-size: 14.5px;
-  line-height: 1.44;
+  font-size: 15px;
+  line-height: 1.46;
   font-weight: 400;
   color: #1f241b;
 }
@@ -20396,8 +20396,8 @@ html.dark-mode .password-toggle-btn:hover {
   }
 
   .messenger.mobile-sheet .msg-text {
-    font-size: 15.5px;
-    line-height: 1.5;
+    font-size: 16px;
+    line-height: 1.52;
   }
 
   .messenger.mobile-sheet .msg-reply-preview strong {

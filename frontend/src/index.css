@@ -15990,14 +15990,14 @@ body.tg-share-modal-open {
   border: 1px solid rgba(220, 227, 236, 0.96);
   background: linear-gradient(180deg, rgba(249, 250, 251, 0.98) 0%, rgba(241, 245, 249, 0.98) 100%);
   color: #344054;
-  border-radius: 18px;
-  padding: 12px 10px 10px;
-  width: min(100%, 112px);
-  min-height: 102px;
+  border-radius: 16px;
+  padding: 10px 8px 8px;
+  width: min(100%, 108px);
+  min-height: 90px;
   display: grid;
   justify-items: center;
-  align-content: center;
-  gap: 8px;
+  align-content: start;
+  gap: 6px;
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -16012,7 +16012,7 @@ body.tg-share-modal-open {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at top, rgba(255, 255, 255, 0.56), transparent 68%);
+  background: radial-gradient(circle at top, rgba(255, 255, 255, 0.62), transparent 66%);
   pointer-events: none;
 }
 
@@ -16028,18 +16028,18 @@ body.tg-share-modal-open {
 }
 
 .tg-share-quick-action__icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 15px;
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
   display: grid;
   place-items: center;
   color: #fff;
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12);
 }
 
 .tg-share-quick-action__icon svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
 .tg-share-quick-action__icon.messenger {
@@ -16069,11 +16069,11 @@ body.tg-share-modal-open {
 .tg-share-quick-action__label {
   display: block;
   max-width: 100%;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 800;
   text-align: center;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   text-wrap: balance;
 }
 
@@ -16375,7 +16375,7 @@ html.dark-mode .tg-share-quick-action {
 }
 
 html.dark-mode .tg-share-quick-action::before {
-  background: radial-gradient(circle at top, rgba(255, 255, 255, 0.1), transparent 70%);
+  background: radial-gradient(circle at top, rgba(255, 255, 255, 0.12), transparent 70%);
 }
 
 html.dark-mode .tg-share-composer-card textarea,
@@ -16468,7 +16468,7 @@ html.dark-mode .tg-share-inline-error {
 
   .tg-share-quick-action {
     width: 100%;
-    min-height: 96px;
+    min-height: 88px;
   }
 
   .tg-share-modal-footer {

@@ -15622,6 +15622,419 @@ html.dark-mode .messenger-composer-btn.is-active {
   background: rgba(65, 45, 32, 0.98) !important;
 }
 
+/* Neon Purple theme: keep Messenger warm and light-brown instead of dark brown. */
+html.dark-mode.neon-purple-mode .messenger {
+  --text: #3b2617;
+  --muted: #7b634e;
+  --surface: #fff8ef;
+  --surface-soft: #f7e2c6;
+  --surface-strong: #e8c69a;
+  --border: rgba(177, 131, 80, 0.24);
+  --border-strong: rgba(154, 103, 53, 0.34);
+  --brand-soft: rgba(198, 152, 106, 0.24);
+  --messenger-accent: #b8793f;
+  --messenger-accent-strong: #8f5627;
+  color: var(--text);
+  border-color: rgba(177, 131, 80, 0.28);
+  background:
+    radial-gradient(circle at top right, rgba(216, 176, 127, 0.22), transparent 34%),
+    linear-gradient(180deg, rgba(255, 246, 233, 0.98), rgba(242, 223, 191, 0.98));
+  box-shadow:
+    0 26px 60px rgba(93, 63, 33, 0.24),
+    0 10px 24px rgba(138, 95, 51, 0.12);
+}
+
+html.dark-mode.neon-purple-mode .messenger-header,
+html.dark-mode.neon-purple-mode .chat-topbar,
+html.dark-mode.neon-purple-mode .messenger-input {
+  border-color: rgba(177, 131, 80, 0.2);
+  background:
+    linear-gradient(180deg, rgba(255, 248, 239, 0.98), rgba(244, 227, 199, 0.96)),
+    linear-gradient(135deg, rgba(199, 152, 102, 0.12), transparent);
+}
+
+html.dark-mode.neon-purple-mode .messenger-body {
+  background: linear-gradient(180deg, rgba(250, 235, 212, 0.94), rgba(241, 216, 181, 0.96));
+}
+
+html.dark-mode.neon-purple-mode .messenger-threads {
+  border-right-color: rgba(177, 131, 80, 0.2);
+  background: linear-gradient(180deg, rgba(255, 249, 240, 0.96), rgba(245, 229, 202, 0.95));
+}
+
+html.dark-mode.neon-purple-mode .messenger-chat {
+  background: linear-gradient(180deg, rgba(251, 239, 220, 0.92), rgba(243, 223, 189, 0.96));
+}
+
+html.dark-mode.neon-purple-mode .messenger-messages {
+  background: linear-gradient(180deg, rgba(255, 248, 235, 0.46), rgba(240, 218, 186, 0.72));
+}
+
+html.dark-mode.neon-purple-mode .messenger-header-notice,
+html.dark-mode.neon-purple-mode .threads-state,
+html.dark-mode.neon-purple-mode .thread-item,
+html.dark-mode.neon-purple-mode .chat-top-profile-btn,
+html.dark-mode.neon-purple-mode .chat-top-menu,
+html.dark-mode.neon-purple-mode .msg-tool-btn,
+html.dark-mode.neon-purple-mode .msg-tool-menu,
+html.dark-mode.neon-purple-mode .msg-reaction-picker,
+html.dark-mode.neon-purple-mode .msg-voice-card,
+html.dark-mode.neon-purple-mode .messenger-reply-banner,
+html.dark-mode.neon-purple-mode .messenger-voice-recorder,
+html.dark-mode.neon-purple-mode .messenger-gif-modal,
+html.dark-mode.neon-purple-mode .messenger-pinned-banner,
+html.dark-mode.neon-purple-mode .messenger-action-btn,
+html.dark-mode.neon-purple-mode .messenger-composer-entry,
+html.dark-mode.neon-purple-mode .messenger-mobile-hero,
+html.dark-mode.neon-purple-mode .messenger-mobile-search,
+html.dark-mode.neon-purple-mode .messenger-mobile-chip,
+html.dark-mode.neon-purple-mode .messenger-mobile-switcher__chip,
+html.dark-mode.neon-purple-mode .messenger-mobile-back {
+  background: rgba(255, 249, 241, 0.9) !important;
+  border-color: rgba(177, 131, 80, 0.22) !important;
+  box-shadow: 0 12px 24px rgba(93, 63, 33, 0.08) !important;
+  color: var(--text) !important;
+}
+
+html.dark-mode.neon-purple-mode .chat-topbar .messenger-action-btn {
+  border-color: rgba(177, 131, 80, 0.24) !important;
+  background: linear-gradient(135deg, rgba(197, 151, 103, 0.16), rgba(230, 207, 172, 0.52)) !important;
+  color: var(--text) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.68),
+    0 12px 22px rgba(93, 63, 33, 0.1) !important;
+}
+
+html.dark-mode.neon-purple-mode .mh-action-btn,
+html.dark-mode.neon-purple-mode .mh-close {
+  border-color: rgba(177, 131, 80, 0.24) !important;
+  background: linear-gradient(180deg, rgba(255, 249, 242, 0.98), rgba(241, 221, 189, 0.98)) !important;
+  color: var(--text) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 10px 18px rgba(93, 63, 33, 0.1) !important;
+}
+
+html.dark-mode.neon-purple-mode .mh-action-btn:hover,
+html.dark-mode.neon-purple-mode .mh-close:hover {
+  background: linear-gradient(180deg, rgba(255, 252, 248, 0.99), rgba(247, 232, 205, 0.98)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 12px 24px rgba(93, 63, 33, 0.14) !important;
+}
+
+html.dark-mode.neon-purple-mode .threads-title,
+html.dark-mode.neon-purple-mode .mh-left > strong,
+html.dark-mode.neon-purple-mode .mh-chat-copy strong,
+html.dark-mode.neon-purple-mode .chat-top-name,
+html.dark-mode.neon-purple-mode .chat-top-menu-title,
+html.dark-mode.neon-purple-mode .chat-top-menu-item,
+html.dark-mode.neon-purple-mode .thread-name,
+html.dark-mode.neon-purple-mode .msg-text,
+html.dark-mode.neon-purple-mode .messenger-pinned-banner__main,
+html.dark-mode.neon-purple-mode .messenger-pinned-banner__main strong,
+html.dark-mode.neon-purple-mode .messenger-action-btn,
+html.dark-mode.neon-purple-mode .messenger-composer-entry input,
+html.dark-mode.neon-purple-mode .messenger-input > input,
+html.dark-mode.neon-purple-mode .chat-top-caret,
+html.dark-mode.neon-purple-mode .messenger-mobile-search input,
+html.dark-mode.neon-purple-mode .messenger-mobile-back,
+html.dark-mode.neon-purple-mode .messenger-mobile-switcher__copy strong,
+html.dark-mode.neon-purple-mode .messenger-mobile-chip,
+html.dark-mode.neon-purple-mode .messenger-mobile-switcher__chip {
+  color: var(--text) !important;
+}
+
+html.dark-mode.neon-purple-mode .threads-title {
+  color: var(--muted) !important;
+}
+
+html.dark-mode.neon-purple-mode .mh-chat-copy span,
+html.dark-mode.neon-purple-mode .chat-top-status,
+html.dark-mode.neon-purple-mode .chat-top-menu-sub,
+html.dark-mode.neon-purple-mode .chat-top-menu-item-copy small,
+html.dark-mode.neon-purple-mode .thread-last,
+html.dark-mode.neon-purple-mode .thread-meta-foot,
+html.dark-mode.neon-purple-mode .messenger-header-notice,
+html.dark-mode.neon-purple-mode .threads-state,
+html.dark-mode.neon-purple-mode .msg-time,
+html.dark-mode.neon-purple-mode .msg-voice-time,
+html.dark-mode.neon-purple-mode .messenger-pinned-banner__main small,
+html.dark-mode.neon-purple-mode .messenger-reply-banner__copy small,
+html.dark-mode.neon-purple-mode .messenger-gif-modal p,
+html.dark-mode.neon-purple-mode .messenger-mobile-hero__copy small,
+html.dark-mode.neon-purple-mode .messenger-mobile-hero__copy span,
+html.dark-mode.neon-purple-mode .messenger-mobile-search input::placeholder,
+html.dark-mode.neon-purple-mode .messenger-mobile-chip__copy small,
+html.dark-mode.neon-purple-mode .messenger-mobile-switcher__copy small {
+  color: var(--muted) !important;
+}
+
+html.dark-mode.neon-purple-mode .thread-item:hover,
+html.dark-mode.neon-purple-mode .thread-item.active,
+html.dark-mode.neon-purple-mode .chat-top-profile-btn:hover,
+html.dark-mode.neon-purple-mode .chat-top-profile-btn.active,
+html.dark-mode.neon-purple-mode .messenger-composer-entry:focus-within,
+html.dark-mode.neon-purple-mode .msg-tool-menu button:hover,
+html.dark-mode.neon-purple-mode .msg-reaction-picker-btn:hover,
+html.dark-mode.neon-purple-mode .messenger-action-btn:hover:not(:disabled),
+html.dark-mode.neon-purple-mode .messenger-composer-btn:hover,
+html.dark-mode.neon-purple-mode .messenger-composer-btn.is-active,
+html.dark-mode.neon-purple-mode .messenger-composer-send:hover:not(:disabled),
+html.dark-mode.neon-purple-mode .messenger-mobile-chip.active,
+html.dark-mode.neon-purple-mode .messenger-mobile-switcher__chip.active {
+  background: rgba(247, 227, 200, 0.98) !important;
+  box-shadow: 0 16px 28px rgba(93, 63, 33, 0.12) !important;
+}
+
+html.dark-mode.neon-purple-mode .thread-item:hover,
+html.dark-mode.neon-purple-mode .thread-item.active,
+html.dark-mode.neon-purple-mode .chat-top-profile-btn:hover,
+html.dark-mode.neon-purple-mode .chat-top-profile-btn.active {
+  border-color: rgba(177, 131, 80, 0.3) !important;
+}
+
+html.dark-mode.neon-purple-mode .chat-top-menu {
+  border-color: rgba(177, 131, 80, 0.24) !important;
+  background: linear-gradient(180deg, rgba(255, 249, 242, 0.99), rgba(245, 229, 202, 0.98)) !important;
+}
+
+html.dark-mode.neon-purple-mode .chat-top-menu-header {
+  border-bottom-color: rgba(177, 131, 80, 0.18);
+}
+
+html.dark-mode.neon-purple-mode .chat-top-menu-item:hover {
+  background: rgba(196, 147, 92, 0.12);
+}
+
+html.dark-mode.neon-purple-mode .chat-top-menu-item-icon {
+  background: rgba(255, 249, 241, 0.92);
+  color: var(--text);
+}
+
+html.dark-mode.neon-purple-mode .thread-meta-foot strong {
+  background: rgba(196, 147, 92, 0.16);
+  color: #5d3b1f;
+}
+
+html.dark-mode.neon-purple-mode .message-row.them .msg-bubble {
+  background:
+    radial-gradient(circle at top left, rgba(255, 241, 220, 0.9), transparent 36%),
+    linear-gradient(135deg, rgba(215, 162, 101, 0.95), rgba(183, 123, 56, 0.92));
+  border-color: rgba(201, 142, 74, 0.3);
+  color: #fffaf4;
+  box-shadow:
+    0 14px 30px rgba(93, 63, 33, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+html.dark-mode.neon-purple-mode .message-row.them .msg-text {
+  color: #fffaf4;
+}
+
+html.dark-mode.neon-purple-mode .msg-reply-preview {
+  background: rgba(255, 247, 236, 0.74);
+  border-left-color: rgba(177, 131, 80, 0.78);
+}
+
+html.dark-mode.neon-purple-mode .msg-bubble--reminder {
+  border-color: rgba(177, 131, 80, 0.18);
+}
+
+html.dark-mode.neon-purple-mode .msg-reminder-card {
+  background:
+    radial-gradient(circle at top right, rgba(216, 176, 127, 0.18), transparent 32%),
+    linear-gradient(180deg, rgba(255, 245, 232, 0.98), rgba(242, 222, 191, 0.98));
+}
+
+html.dark-mode.neon-purple-mode .msg-reminder-eyebrow {
+  color: #9d6d3c;
+}
+
+html.dark-mode.neon-purple-mode .msg-reminder-badge {
+  background: rgba(196, 147, 92, 0.12);
+  border-color: rgba(177, 131, 80, 0.18);
+  color: #7a522b;
+}
+
+html.dark-mode.neon-purple-mode .msg-reminder-title {
+  color: var(--text);
+}
+
+html.dark-mode.neon-purple-mode .msg-reminder-copy {
+  color: rgba(59, 38, 23, 0.88);
+}
+
+html.dark-mode.neon-purple-mode .msg-reminder-step {
+  background: rgba(255, 248, 236, 0.74);
+  border-color: rgba(177, 131, 80, 0.12);
+}
+
+html.dark-mode.neon-purple-mode .msg-reminder-step-text,
+html.dark-mode.neon-purple-mode .msg-reminder-note {
+  color: #5c4732;
+}
+
+html.dark-mode.neon-purple-mode .msg-reminder-note {
+  background: rgba(255, 248, 236, 0.72);
+  border-color: rgba(177, 131, 80, 0.14);
+}
+
+html.dark-mode.neon-purple-mode .msg-tool-btn {
+  border-color: rgba(177, 131, 80, 0.2) !important;
+  background: rgba(255, 249, 241, 0.92) !important;
+  color: var(--text) !important;
+}
+
+html.dark-mode.neon-purple-mode .msg-tool-menu,
+html.dark-mode.neon-purple-mode .msg-reaction-picker,
+html.dark-mode.neon-purple-mode .msg-voice-menu {
+  border-color: rgba(177, 131, 80, 0.18);
+  background: linear-gradient(180deg, rgba(255, 249, 242, 0.99), rgba(245, 229, 202, 0.98));
+}
+
+html.dark-mode.neon-purple-mode .msg-tool-menu button,
+html.dark-mode.neon-purple-mode .msg-voice-menu button {
+  color: var(--text);
+}
+
+html.dark-mode.neon-purple-mode .msg-tool-menu button:hover,
+html.dark-mode.neon-purple-mode .msg-voice-menu button:hover:not(:disabled) {
+  background: rgba(196, 147, 92, 0.12) !important;
+  border-color: rgba(177, 131, 80, 0.2) !important;
+}
+
+html.dark-mode.neon-purple-mode .msg-reaction-picker-btn {
+  border-color: rgba(177, 131, 80, 0.16) !important;
+  background: rgba(255, 249, 241, 0.9) !important;
+}
+
+html.dark-mode.neon-purple-mode .msg-voice-card {
+  color: var(--text);
+  border-color: rgba(177, 131, 80, 0.18);
+  background: linear-gradient(180deg, rgba(255, 248, 236, 0.98), rgba(244, 226, 198, 0.96));
+}
+
+html.dark-mode.neon-purple-mode .msg-attachment-file {
+  border-color: rgba(177, 131, 80, 0.18);
+  color: var(--text);
+}
+
+html.dark-mode.neon-purple-mode .messenger-composer-entry {
+  background: rgba(255, 248, 238, 0.94);
+  box-shadow:
+    inset 0 0 0 1px rgba(177, 131, 80, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+html.dark-mode.neon-purple-mode .messenger-composer-entry:focus-within {
+  background: rgba(255, 250, 244, 0.98);
+  box-shadow:
+    inset 0 0 0 1px rgba(177, 131, 80, 0.28),
+    0 0 0 2px rgba(177, 131, 80, 0.1);
+}
+
+html.dark-mode.neon-purple-mode .messenger-composer-entry input::placeholder {
+  color: #8a7057;
+}
+
+html.dark-mode.neon-purple-mode .messenger-input > input {
+  border-color: rgba(177, 131, 80, 0.18) !important;
+  background: rgba(255, 249, 241, 0.94) !important;
+}
+
+html.dark-mode.neon-purple-mode .messenger-composer-send {
+  border: 1px solid rgba(177, 131, 80, 0.18) !important;
+  background: rgba(255, 249, 241, 0.94) !important;
+  color: var(--text) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.64),
+    0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+html.dark-mode.neon-purple-mode .messenger-composer-send.is-send {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, var(--messenger-accent), var(--messenger-accent-strong)) !important;
+  color: #fffaf4 !important;
+  box-shadow: 0 14px 24px rgba(145, 88, 42, 0.22) !important;
+}
+
+html.dark-mode.neon-purple-mode .messenger-composer-send:hover:not(:disabled) {
+  background: rgba(255, 252, 247, 0.99) !important;
+}
+
+html.dark-mode.neon-purple-mode .messenger-mobile-hero__copy strong,
+html.dark-mode.neon-purple-mode .messenger-mobile-chip__copy strong,
+html.dark-mode.neon-purple-mode .messenger-mobile-switcher__copy strong {
+  color: var(--text);
+}
+
+html.dark-mode.neon-purple-mode .messenger-mobile-hero {
+  border-color: rgba(177, 131, 80, 0.24);
+  background:
+    radial-gradient(circle at top left, rgba(216, 176, 127, 0.18), transparent 36%),
+    linear-gradient(135deg, rgba(255, 250, 243, 0.98), rgba(244, 227, 199, 0.95));
+  box-shadow: 0 16px 32px rgba(93, 63, 33, 0.1);
+}
+
+html.dark-mode.neon-purple-mode .messenger-mobile-hero__avatar,
+html.dark-mode.neon-purple-mode .messenger-mobile-chip__avatar,
+html.dark-mode.neon-purple-mode .messenger-mobile-switcher__avatar {
+  border-color: rgba(255, 249, 241, 0.96);
+  box-shadow: 0 10px 20px rgba(93, 63, 33, 0.12);
+}
+
+html.dark-mode.neon-purple-mode .messenger-mobile-hero__more {
+  border-color: rgba(255, 249, 241, 0.96);
+  background: linear-gradient(135deg, rgba(187, 127, 70, 0.92), rgba(140, 86, 37, 0.98));
+  box-shadow: 0 10px 20px rgba(93, 63, 33, 0.18);
+}
+
+html.dark-mode.neon-purple-mode .messenger-mobile-search {
+  border-color: rgba(177, 131, 80, 0.2);
+  background: rgba(255, 249, 241, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 10px 20px rgba(93, 63, 33, 0.06);
+}
+
+html.dark-mode.neon-purple-mode .messenger-mobile-search svg {
+  stroke: #8a7057;
+}
+
+html.dark-mode.neon-purple-mode .messenger-mobile-search input {
+  color: var(--text);
+}
+
+html.dark-mode.neon-purple-mode .messenger-mobile-chip {
+  border-color: rgba(177, 131, 80, 0.18);
+  background: rgba(255, 249, 241, 0.88);
+}
+
+html.dark-mode.neon-purple-mode .messenger-mobile-chip.active {
+  border-color: rgba(177, 131, 80, 0.28);
+  background:
+    radial-gradient(circle at top left, rgba(216, 176, 127, 0.16), transparent 40%),
+    linear-gradient(180deg, rgba(255, 249, 242, 0.98), rgba(245, 229, 202, 0.98));
+}
+
+html.dark-mode.neon-purple-mode .messenger-mobile-switcher {
+  background: transparent;
+}
+
+html.dark-mode.neon-purple-mode .messenger-mobile-back,
+html.dark-mode.neon-purple-mode .messenger-mobile-switcher__chip {
+  border-color: rgba(177, 131, 80, 0.18);
+  background: rgba(255, 249, 241, 0.9);
+}
+
+html.dark-mode.neon-purple-mode .messenger-mobile-switcher__chip.active {
+  border-color: rgba(177, 131, 80, 0.28);
+  background:
+    radial-gradient(circle at top left, rgba(216, 176, 127, 0.16), transparent 40%),
+    linear-gradient(180deg, rgba(255, 249, 242, 0.98), rgba(245, 229, 202, 0.98));
+}
+
 .messenger-error {
   border-top: 1px solid color-mix(in srgb, var(--danger) 25%, var(--border));
   color: var(--danger);

@@ -273,10 +273,10 @@ describe("PostCard comment toggle", () => {
     expect(screen.queryByRole("button", { name: /^More$/i })).not.toBeInTheDocument();
   });
 
-  it("collapses long post text after 500 words and expands on More", async () => {
+  it("collapses long post text after 200 words and expands on More", async () => {
     const user = userEvent.setup();
     const longWordPostText = Array.from(
-      { length: 520 },
+      { length: 220 },
       (_, index) => `Word${index + 1}`
     ).join(" ");
 
@@ -302,11 +302,11 @@ describe("PostCard comment toggle", () => {
       .find((button) => button.hasAttribute("aria-controls"));
 
     expect(moreButton).toBeDefined();
-    expect(screen.queryByText(/Word520/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Word220/i)).not.toBeInTheDocument();
 
     await user.click(moreButton);
 
-    expect(await screen.findByText(/Word520/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Word220/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Less$/i })).toBeInTheDocument();
   });
 

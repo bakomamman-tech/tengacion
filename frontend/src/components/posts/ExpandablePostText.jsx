@@ -42,9 +42,9 @@ const countWords = (value = "") => {
   return trimmed.split(/\s+/).filter(Boolean).length;
 };
 
-const truncateByWords = (value = "", limit = 500) => {
+const truncateByWords = (value = "", limit = 200) => {
   const clean = String(value || "");
-  const safeLimit = Math.max(1, Number(limit) || 500);
+  const safeLimit = Math.max(1, Number(limit) || 200);
   const wordCount = countWords(clean);
 
   if (!clean.trim() || wordCount <= safeLimit) {
@@ -90,7 +90,7 @@ export default function ExpandablePostText({
   toggleClassName = "",
   collapseMode = "lines",
   collapsedLines = 5,
-  collapsedWords = 500,
+  collapsedWords = 200,
   moreLabel = "More",
   lessLabel = "Less",
   toggleAlign = "start",

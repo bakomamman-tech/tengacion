@@ -46,7 +46,7 @@ const REACTIONS = [
 
 const DEFAULT_REACTION = REACTIONS[0];
 const REACTION_LOOKUP = new Map(REACTIONS.map((reaction) => [reaction.key, reaction]));
-const POST_TEXT_WORD_LIMIT = 500;
+const POST_TEXT_WORD_LIMIT = 200;
 
 const normalizeReactionKey = (value = "") => {
   const raw = String(value || "").trim();

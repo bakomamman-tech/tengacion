@@ -39,6 +39,11 @@ const isValidId = (value) => mongoose.Types.ObjectId.isValid(value);
 
 const includesId = (list, id) =>
   Array.isArray(list) && list.some((entry) => toIdString(entry) === id);
+const ACTIVE_USER_FILTER = { isDeleted: { $ne: true } };
+const withActiveUsers = (query = {}) => ({
+  ...query,
+  ...ACTIVE_USER_FILTER,
+});
 const PRIVACY_VALUES = ["public", "friends", "private"];
 const MESSAGE_PERMISSION_VALUES = ["everyone", "friends", "no_one"];
 const AUDIENCE_VALUES = ["public", "friends", "close_friends"];
@@ -333,9 +338,13 @@ router.get("/profile/:username", auth, async (req, res) => {
       return res.status(400).json({ error: "Username is required" });
     }
 
-    const user = await User.findOne({ username })
+    const user = await User.findOne(withActiveUsers({ username }))
       .select("-password")
-      .populate("friends", "_id name username avatar")
+      .populate({
+        path: "friends",
+        select: "_id name username avatar",
+        match: ACTIVE_USER_FILTER,
+      })
       .lean();
 
     if (!user) {
@@ -441,7 +450,7 @@ router.get("/", auth, async (req, res) => {
 
     const me = await User.findById(req.user.id).select("friends friendRequests").lean();
 
-    const users = await User.find(query)
+    const users = await User.find(withActiveUsers(query))
       .select("_id name username avatar friendRequests friends")
       .sort({ name: 1 })
       .limit(50)
@@ -506,7 +515,7 @@ router.get("/directory", auth, async (req, res) => {
       )
     );
 
-    const query = excludedIds.length > 0 ? { _id: { $nin: excludedIds } } : {};
+    const query = withActiveUsers(excludedIds.length > 0 ? { _id: { $nin: excludedIds } } : {});
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -552,7 +561,9 @@ router.post("/:id/request", auth, async (req, res) => {
     }
 
     const me = await User.findById(req.user.id).select("_id name username");
-    const user = await User.findById(req.params.id).select("_id name username friends friendRequests");
+    const user = await User.findOne(withActiveUsers({ _id: req.params.id })).select(
+      "_id name username friends friendRequests"
+    );
 
     if (!me || !user) {
       return res.status(404).json({ error: "User not found" });
@@ -655,7 +666,7 @@ router.delete("/:id/request", auth, async (req, res) => {
     }
 
     const me = await User.findById(req.user.id);
-    const user = await User.findById(req.params.id);
+    const user = await User.findOne(withActiveUsers({ _id: req.params.id }));
 
     if (!me || !user) {
       return res.status(404).json({ error: "User not found" });
@@ -681,7 +692,7 @@ router.post("/:id/accept", auth, async (req, res) => {
     }
 
     const me = await User.findById(req.user.id);
-    const user = await User.findById(req.params.id);
+    const user = await User.findOne(withActiveUsers({ _id: req.params.id }));
 
     if (!me || !user) {
       return res.status(404).json({ error: "User not found" });
@@ -793,7 +804,7 @@ router.delete("/:id/friend", auth, async (req, res) => {
     }
 
     const me = await User.findById(req.user.id);
-    const user = await User.findById(req.params.id);
+    const user = await User.findOne(withActiveUsers({ _id: req.params.id }));
 
     if (!me || !user) {
       return res.status(404).json({ error: "User not found" });
@@ -824,7 +835,7 @@ router.get("/requests", auth, async (req, res) => {
     }
 
     const users = await User.find(
-      { _id: { $in: me.friendRequests || [] } },
+      withActiveUsers({ _id: { $in: me.friendRequests || [] } }),
       "_id name username avatar"
     ).lean();
     console.log("[FRIEND FETCH]", {
@@ -879,22 +890,22 @@ router.get("/me/friends-hub", auth, async (req, res) => {
     const baseSelect = "_id name username avatar friends birthday";
     const [incomingUsers, outgoingUsersRaw, friendUsers, suggestionCandidates] = await Promise.all([
       incomingRequestIds.length > 0
-        ? User.find({ _id: { $in: incomingRequestIds } })
-          .select(baseSelect)
-          .sort({ name: 1, username: 1 })
-          .lean()
+        ? User.find(withActiveUsers({ _id: { $in: incomingRequestIds } }))
+            .select(baseSelect)
+            .sort({ name: 1, username: 1 })
+            .lean()
         : [],
-      User.find({ friendRequests: me._id })
+      User.find(withActiveUsers({ friendRequests: me._id }))
         .select(baseSelect)
         .sort({ name: 1, username: 1 })
         .lean(),
       viewerFriendIds.length > 0
-        ? User.find({ _id: { $in: viewerFriendIds } })
-          .select(baseSelect)
-          .sort({ name: 1, username: 1 })
-          .lean()
+        ? User.find(withActiveUsers({ _id: { $in: viewerFriendIds } }))
+            .select(baseSelect)
+            .sort({ name: 1, username: 1 })
+            .lean()
         : [],
-      User.find({ _id: { $nin: excludedSuggestionIds } })
+      User.find(withActiveUsers({ _id: { $nin: excludedSuggestionIds } }))
         .select(baseSelect)
         .sort({ name: 1, username: 1 })
         .limit(80)
@@ -1187,7 +1198,9 @@ router.get("/:id/status", auth, async (req, res) => {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id" });
     }
-    const user = await User.findById(req.params.id).select("_id status").lean();
+    const user = await User.findOne(withActiveUsers({ _id: req.params.id }))
+      .select("_id status")
+      .lean();
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -1205,7 +1218,11 @@ router.get("/:id/status", auth, async (req, res) => {
 router.get("/me/close-friends", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
-      .populate("closeFriends", "_id name username avatar")
+      .populate({
+        path: "closeFriends",
+        select: "_id name username avatar",
+        match: ACTIVE_USER_FILTER,
+      })
       .lean();
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -1399,7 +1416,9 @@ router.get("/:id", auth, async (req, res) => {
       return res.status(400).json({ error: "Invalid user id" });
     }
     const viewerId = toIdString(req.user.id);
-    const user = await User.findById(req.params.id).select("-password").lean();
+    const user = await User.findOne(withActiveUsers({ _id: req.params.id }))
+      .select("-password")
+      .lean();
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }

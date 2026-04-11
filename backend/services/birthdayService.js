@@ -18,6 +18,7 @@ const runBirthdayRecognition = async ({ logger = console } = {}) => {
   const users = await User.find({
     "birthday.day": day,
     "birthday.month": month,
+    isDeleted: { $ne: true },
   }).select("_id name username birthday");
 
   let created = 0;

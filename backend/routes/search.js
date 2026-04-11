@@ -10,6 +10,7 @@ const router = express.Router();
 const sanitizeQuery = (value = "") => String(value || "").trim().slice(0, 80);
 const normalizeAccountQuery = (value = "") => sanitizeQuery(value).replace(/^@+\s*/, "");
 const avatarToUrl = (avatar) => normalizeMediaValue(avatar).url;
+const ACTIVE_USER_FILTER = { isDeleted: { $ne: true } };
 
 router.get("/", auth, async (req, res) => {
   try {
@@ -25,6 +26,7 @@ router.get("/", auth, async (req, res) => {
 
       const users = await User.find(
         {
+          ...ACTIVE_USER_FILTER,
           $or: [
             { username: { $regex: accountQuery, $options: "i" } },
             { name: { $regex: accountQuery, $options: "i" } },
@@ -54,7 +56,11 @@ router.get("/", auth, async (req, res) => {
         },
         "_id text author hashtags createdAt"
       )
-        .populate("author", "_id name username avatar")
+        .populate({
+          path: "author",
+          select: "_id name username avatar",
+          match: ACTIVE_USER_FILTER,
+        })
         .sort({ createdAt: -1 })
         .limit(30)
         .lean();
@@ -141,7 +147,10 @@ router.get("/suggestions", auth, async (req, res) => {
       ...(me.friends || []).map((id) => String(id)),
     ];
     const people = await User.find(
-      { _id: { $nin: excluded } },
+      {
+        ...ACTIVE_USER_FILTER,
+        _id: { $nin: excluded },
+      },
       "_id name username avatar"
     )
       .limit(10)

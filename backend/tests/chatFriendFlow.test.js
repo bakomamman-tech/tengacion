@@ -440,4 +440,54 @@ describe("chat + friend request flow", () => {
       }),
     });
   });
+
+  test("soft-deleted accounts stay out of discovery and profile endpoints", async () => {
+    const deletedUser = await User.create({
+      name: "Ghost Friend",
+      username: "ghost.friend",
+      email: "ghost.friend@test.com",
+      password: "Password123!",
+      isDeleted: true,
+      isActive: false,
+      isBanned: true,
+      deletedAt: new Date(),
+    });
+
+    const friendsHub = await request(app)
+      .get("/api/users/me/friends-hub")
+      .set("Authorization", `Bearer ${tokenA}`)
+      .expect(200);
+
+    expect(friendsHub.body.suggestions.some((entry) => entry._id === deletedUser._id.toString())).toBe(
+      false
+    );
+
+    const directory = await request(app)
+      .get("/api/users/directory?page=1&limit=10")
+      .set("Authorization", `Bearer ${tokenA}`)
+      .expect(200);
+
+    expect(directory.body.items.some((entry) => entry._id === deletedUser._id.toString())).toBe(false);
+
+    const userSearch = await request(app)
+      .get(`/api/search?q=${encodeURIComponent(deletedUser.username)}&type=users`)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .expect(200);
+
+    expect(userSearch.body.data.some((entry) => entry._id === deletedUser._id.toString())).toBe(false);
+
+    const searchSuggestions = await request(app)
+      .get("/api/search/suggestions")
+      .set("Authorization", `Bearer ${tokenA}`)
+      .expect(200);
+
+    expect(searchSuggestions.body.people.some((entry) => entry._id === deletedUser._id.toString())).toBe(
+      false
+    );
+
+    await request(app)
+      .get(`/api/users/profile/${encodeURIComponent(deletedUser.username)}`)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .expect(404);
+  });
 });

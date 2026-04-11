@@ -352,7 +352,7 @@ export default function FindFriendsPage({ user }) {
             <section className="card friends-panel find-friends-hero">
               <div className="find-friends-hero__copy">
                 <p className="friends-section-eyebrow">People discovery</p>
-                <h2>Facebook-style friend finding, tuned for Tengacion.</h2>
+                <h2 className="find-friends-hero__title">FIND FRIENDS ON TENGACION</h2>
                 <p>
                   Search the whole community, check mutual friends, and choose who to connect with next.
                 </p>

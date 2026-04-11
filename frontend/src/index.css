@@ -7958,12 +7958,18 @@ html.dark-mode .create-menu-empty {
 .find-friends-hero__copy {
   display: grid;
   gap: 10px;
+  justify-items: center;
+  text-align: center;
 }
 
-.find-friends-hero__copy h2 {
+.find-friends-hero__title {
   margin: 0;
   font-size: clamp(24px, 3vw, 34px);
   line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-wrap: balance;
 }
 
 .find-friends-hero__copy p {

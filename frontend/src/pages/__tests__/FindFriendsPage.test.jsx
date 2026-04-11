@@ -78,6 +78,9 @@ describe("FindFriendsPage", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Find Friends" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "FIND FRIENDS ON TENGACION" })
+    ).toBeInTheDocument();
     expect(await screen.findByText("Jane Doe")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /add friend/i }));

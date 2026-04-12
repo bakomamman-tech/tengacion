@@ -6,6 +6,7 @@ const ASSISTANT_DESTINATIONS = [
   "notifications",
   "profile",
   "creator_dashboard",
+  "creator_page",
   "settings",
   "book_publishing",
   "music_upload",

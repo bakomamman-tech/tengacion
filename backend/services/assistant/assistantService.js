@@ -185,6 +185,13 @@ const detectLocalPlan = (message = "") => {
     return { kind: "tool", name: "navigateTo", args: { destination: "profile" } };
   }
 
+  if (
+    /\b(creator(?:'s)?\s+page|public\s+creator\s+page|fan\s+page)\b/.test(lower) &&
+    /\b(open|take me|go to|show me)\b/.test(lower)
+  ) {
+    return { kind: "tool", name: "navigateTo", args: { destination: "creator_page" } };
+  }
+
   if (/\bcreator dashboard\b/.test(lower)) {
     return { kind: "tool", name: "navigateTo", args: { destination: "creator_dashboard" } };
   }

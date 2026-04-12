@@ -8,6 +8,7 @@ const {
   buildAction,
   buildNavigateResponse,
   getCreatorRouteForDashboard,
+  getCreatorPublicPageRoute,
   getCreatorRouteForOnboarding,
   getUploadRoute,
   getUserProfileRoute,
@@ -67,6 +68,18 @@ const navigateToTool = {
         message: route === "/creator" ? "Let's finish creator setup first." : "Opening your creator dashboard.",
         route,
         label: "Creator dashboard",
+      });
+    }
+
+    if (destination === "creator_page") {
+      const route = await getCreatorPublicPageRoute(userId);
+      return buildNavigateResponse({
+        message:
+          route === "/creator/register"
+            ? "You do not have a public creator page yet. Let's finish creator setup first."
+            : "Opening your creator page.",
+        route,
+        label: "Creator page",
       });
     }
 
@@ -153,7 +166,7 @@ const navigateToTool = {
     }
 
     return {
-      message: "I can open home, messages, notifications, profile, creator dashboard, uploads, purchases, settings, search, and discovery.",
+      message: "I can open home, messages, notifications, profile, creator page, creator dashboard, uploads, purchases, settings, search, and discovery.",
       actions: [],
       cards: [],
       requiresConfirmation: false,

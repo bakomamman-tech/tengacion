@@ -15,6 +15,7 @@ const CreatorProfile = require("../models/CreatorProfile");
 let mongod;
 let app;
 let authToken;
+let viewerCreatorProfile;
 
 const issueSessionToken = async (userId) => {
   const sessionId = new mongoose.Types.ObjectId().toString();
@@ -75,7 +76,7 @@ beforeEach(async () => {
     password: "Password123!",
   });
 
-  await CreatorProfile.create({
+  viewerCreatorProfile = await CreatorProfile.create({
     userId: viewer._id,
     displayName: "Viewer Creator",
     fullName: "Viewer Creator",
@@ -183,6 +184,23 @@ describe("Assistant routes", () => {
         expect.objectContaining({
           type: "navigate",
           target: "/creator/music/upload",
+        }),
+      ])
+    );
+  });
+
+  it("opens the user's public creator page", async () => {
+    const response = await request(app)
+      .post("/api/assistant/chat")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ message: "Take me to my creator's page" })
+      .expect(200);
+
+    expect(response.body.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "navigate",
+          target: `/creator/${viewerCreatorProfile._id.toString()}`,
         }),
       ])
     );

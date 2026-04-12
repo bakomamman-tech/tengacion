@@ -43,6 +43,12 @@ const getCreatorRouteForDashboard = async (userId) => {
   return creatorIsReady(profile) ? "/creator/dashboard" : "/creator";
 };
 
+const getCreatorPublicPageRoute = async (userId) => {
+  const profile = await getCreatorProfile(userId);
+  const creatorId = String(profile?._id || "").trim();
+  return creatorIsReady(profile) && creatorId ? `/creator/${creatorId}` : "/creator/register";
+};
+
 const getCreatorRouteForOnboarding = async (userId) => {
   const profile = await getCreatorProfile(userId);
   return creatorIsReady(profile) ? "/creator/dashboard" : "/creator/register";
@@ -81,6 +87,7 @@ module.exports = {
   escapeRegExp,
   getCreatorProfile,
   getCreatorRouteForDashboard,
+  getCreatorPublicPageRoute,
   getCreatorRouteForOnboarding,
   getUploadRoute,
   getUserProfileRoute,

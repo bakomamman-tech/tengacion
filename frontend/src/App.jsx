@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import AdminRoute from "./components/AdminRoute";
 import InstallPrompt from "./components/InstallPrompt";
+import TengacionAssistantDock from "./components/assistant/TengacionAssistantDock";
 import ProtectedRoute from "./components/ProtectedRoute";
 import WelcomeVoiceController from "./components/WelcomeVoiceController";
 import { useAuth } from "./context/AuthContext";
@@ -226,6 +227,14 @@ export default function App() {
             element={
               <ProtectedRoute user={user}>
                 <Home user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/messages"
+            element={
+              <ProtectedRoute user={user}>
+                <Navigate to="/home" replace state={{ openMessenger: true }} />
               </ProtectedRoute>
             }
           />
@@ -739,6 +748,7 @@ export default function App() {
         </Routes>
       </Suspense>
       <InstallPrompt />
+      {user ? <TengacionAssistantDock /> : null}
     </>
   );
 }

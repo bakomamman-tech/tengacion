@@ -1,0 +1,643 @@
+body.tg-assistant-open {
+  overflow: hidden;
+}
+
+.tg-assistant-launcher {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 1300;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-height: 3.45rem;
+  padding: 0.7rem 1rem 0.7rem 0.85rem;
+  border: 1px solid rgba(42, 111, 79, 0.18);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(252, 252, 249, 0.98) 0%, rgba(234, 242, 235, 0.94) 100%);
+  color: var(--text);
+  box-shadow:
+    0 16px 34px rgba(13, 33, 25, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
+}
+
+.tg-assistant-launcher:hover {
+  transform: translateY(-1px);
+  border-color: rgba(42, 111, 79, 0.28);
+  box-shadow:
+    0 20px 40px rgba(13, 33, 25, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+}
+
+.tg-assistant-launcher:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(42, 111, 79, 0.16),
+    0 20px 40px rgba(13, 33, 25, 0.18);
+}
+
+.tg-assistant-launcher__icon {
+  width: 2.2rem;
+  height: 2.2rem;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #4b8a66 0%, #2d6c4f 100%);
+  color: #fffaf5;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.tg-assistant-launcher__icon svg {
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+}
+
+.tg-assistant-launcher__copy {
+  display: grid;
+  text-align: left;
+  line-height: 1.1;
+}
+
+.tg-assistant-launcher__copy strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.tg-assistant-launcher__copy small {
+  margin-top: 0.12rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.tg-assistant-launcher.is-open {
+  border-color: rgba(42, 111, 79, 0.28);
+  background: linear-gradient(180deg, rgba(247, 251, 247, 0.98) 0%, rgba(224, 236, 226, 0.94) 100%);
+}
+
+.tg-assistant-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1290;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 1rem;
+  background: rgba(15, 24, 18, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.tg-assistant-panel {
+  width: min(100%, 28.5rem);
+  height: min(82vh, 50rem);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid rgba(42, 111, 79, 0.16);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 252, 0.98) 0%, rgba(240, 247, 240, 0.96) 100%);
+  box-shadow:
+    0 32px 72px rgba(13, 33, 25, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.tg-assistant-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1rem 0.9rem;
+  border-bottom: 1px solid rgba(42, 111, 79, 0.12);
+}
+
+.tg-assistant-panel__identity {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.tg-assistant-panel__icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #5b9b74 0%, #2b6b4f 100%);
+  color: #f8fff9;
+  box-shadow:
+    0 12px 28px rgba(42, 111, 79, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.tg-assistant-panel__icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: currentColor;
+}
+
+.tg-assistant-panel__identity h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.tg-assistant-panel__identity p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.tg-assistant-panel__body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.tg-assistant-empty-state {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+  border: 1px solid rgba(42, 111, 79, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.72);
+  margin-bottom: 1rem;
+}
+
+.tg-assistant-empty-state strong {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.tg-assistant-empty-state p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.tg-assistant-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.tg-assistant-chip {
+  min-height: 2.35rem;
+  padding: 0 0.9rem;
+  border: 1px solid rgba(42, 111, 79, 0.16);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(251, 252, 249, 0.98) 0%, rgba(233, 241, 234, 0.94) 100%);
+  color: color-mix(in srgb, var(--text) 84%, var(--brand-strong) 16%);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    background 180ms ease,
+    border-color 180ms ease;
+}
+
+.tg-assistant-chip:hover,
+.tg-assistant-chip:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(42, 111, 79, 0.28);
+  background: linear-gradient(180deg, rgba(255, 255, 252, 0.98) 0%, rgba(239, 246, 240, 0.96) 100%);
+}
+
+.tg-assistant-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(42, 111, 79, 0.14);
+}
+
+.tg-assistant-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(206, 90, 76, 0.2);
+  border-radius: 18px;
+  background: rgba(255, 247, 244, 0.98);
+  margin-bottom: 0.9rem;
+}
+
+.tg-assistant-error strong {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: #8c3e30;
+}
+
+.tg-assistant-error p {
+  margin: 0;
+  color: #7f5b53;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.tg-assistant-thread {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.tg-assistant-message {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.tg-assistant-message--user {
+  justify-items: end;
+}
+
+.tg-assistant-message__meta {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--muted) 72%, var(--brand-strong) 28%);
+}
+
+.tg-assistant-message--user .tg-assistant-message__meta {
+  color: color-mix(in srgb, var(--brand-strong) 60%, var(--muted) 40%);
+}
+
+.tg-assistant-message__bubble {
+  width: fit-content;
+  max-width: min(100%, 22rem);
+  padding: 0.8rem 0.92rem;
+  border: 1px solid rgba(42, 111, 79, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  box-shadow: 0 10px 22px rgba(13, 33, 25, 0.06);
+}
+
+.tg-assistant-message--user .tg-assistant-message__bubble {
+  background: linear-gradient(180deg, #3c7f5b 0%, #2b6849 100%);
+  border-color: rgba(24, 67, 45, 0.12);
+  color: #f6fbf7;
+}
+
+.tg-assistant-message__bubble--loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tg-assistant-typing {
+  display: inline-flex;
+  gap: 0.26rem;
+  align-items: center;
+}
+
+.tg-assistant-typing i {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: var(--brand);
+  animation: assistantPulse 1s ease-in-out infinite;
+}
+
+.tg-assistant-typing i:nth-child(2) {
+  animation-delay: 0.14s;
+}
+
+.tg-assistant-typing i:nth-child(3) {
+  animation-delay: 0.28s;
+}
+
+.tg-assistant-typing__text {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.tg-assistant-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.2rem;
+}
+
+.tg-assistant-card {
+  display: grid;
+  gap: 0.3rem;
+  align-content: start;
+  padding: 0.88rem;
+  border: 1px solid rgba(42, 111, 79, 0.12);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 252, 0.98) 0%, rgba(239, 246, 240, 0.96) 100%);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(13, 33, 25, 0.06);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.tg-assistant-card:hover,
+.tg-assistant-card:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(42, 111, 79, 0.24);
+  box-shadow: 0 16px 28px rgba(13, 33, 25, 0.1);
+}
+
+.tg-assistant-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(42, 111, 79, 0.14), 0 16px 28px rgba(13, 33, 25, 0.1);
+}
+
+.tg-assistant-card__kicker {
+  color: color-mix(in srgb, var(--muted) 72%, var(--brand-strong) 28%);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.tg-assistant-card__title {
+  font-size: 0.95rem;
+  letter-spacing: -0.02em;
+}
+
+.tg-assistant-card__subtitle {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.tg-assistant-card__description {
+  margin: 0;
+  color: color-mix(in srgb, var(--text) 76%, var(--muted) 24%);
+  font-size: 0.87rem;
+  line-height: 1.45;
+}
+
+.tg-assistant-card__action {
+  margin-top: 0.2rem;
+  color: var(--brand-strong);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.tg-assistant-panel__footer {
+  padding: 0.95rem;
+  border-top: 1px solid rgba(42, 111, 79, 0.12);
+}
+
+.tg-assistant-composer {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.tg-assistant-composer__field {
+  display: block;
+}
+
+.tg-assistant-composer__textarea {
+  width: 100%;
+  min-height: 4.2rem;
+  max-height: 12rem;
+  resize: vertical;
+  padding: 0.9rem 0.98rem;
+  border: 1px solid rgba(42, 111, 79, 0.16);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.5;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.tg-assistant-composer__textarea::placeholder {
+  color: color-mix(in srgb, var(--muted) 78%, transparent 22%);
+}
+
+.tg-assistant-composer__textarea:focus-visible {
+  outline: none;
+  border-color: rgba(42, 111, 79, 0.34);
+  box-shadow: 0 0 0 3px rgba(42, 111, 79, 0.12);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.tg-assistant-composer__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.tg-assistant-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1310;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(11, 17, 13, 0.36);
+  backdrop-filter: blur(10px);
+}
+
+.tg-assistant-confirm-card {
+  width: min(100%, 26rem);
+  display: grid;
+  gap: 1rem;
+  padding: 1.2rem;
+  border: 1px solid rgba(42, 111, 79, 0.16);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 252, 0.98) 0%, rgba(240, 247, 240, 0.96) 100%);
+  box-shadow: 0 28px 60px rgba(13, 33, 25, 0.22);
+}
+
+.tg-assistant-confirm-card__badge {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e9b46f 0%, #c87a38 100%);
+  color: #fff9f1;
+  font-weight: 900;
+}
+
+.tg-assistant-confirm-card__copy h3 {
+  margin: 0;
+  font-size: 1.06rem;
+  letter-spacing: -0.03em;
+}
+
+.tg-assistant-confirm-card__copy p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.tg-assistant-confirm-card__hint {
+  margin-top: 0.55rem !important;
+  color: color-mix(in srgb, var(--brand-strong) 78%, var(--muted) 22%) !important;
+  font-weight: 700;
+}
+
+.tg-assistant-confirm-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+}
+
+@keyframes assistantPulse {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  40% {
+    transform: translateY(-2px);
+    opacity: 1;
+  }
+}
+
+html.dark-mode .tg-assistant-launcher {
+  border-color: rgba(121, 207, 162, 0.16);
+  background: linear-gradient(180deg, rgba(24, 48, 38, 0.98) 0%, rgba(14, 29, 22, 0.96) 100%);
+  color: #effaf3;
+  box-shadow:
+    0 18px 36px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(245, 251, 247, 0.08);
+}
+
+html.dark-mode .tg-assistant-launcher:hover {
+  border-color: rgba(121, 207, 162, 0.26);
+  box-shadow:
+    0 24px 42px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(245, 251, 247, 0.1);
+}
+
+html.dark-mode .tg-assistant-launcher__copy small,
+html.dark-mode .tg-assistant-panel__identity p,
+html.dark-mode .tg-assistant-empty-state p,
+html.dark-mode .tg-assistant-error p,
+html.dark-mode .tg-assistant-card__subtitle,
+html.dark-mode .tg-assistant-card__description,
+html.dark-mode .tg-assistant-typing__text,
+html.dark-mode .tg-assistant-composer__textarea::placeholder {
+  color: color-mix(in srgb, #def1e5 58%, var(--muted) 42%);
+}
+
+html.dark-mode .tg-assistant-launcher.is-open,
+html.dark-mode .tg-assistant-panel,
+html.dark-mode .tg-assistant-confirm-card {
+  background: linear-gradient(180deg, rgba(20, 35, 28, 0.98) 0%, rgba(12, 24, 19, 0.96) 100%);
+  border-color: rgba(121, 207, 162, 0.14);
+  color: #effaf3;
+}
+
+html.dark-mode .tg-assistant-panel__header,
+html.dark-mode .tg-assistant-panel__footer {
+  border-color: rgba(121, 207, 162, 0.12);
+}
+
+html.dark-mode .tg-assistant-empty-state,
+html.dark-mode .tg-assistant-message__bubble,
+html.dark-mode .tg-assistant-card,
+html.dark-mode .tg-assistant-composer__textarea,
+html.dark-mode .tg-assistant-error {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(121, 207, 162, 0.14);
+}
+
+html.dark-mode .tg-assistant-message__bubble {
+  color: #effaf3;
+  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.22);
+}
+
+html.dark-mode .tg-assistant-message--user .tg-assistant-message__bubble {
+  background: linear-gradient(180deg, #7dd0a4 0%, #4ca679 100%);
+  color: #08150f;
+}
+
+html.dark-mode .tg-assistant-chip,
+html.dark-mode .tg-assistant-card {
+  background: linear-gradient(180deg, rgba(28, 46, 37, 0.98) 0%, rgba(17, 31, 24, 0.94) 100%);
+  border-color: rgba(121, 207, 162, 0.14);
+  color: #effaf3;
+}
+
+html.dark-mode .tg-assistant-card__action,
+html.dark-mode .tg-assistant-confirm-card__hint {
+  color: #bff0d6 !important;
+}
+
+html.dark-mode .tg-assistant-confirm-card__badge {
+  background: linear-gradient(180deg, #d08a4c 0%, #9e5f26 100%);
+  color: #fff8f1;
+}
+
+@media (max-width: 760px) {
+  .tg-assistant-backdrop {
+    align-items: flex-end;
+    padding: 0.5rem;
+  }
+
+  .tg-assistant-panel {
+    width: 100%;
+    height: min(86vh, 100vh - 1rem);
+    border-radius: 24px 24px 18px 18px;
+  }
+
+  .tg-assistant-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tg-assistant-launcher {
+    left: 0.75rem;
+    bottom: 0.75rem;
+    padding-inline: 0.8rem;
+  }
+
+  .tg-assistant-launcher__copy small {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .tg-assistant-launcher__copy {
+    display: none;
+  }
+
+  .tg-assistant-launcher {
+    width: 3.45rem;
+    justify-content: center;
+    padding: 0.7rem;
+  }
+
+  .tg-assistant-panel__header {
+    padding: 0.9rem 0.9rem 0.8rem;
+  }
+
+  .tg-assistant-panel__body {
+    padding: 0.9rem;
+  }
+
+  .tg-assistant-panel__footer {
+    padding: 0.85rem;
+  }
+}
+

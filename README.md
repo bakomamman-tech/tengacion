@@ -21,6 +21,29 @@ This repo now supports an MVP where users can:
 - `apps/web/` (feature-based React modules, shared API client)
 - `.env.example` / `.env.test` env templates
 
+## Akuso Assistant
+Akuso is Tengacion's in-app AI assistant. Phase 1 is intentionally narrow and safe:
+- open home, messages, notifications, profile, settings, purchases, creator onboarding, and creator upload pages
+- search creators and search content
+- summarize notifications and purchases
+- draft short captions and explain supported features
+
+Safety rules:
+- authenticated users only
+- no silent messages, deletes, payment changes, publishing, moderation, or account mutations
+- risky requests return `requiresConfirmation: true` with a safe pending action, or a polite refusal
+- the frontend only executes allowlisted internal actions
+
+Configuration:
+- `OPENAI_API_KEY` is optional in development; if it is missing, Akuso falls back to safe local behavior
+- `OPENAI_MODEL` defaults to `gpt-5.4-mini`
+
+Adding a new assistant tool:
+1. Add request/response schemas in `backend/services/assistant/schemas.js`
+2. Implement the tool in `backend/services/assistant/tools/`
+3. Register it in `backend/services/assistant/tools/index.js`
+4. Keep the tool output structured JSON and avoid mutations unless a future confirmed-action layer is added
+
 ## Creator + Artist Enhancements
 - Artist profile now exposes `links` (Spotify, Instagram, Facebook, TikTok, YouTube, Apple Music, Audiomack, Boomplay, Website) plus a `customLinks` array.
 - New protected endpoint `GET /api/artist/:username` and `PUT /api/artist/me` for artists to edit their presence.

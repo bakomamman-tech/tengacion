@@ -39,6 +39,11 @@ console.log("Backend runtime config", {
   allowedOrigins: Array.isArray(config.allowedOrigins) ? config.allowedOrigins.length : 0,
   cloudinaryReady: Boolean(config.cloudinary?.configured),
 });
+console.log("[assistant]", {
+  enabled: Boolean(config.assistantEnabled),
+  provider: config.hasOpenAI ? "openai" : "local-fallback",
+  model: config.openAiModel || config.OPENAI_MODEL || "unset",
+});
 
 const missingAuthSecrets = [
   !String(config.JWT_REFRESH_SECRET || "").trim() ? "JWT_REFRESH_SECRET" : "",

@@ -196,6 +196,10 @@ const stripeSecretKey = toText(process.env.STRIPE_SECRET_KEY);
 const stripePublishableKey = toText(process.env.STRIPE_PUBLISHABLE_KEY);
 const stripeWebhookSecret = toText(process.env.STRIPE_WEBHOOK_SECRET);
 const requireEmailOtp = toText(process.env.REQUIRE_EMAIL_OTP) || "false";
+const openAiApiKey = toText(process.env.OPENAI_API_KEY);
+const openAiModel = toText(process.env.OPENAI_MODEL) || "gpt-5.4-mini";
+const hasOpenAI = Boolean(openAiApiKey);
+const assistantEnabled = hasOpenAI || !isProduction;
 
 const missing = [];
 
@@ -260,6 +264,10 @@ const config = {
   stripeSecretKey,
   stripePublishableKey,
   stripeWebhookSecret,
+  openAiApiKey,
+  openAiModel,
+  hasOpenAI,
+  assistantEnabled,
   requireEmailOtp,
   livekit:
     livekitApiKey || livekitApiSecret || livekitHost || livekitWsUrl
@@ -303,6 +311,10 @@ const config = {
   STRIPE_SECRET_KEY: stripeSecretKey,
   STRIPE_PUBLISHABLE_KEY: stripePublishableKey,
   STRIPE_WEBHOOK_SECRET: stripeWebhookSecret,
+  OPENAI_API_KEY: openAiApiKey,
+  OPENAI_MODEL: openAiModel,
+  HAS_OPENAI: hasOpenAI,
+  ASSISTANT_ENABLED: assistantEnabled,
   REQUIRE_EMAIL_OTP: requireEmailOtp,
   LIVEKIT_API_KEY: livekitApiKey,
   LIVEKIT_API_SECRET: livekitApiSecret,

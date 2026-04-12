@@ -12745,7 +12745,7 @@ html.dark-mode .comments-v2--panel .comment-v2-children {
   top: 50%;
   transform: translate(-50%, -50%);
   font-size: clamp(25px, 2vw, 34px);
-  color: #101828;
+  color: var(--text);
   font-weight: 800;
 }
 
@@ -12779,8 +12779,9 @@ html.dark-mode .comments-v2--panel .comment-v2-children {
 }
 
 .composer-modal .pc-privacy {
-  border: 1px solid #ccd4de;
-  background: #eef2f7;
+  border-color: var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
   font-weight: 700;
 }
 
@@ -12870,17 +12871,18 @@ html.dark-mode .composer-textarea::placeholder {
 
 .composer-panel {
   margin: 2px 16px 10px;
-  border: 1px solid #d2dce8;
+  border: 1px solid var(--border);
   border-radius: 14px;
   background:
-    linear-gradient(140deg, rgba(58, 120, 210, 0.08), transparent 40%),
-    #f7faff;
+    linear-gradient(140deg, color-mix(in srgb, var(--brand) 10%, transparent), transparent 40%),
+    var(--surface-soft);
   padding: 12px;
+  color: var(--text);
 }
 
 .composer-panel p {
   margin: 0 0 10px;
-  color: #22324a;
+  color: var(--text);
   font-weight: 800;
   font-size: 14px;
 }
@@ -12888,13 +12890,9 @@ html.dark-mode .composer-textarea::placeholder {
 .composer-panel-hint {
   margin: -2px 0 10px;
   display: block;
-  color: #5c6b81;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.45;
-}
-
-html.dark-mode .composer-panel-hint {
-  color: rgba(226, 232, 240, 0.72);
 }
 
 .composer-panel-row {
@@ -12904,11 +12902,11 @@ html.dark-mode .composer-panel-hint {
 
 .composer-panel-row input {
   width: 100%;
-  border: 1px solid #c7d3e2;
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 9px 11px;
-  background: #fff;
-  color: #1d2a3d;
+  background: var(--surface);
+  color: var(--text);
 }
 
 .composer-panel-row input:focus {
@@ -13059,20 +13057,26 @@ html.dark-mode .composer-tag-empty.error {
 }
 
 .composer-grid-item {
-  border: 1px solid #ced9e7;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
-  color: #274465;
-  padding: 8px 10px;
-  text-align: left;
+  background: var(--surface-soft);
+  color: var(--text);
+  padding: 10px 12px;
+  min-height: 54px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.15;
   font-weight: 700;
   cursor: pointer;
 }
 
 .composer-grid-item.active {
-  border-color: #1f7df3;
-  background: #eaf3ff;
-  color: #1158bd;
+  border-color: color-mix(in srgb, var(--brand) 55%, var(--border));
+  background: var(--brand-soft);
+  color: var(--brand-strong);
 }
 
 .composer-toggle {
@@ -13099,15 +13103,16 @@ html.dark-mode .composer-tag-empty.error {
 
 .composer-actions-wrap {
   margin: 0 16px;
-  border: 1px solid #d5dce6;
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 12px;
-  background: #fff;
+  background: var(--surface);
   align-items: flex-start;
+  color: var(--text);
 }
 
 .composer-actions-wrap > span {
-  color: #1f2937;
+  color: var(--text);
   font-size: 18px;
   font-size: clamp(14px, 1.3vw, 20px);
   font-weight: 800;
@@ -13123,31 +13128,40 @@ html.dark-mode .composer-tag-empty.error {
 }
 
 .composer-actions button {
-  border: 1px solid #d4dde9;
-  background: #f8faff;
-  color: #364d70;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
   border-radius: 12px;
-  min-height: 64px;
-  padding: 8px 4px 7px;
+  min-height: 72px;
+  padding: 10px 8px 8px;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  text-align: center;
   gap: 4px;
   cursor: pointer;
   font-size: 11px;
   font-weight: 700;
+  line-height: 1.15;
+}
+
+.composer-actions button span {
+  display: block;
+  width: 100%;
+  text-align: center;
 }
 
 .composer-actions button:hover {
-  border-color: #9ebfe7;
-  background: #edf4ff;
+  border-color: color-mix(in srgb, var(--brand) 34%, var(--border));
+  background: color-mix(in srgb, var(--brand) 12%, var(--surface-soft));
 }
 
 .composer-actions button.active {
-  border-color: #1f7df3;
-  background: #e8f2ff;
-  color: #125dc3;
+  border-color: color-mix(in srgb, var(--brand) 48%, var(--border));
+  background: var(--brand-soft);
+  color: var(--brand-strong);
 }
 
 .composer-icon {

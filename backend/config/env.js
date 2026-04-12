@@ -196,10 +196,11 @@ const stripeSecretKey = toText(process.env.STRIPE_SECRET_KEY);
 const stripePublishableKey = toText(process.env.STRIPE_PUBLISHABLE_KEY);
 const stripeWebhookSecret = toText(process.env.STRIPE_WEBHOOK_SECRET);
 const requireEmailOtp = toText(process.env.REQUIRE_EMAIL_OTP) || "false";
+const assistantEnabledInput = toText(process.env.ASSISTANT_ENABLED);
 const openAiApiKey = toText(process.env.OPENAI_API_KEY);
 const openAiModel = toText(process.env.OPENAI_MODEL) || "gpt-5.4-mini";
 const hasOpenAI = Boolean(openAiApiKey);
-const assistantEnabled = hasOpenAI || !isProduction;
+const assistantEnabled = assistantEnabledInput ? toBool(assistantEnabledInput) : true;
 
 const missing = [];
 

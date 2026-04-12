@@ -35,7 +35,8 @@ Safety rules:
 - the frontend only executes allowlisted internal actions
 
 Configuration:
-- `OPENAI_API_KEY` is optional in development; if it is missing, Akuso falls back to safe local behavior
+- `ASSISTANT_ENABLED` defaults to `true`; set it to `false` only if you want to turn Akuso off
+- `OPENAI_API_KEY` is optional; if it is missing, Akuso falls back to safe local behavior
 - `OPENAI_MODEL` defaults to `gpt-5.4-mini`
 
 Adding a new assistant tool:

@@ -16,6 +16,13 @@ const SAFE_GREETINGS = [
   "I can open safe pages, find creators, search content, and draft short captions.",
 ];
 
+const GREETING_PATTERNS = [
+  /^(hi|hello|hey|yo|gm)\b/i,
+  /^good (morning|afternoon|evening)\b/i,
+  /(?:^|\s)(hi|hello|hey)\s+akuso\b/i,
+  /(?:^|\s)good (morning|afternoon|evening)\s+akuso\b/i,
+];
+
 const buildClarificationResponse = (conversationId = "") =>
   normalizeAssistantResult(
     {
@@ -28,6 +35,29 @@ const buildClarificationResponse = (conversationId = "") =>
     },
     conversationId
   );
+
+const buildGreetingResponse = (message = "", conversationId = "") => {
+  const lower = String(message || "").trim().toLowerCase();
+  const salutation = lower.includes("good morning")
+    ? "Good morning"
+    : lower.includes("good afternoon")
+      ? "Good afternoon"
+      : lower.includes("good evening")
+        ? "Good evening"
+        : "Hi";
+
+  return normalizeAssistantResult(
+    {
+      message: `${salutation}. I'm Akuso. Tell me where you want to go, or ask me to find creators, open messages, or draft a caption.`,
+      actions: [],
+      cards: [],
+      requiresConfirmation: false,
+      pendingAction: null,
+      conversationId,
+    },
+    conversationId
+  );
+};
 
 const buildRiskResponse = (conversationId, pendingAction = null, message = "") =>
   normalizeAssistantResult(
@@ -104,6 +134,8 @@ const detectRiskIntent = (message = "") => {
 
   return riskyPatterns.some((pattern) => pattern.test(text));
 };
+
+const detectGreetingIntent = (message = "") => GREETING_PATTERNS.some((pattern) => pattern.test(String(message || "").trim()));
 
 const detectLocalPlan = (message = "") => {
   const text = String(message || "").trim();
@@ -413,11 +445,11 @@ const chat = async ({ user, message, conversationId = "", pendingAction = null }
     hasPendingAction: Boolean(pendingAction),
   });
 
-  if (!config.assistantEnabled && !config.hasOpenAI) {
+  if (!config.assistantEnabled) {
     return normalizeAssistantResult(
       {
         message:
-          "Akuso isn't enabled in this environment yet, but the app is still ready for navigation, search, and creator tools when it is turned on.",
+          "Akuso is disabled in this environment. Turn it back on to use navigation, search, creator discovery, and caption drafting.",
         actions: [],
         cards: [],
         requiresConfirmation: false,
@@ -426,6 +458,14 @@ const chat = async ({ user, message, conversationId = "", pendingAction = null }
       },
       nextConversationId
     );
+  }
+
+  if (detectGreetingIntent(normalizedMessage)) {
+    logger.info("assistant.plan.greeting", {
+      conversationId: nextConversationId,
+      userId: user?.id || "",
+    });
+    return buildGreetingResponse(normalizedMessage, nextConversationId);
   }
 
   const localPlan = detectLocalPlan(normalizedMessage);
@@ -488,6 +528,8 @@ const chat = async ({ user, message, conversationId = "", pendingAction = null }
 
 module.exports = {
   buildClarificationResponse,
+  buildGreetingResponse,
   chat,
   detectLocalPlan,
+  detectGreetingIntent,
 };

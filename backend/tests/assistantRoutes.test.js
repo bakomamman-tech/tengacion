@@ -142,6 +142,18 @@ describe("Assistant routes", () => {
     );
   });
 
+  it("greets the user instead of falling back to the disabled notice", async () => {
+    const response = await request(app)
+      .post("/api/assistant/chat")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ message: "Good morning Akuso" })
+      .expect(200);
+
+    expect(String(response.body.message || "")).toMatch(/good morning|akuso/i);
+    expect(response.body.actions).toHaveLength(0);
+    expect(String(response.body.message || "")).not.toMatch(/isn't enabled|disabled in this environment/i);
+  });
+
   it("opens the creator dashboard for a creator", async () => {
     const response = await request(app)
       .post("/api/assistant/chat")
@@ -238,4 +250,3 @@ describe("Assistant routes", () => {
     );
   });
 });
-

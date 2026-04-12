@@ -9,10 +9,11 @@ const isBrowser = typeof document !== "undefined";
 
 const DEFAULT_SUGGESTIONS = [
   "Take me home",
+  "Open my fan page",
   "Open messages",
-  "Go to creator dashboard",
+  "What can I do here?",
   "Help me upload music",
-  "Find creators",
+  "Find gospel artists",
 ];
 
 function AssistantHeaderIcon() {

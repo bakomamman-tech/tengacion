@@ -197,6 +197,31 @@ const openCreatorOnboardingTool = {
   },
 };
 
+const openCreatorPageTool = {
+  name: "openCreatorPage",
+  description: "Open the logged-in user's public creator page or creator setup flow.",
+  parameters: {
+    type: "object",
+    properties: {},
+    additionalProperties: false,
+  },
+  inputSchema: emptyToolInputSchema,
+  handler: async (_args, context) => {
+    const userId = context?.user?.id || "";
+    const route = await getCreatorPublicPageRoute(userId);
+    return {
+      message:
+        route === "/creator/register"
+          ? "You do not have a public creator page yet. Let's finish creator setup first."
+          : "Opening your creator page.",
+      actions: [buildAction(route, {}, "Creator page")],
+      cards: [],
+      requiresConfirmation: false,
+      pendingAction: null,
+    };
+  },
+};
+
 const openUploadPageTool = {
   name: "openUploadPage",
   description: "Open the correct upload page for music, books, or podcasts.",
@@ -229,5 +254,6 @@ const openUploadPageTool = {
 module.exports = {
   navigateToTool,
   openCreatorOnboardingTool,
+  openCreatorPageTool,
   openUploadPageTool,
 };

@@ -1,5 +1,10 @@
 const { draftPostCaptionTool, explainFeatureTool } = require("./drafting");
-const { navigateToTool, openCreatorOnboardingTool, openUploadPageTool } = require("./navigation");
+const {
+  navigateToTool,
+  openCreatorOnboardingTool,
+  openCreatorPageTool,
+  openUploadPageTool,
+} = require("./navigation");
 const { searchCreatorsTool, searchContentTool } = require("./search");
 const {
   getNotificationsSummaryTool,
@@ -13,6 +18,7 @@ const tools = [
   searchContentTool,
   getNotificationsSummaryTool,
   openCreatorOnboardingTool,
+  openCreatorPageTool,
   openUploadPageTool,
   getPurchasesSummaryTool,
   getQuickLinksTool,

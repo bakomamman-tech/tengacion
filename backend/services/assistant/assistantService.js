@@ -137,6 +137,57 @@ const detectRiskIntent = (message = "") => {
 
 const detectGreetingIntent = (message = "") => GREETING_PATTERNS.some((pattern) => pattern.test(String(message || "").trim()));
 
+const NAVIGATION_VERBS = /\b(open|take me|go to|show me|show|visit|view|launch|bring up|jump to)\b/i;
+const GENERAL_HELP_PATTERNS = [
+  /\bwhat can (i|you) do\b/i,
+  /\bwhat can (i|you) do here\b/i,
+  /\bwhat are my options\b/i,
+  /\bshow me (?:my )?(?:options|shortcuts|quick links|things i can do)\b/i,
+  /\bwhat do you do\b/i,
+  /\bhow does this work\b/i,
+  /^\s*help\s*\??\s*$/i,
+];
+const CREATOR_SEARCH_HINTS = /\b(creator|creators|artist|artists|musician|musicians|singer|singers|producer|producers|writer|writers|author|authors|podcaster|podcasters|profile|profiles|page|pages|people)\b/i;
+
+const detectGeneralHelpIntent = (message = "") =>
+  GENERAL_HELP_PATTERNS.some((pattern) => pattern.test(String(message || "").trim()));
+
+const detectCreatorPageIntent = (message = "") => {
+  const text = String(message || "").toLowerCase();
+  return (
+    /\b(creator(?:'s)?\s+page|my\s+creator\s+page|public\s+creator\s+page|fan\s+page|creator\s+profile)\b/.test(text) &&
+    NAVIGATION_VERBS.test(text)
+  );
+};
+
+const normalizeCreatorSearchQuery = (message = "") =>
+  String(message || "")
+    .replace(
+      /^(please\s+)?(take me to|open|go to|go|show me|show|find me|find|search for|search|help me find|help me upload|help me|draft|write|create|explain)\b[:\s-]*/i,
+      ""
+    )
+    .replace(/\b(me|my)\b/gi, " ")
+    .replace(
+      /\b(creators?|creator|artists?|artist|musicians?|musician|singers?|singer|producers?|producer|authors?|author|writers?|writer|podcasters?|podcaster|profiles?|profile|pages?|page|people)\b/gi,
+      " "
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+
+const resolveCreatorSearchCategory = (message = "") => {
+  const lower = String(message || "").toLowerCase();
+  if (/\b(podcast|podcasts|episode|episodes)\b/.test(lower)) {
+    return "podcasts";
+  }
+  if (/\b(book|books|author|authors|writer|writers|publishing)\b/.test(lower)) {
+    return "books";
+  }
+  if (/\b(gospel|music|song|songs|track|tracks|artist|artists|singer|singers|musician|musicians|producer|producers|worship|choir|band|dj|rapper|rappers)\b/.test(lower)) {
+    return "music";
+  }
+  return "all";
+};
+
 const detectLocalPlan = (message = "") => {
   const text = String(message || "").trim();
   const lower = text.toLowerCase();
@@ -170,33 +221,30 @@ const detectLocalPlan = (message = "") => {
     return { kind: "tool", name: "navigateTo", args: { destination: "home" } };
   }
 
-  if (/\b(messages?|inbox|chat)\b/.test(lower) && /\b(open|take me|go to|show me)\b/.test(lower)) {
+  if (/\b(messages?|inbox|chat)\b/.test(lower) && NAVIGATION_VERBS.test(lower)) {
     return { kind: "tool", name: "navigateTo", args: { destination: "messages" } };
   }
 
   if (/\bnotifications?|alerts?\b/.test(lower)) {
-    if (/\bshow|open|take me|go to\b/.test(lower)) {
+    if (NAVIGATION_VERBS.test(lower)) {
       return { kind: "tool", name: "getNotificationsSummary", args: {} };
     }
     return { kind: "tool", name: "navigateTo", args: { destination: "notifications" } };
   }
 
-  if (/\b(profile|my profile)\b/.test(lower) && /\b(open|take me|go to|show me)\b/.test(lower)) {
+  if (/\b(profile|my profile)\b/.test(lower) && NAVIGATION_VERBS.test(lower)) {
     return { kind: "tool", name: "navigateTo", args: { destination: "profile" } };
   }
 
-  if (
-    /\b(creator(?:'s)?\s+page|public\s+creator\s+page|fan\s+page)\b/.test(lower) &&
-    /\b(open|take me|go to|show me)\b/.test(lower)
-  ) {
-    return { kind: "tool", name: "navigateTo", args: { destination: "creator_page" } };
+  if (detectCreatorPageIntent(text)) {
+    return { kind: "tool", name: "openCreatorPage", args: {} };
   }
 
   if (/\bcreator dashboard\b/.test(lower)) {
     return { kind: "tool", name: "navigateTo", args: { destination: "creator_dashboard" } };
   }
 
-  if (/\b(settings?)\b/.test(lower) && /\b(open|take me|go to|show me)\b/.test(lower)) {
+  if (/\b(settings?)\b/.test(lower) && NAVIGATION_VERBS.test(lower)) {
     return { kind: "tool", name: "navigateTo", args: { destination: "settings" } };
   }
 
@@ -204,15 +252,15 @@ const detectLocalPlan = (message = "") => {
     return { kind: "tool", name: "navigateTo", args: { destination: "book_publishing" } };
   }
 
-  if (/\b(upload\b.*\b(song|music|track)\b|\bmusic upload\b)/.test(lower)) {
+  if (/\b(upload\b.*\b(song|music|track)\b|\brelease\b.*\b(song|music|track)\b|\bmusic upload\b)/.test(lower)) {
     return { kind: "tool", name: "openUploadPage", args: { type: "music" } };
   }
 
-  if (/\b(upload\b.*\b(book)\b|\bbook upload\b)/.test(lower)) {
+  if (/\b(upload\b.*\b(book)\b|\bpublish\b.*\b(book)\b|\bbook upload\b)/.test(lower)) {
     return { kind: "tool", name: "openUploadPage", args: { type: "book" } };
   }
 
-  if (/\b(upload\b.*\b(podcast|episode)\b|\bpodcast upload\b)/.test(lower)) {
+  if (/\b(upload\b.*\b(podcast|episode)\b|\brelease\b.*\b(podcast|episode)\b|\bpodcast upload\b)/.test(lower)) {
     return { kind: "tool", name: "openUploadPage", args: { type: "podcast" } };
   }
 
@@ -220,23 +268,18 @@ const detectLocalPlan = (message = "") => {
     return { kind: "tool", name: "openCreatorOnboarding", args: {} };
   }
 
-  if (/\b(purchases?|orders?|library)\b/.test(lower) && /\b(show|open|take me|go to)\b/.test(lower)) {
+  if (/\b(purchases?|orders?|library)\b/.test(lower) && NAVIGATION_VERBS.test(lower)) {
     return { kind: "tool", name: "getPurchasesSummary", args: {} };
   }
 
-  if (/\b(search|find|show)\b/.test(lower) && /\b(creator|creators)\b/.test(lower)) {
-    const category = /\b(podcast|podcasts)\b/.test(lower)
-      ? "podcasts"
-      : /\b(book|books|author|publishing)\b/.test(lower)
-        ? "books"
-        : /\b(gospel|music|song|songs|artist|artists|track|tracks)\b/.test(lower)
-          ? "music"
-          : "all";
+  if (/\b(search|find|show)\b/.test(lower) && CREATOR_SEARCH_HINTS.test(lower)) {
+    const category = resolveCreatorSearchCategory(lower);
+    const search = normalizeCreatorSearchQuery(text) || text;
     return {
       kind: "tool",
       name: "searchCreators",
       args: {
-        query: stripCommandWords(text) || text,
+        query: search,
         category,
       },
     };
@@ -294,6 +337,10 @@ const detectLocalPlan = (message = "") => {
         featureName: extractTopicFromMessage(text),
       },
     };
+  }
+
+  if (detectGeneralHelpIntent(text)) {
+    return { kind: "tool", name: "getQuickLinks", args: {} };
   }
 
   return {

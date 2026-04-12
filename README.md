@@ -27,6 +27,7 @@ Akuso is Tengacion's in-app AI assistant. Phase 1 is intentionally narrow and sa
 - search creators and search content
 - summarize notifications and purchases
 - draft short captions and explain supported features
+- understand natural phrases like "open my fan page", "what can I do here?", and "find gospel artists"
 
 Safety rules:
 - authenticated users only

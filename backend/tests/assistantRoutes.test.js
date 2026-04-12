@@ -206,11 +206,58 @@ describe("Assistant routes", () => {
     );
   });
 
+  it("opens the user's fan page from a natural phrase", async () => {
+    const response = await request(app)
+      .post("/api/assistant/chat")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ message: "Open my fan page" })
+      .expect(200);
+
+    expect(response.body.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "navigate",
+          target: `/creator/${viewerCreatorProfile._id.toString()}`,
+        }),
+      ])
+    );
+  });
+
   it("finds gospel creators", async () => {
     const response = await request(app)
       .post("/api/assistant/chat")
       .set("Authorization", `Bearer ${authToken}`)
       .send({ message: "Find gospel creators" })
+      .expect(200);
+
+    expect(response.body.cards.length).toBeGreaterThan(0);
+    expect(response.body.cards[0]).toEqual(
+      expect.objectContaining({
+        type: "creator",
+      })
+    );
+  });
+
+  it("returns quick links for a general capability question", async () => {
+    const response = await request(app)
+      .post("/api/assistant/chat")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ message: "What can I do here?" })
+      .expect(200);
+
+    expect(response.body.cards.length).toBeGreaterThan(0);
+    expect(response.body.cards[0]).toEqual(
+      expect.objectContaining({
+        type: "quick-link",
+      })
+    );
+  });
+
+  it("finds gospel artists", async () => {
+    const response = await request(app)
+      .post("/api/assistant/chat")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ message: "Find gospel artists" })
       .expect(200);
 
     expect(response.body.cards.length).toBeGreaterThan(0);

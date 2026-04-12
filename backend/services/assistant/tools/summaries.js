@@ -183,6 +183,17 @@ const getQuickLinksTool = {
       cards.push(
         buildCard({
           type: "quick-link",
+          title: "My creator page",
+          subtitle: "Open the public page",
+          description: "Open the fan-facing creator page viewers see on Tengacion.",
+          route: `/creator/${creatorProfile._id}`,
+          payload: { destination: "creator_page" },
+        })
+      );
+
+      cards.push(
+        buildCard({
+          type: "quick-link",
           title: "Creator dashboard",
           subtitle: "Manage your creator tools",
           description: "Open the creator dashboard and upload workspace.",

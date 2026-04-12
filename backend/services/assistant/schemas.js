@@ -21,6 +21,19 @@ const ASSISTANT_DESTINATIONS = [
 const ASSISTANT_UPLOAD_TYPES = ["music", "book", "podcast"];
 const ASSISTANT_SEARCH_CONTENT_TYPES = ["all", "posts", "tracks", "books", "albums", "podcasts"];
 const ASSISTANT_TONES = ["friendly", "playful", "professional", "inspiring", "warm"];
+const ASSISTANT_CONTEXT_SURFACES = [
+  "general",
+  "home",
+  "messages",
+  "notifications",
+  "profile",
+  "creator",
+  "creator_dashboard",
+  "search",
+  "discovery",
+  "purchases",
+  "settings",
+];
 
 const isSafeInternalRoute = (value = "") => {
   const raw = String(value || "").trim();
@@ -87,6 +100,17 @@ const assistantCardSchema = z
   })
   .strict();
 
+const assistantContextSchema = z
+  .object({
+    currentPath: z.string().trim().max(160).optional().default(""),
+    currentSearch: z.string().trim().max(160).optional().default(""),
+    surface: z.enum(ASSISTANT_CONTEXT_SURFACES).optional().default("general"),
+    pageTitle: z.string().trim().max(120).optional().default(""),
+    selectedChatId: z.string().trim().max(80).optional().default(""),
+    selectedContentId: z.string().trim().max(80).optional().default(""),
+  })
+  .strict();
+
 const assistantPendingActionSchema = z
   .object({
     type: z.string().trim().min(1).max(40),
@@ -102,6 +126,7 @@ const assistantRequestSchema = z
     message: z.string().trim().min(1).max(1000),
     conversationId: z.string().trim().max(80).optional().default(""),
     pendingAction: assistantPendingActionSchema.nullable().optional().default(null),
+    context: assistantContextSchema.optional().default({}),
   })
   .strict();
 
@@ -163,6 +188,7 @@ module.exports = {
   ASSISTANT_SEARCH_CONTENT_TYPES,
   ASSISTANT_TONES,
   assistantActionSchema,
+  assistantContextSchema,
   assistantCardSchema,
   assistantPendingActionSchema,
   assistantRequestSchema,

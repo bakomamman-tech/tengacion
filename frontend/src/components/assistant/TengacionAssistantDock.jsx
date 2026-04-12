@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import { useAuth } from "../../context/AuthContext";
@@ -31,8 +31,66 @@ const createAssistantThreadMessage = (role, content, extras = {}) => ({
   pendingAction: extras.pendingAction || null,
 });
 
+const resolveAssistantSurface = (pathname = "") => {
+  const route = String(pathname || "").trim().toLowerCase();
+  if (!route) return "general";
+  if (route.startsWith("/home")) return "home";
+  if (route.startsWith("/messages")) return "messages";
+  if (route.startsWith("/notifications")) return "notifications";
+  if (route.startsWith("/profile/")) return "profile";
+  if (route.startsWith("/creator")) {
+    return route.includes("/dashboard") ? "creator_dashboard" : "creator";
+  }
+  if (route.startsWith("/search")) return "search";
+  if (route.startsWith("/find-creators") || route.startsWith("/creators")) return "discovery";
+  if (route.startsWith("/purchases")) return "purchases";
+  if (route.startsWith("/settings")) return "settings";
+  return "general";
+};
+
+const resolveAssistantPageTitle = (pathname = "") => {
+  const surface = resolveAssistantSurface(pathname);
+  if (surface === "creator_dashboard") {
+    return "Creator dashboard";
+  }
+  if (surface === "creator") {
+    return "Creator workspace";
+  }
+  if (surface === "discovery") {
+    return "Creator discovery";
+  }
+  return (
+    {
+      home: "Home",
+      messages: "Messages",
+      notifications: "Notifications",
+      profile: "Profile",
+      search: "Search",
+      purchases: "Purchases",
+      settings: "Settings",
+    }[surface] || "Tengacion"
+  );
+};
+
+const buildAssistantRequestContext = (location = {}) => {
+  const currentPath = String(location.pathname || "").trim();
+  const currentSearch = String(location.search || "").trim();
+  const surface = resolveAssistantSurface(currentPath);
+  const searchParams = new URLSearchParams(currentSearch);
+  const selectedChatId = surface === "messages" ? String(searchParams.get("chat") || "").trim() : "";
+  return {
+    currentPath,
+    currentSearch,
+    surface,
+    pageTitle: resolveAssistantPageTitle(currentPath),
+    selectedChatId,
+    selectedContentId: "",
+  };
+};
+
 export default function TengacionAssistantDock() {
   const { user, loading: authLoading } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
   const launcherRef = useRef(null);
   const composerRef = useRef(null);
@@ -45,6 +103,10 @@ export default function TengacionAssistantDock() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pendingAction, setPendingAction] = useState(null);
+  const assistantContext = useMemo(
+    () => buildAssistantRequestContext(location),
+    [location.pathname, location.search]
+  );
 
   const canRender = Boolean(user) && !authLoading;
 
@@ -138,6 +200,7 @@ export default function TengacionAssistantDock() {
           message: text,
           conversationId,
           pendingAction: null,
+          context: assistantContext,
         });
 
         if (response.conversationId) {
@@ -160,7 +223,7 @@ export default function TengacionAssistantDock() {
         setLoading(false);
       }
     },
-    [addAssistantReply, conversationId, executeAndMaybeClose, loading, open]
+    [addAssistantReply, assistantContext, conversationId, executeAndMaybeClose, loading, open]
   );
 
   const handleCardAction = useCallback(

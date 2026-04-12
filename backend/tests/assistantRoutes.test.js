@@ -223,6 +223,32 @@ describe("Assistant routes", () => {
     );
   });
 
+  it("remembers the last safe route for follow-up phrases", async () => {
+    const firstResponse = await request(app)
+      .post("/api/assistant/chat")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ message: "Open my fan page" })
+      .expect(200);
+
+    const followUpResponse = await request(app)
+      .post("/api/assistant/chat")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        message: "Open it",
+        conversationId: firstResponse.body.conversationId,
+      })
+      .expect(200);
+
+    expect(followUpResponse.body.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "navigate",
+          target: `/creator/${viewerCreatorProfile._id.toString()}`,
+        }),
+      ])
+    );
+  });
+
   it("finds gospel creators", async () => {
     const response = await request(app)
       .post("/api/assistant/chat")
@@ -242,13 +268,26 @@ describe("Assistant routes", () => {
     const response = await request(app)
       .post("/api/assistant/chat")
       .set("Authorization", `Bearer ${authToken}`)
-      .send({ message: "What can I do here?" })
+      .send({
+        message: "What can I do here?",
+        context: {
+          currentPath: "/creator/dashboard",
+          currentSearch: "",
+          surface: "creator_dashboard",
+          pageTitle: "Creator dashboard",
+          selectedChatId: "",
+          selectedContentId: "",
+        },
+      })
       .expect(200);
 
     expect(response.body.cards.length).toBeGreaterThan(0);
     expect(response.body.cards[0]).toEqual(
       expect.objectContaining({
         type: "quick-link",
+        payload: expect.objectContaining({
+          destination: "creator_dashboard",
+        }),
       })
     );
   });

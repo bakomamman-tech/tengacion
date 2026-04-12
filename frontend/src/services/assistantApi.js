@@ -80,7 +80,12 @@ export const normalizeAssistantResponse = (payload = {}) => ({
   conversationId: normalizeString(payload.conversationId),
 });
 
-export const sendAssistantMessage = async ({ message, conversationId = "", pendingAction = null }) => {
+export const sendAssistantMessage = async ({
+  message,
+  conversationId = "",
+  pendingAction = null,
+  context = null,
+}) => {
   const body = {
     message: normalizeString(message),
   };
@@ -93,6 +98,17 @@ export const sendAssistantMessage = async ({ message, conversationId = "", pendi
     body.pendingAction = pendingAction;
   }
 
+  if (context && typeof context === "object" && !Array.isArray(context)) {
+    body.context = {
+      currentPath: normalizeString(context.currentPath),
+      currentSearch: normalizeString(context.currentSearch),
+      surface: normalizeString(context.surface, "general"),
+      pageTitle: normalizeString(context.pageTitle),
+      selectedChatId: normalizeString(context.selectedChatId),
+      selectedContentId: normalizeString(context.selectedContentId),
+    };
+  }
+
   const response = await apiRequest(`${API_BASE}/assistant/chat`, {
     method: "POST",
     headers: {
@@ -103,4 +119,3 @@ export const sendAssistantMessage = async ({ message, conversationId = "", pendi
 
   return normalizeAssistantResponse(response);
 };
-

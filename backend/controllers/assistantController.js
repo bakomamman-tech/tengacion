@@ -19,6 +19,7 @@ exports.chat = async (req, res, next) => {
       message: parsed.data.message,
       conversationId: parsed.data.conversationId,
       pendingAction: parsed.data.pendingAction,
+      context: parsed.data.context,
     });
 
     return res.json(response);

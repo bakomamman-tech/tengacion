@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const { config } = require("../../config/env");
 const logger = require("../../utils/logger");
 const { buildAssistantSystemPrompt } = require("./systemPrompt");
+const { buildAction, safeText } = require("./tools/shared");
 const {
   executeTool,
   normalizeAssistantResult,
@@ -137,6 +138,212 @@ const detectRiskIntent = (message = "") => {
 
 const detectGreetingIntent = (message = "") => GREETING_PATTERNS.some((pattern) => pattern.test(String(message || "").trim()));
 
+const ASSISTANT_MEMORY_MAX_ENTRIES = 200;
+const ASSISTANT_MEMORY_TTL_MS = 30 * 60 * 1000;
+const conversationMemory = new Map();
+
+const FOLLOW_UP_PATTERNS = [
+  /^(open|show|go to|take me to|take me|bring up|open up)\s+(it|that|there|this|the page|the screen)\b/i,
+  /^(show me that|open that again|take me there|show it again)\b/i,
+  /^(take me back|go back|return)\b/i,
+  /^(open the last one|open the previous one)\b/i,
+];
+
+const isSafeStoredRoute = (route = "") => {
+  const value = String(route || "").trim();
+  return Boolean(value) && value.startsWith("/") && !value.includes("://") && !value.includes("\\") && !value.includes("..");
+};
+
+const resolveSurfaceFromPath = (path = "") => {
+  const route = String(path || "").trim().toLowerCase();
+  if (!route) {
+    return "general";
+  }
+
+  if (route.startsWith("/home")) return "home";
+  if (route.startsWith("/messages")) return "messages";
+  if (route.startsWith("/notifications")) return "notifications";
+  if (route.startsWith("/profile/")) return "profile";
+  if (route.startsWith("/creator")) {
+    return route.includes("/dashboard") ? "creator_dashboard" : "creator";
+  }
+  if (route.startsWith("/search")) return "search";
+  if (route.startsWith("/find-creators") || route.startsWith("/creators")) return "discovery";
+  if (route.startsWith("/purchases")) return "purchases";
+  if (route.startsWith("/settings")) return "settings";
+
+  return "general";
+};
+
+const normalizeAssistantContext = (context = {}) => {
+  const currentPath = safeText(context?.currentPath || "", 160);
+  const currentSearch = safeText(context?.currentSearch || "", 160);
+  const pageTitle = safeText(context?.pageTitle || "", 120);
+  const selectedChatId = safeText(context?.selectedChatId || "", 80);
+  const selectedContentId = safeText(context?.selectedContentId || "", 80);
+  const resolvedSurface = safeText(context?.surface || "", 40).toLowerCase();
+  const surface = resolvedSurface && resolvedSurface !== "unknown" ? resolvedSurface : resolveSurfaceFromPath(currentPath);
+
+  return {
+    currentPath,
+    currentSearch,
+    surface,
+    pageTitle,
+    selectedChatId,
+    selectedContentId,
+  };
+};
+
+const getPrimaryResponseRoute = (response = {}) => {
+  const navigateAction = Array.isArray(response?.actions)
+    ? response.actions.find((action) => action?.type === "navigate" && isSafeStoredRoute(action?.target))
+    : null;
+  if (navigateAction) {
+    return {
+      route: String(navigateAction.target || "").trim(),
+      label: safeText(navigateAction.label || "", 80),
+      state:
+        navigateAction.state && typeof navigateAction.state === "object" && !Array.isArray(navigateAction.state)
+          ? navigateAction.state
+          : {},
+    };
+  }
+
+  const cardRoute = Array.isArray(response?.cards)
+    ? response.cards.find((card) => isSafeStoredRoute(card?.route))
+    : null;
+  if (cardRoute) {
+    return {
+      route: String(cardRoute.route || "").trim(),
+      label: safeText(cardRoute.title || "", 80),
+      state: {},
+    };
+  }
+
+  const pendingRoute = response?.pendingAction && isSafeStoredRoute(response.pendingAction.route)
+    ? String(response.pendingAction.route || "").trim()
+    : "";
+  if (pendingRoute) {
+    return {
+      route: pendingRoute,
+      label: safeText(response?.pendingAction?.label || "", 80),
+      state:
+        response?.pendingAction?.payload &&
+        typeof response.pendingAction.payload === "object" &&
+        !Array.isArray(response.pendingAction.payload)
+          ? response.pendingAction.payload
+          : {},
+    };
+  }
+
+  return null;
+};
+
+const pruneConversationMemory = () => {
+  const now = Date.now();
+  for (const [conversationId, entry] of conversationMemory.entries()) {
+    if (!entry || now - Number(entry.updatedAt || 0) > ASSISTANT_MEMORY_TTL_MS) {
+      conversationMemory.delete(conversationId);
+    }
+  }
+
+  if (conversationMemory.size <= ASSISTANT_MEMORY_MAX_ENTRIES) {
+    return;
+  }
+
+  const staleEntries = Array.from(conversationMemory.entries()).sort(
+    (left, right) => Number(left[1]?.updatedAt || 0) - Number(right[1]?.updatedAt || 0)
+  );
+  while (conversationMemory.size > ASSISTANT_MEMORY_MAX_ENTRIES && staleEntries.length > 0) {
+    const [conversationId] = staleEntries.shift();
+    if (conversationId) {
+      conversationMemory.delete(conversationId);
+    }
+  }
+};
+
+const rememberConversationState = (conversationId, state = {}) => {
+  const key = String(conversationId || "").trim();
+  if (!key) {
+    return;
+  }
+
+  conversationMemory.set(key, {
+    lastUserMessage: safeText(state.lastUserMessage || "", 240),
+    lastTopic: safeText(state.lastTopic || "", 120),
+    lastRoute: safeText(state.lastRoute || "", 160),
+    lastLabel: safeText(state.lastLabel || "", 120),
+    lastState:
+      state.lastState && typeof state.lastState === "object" && !Array.isArray(state.lastState)
+        ? state.lastState
+        : {},
+    currentPath: safeText(state.currentPath || "", 160),
+    currentSearch: safeText(state.currentSearch || "", 160),
+    pageTitle: safeText(state.pageTitle || "", 120),
+    surface: safeText(state.surface || "general", 40),
+    updatedAt: Date.now(),
+  });
+
+  pruneConversationMemory();
+};
+
+const getConversationState = (conversationId) => {
+  const key = String(conversationId || "").trim();
+  if (!key) {
+    return null;
+  }
+
+  const entry = conversationMemory.get(key);
+  if (!entry) {
+    return null;
+  }
+
+  if (Date.now() - Number(entry.updatedAt || 0) > ASSISTANT_MEMORY_TTL_MS) {
+    conversationMemory.delete(key);
+    return null;
+  }
+
+  return entry;
+};
+
+const getContextualRoute = (conversationState = {}, requestContext = {}) => {
+  if (isSafeStoredRoute(conversationState.lastRoute)) {
+    return {
+      route: conversationState.lastRoute,
+      label: safeText(conversationState.lastLabel || "", 120),
+      state: conversationState.lastState || {},
+    };
+  }
+
+  if (isSafeStoredRoute(requestContext.currentPath)) {
+    return {
+      route: requestContext.currentPath,
+      label: safeText(requestContext.pageTitle || "", 120),
+      state: {},
+    };
+  }
+
+  return null;
+};
+
+const isFollowUpMessage = (message = "") =>
+  FOLLOW_UP_PATTERNS.some((pattern) => pattern.test(String(message || "").trim()));
+
+const buildContextualNavigateResponse = (routeData, conversationId = "") =>
+  normalizeAssistantResult(
+    {
+      message: routeData?.label
+        ? `Opening ${routeData.label}.`
+        : "Opening that for you.",
+      actions: [buildAction(routeData.route, routeData.state || {}, routeData.label || "")],
+      cards: [],
+      requiresConfirmation: false,
+      pendingAction: null,
+      conversationId,
+    },
+    conversationId
+  );
+
 const NAVIGATION_VERBS = /\b(open|take me|go to|show me|show|visit|view|launch|bring up|jump to)\b/i;
 const GENERAL_HELP_PATTERNS = [
   /\bwhat can (i|you) do\b/i,
@@ -188,7 +395,7 @@ const resolveCreatorSearchCategory = (message = "") => {
   return "all";
 };
 
-const detectLocalPlan = (message = "") => {
+const detectLocalPlan = (message = "", conversationState = {}) => {
   const text = String(message || "").trim();
   const lower = text.toLowerCase();
 
@@ -339,6 +546,14 @@ const detectLocalPlan = (message = "") => {
     };
   }
 
+  const contextualRoute = isFollowUpMessage(text) ? getContextualRoute(conversationState) : null;
+  if (contextualRoute) {
+    return {
+      kind: "contextual-route",
+      routeData: contextualRoute,
+    };
+  }
+
   if (detectGeneralHelpIntent(text)) {
     return { kind: "tool", name: "getQuickLinks", args: {} };
   }
@@ -349,7 +564,7 @@ const detectLocalPlan = (message = "") => {
   };
 };
 
-const maybeCallModelPlanner = async ({ message, user, conversationId }) => {
+const maybeCallModelPlanner = async ({ message, user, conversationId, context = {}, memory = {} }) => {
   if (!config.hasOpenAI) {
     return null;
   }
@@ -370,7 +585,7 @@ const maybeCallModelPlanner = async ({ message, user, conversationId }) => {
         messages: [
           {
             role: "system",
-            content: buildAssistantSystemPrompt({ user }),
+            content: buildAssistantSystemPrompt({ user, context, memory }),
           },
           {
             role: "user",
@@ -416,6 +631,8 @@ const maybeCallModelPlanner = async ({ message, user, conversationId }) => {
           user,
           conversationId,
           source: "openai",
+          assistantContext: context,
+          conversationMemory: memory,
         });
         results.push(toolResult);
       }
@@ -488,19 +705,53 @@ const mergeResults = (results = [], conversationId = "") => {
   return assistantResponseSchema.parse(merged);
 };
 
-const chat = async ({ user, message, conversationId = "", pendingAction = null }) => {
+const chat = async ({ user, message, conversationId = "", pendingAction = null, context = {} }) => {
   const normalizedMessage = String(message || "").trim();
   const nextConversationId = String(conversationId || "").trim() || crypto.randomUUID();
+  const requestContext = normalizeAssistantContext(context);
+  const previousMemory = getConversationState(nextConversationId) || {};
+  const mergedMemory = {
+    ...previousMemory,
+    ...requestContext,
+    surface: requestContext.surface || previousMemory.surface || resolveSurfaceFromPath(requestContext.currentPath),
+    currentPath: requestContext.currentPath || previousMemory.currentPath || "",
+    currentSearch: requestContext.currentSearch || previousMemory.currentSearch || "",
+    pageTitle: requestContext.pageTitle || previousMemory.pageTitle || "",
+  };
+
+  const buildAndRememberResponse = (result) => {
+    const normalized = normalizeAssistantResult(
+      {
+        ...result,
+        conversationId: nextConversationId,
+      },
+      nextConversationId
+    );
+    const primaryRoute = getPrimaryResponseRoute(normalized);
+    rememberConversationState(nextConversationId, {
+      lastUserMessage: normalizedMessage,
+      lastTopic: extractTopicFromMessage(normalizedMessage),
+      lastRoute: primaryRoute?.route || mergedMemory.currentPath || "",
+      lastLabel: primaryRoute?.label || mergedMemory.pageTitle || "",
+      lastState: primaryRoute?.state || {},
+      currentPath: mergedMemory.currentPath,
+      currentSearch: mergedMemory.currentSearch,
+      pageTitle: mergedMemory.pageTitle,
+      surface: mergedMemory.surface,
+    });
+    return normalized;
+  };
 
   logger.info("assistant.request.received", {
     conversationId: nextConversationId,
     userId: user?.id || "",
     messageLength: normalizedMessage.length,
     hasPendingAction: Boolean(pendingAction),
+    surface: mergedMemory.surface,
   });
 
   if (!config.assistantEnabled) {
-    return normalizeAssistantResult(
+    return buildAndRememberResponse(
       {
         message:
           "Akuso is disabled in this environment. Turn it back on to use navigation, search, creator discovery, and caption drafting.",
@@ -508,9 +759,7 @@ const chat = async ({ user, message, conversationId = "", pendingAction = null }
         cards: [],
         requiresConfirmation: false,
         pendingAction: null,
-        conversationId: nextConversationId,
       },
-      nextConversationId
     );
   }
 
@@ -519,22 +768,25 @@ const chat = async ({ user, message, conversationId = "", pendingAction = null }
       conversationId: nextConversationId,
       userId: user?.id || "",
     });
-    return buildGreetingResponse(normalizedMessage, nextConversationId);
+    return buildAndRememberResponse(buildGreetingResponse(normalizedMessage, nextConversationId));
   }
 
-  const localPlan = detectLocalPlan(normalizedMessage);
+  const localPlan = detectLocalPlan(normalizedMessage, mergedMemory);
   if (localPlan.kind === "risky") {
     logger.info("assistant.plan.risky", {
       conversationId: nextConversationId,
       userId: user?.id || "",
     });
-    return normalizeAssistantResult(
-      {
-        ...localPlan.response,
-        conversationId: nextConversationId,
-      },
-      nextConversationId
-    );
+    return buildAndRememberResponse(localPlan.response);
+  }
+
+  if (localPlan.kind === "contextual-route") {
+    logger.info("assistant.plan.contextual_route", {
+      conversationId: nextConversationId,
+      userId: user?.id || "",
+      route: localPlan.routeData?.route || "",
+    });
+    return buildAndRememberResponse(buildContextualNavigateResponse(localPlan.routeData, nextConversationId));
   }
 
   if (localPlan.kind === "tool") {
@@ -548,20 +800,18 @@ const chat = async ({ user, message, conversationId = "", pendingAction = null }
       conversationId: nextConversationId,
       source: "local",
       pendingAction,
+      assistantContext: mergedMemory,
+      conversationMemory: previousMemory,
     });
-    return normalizeAssistantResult(
-      {
-        ...result,
-        conversationId: nextConversationId,
-      },
-      nextConversationId
-    );
+    return buildAndRememberResponse(result);
   }
 
   const modelResults = await maybeCallModelPlanner({
     message: normalizedMessage,
     conversationId: nextConversationId,
     user,
+    context: mergedMemory,
+    memory: previousMemory,
   });
 
   if (modelResults) {
@@ -570,14 +820,14 @@ const chat = async ({ user, message, conversationId = "", pendingAction = null }
       userId: user?.id || "",
       resultCount: modelResults.length,
     });
-    return mergeResults(modelResults, nextConversationId);
+    return buildAndRememberResponse(mergeResults(modelResults, nextConversationId));
   }
 
   logger.info("assistant.plan.fallback", {
     conversationId: nextConversationId,
     userId: user?.id || "",
   });
-  return buildClarificationResponse(nextConversationId);
+  return buildAndRememberResponse(buildClarificationResponse(nextConversationId));
 };
 
 module.exports = {

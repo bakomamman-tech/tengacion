@@ -9,10 +9,11 @@ const isBrowser = typeof document !== "undefined";
 
 const DEFAULT_SUGGESTIONS = [
   "Take me home",
-  "Open my fan page",
   "Open messages",
+  "Open creator dashboard",
+  "Take me to my creator page",
+  "Where do I upload music?",
   "What can I do here?",
-  "Help me upload music",
   "Find gospel artists",
 ];
 
@@ -131,7 +132,9 @@ export default function TengacionAssistantPanel({
             </span>
             <div>
               <h2 id={titleId}>Akuso</h2>
-              <p id={descriptionId}>Navigate Tengacion, discover content, and draft short copy.</p>
+              <p id={descriptionId}>
+                Navigate Tengacion, discover content, and draft short copy with safe in-app actions.
+              </p>
             </div>
           </div>
 

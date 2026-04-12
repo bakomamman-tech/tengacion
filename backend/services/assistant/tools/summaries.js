@@ -11,6 +11,69 @@ const {
   creatorIsReady,
 } = require("./shared");
 
+const resolveAssistantSurface = (context = {}) => {
+  const explicitSurface = String(context?.assistantContext?.surface || context?.surface || "").trim().toLowerCase();
+  if (explicitSurface) {
+    return explicitSurface;
+  }
+
+  const route = String(
+    context?.assistantContext?.currentPath || context?.currentPath || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  if (route.startsWith("/messages")) return "messages";
+  if (route.startsWith("/notifications")) return "notifications";
+  if (route.startsWith("/profile/")) return "profile";
+  if (route.startsWith("/creator")) {
+    return route.includes("/dashboard") ? "creator_dashboard" : "creator";
+  }
+  if (route.startsWith("/search")) return "search";
+  if (route.startsWith("/find-creators") || route.startsWith("/creators")) return "discovery";
+  if (route.startsWith("/purchases")) return "purchases";
+  if (route.startsWith("/settings")) return "settings";
+  if (route.startsWith("/home")) return "home";
+
+  return "general";
+};
+
+const QUICK_LINK_PRIORITIES = {
+  general: ["home", "messages", "notifications", "find_creators", "search", "purchases", "profile"],
+  home: ["home", "messages", "notifications", "find_creators", "search", "purchases", "profile"],
+  messages: ["messages", "notifications", "home", "search", "find_creators", "purchases"],
+  notifications: ["notifications", "messages", "home", "purchases", "search", "find_creators"],
+  creator: ["creator_dashboard", "creator_page", "music_upload", "book_publishing", "podcast_upload", "home"],
+  creator_dashboard: ["creator_dashboard", "creator_page", "music_upload", "book_publishing", "podcast_upload", "home"],
+  discovery: ["find_creators", "search", "home", "messages", "notifications", "purchases"],
+  search: ["search", "find_creators", "home", "messages", "notifications", "purchases"],
+  purchases: ["purchases", "messages", "home", "notifications", "search"],
+  profile: ["profile", "home", "messages", "notifications", "search"],
+  settings: ["settings", "profile", "home", "messages", "notifications"],
+};
+
+const orderQuickLinks = (cards = [], surface = "general") => {
+  const priority = new Map(
+    (QUICK_LINK_PRIORITIES[surface] || QUICK_LINK_PRIORITIES.general).map((destination, index) => [
+      destination,
+      index,
+    ])
+  );
+
+  return [...cards].sort((left, right) => {
+    const leftDestination = String(left?.payload?.destination || left?.route || "").trim();
+    const rightDestination = String(right?.payload?.destination || right?.route || "").trim();
+    const leftPriority = priority.has(leftDestination) ? priority.get(leftDestination) : 999;
+    const rightPriority = priority.has(rightDestination) ? priority.get(rightDestination) : 999;
+
+    if (leftPriority !== rightPriority) {
+      return leftPriority - rightPriority;
+    }
+
+    return String(left?.title || "").localeCompare(String(right?.title || ""));
+  });
+};
+
 const getNotificationsSummaryTool = {
   name: "getNotificationsSummary",
   description: "Summarize the logged-in user's recent notifications without exposing hidden metadata.",
@@ -135,6 +198,7 @@ const getQuickLinksTool = {
   inputSchema: emptyToolInputSchema,
   handler: async (_args, context) => {
     const userId = context?.user?.id || "";
+    const assistantSurface = resolveAssistantSurface(context);
     const [user, creatorProfile] = await Promise.all([
       User.findById(userId).select("name username").lean(),
       getCreatorProfile(userId),
@@ -266,10 +330,20 @@ const getQuickLinksTool = {
       );
     }
 
+    const orderedCards = orderQuickLinks(cards, assistantSurface);
+    const message =
+      assistantSurface === "messages"
+        ? "Here are a few shortcuts for your inbox and account."
+        : assistantSurface === "creator" || assistantSurface === "creator_dashboard"
+          ? "Here are a few shortcuts for your creator workspace."
+          : assistantSurface === "discovery"
+            ? "Here are a few shortcuts for discovery and search."
+            : "Here are a few shortcuts based on your account.";
+
     return {
-      message: "Here are a few shortcuts based on your account.",
+      message,
       actions: [],
-      cards,
+      cards: orderedCards,
       requiresConfirmation: false,
       pendingAction: null,
     };

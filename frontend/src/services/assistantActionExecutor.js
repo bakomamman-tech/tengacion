@@ -1,6 +1,6 @@
 const SAFE_ROUTE_PATTERNS = [
   /^\/home\/?$/,
-  /^\/messages\/?$/,
+  /^\/messages(?:[/?#].*)?$/,
   /^\/notifications(?:[/?#].*)?$/,
   /^\/search(?:[/?#].*)?$/,
   /^\/find-creators(?:[/?#].*)?$/,

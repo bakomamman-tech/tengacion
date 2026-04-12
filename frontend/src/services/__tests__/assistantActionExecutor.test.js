@@ -8,6 +8,7 @@ import {
 describe("assistantActionExecutor", () => {
   it("accepts safe internal routes and rejects external URLs", () => {
     expect(isSafeAssistantRoute("/messages")).toBe(true);
+    expect(isSafeAssistantRoute("/messages?chat=chat-1")).toBe(true);
     expect(isSafeAssistantRoute("/creator/music/upload")).toBe(true);
     expect(isSafeAssistantRoute("https://example.com")).toBe(false);
     expect(isSafeAssistantRoute("/../../secret")).toBe(false);
@@ -64,4 +65,3 @@ describe("assistantActionExecutor", () => {
     ]);
   });
 });
-

@@ -21,6 +21,7 @@ const Register = lazy(() => import("./pages/Register"));
 const KadunaGotTalentRegisterPage = lazy(() => import("./pages/KadunaGotTalentRegisterPage"));
 const Search = lazy(() => import("./pages/Search"));
 const Home = lazy(() => import("./pages/Home"));
+const MessagesPage = lazy(() => import("./pages/MessagesPage"));
 const FindCreatorsPage = lazy(() => import("./pages/FindCreatorsPage"));
 const FindFriendsPage = lazy(() => import("./pages/FindFriendsPage"));
 const PostDetail = lazy(() => import("./pages/PostDetail"));
@@ -234,7 +235,7 @@ export default function App() {
             path="/messages"
             element={
               <ProtectedRoute user={user}>
-                <Navigate to="/home" replace state={{ openMessenger: true }} />
+                <MessagesPage user={user} />
               </ProtectedRoute>
             }
           />

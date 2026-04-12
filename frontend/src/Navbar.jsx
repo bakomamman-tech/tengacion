@@ -303,12 +303,8 @@ export default function Navbar({
       return;
     }
 
-    navigate("/home", {
-      state: {
-        openMessenger: true,
-        messengerTargetId: payload.contactId,
-      },
-    });
+    const targetId = String(payload.contactId || "").trim();
+    navigate(targetId ? `/messages?chat=${encodeURIComponent(targetId)}` : "/messages");
   };
 
   const openMessengerInbox = () => {
@@ -324,12 +320,7 @@ export default function Navbar({
       return;
     }
 
-    navigate("/home", {
-      state: {
-        openMessenger: true,
-        messengerTargetId: "",
-      },
-    });
+    navigate("/messages");
   };
 
   const openCreateFlow = (flow = "post") => {
@@ -534,7 +525,7 @@ export default function Navbar({
           label: "Messages",
           description: "Open your Messenger conversations.",
           icon: "messages",
-          handler: () => openMessenger(),
+          handler: () => navigate("/messages"),
         },
         {
           id: "menu-rooms",

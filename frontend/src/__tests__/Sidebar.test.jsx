@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import Sidebar from "../Sidebar";
@@ -71,5 +71,15 @@ describe("Sidebar", () => {
     expect(container.querySelector(".sidebar-mobile-sponsored")).toBeInTheDocument();
     expect(screen.getByText(/kaduna got talent/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /register/i })).toBeInTheDocument();
+  });
+
+  it("navigates to the standalone messages page when no chat launcher is provided", () => {
+    setMatchMedia(false);
+
+    render(<Sidebar user={{ name: "Ada", username: "ada" }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /messages/i }));
+
+    expect(navigateMock).toHaveBeenCalledWith("/messages");
   });
 });

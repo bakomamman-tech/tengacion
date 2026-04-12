@@ -709,6 +709,8 @@ export default function Messenger({
   onMinimize,
   initialSelectedId = "",
   conversationOnly = false,
+  autoSelectFirstConversation = true,
+  onSelectedConversationChange,
 }) {
   const { confirm, prompt } = useDialog();
   const navigate = useNavigate();
@@ -809,6 +811,12 @@ export default function Messenger({
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
+
+  useEffect(() => {
+    if (typeof onSelectedConversationChange === "function") {
+      onSelectedConversationChange(selectedId);
+    }
+  }, [onSelectedConversationChange, selectedId]);
 
   useEffect(() => {
     if (!preferredSelectedId) {
@@ -1327,7 +1335,10 @@ export default function Messenger({
           if (normalizedPrev && list.some((entry) => toIdString(entry?._id) === normalizedPrev)) {
             return normalizedPrev;
           }
-          if (conversationOnly || initialAutoSelectRef.current) {
+          if (
+            autoSelectFirstConversation &&
+            (conversationOnly || initialAutoSelectRef.current)
+          ) {
             return toIdString(list[0]?._id);
           }
           return "";
@@ -1380,6 +1391,14 @@ export default function Messenger({
       alive = false;
     };
   }, [selectedId]);
+
+  useEffect(() => {
+    if (!isMobileSheet || conversationOnly) {
+      return;
+    }
+
+    setMobileView(preferredSelectedId ? "chat" : "inbox");
+  }, [conversationOnly, isMobileSheet, preferredSelectedId]);
 
   useEffect(() => {
     if (!selectedId) {

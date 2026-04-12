@@ -119,6 +119,14 @@ export default function Sidebar({ user, openChat, openProfile }) {
   const sidebarBtnClass = (isActive) => `sidebar-btn${isActive ? " active" : ""}`;
   const toggleSponsoredAd = () => setIsSponsoredExpanded((current) => !current);
   const openSponsoredAd = () => navigate("/kaduna-got-talent/register");
+  const openMessages = () => {
+    if (typeof openChat === "function") {
+      openChat();
+      return;
+    }
+
+    navigate("/messages");
+  };
 
   if (isMobileSidebar) {
     return (
@@ -198,7 +206,7 @@ export default function Sidebar({ user, openChat, openProfile }) {
           Notifications
         </button>
 
-        <button className={sidebarBtnClass(false)} onClick={openChat}>
+        <button className={sidebarBtnClass(location.pathname === "/messages")} onClick={openMessages}>
           Messages
         </button>
 

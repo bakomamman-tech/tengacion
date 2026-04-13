@@ -2,6 +2,7 @@ const AssistantFeedback = require("../models/AssistantFeedback");
 const { assistantFeedbackSchema, assistantRequestSchema } = require("../services/assistant/schemas");
 const { chat } = require("../services/assistant/assistantService");
 const { logAssistantEvent } = require("../services/assistant/audit");
+const { queueAssistantReview } = require("../services/assistant/reviewQueue");
 
 exports.chat = async (req, res, next) => {
   try {
@@ -48,6 +49,7 @@ exports.feedback = async (req, res, next) => {
       userId: req.user.id,
       conversationId: parsed.data.conversationId,
       messageId: parsed.data.messageId,
+      responseId: parsed.data.responseId,
       rating: parsed.data.rating,
       reason: parsed.data.reason,
       mode: parsed.data.mode,
@@ -66,12 +68,33 @@ exports.feedback = async (req, res, next) => {
       conversationId: parsed.data.conversationId,
       metadata: {
         messageId: parsed.data.messageId,
+        responseId: parsed.data.responseId,
         rating: parsed.data.rating,
         mode: parsed.data.mode,
         surface: parsed.data.surface,
         responseMode: parsed.data.responseMode,
       },
     }).catch(() => null);
+
+    if (parsed.data.rating === "not_helpful") {
+      await queueAssistantReview({
+        userId: req.user.id,
+        feedbackId: doc._id,
+        conversationId: parsed.data.conversationId,
+        messageId: parsed.data.messageId,
+        responseId: parsed.data.responseId,
+        category: parsed.data.metadata?.safetyLevel && parsed.data.metadata.safetyLevel !== "safe" ? "safety" : "feedback",
+        reason: parsed.data.reason || "User marked this assistant reply as not helpful.",
+        mode: parsed.data.mode,
+        surface: parsed.data.surface,
+        responseMode: parsed.data.responseMode,
+        safetyLevel: parsed.data.metadata?.safetyLevel || "safe",
+        requestSummary: parsed.data.metadata?.requestSummary || "",
+        responseSummary: parsed.data.responseSummary,
+        trust: parsed.data.metadata?.trust || {},
+        metadata: parsed.data.metadata || {},
+      }).catch(() => null);
+    }
 
     return res.status(201).json({
       ok: true,

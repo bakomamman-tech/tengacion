@@ -58,11 +58,25 @@ const ASSISTANT_CONTEXT_SURFACES = [
   "notifications",
   "profile",
   "creator",
+  "creator_page",
+  "creator_onboarding",
   "creator_dashboard",
+  "creator_music_upload",
+  "creator_books_upload",
+  "creator_podcasts_upload",
+  "creator_finance",
   "search",
   "discovery",
   "purchases",
   "settings",
+  "support",
+  "social",
+  "utility",
+  "business",
+  "live",
+  "news",
+  "discover",
+  "admin",
 ];
 
 const isSafeInternalRoute = (value = "") => {
@@ -139,6 +153,15 @@ const assistantCardSchema = z
   })
   .strict();
 
+const assistantSourceSchema = z
+  .object({
+    id: z.string().trim().min(1).max(80),
+    type: z.string().trim().min(1).max(40),
+    label: z.string().trim().min(1).max(120),
+    summary: z.string().trim().max(240).optional().default(""),
+  })
+  .strict();
+
 const assistantDetailSchema = z
   .object({
     title: z.string().trim().min(1).max(120),
@@ -160,6 +183,17 @@ const assistantSafetySchema = z
     level: z.enum(["safe", "caution", "refusal", "emergency"]).default("safe"),
     notice: z.string().trim().max(500).optional().default(""),
     escalation: z.string().trim().max(240).optional().default(""),
+  })
+  .strict();
+
+const assistantTrustSchema = z
+  .object({
+    provider: z.string().trim().max(40).optional().default("local-fallback"),
+    mode: z.string().trim().max(40).optional().default("general"),
+    grounded: z.boolean().optional().default(true),
+    usedModel: z.boolean().optional().default(false),
+    confidenceLabel: z.string().trim().max(24).optional().default("medium"),
+    note: z.string().trim().max(240).optional().default(""),
   })
   .strict();
 
@@ -207,9 +241,19 @@ const assistantRequestSchema = z
 
 const assistantResponseSchema = z
   .object({
+    responseId: z.string().trim().max(80).optional().default(""),
     message: z.string().trim().min(1).max(1000),
     mode: z.enum(ASSISTANT_MODES).default("general"),
     safety: assistantSafetySchema.default({ level: "safe", notice: "", escalation: "" }),
+    trust: assistantTrustSchema.default({
+      provider: "local-fallback",
+      mode: "general",
+      grounded: true,
+      usedModel: false,
+      confidenceLabel: "medium",
+      note: "",
+    }),
+    sources: z.array(assistantSourceSchema).max(8).default([]),
     details: z.array(assistantDetailSchema).max(10).default([]),
     followUps: z.array(assistantFollowUpSchema).max(10).default([]),
     actions: z.array(assistantActionSchema).max(5).default([]),
@@ -225,6 +269,7 @@ const assistantFeedbackSchema = z
   .object({
     conversationId: z.string().trim().max(80).optional().default(""),
     messageId: z.string().trim().max(80).optional().default(""),
+    responseId: z.string().trim().max(80).optional().default(""),
     rating: z.enum(["helpful", "not_helpful"]),
     reason: z.string().trim().max(500).optional().default(""),
     mode: z.string().trim().max(40).optional().default(""),
@@ -287,7 +332,15 @@ const draftContentToolInputSchema = z
         "promo",
         "release",
         "podcast_summary",
+        "podcast_teaser",
         "book_blurb",
+        "book_launch",
+        "music_launch_post",
+        "product_description",
+        "event_announcement",
+        "fan_engagement",
+        "artist_intro",
+        "talent_competition",
         "rewrite",
         "summary",
       ])
@@ -342,6 +395,8 @@ module.exports = {
   assistantRequestSchema,
   assistantResponseSchema,
   assistantSafetySchema,
+  assistantSourceSchema,
+  assistantTrustSchema,
   emptyToolInputSchema,
   draftContentToolInputSchema,
   draftPostCaptionToolInputSchema,

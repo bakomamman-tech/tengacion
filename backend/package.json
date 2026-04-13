@@ -15,6 +15,7 @@
     "audit:legacy-media": "node scripts/reportLegacyMedia.js",
     "report:legacy-media": "node scripts/reportLegacyMedia.js",
     "cleanup:storage": "node scripts/storageCleanup.js",
+    "eval:assistant": "cross-env NODE_PATH=./node_modules node scripts/runAssistantEvals.js",
     "test": "cross-env NODE_PATH=./node_modules jest --runInBand"
   },
   "dependencies": {

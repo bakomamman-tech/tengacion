@@ -27,6 +27,13 @@ const AssistantFeedbackSchema = new mongoose.Schema(
       maxlength: 80,
       index: true,
     },
+    responseId: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 80,
+      index: true,
+    },
     rating: {
       type: String,
       required: true,

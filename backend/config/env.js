@@ -206,6 +206,7 @@ const assistantThrottleDurationMs = parsePort(process.env.ASSISTANT_THROTTLE_DUR
 const assistantAbuseThreshold = parsePort(process.env.ASSISTANT_ABUSE_THRESHOLD, 4);
 const assistantMemoryRetentionDays = parsePort(process.env.ASSISTANT_MEMORY_RETENTION_DAYS, 30);
 const assistantFeedbackRetentionDays = parsePort(process.env.ASSISTANT_FEEDBACK_RETENTION_DAYS, 90);
+const assistantModelTimeoutMs = parsePort(process.env.ASSISTANT_MODEL_TIMEOUT_MS, 9000);
 
 const missing = [];
 
@@ -279,6 +280,7 @@ const config = {
   assistantAbuseThreshold,
   assistantMemoryRetentionDays,
   assistantFeedbackRetentionDays,
+  assistantModelTimeoutMs,
   requireEmailOtp,
   livekit:
     livekitApiKey || livekitApiSecret || livekitHost || livekitWsUrl
@@ -331,6 +333,7 @@ const config = {
   ASSISTANT_ABUSE_THRESHOLD: assistantAbuseThreshold,
   ASSISTANT_MEMORY_RETENTION_DAYS: assistantMemoryRetentionDays,
   ASSISTANT_FEEDBACK_RETENTION_DAYS: assistantFeedbackRetentionDays,
+  ASSISTANT_MODEL_TIMEOUT_MS: assistantModelTimeoutMs,
   REQUIRE_EMAIL_OTP: requireEmailOtp,
   LIVEKIT_API_KEY: livekitApiKey,
   LIVEKIT_API_SECRET: livekitApiSecret,

@@ -54,6 +54,22 @@ const sanitizeAssistantSafety = (safety = {}) => ({
   escalation: sanitizePlainText(safety?.escalation || "", 240),
 });
 
+const sanitizeAssistantSource = (source = {}) => ({
+  id: sanitizePlainText(source?.id || "", 80),
+  type: sanitizePlainText(source?.type || "", 40),
+  label: sanitizePlainText(source?.label || "", 120),
+  summary: sanitizePlainText(source?.summary || "", 240),
+});
+
+const sanitizeAssistantTrust = (trust = {}) => ({
+  provider: sanitizePlainText(trust?.provider || "local-fallback", 40) || "local-fallback",
+  mode: sanitizePlainText(trust?.mode || "general", 40) || "general",
+  grounded: trust?.grounded !== false,
+  usedModel: Boolean(trust?.usedModel),
+  confidenceLabel: sanitizePlainText(trust?.confidenceLabel || "medium", 24) || "medium",
+  note: sanitizePlainText(trust?.note || "", 240),
+});
+
 const sanitizeAssistantPreferences = (value = {}) => {
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   return {
@@ -70,6 +86,8 @@ module.exports = {
   sanitizeAssistantFollowUp,
   sanitizeAssistantPreferences,
   sanitizeAssistantSafety,
+  sanitizeAssistantSource,
+  sanitizeAssistantTrust,
   sanitizeMultilineText,
   sanitizePlainText,
   sanitizeRoute,

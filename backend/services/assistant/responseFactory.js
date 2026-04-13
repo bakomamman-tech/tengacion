@@ -2,6 +2,8 @@ const {
   sanitizeAssistantDetail,
   sanitizeAssistantFollowUp,
   sanitizeAssistantSafety,
+  sanitizeAssistantSource,
+  sanitizeAssistantTrust,
   sanitizeMultilineText,
   sanitizePlainText,
   sanitizeRoute,
@@ -12,11 +14,16 @@ const normalizeActions = (actions = []) => (Array.isArray(actions) ? actions.fil
 const normalizeDetails = (details = []) => (Array.isArray(details) ? details.map(sanitizeAssistantDetail).filter((entry) => entry.title || entry.body) : []);
 const normalizeFollowUps = (followUps = []) =>
   (Array.isArray(followUps) ? followUps.map(sanitizeAssistantFollowUp).filter((entry) => entry.label || entry.prompt) : []);
+const normalizeSources = (sources = []) =>
+  (Array.isArray(sources) ? sources.map(sanitizeAssistantSource).filter((entry) => entry.id && entry.label && entry.type) : []);
 
 const makeAssistantResponse = ({
+  responseId = "",
   message = "",
   mode = "general",
   safety = {},
+  trust = {},
+  sources = [],
   details = [],
   followUps = [],
   actions = [],
@@ -26,9 +33,12 @@ const makeAssistantResponse = ({
   conversationId = "",
   confidence = 0.6,
 } = {}) => ({
+  responseId: sanitizePlainText(responseId, 80),
   message: sanitizeMultilineText(message, 1000) || "I can help with Tengacion, writing, learning, and safe navigation.",
   mode: sanitizePlainText(mode, 40) || "general",
   safety: sanitizeAssistantSafety(safety),
+  trust: sanitizeAssistantTrust(trust),
+  sources: normalizeSources(sources),
   details: normalizeDetails(details),
   followUps: normalizeFollowUps(followUps),
   actions: normalizeActions(actions).map((action) => ({

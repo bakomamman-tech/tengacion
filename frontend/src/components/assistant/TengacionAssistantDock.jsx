@@ -22,8 +22,18 @@ const createAssistantThreadMessage = (role, content, extras = {}) => ({
   id: makeId(role),
   role,
   content,
+  responseId: extras.responseId || "",
   mode: extras.mode || "general",
   safety: extras.safety || { level: "safe", notice: "", escalation: "" },
+  trust: extras.trust || {
+    provider: "local-fallback",
+    mode: "general",
+    grounded: true,
+    usedModel: false,
+    confidenceLabel: "medium",
+    note: "",
+  },
+  sources: Array.isArray(extras.sources) ? extras.sources : [],
   details: Array.isArray(extras.details) ? extras.details : [],
   followUps: Array.isArray(extras.followUps) ? extras.followUps : [],
   cards: Array.isArray(extras.cards) ? extras.cards : [],
@@ -105,8 +115,11 @@ export default function TengacionAssistantDock() {
 
   const appendAssistantReply = useCallback((response) => {
     const assistantMessage = createAssistantThreadMessage("assistant", response.message, {
+      responseId: response.responseId,
       mode: response.mode,
       safety: response.safety,
+      trust: response.trust,
+      sources: response.sources,
       details: response.details,
       followUps: response.followUps,
       cards: response.cards,
@@ -281,11 +294,18 @@ export default function TengacionAssistantDock() {
         await sendAssistantFeedback({
           conversationId,
           messageId: message.id,
+          responseId: message.responseId,
           rating,
           mode: message.mode || assistantMode,
           surface,
           responseMode: message.mode || "",
           responseSummary: String(message.content || "").slice(0, 500),
+          metadata: {
+            safetyLevel: message.safety?.level || "safe",
+            requestSummary: String(lastQueryRef.current || "").slice(0, 500),
+            trust: message.trust || {},
+            sourceTypes: Array.isArray(message.sources) ? message.sources.map((source) => source.type).slice(0, 6) : [],
+          },
         });
         toast.success(rating === "helpful" ? "Thanks for the feedback." : "Feedback saved.");
       } catch (err) {

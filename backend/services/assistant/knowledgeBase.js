@@ -50,6 +50,28 @@ const KNOWLEDGE_ARTICLES = [
     ],
   },
   {
+    id: "today-in-african-history",
+    title: "Today in African history",
+    tags: ["africa", "history", "daily fact", "today in history"],
+    summary: "A daily African history moment should be presented as a short, specific, date-aware learning prompt.",
+    bullets: [
+      "Use one concrete event, person, or milestone at a time so the lesson feels memorable.",
+      "Explain why the moment mattered locally and across the continent when relevant.",
+      "If the exact date is uncertain, say so instead of pretending to know.",
+    ],
+  },
+  {
+    id: "nigerian-history",
+    title: "Nigerian history",
+    tags: ["nigeria", "history", "colonial", "independence"],
+    summary: "Nigerian history is best explained through precolonial states, colonial rule, independence, and post-independence change.",
+    bullets: [
+      "Useful explanations should distinguish between precolonial, colonial, and post-independence periods.",
+      "Regional histories matter because Nigeria's peoples and political structures are diverse.",
+      "Clear answers should avoid flattening the country into a single story.",
+    ],
+  },
+  {
     id: "nigerian-public-life",
     title: "Nigerian public life",
     tags: ["nigeria", "public figures", "culture", "media"],
@@ -105,6 +127,17 @@ const KNOWLEDGE_ARTICLES = [
     ],
   },
   {
+    id: "african-literature",
+    title: "African literature",
+    tags: ["africa", "literature", "books", "authors"],
+    summary: "African literature discussions should be specific about region, era, language, and theme.",
+    bullets: [
+      "African literature spans many countries, languages, and literary traditions.",
+      "A good answer should mention theme, context, and authorial voice without overgeneralizing the continent.",
+      "Examples help when comparing oral traditions, modern fiction, poetry, drama, and essays.",
+    ],
+  },
+  {
     id: "science-basics",
     title: "Science basics",
     tags: ["science", "education", "explain simply"],
@@ -124,6 +157,17 @@ const KNOWLEDGE_ARTICLES = [
       "Technical explanations should avoid jargon where possible.",
       "Use examples, comparisons, and step-by-step reasoning.",
       "When data is missing, state the assumption clearly instead of guessing.",
+    ],
+  },
+  {
+    id: "engineering-reasoning",
+    title: "Engineering reasoning",
+    tags: ["engineering", "problem solving", "design", "systems"],
+    summary: "Engineering help should define the goal, constraints, assumptions, and trade-offs before jumping to a conclusion.",
+    bullets: [
+      "State the objective clearly before solving the problem.",
+      "List the known values, unknowns, and assumptions so the reasoning stays transparent.",
+      "Compare options by trade-off instead of pretending there is always one perfect answer.",
     ],
   },
   {

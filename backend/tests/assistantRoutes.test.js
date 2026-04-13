@@ -141,6 +141,14 @@ describe("Assistant routes", () => {
         }),
       ])
     );
+    expect(String(response.body.responseId || "")).not.toHaveLength(0);
+    expect(response.body.trust).toEqual(
+      expect.objectContaining({
+        provider: expect.any(String),
+        mode: expect.any(String),
+      })
+    );
+    expect(Array.isArray(response.body.sources)).toBe(true);
   });
 
   it("greets the user instead of falling back to the disabled notice", async () => {
@@ -336,6 +344,27 @@ describe("Assistant routes", () => {
     expect(Array.isArray(response.body.actions)).toBe(true);
     expect(response.body.actions).toHaveLength(0);
     expect(String(response.body.message || "")).toMatch(/safe navigation|help with/i);
+  });
+
+  it("returns grounded source metadata for knowledge answers", async () => {
+    const response = await request(app)
+      .post("/api/assistant/chat")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ message: "Explain Nigerian culture simply" })
+      .expect(200);
+
+    expect(response.body.trust).toEqual(
+      expect.objectContaining({
+        grounded: true,
+      })
+    );
+    expect(response.body.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "knowledge_base",
+        }),
+      ])
+    );
   });
 
   it("refuses risky actions and returns a pending safe alternative", async () => {

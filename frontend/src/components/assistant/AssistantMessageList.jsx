@@ -25,6 +25,14 @@ const SAFETY_LABELS = {
   emergency: "Urgent",
 };
 
+const TRUST_MODE_LABELS = {
+  "app-aware": "App-aware",
+  "public-knowledge": "Public knowledge",
+  "creator-writing": "Creator writing",
+  "health-caution": "Health caution",
+  general: "General help",
+};
+
 export default function AssistantMessageList({
   messages = [],
   loading = false,
@@ -46,6 +54,15 @@ export default function AssistantMessageList({
         const details = Array.isArray(message?.details) ? message.details : [];
         const followUps = Array.isArray(message?.followUps) ? message.followUps : [];
         const safety = message?.safety || { level: "safe", notice: "", escalation: "" };
+        const trust = message?.trust || {
+          provider: "local-fallback",
+          mode: "general",
+          grounded: true,
+          usedModel: false,
+          confidenceLabel: "medium",
+          note: "",
+        };
+        const sources = Array.isArray(message?.sources) ? message.sources : [];
         const feedbackStatus = String(message?.feedbackStatus || "unrated");
 
         return (
@@ -54,10 +71,35 @@ export default function AssistantMessageList({
             className={`tg-assistant-message${isUser ? " tg-assistant-message--user" : " tg-assistant-message--assistant"}`}
           >
             <div className="tg-assistant-message__meta">
-              {isUser ? "You" : `Akuso${message?.mode ? ` • ${message.mode}` : ""}`}
+              {isUser ? "You" : `Akuso${message?.mode ? ` | ${message.mode}` : ""}`}
             </div>
 
             <div className="tg-assistant-message__bubble">{message?.content}</div>
+
+            {!isUser ? (
+              <>
+                <div className="tg-assistant-trust">
+                  <span className="tg-assistant-trust__badge">{TRUST_MODE_LABELS[trust.mode] || "Guided reply"}</span>
+                  <span className="tg-assistant-trust__badge">{trust.grounded ? "Grounded" : "Limited context"}</span>
+                  <span className="tg-assistant-trust__badge">
+                    {trust.usedModel ? `Model: ${trust.provider}` : "Local safety flow"}
+                  </span>
+                  <span className="tg-assistant-trust__badge">Confidence: {trust.confidenceLabel}</span>
+                </div>
+
+                {trust?.note ? <div className="tg-assistant-trust__note">{trust.note}</div> : null}
+
+                {sources.length > 0 ? (
+                  <div className="tg-assistant-sources" aria-label="Sources used">
+                    {sources.slice(0, 4).map((source) => (
+                      <span key={source?.id || source?.label} className="tg-assistant-source-chip" title={source?.summary || source?.label}>
+                        {source?.label}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
 
             {!isUser && safety?.level && safety.level !== "safe" ? (
               <div className={`tg-assistant-safety tg-assistant-safety--${safety.level}`}>
@@ -100,7 +142,7 @@ export default function AssistantMessageList({
                   {feedbackStatus === "helpful" || feedbackStatus === "not_helpful"
                     ? feedbackStatus === "helpful"
                       ? "Thanks for the feedback."
-                      : "Thanks, we’ll improve this."
+                      : "Thanks, we'll improve this."
                     : "Was this helpful?"}
                 </span>
                 <div className="tg-assistant-feedback__actions">

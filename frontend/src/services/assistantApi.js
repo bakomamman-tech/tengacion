@@ -84,12 +84,37 @@ const normalizeSafety = (safety = {}) => ({
   escalation: normalizeString(safety.escalation),
 });
 
+const normalizeSource = (source) => {
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    return null;
+  }
+
+  return {
+    id: normalizeString(source.id),
+    type: normalizeString(source.type),
+    label: normalizeString(source.label),
+    summary: normalizeString(source.summary),
+  };
+};
+
+const normalizeTrust = (trust = {}) => ({
+  provider: normalizeString(trust.provider, "local-fallback"),
+  mode: normalizeString(trust.mode, "general"),
+  grounded: trust?.grounded !== false,
+  usedModel: Boolean(trust?.usedModel),
+  confidenceLabel: normalizeString(trust.confidenceLabel, "medium"),
+  note: normalizeString(trust.note),
+});
+
 export const normalizeAssistantResponse = (payload = {}) => ({
+  responseId: normalizeString(payload.responseId),
   message:
     normalizeString(payload.message) ||
     "I can help with safe navigation, discovery, uploads, purchases, notifications, writing, math, and learning.",
   mode: normalizeString(payload.mode, "general"),
   safety: normalizeSafety(payload.safety),
+  trust: normalizeTrust(payload.trust),
+  sources: Array.isArray(payload.sources) ? payload.sources.map(normalizeSource).filter(Boolean) : [],
   details: normalizeDetails(payload.details),
   followUps: normalizeFollowUps(payload.followUps),
   actions: Array.isArray(payload.actions) ? payload.actions.map(normalizeAction).filter(Boolean) : [],
@@ -171,6 +196,7 @@ export const sendAssistantMessage = async ({
 export const sendAssistantFeedback = async ({
   conversationId = "",
   messageId = "",
+  responseId = "",
   rating,
   reason = "",
   mode = "",
@@ -185,6 +211,7 @@ export const sendAssistantFeedback = async ({
 
   if (conversationId) {body.conversationId = normalizeString(conversationId);}
   if (messageId) {body.messageId = normalizeString(messageId);}
+  if (responseId) {body.responseId = normalizeString(responseId);}
   if (reason) {body.reason = normalizeString(reason, "");}
   if (mode) {body.mode = normalizeString(mode, "");}
   if (surface) {body.surface = normalizeString(surface, "");}

@@ -536,6 +536,39 @@ body.tg-assistant-open {
   white-space: pre-wrap;
 }
 
+.tg-assistant-trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.tg-assistant-trust__badge,
+.tg-assistant-source-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.9rem;
+  padding: 0 0.72rem;
+  border: 1px solid rgba(42, 111, 79, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: color-mix(in srgb, var(--text) 82%, var(--muted) 18%);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.tg-assistant-trust__note {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.tg-assistant-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
 .tg-assistant-safety {
   display: grid;
   gap: 0.25rem;
@@ -830,7 +863,9 @@ html.dark-mode .tg-assistant-mode-pill:focus-visible {
 
 html.dark-mode .tg-assistant-safety,
 html.dark-mode .tg-assistant-detail,
-html.dark-mode .tg-assistant-feedback {
+html.dark-mode .tg-assistant-feedback,
+html.dark-mode .tg-assistant-trust__badge,
+html.dark-mode .tg-assistant-source-chip {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(121, 207, 162, 0.12);
 }

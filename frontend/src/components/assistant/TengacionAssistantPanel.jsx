@@ -240,7 +240,7 @@ export default function TengacionAssistantPanel({
             <div className="tg-assistant-empty-state">
               <strong>What can Akuso do?</strong>
               <p>
-                Ask to open messages, notifications, your creator tools, or to search creators and content.
+                Ask to navigate Tengacion, draft creator copy, explain a topic, solve math, or get cautious general health guidance.
               </p>
               <div className="tg-assistant-suggestions" aria-label="Suggested prompts">
                 {quickSuggestions.map((prompt) => (
@@ -280,7 +280,7 @@ export default function TengacionAssistantPanel({
           />
 
           <div className="tg-assistant-history-note">
-            Akuso keeps the current chat only. Sensitive details are not shown in the assistant history.
+            Akuso keeps this chat lightweight, avoids showing sensitive data, and labels when an answer is grounded or cautious.
           </div>
         </section>
 

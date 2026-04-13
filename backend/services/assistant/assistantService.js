@@ -6,11 +6,12 @@ const { buildAssistantContext } = require("./contextBuilder");
 const { classifyAssistantRequest, detectEmergency, detectPromptInjection, detectDisallowed } = require("./policyEngine");
 const { retrieveAssistantContext } = require("./retrieval");
 const { loadConversationMemory, loadUserPreferences, saveConversationMemory, saveUserPreferences } = require("./memoryStore");
-const { recordAssistantRisk, clearAssistantRisk } = require("./abuseGuard");
+const { recordAssistantRisk } = require("./abuseGuard");
 const { logAssistantEvent } = require("./audit");
 const { canAccessFeature, findFeatureById, findFeatureByRoute, getSurfaceQuickPrompts } = require("./featureRegistry");
 const { getHelpArticleByFeatureId, getHelpPrompts, searchHelpArticles } = require("./helpDocs");
 const { searchKnowledgeArticles } = require("./knowledgeBase");
+const { enhanceAssistantResponse } = require("./modelRouter");
 const {
   getCreatorPublicPageRoute,
   getCreatorRouteForDashboard,
@@ -33,6 +34,7 @@ const {
 } = require("./responseFactory");
 const { sanitizePlainText, sanitizeMultilineText, sanitizeAssistantPreferences } = require("./outputSanitizer");
 const { assistantResponseSchema } = require("./schemas");
+const { buildAssistantSources, buildAssistantTrust } = require("./trustSignals");
 
 const conversationMemory = new Map();
 const GREETING_PATTERNS = [
@@ -471,6 +473,14 @@ const classifyWritingTask = (message = "") => {
   if (/\bsummary\b|\bsummarize\b/.test(lower)) return "summary";
   if (/\bbio\b/.test(lower)) return "bio";
   if (/\barticle\b/.test(lower)) return "article";
+  if (/\bproduct description\b|\bproduct copy\b/.test(lower)) return "product_description";
+  if (/\bevent announcement\b|\bannounce(?:ment)?\b/.test(lower)) return "event_announcement";
+  if (/\bfan engagement\b|\bengagement prompt\b|\bask my fans\b/.test(lower)) return "fan_engagement";
+  if (/\bartist intro\b|\bintroduce (?:the )?artist\b/.test(lower)) return "artist_intro";
+  if (/\btalent competition\b|\bcontest description\b/.test(lower)) return "talent_competition";
+  if (/\bpodcast teaser\b|\bteaser\b/.test(lower) && /\bpodcast\b/.test(lower)) return "podcast_teaser";
+  if (/\bbook launch\b|\blaunch\b/.test(lower) && /\bbook\b/.test(lower)) return "book_launch";
+  if (/\bmusic launch\b|\blaunch post\b/.test(lower) && /\b(song|track|album|music|release)\b/.test(lower)) return "music_launch_post";
   if (/\bpromo\b|\bpromotion\b/.test(lower)) return "promo";
   if (/\brelease\b/.test(lower)) return "release";
   if (/\bpodcast\b/.test(lower)) return "podcast_summary";
@@ -479,10 +489,25 @@ const classifyWritingTask = (message = "") => {
   return "caption";
 };
 
-const detectWritingContentType = classifyWritingTask;
+const detectWritingContentType = ({ message = "", retrieved = {}, classification = {} } = {}) => {
+  const direct = classifyWritingTask(message);
+  if (direct && direct !== "caption") {
+    return direct;
+  }
+
+  const featureId = retrieved?.feature?.id || classification?.featureId || "";
+  if (featureId === "creator_music_upload") return "music_launch_post";
+  if (featureId === "creator_books_upload") return "book_launch";
+  if (featureId === "creator_podcasts_upload") return "podcast_teaser";
+  return direct || "caption";
+};
 
 const buildWritingResponse = ({ conversationId, normalizedMessage, preferences, classification, retrieved }) => {
-  const contentType = detectWritingContentType(normalizedMessage);
+  const contentType = detectWritingContentType({
+    message: normalizedMessage,
+    retrieved,
+    classification,
+  });
   const topic = classification.writingTopic || extractCaptionTopic(normalizedMessage);
   const writingPreferences = normalizeWritingPreferences({
     ...preferences,
@@ -635,17 +660,74 @@ const buildFollowUpRoute = ({ message, state, assistantContext }) => {
   };
 };
 
+const maybeEnhanceResponse = async ({
+  response,
+  user,
+  normalizedMessage,
+  assistantContext,
+  classification,
+  retrieved,
+  preferences,
+  memory,
+}) => {
+  const enhanced = await enhanceAssistantResponse({
+    user,
+    message: normalizedMessage,
+    assistantContext,
+    classification,
+    retrieved,
+    preferences,
+    memory,
+    fallbackResponse: response,
+  }).catch(() => null);
+
+  if (!enhanced?.response) {
+    return {
+      response,
+      provider: "local-fallback",
+      usedModel: false,
+    };
+  }
+
+  return {
+    response: enhanced.response,
+    provider: enhanced.provider || "openai",
+    usedModel: Boolean(enhanced.usedModel),
+  };
+};
+
 const finalizeResponse = async ({
   response,
   conversationId,
   user,
   assistantContext,
   classification,
+  retrieved,
   preferences,
   modeHint,
   normalizedMessage,
+  modelMetadata = {},
 }) => {
-  const normalized = assistantResponseSchema.parse({ ...response, conversationId });
+  const sources = buildAssistantSources({
+    retrieved,
+    usedModel: Boolean(modelMetadata?.usedModel),
+    provider: modelMetadata?.provider || "local-fallback",
+  });
+  const trust = buildAssistantTrust({
+    classification,
+    confidence: response?.confidence,
+    usedModel: Boolean(modelMetadata?.usedModel),
+    provider: modelMetadata?.provider || "local-fallback",
+    sources,
+  });
+
+  const normalized = assistantResponseSchema.parse({
+    ...response,
+    responseId: sanitizePlainText(response?.responseId || crypto.randomUUID(), 80),
+    conversationId,
+    sources,
+    trust,
+  });
   const primaryRoute = Array.isArray(normalized.actions)
     ? normalized.actions.find((action) => action?.type === "navigate" && String(action?.target || "").startsWith("/"))
     : null;
@@ -749,9 +831,11 @@ const chat = async ({
       user,
       assistantContext,
       classification,
+      retrieved: {},
       preferences: mergedPreferences,
       modeHint: assistantModeHint,
       normalizedMessage,
+      modelMetadata: { provider: "local-fallback", usedModel: false },
     });
   }
 
@@ -896,15 +980,31 @@ const chat = async ({
     }
   }
 
-  const finalized = await finalizeResponse({
+  const enhanced = await maybeEnhanceResponse({
     response,
+    user,
+    normalizedMessage,
+    assistantContext,
+    classification,
+    retrieved,
+    preferences: mergedPreferences,
+    memory,
+  });
+
+  const finalized = await finalizeResponse({
+    response: enhanced.response,
     conversationId: nextConversationId,
     user,
     assistantContext,
     classification,
+    retrieved,
     preferences: mergedPreferences,
     modeHint: assistantModeHint,
     normalizedMessage,
+    modelMetadata: {
+      provider: enhanced.provider,
+      usedModel: enhanced.usedModel,
+    },
   });
 
   if (classification.category === "prompt_injection" || classification.category === "disallowed") {
@@ -939,16 +1039,10 @@ const chat = async ({
         topic: classification.topic || "",
         surface: assistantContext?.currentSurface || assistantContext?.surface || "general",
         confidence: finalized.confidence,
+        provider: finalized.trust?.provider || "local-fallback",
+        grounded: finalized.trust?.grounded !== false,
       },
     }).catch(() => null);
-  }
-
-  if (classification.category === "prompt_injection" || classification.category === "disallowed" || classification.category === "emergency") {
-    clearAssistantRisk({
-      userId: user?.id || "",
-      sessionId: user?.sessionId || "",
-      ip: req?.ip || "",
-    });
   }
 
   return finalized;

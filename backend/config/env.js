@@ -201,6 +201,11 @@ const openAiApiKey = toText(process.env.OPENAI_API_KEY);
 const openAiModel = toText(process.env.OPENAI_MODEL) || "gpt-5.4-mini";
 const hasOpenAI = Boolean(openAiApiKey);
 const assistantEnabled = assistantEnabledInput ? toBool(assistantEnabledInput) : true;
+const assistantAbuseWindowMs = parsePort(process.env.ASSISTANT_ABUSE_WINDOW_MS, 10 * 60 * 1000);
+const assistantThrottleDurationMs = parsePort(process.env.ASSISTANT_THROTTLE_DURATION_MS, 15 * 60 * 1000);
+const assistantAbuseThreshold = parsePort(process.env.ASSISTANT_ABUSE_THRESHOLD, 4);
+const assistantMemoryRetentionDays = parsePort(process.env.ASSISTANT_MEMORY_RETENTION_DAYS, 30);
+const assistantFeedbackRetentionDays = parsePort(process.env.ASSISTANT_FEEDBACK_RETENTION_DAYS, 90);
 
 const missing = [];
 
@@ -269,6 +274,11 @@ const config = {
   openAiModel,
   hasOpenAI,
   assistantEnabled,
+  assistantAbuseWindowMs,
+  assistantThrottleDurationMs,
+  assistantAbuseThreshold,
+  assistantMemoryRetentionDays,
+  assistantFeedbackRetentionDays,
   requireEmailOtp,
   livekit:
     livekitApiKey || livekitApiSecret || livekitHost || livekitWsUrl
@@ -316,6 +326,11 @@ const config = {
   OPENAI_MODEL: openAiModel,
   HAS_OPENAI: hasOpenAI,
   ASSISTANT_ENABLED: assistantEnabled,
+  ASSISTANT_ABUSE_WINDOW_MS: assistantAbuseWindowMs,
+  ASSISTANT_THROTTLE_DURATION_MS: assistantThrottleDurationMs,
+  ASSISTANT_ABUSE_THRESHOLD: assistantAbuseThreshold,
+  ASSISTANT_MEMORY_RETENTION_DAYS: assistantMemoryRetentionDays,
+  ASSISTANT_FEEDBACK_RETENTION_DAYS: assistantFeedbackRetentionDays,
   REQUIRE_EMAIL_OTP: requireEmailOtp,
   LIVEKIT_API_KEY: livekitApiKey,
   LIVEKIT_API_SECRET: livekitApiSecret,

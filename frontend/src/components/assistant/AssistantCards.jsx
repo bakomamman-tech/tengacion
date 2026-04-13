@@ -3,13 +3,19 @@ const CARD_LABELS = {
   content: "Content",
   "quick-link": "Quick link",
   caption: "Caption",
+  draft: "Draft",
   purchase: "Purchase",
   notification: "Notification",
+  knowledge: "Knowledge",
+  help: "Help",
 };
 
 const getCardActionLabel = (card) => {
   if (card?.type === "caption") {
     return "Use in composer";
+  }
+  if (card?.type === "draft") {
+    return "Use draft";
   }
   if (card?.route) {
     return "Open";
@@ -49,4 +55,3 @@ export default function AssistantCards({ cards = [], onCardAction }) {
     </div>
   );
 }
-

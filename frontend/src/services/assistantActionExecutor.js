@@ -1,44 +1,4 @@
-const SAFE_ROUTE_PATTERNS = [
-  /^\/home\/?$/,
-  /^\/messages(?:[/?#].*)?$/,
-  /^\/notifications(?:[/?#].*)?$/,
-  /^\/search(?:[/?#].*)?$/,
-  /^\/find-creators(?:[/?#].*)?$/,
-  /^\/purchases(?:[/?#].*)?$/,
-  /^\/dashboard(?:[/?#].*)?$/,
-  /^\/settings(?:[/?#].*)?$/,
-  /^\/creator(?:[/?#].*)?$/,
-  /^\/profile\/[^/?#]+(?:[/?#].*)?$/,
-  /^\/posts\/[^/?#]+(?:[/?#].*)?$/,
-  /^\/tracks\/[^/?#]+(?:[/?#].*)?$/,
-  /^\/books\/[^/?#]+(?:[/?#].*)?$/,
-  /^\/albums\/[^/?#]+(?:[/?#].*)?$/,
-  /^\/news(?:[/?#].*)?$/,
-  /^\/friends\/?$/,
-  /^\/groups\/?$/,
-  /^\/rooms\/?$/,
-  /^\/saved\/?$/,
-  /^\/memories\/?$/,
-  /^\/events\/?$/,
-  /^\/birthdays\/?$/,
-  /^\/calculator\/?$/,
-  /^\/ads-manager\/?$/,
-  /^\/live(?:[/?#].*)?$/,
-  /^\/admin(?:[/?#].*)?$/,
-];
-
-const isSafeAssistantRoute = (target = "") => {
-  const route = String(target || "").trim();
-  if (!route.startsWith("/")) {
-    return false;
-  }
-
-  if (route.includes("://") || route.includes("\\") || route.includes("..")) {
-    return false;
-  }
-
-  return SAFE_ROUTE_PATTERNS.some((pattern) => pattern.test(route));
-};
+import { isSafeAssistantRoute } from "./assistantRoutes";
 
 const normalizeActionState = (state) =>
   state && typeof state === "object" && !Array.isArray(state) ? state : {};
@@ -59,19 +19,10 @@ const executeAssistantActions = (actions = [], handlers = {}) => {
     const target = String(action.target || "").trim();
     const state = normalizeActionState(action.state);
 
-    if (type === "navigate") {
-      if (isSafeAssistantRoute(target) && navigate) {
-        navigate(target, state, action);
-        outcomes.push({ action, executed: true });
-      } else {
-        outcomes.push({ action, executed: false, reason: "unsafe_route" });
-      }
-      continue;
-    }
-
-    if (type === "open_tab") {
-      if (isSafeAssistantRoute(target) && openTab) {
-        openTab(target, state, action);
+    if (type === "navigate" || type === "open_tab") {
+      const handler = type === "navigate" ? navigate : openTab;
+      if (isSafeAssistantRoute(target) && handler) {
+        handler(target, state, action);
         outcomes.push({ action, executed: true });
       } else {
         outcomes.push({ action, executed: false, reason: "unsafe_route" });
@@ -101,4 +52,4 @@ const executeAssistantActions = (actions = [], handlers = {}) => {
   return outcomes;
 };
 
-export { isSafeAssistantRoute, executeAssistantActions };
+export { executeAssistantActions, isSafeAssistantRoute };

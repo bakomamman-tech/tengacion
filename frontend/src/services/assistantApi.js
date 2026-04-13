@@ -5,6 +5,40 @@ const normalizeString = (value = "", fallback = "") => {
   return text || fallback;
 };
 
+const normalizeDetails = (details = []) =>
+  Array.isArray(details)
+    ? details
+        .map((detail) => {
+          if (!detail || typeof detail !== "object" || Array.isArray(detail)) {
+            return null;
+          }
+
+          return {
+            title: normalizeString(detail.title),
+            body: normalizeString(detail.body),
+          };
+        })
+        .filter(Boolean)
+    : [];
+
+const normalizeFollowUps = (followUps = []) =>
+  Array.isArray(followUps)
+    ? followUps
+        .map((followUp) => {
+          if (!followUp || typeof followUp !== "object" || Array.isArray(followUp)) {
+            return null;
+          }
+
+          return {
+            label: normalizeString(followUp.label),
+            prompt: normalizeString(followUp.prompt),
+            kind: normalizeString(followUp.kind, "prompt"),
+            route: normalizeString(followUp.route),
+          };
+        })
+        .filter(Boolean)
+    : [];
+
 const normalizeAction = (action) => {
   if (!action || typeof action !== "object" || Array.isArray(action)) {
     return null;
@@ -13,10 +47,7 @@ const normalizeAction = (action) => {
   const type = normalizeString(action.type);
   const target = normalizeString(action.target);
   const label = normalizeString(action.label);
-  const state =
-    action.state && typeof action.state === "object" && !Array.isArray(action.state)
-      ? action.state
-      : {};
+  const state = action.state && typeof action.state === "object" && !Array.isArray(action.state) ? action.state : {};
 
   if (!type) {
     return null;
@@ -41,43 +72,44 @@ const normalizeCard = (card) => {
     subtitle: normalizeString(card.subtitle),
     description: normalizeString(card.description),
     route: normalizeString(card.route),
-    payload:
-      card.payload && typeof card.payload === "object" && !Array.isArray(card.payload)
-        ? card.payload
-        : {},
+    payload: card.payload && typeof card.payload === "object" && !Array.isArray(card.payload) ? card.payload : {},
   };
 };
 
-const normalizePendingAction = (pendingAction) => {
-  if (!pendingAction || typeof pendingAction !== "object" || Array.isArray(pendingAction)) {
-    return null;
-  }
-
-  return {
-    type: normalizeString(pendingAction.type, "unsupported"),
-    label: normalizeString(pendingAction.label, "Action"),
-    description: normalizeString(pendingAction.description),
-    route: normalizeString(pendingAction.route),
-    payload:
-      pendingAction.payload && typeof pendingAction.payload === "object" && !Array.isArray(pendingAction.payload)
-        ? pendingAction.payload
-        : {},
-  };
-};
+const normalizeSafety = (safety = {}) => ({
+  level: ["safe", "caution", "refusal", "emergency"].includes(normalizeString(safety.level, "safe").toLowerCase())
+    ? normalizeString(safety.level, "safe").toLowerCase()
+    : "safe",
+  notice: normalizeString(safety.notice),
+  escalation: normalizeString(safety.escalation),
+});
 
 export const normalizeAssistantResponse = (payload = {}) => ({
   message:
     normalizeString(payload.message) ||
-    "I can help with safe navigation, discovery, uploads, purchases, notifications, and captions.",
-  actions: Array.isArray(payload.actions)
-    ? payload.actions.map(normalizeAction).filter(Boolean)
-    : [],
-  cards: Array.isArray(payload.cards)
-    ? payload.cards.map(normalizeCard).filter(Boolean)
-    : [],
+    "I can help with safe navigation, discovery, uploads, purchases, notifications, writing, math, and learning.",
+  mode: normalizeString(payload.mode, "general"),
+  safety: normalizeSafety(payload.safety),
+  details: normalizeDetails(payload.details),
+  followUps: normalizeFollowUps(payload.followUps),
+  actions: Array.isArray(payload.actions) ? payload.actions.map(normalizeAction).filter(Boolean) : [],
+  cards: Array.isArray(payload.cards) ? payload.cards.map(normalizeCard).filter(Boolean) : [],
   requiresConfirmation: Boolean(payload.requiresConfirmation),
-  pendingAction: normalizePendingAction(payload.pendingAction),
+  pendingAction:
+    payload.pendingAction && typeof payload.pendingAction === "object" && !Array.isArray(payload.pendingAction)
+      ? {
+          type: normalizeString(payload.pendingAction.type, "unsupported"),
+          label: normalizeString(payload.pendingAction.label, "Action"),
+          description: normalizeString(payload.pendingAction.description),
+          route: normalizeString(payload.pendingAction.route),
+          payload:
+            payload.pendingAction.payload && typeof payload.pendingAction.payload === "object" && !Array.isArray(payload.pendingAction.payload)
+              ? payload.pendingAction.payload
+              : {},
+        }
+      : null,
   conversationId: normalizeString(payload.conversationId),
+  confidence: Number.isFinite(Number(payload.confidence)) ? Number(payload.confidence) : 0.6,
 });
 
 export const sendAssistantMessage = async ({
@@ -85,6 +117,8 @@ export const sendAssistantMessage = async ({
   conversationId = "",
   pendingAction = null,
   context = null,
+  assistantModeHint = "",
+  preferences = null,
 }) => {
   const body = {
     message: normalizeString(message),
@@ -98,6 +132,10 @@ export const sendAssistantMessage = async ({
     body.pendingAction = pendingAction;
   }
 
+  if (assistantModeHint) {
+    body.assistantModeHint = normalizeString(assistantModeHint);
+  }
+
   if (context && typeof context === "object" && !Array.isArray(context)) {
     body.context = {
       currentPath: normalizeString(context.currentPath),
@@ -106,6 +144,16 @@ export const sendAssistantMessage = async ({
       pageTitle: normalizeString(context.pageTitle),
       selectedChatId: normalizeString(context.selectedChatId),
       selectedContentId: normalizeString(context.selectedContentId),
+    };
+  }
+
+  if (preferences && typeof preferences === "object" && !Array.isArray(preferences)) {
+    body.preferences = {
+      tone: normalizeString(preferences.tone),
+      audience: normalizeString(preferences.audience),
+      length: normalizeString(preferences.length),
+      simplicity: normalizeString(preferences.simplicity),
+      language: normalizeString(preferences.language),
     };
   }
 
@@ -118,4 +166,39 @@ export const sendAssistantMessage = async ({
   });
 
   return normalizeAssistantResponse(response);
+};
+
+export const sendAssistantFeedback = async ({
+  conversationId = "",
+  messageId = "",
+  rating,
+  reason = "",
+  mode = "",
+  surface = "",
+  responseMode = "",
+  responseSummary = "",
+  metadata = null,
+}) => {
+  const body = {
+    rating,
+  };
+
+  if (conversationId) {body.conversationId = normalizeString(conversationId);}
+  if (messageId) {body.messageId = normalizeString(messageId);}
+  if (reason) {body.reason = normalizeString(reason, "");}
+  if (mode) {body.mode = normalizeString(mode, "");}
+  if (surface) {body.surface = normalizeString(surface, "");}
+  if (responseMode) {body.responseMode = normalizeString(responseMode, "");}
+  if (responseSummary) {body.responseSummary = normalizeString(responseSummary, "");}
+  if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
+    body.metadata = metadata;
+  }
+
+  return apiRequest(`${API_BASE}/assistant/feedback`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
 };

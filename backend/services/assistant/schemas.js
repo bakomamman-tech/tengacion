@@ -8,18 +8,48 @@ const ASSISTANT_DESTINATIONS = [
   "creator_dashboard",
   "creator_page",
   "settings",
+  "settings_privacy",
+  "settings_security",
+  "settings_notifications",
+  "settings_display",
+  "settings_sound",
+  "help_support",
+  "feedback",
   "book_publishing",
   "music_upload",
   "podcast_upload",
+  "creator_settings",
+  "creator_support",
+  "creator_verification",
+  "creator_earnings",
+  "creator_payouts",
   "purchases",
   "creator_onboarding",
   "find_creators",
   "search",
   "dashboard",
+  "friends",
+  "groups",
+  "rooms",
+  "saved",
+  "memories",
+  "events",
+  "birthdays",
+  "calculator",
+  "ads_manager",
+  "live",
+  "news",
+  "trending",
+  "admin_dashboard",
 ];
 
 const ASSISTANT_UPLOAD_TYPES = ["music", "book", "podcast"];
 const ASSISTANT_SEARCH_CONTENT_TYPES = ["all", "posts", "tracks", "books", "albums", "podcasts"];
+const ASSISTANT_MODES = ["general", "knowledge", "copilot", "writing", "math", "health", "refusal", "emergency"];
+const ASSISTANT_WRITING_TONES = ["formal", "casual", "exciting", "premium", "inspirational", "warm", "professional", "playful"];
+const ASSISTANT_WRITING_AUDIENCES = ["fans", "buyers", "investors", "general public", "students", "followers", "listeners", "readers"];
+const ASSISTANT_WRITING_LENGTHS = ["short", "medium", "long"];
+const ASSISTANT_WRITING_SIMPLICITY = ["basic", "standard", "advanced"];
 const ASSISTANT_TONES = ["friendly", "playful", "professional", "inspiring", "warm"];
 const ASSISTANT_CONTEXT_SURFACES = [
   "general",
@@ -51,6 +81,15 @@ const isSafeInternalRoute = (value = "") => {
 const internalRouteSchema = z.string().trim().min(1).max(160).refine(isSafeInternalRoute, {
   message: "Invalid internal route",
 });
+
+const optionalInternalRouteSchema = z
+  .string()
+  .trim()
+  .max(160)
+  .default("")
+  .refine((value) => value === "" || isSafeInternalRoute(value), {
+    message: "Invalid internal route",
+  });
 
 const actionStateSchema = z.object({}).passthrough().default({});
 
@@ -95,8 +134,42 @@ const assistantCardSchema = z
     title: z.string().trim().min(1).max(120),
     subtitle: z.string().trim().max(200).optional().default(""),
     description: z.string().trim().max(500).optional().default(""),
-    route: internalRouteSchema.optional().default(""),
+    route: optionalInternalRouteSchema,
     payload: z.object({}).passthrough().optional().default({}),
+  })
+  .strict();
+
+const assistantDetailSchema = z
+  .object({
+    title: z.string().trim().min(1).max(120),
+    body: z.string().trim().min(1).max(1200),
+  })
+  .strict();
+
+const assistantFollowUpSchema = z
+  .object({
+    label: z.string().trim().min(1).max(120),
+    prompt: z.string().trim().min(1).max(240),
+    kind: z.string().trim().max(40).optional().default("prompt"),
+    route: optionalInternalRouteSchema,
+  })
+  .strict();
+
+const assistantSafetySchema = z
+  .object({
+    level: z.enum(["safe", "caution", "refusal", "emergency"]).default("safe"),
+    notice: z.string().trim().max(500).optional().default(""),
+    escalation: z.string().trim().max(240).optional().default(""),
+  })
+  .strict();
+
+const assistantPreferencesSchema = z
+  .object({
+    tone: z.string().trim().max(40).optional().default(""),
+    audience: z.string().trim().max(40).optional().default(""),
+    length: z.string().trim().max(20).optional().default(""),
+    simplicity: z.string().trim().max(20).optional().default(""),
+    language: z.string().trim().max(40).optional().default(""),
   })
   .strict();
 
@@ -116,7 +189,7 @@ const assistantPendingActionSchema = z
     type: z.string().trim().min(1).max(40),
     label: z.string().trim().min(1).max(120),
     description: z.string().trim().max(400).optional().default(""),
-    route: internalRouteSchema.optional().default(""),
+    route: optionalInternalRouteSchema,
     payload: z.object({}).passthrough().optional().default({}),
   })
   .strict();
@@ -127,17 +200,38 @@ const assistantRequestSchema = z
     conversationId: z.string().trim().max(80).optional().default(""),
     pendingAction: assistantPendingActionSchema.nullable().optional().default(null),
     context: assistantContextSchema.optional().default({}),
+    assistantModeHint: z.string().trim().max(40).optional().default(""),
+    preferences: assistantPreferencesSchema.optional().default({}),
   })
   .strict();
 
 const assistantResponseSchema = z
   .object({
     message: z.string().trim().min(1).max(1000),
+    mode: z.enum(ASSISTANT_MODES).default("general"),
+    safety: assistantSafetySchema.default({ level: "safe", notice: "", escalation: "" }),
+    details: z.array(assistantDetailSchema).max(10).default([]),
+    followUps: z.array(assistantFollowUpSchema).max(10).default([]),
     actions: z.array(assistantActionSchema).max(5).default([]),
     cards: z.array(assistantCardSchema).max(12).default([]),
     requiresConfirmation: z.boolean().default(false),
     pendingAction: assistantPendingActionSchema.nullable().optional().default(null),
     conversationId: z.string().trim().max(80).optional().default(""),
+    confidence: z.number().min(0).max(1).optional().default(0.6),
+  })
+  .strict();
+
+const assistantFeedbackSchema = z
+  .object({
+    conversationId: z.string().trim().max(80).optional().default(""),
+    messageId: z.string().trim().max(80).optional().default(""),
+    rating: z.enum(["helpful", "not_helpful"]),
+    reason: z.string().trim().max(500).optional().default(""),
+    mode: z.string().trim().max(40).optional().default(""),
+    surface: z.string().trim().max(60).optional().default(""),
+    responseMode: z.string().trim().max(40).optional().default(""),
+    responseSummary: z.string().trim().max(800).optional().default(""),
+    metadata: z.object({}).passthrough().optional().default({}),
   })
   .strict();
 
@@ -182,24 +276,83 @@ const explainFeatureToolInputSchema = z
   })
   .strict();
 
+const draftContentToolInputSchema = z
+  .object({
+    contentType: z
+      .enum([
+        "caption",
+        "bio",
+        "post",
+        "article",
+        "promo",
+        "release",
+        "podcast_summary",
+        "book_blurb",
+        "rewrite",
+        "summary",
+      ])
+      .default("caption"),
+    topic: z.string().trim().min(1).max(160),
+    sourceText: z.string().trim().max(1200).optional().default(""),
+    tone: z.enum(ASSISTANT_WRITING_TONES).optional().default("warm"),
+    audience: z.enum(ASSISTANT_WRITING_AUDIENCES).optional().default("general public"),
+    length: z.enum(ASSISTANT_WRITING_LENGTHS).optional().default("short"),
+    simplicity: z.enum(ASSISTANT_WRITING_SIMPLICITY).optional().default("standard"),
+    language: z.string().trim().max(40).optional().default("English"),
+  })
+  .strict();
+
+const solveMathToolInputSchema = z
+  .object({
+    expression: z.string().trim().min(1).max(240),
+  })
+  .strict();
+
+const healthGuidanceToolInputSchema = z
+  .object({
+    topic: z.string().trim().max(160).optional().default(""),
+    message: z.string().trim().max(1000).optional().default(""),
+  })
+  .strict();
+
+const searchHelpToolInputSchema = z
+  .object({
+    query: z.string().trim().min(1).max(160),
+  })
+  .strict();
+
 module.exports = {
   ASSISTANT_DESTINATIONS,
+  ASSISTANT_MODES,
   ASSISTANT_UPLOAD_TYPES,
   ASSISTANT_SEARCH_CONTENT_TYPES,
+  ASSISTANT_WRITING_AUDIENCES,
+  ASSISTANT_WRITING_LENGTHS,
+  ASSISTANT_WRITING_SIMPLICITY,
+  ASSISTANT_WRITING_TONES,
   ASSISTANT_TONES,
   assistantActionSchema,
   assistantContextSchema,
   assistantCardSchema,
+  assistantDetailSchema,
+  assistantFeedbackSchema,
+  assistantFollowUpSchema,
   assistantPendingActionSchema,
+  assistantPreferencesSchema,
   assistantRequestSchema,
   assistantResponseSchema,
+  assistantSafetySchema,
   emptyToolInputSchema,
+  draftContentToolInputSchema,
   draftPostCaptionToolInputSchema,
   explainFeatureToolInputSchema,
   internalRouteSchema,
   isSafeInternalRoute,
+  healthGuidanceToolInputSchema,
   navigateToToolInputSchema,
   openUploadPageToolInputSchema,
+  searchHelpToolInputSchema,
   searchContentToolInputSchema,
   searchCreatorsToolInputSchema,
+  solveMathToolInputSchema,
 };

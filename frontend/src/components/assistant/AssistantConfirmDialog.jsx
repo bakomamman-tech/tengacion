@@ -39,7 +39,7 @@ export default function AssistantConfirmDialog({
     : "Confirm with Akuso";
   const description =
     pendingAction?.description ||
-    "Akuso blocks risky actions in Phase 1. This confirmation only opens a safe in-app page.";
+    "Akuso only confirms safe in-app navigation. It never performs sensitive actions by itself.";
   const confirmLabel = canContinue
     ? pendingAction?.label
       ? `Open ${pendingAction.label}`
@@ -93,4 +93,3 @@ export default function AssistantConfirmDialog({
     document.body
   );
 }
-

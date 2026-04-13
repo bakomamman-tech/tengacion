@@ -15,5 +15,6 @@ const assistantLimiter = rateLimit({
 });
 
 router.post("/chat", auth, assistantLimiter, assistantController.chat);
+router.post("/feedback", auth, assistantLimiter, assistantController.feedback);
 
 module.exports = router;

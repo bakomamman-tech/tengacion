@@ -7,15 +7,18 @@ import Button from "../ui/Button";
 
 const isBrowser = typeof document !== "undefined";
 
-const DEFAULT_SUGGESTIONS = [
-  "Take me home",
-  "Open messages",
-  "Open creator dashboard",
-  "Take me to my creator page",
-  "Where do I upload music?",
-  "What can I do here?",
-  "Find gospel artists",
+const MODE_OPTIONS = [
+  { value: "copilot", label: "App" },
+  { value: "knowledge", label: "Learn" },
+  { value: "writing", label: "Write" },
+  { value: "math", label: "Math" },
+  { value: "health", label: "Health" },
 ];
+
+const TONE_OPTIONS = ["warm", "professional", "premium", "exciting", "formal", "playful"];
+const AUDIENCE_OPTIONS = ["fans", "buyers", "investors", "general public", "students", "listeners", "readers"];
+const LENGTH_OPTIONS = ["short", "medium", "long"];
+const SIMPLICITY_OPTIONS = ["basic", "standard", "advanced"];
 
 function AssistantHeaderIcon() {
   return (
@@ -30,6 +33,14 @@ function AssistantHeaderIcon() {
 export default function TengacionAssistantPanel({
   open = false,
   onClose,
+  onClearHistory,
+  assistantContext = null,
+  surface = "general",
+  suggestions = [],
+  assistantMode = "copilot",
+  onModeChange,
+  writingPreferences = null,
+  onPreferenceChange,
   messages = [],
   loading = false,
   error = "",
@@ -38,7 +49,8 @@ export default function TengacionAssistantPanel({
   onComposerChange,
   onComposerSubmit,
   onCardAction,
-  onSuggestionClick,
+  onFollowUpClick,
+  onFeedback,
   composerDisabled = false,
   composerRef,
 }) {
@@ -46,7 +58,7 @@ export default function TengacionAssistantPanel({
   const titleId = useId();
   const descriptionId = useId();
   const hasConversation = Array.isArray(messages) && messages.length > 0;
-  const suggestions = useMemo(() => DEFAULT_SUGGESTIONS, []);
+  const quickSuggestions = useMemo(() => suggestions.slice(0, 6), [suggestions]);
 
   useEffect(() => {
     if (!open) {
@@ -71,7 +83,7 @@ export default function TengacionAssistantPanel({
       }
 
       const focusableElements = panelRef.current?.querySelectorAll(
-        'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+        'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
       );
 
       if (!focusableElements?.length) {
@@ -133,31 +145,110 @@ export default function TengacionAssistantPanel({
             <div>
               <h2 id={titleId}>Akuso</h2>
               <p id={descriptionId}>
-                Navigate Tengacion, discover content, and draft short copy with safe in-app actions.
+                Navigate Tengacion, discover content, and draft creator copy with safe app-aware guidance.
               </p>
             </div>
           </div>
 
-          <Button type="button" variant="ghost" size="sm" onClick={onClose} aria-label="Close Akuso">
-            Close
-          </Button>
+          <div className="tg-assistant-panel__header-actions">
+            <Button type="button" variant="ghost" size="sm" onClick={onClearHistory}>
+              Clear
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={onClose} aria-label="Close Akuso">
+              Close
+            </Button>
+          </div>
         </header>
 
         <section className="tg-assistant-panel__body">
+          <div className="tg-assistant-context-card">
+            <div className="tg-assistant-context-card__row">
+              <strong>{assistantContext?.pageTitle || "Tengacion"}</strong>
+              <span>{surface}</span>
+            </div>
+            <p>
+              Ask Akuso to open a page, explain the screen you are on, or help you write something for your audience.
+            </p>
+          </div>
+
+          <div className="tg-assistant-mode-bar" role="tablist" aria-label="Assistant mode">
+            {MODE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={`tg-assistant-mode-pill${assistantMode === option.value ? " is-active" : ""}`}
+                onClick={() => onModeChange?.(option.value)}
+                aria-pressed={assistantMode === option.value}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          {assistantMode === "writing" ? (
+            <div className="tg-assistant-writing-controls">
+              <label>
+                <span>Tone</span>
+                <select value={writingPreferences?.tone || "warm"} onChange={(event) => onPreferenceChange?.("tone", event.target.value)}>
+                  {TONE_OPTIONS.map((tone) => (
+                    <option key={tone} value={tone}>
+                      {tone}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Audience</span>
+                <select
+                  value={writingPreferences?.audience || "fans"}
+                  onChange={(event) => onPreferenceChange?.("audience", event.target.value)}
+                >
+                  {AUDIENCE_OPTIONS.map((audience) => (
+                    <option key={audience} value={audience}>
+                      {audience}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Length</span>
+                <select value={writingPreferences?.length || "short"} onChange={(event) => onPreferenceChange?.("length", event.target.value)}>
+                  {LENGTH_OPTIONS.map((length) => (
+                    <option key={length} value={length}>
+                      {length}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Simplicity</span>
+                <select
+                  value={writingPreferences?.simplicity || "standard"}
+                  onChange={(event) => onPreferenceChange?.("simplicity", event.target.value)}
+                >
+                  {SIMPLICITY_OPTIONS.map((simplicity) => (
+                    <option key={simplicity} value={simplicity}>
+                      {simplicity}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
+
           {!hasConversation ? (
             <div className="tg-assistant-empty-state">
               <strong>What can Akuso do?</strong>
               <p>
-                Ask to open messages, notifications, profile, creator tools, or to
-                search creators and content.
+                Ask to open messages, notifications, your creator tools, or to search creators and content.
               </p>
               <div className="tg-assistant-suggestions" aria-label="Suggested prompts">
-                {suggestions.map((prompt) => (
+                {quickSuggestions.map((prompt) => (
                   <button
                     key={prompt}
                     type="button"
                     className="tg-assistant-chip"
-                    onClick={() => onSuggestionClick?.(prompt)}
+                    onClick={() => onFollowUpClick?.(prompt)}
                   >
                     {prompt}
                   </button>
@@ -184,7 +275,13 @@ export default function TengacionAssistantPanel({
             messages={messages}
             loading={loading}
             onCardAction={onCardAction}
+            onFollowUpClick={onFollowUpClick}
+            onFeedback={onFeedback}
           />
+
+          <div className="tg-assistant-history-note">
+            Akuso keeps the current chat only. Sensitive details are not shown in the assistant history.
+          </div>
         </section>
 
         <footer className="tg-assistant-panel__footer">
@@ -194,6 +291,15 @@ export default function TengacionAssistantPanel({
             onChange={onComposerChange}
             onSubmit={onComposerSubmit}
             disabled={composerDisabled}
+            placeholder={
+              assistantMode === "writing"
+                ? "Write a caption, bio, article, or promo..."
+                : assistantMode === "math"
+                  ? "Type a math expression or a step-by-step question..."
+                  : assistantMode === "health"
+                    ? "Ask for general health guidance..."
+                    : "Ask Akuso to open a page, find something, or draft a caption."
+            }
           />
         </footer>
       </aside>

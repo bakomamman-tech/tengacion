@@ -104,6 +104,8 @@ const storageConfig = {
   newsIngestionJobRetentionDays: getIntEnv("NEWS_INGESTION_JOB_RETENTION_DAYS", 30),
   tempUploadRetentionDays: getIntEnv("TEMP_UPLOAD_RETENTION_DAYS", 14),
   orphanMediaRetentionDays: getIntEnv("ORPHAN_MEDIA_RETENTION_DAYS", 30),
+  assistantMemoryRetentionDays: getIntEnv("ASSISTANT_MEMORY_RETENTION_DAYS", 30),
+  assistantFeedbackRetentionDays: getIntEnv("ASSISTANT_FEEDBACK_RETENTION_DAYS", 90),
   messageAttachmentLimit: getIntEnv("MESSAGE_ATTACHMENT_LIMIT", 5),
   messageMetadataMaxBytes: getIntEnv("MESSAGE_METADATA_MAX_BYTES", 4096),
   analyticsMetadataMaxBytes: getIntEnv("ANALYTICS_METADATA_MAX_BYTES", 8192),

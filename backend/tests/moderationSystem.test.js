@@ -26,7 +26,7 @@ const UserStrike = require("../models/UserStrike");
 const Video = require("../models/Video");
 const { MODERATION_REPEAT_VIOLATOR_STRIKE_THRESHOLD } = require("../config/moderation");
 const { STEP_UP_COOKIE_NAME, signStepUpToken } = require("../services/authTokens");
-const { saveUploadedMedia } = require("../services/mediaStore");
+const { saveUploadedMedia, saveUploadedMediaToGridFs } = require("../services/mediaStore");
 const {
   createOrUpdateModerationCase,
 } = require("../services/moderationService");
@@ -1282,7 +1282,7 @@ describe("moderation routes and enforcement", () => {
     await fs.writeFile(tempFilePath, fileBuffer);
 
     try {
-      const uploaded = await saveUploadedMedia({
+      const uploaded = await saveUploadedMediaToGridFs({
         path: tempFilePath,
         originalname: "blocked-media.jpg",
         mimetype: "image/jpeg",

@@ -7,8 +7,16 @@ require("../../apps/api/config/env");
 const {
   createAkusoRateLimiter,
 } = require("../middleware/akusoRateLimit");
+const {
+  getAkusoMetricsSnapshot,
+  resetAkusoMetrics,
+} = require("../services/akusoMetricsService");
 
 describe("Akuso rate limiter", () => {
+  beforeEach(() => {
+    resetAkusoMetrics();
+  });
+
   it("throttles repeated requests with a structured response", async () => {
     const app = express();
     app.use(
@@ -32,5 +40,6 @@ describe("Akuso rate limiter", () => {
         traceId: expect.any(String),
       })
     );
+    expect(getAkusoMetricsSnapshot().security.rateLimitHits).toBe(1);
   });
 });

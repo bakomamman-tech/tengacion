@@ -45,6 +45,7 @@ Akuso routes live in `backend/routes/akuso.js`.
 - `GET /api/akuso/hints`
 - `POST /api/akuso/feedback`
 - `POST /api/akuso/templates/generate`
+- `GET /api/akuso/metrics` for internal operations visibility only
 
 Route expectations:
 
@@ -52,6 +53,7 @@ Route expectations:
 - `hints` returns route-aware quick prompts and safe navigation hints.
 - `feedback` requires authentication.
 - `templates/generate` requires authentication and is intended for creator-writing workflows.
+- `metrics` requires `view_audit_logs` permission and returns aggregate-only counters and rates.
 
 ## Request Flow
 
@@ -196,6 +198,7 @@ If OpenAI is unavailable or disabled, Akuso falls back safely to deterministic b
 
 - `backend/services/akusoResponseFormatter.js`
 - `backend/services/akusoAuditLogger.js`
+- `backend/services/akusoMetricsService.js`
 
 Response shape is intentionally stable and future-friendly:
 
@@ -220,6 +223,17 @@ Audit logging records the important operational events without storing secrets:
 - OpenAI failures
 - feedback submissions
 - emergency escalation cases
+
+Akuso now also keeps a lightweight internal metrics snapshot in process memory for operations visibility. The protected `GET /api/akuso/metrics` endpoint requires `view_audit_logs` permission and returns only aggregate counters and rates, including:
+
+- policy denials and bucket breakdowns
+- prompt injection attempts
+- OpenAI failures
+- local fallback counts and fallback rate
+- rate-limit hits
+- feedback quality trends
+
+The metrics surface is intentionally aggregate-only. It does not expose prompts, secrets, raw transcripts, or user-level payout/account data.
 
 ## Environment Variables
 

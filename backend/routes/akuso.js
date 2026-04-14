@@ -1,6 +1,7 @@
 const express = require("express");
 
 const akusoController = require("../controllers/akusoController");
+const requirePermissions = require("../middleware/requirePermissions");
 const { attachAkusoUser, requireAkusoAuth } = require("../middleware/akusoAuthGuard");
 const akusoPromptInjectionGuard = require("../middleware/akusoPromptInjectionGuard");
 const akusoRateLimit = require("../middleware/akusoRateLimit");
@@ -12,6 +13,13 @@ const {
 } = require("../middleware/akusoRequestValidation");
 
 const router = express.Router();
+
+router.get(
+  "/metrics",
+  attachAkusoUser,
+  requirePermissions(["view_audit_logs"]),
+  akusoController.metrics
+);
 
 router.post(
   "/chat",

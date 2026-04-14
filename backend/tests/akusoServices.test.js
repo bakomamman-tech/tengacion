@@ -18,6 +18,15 @@ const {
   findFeatureByRoute,
   getAkusoHints,
 } = require("../services/akusoFeatureRegistryService");
+const {
+  getAkusoMetricsSnapshot,
+  recordAkusoFeedback,
+  recordAkusoModelAttempt,
+  recordAkusoOpenAIFailure,
+  recordAkusoPolicyDecision,
+  recordAkusoResponse,
+  resetAkusoMetrics,
+} = require("../services/akusoMetricsService");
 const { selectAkusoModel } = require("../services/akusoModelRouter");
 const { handleOpenAIError } = require("../services/akusoOpenAIService");
 const { evaluateAkusoPolicy, POLICY_BUCKETS } = require("../services/akusoPolicyService");
@@ -40,6 +49,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await mongoose.connection.db.dropDatabase();
+  resetAkusoMetrics();
 
   const user = await User.create({
     name: "Akuso Tester",
@@ -276,6 +286,32 @@ describe("Akuso services", () => {
   it("runs the seeded Akuso eval harness successfully", () => {
     const results = runAkusoEvals();
     expect(results.every((entry) => entry.passed)).toBe(true);
+  });
+
+  it("computes Akuso observability rates from recorded events", () => {
+    recordAkusoPolicyDecision({
+      categoryBucket: POLICY_BUCKETS.PROMPT_INJECTION_ATTEMPT,
+    });
+    recordAkusoPolicyDecision({
+      categoryBucket: POLICY_BUCKETS.SAFE_ANSWER,
+    });
+    recordAkusoModelAttempt();
+    recordAkusoOpenAIFailure();
+    recordAkusoResponse({
+      provider: "local_fallback",
+      routeName: "chat",
+      fallbackReason: "openai_error",
+    });
+    recordAkusoFeedback({ rating: "helpful" });
+    recordAkusoFeedback({ rating: "report" });
+
+    const snapshot = getAkusoMetricsSnapshot();
+    expect(snapshot.policy.denials.total).toBe(1);
+    expect(snapshot.responses.openAIFailures).toBe(1);
+    expect(snapshot.responses.localFallbackReasons.openai_error).toBe(1);
+    expect(snapshot.feedback.quality.helpfulRate).toBe(0.5);
+    expect(snapshot.rates.denialRate).toBe(0.5);
+    expect(snapshot.rates.openAIFailureRate).toBe(1);
   });
 
   it("classifies emergencies and prompt injection into the right buckets", () => {

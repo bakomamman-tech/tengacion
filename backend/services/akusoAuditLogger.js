@@ -1,6 +1,11 @@
 const { sanitizePlainObject } = require("../config/storage");
 const { config } = require("../config/env");
 const { writeAuditLog } = require("./auditLogService");
+const {
+  recordAkusoOpenAIFailure,
+  recordAkusoPromptInjection,
+  recordAkusoRateLimitHit,
+} = require("./akusoMetricsService");
 const logger = require("../utils/logger");
 
 const safeText = (value = "", max = 200) =>
@@ -64,45 +69,54 @@ const logPolicyDecision = (payload = {}) =>
   });
 
 const logPromptInjection = ({ traceId, req, userId, metadata = {} } = {}) =>
-  logPolicyDecision({
-    level: "warn",
-    event: "prompt_injection",
-    traceId,
-    req,
-    userId,
-    metadata: {
-      reason: "Prompt injection attempt blocked.",
-      ...metadata,
-    },
-    persist: true,
-  });
+  (() => {
+    recordAkusoPromptInjection();
+    return logPolicyDecision({
+      level: "warn",
+      event: "prompt_injection",
+      traceId,
+      req,
+      userId,
+      metadata: {
+        reason: "Prompt injection attempt blocked.",
+        ...metadata,
+      },
+      persist: true,
+    });
+  })();
 
 const logOpenAIFailure = ({ traceId, req, userId, metadata = {} } = {}) =>
-  logPolicyDecision({
-    level: "warn",
-    event: "openai_failure",
-    traceId,
-    req,
-    userId,
-    metadata: {
-      reason: "OpenAI request failed; local fallback used.",
-      ...metadata,
-    },
-  });
+  (() => {
+    recordAkusoOpenAIFailure();
+    return logPolicyDecision({
+      level: "warn",
+      event: "openai_failure",
+      traceId,
+      req,
+      userId,
+      metadata: {
+        reason: "OpenAI request failed; local fallback used.",
+        ...metadata,
+      },
+    });
+  })();
 
 const logRateLimitHit = ({ traceId, req, userId, metadata = {} } = {}) =>
-  logPolicyDecision({
-    level: "warn",
-    event: "rate_limit",
-    traceId,
-    req,
-    userId,
-    metadata: {
-      reason: "Akuso rate limit reached.",
-      ...metadata,
-    },
-    persist: true,
-  });
+  (() => {
+    recordAkusoRateLimitHit();
+    return logPolicyDecision({
+      level: "warn",
+      event: "rate_limit",
+      traceId,
+      req,
+      userId,
+      metadata: {
+        reason: "Akuso rate limit reached.",
+        ...metadata,
+      },
+      persist: true,
+    });
+  })();
 
 module.exports = {
   logAkusoEvent,

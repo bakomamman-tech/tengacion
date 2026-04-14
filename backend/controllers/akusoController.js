@@ -40,6 +40,14 @@ const {
   saveAkusoMemory,
   saveAkusoPreferences,
 } = require("../services/akusoMemoryService");
+const {
+  getAkusoMetricsSnapshot,
+  recordAkusoFeedback,
+  recordAkusoModelAttempt,
+  recordAkusoPolicyDecision,
+  recordAkusoRequest,
+  recordAkusoResponse,
+} = require("../services/akusoMetricsService");
 
 const safeText = (value = "", max = 160) =>
   String(value || "")
@@ -241,6 +249,10 @@ const maybeEnhanceFallback = async ({
   if (!routeDecision.useModel) {
     return {
       ...fallback,
+      observability: {
+        provider: "local_fallback",
+        fallbackReason: "model_router_local",
+      },
       meta: {
         provider: "local_fallback",
         model: "",
@@ -252,6 +264,8 @@ const maybeEnhanceFallback = async ({
       },
     };
   }
+
+  recordAkusoModelAttempt();
 
   const promptBundle = buildAkusoPromptBundle({
     input,
@@ -279,6 +293,10 @@ const maybeEnhanceFallback = async ({
     if (!parsed || typeof parsed !== "object") {
       return {
         ...fallback,
+        observability: {
+          provider: "local_fallback",
+          fallbackReason: "invalid_model_payload",
+        },
         meta: {
           provider: "local_fallback",
           model: "",
@@ -303,6 +321,10 @@ const maybeEnhanceFallback = async ({
             : fallback.drafts || []
           : fallback.drafts || [],
       sources: fallback.sources || [],
+      observability: {
+        provider: "openai",
+        fallbackReason: "",
+      },
       meta: {
         provider: "openai",
         model: routeDecision.model,
@@ -327,6 +349,10 @@ const maybeEnhanceFallback = async ({
 
     return {
       ...fallback,
+      observability: {
+        provider: "local_fallback",
+        fallbackReason: "openai_error",
+      },
       warnings: mergeWarnings(fallback.warnings, "Akuso used a safe local fallback for this reply."),
       meta: {
         provider: "local_fallback",
@@ -409,6 +435,7 @@ const withAkusoHandler = (handler) => async (req, res) => {
 };
 
 const runAkusoChatRequest = async ({ req, traceId }) => {
+  recordAkusoRequest({ routeName: "chat" });
   const input = req.akusoInput || {};
   const storedPreferences = await loadAkusoPreferences({ userId: req.user?.id || "" });
   const memory = await loadAkusoMemory({
@@ -428,6 +455,9 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
     input: mergedInput,
     user: req.user || {},
     promptInjectionGuard: req.akusoPromptGuard,
+  });
+  recordAkusoPolicyDecision({
+    categoryBucket: policyResult.categoryBucket,
   });
   const context = await buildAkusoContext({
     input: mergedInput,
@@ -493,6 +523,10 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
         sources: [],
       },
     });
+    recordAkusoResponse({
+      provider: "policy_engine",
+      routeName: "chat",
+    });
 
     return {
       statusCode: policyResult.httpStatus,
@@ -534,6 +568,11 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
     drafts: responsePayload.drafts,
     meta: responsePayload.meta,
   });
+  recordAkusoResponse({
+    provider: responsePayload.observability?.provider || responsePayload.meta?.provider || "local_fallback",
+    routeName: "chat",
+    fallbackReason: responsePayload.observability?.fallbackReason || "",
+  });
 
   await persistMemoryFromResponse({
     req,
@@ -550,6 +589,7 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
 };
 
 const runAkusoHintsRequest = async ({ req, traceId }) => {
+  recordAkusoRequest({ routeName: "hints" });
   const input = req.akusoInput || {};
   const hints = getAkusoHints({
     query: input.query,
@@ -570,6 +610,7 @@ const runAkusoHintsRequest = async ({ req, traceId }) => {
 };
 
 const runAkusoFeedbackRequest = async ({ req, traceId }) => {
+  recordAkusoRequest({ routeName: "feedback" });
   const input = req.akusoInput || {};
   const feedback = await AssistantFeedback.create({
     userId: req.user.id,
@@ -588,6 +629,9 @@ const runAkusoFeedbackRequest = async ({ req, traceId }) => {
       category: input.category,
       rating: input.rating,
     },
+  });
+  recordAkusoFeedback({
+    rating: input.rating,
   });
 
   await logAkusoEvent({
@@ -612,6 +656,7 @@ const runAkusoFeedbackRequest = async ({ req, traceId }) => {
 };
 
 const runAkusoTemplateRequest = async ({ req, traceId }) => {
+  recordAkusoRequest({ routeName: "templates" });
   const input = req.akusoInput || {};
   const memory = await loadAkusoMemory({
     userId: req.user?.id || "",
@@ -628,11 +673,83 @@ const runAkusoTemplateRequest = async ({ req, traceId }) => {
     user: req.user || {},
     promptInjectionGuard: req.akusoPromptGuard,
   });
+  recordAkusoPolicyDecision({
+    categoryBucket: policyResult.categoryBucket,
+  });
   const context = await buildAkusoContext({
     input: mergedInput,
     user: req.user || {},
     memory,
   });
+
+  if (policyResult.categoryBucket === POLICY_BUCKETS.PROMPT_INJECTION_ATTEMPT) {
+    await logPromptInjection({
+      traceId,
+      req,
+      userId: req.user?.id || "",
+      metadata: {
+        mode: policyResult.mode,
+        routePurpose: "template",
+      },
+    }).catch(() => null);
+  } else {
+    await logPolicyDecision({
+      level:
+        policyResult.categoryBucket === POLICY_BUCKETS.EMERGENCY_ESCALATION ||
+        policyResult.categoryBucket === POLICY_BUCKETS.DISALLOWED
+          ? "warn"
+          : "info",
+      event: "policy_decision",
+      traceId,
+      req,
+      userId: req.user?.id || "",
+      metadata: {
+        categoryBucket: policyResult.categoryBucket,
+        mode: policyResult.mode,
+        routePurpose: "template",
+      },
+    }).catch(() => null);
+  }
+
+  if (
+    [
+      POLICY_BUCKETS.PROMPT_INJECTION_ATTEMPT,
+      POLICY_BUCKETS.DISALLOWED,
+      POLICY_BUCKETS.EMERGENCY_ESCALATION,
+      POLICY_BUCKETS.SENSITIVE_ACTION_REQUIRES_AUTH,
+    ].includes(policyResult.categoryBucket)
+  ) {
+    const policyResponse = formatAkusoChatResponse({
+      traceId,
+      conversationId: memory.conversationId,
+      mode: policyResult.mode,
+      category: policyResult.categoryBucket,
+      answer: buildPolicyAnswer({
+        policyResult,
+      }),
+      warnings: policyResult.warnings,
+      suggestions: policyResult.suggestions,
+      actions: [],
+      meta: {
+        provider: "policy_engine",
+        model: "",
+        task: "policy",
+        usedModel: false,
+        grounded: true,
+        safetyLevel: policyResult.safetyLevel,
+        sources: [],
+      },
+    });
+    recordAkusoResponse({
+      provider: "policy_engine",
+      routeName: "template",
+    });
+
+    return {
+      statusCode: policyResult.httpStatus,
+      body: policyResponse,
+    };
+  }
 
   const fallback = buildWritingFallback({
     input: mergedInput,
@@ -660,6 +777,11 @@ const runAkusoTemplateRequest = async ({ req, traceId }) => {
     drafts: responsePayload.drafts,
     meta: responsePayload.meta,
   });
+  recordAkusoResponse({
+    provider: responsePayload.observability?.provider || responsePayload.meta?.provider || "local_fallback",
+    routeName: "template",
+    fallbackReason: responsePayload.observability?.fallbackReason || "",
+  });
 
   await persistMemoryFromResponse({
     req,
@@ -675,10 +797,20 @@ const runAkusoTemplateRequest = async ({ req, traceId }) => {
   };
 };
 
+const runAkusoMetricsRequest = async ({ traceId }) => ({
+  statusCode: 200,
+  body: {
+    ok: true,
+    traceId,
+    metrics: getAkusoMetricsSnapshot(),
+  },
+});
+
 exports.runAkusoChatRequest = runAkusoChatRequest;
 exports.runAkusoHintsRequest = runAkusoHintsRequest;
 exports.runAkusoFeedbackRequest = runAkusoFeedbackRequest;
 exports.runAkusoTemplateRequest = runAkusoTemplateRequest;
+exports.runAkusoMetricsRequest = runAkusoMetricsRequest;
 
 exports.chat = withAkusoHandler(async (req, res, traceId) => {
   const result = await runAkusoChatRequest({ req, traceId });
@@ -697,5 +829,10 @@ exports.feedback = withAkusoHandler(async (req, res, traceId) => {
 
 exports.generateTemplate = withAkusoHandler(async (req, res, traceId) => {
   const result = await runAkusoTemplateRequest({ req, traceId });
+  return res.status(result.statusCode).json(result.body);
+});
+
+exports.metrics = withAkusoHandler(async (req, res, traceId) => {
+  const result = await runAkusoMetricsRequest({ traceId });
   return res.status(result.statusCode).json(result.body);
 });

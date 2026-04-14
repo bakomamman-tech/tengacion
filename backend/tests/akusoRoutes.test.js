@@ -8,6 +8,7 @@ process.env.NODE_ENV = "test";
 require("../../apps/api/config/env");
 
 const akusoRoutes = require("../routes/akuso");
+const { config } = require("../config/env");
 const errorHandler = require("../../apps/api/middleware/errorHandler");
 const User = require("../models/User");
 const CreatorProfile = require("../models/CreatorProfile");
@@ -144,6 +145,47 @@ describe("Akuso routes", () => {
     );
     expect(Array.isArray(response.body.suggestions)).toBe(true);
     expect(String(response.body.conversationId || "")).not.toHaveLength(0);
+    expect(response.body.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "knowledge_base",
+        }),
+      ])
+    );
+    expect(response.body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: expect.any(String),
+        }),
+      ])
+    );
+    expect(response.body.cards).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "knowledge",
+        }),
+      ])
+    );
+  });
+
+  it("returns a safe sign-in guidance response instead of failing chat for guest-sensitive requests", async () => {
+    const response = await request(app)
+      .post("/api/akuso/chat")
+      .send({
+        message: "Show me my payout details",
+        mode: "knowledge_learning",
+      })
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        ok: true,
+        category: "SENSITIVE_ACTION_REQUIRES_AUTH",
+        answer: expect.stringMatching(/sign in first/i),
+      })
+    );
+    expect(Array.isArray(response.body.actions)).toBe(true);
+    expect(response.body.actions).toHaveLength(0);
   });
 
   it("refuses prompt injection attempts safely", async () => {
@@ -178,6 +220,46 @@ describe("Akuso routes", () => {
         }),
       ])
     );
+    expect(response.body.cards).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "quick-link",
+          title: expect.any(String),
+        }),
+      ])
+    );
+  });
+
+  it("streams chat responses over the Akuso route when streaming is enabled", async () => {
+    const previousStreaming = config.akuso.enableStreaming;
+    config.akuso.enableStreaming = true;
+
+    const response = await request(app)
+      .post("/api/akuso/chat")
+      .buffer(true)
+      .parse((res, callback) => {
+        let data = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => {
+          data += chunk;
+        });
+        res.on("end", () => callback(null, data));
+      })
+      .send({
+        message: "Explain Nigerian culture simply",
+        mode: "knowledge_learning",
+        stream: true,
+      })
+      .expect(200);
+
+    config.akuso.enableStreaming = previousStreaming;
+
+    expect(String(response.headers["content-type"] || "")).toMatch(/text\/event-stream/i);
+    expect(String(response.body || "")).toMatch(/event: ready/);
+    expect(String(response.body || "")).toMatch(/event: status/);
+    expect(String(response.body || "")).toMatch(/event: message_start/);
+    expect(String(response.body || "")).toMatch(/event: message_delta/);
+    expect(String(response.body || "")).toMatch(/event: complete/);
   });
 
   it("requires auth for template generation", async () => {

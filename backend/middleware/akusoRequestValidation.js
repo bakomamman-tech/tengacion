@@ -45,6 +45,7 @@ const chatSchema = z
   .object({
     message: z.string().trim().min(1).max(config.akuso?.maxInputChars || 2000),
     mode: modeSchema,
+    stream: z.boolean().optional().default(false),
     currentRoute: routeSchema,
     currentPage: z.string().trim().max(120).optional().default(""),
     contextHints: contextHintsSchema.optional().default({}),

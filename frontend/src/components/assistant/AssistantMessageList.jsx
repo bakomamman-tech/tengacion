@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 
 import AssistantCards from "./AssistantCards";
 
-function TypingIndicator() {
+function TypingIndicator({ label = "Akuso is thinking" }) {
   return (
     <div className="tg-assistant-message tg-assistant-message--assistant">
       <div className="tg-assistant-message__meta">Akuso</div>
@@ -12,7 +12,7 @@ function TypingIndicator() {
           <i />
           <i />
         </span>
-        <span className="tg-assistant-typing__text">Akuso is thinking</span>
+        <span className="tg-assistant-typing__text">{label}</span>
       </div>
     </div>
   );
@@ -36,6 +36,7 @@ const TRUST_MODE_LABELS = {
 export default function AssistantMessageList({
   messages = [],
   loading = false,
+  streamingLabel = "",
   onCardAction,
   onFollowUpClick,
   onFeedback,
@@ -167,7 +168,7 @@ export default function AssistantMessageList({
         );
       })}
 
-      {loading ? <TypingIndicator /> : null}
+      {loading ? <TypingIndicator label={streamingLabel || "Akuso is thinking"} /> : null}
       <div ref={endRef} aria-hidden="true" />
     </div>
   );

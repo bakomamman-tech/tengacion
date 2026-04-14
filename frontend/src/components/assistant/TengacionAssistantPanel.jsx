@@ -37,12 +37,14 @@ export default function TengacionAssistantPanel({
   assistantContext = null,
   surface = "general",
   suggestions = [],
+  proactiveSuggestions = [],
   assistantMode = "copilot",
   onModeChange,
   writingPreferences = null,
   onPreferenceChange,
   messages = [],
   loading = false,
+  streamingLabel = "",
   error = "",
   onRetry,
   composerValue = "",
@@ -59,6 +61,7 @@ export default function TengacionAssistantPanel({
   const descriptionId = useId();
   const hasConversation = Array.isArray(messages) && messages.length > 0;
   const quickSuggestions = useMemo(() => suggestions.slice(0, 6), [suggestions]);
+  const pageSuggestions = useMemo(() => proactiveSuggestions.slice(0, 4), [proactiveSuggestions]);
 
   useEffect(() => {
     if (!open) {
@@ -169,6 +172,23 @@ export default function TengacionAssistantPanel({
             <p>
               Ask Akuso to open a page, explain the screen you are on, or help you write something for your audience.
             </p>
+            {pageSuggestions.length > 0 ? (
+              <div className="tg-assistant-context-card__hints">
+                <span className="tg-assistant-context-card__label">On this page</span>
+                <div className="tg-assistant-suggestions" aria-label="Current page suggestions">
+                  {pageSuggestions.map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      className="tg-assistant-chip tg-assistant-chip--context"
+                      onClick={() => onFollowUpClick?.(prompt)}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="tg-assistant-mode-bar" role="tablist" aria-label="Assistant mode">
@@ -274,6 +294,7 @@ export default function TengacionAssistantPanel({
           <AssistantMessageList
             messages={messages}
             loading={loading}
+            streamingLabel={streamingLabel}
             onCardAction={onCardAction}
             onFollowUpClick={onFollowUpClick}
             onFeedback={onFeedback}

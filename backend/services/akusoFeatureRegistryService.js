@@ -185,14 +185,26 @@ const listRelevantFeatures = ({ query = "", currentRoute = "", user = {}, limit 
     }));
 };
 
-const getAkusoHints = ({ query = "", currentRoute = "", user = {}, limit = 6 } = {}) => {
+const getAkusoHints = ({
+  query = "",
+  currentRoute = "",
+  currentPage = "",
+  user = {},
+  limit = 6,
+} = {}) => {
   const access = getUserAccess(user);
   const prompts = getSurfaceQuickPrompts({
     surface: resolveSurfaceFromPath(currentRoute),
     access: access === "public" ? "authenticated" : access,
   });
-  const featureMatch = findFeatureByIntent(query) || findFeatureByRoute(currentRoute);
-  const helpArticles = searchHelpArticles(query || featureMatch?.pageName || "", { limit: 3 });
+  const normalizedPage = sanitizePlainText(currentPage, 120);
+  const featureMatch =
+    findFeatureByIntent(query) ||
+    findFeatureByIntent(normalizedPage) ||
+    findFeatureByRoute(currentRoute);
+  const helpArticles = searchHelpArticles(query || normalizedPage || featureMatch?.pageName || "", {
+    limit: 3,
+  });
 
   const hints = [
     ...(featureMatch?.commonQuestions || []),

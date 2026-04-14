@@ -2,11 +2,17 @@ body.tg-assistant-open {
   overflow: hidden;
 }
 
-.tg-assistant-launcher {
+.tg-assistant-launcher-wrap {
   position: fixed;
   left: 1rem;
   bottom: 1rem;
   z-index: 1300;
+  display: grid;
+  justify-items: start;
+  gap: 0.55rem;
+}
+
+.tg-assistant-launcher {
   display: inline-flex;
   align-items: center;
   gap: 0.85rem;
@@ -26,6 +32,31 @@ body.tg-assistant-open {
     box-shadow 180ms ease,
     border-color 180ms ease,
     background 180ms ease;
+}
+
+.tg-assistant-launcher__hint {
+  max-width: min(20rem, calc(100vw - 2rem));
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgba(42, 111, 79, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 255, 252, 0.96);
+  box-shadow: 0 14px 32px rgba(13, 33, 25, 0.12);
+}
+
+.tg-assistant-launcher__hint span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tg-assistant-launcher__hint strong {
+  font-size: 0.85rem;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
 }
 
 .tg-assistant-launcher:hover {
@@ -210,6 +241,19 @@ body.tg-assistant-open {
   line-height: 1.5;
 }
 
+.tg-assistant-context-card__hints {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.tg-assistant-context-card__label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .tg-assistant-mode-bar {
   display: flex;
   flex-wrap: wrap;
@@ -333,6 +377,10 @@ body.tg-assistant-open {
 .tg-assistant-chip:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(42, 111, 79, 0.14);
+}
+
+.tg-assistant-chip--context {
+  background: linear-gradient(180deg, rgba(244, 250, 245, 0.98) 0%, rgba(229, 240, 231, 0.94) 100%);
 }
 
 .tg-assistant-error {
@@ -792,6 +840,13 @@ html.dark-mode .tg-assistant-launcher {
     inset 0 1px 0 rgba(245, 251, 247, 0.08);
 }
 
+html.dark-mode .tg-assistant-launcher__hint {
+  border-color: rgba(121, 207, 162, 0.12);
+  background: rgba(20, 35, 28, 0.96);
+  color: #effaf3;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.26);
+}
+
 html.dark-mode .tg-assistant-launcher:hover {
   border-color: rgba(121, 207, 162, 0.26);
   box-shadow:
@@ -912,18 +967,29 @@ html.dark-mode .tg-assistant-confirm-card__badge {
     grid-template-columns: 1fr;
   }
 
-  .tg-assistant-launcher {
+  .tg-assistant-launcher-wrap {
     left: 0.75rem;
     bottom: 0.75rem;
+  }
+
+  .tg-assistant-launcher {
     padding-inline: 0.8rem;
   }
 
   .tg-assistant-launcher__copy small {
     display: none;
   }
+
+  .tg-assistant-launcher__hint {
+    max-width: min(16rem, calc(100vw - 1.5rem));
+  }
 }
 
 @media (max-width: 520px) {
+  .tg-assistant-launcher__hint {
+    display: none;
+  }
+
   .tg-assistant-launcher__copy {
     display: none;
   }

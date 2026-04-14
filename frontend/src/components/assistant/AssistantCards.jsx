@@ -8,6 +8,8 @@ const CARD_LABELS = {
   notification: "Notification",
   knowledge: "Knowledge",
   help: "Help",
+  source: "Source",
+  guide: "Guide",
 };
 
 const getCardActionLabel = (card) => {
@@ -16,6 +18,9 @@ const getCardActionLabel = (card) => {
   }
   if (card?.type === "draft") {
     return "Use draft";
+  }
+  if (card?.payload?.text || card?.payload?.prompt) {
+    return "Ask";
   }
   if (card?.route) {
     return "Open";

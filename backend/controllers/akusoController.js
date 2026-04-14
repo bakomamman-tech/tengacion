@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 
+const { config } = require("../config/env");
 const AssistantFeedback = require("../models/AssistantFeedback");
 const { searchHelpArticles } = require("../services/assistant/helpDocs");
 const { searchKnowledgeArticles } = require("../services/assistant/knowledgeBase");
@@ -41,6 +42,11 @@ const {
   saveAkusoPreferences,
 } = require("../services/akusoMemoryService");
 const {
+  setAkusoStreamHeaders,
+  streamAkusoChatResponse,
+  writeAkusoStreamEvent,
+} = require("../services/akusoStreamingService");
+const {
   getAkusoMetricsSnapshot,
   recordAkusoFeedback,
   recordAkusoModelAttempt,
@@ -60,6 +66,71 @@ const mergeWarnings = (...groups) =>
 
 const mergeSuggestions = (...groups) =>
   [...new Set(groups.flat().map((entry) => safeText(entry, 140)).filter(Boolean))].slice(0, 6);
+
+const normalizeConcreteRoute = (value = "") => {
+  const route = safeText(value, 160);
+  if (!route || /\/:[a-z]/i.test(route)) {
+    return "";
+  }
+  return route;
+};
+
+const buildAkusoSource = ({ id = "", type = "", label = "", summary = "" } = {}) => {
+  const safeLabel = safeText(label, 120);
+  if (!safeLabel) {
+    return null;
+  }
+
+  return {
+    id: safeText(id || `${type || "source"}:${safeLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`, 80),
+    type: safeText(type || "akuso_source", 40) || "akuso_source",
+    label: safeLabel,
+    summary: safeText(summary, 240),
+  };
+};
+
+const buildAkusoDetail = (title = "", body = "") => {
+  const safeTitle = safeText(title, 120);
+  const safeBody = safeText(body, 1200);
+  if (!safeTitle || !safeBody) {
+    return null;
+  }
+
+  return {
+    title: safeTitle,
+    body: safeBody,
+  };
+};
+
+const buildAkusoCard = ({
+  type = "card",
+  title = "",
+  subtitle = "",
+  description = "",
+  route = "",
+  payload = {},
+} = {}) => {
+  const safeTitle = safeText(title, 120);
+  if (!safeTitle) {
+    return null;
+  }
+
+  return {
+    type: safeText(type, 40) || "card",
+    title: safeTitle,
+    subtitle: safeText(subtitle, 200),
+    description: safeText(description, 500),
+    route: normalizeConcreteRoute(route),
+    payload: payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {},
+  };
+};
+
+const summarizeSourceLabels = (sources = []) =>
+  (Array.isArray(sources) ? sources : [])
+    .map((entry) => (typeof entry === "string" ? entry : entry?.label || ""))
+    .map((entry) => safeText(entry, 140))
+    .filter(Boolean)
+    .slice(0, 8);
 
 const inferWritingContentType = (message = "") => {
   const text = String(message || "").toLowerCase();
@@ -134,11 +205,71 @@ const buildAppHelpFallback = async ({ input, context, policyResult, user = {} })
   if (primaryFeature) {
     const resolvedRoute = await resolveFeatureRoute(primaryFeature, user);
     const canNavigate = policyResult.featureAccessAllowed && resolvedRoute;
+    const primaryRoute = canNavigate ? resolvedRoute : "";
     const answer = canNavigate
       ? `${primaryFeature.pageName}: ${primaryFeature.assistantExplanation}`
       : context.auth.isAuthenticated
         ? `${primaryFeature.pageName}: ${primaryFeature.assistantExplanation}`
         : `I can explain ${primaryFeature.pageName}, but you need to sign in before Akuso can open that screen.`;
+    const details = [
+      buildAkusoDetail(
+        "Safe next step",
+        primaryFeature.safeNavigationSteps?.[0] ||
+          `Open ${primaryFeature.pageName} and use the built-in controls for the action you want.`
+      ),
+      buildAkusoDetail(
+        "Access",
+        canNavigate
+          ? `Your current access level can open ${primaryFeature.pageName} directly.`
+          : primaryFeature.cautionNotes?.[0] ||
+              "Akuso can explain this feature, but access depends on your sign-in status and role."
+      ),
+      ...helpArticles.slice(0, 1).map((article) =>
+        buildAkusoDetail("Trusted help", article.summary || article.title || "")
+      ),
+    ].filter(Boolean);
+    const sources = [
+      buildAkusoSource({
+        id: `feature:${primaryFeature.featureKey}`,
+        type: "feature_registry",
+        label: primaryFeature.pageName,
+        summary: primaryFeature.assistantExplanation,
+      }),
+      ...helpArticles.map((article) =>
+        buildAkusoSource({
+          id: `help:${article.id || article.title}`,
+          type: "help_doc",
+          label: article.title,
+          summary: article.summary,
+        })
+      ),
+    ].filter(Boolean);
+    const cards = [
+      buildAkusoCard({
+        type: "quick-link",
+        title: primaryFeature.pageName,
+        subtitle: canNavigate ? "Open inside Tengacion" : "Guided feature",
+        description: primaryFeature.assistantExplanation,
+        route: primaryRoute,
+        payload: {
+          destination: primaryFeature.featureKey,
+          text: `Open ${primaryFeature.pageName}`,
+        },
+      }),
+      ...helpArticles.slice(0, 2).map((article) =>
+        buildAkusoCard({
+          type: "help",
+          title: article.title,
+          subtitle: "Trusted help",
+          description: article.summary,
+          route: normalizeConcreteRoute(article.route) || primaryRoute,
+          payload: {
+            featureId: article.featureId || primaryFeature.featureKey,
+            text: article.title,
+          },
+        })
+      ),
+    ].filter(Boolean);
 
     return {
       answer,
@@ -150,6 +281,7 @@ const buildAppHelpFallback = async ({ input, context, policyResult, user = {} })
         getAkusoHints({
           query: input.message,
           currentRoute: input.currentRoute,
+          currentPage: input.currentPage || context.page.currentPage || context.page.pageTitle,
           user,
           limit: 4,
         })
@@ -163,7 +295,9 @@ const buildAppHelpFallback = async ({ input, context, policyResult, user = {} })
             },
           ]
         : [],
-      sources: [primaryFeature.pageName, ...helpArticles.map((article) => article.title)],
+      sources,
+      details,
+      cards,
     };
   }
 
@@ -176,11 +310,19 @@ const buildAppHelpFallback = async ({ input, context, policyResult, user = {} })
     suggestions: getAkusoHints({
       query: input.message,
       currentRoute: input.currentRoute,
+      currentPage: input.currentPage || context.page.currentPage || context.page.pageTitle,
       user,
       limit: 6,
     }),
     actions: [],
     sources: [],
+    details: [
+      buildAkusoDetail(
+        "Grounded scope",
+        "Akuso can explain real Tengacion features and help you take the next safe in-app step."
+      ),
+    ].filter(Boolean),
+    cards: [],
   };
 };
 
@@ -192,7 +334,31 @@ const buildKnowledgeFallback = ({ input, policyResult }) => {
       warnings: policyResult.warnings,
       suggestions: mergeSuggestions(article.bullets, "Ask Akuso to explain it more simply."),
       actions: [],
-      sources: [article.title],
+      sources: [
+        buildAkusoSource({
+          id: `knowledge:${article.id || article.title}`,
+          type: "knowledge_base",
+          label: article.title,
+          summary: article.summary,
+        }),
+      ].filter(Boolean),
+      details: article.bullets
+        .slice(0, 3)
+        .map((bullet, index) =>
+          buildAkusoDetail(index === 0 ? "Key idea" : `Key point ${index + 1}`, bullet)
+        )
+        .filter(Boolean),
+      cards: [
+        buildAkusoCard({
+          type: "knowledge",
+          title: article.title,
+          subtitle: "Grounded answer",
+          description: article.summary,
+          payload: {
+            text: `Explain ${article.title} more simply`,
+          },
+        }),
+      ].filter(Boolean),
     };
   }
 
@@ -203,6 +369,13 @@ const buildKnowledgeFallback = ({ input, policyResult }) => {
     suggestions: ["Ask a narrower question.", "Request a simpler explanation."],
     actions: [],
     sources: [],
+    details: [
+      buildAkusoDetail(
+        "How to get a better answer",
+        "Try a more specific topic, place, timeframe, or concept so Akuso can stay grounded."
+      ),
+    ].filter(Boolean),
+    cards: [],
   };
 };
 
@@ -233,6 +406,26 @@ const buildWritingFallback = ({ input, context, policyResult }) => {
     actions: [],
     drafts,
     sources: [],
+    details: [
+      buildAkusoDetail(
+        "Writing profile",
+        `Tone: ${preferences.tone || "default"}. Audience: ${preferences.audience || "general"}. Length: ${preferences.answerLength || "medium"}.`
+      ),
+    ].filter(Boolean),
+    cards: drafts
+      .slice(0, 3)
+      .map((draft, index) =>
+        buildAkusoCard({
+          type: "draft",
+          title: `Draft ${index + 1}`,
+          subtitle: "Creator writing",
+          description: draft,
+          payload: {
+            text: draft,
+          },
+        })
+      )
+      .filter(Boolean),
   };
 };
 
@@ -260,7 +453,7 @@ const maybeEnhanceFallback = async ({
         usedModel: false,
         grounded: true,
         safetyLevel: policyResult.safetyLevel,
-        sources: fallback.sources || [],
+        sources: summarizeSourceLabels(fallback.sources),
       },
     };
   }
@@ -316,7 +509,7 @@ const maybeEnhanceFallback = async ({
           usedModel: false,
           grounded: true,
           safetyLevel: policyResult.safetyLevel,
-          sources: fallback.sources || [],
+          sources: summarizeSourceLabels(fallback.sources),
         },
       };
     }
@@ -333,6 +526,8 @@ const maybeEnhanceFallback = async ({
             : fallback.drafts || []
           : fallback.drafts || [],
       sources: fallback.sources || [],
+      details: fallback.details || [],
+      cards: fallback.cards || [],
       observability: {
         provider: "openai",
         fallbackReason: "",
@@ -344,7 +539,7 @@ const maybeEnhanceFallback = async ({
         usedModel: true,
         grounded: true,
         safetyLevel: policyResult.safetyLevel,
-        sources: fallback.sources || [],
+        sources: summarizeSourceLabels(fallback.sources),
       },
     };
   } catch (error) {
@@ -373,7 +568,7 @@ const maybeEnhanceFallback = async ({
         usedModel: false,
         grounded: true,
         safetyLevel: policyResult.safetyLevel,
-        sources: fallback.sources || [],
+        sources: summarizeSourceLabels(fallback.sources),
       },
     };
   }
@@ -441,6 +636,12 @@ const withAkusoHandler = (handler) => async (req, res) => {
         message: error?.message || "Unknown controller error",
       },
     }).catch(() => null);
+
+    if (res.headersSent) {
+      writeAkusoStreamEvent(res, "error", safeError.body);
+      res.end();
+      return null;
+    }
 
     return res.status(safeError.statusCode).json(safeError.body);
   }
@@ -525,6 +726,12 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
       warnings: policyResult.warnings,
       suggestions: policyResult.suggestions,
       actions: [],
+      details: policyResult.suggestions
+        .slice(0, 1)
+        .map((entry) => buildAkusoDetail("Safe next step", entry))
+        .filter(Boolean),
+      sources: [],
+      cards: [],
       meta: {
         provider: "policy_engine",
         model: "",
@@ -590,6 +797,9 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
     suggestions: responsePayload.suggestions,
     actions: responsePayload.actions,
     drafts: responsePayload.drafts,
+    details: responsePayload.details,
+    sources: responsePayload.sources,
+    cards: responsePayload.cards,
     meta: responsePayload.meta,
   });
   recordAkusoResponse({
@@ -632,6 +842,7 @@ const runAkusoHintsRequest = async ({ req, traceId }) => {
   const hints = getAkusoHints({
     query: input.query,
     currentRoute: input.currentRoute,
+    currentPage: input.currentPage,
     user: req.user || {},
     limit: 8,
   });
@@ -768,6 +979,12 @@ const runAkusoTemplateRequest = async ({ req, traceId }) => {
       warnings: policyResult.warnings,
       suggestions: policyResult.suggestions,
       actions: [],
+      details: policyResult.suggestions
+        .slice(0, 1)
+        .map((entry) => buildAkusoDetail("Safe next step", entry))
+        .filter(Boolean),
+      sources: [],
+      cards: [],
       meta: {
         provider: "policy_engine",
         model: "",
@@ -825,6 +1042,9 @@ const runAkusoTemplateRequest = async ({ req, traceId }) => {
     warnings: responsePayload.warnings,
     suggestions: responsePayload.suggestions,
     drafts: responsePayload.drafts,
+    details: responsePayload.details,
+    sources: responsePayload.sources,
+    cards: responsePayload.cards,
     meta: responsePayload.meta,
   });
   recordAkusoResponse({
@@ -877,6 +1097,25 @@ exports.runAkusoTemplateRequest = runAkusoTemplateRequest;
 exports.runAkusoMetricsRequest = runAkusoMetricsRequest;
 
 exports.chat = withAkusoHandler(async (req, res, traceId) => {
+  if (req.akusoInput?.stream && config.akuso?.enableStreaming) {
+    setAkusoStreamHeaders(res);
+    writeAkusoStreamEvent(res, "ready", {
+      traceId,
+    });
+    writeAkusoStreamEvent(res, "status", {
+      phase: "analyzing",
+      label: "Checking policy and grounding",
+    });
+    const result = await runAkusoChatRequest({ req, traceId });
+    return streamAkusoChatResponse({
+      req,
+      res,
+      response: result.body,
+      traceId,
+      includePrelude: false,
+    });
+  }
+
   const result = await runAkusoChatRequest({ req, traceId });
   return res.status(result.statusCode).json(result.body);
 });

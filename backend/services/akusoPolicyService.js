@@ -68,7 +68,6 @@ const evaluateAkusoPolicy = ({
     shouldCallModel = false;
     requiresAuth = true;
     if (!user?.id) {
-      httpStatus = 401;
       denialReason =
         "Sign in first before Akuso can discuss account-specific or sensitive actions safely.";
     } else {

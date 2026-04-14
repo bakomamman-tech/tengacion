@@ -1,7 +1,14 @@
 const crypto = require("crypto");
 
 const { config } = require("../config/env");
-const { sanitizeMultilineText, sanitizePlainText, sanitizeRoute } = require("./assistant/outputSanitizer");
+const { sanitizePlainObject } = require("../config/storage");
+const {
+  sanitizeAssistantDetail,
+  sanitizeAssistantSource,
+  sanitizeMultilineText,
+  sanitizePlainText,
+  sanitizeRoute,
+} = require("./assistant/outputSanitizer");
 
 const normalizeList = (value = [], max = 6, maxLength = 160) =>
   [...new Set((Array.isArray(value) ? value : []).map((entry) => sanitizePlainText(entry, maxLength)).filter(Boolean))].slice(
@@ -33,6 +40,65 @@ const normalizeDrafts = (drafts = []) =>
     .filter(Boolean)
     .slice(0, 3);
 
+const normalizeDetails = (details = []) =>
+  (Array.isArray(details) ? details : [])
+    .map((entry) => sanitizeAssistantDetail(entry))
+    .filter((entry) => entry.title && entry.body)
+    .slice(0, 10);
+
+const normalizeSources = (sources = []) =>
+  (Array.isArray(sources) ? sources : [])
+    .map((entry, index) => {
+      if (typeof entry === "string") {
+        const label = sanitizePlainText(entry, 120);
+        if (!label) {
+          return null;
+        }
+        return {
+          id: `akuso-source-${index + 1}`,
+          type: "akuso_source",
+          label,
+          summary: "",
+        };
+      }
+
+      return sanitizeAssistantSource(entry);
+    })
+    .filter((entry) => entry?.id && entry?.type && entry?.label)
+    .slice(0, 8);
+
+const normalizeCards = (cards = []) =>
+  (Array.isArray(cards) ? cards : [])
+    .map((card) => {
+      if (!card || typeof card !== "object" || Array.isArray(card)) {
+        return null;
+      }
+
+      const title = sanitizePlainText(card?.title || "", 120);
+      if (!title) {
+        return null;
+      }
+
+      return {
+        type: sanitizePlainText(card?.type || "card", 40) || "card",
+        title,
+        subtitle: sanitizePlainText(card?.subtitle || "", 200),
+        description: sanitizeMultilineText(card?.description || "", 500),
+        route: sanitizeRoute(card?.route || ""),
+        payload:
+          card?.payload && typeof card.payload === "object" && !Array.isArray(card.payload)
+            ? sanitizePlainObject(card.payload, {
+                maxDepth: 1,
+                maxKeys: 8,
+                maxStringLength: 200,
+                maxArrayLength: 4,
+              })
+            : {},
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 12);
+
 const buildFeedbackToken = ({ traceId = "", conversationId = "" } = {}) => {
   const base = `${traceId}:${conversationId}`;
   const signature = crypto
@@ -53,6 +119,9 @@ const buildBaseResponse = ({
   suggestions = [],
   actions = [],
   drafts = [],
+  details = [],
+  sources = [],
+  cards = [],
   conversationId = "",
   meta = {},
 } = {}) => ({
@@ -66,6 +135,9 @@ const buildBaseResponse = ({
   suggestions: normalizeList(suggestions, 6, 140),
   actions: normalizeActions(actions),
   drafts: normalizeDrafts(drafts),
+  details: normalizeDetails(details),
+  sources: normalizeSources(sources),
+  cards: normalizeCards(cards),
   traceId: sanitizePlainText(traceId, 80),
   feedbackToken: buildFeedbackToken({ traceId, conversationId }),
   conversationId: sanitizePlainText(conversationId, 80),

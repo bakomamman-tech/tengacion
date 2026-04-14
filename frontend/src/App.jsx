@@ -749,7 +749,7 @@ export default function App() {
         </Routes>
       </Suspense>
       <InstallPrompt />
-      {user ? <TengacionAssistantDock /> : null}
+      <TengacionAssistantDock />
     </>
   );
 }

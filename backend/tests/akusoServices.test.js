@@ -175,6 +175,18 @@ describe("Akuso services", () => {
     ).toEqual(expect.arrayContaining(["How to subscribe to a creator"]));
   });
 
+  it("uses current page titles to keep hints relevant even before route matching settles", () => {
+    expect(
+      getAkusoHints({
+        query: "",
+        currentRoute: "",
+        currentPage: "Settings Hub",
+        user: { id: userId },
+        limit: 20,
+      })
+    ).toEqual(expect.arrayContaining(["What can I change in settings?"]));
+  });
+
   it("routes different policy outcomes to the expected model families", () => {
     const originalEnabled = config.akuso.enabled;
     const originalHasOpenAI = config.akuso.hasOpenAI;

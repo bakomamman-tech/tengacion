@@ -5,7 +5,11 @@ import toast from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
 import { executeAssistantActions, isSafeAssistantRoute } from "../../services/assistantActionExecutor";
 import { buildAssistantContext, getAssistantSuggestions, resolveAssistantSurface } from "../../services/assistantRoutes";
-import { sendAssistantFeedback, sendAssistantMessage } from "../../services/assistantApi";
+import {
+  fetchAssistantHints,
+  sendAssistantFeedback,
+  streamAssistantMessage,
+} from "../../services/assistantApi";
 import AssistantConfirmDialog from "./AssistantConfirmDialog";
 import TengacionAssistantLauncher from "./TengacionAssistantLauncher";
 import TengacionAssistantPanel from "./TengacionAssistantPanel";
@@ -23,6 +27,8 @@ const createAssistantThreadMessage = (role, content, extras = {}) => ({
   role,
   content,
   responseId: extras.responseId || "",
+  feedbackToken: extras.feedbackToken || "",
+  category: extras.category || "",
   mode: extras.mode || "general",
   safety: extras.safety || { level: "safe", notice: "", escalation: "" },
   trust: extras.trust || {
@@ -70,11 +76,35 @@ export default function TengacionAssistantDock() {
   const [assistantMode, setAssistantMode] = useState("copilot");
   const [writingPreferences, setWritingPreferences] = useState(defaultWritingPreferences);
   const [feedbackMap, setFeedbackMap] = useState({});
+  const [streamingLabel, setStreamingLabel] = useState("");
+  const [streamingResponseId, setStreamingResponseId] = useState("");
+  const [routeHints, setRouteHints] = useState([]);
 
   const assistantContext = useMemo(() => buildAssistantContext(location), [location]);
   const surface = useMemo(() => resolveAssistantSurface(location.pathname), [location.pathname]);
-  const suggestions = useMemo(() => getAssistantSuggestions(location.pathname), [location.pathname]);
-  const canRender = Boolean(user) && !authLoading;
+  const fallbackSuggestions = useMemo(
+    () => getAssistantSuggestions(location.pathname),
+    [location.pathname]
+  );
+  const suggestions = useMemo(() => {
+    const seen = new Set();
+    return [...routeHints, ...fallbackSuggestions].filter((entry) => {
+      const prompt = String(entry || "").trim();
+      if (!prompt) {
+        return false;
+      }
+
+      const key = prompt.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
+  }, [fallbackSuggestions, routeHints]);
+  const proactiveSuggestion = routeHints[0] || fallbackSuggestions[0] || "";
+  const canRender = !authLoading;
 
   useEffect(() => {
     if (!open && !pendingAction) {
@@ -98,10 +128,41 @@ export default function TengacionAssistantDock() {
     prevOpenRef.current = open;
   }, [open]);
 
+  useEffect(() => {
+    if (!canRender) {
+      return undefined;
+    }
+
+    let active = true;
+    setRouteHints([]);
+
+    fetchAssistantHints({
+      context: assistantContext,
+      assistantModeHint: assistantMode,
+    })
+      .then((payload) => {
+        if (!active) {
+          return;
+        }
+        setRouteHints(Array.isArray(payload?.hints) ? payload.hints.slice(0, 6) : []);
+      })
+      .catch(() => {
+        if (active) {
+          setRouteHints([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [assistantContext, assistantMode, canRender]);
+
   const closePanel = useCallback(() => {
     setOpen(false);
     setPendingAction(null);
     setError("");
+    setStreamingLabel("");
+    setStreamingResponseId("");
   }, []);
 
   const clearConversation = useCallback(() => {
@@ -111,24 +172,35 @@ export default function TengacionAssistantDock() {
     setError("");
     setFeedbackMap({});
     setComposerValue("");
+    setStreamingLabel("");
+    setStreamingResponseId("");
   }, []);
 
-  const appendAssistantReply = useCallback((response) => {
-    const assistantMessage = createAssistantThreadMessage("assistant", response.message, {
-      responseId: response.responseId,
-      mode: response.mode,
-      safety: response.safety,
-      trust: response.trust,
-      sources: response.sources,
-      details: response.details,
-      followUps: response.followUps,
-      cards: response.cards,
-      actions: response.actions,
-      requiresConfirmation: response.requiresConfirmation,
-      pendingAction: response.pendingAction,
+  const upsertStreamingAssistantReply = useCallback((responseId, updater) => {
+    if (!responseId || typeof updater !== "function") {
+      return;
+    }
+
+    setMessages((current) => {
+      const index = current.findIndex(
+        (message) => message.role === "assistant" && message.responseId === responseId
+      );
+
+      if (index === -1) {
+        return [
+          ...current,
+          updater(
+            createAssistantThreadMessage("assistant", "", {
+              responseId,
+            })
+          ),
+        ];
+      }
+
+      const next = [...current];
+      next[index] = updater(next[index]);
+      return next;
     });
-    setMessages((current) => [...current, assistantMessage]);
-    return assistantMessage;
   }, []);
 
   const executeAndMaybeClose = useCallback(
@@ -169,24 +241,101 @@ export default function TengacionAssistantDock() {
       setLoading(true);
       setError("");
       setPendingAction(null);
+      setStreamingLabel("Checking policy and grounding");
+      setStreamingResponseId("");
 
       setMessages((current) => [...current, createAssistantThreadMessage("user", text)]);
 
       try {
-        const response = await sendAssistantMessage({
+        const response = await streamAssistantMessage({
           message: text,
           conversationId,
-          pendingAction: null,
           context: assistantContext,
           assistantModeHint: assistantMode,
           preferences: writingPreferences,
+          onStatus: (event) => {
+            const nextLabel = String(event?.label || "").trim();
+            if (nextLabel) {
+              setStreamingLabel(nextLabel);
+            }
+          },
+          onStart: (event) => {
+            const responseKey = String(event?.responseId || "").trim();
+            if (!responseKey) {
+              return;
+            }
+
+            setStreamingResponseId(responseKey);
+            upsertStreamingAssistantReply(responseKey, (message) => ({
+              ...message,
+              responseId: responseKey,
+              category: event?.category || message.category || "",
+              mode: event?.mode || message.mode || "general",
+            }));
+          },
+          onDelta: (event) => {
+            const responseKey = String(event?.meta?.responseId || "").trim();
+            if (!responseKey) {
+              return;
+            }
+
+            setStreamingResponseId(responseKey);
+            setStreamingLabel("Streaming grounded reply");
+            upsertStreamingAssistantReply(responseKey, (message) => ({
+              ...message,
+              responseId: responseKey,
+              category: event?.meta?.category || message.category || "",
+              mode: event?.meta?.mode || message.mode || "general",
+              content: String(event?.content || ""),
+            }));
+          },
         });
 
         if (response.conversationId) {
           setConversationId(response.conversationId);
         }
 
-        const assistantMessage = appendAssistantReply(response);
+        setStreamingLabel("");
+        setStreamingResponseId("");
+        let assistantMessage = null;
+
+        setMessages((current) => {
+          const index = current.findIndex(
+            (message) =>
+              message.role === "assistant" && message.responseId === response.responseId
+          );
+
+          const nextMessage = createAssistantThreadMessage("assistant", response.message, {
+            responseId: response.responseId,
+            feedbackToken: response.feedbackToken,
+            category: response.category,
+            mode: response.mode,
+            safety: response.safety,
+            trust: response.trust,
+            sources: response.sources,
+            details: response.details,
+            followUps: response.followUps,
+            cards: response.cards,
+            actions: response.actions,
+            requiresConfirmation: response.requiresConfirmation,
+            pendingAction: response.pendingAction,
+          });
+
+          assistantMessage = nextMessage;
+
+          if (index === -1) {
+            return [...current, nextMessage];
+          }
+
+          const next = [...current];
+          next[index] = {
+            ...nextMessage,
+            id: current[index].id,
+          };
+          assistantMessage = next[index];
+          return next;
+        });
+
         if (response.requiresConfirmation && response.pendingAction) {
           setPendingAction(response.pendingAction);
         } else {
@@ -198,6 +347,8 @@ export default function TengacionAssistantDock() {
           [assistantMessage.id]: "unrated",
         }));
       } catch (err) {
+        setStreamingLabel("");
+        setStreamingResponseId("");
         const message = err?.message || "Akuso couldn't answer right now.";
         setError(message);
         toast.error(message);
@@ -205,7 +356,16 @@ export default function TengacionAssistantDock() {
         setLoading(false);
       }
     },
-    [appendAssistantReply, assistantContext, assistantMode, conversationId, executeAndMaybeClose, loading, open, writingPreferences]
+    [
+      assistantContext,
+      assistantMode,
+      conversationId,
+      executeAndMaybeClose,
+      loading,
+      open,
+      upsertStreamingAssistantReply,
+      writingPreferences,
+    ]
   );
 
   const handleCardAction = useCallback(
@@ -215,7 +375,9 @@ export default function TengacionAssistantDock() {
       }
 
       const route = String(card.route || "").trim();
-      const suggestedText = String(card?.payload?.text || card?.description || "").trim();
+      const suggestedText = String(
+        card?.payload?.text || card?.payload?.prompt || card?.description || ""
+      ).trim();
 
       if (route && isSafeAssistantRoute(route)) {
         navigate(route);
@@ -293,26 +455,18 @@ export default function TengacionAssistantDock() {
       try {
         await sendAssistantFeedback({
           conversationId,
-          messageId: message.id,
           responseId: message.responseId,
+          feedbackToken: message.feedbackToken,
           rating,
           mode: message.mode || assistantMode,
-          surface,
-          responseMode: message.mode || "",
-          responseSummary: String(message.content || "").slice(0, 500),
-          metadata: {
-            safetyLevel: message.safety?.level || "safe",
-            requestSummary: String(lastQueryRef.current || "").slice(0, 500),
-            trust: message.trust || {},
-            sourceTypes: Array.isArray(message.sources) ? message.sources.map((source) => source.type).slice(0, 6) : [],
-          },
+          category: message.category || "",
         });
         toast.success(rating === "helpful" ? "Thanks for the feedback." : "Feedback saved.");
       } catch (err) {
         toast.error(err?.message || "Feedback could not be saved.");
       }
     },
-    [assistantMode, conversationId, feedbackMap, surface]
+    [assistantMode, conversationId, feedbackMap]
   );
 
   const handleModeChange = useCallback((nextMode) => {
@@ -341,7 +495,12 @@ export default function TengacionAssistantDock() {
 
   return (
     <>
-      <TengacionAssistantLauncher ref={launcherRef} open={open} onClick={handleLauncherClick} />
+      <TengacionAssistantLauncher
+        ref={launcherRef}
+        open={open}
+        hint={proactiveSuggestion}
+        onClick={handleLauncherClick}
+      />
 
       <TengacionAssistantPanel
         open={open}
@@ -350,12 +509,14 @@ export default function TengacionAssistantDock() {
         assistantContext={assistantContext}
         surface={surface}
         suggestions={suggestions}
+        proactiveSuggestions={routeHints}
         assistantMode={assistantMode}
         onModeChange={handleModeChange}
         writingPreferences={writingPreferences}
         onPreferenceChange={handlePreferenceChange}
         messages={visibleMessages}
-        loading={loading}
+        loading={loading && !streamingResponseId}
+        streamingLabel={streamingLabel}
         error={error}
         onRetry={handleRetry}
         composerValue={composerValue}
@@ -363,7 +524,7 @@ export default function TengacionAssistantDock() {
         onComposerSubmit={submitMessage}
         onCardAction={handleCardAction}
         onFollowUpClick={handleFollowUpClick}
-        onFeedback={handleFeedback}
+        onFeedback={user ? handleFeedback : null}
         composerDisabled={loading}
         composerRef={composerRef}
       />

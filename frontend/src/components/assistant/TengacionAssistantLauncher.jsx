@@ -10,30 +10,40 @@ function SparkIcon() {
 }
 
 const TengacionAssistantLauncher = forwardRef(function TengacionAssistantLauncher(
-  { open = false, onClick },
+  { open = false, hint = "", onClick },
   ref
 ) {
+  const prompt = String(hint || "").trim();
+
   return (
-    <button
-      ref={ref}
-      type="button"
-      className={`tg-assistant-launcher${open ? " is-open" : ""}`}
-      onClick={onClick}
-      aria-haspopup="dialog"
-      aria-expanded={open}
-      aria-label={open ? "Close Akuso assistant" : "Open Akuso assistant"}
-      title="Ask Akuso"
-    >
-      <span className="tg-assistant-launcher__icon" aria-hidden="true">
-        <SparkIcon />
-      </span>
-      <span className="tg-assistant-launcher__copy">
-        <strong>Akuso</strong>
-        <small>Ask Tengacion AI</small>
-      </span>
-    </button>
+    <div className="tg-assistant-launcher-wrap">
+      {prompt && !open ? (
+        <div className="tg-assistant-launcher__hint" aria-hidden="true">
+          <span>Try now</span>
+          <strong>{prompt}</strong>
+        </div>
+      ) : null}
+
+      <button
+        ref={ref}
+        type="button"
+        className={`tg-assistant-launcher${open ? " is-open" : ""}`}
+        onClick={onClick}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={open ? "Close Akuso assistant" : "Open Akuso assistant"}
+        title={prompt ? `Ask Akuso. Try: ${prompt}` : "Ask Akuso"}
+      >
+        <span className="tg-assistant-launcher__icon" aria-hidden="true">
+          <SparkIcon />
+        </span>
+        <span className="tg-assistant-launcher__copy">
+          <strong>Akuso</strong>
+          <small>{prompt ? `Try: ${prompt}` : "Ask Tengacion AI"}</small>
+        </span>
+      </button>
+    </div>
   );
 });
 
 export default TengacionAssistantLauncher;
-

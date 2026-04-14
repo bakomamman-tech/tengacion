@@ -12,7 +12,7 @@ const {
 const { persistChatMessage } = require("./services/chatService");
 const { toIdString } = require("./utils/messagePayload");
 const Message = require("./models/Message");
-const { config } = require("./config/env");
+const { config, maskSecretValue } = require("./config/env");
 const app = require("./app");
 const server = http.createServer(app);
 const allowedOriginSet = new Set(config.allowedOrigins);
@@ -43,6 +43,20 @@ console.log("[assistant]", {
   enabled: Boolean(config.assistantEnabled),
   provider: config.hasOpenAI ? "openai" : "local-fallback",
   model: config.openAiModel || config.OPENAI_MODEL || "unset",
+});
+console.log("[akuso]", {
+  enabled: Boolean(config.akuso?.enabled),
+  ready: Boolean(config.akuso?.ready),
+  provider: config.akuso?.hasOpenAI ? "openai" : "disabled",
+  models: config.akuso?.models || {},
+  timeoutMs: config.akuso?.requestTimeoutMs || 0,
+  maxInputChars: config.akuso?.maxInputChars || 0,
+  maxOutputTokens: config.akuso?.maxOutputTokens || 0,
+  rateLimitWindowMs: config.akuso?.rateLimitWindowMs || 0,
+  rateLimitMax: config.akuso?.rateLimitMax || 0,
+  auditLogs: Boolean(config.akuso?.enableAuditLogs),
+  streaming: Boolean(config.akuso?.enableStreaming),
+  apiKey: maskSecretValue(config.OPENAI_API_KEY),
 });
 
 const missingAuthSecrets = [

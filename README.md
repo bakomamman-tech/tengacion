@@ -22,29 +22,38 @@ This repo now supports an MVP where users can:
 - `.env.example` / `.env.test` env templates
 
 ## Akuso Assistant
-Akuso is Tengacion's in-app AI assistant. Phase 1 is intentionally narrow and safe:
-- open home, messages, notifications, profile, settings, purchases, creator onboarding, and creator upload pages
-- search creators and search content
-- summarize notifications and purchases
-- draft short captions and explain supported features
-- understand natural phrases like "open my fan page", "what can I do here?", and "find gospel artists"
+Akuso is Tengacion's in-app AI assistant. The current production-minded backend foundation is exposed through `backend/routes/akuso.js` and keeps model access on the server only.
 
-Safety rules:
-- authenticated users only
-- no silent messages, deletes, payment changes, publishing, moderation, or account mutations
-- risky requests return `requiresConfirmation: true` with a safe pending action, or a polite refusal
-- the frontend only executes allowlisted internal actions
+Current Akuso routes:
+- `POST /api/akuso/chat`
+- `GET /api/akuso/hints`
+- `POST /api/akuso/feedback`
+- `POST /api/akuso/templates/generate`
 
-Configuration:
-- `ASSISTANT_ENABLED` defaults to `true`; set it to `false` only if you want to turn Akuso off
-- `OPENAI_API_KEY` is optional; if it is missing, Akuso falls back to safe local behavior
-- `OPENAI_MODEL` defaults to `gpt-5.4-mini`
+Current backend behavior:
+- policy and prompt-injection checks run before any model call
+- app guidance is grounded in the real Tengacion feature registry
+- creator writing uses bounded server-side prompts and model routing
+- sensitive account, payout, payment, and private-data requests are refused or require secure in-app flows
+- OpenAI is optional outside production; safe local fallbacks remain available
 
-Adding a new assistant tool:
-1. Add request/response schemas in `backend/services/assistant/schemas.js`
-2. Implement the tool in `backend/services/assistant/tools/`
-3. Register it in `backend/services/assistant/tools/index.js`
-4. Keep the tool output structured JSON and avoid mutations unless a future confirmed-action layer is added
+Akuso-specific configuration:
+- `ASSISTANT_ENABLED`
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL_PRIMARY`
+- `OPENAI_MODEL_FAST`
+- `OPENAI_MODEL_WRITING`
+- `OPENAI_MODEL_REASONING`
+- `AKUSO_REQUEST_TIMEOUT_MS`
+- `AKUSO_MAX_INPUT_CHARS`
+- `AKUSO_MAX_OUTPUT_TOKENS`
+- `AKUSO_RATE_LIMIT_WINDOW_MS`
+- `AKUSO_RATE_LIMIT_MAX`
+- `AKUSO_ENABLE_AUDIT_LOGS`
+- `AKUSO_ENABLE_STREAMING`
+
+Backend architecture, safety boundaries, and extension guidance live here:
+- [`docs/akuso-backend-engine.md`](docs/akuso-backend-engine.md)
 
 ## Creator + Artist Enhancements
 - Artist profile now exposes `links` (Spotify, Instagram, Facebook, TikTok, YouTube, Apple Music, Audiomack, Boomplay, Website) plus a `customLinks` array.

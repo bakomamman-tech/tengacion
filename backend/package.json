@@ -16,6 +16,7 @@
     "report:legacy-media": "node scripts/reportLegacyMedia.js",
     "cleanup:storage": "node scripts/storageCleanup.js",
     "eval:assistant": "cross-env NODE_PATH=./node_modules node scripts/runAssistantEvals.js",
+    "eval:akuso": "cross-env NODE_PATH=./node_modules node scripts/runAkusoEvals.js",
     "test": "cross-env NODE_PATH=./node_modules jest --runInBand"
   },
   "dependencies": {
@@ -36,9 +37,10 @@
     "multer": "^2.1.1",
     "multer-storage-cloudinary": "^2.2.1",
     "nodemailer": "^8.0.5",
+    "openai": "^6.6.0",
     "socket.io": "^4.8.3",
-    "stripe": "^20.3.1",
     "streamifier": "^0.1.1",
+    "stripe": "^20.3.1",
     "tengacion": "file:..",
     "zod": "^4.3.6"
   },

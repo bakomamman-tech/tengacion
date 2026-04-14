@@ -73,7 +73,8 @@ app.use("/api", (req, res, next) => {
   if (
     req.path.startsWith("/media") ||
     req.path.startsWith("/payments/webhook") ||
-    req.path.startsWith("/assistant")
+    req.path.startsWith("/assistant") ||
+    req.path.startsWith("/akuso")
   ) {
     return next();
   }
@@ -140,6 +141,7 @@ app.use("/api/support", require("./routes/support"));
 app.use("/api/talent-show", require("./routes/talentShow"));
 app.use("/api/search", require("./routes/search"));
 app.use("/api/assistant", require("./routes/assistant"));
+app.use("/api/akuso", require("./routes/akuso"));
 app.use("/api/videos", require("./routes/videos"));
 app.use("/api/live", require("./routes/live"));
 app.use("/api/creators", require("./routes/creators"));

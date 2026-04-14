@@ -37,6 +37,28 @@ const parsePort = (value, fallback = NaN) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+const parseInteger = (value, fallback = NaN, { min = Number.MIN_SAFE_INTEGER } = {}) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  if (!Number.isInteger(parsed) || parsed < min) {
+    return fallback;
+  }
+  return parsed;
+};
+
+const maskSecretValue = (value) => {
+  const text = toText(value);
+  if (!text) {
+    return "";
+  }
+  if (text.length <= 8) {
+    return "*".repeat(text.length);
+  }
+  return `${text.slice(0, 4)}...${text.slice(-4)}`;
+};
+
 const normalizeOrigin = (value) => {
   const raw = toText(value);
   if (!raw) {
@@ -199,6 +221,10 @@ const requireEmailOtp = toText(process.env.REQUIRE_EMAIL_OTP) || "false";
 const assistantEnabledInput = toText(process.env.ASSISTANT_ENABLED);
 const openAiApiKey = toText(process.env.OPENAI_API_KEY);
 const openAiModel = toText(process.env.OPENAI_MODEL) || "gpt-5.4-mini";
+const openAiModelPrimary = toText(process.env.OPENAI_MODEL_PRIMARY) || openAiModel || "gpt-5.4-mini";
+const openAiModelFast = toText(process.env.OPENAI_MODEL_FAST) || openAiModelPrimary;
+const openAiModelWriting = toText(process.env.OPENAI_MODEL_WRITING) || openAiModelPrimary;
+const openAiModelReasoning = toText(process.env.OPENAI_MODEL_REASONING) || openAiModelPrimary;
 const hasOpenAI = Boolean(openAiApiKey);
 const assistantEnabled = assistantEnabledInput ? toBool(assistantEnabledInput) : true;
 const assistantAbuseWindowMs = parsePort(process.env.ASSISTANT_ABUSE_WINDOW_MS, 10 * 60 * 1000);
@@ -207,6 +233,26 @@ const assistantAbuseThreshold = parsePort(process.env.ASSISTANT_ABUSE_THRESHOLD,
 const assistantMemoryRetentionDays = parsePort(process.env.ASSISTANT_MEMORY_RETENTION_DAYS, 30);
 const assistantFeedbackRetentionDays = parsePort(process.env.ASSISTANT_FEEDBACK_RETENTION_DAYS, 90);
 const assistantModelTimeoutMs = parsePort(process.env.ASSISTANT_MODEL_TIMEOUT_MS, 9000);
+const akusoRequestTimeoutMs = parseInteger(
+  process.env.AKUSO_REQUEST_TIMEOUT_MS,
+  assistantModelTimeoutMs || 12000,
+  { min: 1000 }
+);
+const akusoMaxInputChars = parseInteger(process.env.AKUSO_MAX_INPUT_CHARS, 2000, {
+  min: 200,
+});
+const akusoMaxOutputTokens = parseInteger(process.env.AKUSO_MAX_OUTPUT_TOKENS, 600, {
+  min: 64,
+});
+const akusoRateLimitWindowMs = parseInteger(
+  process.env.AKUSO_RATE_LIMIT_WINDOW_MS,
+  15 * 60 * 1000,
+  { min: 1000 }
+);
+const akusoRateLimitMax = parseInteger(process.env.AKUSO_RATE_LIMIT_MAX, 40, { min: 1 });
+const akusoEnableAuditLogs = toBool(process.env.AKUSO_ENABLE_AUDIT_LOGS || "true");
+const akusoEnableStreaming = toBool(process.env.AKUSO_ENABLE_STREAMING || "false");
+const akusoReady = assistantEnabled ? hasOpenAI : false;
 
 const missing = [];
 
@@ -224,12 +270,36 @@ if (!Number.isInteger(port) || port <= 0) {
   missing.push("PORT");
 }
 
+if (isProduction && assistantEnabled && !hasOpenAI) {
+  missing.push("OPENAI_API_KEY");
+}
+
 if (missing.length > 0) {
   throw new Error(`Missing required env variables: ${missing.join(", ")}`);
 }
 
 const jwtRefreshSecret = jwtRefreshSecretInput || (isProduction ? "" : jwtSecret);
 const mediaSigningSecret = mediaSigningSecretInput || jwtSecret;
+
+const akuso = {
+  enabled: assistantEnabled,
+  ready: akusoReady,
+  hasOpenAI,
+  requestTimeoutMs: akusoRequestTimeoutMs,
+  maxInputChars: akusoMaxInputChars,
+  maxOutputTokens: akusoMaxOutputTokens,
+  rateLimitWindowMs: akusoRateLimitWindowMs,
+  rateLimitMax: akusoRateLimitMax,
+  enableAuditLogs: akusoEnableAuditLogs,
+  enableStreaming: akusoEnableStreaming,
+  models: {
+    primary: openAiModelPrimary,
+    fast: openAiModelFast,
+    writing: openAiModelWriting,
+    reasoning: openAiModelReasoning,
+  },
+  keyMasked: maskSecretValue(openAiApiKey),
+};
 
 const config = {
   nodeEnv,
@@ -273,6 +343,10 @@ const config = {
   stripeWebhookSecret,
   openAiApiKey,
   openAiModel,
+  openAiModelPrimary,
+  openAiModelFast,
+  openAiModelWriting,
+  openAiModelReasoning,
   hasOpenAI,
   assistantEnabled,
   assistantAbuseWindowMs,
@@ -281,6 +355,7 @@ const config = {
   assistantMemoryRetentionDays,
   assistantFeedbackRetentionDays,
   assistantModelTimeoutMs,
+  akuso,
   requireEmailOtp,
   livekit:
     livekitApiKey || livekitApiSecret || livekitHost || livekitWsUrl
@@ -326,6 +401,10 @@ const config = {
   STRIPE_WEBHOOK_SECRET: stripeWebhookSecret,
   OPENAI_API_KEY: openAiApiKey,
   OPENAI_MODEL: openAiModel,
+  OPENAI_MODEL_PRIMARY: openAiModelPrimary,
+  OPENAI_MODEL_FAST: openAiModelFast,
+  OPENAI_MODEL_WRITING: openAiModelWriting,
+  OPENAI_MODEL_REASONING: openAiModelReasoning,
   HAS_OPENAI: hasOpenAI,
   ASSISTANT_ENABLED: assistantEnabled,
   ASSISTANT_ABUSE_WINDOW_MS: assistantAbuseWindowMs,
@@ -334,6 +413,13 @@ const config = {
   ASSISTANT_MEMORY_RETENTION_DAYS: assistantMemoryRetentionDays,
   ASSISTANT_FEEDBACK_RETENTION_DAYS: assistantFeedbackRetentionDays,
   ASSISTANT_MODEL_TIMEOUT_MS: assistantModelTimeoutMs,
+  AKUSO_REQUEST_TIMEOUT_MS: akusoRequestTimeoutMs,
+  AKUSO_MAX_INPUT_CHARS: akusoMaxInputChars,
+  AKUSO_MAX_OUTPUT_TOKENS: akusoMaxOutputTokens,
+  AKUSO_RATE_LIMIT_WINDOW_MS: akusoRateLimitWindowMs,
+  AKUSO_RATE_LIMIT_MAX: akusoRateLimitMax,
+  AKUSO_ENABLE_AUDIT_LOGS: akusoEnableAuditLogs,
+  AKUSO_ENABLE_STREAMING: akusoEnableStreaming,
   REQUIRE_EMAIL_OTP: requireEmailOtp,
   LIVEKIT_API_KEY: livekitApiKey,
   LIVEKIT_API_SECRET: livekitApiSecret,
@@ -341,4 +427,4 @@ const config = {
   LIVEKIT_WS_URL: livekitWsUrl,
 };
 
-module.exports = { config, ...config };
+module.exports = { config, maskSecretValue, ...config };

@@ -1,6 +1,7 @@
 const { sanitizePlainObject } = require("../config/storage");
 const { config } = require("../config/env");
 const { writeAuditLog } = require("./auditLogService");
+const { logAnalyticsEvent } = require("./analyticsService");
 const {
   recordAkusoOpenAIFailure,
   recordAkusoPromptInjection,
@@ -21,6 +22,9 @@ const buildSafeMeta = (metadata = {}) =>
     maxStringLength: 240,
     maxArrayLength: 8,
   });
+
+const buildAnalyticsType = (event = "event") =>
+  `akuso_${safeText(event, 80).replace(/[^a-z0-9_]+/gi, "_").toLowerCase()}`;
 
 const logAkusoEvent = async ({
   level = "info",
@@ -44,6 +48,30 @@ const logAkusoEvent = async ({
       ...safeMetadata,
     }
   );
+
+  await logAnalyticsEvent({
+    type: buildAnalyticsType(event),
+    userId: userId || req?.user?.id || null,
+    actorRole: req?.user?.role || "",
+    targetId: safeText(conversationId || traceId, 120) || null,
+    targetType: "akuso",
+    contentType:
+      safeText(
+        safeMetadata?.categoryBucket ||
+          safeMetadata?.provider ||
+          safeMetadata?.rating ||
+          safeMetadata?.routePurpose ||
+          event,
+        40
+      ) || "general",
+    metadata: {
+      traceId: safeText(traceId, 80),
+      conversationId: safeText(conversationId, 80),
+      path: safeText(req?.originalUrl || req?.path || "", 160),
+      method: safeText(req?.method || "", 12),
+      ...safeMetadata,
+    },
+  }).catch(() => null);
 
   if (!persist || !config.akuso?.enableAuditLogs || !userId) {
     return null;

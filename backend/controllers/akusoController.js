@@ -266,6 +266,18 @@ const maybeEnhanceFallback = async ({
   }
 
   recordAkusoModelAttempt();
+  await logAkusoEvent({
+    event: "model_attempt",
+    traceId,
+    req,
+    userId: req.user?.id || "",
+    conversationId: input.conversationId || context.conversationId || "",
+    metadata: {
+      routePurpose,
+      task: routeDecision.task,
+      model: routeDecision.model,
+    },
+  }).catch(() => null);
 
   const promptBundle = buildAkusoPromptBundle({
     input,
@@ -527,6 +539,18 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
       provider: "policy_engine",
       routeName: "chat",
     });
+    await logAkusoEvent({
+      event: "response",
+      traceId,
+      req,
+      userId: req.user?.id || "",
+      conversationId: memory.conversationId,
+      metadata: {
+        routePurpose: "chat",
+        provider: "policy_engine",
+        categoryBucket: policyResult.categoryBucket,
+      },
+    }).catch(() => null);
 
     return {
       statusCode: policyResult.httpStatus,
@@ -573,6 +597,20 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
     routeName: "chat",
     fallbackReason: responsePayload.observability?.fallbackReason || "",
   });
+  await logAkusoEvent({
+    event: "response",
+    traceId,
+    req,
+    userId: req.user?.id || "",
+    conversationId: response.conversationId || memory.conversationId,
+    metadata: {
+      routePurpose: "chat",
+      provider:
+        responsePayload.observability?.provider || responsePayload.meta?.provider || "local_fallback",
+      fallbackReason: responsePayload.observability?.fallbackReason || "",
+      categoryBucket: policyResult.categoryBucket,
+    },
+  }).catch(() => null);
 
   await persistMemoryFromResponse({
     req,
@@ -744,6 +782,18 @@ const runAkusoTemplateRequest = async ({ req, traceId }) => {
       provider: "policy_engine",
       routeName: "template",
     });
+    await logAkusoEvent({
+      event: "response",
+      traceId,
+      req,
+      userId: req.user?.id || "",
+      conversationId: memory.conversationId,
+      metadata: {
+        routePurpose: "template",
+        provider: "policy_engine",
+        categoryBucket: policyResult.categoryBucket,
+      },
+    }).catch(() => null);
 
     return {
       statusCode: policyResult.httpStatus,
@@ -782,6 +832,20 @@ const runAkusoTemplateRequest = async ({ req, traceId }) => {
     routeName: "template",
     fallbackReason: responsePayload.observability?.fallbackReason || "",
   });
+  await logAkusoEvent({
+    event: "response",
+    traceId,
+    req,
+    userId: req.user?.id || "",
+    conversationId: response.conversationId || memory.conversationId,
+    metadata: {
+      routePurpose: "template",
+      provider:
+        responsePayload.observability?.provider || responsePayload.meta?.provider || "local_fallback",
+      fallbackReason: responsePayload.observability?.fallbackReason || "",
+      categoryBucket: policyResult.categoryBucket,
+    },
+  }).catch(() => null);
 
   await persistMemoryFromResponse({
     req,

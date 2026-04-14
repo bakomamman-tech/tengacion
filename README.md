@@ -30,6 +30,7 @@ Current Akuso routes:
 - `POST /api/akuso/feedback`
 - `POST /api/akuso/templates/generate`
 - `GET /api/akuso/metrics` (internal, requires audit-log permission)
+- `GET /api/admin/assistant/metrics` (admin/internal summary backed by analytics retention)
 
 Current backend behavior:
 - policy and prompt-injection checks run before any model call
@@ -38,6 +39,7 @@ Current backend behavior:
 - sensitive account, payout, payment, and private-data requests are refused or require secure in-app flows
 - OpenAI is optional outside production; safe local fallbacks remain available
 - aggregate Akuso metrics are available through a protected internal backend endpoint for ops visibility
+- Akuso operational events are also written into the existing analytics event pipeline for longer-term admin reporting
 
 Akuso-specific configuration:
 - `ASSISTANT_ENABLED`

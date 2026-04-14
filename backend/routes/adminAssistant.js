@@ -2,9 +2,30 @@ const express = require("express");
 
 const requirePermissions = require("../middleware/requirePermissions");
 const { writeAuditLog } = require("../services/auditLogService");
+const { buildAkusoAdminMetrics } = require("../services/assistant/adminMetricsService");
 const { listAssistantReviews, updateAssistantReview } = require("../services/assistant/reviewQueue");
 
 const router = express.Router();
+
+router.get("/metrics", requirePermissions(["view_audit_logs"]), async (req, res) => {
+  try {
+    const result = await buildAkusoAdminMetrics({
+      range: req.query.range,
+      startDate: req.query.startDate,
+      endDate: req.query.endDate,
+    });
+
+    return res.json({
+      ok: true,
+      ...result,
+    });
+  } catch (error) {
+    const statusCode = /invalid/i.test(String(error?.message || "")) ? 400 : 500;
+    return res
+      .status(statusCode)
+      .json({ error: error?.message || "Failed to load assistant metrics" });
+  }
+});
 
 router.get("/reviews", requirePermissions(["view_audit_logs"]), async (req, res) => {
   try {

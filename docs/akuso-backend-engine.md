@@ -46,6 +46,7 @@ Akuso routes live in `backend/routes/akuso.js`.
 - `POST /api/akuso/feedback`
 - `POST /api/akuso/templates/generate`
 - `GET /api/akuso/metrics` for internal operations visibility only
+- `GET /api/admin/assistant/metrics` for admin/internal historical summary
 
 Route expectations:
 
@@ -234,6 +235,12 @@ Akuso now also keeps a lightweight internal metrics snapshot in process memory f
 - feedback quality trends
 
 The metrics surface is intentionally aggregate-only. It does not expose prompts, secrets, raw transcripts, or user-level payout/account data.
+
+Akuso operational events are also persisted into the existing analytics event pipeline using `akuso_*` event types. The admin/internal `GET /api/admin/assistant/metrics` route combines:
+
+- the live in-process snapshot from `akusoMetricsService`
+- historical retained analytics counts and rates from `AnalyticsEvent`
+- lightweight alert flags for elevated prompt injection, fallback, OpenAI failure, or negative-feedback trends
 
 ## Environment Variables
 

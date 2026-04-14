@@ -13,7 +13,11 @@ const {
 } = require("../services/akusoClassifierService");
 const { buildAkusoContext } = require("../services/akusoContextBuilder");
 const { runAkusoEvals } = require("../services/akusoEvalRunner");
-const { findFeatureByIntent } = require("../services/akusoFeatureRegistryService");
+const {
+  findFeatureByIntent,
+  findFeatureByRoute,
+  getAkusoHints,
+} = require("../services/akusoFeatureRegistryService");
 const { selectAkusoModel } = require("../services/akusoModelRouter");
 const { handleOpenAIError } = require("../services/akusoOpenAIService");
 const { evaluateAkusoPolicy, POLICY_BUCKETS } = require("../services/akusoPolicyService");
@@ -113,6 +117,52 @@ describe("Akuso services", () => {
         featureKey: "creator_music_upload",
       })
     );
+  });
+
+  it("covers grounded settings, creator workspace, and subscription routes", () => {
+    expect(findFeatureByRoute("/settings")).toEqual(
+      expect.objectContaining({
+        featureKey: "settings_hub",
+      })
+    );
+
+    expect(findFeatureByRoute("/creator/music")).toEqual(
+      expect.objectContaining({
+        featureKey: "creator_music_workspace",
+      })
+    );
+
+    expect(findFeatureByIntent("manage my creator categories")).toEqual(
+      expect.objectContaining({
+        featureKey: "creator_categories",
+      })
+    );
+
+    expect(findFeatureByIntent("subscribe to a creator")).toEqual(
+      expect.objectContaining({
+        featureKey: "creator_subscription",
+      })
+    );
+  });
+
+  it("returns grounded hints for live and creator membership flows", () => {
+    expect(
+      getAkusoHints({
+        query: "go live",
+        currentRoute: "/live/go",
+        user: { id: userId },
+        limit: 20,
+      })
+    ).toEqual(expect.arrayContaining(["How to go live"]));
+
+    expect(
+      getAkusoHints({
+        query: "creator membership",
+        currentRoute: `/creators/${creatorProfileId}/subscribe`,
+        user: { id: userId },
+        limit: 20,
+      })
+    ).toEqual(expect.arrayContaining(["How to subscribe to a creator"]));
   });
 
   it("routes different policy outcomes to the expected model families", () => {

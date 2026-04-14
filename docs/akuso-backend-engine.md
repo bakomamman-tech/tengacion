@@ -35,6 +35,8 @@ The current runtime remains rooted in `backend/`.
 
 Legacy assistant services still exist under `backend/services/assistant/`. The new Akuso engine reuses selected safe helpers from that stack where it makes sense, but new Akuso request handling is isolated behind its own controller, services, and middleware.
 
+The legacy `POST /api/assistant/chat` route is now treated as a compatibility surface. It preserves the older assistant response contract for existing consumers, but it delegates chat execution into the Akuso runtime so Tengacion no longer has two independent assistant brains for request handling.
+
 ## Route Surface
 
 Akuso routes live in `backend/routes/akuso.js`.
@@ -130,6 +132,13 @@ Akuso app-help responses are grounded in the real Tengacion feature registry rat
 - caution notes
 
 If a feature is not clearly represented in the registry, Akuso should avoid bluffing and stay conservative.
+
+Current grounded coverage includes real Tengacion flows for:
+
+- creator onboarding, dashboard, categories, uploads, catalog workspaces, earnings, payouts, verification, support, and public creator pages
+- fan-facing creator discovery, creator membership checkout, purchases, friends, groups, rooms, saved items, memories, events, and birthdays
+- settings hub plus privacy, security, notification, display, and sound preferences
+- notifications, live discovery and go-live setup, and Tengacion News topic/source browsing
 
 ### Context and memory
 

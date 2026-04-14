@@ -1,6 +1,6 @@
 const AssistantFeedback = require("../models/AssistantFeedback");
 const { assistantFeedbackSchema, assistantRequestSchema } = require("../services/assistant/schemas");
-const { chat } = require("../services/assistant/assistantService");
+const { chat } = require("../services/assistant/assistantAkusoCompatService");
 const { logAssistantEvent } = require("../services/assistant/audit");
 const { queueAssistantReview } = require("../services/assistant/reviewQueue");
 

@@ -3,6 +3,13 @@ const crypto = require("crypto");
 const AssistantFeedback = require("../models/AssistantFeedback");
 const { searchHelpArticles } = require("../services/assistant/helpDocs");
 const { searchKnowledgeArticles } = require("../services/assistant/knowledgeBase");
+const {
+  getCreatorPublicPageRoute,
+  getCreatorRouteForDashboard,
+  getCreatorRouteForOnboarding,
+  getUploadRoute,
+  getUserProfileRoute,
+} = require("../services/assistant/tools/shared");
 const { buildWritingFallbackDraft } = require("../services/assistant/writingProfiles");
 const { buildAkusoContext } = require("../services/akusoContextBuilder");
 const { buildAkusoPromptBundle } = require("../services/akusoPromptBuilder");
@@ -75,7 +82,40 @@ const buildPolicyAnswer = ({ policyResult, featureTitle = "" } = {}) => {
   return policyResult.denialReason || "Akuso handled the request safely.";
 };
 
-const buildAppHelpFallback = ({ input, context, policyResult, user = {} }) => {
+const resolveFeatureRoute = async (feature = null, user = {}) => {
+  const featureKey = String(feature?.featureKey || "").trim();
+  const userId = String(user?.id || user?._id || "").trim();
+
+  if (!featureKey) {
+    return "";
+  }
+
+  if (featureKey === "profile_editor") {
+    return userId ? getUserProfileRoute(userId) : feature.routePattern || "";
+  }
+  if (featureKey === "creator_onboarding") {
+    return userId ? getCreatorRouteForOnboarding(userId) : feature.routePattern || "";
+  }
+  if (featureKey === "creator_dashboard") {
+    return userId ? getCreatorRouteForDashboard(userId) : feature.routePattern || "";
+  }
+  if (featureKey === "creator_page") {
+    return userId ? getCreatorPublicPageRoute(userId) : feature.routePattern || "";
+  }
+  if (featureKey === "creator_music_upload") {
+    return userId ? getUploadRoute(userId, "music") : feature.routePattern || "";
+  }
+  if (featureKey === "creator_books_upload") {
+    return userId ? getUploadRoute(userId, "book") : feature.routePattern || "";
+  }
+  if (featureKey === "creator_podcasts_upload") {
+    return userId ? getUploadRoute(userId, "podcast") : feature.routePattern || "";
+  }
+
+  return feature.routePattern || "";
+};
+
+const buildAppHelpFallback = async ({ input, context, policyResult, user = {} }) => {
   const primaryFeature =
     policyResult.classification.feature || context.relevantFeatures[0] || null;
   const helpArticles = searchHelpArticles(
@@ -84,7 +124,8 @@ const buildAppHelpFallback = ({ input, context, policyResult, user = {} }) => {
   );
 
   if (primaryFeature) {
-    const canNavigate = policyResult.featureAccessAllowed && primaryFeature.routePattern;
+    const resolvedRoute = await resolveFeatureRoute(primaryFeature, user);
+    const canNavigate = policyResult.featureAccessAllowed && resolvedRoute;
     const answer = canNavigate
       ? `${primaryFeature.pageName}: ${primaryFeature.assistantExplanation}`
       : context.auth.isAuthenticated
@@ -110,7 +151,7 @@ const buildAppHelpFallback = ({ input, context, policyResult, user = {} }) => {
             {
               type: "navigate",
               label: primaryFeature.pageName,
-              target: primaryFeature.routePattern,
+              target: resolvedRoute,
             },
           ]
         : [],
@@ -367,7 +408,7 @@ const withAkusoHandler = (handler) => async (req, res) => {
   }
 };
 
-exports.chat = withAkusoHandler(async (req, res, traceId) => {
+const runAkusoChatRequest = async ({ req, traceId }) => {
   const input = req.akusoInput || {};
   const storedPreferences = await loadAkusoPreferences({ userId: req.user?.id || "" });
   const memory = await loadAkusoMemory({
@@ -453,14 +494,17 @@ exports.chat = withAkusoHandler(async (req, res, traceId) => {
       },
     });
 
-    return res.status(policyResult.httpStatus).json(policyResponse);
+    return {
+      statusCode: policyResult.httpStatus,
+      body: policyResponse,
+    };
   }
 
   const fallback =
     policyResult.mode === "creator_writing"
       ? buildWritingFallback({ input: mergedInput, context, policyResult })
       : policyResult.mode === "app_help"
-        ? buildAppHelpFallback({
+        ? await buildAppHelpFallback({
             input: mergedInput,
             context,
             policyResult,
@@ -499,10 +543,13 @@ exports.chat = withAkusoHandler(async (req, res, traceId) => {
     policyResult,
   });
 
-  return res.json(response);
-});
+  return {
+    statusCode: 200,
+    body: response,
+  };
+};
 
-exports.hints = withAkusoHandler(async (req, res, traceId) => {
+const runAkusoHintsRequest = async ({ req, traceId }) => {
   const input = req.akusoInput || {};
   const hints = getAkusoHints({
     query: input.query,
@@ -511,17 +558,18 @@ exports.hints = withAkusoHandler(async (req, res, traceId) => {
     limit: 8,
   });
 
-  return res.json(
-    formatAkusoHintsResponse({
+  return {
+    statusCode: 200,
+    body: formatAkusoHintsResponse({
       traceId,
       mode: input.mode || "app_help",
       hints,
       currentRoute: input.currentRoute,
-    })
-  );
-});
+    }),
+  };
+};
 
-exports.feedback = withAkusoHandler(async (req, res, traceId) => {
+const runAkusoFeedbackRequest = async ({ req, traceId }) => {
   const input = req.akusoInput || {};
   const feedback = await AssistantFeedback.create({
     userId: req.user.id,
@@ -554,15 +602,16 @@ exports.feedback = withAkusoHandler(async (req, res, traceId) => {
     persist: true,
   }).catch(() => null);
 
-  return res.status(201).json(
-    formatAkusoFeedbackResponse({
+  return {
+    statusCode: 201,
+    body: formatAkusoFeedbackResponse({
       traceId,
       feedbackId: feedback._id.toString(),
-    })
-  );
-});
+    }),
+  };
+};
 
-exports.generateTemplate = withAkusoHandler(async (req, res, traceId) => {
+const runAkusoTemplateRequest = async ({ req, traceId }) => {
   const input = req.akusoInput || {};
   const memory = await loadAkusoMemory({
     userId: req.user?.id || "",
@@ -620,5 +669,33 @@ exports.generateTemplate = withAkusoHandler(async (req, res, traceId) => {
     policyResult,
   });
 
-  return res.json(response);
+  return {
+    statusCode: 200,
+    body: response,
+  };
+};
+
+exports.runAkusoChatRequest = runAkusoChatRequest;
+exports.runAkusoHintsRequest = runAkusoHintsRequest;
+exports.runAkusoFeedbackRequest = runAkusoFeedbackRequest;
+exports.runAkusoTemplateRequest = runAkusoTemplateRequest;
+
+exports.chat = withAkusoHandler(async (req, res, traceId) => {
+  const result = await runAkusoChatRequest({ req, traceId });
+  return res.status(result.statusCode).json(result.body);
+});
+
+exports.hints = withAkusoHandler(async (req, res, traceId) => {
+  const result = await runAkusoHintsRequest({ req, traceId });
+  return res.status(result.statusCode).json(result.body);
+});
+
+exports.feedback = withAkusoHandler(async (req, res, traceId) => {
+  const result = await runAkusoFeedbackRequest({ req, traceId });
+  return res.status(result.statusCode).json(result.body);
+});
+
+exports.generateTemplate = withAkusoHandler(async (req, res, traceId) => {
+  const result = await runAkusoTemplateRequest({ req, traceId });
+  return res.status(result.statusCode).json(result.body);
 });

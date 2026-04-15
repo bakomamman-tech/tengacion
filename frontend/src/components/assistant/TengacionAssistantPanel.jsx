@@ -373,54 +373,56 @@ export default function TengacionAssistantPanel({
               </div>
             ) : null}
 
-            <div className="tg-assistant-stage__thread">
-              <AssistantMessageList
-                messages={messages}
-                loading={loading}
-                streamingLabel={streamingLabel}
-                onCardAction={onCardAction}
-                onFollowUpClick={onFollowUpClick}
-                onFeedback={onFeedback}
-              />
-            </div>
-
-            <div className="tg-assistant-stage__composer">
-              {!hasConversation && quickSuggestions.length > 0 ? (
-                <div className="tg-assistant-stage__starters" aria-label="Suggested prompts">
-                  {quickSuggestions.map((prompt) => (
-                    <button
-                      key={prompt}
-                      type="button"
-                      className="tg-assistant-chip"
-                      onClick={() => onFollowUpClick?.(prompt)}
-                    >
-                      {prompt}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-
-              <div className="tg-assistant-stage__composer-shell">
-                <div className="tg-assistant-stage__composer-note">
-                  <span className="tg-assistant-stage__composer-dot" aria-hidden="true" />
-                  Conversation stays open while Akuso replies.
-                </div>
-                <AssistantComposer
-                  ref={composerRef}
-                  value={composerValue}
-                  onChange={onComposerChange}
-                  onSubmit={onComposerSubmit}
-                  disabled={composerDisabled}
-                  placeholder={
-                    assistantMode === "writing"
-                      ? "Ask Akuso to draft a caption, bio, promo, or article..."
-                      : assistantMode === "math"
-                        ? "Type a math problem or ask for a step-by-step explanation..."
-                        : assistantMode === "health"
-                          ? "Ask for general health guidance..."
-                          : "Message Akuso naturally, just like a real conversation."
-                  }
+            <div className="tg-assistant-stage__conversation">
+              <div className="tg-assistant-stage__thread">
+                <AssistantMessageList
+                  messages={messages}
+                  loading={loading}
+                  streamingLabel={streamingLabel}
+                  onCardAction={onCardAction}
+                  onFollowUpClick={onFollowUpClick}
+                  onFeedback={onFeedback}
                 />
+              </div>
+
+              <div className="tg-assistant-stage__composer">
+                {!hasConversation && quickSuggestions.length > 0 ? (
+                  <div className="tg-assistant-stage__starters" aria-label="Suggested prompts">
+                    {quickSuggestions.map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        className="tg-assistant-chip"
+                        onClick={() => onFollowUpClick?.(prompt)}
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
+                <div className="tg-assistant-stage__composer-shell">
+                  <div className="tg-assistant-stage__composer-note">
+                    <span className="tg-assistant-stage__composer-dot" aria-hidden="true" />
+                    Conversation stays open while Akuso replies.
+                  </div>
+                  <AssistantComposer
+                    ref={composerRef}
+                    value={composerValue}
+                    onChange={onComposerChange}
+                    onSubmit={onComposerSubmit}
+                    disabled={composerDisabled}
+                    placeholder={
+                      assistantMode === "writing"
+                        ? "Ask Akuso to draft a caption, bio, promo, or article..."
+                        : assistantMode === "math"
+                          ? "Type a math problem or ask for a step-by-step explanation..."
+                          : assistantMode === "health"
+                            ? "Ask for general health guidance..."
+                            : "Message Akuso naturally, just like a real conversation."
+                    }
+                  />
+                </div>
               </div>
             </div>
           </section>

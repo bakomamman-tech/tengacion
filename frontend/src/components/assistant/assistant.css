@@ -409,7 +409,7 @@ body.tg-assistant-open {
 .tg-assistant-stage {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 0.95rem;
   padding: 1.2rem 1.25rem 1.25rem;
 }
@@ -461,6 +461,13 @@ body.tg-assistant-open {
   font-weight: 800;
 }
 
+.tg-assistant-stage__conversation {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.8rem;
+}
+
 .tg-assistant-stage__thread {
   min-height: 0;
   overflow: hidden;
@@ -470,6 +477,12 @@ body.tg-assistant-open {
 .tg-assistant-stage__composer {
   display: grid;
   gap: 0.8rem;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-top: 0.35rem;
+  background:
+    linear-gradient(180deg, rgba(245, 249, 244, 0) 0%, rgba(245, 249, 244, 0.92) 22%, rgba(245, 249, 244, 0.985) 100%);
 }
 
 .tg-assistant-stage__starters {
@@ -547,6 +560,7 @@ body.tg-assistant-open {
   min-height: 0;
   overflow-y: auto;
   padding-right: 0.35rem;
+  padding-bottom: 0.35rem;
   scrollbar-gutter: stable;
 }
 
@@ -1117,6 +1131,11 @@ html.dark-mode .tg-assistant-confirm-card {
   background: linear-gradient(180deg, rgba(20, 35, 28, 0.98) 0%, rgba(12, 24, 19, 0.96) 100%);
   border-color: rgba(121, 207, 162, 0.14);
   color: #effaf3;
+}
+
+html.dark-mode .tg-assistant-stage__composer {
+  background:
+    linear-gradient(180deg, rgba(12, 24, 19, 0) 0%, rgba(12, 24, 19, 0.92) 22%, rgba(12, 24, 19, 0.985) 100%);
 }
 
 html.dark-mode .tg-assistant-panel__header,

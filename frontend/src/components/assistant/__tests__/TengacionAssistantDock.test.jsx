@@ -147,6 +147,8 @@ describe("TengacionAssistantDock", () => {
     expect(
       await screen.findByText(/sign in for account-specific help/i)
     ).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /message akuso/i })).toBeVisible();
+    expect(screen.getByRole("button", { name: /send/i })).toBeVisible();
   });
 
   it("shows proactive page suggestions from Akuso hints", async () => {

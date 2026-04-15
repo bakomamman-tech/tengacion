@@ -36,25 +36,10 @@ const SAFETY_LABELS = {
   emergency: "Urgent",
 };
 
-const TRUST_MODE_LABELS = {
-  "app-aware": "App-aware",
-  "public-knowledge": "Public knowledge",
-  "creator-writing": "Creator writing",
-  "health-caution": "Health caution",
-  general: "General help",
-};
-
-function buildTrustSummary(trust) {
-  const contextLabel = trust.grounded ? "grounded" : "limited context";
-  const providerLabel = trust.usedModel ? trust.provider : "local safety flow";
-  return `${TRUST_MODE_LABELS[trust.mode] || "Guided"} | ${contextLabel} | ${trust.confidenceLabel} confidence | ${providerLabel}`;
-}
-
 export default function AssistantMessageList({
   messages = [],
   loading = false,
   streamingLabel = "",
-  onFollowUpClick,
 }) {
   const endRef = useRef(null);
 
@@ -66,16 +51,7 @@ export default function AssistantMessageList({
     <div className="tg-assistant-thread" role="log" aria-live="polite" aria-relevant="additions text">
       {messages.map((message) => {
         const isUser = message?.role === "user";
-        const followUps = Array.isArray(message?.followUps) ? message.followUps : [];
         const safety = message?.safety || { level: "safe", notice: "", escalation: "" };
-        const trust = message?.trust || {
-          provider: "local-fallback",
-          mode: "general",
-          grounded: true,
-          usedModel: false,
-          confidenceLabel: "medium",
-          note: "",
-        };
         return (
           <article
             key={message?.id || `${message?.role || "assistant"}-${message?.content || ""}`}
@@ -103,31 +79,10 @@ export default function AssistantMessageList({
               {message?.content}
             </div>
 
-            {!isUser ? (
-              <div className="tg-assistant-message__support-note">
-                {buildTrustSummary(trust)}
-              </div>
-            ) : null}
-
             {!isUser && safety?.level && safety.level !== "safe" ? (
               <div className={`tg-assistant-safety tg-assistant-safety--${safety.level}`}>
                 <strong>{SAFETY_LABELS[safety.level] || "Notice"}</strong>
                 <p>{safety.notice || "Akuso added a cautionary note for this answer."}</p>
-              </div>
-            ) : null}
-
-            {!isUser && followUps.length > 0 ? (
-              <div className="tg-assistant-followups" aria-label="Follow-up prompts">
-                {followUps.slice(0, 4).map((followUp) => (
-                  <button
-                    key={`${followUp?.label || followUp?.prompt}`}
-                    type="button"
-                    className="tg-assistant-chip tg-assistant-chip--followup"
-                    onClick={() => onFollowUpClick?.(followUp?.prompt || followUp?.label)}
-                  >
-                    {followUp?.label || followUp?.prompt}
-                  </button>
-                ))}
               </div>
             ) : null}
           </article>

@@ -72,6 +72,7 @@ export default function TengacionAssistantDock() {
   const [error, setError] = useState("");
   const [pendingAction, setPendingAction] = useState(null);
   const [assistantMode, setAssistantMode] = useState("copilot");
+  const [expanded, setExpanded] = useState(false);
   const [writingPreferences, setWritingPreferences] = useState(defaultWritingPreferences);
   const [streamingLabel, setStreamingLabel] = useState("");
   const [streamingResponseId, setStreamingResponseId] = useState("");
@@ -109,19 +110,17 @@ export default function TengacionAssistantDock() {
   const canRender = !authLoading;
 
   useEffect(() => {
-    if (!open && !pendingAction) {
+    if (!pendingAction) {
       return undefined;
     }
 
     const previousOverflow = document.body.style.overflow;
-    document.body.classList.add("tg-assistant-open");
     document.body.style.overflow = "hidden";
 
     return () => {
-      document.body.classList.remove("tg-assistant-open");
       document.body.style.overflow = previousOverflow;
     };
-  }, [open, pendingAction]);
+  }, [pendingAction]);
 
   useEffect(() => {
     if (prevOpenRef.current && !open) {
@@ -161,6 +160,7 @@ export default function TengacionAssistantDock() {
 
   const closePanel = useCallback(() => {
     setOpen(false);
+    setExpanded(false);
     setPendingAction(null);
     setError("");
     setStreamingLabel("");
@@ -239,6 +239,7 @@ export default function TengacionAssistantDock() {
 
       if (!open) {
         setOpen(true);
+        setExpanded(false);
       }
 
       lastQueryRef.current = text;
@@ -369,6 +370,7 @@ export default function TengacionAssistantDock() {
         return;
       }
       setOpen(true);
+      setExpanded(false);
       void submitMessage(prompt);
     },
     [submitMessage]
@@ -399,11 +401,16 @@ export default function TengacionAssistantDock() {
   const handleLauncherClick = useCallback(() => {
     setOpen((current) => {
       const next = !current;
+      setExpanded(false);
       if (!next) {
         setPendingAction(null);
       }
       return next;
     });
+  }, []);
+
+  const handleToggleExpanded = useCallback(() => {
+    setExpanded((current) => !current);
   }, []);
 
   const handleModeChange = useCallback((nextMode) => {
@@ -432,7 +439,9 @@ export default function TengacionAssistantDock() {
 
       <TengacionAssistantPanel
         open={open}
+        expanded={expanded}
         onClose={closePanel}
+        onToggleExpanded={handleToggleExpanded}
         onClearHistory={clearConversation}
         assistantContext={assistantContext}
         suggestions={suggestions}

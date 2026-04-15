@@ -172,4 +172,26 @@ describe("TengacionAssistantDock", () => {
       (await screen.findAllByRole("button", { name: "Open creator earnings" })).length
     ).toBeGreaterThan(0);
   });
+
+  it("opens minimized by default and can expand into the full panel", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/home"]}>
+        <TengacionAssistantDock />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("button", { name: /open akuso assistant/i }));
+
+    expect(await screen.findByRole("button", { name: /maximize akuso panel/i })).toBeInTheDocument();
+    expect(screen.queryByText("Current conversation")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mode")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /maximize akuso panel/i }));
+
+    expect(await screen.findByRole("button", { name: /minimize akuso panel/i })).toBeInTheDocument();
+    expect(screen.getByText("Current conversation")).toBeInTheDocument();
+    expect(screen.getByText("Mode")).toBeInTheDocument();
+  });
 });

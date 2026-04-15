@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useEffect, useId, useMemo, useRef } from "react";
+import { useEffect, useId, useMemo } from "react";
 
 import AssistantComposer from "./AssistantComposer";
 import AssistantMessageList from "./AssistantMessageList";
@@ -61,7 +61,9 @@ function composeConversationTitle(messages, assistantMode) {
 
 export default function TengacionAssistantPanel({
   open = false,
+  expanded = false,
   onClose,
+  onToggleExpanded,
   onClearHistory,
   assistantContext = null,
   suggestions = [],
@@ -82,11 +84,11 @@ export default function TengacionAssistantPanel({
   composerDisabled = false,
   composerRef,
 }) {
-  const panelRef = useRef(null);
   const titleId = useId();
   const descriptionId = useId();
   const hasConversation = Array.isArray(messages) && messages.length > 0;
   const compactConversation = hasConversation;
+  const showSidebar = expanded;
   const quickSuggestions = useMemo(() => suggestions.slice(0, 5), [suggestions]);
   const pageSuggestions = useMemo(() => proactiveSuggestions.slice(0, 4), [proactiveSuggestions]);
   const conversationTitle = useMemo(
@@ -110,47 +112,14 @@ export default function TengacionAssistantPanel({
       return undefined;
     }
 
-    const handleKeyDown = (event) => {
-      if (event.key !== "Tab") {
-        return;
-      }
-
-      const focusableElements = panelRef.current?.querySelectorAll(
-        'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
-      );
-
-      if (!focusableElements?.length) {
-        event.preventDefault();
-        return;
-      }
-
-      const focusable = Array.from(focusableElements);
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const activeElement = document.activeElement;
-
-      if (event.shiftKey && activeElement === first) {
-        event.preventDefault();
-        last.focus();
-        return;
-      }
-
-      if (!event.shiftKey && activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
     const closeOnEscape = (event) => {
       if (event.key === "Escape") {
         onClose?.();
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("keydown", closeOnEscape);
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [onClose, open]);
@@ -160,23 +129,13 @@ export default function TengacionAssistantPanel({
   }
 
   return createPortal(
-    <div
-      className="tg-assistant-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose?.();
-        }
-      }}
-    >
+    <div className="tg-assistant-dock" role="presentation">
       <aside
-        ref={panelRef}
-        className="tg-assistant-panel"
-        role="dialog"
-        aria-modal="true"
+        className={`tg-assistant-panel ${
+          expanded ? "tg-assistant-panel--expanded" : "tg-assistant-panel--minimized"
+        }`}
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        onMouseDown={(event) => event.stopPropagation()}
       >
         <header className="tg-assistant-panel__header">
           <div className="tg-assistant-panel__identity">
@@ -192,150 +151,165 @@ export default function TengacionAssistantPanel({
           </div>
 
           <div className="tg-assistant-panel__header-actions">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="tg-assistant-panel__window-action"
+              onClick={onToggleExpanded}
+              aria-label={expanded ? "Minimize Akuso panel" : "Maximize Akuso panel"}
+              title={expanded ? "Minimize panel" : "Maximize panel"}
+            >
+              {expanded ? "Minimize" : "Maximize"}
+            </Button>
             <Button type="button" variant="ghost" size="sm" onClick={onClose} aria-label="Close Akuso">
               Close
             </Button>
           </div>
         </header>
 
-        <div className="tg-assistant-workspace">
-          <aside className="tg-assistant-sidebar" aria-label="Akuso conversation tools">
-            <button
-              type="button"
-              className="tg-assistant-sidebar__new-chat"
-              onClick={onClearHistory}
-            >
-              <span aria-hidden="true">+</span>
-              <span>New chat</span>
-            </button>
+        <div className={`tg-assistant-workspace${showSidebar ? " is-expanded" : " is-minimized"}`}>
+          {showSidebar ? (
+            <aside className="tg-assistant-sidebar" aria-label="Akuso conversation tools">
+              <button
+                type="button"
+                className="tg-assistant-sidebar__new-chat"
+                onClick={onClearHistory}
+              >
+                <span aria-hidden="true">+</span>
+                <span>New chat</span>
+              </button>
 
-            <div className="tg-assistant-sidebar__section">
-              <span className="tg-assistant-sidebar__label">Current conversation</span>
-              <div className="tg-assistant-sidebar__thread-card">
-                <strong>{conversationTitle}</strong>
-                <p>
-                  {hasConversation
-                    ? `${messages.length} turns in this thread`
-                    : `Start from ${assistantContext?.pageTitle || "Tengacion"}`}
-                </p>
-              </div>
-            </div>
-
-            <div className="tg-assistant-sidebar__section">
-              <span className="tg-assistant-sidebar__label">Mode</span>
-              <div className="tg-assistant-sidebar__mode-list" role="tablist" aria-label="Assistant mode">
-                {MODE_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={`tg-assistant-mode-pill tg-assistant-mode-pill--sidebar${assistantMode === option.value ? " is-active" : ""}`}
-                    onClick={() => onModeChange?.(option.value)}
-                    aria-pressed={assistantMode === option.value}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {assistantMode === "writing" ? (
               <div className="tg-assistant-sidebar__section">
-                <span className="tg-assistant-sidebar__label">Writing setup</span>
-                <div className="tg-assistant-writing-controls tg-assistant-writing-controls--sidebar">
-                  <label>
-                    <span>Tone</span>
-                    <select
-                      value={writingPreferences?.tone || "warm"}
-                      onChange={(event) => onPreferenceChange?.("tone", event.target.value)}
-                    >
-                      {TONE_OPTIONS.map((tone) => (
-                        <option key={tone} value={tone}>
-                          {tone}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Audience</span>
-                    <select
-                      value={writingPreferences?.audience || "fans"}
-                      onChange={(event) => onPreferenceChange?.("audience", event.target.value)}
-                    >
-                      {AUDIENCE_OPTIONS.map((audience) => (
-                        <option key={audience} value={audience}>
-                          {audience}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Length</span>
-                    <select
-                      value={writingPreferences?.length || "short"}
-                      onChange={(event) => onPreferenceChange?.("length", event.target.value)}
-                    >
-                      {LENGTH_OPTIONS.map((length) => (
-                        <option key={length} value={length}>
-                          {length}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Simplicity</span>
-                    <select
-                      value={writingPreferences?.simplicity || "standard"}
-                      onChange={(event) =>
-                        onPreferenceChange?.("simplicity", event.target.value)
-                      }
-                    >
-                      {SIMPLICITY_OPTIONS.map((simplicity) => (
-                        <option key={simplicity} value={simplicity}>
-                          {simplicity}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <span className="tg-assistant-sidebar__label">Current conversation</span>
+                <div className="tg-assistant-sidebar__thread-card">
+                  <strong>{conversationTitle}</strong>
+                  <p>
+                    {hasConversation
+                      ? `${messages.length} turns in this thread`
+                      : `Start from ${assistantContext?.pageTitle || "Tengacion"}`}
+                  </p>
                 </div>
               </div>
-            ) : null}
 
-            {pageSuggestions.length > 0 ? (
               <div className="tg-assistant-sidebar__section">
-                <span className="tg-assistant-sidebar__label">On this page</span>
-                <div className="tg-assistant-sidebar__chip-list">
-                  {pageSuggestions.map((prompt) => (
+                <span className="tg-assistant-sidebar__label">Mode</span>
+                <div className="tg-assistant-sidebar__mode-list" role="tablist" aria-label="Assistant mode">
+                  {MODE_OPTIONS.map((option) => (
                     <button
-                      key={prompt}
+                      key={option.value}
                       type="button"
-                      className="tg-assistant-chip tg-assistant-chip--context"
-                      onClick={() => onFollowUpClick?.(prompt)}
+                      className={`tg-assistant-mode-pill tg-assistant-mode-pill--sidebar${assistantMode === option.value ? " is-active" : ""}`}
+                      onClick={() => onModeChange?.(option.value)}
+                      aria-pressed={assistantMode === option.value}
                     >
-                      {prompt}
+                      {option.label}
                     </button>
                   ))}
                 </div>
               </div>
-            ) : null}
 
-            {!hasConversation && quickSuggestions.length > 0 ? (
               <div className="tg-assistant-sidebar__section">
-                <span className="tg-assistant-sidebar__label">Conversation starters</span>
-                <div className="tg-assistant-sidebar__starter-list">
-                  {quickSuggestions.map((prompt) => (
-                    <button
-                      key={prompt}
-                      type="button"
-                      className="tg-assistant-sidebar__starter"
-                      onClick={() => onFollowUpClick?.(prompt)}
-                    >
-                      {prompt}
-                    </button>
-                  ))}
-                </div>
+                {assistantMode === "writing" ? (
+                  <>
+                    <span className="tg-assistant-sidebar__label">Writing setup</span>
+                    <div className="tg-assistant-writing-controls tg-assistant-writing-controls--sidebar">
+                      <label>
+                        <span>Tone</span>
+                        <select
+                          value={writingPreferences?.tone || "warm"}
+                          onChange={(event) => onPreferenceChange?.("tone", event.target.value)}
+                        >
+                          {TONE_OPTIONS.map((tone) => (
+                            <option key={tone} value={tone}>
+                              {tone}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>Audience</span>
+                        <select
+                          value={writingPreferences?.audience || "fans"}
+                          onChange={(event) => onPreferenceChange?.("audience", event.target.value)}
+                        >
+                          {AUDIENCE_OPTIONS.map((audience) => (
+                            <option key={audience} value={audience}>
+                              {audience}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>Length</span>
+                        <select
+                          value={writingPreferences?.length || "short"}
+                          onChange={(event) => onPreferenceChange?.("length", event.target.value)}
+                        >
+                          {LENGTH_OPTIONS.map((length) => (
+                            <option key={length} value={length}>
+                              {length}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>Simplicity</span>
+                        <select
+                          value={writingPreferences?.simplicity || "standard"}
+                          onChange={(event) =>
+                            onPreferenceChange?.("simplicity", event.target.value)
+                          }
+                        >
+                          {SIMPLICITY_OPTIONS.map((simplicity) => (
+                            <option key={simplicity} value={simplicity}>
+                              {simplicity}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  </>
+                ) : null}
               </div>
-            ) : null}
-          </aside>
+
+              {pageSuggestions.length > 0 ? (
+                <div className="tg-assistant-sidebar__section">
+                  <span className="tg-assistant-sidebar__label">On this page</span>
+                  <div className="tg-assistant-sidebar__chip-list">
+                    {pageSuggestions.map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        className="tg-assistant-chip tg-assistant-chip--context"
+                        onClick={() => onFollowUpClick?.(prompt)}
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {!hasConversation && quickSuggestions.length > 0 ? (
+                <div className="tg-assistant-sidebar__section">
+                  <span className="tg-assistant-sidebar__label">Conversation starters</span>
+                  <div className="tg-assistant-sidebar__starter-list">
+                    {quickSuggestions.map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        className="tg-assistant-sidebar__starter"
+                        onClick={() => onFollowUpClick?.(prompt)}
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </aside>
+          ) : null}
 
           <section className={`tg-assistant-stage${compactConversation ? " tg-assistant-stage--conversation" : ""}`}>
             <div className={`tg-assistant-stage__header${compactConversation ? " tg-assistant-stage__header--compact" : ""}`}>
@@ -369,7 +343,6 @@ export default function TengacionAssistantPanel({
                   messages={messages}
                   loading={loading}
                   streamingLabel={streamingLabel}
-                  onFollowUpClick={onFollowUpClick}
                 />
               </div>
 

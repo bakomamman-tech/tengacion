@@ -59,6 +59,9 @@ Akuso-specific configuration:
 Backend architecture, safety boundaries, and extension guidance live here:
 - [`docs/akuso-backend-engine.md`](docs/akuso-backend-engine.md)
 
+Execution roadmap for the next build/training cycle:
+- [`docs/tengacion-30-60-90-roadmap.md`](docs/tengacion-30-60-90-roadmap.md)
+
 ## Creator + Artist Enhancements
 - Artist profile now exposes `links` (Spotify, Instagram, Facebook, TikTok, YouTube, Apple Music, Audiomack, Boomplay, Website) plus a `customLinks` array.
 - New protected endpoint `GET /api/artist/:username` and `PUT /api/artist/me` for artists to edit their presence.

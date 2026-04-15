@@ -2,11 +2,24 @@ import { useEffect, useRef } from "react";
 
 import AssistantCards from "./AssistantCards";
 
+function AssistantSpark() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3.4 13.6 8.4 18.6 10 13.6 11.6 12 16.6 10.4 11.6 5.4 10 10.4 8.4z" />
+    </svg>
+  );
+}
+
 function TypingIndicator({ label = "Akuso is thinking" }) {
   return (
     <div className="tg-assistant-message tg-assistant-message--assistant">
-      <div className="tg-assistant-message__meta">Akuso</div>
-      <div className="tg-assistant-message__bubble tg-assistant-message__bubble--loading" aria-live="polite">
+      <div className="tg-assistant-message__meta">
+        <span className="tg-assistant-message__avatar" aria-hidden="true">
+          <AssistantSpark />
+        </span>
+        <span>Akuso</span>
+      </div>
+      <div className="tg-assistant-message__bubble tg-assistant-message__bubble--assistant tg-assistant-message__bubble--loading" aria-live="polite">
         <span className="tg-assistant-typing" aria-hidden="true">
           <i />
           <i />
@@ -15,6 +28,47 @@ function TypingIndicator({ label = "Akuso is thinking" }) {
         <span className="tg-assistant-typing__text">{label}</span>
       </div>
     </div>
+  );
+}
+
+function ReplyEvidence({ trust, sources, details }) {
+  const hasEvidence = Boolean(trust?.note) || sources.length > 0 || details.length > 0;
+
+  if (!hasEvidence) {
+    return null;
+  }
+
+  return (
+    <details className="tg-assistant-evidence">
+      <summary>Details and sources</summary>
+
+      {trust?.note ? <p className="tg-assistant-evidence__note">{trust.note}</p> : null}
+
+      {sources.length > 0 ? (
+        <div className="tg-assistant-sources" aria-label="Sources used">
+          {sources.slice(0, 4).map((source) => (
+            <span
+              key={source?.id || source?.label}
+              className="tg-assistant-source-chip"
+              title={source?.summary || source?.label}
+            >
+              {source?.label}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {details.length > 0 ? (
+        <div className="tg-assistant-details">
+          {details.map((detail, index) => (
+            <details key={`${detail?.title || "detail"}-${index}`} className="tg-assistant-detail">
+              <summary>{detail?.title || "More details"}</summary>
+              <p>{detail?.body || ""}</p>
+            </details>
+          ))}
+        </div>
+      ) : null}
+    </details>
   );
 }
 
@@ -32,6 +86,12 @@ const TRUST_MODE_LABELS = {
   "health-caution": "Health caution",
   general: "General help",
 };
+
+function buildTrustSummary(trust) {
+  const contextLabel = trust.grounded ? "grounded" : "limited context";
+  const providerLabel = trust.usedModel ? trust.provider : "local safety flow";
+  return `${TRUST_MODE_LABELS[trust.mode] || "Guided"} | ${contextLabel} | ${trust.confidenceLabel} confidence | ${providerLabel}`;
+}
 
 export default function AssistantMessageList({
   messages = [],
@@ -72,34 +132,31 @@ export default function AssistantMessageList({
             className={`tg-assistant-message${isUser ? " tg-assistant-message--user" : " tg-assistant-message--assistant"}`}
           >
             <div className="tg-assistant-message__meta">
-              {isUser ? "You" : `Akuso${message?.mode ? ` | ${message.mode}` : ""}`}
+              {isUser ? (
+                <span>You</span>
+              ) : (
+                <>
+                  <span className="tg-assistant-message__avatar" aria-hidden="true">
+                    <AssistantSpark />
+                  </span>
+                  <span>Akuso</span>
+                  {message?.mode ? (
+                    <span className="tg-assistant-message__meta-tag">{message.mode}</span>
+                  ) : null}
+                </>
+              )}
             </div>
 
-            <div className="tg-assistant-message__bubble">{message?.content}</div>
+            <div
+              className={`tg-assistant-message__bubble${isUser ? "" : " tg-assistant-message__bubble--assistant"}`}
+            >
+              {message?.content}
+            </div>
 
             {!isUser ? (
-              <>
-                <div className="tg-assistant-trust">
-                  <span className="tg-assistant-trust__badge">{TRUST_MODE_LABELS[trust.mode] || "Guided reply"}</span>
-                  <span className="tg-assistant-trust__badge">{trust.grounded ? "Grounded" : "Limited context"}</span>
-                  <span className="tg-assistant-trust__badge">
-                    {trust.usedModel ? `Model: ${trust.provider}` : "Local safety flow"}
-                  </span>
-                  <span className="tg-assistant-trust__badge">Confidence: {trust.confidenceLabel}</span>
-                </div>
-
-                {trust?.note ? <div className="tg-assistant-trust__note">{trust.note}</div> : null}
-
-                {sources.length > 0 ? (
-                  <div className="tg-assistant-sources" aria-label="Sources used">
-                    {sources.slice(0, 4).map((source) => (
-                      <span key={source?.id || source?.label} className="tg-assistant-source-chip" title={source?.summary || source?.label}>
-                        {source?.label}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </>
+              <div className="tg-assistant-message__support-note">
+                {buildTrustSummary(trust)}
+              </div>
             ) : null}
 
             {!isUser && safety?.level && safety.level !== "safe" ? (
@@ -109,16 +166,7 @@ export default function AssistantMessageList({
               </div>
             ) : null}
 
-            {!isUser && details.length > 0 ? (
-              <div className="tg-assistant-details">
-                {details.map((detail, index) => (
-                  <details key={`${detail?.title || "detail"}-${index}`} className="tg-assistant-detail">
-                    <summary>{detail?.title || "More details"}</summary>
-                    <p>{detail?.body || ""}</p>
-                  </details>
-                ))}
-              </div>
-            ) : null}
+            {!isUser ? <ReplyEvidence trust={trust} sources={sources} details={details} /> : null}
 
             {!isUser && cards.length > 0 ? <AssistantCards cards={cards} onCardAction={onCardAction} /> : null}
 

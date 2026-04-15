@@ -46,7 +46,7 @@ describe("TengacionAssistantDock", () => {
     streamAssistantMessageMock.mockReset();
   });
 
-  it("opens the panel and navigates when Akuso returns a safe navigate action", async () => {
+  it("keeps the panel open while navigating when Akuso returns a safe navigate action", async () => {
     const user = userEvent.setup();
     streamAssistantMessageMock.mockResolvedValue({
       message: "Opening your messages.",
@@ -92,6 +92,9 @@ describe("TengacionAssistantDock", () => {
         })
       );
     });
+
+    expect(await screen.findByText("Opening your messages.")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /message akuso/i })).toBeInTheDocument();
   });
 
   it("renders for signed-out guests and can start a chat", async () => {

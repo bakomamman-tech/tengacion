@@ -1,6 +1,12 @@
 import { forwardRef, useId } from "react";
 
-import Button from "../ui/Button";
+function SendIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 4.75a.75.75 0 0 1 .75.75v9.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-4.5 4.5a.75.75 0 0 1-1.06 0l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.22 3.22V5.5a.75.75 0 0 1 .75-.75z" />
+    </svg>
+  );
+}
 
 const AssistantComposer = forwardRef(function AssistantComposer(
   {
@@ -30,7 +36,7 @@ const AssistantComposer = forwardRef(function AssistantComposer(
           id={textareaId}
           className="tg-assistant-composer__textarea"
           value={value}
-          rows={2}
+          rows={3}
           placeholder={placeholder}
           onChange={(event) => onChange?.(event.target.value)}
           onKeyDown={(event) => {
@@ -43,17 +49,21 @@ const AssistantComposer = forwardRef(function AssistantComposer(
       </label>
 
       <div className="tg-assistant-composer__actions">
-        <Button
+        <span className="tg-assistant-composer__hint">
+          {disabled ? "Akuso is replying..." : "Press Enter to send, Shift+Enter for a new line"}
+        </span>
+        <button
           type="submit"
-          variant="primary"
+          className="tg-assistant-composer__send"
           disabled={disabled || !trimmedValue}
+          aria-label={disabled ? "Working" : "Send"}
+          title={disabled ? "Akuso is replying" : "Send to Akuso"}
         >
-          {disabled ? "Working" : "Send"}
-        </Button>
+          <SendIcon />
+        </button>
       </div>
     </form>
   );
 });
 
 export default AssistantComposer;
-

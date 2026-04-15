@@ -80,6 +80,12 @@ export default function TengacionAssistantDock() {
   const [streamingResponseId, setStreamingResponseId] = useState("");
   const [routeHints, setRouteHints] = useState([]);
 
+  const focusComposerSoon = useCallback(() => {
+    window.setTimeout(() => {
+      composerRef.current?.focus?.();
+    }, 0);
+  }, []);
+
   const assistantContext = useMemo(() => buildAssistantContext(location), [location]);
   const surface = useMemo(() => resolveAssistantSurface(location.pathname), [location.pathname]);
   const fallbackSuggestions = useMemo(
@@ -203,7 +209,7 @@ export default function TengacionAssistantDock() {
     });
   }, []);
 
-  const executeAndMaybeClose = useCallback(
+  const executeAssistantReplyActions = useCallback(
     (actions = []) => {
       const outcomes = executeAssistantActions(actions, {
         navigate: (target, state) => {
@@ -211,8 +217,12 @@ export default function TengacionAssistantDock() {
         },
       });
 
-      if (outcomes.some((outcome) => outcome.executed && isSafeAssistantRoute(outcome.action?.target))) {
-        closePanel();
+      if (
+        outcomes.some(
+          (outcome) => outcome.executed && isSafeAssistantRoute(outcome.action?.target)
+        )
+      ) {
+        focusComposerSoon();
       }
 
       const blocked = outcomes.filter((outcome) => !outcome.executed);
@@ -222,7 +232,7 @@ export default function TengacionAssistantDock() {
 
       return outcomes;
     },
-    [closePanel, navigate]
+    [focusComposerSoon, navigate]
   );
 
   const submitMessage = useCallback(
@@ -339,7 +349,7 @@ export default function TengacionAssistantDock() {
         if (response.requiresConfirmation && response.pendingAction) {
           setPendingAction(response.pendingAction);
         } else {
-          executeAndMaybeClose(response.actions);
+          executeAssistantReplyActions(response.actions);
         }
 
         setFeedbackMap((current) => ({
@@ -360,7 +370,7 @@ export default function TengacionAssistantDock() {
       assistantContext,
       assistantMode,
       conversationId,
-      executeAndMaybeClose,
+      executeAssistantReplyActions,
       loading,
       open,
       upsertStreamingAssistantReply,
@@ -381,7 +391,7 @@ export default function TengacionAssistantDock() {
 
       if (route && isSafeAssistantRoute(route)) {
         navigate(route);
-        closePanel();
+        focusComposerSoon();
         return;
       }
 
@@ -395,7 +405,7 @@ export default function TengacionAssistantDock() {
         setComposerValue(suggestedText);
       }
     },
-    [closePanel, navigate]
+    [focusComposerSoon, navigate]
   );
 
   const handleFollowUpClick = useCallback(
@@ -420,22 +430,26 @@ export default function TengacionAssistantDock() {
       const target = String(action?.route || "").trim();
       if (action?.type === "navigate" && isSafeAssistantRoute(target)) {
         navigate(target);
-        closePanel();
+        setPendingAction(null);
+        focusComposerSoon();
         return;
       }
 
       closePanel();
       toast.error("That action is not available yet.");
     },
-    [closePanel, navigate]
+    [closePanel, focusComposerSoon, navigate]
   );
 
   const handleLauncherClick = useCallback(() => {
-    setOpen((current) => !current);
-    if (open) {
-      setPendingAction(null);
-    }
-  }, [open]);
+    setOpen((current) => {
+      const next = !current;
+      if (!next) {
+        setPendingAction(null);
+      }
+      return next;
+    });
+  }, []);
 
   const handleFeedback = useCallback(
     async (message, rating) => {

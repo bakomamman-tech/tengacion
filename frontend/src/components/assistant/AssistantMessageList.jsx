@@ -55,7 +55,6 @@ export default function AssistantMessageList({
   loading = false,
   streamingLabel = "",
   onFollowUpClick,
-  onFeedback,
 }) {
   const endRef = useRef(null);
 
@@ -77,8 +76,6 @@ export default function AssistantMessageList({
           confidenceLabel: "medium",
           note: "",
         };
-        const feedbackStatus = String(message?.feedbackStatus || "unrated");
-
         return (
           <article
             key={message?.id || `${message?.role || "assistant"}-${message?.content || ""}`}
@@ -131,34 +128,6 @@ export default function AssistantMessageList({
                     {followUp?.label || followUp?.prompt}
                   </button>
                 ))}
-              </div>
-            ) : null}
-
-            {!isUser && onFeedback ? (
-              <div className="tg-assistant-feedback">
-                <span className="tg-assistant-feedback__label">
-                  {feedbackStatus === "helpful" || feedbackStatus === "not_helpful"
-                    ? feedbackStatus === "helpful"
-                      ? "Thanks for the feedback."
-                      : "Thanks, we'll improve this."
-                    : "Was this helpful?"}
-                </span>
-                <div className="tg-assistant-feedback__actions">
-                  <button
-                    type="button"
-                    className={`tg-assistant-feedback__button${feedbackStatus === "helpful" ? " is-active" : ""}`}
-                    onClick={() => onFeedback?.(message, "helpful")}
-                  >
-                    Helpful
-                  </button>
-                  <button
-                    type="button"
-                    className={`tg-assistant-feedback__button${feedbackStatus === "not_helpful" ? " is-active" : ""}`}
-                    onClick={() => onFeedback?.(message, "not_helpful")}
-                  >
-                    Not helpful
-                  </button>
-                </div>
               </div>
             ) : null}
           </article>

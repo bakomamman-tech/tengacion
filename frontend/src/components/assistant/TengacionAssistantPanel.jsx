@@ -64,7 +64,6 @@ export default function TengacionAssistantPanel({
   onClose,
   onClearHistory,
   assistantContext = null,
-  surface = "general",
   suggestions = [],
   proactiveSuggestions = [],
   assistantMode = "copilot",
@@ -80,7 +79,6 @@ export default function TengacionAssistantPanel({
   onComposerChange,
   onComposerSubmit,
   onFollowUpClick,
-  onFeedback,
   composerDisabled = false,
   composerRef,
 }) {
@@ -95,9 +93,6 @@ export default function TengacionAssistantPanel({
     () => composeConversationTitle(messages, assistantMode),
     [assistantMode, messages]
   );
-  const activeModeLabel =
-    MODE_OPTIONS.find((option) => option.value === assistantMode)?.label || "App";
-
   useEffect(() => {
     if (!open) {
       return undefined;
@@ -197,7 +192,6 @@ export default function TengacionAssistantPanel({
           </div>
 
           <div className="tg-assistant-panel__header-actions">
-            <span className="tg-assistant-panel__status">Stays open while replying</span>
             <Button type="button" variant="ghost" size="sm" onClick={onClose} aria-label="Close Akuso">
               Close
             </Button>
@@ -346,9 +340,6 @@ export default function TengacionAssistantPanel({
           <section className={`tg-assistant-stage${compactConversation ? " tg-assistant-stage--conversation" : ""}`}>
             <div className={`tg-assistant-stage__header${compactConversation ? " tg-assistant-stage__header--compact" : ""}`}>
               <div className="tg-assistant-stage__copy">
-                <span className="tg-assistant-stage__eyebrow">
-                  {assistantContext?.pageTitle || "Tengacion"} | {surface}
-                </span>
                 <h3>{conversationTitle}</h3>
                 <p>
                   {compactConversation
@@ -356,7 +347,6 @@ export default function TengacionAssistantPanel({
                     : "Start a natural conversation with Akuso. Ask a question, request a page action, or draft something for your audience."}
                 </p>
               </div>
-              <div className="tg-assistant-stage__badge">{activeModeLabel}</div>
             </div>
 
             {error ? (
@@ -380,7 +370,6 @@ export default function TengacionAssistantPanel({
                   loading={loading}
                   streamingLabel={streamingLabel}
                   onFollowUpClick={onFollowUpClick}
-                  onFeedback={onFeedback}
                 />
               </div>
 

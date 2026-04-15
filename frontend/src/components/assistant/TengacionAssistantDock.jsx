@@ -4,10 +4,9 @@ import toast from "react-hot-toast";
 
 import { useAuth } from "../../context/AuthContext";
 import { executeAssistantActions, isSafeAssistantRoute } from "../../services/assistantActionExecutor";
-import { buildAssistantContext, getAssistantSuggestions, resolveAssistantSurface } from "../../services/assistantRoutes";
+import { buildAssistantContext, getAssistantSuggestions } from "../../services/assistantRoutes";
 import {
   fetchAssistantHints,
-  sendAssistantFeedback,
   streamAssistantMessage,
 } from "../../services/assistantApi";
 import AssistantConfirmDialog from "./AssistantConfirmDialog";
@@ -46,7 +45,6 @@ const createAssistantThreadMessage = (role, content, extras = {}) => ({
   actions: Array.isArray(extras.actions) ? extras.actions : [],
   requiresConfirmation: Boolean(extras.requiresConfirmation),
   pendingAction: extras.pendingAction || null,
-  feedbackStatus: extras.feedbackStatus || "unrated",
 });
 
 const defaultWritingPreferences = {
@@ -58,7 +56,7 @@ const defaultWritingPreferences = {
 };
 
 export default function TengacionAssistantDock() {
-  const { user, loading: authLoading } = useAuth();
+  const { loading: authLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const launcherRef = useRef(null);
@@ -75,7 +73,6 @@ export default function TengacionAssistantDock() {
   const [pendingAction, setPendingAction] = useState(null);
   const [assistantMode, setAssistantMode] = useState("copilot");
   const [writingPreferences, setWritingPreferences] = useState(defaultWritingPreferences);
-  const [feedbackMap, setFeedbackMap] = useState({});
   const [streamingLabel, setStreamingLabel] = useState("");
   const [streamingResponseId, setStreamingResponseId] = useState("");
   const [routeHints, setRouteHints] = useState([]);
@@ -87,7 +84,6 @@ export default function TengacionAssistantDock() {
   }, []);
 
   const assistantContext = useMemo(() => buildAssistantContext(location), [location]);
-  const surface = useMemo(() => resolveAssistantSurface(location.pathname), [location.pathname]);
   const fallbackSuggestions = useMemo(
     () => getAssistantSuggestions(location.pathname),
     [location.pathname]
@@ -176,7 +172,6 @@ export default function TengacionAssistantDock() {
     setConversationId("");
     setPendingAction(null);
     setError("");
-    setFeedbackMap({});
     setComposerValue("");
     setStreamingLabel("");
     setStreamingResponseId("");
@@ -307,8 +302,6 @@ export default function TengacionAssistantDock() {
 
         setStreamingLabel("");
         setStreamingResponseId("");
-        let assistantMessage = null;
-
         setMessages((current) => {
           const index = current.findIndex(
             (message) =>
@@ -331,8 +324,6 @@ export default function TengacionAssistantDock() {
             pendingAction: response.pendingAction,
           });
 
-          assistantMessage = nextMessage;
-
           if (index === -1) {
             return [...current, nextMessage];
           }
@@ -342,7 +333,6 @@ export default function TengacionAssistantDock() {
             ...nextMessage,
             id: current[index].id,
           };
-          assistantMessage = next[index];
           return next;
         });
 
@@ -351,11 +341,6 @@ export default function TengacionAssistantDock() {
         } else {
           executeAssistantReplyActions(response.actions);
         }
-
-        setFeedbackMap((current) => ({
-          ...current,
-          [assistantMessage.id]: "unrated",
-        }));
       } catch (err) {
         setStreamingLabel("");
         setStreamingResponseId("");
@@ -421,38 +406,6 @@ export default function TengacionAssistantDock() {
     });
   }, []);
 
-  const handleFeedback = useCallback(
-    async (message, rating) => {
-      if (!message || message.role !== "assistant" || !message.id) {
-        return;
-      }
-
-      if (feedbackMap[message.id] && feedbackMap[message.id] !== "unrated") {
-        return;
-      }
-
-      setFeedbackMap((current) => ({
-        ...current,
-        [message.id]: rating,
-      }));
-
-      try {
-        await sendAssistantFeedback({
-          conversationId,
-          responseId: message.responseId,
-          feedbackToken: message.feedbackToken,
-          rating,
-          mode: message.mode || assistantMode,
-          category: message.category || "",
-        });
-        toast.success(rating === "helpful" ? "Thanks for the feedback." : "Feedback saved.");
-      } catch (err) {
-        toast.error(err?.message || "Feedback could not be saved.");
-      }
-    },
-    [assistantMode, conversationId, feedbackMap]
-  );
-
   const handleModeChange = useCallback((nextMode) => {
     setAssistantMode(nextMode);
   }, []);
@@ -463,15 +416,6 @@ export default function TengacionAssistantDock() {
       [key]: value,
     }));
   }, []);
-
-  const visibleMessages = useMemo(
-    () =>
-      messages.map((message) => ({
-        ...message,
-        feedbackStatus: feedbackMap[message.id] || message.feedbackStatus || "unrated",
-      })),
-    [feedbackMap, messages]
-  );
 
   if (!canRender) {
     return null;
@@ -491,14 +435,13 @@ export default function TengacionAssistantDock() {
         onClose={closePanel}
         onClearHistory={clearConversation}
         assistantContext={assistantContext}
-        surface={surface}
         suggestions={suggestions}
         proactiveSuggestions={routeHints}
         assistantMode={assistantMode}
         onModeChange={handleModeChange}
         writingPreferences={writingPreferences}
         onPreferenceChange={handlePreferenceChange}
-        messages={visibleMessages}
+        messages={messages}
         loading={loading && !streamingResponseId}
         streamingLabel={streamingLabel}
         error={error}
@@ -507,7 +450,6 @@ export default function TengacionAssistantDock() {
         onComposerChange={setComposerValue}
         onComposerSubmit={submitMessage}
         onFollowUpClick={handleFollowUpClick}
-        onFeedback={user ? handleFeedback : null}
         composerDisabled={loading}
         composerRef={composerRef}
       />

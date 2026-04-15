@@ -89,6 +89,7 @@ export default function TengacionAssistantPanel({
   const titleId = useId();
   const descriptionId = useId();
   const hasConversation = Array.isArray(messages) && messages.length > 0;
+  const compactConversation = hasConversation;
   const quickSuggestions = useMemo(() => suggestions.slice(0, 5), [suggestions]);
   const pageSuggestions = useMemo(() => proactiveSuggestions.slice(0, 4), [proactiveSuggestions]);
   const conversationTitle = useMemo(
@@ -343,16 +344,16 @@ export default function TengacionAssistantPanel({
             ) : null}
           </aside>
 
-          <section className="tg-assistant-stage">
-            <div className="tg-assistant-stage__header">
+          <section className={`tg-assistant-stage${compactConversation ? " tg-assistant-stage--conversation" : ""}`}>
+            <div className={`tg-assistant-stage__header${compactConversation ? " tg-assistant-stage__header--compact" : ""}`}>
               <div className="tg-assistant-stage__copy">
                 <span className="tg-assistant-stage__eyebrow">
                   {assistantContext?.pageTitle || "Tengacion"} | {surface}
                 </span>
                 <h3>{conversationTitle}</h3>
                 <p>
-                  {hasConversation
-                    ? "Akuso keeps the thread visible while it answers, navigates safely, or helps you continue the same discussion."
+                  {compactConversation
+                    ? "Continue chatting with Akuso in this thread."
                     : "Start a natural conversation with Akuso. Ask a question, request a page action, or draft something for your audience."}
                 </p>
               </div>
@@ -373,7 +374,7 @@ export default function TengacionAssistantPanel({
               </div>
             ) : null}
 
-            <div className="tg-assistant-stage__conversation">
+            <div className={`tg-assistant-stage__conversation${compactConversation ? " tg-assistant-stage__conversation--compact" : ""}`}>
               <div className="tg-assistant-stage__thread">
                 <AssistantMessageList
                   messages={messages}
@@ -385,7 +386,7 @@ export default function TengacionAssistantPanel({
                 />
               </div>
 
-              <div className="tg-assistant-stage__composer">
+              <div className={`tg-assistant-stage__composer${compactConversation ? " tg-assistant-stage__composer--compact" : ""}`}>
                 {!hasConversation && quickSuggestions.length > 0 ? (
                   <div className="tg-assistant-stage__starters" aria-label="Suggested prompts">
                     {quickSuggestions.map((prompt) => (
@@ -401,17 +402,20 @@ export default function TengacionAssistantPanel({
                   </div>
                 ) : null}
 
-                <div className="tg-assistant-stage__composer-shell">
-                  <div className="tg-assistant-stage__composer-note">
-                    <span className="tg-assistant-stage__composer-dot" aria-hidden="true" />
-                    Conversation stays open while Akuso replies.
-                  </div>
+                <div className={`tg-assistant-stage__composer-shell${compactConversation ? " tg-assistant-stage__composer-shell--compact" : ""}`}>
+                  {!compactConversation ? (
+                    <div className="tg-assistant-stage__composer-note">
+                      <span className="tg-assistant-stage__composer-dot" aria-hidden="true" />
+                      Conversation stays open while Akuso replies.
+                    </div>
+                  ) : null}
                   <AssistantComposer
                     ref={composerRef}
                     value={composerValue}
                     onChange={onComposerChange}
                     onSubmit={onComposerSubmit}
                     disabled={composerDisabled}
+                    compact={compactConversation}
                     placeholder={
                       assistantMode === "writing"
                         ? "Ask Akuso to draft a caption, bio, promo, or article..."

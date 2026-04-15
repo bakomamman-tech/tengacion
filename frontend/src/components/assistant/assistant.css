@@ -127,8 +127,8 @@ body.tg-assistant-open {
 }
 
 .tg-assistant-panel {
-  width: min(94vw, 78rem);
-  height: min(90vh, 58rem);
+  width: min(96vw, 80rem);
+  height: min(94vh, 62rem);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
@@ -212,7 +212,7 @@ body.tg-assistant-open {
 .tg-assistant-workspace {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr);
+  grid-template-columns: minmax(14rem, 16rem) minmax(0, 1fr);
 }
 
 .tg-assistant-sidebar {
@@ -414,11 +414,20 @@ body.tg-assistant-open {
   padding: 1.2rem 1.25rem 1.25rem;
 }
 
+.tg-assistant-stage--conversation {
+  gap: 0.72rem;
+  padding: 0.95rem 1rem 1rem;
+}
+
 .tg-assistant-stage__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.tg-assistant-stage__header--compact {
+  gap: 0.8rem;
 }
 
 .tg-assistant-stage__copy {
@@ -441,11 +450,25 @@ body.tg-assistant-open {
   letter-spacing: -0.04em;
 }
 
+.tg-assistant-stage--conversation .tg-assistant-stage__copy {
+  gap: 0.2rem;
+}
+
+.tg-assistant-stage--conversation .tg-assistant-stage__copy h3 {
+  font-size: clamp(1.02rem, 0.7vw + 0.98rem, 1.28rem);
+  line-height: 1.12;
+}
+
 .tg-assistant-stage__copy p {
   max-width: 46rem;
   margin: 0;
   color: color-mix(in srgb, var(--text) 76%, var(--muted) 24%);
   line-height: 1.55;
+}
+
+.tg-assistant-stage--conversation .tg-assistant-stage__copy p {
+  font-size: 0.84rem;
+  line-height: 1.4;
 }
 
 .tg-assistant-stage__badge {
@@ -461,11 +484,21 @@ body.tg-assistant-open {
   font-weight: 800;
 }
 
+.tg-assistant-stage--conversation .tg-assistant-stage__badge {
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+}
+
 .tg-assistant-stage__conversation {
   min-height: 0;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 0.8rem;
+}
+
+.tg-assistant-stage__conversation--compact {
+  gap: 0.55rem;
 }
 
 .tg-assistant-stage__thread {
@@ -485,6 +518,11 @@ body.tg-assistant-open {
     linear-gradient(180deg, rgba(245, 249, 244, 0) 0%, rgba(245, 249, 244, 0.92) 22%, rgba(245, 249, 244, 0.985) 100%);
 }
 
+.tg-assistant-stage__composer--compact {
+  gap: 0.45rem;
+  padding-top: 0.2rem;
+}
+
 .tg-assistant-stage__starters {
   display: flex;
   flex-wrap: wrap;
@@ -500,6 +538,12 @@ body.tg-assistant-open {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(246, 249, 246, 0.9) 100%);
   box-shadow: 0 18px 36px rgba(13, 33, 25, 0.06);
+}
+
+.tg-assistant-stage__composer-shell--compact {
+  gap: 0.45rem;
+  padding: 0.72rem 0.8rem;
+  border-radius: 20px;
 }
 
 .tg-assistant-stage__composer-note {
@@ -554,7 +598,7 @@ body.tg-assistant-open {
 
 .tg-assistant-thread {
   display: grid;
-  gap: 1.1rem;
+  gap: 0.82rem;
   align-content: start;
   height: 100%;
   min-height: 0;
@@ -566,7 +610,7 @@ body.tg-assistant-open {
 
 .tg-assistant-message {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.32rem;
 }
 
 .tg-assistant-message--user {
@@ -616,12 +660,12 @@ body.tg-assistant-open {
 .tg-assistant-message__bubble {
   width: fit-content;
   max-width: min(100%, 34rem);
-  padding: 0.9rem 1.05rem;
+  padding: 0.72rem 0.92rem;
   border: 1px solid rgba(42, 111, 79, 0.08);
   border-radius: 24px;
   background: rgba(237, 239, 241, 0.84);
   color: var(--text);
-  line-height: 1.72;
+  line-height: 1.58;
   white-space: pre-wrap;
 }
 
@@ -651,8 +695,8 @@ body.tg-assistant-open {
 
 .tg-assistant-message__support-note {
   color: color-mix(in srgb, var(--text) 62%, var(--muted) 38%);
-  font-size: 0.78rem;
-  line-height: 1.5;
+  font-size: 0.74rem;
+  line-height: 1.38;
 }
 
 .tg-assistant-typing {
@@ -685,7 +729,7 @@ body.tg-assistant-open {
 .tg-assistant-card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.7rem;
+  gap: 0.55rem;
   margin-top: 0.1rem;
 }
 
@@ -693,9 +737,9 @@ body.tg-assistant-open {
   display: grid;
   gap: 0.3rem;
   align-content: start;
-  padding: 0.95rem;
+  padding: 0.78rem;
   border: 1px solid rgba(42, 111, 79, 0.12);
-  border-radius: 20px;
+  border-radius: 18px;
   background: linear-gradient(180deg, rgba(255, 255, 252, 0.98) 0%, rgba(239, 246, 240, 0.96) 100%);
   color: var(--text);
   text-align: left;
@@ -742,8 +786,8 @@ body.tg-assistant-open {
 .tg-assistant-card__description {
   margin: 0;
   color: color-mix(in srgb, var(--text) 76%, var(--muted) 24%);
-  font-size: 0.87rem;
-  line-height: 1.5;
+  font-size: 0.82rem;
+  line-height: 1.42;
 }
 
 .tg-assistant-card__action {
@@ -866,7 +910,7 @@ body.tg-assistant-open {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.7rem 0.85rem;
+  padding: 0.58rem 0.75rem;
 }
 
 .tg-assistant-feedback__label {
@@ -927,16 +971,20 @@ body.tg-assistant-open {
   gap: 0.7rem;
 }
 
+.tg-assistant-composer--compact {
+  gap: 0.45rem;
+}
+
 .tg-assistant-composer__field {
   display: block;
 }
 
 .tg-assistant-composer__textarea {
   width: 100%;
-  min-height: 4.8rem;
-  max-height: 14rem;
+  min-height: 4rem;
+  max-height: 12rem;
   resize: vertical;
-  padding: 1rem 1.05rem;
+  padding: 0.9rem 0.95rem;
   border: 1px solid rgba(42, 111, 79, 0.1);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.94);
@@ -948,6 +996,14 @@ body.tg-assistant-open {
     border-color 180ms ease,
     box-shadow 180ms ease,
     background 180ms ease;
+}
+
+.tg-assistant-composer__textarea--compact {
+  min-height: 3.2rem;
+  max-height: 8rem;
+  padding: 0.72rem 0.82rem;
+  border-radius: 16px;
+  line-height: 1.45;
 }
 
 .tg-assistant-composer__textarea::placeholder {
@@ -968,15 +1024,19 @@ body.tg-assistant-open {
   gap: 0.8rem;
 }
 
+.tg-assistant-composer__actions--compact {
+  gap: 0.6rem;
+}
+
 .tg-assistant-composer__hint {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.77rem;
   line-height: 1.4;
 }
 
 .tg-assistant-composer__send {
-  width: 3rem;
-  height: 3rem;
+  width: 2.8rem;
+  height: 2.8rem;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
@@ -990,6 +1050,11 @@ body.tg-assistant-open {
     transform 180ms ease,
     box-shadow 180ms ease,
     opacity 180ms ease;
+}
+
+.tg-assistant-composer__send--compact {
+  width: 2.45rem;
+  height: 2.45rem;
 }
 
 .tg-assistant-composer__send:hover,
@@ -1240,12 +1305,12 @@ html.dark-mode .tg-assistant-confirm-card__badge {
 
 @media (max-width: 980px) {
   .tg-assistant-panel {
-    width: min(96vw, 68rem);
-    height: min(92vh, 60rem);
+    width: min(97vw, 70rem);
+    height: min(94vh, 61rem);
   }
 
   .tg-assistant-workspace {
-    grid-template-columns: 15rem minmax(0, 1fr);
+    grid-template-columns: 13.5rem minmax(0, 1fr);
   }
 }
 

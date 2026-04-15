@@ -14,6 +14,7 @@ const AssistantComposer = forwardRef(function AssistantComposer(
     onChange,
     onSubmit,
     disabled = false,
+    compact = false,
     placeholder = "Ask Akuso to open a page, find something, or draft a caption.",
   },
   ref
@@ -23,7 +24,7 @@ const AssistantComposer = forwardRef(function AssistantComposer(
 
   return (
     <form
-      className="tg-assistant-composer"
+      className={`tg-assistant-composer${compact ? " tg-assistant-composer--compact" : ""}`}
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit?.(trimmedValue);
@@ -34,9 +35,9 @@ const AssistantComposer = forwardRef(function AssistantComposer(
         <textarea
           ref={ref}
           id={textareaId}
-          className="tg-assistant-composer__textarea"
+          className={`tg-assistant-composer__textarea${compact ? " tg-assistant-composer__textarea--compact" : ""}`}
           value={value}
-          rows={3}
+          rows={compact ? 2 : 3}
           placeholder={placeholder}
           onChange={(event) => onChange?.(event.target.value)}
           onKeyDown={(event) => {
@@ -48,13 +49,17 @@ const AssistantComposer = forwardRef(function AssistantComposer(
         />
       </label>
 
-      <div className="tg-assistant-composer__actions">
+      <div className={`tg-assistant-composer__actions${compact ? " tg-assistant-composer__actions--compact" : ""}`}>
         <span className="tg-assistant-composer__hint">
-          {disabled ? "Akuso is replying..." : "Press Enter to send, Shift+Enter for a new line"}
+          {disabled
+            ? "Akuso is replying..."
+            : compact
+              ? "Enter to send"
+              : "Press Enter to send, Shift+Enter for a new line"}
         </span>
         <button
           type="submit"
-          className="tg-assistant-composer__send"
+          className={`tg-assistant-composer__send${compact ? " tg-assistant-composer__send--compact" : ""}`}
           disabled={disabled || !trimmedValue}
           aria-label={disabled ? "Working" : "Send"}
           title={disabled ? "Akuso is replying" : "Send to Akuso"}

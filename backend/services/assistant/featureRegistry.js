@@ -734,6 +734,26 @@ const FEATURE_REGISTRY = [
     quickPrompts: ["Open reels", "Show short videos", "What can I do on reels?"],
   },
   {
+    id: "admin_assistant",
+    title: "Assistant Ops",
+    aliases: [
+      "assistant ops",
+      "assistant metrics",
+      "assistant reviews",
+      "akuso metrics",
+      "akuso reviews",
+      "ai assistant ops",
+    ],
+    surface: "admin",
+    access: "admin",
+    route: "/admin/assistant",
+    pathPatterns: [/^\/admin\/assistant(?:[/?#].*)?$/i],
+    description: "Admin-only Akuso metrics, alerts, and feedback review queue.",
+    safeDescription: "Open Akuso assistant operations for authorized staff only.",
+    allowedActions: ["review assistant metrics", "review assistant feedback", "open assistant alerts"],
+    quickPrompts: ["Show assistant metrics", "Open assistant ops", "Review Akuso feedback"],
+  },
+  {
     id: "admin_dashboard",
     title: "Admin Dashboard",
     aliases: ["admin", "admin dashboard", "moderation", "audit logs"],
@@ -769,7 +789,7 @@ const SURFACE_FALLBACKS = {
   live: ["live", "live_go_live", "live_watch", "home", "notifications"],
   news: ["news", "news_topic", "news_source", "trending", "home"],
   discover: ["trending", "creator_discovery", "gaming", "reels", "search"],
-  admin: ["admin_dashboard"],
+  admin: ["admin_assistant", "admin_dashboard"],
 };
 
 const resolveSurfaceFromPath = (path = "") => {

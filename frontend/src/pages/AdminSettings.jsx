@@ -55,6 +55,7 @@ export default function AdminSettingsPage({ user }) {
     { id: "privacy", label: "Privacy Settings", description: "Visibility and account controls", path: "/settings/privacy" },
     { id: "notifications", label: "Notification Settings", description: "Notification preferences", path: "/settings/notifications" },
     { id: "audit", label: "Audit Logs", description: "Review admin actions", path: "/admin/audit-logs" },
+    { id: "assistant", label: "Assistant Ops", description: "Inspect Akuso metrics and review queue", path: "/admin/assistant" },
     { id: "reports", label: "Reports", description: "Open the moderation queue", path: "/admin/reports" },
     { id: "storage", label: "Storage Cleanup", description: "Inspect collection sizes and remove stale data", path: "/admin/storage" },
   ];

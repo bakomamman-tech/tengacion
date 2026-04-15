@@ -7,6 +7,7 @@ import AdminDashboardIcon from "./AdminDashboardIcon";
 const defaultQuickLinks = [
   { id: "dashboard", label: "Dashboard", description: "Live admin overview", path: "/admin/dashboard" },
   { id: "analytics", label: "Analytics", description: "Deep analytics board", path: "/admin/analytics" },
+  { id: "assistant", label: "Assistant Ops", description: "Akuso metrics, alerts, and review queue", path: "/admin/assistant" },
   { id: "users", label: "Users", description: "Manage platform users", path: "/admin/users" },
   { id: "posts", label: "Posts", description: "Review platform posts and uploads", path: "/admin/content" },
   { id: "messages", label: "Messages", description: "Monitor message traffic", path: "/admin/messages" },

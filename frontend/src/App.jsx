@@ -47,6 +47,7 @@ const AdminTransactionsPage = lazy(() => import("./pages/AdminTransactions"));
 const AdminCreatorEarningsPage = lazy(() => import("./pages/AdminCreatorEarnings"));
 const AdminCreatorDetailPage = lazy(() => import("./pages/AdminCreatorDetail"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboard"));
+const AdminAssistantPage = lazy(() => import("./pages/AdminAssistant"));
 const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalytics"));
 const AdminMessagesPage = lazy(() => import("./pages/AdminMessages"));
 const AdminCampaignsPage = lazy(() => import("./pages/AdminCampaigns"));
@@ -711,6 +712,30 @@ export default function App() {
             element={
               <AdminRoute user={user}>
                 <AdminAnalyticsPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/assistant"
+            element={
+              <AdminRoute user={user} requiredPermissions={["view_audit_logs"]}>
+                <AdminAssistantPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/assistant/metrics"
+            element={
+              <AdminRoute user={user} requiredPermissions={["view_audit_logs"]}>
+                <AdminAssistantPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/assistant/reviews"
+            element={
+              <AdminRoute user={user} requiredPermissions={["view_audit_logs"]}>
+                <AdminAssistantPage user={user} />
               </AdminRoute>
             }
           />

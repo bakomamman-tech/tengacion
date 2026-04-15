@@ -113,6 +113,9 @@ const resolveAssistantSurface = (pathname = "") => {
 };
 
 const resolveAssistantPageTitle = (pathname = "") => {
+  const route = String(pathname || "").trim().toLowerCase();
+  if (route.startsWith("/admin/assistant")) {return "Assistant ops";}
+
   const surface = resolveAssistantSurface(pathname);
   const map = {
     home: "Home",
@@ -164,7 +167,7 @@ const getAssistantSuggestions = (pathname = "") => {
     live: ["How do I go live?", "Open live rooms", "Join a live session", "Open home"],
     news: ["Open world news", "Find African news", "Show a news topic", "Open trending"],
     discover: ["What is trending now?", "Find popular creators", "Open reels", "Open news"],
-    admin: ["Open admin dashboard", "Show audit logs", "Review moderation", "Open home"],
+    admin: ["Show assistant metrics", "Open admin dashboard", "Review moderation", "Show audit logs"],
   };
 
   return suggestionsBySurface[surface] || ["What can Akuso do here?", "Open home", "Find creators", "Help me write a caption"];

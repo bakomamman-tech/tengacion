@@ -43,6 +43,30 @@ const alertRoutes = {
     hint: "Some creators are failing upload again and again.",
     icon: "posts",
   },
+  akuso_prompt_injection_attempts: {
+    label: "Assistant Ops",
+    path: "/admin/assistant/metrics",
+    hint: "Akuso security signals need a closer look.",
+    icon: "analytics",
+  },
+  akuso_openai_failures: {
+    label: "Assistant Ops",
+    path: "/admin/assistant/metrics",
+    hint: "Model reliability has degraded for Akuso.",
+    icon: "analytics",
+  },
+  akuso_local_fallback_rate: {
+    label: "Assistant Ops",
+    path: "/admin/assistant/metrics",
+    hint: "Akuso is relying on local fallbacks more than usual.",
+    icon: "analytics",
+  },
+  akuso_feedback_quality: {
+    label: "Assistant Ops",
+    path: "/admin/assistant/reviews",
+    hint: "Negative Akuso feedback is building up in the queue.",
+    icon: "analytics",
+  },
 };
 
 const defaultRoute = {

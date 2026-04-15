@@ -2188,6 +2188,38 @@ export const adminGetDashboard = (params = {}) => {
   });
 };
 
+export const adminGetAssistantMetrics = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/assistant/metrics?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminGetAssistantReviews = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/assistant/reviews?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminUpdateAssistantReview = (reviewId, payload = {}) =>
+  request(`${API_BASE}/admin/assistant/reviews/${encodeURIComponent(reviewId || "")}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
 export const adminGetAnalyticsOverview = (params = {}) => {
   const query = new URLSearchParams();
   if (typeof params === "string") {

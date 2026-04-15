@@ -79,7 +79,6 @@ export default function TengacionAssistantPanel({
   composerValue = "",
   onComposerChange,
   onComposerSubmit,
-  onCardAction,
   onFollowUpClick,
   onFeedback,
   composerDisabled = false,
@@ -380,7 +379,6 @@ export default function TengacionAssistantPanel({
                   messages={messages}
                   loading={loading}
                   streamingLabel={streamingLabel}
-                  onCardAction={onCardAction}
                   onFollowUpClick={onFollowUpClick}
                   onFeedback={onFeedback}
                 />

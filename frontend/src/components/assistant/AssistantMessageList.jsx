@@ -1,7 +1,5 @@
 import { useEffect, useRef } from "react";
 
-import AssistantCards from "./AssistantCards";
-
 function AssistantSpark() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -31,47 +29,6 @@ function TypingIndicator({ label = "Akuso is thinking" }) {
   );
 }
 
-function ReplyEvidence({ trust, sources, details }) {
-  const hasEvidence = Boolean(trust?.note) || sources.length > 0 || details.length > 0;
-
-  if (!hasEvidence) {
-    return null;
-  }
-
-  return (
-    <details className="tg-assistant-evidence">
-      <summary>Details and sources</summary>
-
-      {trust?.note ? <p className="tg-assistant-evidence__note">{trust.note}</p> : null}
-
-      {sources.length > 0 ? (
-        <div className="tg-assistant-sources" aria-label="Sources used">
-          {sources.slice(0, 4).map((source) => (
-            <span
-              key={source?.id || source?.label}
-              className="tg-assistant-source-chip"
-              title={source?.summary || source?.label}
-            >
-              {source?.label}
-            </span>
-          ))}
-        </div>
-      ) : null}
-
-      {details.length > 0 ? (
-        <div className="tg-assistant-details">
-          {details.map((detail, index) => (
-            <details key={`${detail?.title || "detail"}-${index}`} className="tg-assistant-detail">
-              <summary>{detail?.title || "More details"}</summary>
-              <p>{detail?.body || ""}</p>
-            </details>
-          ))}
-        </div>
-      ) : null}
-    </details>
-  );
-}
-
 const SAFETY_LABELS = {
   safe: "Safe",
   caution: "Use caution",
@@ -97,7 +54,6 @@ export default function AssistantMessageList({
   messages = [],
   loading = false,
   streamingLabel = "",
-  onCardAction,
   onFollowUpClick,
   onFeedback,
 }) {
@@ -111,8 +67,6 @@ export default function AssistantMessageList({
     <div className="tg-assistant-thread" role="log" aria-live="polite" aria-relevant="additions text">
       {messages.map((message) => {
         const isUser = message?.role === "user";
-        const cards = Array.isArray(message?.cards) ? message.cards : [];
-        const details = Array.isArray(message?.details) ? message.details : [];
         const followUps = Array.isArray(message?.followUps) ? message.followUps : [];
         const safety = message?.safety || { level: "safe", notice: "", escalation: "" };
         const trust = message?.trust || {
@@ -123,7 +77,6 @@ export default function AssistantMessageList({
           confidenceLabel: "medium",
           note: "",
         };
-        const sources = Array.isArray(message?.sources) ? message.sources : [];
         const feedbackStatus = String(message?.feedbackStatus || "unrated");
 
         return (
@@ -165,10 +118,6 @@ export default function AssistantMessageList({
                 <p>{safety.notice || "Akuso added a cautionary note for this answer."}</p>
               </div>
             ) : null}
-
-            {!isUser ? <ReplyEvidence trust={trust} sources={sources} details={details} /> : null}
-
-            {!isUser && cards.length > 0 ? <AssistantCards cards={cards} onCardAction={onCardAction} /> : null}
 
             {!isUser && followUps.length > 0 ? (
               <div className="tg-assistant-followups" aria-label="Follow-up prompts">

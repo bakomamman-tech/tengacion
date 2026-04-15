@@ -378,36 +378,6 @@ export default function TengacionAssistantDock() {
     ]
   );
 
-  const handleCardAction = useCallback(
-    (card) => {
-      if (!card || typeof card !== "object") {
-        return;
-      }
-
-      const route = String(card.route || "").trim();
-      const suggestedText = String(
-        card?.payload?.text || card?.payload?.prompt || card?.description || ""
-      ).trim();
-
-      if (route && isSafeAssistantRoute(route)) {
-        navigate(route);
-        focusComposerSoon();
-        return;
-      }
-
-      if (card.type === "draft" && suggestedText) {
-        setComposerValue(suggestedText);
-        composerRef.current?.focus?.();
-        return;
-      }
-
-      if (suggestedText) {
-        setComposerValue(suggestedText);
-      }
-    },
-    [focusComposerSoon, navigate]
-  );
-
   const handleFollowUpClick = useCallback(
     (prompt) => {
       if (!prompt) {
@@ -536,7 +506,6 @@ export default function TengacionAssistantDock() {
         composerValue={composerValue}
         onComposerChange={setComposerValue}
         onComposerSubmit={submitMessage}
-        onCardAction={handleCardAction}
         onFollowUpClick={handleFollowUpClick}
         onFeedback={user ? handleFeedback : null}
         composerDisabled={loading}

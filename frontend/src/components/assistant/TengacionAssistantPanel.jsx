@@ -315,11 +315,12 @@ export default function TengacionAssistantPanel({
             <div className={`tg-assistant-stage__header${compactConversation ? " tg-assistant-stage__header--compact" : ""}`}>
               <div className="tg-assistant-stage__copy">
                 <h3>{conversationTitle}</h3>
-                <p>
-                  {compactConversation
-                    ? "Continue chatting with Akuso in this thread."
-                    : "Start a natural conversation with Akuso. Ask a question, request a page action, or draft something for your audience."}
-                </p>
+                {!compactConversation ? (
+                  <p>
+                    Start a natural conversation with Akuso. Ask a question, request a page
+                    action, or draft something for your audience.
+                  </p>
+                ) : null}
               </div>
             </div>
 

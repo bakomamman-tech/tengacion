@@ -431,7 +431,7 @@
 }
 
 .tg-assistant-stage--conversation {
-  gap: 0.72rem;
+  gap: 0.55rem;
   padding: 0.95rem 1rem 1rem;
 }
 
@@ -448,7 +448,7 @@
 }
 
 .tg-assistant-stage__header--compact {
-  gap: 0.8rem;
+  gap: 0.45rem;
 }
 
 .tg-assistant-stage__copy {

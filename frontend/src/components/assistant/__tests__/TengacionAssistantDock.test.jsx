@@ -147,6 +147,9 @@ describe("TengacionAssistantDock", () => {
     expect(
       await screen.findByText(/sign in for account-specific help/i)
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Continue chatting with Akuso in this thread.")
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /message akuso/i })).toBeVisible();
     expect(screen.getByRole("button", { name: /send/i })).toBeVisible();
   });

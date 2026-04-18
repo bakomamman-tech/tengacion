@@ -7,8 +7,12 @@ const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const Video = require("../models/Video");
 const { buildAlbumArchiveUrl } = require("./albumArchiveService");
-const { getUserPaidPurchases } = require("./entitlementService");
+const {
+  getLatestCreatorSubscriptionPurchase,
+  getUserPaidPurchases,
+} = require("./entitlementService");
 const { buildSignedMediaUrl } = require("./mediaSigner");
+const { resolveSubscriptionLifecycle } = require("./purchaseLifecycleService");
 const { normalizeCreatorTypes } = require("./creatorProfileService");
 
 const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
@@ -79,6 +83,51 @@ const buildViewerPurchaseState = async (viewerId) => {
   return {
     entitlements,
     subscriptionsByCreatorId,
+  };
+};
+
+const buildSubscriptionPayload = ({
+  profile,
+  ownerAccess = false,
+  latestSubscription = null,
+} = {}) => {
+  if (ownerAccess) {
+    return {
+      price: numberOrZero(profile?.subscriptionPrice || 2000) || 2000,
+      interval: "monthly",
+      description:
+        "Supporters unlock endless streams, premium downloads, and direct support access from the creator page.",
+      purchaseId: "",
+      isSubscribed: true,
+      lifecycleStatus: "owner",
+      lifecycleLabel: "Creator access",
+      accessExpiresAt: null,
+      cancelAtPeriodEnd: false,
+      canceledAt: null,
+      refundedAt: null,
+      inGracePeriod: false,
+      canCancel: false,
+      canRenew: false,
+    };
+  }
+
+  const lifecycle = resolveSubscriptionLifecycle(latestSubscription || {});
+  return {
+    price: numberOrZero(profile?.subscriptionPrice || 2000) || 2000,
+    interval: "monthly",
+    description:
+      "Supporters unlock endless streams, premium downloads, and direct support access from the creator page.",
+    purchaseId: String(latestSubscription?._id || ""),
+    isSubscribed: lifecycle.isSubscribed,
+    lifecycleStatus: lifecycle.lifecycleStatus,
+    lifecycleLabel: lifecycle.label,
+    accessExpiresAt: latestSubscription?.accessExpiresAt || null,
+    cancelAtPeriodEnd: lifecycle.cancelAtPeriodEnd,
+    canceledAt: latestSubscription?.canceledAt || null,
+    refundedAt: latestSubscription?.refundedAt || null,
+    inGracePeriod: lifecycle.inGracePeriod,
+    canCancel: lifecycle.canCancel,
+    canRenew: lifecycle.canRenew,
   };
 };
 
@@ -502,7 +551,18 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
     : await buildViewerPurchaseState(viewerId);
   const entitlements = viewerPurchaseState.entitlements;
   const activeSubscription = viewerPurchaseState.subscriptionsByCreatorId.get(String(profile?._id || "")) || null;
-  const creatorSubscriptionActive = ownerAccess || Boolean(activeSubscription);
+  const latestSubscription = ownerAccess
+    ? null
+    : activeSubscription || await getLatestCreatorSubscriptionPurchase({
+      userId: viewerId,
+      creatorId: profile?._id,
+    });
+  const subscriptionPayload = buildSubscriptionPayload({
+    profile,
+    ownerAccess,
+    latestSubscription,
+  });
+  const creatorSubscriptionActive = ownerAccess || Boolean(subscriptionPayload.isSubscribed);
 
   const [tracksRaw, podcastsRaw, albumsRaw, booksRaw, videosRaw, purchases] = await Promise.all([
     Track.find({ creatorId: objectId, kind: { $in: ["music", null] }, ...ACTIVE_TRACK_FILTER })
@@ -599,14 +659,7 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
       isOwner: ownerAccess,
       isFollowing: viewerFollows,
     },
-    subscription: {
-      price: numberOrZero(profile?.subscriptionPrice || 2000) || 2000,
-      interval: "monthly",
-      description:
-        "Supporters unlock endless streams, premium downloads, and direct support access from the creator page.",
-      isSubscribed: creatorSubscriptionActive,
-      accessExpiresAt: activeSubscription?.accessExpiresAt || null,
-    },
+    subscription: subscriptionPayload,
     featured,
     music: {
       tracks,

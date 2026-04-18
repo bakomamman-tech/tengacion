@@ -4,21 +4,10 @@ const Purchase = require("../models/Purchase");
 const { resolvePurchasableItem } = require("../services/catalogService");
 const { hasEntitlement } = require("../services/entitlementService");
 const { buildCreatorWalletSnapshot } = require("../services/walletService");
-
-// TODO(phase2): apply marketplace commission and referral reward splits here.
-
-const toPurchasePayload = (purchase) => ({
-  _id: purchase._id.toString(),
-  itemType: purchase.itemType,
-  itemId: purchase.itemId?.toString?.() || String(purchase.itemId || ""),
-  amount: Number(purchase.amount) || 0,
-  currency: purchase.currency || "NGN",
-  status: purchase.status || "pending",
-  provider: purchase.provider || "paystack",
-  providerRef: purchase.providerRef || "",
-  paidAt: purchase.paidAt || null,
-  createdAt: purchase.createdAt,
-});
+const {
+  cancelSubscriptionPurchase,
+  toPurchasePayload,
+} = require("../services/paymentOpsService");
 
 exports.getMyPurchases = asyncHandler(async (req, res) => {
   const purchases = await Purchase.find({ userId: req.user.id })
@@ -26,6 +15,34 @@ exports.getMyPurchases = asyncHandler(async (req, res) => {
     .lean();
 
   return res.json(purchases.map(toPurchasePayload));
+});
+
+exports.cancelMySubscription = asyncHandler(async (req, res) => {
+  const purchaseId = String(req.params?.id || "").trim();
+  if (!purchaseId || !mongoose.Types.ObjectId.isValid(purchaseId)) {
+    return res.status(400).json({ error: "Valid purchase id is required" });
+  }
+
+  const purchase = await Purchase.findOne({
+    _id: purchaseId,
+    userId: req.user.id,
+  });
+  if (!purchase) {
+    return res.status(404).json({ error: "Purchase not found" });
+  }
+
+  const result = await cancelSubscriptionPurchase({
+    purchase,
+    actorUserId: req.user.id,
+    actorRole: req.user?.role || "user",
+    reason: "user_cancelled_subscription",
+  });
+
+  return res.json({
+    success: true,
+    alreadyCancelled: Boolean(result?.alreadyCancelled),
+    purchase: toPurchasePayload(result.purchase),
+  });
 });
 
 exports.checkEntitlement = asyncHandler(async (req, res) => {

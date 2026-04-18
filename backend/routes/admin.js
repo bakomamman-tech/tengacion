@@ -59,6 +59,7 @@ const {
   runCleanup,
 } = require("../services/storageMaintenanceService");
 const {
+  refundPurchase,
   DEFAULT_STUCK_PENDING_MINUTES,
   buildPurchaseAdminDetail,
   buildTransactionListItem,
@@ -1352,6 +1353,62 @@ router.post(
     } catch (err) {
       const code = err?.status || 500;
       return res.status(code).json({ error: err.message || "Failed to reconcile transaction" });
+    }
+  }
+);
+
+router.post(
+  "/transactions/:id/refund",
+  requireStepUp({ adminOnly: true }),
+  async (req, res) => {
+    try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: "Invalid transaction id" });
+      }
+
+      const purchase = await Purchase.findById(req.params.id);
+      if (!purchase) {
+        return res.status(404).json({ error: "Transaction not found" });
+      }
+
+      const reason = String(req.body?.reason || "admin_refund").trim().slice(0, 120);
+      const result = await refundPurchase({
+        req,
+        purchase,
+        actorUserId: req.user.id,
+        actorRole: req.user?.role || "admin",
+        reason,
+      });
+
+      const updatedPurchase = await Purchase.findById(purchase._id).lean();
+      await writeAuditLog({
+        actorId: req.user.id,
+        action: "purchase_refund",
+        targetType: "purchase",
+        targetId: toId(purchase._id),
+        reason,
+        ip: req.ip,
+        userAgent: req.get("user-agent") || "",
+        metadata: {
+          providerRef: purchase.providerRef || "",
+          previousStatus: purchase.status || "",
+          nextStatus: updatedPurchase?.status || "refunded",
+          walletCreatedCount: Number(result?.walletResult?.createdCount || 0),
+        },
+      }).catch(() => null);
+
+      return res.json({
+        success: true,
+        transaction: updatedPurchase
+          ? buildTransactionListItem({
+              purchase: updatedPurchase,
+              olderThanMinutes: DEFAULT_STUCK_PENDING_MINUTES,
+            })
+          : null,
+      });
+    } catch (err) {
+      const code = err?.status || 500;
+      return res.status(code).json({ error: err.message || "Failed to refund transaction" });
     }
   }
 );

@@ -231,6 +231,79 @@ const buildPurchaseSettlementEntryPayloads = async (purchase) => {
   ];
 };
 
+const buildPurchaseRefundEntryPayloads = async (purchase) => {
+  if (!purchase?.creatorId) {
+    return [];
+  }
+
+  const grossAmount = clampMoney(purchase.amount);
+  if (grossAmount <= 0) {
+    return [];
+  }
+
+  const currency = normalizeCurrency(purchase.currency);
+  const creatorAmount = computeCreatorShare(grossAmount);
+  const platformAmount = computePlatformShare(grossAmount);
+  const [creatorWallet, platformWallet] = await Promise.all([
+    ensureCreatorWalletAccount(purchase.creatorId, currency),
+    ensurePlatformWalletAccount(currency),
+  ]);
+
+  const creatorId = toIdString(purchase.creatorId);
+  const purchaseId = toIdString(purchase._id);
+  const itemId = toIdString(purchase.itemId);
+  const refundedAt = purchase.refundedAt || purchase.updatedAt || new Date();
+  const sharedMetadata = {
+    creatorId,
+    itemType: String(purchase.itemType || "").trim().toLowerCase(),
+    itemId,
+    purchaseId,
+    provider: purchase.provider || "paystack",
+    providerRef: purchase.providerRef || "",
+    billingInterval: purchase.billingInterval || "one_time",
+    creatorAmount,
+    platformAmount,
+    refundReason: String(purchase.refundReason || "").trim(),
+  };
+
+  return [
+    {
+      walletAccountId: creatorWallet._id,
+      ownerType: "creator",
+      ownerId: purchase.creatorId,
+      currency,
+      direction: "debit",
+      bucket: "available",
+      entryType: "refund_debit",
+      amount: creatorAmount,
+      grossAmount,
+      sourceType: "refund",
+      sourceId: purchase._id,
+      sourceRef: purchase.providerRef || "",
+      dedupeKey: `purchase_refund_creator:${purchaseId}`,
+      effectiveAt: refundedAt,
+      metadata: sharedMetadata,
+    },
+    {
+      walletAccountId: platformWallet._id,
+      ownerType: "platform",
+      ownerId: null,
+      currency,
+      direction: "debit",
+      bucket: "available",
+      entryType: "refund_debit",
+      amount: platformAmount,
+      grossAmount,
+      sourceType: "refund",
+      sourceId: purchase._id,
+      sourceRef: purchase.providerRef || "",
+      dedupeKey: `purchase_refund_platform:${purchaseId}`,
+      effectiveAt: refundedAt,
+      metadata: sharedMetadata,
+    },
+  ];
+};
+
 const upsertWalletEntry = async (payload) => {
   const result = await WalletEntry.updateOne(
     { dedupeKey: payload.dedupeKey },
@@ -271,6 +344,47 @@ const recordPurchaseSettlementEntries = async ({ purchase, logger = console } = 
 
   if (createdCount > 0 && logger?.info) {
     logger.info("[wallet] purchase settlement recorded", {
+      purchaseId: toIdString(purchase._id),
+      createdCount,
+      providerRef: purchase.providerRef || "",
+    });
+  }
+
+  return {
+    createdCount,
+    skipped: false,
+    purchaseId: toIdString(purchase._id),
+  };
+};
+
+const recordPurchaseRefundEntries = async ({ purchase, logger = console } = {}) => {
+  if (!purchase?._id) {
+    return {
+      createdCount: 0,
+      skipped: true,
+      reason: "missing_purchase",
+    };
+  }
+
+  const entryPayloads = await buildPurchaseRefundEntryPayloads(purchase);
+  if (!entryPayloads.length) {
+    return {
+      createdCount: 0,
+      skipped: true,
+      reason: purchase?.creatorId ? "non_positive_amount" : "missing_creator",
+    };
+  }
+
+  let createdCount = 0;
+  for (const payload of entryPayloads) {
+    const result = await upsertWalletEntry(payload);
+    if (result.created) {
+      createdCount += 1;
+    }
+  }
+
+  if (createdCount > 0 && logger?.info) {
+    logger.info("[wallet] purchase refund recorded", {
       purchaseId: toIdString(purchase._id),
       createdCount,
       providerRef: purchase.providerRef || "",
@@ -771,6 +885,7 @@ module.exports = {
   getCreatorWalletSlug,
   ensureCreatorWalletAccount,
   ensurePlatformWalletAccount,
+  recordPurchaseRefundEntries,
   recordPurchaseSettlementEntries,
   buildCreatorWalletSummary,
   buildCreatorWalletSnapshot,

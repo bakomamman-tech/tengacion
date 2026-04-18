@@ -16,8 +16,16 @@ const {
   verifyTransaction,
 } = require("./paystackService");
 const { sendCreatorPurchaseMessengerAlert } = require("./creatorSalesMessengerService");
-const { recordPurchaseSettlementEntries } = require("./walletService");
+const {
+  recordPurchaseRefundEntries,
+  recordPurchaseSettlementEntries,
+} = require("./walletService");
 const { logAnalyticsEvent } = require("./analyticsService");
+const {
+  buildPurchaseLifecyclePayload,
+  isSubscriptionPurchase,
+  resolveSubscriptionLifecycle,
+} = require("./purchaseLifecycleService");
 const { config } = require("../config/env");
 
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
@@ -46,6 +54,10 @@ const TIMELINE_EVENT_META = {
   purchase_reconciliation_requested: { label: "Admin reconciliation requested", tone: "info" },
   purchase_reconciliation_completed: { label: "Admin reconciliation completed", tone: "success" },
   purchase_reconciliation_failed: { label: "Admin reconciliation failed", tone: "danger" },
+  purchase_subscription_cancel_scheduled: { label: "Subscription cancel scheduled", tone: "warn" },
+  purchase_access_revoked: { label: "Access revoked", tone: "danger" },
+  purchase_refund_requested: { label: "Refund requested", tone: "info" },
+  purchase_refunded: { label: "Refund completed", tone: "danger" },
   purchase_success: { label: "Purchase success metric recorded", tone: "success" },
   purchase_failed: { label: "Purchase failure metric recorded", tone: "danger" },
 };
@@ -99,6 +111,11 @@ const toPurchasePayload = (purchase) => ({
   providerRef: purchase?.providerRef || "",
   billingInterval: purchase?.billingInterval || "one_time",
   accessExpiresAt: purchase?.accessExpiresAt || null,
+  cancelAtPeriodEnd: Boolean(purchase?.cancelAtPeriodEnd),
+  canceledAt: purchase?.canceledAt || null,
+  refundedAt: purchase?.refundedAt || null,
+  refundReason: purchase?.refundReason || "",
+  lifecycle: buildPurchaseLifecyclePayload(purchase),
   paidAt: purchase?.paidAt || null,
   createdAt: purchase?.createdAt || null,
   updatedAt: purchase?.updatedAt || null,
@@ -229,6 +246,20 @@ const incrementPurchasedItemCounter = async (purchase) => {
     await Book.updateOne({ _id: purchase.itemId }, { $inc: { purchaseCount: 1 } }).catch(() => null);
   } else if (purchase.itemType === "album") {
     await Album.updateOne({ _id: purchase.itemId }, { $inc: { purchaseCount: 1 } }).catch(() => null);
+  }
+};
+
+const decrementPurchasedItemCounter = async (purchase) => {
+  if (!purchase?.itemId) {
+    return;
+  }
+
+  if (purchase.itemType === "track") {
+    await Track.updateOne({ _id: purchase.itemId }, { $inc: { purchaseCount: -1 } }).catch(() => null);
+  } else if (purchase.itemType === "book") {
+    await Book.updateOne({ _id: purchase.itemId }, { $inc: { purchaseCount: -1 } }).catch(() => null);
+  } else if (purchase.itemType === "album") {
+    await Album.updateOne({ _id: purchase.itemId }, { $inc: { purchaseCount: -1 } }).catch(() => null);
   }
 };
 
@@ -398,6 +429,10 @@ const settlePurchasedAccess = async (purchase, { paidAt = new Date() } = {}) => 
           ? {
               billingInterval: "monthly",
               accessExpiresAt: new Date(paidAt.getTime() + MONTH_MS),
+              cancelAtPeriodEnd: false,
+              canceledAt: null,
+              refundedAt: null,
+              refundReason: "",
             }
           : {}),
       },
@@ -526,6 +561,163 @@ const runSettlementSideEffects = async ({
   return {
     walletResult,
     alertResult,
+  };
+};
+
+const cancelSubscriptionPurchase = async ({
+  purchase,
+  actorUserId = "",
+  actorRole = "",
+  reason = "user_cancelled",
+} = {}) => {
+  if (!purchase?._id) {
+    throw createServiceError("Subscription purchase not found", 404);
+  }
+
+  if (!isSubscriptionPurchase(purchase)) {
+    throw createServiceError("Only subscription purchases can be cancelled", 400);
+  }
+
+  const lifecycle = resolveSubscriptionLifecycle(purchase);
+  if (!lifecycle.hasActiveAccess) {
+    throw createServiceError("This subscription is not active anymore", 400);
+  }
+
+  if (lifecycle.cancelAtPeriodEnd) {
+    return {
+      purchase,
+      alreadyCancelled: true,
+    };
+  }
+
+  const canceledAt = new Date();
+  const updatedPurchase = await Purchase.findByIdAndUpdate(
+    purchase._id,
+    {
+      $set: {
+        cancelAtPeriodEnd: true,
+        canceledAt,
+      },
+    },
+    { new: true }
+  );
+
+  await logPurchaseLifecycleEvent({
+    type: "purchase_subscription_cancel_scheduled",
+    purchase: updatedPurchase,
+    userId: actorUserId || toIdString(updatedPurchase?.userId),
+    actorRole,
+    metadata: {
+      reason,
+      accessExpiresAt: updatedPurchase?.accessExpiresAt || null,
+      cancelAtPeriodEnd: true,
+    },
+  }).catch(() => null);
+
+  return {
+    purchase: updatedPurchase,
+    alreadyCancelled: false,
+  };
+};
+
+const refundPurchase = async ({
+  req = null,
+  purchase,
+  actorUserId = "",
+  actorRole = "",
+  reason = "admin_refund",
+} = {}) => {
+  if (!purchase?._id) {
+    throw createServiceError("Purchase not found", 404);
+  }
+
+  if (String(purchase?.status || "").trim().toLowerCase() !== "paid") {
+    throw createServiceError("Only paid purchases can be refunded", 400);
+  }
+
+  await logPurchaseLifecycleEvent({
+    type: "purchase_refund_requested",
+    purchase,
+    userId: actorUserId || toIdString(purchase.userId),
+    actorRole,
+    metadata: {
+      reason,
+    },
+  }).catch(() => null);
+
+  await recordPurchaseSettlementEntries({ purchase, logger: null }).catch(() => null);
+
+  const refundedAt = new Date();
+  const updatedPurchase = await Purchase.findByIdAndUpdate(
+    purchase._id,
+    {
+      $set: {
+        status: "refunded",
+        refundedAt,
+        refundReason: reason,
+        cancelAtPeriodEnd: false,
+        canceledAt: purchase?.canceledAt || refundedAt,
+        ...(isSubscriptionPurchase(purchase)
+          ? { accessExpiresAt: refundedAt }
+          : {}),
+      },
+    },
+    { new: true }
+  );
+
+  if (!updatedPurchase) {
+    throw createServiceError("Failed to refund purchase", 500);
+  }
+
+  if (!isSubscriptionPurchase(updatedPurchase)) {
+    await Entitlement.deleteOne({
+      buyerId: updatedPurchase.userId,
+      itemType: updatedPurchase.itemType,
+      itemId: updatedPurchase.itemId,
+    }).catch(() => null);
+    await decrementPurchasedItemCounter(updatedPurchase);
+  }
+
+  let walletResult;
+  try {
+    walletResult = await recordPurchaseRefundEntries({ purchase: updatedPurchase, logger: console });
+  } catch (error) {
+    walletResult = {
+      createdCount: 0,
+      skipped: false,
+      failed: true,
+      reason: error?.message || "Wallet refund reversal failed",
+    };
+  }
+
+  await logPurchaseLifecycleEvent({
+    type: "purchase_refunded",
+    purchase: updatedPurchase,
+    userId: actorUserId || toIdString(updatedPurchase.userId),
+    actorRole,
+    metadata: {
+      reason,
+      createdCount: Number(walletResult?.createdCount || 0),
+      walletSkipped: Boolean(walletResult?.skipped),
+      walletFailed: Boolean(walletResult?.failed),
+    },
+  }).catch(() => null);
+
+  await logPurchaseLifecycleEvent({
+    type: "purchase_access_revoked",
+    purchase: updatedPurchase,
+    userId: actorUserId || toIdString(updatedPurchase.userId),
+    actorRole,
+    metadata: {
+      reason,
+      subscriptionAccess: isSubscriptionPurchase(updatedPurchase),
+      accessExpiresAt: updatedPurchase.accessExpiresAt || null,
+    },
+  }).catch(() => null);
+
+  return {
+    purchase: updatedPurchase,
+    walletResult,
   };
 };
 
@@ -796,8 +988,8 @@ const loadPurchaseOperationalArtifacts = async (purchase) => {
       .lean(),
     entitlementQuery,
     WalletEntry.find({
-      sourceType: "purchase",
       sourceId: purchase._id,
+      sourceType: { $in: ["purchase", "refund"] },
     })
       .sort({ effectiveAt: 1, createdAt: 1, _id: 1 })
       .lean(),
@@ -818,14 +1010,16 @@ const buildPurchaseOperationsSummary = ({
   const events = Array.isArray(artifacts?.events) ? artifacts.events : [];
   const entitlements = Array.isArray(artifacts?.entitlements) ? artifacts.entitlements : [];
   const walletEntries = Array.isArray(artifacts?.walletEntries) ? artifacts.walletEntries : [];
+  const lifecycle = buildPurchaseLifecyclePayload(purchase);
   const now = Date.now();
   const updatedAt = purchase?.updatedAt ? new Date(purchase.updatedAt).getTime() : now;
   const ageMinutes = Math.max(0, Math.round((now - updatedAt) / 60000));
   const saleCreditCount = walletEntries.filter((entry) => entry.entryType === "sale_credit").length;
   const platformFeeCount = walletEntries.filter((entry) => entry.entryType === "platform_fee").length;
+  const refundDebitCount = walletEntries.filter((entry) => entry.entryType === "refund_debit").length;
   const isSubscription = purchase?.itemType === "subscription";
   const entitlementPresent = isSubscription
-    ? Boolean(purchase?.accessExpiresAt)
+    ? Boolean(lifecycle.hasActiveAccess)
     : entitlements.length > 0;
   const walletSettled = !purchase?.creatorId
     ? false
@@ -845,10 +1039,14 @@ const buildPurchaseOperationsSummary = ({
     needsWalletRepair,
     needsAttention: Boolean(stuckPending || needsEntitlementRepair || needsWalletRepair),
     walletEntryCount: walletEntries.length,
+    refundEntryCount: refundDebitCount,
     entitlementCount: entitlements.length,
     lastEventType: lastEvent?.type || "",
     lastEventAt: lastEvent?.createdAt || null,
     canReconcile: purchase?.status !== "refunded" && purchase?.provider === "paystack",
+    canRefund: purchase?.status === "paid",
+    canCancelSubscription: lifecycle.canCancel,
+    lifecycle,
   };
 };
 
@@ -890,8 +1088,10 @@ const buildTimelineEntryFromWalletEntry = (row = {}) => ({
     ? "Creator wallet credited"
     : row.entryType === "platform_fee"
       ? "Platform fee booked"
+      : row.entryType === "refund_debit"
+        ? "Refund reversal booked"
       : "Wallet entry recorded",
-  tone: "success",
+  tone: row.entryType === "refund_debit" ? "danger" : "success",
   createdAt: row.effectiveAt || row.createdAt || null,
   metadata: {
     entryType: row.entryType || "",
@@ -980,12 +1180,14 @@ const buildTransactionListItem = ({
 };
 
 module.exports = {
+  cancelSubscriptionPurchase,
   DEFAULT_STUCK_PENDING_MINUTES,
   LEGACY_SUPPORTED_PAYMENT_OPTIONS,
   buildPurchaseAdminDetail,
   buildTimelineEntryFromEvent,
   buildTransactionListItem,
   createServiceError,
+  refundPurchase,
   initializePaystackCheckout,
   loadPurchaseOperationalArtifacts,
   normalizeType,

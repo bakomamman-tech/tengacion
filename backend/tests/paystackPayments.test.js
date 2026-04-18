@@ -719,4 +719,108 @@ describe("Paystack payments", () => {
     expect(await Entitlement.countDocuments({ buyerId: viewer._id, itemType: "track", itemId: track._id })).toBe(1);
     expect(await WalletEntry.countDocuments({ sourceId: purchase._id })).toBe(2);
   });
+
+  test("admin refund reverses wallet settlement and revokes purchase access after step-up", async () => {
+    const admin = await User.findOne({ role: "admin" });
+    const adminToken = await issueSessionToken(admin._id);
+    const adminSession = jwt.verify(adminToken, process.env.JWT_SECRET);
+    const stepUpToken = signStepUpToken({
+      userId: admin._id,
+      sessionId: adminSession.sid,
+    });
+    const stepUpCookie = `${STEP_UP_COOKIE_NAME}=${stepUpToken}`;
+
+    mockPaystackResponse({
+      authorization_url: "https://paystack.test/authorize",
+      access_code: "ACCESS_REFUND",
+      reference: "TGN_TRACK_REFUND",
+    });
+
+    const initResponse = await request(app)
+      .post("/api/payments/paystack/initialize")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        productType: "music",
+        productId: track._id.toString(),
+      })
+      .expect(201);
+
+    mockPaystackResponse({
+      id: 1,
+      status: "success",
+      reference: initResponse.body.reference,
+      amount: 2500 * 100,
+      currency: "NGN",
+    });
+
+    await request(app)
+      .get(`/api/payments/paystack/verify/${encodeURIComponent(initResponse.body.reference)}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+
+    const purchase = await Purchase.findOne({ providerRef: initResponse.body.reference });
+    expect(purchase).toBeTruthy();
+    expect(await Entitlement.countDocuments({ buyerId: viewer._id, itemType: "track", itemId: track._id })).toBe(1);
+    expect(await WalletEntry.countDocuments({ sourceId: purchase._id })).toBe(2);
+
+    const refundResponse = await request(app)
+      .post(`/api/admin/transactions/${purchase._id}/refund`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", stepUpCookie)
+      .send({ reason: "jest_refund" })
+      .expect(200);
+
+    expect(refundResponse.body).toMatchObject({
+      success: true,
+      transaction: expect.objectContaining({
+        status: "refunded",
+      }),
+    });
+
+    const updatedPurchase = await Purchase.findById(purchase._id).lean();
+    expect(updatedPurchase.status).toBe("refunded");
+    expect(updatedPurchase.refundedAt).toBeTruthy();
+    expect(updatedPurchase.refundReason).toBe("jest_refund");
+    expect(await Entitlement.countDocuments({ buyerId: viewer._id, itemType: "track", itemId: track._id })).toBe(0);
+
+    const walletEntries = await WalletEntry.find({ sourceId: purchase._id })
+      .sort({ effectiveAt: 1, createdAt: 1, _id: 1 })
+      .lean();
+    expect(walletEntries).toHaveLength(4);
+    expect(walletEntries.filter((entry) => entry.entryType === "refund_debit")).toHaveLength(2);
+    expect(walletEntries.filter((entry) => entry.sourceType === "refund")).toHaveLength(2);
+
+    const updatedTrack = await Track.findById(track._id).lean();
+    expect(Number(updatedTrack.purchaseCount || 0)).toBe(0);
+
+    const dashboardResponse = await request(app)
+      .get("/api/creator/dashboard")
+      .set("Authorization", `Bearer ${creatorToken}`)
+      .expect(200);
+
+    expect(dashboardResponse.body.summary).toMatchObject({
+      totalEarnings: 0,
+      availableBalance: 0,
+      pendingBalance: 0,
+    });
+
+    const detailResponse = await request(app)
+      .get(`/api/admin/transactions/${purchase._id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(detailResponse.body.ops).toMatchObject({
+      entitlementPresent: false,
+      walletSettled: true,
+      refundEntryCount: 2,
+      canRefund: false,
+    });
+    expect(detailResponse.body.timeline).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "purchase_refunded" }),
+        expect.objectContaining({ type: "purchase_access_revoked" }),
+        expect.objectContaining({ kind: "wallet_entry", type: "refund_debit" }),
+      ])
+    );
+  });
 });

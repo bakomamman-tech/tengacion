@@ -1048,6 +1048,14 @@ export const getMyPurchases = () =>
     headers: getAuthHeaders(),
   });
 
+export const cancelSubscriptionPurchase = (purchaseId) =>
+  request(`${API_BASE}/purchases/${encodeURIComponent(purchaseId || "")}/cancel-subscription`, {
+    method: "POST",
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
+
 export const getCreatorSales = () =>
   request(`${API_BASE}/purchases/creator/sales`, {
     headers: getAuthHeaders(),
@@ -2416,6 +2424,16 @@ export const adminGetTransactionDetail = (transactionId, params = {}) => {
 
 export const adminReconcileTransaction = (transactionId, body = {}) =>
   request(`${API_BASE}/admin/transactions/${encodeURIComponent(transactionId || "")}/reconcile`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(body || {}),
+  });
+
+export const adminRefundTransaction = (transactionId, body = {}) =>
+  request(`${API_BASE}/admin/transactions/${encodeURIComponent(transactionId || "")}/refund`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

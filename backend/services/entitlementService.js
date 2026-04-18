@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Purchase = require("../models/Purchase");
 const Entitlement = require("../models/Entitlement");
+const { isSubscriptionAccessActive } = require("./purchaseLifecycleService");
 
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
@@ -18,13 +19,21 @@ const hasCreatorSubscriptionAccess = async ({ userId, creatorId, at = new Date()
     creatorId,
     itemType: "subscription",
     status: "paid",
-    $or: [
-      { accessExpiresAt: null },
-      { accessExpiresAt: { $gt: at } },
-    ],
   });
+  if (!exists) {
+    return false;
+  }
 
-  return Boolean(exists);
+  const purchase = await Purchase.findOne({
+    userId,
+    creatorId,
+    itemType: "subscription",
+    status: "paid",
+  })
+    .sort({ accessExpiresAt: -1, paidAt: -1, createdAt: -1 })
+    .lean();
+
+  return isSubscriptionAccessActive(purchase, { at });
 };
 
 const hasEntitlement = async ({ userId, itemType, itemId, creatorId = "" }) => {
@@ -86,8 +95,7 @@ const getUserPaidPurchases = async (userId) => {
   const now = new Date();
   const activePurchases = purchases.filter((row) => (
     String(row?.itemType || "").trim().toLowerCase() !== "subscription"
-      || !row?.accessExpiresAt
-      || new Date(row.accessExpiresAt) > now
+      || isSubscriptionAccessActive(row, { at: now })
   ));
 
   if (!directEntitlements.length) {
@@ -117,8 +125,23 @@ const getUserPaidPurchases = async (userId) => {
   return [...activePurchases, ...synthesized];
 };
 
+const getLatestCreatorSubscriptionPurchase = async ({ userId, creatorId } = {}) => {
+  if (!isValidObjectId(userId) || !isValidObjectId(creatorId)) {
+    return null;
+  }
+
+  return Purchase.findOne({
+    userId,
+    creatorId,
+    itemType: "subscription",
+  })
+    .sort({ paidAt: -1, createdAt: -1, updatedAt: -1 })
+    .lean();
+};
+
 module.exports = {
   hasEntitlement,
   hasCreatorSubscriptionAccess,
   getUserPaidPurchases,
+  getLatestCreatorSubscriptionPurchase,
 };

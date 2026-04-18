@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
-import { getPublicCreatorProfile, initPayment, resolveImage } from "../../api";
+import {
+  cancelSubscriptionPurchase,
+  getPublicCreatorProfile,
+  initPayment,
+  resolveImage,
+} from "../../api";
 import { useAuth } from "../../context/AuthContext";
 
 import "./creator-subscription.css";
@@ -30,6 +35,7 @@ export default function CreatorSubscriptionPage() {
   const [paymentError, setPaymentError] = useState("");
   const [paying, setPaying] = useState(false);
   const [checkingReturn, setCheckingReturn] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +113,7 @@ export default function CreatorSubscriptionPage() {
   const subscription = payload?.subscription || {};
   const price = Number(subscription?.price || creator?.subscriptionPrice || DEFAULT_PRICE) || DEFAULT_PRICE;
   const isSubscribed = Boolean(subscription?.isSubscribed);
+  const lifecycleStatus = String(subscription?.lifecycleStatus || "").trim().toLowerCase();
   const benefitCopy =
     subscription?.description
     || "Supporters unlock endless streams, premium downloads, and direct support access from the creator page.";
@@ -124,6 +131,51 @@ export default function CreatorSubscriptionPage() {
       return "";
     }
   }, [subscription?.accessExpiresAt]);
+
+  const statusCopy = useMemo(() => {
+    if (lifecycleStatus === "cancel_scheduled") {
+      return accessUntilLabel
+        ? `Your membership stays active until ${accessUntilLabel}, then it stops renewing.`
+        : "Your membership is active, and renewal has already been cancelled.";
+    }
+    if (lifecycleStatus === "grace_period") {
+      return accessUntilLabel
+        ? `Your membership is in its final days and stays active until ${accessUntilLabel}.`
+        : "Your membership is in its final days before expiry.";
+    }
+    if (lifecycleStatus === "expired") {
+      return "This membership expired. Subscribe again to restore full creator access.";
+    }
+    if (lifecycleStatus === "refunded") {
+      return "This membership was refunded and no longer unlocks creator access.";
+    }
+    if (isSubscribed && accessUntilLabel) {
+      return `Full creator access is active until ${accessUntilLabel}.`;
+    }
+    if (isSubscribed) {
+      return "Full creator access is active on your account.";
+    }
+    return "";
+  }, [accessUntilLabel, isSubscribed, lifecycleStatus]);
+
+  const statusHeading = useMemo(() => {
+    if (lifecycleStatus === "cancel_scheduled") {
+      return "Renewal cancelled";
+    }
+    if (lifecycleStatus === "grace_period") {
+      return "Membership ending soon";
+    }
+    if (lifecycleStatus === "expired") {
+      return "Membership expired";
+    }
+    if (lifecycleStatus === "refunded") {
+      return "Refund completed";
+    }
+    if (isSubscribed) {
+      return "Access unlocked";
+    }
+    return "Ready to subscribe";
+  }, [isSubscribed, lifecycleStatus]);
 
   const handleCheckout = async () => {
     if (!creatorId) {
@@ -152,6 +204,25 @@ export default function CreatorSubscriptionPage() {
           : err?.message || "Failed to start secure checkout."
       );
       setPaying(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!subscription?.purchaseId) {
+      return;
+    }
+
+    try {
+      setCancelling(true);
+      setPaymentError("");
+      await cancelSubscriptionPurchase(subscription.purchaseId);
+      const nextPayload = await getPublicCreatorProfile(creatorId);
+      setPayload(nextPayload || null);
+      toast.success("Renewal cancelled. Your access stays active until the current billing period ends.");
+    } catch (err) {
+      setPaymentError(err?.message || "Failed to cancel renewal right now.");
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -263,7 +334,7 @@ export default function CreatorSubscriptionPage() {
             <div className="creator-subscription-panel__head">
               <div>
                 <p className="creator-subscription__eyebrow">Checkout</p>
-                <h2>{isSubscribed ? "Subscription active" : "Ready to subscribe"}</h2>
+                <h2>{isSubscribed ? "Subscription active" : subscription?.canRenew ? "Renew subscription" : "Ready to subscribe"}</h2>
               </div>
             </div>
 
@@ -276,12 +347,10 @@ export default function CreatorSubscriptionPage() {
               </span>
             </div>
 
-            {isSubscribed ? (
+            {statusCopy ? (
               <div className="creator-subscription-active">
-                <strong>Access unlocked</strong>
-                <span>
-                  Full streaming and premium downloads are active on this creator page.
-                </span>
+                <strong>{statusHeading}</strong>
+                <span>{statusCopy}</span>
                 {accessUntilLabel ? <small>Active until {accessUntilLabel}</small> : null}
               </div>
             ) : null}
@@ -289,7 +358,7 @@ export default function CreatorSubscriptionPage() {
             {checkingReturn ? (
               <div className="creator-subscription-returning">
                 <strong>Confirming payment</strong>
-                <span>We’re checking your payment and unlocking the creator page now.</span>
+                <span>We're checking your payment and unlocking the creator page now.</span>
               </div>
             ) : null}
 
@@ -311,11 +380,26 @@ export default function CreatorSubscriptionPage() {
                   type="button"
                   className="creator-subscription__primary"
                   onClick={handleCheckout}
-                  disabled={paying}
+                  disabled={paying || checkingReturn}
                 >
-                  {paying ? "Redirecting to secure checkout..." : `Continue with ${formatMoney(price)}/month`}
+                  {paying
+                    ? "Redirecting to secure checkout..."
+                    : subscription?.canRenew
+                      ? `Subscribe again for ${formatMoney(price)}/month`
+                      : `Continue with ${formatMoney(price)}/month`}
                 </button>
               )}
+
+              {subscription?.canCancel ? (
+                <button
+                  type="button"
+                  className="creator-subscription__secondary"
+                  onClick={handleCancel}
+                  disabled={cancelling}
+                >
+                  {cancelling ? "Cancelling renewal..." : "Cancel renewal"}
+                </button>
+              ) : null}
 
               <Link className="creator-subscription__secondary" to={`/creators/${creator.id}`}>
                 Back to creator page

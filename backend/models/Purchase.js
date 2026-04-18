@@ -72,6 +72,25 @@ const PurchaseSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    cancelAtPeriodEnd: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    canceledAt: {
+      type: Date,
+      default: null,
+    },
+    refundedAt: {
+      type: Date,
+      default: null,
+    },
+    refundReason: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 240,
+    },
     paidAt: {
       type: Date,
       default: null,

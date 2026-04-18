@@ -3,6 +3,7 @@ import AdminShell from "../components/AdminShell";
 import {
   adminGetTransactionDetail,
   adminListTransactions,
+  adminRefundTransaction,
   adminReconcileTransaction,
 } from "../api";
 
@@ -22,6 +23,13 @@ const toneLabel = (tone = "") => {
   return "adminx-badge";
 };
 
+const lifecycleBadge = (status = "") => {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (["refunded", "failed", "expired"].includes(normalized)) {return "adminx-badge adminx-badge--danger";}
+  if (["cancel_scheduled", "grace_period", "pending", "abandoned"].includes(normalized)) {return "adminx-badge adminx-badge--warn";}
+  return "adminx-badge";
+};
+
 export default function AdminTransactionsPage({ user }) {
   const [status, setStatus] = useState("");
   const [attention, setAttention] = useState("");
@@ -35,6 +43,7 @@ export default function AdminTransactionsPage({ user }) {
   const [detailError, setDetailError] = useState("");
   const [actionError, setActionError] = useState("");
   const [reconciling, setReconciling] = useState(false);
+  const [refunding, setRefunding] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -176,6 +185,11 @@ export default function AdminTransactionsPage({ user }) {
               <div className="adminx-mobile-stack">
                 <span className="adminx-badge">{selectedTransaction?.status || "unknown"}</span>
                 <span className="adminx-badge">{formatMoney(selectedTransaction?.amount, selectedTransaction?.currency)}</span>
+                {detail.ops?.lifecycle?.label ? (
+                  <span className={lifecycleBadge(detail.ops.lifecycle.lifecycleStatus)}>
+                    {detail.ops.lifecycle.label}
+                  </span>
+                ) : null}
                 {detail.ops?.stuckPending ? <span className="adminx-badge adminx-badge--warn">Stuck pending</span> : null}
                 {detail.ops?.needsEntitlementRepair ? <span className="adminx-badge adminx-badge--warn">Entitlement repair needed</span> : null}
                 {detail.ops?.needsWalletRepair ? <span className="adminx-badge adminx-badge--warn">Wallet repair needed</span> : null}
@@ -203,6 +217,7 @@ export default function AdminTransactionsPage({ user }) {
                 <span className="adminx-muted">Entitlement present: {detail.ops?.entitlementPresent ? "Yes" : "No"}</span>
                 <span className="adminx-muted">Wallet settled: {detail.ops?.walletSettled ? "Yes" : "No"}</span>
                 <span className="adminx-muted">Wallet entries: {Number(detail.ops?.walletEntryCount || 0)}</span>
+                <span className="adminx-muted">Refund entries: {Number(detail.ops?.refundEntryCount || 0)}</span>
                 <span className="adminx-muted">Age: {Number(detail.ops?.ageMinutes || 0)} minutes</span>
               </div>
 
@@ -226,6 +241,27 @@ export default function AdminTransactionsPage({ user }) {
                   disabled={reconciling || !detail.ops?.canReconcile}
                 >
                   {reconciling ? "Reconciling..." : "Reconcile now"}
+                </button>
+                <button
+                  type="button"
+                  className="adminx-btn adminx-btn--danger"
+                  onClick={async () => {
+                    if (!selectedId) {return;}
+                    if (!window.confirm("Refund this purchase, reverse wallet settlement, and revoke access?")) {return;}
+                    setRefunding(true);
+                    setActionError("");
+                    try {
+                      await adminRefundTransaction(selectedId, { reason: "admin_transactions_page" });
+                      await Promise.all([load(), loadDetail(selectedId)]);
+                    } catch (err) {
+                      setActionError(err?.message || "Failed to refund transaction");
+                    } finally {
+                      setRefunding(false);
+                    }
+                  }}
+                  disabled={refunding || !detail.ops?.canRefund}
+                >
+                  {refunding ? "Refunding..." : "Refund purchase"}
                 </button>
                 <button type="button" className="adminx-btn" onClick={() => loadDetail(selectedId)} disabled={detailLoading}>
                   Refresh detail

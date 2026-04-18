@@ -187,14 +187,42 @@ describe("TengacionAssistantDock", () => {
 
     await user.click(screen.getByRole("button", { name: /open akuso assistant/i }));
 
+    expect(await screen.findByRole("button", { name: /minimize akuso panel/i })).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: /maximize akuso panel/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /close akuso panel/i })).toBeInTheDocument();
     expect(screen.queryByText("Current conversation")).not.toBeInTheDocument();
     expect(screen.queryByText("Mode")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /maximize akuso panel/i }));
 
-    expect(await screen.findByRole("button", { name: /minimize akuso panel/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /restore akuso panel/i })).toBeInTheDocument();
     expect(screen.getByText("Current conversation")).toBeInTheDocument();
     expect(screen.getByText("Mode")).toBeInTheDocument();
+  });
+
+  it("can minimize to the launcher and reopen with the same size", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/home"]}>
+        <TengacionAssistantDock />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("button", { name: /open akuso assistant/i }));
+    await user.click(await screen.findByRole("button", { name: /maximize akuso panel/i }));
+
+    expect(await screen.findByText("Current conversation")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /minimize akuso panel/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: /restore akuso panel/i })).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /open akuso assistant/i }));
+
+    expect(await screen.findByRole("button", { name: /restore akuso panel/i })).toBeInTheDocument();
+    expect(screen.getByText("Current conversation")).toBeInTheDocument();
   });
 });

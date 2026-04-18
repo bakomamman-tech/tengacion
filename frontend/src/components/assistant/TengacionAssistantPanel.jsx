@@ -38,6 +38,41 @@ function AssistantHeaderIcon() {
   );
 }
 
+function AssistantMinimizeIcon() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M3 11.25h10" />
+    </svg>
+  );
+}
+
+function AssistantMaximizeIcon() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <rect x="3.25" y="3.25" width="9.5" height="9.5" rx="0.75" />
+    </svg>
+  );
+}
+
+function AssistantRestoreIcon() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M5.25 3.25h6a1.5 1.5 0 0 1 1.5 1.5v6" />
+      <rect x="3.25" y="5.25" width="7.5" height="7.5" rx="0.75" />
+      <path d="M5.75 5.25v-1a1 1 0 0 1 1-1h4.5" />
+    </svg>
+  );
+}
+
+function AssistantCloseIcon() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <path d="m4 4 8 8" />
+      <path d="m12 4-8 8" />
+    </svg>
+  );
+}
+
 function composeConversationTitle(messages, assistantMode) {
   const firstUserTurn = messages.find(
     (message) => message?.role === "user" && String(message?.content || "").trim()
@@ -62,6 +97,7 @@ function composeConversationTitle(messages, assistantMode) {
 export default function TengacionAssistantPanel({
   open = false,
   expanded = false,
+  onMinimize,
   onClose,
   onToggleExpanded,
   onClearHistory,
@@ -150,21 +186,38 @@ export default function TengacionAssistantPanel({
             </div>
           </div>
 
-          <div className="tg-assistant-panel__header-actions">
-            <Button
+          <div
+            className="tg-assistant-panel__header-actions"
+            role="group"
+            aria-label="Akuso window controls"
+          >
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="tg-assistant-panel__window-action"
-              onClick={onToggleExpanded}
-              aria-label={expanded ? "Minimize Akuso panel" : "Maximize Akuso panel"}
-              title={expanded ? "Minimize panel" : "Maximize panel"}
+              className="tg-assistant-panel__window-control tg-assistant-panel__window-control--minimize"
+              onClick={onMinimize}
+              aria-label="Minimize Akuso panel"
+              title="Minimize panel"
             >
-              {expanded ? "Minimize" : "Maximize"}
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={onClose} aria-label="Close Akuso">
-              Close
-            </Button>
+              <AssistantMinimizeIcon />
+            </button>
+            <button
+              type="button"
+              className="tg-assistant-panel__window-control tg-assistant-panel__window-control--maximize"
+              onClick={onToggleExpanded}
+              aria-label={expanded ? "Restore Akuso panel" : "Maximize Akuso panel"}
+              title={expanded ? "Restore panel" : "Maximize panel"}
+            >
+              {expanded ? <AssistantRestoreIcon /> : <AssistantMaximizeIcon />}
+            </button>
+            <button
+              type="button"
+              className="tg-assistant-panel__window-control tg-assistant-panel__window-control--close"
+              onClick={onClose}
+              aria-label="Close Akuso panel"
+              title="Close panel"
+            >
+              <AssistantCloseIcon />
+            </button>
           </div>
         </header>
 

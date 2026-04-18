@@ -167,6 +167,11 @@ export default function TengacionAssistantDock() {
     setStreamingResponseId("");
   }, []);
 
+  const minimizePanel = useCallback(() => {
+    setOpen(false);
+    setPendingAction(null);
+  }, []);
+
   const clearConversation = useCallback(() => {
     setMessages([]);
     setConversationId("");
@@ -401,7 +406,6 @@ export default function TengacionAssistantDock() {
   const handleLauncherClick = useCallback(() => {
     setOpen((current) => {
       const next = !current;
-      setExpanded(false);
       if (!next) {
         setPendingAction(null);
       }
@@ -440,6 +444,7 @@ export default function TengacionAssistantDock() {
       <TengacionAssistantPanel
         open={open}
         expanded={expanded}
+        onMinimize={minimizePanel}
         onClose={closePanel}
         onToggleExpanded={handleToggleExpanded}
         onClearHistory={clearConversation}

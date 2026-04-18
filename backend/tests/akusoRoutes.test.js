@@ -188,6 +188,41 @@ describe("Akuso routes", () => {
     expect(response.body.actions).toHaveLength(0);
   });
 
+  it("guides authenticated creators to the secure payouts page for finance requests", async () => {
+    const response = await request(app)
+      .post("/api/akuso/chat")
+      .set("Authorization", `Bearer ${creatorToken}`)
+      .send({
+        message: "How do I withdraw earnings?",
+        mode: "app_help",
+      })
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        ok: true,
+        category: "SENSITIVE_ACTION_REQUIRES_AUTH",
+        answer: expect.stringMatching(/secure in-app flow|protected page/i),
+      })
+    );
+    expect(response.body.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "navigate",
+          target: "/creator/payouts",
+        }),
+      ])
+    );
+    expect(response.body.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "feature_registry",
+          label: "Payouts",
+        }),
+      ])
+    );
+  });
+
   it("refuses prompt injection attempts safely", async () => {
     const response = await request(app)
       .post("/api/akuso/chat")
@@ -362,6 +397,35 @@ describe("Akuso routes", () => {
     );
     expect(Array.isArray(response.body.hints)).toBe(true);
     expect(response.body.hints.length).toBeGreaterThan(0);
+  });
+
+  it("returns purchase and payout hints for the grounded commerce surfaces", async () => {
+    const purchasesHints = await request(app)
+      .get("/api/akuso/hints")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .query({
+        query: "buy a song",
+        currentRoute: "/purchases",
+        mode: "app_help",
+      })
+      .expect(200);
+
+    expect(purchasesHints.body.hints).toEqual(
+      expect.arrayContaining(["How do I buy a song?"])
+    );
+
+    const payoutsHints = await request(app)
+      .get("/api/akuso/hints")
+      .set("Authorization", `Bearer ${creatorToken}`)
+      .query({
+        currentRoute: "/creator/payouts",
+        mode: "app_help",
+      })
+      .expect(200);
+
+    expect(payoutsHints.body.hints).toEqual(
+      expect.arrayContaining(["How do I withdraw earnings?"])
+    );
   });
 
   it("exposes protected Akuso metrics for admins with audit-log access", async () => {

@@ -143,7 +143,12 @@ const inferWritingContentType = (message = "") => {
   return "caption";
 };
 
-const buildPolicyAnswer = ({ policyResult, featureTitle = "" } = {}) => {
+const buildPolicyAnswer = ({
+  policyResult,
+  featureTitle = "",
+  isAuthenticated = false,
+  canNavigate = false,
+} = {}) => {
   if (policyResult.categoryBucket === POLICY_BUCKETS.PROMPT_INJECTION_ATTEMPT) {
     return policyResult.denialReason;
   }
@@ -154,6 +159,12 @@ const buildPolicyAnswer = ({ policyResult, featureTitle = "" } = {}) => {
     return policyResult.denialReason;
   }
   if (policyResult.categoryBucket === POLICY_BUCKETS.SENSITIVE_ACTION_REQUIRES_AUTH) {
+    if (featureTitle && isAuthenticated && canNavigate) {
+      return `${featureTitle} uses a secure in-app flow. Open the protected page to review the details and complete the action yourself.`;
+    }
+    if (featureTitle && isAuthenticated) {
+      return `${featureTitle} is handled through a secure in-app flow. Akuso will not perform the action or reveal private financial data for you.`;
+    }
     return featureTitle
       ? `${featureTitle} is protected. ${policyResult.denialReason}`
       : policyResult.denialReason;
@@ -192,6 +203,83 @@ const resolveFeatureRoute = async (feature = null, user = {}) => {
   }
 
   return feature.routePattern || "";
+};
+
+const buildSensitiveFeatureGuidance = async ({
+  feature = null,
+  policyResult,
+  user = {},
+} = {}) => {
+  if (!feature || policyResult.categoryBucket !== POLICY_BUCKETS.SENSITIVE_ACTION_REQUIRES_AUTH) {
+    return {
+      canNavigate: false,
+      actions: [],
+      suggestions: policyResult.suggestions,
+      details: [],
+      sources: [],
+      cards: [],
+    };
+  }
+
+  const resolvedRoute = policyResult.featureAccessAllowed
+    ? await resolveFeatureRoute(feature, user)
+    : "";
+  const canNavigate = Boolean(resolvedRoute && user?.id);
+
+  return {
+    canNavigate,
+    actions: canNavigate
+      ? [
+          {
+            type: "navigate",
+            label: feature.pageName,
+            target: resolvedRoute,
+          },
+        ]
+      : [],
+    suggestions: mergeSuggestions(
+      policyResult.suggestions,
+      feature.commonQuestions,
+      feature.safeNavigationSteps
+    ),
+    details: [
+      buildAkusoDetail(
+        "Secure next step",
+        feature.safeNavigationSteps?.[0] ||
+          `Open ${feature.pageName} and continue with the built-in protected controls.`
+      ),
+      buildAkusoDetail(
+        "Access",
+        canNavigate
+          ? `Your current session can open ${feature.pageName} safely, but Akuso will still leave the protected action to the secure page.`
+          : feature.cautionNotes?.[0] ||
+              "Use the protected page and complete the action yourself after signing in."
+      ),
+    ].filter(Boolean),
+    sources: [
+      buildAkusoSource({
+        id: `feature:${feature.featureKey}`,
+        type: "feature_registry",
+        label: feature.pageName,
+        summary: feature.assistantExplanation,
+      }),
+    ].filter(Boolean),
+    cards: canNavigate
+      ? [
+          buildAkusoCard({
+            type: "quick-link",
+            title: feature.pageName,
+            subtitle: "Secure in-app flow",
+            description: feature.assistantExplanation,
+            route: resolvedRoute,
+            payload: {
+              destination: feature.featureKey,
+              text: `Open ${feature.pageName}`,
+            },
+          }),
+        ].filter(Boolean)
+      : [],
+  };
 };
 
 const buildAppHelpFallback = async ({ input, context, policyResult, user = {} }) => {
@@ -714,6 +802,16 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
       POLICY_BUCKETS.SENSITIVE_ACTION_REQUIRES_AUTH,
     ].includes(policyResult.categoryBucket)
   ) {
+    const policyFeature =
+      policyResult.classification.feature || context.relevantFeatures[0] || null;
+    const sensitiveGuidance =
+      policyResult.categoryBucket === POLICY_BUCKETS.SENSITIVE_ACTION_REQUIRES_AUTH
+        ? await buildSensitiveFeatureGuidance({
+            feature: policyFeature,
+            policyResult,
+            user: req.user || {},
+          })
+        : null;
     const policyResponse = formatAkusoChatResponse({
       traceId,
       conversationId: memory.conversationId,
@@ -721,17 +819,25 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
       category: policyResult.categoryBucket,
       answer: buildPolicyAnswer({
         policyResult,
-        featureTitle: policyResult.classification.feature?.pageName || "",
+        featureTitle: policyFeature?.pageName || "",
+        isAuthenticated: context.auth.isAuthenticated,
+        canNavigate: Boolean(sensitiveGuidance?.canNavigate),
       }),
-      warnings: policyResult.warnings,
-      suggestions: policyResult.suggestions,
-      actions: [],
-      details: policyResult.suggestions
-        .slice(0, 1)
-        .map((entry) => buildAkusoDetail("Safe next step", entry))
-        .filter(Boolean),
-      sources: [],
-      cards: [],
+      warnings: mergeWarnings(
+        policyResult.warnings,
+        !sensitiveGuidance?.canNavigate ? policyFeature?.cautionNotes || [] : []
+      ),
+      suggestions: sensitiveGuidance?.suggestions || policyResult.suggestions,
+      actions: sensitiveGuidance?.actions || [],
+      details:
+        sensitiveGuidance?.details?.length > 0
+          ? sensitiveGuidance.details
+          : policyResult.suggestions
+              .slice(0, 1)
+              .map((entry) => buildAkusoDetail("Safe next step", entry))
+              .filter(Boolean),
+      sources: sensitiveGuidance?.sources || [],
+      cards: sensitiveGuidance?.cards || [],
       meta: {
         provider: "policy_engine",
         model: "",
@@ -739,7 +845,7 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
         usedModel: false,
         grounded: true,
         safetyLevel: policyResult.safetyLevel,
-        sources: [],
+        sources: summarizeSourceLabels(sensitiveGuidance?.sources || []),
       },
     });
     recordAkusoResponse({

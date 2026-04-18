@@ -129,6 +129,14 @@ describe("Akuso services", () => {
     );
   });
 
+  it("matches grounded purchase help to the purchases feature", () => {
+    expect(findFeatureByIntent("how do i buy a song")).toEqual(
+      expect.objectContaining({
+        featureKey: "purchases",
+      })
+    );
+  });
+
   it("covers grounded settings, creator workspace, and subscription routes", () => {
     expect(findFeatureByRoute("/settings")).toEqual(
       expect.objectContaining({
@@ -173,6 +181,14 @@ describe("Akuso services", () => {
         limit: 20,
       })
     ).toEqual(expect.arrayContaining(["How to subscribe to a creator"]));
+
+    expect(
+      getAkusoHints({
+        currentRoute: "/creator/payouts",
+        user: { id: userId, isCreator: true },
+        limit: 20,
+      })
+    ).toEqual(expect.arrayContaining(["How do I withdraw earnings?"]));
   });
 
   it("uses current page titles to keep hints relevant even before route matching settles", () => {

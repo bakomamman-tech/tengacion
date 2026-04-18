@@ -66,7 +66,8 @@ Execution roadmap for the next build/training cycle:
 - Artist profile now exposes `links` (Spotify, Instagram, Facebook, TikTok, YouTube, Apple Music, Audiomack, Boomplay, Website) plus a `customLinks` array.
 - New protected endpoint `GET /api/artist/:username` and `PUT /api/artist/me` for artists to edit their presence.
 - Frontend adds `GET /artist/:username` route backed by `apps/web/features/creator/ArtistPage`.
-- Storage/payment services scaffolded for AWS S3 + Paystack/Stripe; music/billing endpoints currently return "Not Implemented" responses for future wiring.
+- Active creator commerce now runs through the backend payment, purchase, entitlement, and wallet surfaces.
+- Legacy `apps/api` music/billing scaffolds still exist for compatibility, but they are not the primary production commerce path.
 
 ## 1) Setup
 1. Install dependencies:
@@ -146,8 +147,8 @@ For safety, `resetAdminPassword` is blocked in production unless `ALLOW_ADMIN_PA
 - **Creators:** `GET /api/creators/:creatorId`, `/tracks`, `/books`
 - **Tracks:** `POST /api/tracks`, `GET /api/tracks/:trackId`, `/track stream preview`
 - **Books:** CRUD endpoints for books + chapters
-- **Payments:** `POST /api/payments/init`, `/webhook/paystack`
-- **Billing stubs:** `POST /api/billing/subscribe`, `/api/billing/purchase` (501 responses until wired)
+- **Payments:** `POST /api/payments/paystack/initialize`, `GET /api/payments/paystack/verify/:reference`, `POST /api/payments/paystack/webhook`
+- **Billing stubs:** legacy `POST /api/billing/subscribe`, `/api/billing/purchase` remain scaffold-only compatibility routes
 - **Music stubs:** `POST /api/music/tracks`, `/api/music/tracks/:id/preview`, `/stream`
 - **Purchases / Entitlements:** `GET /api/purchases/my`, `GET /api/purchases/creator/sales`, `GET /api/entitlements/check`
 - **Chat:** `POST /api/chat/messages` (and legacy `/api/messages/*` routes)
@@ -183,7 +184,8 @@ For safety, `resetAdminPassword` is blocked in production unless `ALLOW_ADMIN_PA
 ## Notes
 - Creator-facing media now targets AWS S3 audio storage (`AWS_S3_BUCKET` + `AWS_S3_MEDIA_URL`).
 - Artist links must be HTTPS and sanitized at the backend.
-- PaymentService selects Paystack when currency is NGN and Stripe when USD, but the flows are placeholders until the next sprint.
+- Paystack-backed purchase settlement now feeds creator wallet and finance surfaces after successful verification or webhook confirmation.
+- Legacy `apps/api` billing/music placeholders are still available for compatibility, but the active monetization path lives under `backend/routes/payments.js` and `backend/routes/purchases.js`.
 
 ## Video & Live streaming
 

@@ -58,6 +58,12 @@ const {
   previewCleanup,
   runCleanup,
 } = require("../services/storageMaintenanceService");
+const {
+  DEFAULT_STUCK_PENDING_MINUTES,
+  buildPurchaseAdminDetail,
+  buildTransactionListItem,
+  reconcilePurchase,
+} = require("../services/paymentOpsService");
 const { normalizeMediaValue } = require("../utils/userMedia");
 
 const router = express.Router();
@@ -1221,7 +1227,22 @@ router.get("/transactions", async (req, res) => {
     const limit = clamp(req.query.limit, 1, 100, 20);
     const skip = (page - 1) * limit;
     const status = String(req.query.status || "").trim().toLowerCase();
+    const attention = String(req.query.attention || "").trim().toLowerCase();
+    const olderThanMinutes = clamp(
+      req.query.olderThanMinutes,
+      1,
+      7 * 24 * 60,
+      DEFAULT_STUCK_PENDING_MINUTES
+    );
     const query = status ? { status } : {};
+
+    if (attention === "stuck") {
+      query.status = status || { $in: ["pending", "abandoned"] };
+      query.updatedAt = {
+        $lte: new Date(Date.now() - (olderThanMinutes * 60 * 1000)),
+      };
+    }
+
     const [rows, total] = await Promise.all([
       Purchase.find(query)
         .sort({ paidAt: -1, createdAt: -1 })
@@ -1235,26 +1256,105 @@ router.get("/transactions", async (req, res) => {
       page,
       limit,
       total,
-      transactions: rows.map((row) => ({
-        _id: toId(row._id),
-        userId: toId(row.userId),
-        creatorId: toId(row.creatorId),
-        itemType: row.itemType || "",
-        itemId: toId(row.itemId),
-        amount: Number(row.amount || 0),
-        currency: row.currency || "NGN",
-        status: row.status || "pending",
-        provider: row.provider || "",
-        providerRef: row.providerRef || "",
-        paidAt: row.paidAt || null,
-        createdAt: row.createdAt,
-      })),
+      olderThanMinutes,
+      attention,
+      transactions: rows.map((row) =>
+        buildTransactionListItem({
+          purchase: row,
+          olderThanMinutes,
+        })
+      ),
     });
   } catch (err) {
     console.error("Admin transactions list error:", req.requestId, err);
     return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
   }
 });
+
+router.get("/transactions/:id", async (req, res) => {
+  try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: "Invalid transaction id" });
+    }
+
+    const purchase = await Purchase.findById(req.params.id).lean();
+    if (!purchase) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    const olderThanMinutes = clamp(
+      req.query.olderThanMinutes,
+      1,
+      7 * 24 * 60,
+      DEFAULT_STUCK_PENDING_MINUTES
+    );
+
+    return res.json(await buildPurchaseAdminDetail({ purchase, olderThanMinutes }));
+  } catch (err) {
+    console.error("Admin transaction detail error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
+router.post(
+  "/transactions/:id/reconcile",
+  requireStepUp({ adminOnly: true }),
+  async (req, res) => {
+    try {
+      if (!isValidId(req.params.id)) {
+        return res.status(400).json({ error: "Invalid transaction id" });
+      }
+
+      const purchase = await Purchase.findById(req.params.id);
+      if (!purchase) {
+        return res.status(404).json({ error: "Transaction not found" });
+      }
+
+      const reason = String(req.body?.reason || "admin_reconcile").trim().slice(0, 120);
+      const result = await reconcilePurchase({
+        req,
+        purchase,
+        actorUserId: req.user.id,
+        actorRole: req.user?.role || "admin",
+        source: "admin_reconcile",
+        reason,
+      });
+
+      const updatedPurchase = await Purchase.findById(purchase._id).lean();
+      await writeAuditLog({
+        actorId: req.user.id,
+        action: "purchase_reconcile",
+        targetType: "purchase",
+        targetId: toId(purchase._id),
+        reason,
+        ip: req.ip,
+        userAgent: req.get("user-agent") || "",
+        metadata: {
+          providerRef: purchase.providerRef || "",
+          previousStatus: purchase.status || "",
+          nextStatus: updatedPurchase?.status || purchase.status || "",
+          success: Boolean(result?.success),
+          accessGranted: Boolean(result?.accessGranted),
+        },
+      }).catch(() => null);
+
+      return res.json({
+        success: Boolean(result?.success),
+        accessGranted: Boolean(result?.accessGranted),
+        reason: result?.reason || "",
+        transaction: updatedPurchase
+          ? buildTransactionListItem({
+              purchase: updatedPurchase,
+              olderThanMinutes: DEFAULT_STUCK_PENDING_MINUTES,
+            })
+          : null,
+      });
+    } catch (err) {
+      const code = err?.status || 500;
+      return res.status(code).json({ error: err.message || "Failed to reconcile transaction" });
+    }
+  }
+);
 
 router.get("/finance/creator-earnings", async (req, res) => {
   try {

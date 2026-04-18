@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const request = require("supertest");
 const { MongoMemoryServer } = require("mongodb-memory-server");
+const { STEP_UP_COOKIE_NAME, signStepUpToken } = require("../services/authTokens");
 
 process.env.NODE_ENV = "test";
 process.env.MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/tengacion-paystack-test";
@@ -250,6 +251,47 @@ describe("Paystack payments", () => {
         productId: track._id.toString(),
       })
       .expect(401);
+  });
+
+  test("verify keeps a purchase pending while Paystack is still processing", async () => {
+    mockPaystackResponse({
+      authorization_url: "https://paystack.test/authorize",
+      access_code: "ACCESS_PENDING",
+      reference: "TGN_TRACK_PENDING",
+    });
+
+    const initResponse = await request(app)
+      .post("/api/payments/paystack/initialize")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        productType: "music",
+        productId: track._id.toString(),
+      })
+      .expect(201);
+
+    mockPaystackResponse({
+      id: 1,
+      status: "pending",
+      reference: initResponse.body.reference,
+      amount: 2500 * 100,
+      currency: "NGN",
+    });
+
+    const verifyResponse = await request(app)
+      .get(`/api/payments/paystack/verify/${encodeURIComponent(initResponse.body.reference)}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+
+    expect(verifyResponse.body).toMatchObject({
+      success: false,
+      verified: false,
+      accessGranted: false,
+      status: "pending",
+    });
+
+    const stored = await Purchase.findOne({ providerRef: initResponse.body.reference }).lean();
+    expect(stored.status).toBe("pending");
+    expect(await Entitlement.countDocuments({ buyerId: viewer._id, itemType: "track", itemId: track._id })).toBe(0);
   });
 
   test("verify grants access only when Paystack amount matches the stored amount exactly", async () => {
@@ -539,5 +581,142 @@ describe("Paystack payments", () => {
       .set("x-paystack-signature", "deadbeef")
       .send(payload)
       .expect(401);
+  });
+
+  test("admin transaction detail exposes lifecycle events and wallet settlement", async () => {
+    const admin = await User.findOne({ role: "admin" }).lean();
+    const adminSessionId = new mongoose.Types.ObjectId().toString();
+    await User.updateOne(
+      { _id: admin._id },
+      {
+        $push: {
+          sessions: {
+            sessionId: adminSessionId,
+            createdAt: new Date(),
+            lastSeenAt: new Date(),
+          },
+        },
+      }
+    );
+    const adminToken = jwt.sign(
+      {
+        id: admin._id.toString(),
+        tv: 0,
+        sid: adminSessionId,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "2h" }
+    );
+
+    mockPaystackResponse({
+      authorization_url: "https://paystack.test/authorize",
+      access_code: "ACCESS_TIMELINE",
+      reference: "TGN_TRACK_TIMELINE",
+    });
+
+    const initResponse = await request(app)
+      .post("/api/payments/paystack/initialize")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        productType: "music",
+        productId: track._id.toString(),
+      })
+      .expect(201);
+
+    mockPaystackResponse({
+      id: 1,
+      status: "success",
+      reference: initResponse.body.reference,
+      amount: 2500 * 100,
+      currency: "NGN",
+    });
+
+    await request(app)
+      .get(`/api/payments/paystack/verify/${encodeURIComponent(initResponse.body.reference)}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+
+    const purchase = await Purchase.findOne({ providerRef: initResponse.body.reference }).lean();
+    const detailResponse = await request(app)
+      .get(`/api/admin/transactions/${purchase._id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(detailResponse.body.ops).toMatchObject({
+      entitlementPresent: true,
+      walletSettled: true,
+      needsAttention: false,
+    });
+    expect(detailResponse.body.timeline).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "purchase_checkout_initialized" }),
+        expect.objectContaining({ type: "purchase_verification_succeeded" }),
+        expect.objectContaining({ kind: "wallet_entry", type: "sale_credit" }),
+        expect.objectContaining({ kind: "wallet_entry", type: "platform_fee" }),
+      ])
+    );
+  });
+
+  test("admin reconcile can settle a stuck purchase after step-up", async () => {
+    const admin = await User.findOne({ role: "admin" });
+    const adminToken = await issueSessionToken(admin._id);
+    const adminSession = jwt.verify(adminToken, process.env.JWT_SECRET);
+    const stepUpToken = signStepUpToken({
+      userId: admin._id,
+      sessionId: adminSession.sid,
+    });
+    const stepUpCookie = `${STEP_UP_COOKIE_NAME}=${stepUpToken}`;
+
+    mockPaystackResponse({
+      authorization_url: "https://paystack.test/authorize",
+      access_code: "ACCESS_RECONCILE",
+      reference: "TGN_TRACK_RECONCILE",
+    });
+
+    const initResponse = await request(app)
+      .post("/api/payments/paystack/initialize")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        productType: "music",
+        productId: track._id.toString(),
+      })
+      .expect(201);
+
+    const purchase = await Purchase.findOne({ providerRef: initResponse.body.reference });
+    await Purchase.updateOne(
+      { _id: purchase._id },
+      {
+        $set: {
+          status: "abandoned",
+          updatedAt: new Date(Date.now() - (20 * 60 * 1000)),
+        },
+      }
+    );
+
+    mockPaystackResponse({
+      id: 1,
+      status: "success",
+      reference: initResponse.body.reference,
+      amount: 2500 * 100,
+      currency: "NGN",
+    });
+
+    const reconcileResponse = await request(app)
+      .post(`/api/admin/transactions/${purchase._id}/reconcile`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .set("Cookie", stepUpCookie)
+      .send({ reason: "jest_reconcile" })
+      .expect(200);
+
+    expect(reconcileResponse.body).toMatchObject({
+      success: true,
+      accessGranted: true,
+      transaction: expect.objectContaining({
+        status: "paid",
+      }),
+    });
+
+    expect(await Entitlement.countDocuments({ buyerId: viewer._id, itemType: "track", itemId: track._id })).toBe(1);
+    expect(await WalletEntry.countDocuments({ sourceId: purchase._id })).toBe(2);
   });
 });

@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 const asyncHandler = require("../middleware/asyncHandler");
-const User = require("../models/User");
 const Track = require("../models/Track");
 const Book = require("../models/Book");
 const Album = require("../models/Album");
@@ -10,15 +9,14 @@ const Purchase = require("../models/Purchase");
 const CreatorProfile = require("../models/CreatorProfile");
 const PlayerProgress = require("../models/PlayerProgress");
 const { buildAlbumArchiveUrl } = require("../services/albumArchiveService");
-const { hasCreatorSubscriptionAccess, hasEntitlement } = require("../services/entitlementService");
+const { hasEntitlement } = require("../services/entitlementService");
 const { resolvePurchasableItem } = require("../services/catalogService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const {
-  createProviderReference,
-  initializeTransaction,
-} = require("../services/paymentProviders/paystack");
+  initializePaystackCheckout,
+  toLegacyCheckoutPayload,
+} = require("../services/paymentOpsService");
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
-const { config } = require("../config/env");
 
 const isValidId = (value) => mongoose.Types.ObjectId.isValid(value);
 
@@ -219,101 +217,22 @@ exports.createCheckout = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "itemType and itemId are required" });
   }
 
-  const item = await resolvePurchasableItem(itemType, itemId);
-  if (!item) {
-    return res.status(404).json({ error: "Item not found" });
-  }
-
-  if (item.itemType === "subscription" && String(item.ownerUserId || "") === String(userId)) {
-    return res.status(400).json({ error: "You cannot subscribe to your own creator page" });
-  }
-
-  if (
-    item.itemType === "subscription"
-    && await hasCreatorSubscriptionAccess({ userId, creatorId: item.creatorId })
-  ) {
-    return res.status(400).json({ error: "You already have an active subscription for this creator" });
-  }
-
-  const amount = Number(item.price || 0);
-  if (amount <= 0) {
-    return res.status(400).json({ error: "Item is free and does not require checkout" });
-  }
-
-  const user = await User.findById(userId).select("email").lean();
-  if (!user?.email) {
-    return res.status(400).json({ error: "User email is required for payment" });
-  }
-
-  const providerRef = createProviderReference({
+  const checkout = await initializePaystackCheckout({
+    req,
     userId,
-    itemType: item.itemType,
-    itemId: item.itemId.toString(),
+    productType: itemType,
+    productId: itemId,
+    currencyMode,
+    actorRole: req.user?.role || "user",
   });
 
-  const purchase = await Purchase.create({
-    userId,
-    creatorId: item.creatorId || undefined,
-    itemType: item.itemType,
-    itemId: item.itemId,
-    amount,
-    priceNGN: amount,
-    currency: "NGN",
-    status: "pending",
-    provider: "paystack",
-    providerRef,
-    billingInterval: item.itemType === "subscription" ? "monthly" : "one_time",
-  });
-
-  try {
-    const payment = await initializeTransaction({
-      email: user.email,
-      amountNgn: amount,
-      reference: providerRef,
-      callbackUrl: config.PAYSTACK_CALLBACK_URL || "",
-      metadata: {
-        app: "tengacion",
-        itemType: item.itemType,
-        itemId: item.itemId.toString(),
-        purchaseId: purchase._id.toString(),
-        userId,
-        currencyMode,
-        creatorId: item.creatorId?.toString?.() || "",
-      },
-    });
-
-    return res.status(201).json({
-      purchaseId: purchase._id.toString(),
-      checkoutUrl: payment.authorization_url,
-      reference: payment.reference || providerRef,
-      itemType: item.itemType,
-      itemId: item.itemId.toString(),
-      amount,
-      currency: "NGN",
-      currencyMode: ["NG", "GLOBAL"].includes(currencyMode) ? currencyMode : "NG",
-      supportedPaymentOptions: {
-        NG: ["Paystack Card", "Bank Transfer", "USSD", "Verve", "Flutterwave"],
-        GLOBAL: ["Card", "Apple Pay", "Google Pay", "Stripe", "PayPal"],
-      },
-    });
-  } catch (error) {
-    await Purchase.updateOne({ _id: purchase._id }, { $set: { status: "failed" } });
-    await logAnalyticsEvent({
-      type: "purchase_failed",
-      userId,
-      actorRole: req.user?.role || "user",
-      targetId: purchase._id,
-      targetType: "purchase",
-      contentType: item.itemType,
-      metadata: {
-        creatorId: item.creatorId?.toString?.() || "",
-        itemId: item.itemId.toString(),
-        amount,
-        reason: error.message || "Checkout initialization failed",
-      },
-    }).catch(() => null);
-    return res.status(502).json({ error: error.message || "Checkout initialization failed" });
-  }
+  return res.status(201).json(
+    toLegacyCheckoutPayload({
+      purchase: checkout.purchase,
+      payment: checkout.payment,
+      currencyMode,
+    })
+  );
 });
 
 exports.getMyEntitlements = asyncHandler(async (req, res) => {

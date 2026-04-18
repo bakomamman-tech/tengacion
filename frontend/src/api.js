@@ -1019,14 +1019,29 @@ export const initiatePayment = ({ itemType, itemId, provider = "paystack", retur
   });
 
 export const createCheckout = ({ itemType, itemId, currencyMode = "NG" }) =>
-  request(`${API_BASE}/checkout/create`, {
+  request(`${API_BASE}/payments/initiate`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeaders(),
     },
-    body: JSON.stringify({ itemType, itemId, currencyMode }),
-  });
+    body: JSON.stringify({ itemType, itemId, provider: "paystack", currencyMode }),
+  }).then((response) => ({
+    ...response,
+    checkoutUrl: response?.checkoutUrl || response?.authorization_url || "",
+    purchaseId: response?.purchaseId || response?.purchase?._id || "",
+    itemType: response?.itemType || response?.purchase?.itemType || itemType,
+    itemId: response?.itemId || response?.purchase?.itemId || itemId,
+    amount: Number(response?.amount ?? response?.purchase?.amount ?? 0) || 0,
+    currency: response?.currency || response?.purchase?.currency || "NGN",
+    currencyMode: ["NG", "GLOBAL"].includes(String(currencyMode || "").trim().toUpperCase())
+      ? String(currencyMode || "").trim().toUpperCase()
+      : "NG",
+    supportedPaymentOptions: response?.supportedPaymentOptions || {
+      NG: ["Paystack Card", "Bank Transfer", "USSD", "Verve", "Flutterwave"],
+      GLOBAL: ["Card", "Apple Pay", "Google Pay", "Stripe", "PayPal"],
+    },
+  }));
 
 export const getMyPurchases = () =>
   request(`${API_BASE}/purchases/my`, {
@@ -2385,6 +2400,29 @@ export const adminListTransactions = (params = {}) => {
     headers: getAuthHeaders(),
   });
 };
+
+export const adminGetTransactionDetail = (transactionId, params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(
+    `${API_BASE}/admin/transactions/${encodeURIComponent(transactionId || "")}${query.toString() ? `?${query.toString()}` : ""}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+};
+
+export const adminReconcileTransaction = (transactionId, body = {}) =>
+  request(`${API_BASE}/admin/transactions/${encodeURIComponent(transactionId || "")}/reconcile`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(body || {}),
+  });
 
 export const adminGetCreatorEarningsRepository = (params = {}) => {
   const query = new URLSearchParams();

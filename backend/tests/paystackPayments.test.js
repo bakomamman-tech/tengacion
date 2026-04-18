@@ -314,6 +314,73 @@ describe("Paystack payments", () => {
       pendingBalance: 0,
       withdrawn: 0,
     });
+    expect(dashboardResponse.body.summary.walletBacked).toBe(true);
+    expect(dashboardResponse.body.categories.music.earnings).toBe(1000);
+    expect(dashboardResponse.body.wallet).toMatchObject({
+      walletBacked: true,
+      settlementSource: "wallet",
+      summary: {
+        grossRevenue: 2500,
+        totalEarnings: 1000,
+        availableBalance: 1000,
+        pendingBalance: 0,
+        withdrawn: 0,
+        walletBacked: true,
+      },
+    });
+    expect(dashboardResponse.body.wallet.breakdown).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "track",
+          grossRevenue: 2500,
+          creatorEarnings: 1000,
+          transactions: 1,
+        }),
+      ])
+    );
+    expect(dashboardResponse.body.wallet.recentEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entryType: "sale_credit",
+          amount: 1000,
+          grossAmount: 2500,
+          itemType: "track",
+          providerRef: initResponse.body.reference,
+        }),
+      ])
+    );
+
+    const creatorSalesResponse = await request(app)
+      .get("/api/purchases/creator/sales")
+      .set("Authorization", `Bearer ${creatorToken}`)
+      .expect(200);
+
+    expect(creatorSalesResponse.body).toMatchObject({
+      totalSalesCount: 1,
+      totalRevenue: 2500,
+      totalCreatorEarnings: 1000,
+      availableBalance: 1000,
+      pendingBalance: 0,
+      withdrawn: 0,
+      walletBacked: true,
+      settlementSource: "wallet",
+    });
+    expect(creatorSalesResponse.body.breakdown.track).toMatchObject({
+      count: 1,
+      revenue: 2500,
+      creatorAmount: 1000,
+    });
+    expect(creatorSalesResponse.body.recentSales).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entryType: "sale_credit",
+          amount: 1000,
+          grossAmount: 2500,
+          itemType: "track",
+          providerRef: initResponse.body.reference,
+        }),
+      ])
+    );
   });
 
   test("amount mismatch blocks access", async () => {

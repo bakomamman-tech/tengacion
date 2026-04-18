@@ -6,7 +6,7 @@ const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const User = require("../models/User");
 const Video = require("../models/Video");
-const { buildCreatorWalletSummary } = require("../services/walletService");
+const { buildCreatorWalletSnapshot } = require("../services/walletService");
 const {
   normalizeBooksProfile,
   calculateCreatorProfileCompletionScore,
@@ -19,7 +19,6 @@ const {
   trimCreatorText,
 } = require("../services/creatorProfileService");
 
-const CREATOR_SHARE_RATE = 0.4;
 const CREATOR_NO_STORE_HEADER = "no-store, no-cache, must-revalidate, proxy-revalidate";
 
 const applyNoStore = (res) => {
@@ -276,17 +275,51 @@ const resolveCreatorTypes = ({ profile, content }) => {
   return inferCreatorTypesFromContent(content);
 };
 
-const buildLegacyEarningsSummary = (grossRevenue = 0) => {
-  const totalEarnings = clampMoney(grossRevenue * CREATOR_SHARE_RATE);
-  const withdrawn = clampMoney(totalEarnings * 0.35);
-  const pendingBalance = clampMoney(totalEarnings * 0.25);
-  const availableBalance = Math.max(0, totalEarnings - withdrawn - pendingBalance);
+const maskAccountNumber = (value = "") => {
+  const normalized = String(value || "").replace(/\s+/g, "");
+  if (!normalized) {
+    return "";
+  }
+  if (normalized.length <= 4) {
+    return normalized;
+  }
+  return `${"*".repeat(normalized.length - 4)}${normalized.slice(-4)}`;
+};
+
+const buildPayoutReadiness = (profile = {}) => {
+  const accountNumber = String(profile?.accountNumber || "").trim();
+  const country = String(profile?.country || "").trim();
+  const countryOfResidence = String(profile?.countryOfResidence || "").trim();
+  const active = String(profile?.status || "active").trim().toLowerCase() === "active";
+  const checks = [
+    {
+      key: "account_number",
+      label: "Account number",
+      complete: Boolean(accountNumber),
+    },
+    {
+      key: "country",
+      label: "Country",
+      complete: Boolean(country),
+    },
+    {
+      key: "country_of_residence",
+      label: "Country of residence",
+      complete: Boolean(countryOfResidence),
+    },
+    {
+      key: "creator_status",
+      label: "Creator status",
+      complete: active,
+    },
+  ];
+
   return {
-    grossRevenue: clampMoney(grossRevenue),
-    totalEarnings,
-    availableBalance,
-    pendingBalance,
-    withdrawn,
+    ready: checks.every((entry) => entry.complete),
+    checks,
+    accountNumberMasked: maskAccountNumber(accountNumber),
+    country,
+    countryOfResidence,
   };
 };
 
@@ -407,11 +440,10 @@ const getDashboardPayload = async ({ profile, user }) => {
     .select("itemType itemId amount status paidAt createdAt updatedAt")
     .lean();
 
-  const earningsByKey = new Map();
-  purchases.forEach((entry) => {
-    const key = `${entry.itemType}:${String(entry.itemId || "")}`;
-    earningsByKey.set(key, (earningsByKey.get(key) || 0) + clampMoney(entry.amount));
+  const walletSnapshot = await buildCreatorWalletSnapshot({
+    creatorId: profile._id,
   });
+  const earningsByKey = walletSnapshot.itemEarningsMap || new Map();
 
   const musicTracks = content.musicTracks.map((entry) =>
     serializeTrackItem(entry, earningsByKey.get(`track:${entry._id}`) || 0)
@@ -429,20 +461,14 @@ const getDashboardPayload = async ({ profile, user }) => {
     serializeVideoItem(entry, earningsByKey.get(`video:${entry._id}`) || 0)
   );
 
-  const grossRevenue = purchases.reduce((sum, row) => sum + clampMoney(row.amount), 0);
-  const walletSummary = await buildCreatorWalletSummary({
-    creatorId: profile._id,
-    fallbackGrossRevenue: grossRevenue,
-  });
-  const summary = walletSummary.walletBacked
-    ? {
-        grossRevenue: clampMoney(walletSummary.grossRevenue),
-        totalEarnings: clampMoney(walletSummary.totalEarnings),
-        availableBalance: clampMoney(walletSummary.availableBalance),
-        pendingBalance: clampMoney(walletSummary.pendingBalance),
-        withdrawn: clampMoney(walletSummary.withdrawn),
-      }
-    : buildLegacyEarningsSummary(grossRevenue);
+  const summary = {
+    grossRevenue: clampMoney(walletSnapshot.summary?.grossRevenue),
+    totalEarnings: clampMoney(walletSnapshot.summary?.totalEarnings),
+    availableBalance: clampMoney(walletSnapshot.summary?.availableBalance),
+    pendingBalance: clampMoney(walletSnapshot.summary?.pendingBalance),
+    withdrawn: clampMoney(walletSnapshot.summary?.withdrawn),
+    walletBacked: Boolean(walletSnapshot.walletBacked),
+  };
   const laneCounts = {
     music: {
       uploads: musicTracks.filter((entry) => entry.publishedStatus !== "draft").length
@@ -499,9 +525,15 @@ const getDashboardPayload = async ({ profile, user }) => {
     { pending_scan: 0, passed: 0, flagged: 0, blocked: 0 }
   );
 
+  const { itemEarningsMap: _walletItemEarningsMap, ...walletPayload } = walletSnapshot;
+
   return {
     creatorProfile,
     summary,
+    wallet: {
+      ...walletPayload,
+      payoutReadiness: buildPayoutReadiness(profile),
+    },
     categories: contentCounts,
     content: {
       music: {

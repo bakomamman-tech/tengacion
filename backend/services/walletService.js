@@ -8,6 +8,27 @@ const CREATOR_SHARE_RATE = 0.4;
 const PLATFORM_SHARE_RATE = 0.6;
 const DEFAULT_WALLET_RECONCILIATION_INTERVAL_MS = 60 * 60 * 1000;
 const PLATFORM_WALLET_OWNER_KEY = "tengacion";
+const DEFAULT_CREATOR_WALLET_RECENT_LIMIT = 10;
+
+const WALLET_BREAKDOWN_LABELS = {
+  track: "Music",
+  book: "Books",
+  album: "Albums",
+  video: "Videos",
+  subscription: "Subscriptions",
+  other: "Other sales",
+};
+
+const WALLET_ENTRY_LABELS = {
+  sale_credit: "Sale credited",
+  platform_fee: "Platform fee",
+  pending_hold: "Pending hold",
+  hold_release: "Hold released",
+  payout_debit: "Payout sent",
+  refund_debit: "Refund",
+  adjustment_credit: "Adjustment credit",
+  adjustment_debit: "Adjustment debit",
+};
 
 const toIdString = (value) => {
   if (!value) {
@@ -26,6 +47,35 @@ const roundMoney = (value) => Math.round((Number(value || 0) + Number.EPSILON) *
 const clampMoney = (value) => Math.max(0, roundMoney(value));
 
 const normalizeCurrency = (value = "NGN") => String(value || "NGN").trim().toUpperCase() || "NGN";
+
+const normalizeItemType = (value = "") => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) {
+    return "other";
+  }
+  if (["music", "song", "songs", "track", "tracks"].includes(normalized)) {
+    return "track";
+  }
+  if (["book", "books", "ebook", "ebooks"].includes(normalized)) {
+    return "book";
+  }
+  if (["album", "albums"].includes(normalized)) {
+    return "album";
+  }
+  if (["video", "videos"].includes(normalized)) {
+    return "video";
+  }
+  if (["subscription", "subscriptions", "membership", "fanpass"].includes(normalized)) {
+    return "subscription";
+  }
+  return normalized;
+};
+
+const buildBreakdownLabel = (itemType = "") =>
+  WALLET_BREAKDOWN_LABELS[normalizeItemType(itemType)] || WALLET_BREAKDOWN_LABELS.other;
+
+const buildWalletEntryLabel = (entryType = "") =>
+  WALLET_ENTRY_LABELS[String(entryType || "").trim().toLowerCase()] || "Wallet entry";
 
 const parseBooleanEnv = (value, fallback = true) => {
   if (value == null || value === "") {
@@ -93,6 +143,21 @@ const ensurePlatformWalletAccount = async (currency = "NGN") =>
 
 const computeCreatorShare = (grossAmount) => clampMoney(Number(grossAmount || 0) * CREATOR_SHARE_RATE);
 const computePlatformShare = (grossAmount) => clampMoney(Number(grossAmount || 0) * PLATFORM_SHARE_RATE);
+
+const buildAvailableOnlySummary = ({ grossRevenue = 0, currency = "NGN", walletBacked = false } = {}) => {
+  const normalizedGrossRevenue = clampMoney(grossRevenue);
+  const totalEarnings = computeCreatorShare(normalizedGrossRevenue);
+
+  return {
+    currency: normalizeCurrency(currency),
+    grossRevenue: normalizedGrossRevenue,
+    totalEarnings,
+    availableBalance: totalEarnings,
+    pendingBalance: 0,
+    withdrawn: 0,
+    walletBacked,
+  };
+};
 
 const buildPurchaseSettlementEntryPayloads = async (purchase) => {
   if (!purchase?.creatorId) {
@@ -376,6 +441,229 @@ const buildCreatorWalletSummary = async ({ creatorId, fallbackGrossRevenue = 0, 
   };
 };
 
+const buildWalletRecentEntryFromLedger = (entry = {}) => {
+  const metadata = entry?.metadata || {};
+  const itemType = normalizeItemType(metadata?.itemType || "");
+  const signedAmount =
+    String(entry?.direction || "").trim().toLowerCase() === "debit"
+      ? -clampMoney(entry?.amount)
+      : clampMoney(entry?.amount);
+
+  return {
+    id: toIdString(entry?._id),
+    entryType: entry?.entryType || "",
+    label: buildWalletEntryLabel(entry?.entryType),
+    amount: clampMoney(entry?.amount),
+    signedAmount,
+    grossAmount: clampMoney(entry?.grossAmount),
+    currency: normalizeCurrency(entry?.currency),
+    bucket: entry?.bucket || "available",
+    direction: entry?.direction || "credit",
+    itemType,
+    itemLabel: buildBreakdownLabel(itemType),
+    itemId: toIdString(metadata?.itemId),
+    purchaseId: toIdString(metadata?.purchaseId || entry?.sourceId),
+    provider: metadata?.provider || "",
+    providerRef: entry?.sourceRef || metadata?.providerRef || "",
+    creatorAmount: clampMoney(metadata?.creatorAmount || 0),
+    platformAmount: clampMoney(metadata?.platformAmount || 0),
+    effectiveAt: entry?.effectiveAt || entry?.createdAt || null,
+  };
+};
+
+const buildWalletRecentEntryFromPurchase = (purchase = {}) => {
+  const grossAmount = clampMoney(purchase?.amount);
+  const creatorAmount = computeCreatorShare(grossAmount);
+  const platformAmount = computePlatformShare(grossAmount);
+  const itemType = normalizeItemType(purchase?.itemType || "");
+
+  return {
+    id: toIdString(purchase?._id),
+    entryType: "sale_credit",
+    label: buildWalletEntryLabel("sale_credit"),
+    amount: creatorAmount,
+    signedAmount: creatorAmount,
+    grossAmount,
+    currency: normalizeCurrency(purchase?.currency),
+    bucket: "available",
+    direction: "credit",
+    itemType,
+    itemLabel: buildBreakdownLabel(itemType),
+    itemId: toIdString(purchase?.itemId),
+    purchaseId: toIdString(purchase?._id),
+    provider: purchase?.provider || "",
+    providerRef: purchase?.providerRef || "",
+    creatorAmount,
+    platformAmount,
+    effectiveAt: purchase?.paidAt || purchase?.updatedAt || purchase?.createdAt || null,
+  };
+};
+
+const buildCreatorWalletSnapshot = async ({
+  creatorId,
+  currency = "NGN",
+  recentLimit = DEFAULT_CREATOR_WALLET_RECENT_LIMIT,
+} = {}) => {
+  const normalizedCurrency = normalizeCurrency(currency);
+  const safeRecentLimit =
+    Number.isFinite(Number(recentLimit)) && Number(recentLimit) > 0 ? Math.floor(Number(recentLimit)) : DEFAULT_CREATOR_WALLET_RECENT_LIMIT;
+  const wallet = creatorId
+    ? await WalletAccount.findOne({
+        slug: getCreatorWalletSlug(creatorId, normalizedCurrency),
+      })
+        .select("_id currency")
+        .lean()
+    : null;
+
+  if (wallet?._id) {
+    const walletObjectId = new mongoose.Types.ObjectId(wallet._id);
+    const [summary, recentEntryDocs, breakdownRows, itemRows] = await Promise.all([
+      buildCreatorWalletSummary({
+        creatorId,
+        currency: normalizedCurrency,
+      }),
+      WalletEntry.find({ walletAccountId: walletObjectId })
+        .sort({ effectiveAt: -1, createdAt: -1, _id: -1 })
+        .limit(safeRecentLimit)
+        .select(
+          "_id entryType amount grossAmount currency bucket direction sourceId sourceRef effectiveAt createdAt metadata"
+        )
+        .lean(),
+      WalletEntry.aggregate([
+        {
+          $match: {
+            walletAccountId: walletObjectId,
+            entryType: "sale_credit",
+          },
+        },
+        {
+          $group: {
+            _id: "$metadata.itemType",
+            grossRevenue: { $sum: "$grossAmount" },
+            creatorEarnings: { $sum: "$amount" },
+            transactions: { $sum: 1 },
+          },
+        },
+      ]),
+      WalletEntry.aggregate([
+        {
+          $match: {
+            walletAccountId: walletObjectId,
+            entryType: "sale_credit",
+          },
+        },
+        {
+          $group: {
+            _id: {
+              itemType: "$metadata.itemType",
+              itemId: "$metadata.itemId",
+            },
+            creatorEarnings: { $sum: "$amount" },
+          },
+        },
+      ]),
+    ]);
+
+    if (summary.walletBacked) {
+      const itemEarningsMap = new Map();
+      itemRows.forEach((row) => {
+        const itemType = normalizeItemType(row?._id?.itemType || "");
+        const itemId = toIdString(row?._id?.itemId);
+        if (!itemId) {
+          return;
+        }
+        itemEarningsMap.set(`${itemType}:${itemId}`, clampMoney(row?.creatorEarnings));
+      });
+
+      return {
+        currency: normalizedCurrency,
+        summary: {
+          ...summary,
+          walletBacked: true,
+        },
+        walletBacked: true,
+        settlementSource: "wallet",
+        recentEntries: recentEntryDocs.map(buildWalletRecentEntryFromLedger),
+        breakdown: breakdownRows
+          .map((row) => {
+            const itemType = normalizeItemType(row?._id || "");
+            return {
+              key: itemType,
+              label: buildBreakdownLabel(itemType),
+              grossRevenue: clampMoney(row?.grossRevenue),
+              creatorEarnings: clampMoney(row?.creatorEarnings),
+              transactions: Number(row?.transactions || 0),
+            };
+          })
+          .sort((left, right) => Number(right.creatorEarnings || 0) - Number(left.creatorEarnings || 0)),
+        itemEarningsMap,
+      };
+    }
+  }
+
+  const purchases = creatorId
+    ? await Purchase.find({
+        creatorId,
+        status: "paid",
+        currency: normalizedCurrency,
+      })
+        .sort({ paidAt: -1, createdAt: -1, _id: -1 })
+        .select("_id itemType itemId amount currency provider providerRef paidAt createdAt updatedAt")
+        .lean()
+    : [];
+
+  const grossRevenue = purchases.reduce((sum, row) => sum + clampMoney(row?.amount), 0);
+  const summary = buildAvailableOnlySummary({
+    grossRevenue,
+    currency: normalizedCurrency,
+    walletBacked: false,
+  });
+
+  const itemEarningsMap = new Map();
+  const breakdownMap = new Map();
+
+  purchases.forEach((purchase) => {
+    const itemType = normalizeItemType(purchase?.itemType || "");
+    const itemId = toIdString(purchase?.itemId);
+    const creatorAmount = computeCreatorShare(purchase?.amount);
+    const grossAmount = clampMoney(purchase?.amount);
+
+    if (itemId) {
+      const itemKey = `${itemType}:${itemId}`;
+      itemEarningsMap.set(itemKey, clampMoney((itemEarningsMap.get(itemKey) || 0) + creatorAmount));
+    }
+
+    const bucket = breakdownMap.get(itemType) || {
+      key: itemType,
+      label: buildBreakdownLabel(itemType),
+      grossRevenue: 0,
+      creatorEarnings: 0,
+      transactions: 0,
+    };
+
+    bucket.grossRevenue += grossAmount;
+    bucket.creatorEarnings += creatorAmount;
+    bucket.transactions += 1;
+    breakdownMap.set(itemType, bucket);
+  });
+
+  return {
+    currency: normalizedCurrency,
+    summary,
+    walletBacked: false,
+    settlementSource: "purchase_fallback",
+    recentEntries: purchases.slice(0, safeRecentLimit).map(buildWalletRecentEntryFromPurchase),
+    breakdown: Array.from(breakdownMap.values())
+      .map((row) => ({
+        ...row,
+        grossRevenue: clampMoney(row.grossRevenue),
+        creatorEarnings: clampMoney(row.creatorEarnings),
+      }))
+      .sort((left, right) => Number(right.creatorEarnings || 0) - Number(left.creatorEarnings || 0)),
+    itemEarningsMap,
+  };
+};
+
 const loadCreatorProfileIds = async () => {
   const profiles = await CreatorProfile.find({})
     .select("_id")
@@ -485,6 +773,7 @@ module.exports = {
   ensurePlatformWalletAccount,
   recordPurchaseSettlementEntries,
   buildCreatorWalletSummary,
+  buildCreatorWalletSnapshot,
   reconcilePaidPurchaseWalletEntries,
   startWalletMaintenance,
 };

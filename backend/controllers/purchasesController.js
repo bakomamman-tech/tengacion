@@ -1,11 +1,9 @@
 const mongoose = require("mongoose");
 const asyncHandler = require("../middleware/asyncHandler");
 const Purchase = require("../models/Purchase");
-const Track = require("../models/Track");
-const Book = require("../models/Book");
-const Album = require("../models/Album");
 const { resolvePurchasableItem } = require("../services/catalogService");
 const { hasEntitlement } = require("../services/entitlementService");
+const { buildCreatorWalletSnapshot } = require("../services/walletService");
 
 // TODO(phase2): apply marketplace commission and referral reward splits here.
 
@@ -55,65 +53,49 @@ exports.checkEntitlement = asyncHandler(async (req, res) => {
 
 exports.getCreatorSales = asyncHandler(async (req, res) => {
   const creatorId = req.creatorProfile._id;
+  const walletSnapshot = await buildCreatorWalletSnapshot({
+    creatorId,
+    recentLimit: 30,
+  });
+  const totalSalesCount = walletSnapshot.breakdown.reduce(
+    (sum, row) => sum + Number(row.transactions || 0),
+    0
+  );
 
-  const [tracks, books, albums] = await Promise.all([
-    Track.find({ creatorId }).select("_id").lean(),
-    Book.find({ creatorId }).select("_id").lean(),
-    Album.find({ creatorId, status: "published" }).select("_id").lean(),
-  ]);
-
-  const trackIds = tracks.map((entry) => entry._id);
-  const bookIds = books.map((entry) => entry._id);
-  const albumIds = albums.map((entry) => entry._id);
-
-  const paidQuery = {
-    status: "paid",
-    $or: [
-      { itemType: "track", itemId: { $in: trackIds } },
-      { itemType: "book", itemId: { $in: bookIds } },
-      { itemType: "album", itemId: { $in: albumIds } },
-    ],
+  const seededBreakdown = {
+    track: { count: 0, revenue: 0, creatorAmount: 0 },
+    book: { count: 0, revenue: 0, creatorAmount: 0 },
+    album: { count: 0, revenue: 0, creatorAmount: 0 },
+    video: { count: 0, revenue: 0, creatorAmount: 0 },
+    subscription: { count: 0, revenue: 0, creatorAmount: 0 },
   };
 
-  const [summaryRows, recentSales] = await Promise.all([
-    Purchase.aggregate([
-      { $match: paidQuery },
-      {
-        $group: {
-          _id: "$itemType",
-          count: { $sum: 1 },
-          revenue: { $sum: "$amount" },
-        },
-      },
-    ]),
-    Purchase.find(paidQuery)
-      .sort({ paidAt: -1, createdAt: -1 })
-      .limit(30)
-      .lean(),
-  ]);
+  const breakdown = walletSnapshot.breakdown.reduce((acc, row) => {
+    const key = String(row?.key || "").trim().toLowerCase();
+    if (!acc[key]) {
+      acc[key] = { count: 0, revenue: 0, creatorAmount: 0 };
+    }
 
-  let totalSalesCount = 0;
-  let totalRevenue = 0;
-  const breakdown = {
-    track: { count: 0, revenue: 0 },
-    book: { count: 0, revenue: 0 },
-    album: { count: 0, revenue: 0 },
-  };
-
-  for (const row of summaryRows) {
-    const key = row._id === "book" ? "book" : row._id === "album" ? "album" : "track";
-    const count = Number(row.count) || 0;
-    const revenue = Number(row.revenue) || 0;
-    breakdown[key] = { count, revenue };
-    totalSalesCount += count;
-    totalRevenue += revenue;
-  }
+    acc[key] = {
+      count: Number(row?.transactions || 0),
+      revenue: Number(row?.grossRevenue || 0),
+      creatorAmount: Number(row?.creatorEarnings || 0),
+    };
+    return acc;
+  }, seededBreakdown);
 
   return res.json({
     totalSalesCount,
-    totalRevenue,
-    currency: "NGN",
+    totalRevenue: Number(walletSnapshot.summary?.grossRevenue || 0),
+    totalCreatorEarnings: Number(walletSnapshot.summary?.totalEarnings || 0),
+    availableBalance: Number(walletSnapshot.summary?.availableBalance || 0),
+    pendingBalance: Number(walletSnapshot.summary?.pendingBalance || 0),
+    withdrawn: Number(walletSnapshot.summary?.withdrawn || 0),
+    currency: walletSnapshot.currency || "NGN",
+    walletBacked: Boolean(walletSnapshot.walletBacked),
+    settlementSource: walletSnapshot.settlementSource || "purchase_fallback",
     breakdown,
-    recentSales: recentSales.map(toPurchasePayload),
+    recentSales: walletSnapshot.recentEntries,
+    recentEntries: walletSnapshot.recentEntries,
   });
 });

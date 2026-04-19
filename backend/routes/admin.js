@@ -340,6 +340,7 @@ router.use(auth, requireRole(ADMIN_ROLES));
 router.use("/moderation", require("./moderation"));
 router.use("/news", require("./newsAdmin.routes"));
 router.use("/assistant", require("./adminAssistant"));
+router.use("/marketplace", require("./marketplaceAdminRoutes"));
 
 router.get("/users", async (req, res) => {
   try {

@@ -480,6 +480,13 @@ export default function Navbar({
           handler: () => navigate("/news"),
         },
         {
+          id: "menu-marketplace",
+          label: "Marketplace",
+          description: "Browse trusted products, sellers, and storefronts.",
+          icon: "marketplace",
+          handler: () => navigate("/marketplace"),
+        },
+        {
           id: "menu-reels",
           label: "Reels",
           description: "Watch short-form video highlights.",
@@ -634,6 +641,7 @@ export default function Navbar({
     { id: "news", label: "News", path: "/news" },
     { id: "findCreators", label: "Find Creators", path: "/find-creators" },
     { id: "creator", label: "Creator", path: "/creator" },
+    { id: "marketplace", label: "Marketplace", path: "/marketplace" },
     { id: "gaming", label: "Gaming", path: "/gaming" },
     { id: "reels", label: "Reels", path: "/reels" },
   ];
@@ -849,6 +857,9 @@ export default function Navbar({
     }
     if (tab.id === "news") {
       return location.pathname.startsWith("/news");
+    }
+    if (tab.id === "marketplace") {
+      return location.pathname.startsWith("/marketplace");
     }
     return false;
   };

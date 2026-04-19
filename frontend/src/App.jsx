@@ -70,7 +70,15 @@ const WatchLive = lazy(() => import("./pages/WatchLive"));
 const FriendsPage = lazy(() => import("./pages/FriendsPage"));
 const GamingPage = lazy(() => import("./pages/GamingPage"));
 const ReelsPage = lazy(() => import("./pages/ReelsPage"));
+const MarketplacePage = lazy(() => import("./pages/MarketplacePage"));
+const MarketplaceSellerOnboardingPage = lazy(() => import("./pages/MarketplaceSellerOnboardingPage"));
+const MarketplaceSellerDashboardPage = lazy(() => import("./pages/MarketplaceSellerDashboardPage"));
+const MarketplaceStorefrontPage = lazy(() => import("./pages/MarketplaceStorefrontPage"));
+const MarketplaceProductDetailsPage = lazy(() => import("./pages/MarketplaceProductDetailsPage"));
+const MarketplaceOrdersPage = lazy(() => import("./pages/MarketplaceOrdersPage"));
+const MarketplacePayoutsPage = lazy(() => import("./pages/MarketplacePayoutsPage"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const AdminMarketplacePage = lazy(() => import("./pages/AdminMarketplacePage"));
 const CreatorAccessGate = lazy(() => import("./routes/CreatorAccessGate"));
 const RequireCreatorAuth = lazy(() => import("./routes/RequireCreatorAuth"));
 const RequireCreatorCategory = lazy(() => import("./routes/RequireCreatorCategory"));
@@ -168,6 +176,62 @@ export default function App() {
             element={
               <ProtectedRoute user={user}>
                 <FindCreatorsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/marketplace"
+            element={
+              <ProtectedRoute user={user}>
+                <MarketplacePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/marketplace/become-seller"
+            element={
+              <ProtectedRoute user={user}>
+                <MarketplaceSellerOnboardingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/marketplace/dashboard"
+            element={
+              <ProtectedRoute user={user}>
+                <MarketplaceSellerDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/marketplace/store/:idOrSlug"
+            element={
+              <ProtectedRoute user={user}>
+                <MarketplaceStorefrontPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/marketplace/product/:idOrSlug"
+            element={
+              <ProtectedRoute user={user}>
+                <MarketplaceProductDetailsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/marketplace/orders"
+            element={
+              <ProtectedRoute user={user}>
+                <MarketplaceOrdersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/marketplace/payouts"
+            element={
+              <ProtectedRoute user={user}>
+                <MarketplacePayoutsPage />
               </ProtectedRoute>
             }
           />
@@ -648,6 +712,14 @@ export default function App() {
             element={
               <AdminRoute user={user}>
                 <AdminContentPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/marketplace"
+            element={
+              <AdminRoute user={user}>
+                <AdminMarketplacePage user={user} />
               </AdminRoute>
             }
           />

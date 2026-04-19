@@ -34,6 +34,14 @@ function MenuIcon({ name }) {
           <path d="M12 3.6l2.5 5.1 5.6.8-4 3.9.9 5.5-5-2.6-5 2.6.9-5.5-4-3.9 5.6-.8z" />
         </svg>
       );
+    case "marketplace":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5.2 8.4 6.4 4h11.2l1.2 4.4" />
+          <path d="M4.2 8.4h15.6v3.1a2.8 2.8 0 0 1-2.8 2.8H7a2.8 2.8 0 0 1-2.8-2.8z" />
+          <path d="M6.6 14.4h10.8V20H6.6z" />
+        </svg>
+      );
     case "friends":
       return (
         <svg viewBox="0 0 24 24" aria-hidden="true">

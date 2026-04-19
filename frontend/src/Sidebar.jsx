@@ -200,6 +200,13 @@ export default function Sidebar({ user, openChat, openProfile }) {
         </button>
 
         <button
+          className={sidebarBtnClass(location.pathname.startsWith("/marketplace"))}
+          onClick={() => navigate("/marketplace")}
+        >
+          Marketplace
+        </button>
+
+        <button
           className={sidebarBtnClass(location.pathname === "/notifications")}
           onClick={() => navigate("/notifications")}
         >

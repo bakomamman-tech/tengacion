@@ -118,4 +118,25 @@ describe("Navbar search", () => {
 
     expect(navigateMock).toHaveBeenCalledWith("/profile/jordan.bangoji");
   });
+
+  it("renders the Marketplace navigation tab in the top navbar", () => {
+    render(
+      <MemoryRouter initialEntries={["/home"]}>
+        <Navbar
+          user={{
+            _id: "viewer-1",
+            name: "Viewer User",
+            username: "viewer_user",
+            avatar: "",
+            role: "user",
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("link", { name: /marketplace page/i })).toHaveAttribute(
+      "href",
+      "/marketplace"
+    );
+  });
 });

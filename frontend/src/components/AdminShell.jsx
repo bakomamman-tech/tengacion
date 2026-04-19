@@ -9,6 +9,7 @@ const ADMIN_ITEMS = [
   { key: "content", label: "Content", path: "/admin/content" },
   { key: "messages", label: "Messages", path: "/admin/messages" },
   { key: "campaigns", label: "Campaigns", path: "/admin/campaigns" },
+  { key: "marketplace", label: "Marketplace", path: "/admin/marketplace" },
   { key: "transactions", label: "Transactions", path: "/admin/transactions" },
   { key: "reports", label: "Moderation", path: "/admin/reports" },
   { key: "analytics", label: "Analytics", path: "/admin/analytics" },

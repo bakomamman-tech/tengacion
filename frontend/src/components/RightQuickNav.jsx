@@ -31,6 +31,13 @@ const NAV_ITEMS = [
     icon: "creator",
   },
   {
+    key: "marketplace",
+    label: "Marketplace",
+    path: "/marketplace",
+    description: "Shop trusted sellers and products",
+    icon: "marketplace",
+  },
+  {
     key: "memories",
     label: "Memories",
     path: "/memories",
@@ -107,6 +114,14 @@ function QuickNavIcon({ name }) {
           <circle cx="10" cy="10" r="4.2" />
           <path d="M3.8 20a6.5 6.5 0 0 1 12.4 0" />
           <path d="m15.8 14.2 1.6 1.6 2.7-2.7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "marketplace":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 8.5 6.2 4.2h11.6L19 8.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M4.2 8.5h15.6v3.1a2.7 2.7 0 0 1-2.7 2.7H6.9a2.7 2.7 0 0 1-2.7-2.7z" />
+          <path d="M6.4 14.4h11.2V20H6.4z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
         </svg>
       );
     case "memories":

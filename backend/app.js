@@ -73,6 +73,7 @@ app.use("/api", (req, res, next) => {
   if (
     req.path.startsWith("/media") ||
     req.path.startsWith("/payments/webhook") ||
+    req.path.startsWith("/marketplace/orders/webhook") ||
     req.path.startsWith("/assistant") ||
     req.path.startsWith("/akuso")
   ) {
@@ -102,7 +103,8 @@ app.use(
       const normalizedUrl = String(req.originalUrl || "").split("?")[0];
       if (
         normalizedUrl === "/api/payments/webhook/paystack" ||
-        normalizedUrl === "/api/payments/paystack/webhook"
+        normalizedUrl === "/api/payments/paystack/webhook" ||
+        normalizedUrl === "/api/marketplace/orders/webhook/paystack"
       ) {
         req.rawBody = buf.toString("utf8");
       }
@@ -162,6 +164,7 @@ app.use("/api/rooms", require("./routes/rooms"));
 app.use("/api/checkin", require("./routes/checkin"));
 app.use("/api/discovery", require("./routes/discovery"));
 app.use("/api/news", require("./routes/news.routes"));
+app.use("/api/marketplace", require("./routes/marketplaceRoutes"));
 
 app.use((req, res, next) => {
   if (req.path.startsWith("/api")) {

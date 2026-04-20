@@ -1,6 +1,6 @@
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -138,5 +138,68 @@ describe("Navbar search", () => {
       "href",
       "/marketplace"
     );
+  });
+
+  it("shows desktop navigation toggles when the top tabs overflow", async () => {
+    const user = userEvent.setup();
+
+    const { container } = render(
+      <MemoryRouter initialEntries={["/home"]}>
+        <Navbar
+          user={{
+            _id: "viewer-1",
+            name: "Viewer User",
+            username: "viewer_user",
+            avatar: "",
+            role: "user",
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    const tabScroller = container.querySelector(".nav-pill-group");
+    expect(tabScroller).toBeTruthy();
+
+    let scrollLeft = 0;
+
+    Object.defineProperty(tabScroller, "clientWidth", {
+      configurable: true,
+      value: 320,
+    });
+
+    Object.defineProperty(tabScroller, "scrollWidth", {
+      configurable: true,
+      value: 920,
+    });
+
+    Object.defineProperty(tabScroller, "scrollLeft", {
+      configurable: true,
+      get: () => scrollLeft,
+      set: (value) => {
+        scrollLeft = value;
+      },
+    });
+
+    const scrollBy = vi.fn(({ left = 0 }) => {
+      scrollLeft += left;
+      tabScroller.dispatchEvent(new Event("scroll"));
+    });
+
+    Object.defineProperty(tabScroller, "scrollBy", {
+      configurable: true,
+      value: scrollBy,
+    });
+
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /show more navigation tabs/i })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /show more navigation tabs/i }));
+
+    expect(scrollBy).toHaveBeenCalled();
   });
 });

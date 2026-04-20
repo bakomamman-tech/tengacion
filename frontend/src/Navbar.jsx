@@ -116,6 +116,14 @@ function AccountMenuRow({ item, onClick }) {
   );
 }
 
+function prefersReducedMotion() {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
 export default function Navbar({
   user,
   onLogout,
@@ -155,6 +163,13 @@ export default function Navbar({
   const messengerButtonRef = useRef(null);
   const notificationMenuRef = useRef(null);
   const notificationButtonRef = useRef(null);
+  const navTabsRef = useRef(null);
+
+  const [navOverflow, setNavOverflow] = useState({
+    hasOverflow: false,
+    canScrollLeft: false,
+    canScrollRight: false,
+  });
 
   useEffect(() => {
     const close = (event) => {
@@ -222,6 +237,51 @@ export default function Navbar({
     }
   }, [showMenu]);
 
+  const updateNavOverflow = useCallback(() => {
+    const container = navTabsRef.current;
+    if (!container) {
+      return;
+    }
+
+    const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+    const nextState = {
+      hasOverflow: maxScrollLeft > 10,
+      canScrollLeft: container.scrollLeft > 10,
+      canScrollRight: container.scrollLeft < maxScrollLeft - 10,
+    };
+
+    setNavOverflow((current) => {
+      if (
+        current.hasOverflow === nextState.hasOverflow &&
+        current.canScrollLeft === nextState.canScrollLeft &&
+        current.canScrollRight === nextState.canScrollRight
+      ) {
+        return current;
+      }
+      return nextState;
+    });
+  }, []);
+
+  const scrollNavTabs = useCallback(
+    (direction) => {
+      const container = navTabsRef.current;
+      if (!container) {
+        return;
+      }
+
+      const travel = Math.max(container.clientWidth * 0.68, 220) * direction;
+      const behavior = prefersReducedMotion() ? "auto" : "smooth";
+
+      if (typeof container.scrollBy === "function") {
+        container.scrollBy({ left: travel, behavior });
+      } else {
+        container.scrollLeft += travel;
+        updateNavOverflow();
+      }
+    },
+    [updateNavOverflow]
+  );
+
   const performSearch = useCallback(async (value) => {
     if (!value.trim()) {
       setResults([]);
@@ -256,6 +316,67 @@ export default function Navbar({
     const timeout = setTimeout(() => performSearch(query), 250);
     return () => clearTimeout(timeout);
   }, [query, performSearch]);
+
+  useEffect(() => {
+    const container = navTabsRef.current;
+    if (!container) {
+      return undefined;
+    }
+
+    const handleResize = () => updateNavOverflow();
+
+    updateNavOverflow();
+    container.addEventListener("scroll", handleResize, { passive: true });
+
+    let resizeObserver = null;
+
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(handleResize);
+      resizeObserver.observe(container);
+      if (container.parentElement) {
+        resizeObserver.observe(container.parentElement);
+      }
+    } else if (typeof window !== "undefined") {
+      window.addEventListener("resize", handleResize);
+    }
+
+    return () => {
+      container.removeEventListener("scroll", handleResize);
+      resizeObserver?.disconnect();
+      if (!resizeObserver && typeof window !== "undefined") {
+        window.removeEventListener("resize", handleResize);
+      }
+    };
+  }, [updateNavOverflow]);
+
+  useEffect(() => {
+    const container = navTabsRef.current;
+    if (!container) {
+      return undefined;
+    }
+
+    const activeTab = container.querySelector(".nav-tab.active, .pillLink.active");
+    if (activeTab && typeof activeTab.scrollIntoView === "function") {
+      activeTab.scrollIntoView({
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
+    }
+
+    if (typeof window === "undefined" || typeof window.requestAnimationFrame !== "function") {
+      updateNavOverflow();
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      updateNavOverflow();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [location.pathname, location.search, updateNavOverflow]);
 
   const avatar = resolveImage(user?.avatar) || fallbackAvatar(user?.name);
   const role = String(user?.role || "").toLowerCase();
@@ -954,28 +1075,76 @@ export default function Navbar({
       </div>
 
       {user && (
-        <nav className="nav-center topNavCenter" aria-label="Main navigation">
-          <div className="nav-pill-group pillGroup">
-            {navTabs.map((tab) => (
-              <NavLink
-                key={tab.id}
-                to={tab.path}
-                end
-                aria-label={`${tab.label} page`}
-                className={({ isActive }) =>
-                  `nav-tab pillLink ${isNavTabActive(tab, isActive) ? "active" : ""}`
-                }
-                onKeyDown={(event) => {
-                  if (event.key === " ") {
-                    event.preventDefault();
-                    event.currentTarget.click();
+        <nav className="nav-center topNavCenter nav-center--carousel" aria-label="Main navigation">
+          {navOverflow.hasOverflow ? (
+            <button
+              type="button"
+              className={`nav-tab-toggle nav-tab-toggle--left${
+                navOverflow.canScrollLeft ? " is-active" : ""
+              }`}
+              onClick={() => scrollNavTabs(-1)}
+              disabled={!navOverflow.canScrollLeft}
+              aria-label="Show earlier navigation tabs"
+            >
+              <BackIcon />
+            </button>
+          ) : null}
+
+          <div className={`nav-pill-shell${navOverflow.hasOverflow ? " has-overflow" : ""}`}>
+            {navOverflow.hasOverflow ? (
+              <span
+                className={`nav-pill-fade nav-pill-fade--left${
+                  navOverflow.canScrollLeft ? " is-visible" : ""
+                }`}
+                aria-hidden="true"
+              />
+            ) : null}
+
+            <div className="nav-pill-group pillGroup" ref={navTabsRef}>
+              {navTabs.map((tab) => (
+                <NavLink
+                  key={tab.id}
+                  to={tab.path}
+                  end
+                  aria-label={`${tab.label} page`}
+                  className={({ isActive }) =>
+                    `nav-tab pillLink ${isNavTabActive(tab, isActive) ? "active" : ""}`
                   }
-                }}
-              >
-                {tab.label}
-              </NavLink>
-            ))}
+                  onKeyDown={(event) => {
+                    if (event.key === " ") {
+                      event.preventDefault();
+                      event.currentTarget.click();
+                    }
+                  }}
+                >
+                  {tab.label}
+                </NavLink>
+              ))}
+            </div>
+
+            {navOverflow.hasOverflow ? (
+              <span
+                className={`nav-pill-fade nav-pill-fade--right${
+                  navOverflow.canScrollRight ? " is-visible" : ""
+                }`}
+                aria-hidden="true"
+              />
+            ) : null}
           </div>
+
+          {navOverflow.hasOverflow ? (
+            <button
+              type="button"
+              className={`nav-tab-toggle nav-tab-toggle--right${
+                navOverflow.canScrollRight ? " is-active" : ""
+              }`}
+              onClick={() => scrollNavTabs(1)}
+              disabled={!navOverflow.canScrollRight}
+              aria-label="Show more navigation tabs"
+            >
+              <ChevronRightIcon />
+            </button>
+          ) : null}
         </nav>
       )}
 

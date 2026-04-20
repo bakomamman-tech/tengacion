@@ -2102,6 +2102,146 @@ textarea:focus {
   overflow: visible;
 }
 
+.nav-center--carousel,
+.topNavCenter.nav-center--carousel {
+  position: relative;
+  width: 100%;
+}
+
+.nav-pill-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.nav-pill-shell.has-overflow {
+  padding-inline: 48px;
+}
+
+.nav-pill-shell .nav-pill-group,
+.nav-pill-shell .pillGroup {
+  width: 100%;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+}
+
+.nav-pill-shell:not(.has-overflow) .nav-pill-group,
+.nav-pill-shell:not(.has-overflow) .pillGroup {
+  justify-content: center;
+}
+
+.nav-pill-shell.has-overflow .nav-pill-group,
+.nav-pill-shell.has-overflow .pillGroup {
+  justify-content: flex-start;
+}
+
+.nav-pill-shell .nav-tab,
+.nav-pill-shell .pillLink {
+  scroll-snap-align: center;
+}
+
+.nav-tab-toggle {
+  position: absolute;
+  top: 50%;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, var(--brand) 28%);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: color-mix(in srgb, var(--brand-strong) 58%, var(--text) 42%);
+  box-shadow: 0 12px 26px rgba(15, 31, 56, 0.12);
+  cursor: pointer;
+  transform: translateY(-50%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.nav-tab-toggle--left {
+  left: 8px;
+}
+
+.nav-tab-toggle--right {
+  right: 8px;
+}
+
+.nav-tab-toggle.is-active:hover:not(:disabled) {
+  transform: translateY(-50%) scale(1.04);
+  background: color-mix(in srgb, var(--surface) 96%, var(--brand) 4%);
+  box-shadow: 0 14px 28px rgba(15, 31, 56, 0.16);
+}
+
+.nav-tab-toggle:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px color-mix(in srgb, var(--brand) 28%, transparent),
+    0 12px 26px rgba(15, 31, 56, 0.12);
+}
+
+.nav-tab-toggle:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: 0 8px 20px rgba(15, 31, 56, 0.08);
+}
+
+.nav-tab-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nav-tab-toggle svg path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-pill-fade {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  z-index: 3;
+  width: 64px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.nav-pill-fade--left {
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--surface) 96%, transparent) 18%,
+    transparent 100%
+  );
+}
+
+.nav-pill-fade--right {
+  right: 0;
+  background: linear-gradient(
+    270deg,
+    color-mix(in srgb, var(--surface) 96%, transparent) 18%,
+    transparent 100%
+  );
+}
+
+.nav-pill-fade.is-visible {
+  opacity: 1;
+}
+
 .nav-pill-group,
 .pillGroup {
   display: flex;
@@ -20240,6 +20380,15 @@ html.dark-mode .password-toggle-btn:hover {
     order: 3;
     flex: 1 0 100%;
     justify-content: center;
+  }
+
+  .nav-pill-shell.has-overflow {
+    padding-inline: 0;
+  }
+
+  .nav-tab-toggle,
+  .nav-pill-fade {
+    display: none;
   }
 
   .nav-pill-group {

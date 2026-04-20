@@ -137,6 +137,11 @@ export default function MarketplaceSellerOnboardingPage() {
       user={user}
       title="Marketplace Registration"
       subtitle="Register your seller profile with Tengacion account details, payout information, verified addresses, and your CAC document."
+      showAppSidebar={false}
+      showRightRail={false}
+      showHero={false}
+      shellClassName="quick-access-shell--marketplace"
+      mainClassName="quick-access-main--marketplace"
     >
       <div className="marketplace-page marketplace-registration-page">
         {seller ? <SellerStatusBanner seller={seller} /> : null}

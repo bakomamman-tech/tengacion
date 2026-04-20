@@ -7477,8 +7477,32 @@ html.dark-mode .create-menu-empty {
   grid-template-columns: 280px minmax(0, 1fr) 390px;
 }
 
+.quick-access-shell--solo {
+  width: min(1520px, 100%);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.quick-access-shell--marketplace {
+  width: min(1560px, 100%);
+}
+
+.quick-access-shell--no-right {
+  width: min(1500px, 100%);
+  grid-template-columns: 280px minmax(0, 1fr);
+}
+
+.quick-access-shell--no-left {
+  width: min(1500px, 100%);
+  grid-template-columns: minmax(0, 1fr) 390px;
+}
+
 .quick-access-main {
   gap: 12px;
+}
+
+.quick-access-main--marketplace {
+  gap: 22px;
 }
 
 .quick-access-hero {
@@ -17892,6 +17916,15 @@ html.dark-mode .password-toggle-btn:hover {
   border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow: 0 10px 20px rgba(3, 16, 10, 0.14);
   position: relative;
+}
+
+.messenger-dock--floating {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  margin-top: 0;
+  width: min(320px, calc(100vw - 32px));
+  box-shadow: 0 18px 36px rgba(17, 24, 39, 0.16);
 }
 
 .feature-item-accent::before {

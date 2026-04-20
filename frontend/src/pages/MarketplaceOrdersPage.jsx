@@ -100,6 +100,11 @@ export default function MarketplaceOrdersPage() {
       user={user}
       title="Marketplace Orders"
       subtitle="Track every marketplace purchase, payment status, and seller-side fulfillment update in one place."
+      showAppSidebar={false}
+      showRightRail={false}
+      showHero={false}
+      shellClassName="quick-access-shell--marketplace"
+      mainClassName="quick-access-main--marketplace"
     >
       <div className="marketplace-page">
         <section className="marketplace-panel">

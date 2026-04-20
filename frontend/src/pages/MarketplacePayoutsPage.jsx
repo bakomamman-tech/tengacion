@@ -35,6 +35,11 @@ export default function MarketplacePayoutsPage() {
       user={user}
       title="Marketplace Payouts"
       subtitle="Review marketplace sales totals, fees retained by Tengacion, and every payout record tied to a paid order."
+      showAppSidebar={false}
+      showRightRail={false}
+      showHero={false}
+      shellClassName="quick-access-shell--marketplace"
+      mainClassName="quick-access-main--marketplace"
     >
       <div className="marketplace-page">
         <PayoutSummaryCards summary={payload.summary || {}} />

@@ -1,6 +1,6 @@
 .marketplace-page {
   display: grid;
-  gap: 22px;
+  gap: 26px;
 }
 
 .marketplace-shell-card,
@@ -568,7 +568,8 @@
 }
 
 .marketplace-facebook-shell {
-  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  grid-template-columns: minmax(290px, 320px) minmax(0, 1fr);
+  gap: 28px;
   align-items: start;
 }
 
@@ -724,7 +725,7 @@
 
 .marketplace-facebook-feed {
   display: grid;
-  gap: 18px;
+  gap: 24px;
 }
 
 .marketplace-facebook-banner {
@@ -755,8 +756,8 @@
 
 .marketplace-facebook-highlight-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.82fr);
+  gap: 22px;
 }
 
 .marketplace-facebook-trust,
@@ -806,8 +807,8 @@
 }
 
 .marketplace-facebook-feed .marketplace-product-grid {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
 }
 
 .marketplace-facebook-feed .marketplace-product-card {
@@ -865,13 +866,13 @@
 }
 
 .marketplace-registration-page {
-  gap: 18px;
+  gap: 24px;
 }
 
 .marketplace-registration-layout {
   display: grid;
   grid-template-columns: minmax(290px, 0.9fr) minmax(0, 1.1fr);
-  gap: 18px;
+  gap: 24px;
   align-items: start;
 }
 

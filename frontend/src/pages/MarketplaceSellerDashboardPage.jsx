@@ -94,6 +94,11 @@ export default function MarketplaceSellerDashboardPage() {
       user={user}
       title="Marketplace Dashboard"
       subtitle="Manage your storefront, publish listings, review orders, and follow your payout history from one seller workspace."
+      showAppSidebar={false}
+      showRightRail={false}
+      showHero={false}
+      shellClassName="quick-access-shell--marketplace"
+      mainClassName="quick-access-main--marketplace"
     >
       <div className="marketplace-page">
         {loading ? <div className="marketplace-loading-state">Loading marketplace dashboard...</div> : null}

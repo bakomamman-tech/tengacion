@@ -140,6 +140,11 @@ export default function MarketplacePage() {
       user={user}
       title="Marketplace"
       subtitle="Discover approved sellers, browse location-aware listings, and open your own storefront from the same marketplace."
+      showAppSidebar={false}
+      showRightRail={false}
+      showHero={false}
+      shellClassName="quick-access-shell--marketplace"
+      mainClassName="quick-access-main--marketplace"
     >
       <div className="marketplace-page marketplace-facebook-shell">
         <aside className="marketplace-facebook-sidebar marketplace-shell-card">

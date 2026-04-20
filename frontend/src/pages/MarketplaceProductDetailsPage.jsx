@@ -92,6 +92,11 @@ export default function MarketplaceProductDetailsPage() {
       user={user}
       title="Marketplace Product"
       subtitle="Review item details, choose delivery, and complete payment through Tengacion's Paystack checkout."
+      showAppSidebar={false}
+      showRightRail={false}
+      showHero={false}
+      shellClassName="quick-access-shell--marketplace"
+      mainClassName="quick-access-main--marketplace"
     >
       <div className="marketplace-page">
         {loading ? <div className="marketplace-loading-state">Loading product details...</div> : null}

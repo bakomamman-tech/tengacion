@@ -45,6 +45,11 @@ export default function MarketplaceStorefrontPage() {
       user={user}
       title="Marketplace Store"
       subtitle="Visit approved Tengacion storefronts and browse every live product in one place."
+      showAppSidebar={false}
+      showRightRail={false}
+      showHero={false}
+      shellClassName="quick-access-shell--marketplace"
+      mainClassName="quick-access-main--marketplace"
     >
       <div className="marketplace-page">
         {loading ? <div className="marketplace-loading-state">Loading storefront...</div> : null}

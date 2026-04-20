@@ -17,8 +17,8 @@ export default function MarketplaceHero({
           </p>
 
           <div className="marketplace-cta-row">
-            <Link className="marketplace-primary-btn" to="/marketplace/become-seller">
-              Become a Seller
+            <Link className="marketplace-primary-btn" to="/marketplace/register">
+              Seller registration
             </Link>
             <Link className="marketplace-secondary-btn" to="/marketplace/orders">
               View Orders
@@ -45,16 +45,16 @@ export default function MarketplaceHero({
           <span className="marketplace-hero__feature-badge">Service charge included</span>
           <h3>Buyers see one clean price. Sellers get transparent settlement.</h3>
           <p>
-            Tengacion retains a flat ₦300 inside each successful purchase while the
+            Tengacion retains a flat NGN 300 inside each successful purchase while the
             seller receives the remainder. No surprise fee gets added at checkout.
           </p>
           <div className="marketplace-summary-grid">
             <div className="marketplace-summary-card">
-              <strong>₦5,000</strong>
+              <strong>NGN 5,000</strong>
               <span>Buyer pays listed price</span>
             </div>
             <div className="marketplace-summary-card">
-              <strong>₦4,700</strong>
+              <strong>NGN 4,700</strong>
               <span>Seller receivable after platform fee</span>
             </div>
           </div>

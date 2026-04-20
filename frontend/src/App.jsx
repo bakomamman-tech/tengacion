@@ -196,6 +196,14 @@ export default function App() {
             }
           />
           <Route
+            path="/marketplace/register"
+            element={
+              <ProtectedRoute user={user}>
+                <MarketplaceSellerOnboardingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/marketplace/dashboard"
             element={
               <ProtectedRoute user={user}>

@@ -12,6 +12,10 @@ export default function ProductCard({
 }) {
   const image = resolveImage(product?.primaryImage?.url || product?.primaryImage?.secureUrl || "");
   const isPublished = Boolean(product?.isPublished);
+  const createdAtMs = Date.parse(product?.createdAt || "");
+  const isFreshListing = Number.isFinite(createdAtMs) && Date.now() - createdAtMs < 1000 * 60 * 60 * 48;
+  const sellerName = product?.seller?.storeName || "Marketplace seller";
+  const locationLabel = product?.location?.label || product?.state || "Location set by seller";
 
   return (
     <article className="marketplace-product-card">
@@ -19,24 +23,23 @@ export default function ProductCard({
         className="marketplace-product-card__image"
         to={`/marketplace/product/${encodeURIComponent(product?.slug || product?._id || "")}`}
       >
+        {isFreshListing ? <span className="marketplace-product-card__flag">Just listed</span> : null}
         {image ? <img src={image} alt={product?.title || "Marketplace product"} /> : null}
       </Link>
 
       <div className="marketplace-product-card__body">
         <div className="marketplace-card-meta">
           <span className="marketplace-category-pill">{product?.category || "General"}</span>
-          <span>{product?.location?.label || product?.state || "Location set by seller"}</span>
+          <span>{locationLabel}</span>
         </div>
 
         <div>
           <h3>{product?.title || "Untitled listing"}</h3>
-          <p className="marketplace-muted">
-            {product?.seller?.storeName || "Marketplace seller"}
-          </p>
+          <p className="marketplace-muted marketplace-product-card__seller">{sellerName}</p>
         </div>
 
         <div className="marketplace-product-card__price">
-          ₦{Number(product?.price || 0).toLocaleString()}
+          NGN {Number(product?.price || 0).toLocaleString()}
         </div>
 
         <div className="marketplace-pill-row">
@@ -70,9 +73,12 @@ export default function ProductCard({
             </div>
           </>
         ) : (
-          <div className="marketplace-card-meta">
+          <div className="marketplace-card-meta marketplace-product-card__footer">
             <span>{product?.condition || "new"}</span>
-            <Link className="marketplace-link" to={`/marketplace/product/${encodeURIComponent(product?.slug || product?._id || "")}`}>
+            <Link
+              className="marketplace-link"
+              to={`/marketplace/product/${encodeURIComponent(product?.slug || product?._id || "")}`}
+            >
               Open product
             </Link>
           </div>

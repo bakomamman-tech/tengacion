@@ -102,8 +102,8 @@ export default function MarketplaceSellerDashboardPage() {
           <div className="marketplace-empty-state">
             <strong>You are not a marketplace seller yet</strong>
             <p>Complete seller onboarding first so Tengacion can review and approve your storefront.</p>
-            <Link className="marketplace-primary-btn" to="/marketplace/become-seller">
-              Start seller onboarding
+            <Link className="marketplace-primary-btn" to="/marketplace/register">
+              Start seller registration
             </Link>
           </div>
         ) : null}
@@ -120,7 +120,7 @@ export default function MarketplaceSellerDashboardPage() {
                   Listings, order management, and payout history unlock after Tengacion approves your seller profile.
                 </p>
               </div>
-              <Link className="marketplace-primary-btn" to="/marketplace/become-seller">
+              <Link className="marketplace-primary-btn" to="/marketplace/register">
                 Open seller form
               </Link>
             </div>

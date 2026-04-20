@@ -566,3 +566,397 @@
     padding: 18px;
   }
 }
+
+.marketplace-facebook-shell {
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.marketplace-facebook-sidebar {
+  position: sticky;
+  top: 90px;
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 250, 255, 0.98));
+}
+
+.marketplace-facebook-sidebar__header {
+  display: grid;
+  gap: 10px;
+}
+
+.marketplace-facebook-sidebar__header h2,
+.marketplace-registration-hero h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.8rem, 2.2vw, 2.5rem);
+  color: #10253a;
+}
+
+.marketplace-facebook-search {
+  display: grid;
+  gap: 10px;
+}
+
+.marketplace-facebook-search input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 48, 70, 0.08);
+  background: #eef3f8;
+  color: #173247;
+  font: inherit;
+}
+
+.marketplace-facebook-nav {
+  display: grid;
+  gap: 8px;
+}
+
+.marketplace-facebook-nav__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #10253a;
+  text-align: left;
+  text-decoration: none;
+}
+
+.marketplace-facebook-nav__item:hover {
+  background: #eef4fb;
+  border-color: rgba(18, 52, 74, 0.08);
+}
+
+.marketplace-facebook-nav__item strong,
+.marketplace-facebook-seller-row strong,
+.marketplace-registration-checklist__item strong {
+  display: block;
+  color: #10253a;
+}
+
+.marketplace-facebook-nav__item small,
+.marketplace-facebook-seller-row > div span,
+.marketplace-registration-account-card span {
+  display: block;
+  color: #5b7283;
+}
+
+.marketplace-facebook-nav__icon,
+.marketplace-facebook-seller-row__rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #0f4e6f;
+  background: #eaf3ff;
+}
+
+.marketplace-facebook-sidebar__cta {
+  display: grid;
+  gap: 10px;
+}
+
+.marketplace-facebook-sidebar__cta .marketplace-primary-btn,
+.marketplace-facebook-sidebar__cta .marketplace-secondary-btn {
+  justify-content: center;
+  text-decoration: none;
+}
+
+.marketplace-facebook-sidebar__card,
+.marketplace-registration-note,
+.marketplace-registration-checklist__item,
+.marketplace-registration-account-card {
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(16, 48, 70, 0.08);
+  background: rgba(246, 250, 254, 0.94);
+}
+
+.marketplace-facebook-sidebar__card {
+  display: grid;
+  gap: 12px;
+}
+
+.marketplace-facebook-sidebar__card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.marketplace-facebook-category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.marketplace-facebook-category-chip {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(13, 74, 108, 0.12);
+  background: #fff;
+  color: #12344a;
+  font-weight: 700;
+}
+
+.marketplace-facebook-category-chip.is-active,
+.marketplace-facebook-category-chip:hover {
+  background: #dfeeff;
+  color: #0f4e6f;
+}
+
+.marketplace-facebook-feed {
+  display: grid;
+  gap: 18px;
+}
+
+.marketplace-facebook-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-end;
+  padding: 24px 26px;
+  background:
+    radial-gradient(circle at top right, rgba(73, 129, 255, 0.14), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 255, 0.98));
+}
+
+.marketplace-facebook-banner__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.marketplace-facebook-banner__meta span {
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: #eef4fb;
+  color: #23445b;
+  font-weight: 700;
+}
+
+.marketplace-facebook-highlight-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+  gap: 18px;
+}
+
+.marketplace-facebook-trust,
+.marketplace-facebook-sellers,
+.marketplace-facebook-filters {
+  padding: 22px;
+}
+
+.marketplace-facebook-seller-list {
+  display: grid;
+  gap: 12px;
+}
+
+.marketplace-facebook-seller-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(16, 48, 70, 0.08);
+}
+
+.marketplace-facebook-seller-row:last-child {
+  border-bottom: 0;
+}
+
+.marketplace-facebook-seller-row > div {
+  display: grid;
+  gap: 4px;
+}
+
+.marketplace-facebook-filters {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.98));
+}
+
+.marketplace-filter-grid--secondary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.marketplace-filter-grid--secondary .marketplace-filter:first-child {
+  grid-column: span 2;
+}
+
+.marketplace-facebook-section {
+  padding: 22px;
+}
+
+.marketplace-facebook-feed .marketplace-product-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.marketplace-facebook-feed .marketplace-product-card {
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 16px 36px rgba(15, 31, 44, 0.08);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.marketplace-facebook-feed .marketplace-product-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 24px 44px rgba(15, 31, 44, 0.14);
+}
+
+.marketplace-facebook-feed .marketplace-product-card__image {
+  aspect-ratio: 1 / 0.98;
+  overflow: hidden;
+}
+
+.marketplace-facebook-feed .marketplace-product-card__body {
+  gap: 10px;
+  padding: 14px 16px 16px;
+}
+
+.marketplace-facebook-feed .marketplace-product-card h3 {
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.marketplace-facebook-feed .marketplace-product-card__price {
+  font-size: 1.15rem;
+  color: #10253a;
+}
+
+.marketplace-product-card__flag {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 1;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #10253a;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.marketplace-product-card__seller {
+  margin: 6px 0 0;
+}
+
+.marketplace-product-card__footer {
+  margin-top: auto;
+}
+
+.marketplace-registration-page {
+  gap: 18px;
+}
+
+.marketplace-registration-layout {
+  display: grid;
+  grid-template-columns: minmax(290px, 0.9fr) minmax(0, 1.1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.marketplace-registration-hero,
+.marketplace-registration-form {
+  display: grid;
+  gap: 18px;
+}
+
+.marketplace-registration-highlights,
+.marketplace-registration-account-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.marketplace-registration-checklist {
+  display: grid;
+  gap: 12px;
+}
+
+.marketplace-registration-checklist__item span {
+  display: block;
+  margin-top: 6px;
+  color: #5b7283;
+  line-height: 1.6;
+}
+
+.marketplace-registration-section {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(16, 48, 70, 0.08);
+  background: rgba(250, 252, 255, 0.96);
+}
+
+.marketplace-registration-account-card strong {
+  display: block;
+  margin-top: 6px;
+  color: #10253a;
+}
+
+@media (max-width: 1240px) {
+  .marketplace-facebook-shell,
+  .marketplace-registration-layout,
+  .marketplace-facebook-highlight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .marketplace-facebook-sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 900px) {
+  .marketplace-facebook-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .marketplace-filter-grid,
+  .marketplace-filter-grid--secondary,
+  .marketplace-registration-highlights,
+  .marketplace-registration-account-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .marketplace-filter-grid--secondary .marketplace-filter:first-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .marketplace-facebook-sidebar,
+  .marketplace-facebook-banner,
+  .marketplace-facebook-trust,
+  .marketplace-facebook-sellers,
+  .marketplace-facebook-filters,
+  .marketplace-facebook-section,
+  .marketplace-registration-section {
+    padding: 18px;
+  }
+
+  .marketplace-facebook-nav__item {
+    padding: 10px 12px;
+  }
+}

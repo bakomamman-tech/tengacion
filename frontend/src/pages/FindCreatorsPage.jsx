@@ -178,8 +178,11 @@ export default function FindCreatorsPage() {
       />
       <div className="creator-discovery-page__head">
         <div className="creator-discovery-page__title">
-          <h1>Find Creators</h1>
-          <p>Browse Tengacion creators, search by name or @handle, and connect without any friend requirement.</p>
+          <h1>Discover Creators on Tengacion</h1>
+          <p>
+            Browse music artists, authors, and podcast creators across Africa. Find new talent,
+            explore albums, and support creators directly.
+          </p>
         </div>
         <div className="creator-summary-feed__toolbar">
           <Link to={backLink} className="creator-secondary-btn">

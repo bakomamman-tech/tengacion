@@ -5,6 +5,7 @@ import AdminRoute from "./components/AdminRoute";
 import InstallPrompt from "./components/InstallPrompt";
 import TengacionAssistantDock from "./components/assistant/TengacionAssistantDock";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RouteSeoController from "./components/seo/RouteSeoController";
 import WelcomeVoiceController from "./components/WelcomeVoiceController";
 import { useAuth } from "./context/AuthContext";
 
@@ -141,6 +142,7 @@ export default function App() {
   return (
     <>
       <WelcomeVoiceController user={user} />
+      <RouteSeoController />
       <Suspense fallback={<AppShellFallback />}>
         <Routes>
           <Route path="/" element={<Login />} />
@@ -155,14 +157,7 @@ export default function App() {
           <Route path="/copyright-policy" element={<CopyrightPolicyPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/community-guidelines" element={<CommunityGuidelinesPage />} />
-          <Route
-            path="/find-creators"
-            element={
-              <ProtectedRoute user={user}>
-                <FindCreatorsPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/find-creators" element={<FindCreatorsPage />} />
           <Route
             path="/find-friends"
             element={
@@ -171,14 +166,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/creators"
-            element={
-              <ProtectedRoute user={user}>
-                <FindCreatorsPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/creators" element={<FindCreatorsPage />} />
           <Route
             path="/marketplace"
             element={

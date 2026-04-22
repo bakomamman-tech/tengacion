@@ -40,7 +40,7 @@ const collectAlbumMediaAssets = (album = {}) => {
 
 const toAlbumListPayload = (album) => ({
   _id: album._id.toString(),
-  creatorId: album.creatorId?.toString?.() || "",
+  creatorId: album.creatorId?._id?.toString?.() || album.creatorId?.toString?.() || "",
   title: album.title || "",
   description: album.description || "",
   price: Number(album.price) || 0,
@@ -56,6 +56,15 @@ const toAlbumListPayload = (album) => ({
   contentType: album.contentType || album.releaseType || "album",
   createdAt: album.createdAt,
   updatedAt: album.updatedAt,
+  creator:
+    album.creatorId && typeof album.creatorId === "object"
+      ? {
+          _id: album.creatorId._id?.toString?.() || "",
+          displayName: album.creatorId.displayName || album.creatorId.fullName || "",
+          userId: album.creatorId.userId?._id?.toString?.() || album.creatorId.userId?.toString?.() || "",
+          username: album.creatorId.userId?.username || "",
+        }
+      : null,
 });
 
 const resolveRequestedStatus = (body = {}) => {
@@ -345,7 +354,13 @@ exports.getAlbumById = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid album id" });
   }
 
-  const album = await Album.findOne({ _id: albumId, isPublished: { $ne: false }, archivedAt: null }).lean();
+  const album = await Album.findOne({ _id: albumId, isPublished: { $ne: false }, archivedAt: null })
+    .populate({
+      path: "creatorId",
+      select: "displayName fullName userId",
+      populate: { path: "userId", select: "username" },
+    })
+    .lean();
   if (!album) {
     return res.status(404).json({ error: "Album not found" });
   }

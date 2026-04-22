@@ -1,6 +1,13 @@
+import SeoHead from "../components/seo/SeoHead";
+
 export default function CommunityGuidelinesPage() {
   return (
     <main style={{ maxWidth: 900, margin: "0 auto", padding: 24 }}>
+      <SeoHead
+        title="Community Guidelines | Tengacion"
+        description="Review Tengacion community guidelines for respectful participation, safety, moderation, and reporting."
+        canonical="/community-guidelines"
+      />
       <h1>Community Guidelines</h1>
       <p>Respect others. Do not post harassment, hate, violence, or explicit abuse.</p>
       <p>Spam, scams, and impersonation are prohibited and can result in strikes or account bans.</p>

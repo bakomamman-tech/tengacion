@@ -3,8 +3,17 @@ import toast from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { checkEntitlement, getTrack, getTrackStream, initPayment } from "../api";
 import PaywallModal from "../components/PaywallModal";
+import SeoHead from "../components/seo/SeoHead";
 import { useAuth } from "../context/AuthContext";
 import useEntitlementSocket from "../hooks/useEntitlementSocket";
+import {
+  buildBreadcrumbJsonLd,
+  buildMusicRecordingJsonLd,
+  buildOrganizationJsonLd,
+  buildPodcastEpisodeJsonLd,
+  buildWebSiteJsonLd,
+  pickFirstText,
+} from "../lib/seo";
 import {
   buildPaystackCallbackUrl,
   resolveOwnedPurchaseLabel,
@@ -17,7 +26,8 @@ export default function TrackDetail() {
   const { trackId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user ?? null;
   const audioRef = useRef(null);
 
   const [track, setTrack] = useState(null);
@@ -263,6 +273,55 @@ export default function TrackDetail() {
       ? "Preview is limited to 30 seconds from the selected chorus section. Buy to unlock full playback."
       : "Preview is limited to 30 seconds. Buy to unlock full playback.";
   }, [previewStartSec, stream?.allowedFullAccess]);
+  const creatorName = track?.creator?.displayName || "Tengacion Creator";
+  const creatorPath = track?.creator?._id ? `/creators/${track.creator._id}` : "/creators";
+  const isPodcast = String(track?.kind || "").toLowerCase() === "podcast";
+  const pageLabel = isPodcast ? "Podcast Episode" : "Track";
+  const seoTitle = track
+    ? `${track.title} by ${creatorName} | Tengacion`
+    : `${pageLabel} | Tengacion`;
+  const seoDescription = pickFirstText(
+    track?.description,
+    isPodcast
+      ? `Listen to ${track?.title || "this episode"} from ${creatorName} on Tengacion.`
+      : `Stream ${track?.title || "this track"} by ${creatorName} on Tengacion.`
+  );
+  const structuredData = useMemo(() => {
+    if (!track) {
+      return [buildWebSiteJsonLd(), buildOrganizationJsonLd()];
+    }
+
+    return [
+      buildWebSiteJsonLd(),
+      buildOrganizationJsonLd(),
+      isPodcast
+        ? buildPodcastEpisodeJsonLd({
+            title: track.title,
+            description: seoDescription,
+            image: track.coverImageUrl,
+            canonicalPath: `/tracks/${track._id}`,
+            creatorName,
+            publishedAt: track.createdAt,
+            durationSec: track.durationSec,
+            seriesTitle: track.podcastSeries,
+          })
+        : buildMusicRecordingJsonLd({
+            title: track.title,
+            description: seoDescription,
+            image: track.coverImageUrl,
+            canonicalPath: `/tracks/${track._id}`,
+            creatorName,
+            creatorPath,
+            durationSec: track.durationSec,
+            publishedAt: track.createdAt,
+          }),
+      buildBreadcrumbJsonLd([
+        { name: "Creators", url: "/creators" },
+        { name: creatorName, url: creatorPath },
+        { name: track.title, url: `/tracks/${track._id}` },
+      ]),
+    ];
+  }, [creatorName, creatorPath, isPodcast, seoDescription, track]);
 
   if (loading) {
     return (
@@ -286,8 +345,17 @@ export default function TrackDetail() {
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8">
+      <SeoHead
+        title={seoTitle}
+        description={seoDescription}
+        canonical={`/tracks/${track?._id || trackId}`}
+        ogType={isPodcast ? "article" : "music.song"}
+        ogImage={track?.coverImageUrl}
+        ogImageAlt={`${track?.title || pageLabel} cover`}
+        structuredData={structuredData}
+      />
       <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-wide text-brand-700">Track</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-brand-700">{pageLabel}</p>
         <h1 className="mt-2 text-3xl font-bold text-slate-900">{track.title}</h1>
         <p className="mt-2 text-sm text-slate-600">{track.description || "No description"}</p>
         {track?.creator?._id ? (

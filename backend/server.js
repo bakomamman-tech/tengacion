@@ -87,28 +87,55 @@ const frontendIndex = path.join(frontendPath, "index.html");
 const frontendBuilt = fs.existsSync(frontendIndex);
 
 if (frontendBuilt) {
+  const { renderSeoHtml, resolvePageSeo } = require("./services/seo/pageSeoService");
+  const { buildRobotsTxt, getSitemapXml } = require("./services/seo/sitemapService");
+  const frontendTemplate = fs.readFileSync(frontendIndex, "utf8");
+
   console.log(`Serving built frontend from ${frontendPath}`);
-  app.use(express.static(frontendPath));
-  app.get("*", (req, res, next) => {
+  app.get("/robots.txt", (_req, res) => {
+    res.type("text/plain").send(buildRobotsTxt());
+  });
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const sitemap = await getSitemapXml();
+      res.type("application/xml").send(sitemap);
+    } catch (error) {
+      console.error("Failed to generate sitemap.xml:", error);
+      res.status(500).type("text/plain").send("Failed to generate sitemap.xml");
+    }
+  });
+  app.use(express.static(frontendPath, { index: false }));
+  app.get("*", async (req, res, next) => {
     if (req.path.startsWith("/api")) {
       return next();
     }
 
-    res.sendFile(frontendIndex, (err) => {
-      if (err) {
-        console.error("Failed to send frontend index:", err);
-        res.status(500).send("Tengacion API Running");
+    try {
+      const seo = await resolvePageSeo({ path: req.path });
+      if (seo?.xRobotsTag) {
+        res.set("X-Robots-Tag", seo.xRobotsTag);
       }
-    });
+
+      const html = renderSeoHtml(frontendTemplate, seo);
+      res.status(Number(seo?.statusCode || 200)).type("html").send(html);
+    } catch (error) {
+      console.error("Failed to render SEO HTML:", error);
+      res.sendFile(frontendIndex, (err) => {
+        if (err) {
+          console.error("Failed to send frontend index:", err);
+          res.status(500).send("Tengacion API Running");
+        }
+      });
+    }
   });
 } else {
-  console.warn("⚠ Frontend not built – API mode only");
+  console.warn("[warning] Frontend not built - API mode only");
   app.get("*", (req, res) => {
     if (req.path.startsWith("/api")) {
       return res.status(404).json({ message: "API route not found" });
     }
 
-    res.status(503).send("Tengacion API Running – frontend not built");
+    res.status(503).send("Tengacion API Running - frontend not built");
   });
 }
 
@@ -721,7 +748,7 @@ if (process.env.NODE_ENV !== "test") {
   };
 
   server.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 Tengacion running on port ${PORT}`);
+    console.log(`Tengacion running on port ${PORT}`);
   });
 }
 

@@ -138,3 +138,9 @@ Nigeria 🇳🇬
 
 📜 License
 ISC
+
+SEO notes
+- `robots.txt` should be available at `https://tengacion.com/robots.txt`.
+- `sitemap.xml` should be available at `https://tengacion.com/sitemap.xml`.
+- Add Google Search Console or Bing verification tags in [index.html](/c:/Users/LENOVO/Tengacion/frontend/index.html).
+- Submit the sitemap URL above in Search Console after deployment.

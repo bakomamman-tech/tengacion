@@ -13,8 +13,16 @@ import {
 } from "../api";
 import CreatorHero from "../components/creator/media/CreatorHero";
 import CreatorContentShelf from "../components/creator/media/CreatorContentShelf";
+import SeoHead from "../components/seo/SeoHead";
 import { useAuth } from "../context/AuthContext";
 import useEntitlementSocket from "../hooks/useEntitlementSocket";
+import {
+  buildBreadcrumbJsonLd,
+  buildCreatorProfileJsonLd,
+  buildOrganizationJsonLd,
+  buildWebSiteJsonLd,
+  pickFirstText,
+} from "../lib/seo";
 import {
   buildPaystackCallbackUrl,
   normalizePurchaseType,
@@ -206,7 +214,8 @@ export default function CreatorHubPage() {
   const { creatorId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user ?? null;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -255,6 +264,54 @@ export default function CreatorHubPage() {
   const featured = payload?.featured || null;
   const viewer = payload?.viewer || {};
   const subscription = payload?.subscription || {};
+  const creatorName = creator?.displayName || "Creator";
+  const canonicalSuffix = activeTab === "home" ? "" : `/${activeTab}`;
+  const canonicalPath = `/creators/${creator?.id || creatorId}${canonicalSuffix}`;
+  const isAliasRoute = location.pathname.startsWith("/creator/");
+  const seoTitle =
+    activeTab === "music"
+      ? `${creatorName} Music on Tengacion | Streams, Singles & Videos`
+      : activeTab === "albums"
+        ? `Albums by ${creatorName} | Tengacion`
+        : activeTab === "podcasts"
+          ? `Podcasts by ${creatorName} | Tengacion`
+          : activeTab === "books"
+            ? `Books by ${creatorName} | Tengacion`
+            : `${creatorName} on Tengacion - Music, Books, Podcasts & Updates`;
+  const seoDescription = pickFirstText(
+    activeTab === "music"
+      ? `Stream singles, albums, and music videos from ${creatorName} on Tengacion.`
+      : activeTab === "albums"
+        ? `Explore albums and EP releases from ${creatorName} on Tengacion.`
+        : activeTab === "podcasts"
+          ? `Listen to podcast episodes and spoken-word releases from ${creatorName} on Tengacion.`
+          : activeTab === "books"
+            ? `Browse books and digital releases from ${creatorName} on Tengacion.`
+            : `Explore ${creatorName} on Tengacion. Discover music, books, podcasts, and updates from this creator.`,
+    creator?.tagline,
+    creator?.bio
+  );
+  const seoImage = creator?.bannerUrl || creator?.avatarUrl || featured?.item?.coverUrl || "";
+  const structuredData = useMemo(
+    () => [
+      buildWebSiteJsonLd(),
+      buildOrganizationJsonLd(),
+      buildCreatorProfileJsonLd({
+        name: creatorName,
+        description: seoDescription,
+        image: seoImage,
+        canonicalPath,
+        sameAs: Array.isArray(creator?.links)
+          ? creator.links.map((entry) => String(entry?.url || "").trim()).filter(Boolean)
+          : [],
+      }),
+      buildBreadcrumbJsonLd([
+        { name: "Creators", url: "/creators" },
+        { name: creatorName, url: canonicalPath },
+      ]),
+    ],
+    [canonicalPath, creator?.links, creatorName, seoDescription, seoImage]
+  );
 
   const requireViewer = () => {
     if (isLoggedIn) {
@@ -720,6 +777,16 @@ export default function CreatorHubPage() {
 
   return (
     <div className="creator-public-page">
+      <SeoHead
+        title={seoTitle}
+        description={seoDescription}
+        canonical={canonicalPath}
+        robots={isAliasRoute ? "noindex,follow" : "index,follow"}
+        ogType="profile"
+        ogImage={seoImage}
+        ogImageAlt={`${creatorName} on Tengacion`}
+        structuredData={structuredData}
+      />
       <CreatorHero
         creator={{
           ...creator,

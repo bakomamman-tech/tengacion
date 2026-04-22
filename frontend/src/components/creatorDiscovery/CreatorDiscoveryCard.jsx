@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import { resolveImage, toggleFollowCreator } from "../../api";
 import { formatCurrency } from "../creator/creatorConfig";
+import { useAuth } from "../../context/AuthContext";
 
 import "./creatorDiscovery.css";
 
@@ -11,6 +12,9 @@ const getInitial = (value = "") => String(value || "T").trim().slice(0, 1).toUpp
 
 export default function CreatorDiscoveryCard({ item }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const auth = useAuth();
+  const user = auth?.user ?? null;
   const [busy, setBusy] = useState(false);
   const [following, setFollowing] = useState(Boolean(item?.following));
 
@@ -25,10 +29,22 @@ export default function CreatorDiscoveryCard({ item }) {
   const categoryLabel = String(item?.category || item?.categoryLabels?.[0] || "Creator").trim();
   const canSubscribe = Boolean(item?.canSubscribe);
   const isSubscribed = Boolean(item?.subscribed);
+  const creatorRoute = item?.creatorId ? `/creators/${item.creatorId}` : String(item?.creatorRoute || "").trim();
+  const requireViewer = () => {
+    if (user?._id || user?.id) {
+      return true;
+    }
+    const returnTo = `${location.pathname}${location.search}`;
+    navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+    return false;
+  };
 
   const handlePrimaryAction = async () => {
     if (canSubscribe) {
       if (isSubscribed) {
+        return;
+      }
+      if (!requireViewer()) {
         return;
       }
       navigate(item?.subscribeRoute || `/creators/${item.creatorId}/subscribe`);
@@ -36,6 +52,9 @@ export default function CreatorDiscoveryCard({ item }) {
     }
 
     if (!item?.creatorId) {
+      return;
+    }
+    if (!requireViewer()) {
       return;
     }
 
@@ -103,7 +122,7 @@ export default function CreatorDiscoveryCard({ item }) {
           <button
             type="button"
             className="creator-discovery-card__action creator-discovery-card__action--accent"
-            onClick={() => navigate(item?.creatorRoute || `/creator/${item.creatorId}`)}
+            onClick={() => navigate(creatorRoute)}
           >
             Visit Page
           </button>

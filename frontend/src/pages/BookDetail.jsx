@@ -10,8 +10,16 @@ import {
   resolveImage,
 } from "../api";
 import PaywallModal from "../components/PaywallModal";
+import SeoHead from "../components/seo/SeoHead";
 import { useAuth } from "../context/AuthContext";
 import useEntitlementSocket from "../hooks/useEntitlementSocket";
+import {
+  buildBookJsonLd,
+  buildBreadcrumbJsonLd,
+  buildOrganizationJsonLd,
+  buildWebSiteJsonLd,
+  pickFirstText,
+} from "../lib/seo";
 import {
   buildPaystackCallbackUrl,
   resolveOwnedPurchaseLabel,
@@ -22,7 +30,8 @@ export default function BookDetail() {
   const { bookId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user ?? null;
 
   const [book, setBook] = useState(null);
   const [chapters, setChapters] = useState([]);
@@ -205,6 +214,38 @@ export default function BookDetail() {
     () => chapters.find((entry) => entry._id === selectedChapterId) || null,
     [chapters, selectedChapterId]
   );
+  const creatorName = book?.creator?.displayName || "Tengacion Creator";
+  const creatorPath = book?.creator?._id ? `/creators/${book.creator._id}` : "/creators";
+  const seoTitle = book ? `${book.title} by ${creatorName} | Tengacion` : "Book | Tengacion";
+  const seoDescription = pickFirstText(
+    book?.description,
+    `Discover ${book?.title || "this book"} by ${creatorName} on Tengacion.`
+  );
+  const structuredData = useMemo(() => {
+    if (!book) {
+      return [buildWebSiteJsonLd(), buildOrganizationJsonLd()];
+    }
+
+    return [
+      buildWebSiteJsonLd(),
+      buildOrganizationJsonLd(),
+      buildBookJsonLd({
+        title: book.title,
+        description: seoDescription,
+        image: book.coverImageUrl,
+        canonicalPath: `/books/${book._id}`,
+        creatorName,
+        creatorPath,
+        language: book.language,
+        publishedAt: book.createdAt,
+      }),
+      buildBreadcrumbJsonLd([
+        { name: "Creators", url: "/creators" },
+        { name: creatorName, url: creatorPath },
+        { name: book.title, url: `/books/${book._id}` },
+      ]),
+    ];
+  }, [book, creatorName, creatorPath, seoDescription]);
 
   if (loading) {
     return (
@@ -228,6 +269,15 @@ export default function BookDetail() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8">
+      <SeoHead
+        title={seoTitle}
+        description={seoDescription}
+        canonical={`/books/${book?._id || bookId}`}
+        ogType="book"
+        ogImage={book?.coverImageUrl}
+        ogImageAlt={`${book?.title || "Book"} cover`}
+        structuredData={structuredData}
+      />
       <section className="grid gap-6 lg:grid-cols-[280px,1fr]">
         <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="h-56 overflow-hidden rounded-xl bg-slate-100">

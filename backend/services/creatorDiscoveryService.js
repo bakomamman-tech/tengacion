@@ -166,7 +166,7 @@ const buildSignedPreviewUrl = ({ req, sourceUrl, itemType, itemId, viewerId }) =
   });
 };
 
-const buildCreatorRoute = (creatorId) => `/creator/${String(creatorId || "").trim()}`;
+const buildCreatorRoute = (creatorId) => `/creators/${String(creatorId || "").trim()}`;
 const buildSubscribeRoute = (creatorId) =>
   `/creators/${String(creatorId || "").trim()}/subscribe`;
 

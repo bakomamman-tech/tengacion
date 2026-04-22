@@ -31,47 +31,81 @@
   <link rel="manifest" href="/manifest.json" />
 
   <!-- ===== SEO ===== -->
-  <title>Tengacion - Connect with Friends (Koro)</title>
+  <title data-seo-key="title">Tengacion - Discover African Creators, Music, Books & Podcasts</title>
   <meta
     name="description"
-    content="Tengacion - A social platform to connect, share moments, chat with friends and build communities."
+    data-seo-key="description"
+    content="Tengacion is a creator and social platform where users discover, stream, share, and support music, books, podcasts, and creators."
   />
+  <link rel="canonical" data-seo-key="canonical" href="https://tengacion.com/" />
 
   <meta name="application-name" content="Tengacion" />
   <meta name="author" content="Tengacion" />
+  <!-- Search Console / Bing verification tags can be added below when domain verification is ready. -->
 
   <!-- ===== OPEN GRAPH ===== -->
   <meta property="og:site_name" content="Tengacion" />
-  <meta property="og:title" content="Tengacion" />
+  <meta property="og:title" data-seo-key="og:title" content="Tengacion - Discover African Creators, Music, Books & Podcasts" />
   <meta
     property="og:description"
-    content="Connect with friends, share posts, chat and explore communities on Tengacion."
+    data-seo-key="og:description"
+    content="Tengacion is a creator and social platform where users discover, stream, share, and support music, books, podcasts, and creators."
   />
-  <meta property="og:image" content="/tengacion_logo_1024.png" />
-  <meta property="og:type" content="website" />
+  <meta property="og:image" data-seo-key="og:image" content="https://tengacion.com/tengacion_logo_1024.png" />
+  <meta property="og:image:alt" data-seo-key="og:image:alt" content="Tengacion preview image" />
+  <meta property="og:type" data-seo-key="og:type" content="website" />
+  <meta property="og:url" data-seo-key="og:url" content="https://tengacion.com/" />
   <meta property="og:locale" content="en_US" />
 
   <!-- ===== TWITTER ===== -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Tengacion" />
+  <meta name="twitter:card" data-seo-key="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" data-seo-key="twitter:title" content="Tengacion - Discover African Creators, Music, Books & Podcasts" />
   <meta
     name="twitter:description"
-    content="Connect with friends and the world around you on Tengacion."
+    data-seo-key="twitter:description"
+    content="Tengacion is a creator and social platform where users discover, stream, share, and support music, books, podcasts, and creators."
   />
-  <meta name="twitter:image" content="/tengacion_logo_1024.png" />
+  <meta name="twitter:image" data-seo-key="twitter:image" content="https://tengacion.com/tengacion_logo_1024.png" />
+  <meta name="twitter:image:alt" data-seo-key="twitter:image:alt" content="Tengacion preview image" />
 
   <!-- ===== ACCESSIBILITY ===== -->
   <meta name="format-detection" content="telephone=no" />
-  <meta name="robots" content="index, follow" />
+  <meta name="robots" data-seo-key="robots" content="index,follow" />
+  <script type="application/ld+json" data-seo-key="structured-data">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Tengacion",
+        "url": "https://tengacion.com/"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Tengacion",
+        "url": "https://tengacion.com/",
+        "logo": "https://tengacion.com/tengacion_logo_1024.png"
+      }
+    ]
+  </script>
 </head>
 
 <body>
   <noscript>
-    Tengacion requires JavaScript to run. Please enable JavaScript in your browser.
+    <strong>Tengacion</strong> is a creator and social platform for discovering music, books,
+    podcasts, and public creator profiles. You can still browse
+    <a href="/creators">creators</a>,
+    <a href="/terms">terms</a>,
+    <a href="/privacy">privacy</a>, and
+    <a href="/developer-contact">contact details</a>
+    without JavaScript.
   </noscript>
 
   <div id="root">
-    <div id="boot-loader">Loading Tengacion...</div>
+    <div id="boot-loader" data-seo-key="boot-preview">
+      <h1>Tengacion</h1>
+      <p>Discover African creators, music, books, podcasts, and public creator profiles.</p>
+    </div>
   </div>
 
   <script type="module" src="/src/main.jsx"></script>

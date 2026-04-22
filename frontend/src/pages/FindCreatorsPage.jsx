@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import { getCreatorDiscovery } from "../api";
+import SeoHead from "../components/seo/SeoHead";
 import CreatorDiscoveryCard from "../components/creatorDiscovery/CreatorDiscoveryCard";
+import { useAuth } from "../context/AuthContext";
+import {
+  buildBreadcrumbJsonLd,
+  buildOrganizationJsonLd,
+  buildWebSiteJsonLd,
+} from "../lib/seo";
 
 import "../components/creatorDiscovery/creatorDiscovery.css";
 
@@ -47,6 +54,9 @@ const DiscoverySkeleton = () => (
 );
 
 export default function FindCreatorsPage() {
+  const location = useLocation();
+  const auth = useAuth();
+  const user = auth?.user ?? null;
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -124,6 +134,17 @@ export default function FindCreatorsPage() {
     }
     return `${total.toLocaleString()} creators found`;
   }, [error, items.length, loading, total]);
+  const isAliasRoute = location.pathname.startsWith("/find-creators");
+  const backLink = user ? "/home" : "/login";
+  const backLabel = user ? "Back to feed" : "Log in";
+  const structuredData = useMemo(
+    () => [
+      buildWebSiteJsonLd(),
+      buildOrganizationJsonLd(),
+      buildBreadcrumbJsonLd([{ name: "Creators", url: "/creators" }]),
+    ],
+    []
+  );
 
   const applySearch = (value) => {
     setSearchInput(value);
@@ -147,14 +168,22 @@ export default function FindCreatorsPage() {
 
   return (
     <section className="creator-discovery-page creator-discovery-theme">
+      <SeoHead
+        title="Discover African Creators, Music, Books & Podcasts | Tengacion"
+        description="Browse Tengacion creators across music, books, and podcasts. Discover African artists, authors, and podcast hosts to follow and support."
+        canonical="/creators"
+        robots={isAliasRoute ? "noindex,follow" : "index,follow"}
+        ogType="website"
+        structuredData={structuredData}
+      />
       <div className="creator-discovery-page__head">
         <div className="creator-discovery-page__title">
           <h1>Find Creators</h1>
           <p>Browse Tengacion creators, search by name or @handle, and connect without any friend requirement.</p>
         </div>
         <div className="creator-summary-feed__toolbar">
-          <Link to="/home" className="creator-secondary-btn">
-            Back to feed
+          <Link to={backLink} className="creator-secondary-btn">
+            {backLabel}
           </Link>
           <button type="button" className="creator-primary-btn" onClick={handleReset}>
             Reset filters

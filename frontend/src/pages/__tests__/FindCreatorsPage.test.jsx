@@ -83,6 +83,6 @@ describe("FindCreatorsPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /visit page/i }));
 
-    expect(navigateMock).toHaveBeenCalledWith("/creator/creator-1");
+    expect(navigateMock).toHaveBeenCalledWith("/creators/creator-1");
   });
 });

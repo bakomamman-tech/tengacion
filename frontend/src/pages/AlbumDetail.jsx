@@ -1,13 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useParams } from "react-router-dom";
-import { createCheckout, getAlbum } from "../api";
+import { createCheckout, getAlbum, resolveImage } from "../api";
 import { useAuth } from "../context/AuthContext";
+import SeoHead from "../components/seo/SeoHead";
 import useEntitlementSocket from "../hooks/useEntitlementSocket";
+import {
+  buildBreadcrumbJsonLd,
+  buildMusicAlbumJsonLd,
+  buildOrganizationJsonLd,
+  buildWebSiteJsonLd,
+  pickFirstText,
+} from "../lib/seo";
 
 export default function AlbumDetail() {
   const { albumId } = useParams();
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user ?? null;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [album, setAlbum] = useState(null);
@@ -67,6 +76,39 @@ export default function AlbumDetail() {
   }
 
   const tracks = Array.isArray(album.tracks) ? album.tracks : [];
+  const creatorName = album?.creator?.displayName || "Tengacion Creator";
+  const creatorPath = album?.creator?._id ? `/creators/${album.creator._id}` : (album?.creatorId ? `/creators/${album.creatorId}` : "/creators");
+  const seoTitle = album ? `${album.title} by ${creatorName} | Tengacion` : "Album | Tengacion";
+  const seoDescription = pickFirstText(
+    album?.description,
+    `${album?.title || "This album"} by ${creatorName} on Tengacion with ${tracks.length} ${tracks.length === 1 ? "track" : "tracks"}.`
+  );
+  const structuredData = useMemo(() => {
+    if (!album) {
+      return [buildWebSiteJsonLd(), buildOrganizationJsonLd()];
+    }
+
+    return [
+      buildWebSiteJsonLd(),
+      buildOrganizationJsonLd(),
+      buildMusicAlbumJsonLd({
+        title: album.title,
+        description: seoDescription,
+        image: album.coverUrl,
+        canonicalPath: `/albums/${album._id}`,
+        creatorName,
+        creatorPath,
+        publishedAt: album.createdAt,
+        trackCount: tracks.length,
+      }),
+      buildBreadcrumbJsonLd([
+        { name: "Creators", url: "/creators" },
+        { name: creatorName, url: creatorPath },
+        { name: album.title, url: `/albums/${album._id}` },
+      ]),
+    ];
+  }, [album, creatorName, creatorPath, seoDescription, tracks.length]);
+
   const handleBuyAlbum = async () => {
     if (!album?._id) {return;}
     setBuying(true);
@@ -92,11 +134,20 @@ export default function AlbumDetail() {
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-8">
+      <SeoHead
+        title={seoTitle}
+        description={seoDescription}
+        canonical={`/albums/${album?._id || albumId}`}
+        ogType="music.album"
+        ogImage={album?.coverUrl}
+        ogImageAlt={`${album?.title || "Album"} cover art`}
+        structuredData={structuredData}
+      />
       <div className="overflow-hidden rounded-[2rem] border border-stone-200 bg-[linear-gradient(180deg,#fffdf9_0%,#fff_42%,#fbf6ec_100%)] p-6 shadow-[0_32px_80px_rgba(62,39,16,0.12)]">
         <div className="flex flex-wrap items-start gap-4">
           {album.coverUrl ? (
             <img
-              src={album.coverUrl}
+              src={resolveImage(album.coverUrl)}
               alt={album.title}
               className="h-32 w-32 rounded-xl object-cover"
             />
@@ -110,7 +161,7 @@ export default function AlbumDetail() {
             <h1 className="text-3xl font-bold text-slate-900">{album.title}</h1>
             {album.description ? <p className="max-w-2xl text-sm leading-7 text-slate-600">{album.description}</p> : null}
             <p className="text-sm font-semibold text-slate-800">
-              NGN {Number(album.price || 0).toLocaleString()} • {tracks.length} songs
+              NGN {Number(album.price || 0).toLocaleString()} | {tracks.length} songs
             </p>
             <div className="flex flex-wrap items-center gap-3 pt-2">
               {!album.canPlayFull && Number(album.price || 0) > 0 ? (

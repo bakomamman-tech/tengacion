@@ -1,8 +1,14 @@
 import "./creator/creator-workspace.css";
+import SeoHead from "../components/seo/SeoHead";
 
 export default function CopyrightPolicy() {
   return (
     <main className="creator-policy-shell">
+      <SeoHead
+        title="Copyright Policy | Tengacion"
+        description="Understand how Tengacion handles copyright screening, creator responsibilities, and flagged uploads."
+        canonical="/copyright-policy"
+      />
       <section className="creator-policy-card card">
         <h1>Copyright Policy</h1>
         <p>

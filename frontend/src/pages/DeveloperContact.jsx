@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import developerPortrait from "../assets/developer-contact-photo.jpg";
+import SeoHead from "../components/seo/SeoHead";
 
 const developerDetails = [
   {
@@ -20,6 +21,13 @@ const developerDetails = [
 export default function DeveloperContactPage() {
   return (
     <div className="login-container developer-contact-page">
+      <SeoHead
+        title="Developer Contact | Tengacion"
+        description="Find Tengacion developer contact information and support details."
+        canonical="/developer-contact"
+        ogImage={developerPortrait}
+        ogImageAlt="Stephen Daniel Kurah portrait"
+      />
       <div className="developer-contact-shell">
         <div className="developer-contact-hero">
           <div className="developer-contact-portrait-shell">

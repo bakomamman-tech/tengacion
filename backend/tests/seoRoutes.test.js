@@ -159,10 +159,10 @@ describe("SEO routes", () => {
     const response = await request(server).get("/creators").expect(200);
 
     expect(response.text).toContain(
-      '<title data-seo-key="title">Discover African Creators, Music, Books &amp; Podcasts | Tengacion</title>'
+      '<title data-seo-key="title">Find Creators | Tengacion</title>'
     );
     expect(response.text).toContain(
-      'content="Browse Tengacion creators across music, books, and podcasts. Discover African artists, authors, and podcast hosts to follow and support."'
+      'content="Discover music artists, authors, and creators on Tengacion. Explore African talent and support creators."'
     );
     expect(response.text).toContain('href="https://tengacion.com/creators"');
     expect(response.text).toContain('content="index,follow"');

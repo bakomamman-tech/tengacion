@@ -32,13 +32,13 @@ const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 
 const PUBLIC_INFO_PAGES = {
   "/creators": {
-    title: "Discover African Creators, Music, Books & Podcasts | Tengacion",
+    title: "Find Creators | Tengacion",
     description:
-      "Browse Tengacion creators across music, books, and podcasts. Discover African artists, authors, and podcast hosts to follow and support.",
+      "Discover music artists, authors, and creators on Tengacion. Explore African talent and support creators.",
     canonicalPath: "/creators",
-    previewTitle: "Discover creators on Tengacion",
+    previewTitle: "Find creators on Tengacion",
     previewDescription:
-      "Explore music, books, podcasts, and creator profiles across Tengacion.",
+      "Discover music artists, authors, and creators across Tengacion.",
   },
   "/music": {
     title: "African Music Releases & Creator Drops | Tengacion",
@@ -884,9 +884,9 @@ const resolvePageSeo = async ({ path = "/" } = {}) => {
       ...PUBLIC_INFO_PAGES["/creators"],
       canonicalPath: "/creators",
       robots: "noindex,follow",
-      previewTitle: "Discover creators on Tengacion",
+      previewTitle: "Find creators on Tengacion",
       previewDescription:
-        "Browse Tengacion creators across music, books, and podcasts.",
+        "Discover music artists, authors, and creators across Tengacion.",
     });
   }
 

@@ -169,8 +169,8 @@ export default function FindCreatorsPage() {
   return (
     <section className="creator-discovery-page creator-discovery-theme">
       <SeoHead
-        title="Discover African Creators, Music, Books & Podcasts | Tengacion"
-        description="Browse Tengacion creators across music, books, and podcasts. Discover African artists, authors, and podcast hosts to follow and support."
+        title="Find Creators | Tengacion"
+        description="Discover music artists, authors, and creators on Tengacion. Explore African talent and support creators."
         canonical="/creators"
         robots={isAliasRoute ? "noindex,follow" : "index,follow"}
         ogType="website"

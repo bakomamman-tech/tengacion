@@ -1,6 +1,6 @@
 # Render deployment checklist
 
-Use this file to align your Render service with Tengacion’s backend runtime expectations.
+Use this file to align your Render service with Tengacion's backend runtime expectations.
 
 ## Render service settings
 | Field | Value |
@@ -14,36 +14,40 @@ Use this file to align your Render service with Tengacion’s backend runtime ex
 Render derives `PORT` automatically and exposes it via `process.env.PORT`. The backend logs friendly errors on `EADDRINUSE` or `EACCES` and exits with status 1 when those happen.
 
 ## Environment variables
-The server now runs a preflight check (`backend/scripts/preflight.js`) before connecting to MongoDB or starting Socket.IO. Required vars must exist in Render’s dashboard:
+The server now runs a preflight check (`backend/scripts/preflight.js`) before connecting to MongoDB or starting Socket.IO. Required vars must exist in Render's dashboard:
 
 | Key | Description | Severity |
 | --- | --- | --- |
-| `MONGO_URI` | MongoDB connection string (Atlas cluster) | 🔴 Required |
-| `JWT_SECRET` | JWT signing secret (≥32 chars) | 🔴 Required |
-| `JWT_REFRESH_SECRET` | Refresh-token signing secret | 🔴 Required for login/refresh flows |
-| `AUTH_CHALLENGE_SECRET` | Challenge/step-up signing secret | 🔴 Required for MFA/step-up flows |
-| `MEDIA_SIGNING_SECRET` | Media signing JWT secret (falls back to `JWT_SECRET` when missing) | 🟠 Warning if missing |
-| `LIVEKIT_WS_URL` | LiveKit signaling WebSocket URL (production should be `wss://...`) | 🟠 Warning if missing |
-| `LIVEKIT_HOST` | Optional fallback if `LIVEKIT_WS_URL` is not set | 🟠 Warning if missing |
-| `LIVEKIT_API_KEY` | LiveKit server API key for token minting | 🟠 Warning if missing |
-| `LIVEKIT_API_SECRET` | LiveKit server API secret for token minting | 🟠 Warning if missing |
-| `APP_URL` | Canonical public app URL used for links and email callbacks | 🟠 Warning if missing |
-| `CLIENT_URL` | Frontend origin used for redirects and shared links | 🟠 Warning if missing |
-| `CORS_ORIGIN` | Comma-separated CORS allowlist for production and localhost | 🟠 Warning if missing |
-| `PAYSTACK_CALLBACK_URL` | Canonical Paystack return URL | 🟠 Warning if missing |
-| `VITE_API_URL` | Frontend API base used during the Vite build | 🟠 Warning if missing |
-| `PAYSTACK_SECRET_KEY` | Paystack production secret key | 🟠 Warning if missing |
-| `STRIPE_SECRET_KEY` | Stripe secret key | 🟠 Warning if missing |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret | 🟠 Warning if missing |
+| `MONGO_URI` | MongoDB connection string (Atlas cluster) | Required |
+| `JWT_SECRET` | JWT signing secret (>=32 chars) | Required |
+| `JWT_REFRESH_SECRET` | Refresh-token signing secret | Required for login/refresh flows |
+| `AUTH_CHALLENGE_SECRET` | Challenge/step-up signing secret | Required for MFA/step-up flows |
+| `MEDIA_SIGNING_SECRET` | Media signing JWT secret (falls back to `JWT_SECRET` when missing) | Warning if missing |
+| `LIVEKIT_WS_URL` | LiveKit signaling WebSocket URL (production should be `wss://...`) | Warning if missing |
+| `LIVEKIT_HOST` | Optional fallback if `LIVEKIT_WS_URL` is not set | Warning if missing |
+| `LIVEKIT_API_KEY` | LiveKit server API key for token minting | Warning if missing |
+| `LIVEKIT_API_SECRET` | LiveKit server API secret for token minting | Warning if missing |
+| `APP_URL` | Canonical public app URL used for links and email callbacks | Warning if missing |
+| `CLIENT_URL` | Frontend origin used for redirects and shared links | Warning if missing |
+| `CORS_ORIGIN` | Comma-separated CORS allowlist for production and localhost | Warning if missing |
+| `PAYSTACK_CALLBACK_URL` | Canonical Paystack return URL | Warning if missing |
+| `VITE_API_URL` | Frontend API base used during the Vite build | Warning if missing |
+| `VITE_GA_MEASUREMENT_ID` | Optional GA4 Measurement ID baked into the frontend build | Warning if missing |
+| `VITE_GA_DEBUG_MODE` | Optional GA4 debug toggle for non-production validation | Optional |
+| `PAYSTACK_SECRET_KEY` | Paystack production secret key | Warning if missing |
+| `STRIPE_SECRET_KEY` | Stripe secret key | Warning if missing |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret | Warning if missing |
 
-The preflight prints `✅`, `⚠️`, or `❌` per key and aborts startup when any hard required value is missing or too short.
+The preflight prints pass/warn/fail markers per key and aborts startup when any hard required value is missing or too short.
+
+Because these `VITE_*` values are compiled into the frontend bundle, changing them requires a fresh frontend build/deploy.
 
 ## Smoke tests (post-deploy)
 After each deploy, exercise these endpoints:
-1. `GET https://<your-render-url>/api/health` → 200 with `{"status":"ok"}`
-2. `GET https://<your-render-url>/socket.io` → 200 with response containing `socket ok`
+1. `GET https://<your-render-url>/api/health` -> 200 with `{"status":"ok"}`
+2. `GET https://<your-render-url>/socket.io` -> 200 with response containing `socket ok`
 
 ## Notes
 - The backend still preserves `/uploads` static serving and raw-body verification for `/api/payments/webhook/paystack`.
 - Ensure your Render service config installs devDependencies (`NPM_CONFIG_PRODUCTION=false`) so Jest/Socket.IO dependencies (like `zod`) are available.
-- Render’s build step operates inside `backend/`, which runs `npm run build:frontend` and caches the Vite output under `frontend/dist`.
+- Render's build step operates inside `backend/`, which runs `npm run build:frontend` and caches the Vite output under `frontend/dist`.

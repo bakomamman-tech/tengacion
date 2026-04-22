@@ -83,6 +83,9 @@ cp .env.example .env
 3. Set required secrets:
 - `MONGO_URI`, `JWT_SECRET`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_CALLBACK_URL`
 - `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `AWS_S3_BUCKET`, `AWS_S3_MEDIA_URL`
+4. Optional frontend analytics:
+- `VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX`
+- `VITE_GA_DEBUG_MODE=false`
 
 ## 2) Running Apps Locally
 1. Start the API (serves `apps/api` layered routes via the existing backend entrypoint):
@@ -186,6 +189,12 @@ For safety, `resetAdminPassword` is blocked in production unless `ALLOW_ADMIN_PA
 - Artist links must be HTTPS and sanitized at the backend.
 - Paystack-backed purchase settlement now feeds creator wallet and finance surfaces after successful verification or webhook confirmation.
 - Legacy `apps/api` billing/music placeholders are still available for compatibility, but the active monetization path lives under `backend/routes/payments.js` and `backend/routes/purchases.js`.
+
+## Google Search Console + Analytics
+- `https://tengacion.com/sitemap.xml` is the sitemap index URL to submit in Google Search Console and Bing Webmaster Tools.
+- GA4 is wired through the frontend build. Set `VITE_GA_MEASUREMENT_ID` before running `npm run build --prefix frontend` so the production bundle includes your Measurement ID.
+- `VITE_GA_DEBUG_MODE=true` is optional for local validation and should usually stay `false` in production.
+- Prefer DNS verification in Google Search Console. If you use the HTML meta-tag method instead, place the provided tag in `frontend/index.html`.
 
 ## Video & Live streaming
 

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import { trackPageView } from "../../lib/analytics";
 import {
   buildCanonicalUrl,
   DEFAULT_DESCRIPTION,
@@ -184,6 +185,11 @@ export default function SeoHead({
         script.textContent = "";
       }
     }
+
+    void trackPageView({
+      path: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+      title: document.title,
+    });
 
     return undefined;
   }, [

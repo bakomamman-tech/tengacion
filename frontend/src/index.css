@@ -11141,10 +11141,30 @@ html.dark-mode .create-post-quick-btn--reel {
 .post-text-block {
   position: relative;
   min-width: 0;
+  border: 1px solid rgba(217, 226, 236, 0.95);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  padding: 16px 18px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
 }
 
 .post-shared-preview__text-block {
+  position: relative;
   min-width: 0;
+  border: 1px solid rgba(217, 226, 236, 0.95);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  padding: 16px 18px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.post-text-block .post-text,
+.post-text-block .expandable-post-text__content,
+.post-text-block .expandable-post-text__measure,
+.post-shared-preview__text-block .post-text,
+.post-shared-preview__text-block .expandable-post-text__content,
+.post-shared-preview__text-block .expandable-post-text__measure {
+  color: #111827;
 }
 
 .post-text {
@@ -11169,6 +11189,22 @@ html.dark-mode .create-post-quick-btn--reel {
 
 .post-text-toggle:focus-visible {
   outline: none;
+}
+
+html.dark-mode .post-text-block,
+html.dark-mode .post-shared-preview__text-block {
+  border-color: rgba(226, 232, 240, 0.98);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+}
+
+html.dark-mode .post-text-block .post-text,
+html.dark-mode .post-text-block .expandable-post-text__content,
+html.dark-mode .post-text-block .expandable-post-text__measure,
+html.dark-mode .post-shared-preview__text-block .post-text,
+html.dark-mode .post-shared-preview__text-block .expandable-post-text__content,
+html.dark-mode .post-shared-preview__text-block .expandable-post-text__measure {
+  color: #111827;
 }
 
 .post-meta-row {

@@ -1,16 +1,23 @@
 const GOOGLE_TAG_MANAGER_URL = "https://www.googletagmanager.com/gtag/js";
 const GA_MEASUREMENT_ID = String(import.meta.env.VITE_GA_MEASUREMENT_ID || "").trim();
-const GA_DEBUG_MODE = String(import.meta.env.VITE_GA_DEBUG_MODE || "").trim().toLowerCase() === "true";
+const GA_DEBUG_MODE =
+  String(import.meta.env.VITE_GA_DEBUG_MODE || "").trim().toLowerCase() === "true";
+export const SEO_PAGEVIEW_EVENT = "tengacion:seo-updated";
 
 let scriptPromise = null;
-let initializedMeasurementId = "";
-let lastTrackedKey = "";
-let lastTrackedLocation = "";
+let initialized = false;
+let lastTrackedUrl = "";
+
+const canUseBrowser = () =>
+  typeof window !== "undefined" && typeof document !== "undefined";
+
+export const getGoogleAnalyticsMeasurementId = () => GA_MEASUREMENT_ID;
+
+export const isGoogleAnalyticsEnabled = () =>
+  Boolean(GA_MEASUREMENT_ID) && canUseBrowser();
 
 const ensureDataLayer = () => {
-  if (typeof window === "undefined") {
-    return null;
-  }
+  if (!canUseBrowser()) {return null;}
 
   window.dataLayer = window.dataLayer || [];
   window.gtag =
@@ -32,12 +39,10 @@ const ensureGoogleAnalyticsScript = () => {
   }
 
   scriptPromise = new Promise((resolve) => {
-    if (typeof document === "undefined") {
-      resolve(false);
-      return;
-    }
+    const existingScript = document.head.querySelector(
+      'script[data-analytics="google-tag-manager"]'
+    );
 
-    const existingScript = document.head.querySelector('script[data-analytics="google-tag-manager"]');
     if (existingScript) {
       resolve(true);
       return;
@@ -47,22 +52,15 @@ const ensureGoogleAnalyticsScript = () => {
     script.async = true;
     script.src = `${GOOGLE_TAG_MANAGER_URL}?id=${encodeURIComponent(GA_MEASUREMENT_ID)}`;
     script.setAttribute("data-analytics", "google-tag-manager");
-    script.addEventListener("load", () => resolve(true), { once: true });
-    script.addEventListener("error", () => resolve(false), { once: true });
+
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+
     document.head.appendChild(script);
   });
 
   return scriptPromise;
 };
-
-export const getGoogleAnalyticsMeasurementId = () => GA_MEASUREMENT_ID;
-
-export const isGoogleAnalyticsEnabled = () =>
-  Boolean(
-    GA_MEASUREMENT_ID
-    && typeof window !== "undefined"
-    && typeof document !== "undefined"
-  );
 
 export const initializeGoogleAnalytics = async () => {
   if (!isGoogleAnalyticsEnabled()) {
@@ -74,42 +72,52 @@ export const initializeGoogleAnalytics = async () => {
     return false;
   }
 
-  if (initializedMeasurementId !== GA_MEASUREMENT_ID) {
-    initializedMeasurementId = GA_MEASUREMENT_ID;
+  const scriptLoaded = await ensureGoogleAnalyticsScript();
+  if (!scriptLoaded) {
+    return false;
+  }
+
+  if (!initialized) {
     gtag("js", new Date());
     gtag("config", GA_MEASUREMENT_ID, {
       send_page_view: false,
       ...(GA_DEBUG_MODE ? { debug_mode: true } : {}),
     });
+    initialized = true;
   }
 
-  void ensureGoogleAnalyticsScript();
   return true;
 };
 
-export const trackPageView = async ({ path = "", title = "", referrer = "" } = {}) => {
+export const trackPageView = async ({
+  path,
+  title,
+  referrer,
+} = {}) => {
   if (!isGoogleAnalyticsEnabled()) {
     return false;
   }
 
-  const initialized = await initializeGoogleAnalytics();
-  if (!initialized || typeof window === "undefined") {
+  const ok = await initializeGoogleAnalytics();
+  if (!ok) {
     return false;
   }
 
   const safePath =
-    String(path || `${window.location.pathname}${window.location.search}${window.location.hash}`).trim()
-    || "/";
+    String(
+      path ||
+        `${window.location.pathname}${window.location.search}${window.location.hash}`
+    ).trim() || "/";
+
   const safeTitle = String(title || document.title || "Tengacion").trim() || "Tengacion";
   const pageLocation = new URL(safePath, window.location.origin).toString();
-  const pageReferrer = String(referrer || lastTrackedLocation || document.referrer || "").trim();
-  const trackingKey = `${safePath}::${safeTitle}`;
+  const pageReferrer = String(referrer || document.referrer || "").trim();
 
-  if (trackingKey === lastTrackedKey) {
+  if (pageLocation === lastTrackedUrl) {
     return false;
   }
 
-  window.gtag?.("event", "page_view", {
+  window.gtag("event", "page_view", {
     page_title: safeTitle,
     page_path: safePath,
     page_location: pageLocation,
@@ -117,7 +125,24 @@ export const trackPageView = async ({ path = "", title = "", referrer = "" } = {
     ...(GA_DEBUG_MODE ? { debug_mode: true } : {}),
   });
 
-  lastTrackedKey = trackingKey;
-  lastTrackedLocation = pageLocation;
+  lastTrackedUrl = pageLocation;
+  return true;
+};
+
+export const trackEvent = async (eventName, params = {}) => {
+  if (!eventName || !isGoogleAnalyticsEnabled()) {
+    return false;
+  }
+
+  const ok = await initializeGoogleAnalytics();
+  if (!ok) {
+    return false;
+  }
+
+  window.gtag("event", eventName, {
+    ...params,
+    ...(GA_DEBUG_MODE ? { debug_mode: true } : {}),
+  });
+
   return true;
 };

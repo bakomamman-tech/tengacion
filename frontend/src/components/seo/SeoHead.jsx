@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { trackPageView } from "../../lib/analytics";
+import { SEO_PAGEVIEW_EVENT } from "../../lib/analytics";
 import {
   buildCanonicalUrl,
   DEFAULT_DESCRIPTION,
@@ -186,12 +186,20 @@ export default function SeoHead({
       }
     }
 
-    void trackPageView({
-      path: `${window.location.pathname}${window.location.search}${window.location.hash}`,
-      title: document.title,
-    });
+    const notifyTimer = window.setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent(SEO_PAGEVIEW_EVENT, {
+          detail: {
+            path: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+            title: document.title,
+          },
+        })
+      );
+    }, 0);
 
-    return undefined;
+    return () => {
+      window.clearTimeout(notifyTimer);
+    };
   }, [
     canonical,
     description,

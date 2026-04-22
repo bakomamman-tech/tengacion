@@ -21,8 +21,16 @@ import {
   buildCreatorProfileJsonLd,
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
+  buildCreatorSeoDescription,
+  joinReadableList,
+  normalizePathname,
   pickFirstText,
+  shouldIndexCreatorPage,
 } from "../lib/seo";
+import {
+  buildCreatorPublicPath,
+  buildCreatorSubscribePath,
+} from "../lib/publicRoutes";
 import {
   buildPaystackCallbackUrl,
   normalizePurchaseType,
@@ -48,6 +56,20 @@ const resolveTab = (pathname = "") => {
   const lowerPath = String(pathname || "").toLowerCase();
   const match = PUBLIC_TABS.find((tab) => tab.suffix && lowerPath.endsWith(tab.suffix));
   return match?.key || "home";
+};
+
+const formatCreatorTypeLabel = (value = "") => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "bookpublishing") {
+    return "Books";
+  }
+  if (normalized === "podcast") {
+    return "Podcasts";
+  }
+  if (normalized === "music") {
+    return "Music";
+  }
+  return normalized;
 };
 
 const normalizePreviewPayload = ({
@@ -262,34 +284,91 @@ export default function CreatorHubPage() {
   const podcasts = payload?.podcasts || { series: {}, episodes: [] };
   const books = Array.isArray(payload?.books) ? payload.books : [];
   const featured = payload?.featured || null;
+  const latestReleases = Array.isArray(payload?.latestReleases)
+    ? payload.latestReleases.filter((item) => String(item?.route || "").trim())
+    : [];
   const viewer = payload?.viewer || {};
   const subscription = payload?.subscription || {};
   const creatorName = creator?.displayName || "Creator";
-  const canonicalSuffix = activeTab === "home" ? "" : `/${activeTab}`;
-  const canonicalPath = `/creators/${creator?.id || creatorId}${canonicalSuffix}`;
-  const isAliasRoute = location.pathname.startsWith("/creator/");
+  const creatorPublicPath = creator?.canonicalPath || buildCreatorPublicPath({
+    creatorId: creator?.id || creatorId,
+    username: creator?.username,
+  });
+  const creatorTabPaths = creator?.tabPaths || {
+    home: creatorPublicPath,
+    music: buildCreatorPublicPath({ creatorId: creator?.id || creatorId, username: creator?.username, tab: "music" }),
+    albums: buildCreatorPublicPath({ creatorId: creator?.id || creatorId, username: creator?.username, tab: "albums" }),
+    podcasts: buildCreatorPublicPath({ creatorId: creator?.id || creatorId, username: creator?.username, tab: "podcasts" }),
+    books: buildCreatorPublicPath({ creatorId: creator?.id || creatorId, username: creator?.username, tab: "books" }),
+  };
+  const canonicalPath = creatorTabPaths[activeTab] || creatorPublicPath;
+  const creatorHomeIndexable = Boolean(payload?.seo?.indexable ?? shouldIndexCreatorPage({
+    creator,
+    stats: payload?.stats,
+  }));
+  const creatorPageIndexable = activeTab === "home"
+    ? creatorHomeIndexable
+    : activeTab === "music"
+      ? Number(payload?.stats?.totalTracks || 0) > 0 || Number(payload?.stats?.totalVideos || 0) > 0
+      : activeTab === "albums"
+        ? Number(payload?.stats?.totalAlbums || 0) > 0
+        : activeTab === "podcasts"
+          ? Number(payload?.stats?.totalEpisodes || 0) > 0
+          : Number(payload?.stats?.totalBooks || 0) > 0;
+  const isCanonicalRequest = normalizePathname(location.pathname) === normalizePathname(canonicalPath);
+  const creatorTypeLabels = Array.isArray(creator?.creatorTypes)
+    ? creator.creatorTypes.map((entry) => formatCreatorTypeLabel(entry)).filter(Boolean)
+    : [];
+  const creatorCoverageLabel = joinReadableList(creatorTypeLabels.map((entry) => String(entry).toLowerCase()));
+  const quickSectionLinks = [
+    {
+      key: "music",
+      label: "Music",
+      path: creatorTabPaths.music,
+      count: Number(payload?.stats?.totalTracks || 0) + Number(payload?.stats?.totalVideos || 0),
+    },
+    {
+      key: "albums",
+      label: "Albums",
+      path: creatorTabPaths.albums,
+      count: Number(payload?.stats?.totalAlbums || 0),
+    },
+    {
+      key: "podcasts",
+      label: "Podcasts",
+      path: creatorTabPaths.podcasts,
+      count: Number(payload?.stats?.totalEpisodes || 0),
+    },
+    {
+      key: "books",
+      label: "Books",
+      path: creatorTabPaths.books,
+      count: Number(payload?.stats?.totalBooks || 0),
+    },
+  ].filter((entry) => entry.count > 0);
   const seoTitle =
     activeTab === "music"
-      ? `${creatorName} Music on Tengacion | Streams, Singles & Videos`
+      ? `${creatorName} Music on Tengacion | Singles, Videos & Releases`
       : activeTab === "albums"
-        ? `Albums by ${creatorName} | Tengacion`
+        ? `${creatorName} Albums on Tengacion | EPs & Projects`
         : activeTab === "podcasts"
-          ? `Podcasts by ${creatorName} | Tengacion`
+          ? `${creatorName} Podcasts on Tengacion | Episodes & Spoken Word`
           : activeTab === "books"
-            ? `Books by ${creatorName} | Tengacion`
-            : `${creatorName} on Tengacion - Music, Books, Podcasts & Updates`;
-  const seoDescription = pickFirstText(
-    activeTab === "music"
-      ? `Stream singles, albums, and music videos from ${creatorName} on Tengacion.`
-      : activeTab === "albums"
-        ? `Explore albums and EP releases from ${creatorName} on Tengacion.`
-        : activeTab === "podcasts"
-          ? `Listen to podcast episodes and spoken-word releases from ${creatorName} on Tengacion.`
-          : activeTab === "books"
-            ? `Browse books and digital releases from ${creatorName} on Tengacion.`
-            : `Explore ${creatorName} on Tengacion. Discover music, books, podcasts, and updates from this creator.`,
+            ? `${creatorName} Books on Tengacion | Reading & Publishing`
+            : `${creatorName} on Tengacion | Music, Books, Podcasts & Updates`;
+  const seoDescription = buildCreatorSeoDescription({
+    creatorName,
+    creator,
+    stats: payload?.stats,
+    tab: activeTab,
+  });
+  const creatorIntroText = pickFirstText(
+    payload?.seo?.introText,
     creator?.tagline,
-    creator?.bio
+    creator?.bio,
+    creatorCoverageLabel
+      ? `${creatorName} publishes across ${creatorCoverageLabel} on Tengacion.`
+      : `Discover ${creatorName} on Tengacion.`
   );
   const seoImage = creator?.bannerUrl || creator?.avatarUrl || featured?.item?.coverUrl || "";
   const structuredData = useMemo(
@@ -307,10 +386,16 @@ export default function CreatorHubPage() {
       }),
       buildBreadcrumbJsonLd([
         { name: "Creators", url: "/creators" },
-        { name: creatorName, url: canonicalPath },
+        { name: creatorName, url: creatorTabPaths.home || canonicalPath },
+        ...(activeTab !== "home"
+          ? [{
+              name: activeTab === "albums" ? "Albums" : activeTab === "books" ? "Books" : activeTab === "podcasts" ? "Podcasts" : "Music",
+              url: canonicalPath,
+            }]
+          : []),
       ]),
     ],
-    [canonicalPath, creator?.links, creatorName, seoDescription, seoImage]
+    [activeTab, canonicalPath, creator?.links, creatorName, creatorTabPaths.home, seoDescription, seoImage]
   );
 
   const requireViewer = () => {
@@ -386,7 +471,7 @@ export default function CreatorHubPage() {
     if (!creator?.id || !requireViewer()) {
       return;
     }
-    navigate(`/creators/${creator.id}/subscribe`);
+    navigate(creator?.subscribePath || buildCreatorSubscribePath(creator.id));
   };
 
   const handleBuy = async (item) => {
@@ -605,6 +690,7 @@ export default function CreatorHubPage() {
         title="Top Singles"
         subtitle="Fresh tracks ready to preview, stream, download, or buy."
         creatorId={creator.id}
+        creatorRoute={creatorPublicPath}
         items={music.tracks}
         featured
         emptyMessage="No music has been published yet."
@@ -618,6 +704,7 @@ export default function CreatorHubPage() {
         title="Albums & EPs"
         subtitle="Premium bundles presented like collectible drops."
         creatorId={creator.id}
+        creatorRoute={creatorPublicPath}
         items={music.albums}
         emptyMessage="No albums or EPs have been published yet."
         onPreview={handlePreview}
@@ -630,6 +717,7 @@ export default function CreatorHubPage() {
         title="Video Premieres"
         subtitle="Music visuals, teasers, and video releases."
         creatorId={creator.id}
+        creatorRoute={creatorPublicPath}
         items={music.videos}
         emptyMessage="No videos have been published yet."
         onPreview={handlePreview}
@@ -653,6 +741,7 @@ export default function CreatorHubPage() {
         title="Podcast Episodes"
         subtitle="Series episodes and spoken-word releases."
         creatorId={creator.id}
+        creatorRoute={creatorPublicPath}
         items={podcasts.episodes}
         emptyMessage="No podcast episodes have been published yet."
         onPreview={handlePreview}
@@ -665,6 +754,7 @@ export default function CreatorHubPage() {
         title="Book Publishing"
         subtitle="Beautiful covers, previews, downloads, and premium reading releases."
         creatorId={creator.id}
+        creatorRoute={creatorPublicPath}
         items={books}
         emptyMessage="No books have been published yet."
         onPreview={handlePreview}
@@ -684,6 +774,7 @@ export default function CreatorHubPage() {
             title="Singles"
             subtitle="Tracks available now."
             creatorId={creator.id}
+            creatorRoute={creatorPublicPath}
             items={music.tracks}
             emptyMessage="No singles published yet."
             onPreview={handlePreview}
@@ -696,6 +787,7 @@ export default function CreatorHubPage() {
             title="Video releases"
             subtitle="Music videos and preview clips."
             creatorId={creator.id}
+            creatorRoute={creatorPublicPath}
             items={music.videos}
             emptyMessage="No videos published yet."
             onPreview={handlePreview}
@@ -714,6 +806,7 @@ export default function CreatorHubPage() {
             title="Albums & EPs"
             subtitle="Full projects and collectible releases."
             creatorId={creator.id}
+            creatorRoute={creatorPublicPath}
             items={music.albums}
             emptyMessage="No albums or EPs published yet."
             onPreview={handlePreview}
@@ -743,6 +836,7 @@ export default function CreatorHubPage() {
             title="Episodes"
             subtitle="Preview, stream, download, or unlock."
             creatorId={creator.id}
+            creatorRoute={creatorPublicPath}
             items={podcasts.episodes}
             emptyMessage="No episodes published yet."
             onPreview={handlePreview}
@@ -761,6 +855,7 @@ export default function CreatorHubPage() {
             title="Published books"
             subtitle="Books, manuscripts, and digital releases."
             creatorId={creator.id}
+            creatorRoute={creatorPublicPath}
             items={books}
             emptyMessage="No books published yet."
             onPreview={handlePreview}
@@ -781,7 +876,7 @@ export default function CreatorHubPage() {
         title={seoTitle}
         description={seoDescription}
         canonical={canonicalPath}
-        robots={isAliasRoute ? "noindex,follow" : "index,follow"}
+        robots={creatorPageIndexable && isCanonicalRequest ? "index,follow" : "noindex,follow"}
         ogType="profile"
         ogImage={seoImage}
         ogImageAlt={`${creatorName} on Tengacion`}
@@ -810,7 +905,7 @@ export default function CreatorHubPage() {
         {PUBLIC_TABS.map((tab) => (
           <Link
             key={tab.key}
-            to={`/creators/${creator.id}${tab.suffix}`}
+            to={creatorTabPaths[tab.key] || creatorPublicPath}
             className={`creator-public-tab${activeTab === tab.key ? " is-active" : ""}`}
           >
             {tab.label}
@@ -820,6 +915,32 @@ export default function CreatorHubPage() {
 
       <div className="creator-public-layout">
         <main className="creator-public-main">
+          <section className="creator-public-overview">
+            <div className="creator-public-overview__copy">
+              <p className="creator-public-featured__eyebrow">Creator Overview</p>
+              <h2>About {creatorName}</h2>
+              <p>{creatorIntroText}</p>
+              {creatorCoverageLabel ? (
+                <p>
+                  <strong>{creatorName}</strong> creates across {creatorCoverageLabel} on Tengacion.
+                </p>
+              ) : null}
+            </div>
+            <div className="creator-public-overview__links">
+              {quickSectionLinks.length ? (
+                quickSectionLinks.map((entry) => (
+                  <Link key={entry.key} to={entry.path} className="creator-public-overview__pill">
+                    {entry.label} ({entry.count})
+                  </Link>
+                ))
+              ) : (
+                <span className="creator-public-overview__empty">
+                  Public releases will appear here as this creator publishes more content.
+                </span>
+              )}
+            </div>
+          </section>
+
           <section className="creator-public-featured">
             <div className="creator-public-featured__copy">
               <p className="creator-public-featured__eyebrow">{featured?.headline || "Featured release"}</p>
@@ -942,12 +1063,31 @@ export default function CreatorHubPage() {
 
           <section className="creator-public-panel">
             <h3>Publishing Identity</h3>
-            <p>{creator.bio || "A creator building across music, podcasts, and books on Tengacion."}</p>
+            <p>{creator.bio || creatorIntroText || "A creator building across music, podcasts, and books on Tengacion."}</p>
             <div className="creator-public-tags">
-              {(creator.genres || []).map((genre) => (
+              {[...(creatorTypeLabels || []), ...(creator.genres || [])].map((genre) => (
                 <span key={genre}>{genre}</span>
               ))}
             </div>
+          </section>
+
+          <section className="creator-public-panel">
+            <h3>Latest Public Releases</h3>
+            {latestReleases.length ? (
+              <div className="creator-public-related">
+                {latestReleases.map((item) => (
+                  <Link key={`${item.itemType}-${item.id}`} to={item.route} className="creator-public-related__item">
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.contentLabel}
+                      {item.subtitle ? ` • ${item.subtitle}` : ""}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p>No public releases have been published yet.</p>
+            )}
           </section>
 
           <section className="creator-public-panel">

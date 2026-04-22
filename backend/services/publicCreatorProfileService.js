@@ -2,16 +2,21 @@ const mongoose = require("mongoose");
 
 const Album = require("../models/Album");
 const Book = require("../models/Book");
-const CreatorProfile = require("../models/CreatorProfile");
 const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const Video = require("../models/Video");
 const { buildAlbumArchiveUrl } = require("./albumArchiveService");
+const { findCreatorProfileByReference } = require("./creatorLookupService");
 const {
   getLatestCreatorSubscriptionPurchase,
   getUserPaidPurchases,
 } = require("./entitlementService");
 const { buildSignedMediaUrl } = require("./mediaSigner");
+const {
+  buildCreatorIdPath,
+  buildCreatorPublicPath,
+  buildCreatorSubscribePath,
+} = require("./publicRouteService");
 const { resolveSubscriptionLifecycle } = require("./purchaseLifecycleService");
 const { normalizeCreatorTypes } = require("./creatorProfileService");
 
@@ -20,19 +25,33 @@ const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 
-const toObjectId = (value) => {
-  if (!mongoose.Types.ObjectId.isValid(value)) {
-    return null;
-  }
-  return new mongoose.Types.ObjectId(value);
-};
-
 const toCleanString = (value = "") => String(value || "").trim();
+
+const pickFirstText = (...values) => {
+  for (const value of values) {
+    const normalized = toCleanString(value);
+    if (normalized) {
+      return normalized;
+    }
+  }
+  return "";
+};
 
 const numberOrZero = (value) => {
   const parsed = Number(value || 0);
   return Number.isFinite(parsed) ? parsed : 0;
 };
+
+const hasMeaningfulCopy = (...values) =>
+  values.some((value) => toCleanString(value).replace(/\s+/g, " ").length >= 24);
+
+const buildCreatorTabPaths = ({ creatorId = "", username = "" } = {}) => ({
+  home: buildCreatorPublicPath({ creatorId, username }),
+  music: buildCreatorPublicPath({ creatorId, username, tab: "music" }),
+  albums: buildCreatorPublicPath({ creatorId, username, tab: "albums" }),
+  podcasts: buildCreatorPublicPath({ creatorId, username, tab: "podcasts" }),
+  books: buildCreatorPublicPath({ creatorId, username, tab: "books" }),
+});
 
 const buildSignedUrl = ({
   req,
@@ -248,14 +267,21 @@ const mapTrackItem = ({ track, req, viewerId, ownerAccess, entitlements, creator
     canStream: Boolean(streamSource),
     canDownload: Boolean(canAccessFull && toCleanString(track.audioUrl)),
     canBuy: numberOrZero(track.price) > 0 && !canAccessFull,
+    durationSec: numberOrZero(track.durationSec),
     previewStartSec: numberOrZero(track.previewStartSec),
     previewLimitSec: numberOrZero(track.previewLimitSec || 30),
     playsCount: numberOrZero(track.playsCount || track.playCount),
     purchaseCount: numberOrZero(track.purchaseCount),
     genre: toCleanString(track.genre),
+    releaseType: toCleanString(track.releaseType || "single"),
+    releaseDate: track.releaseDate || null,
+    artistName: toCleanString(track.artistName),
     podcastSeries: toCleanString(track.podcastSeries),
     seasonNumber: numberOrZero(track.seasonNumber),
     episodeNumber: numberOrZero(track.episodeNumber),
+    showNotes: toCleanString(track.showNotes),
+    guestNames: Array.isArray(track.guestNames) ? track.guestNames.filter(Boolean) : [],
+    episodeTags: Array.isArray(track.episodeTags) ? track.episodeTags.filter(Boolean) : [],
     publishedAt: track.updatedAt || track.createdAt || null,
   };
 };
@@ -317,6 +343,7 @@ const mapAlbumItem = ({ album, req, viewerId, ownerAccess, entitlements, creator
     playCount: numberOrZero(album.playCount),
     purchaseCount: numberOrZero(album.purchaseCount),
     releaseType: toCleanString(album.releaseType || album.contentType || "album"),
+    trackTitles: tracks.map((track) => toCleanString(track?.title)).filter(Boolean).slice(0, 6),
     publishedAt: album.updatedAt || album.createdAt || null,
   };
 };
@@ -437,6 +464,10 @@ const mapBookItem = ({ book, req, viewerId, ownerAccess, entitlements, creatorSu
     canStream: Boolean(streamSource),
     canDownload: Boolean(canAccessFull && bookFile),
     canBuy: numberOrZero(book.price) > 0 && !canAccessFull,
+    authorName: toCleanString(book.authorName),
+    subtitle: toCleanString(book.subtitle),
+    genre: toCleanString(book.genre),
+    pageCount: numberOrZero(book.pageCount),
     fileFormat: toCleanString(book.fileFormat).toUpperCase(),
     language: toCleanString(book.language || ""),
     tags: Array.isArray(book.tags) ? book.tags : [],
@@ -500,15 +531,30 @@ const buildStats = ({ creator, tracks = [], albums = [], videos = [], books = []
   revenue: purchases.reduce((sum, row) => sum + numberOrZero(row.amount), 0),
 });
 
-const buildCreatorIdentity = ({ profile, creatorTypes = [] }) => {
+const buildLatestReleases = ({ tracks = [], albums = [], videos = [], books = [], podcasts = [] } = {}) =>
+  [
+    ...tracks.map((item) => ({ ...item, lane: "music", contentLabel: "Track" })),
+    ...albums.map((item) => ({ ...item, lane: "music", contentLabel: "Album" })),
+    ...videos.map((item) => ({ ...item, lane: "music", contentLabel: "Video" })),
+    ...podcasts.map((item) => ({ ...item, lane: "podcast", contentLabel: "Podcast Episode" })),
+    ...books.map((item) => ({ ...item, lane: "bookPublishing", contentLabel: "Book" })),
+  ]
+    .sort((left, right) => new Date(right.publishedAt || 0) - new Date(left.publishedAt || 0))
+    .slice(0, 6);
+
+const buildCreatorIdentity = ({ profile, creatorTypes = [], indexable = true }) => {
   const creatorUser = profile?.userId || {};
   const followersCount = Array.isArray(creatorUser.followers) ? creatorUser.followers.length : 0;
+  const creatorId = String(profile?._id || "");
+  const username = toCleanString(creatorUser?.username);
+  const publicPath = buildCreatorPublicPath({ creatorId, username });
+  const publicTabs = buildCreatorTabPaths({ creatorId, username });
 
   return {
-    id: String(profile?._id || ""),
+    id: creatorId,
     userId: String(creatorUser?._id || profile?.userId || ""),
     displayName: toCleanString(profile?.displayName || profile?.fullName || creatorUser?.name),
-    username: toCleanString(creatorUser?.username),
+    username,
     avatarUrl:
       typeof creatorUser?.avatar === "string"
         ? creatorUser.avatar
@@ -523,27 +569,28 @@ const buildCreatorIdentity = ({ profile, creatorTypes = [] }) => {
     followersCount,
     location: toCleanString(creatorUser?.country || profile?.country),
     creatorTypes,
+    canonicalPath: publicPath,
+    legacyPath: buildCreatorIdPath({ creatorId }),
+    subscribePath: buildCreatorSubscribePath(creatorId),
+    tabPaths: publicTabs,
+    isIndexable: Boolean(indexable),
   };
 };
 
 const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
-  const objectId = toObjectId(creatorId);
-  if (!objectId) {
-    const error = new Error("Invalid creator id");
-    error.status = 400;
-    throw error;
-  }
-
-  const profile = await CreatorProfile.findById(objectId).populate(
-    "userId",
-    "name username avatar followers isVerified emailVerified country"
-  ).lean();
+  const profile = await findCreatorProfileByReference({
+    creatorRef: creatorId,
+    populate: "name username avatar followers isVerified emailVerified country",
+    lean: true,
+  });
 
   if (!profile) {
     const error = new Error("Creator not found");
     error.status = 404;
     throw error;
   }
+
+  const objectId = profile._id;
 
   const ownerAccess = String(profile?.userId?._id || profile?.userId || "") === String(viewerId || "");
   const viewerPurchaseState = ownerAccess
@@ -646,8 +693,11 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
   const creatorTypes = normalizeCreatorTypes(profile.creatorTypes).length
     ? normalizeCreatorTypes(profile.creatorTypes)
     : inferCreatorTypesFromContent({ tracks, albums, videos, books, podcasts });
-  const creator = buildCreatorIdentity({ profile, creatorTypes });
+  const totalPublicItems = tracks.length + albums.length + videos.length + books.length + podcasts.length;
+  const isIndexable = totalPublicItems > 0 || hasMeaningfulCopy(profile?.tagline, profile?.bio);
+  const creator = buildCreatorIdentity({ profile, creatorTypes, indexable: isIndexable });
   const featured = buildFeaturedRelease({ tracks, albums, videos, books, podcasts });
+  const latestReleases = buildLatestReleases({ tracks, albums, videos, books, podcasts });
   const viewerFollows = Array.isArray(profile?.userId?.followers)
     ? profile.userId.followers.some((entry) => String(entry) === String(viewerId || ""))
     : false;
@@ -661,6 +711,7 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
     },
     subscription: subscriptionPayload,
     featured,
+    latestReleases,
     music: {
       tracks,
       albums,
@@ -687,6 +738,17 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
       podcasts,
       purchases,
     }),
+    seo: {
+      indexable: Boolean(isIndexable),
+      canonicalPath: creator.canonicalPath,
+      hasMeaningfulBio: hasMeaningfulCopy(profile?.tagline, profile?.bio),
+      totalPublicItems,
+      introText: pickFirstText(
+        profile?.tagline,
+        profile?.bio,
+        `${creator.displayName} publishes across ${creatorTypes.join(", ") || "music, books, and podcasts"} on Tengacion.`
+      ),
+    },
   };
 };
 

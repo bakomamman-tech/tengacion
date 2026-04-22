@@ -180,6 +180,7 @@ describe("creator discovery routes", () => {
       creatorId: expect.any(String),
       creatorName: expect.any(String),
       creatorRoute: expect.stringContaining("/creator/"),
+      route: expect.stringContaining("/"),
     });
     expect(response.body.items.some((item) => item.creatorAvatar === "https://cdn.test/music-creator-profile.jpg")).toBe(true);
     expect(response.body.items.some((item) => item.previewUrl)).toBe(true);
@@ -210,7 +211,7 @@ describe("creator discovery routes", () => {
     expect(response.body.items[0]).toMatchObject({
       creatorId: creator._id.toString(),
       username: "jordan.bangoji",
-      route: `/creator/${creator._id.toString()}`,
+      route: "/creator/jordan.bangoji",
       subscribeRoute: `/creators/${creator._id.toString()}/subscribe`,
     });
   });

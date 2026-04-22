@@ -141,6 +141,6 @@ ISC
 
 SEO notes
 - `robots.txt` should be available at `https://tengacion.com/robots.txt`.
-- `sitemap.xml` should be available at `https://tengacion.com/sitemap.xml`.
+- `sitemap.xml` should be available at `https://tengacion.com/sitemap.xml` and acts as the sitemap index for child sitemaps under `/sitemaps/*.xml`.
 - Add Google Search Console or Bing verification tags in [index.html](/c:/Users/LENOVO/Tengacion/frontend/index.html).
-- Submit the sitemap URL above in Search Console after deployment.
+- Submit the sitemap index URL above in Search Console or Bing Webmaster Tools after deployment.

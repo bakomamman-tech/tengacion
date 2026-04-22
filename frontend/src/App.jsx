@@ -61,6 +61,7 @@ const ArtistProfileRoute = lazy(() => import("@web/features/creator/ArtistPage")
 const TrackDetail = lazy(() => import("./pages/TrackDetail"));
 const BookDetail = lazy(() => import("./pages/BookDetail"));
 const AlbumDetail = lazy(() => import("./pages/AlbumDetail"));
+const PublicCategoryPage = lazy(() => import("./pages/PublicCategoryPage"));
 const PaymentCallbackPage = lazy(() => import("./pages/payments/PaymentCallbackPage"));
 const MyPurchasesPage = lazy(() => import("./pages/purchases/MyPurchasesPage"));
 const Trending = lazy(() => import("./pages/Trending"));
@@ -158,6 +159,9 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/community-guidelines" element={<CommunityGuidelinesPage />} />
           <Route path="/find-creators" element={<FindCreatorsPage />} />
+          <Route path="/music" element={<PublicCategoryPage category="music" />} />
+          <Route path="/books" element={<PublicCategoryPage category="books" />} />
+          <Route path="/podcasts" element={<PublicCategoryPage category="podcasts" />} />
           <Route
             path="/find-friends"
             element={
@@ -248,6 +252,10 @@ export default function App() {
             }
           />
           <Route path="/creator/:creatorId" element={<CreatorHubPage />} />
+          <Route path="/creator/:creatorId/music" element={<CreatorHubPage />} />
+          <Route path="/creator/:creatorId/albums" element={<CreatorHubPage />} />
+          <Route path="/creator/:creatorId/podcasts" element={<CreatorHubPage />} />
+          <Route path="/creator/:creatorId/books" element={<CreatorHubPage />} />
           <Route path="/tracks/:trackId" element={<TrackDetail />} />
           <Route path="/books/:bookId" element={<BookDetail />} />
           <Route path="/albums/:albumId" element={<AlbumDetail />} />

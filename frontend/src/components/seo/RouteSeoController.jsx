@@ -6,12 +6,19 @@ import {
   DEFAULT_TITLE,
   normalizePathname,
 } from "../../lib/seo";
+import {
+  PRIVATE_CREATOR_ALIAS_SEGMENTS,
+  normalizeCreatorUsername,
+} from "../../lib/publicRoutes";
 import SeoHead from "./SeoHead";
 import { useLocation } from "react-router-dom";
 
 const PUBLIC_STATIC_PATHS = new Set([
   "/creators",
   "/find-creators",
+  "/music",
+  "/books",
+  "/podcasts",
   "/terms",
   "/privacy",
   "/community-guidelines",
@@ -100,28 +107,13 @@ const matchesPathPattern = (pathname, pattern) => {
 const isPublicCreatorRoute = (pathname) =>
   /^\/creators\/[^/]+(?:\/(?:music|albums|podcasts|books))?$/i.test(pathname);
 
-const PRIVATE_CREATOR_ALIAS_SEGMENTS = new Set([
-  "register",
-  "dashboard",
-  "categories",
-  "fan-page-view",
-  "music",
-  "books",
-  "podcasts",
-  "earnings",
-  "payouts",
-  "settings",
-  "verification",
-  "support",
-]);
-
 const isPublicCreatorAliasRoute = (pathname) => {
-  const match = pathname.match(/^\/creator\/([^/]+)$/i);
+  const match = pathname.match(/^\/creator\/([^/]+)(?:\/(music|albums|podcasts|books))?$/i);
   if (!match) {
     return false;
   }
 
-  return !PRIVATE_CREATOR_ALIAS_SEGMENTS.has(String(match[1] || "").toLowerCase());
+  return !PRIVATE_CREATOR_ALIAS_SEGMENTS.has(normalizeCreatorUsername(match[1]));
 };
 const isPublicDetailRoute = (pathname) =>
   /^\/(tracks|books|albums)\/[^/]+$/i.test(pathname);

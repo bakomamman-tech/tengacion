@@ -403,7 +403,8 @@
 .creator-public-featured,
 .creator-public-shelf,
 .creator-public-panel,
-.creator-public-series {
+.creator-public-series,
+.creator-public-overview {
   border-radius: 30px;
   background: var(--creator-public-panel);
   border: 1px solid var(--creator-public-border);
@@ -549,6 +550,53 @@
   justify-items: end;
 }
 
+.creator-public-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+  gap: 18px;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(31, 92, 61, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(255, 250, 243, 0.96), rgba(247, 241, 231, 0.88));
+}
+
+.creator-public-overview__copy p {
+  color: var(--creator-public-muted);
+  line-height: 1.7;
+}
+
+.creator-public-overview__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-content: flex-start;
+}
+
+.creator-public-overview__pill,
+.creator-public-related__item {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(249, 252, 248, 0.88), rgba(234, 243, 236, 0.72));
+  border: 1px solid rgba(72, 128, 95, 0.1);
+  color: #214032;
+  text-decoration: none;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.creator-public-overview__pill:hover,
+.creator-public-related__item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(72, 128, 95, 0.18);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.creator-public-overview__empty {
+  color: var(--creator-public-muted);
+  line-height: 1.7;
+}
+
 .creator-public-shelf {
   padding: 24px;
 }
@@ -690,6 +738,15 @@
   font-size: 1.06rem;
 }
 
+.creator-public-card__title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.creator-public-card__title-link:hover {
+  text-decoration: underline;
+}
+
 .creator-public-card__body p {
   margin: 6px 0 0;
   color: var(--creator-public-muted);
@@ -804,9 +861,26 @@
   -webkit-backdrop-filter: blur(14px) saturate(120%);
 }
 
+.creator-public-related {
+  display: grid;
+  gap: 12px;
+}
+
+.creator-public-related__item strong {
+  display: block;
+}
+
+.creator-public-related__item span {
+  display: block;
+  margin-top: 6px;
+  color: var(--creator-public-muted);
+  font-size: 0.9rem;
+}
+
 @media (max-width: 1120px) {
   .creator-public-layout,
-  .creator-public-featured {
+  .creator-public-featured,
+  .creator-public-overview {
     grid-template-columns: 1fr;
   }
 }

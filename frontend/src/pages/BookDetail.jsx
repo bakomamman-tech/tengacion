@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   checkEntitlement,
   getBook,
   getBookChapter,
   getBookChapters,
+  getPublicCreatorProfile,
   initPayment,
   resolveImage,
 } from "../api";
@@ -16,10 +17,12 @@ import useEntitlementSocket from "../hooks/useEntitlementSocket";
 import {
   buildBookJsonLd,
   buildBreadcrumbJsonLd,
+  buildBookSeoDescription,
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
-  pickFirstText,
+  shouldIndexPublicEntity,
 } from "../lib/seo";
+import { buildCreatorPublicPath } from "../lib/publicRoutes";
 import {
   buildPaystackCallbackUrl,
   resolveOwnedPurchaseLabel,
@@ -34,6 +37,7 @@ export default function BookDetail() {
   const user = auth?.user ?? null;
 
   const [book, setBook] = useState(null);
+  const [creatorContext, setCreatorContext] = useState(null);
   const [chapters, setChapters] = useState([]);
   const [selectedChapterId, setSelectedChapterId] = useState("");
   const [chapterContent, setChapterContent] = useState("");
@@ -50,9 +54,14 @@ export default function BookDetail() {
   const loadBook = useCallback(async () => {
     setLoading(true);
     setError("");
+    setCreatorContext(null);
     try {
       const [bookRes, chaptersRes] = await Promise.all([getBook(bookId), getBookChapters(bookId)]);
+      const creatorRes = bookRes?.creator?._id
+        ? await getPublicCreatorProfile(bookRes.creator.username || bookRes.creator._id).catch(() => null)
+        : null;
       setBook(bookRes || null);
+      setCreatorContext(creatorRes);
       const list = Array.isArray(chaptersRes) ? chaptersRes : [];
       setChapters(list);
 
@@ -215,12 +224,23 @@ export default function BookDetail() {
     [chapters, selectedChapterId]
   );
   const creatorName = book?.creator?.displayName || "Tengacion Creator";
-  const creatorPath = book?.creator?._id ? `/creators/${book.creator._id}` : "/creators";
+  const creatorPath = creatorContext?.creator?.canonicalPath || buildCreatorPublicPath({
+    creatorId: book?.creator?._id || "",
+    username: book?.creator?.username,
+  });
   const seoTitle = book ? `${book.title} by ${creatorName} | Tengacion` : "Book | Tengacion";
-  const seoDescription = pickFirstText(
-    book?.description,
-    `Discover ${book?.title || "this book"} by ${creatorName} on Tengacion.`
-  );
+  const seoDescription = buildBookSeoDescription({ book, creatorName });
+  const relatedBooks = Array.isArray(creatorContext?.books)
+    ? creatorContext.books
+        .filter((item) => String(item?.route || "").trim())
+        .filter((item) => String(item?.id || "") !== String(book?._id || ""))
+        .slice(0, 4)
+    : [];
+  const shouldIndexPage = shouldIndexPublicEntity({
+    title: book?.title,
+    creatorName,
+    description: seoDescription,
+  });
   const structuredData = useMemo(() => {
     if (!book) {
       return [buildWebSiteJsonLd(), buildOrganizationJsonLd()];
@@ -273,6 +293,7 @@ export default function BookDetail() {
         title={seoTitle}
         description={seoDescription}
         canonical={`/books/${book?._id || bookId}`}
+        robots={shouldIndexPage ? "index,follow" : "noindex,follow"}
         ogType="book"
         ogImage={book?.coverImageUrl}
         ogImageAlt={`${book?.title || "Book"} cover`}
@@ -292,19 +313,39 @@ export default function BookDetail() {
             )}
           </div>
           <h1 className="mt-4 text-xl font-semibold text-slate-900">{book.title}</h1>
-          <p className="mt-2 text-sm text-slate-600">{book.description || "No description"}</p>
+          <p className="mt-2 text-sm text-slate-600">
+            {book.description || book.previewExcerptText || "Discover this public book on Tengacion."}
+          </p>
           {book?.creator?._id ? (
-            <button
-              type="button"
-              className="mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              onClick={() => navigate(`/creators/${book.creator._id}`)}
+            <Link
+              to={creatorPath}
+              className="mt-3 inline-flex rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
-              View creator page
-            </button>
+              Visit {creatorName}
+            </Link>
           ) : null}
           <p className="mt-3 text-sm font-semibold text-slate-900">
             NGN {Number(book.price || 0).toLocaleString()}
           </p>
+
+          <div className="mt-4 grid gap-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Genre</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{book.genre || "Book release"}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Language</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{book.language || "Not specified"}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Format</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{book.fileFormat || "Digital book"}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Chapters</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{Number(book.chapterCount || chapters.length || 0)}</p>
+            </div>
+          </div>
 
           <div className="mt-3">
             {!book.canReadFull ? (
@@ -339,6 +380,13 @@ export default function BookDetail() {
         </aside>
 
         <article ref={readerRef} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <h2 className="text-lg font-semibold text-slate-900">About This Book</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-700">
+              {book.description || book.previewExcerptText || seoDescription}
+            </p>
+          </section>
+
           <h2 className="text-lg font-semibold text-slate-900">Chapters</h2>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {chapters.map((chapter) => (
@@ -372,6 +420,26 @@ export default function BookDetail() {
               </p>
             )}
           </div>
+
+          {relatedBooks.length ? (
+            <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+              <h2 className="text-lg font-semibold text-slate-900">More Books From {creatorName}</h2>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {relatedBooks.map((item) => (
+                  <Link
+                    key={item.id}
+                    to={item.route}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white"
+                  >
+                    <strong className="block text-sm text-slate-900">{item.title}</strong>
+                    <span className="mt-1 block text-xs text-slate-500">
+                      {item.genre || item.fileFormat || "Book"}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </article>
       </section>
 

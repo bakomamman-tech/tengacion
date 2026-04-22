@@ -331,6 +331,37 @@ describe("creator profile routes", () => {
     expect(response.body.featured.item.title).toBeTruthy();
   });
 
+  test("GET /api/creator/:username/public-profile resolves canonical public creator metadata by username", async () => {
+    const { profile } = await createUserAndProfile({
+      username: "creator.example",
+      email: "creator.example@test.com",
+      displayName: "Creator Example",
+    });
+
+    await Track.create({
+      creatorId: profile._id,
+      title: "Canonical Username Release",
+      description: "Published music release",
+      price: 0,
+      audioUrl: "https://example.com/song.mp3",
+      previewUrl: "https://example.com/song-preview.mp3",
+      kind: "music",
+      creatorCategory: "music",
+      contentType: "track",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+
+    const response = await request(app)
+      .get("/api/creator/creator.example/public-profile")
+      .expect(200);
+
+    expect(response.body.creator.username).toBe("creator.example");
+    expect(response.body.creator.canonicalPath).toBe("/creator/creator.example");
+    expect(response.body.creator.tabPaths.music).toBe("/creator/creator.example/music");
+    expect(response.body.seo.indexable).toBe(true);
+  });
+
   test("GET /api/download/album/:itemId returns a signed archive URL and the archive streams successfully", async () => {
     const { profile, token } = await createUserAndProfile({
       creatorTypes: ["music", "bookPublishing", "podcast"],

@@ -5,6 +5,7 @@ export default function CreatorContentShelf({
   subtitle,
   items = [],
   creatorId,
+  creatorRoute = "",
   emptyMessage,
   onPreview,
   onStream,
@@ -29,6 +30,7 @@ export default function CreatorContentShelf({
               key={`${item.itemType}-${item.id}`}
               item={item}
               creatorId={creatorId}
+              creatorRoute={creatorRoute}
               featured={featured}
               onPreview={onPreview}
               onStream={onStream}

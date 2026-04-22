@@ -52,8 +52,20 @@ function SummarySkeleton() {
   );
 }
 
-export default function CreatorSummaryFeed({ className = "", limit = FEED_LIMIT }) {
-  const [category, setCategory] = useState("all");
+export default function CreatorSummaryFeed({
+  className = "",
+  limit = FEED_LIMIT,
+  initialCategory = "all",
+  lockCategory = false,
+  title = "Discover Feed",
+  description = "Fresh and older creator releases from music, books, and podcasts on Tengacion.",
+  bannerTitle = "All creator content in one place",
+  actionPath = "/creators",
+  actionLabel = "Find Creators",
+  emptyTitle = "No creator releases found",
+  emptyDescription = "Use Find Creators to browse creators, or refresh this feed a little later.",
+}) {
+  const [category, setCategory] = useState(initialCategory);
   const [mode, setMode] = useState("mixed");
   const [items, setItems] = useState([]);
   const [pendingItems, setPendingItems] = useState([]);
@@ -65,6 +77,10 @@ export default function CreatorSummaryFeed({ className = "", limit = FEED_LIMIT 
   const [lastRefreshedAt, setLastRefreshedAt] = useState("");
   const requestSeqRef = useRef(0);
   const snapshotRef = useRef("");
+
+  useEffect(() => {
+    setCategory(initialCategory);
+  }, [initialCategory]);
 
   const applyFeedPayload = useCallback(
     (payload, { silent = false, forceApply = false } = {}) => {
@@ -173,12 +189,12 @@ export default function CreatorSummaryFeed({ className = "", limit = FEED_LIMIT 
     <section className={`creator-summary-feed creator-discovery-theme ${className}`.trim()}>
       <div className="creator-summary-feed__head">
         <div className="creator-summary-feed__title">
-          <h2>Discover Feed</h2>
-          <p>Fresh and older creator releases from music, books, and podcasts on Tengacion.</p>
+          <h2>{title}</h2>
+          <p>{description}</p>
         </div>
         <div className="creator-summary-feed__toolbar">
-          <Link to="/find-creators" className="creator-primary-btn">
-            Find Creators
+          <Link to={actionPath} className="creator-primary-btn">
+            {actionLabel}
           </Link>
           <button
             type="button"
@@ -192,26 +208,28 @@ export default function CreatorSummaryFeed({ className = "", limit = FEED_LIMIT 
 
       <div className="creator-summary-feed__banner">
         <div>
-          <strong>All creator content in one place</strong>
+          <strong>{bannerTitle}</strong>
           <small>{refreshedLabel}</small>
         </div>
         <small>{total ? `${total} releases tracked` : "No releases loaded yet"}</small>
       </div>
 
-      <div className="creator-summary-feed__tabs" role="tablist" aria-label="Creator summary categories">
-        {CATEGORY_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={category === tab.id}
-            className={`creator-discovery-tab ${category === tab.id ? "is-active" : ""}`}
-            onClick={() => setCategory(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {!lockCategory ? (
+        <div className="creator-summary-feed__tabs" role="tablist" aria-label="Creator summary categories">
+          {CATEGORY_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={category === tab.id}
+              className={`creator-discovery-tab ${category === tab.id ? "is-active" : ""}`}
+              onClick={() => setCategory(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="creator-summary-feed__tabs" role="tablist" aria-label="Creator summary modes">
         {MODE_TABS.map((tab) => (
@@ -267,10 +285,10 @@ export default function CreatorSummaryFeed({ className = "", limit = FEED_LIMIT 
         </div>
       ) : (
         <div className="creator-summary-feed__empty">
-          <strong>No creator releases found</strong>
-          <p>Use Find Creators to browse creators, or refresh this feed a little later.</p>
-          <Link to="/find-creators" className="creator-primary-btn">
-            Find Creators
+          <strong>{emptyTitle}</strong>
+          <p>{emptyDescription}</p>
+          <Link to={actionPath} className="creator-primary-btn">
+            {actionLabel}
           </Link>
         </div>
       )}

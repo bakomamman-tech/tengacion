@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useParams } from "react-router-dom";
-import { createCheckout, getAlbum, resolveImage } from "../api";
+import { createCheckout, getAlbum, getPublicCreatorProfile, resolveImage } from "../api";
 import { useAuth } from "../context/AuthContext";
 import SeoHead from "../components/seo/SeoHead";
 import useEntitlementSocket from "../hooks/useEntitlementSocket";
 import {
+  buildAlbumSeoDescription,
   buildBreadcrumbJsonLd,
   buildMusicAlbumJsonLd,
   buildOrganizationJsonLd,
+  shouldIndexPublicEntity,
   buildWebSiteJsonLd,
-  pickFirstText,
 } from "../lib/seo";
+import { buildCreatorPublicPath } from "../lib/publicRoutes";
 
 export default function AlbumDetail() {
   const { albumId } = useParams();
@@ -20,15 +22,21 @@ export default function AlbumDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [album, setAlbum] = useState(null);
+  const [creatorContext, setCreatorContext] = useState(null);
   const [buying, setBuying] = useState(false);
   const isLoggedIn = Boolean(user?._id || user?.id);
 
   const loadAlbum = useCallback(async () => {
     setLoading(true);
     setError("");
+    setCreatorContext(null);
     try {
       const payload = await getAlbum(albumId);
+      const creatorRes = payload?.creator?._id
+        ? await getPublicCreatorProfile(payload.creator.username || payload.creator._id).catch(() => null)
+        : null;
       setAlbum(payload || null);
+      setCreatorContext(creatorRes);
     } catch (err) {
       setError(err.message || "Failed to load album");
     } finally {
@@ -77,12 +85,27 @@ export default function AlbumDetail() {
 
   const tracks = Array.isArray(album.tracks) ? album.tracks : [];
   const creatorName = album?.creator?.displayName || "Tengacion Creator";
-  const creatorPath = album?.creator?._id ? `/creators/${album.creator._id}` : (album?.creatorId ? `/creators/${album.creatorId}` : "/creators");
+  const creatorPath = creatorContext?.creator?.canonicalPath || buildCreatorPublicPath({
+    creatorId: album?.creator?._id || album?.creatorId || "",
+    username: album?.creator?.username,
+  });
   const seoTitle = album ? `${album.title} by ${creatorName} | Tengacion` : "Album | Tengacion";
-  const seoDescription = pickFirstText(
-    album?.description,
-    `${album?.title || "This album"} by ${creatorName} on Tengacion with ${tracks.length} ${tracks.length === 1 ? "track" : "tracks"}.`
-  );
+  const seoDescription = buildAlbumSeoDescription({
+    album,
+    creatorName,
+    trackCount: tracks.length,
+  });
+  const relatedAlbums = Array.isArray(creatorContext?.music?.albums)
+    ? creatorContext.music.albums
+        .filter((item) => String(item?.route || "").trim())
+        .filter((item) => String(item?.id || "") !== String(album?._id || ""))
+        .slice(0, 4)
+    : [];
+  const shouldIndexPage = shouldIndexPublicEntity({
+    title: album?.title,
+    creatorName,
+    description: seoDescription,
+  });
   const structuredData = useMemo(() => {
     if (!album) {
       return [buildWebSiteJsonLd(), buildOrganizationJsonLd()];
@@ -138,6 +161,7 @@ export default function AlbumDetail() {
         title={seoTitle}
         description={seoDescription}
         canonical={`/albums/${album?._id || albumId}`}
+        robots={shouldIndexPage ? "index,follow" : "noindex,follow"}
         ogType="music.album"
         ogImage={album?.coverUrl}
         ogImageAlt={`${album?.title || "Album"} cover art`}
@@ -163,6 +187,20 @@ export default function AlbumDetail() {
             <p className="text-sm font-semibold text-slate-800">
               NGN {Number(album.price || 0).toLocaleString()} | {tracks.length} songs
             </p>
+            <div className="grid gap-3 pt-2 sm:grid-cols-3">
+              <div className="rounded-2xl border border-stone-200 bg-white/80 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500">Creator</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{creatorName}</p>
+              </div>
+              <div className="rounded-2xl border border-stone-200 bg-white/80 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500">Release Type</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{album.releaseType || "Album"}</p>
+              </div>
+              <div className="rounded-2xl border border-stone-200 bg-white/80 p-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500">Track Count</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{tracks.length}</p>
+              </div>
+            </div>
             <div className="flex flex-wrap items-center gap-3 pt-2">
               {!album.canPlayFull && Number(album.price || 0) > 0 ? (
                 <button
@@ -184,12 +222,19 @@ export default function AlbumDetail() {
                   Download album bundle
                 </a>
               ) : null}
-              <Link to={`/creators/${album.creatorId || ""}/albums`} className="text-xs font-semibold text-brand-600 underline">
-                Back
+              <Link to={creatorPath} className="text-xs font-semibold text-brand-600 underline">
+                Visit creator page
               </Link>
             </div>
           </div>
         </div>
+
+        <section className="mt-6 rounded-2xl border border-stone-200 bg-white/85 p-5">
+          <h2 className="text-lg font-semibold text-slate-900">About This Album</h2>
+          <p className="mt-3 text-sm leading-7 text-slate-700">
+            {album.description || seoDescription}
+          </p>
+        </section>
 
         <div className="mt-8 space-y-3">
           {tracks.length ? (
@@ -224,6 +269,27 @@ export default function AlbumDetail() {
             <p className="text-sm text-slate-500">No songs available for this album yet.</p>
           )}
         </div>
+
+        {relatedAlbums.length ? (
+          <section className="mt-8 rounded-2xl border border-stone-200 bg-white/85 p-5">
+            <h2 className="text-lg font-semibold text-slate-900">More From {creatorName}</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {relatedAlbums.map((item) => (
+                <Link
+                  key={item.id}
+                  to={item.route}
+                  className="rounded-2xl border border-stone-200 bg-white p-4 transition hover:border-stone-300"
+                >
+                  <strong className="block text-sm text-slate-900">{item.title}</strong>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    {item.releaseType || "Album"}
+                    {item.totalTracks ? ` • ${item.totalTracks} tracks` : ""}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
     </div>
   );

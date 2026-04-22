@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import { resolveImage, toggleFollowCreator } from "../../api";
 import { formatCurrency } from "../creator/creatorConfig";
 import { useAuth } from "../../context/AuthContext";
+import { buildCreatorPublicPath, buildCreatorSubscribePath } from "../../lib/publicRoutes";
 
 import "./creatorDiscovery.css";
 
@@ -29,7 +30,10 @@ export default function CreatorDiscoveryCard({ item }) {
   const categoryLabel = String(item?.category || item?.categoryLabels?.[0] || "Creator").trim();
   const canSubscribe = Boolean(item?.canSubscribe);
   const isSubscribed = Boolean(item?.subscribed);
-  const creatorRoute = item?.creatorId ? `/creators/${item.creatorId}` : String(item?.creatorRoute || "").trim();
+  const creatorRoute = String(item?.creatorRoute || "").trim() || buildCreatorPublicPath({
+    creatorId: item?.creatorId,
+    username: item?.username,
+  });
   const requireViewer = () => {
     if (user?._id || user?.id) {
       return true;
@@ -47,7 +51,7 @@ export default function CreatorDiscoveryCard({ item }) {
       if (!requireViewer()) {
         return;
       }
-      navigate(item?.subscribeRoute || `/creators/${item.creatorId}/subscribe`);
+      navigate(item?.subscribeRoute || buildCreatorSubscribePath(item?.creatorId));
       return;
     }
 
@@ -107,7 +111,9 @@ export default function CreatorDiscoveryCard({ item }) {
         </div>
 
         <div>
-          <h3 className="creator-discovery-card__title">{item?.name || "Creator"}</h3>
+          <h3 className="creator-discovery-card__title">
+            <Link to={creatorRoute}>{item?.name || "Creator"}</Link>
+          </h3>
           <p className="creator-discovery-card__bio">{item?.bio || "A creator on Tengacion."}</p>
         </div>
 
@@ -119,13 +125,12 @@ export default function CreatorDiscoveryCard({ item }) {
         </div>
 
         <div className="creator-discovery-card__actions">
-          <button
-            type="button"
+          <Link
+            to={creatorRoute}
             className="creator-discovery-card__action creator-discovery-card__action--accent"
-            onClick={() => navigate(creatorRoute)}
           >
             Visit Page
-          </button>
+          </Link>
           <button
             type="button"
             className="creator-discovery-card__action"

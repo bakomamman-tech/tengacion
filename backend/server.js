@@ -88,7 +88,11 @@ const frontendBuilt = fs.existsSync(frontendIndex);
 
 if (frontendBuilt) {
   const { renderSeoHtml, resolvePageSeo } = require("./services/seo/pageSeoService");
-  const { buildRobotsTxt, getSitemapXml } = require("./services/seo/sitemapService");
+  const {
+    buildRobotsTxt,
+    getSitemapIndexXml,
+    getSitemapSectionXml,
+  } = require("./services/seo/sitemapService");
   const frontendTemplate = fs.readFileSync(frontendIndex, "utf8");
 
   console.log(`Serving built frontend from ${frontendPath}`);
@@ -97,11 +101,23 @@ if (frontendBuilt) {
   });
   app.get("/sitemap.xml", async (_req, res) => {
     try {
-      const sitemap = await getSitemapXml();
+      const sitemap = await getSitemapIndexXml();
       res.type("application/xml").send(sitemap);
     } catch (error) {
       console.error("Failed to generate sitemap.xml:", error);
       res.status(500).type("text/plain").send("Failed to generate sitemap.xml");
+    }
+  });
+  app.get("/sitemaps/:name.xml", async (req, res) => {
+    try {
+      const section = await getSitemapSectionXml(req.params.name);
+      if (!section?.xml) {
+        return res.status(404).type("text/plain").send("Sitemap section not found");
+      }
+      return res.type("application/xml").send(section.xml);
+    } catch (error) {
+      console.error(`Failed to generate sitemap section ${req.params.name}:`, error);
+      return res.status(500).type("text/plain").send("Failed to generate sitemap section");
     }
   });
   app.use(express.static(frontendPath, { index: false }));

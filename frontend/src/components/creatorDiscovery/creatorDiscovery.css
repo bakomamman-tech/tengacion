@@ -123,6 +123,17 @@
   letter-spacing: -0.03em;
 }
 
+.creator-discovery-card__title a,
+.creator-summary-card__title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.creator-discovery-card__title a:hover,
+.creator-summary-card__title a:hover {
+  text-decoration: underline;
+}
+
 .creator-summary-feed__title p,
 .creator-discovery-page__title p,
 .creator-preview-modal__body p,

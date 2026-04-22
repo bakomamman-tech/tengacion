@@ -1,6 +1,6 @@
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -47,7 +47,7 @@ describe("FindCreatorsPage", () => {
           followerCount: 42,
           contentCount: 12,
           subscriptionPrice: 2500,
-          creatorRoute: "/creator/creator-1",
+          creatorRoute: "/creator/jordan.bangoji",
           subscribeRoute: "/creators/creator-1/subscribe",
           following: false,
           subscribed: false,
@@ -81,8 +81,6 @@ describe("FindCreatorsPage", () => {
       );
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /visit page/i }));
-
-    expect(navigateMock).toHaveBeenCalledWith("/creators/creator-1");
+    expect(screen.getByRole("link", { name: /visit page/i })).toHaveAttribute("href", "/creator/jordan.bangoji");
   });
 });

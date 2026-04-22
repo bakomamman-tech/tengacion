@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import { createCheckout, resolveImage, toggleFollowCreator } from "../../api";
@@ -7,6 +7,7 @@ import { useCreatorPlayer } from "../../context/CreatorPlayerContext";
 import ShareActions from "../creator/media/ShareActions";
 import { formatCurrency } from "../creator/creatorConfig";
 import { formatRelativeTime } from "../../features/news/utils/newsUi";
+import { buildCreatorPublicPath } from "../../lib/publicRoutes";
 
 import "./creatorDiscovery.css";
 
@@ -31,6 +32,12 @@ export default function CreatorSummaryCard({ item }) {
   if (!item) {
     return null;
   }
+
+  const creatorRoute = item?.creatorRoute || buildCreatorPublicPath({
+    creatorId: item?.creatorId,
+    username: item?.creatorUsername,
+  });
+  const detailRoute = item?.route || creatorRoute;
 
   const handlePreview = () => {
     if (!item?.canPreview) {
@@ -120,7 +127,9 @@ export default function CreatorSummaryCard({ item }) {
         </div>
 
         <div>
-          <h3 className="creator-summary-card__title">{item?.title || "Untitled release"}</h3>
+          <h3 className="creator-summary-card__title">
+            <Link to={detailRoute}>{item?.title || "Untitled release"}</Link>
+          </h3>
           <p className="creator-summary-card__summary">{item?.summary || "Fresh creator content on Tengacion."}</p>
         </div>
 
@@ -149,9 +158,12 @@ export default function CreatorSummaryCard({ item }) {
               onClick={handleBuy}
               disabled={buyBusy}
             >
-              {buyBusy ? "Opening..." : item?.buyLabel || "Buy"}
+            {buyBusy ? "Opening..." : item?.buyLabel || "Buy"}
             </button>
           ) : null}
+          <Link to={detailRoute} className="creator-summary-card__action">
+            Open Page
+          </Link>
           {item?.canSubscribe ? (
             <button
               type="button"
@@ -172,7 +184,7 @@ export default function CreatorSummaryCard({ item }) {
           <button
             type="button"
             className="creator-summary-card__action"
-            onClick={() => navigate(item?.creatorRoute || `/creator/${item.creatorId}`)}
+            onClick={() => navigate(creatorRoute)}
           >
             Visit Creator
           </button>
@@ -180,7 +192,7 @@ export default function CreatorSummaryCard({ item }) {
             className="creator-summary-card__action"
             title={item?.title || item?.creatorName || "Creator release"}
             text={item?.summary || "Explore this Tengacion release."}
-            url={`${window.location.origin}${item?.creatorRoute || `/creator/${item.creatorId}`}`}
+            url={`${window.location.origin}${detailRoute}`}
           />
         </div>
       </div>

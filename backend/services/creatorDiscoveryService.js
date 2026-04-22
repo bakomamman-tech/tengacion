@@ -6,6 +6,10 @@ const CreatorProfile = require("../models/CreatorProfile");
 const Track = require("../models/Track");
 const User = require("../models/User");
 const { buildSignedMediaUrl } = require("./mediaSigner");
+const {
+  buildCreatorPublicPath,
+  buildCreatorSubscribePath,
+} = require("./publicRouteService");
 const { getUserPaidPurchases } = require("./entitlementService");
 const { getMediaUrl } = require("../utils/userMedia");
 
@@ -166,9 +170,10 @@ const buildSignedPreviewUrl = ({ req, sourceUrl, itemType, itemId, viewerId }) =
   });
 };
 
-const buildCreatorRoute = (creatorId) => `/creators/${String(creatorId || "").trim()}`;
-const buildSubscribeRoute = (creatorId) =>
-  `/creators/${String(creatorId || "").trim()}/subscribe`;
+const buildCreatorRoute = ({ creatorId = "", username = "" } = {}) =>
+  buildCreatorPublicPath({ creatorId, username });
+
+const buildSubscribeRoute = (creatorId) => buildCreatorSubscribePath(creatorId);
 
 const resolveCreatorAvatar = (creatorProfile = {}, user = {}) =>
   toCleanString(
@@ -392,7 +397,8 @@ const normalizeSummaryTrack = ({ track, viewerState, viewerId, req }) => {
     updatedAt: track.updatedAt || track.createdAt || null,
     timestampLabel: formatRelativeTime(track.createdAt || track.updatedAt || null),
     summaryLabel: isPodcast ? "Podcast" : "Music",
-    creatorRoute: buildCreatorRoute(meta.creatorId),
+    route: `/tracks/${itemId}`,
+    creatorRoute: buildCreatorRoute({ creatorId: meta.creatorId, username: meta.creatorUsername }),
     subscribeRoute: buildSubscribeRoute(meta.creatorId),
     purchaseItemType: isPodcast ? "podcast" : "track",
     purchaseItemId: itemId,
@@ -482,7 +488,8 @@ const normalizeSummaryAlbum = ({ album, viewerState, viewerId, req }) => {
     updatedAt: album.updatedAt || album.createdAt || null,
     timestampLabel: formatRelativeTime(album.createdAt || album.updatedAt || null),
     summaryLabel: "Music",
-    creatorRoute: buildCreatorRoute(meta.creatorId),
+    route: `/albums/${itemId}`,
+    creatorRoute: buildCreatorRoute({ creatorId: meta.creatorId, username: meta.creatorUsername }),
     subscribeRoute: buildSubscribeRoute(meta.creatorId),
     purchaseItemType: "album",
     purchaseItemId: itemId,
@@ -572,7 +579,8 @@ const normalizeSummaryBook = ({ book, viewerState, viewerId, req }) => {
     updatedAt: book.updatedAt || book.createdAt || null,
     timestampLabel: formatRelativeTime(book.createdAt || book.updatedAt || null),
     summaryLabel: "Book",
-    creatorRoute: buildCreatorRoute(meta.creatorId),
+    route: `/books/${itemId}`,
+    creatorRoute: buildCreatorRoute({ creatorId: meta.creatorId, username: meta.creatorUsername }),
     subscribeRoute: buildSubscribeRoute(meta.creatorId),
     purchaseItemType: "book",
     purchaseItemId: itemId,
@@ -940,7 +948,7 @@ const buildCreatorDiscoveryDirectory = async ({
             ? "Music"
             : (creatorTypesList[0] || (stats.musicCount ? "Music" : stats.bookCount ? "Books" : "Podcasts"));
     const userId = String(entry.userId || "");
-    const creatorRoute = buildCreatorRoute(key);
+    const creatorRoute = buildCreatorRoute({ creatorId: key, username: entry.username });
     const subscribeRoute = buildSubscribeRoute(key);
     const following = viewerState.followingUserIds.has(userId);
     const subscribed = viewerState.subscribedCreatorIds.has(key);
@@ -1050,7 +1058,7 @@ const buildCreatorSummaryFeed = async ({
         viewerState.subscribedCreatorIds.has(item.creatorId) ||
         Number(item.price || 0) <= 0
     ),
-    creatorRoute: item.creatorRoute || buildCreatorRoute(item.creatorId),
+    creatorRoute: item.creatorRoute || buildCreatorRoute({ creatorId: item.creatorId, username: item.creatorUsername }),
     subscribeRoute: item.subscribeRoute || buildSubscribeRoute(item.creatorId),
   }));
 

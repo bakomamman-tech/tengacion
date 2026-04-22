@@ -168,7 +168,7 @@ describe("SEO routes", () => {
     expect(response.text).toContain('content="index,follow"');
   });
 
-  test("sitemap.xml lists public discovery, creator, and content routes", async () => {
+  test("sitemap.xml exposes a sitemap index and child sitemap files for public sections", async () => {
     const { profile } = await createCreator();
     const track = await Track.create({
       creatorId: profile._id,
@@ -214,14 +214,40 @@ describe("SEO routes", () => {
       isPublished: true,
     });
 
-    const response = await request(server).get("/sitemap.xml").expect(200);
+    const indexResponse = await request(server).get("/sitemap.xml").expect(200);
+    const creatorsResponse = await request(server).get("/sitemaps/creators-1.xml").expect(200);
+    const musicResponse = await request(server).get("/sitemaps/music-1.xml").expect(200);
+    const booksResponse = await request(server).get("/sitemaps/books-1.xml").expect(200);
 
-    expect(response.headers["content-type"]).toContain("application/xml");
-    expect(response.text).toContain("<loc>https://tengacion.com/creators</loc>");
-    expect(response.text).toContain(`<loc>https://tengacion.com/creators/${profile._id}</loc>`);
-    expect(response.text).toContain(`<loc>https://tengacion.com/tracks/${track._id}</loc>`);
-    expect(response.text).toContain(`<loc>https://tengacion.com/books/${book._id}</loc>`);
-    expect(response.text).toContain(`<loc>https://tengacion.com/albums/${album._id}</loc>`);
+    expect(indexResponse.headers["content-type"]).toContain("application/xml");
+    expect(indexResponse.text).toContain("<sitemapindex");
+    expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/static.xml</loc>");
+    expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/creators-1.xml</loc>");
+    expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/music-1.xml</loc>");
+    expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/books-1.xml</loc>");
+
+    expect(creatorsResponse.text).toContain("<loc>https://tengacion.com/creator/seo_creator</loc>");
+    expect(creatorsResponse.text).toContain("<loc>https://tengacion.com/creator/seo_creator/music</loc>");
+    expect(creatorsResponse.text).toContain("<loc>https://tengacion.com/creator/seo_creator/books</loc>");
+    expect(musicResponse.text).toContain(`<loc>https://tengacion.com/tracks/${track._id}</loc>`);
+    expect(musicResponse.text).toContain(`<loc>https://tengacion.com/albums/${album._id}</loc>`);
+    expect(booksResponse.text).toContain(`<loc>https://tengacion.com/books/${book._id}</loc>`);
+  });
+
+  test("canonical creator route renders indexable metadata and legacy creator route canonicalizes to username path", async () => {
+    const { profile } = await createCreator();
+
+    const canonicalResponse = await request(server).get("/creator/seo_creator").expect(200);
+    const legacyResponse = await request(server).get(`/creators/${profile._id}`).expect(200);
+
+    expect(canonicalResponse.text).toContain(
+      '<title data-seo-key="title">SEO Creator on Tengacion | Music, Books, Podcasts &amp; Updates</title>'
+    );
+    expect(canonicalResponse.text).toContain('href="https://tengacion.com/creator/seo_creator"');
+    expect(canonicalResponse.text).toContain('content="index,follow"');
+
+    expect(legacyResponse.text).toContain('href="https://tengacion.com/creator/seo_creator"');
+    expect(legacyResponse.text).toContain('content="noindex,follow"');
   });
 
   test("public track pages render server-injected SEO tags", async () => {

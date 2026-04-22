@@ -2,10 +2,15 @@ const mongoose = require("mongoose");
 
 const Album = require("../../models/Album");
 const Book = require("../../models/Book");
-const CreatorProfile = require("../../models/CreatorProfile");
 const Track = require("../../models/Track");
-const User = require("../../models/User");
 const Video = require("../../models/Video");
+const { findCreatorProfileByReference } = require("../creatorLookupService");
+const {
+  PRIVATE_CREATOR_ALIAS_SEGMENTS,
+  buildCreatorIdPath,
+  buildCreatorPublicPath,
+  normalizeCreatorUsername,
+} = require("../publicRouteService");
 const {
   DEFAULT_DESCRIPTION,
   DEFAULT_IMAGE_ALT,
@@ -34,6 +39,33 @@ const PUBLIC_INFO_PAGES = {
     previewTitle: "Discover creators on Tengacion",
     previewDescription:
       "Explore music, books, podcasts, and creator profiles across Tengacion.",
+  },
+  "/music": {
+    title: "African Music Releases & Creator Drops | Tengacion",
+    description:
+      "Discover new songs, albums, and creator releases on Tengacion. Explore public African music from independent artists and creator studios.",
+    canonicalPath: "/music",
+    previewTitle: "Discover music on Tengacion",
+    previewDescription:
+      "Browse public songs, albums, and creator drops on Tengacion.",
+  },
+  "/books": {
+    title: "Books & Digital Reading by African Creators | Tengacion",
+    description:
+      "Discover public books, digital reading releases, and creator publishing pages on Tengacion.",
+    canonicalPath: "/books",
+    previewTitle: "Discover books on Tengacion",
+    previewDescription:
+      "Browse books and digital reading releases from Tengacion creators.",
+  },
+  "/podcasts": {
+    title: "Podcasts & Spoken-Word Episodes | Tengacion",
+    description:
+      "Listen to public podcast episodes and spoken-word releases from Tengacion creators across Africa.",
+    canonicalPath: "/podcasts",
+    previewTitle: "Discover podcasts on Tengacion",
+    previewDescription:
+      "Browse podcasts and spoken-word releases from Tengacion creators.",
   },
   "/terms": {
     title: "Terms of Service | Tengacion",
@@ -140,21 +172,6 @@ const NOINDEX_PAGE_CONFIG = [
     description: "Private Tengacion subscription flow.",
   },
 ];
-
-const PRIVATE_CREATOR_ALIAS_SEGMENTS = new Set([
-  "register",
-  "dashboard",
-  "categories",
-  "fan-page-view",
-  "music",
-  "books",
-  "podcasts",
-  "earnings",
-  "payouts",
-  "settings",
-  "verification",
-  "support",
-]);
 
 const escapeHtml = (value = "") =>
   String(value || "")
@@ -398,26 +415,60 @@ const resolveCreatorCounts = async (creatorId, creatorUserId = "") => {
   };
 };
 
-const buildCreatorSeo = async ({ creatorId, tab = "home", aliasPath = false } = {}) => {
-  if (!mongoose.Types.ObjectId.isValid(creatorId)) {
-    return buildSeoPayload({
-      title: "Creator Not Found | Tengacion",
-      description: DEFAULT_DESCRIPTION,
-      canonicalPath: `/creators/${creatorId}`,
-      robots: "noindex,nofollow",
-      statusCode: 404,
-    });
+const hasMeaningfulSeoCopy = (...values) =>
+  values.some((value) => String(value || "").replace(/\s+/g, " ").trim().length >= 24);
+
+const totalCreatorItems = (counts = {}) =>
+  Number(counts.tracksCount || 0) +
+  Number(counts.albumsCount || 0) +
+  Number(counts.booksCount || 0) +
+  Number(counts.podcastsCount || 0) +
+  Number(counts.videosCount || 0);
+
+const buildCreatorCanonicalPath = (profile, tab = "home") =>
+  buildCreatorPublicPath({
+    creatorId: String(profile?._id || ""),
+    username: profile?.userId?.username,
+    tab,
+  });
+
+const buildCreatorDescription = ({ displayName, profile, counts, tab = "home" }) => {
+  const creatorBio = pickText(profile?.tagline, profile?.bio);
+  const defaultsByTab = {
+    home: `Explore ${displayName} on Tengacion. Discover public music, books, podcasts, and updates from this creator.`,
+    music: `Stream public singles, albums, and videos from ${displayName} on Tengacion.`,
+    albums: `Explore public albums and EP releases from ${displayName} on Tengacion.`,
+    podcasts: `Listen to public podcast episodes and spoken-word releases from ${displayName} on Tengacion.`,
+    books: `Browse public books and digital releases from ${displayName} on Tengacion.`,
+  };
+
+  if (tab === "home" && creatorBio) {
+    const totalItems = totalCreatorItems(counts);
+    const coverage = totalItems > 0
+      ? `Discover ${totalItems} public release${totalItems === 1 ? "" : "s"} from this creator.`
+      : "Discover this creator's public profile and updates.";
+    return truncateText(`${defaultsByTab.home} ${coverage} ${creatorBio}`, 180);
   }
 
-  const profile = await CreatorProfile.findById(creatorId)
-    .populate("userId", "name username avatar country")
-    .lean();
+  if (creatorBio && tab !== "home") {
+    return truncateText(`${defaultsByTab[tab] || defaultsByTab.home} ${creatorBio}`, 180);
+  }
+
+  return truncateText(pickText(defaultsByTab[tab], defaultsByTab.home, creatorBio), 180);
+};
+
+const buildCreatorSeo = async ({ creatorRef, tab = "home", requestedPath = "/" } = {}) => {
+  const profile = await findCreatorProfileByReference({
+    creatorRef,
+    populate: "name username avatar country links tagline bio genres heroBannerUrl coverImageUrl",
+    lean: true,
+  });
 
   if (!profile) {
     return buildSeoPayload({
       title: "Creator Not Found | Tengacion",
       description: DEFAULT_DESCRIPTION,
-      canonicalPath: `/creators/${creatorId}`,
+      canonicalPath: buildCreatorIdPath({ creatorId: creatorRef }),
       robots: "noindex,nofollow",
       statusCode: 404,
     });
@@ -425,28 +476,14 @@ const buildCreatorSeo = async ({ creatorId, tab = "home", aliasPath = false } = 
 
   const counts = await resolveCreatorCounts(profile._id, profile?.userId?._id || profile?.userId || "");
   const displayName = pickText(profile.displayName, profile.fullName, profile?.userId?.name, "Creator");
-  const descriptionByTab = {
-    home: `Explore ${displayName} on Tengacion. Discover music, books, podcasts, and updates from this creator.`,
-    music: `Stream singles, albums, and music videos from ${displayName} on Tengacion.`,
-    albums: `Explore albums and EP releases from ${displayName} on Tengacion.`,
-    podcasts: `Listen to podcast episodes and spoken-word releases from ${displayName} on Tengacion.`,
-    books: `Browse books and digital releases from ${displayName} on Tengacion.`,
-  };
   const titleByTab = {
-    home: `${displayName} on Tengacion - Music, Books, Podcasts & Updates`,
-    music: `${displayName} Music on Tengacion | Streams, Singles & Videos`,
-    albums: `Albums by ${displayName} | Tengacion`,
-    podcasts: `Podcasts by ${displayName} | Tengacion`,
-    books: `Books by ${displayName} | Tengacion`,
+    home: `${displayName} on Tengacion | Music, Books, Podcasts & Updates`,
+    music: `${displayName} Music on Tengacion | Singles, Videos & Releases`,
+    albums: `${displayName} Albums on Tengacion | EPs & Projects`,
+    podcasts: `${displayName} Podcasts on Tengacion | Episodes & Spoken Word`,
+    books: `${displayName} Books on Tengacion | Reading & Publishing`,
   };
-  const canonicalSuffixByTab = {
-    home: "",
-    music: "/music",
-    albums: "/albums",
-    podcasts: "/podcasts",
-    books: "/books",
-  };
-  const canonicalPath = `/creators/${profile._id}${canonicalSuffixByTab[tab] || ""}`;
+  const canonicalPath = buildCreatorCanonicalPath(profile, tab);
   const image = pickText(
     profile.heroBannerUrl,
     profile.coverImageUrl,
@@ -456,15 +493,33 @@ const buildCreatorSeo = async ({ creatorId, tab = "home", aliasPath = false } = 
   const sameAs = Array.isArray(profile.links)
     ? profile.links.map((entry) => String(entry?.url || "").trim()).filter(Boolean)
     : [];
+  const normalizedRequestedPath = normalizePathname(requestedPath);
+  const tabIndexability = {
+    home: totalCreatorItems(counts) > 0 || hasMeaningfulSeoCopy(profile?.tagline, profile?.bio),
+    music: Number(counts.tracksCount || 0) > 0 || Number(counts.videosCount || 0) > 0,
+    albums: Number(counts.albumsCount || 0) > 0,
+    podcasts: Number(counts.podcastsCount || 0) > 0,
+    books: Number(counts.booksCount || 0) > 0,
+  };
+  const pageIsIndexable = tab === "home" ? tabIndexability.home : Boolean(tabIndexability[tab]);
+  const isCanonicalRequest = normalizedRequestedPath === normalizePathname(canonicalPath);
+  const breadcrumbItems = [
+    { name: "Creators", url: "/creators" },
+    { name: displayName, url: buildCreatorCanonicalPath(profile, "home") },
+  ];
+
+  if (tab !== "home") {
+    breadcrumbItems.push({
+      name: tab === "albums" ? "Albums" : tab === "books" ? "Books" : tab === "podcasts" ? "Podcasts" : "Music",
+      url: canonicalPath,
+    });
+  }
 
   return buildSeoPayload({
     title: titleByTab[tab] || titleByTab.home,
-    description: truncateText(
-      pickText(descriptionByTab[tab], profile.tagline, profile.bio, DEFAULT_DESCRIPTION),
-      180
-    ),
+    description: buildCreatorDescription({ displayName, profile, counts, tab }),
     canonicalPath,
-    robots: aliasPath ? "noindex,follow" : "index,follow",
+    robots: pageIsIndexable && isCanonicalRequest ? "index,follow" : "noindex,follow",
     ogType: "profile",
     image,
     imageAlt: `${displayName} on Tengacion`,
@@ -474,23 +529,21 @@ const buildCreatorSeo = async ({ creatorId, tab = "home", aliasPath = false } = 
         "@type": "ProfilePage",
         name: `${displayName} on Tengacion`,
         url: toCanonicalUrl(canonicalPath),
-        description: descriptionByTab[tab] || descriptionByTab.home,
+        description: buildCreatorDescription({ displayName, profile, counts, tab: "home" }),
         mainEntity: {
           "@type": "Person",
           name: displayName,
           description: pickText(profile.tagline, profile.bio),
           image: toAbsoluteUrl(image),
           sameAs,
+          knowsAbout: Array.isArray(profile.genres) ? profile.genres.filter(Boolean).slice(0, 8) : undefined,
         },
       },
-      buildBreadcrumbJsonLd([
-        { name: "Creators", url: "/creators" },
-        { name: displayName, url: canonicalPath },
-      ]),
+      buildBreadcrumbJsonLd(breadcrumbItems),
     ],
     previewTitle: titleByTab[tab] || titleByTab.home,
     previewDescription:
-      descriptionByTab[tab] ||
+      buildCreatorDescription({ displayName, profile, counts, tab: "home" }) ||
       `Explore ${displayName} across music, books, and podcasts on Tengacion.`,
   });
 };
@@ -531,10 +584,19 @@ const buildTrackSeo = async (trackId) => {
     "Tengacion Creator"
   );
   const isPodcast = String(track.kind || "").toLowerCase() === "podcast";
-  const title = `${track.title} by ${creatorName} | Tengacion`;
+  const title = isPodcast && track.podcastSeries
+    ? `${track.title} | ${track.podcastSeries} on Tengacion`
+    : `${track.title} by ${creatorName} | Tengacion`;
   const description = truncateText(
     pickText(
       track.description,
+      track.showNotes,
+      track.genre
+        ? `${track.title} by ${creatorName} on Tengacion in ${track.genre}.`
+        : "",
+      track.podcastCategory
+        ? `Listen to ${track.title} from ${creatorName} on Tengacion in ${track.podcastCategory}.`
+        : "",
       isPodcast
         ? `Listen to ${track.title} from ${creatorName} on Tengacion.`
         : `Stream ${track.title} by ${creatorName} on Tengacion.`
@@ -542,7 +604,10 @@ const buildTrackSeo = async (trackId) => {
     180
   );
   const image = pickText(track.coverImageUrl, DEFAULT_IMAGE_PATH);
-  const creatorPath = `/creators/${track?.creatorId?._id || track?.creatorId || ""}`;
+  const creatorPath = buildCreatorPublicPath({
+    creatorId: track?.creatorId?._id || track?.creatorId || "",
+    username: track?.creatorId?.userId?.username,
+  });
   const jsonLd = isPodcast
     ? {
         "@context": "https://schema.org",
@@ -551,7 +616,7 @@ const buildTrackSeo = async (trackId) => {
         description,
         url: toCanonicalUrl(`/tracks/${track._id}`),
         image: toAbsoluteUrl(image),
-        datePublished: track.createdAt || undefined,
+        datePublished: track.releaseDate || track.createdAt || undefined,
         partOfSeries: track.podcastSeries
           ? {
               "@type": "PodcastSeries",
@@ -574,7 +639,7 @@ const buildTrackSeo = async (trackId) => {
         description,
         url: toCanonicalUrl(`/tracks/${track._id}`),
         image: toAbsoluteUrl(image),
-        datePublished: track.createdAt || undefined,
+        datePublished: track.releaseDate || track.createdAt || undefined,
         duration: track.durationSec ? `PT${Number(track.durationSec)}S` : undefined,
         byArtist: {
           "@type": "Person",
@@ -641,13 +706,18 @@ const buildBookSeo = async (bookId) => {
   const description = truncateText(
     pickText(
       book.description,
+      book.subtitle,
       book.previewExcerptText,
+      book.genre ? `${book.title} is a ${book.genre} release by ${creatorName} on Tengacion.` : "",
       `Discover ${book.title} by ${creatorName} on Tengacion.`
     ),
     180
   );
   const image = pickText(book.coverImageUrl, DEFAULT_IMAGE_PATH);
-  const creatorPath = `/creators/${book?.creatorId?._id || book?.creatorId || ""}`;
+  const creatorPath = buildCreatorPublicPath({
+    creatorId: book?.creatorId?._id || book?.creatorId || "",
+    username: book?.creatorId?.userId?.username,
+  });
 
   return buildSeoPayload({
     title: `${book.title} by ${creatorName} | Tengacion`,
@@ -722,11 +792,17 @@ const buildAlbumSeo = async (albumId) => {
   const description = truncateText(
     pickText(
       album.description,
+      album.releaseType
+        ? `${album.title} is a ${album.releaseType} by ${creatorName} on Tengacion with ${trackCount} ${trackCount === 1 ? "track" : "tracks"}.`
+        : "",
       `${album.title} by ${creatorName} on Tengacion with ${trackCount} ${trackCount === 1 ? "track" : "tracks"}.`
     ),
     180
   );
-  const creatorPath = `/creators/${album?.creatorId?._id || album?.creatorId || ""}`;
+  const creatorPath = buildCreatorPublicPath({
+    creatorId: album?.creatorId?._id || album?.creatorId || "",
+    username: album?.creatorId?.userId?.username,
+  });
 
   return buildSeoPayload({
     title: `${album.title} by ${creatorName} | Tengacion`,
@@ -764,21 +840,21 @@ const resolveDynamicSeo = async (pathname) => {
   const creatorMatch = pathname.match(/^\/creators\/([^/]+)(?:\/(music|albums|podcasts|books))?$/i);
   if (creatorMatch) {
     return buildCreatorSeo({
-      creatorId: creatorMatch[1],
+      creatorRef: creatorMatch[1],
       tab: String(creatorMatch[2] || "home").toLowerCase(),
-      aliasPath: false,
+      requestedPath: pathname,
     });
   }
 
-  const creatorAliasMatch = pathname.match(/^\/creator\/([^/]+)$/i);
+  const creatorAliasMatch = pathname.match(/^\/creator\/([^/]+)(?:\/(music|albums|podcasts|books))?$/i);
   if (
     creatorAliasMatch
-    && !PRIVATE_CREATOR_ALIAS_SEGMENTS.has(String(creatorAliasMatch[1] || "").toLowerCase())
+    && !PRIVATE_CREATOR_ALIAS_SEGMENTS.has(normalizeCreatorUsername(creatorAliasMatch[1]))
   ) {
     return buildCreatorSeo({
-      creatorId: creatorAliasMatch[1],
-      tab: "home",
-      aliasPath: true,
+      creatorRef: creatorAliasMatch[1],
+      tab: String(creatorAliasMatch[2] || "home").toLowerCase(),
+      requestedPath: pathname,
     });
   }
 

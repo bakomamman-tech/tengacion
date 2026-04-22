@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 import ShareActions from "./ShareActions";
 import {
   resolveOwnedPurchaseLabel,
@@ -11,6 +13,7 @@ const formatPrice = (value = 0) =>
 export default function MediaPreviewCard({
   item,
   creatorId,
+  creatorRoute = "",
   featured = false,
   onPreview,
   onStream,
@@ -28,6 +31,7 @@ export default function MediaPreviewCard({
   const purchaseType = normalizedType;
   const ownedActionLabel = resolveOwnedPurchaseLabel(item);
   const buyLabel = resolvePurchaseCtaLabel(item, { busy: isBuyBusy });
+  const detailRoute = item.route || creatorRoute || `/creators/${creatorId}`;
 
   return (
     <article
@@ -48,7 +52,11 @@ export default function MediaPreviewCard({
 
       <div className="creator-public-card__body">
         <div>
-          <h3>{item.title}</h3>
+          <h3>
+            <Link to={detailRoute} className="creator-public-card__title-link">
+              {item.title}
+            </Link>
+          </h3>
           {item.subtitle ? <p>{item.subtitle}</p> : null}
         </div>
         <strong>{formatPrice(item.price)}</strong>
@@ -74,11 +82,14 @@ export default function MediaPreviewCard({
             {buyLabel}
           </button>
         ) : null}
+        <Link to={detailRoute} className="creator-ghost-btn">
+          Open page
+        </Link>
         <ShareActions
           className="creator-ghost-btn"
           title={item.title}
           text="Listen, read, or watch this creator release on Tengacion."
-          url={`${window.location.origin}${item.route || `/creators/${creatorId}`}`}
+          url={`${window.location.origin}${detailRoute}`}
         />
       </div>
     </article>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { checkEntitlement, getTrack, getTrackStream, initPayment } from "../api";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { checkEntitlement, getPublicCreatorProfile, getTrack, getTrackStream, initPayment } from "../api";
 import PaywallModal from "../components/PaywallModal";
 import SeoHead from "../components/seo/SeoHead";
 import { useAuth } from "../context/AuthContext";
@@ -11,9 +11,11 @@ import {
   buildMusicRecordingJsonLd,
   buildOrganizationJsonLd,
   buildPodcastEpisodeJsonLd,
+  buildTrackSeoDescription,
   buildWebSiteJsonLd,
-  pickFirstText,
+  shouldIndexPublicEntity,
 } from "../lib/seo";
+import { buildCreatorPublicPath } from "../lib/publicRoutes";
 import {
   buildPaystackCallbackUrl,
   resolveOwnedPurchaseLabel,
@@ -32,6 +34,7 @@ export default function TrackDetail() {
 
   const [track, setTrack] = useState(null);
   const [stream, setStream] = useState(null);
+  const [creatorContext, setCreatorContext] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [paywallOpen, setPaywallOpen] = useState(false);
@@ -46,13 +49,18 @@ export default function TrackDetail() {
   const loadTrack = useCallback(async () => {
     setLoading(true);
     setError("");
+    setCreatorContext(null);
     try {
       const [trackRes, streamRes] = await Promise.all([
         getTrack(trackId),
         getTrackStream(trackId),
       ]);
+      const creatorRes = trackRes?.creator?._id
+        ? await getPublicCreatorProfile(trackRes.creator.username || trackRes.creator._id).catch(() => null)
+        : null;
       setTrack(trackRes);
       setStream(streamRes);
+      setCreatorContext(creatorRes);
     } catch (err) {
       setError(err.message || "Failed to load track");
     } finally {
@@ -274,18 +282,29 @@ export default function TrackDetail() {
       : "Preview is limited to 30 seconds. Buy to unlock full playback.";
   }, [previewStartSec, stream?.allowedFullAccess]);
   const creatorName = track?.creator?.displayName || "Tengacion Creator";
-  const creatorPath = track?.creator?._id ? `/creators/${track.creator._id}` : "/creators";
+  const creatorPath = creatorContext?.creator?.canonicalPath || buildCreatorPublicPath({
+    creatorId: track?.creator?._id || "",
+    username: track?.creator?.username,
+  });
   const isPodcast = String(track?.kind || "").toLowerCase() === "podcast";
   const pageLabel = isPodcast ? "Podcast Episode" : "Track";
   const seoTitle = track
-    ? `${track.title} by ${creatorName} | Tengacion`
+    ? isPodcast && track?.podcastSeries
+      ? `${track.title} | ${track.podcastSeries} on Tengacion`
+      : `${track.title} by ${creatorName} | Tengacion`
     : `${pageLabel} | Tengacion`;
-  const seoDescription = pickFirstText(
-    track?.description,
-    isPodcast
-      ? `Listen to ${track?.title || "this episode"} from ${creatorName} on Tengacion.`
-      : `Stream ${track?.title || "this track"} by ${creatorName} on Tengacion.`
-  );
+  const seoDescription = buildTrackSeoDescription({ track, creatorName });
+  const relatedReleases = Array.isArray(creatorContext?.latestReleases)
+    ? creatorContext.latestReleases
+        .filter((item) => String(item?.route || "").trim())
+        .filter((item) => String(item?.id || "") !== String(track?._id || ""))
+        .slice(0, 4)
+    : [];
+  const shouldIndexPage = shouldIndexPublicEntity({
+    title: track?.title,
+    creatorName,
+    description: seoDescription,
+  });
   const structuredData = useMemo(() => {
     if (!track) {
       return [buildWebSiteJsonLd(), buildOrganizationJsonLd()];
@@ -349,6 +368,7 @@ export default function TrackDetail() {
         title={seoTitle}
         description={seoDescription}
         canonical={`/tracks/${track?._id || trackId}`}
+        robots={shouldIndexPage ? "index,follow" : "noindex,follow"}
         ogType={isPodcast ? "article" : "music.song"}
         ogImage={track?.coverImageUrl}
         ogImageAlt={`${track?.title || pageLabel} cover`}
@@ -357,16 +377,49 @@ export default function TrackDetail() {
       <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-xs font-medium uppercase tracking-wide text-brand-700">{pageLabel}</p>
         <h1 className="mt-2 text-3xl font-bold text-slate-900">{track.title}</h1>
-        <p className="mt-2 text-sm text-slate-600">{track.description || "No description"}</p>
+        <p className="mt-2 text-sm text-slate-600">
+          {track.description || track.showNotes || "Discover this public Tengacion release."}
+        </p>
         {track?.creator?._id ? (
-          <button
-            type="button"
-            className="mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-            onClick={() => navigate(`/creators/${track.creator._id}`)}
-          >
-            View creator page
-          </button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              to={creatorPath}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Visit {creatorName}
+            </Link>
+            {track?.podcastSeries ? (
+              <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
+                Series: {track.podcastSeries}
+              </span>
+            ) : null}
+          </div>
         ) : null}
+
+        <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Creator</p>
+            <p className="mt-2 text-sm font-semibold text-slate-900">{creatorName}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">{isPodcast ? "Category" : "Genre"}</p>
+            <p className="mt-2 text-sm font-semibold text-slate-900">
+              {track?.podcastCategory || track?.genre || "Public release"}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Format</p>
+            <p className="mt-2 text-sm font-semibold text-slate-900">
+              {isPodcast ? "Podcast Episode" : track?.releaseType || "Single"}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Duration</p>
+            <p className="mt-2 text-sm font-semibold text-slate-900">
+              {Number(track?.durationSec || 0) > 0 ? `${Math.ceil(Number(track.durationSec || 0) / 60)} min` : "Preview available"}
+            </p>
+          </div>
+        </section>
 
         <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <audio
@@ -419,6 +472,39 @@ export default function TrackDetail() {
           <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
             {payError}
           </div>
+        ) : null}
+
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <h2 className="text-lg font-semibold text-slate-900">About This Release</h2>
+          <p className="mt-3 text-sm leading-7 text-slate-700">
+            {track?.description || track?.showNotes || seoDescription}
+          </p>
+          {track?.guestNames?.length ? (
+            <p className="mt-3 text-sm text-slate-600">
+              Guests: {track.guestNames.join(", ")}
+            </p>
+          ) : null}
+        </section>
+
+        {relatedReleases.length ? (
+          <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+            <h2 className="text-lg font-semibold text-slate-900">More From {creatorName}</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {relatedReleases.map((item) => (
+                <Link
+                  key={`${item.itemType}-${item.id}`}
+                  to={item.route}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300 hover:bg-white"
+                >
+                  <strong className="block text-sm text-slate-900">{item.title}</strong>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    {item.contentLabel}
+                    {item.subtitle ? ` • ${item.subtitle}` : ""}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
         ) : null}
       </article>
 

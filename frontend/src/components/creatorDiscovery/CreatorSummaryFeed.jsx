@@ -77,6 +77,7 @@ export default function CreatorSummaryFeed({
   const [lastRefreshedAt, setLastRefreshedAt] = useState("");
   const requestSeqRef = useRef(0);
   const snapshotRef = useRef("");
+  const hasItems = items.length > 0;
 
   useEffect(() => {
     setCategory(initialCategory);
@@ -134,7 +135,7 @@ export default function CreatorSummaryFeed({
           return;
         }
 
-        if (!silent || !items.length) {
+        if (!silent || !hasItems) {
           setError(err?.message || "Could not load creator releases.");
         }
       } finally {
@@ -144,7 +145,7 @@ export default function CreatorSummaryFeed({
         }
       }
     },
-    [applyFeedPayload, category, limit, mode]
+    [applyFeedPayload, category, hasItems, limit, mode]
   );
 
   useEffect(() => {

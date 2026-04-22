@@ -46,6 +46,9 @@ const PUBLIC_TABS = [
   { key: "podcasts", label: "Podcasts", suffix: "/podcasts" },
   { key: "books", label: "Books", suffix: "/books" },
 ];
+const EMPTY_MUSIC = { tracks: [], albums: [], videos: [] };
+const EMPTY_PODCASTS = { series: {}, episodes: [] };
+const EMPTY_ITEMS = [];
 
 const formatMoney = (value = 0) =>
   Number(value || 0) <= 0 ? "Free" : `NGN ${Number(value || 0).toLocaleString()}`;
@@ -280,9 +283,9 @@ export default function CreatorHubPage() {
   }, [creatorId]);
 
   const creator = payload?.creator || null;
-  const music = payload?.music || { tracks: [], albums: [], videos: [] };
-  const podcasts = payload?.podcasts || { series: {}, episodes: [] };
-  const books = Array.isArray(payload?.books) ? payload.books : [];
+  const music = payload?.music || EMPTY_MUSIC;
+  const podcasts = payload?.podcasts || EMPTY_PODCASTS;
+  const books = Array.isArray(payload?.books) ? payload.books : EMPTY_ITEMS;
   const featured = payload?.featured || null;
   const latestReleases = Array.isArray(payload?.latestReleases)
     ? payload.latestReleases.filter((item) => String(item?.route || "").trim())

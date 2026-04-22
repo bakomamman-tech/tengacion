@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useParams } from "react-router-dom";
 import { createCheckout, getAlbum, getPublicCreatorProfile, resolveImage } from "../api";
@@ -106,31 +106,27 @@ export default function AlbumDetail() {
     creatorName,
     description: seoDescription,
   });
-  const structuredData = useMemo(() => {
-    if (!album) {
-      return [buildWebSiteJsonLd(), buildOrganizationJsonLd()];
-    }
-
-    return [
-      buildWebSiteJsonLd(),
-      buildOrganizationJsonLd(),
-      buildMusicAlbumJsonLd({
-        title: album.title,
-        description: seoDescription,
-        image: album.coverUrl,
-        canonicalPath: `/albums/${album._id}`,
-        creatorName,
-        creatorPath,
-        publishedAt: album.createdAt,
-        trackCount: tracks.length,
-      }),
-      buildBreadcrumbJsonLd([
-        { name: "Creators", url: "/creators" },
-        { name: creatorName, url: creatorPath },
-        { name: album.title, url: `/albums/${album._id}` },
-      ]),
-    ];
-  }, [album, creatorName, creatorPath, seoDescription, tracks.length]);
+  const structuredData = album
+    ? [
+        buildWebSiteJsonLd(),
+        buildOrganizationJsonLd(),
+        buildMusicAlbumJsonLd({
+          title: album.title,
+          description: seoDescription,
+          image: album.coverUrl,
+          canonicalPath: `/albums/${album._id}`,
+          creatorName,
+          creatorPath,
+          publishedAt: album.createdAt,
+          trackCount: tracks.length,
+        }),
+        buildBreadcrumbJsonLd([
+          { name: "Creators", url: "/creators" },
+          { name: creatorName, url: creatorPath },
+          { name: album.title, url: `/albums/${album._id}` },
+        ]),
+      ]
+    : [buildWebSiteJsonLd(), buildOrganizationJsonLd()];
 
   const handleBuyAlbum = async () => {
     if (!album?._id) {return;}

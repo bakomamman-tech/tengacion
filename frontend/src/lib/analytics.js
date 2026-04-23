@@ -89,6 +89,8 @@ export const initializeGoogleAnalytics = async () => {
   return true;
 };
 
+export const initAnalytics = () => initializeGoogleAnalytics();
+
 export const trackPageView = async ({
   path,
   title,

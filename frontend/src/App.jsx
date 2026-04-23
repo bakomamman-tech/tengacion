@@ -1,5 +1,5 @@
-import { Suspense, lazy, useEffect } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Suspense, lazy } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 
 import AdminRoute from "./components/AdminRoute";
 import InstallPrompt from "./components/InstallPrompt";
@@ -8,7 +8,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import RouteSeoController from "./components/seo/RouteSeoController";
 import WelcomeVoiceController from "./components/WelcomeVoiceController";
 import { useAuth } from "./context/AuthContext";
-import { SEO_PAGEVIEW_EVENT, trackPageView } from "./lib/analytics";
+import usePageTracking from "./hooks/usePageTracking";
 
 const loadQuickAccessPages = () => import("./pages/quickAccess/QuickAccessPages");
 const loadAccountPages = () => import("./pages/AccountPages");
@@ -136,31 +136,7 @@ function AppShellFallback({ message = "Loading Tengacion..." }) {
 
 export default function App() {
   const { user, loading: authLoading } = useAuth();
-  const location = useLocation();
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const currentPath = `${location.pathname}${location.search}${location.hash}`;
-    const handleSeoReady = (event) => {
-      const eventPath = String(event?.detail?.path || currentPath).trim() || currentPath;
-      if (eventPath !== currentPath) {
-        return;
-      }
-
-      void trackPageView({
-        path: eventPath,
-        title: String(event?.detail?.title || document.title || "").trim() || document.title,
-      });
-    };
-
-    window.addEventListener(SEO_PAGEVIEW_EVENT, handleSeoReady);
-    return () => {
-      window.removeEventListener(SEO_PAGEVIEW_EVENT, handleSeoReady);
-    };
-  }, [location]);
+  usePageTracking();
 
   if (authLoading) {
     return <AppShellFallback />;

@@ -10,7 +10,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { CreatorPlayerProvider } from "./context/CreatorPlayerContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { DialogProvider } from "./components/ui/DialogProvider";
-import { initializeGoogleAnalytics } from "./lib/analytics";
+import { initAnalytics } from "./lib/analytics";
 import {
   DEFAULT_THEME,
   LEGACY_THEME_KEY,
@@ -42,7 +42,7 @@ const initializeThemeEarly = () => {
 };
 
 initializeThemeEarly();
-void initializeGoogleAnalytics();
+void initAnalytics();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

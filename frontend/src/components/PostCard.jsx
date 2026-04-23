@@ -386,6 +386,21 @@ export default function PostCard({
   const sharedPostPreviewText = String(post?.sharedPost?.originalText || "").trim();
   const sharedPostPreviewImage = resolveImage(post?.sharedPost?.previewImage || "");
   const sharedPostKind = String(post?.sharedPost?.previewMediaType || "text").trim();
+  const hasPostText = Boolean(String(post?.text ?? "").trim());
+  const hasPostMeta =
+    taggedUsers.length > 0 || Boolean(feeling || checkInLocation || moreOptions.length > 0);
+  const shouldAttachPostMediaToCaption =
+    hasPostText && hasAnyMedia && !hasPostMeta && !hasSharedPost;
+  const postTextBlockClassName = shouldAttachPostMediaToCaption
+    ? "post-text-block post-text-block--attached-media"
+    : "post-text-block";
+  const postMediaClassName = [
+    "post-media",
+    postMediaBackdropStyle ? "post-media--image" : "",
+    shouldAttachPostMediaToCaption ? "post-media--attached-caption" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const handleTrackPayment = async () => {
     if (!audioTrack?.trackId) {return;}
     setPaymentLoading(true);
@@ -1020,7 +1035,7 @@ export default function PostCard({
           {post?.text && (
             <ExpandablePostText
               text={post.text}
-              wrapperClassName="post-text-block"
+              wrapperClassName={postTextBlockClassName}
               className="post-text"
               toggleClassName="post-text-toggle"
               collapseMode="words"
@@ -1103,7 +1118,7 @@ export default function PostCard({
 
           {hasAnyMedia && (
             <div
-              className={`post-media${postMediaBackdropStyle ? " post-media--image" : ""}`}
+              className={postMediaClassName}
               style={postMediaBackdropStyle}
             >
               {shouldRenderVideo && postVideoSource ? (

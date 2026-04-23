@@ -334,4 +334,31 @@ describe("PostCard comment toggle", () => {
 
     expect(textToggle).toBeUndefined();
   });
+
+  it("attaches the caption shell directly to inline media posts", () => {
+    const { container } = renderPostCard({
+      post: {
+        _id: "post-7",
+        text: "Caption that should meet the photo cleanly.",
+        image: "/uploads/post-7.jpg",
+        createdAt: "2026-03-30T10:00:00.000Z",
+        user: {
+          name: "Admin User",
+          username: "admin",
+          profilePic: "",
+        },
+        comments: [],
+        likesCount: 1,
+        shareCount: 0,
+        likedByViewer: false,
+      },
+    });
+
+    expect(container.querySelector(".post-text-block")).toHaveClass(
+      "post-text-block--attached-media"
+    );
+    expect(container.querySelector(".post-media")).toHaveClass(
+      "post-media--attached-caption"
+    );
+  });
 });

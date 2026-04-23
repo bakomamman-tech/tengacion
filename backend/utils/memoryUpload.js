@@ -183,6 +183,11 @@ const wrapMulterMiddleware = (middleware) => [
           buildUploadError("Upload exceeds the maximum allowed size of 100MB.", 413)
         );
       }
+      if (error?.name === "MulterError" && error.code === "LIMIT_UNEXPECTED_FILE") {
+        return next(
+          buildUploadError("Too many files were uploaded for this field.")
+        );
+      }
       return next(error);
     });
   },

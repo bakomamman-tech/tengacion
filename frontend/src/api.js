@@ -222,6 +222,14 @@ const request = async (url, options = {}) => {
 export const apiRequest = request;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const normalizePostUploadFiles = ({ file = null, files = [] } = {}) => {
+  const list = Array.isArray(files) ? files : files ? [files] : [];
+  if (list.length > 0) {
+    return list.filter(Boolean);
+  }
+  return file ? [file] : [];
+};
+
 const compressImageFile = async (file) => {
   if (!(file instanceof File) || !String(file.type || "").startsWith("image/")) {
     return file;
@@ -252,6 +260,9 @@ const compressImageFile = async (file) => {
     return file;
   }
 };
+
+const compressPostUploadFiles = async (files = []) =>
+  Promise.all((Array.isArray(files) ? files : []).map((file) => compressImageFile(file)));
 
 const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 
@@ -1287,14 +1298,14 @@ export const createPost = (input, maybeFile = null) => {
   const normalizedType =
     typeof payload.type === "string" ? payload.type.toLowerCase() : "";
   const text = payload.text || "";
-  const file = payload.file || null;
+  const uploadFiles = normalizePostUploadFiles(payload);
   const video = payload.video;
 
   const isVideoPost =
     ["video", "reel"].includes(normalizedType) ||
     (video && typeof video === "object" && video.url);
 
-  if (isVideoPost) {
+  if (isVideoPost && uploadFiles.length === 0) {
     const body = {
       ...payload,
       type: normalizedType === "reel" ? "reel" : "video",
@@ -1322,11 +1333,17 @@ export const createPost = (input, maybeFile = null) => {
     sharedPost = null,
   } = payload;
 
-  return compressImageFile(file).then((optimizedFile) => {
+  return compressPostUploadFiles(uploadFiles).then((optimizedFiles) => {
     const form = new FormData();
     form.append("text", text || "");
-    if (optimizedFile) {
-      form.append("file", optimizedFile);
+    optimizedFiles.forEach((optimizedFile) => {
+      if (optimizedFile) {
+        form.append("file", optimizedFile);
+      }
+    });
+
+    if (normalizedType) {
+      form.append("type", normalizedType);
     }
 
     if (Array.isArray(tags) && tags.length > 0) {
@@ -1420,6 +1437,7 @@ export const createPostWithUploadProgress = async (
   const {
     text = "",
     file = null,
+    files = [],
     type = "",
     tags = [],
     feeling = "",
@@ -1432,12 +1450,16 @@ export const createPostWithUploadProgress = async (
     sharedPost = null,
   } = payload || {};
 
-  const optimizedFile = await compressImageFile(file);
+  const optimizedFiles = await compressPostUploadFiles(
+    normalizePostUploadFiles({ file, files })
+  );
   const form = new FormData();
   form.append("text", text || "");
-  if (optimizedFile) {
-    form.append("file", optimizedFile);
-  }
+  optimizedFiles.forEach((optimizedFile) => {
+    if (optimizedFile) {
+      form.append("file", optimizedFile);
+    }
+  });
   if (type) {
     form.append("type", String(type));
   }

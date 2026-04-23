@@ -10,8 +10,8 @@ router.post(
   "/",
   auth,
   upload.fields([
-    { name: "image", maxCount: 1 },
-    { name: "file", maxCount: 1 },
+    { name: "image", maxCount: 8 },
+    { name: "file", maxCount: 8 },
   ]),
   moderateUpload({
     sourceType: "post",

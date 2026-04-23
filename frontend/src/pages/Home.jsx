@@ -362,6 +362,10 @@ function PostComposerModal({ user, onClose, onPosted, initialFiles = [], initial
   const canSubmit = isReelMode
     ? Boolean(selectedFiles.length === 1 && selectedFiles[0]?.type?.startsWith("video/"))
     : Boolean(text.trim() || selectedFiles.length || hasMetadata);
+  const singleSelectedFile = selectedFiles[0] || null;
+  const hasSingleSelectedFile = selectedFiles.length === 1;
+  const hasSingleSelectedVideo =
+    hasSingleSelectedFile && String(singleSelectedFile?.type || "").startsWith("video/");
 
   useEffect(() => {
     if (activePanel !== "tag") {
@@ -566,9 +570,39 @@ function PostComposerModal({ user, onClose, onPosted, initialFiles = [], initial
     setActivePanel((current) => (current === panel ? "" : panel));
   };
 
-  const handleMediaPost = async () => {
-    if (!selectedFiles.length) {
-      throw new Error("Select media before posting");
+  const buildPostPayload = () => ({
+    text: text.trim(),
+    tags: taggedPeople,
+    feeling,
+    location: checkInLocation.trim(),
+    callsEnabled,
+    callNumber: callNumber.trim(),
+    moreOptions: selectedMore,
+  });
+
+  const resetSelectedMediaState = () => {
+    setSelectedFiles([]);
+    setMediaUploadProgress(0);
+    setMediaUploadError("");
+  };
+
+  const handleSingleImagePost = async () => {
+    if (!singleSelectedFile) {
+      throw new Error("Select an image before posting");
+    }
+
+    const created = await createPost({
+      ...buildPostPayload(),
+      file: singleSelectedFile,
+    });
+
+    resetSelectedMediaState();
+    return created;
+  };
+
+  const handleSingleVideoPost = async () => {
+    if (!singleSelectedFile) {
+      throw new Error("Select a video before posting");
     }
 
     setUploadingMedia(true);
@@ -576,15 +610,9 @@ function PostComposerModal({ user, onClose, onPosted, initialFiles = [], initial
     try {
       const created = await createPostWithUploadProgress(
         {
-          text: text.trim(),
-          type: isReelMode ? "reel" : "",
-          files: selectedFiles,
-          tags: taggedPeople,
-          feeling,
-          location: checkInLocation.trim(),
-          callsEnabled,
-          callNumber: callNumber.trim(),
-          moreOptions: selectedMore,
+          ...buildPostPayload(),
+          type: isReelMode ? "reel" : "video",
+          file: singleSelectedFile,
         },
         {
           onProgress: setMediaUploadProgress,
@@ -593,9 +621,38 @@ function PostComposerModal({ user, onClose, onPosted, initialFiles = [], initial
         }
       );
 
-      setSelectedFiles([]);
+      resetSelectedMediaState();
+      return created;
+    } catch (err) {
+      setMediaUploadError(err?.message || "Video upload failed");
+      throw err;
+    } finally {
+      setUploadingMedia(false);
       setMediaUploadProgress(0);
+    }
+  };
 
+  const handleMultiMediaPost = async () => {
+    if (selectedFiles.length < 2) {
+      throw new Error("Select at least two media files before posting");
+    }
+
+    setUploadingMedia(true);
+    setMediaUploadError("");
+    try {
+      const created = await createPostWithUploadProgress(
+        {
+          ...buildPostPayload(),
+          files: selectedFiles,
+        },
+        {
+          onProgress: setMediaUploadProgress,
+          retries: 2,
+          timeoutMs: 10 * 60 * 1000,
+        }
+      );
+
+      resetSelectedMediaState();
       return created;
     } catch (err) {
       setMediaUploadError(err?.message || "Media upload failed");
@@ -618,18 +675,14 @@ function PostComposerModal({ user, onClose, onPosted, initialFiles = [], initial
 
       let createdPost;
 
-      if (selectedFiles.length > 0) {
-        createdPost = await handleMediaPost();
+      if (selectedFiles.length > 1) {
+        createdPost = await handleMultiMediaPost();
+      } else if (hasSingleSelectedVideo) {
+        createdPost = await handleSingleVideoPost();
+      } else if (hasSingleSelectedFile) {
+        createdPost = await handleSingleImagePost();
       } else {
-        createdPost = await createPost({
-          text: text.trim(),
-          tags: taggedPeople,
-          feeling,
-          location: checkInLocation.trim(),
-          callsEnabled,
-          callNumber: callNumber.trim(),
-          moreOptions: selectedMore,
-        });
+        createdPost = await createPost(buildPostPayload());
       }
 
       onPosted(createdPost);

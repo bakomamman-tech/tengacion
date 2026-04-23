@@ -361,37 +361,4 @@ describe("PostCard comment toggle", () => {
       "post-media--attached-caption"
     );
   });
-
-  it("lets viewers page through multiple media attachments", async () => {
-    const user = userEvent.setup();
-
-    renderPostCard({
-      post: {
-        _id: "post-8",
-        text: "A post with multiple photos.",
-        media: [
-          { url: "/uploads/photo-1.jpg", type: "image" },
-          { url: "/uploads/photo-2.jpg", type: "image" },
-        ],
-        createdAt: "2026-03-30T10:00:00.000Z",
-        user: {
-          name: "Admin User",
-          username: "admin",
-          profilePic: "",
-        },
-        comments: [],
-        likesCount: 1,
-        shareCount: 0,
-        likedByViewer: false,
-      },
-    });
-
-    expect(screen.getByAltText("post")).toHaveAttribute("src", "/uploads/photo-1.jpg");
-    expect(screen.getByText("1/2")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /show next media/i }));
-
-    expect(screen.getByAltText("post")).toHaveAttribute("src", "/uploads/photo-2.jpg");
-    expect(screen.getByText("2/2")).toBeInTheDocument();
-  });
 });

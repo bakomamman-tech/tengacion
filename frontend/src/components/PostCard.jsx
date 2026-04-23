@@ -82,58 +82,6 @@ const inferVideoMimeType = (url = "", fallback = "") => {
   return "video/mp4";
 };
 
-const inferMediaTypeFromUrl = (url = "", fallback = "image") => {
-  const normalizedUrl = String(url || "").toLowerCase();
-  if (/\.(mp4|webm|ogg|mov|m4v)(?:\?.*)?$/i.test(normalizedUrl)) {
-    return "video";
-  }
-  if (/\.(gif)(?:\?.*)?$/i.test(normalizedUrl)) {
-    return "gif";
-  }
-  if (/\.(png|jpe?g|webp|bmp|svg|avif)(?:\?.*)?$/i.test(normalizedUrl)) {
-    return "image";
-  }
-  return fallback;
-};
-
-const normalizePostMediaEntry = (entry) => {
-  if (!entry) {
-    return null;
-  }
-
-  if (typeof entry === "string") {
-    const url = resolveImage(entry);
-    return url ? { url, type: inferMediaTypeFromUrl(url) } : null;
-  }
-
-  if (typeof entry !== "object") {
-    return null;
-  }
-
-  const url = resolveImage(
-    entry.playbackUrl ||
-    entry.secureUrl ||
-    entry.secure_url ||
-    entry.url ||
-    ""
-  );
-  if (!url) {
-    return null;
-  }
-
-  const type = String(entry.type || entry.mediaType || "").trim().toLowerCase();
-  return {
-    ...entry,
-    url,
-    playbackUrl: resolveImage(entry.playbackUrl || url),
-    thumbnailUrl: resolveImage(entry.thumbnailUrl || entry.previewUrl || ""),
-    type: ["video", "image", "gif"].includes(type)
-      ? type
-      : inferMediaTypeFromUrl(url),
-    mimeType: String(entry.mimeType || entry.mimetype || "").trim().toLowerCase(),
-  };
-};
-
 const normalizeTagHandle = (value = "") =>
   String(value || "").trim().replace(/^@+/, "").replace(/\s+/g, "").toLowerCase().slice(0, 30);
 
@@ -323,41 +271,21 @@ export default function PostCard({
   const authorProfilePath = authorHandle ? `/profile/${authorHandle}` : "";
   const avatar =
     resolveImage(post?.user?.profilePic || post?.avatar) || "/avatar.png";
-  const videoPayload = post.video && typeof post.video === "object" ? post.video : null;
-  const normalizedPostMedia = useMemo(() => {
-    const mediaEntries = Array.isArray(post?.media)
-      ? post.media
-      : post?.media
-        ? [post.media]
-        : [];
-    const entries = mediaEntries
-      .map((entry) => normalizePostMediaEntry(entry))
-      .filter(Boolean);
-
-    if (entries.length > 0) {
-      return entries;
-    }
-
-    const videoEntry = normalizePostMediaEntry({
-      ...videoPayload,
-      type: "video",
-      url: videoPayload?.playbackUrl || videoPayload?.url || "",
-    });
-    if (videoEntry) {
-      return [videoEntry];
-    }
-
-    const legacyEntry = normalizePostMediaEntry(post?.image || post?.photo || "");
-    return legacyEntry ? [legacyEntry] : [];
-  }, [post?.image, post?.media, post?.photo, videoPayload]);
-  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
-  const activeMediaIndex = Math.min(
-    currentMediaIndex,
-    Math.max(normalizedPostMedia.length - 1, 0)
-  );
-  const activeMediaEntry = normalizedPostMedia[activeMediaIndex] || null;
-  const mediaTypeCandidate = String(activeMediaEntry?.type || "").toLowerCase();
-  const postMediaUrl = activeMediaEntry?.url || "";
+  const firstMediaEntry = Array.isArray(post?.media)
+    ? post.media?.[0]
+    : post?.media;
+  const mediaUrlCandidate =
+    firstMediaEntry && typeof firstMediaEntry === "object"
+      ? firstMediaEntry.secureUrl || firstMediaEntry.secure_url || firstMediaEntry.url || ""
+      : typeof firstMediaEntry === "string"
+        ? firstMediaEntry
+        : "";
+  const mediaTypeCandidate =
+    firstMediaEntry && typeof firstMediaEntry === "object"
+      ? (firstMediaEntry.type || "").toLowerCase()
+      : "";
+  const legacyMediaUrl = post?.image || post?.photo || "";
+  const postMediaUrl = resolveImage(mediaUrlCandidate || legacyMediaUrl);
   const hasVideoExtension = /\.(mp4|webm|ogg|mov|m4v)(?:\?.*)?$/i.test(
     postMediaUrl || ""
   );
@@ -383,18 +311,18 @@ export default function PostCard({
       ? { "--post-media-image": `url("${String(resolvedPostImageUrl).replace(/"/g, '\\"')}")` }
       : undefined;
   const [forceVideoRender, setForceVideoRender] = useState(false);
-  const postVideoSource = explicitVideo
-    ? resolveImage(activeMediaEntry?.playbackUrl || postMediaUrl)
-    : "";
-  const shouldRenderVideo = explicitVideo || forceVideoRender;
+  const videoPayload = post.video && typeof post.video === "object" ? post.video : null;
+  const hasVideoPayload = Boolean(videoPayload?.url || videoPayload?.playbackUrl);
+  const postVideoSource = hasVideoPayload
+    ? resolveImage(videoPayload.playbackUrl || videoPayload.url)
+    : explicitVideo
+      ? postMediaUrl
+      : "";
+  const shouldRenderVideo = explicitVideo || hasVideoPayload || forceVideoRender;
   const shouldRenderImage = explicitImage || !explicitVideo;
-  const videoPoster = resolveImage(activeMediaEntry?.thumbnailUrl || "");
-  const videoMimeType = inferVideoMimeType(
-    postVideoSource,
-    activeMediaEntry?.mimeType || ""
-  );
-  const hasAnyMedia = normalizedPostMedia.length > 0;
-  const hasMediaCarousel = normalizedPostMedia.length > 1;
+  const videoPoster = resolveImage(videoPayload?.thumbnailUrl || "");
+  const videoMimeType = inferVideoMimeType(postVideoSource, videoPayload?.mimeType || "");
+  const hasAnyMedia = Boolean(postVideoSource || postMediaUrl);
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
@@ -578,10 +506,6 @@ export default function PostCard({
   }, [post?._id, post?.shareCount]);
 
   useEffect(() => {
-    setCurrentMediaIndex(0);
-  }, [post?._id, normalizedPostMedia.length]);
-
-  useEffect(() => {
     if (!showComments) {
       return undefined;
     }
@@ -709,22 +633,6 @@ export default function PostCard({
       return;
     }
     current.load();
-  };
-
-  const goToMedia = (nextIndex) => {
-    if (!hasMediaCarousel) {
-      return;
-    }
-    if (videoRef.current) {
-      videoRef.current.pause();
-    }
-    setVideoError(false);
-    setIsPlaying(false);
-    setIsBuffering(false);
-    setCurrentMediaIndex(
-      ((nextIndex % normalizedPostMedia.length) + normalizedPostMedia.length) %
-        normalizedPostMedia.length
-    );
   };
 
   const clearReactionCloseTimer = useCallback(() => {
@@ -1263,48 +1171,13 @@ export default function PostCard({
                         setImageRetryToken(Date.now());
                         return;
                       }
-                      if (explicitVideo) {
+                      if (explicitVideo || hasVideoPayload) {
                         setForceVideoRender(true);
                       }
                     }}
                   />
                 </div>
               ) : null}
-              {hasMediaCarousel && (
-                <>
-                  <span className="post-media__count">
-                    {activeMediaIndex + 1}/{normalizedPostMedia.length}
-                  </span>
-                  <button
-                    type="button"
-                    className="post-media__nav post-media__nav--prev"
-                    onClick={() => goToMedia(activeMediaIndex - 1)}
-                    aria-label="Show previous media"
-                  >
-                    <span aria-hidden="true">&lt;</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="post-media__nav post-media__nav--next"
-                    onClick={() => goToMedia(activeMediaIndex + 1)}
-                    aria-label="Show next media"
-                  >
-                    <span aria-hidden="true">&gt;</span>
-                  </button>
-                  <div className="post-media__pager" aria-label="Post media pages">
-                    {normalizedPostMedia.map((entry, index) => (
-                      <button
-                        key={`${entry.url}-${index}`}
-                        type="button"
-                        className={index === activeMediaIndex ? "active" : ""}
-                        onClick={() => goToMedia(index)}
-                        aria-label={`Show media ${index + 1}`}
-                        aria-current={index === activeMediaIndex ? "true" : undefined}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
             </div>
           )}
 

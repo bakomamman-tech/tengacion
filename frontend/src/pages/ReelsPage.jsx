@@ -58,13 +58,6 @@ const formatRelativeTime = (value) => {
 const getFirstMedia = (post) =>
   Array.isArray(post?.media) ? post.media[0] || null : post?.media || null;
 
-const getMediaCount = (post) =>
-  Array.isArray(post?.media)
-    ? post.media.filter(Boolean).length
-    : post?.media
-      ? 1
-      : 0;
-
 const getMediaUrl = (value) => {
   if (!value) {
     return "";
@@ -93,16 +86,11 @@ const getReelPoster = (post) => {
 
 const isReelCandidate = (post) => {
   const firstMedia = getFirstMedia(post);
-  const mediaCount = getMediaCount(post);
   const firstMediaType =
     firstMedia && typeof firstMedia === "object"
       ? String(firstMedia.type || "").toLowerCase()
       : "";
   const videoUrl = getReelVideoUrl(post);
-
-  if (mediaCount > 1) {
-    return false;
-  }
 
   return Boolean(
     videoUrl &&

@@ -16,6 +16,7 @@ import { useAuth } from "../context/AuthContext";
 import { createReportDialogConfig } from "../constants/reportReasons";
 import VideoPlayer from "./media/VideoPlayer";
 import { useDialog } from "./ui/useDialog";
+import { normalizePostMedia } from "../utils/postMedia";
 
 /* ======================================================
    SYSTEM / STARTER POST HANDLING
@@ -271,19 +272,11 @@ export default function PostCard({
   const authorProfilePath = authorHandle ? `/profile/${authorHandle}` : "";
   const avatar =
     resolveImage(post?.user?.profilePic || post?.avatar) || "/avatar.png";
-  const firstMediaEntry = Array.isArray(post?.media)
-    ? post.media?.[0]
-    : post?.media;
-  const mediaUrlCandidate =
-    firstMediaEntry && typeof firstMediaEntry === "object"
-      ? firstMediaEntry.secureUrl || firstMediaEntry.secure_url || firstMediaEntry.url || ""
-      : typeof firstMediaEntry === "string"
-        ? firstMediaEntry
-        : "";
-  const mediaTypeCandidate =
-    firstMediaEntry && typeof firstMediaEntry === "object"
-      ? (firstMediaEntry.type || "").toLowerCase()
-      : "";
+  const normalizedMedia = useMemo(() => normalizePostMedia(post), [post]);
+  const hasMultiMedia = normalizedMedia.length > 1;
+  const primaryMedia = normalizedMedia[0] || null;
+  const mediaUrlCandidate = primaryMedia?.url || primaryMedia?.previewUrl || "";
+  const mediaTypeCandidate = String(primaryMedia?.type || "").toLowerCase();
   const legacyMediaUrl = post?.image || post?.photo || "";
   const postMediaUrl = resolveImage(mediaUrlCandidate || legacyMediaUrl);
   const hasVideoExtension = /\.(mp4|webm|ogg|mov|m4v)(?:\?.*)?$/i.test(
@@ -307,7 +300,7 @@ export default function PostCard({
     return `${postMediaUrl}${separator}img_retry=${imageRetryToken}`;
   }, [imageRetryToken, postMediaUrl]);
   const postMediaBackdropStyle =
-    resolvedPostImageUrl && (explicitImage || !explicitVideo)
+    !hasMultiMedia && resolvedPostImageUrl && (explicitImage || !explicitVideo)
       ? { "--post-media-image": `url("${String(resolvedPostImageUrl).replace(/"/g, '\\"')}")` }
       : undefined;
   const [forceVideoRender, setForceVideoRender] = useState(false);
@@ -322,7 +315,19 @@ export default function PostCard({
   const shouldRenderImage = explicitImage || !explicitVideo;
   const videoPoster = resolveImage(videoPayload?.thumbnailUrl || "");
   const videoMimeType = inferVideoMimeType(postVideoSource, videoPayload?.mimeType || "");
-  const hasAnyMedia = Boolean(postVideoSource || postMediaUrl);
+  const galleryMedia = useMemo(
+    () =>
+      normalizedMedia.map((entry, index) => ({
+        ...entry,
+        id: entry.id || `post-media-${index}`,
+        resolvedUrl: resolveImage(entry.url || entry.previewUrl || ""),
+        resolvedPreviewUrl: resolveImage(entry.previewUrl || entry.url || ""),
+      })),
+    [normalizedMedia]
+  );
+  const hasAnyMedia = hasMultiMedia
+    ? galleryMedia.some((entry) => entry.resolvedUrl)
+    : Boolean(postVideoSource || postMediaUrl);
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
@@ -397,6 +402,7 @@ export default function PostCard({
   const postMediaClassName = [
     "post-media",
     postMediaBackdropStyle ? "post-media--image" : "",
+    hasMultiMedia ? "post-media--gallery" : "",
     shouldAttachPostMediaToCaption ? "post-media--attached-caption" : "",
   ]
     .filter(Boolean)
@@ -1121,7 +1127,42 @@ export default function PostCard({
               className={postMediaClassName}
               style={postMediaBackdropStyle}
             >
-              {shouldRenderVideo && postVideoSource ? (
+              {hasMultiMedia ? (
+                <div className="post-media-gallery">
+                  {galleryMedia.map((entry, index) => {
+                    if (!entry.resolvedUrl) {
+                      return null;
+                    }
+
+                    return (
+                      <div
+                        key={entry.id || `gallery-${index}`}
+                        className={`post-media-gallery__item post-media-gallery__item--${entry.type}`}
+                      >
+                        {entry.type === "video" ? (
+                          <video
+                            className="post-media-gallery__video"
+                            controls
+                            preload="metadata"
+                            poster={entry.resolvedPreviewUrl || undefined}
+                          >
+                            <source
+                              src={entry.resolvedUrl}
+                              type={inferVideoMimeType(entry.resolvedUrl, entry.mimeType || "")}
+                            />
+                          </video>
+                        ) : (
+                          <img
+                            src={entry.resolvedUrl}
+                            alt={`Post media ${index + 1}`}
+                            className="post-media-gallery__image"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : shouldRenderVideo && postVideoSource ? (
                 <div className="post-video-wrapper" ref={videoWrapperRef}>
                   <VideoPlayer
                     ref={videoRef}

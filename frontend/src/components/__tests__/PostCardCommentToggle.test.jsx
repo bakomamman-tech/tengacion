@@ -361,4 +361,39 @@ describe("PostCard comment toggle", () => {
       "post-media--attached-caption"
     );
   });
+
+  it("renders mixed-media gallery posts without crashing", () => {
+    const { container } = renderPostCard({
+      post: {
+        _id: "post-gallery-1",
+        text: "A gallery post with photo and video attachments.",
+        createdAt: "2026-03-30T10:00:00.000Z",
+        user: {
+          name: "Admin User",
+          username: "admin",
+          profilePic: "",
+        },
+        media: [
+          { url: "https://cdn.test/media/gallery-1.jpg", type: "image" },
+          {
+            url: "https://cdn.test/media/gallery-2.mp4",
+            previewUrl: "https://cdn.test/media/gallery-2-poster.jpg",
+            mimeType: "video/mp4",
+            type: "video",
+          },
+          { url: "https://cdn.test/media/gallery-3.jpg", type: "image" },
+        ],
+        comments: [],
+        likesCount: 5,
+        shareCount: 1,
+        likedByViewer: false,
+      },
+    });
+
+    expect(container.querySelectorAll(".post-media-gallery__item")).toHaveLength(3);
+    expect(container.querySelectorAll(".post-media-gallery__video")).toHaveLength(1);
+    expect(
+      screen.getByText(/gallery post with photo and video attachments/i)
+    ).toBeInTheDocument();
+  });
 });

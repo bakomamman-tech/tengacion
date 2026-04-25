@@ -11389,6 +11389,47 @@ html.dark-mode .post-shared-preview__text-block .expandable-post-text__measure {
   align-items: center;
 }
 
+.post-media--gallery {
+  padding: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(17, 10, 8, 0.18)),
+    var(--surface-soft);
+}
+
+.post-media-gallery {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.post-media-gallery__item {
+  position: relative;
+  min-height: 180px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0c1726;
+}
+
+.post-media-gallery__item--video {
+  background: #02060d;
+}
+
+.post-media-gallery__image,
+.post-media-gallery__video {
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  display: block;
+  object-fit: cover;
+  background: #0c1726;
+}
+
+.post-media-gallery__video {
+  max-height: 360px;
+}
+
 .post-image {
   width: 100%;
   height: auto;
@@ -13076,14 +13117,66 @@ html.dark-mode .composer-textarea::placeholder {
   padding: 10px;
 }
 
-.composer-preview img,
-.composer-preview video {
-  width: 100%;
-  max-height: min(42vh, 360px);
-  object-fit: contain;
-  background: #0c1726;
+.composer-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: #28476f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.composer-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.composer-preview-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.composer-preview-item {
+  border: 1px solid #d7e0eb;
   border-radius: 12px;
+  background: #fff;
+  padding: 8px;
+}
+
+.composer-preview-item img,
+.composer-preview-item video {
+  width: 100%;
+  max-height: min(34vh, 240px);
+  object-fit: cover;
+  background: #0c1726;
+  border-radius: 10px;
   display: block;
+}
+
+.composer-preview-item__meta {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #27466e;
+}
+
+.composer-preview-item__meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.composer-preview-item__meta small {
+  flex-shrink: 0;
+  color: #54718e;
+  font-size: 11px;
 }
 
 .composer-remove-media {
@@ -20621,6 +20714,11 @@ html.dark-mode .password-toggle-btn:hover {
 
   .composer-actions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .composer-preview-grid,
+  .post-media-gallery {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .notifications-panel {

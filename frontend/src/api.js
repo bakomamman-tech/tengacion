@@ -1278,6 +1278,77 @@ export const getPostsByUsername = (username) =>
     headers: getAuthHeaders(),
   });
 
+const toPostUploadFiles = (payload = {}) => {
+  if (Array.isArray(payload?.files)) {
+    return payload.files.filter(Boolean);
+  }
+
+  return payload?.file ? [payload.file] : [];
+};
+
+const optimizePostUploadFiles = async (files = []) =>
+  Promise.all((Array.isArray(files) ? files : []).map((file) => compressImageFile(file)));
+
+const appendPostComposerFields = (form, payload = {}, files = []) => {
+  const {
+    text = "",
+    type = "",
+    tags = [],
+    feeling = "",
+    location = "",
+    callsEnabled = false,
+    callNumber = "",
+    moreOptions = [],
+    visibility = "",
+    privacy = "",
+    sharedPost = null,
+  } = payload || {};
+
+  form.append("text", text || "");
+
+  (Array.isArray(files) ? files : []).forEach((file) => {
+    form.append("media", file);
+  });
+
+  if (type) {
+    form.append("type", String(type));
+  }
+
+  if (Array.isArray(tags) && tags.length > 0) {
+    form.append("tags", JSON.stringify(tags));
+  }
+
+  if (feeling) {
+    form.append("feeling", feeling);
+  }
+
+  if (location) {
+    form.append("location", location);
+  }
+
+  form.append("callsEnabled", String(Boolean(callsEnabled)));
+
+  if (callNumber) {
+    form.append("callNumber", callNumber);
+  }
+
+  if (Array.isArray(moreOptions) && moreOptions.length > 0) {
+    form.append("moreOptions", JSON.stringify(moreOptions));
+  }
+
+  if (visibility) {
+    form.append("visibility", String(visibility));
+  }
+
+  if (privacy) {
+    form.append("privacy", String(privacy));
+  }
+
+  if (sharedPost && typeof sharedPost === "object") {
+    form.append("sharedPost", JSON.stringify(sharedPost));
+  }
+};
+
 export const createPost = (input, maybeFile = null) => {
   const payload =
     input && typeof input === "object" && !Array.isArray(input)
@@ -1287,14 +1358,14 @@ export const createPost = (input, maybeFile = null) => {
   const normalizedType =
     typeof payload.type === "string" ? payload.type.toLowerCase() : "";
   const text = payload.text || "";
-  const file = payload.file || null;
+  const uploadFiles = toPostUploadFiles(payload);
   const video = payload.video;
 
   const isVideoPost =
     ["video", "reel"].includes(normalizedType) ||
     (video && typeof video === "object" && video.url);
 
-  if (isVideoPost) {
+  if (isVideoPost && uploadFiles.length === 0) {
     const body = {
       ...payload,
       type: normalizedType === "reel" ? "reel" : "video",
@@ -1310,58 +1381,9 @@ export const createPost = (input, maybeFile = null) => {
     });
   }
 
-  const {
-    tags = [],
-    feeling = "",
-    location = "",
-    callsEnabled = false,
-    callNumber = "",
-    moreOptions = [],
-    visibility = "",
-    privacy = "",
-    sharedPost = null,
-  } = payload;
-
-  return compressImageFile(file).then((optimizedFile) => {
+  return optimizePostUploadFiles(uploadFiles).then((optimizedFiles) => {
     const form = new FormData();
-    form.append("text", text || "");
-    if (optimizedFile) {
-      form.append("file", optimizedFile);
-    }
-
-    if (Array.isArray(tags) && tags.length > 0) {
-      form.append("tags", JSON.stringify(tags));
-    }
-
-    if (feeling) {
-      form.append("feeling", feeling);
-    }
-
-    if (location) {
-      form.append("location", location);
-    }
-
-    form.append("callsEnabled", String(Boolean(callsEnabled)));
-
-    if (callNumber) {
-      form.append("callNumber", callNumber);
-    }
-
-    if (Array.isArray(moreOptions) && moreOptions.length > 0) {
-      form.append("moreOptions", JSON.stringify(moreOptions));
-    }
-
-    if (visibility) {
-      form.append("visibility", String(visibility));
-    }
-
-    if (privacy) {
-      form.append("privacy", String(privacy));
-    }
-
-    if (sharedPost && typeof sharedPost === "object") {
-      form.append("sharedPost", JSON.stringify(sharedPost));
-    }
+    appendPostComposerFields(form, { ...payload, text }, optimizedFiles);
 
     return request(`${API_BASE}/posts`, {
       method: "POST",
@@ -1419,53 +1441,10 @@ export const createPostWithUploadProgress = async (
 ) => {
   const {
     text = "",
-    file = null,
-    type = "",
-    tags = [],
-    feeling = "",
-    location = "",
-    callsEnabled = false,
-    callNumber = "",
-    moreOptions = [],
-    visibility = "",
-    privacy = "",
-    sharedPost = null,
   } = payload || {};
-
-  const optimizedFile = await compressImageFile(file);
+  const optimizedFiles = await optimizePostUploadFiles(toPostUploadFiles(payload));
   const form = new FormData();
-  form.append("text", text || "");
-  if (optimizedFile) {
-    form.append("file", optimizedFile);
-  }
-  if (type) {
-    form.append("type", String(type));
-  }
-  if (Array.isArray(tags) && tags.length > 0) {
-    form.append("tags", JSON.stringify(tags));
-  }
-  if (feeling) {
-    form.append("feeling", feeling);
-  }
-  if (location) {
-    form.append("location", location);
-  }
-  form.append("callsEnabled", String(Boolean(callsEnabled)));
-  if (callNumber) {
-    form.append("callNumber", callNumber);
-  }
-  if (Array.isArray(moreOptions) && moreOptions.length > 0) {
-    form.append("moreOptions", JSON.stringify(moreOptions));
-  }
-  if (visibility) {
-    form.append("visibility", String(visibility));
-  }
-  if (privacy) {
-    form.append("privacy", String(privacy));
-  }
-  if (sharedPost && typeof sharedPost === "object") {
-    form.append("sharedPost", JSON.stringify(sharedPost));
-  }
+  appendPostComposerFields(form, { ...(payload || {}), text }, optimizedFiles);
 
   let lastError = null;
   const attempts = Math.max(1, Number(retries) + 1);

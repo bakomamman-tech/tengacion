@@ -62,6 +62,7 @@ const POST_REACTIONS = [
 const DEFAULT_POST_REACTION_KEY = POST_REACTIONS[0].key;
 const POST_REACTION_BY_KEY = new Map(POST_REACTIONS.map((reaction) => [reaction.key, reaction]));
 const POST_REACTION_BY_EMOJI = new Map(POST_REACTIONS.map((reaction) => [reaction.emoji, reaction]));
+const MAX_POST_MEDIA_FILES = 10;
 
 const normalizePostReactionKey = (value = "") => {
   const raw = String(value || "").trim();
@@ -115,6 +116,71 @@ const inferMediaKind = (file) => {
   }
 
   return "image";
+};
+
+const isUploadFileLike = (value) =>
+  Boolean(
+    value
+    && typeof value === "object"
+    && !Array.isArray(value)
+    && (
+      typeof value.originalname === "string"
+      || typeof value.filename === "string"
+      || typeof value.mimetype === "string"
+      || Buffer.isBuffer(value.buffer)
+    )
+  );
+
+const collectPostUploadFiles = (files) => {
+  if (!files) {
+    return [];
+  }
+
+  if (Array.isArray(files)) {
+    return files.filter(Boolean);
+  }
+
+  if (isUploadFileLike(files)) {
+    return [files];
+  }
+
+  if (typeof files === "object") {
+    const orderedFields = ["media", "image", "file"];
+    const consumed = new Set();
+    const entries = [];
+
+    orderedFields.forEach((fieldName) => {
+      if (!(fieldName in files)) {
+        return;
+      }
+      consumed.add(fieldName);
+      entries.push(
+        ...(Array.isArray(files[fieldName]) ? files[fieldName] : [files[fieldName]]).filter(Boolean)
+      );
+    });
+
+    Object.entries(files).forEach(([fieldName, value]) => {
+      if (consumed.has(fieldName)) {
+        return;
+      }
+      entries.push(...(Array.isArray(value) ? value : [value]).filter(Boolean));
+    });
+
+    return entries;
+  }
+
+  return [];
+};
+
+const getFirstVideoUploadFile = (files = []) =>
+  (Array.isArray(files) ? files : []).find((file) => inferMediaKind(file) === "video") || null;
+
+const ensureValidPostUploadFiles = (files = []) => {
+  const uploadFiles = Array.isArray(files) ? files.filter(Boolean) : [];
+  if (uploadFiles.length > MAX_POST_MEDIA_FILES) {
+    throw ApiError.badRequest("You can upload up to 10 photos or videos per post.");
+  }
+  return uploadFiles;
 };
 
 const mapLegacyModerationStatusToDecision = (status = "") => {
@@ -245,6 +311,7 @@ const buildPostMediaEntry = (asset = {}, type = "image") => {
   const normalized = normalizeMediaValue(asset);
   return {
     ...normalized,
+    mimeType: normalizeMimeType(asset?.mimeType || asset?.mime_type || asset?.mimetype),
     type,
   };
 };
@@ -714,45 +781,57 @@ const getPostPreviewImage = (post = {}) => {
 const buildPostModerationMedia = ({
   media = [],
   video = null,
-  uploadFile = null,
+  uploadFiles = [],
 }) => {
+  const normalizedUploadFiles = Array.isArray(uploadFiles) ? uploadFiles : [];
   const entries = (Array.isArray(media) ? media : []).map((entry, index) => ({
     role: index === 0 ? "primary" : `attachment_${index + 1}`,
     mediaType: entry?.type || "image",
     sourceUrl: getMediaEntryUrl(entry),
     previewUrl: getMediaEntryUrl(entry),
-    mimeType: entry?.type === "video" ? "video/mp4" : "image/jpeg",
+    mimeType:
+      entry?.mimeType
+      || normalizedUploadFiles[index]?.mimetype
+      || (entry?.type === "video" ? "video/mp4" : "image/jpeg"),
     originalFilename:
-      uploadFile?.originalname || uploadFile?.filename || "",
-    fileSizeBytes: Number(uploadFile?.size || 0),
-    file: uploadFile && index === 0 ? uploadFile : null,
+      normalizedUploadFiles[index]?.originalname || normalizedUploadFiles[index]?.filename || "",
+    fileSizeBytes: Number(normalizedUploadFiles[index]?.size || 0),
+    file: normalizedUploadFiles[index] || null,
   }));
 
-  if (video?.playbackUrl || video?.url) {
+  const videoSourceUrl = video?.playbackUrl || video?.url || "";
+  const hasMatchingVideoEntry = entries.some(
+    (entry) => entry.mediaType === "video" && entry.sourceUrl === videoSourceUrl
+  );
+
+  if ((video?.playbackUrl || video?.url) && !hasMatchingVideoEntry) {
+    const videoUploadFile = getFirstVideoUploadFile(normalizedUploadFiles);
     entries.push({
       role: "video",
       mediaType: "video",
       sourceUrl: video.playbackUrl || video.url,
       previewUrl: video.thumbnailUrl || video.playbackUrl || video.url,
-      mimeType: video.mimeType || uploadFile?.mimetype || "video/mp4",
+      mimeType: video.mimeType || videoUploadFile?.mimetype || "video/mp4",
       originalFilename:
-        uploadFile?.originalname || uploadFile?.filename || "",
-      fileSizeBytes: Number(uploadFile?.size || video.sizeBytes || 0),
-      file: uploadFile && (video.playbackUrl || video.url) ? uploadFile : null,
+        videoUploadFile?.originalname || videoUploadFile?.filename || "",
+      fileSizeBytes: Number(videoUploadFile?.size || video.sizeBytes || 0),
+      file: videoUploadFile && (video.playbackUrl || video.url) ? videoUploadFile : null,
     });
   }
 
-  if (entries.length === 0 && uploadFile) {
-    entries.push({
-      role: "primary",
-      mediaType: inferMediaKind(uploadFile),
-      sourceUrl: "",
-      previewUrl: "",
-      mimeType: uploadFile?.mimetype || "application/octet-stream",
-      originalFilename:
-        uploadFile?.originalname || uploadFile?.filename || "",
-      fileSizeBytes: Number(uploadFile?.size || 0),
-      file: uploadFile,
+  if (entries.length === 0 && normalizedUploadFiles.length > 0) {
+    normalizedUploadFiles.forEach((uploadFile, index) => {
+      entries.push({
+        role: index === 0 ? "primary" : `attachment_${index + 1}`,
+        mediaType: inferMediaKind(uploadFile),
+        sourceUrl: "",
+        previewUrl: "",
+        mimeType: uploadFile?.mimetype || "application/octet-stream",
+        originalFilename:
+          uploadFile?.originalname || uploadFile?.filename || "",
+        fileSizeBytes: Number(uploadFile?.size || 0),
+        file: uploadFile,
+      });
     });
   }
 
@@ -1064,8 +1143,10 @@ class PostService {
     const callsEnabled = toBool(body?.callsEnabled);
     const callNumber = normalizeText(body?.callNumber, 36);
     const moreOptions = toStringArray(body?.moreOptions, 8, 60, false);
-    const uploadFile = files?.image?.[0] || files?.file?.[0] || null;
-    const uploadKind = uploadFile ? inferMediaKind(uploadFile) : "";
+    const uploadFiles = ensureValidPostUploadFiles(collectPostUploadFiles(files));
+    const firstUploadFile = uploadFiles[0] || null;
+    const firstVideoUploadFile = getFirstVideoUploadFile(uploadFiles);
+    const hasUploadVideo = Boolean(firstVideoUploadFile);
     const hasMetadata = Boolean(
       tags.length || feeling || location || moreOptions.length || (callsEnabled && callNumber)
     );
@@ -1073,7 +1154,7 @@ class PostService {
     const rawVideoPayload = parseVideoPayload(body?.video);
     let videoMeta = buildVideoMeta(rawVideoPayload);
 
-    if (!videoMeta && uploadFile && uploadKind === "video") {
+    if (!videoMeta && firstVideoUploadFile) {
       videoMeta = {
         url: "",
         playbackUrl: "",
@@ -1081,16 +1162,16 @@ class PostService {
         duration: 0,
         width: 0,
         height: 0,
-        sizeBytes: Number(uploadFile.size) || 0,
-        mimeType: normalizeMimeType(uploadFile.mimetype),
+        sizeBytes: Number(firstVideoUploadFile.size) || 0,
+        mimeType: normalizeMimeType(firstVideoUploadFile.mimetype),
       };
     }
 
     validateVideoMeta(videoMeta);
 
-    const hasVideo = Boolean(videoMeta);
+    const hasVideo = Boolean(videoMeta) || hasUploadVideo;
     const hasSharedPost = Boolean(sharedPost);
-    if (!text && !uploadFile && !hasMetadata && !hasVideo && !hasSharedPost) {
+    if (!text && uploadFiles.length === 0 && !hasMetadata && !hasVideo && !hasSharedPost) {
       throw ApiError.badRequest("Post cannot be empty");
     }
 
@@ -1101,16 +1182,28 @@ class PostService {
       : null;
     let type = requestedType;
     if (!type) {
-      if (hasVideo || uploadKind === "video") {
+      if (hasVideo) {
         type = "video";
-      } else if (uploadFile) {
+      } else if (uploadFiles.length > 0) {
         type = "image";
       } else {
         type = "text";
       }
     }
 
-    if (["video", "reel"].includes(type) && !hasVideo && uploadKind !== "video") {
+    if (type === "reel") {
+      if (!hasVideo || !hasUploadVideo) {
+        throw ApiError.badRequest("Video data is required for video posts");
+      }
+      if (uploadFiles.length > 1) {
+        throw ApiError.badRequest("Reels support only one video upload.");
+      }
+      if (uploadFiles.some((file) => inferMediaKind(file) !== "video")) {
+        throw ApiError.badRequest("Reels must be uploaded as video.");
+      }
+    }
+
+    if (["video", "reel"].includes(type) && !hasVideo && !hasUploadVideo) {
       throw ApiError.badRequest("Video data is required for video posts");
     }
 
@@ -1191,10 +1284,10 @@ class PostService {
     }
 
     let legacyPreflightModerationDecision = null;
-    if (uploadFile) {
+    if (uploadFiles.length > 0) {
       const preflightModerationMedia = buildPostModerationMedia({
         media: [],
-        uploadFile,
+        uploadFiles,
       });
       const preflightResult = await createOrUpdateModerationCase({
         targetType: "post_upload",
@@ -1219,7 +1312,7 @@ class PostService {
         },
         detectionSource: "automated_upload_scan",
         req: null,
-        subjectMediaType: inferMediaKind(uploadFile),
+        subjectMediaType: hasUploadVideo ? "video" : inferMediaKind(firstUploadFile),
       });
       legacyPreflightModerationDecision = preflightResult.moderationDecision || null;
     }
@@ -1229,13 +1322,25 @@ class PostService {
       legacyStatus: legacyPreflightModerationDecision?.status || "",
     });
 
-    if (uploadFile && moderationUploadDecision.decision !== "approve") {
+    if (uploadFiles.length > 0 && moderationUploadDecision.decision !== "approve") {
       const tempTargetId = `pending:post_upload:${viewerId}:${new mongoose.Types.ObjectId().toString()}`;
-      const quarantined = await moveToQuarantineStorage({
-        file: uploadFile,
-        caseId: tempTargetId,
-        stage: "quarantine",
-      });
+      const quarantinedMedia = [];
+      for (const uploadFile of uploadFiles) {
+        const quarantined = await moveToQuarantineStorage({
+          file: uploadFile,
+          caseId: tempTargetId,
+          stage: "quarantine",
+        });
+        quarantinedMedia.push({
+          role: quarantinedMedia.length === 0 ? "primary" : `attachment_${quarantinedMedia.length + 1}`,
+          mediaType: inferMediaKind(uploadFile),
+          mimeType: uploadFile.mimetype || "",
+          sourceUrl: quarantined.fileUrl,
+          previewUrl: quarantined.fileUrl,
+          originalFilename: uploadFile.originalname || uploadFile.filename || "",
+          fileSizeBytes: Number(uploadFile.size || 0),
+        });
+      }
       await createUploadModerationCase({
         targetType: "post_upload",
         targetId: tempTargetId,
@@ -1245,8 +1350,8 @@ class PostService {
           username: viewer?.username || "",
           displayName: viewer?.name || "",
         },
-        fileUrl: quarantined.fileUrl,
-        mimeType: uploadFile.mimetype || "",
+        fileUrl: quarantinedMedia[0]?.sourceUrl || "",
+        mimeType: quarantinedMedia[0]?.mimeType || "",
         labels: moderationUploadDecision.labels || [],
         reason: moderationUploadDecision.reason || "",
         confidence: moderationUploadDecision.confidence || 0,
@@ -1256,21 +1361,11 @@ class PostService {
         subject: {
           title: text.slice(0, 240),
           description: text,
-          mediaType: inferMediaKind(uploadFile),
+          mediaType: hasUploadVideo ? "video" : inferMediaKind(firstUploadFile),
           createdAt: new Date(),
         },
-        media: [
-          {
-            role: "primary",
-            mediaType: inferMediaKind(uploadFile),
-            mimeType: uploadFile.mimetype || "",
-            sourceUrl: quarantined.fileUrl,
-            previewUrl: quarantined.fileUrl,
-            originalFilename: uploadFile.originalname || uploadFile.filename || "",
-            fileSizeBytes: Number(uploadFile.size || 0),
-          },
-        ],
-        file: uploadFile,
+        media: quarantinedMedia,
+        file: firstUploadFile,
       });
 
       if (moderationUploadDecision.decision === "reject") {
@@ -1293,16 +1388,29 @@ class PostService {
     }
 
     const media = [];
-    if (uploadFile) {
-      const persisted = await saveUploadedMedia(uploadFile, {
-        source: uploadKind === "video" ? "post_video" : "post_image",
-        resourceType: uploadKind === "video" ? "video" : "image",
-      });
-      const persistedKind = inferMediaKind(uploadFile);
-      media.push(buildPostMediaEntry(persisted, persistedKind));
+    if (uploadFiles.length > 0) {
+      for (const uploadFile of uploadFiles) {
+        const uploadKind = inferMediaKind(uploadFile);
+        const persisted = await saveUploadedMedia(uploadFile, {
+          source: uploadKind === "video" ? "post_video" : "post_image",
+          resourceType: uploadKind === "video" ? "video" : "image",
+        });
+        media.push(
+          buildPostMediaEntry(
+            {
+              ...persisted,
+              mimeType: uploadFile.mimetype || "",
+            },
+            uploadKind
+          )
+        );
 
-      if (persistedKind === "video") {
-        videoMeta = buildCloudinaryVideoMeta(persisted, uploadFile, videoMeta);
+        if (
+          uploadKind === "video" &&
+          (!videoMeta?.playbackUrl || !videoMeta?.publicId)
+        ) {
+          videoMeta = buildCloudinaryVideoMeta(persisted, uploadFile, videoMeta);
+        }
       }
     } else if (type === "video" && videoMeta?.playbackUrl) {
       media.push({
@@ -1349,7 +1457,7 @@ class PostService {
     const moderationMedia = buildPostModerationMedia({
       media,
       video: ["video", "reel"].includes(type) ? videoMeta : null,
-      uploadFile,
+      uploadFiles,
     });
     const { moderationDecision, moderationCase } = await createOrUpdateModerationCase({
       targetType: "post",
@@ -1377,7 +1485,8 @@ class PostService {
     });
 
     let uploadModerationCase = null;
-    if (uploadFile) {
+    if (uploadFiles.length > 0) {
+      const primaryUploadFile = uploadFiles[0] || null;
       uploadModerationCase = await createUploadModerationCase({
         targetType: "post",
         targetId: created._id.toString(),
@@ -1388,7 +1497,7 @@ class PostService {
           displayName: viewer?.name || "",
         },
         fileUrl: media[0]?.url || "",
-        mimeType: uploadFile.mimetype || "",
+        mimeType: primaryUploadFile?.mimetype || "",
         labels: moderationUploadDecision.labels || [],
         reason: moderationUploadDecision.reason || "",
         confidence: moderationUploadDecision.confidence || 0,
@@ -1398,7 +1507,7 @@ class PostService {
         subject: {
           title: text.slice(0, 240),
           description: text,
-          mediaType: inferMediaKind(uploadFile),
+          mediaType: hasUploadVideo ? "video" : inferMediaKind(primaryUploadFile),
           createdAt: created.createdAt || new Date(),
           baselineAccess: {
             isPublished: true,
@@ -1408,14 +1517,25 @@ class PostService {
         },
         media: moderationMedia.map((entry, index) => ({
           role: entry.role || (index === 0 ? "primary" : `attachment_${index + 1}`),
-          mediaType: entry.mediaType || inferMediaKind(uploadFile),
-          mimeType: entry.mimeType || uploadFile.mimetype || "",
-          sourceUrl: entry.sourceUrl || entry.previewUrl || media[0]?.url || "",
-          previewUrl: entry.previewUrl || media[0]?.url || "",
-          originalFilename: entry.originalFilename || uploadFile.originalname || uploadFile.filename || "",
-          fileSizeBytes: Number(entry.fileSizeBytes || uploadFile.size || 0),
+          mediaType: entry.mediaType || inferMediaKind(uploadFiles[index] || primaryUploadFile),
+          mimeType: entry.mimeType || uploadFiles[index]?.mimetype || primaryUploadFile?.mimetype || "",
+          sourceUrl: entry.sourceUrl || entry.previewUrl || media[index]?.url || media[0]?.url || "",
+          previewUrl: entry.previewUrl || media[index]?.url || media[0]?.url || "",
+          originalFilename:
+            entry.originalFilename
+            || uploadFiles[index]?.originalname
+            || uploadFiles[index]?.filename
+            || primaryUploadFile?.originalname
+            || primaryUploadFile?.filename
+            || "",
+          fileSizeBytes: Number(
+            entry.fileSizeBytes
+            || uploadFiles[index]?.size
+            || primaryUploadFile?.size
+            || 0
+          ),
         })),
-        file: uploadFile,
+        file: primaryUploadFile,
       });
     }
 

@@ -179,6 +179,42 @@ describe("Posts feed", () => {
     );
   });
 
+  test("POST /api/posts uploads multiple images and stores them in media order", async () => {
+    const response = await request(app)
+      .post("/api/posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .field("text", "Weekend photo dump")
+      .attach("media", Buffer.from("image-1"), {
+        filename: "sunrise.png",
+        contentType: "image/png",
+      })
+      .attach("media", Buffer.from("image-2"), {
+        filename: "friends.jpg",
+        contentType: "image/jpeg",
+      })
+      .expect(201);
+
+    expect(response.body.type).toBe("image");
+    expect(response.body.media).toHaveLength(2);
+
+    const stored = await Post.findById(response.body._id).lean();
+    expect(stored).toBeTruthy();
+    expect(stored.media).toHaveLength(2);
+    expect(stored.media[0]).toMatchObject({
+      publicId: "tengacion/posts/images/mock-1",
+      type: "image",
+      mimeType: "image/png",
+      originalFilename: "sunrise.png",
+    });
+    expect(stored.media[1]).toMatchObject({
+      publicId: "tengacion/posts/images/mock-2",
+      type: "image",
+      mimeType: "image/jpeg",
+      originalFilename: "friends.jpg",
+    });
+    expect(cloudinary.uploader.upload_stream).toHaveBeenCalledTimes(2);
+  });
+
   test("POST /api/posts rejects unsupported upload types", async () => {
     const response = await request(app)
       .post("/api/posts")
@@ -191,6 +227,26 @@ describe("Posts feed", () => {
       .expect(400);
 
     expect(response.body.message).toMatch(/Unsupported file type/i);
+    expect(await Post.countDocuments()).toBe(0);
+    expect(cloudinary.uploader.upload_stream).not.toHaveBeenCalled();
+  });
+
+  test("POST /api/posts rejects more than 10 media files", async () => {
+    let req = request(app)
+      .post("/api/posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .field("text", "Too many uploads");
+
+    for (let index = 0; index < 11; index += 1) {
+      req = req.attach("media", Buffer.from(`image-${index}`), {
+        filename: `photo-${index + 1}.png`,
+        contentType: "image/png",
+      });
+    }
+
+    const response = await req.expect(400);
+
+    expect(response.body.message).toMatch(/up to 10 photos or videos/i);
     expect(await Post.countDocuments()).toBe(0);
     expect(cloudinary.uploader.upload_stream).not.toHaveBeenCalled();
   });
@@ -351,6 +407,45 @@ describe("Posts feed", () => {
       }),
       expect.any(Function)
     );
+  });
+
+  test("POST /api/posts accepts mixed image and video uploads", async () => {
+    const response = await request(app)
+      .post("/api/posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .field("text", "Concert recap")
+      .attach("media", Buffer.from("cover-image"), {
+        filename: "cover.png",
+        contentType: "image/png",
+      })
+      .attach("media", Buffer.from("clip"), {
+        filename: "crowd.mp4",
+        contentType: "video/mp4",
+      })
+      .expect(201);
+
+    expect(response.body.type).toBe("video");
+    expect(response.body.media).toHaveLength(2);
+    expect(response.body.video).toMatchObject({
+      playbackUrl: expect.stringContaining(
+        "https://res.cloudinary.com/test-cloud/video/upload/"
+      ),
+      mimeType: "video/mp4",
+    });
+
+    const stored = await Post.findById(response.body._id).lean();
+    expect(stored).toBeTruthy();
+    expect(stored.media).toHaveLength(2);
+    expect(stored.media.map((entry) => entry.type)).toEqual(["image", "video"]);
+    expect(stored.media.map((entry) => entry.mimeType)).toEqual([
+      "image/png",
+      "video/mp4",
+    ]);
+    expect(stored.video).toMatchObject({
+      publicId: "tengacion/posts/videos/mock-2",
+      mimeType: "video/mp4",
+      originalFilename: "crowd.mp4",
+    });
   });
 
   test("GET /api/posts treats image posts with empty video subdocs as images", async () => {

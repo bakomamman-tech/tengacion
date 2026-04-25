@@ -185,6 +185,11 @@ const PostMediaSchema = createMediaAssetSchema({
     enum: ["image", "video", "gif"],
     default: "image",
   },
+  mimeType: {
+    type: String,
+    trim: true,
+    default: "",
+  },
 });
 
 const PostVideoSchema = createMediaAssetSchema({

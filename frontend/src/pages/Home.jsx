@@ -245,11 +245,48 @@ function ComposerIcon({ name }) {
   return <span className="composer-icon">{icons[name] || icons.more}</span>;
 }
 
-function PostComposerModal({ user, onClose, onPosted, initialFile = null, initialMode = "" }) {
+const POST_COMPOSER_MAX_MEDIA_FILES = 10;
+const POST_COMPOSER_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const POST_COMPOSER_MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+const POST_COMPOSER_ALLOWED_VIDEO_TYPES = new Set([
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+]);
+
+const formatComposerMediaSize = (bytes = 0) => {
+  const size = Number(bytes || 0);
+  if (!Number.isFinite(size) || size <= 0) {
+    return "";
+  }
+  if (size >= 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(size >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
+  }
+  if (size >= 1024) {
+    return `${Math.round(size / 1024)} KB`;
+  }
+  return `${size} B`;
+};
+
+export function PostComposerModal({
+  user,
+  onClose,
+  onPosted,
+  initialFile = null,
+  initialFiles = [],
+  initialMode = "",
+}) {
   const isReelMode = initialMode === "reel";
+  const normalizedInitialFiles = useMemo(() => {
+    if (Array.isArray(initialFiles) && initialFiles.length > 0) {
+      return initialFiles.filter(Boolean);
+    }
+    return initialFile ? [initialFile] : [];
+  }, [initialFile, initialFiles]);
+
   const [text, setText] = useState("");
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [selectedPreviews, setSelectedPreviews] = useState([]);
   const [activePanel, setActivePanel] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [taggedPeople, setTaggedPeople] = useState([]);
@@ -263,22 +300,74 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
   const [moreOptions, setMoreOptions] = useState(
     MORE_OPTIONS.reduce((acc, option) => ({ ...acc, [option.id]: false }), {})
   );
+  const [mediaError, setMediaError] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [uploadingVideo, setUploadingVideo] = useState(false);
-  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
-  const [videoUploadError, setVideoUploadError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [mediaUploadProgress, setMediaUploadProgress] = useState(0);
+  const [mediaUploadError, setMediaUploadError] = useState("");
   const boxRef = useRef(null);
   const fileRef = useRef(null);
+  const selectedPreviewsRef = useRef([]);
+
+  const revokePreviewItems = useCallback((items = []) => {
+    (Array.isArray(items) ? items : []).forEach((item) => {
+      if (item?.previewUrl) {
+        URL.revokeObjectURL(item.previewUrl);
+      }
+    });
+  }, []);
+
+  const buildPreviewItems = useCallback(
+    (files = []) =>
+      (Array.isArray(files) ? files : []).map((file, index) => ({
+        id: [
+          file?.name || "upload",
+          file?.lastModified || 0,
+          file?.size || 0,
+          index,
+        ].join("-"),
+        file,
+        previewUrl: URL.createObjectURL(file),
+        type: String(file?.type || "").startsWith("video/") ? "video" : "image",
+        name: file?.name || (String(file?.type || "").startsWith("video/") ? "Video" : "Image"),
+        size: Number(file?.size || 0),
+      })),
+    []
+  );
+
+  const replaceSelectedMedia = useCallback(
+    (files = []) => {
+      const nextFiles = (Array.isArray(files) ? files : []).filter(Boolean);
+      setSelectedFiles(nextFiles);
+      setSelectedPreviews((current) => {
+        revokePreviewItems(current);
+        return buildPreviewItems(nextFiles);
+      });
+    },
+    [buildPreviewItems, revokePreviewItems]
+  );
 
   useEffect(() => {
-    if (!initialFile) {
+    selectedPreviewsRef.current = selectedPreviews;
+  }, [selectedPreviews]);
+
+  useEffect(
+    () => () => {
+      revokePreviewItems(selectedPreviewsRef.current);
+    },
+    [revokePreviewItems]
+  );
+
+  useEffect(() => {
+    if (normalizedInitialFiles.length === 0) {
       return;
     }
-    setSelectedFile(initialFile);
+    replaceSelectedMedia(normalizedInitialFiles);
     setError("");
+    setMediaError("");
     setActivePanel("");
-  }, [initialFile]);
+  }, [normalizedInitialFiles, replaceSelectedMedia]);
 
   useEffect(() => {
     if (initialMode !== "reel") {
@@ -315,17 +404,6 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  useEffect(() => {
-    if (!selectedFile) {
-      setPreviewUrl("");
-      return;
-    }
-
-    const nextUrl = URL.createObjectURL(selectedFile);
-    setPreviewUrl(nextUrl);
-    return () => URL.revokeObjectURL(nextUrl);
-  }, [selectedFile]);
-
   const selectedMore = useMemo(
     () =>
       MORE_OPTIONS.filter((option) => moreOptions[option.id]).map(
@@ -342,10 +420,16 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
     selectedMore.length ||
     (callsEnabled && callNumber.trim())
   );
-
+  const hasSelectedVideo = selectedFiles.some((file) =>
+    String(file?.type || "").startsWith("video/")
+  );
+  const mediaSelectionCount = selectedFiles.length;
+  const mediaSelectionCounter = isReelMode
+    ? `${mediaSelectionCount ? "1" : "0"}/1 selected`
+    : `${mediaSelectionCount}/${POST_COMPOSER_MAX_MEDIA_FILES} selected`;
   const canSubmit = isReelMode
-    ? Boolean(selectedFile?.type?.startsWith("video/"))
-    : Boolean(text.trim() || selectedFile || hasMetadata);
+    ? mediaSelectionCount === 1 && hasSelectedVideo
+    : Boolean(text.trim() || mediaSelectionCount > 0 || hasMetadata);
 
   useEffect(() => {
     if (activePanel !== "tag") {
@@ -445,36 +529,103 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
     setMoreOptions((current) => ({ ...current, [id]: !current[id] }));
   };
 
-  const applyPickedFile = (file) => {
-    if (!file) {return false;}
-    const maxVideoBytes = 100 * 1024 * 1024;
-    if (isReelMode && !file.type.startsWith("video/")) {
-      setError("Reels must be uploaded as MP4 or WebM video");
-      return false;
-    }
-    if (file.type.startsWith("video/")) {
-      if (!["video/mp4", "video/webm", "video/quicktime"].includes(file.type)) {
-        setError("Only MP4, MOV, and WebM videos are supported");
-        return false;
+  const validatePickedFile = useCallback(
+    (file) => {
+      if (!file) {
+        return "Choose a photo or video to continue.";
       }
-      if (file.size > maxVideoBytes) {
-        setError("Video exceeds maximum allowed size (100MB)");
-        return false;
-      }
-    }
 
-    setSelectedFile(file);
-    setError("");
-    setActivePanel("");
-    setVideoUploadError("");
-    setVideoUploadProgress(0);
-    return true;
-  };
+      const mimeType = String(file.type || "").toLowerCase();
+      const isVideo = mimeType.startsWith("video/");
+      const isImage = mimeType.startsWith("image/");
+
+      if (isReelMode && !isVideo) {
+        return "Reels must be uploaded as MP4, MOV, or WebM video.";
+      }
+
+      if (!isImage && !isVideo) {
+        return "Only images, MP4, MOV, and WebM videos are supported.";
+      }
+
+      if (isVideo) {
+        if (!POST_COMPOSER_ALLOWED_VIDEO_TYPES.has(mimeType)) {
+          return "Only MP4, MOV, and WebM videos are supported.";
+        }
+        if ((Number(file.size) || 0) > POST_COMPOSER_MAX_VIDEO_BYTES) {
+          return "Video exceeds maximum allowed size (100MB).";
+        }
+      }
+
+      if (isImage && (Number(file.size) || 0) > POST_COMPOSER_MAX_IMAGE_BYTES) {
+        return "Image exceeds maximum allowed size (10MB).";
+      }
+
+      return "";
+    },
+    [isReelMode]
+  );
+
+  const addPickedFiles = useCallback(
+    (incomingFiles = []) => {
+      const nextFiles = (Array.isArray(incomingFiles) ? incomingFiles : []).filter(Boolean);
+      if (nextFiles.length === 0) {
+        return false;
+      }
+
+      if (isReelMode) {
+        if (mediaSelectionCount + nextFiles.length > 1) {
+          setMediaError("Reels support one video upload at a time.");
+          return false;
+        }
+      } else if (mediaSelectionCount + nextFiles.length > POST_COMPOSER_MAX_MEDIA_FILES) {
+        setMediaError("You can attach up to 10 photos or videos to one post.");
+        return false;
+      }
+
+      for (const file of nextFiles) {
+        const validationMessage = validatePickedFile(file);
+        if (validationMessage) {
+          setMediaError(validationMessage);
+          return false;
+        }
+      }
+
+      const mergedFiles = isReelMode ? [nextFiles[0]] : [...selectedFiles, ...nextFiles];
+      replaceSelectedMedia(mergedFiles);
+      setError("");
+      setMediaError("");
+      setActivePanel("");
+      setMediaUploadError("");
+      setMediaUploadProgress(0);
+      return true;
+    },
+    [
+      isReelMode,
+      mediaSelectionCount,
+      replaceSelectedMedia,
+      selectedFiles,
+      validatePickedFile,
+    ]
+  );
 
   const handleFileChange = (event) => {
-    const file = event.target.files?.[0];
+    const nextFiles = Array.from(event.target.files || []);
     event.target.value = "";
-    applyPickedFile(file);
+    addPickedFiles(nextFiles);
+  };
+
+  const removeSelectedMedia = (indexToRemove) => {
+    setSelectedFiles((current) => current.filter((_, index) => index !== indexToRemove));
+    setSelectedPreviews((current) => {
+      const removedItem = current[indexToRemove];
+      if (removedItem?.previewUrl) {
+        URL.revokeObjectURL(removedItem.previewUrl);
+      }
+      return current.filter((_, index) => index !== indexToRemove);
+    });
+    setMediaError("");
+    setMediaUploadError("");
+    setMediaUploadProgress(0);
   };
 
   const openAction = (panel) => {
@@ -486,26 +637,23 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
     setActivePanel((current) => (current === panel ? "" : panel));
   };
 
-  const handleVideoPost = async () => {
-    if (!selectedFile) {
-      throw new Error("Select a video before posting");
-    }
-    if (!["video/mp4", "video/webm", "video/quicktime"].includes(selectedFile.type)) {
-      throw new Error("Only MP4, MOV, and WebM videos are supported");
-    }
-    const maxVideoBytes = 100 * 1024 * 1024;
-    if (selectedFile.size > maxVideoBytes) {
-      throw new Error("Video exceeds maximum allowed size (100MB)");
+  const handleMediaPost = async () => {
+    if (selectedFiles.length === 0) {
+      throw new Error(isReelMode ? "Select a video before publishing." : "Select media before posting.");
     }
 
-    setUploadingVideo(true);
-    setVideoUploadError("");
+    if (isReelMode && (selectedFiles.length !== 1 || !hasSelectedVideo)) {
+      throw new Error("Reels support one MP4, MOV, or WebM video.");
+    }
+
+    setIsUploadingMedia(true);
+    setMediaUploadError("");
     try {
       const created = await createPostWithUploadProgress(
         {
           text: text.trim(),
-          type: isReelMode ? "reel" : "video",
-          file: selectedFile,
+          type: isReelMode ? "reel" : hasSelectedVideo ? "video" : "",
+          files: selectedFiles,
           tags: taggedPeople,
           feeling,
           location: checkInLocation.trim(),
@@ -514,43 +662,42 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
           moreOptions: selectedMore,
         },
         {
-          onProgress: setVideoUploadProgress,
+          onProgress: setMediaUploadProgress,
           retries: 2,
           timeoutMs: 10 * 60 * 1000,
         }
       );
 
-      setSelectedFile(null);
-      setVideoUploadProgress(0);
-
+      replaceSelectedMedia([]);
+      setMediaUploadProgress(0);
       return created;
     } catch (err) {
-      setVideoUploadError(err?.message || "Video upload failed");
+      setMediaUploadError(err?.message || "Media upload failed.");
       throw err;
     } finally {
-      setUploadingVideo(false);
-      setVideoUploadProgress(0);
+      setIsUploadingMedia(false);
+      setMediaUploadProgress(0);
     }
   };
 
   const submit = async () => {
-    if (!canSubmit || loading || uploadingVideo) {
+    if (!canSubmit || isSubmitting || isUploadingMedia) {
       return;
     }
 
     try {
-      setLoading(true);
+      setIsSubmitting(true);
       setError("");
-      setVideoUploadError("");
+      setMediaError("");
+      setMediaUploadError("");
 
       let createdPost;
 
-      if (selectedFile?.type?.startsWith("video/")) {
-        createdPost = await handleVideoPost();
+      if (selectedFiles.length > 0) {
+        createdPost = await handleMediaPost();
       } else {
         createdPost = await createPost({
           text: text.trim(),
-          file: selectedFile,
           tags: taggedPeople,
           feeling,
           location: checkInLocation.trim(),
@@ -563,9 +710,9 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
       onPosted(createdPost);
       onClose();
     } catch (err) {
-      setError(err.message || "Failed to create post");
+      setError(err?.message || "Failed to create post.");
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -799,7 +946,7 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
               : `What's on your mind, ${user?.username || ""}?`
           }
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(event) => setText(event.target.value)}
           autoFocus
         />
 
@@ -813,40 +960,62 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
           </div>
         )}
 
-        {previewUrl && (
+        {selectedPreviews.length > 0 && (
           <div className="composer-preview">
-            {selectedFile?.type?.startsWith("video/") ? (
-              <video
-                src={previewUrl}
-                controls
-              />
-            ) : (
-              <img src={previewUrl} alt="Selected media preview" />
-            )}
-            <button
-              type="button"
-              className="composer-remove-media"
-              onClick={() => setSelectedFile(null)}
+            <div className="composer-preview-header">
+              <strong>{isReelMode ? "Video ready" : "Selected media"}</strong>
+              <span>{mediaSelectionCounter}</span>
+            </div>
+
+            <div
+              className={`composer-preview-grid ${
+                selectedPreviews.length === 1 ? "composer-preview-grid--single" : ""
+              }`}
             >
-              Remove media
-            </button>
-            {selectedFile?.type?.startsWith("video/") &&
-              (uploadingVideo || videoUploadProgress > 0) && (
-                <div className="composer-video-progress">
-                  <div
-                    className="composer-video-progress-bar"
-                    style={{ width: `${Math.min(videoUploadProgress, 100)}%` }}
-                  />
-                  <span>
-                    {uploadingVideo
-                      ? `Uploading video (${videoUploadProgress}%)`
-                      : "Preparing video..."}
-                  </span>
+              {selectedPreviews.map((preview, index) => (
+                <div
+                  key={preview.id}
+                  className={`composer-preview-item composer-preview-item--${preview.type}`}
+                >
+                  {preview.type === "video" ? (
+                    <video src={preview.previewUrl} controls muted preload="metadata" />
+                  ) : (
+                    <img src={preview.previewUrl} alt={preview.name || "Selected media preview"} />
+                  )}
+
+                  <div className="composer-preview-item__meta">
+                    <span title={preview.name}>{preview.name}</span>
+                    <small>{formatComposerMediaSize(preview.size)}</small>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="composer-remove-media"
+                    onClick={() => removeSelectedMedia(index)}
+                  >
+                    Remove
+                  </button>
                 </div>
-              )}
-            {videoUploadError && (
+              ))}
+            </div>
+
+            {(isUploadingMedia || mediaUploadProgress > 0) && (
+              <div className="composer-video-progress">
+                <div
+                  className="composer-video-progress-bar"
+                  style={{ width: `${Math.min(mediaUploadProgress, 100)}%` }}
+                />
+                <span>
+                  {isUploadingMedia
+                    ? `Uploading media (${mediaUploadProgress}%)`
+                    : "Preparing media..."}
+                </span>
+              </div>
+            )}
+
+            {mediaUploadError && (
               <p className="composer-error composer-error--inline">
-                {videoUploadError}
+                {mediaUploadError}
               </p>
             )}
           </div>
@@ -854,6 +1023,7 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
 
         {renderActionPanel()}
 
+        {mediaError && <p className="composer-error">{mediaError}</p>}
         {error && <p className="composer-error">{error}</p>}
 
         <div className="pc-divider" />
@@ -864,7 +1034,7 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
           <div className="pc-actions composer-actions">
             <button
               type="button"
-              className={selectedFile ? "active" : ""}
+              className={mediaSelectionCount > 0 ? "active" : ""}
               onClick={() => openAction("media")}
               title={isReelMode ? "Video" : "Photo/Video"}
             >
@@ -925,16 +1095,27 @@ function PostComposerModal({ user, onClose, onPosted, initialFile = null, initia
           ref={fileRef}
           type="file"
           hidden
-          accept={isReelMode ? "video/mp4,video/webm,video/quicktime" : "image/*,video/mp4,video/webm,video/quicktime"}
+          multiple={!isReelMode}
+          accept={
+            isReelMode
+              ? "video/mp4,video/webm,video/quicktime"
+              : "image/*,video/mp4,video/webm,video/quicktime"
+          }
           onChange={handleFileChange}
         />
 
         <button
           className={`pc-submit ${canSubmit ? "active" : ""}`}
-          disabled={!canSubmit || loading}
+          disabled={!canSubmit || isSubmitting || isUploadingMedia}
           onClick={submit}
         >
-          {loading ? (isReelMode ? "Publishing..." : "Posting...") : (isReelMode ? "Publish reel" : "Post")}
+          {isSubmitting || isUploadingMedia
+            ? isReelMode
+              ? "Publishing..."
+              : "Posting..."
+            : isReelMode
+              ? "Publish reel"
+              : "Post"}
         </button>
       </div>
     </div>
@@ -955,7 +1136,7 @@ export default function Home({ user }) {
   const [chatDockMeta, setChatDockMeta] = useState(null);
   const [selectedChatId, setSelectedChatId] = useState("");
   const [composerOpen, setComposerOpen] = useState(false);
-  const [composerInitialFile, setComposerInitialFile] = useState(null);
+  const [composerInitialFiles, setComposerInitialFiles] = useState([]);
   const [composerInitialMode, setComposerInitialMode] = useState("");
   const [storyCreatorSignal, setStoryCreatorSignal] = useState(0);
   const [selectedNewsCard, setSelectedNewsCard] = useState(null);
@@ -1171,7 +1352,7 @@ export default function Home({ user }) {
       setChatMinimized(false);
     }
     if (shouldOpenComposer) {
-      setComposerInitialFile(null);
+      setComposerInitialFiles([]);
       setComposerInitialMode(composerMode);
       setComposerOpen(true);
     }
@@ -1202,26 +1383,36 @@ export default function Home({ user }) {
     navigate("/");
   };
 
-  const openComposer = (mode = "", file = null) => {
+  const openComposer = (mode = "", files = []) => {
     setComposerInitialMode(mode || "");
-    setComposerInitialFile(file || null);
+    setComposerInitialFiles(
+      Array.isArray(files) ? files.filter(Boolean) : files ? [files] : []
+    );
     setComposerOpen(true);
   };
 
   const onQuickMediaPick = (event) => {
-    const file = event.target.files?.[0] || null;
+    const files = Array.from(event.target.files || []);
     event.target.value = "";
-    if (!file) {
+    if (files.length === 0) {
       return;
     }
-    const isMedia =
-      String(file.type || "").startsWith("image/") ||
-      ["video/mp4", "video/webm", "video/quicktime"].includes(String(file.type || "").toLowerCase());
-    if (!isMedia) {
-      toast.error("Only images, MP4, or WebM are supported.");
+
+    if (files.length > POST_COMPOSER_MAX_MEDIA_FILES) {
+      toast.error("You can attach up to 10 photos or videos to one post.");
       return;
     }
-    openComposer("", file);
+
+    const invalidFile = files.find((file) => {
+      const mimeType = String(file?.type || "").toLowerCase();
+      return !mimeType.startsWith("image/") && !POST_COMPOSER_ALLOWED_VIDEO_TYPES.has(mimeType);
+    });
+    if (invalidFile) {
+      toast.error("Only images, MP4, MOV, and WebM videos are supported.");
+      return;
+    }
+
+    openComposer("", files);
   };
 
   const currentUser = profile || user;
@@ -1512,6 +1703,7 @@ export default function Home({ user }) {
               ref={quickMediaRef}
               type="file"
               hidden
+              multiple
               accept="image/*,video/mp4,video/webm,video/quicktime"
               onChange={onQuickMediaPick}
             />
@@ -1658,11 +1850,11 @@ export default function Home({ user }) {
       {composerOpen && (
         <PostComposerModal
           user={currentUser}
-          initialFile={composerInitialFile}
+          initialFiles={composerInitialFiles}
           initialMode={composerInitialMode}
           onClose={() => {
             setComposerOpen(false);
-            setComposerInitialFile(null);
+            setComposerInitialFiles([]);
             setComposerInitialMode("");
           }}
           onPosted={(post) =>

@@ -60,6 +60,18 @@ const runAkusoEvals = () => {
       input: { message: "Solve 15% of 240 step by step", mode: "knowledge_learning" },
       expect: (result) => result.model.task === "reasoning",
     },
+    {
+      name: "Calculator feature routes to software engineering",
+      input: {
+        message:
+          "Build a complete calculator feature for my React project with clear, delete, percentage, decimal numbers, and safe calculation logic.",
+        mode: "knowledge_learning",
+      },
+      expect: (result) =>
+        result.policy.taskType === "software_engineering" &&
+        result.policy.classification.softwareEngineeringRequested &&
+        result.model.task === "software_engineering",
+    },
   ];
 
   try {

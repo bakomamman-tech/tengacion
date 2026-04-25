@@ -91,6 +91,7 @@ const APP_HELP_PATTERNS = [
 const REASONING_PATTERNS = [
   /\bsolve\b/i,
   /\bcalculate\b/i,
+  /\bcalculator\b/i,
   /\bmath\b/i,
   /\bequation\b/i,
   /\bengineering\b/i,
@@ -98,6 +99,37 @@ const REASONING_PATTERNS = [
   /\bscience\b/i,
   /\bstep by step\b/i,
   /[0-9].*[\+\-\*\/]/,
+];
+const SOFTWARE_ENGINEERING_PATTERNS = [
+  /\bcode\b/i,
+  /\bcoding\b/i,
+  /\bprogram(?:ming)?\b/i,
+  /\bsoftware\b/i,
+  /\bdeveloper\b/i,
+  /\bdebug\b/i,
+  /\bbug\b/i,
+  /\bfix\b.*\b(error|issue|bug|test|build)\b/i,
+  /\bimplement\b/i,
+  /\bbuild\b.*\b(feature|app|component|page|ui|api|endpoint|route|service|calculator)\b/i,
+  /\bcreate\b.*\b(component|page|ui|api|endpoint|route|service|schema|model|calculator)\b/i,
+  /\brefactor\b/i,
+  /\bunit tests?\b/i,
+  /\bintegration tests?\b/i,
+  /\bfrontend\b/i,
+  /\bbackend\b/i,
+  /\bfull[-\s]?stack\b/i,
+  /\breact\b/i,
+  /\bjavascript\b/i,
+  /\btypescript\b/i,
+  /\bnode(?:\.js)?\b/i,
+  /\bexpress\b/i,
+  /\bmongodb\b/i,
+  /\bmongoose\b/i,
+  /\bcss\b/i,
+  /\bhtml\b/i,
+  /\bjsx\b/i,
+  /\btsx\b/i,
+  /\bcalculator\b/i,
 ];
 const SENSITIVE_PATTERNS = [
   /\bpassword\b/i,
@@ -207,11 +239,19 @@ const classifyAkusoRequest = ({
   const creatorWritingRequested =
     normalizedMode === AKUSO_MODES.CREATOR_WRITING ||
     hasPattern(normalizedMessage, WRITING_PATTERNS);
+  const softwareEngineeringRequested = hasPattern(
+    normalizedMessage,
+    SOFTWARE_ENGINEERING_PATTERNS
+  );
   const appHelpRequested =
-    normalizedMode === AKUSO_MODES.APP_HELP ||
-    Boolean(feature) ||
-    hasPattern(normalizedMessage, APP_HELP_PATTERNS);
-  const needsReasoning = hasPattern(normalizedMessage, REASONING_PATTERNS);
+    !softwareEngineeringRequested &&
+    (
+      normalizedMode === AKUSO_MODES.APP_HELP ||
+      Boolean(feature) ||
+      hasPattern(normalizedMessage, APP_HELP_PATTERNS)
+    );
+  const needsReasoning =
+    softwareEngineeringRequested || hasPattern(normalizedMessage, REASONING_PATTERNS);
   const sensitive = hasPattern(normalizedMessage, SENSITIVE_PATTERNS);
 
   let inferredMode = AKUSO_MODES.KNOWLEDGE_LEARNING;
@@ -238,6 +278,7 @@ const classifyAkusoRequest = ({
     financial,
     sensitive,
     needsReasoning,
+    softwareEngineeringRequested,
     creatorWritingRequested,
     appHelpRequested,
   };

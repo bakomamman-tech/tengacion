@@ -124,6 +124,8 @@ const evaluateAkusoPolicy = ({
     taskType:
       classification.mode === AKUSO_MODES.CREATOR_WRITING
         ? "creator_writing"
+        : classification.softwareEngineeringRequested
+          ? "software_engineering"
         : classification.needsReasoning
           ? "reasoning"
           : classification.mode === AKUSO_MODES.APP_HELP

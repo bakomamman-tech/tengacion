@@ -1,4 +1,7 @@
-const { sanitizeMultilineText, sanitizePlainText } = require("./assistant/outputSanitizer");
+const {
+  sanitizeCodeCapableText,
+  sanitizePlainText,
+} = require("./assistant/outputSanitizer");
 
 const STREAM_CHUNK_TARGET = 72;
 const STREAM_CHUNK_DELAY_MS = process.env.NODE_ENV === "test" ? 0 : 18;
@@ -27,7 +30,7 @@ const writeAkusoStreamEvent = (res, eventName = "message", data = {}) => {
 };
 
 const splitAkusoStreamText = (value = "", target = STREAM_CHUNK_TARGET) => {
-  const safeText = sanitizeMultilineText(value, 1600);
+  const safeText = sanitizeCodeCapableText(value, 6000);
   if (!safeText) {
     return [];
   }

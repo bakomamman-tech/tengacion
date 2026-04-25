@@ -2,6 +2,7 @@ const crypto = require("crypto");
 
 const { config } = require("../config/env");
 const AssistantFeedback = require("../models/AssistantFeedback");
+const { sanitizeCodeCapableText } = require("../services/assistant/outputSanitizer");
 const { searchHelpArticles } = require("../services/assistant/helpDocs");
 const { searchKnowledgeArticles } = require("../services/assistant/knowledgeBase");
 const {
@@ -29,6 +30,7 @@ const {
   logPromptInjection,
 } = require("../services/akusoAuditLogger");
 const {
+  sendCodingRequest,
   sendChatRequest,
   sendReasoningRequest,
   sendWritingRequest,
@@ -467,6 +469,171 @@ const buildKnowledgeFallback = ({ input, policyResult }) => {
   };
 };
 
+const buildCalculatorFallbackAnswer = () =>
+  [
+    "I can help build that as a real feature. Assuming a React/Vite frontend, here is a safe calculator component that avoids eval, supports keyboard input, blocks repeated operators, and keeps the UI accessible.",
+    "",
+    "```jsx",
+    "import { useEffect, useMemo, useState } from \"react\";",
+    "",
+    "const OPERATIONS = {",
+    "  \"+\": (left, right) => left + right,",
+    "  \"-\": (left, right) => left - right,",
+    "  \"x\": (left, right) => left * right,",
+    "  \"/\": (left, right) => (right === 0 ? NaN : left / right),",
+    "};",
+    "",
+    "const formatNumber = (value) => {",
+    "  if (!Number.isFinite(value)) return \"Error\";",
+    "  return Number.parseFloat(value.toFixed(10)).toString();",
+    "};",
+    "",
+    "export default function Calculator() {",
+    "  const [display, setDisplay] = useState(\"0\");",
+    "  const [storedValue, setStoredValue] = useState(null);",
+    "  const [operator, setOperator] = useState(\"\");",
+    "  const [waitingForNext, setWaitingForNext] = useState(false);",
+    "",
+    "  const expression = useMemo(() => {",
+    "    if (storedValue === null || !operator) return display;",
+    "    return `${storedValue} ${operator} ${waitingForNext ? \"\" : display}`.trim();",
+    "  }, [display, operator, storedValue, waitingForNext]);",
+    "",
+    "  const clear = () => {",
+    "    setDisplay(\"0\");",
+    "    setStoredValue(null);",
+    "    setOperator(\"\");",
+    "    setWaitingForNext(false);",
+    "  };",
+    "",
+    "  const inputDigit = (digit) => {",
+    "    setDisplay((current) => (waitingForNext || current === \"0\" ? digit : `${current}${digit}`));",
+    "    setWaitingForNext(false);",
+    "  };",
+    "",
+    "  const inputDecimal = () => {",
+    "    setDisplay((current) => {",
+    "      if (waitingForNext) return \"0.\";",
+    "      return current.includes(\".\") ? current : `${current}.`;",
+    "    });",
+    "    setWaitingForNext(false);",
+    "  };",
+    "",
+    "  const backspace = () => {",
+    "    if (waitingForNext) return;",
+    "    setDisplay((current) => (current.length > 1 ? current.slice(0, -1) : \"0\"));",
+    "  };",
+    "",
+    "  const applyPercent = () => {",
+    "    setDisplay((current) => formatNumber(Number(current) / 100));",
+    "  };",
+    "",
+    "  const chooseOperator = (nextOperator) => {",
+    "    const currentValue = Number(display);",
+    "    if (operator && !waitingForNext) {",
+    "      const result = OPERATIONS[operator](Number(storedValue), currentValue);",
+    "      setStoredValue(result);",
+    "      setDisplay(formatNumber(result));",
+    "    } else {",
+    "      setStoredValue(currentValue);",
+    "    }",
+    "    setOperator(nextOperator);",
+    "    setWaitingForNext(true);",
+    "  };",
+    "",
+    "  const calculate = () => {",
+    "    if (!operator || storedValue === null) return;",
+    "    const result = OPERATIONS[operator](Number(storedValue), Number(display));",
+    "    setDisplay(formatNumber(result));",
+    "    setStoredValue(null);",
+    "    setOperator(\"\");",
+    "    setWaitingForNext(true);",
+    "  };",
+    "",
+    "  useEffect(() => {",
+    "    const onKeyDown = (event) => {",
+    "      if (/^[0-9]$/.test(event.key)) inputDigit(event.key);",
+    "      if (event.key === \".\") inputDecimal();",
+    "      if ([\"+\", \"-\", \"/\"].includes(event.key)) chooseOperator(event.key);",
+    "      if (event.key === \"*\") chooseOperator(\"x\");",
+    "      if (event.key === \"Enter\" || event.key === \"=\") calculate();",
+    "      if (event.key === \"Backspace\") backspace();",
+    "      if (event.key === \"Escape\") clear();",
+    "    };",
+    "    window.addEventListener(\"keydown\", onKeyDown);",
+    "    return () => window.removeEventListener(\"keydown\", onKeyDown);",
+    "  });",
+    "",
+    "  const keys = [\"7\", \"8\", \"9\", \"/\", \"4\", \"5\", \"6\", \"x\", \"1\", \"2\", \"3\", \"-\", \"0\", \".\", \"%\", \"+\"];",
+    "",
+    "  return (",
+    "    <section className=\"calculator\" aria-label=\"Calculator\">",
+    "      <div className=\"calculator__display\" aria-live=\"polite\">",
+    "        <small>{expression}</small>",
+    "        <strong>{display}</strong>",
+    "      </div>",
+    "      <div className=\"calculator__keys\">",
+    "        <button type=\"button\" onClick={clear}>Clear</button>",
+    "        <button type=\"button\" onClick={backspace}>Delete</button>",
+    "        {keys.map((key) => (",
+    "          <button key={key} type=\"button\" onClick={() => {",
+    "            if (/^[0-9]$/.test(key)) inputDigit(key);",
+    "            else if (key === \".\") inputDecimal();",
+    "            else if (key === \"%\") applyPercent();",
+    "            else chooseOperator(key);",
+    "          }}>",
+    "            {key}",
+    "          </button>",
+    "        ))}",
+    "        <button type=\"button\" className=\"calculator__equals\" onClick={calculate}>Equal</button>",
+    "      </div>",
+    "    </section>",
+    "  );",
+    "}",
+    "```",
+    "",
+    "Add CSS with a fixed button grid, large readable display, focus-visible outlines, and mobile max-width constraints. Then add tests for repeated operators, division by zero, decimal input, percentage, keyboard entry, and backspace.",
+  ].join("\n");
+
+const buildSoftwareEngineeringFallback = ({ input, policyResult }) => {
+  const message = input.message || input.prompt || "";
+  const calculatorRequested = /\bcalculator\b/i.test(message);
+
+  return {
+    answer: calculatorRequested
+      ? buildCalculatorFallbackAnswer()
+      : "Akuso can help with software implementation. Share the framework, relevant files, and expected behavior, and Akuso should respond with a concrete file plan, production-ready code snippets, validation paths, and focused tests instead of a vague explanation.",
+    warnings: mergeWarnings(
+      policyResult.warnings,
+      "Akuso cannot edit files directly from chat unless a connected coding agent or repository context is provided."
+    ),
+    suggestions: [
+      "Ask Akuso for a file-by-file implementation plan.",
+      "Ask for React component code plus CSS and tests.",
+      "Share the failing error or relevant file snippets.",
+    ],
+    actions: [],
+    sources: [],
+    details: [
+      buildAkusoDetail(
+        "Coding behavior",
+        "Akuso should state assumptions, avoid unsafe eval, include accessible UI behavior, and suggest focused tests for the requested feature."
+      ),
+    ].filter(Boolean),
+    cards: [
+      buildAkusoCard({
+        type: "guide",
+        title: "Implementation checklist",
+        subtitle: "Code-ready response",
+        description: "Plan files, write complete snippets, cover edge cases, and include tests.",
+        payload: {
+          text: "Give me the full implementation with tests.",
+        },
+      }),
+    ].filter(Boolean),
+  };
+};
+
 const buildWritingFallback = ({ input, context, policyResult }) => {
   const preferences = sanitizeAkusoPreferences({
     ...context.preferences,
@@ -578,6 +745,8 @@ const maybeEnhanceFallback = async ({
     const response =
       routeDecision.task === "creator_writing"
         ? await sendWritingRequest(requestOptions)
+        : routeDecision.task === "software_engineering"
+          ? await sendCodingRequest(requestOptions)
         : routeDecision.task === "reasoning"
           ? await sendReasoningRequest(requestOptions)
           : await sendChatRequest(requestOptions);
@@ -603,7 +772,7 @@ const maybeEnhanceFallback = async ({
     }
 
     return {
-      answer: safeText(parsed.answer || fallback.answer, 1600),
+      answer: sanitizeCodeCapableText(parsed.answer || fallback.answer, 6000),
       warnings: mergeWarnings(fallback.warnings, parsed.warnings || []),
       suggestions: mergeSuggestions(fallback.suggestions, parsed.suggestions || []),
       actions: fallback.actions || [],
@@ -874,6 +1043,8 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
   const fallback =
     policyResult.mode === "creator_writing"
       ? buildWritingFallback({ input: mergedInput, context, policyResult })
+      : policyResult.taskType === "software_engineering"
+        ? buildSoftwareEngineeringFallback({ input: mergedInput, policyResult })
       : policyResult.mode === "app_help"
         ? await buildAppHelpFallback({
             input: mergedInput,

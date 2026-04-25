@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const { config } = require("../config/env");
 const { sanitizePlainObject } = require("../config/storage");
 const {
+  sanitizeCodeCapableText,
   sanitizeAssistantDetail,
   sanitizeAssistantSource,
   sanitizeMultilineText,
@@ -36,7 +37,7 @@ const normalizeActions = (actions = []) =>
 
 const normalizeDrafts = (drafts = []) =>
   (Array.isArray(drafts) ? drafts : [])
-    .map((entry) => sanitizeMultilineText(entry, 500))
+    .map((entry) => sanitizeCodeCapableText(entry, 1200))
     .filter(Boolean)
     .slice(0, 3);
 
@@ -129,7 +130,7 @@ const buildBaseResponse = ({
   mode: sanitizePlainText(mode, 40) || "knowledge_learning",
   category: sanitizePlainText(category, 60) || "SAFE_ANSWER",
   answer:
-    sanitizeMultilineText(answer, 1600) ||
+    sanitizeCodeCapableText(answer, 6000) ||
     "Akuso can help with Tengacion app guidance, creator writing, and knowledge questions.",
   warnings: normalizeList(warnings, 4, 200),
   suggestions: normalizeList(suggestions, 6, 140),

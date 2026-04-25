@@ -201,10 +201,20 @@ const sendReasoningRequest = (options = {}) =>
     requestName: "akuso_reasoning",
   });
 
+const sendCodingRequest = (options = {}) =>
+  performRequest({
+    reasoningEffort: "high",
+    maxOutputTokens: Math.max(Number(config.akuso?.maxOutputTokens || 0), 2400),
+    ...options,
+    verbosity: options.verbosity || "high",
+    requestName: "akuso_coding",
+  });
+
 module.exports = {
   createClient,
   handleOpenAIError,
   normalizeResponseText,
+  sendCodingRequest,
   sendChatRequest,
   sendReasoningRequest,
   sendWritingRequest,

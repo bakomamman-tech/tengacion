@@ -6,7 +6,7 @@ const selectAkusoModel = ({ policyResult = {}, routePurpose = "chat" } = {}) => 
     return {
       useModel: false,
       model: "",
-      task: "local_fallback",
+      task: policyResult?.shouldCallModel ? policyResult.taskType || "local_fallback" : "local_fallback",
       reason: "Akuso is not ready for OpenAI-backed generation in this environment.",
     };
   }
@@ -26,6 +26,15 @@ const selectAkusoModel = ({ policyResult = {}, routePurpose = "chat" } = {}) => 
       model: config.akuso.models.writing,
       task: "creator_writing",
       reason: "Writing model selected for creator-facing drafting support.",
+    };
+  }
+
+  if (policyResult.taskType === "software_engineering") {
+    return {
+      useModel: true,
+      model: config.akuso.models.reasoning,
+      task: "software_engineering",
+      reason: "Reasoning model selected for code generation and implementation planning.",
     };
   }
 

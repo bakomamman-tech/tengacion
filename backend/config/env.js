@@ -238,10 +238,10 @@ const akusoRequestTimeoutMs = parseInteger(
   assistantModelTimeoutMs || 12000,
   { min: 1000 }
 );
-const akusoMaxInputChars = parseInteger(process.env.AKUSO_MAX_INPUT_CHARS, 2000, {
+const akusoMaxInputChars = parseInteger(process.env.AKUSO_MAX_INPUT_CHARS, 4000, {
   min: 200,
 });
-const akusoMaxOutputTokens = parseInteger(process.env.AKUSO_MAX_OUTPUT_TOKENS, 600, {
+const akusoMaxOutputTokens = parseInteger(process.env.AKUSO_MAX_OUTPUT_TOKENS, 1800, {
   min: 64,
 });
 const akusoRateLimitWindowMs = parseInteger(

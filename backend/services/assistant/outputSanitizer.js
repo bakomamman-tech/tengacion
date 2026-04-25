@@ -1,7 +1,10 @@
-const stripHtml = (value = "") =>
+const stripUnsafeMarkup = (value = "") =>
   String(value || "")
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "");
+
+const stripHtml = (value = "") =>
+  stripUnsafeMarkup(value)
     .replace(/<[^>]+>/g, "");
 
 const sanitizePlainText = (value = "", maxLength = 1000) =>
@@ -20,6 +23,16 @@ const sanitizeMultilineText = (value = "", maxLength = 2000) =>
     .replace(/\bdata\s*:/gi, "")
     .replace(/\r\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, Math.max(0, Number(maxLength) || 0));
+
+const sanitizeCodeCapableText = (value = "", maxLength = 4000) =>
+  stripUnsafeMarkup(String(value || ""))
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/\bjavascript\s*:/gi, "")
+    .replace(/\bdata\s*:/gi, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{4,}/g, "\n\n\n")
     .trim()
     .slice(0, Math.max(0, Number(maxLength) || 0));
 
@@ -82,6 +95,7 @@ const sanitizeAssistantPreferences = (value = {}) => {
 };
 
 module.exports = {
+  sanitizeCodeCapableText,
   sanitizeAssistantDetail,
   sanitizeAssistantFollowUp,
   sanitizeAssistantPreferences,

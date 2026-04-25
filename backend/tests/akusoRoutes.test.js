@@ -168,6 +168,34 @@ describe("Akuso routes", () => {
     );
   });
 
+  it("routes complex coding prompts to software-engineering guidance and preserves JSX snippets", async () => {
+    const response = await request(app)
+      .post("/api/akuso/chat")
+      .send({
+        message:
+          "Build a complete calculator feature for my React project with safe calculation logic, keyboard support, clear/delete buttons, and tests.",
+        mode: "knowledge_learning",
+      })
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        ok: true,
+        category: "SAFE_ANSWER",
+        answer: expect.stringMatching(/calculator/i),
+        meta: expect.objectContaining({
+          task: "software_engineering",
+        }),
+      })
+    );
+    expect(response.body.answer).toContain("OPERATIONS");
+    expect(response.body.answer).toContain("<button");
+    expect(response.body.answer).toMatch(/avoid|unsafe eval|eval/i);
+    expect(response.body.suggestions).toEqual(
+      expect.arrayContaining([expect.stringMatching(/React component code/i)])
+    );
+  });
+
   it("returns a safe sign-in guidance response instead of failing chat for guest-sensitive requests", async () => {
     const response = await request(app)
       .post("/api/akuso/chat")

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const navigateMock = vi.hoisted(() => vi.fn());
 const fetchAssistantHintsMock = vi.hoisted(() => vi.fn());
 const streamAssistantMessageMock = vi.hoisted(() => vi.fn());
+const clipboardWriteTextMock = vi.hoisted(() => vi.fn());
 const authState = vi.hoisted(() => ({
   user: {
     id: "user-1",
@@ -44,6 +45,14 @@ describe("TengacionAssistantDock", () => {
     fetchAssistantHintsMock.mockReset();
     fetchAssistantHintsMock.mockResolvedValue({ hints: [] });
     streamAssistantMessageMock.mockReset();
+    clipboardWriteTextMock.mockReset();
+    clipboardWriteTextMock.mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: clipboardWriteTextMock,
+      },
+    });
   });
 
   it("keeps the panel open while navigating when Akuso returns a safe navigate action", async () => {
@@ -152,6 +161,69 @@ describe("TengacionAssistantDock", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /message akuso/i })).toBeVisible();
     expect(screen.getByRole("button", { name: /send/i })).toBeVisible();
+  });
+
+  it("formats structured Akuso replies and copies the answer text", async () => {
+    const user = userEvent.setup();
+    const structuredAnswer = [
+      "Requirements:",
+      "1. Create a modern, responsive calculator UI.",
+      "2. The calculator should support:",
+      "- Addition",
+      "- Subtraction",
+      "",
+      "Implementation instructions:",
+      "- Find the best location in the project.",
+      "- Keep the existing layout intact.",
+    ].join("\n");
+
+    streamAssistantMessageMock.mockResolvedValue({
+      message: structuredAnswer,
+      actions: [],
+      cards: [],
+      followUps: [],
+      sources: [],
+      details: [],
+      requiresConfirmation: false,
+      pendingAction: null,
+      conversationId: "conversation-structured-1",
+      responseId: "trace-structured-1",
+      feedbackToken: "token-structured-1",
+      category: "SAFE_ANSWER",
+      mode: "knowledge",
+      safety: { level: "safe", notice: "", escalation: "" },
+      trust: {
+        provider: "local-fallback",
+        mode: "public-knowledge",
+        grounded: true,
+        usedModel: false,
+        confidenceLabel: "medium",
+        note: "",
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <TengacionAssistantDock />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("button", { name: /open akuso assistant/i }));
+    const composer = await screen.findByRole("textbox", { name: /message akuso/i });
+    await user.type(composer, "Build a calculator feature");
+    await user.click(screen.getByRole("button", { name: /send/i }));
+
+    expect(await screen.findByText("Requirements:")).toBeInTheDocument();
+    expect(screen.getByText("Create a modern, responsive calculator UI.")).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual(
+      expect.arrayContaining(["Addition", "Subtraction"])
+    );
+
+    await user.click(await screen.findByRole("button", { name: /copy akuso response/i }));
+
+    expect(
+      await screen.findByRole("button", { name: /akuso response copied/i })
+    ).toBeInTheDocument();
   });
 
   it("shows proactive page suggestions from Akuso hints", async () => {

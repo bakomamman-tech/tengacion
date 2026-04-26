@@ -28,6 +28,17 @@ const AKUSO_RESPONSE_SCHEMA = {
   required: ["answer", "warnings", "suggestions", "drafts"],
 };
 
+const AKUSO_FORMATTING_RULES = `
+Clear answer formatting:
+- Arrange every answer as copy-ready plain-text Markdown.
+- Start with a direct one- or two-sentence answer before supporting detail.
+- Use short section labels when the answer has multiple parts, such as "Requirements:", "Steps:", "Example:", "Notes:", or "Next:".
+- Use numbered lists for ordered steps and hyphen bullets for supporting items.
+- Keep one blank line between sections. Avoid dense paragraphs longer than four lines.
+- Put code, commands, JSON, and file examples in fenced code blocks with a language tag when possible.
+- Do not use tables, decorative dividers, unsupported HTML, or vague walls of text.
+`.trim();
+
 const buildFeatureSummary = (features = []) =>
   (Array.isArray(features) ? features : [])
     .slice(0, 4)
@@ -79,6 +90,8 @@ Non-negotiable rules:
 - Do not create or modify actions. The backend controls navigation and permissions separately.
 - Return JSON only.
 
+${AKUSO_FORMATTING_RULES}
+
 ${groundingRules}
 
 Current mode: ${sanitizePlainText(policyResult.mode || "knowledge_learning", 40)}
@@ -113,7 +126,7 @@ Fallback suggestions:
 ${(fallback.suggestions || []).map((entry) => `- ${sanitizePlainText(entry, 140)}`).join("\n") || "- none"}
 
 Return JSON with:
-- "answer": a complete, implementable coding answer. Use Markdown code fences inside the string when code is helpful.
+- "answer": a complete, implementable coding answer that follows the clear answer formatting rules. Use Markdown code fences inside the string when code is helpful.
 - "warnings": a short list that keeps any needed safety or assumption notices.
 - "suggestions": short follow-up prompts, tests, or next implementation steps.
 - "drafts": [].
@@ -137,7 +150,7 @@ Fallback drafts:
 ${(fallback.drafts || []).map((entry) => `- ${sanitizeMultilineText(entry, 300)}`).join("\n") || "- none"}
 
 Return JSON with:
-- "answer": the final answer
+- "answer": the final answer, arranged with the clear answer formatting rules
 - "warnings": a short list that keeps any needed cautions
 - "suggestions": short follow-up prompts or next steps
 - "drafts": only for creator writing requests, otherwise []
@@ -152,5 +165,6 @@ Return JSON with:
 
 module.exports = {
   AKUSO_RESPONSE_SCHEMA,
+  AKUSO_FORMATTING_RULES,
   buildAkusoPromptBundle,
 };

@@ -296,23 +296,34 @@ const buildAppHelpFallback = async ({ input, context, policyResult, user = {} })
     const resolvedRoute = await resolveFeatureRoute(primaryFeature, user);
     const canNavigate = policyResult.featureAccessAllowed && resolvedRoute;
     const primaryRoute = canNavigate ? resolvedRoute : "";
-    const answer = canNavigate
-      ? `${primaryFeature.pageName}: ${primaryFeature.assistantExplanation}`
+    const safeNextStep =
+      primaryFeature.safeNavigationSteps?.[0] ||
+      `Open ${primaryFeature.pageName} and use the built-in controls for the action you want.`;
+    const accessNote = canNavigate
+      ? `Your current access level can open ${primaryFeature.pageName} directly.`
       : context.auth.isAuthenticated
-        ? `${primaryFeature.pageName}: ${primaryFeature.assistantExplanation}`
-        : `I can explain ${primaryFeature.pageName}, but you need to sign in before Akuso can open that screen.`;
+        ? primaryFeature.cautionNotes?.[0] ||
+          "Akuso can explain this feature, but access depends on your role."
+        : `You need to sign in before Akuso can open ${primaryFeature.pageName}.`;
+    const answer = [
+      primaryFeature.pageName,
+      "",
+      "What it does:",
+      `- ${primaryFeature.assistantExplanation}`,
+      "",
+      "Safe next step:",
+      `1. ${safeNextStep}`,
+      "",
+      "Access:",
+      `- ${accessNote}`,
+    ].join("\n");
     const details = [
-      buildAkusoDetail(
-        "Safe next step",
-        primaryFeature.safeNavigationSteps?.[0] ||
-          `Open ${primaryFeature.pageName} and use the built-in controls for the action you want.`
-      ),
+      buildAkusoDetail("Safe next step", safeNextStep),
       buildAkusoDetail(
         "Access",
         canNavigate
           ? `Your current access level can open ${primaryFeature.pageName} directly.`
-          : primaryFeature.cautionNotes?.[0] ||
-              "Akuso can explain this feature, but access depends on your sign-in status and role."
+          : accessNote
       ),
       ...helpArticles.slice(0, 1).map((article) =>
         buildAkusoDetail("Trusted help", article.summary || article.title || "")
@@ -419,8 +430,17 @@ const buildAppHelpFallback = async ({ input, context, policyResult, user = {} })
 const buildKnowledgeFallback = ({ input, policyResult }) => {
   const article = searchKnowledgeArticles(input.message, { limit: 3 })[0] || null;
   if (article) {
+    const bullets = Array.isArray(article.bullets) ? article.bullets.slice(0, 4) : [];
     return {
-      answer: `${article.title}: ${article.summary}`,
+      answer: [
+        article.title,
+        "",
+        "Summary:",
+        article.summary,
+        ...(bullets.length > 0
+          ? ["", "Key points:", ...bullets.map((bullet) => `- ${bullet}`)]
+          : []),
+      ].join("\n"),
       warnings: policyResult.warnings,
       suggestions: mergeSuggestions(article.bullets, "Ask Akuso to explain it more simply."),
       actions: [],
@@ -453,8 +473,14 @@ const buildKnowledgeFallback = ({ input, policyResult }) => {
   }
 
   return {
-    answer:
-      "Akuso can explain knowledge topics clearly, but this request needs more grounded detail than the local knowledge set provides right now.",
+    answer: [
+      "Akuso can explain this, but I need a little more detail to stay grounded.",
+      "",
+      "Try asking with:",
+      "- A specific topic or concept",
+      "- A place, timeframe, or example",
+      "- The level of simplicity you want",
+    ].join("\n"),
     warnings: policyResult.warnings,
     suggestions: ["Ask a narrower question.", "Request a simpler explanation."],
     actions: [],
@@ -602,7 +628,17 @@ const buildSoftwareEngineeringFallback = ({ input, policyResult }) => {
   return {
     answer: calculatorRequested
       ? buildCalculatorFallbackAnswer()
-      : "Akuso can help with software implementation. Share the framework, relevant files, and expected behavior, and Akuso should respond with a concrete file plan, production-ready code snippets, validation paths, and focused tests instead of a vague explanation.",
+      : [
+          "Akuso can help with software implementation.",
+          "",
+          "To make the answer code-ready, share:",
+          "1. The framework or stack",
+          "2. The relevant files or snippets",
+          "3. The expected behavior",
+          "4. Any current error message",
+          "",
+          "Akuso should then respond with a file plan, complete snippets, validation paths, and focused tests.",
+        ].join("\n"),
     warnings: mergeWarnings(
       policyResult.warnings,
       "Akuso cannot edit files directly from chat unless a connected coding agent or repository context is provided."
@@ -655,7 +691,12 @@ const buildWritingFallback = ({ input, context, policyResult }) => {
   });
 
   return {
-    answer: `I drafted ${drafts.length} creator-writing option${drafts.length === 1 ? "" : "s"} for ${policyResult.classification.topic || "your request"}.`,
+    answer: [
+      `I drafted ${drafts.length} creator-writing option${drafts.length === 1 ? "" : "s"} for ${policyResult.classification.topic || "your request"}.`,
+      "",
+      "Options:",
+      ...drafts.slice(0, 3).map((draft, index) => `${index + 1}. ${draft}`),
+    ].join("\n"),
     warnings: policyResult.warnings,
     suggestions: ["Make it shorter.", "Make it sound more premium.", "Rewrite it for fans."],
     actions: [],

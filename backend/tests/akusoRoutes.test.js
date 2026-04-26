@@ -196,6 +196,36 @@ describe("Akuso routes", () => {
     );
   });
 
+  it("answers arithmetic reasoning questions with a direct result and steps", async () => {
+    const response = await request(app)
+      .post("/api/akuso/chat")
+      .send({
+        message: "Solve 15% of 240 step by step",
+        mode: "knowledge_learning",
+      })
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        ok: true,
+        category: "SAFE_ANSWER",
+        answer: expect.stringMatching(/answer is 36/i),
+        meta: expect.objectContaining({
+          task: "reasoning",
+        }),
+      })
+    );
+    expect(response.body.answer).toMatch(/Steps:/);
+    expect(response.body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Expression",
+          body: "15% of 240",
+        }),
+      ])
+    );
+  });
+
   it("returns a safe sign-in guidance response instead of failing chat for guest-sensitive requests", async () => {
     const response = await request(app)
       .post("/api/akuso/chat")

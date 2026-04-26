@@ -39,6 +39,27 @@ Clear answer formatting:
 - Do not use tables, decorative dividers, unsupported HTML, or vague walls of text.
 `.trim();
 
+const AKUSO_ANSWERING_INTELLIGENCE_RULES = `
+Question-answering intelligence:
+- First infer the user's real goal, topic, and likely missing context from the request, page, safe profile summary, preferences, and recent memory.
+- Answer the question directly before giving background. Do not bury the answer.
+- If a question is ambiguous but still answerable, state one concise assumption and continue.
+- Ask one short clarifying question only when the missing detail would materially change the answer.
+- For factual questions, separate known facts, assumptions, and uncertainty. Do not fabricate names, dates, prices, laws, routes, or current events.
+- For reasoning questions, show a compact explanation of the method and final result, but do not expose hidden chain-of-thought.
+- Adapt depth to the user's requested answer length and skill level.
+`.trim();
+
+const AKUSO_CODING_INTELLIGENCE_RULES = `
+Coding intelligence:
+- Treat coding requests as implementation work, not generic advice.
+- Identify the target stack, files, data flow, edge cases, and tests. If details are missing, state assumptions and provide a practical default.
+- Prefer file-by-file plans, complete snippets, integration notes, and focused tests.
+- Explain trade-offs when there are multiple reasonable approaches.
+- Debugging answers should name the likely cause, the exact fix, and how to verify it.
+- Never claim you changed files, ran commands, or inspected a repository unless that context was explicitly provided by the backend or user.
+`.trim();
+
 const buildFeatureSummary = (features = []) =>
   (Array.isArray(features) ? features : [])
     .slice(0, 4)
@@ -92,6 +113,10 @@ Non-negotiable rules:
 
 ${AKUSO_FORMATTING_RULES}
 
+${AKUSO_ANSWERING_INTELLIGENCE_RULES}
+
+${isSoftwareEngineering ? AKUSO_CODING_INTELLIGENCE_RULES : ""}
+
 ${groundingRules}
 
 Current mode: ${sanitizePlainText(policyResult.mode || "knowledge_learning", 40)}
@@ -107,6 +132,48 @@ Role: ${sanitizePlainText(context?.auth?.role || "guest", 40)}
 Creator status: ${context?.auth?.isCreator ? "creator" : "not_creator"}
 Trusted features: ${buildFeatureSummary(context?.relevantFeatures)}
 Public creator context: ${sanitizePlainText(context?.publicCreator?.displayName || "", 120)}
+Safe profile summary: ${sanitizePlainText(
+    [
+      context?.safeProfileSummary?.displayName
+        ? `name=${context.safeProfileSummary.displayName}`
+        : "",
+      context?.safeProfileSummary?.role ? `role=${context.safeProfileSummary.role}` : "",
+      context?.safeProfileSummary?.creatorStatus
+        ? `creator_status=${context.safeProfileSummary.creatorStatus}`
+        : "",
+      Array.isArray(context?.safeProfileSummary?.creatorTypes) &&
+      context.safeProfileSummary.creatorTypes.length > 0
+        ? `creator_types=${context.safeProfileSummary.creatorTypes.join(", ")}`
+        : "",
+      context?.safeProfileSummary?.country ? `country=${context.safeProfileSummary.country}` : "",
+    ]
+      .filter(Boolean)
+      .join("; "),
+    300
+  )}
+Preferences: ${sanitizePlainText(
+    [
+      context?.preferences?.answerLength ? `length=${context.preferences.answerLength}` : "",
+      context?.preferences?.tone ? `tone=${context.preferences.tone}` : "",
+      context?.preferences?.creatorStyle ? `style=${context.preferences.creatorStyle}` : "",
+      context?.preferences?.audience ? `audience=${context.preferences.audience}` : "",
+      context?.preferences?.language ? `language=${context.preferences.language}` : "",
+    ]
+      .filter(Boolean)
+      .join("; "),
+    240
+  )}
+Recent memory: ${sanitizeMultilineText(
+    [
+      context?.memory?.recentSummary ? `summary=${context.memory.recentSummary}` : "",
+      context?.memory?.lastTopic ? `last_topic=${context.memory.lastTopic}` : "",
+      context?.memory?.lastMode ? `last_mode=${context.memory.lastMode}` : "",
+      context?.memory?.lastRoute ? `last_route=${context.memory.lastRoute}` : "",
+    ]
+      .filter(Boolean)
+      .join("; "),
+    500
+  )}
 `.trim();
 
   const userPrompt = isSoftwareEngineering
@@ -165,6 +232,8 @@ Return JSON with:
 
 module.exports = {
   AKUSO_RESPONSE_SCHEMA,
+  AKUSO_ANSWERING_INTELLIGENCE_RULES,
+  AKUSO_CODING_INTELLIGENCE_RULES,
   AKUSO_FORMATTING_RULES,
   buildAkusoPromptBundle,
 };

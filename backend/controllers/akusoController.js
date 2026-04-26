@@ -5,6 +5,7 @@ const AssistantFeedback = require("../models/AssistantFeedback");
 const { sanitizeCodeCapableText } = require("../services/assistant/outputSanitizer");
 const { searchHelpArticles } = require("../services/assistant/helpDocs");
 const { searchKnowledgeArticles } = require("../services/assistant/knowledgeBase");
+const { buildMathResponse } = require("../services/assistant/math");
 const {
   getCreatorPublicPageRoute,
   getCreatorRouteForDashboard,
@@ -493,6 +494,57 @@ const buildKnowledgeFallback = ({ input, policyResult }) => {
     ].filter(Boolean),
     cards: [],
   };
+};
+
+const buildReasoningFallback = ({ input, policyResult }) => {
+  const mathResponse = buildMathResponse({
+    message: input.message || input.prompt || "",
+  });
+
+  if (mathResponse) {
+    return {
+      answer: [
+        `The answer is ${mathResponse.answerText}.`,
+        "",
+        "Expression:",
+        mathResponse.expression,
+        "",
+        "Steps:",
+        ...(mathResponse.steps.length > 0
+          ? mathResponse.steps.map((step, index) => `${index + 1}. ${step}`)
+          : ["1. I used the standard order of operations."]),
+      ].join("\n"),
+      warnings: policyResult.warnings,
+      suggestions: [
+        "Ask Akuso to check another calculation.",
+        "Ask for a simpler explanation of the steps.",
+      ],
+      actions: [],
+      sources: [],
+      details: [
+        buildAkusoDetail("Expression", mathResponse.expression),
+        buildAkusoDetail(
+          "Steps",
+          mathResponse.steps.length > 0
+            ? mathResponse.steps.join("\n")
+            : "I used the standard order of operations."
+        ),
+      ].filter(Boolean),
+      cards: [
+        buildAkusoCard({
+          type: "knowledge",
+          title: "Math answer",
+          subtitle: mathResponse.expression,
+          description: `Final answer: ${mathResponse.answerText}`,
+          payload: {
+            text: `Explain ${mathResponse.expression} more simply`,
+          },
+        }),
+      ].filter(Boolean),
+    };
+  }
+
+  return buildKnowledgeFallback({ input, policyResult });
 };
 
 const buildCalculatorFallbackAnswer = () =>
@@ -1086,14 +1138,16 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
       ? buildWritingFallback({ input: mergedInput, context, policyResult })
       : policyResult.taskType === "software_engineering"
         ? buildSoftwareEngineeringFallback({ input: mergedInput, policyResult })
-      : policyResult.mode === "app_help"
-        ? await buildAppHelpFallback({
-            input: mergedInput,
-            context,
-            policyResult,
-            user: req.user || {},
-          })
-        : buildKnowledgeFallback({ input: mergedInput, policyResult });
+        : policyResult.taskType === "reasoning"
+          ? buildReasoningFallback({ input: mergedInput, policyResult })
+          : policyResult.mode === "app_help"
+            ? await buildAppHelpFallback({
+                input: mergedInput,
+                context,
+                policyResult,
+                user: req.user || {},
+              })
+            : buildKnowledgeFallback({ input: mergedInput, policyResult });
 
   const responsePayload = await maybeEnhanceFallback({
     routePurpose: "chat",

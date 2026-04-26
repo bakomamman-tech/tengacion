@@ -29,6 +29,28 @@ const extractMathExpression = (message = "") => {
   return "";
 };
 
+const extractPercentOfExpression = (message = "") => {
+  const source = normalizeText(message);
+  const match = source.match(
+    /(\d+(?:\.\d+)?)\s*(?:percent|%)\s+(?:of|from)\s+(\d+(?:\.\d+)?)/i
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  const percent = Number(match[1]);
+  const base = Number(match[2]);
+  if (!Number.isFinite(percent) || !Number.isFinite(base)) {
+    return null;
+  }
+
+  return {
+    display: `${formatNumber(percent)}% of ${formatNumber(base)}`,
+    expression: `${formatNumber(base)} * (${formatNumber(percent)} / 100)`,
+  };
+};
+
 const tokenize = (expression = "") => {
   const source = String(expression || "").replace(/,/g, "");
   const tokens = [];
@@ -243,7 +265,11 @@ const solveMathExpression = (expression = "") => {
 };
 
 const buildMathResponse = ({ message = "", expression = "" } = {}) => {
-  const sourceExpression = String(expression || "").trim() || extractMathExpression(message);
+  const percentExpression = expression ? null : extractPercentOfExpression(message);
+  const sourceExpression =
+    String(expression || "").trim() ||
+    percentExpression?.expression ||
+    extractMathExpression(message);
   const solved = solveMathExpression(sourceExpression);
   if (!solved) {
     return null;
@@ -260,7 +286,7 @@ const buildMathResponse = ({ message = "", expression = "" } = {}) => {
     details: [
       {
         title: "Expression",
-        body: solved.expression,
+        body: percentExpression?.display || solved.expression,
       },
       {
         title: "Steps",
@@ -272,7 +298,7 @@ const buildMathResponse = ({ message = "", expression = "" } = {}) => {
       { label: "Another problem", prompt: "Solve another math problem step by step" },
     ],
     answer: solved.answer,
-    expression: solved.expression,
+    expression: percentExpression?.display || solved.expression,
     answerText: solved.answerText,
     steps: solved.steps,
   };
@@ -280,6 +306,7 @@ const buildMathResponse = ({ message = "", expression = "" } = {}) => {
 
 module.exports = {
   buildMathResponse,
+  extractPercentOfExpression,
   formatNumber,
   extractMathExpression,
   isValidMathExpression,

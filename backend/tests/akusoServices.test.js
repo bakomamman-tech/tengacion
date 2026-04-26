@@ -13,6 +13,8 @@ const {
 } = require("../services/akusoClassifierService");
 const { buildAkusoContext } = require("../services/akusoContextBuilder");
 const { runAkusoEvals } = require("../services/akusoEvalRunner");
+const { buildMathResponse } = require("../services/assistant/math");
+const { buildAkusoPromptBundle } = require("../services/akusoPromptBuilder");
 const {
   findFeatureByIntent,
   findFeatureByRoute,
@@ -241,6 +243,86 @@ describe("Akuso services", () => {
 
     config.akuso.enabled = originalEnabled;
     config.akuso.hasOpenAI = originalHasOpenAI;
+  });
+
+  it("builds a smarter prompt contract for question-answering and coding", () => {
+    const policyResult = {
+      mode: "knowledge_learning",
+      categoryBucket: "SAFE_ANSWER",
+      safetyLevel: "safe",
+      taskType: "software_engineering",
+    };
+    const promptBundle = buildAkusoPromptBundle({
+      input: {
+        message: "Fix my React upload form and add tests",
+      },
+      context: {
+        page: {
+          currentRoute: "/creator/music/upload",
+          currentPage: "Creator music upload",
+          currentFeatureTitle: "Music Upload",
+        },
+        auth: {
+          isAuthenticated: true,
+          role: "user",
+          isCreator: true,
+        },
+        safeProfileSummary: {
+          displayName: "Akuso Tester",
+          role: "user",
+          creatorStatus: "ready",
+          creatorTypes: ["music"],
+          country: "Nigeria",
+        },
+        preferences: {
+          answerLength: "detailed",
+          tone: "professional",
+          creatorStyle: "standard",
+          audience: "creators",
+          language: "English",
+        },
+        memory: {
+          recentSummary: "Previous safe answer about uploads.",
+          lastTopic: "music upload",
+          lastMode: "app_help",
+          lastRoute: "/creator/music/upload",
+        },
+        relevantFeatures: [
+          {
+            pageName: "Music Upload",
+            assistantExplanation: "Upload tracks with metadata and cover art.",
+          },
+        ],
+      },
+      policyResult,
+      fallback: {
+        answer: "Share the relevant files.",
+        warnings: [],
+        suggestions: ["Add tests"],
+      },
+    });
+
+    expect(promptBundle.systemPrompt).toMatch(/Question-answering intelligence/i);
+    expect(promptBundle.systemPrompt).toMatch(/infer the user's real goal/i);
+    expect(promptBundle.systemPrompt).toMatch(/Coding intelligence/i);
+    expect(promptBundle.systemPrompt).toMatch(/implementation work/i);
+    expect(promptBundle.systemPrompt).toMatch(/Recent memory: summary=Previous safe answer/i);
+    expect(promptBundle.systemPrompt).toMatch(/Preferences: length=detailed/i);
+    expect(promptBundle.systemPrompt).not.toMatch(/sk-test|Password123/i);
+  });
+
+  it("solves percent math questions for Akuso reasoning fallbacks", () => {
+    const response = buildMathResponse({
+      message: "Solve 15% of 240 step by step",
+    });
+
+    expect(response).toEqual(
+      expect.objectContaining({
+        answerText: "36",
+        expression: "15% of 240",
+      })
+    );
+    expect(response.steps.join("\n")).toMatch(/240 \* 0.15 = 36|15 \/ 100 = 0.15/i);
   });
 
   it("builds minimized context without leaking unsafe route content", async () => {

@@ -5,6 +5,9 @@
   "scripts": {
     "build": "npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend",
     "start": "node backend/server.js",
+    "audit:backend": "npm audit --prefix backend",
+    "audit:frontend": "npm audit --prefix frontend",
+    "audit:all": "npm audit --prefix backend && npm audit --prefix frontend",
     "seed:admin": "node backend/scripts/seedAdmin.js",
     "reset:admin-password": "node backend/scripts/resetAdminPassword.js",
     "backfill:analytics": "node backend/scripts/backfillAnalytics.js"

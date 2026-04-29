@@ -48,15 +48,84 @@ const parseInteger = (value, fallback = NaN, { min = Number.MIN_SAFE_INTEGER } =
   return parsed;
 };
 
-const maskSecretValue = (value) => {
-  const text = toText(value);
-  if (!text) {
-    return "";
+const secretLogKeyLabels = new Map([
+  ["OPENAI_API_KEY", "apiKeyConfigured"],
+  ["openAiApiKey", "apiKeyConfigured"],
+  ["apiKey", "apiKeyConfigured"],
+  ["PAYSTACK_SECRET_KEY", "paystackSecretConfigured"],
+  ["paystackSecretKey", "paystackSecretConfigured"],
+  ["STRIPE_SECRET_KEY", "stripeSecretConfigured"],
+  ["stripeSecretKey", "stripeSecretConfigured"],
+  ["STRIPE_PUBLISHABLE_KEY", "stripePublishableKeyConfigured"],
+  ["stripePublishableKey", "stripePublishableKeyConfigured"],
+  ["STRIPE_WEBHOOK_SECRET", "stripeWebhookSecretConfigured"],
+  ["stripeWebhookSecret", "stripeWebhookSecretConfigured"],
+  ["MONGO_URI", "mongoUriConfigured"],
+  ["mongoUri", "mongoUriConfigured"],
+  ["JWT_SECRET", "jwtSecretConfigured"],
+  ["jwtSecret", "jwtSecretConfigured"],
+  ["JWT_REFRESH_SECRET", "jwtRefreshSecretConfigured"],
+  ["jwtRefreshSecret", "jwtRefreshSecretConfigured"],
+  ["AUTH_CHALLENGE_SECRET", "authChallengeSecretConfigured"],
+  ["authChallengeSecret", "authChallengeSecretConfigured"],
+  ["MEDIA_SIGNING_SECRET", "mediaSigningSecretConfigured"],
+  ["mediaSigningSecret", "mediaSigningSecretConfigured"],
+  ["LIVEKIT_API_KEY", "livekitApiKeyConfigured"],
+  ["livekitApiKey", "livekitApiKeyConfigured"],
+  ["LIVEKIT_API_SECRET", "livekitApiSecretConfigured"],
+  ["livekitApiSecret", "livekitApiSecretConfigured"],
+  ["CLOUDINARY_API_KEY", "cloudinaryApiKeyConfigured"],
+  ["cloudinaryApiKey", "cloudinaryApiKeyConfigured"],
+  ["CLOUDINARY_API_SECRET", "cloudinaryApiSecretConfigured"],
+  ["cloudinaryApiSecret", "cloudinaryApiSecretConfigured"],
+  ["AWS_ACCESS_KEY_ID", "awsAccessKeyConfigured"],
+  ["awsAccessKeyId", "awsAccessKeyConfigured"],
+  ["AWS_SECRET_ACCESS_KEY", "awsSecretAccessKeyConfigured"],
+  ["awsSecretAccessKey", "awsSecretAccessKeyConfigured"],
+]);
+
+const sensitiveLogKeyPattern =
+  /(?:api[_-]?key|apikey|apiSecret|api[_-]?secret|secret|token|password|mongo(?:db)?[_-]?uri|mongoUri|private[_-]?key|signing)/i;
+
+const toConfiguredLogKey = (key) => {
+  if (secretLogKeyLabels.has(key)) {
+    return secretLogKeyLabels.get(key);
   }
-  if (text.length <= 8) {
-    return "*".repeat(text.length);
+
+  const raw = String(key || "secret");
+  const camel = raw
+    .replace(/^[^a-zA-Z0-9]+/, "")
+    .replace(/[^a-zA-Z0-9]+([a-zA-Z0-9])/g, (_match, char) => char.toUpperCase());
+  const normalized = camel ? camel.charAt(0).toLowerCase() + camel.slice(1) : "secret";
+  return normalized.endsWith("Configured") ? normalized : `${normalized}Configured`;
+};
+
+const isConfiguredLogKey = (key) => /Configured$/i.test(String(key || ""));
+const hasConfiguredLogValue = (value) =>
+  typeof value === "boolean" ? value : Boolean(toText(value));
+
+const isSensitiveLogKey = (key) =>
+  !isConfiguredLogKey(key) &&
+  (secretLogKeyLabels.has(key) || sensitiveLogKeyPattern.test(String(key || "")));
+
+const redactSecretsForLog = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => redactSecretsForLog(entry));
   }
-  return `${text.slice(0, 4)}...${text.slice(-4)}`;
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  return Object.entries(value).reduce((safe, [key, entryValue]) => {
+    if (isSensitiveLogKey(key)) {
+      safe[toConfiguredLogKey(key)] = hasConfiguredLogValue(entryValue);
+      return safe;
+    }
+
+    safe[key] = redactSecretsForLog(entryValue);
+    return safe;
+  }, {});
 };
 
 const normalizeOrigin = (value) => {
@@ -298,7 +367,7 @@ const akuso = {
     writing: openAiModelWriting,
     reasoning: openAiModelReasoning,
   },
-  keyMasked: maskSecretValue(openAiApiKey),
+  apiKeyConfigured: hasOpenAI,
 };
 
 const config = {
@@ -427,4 +496,4 @@ const config = {
   LIVEKIT_WS_URL: livekitWsUrl,
 };
 
-module.exports = { config, maskSecretValue, ...config };
+module.exports = { config, redactSecretsForLog, ...config };

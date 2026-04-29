@@ -20,8 +20,8 @@
     "test": "cross-env NODE_PATH=./node_modules jest --runInBand"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1026.0",
-    "@aws-sdk/s3-request-presigner": "^3.1026.0",
+    "@aws-sdk/client-s3": "^3.1038.0",
+    "@aws-sdk/s3-request-presigner": "^3.1038.0",
     "archiver": "^7.0.1",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
@@ -57,7 +57,7 @@
   "overrides": {
     "lodash": "4.18.1",
     "@aws-sdk/xml-builder": {
-      "fast-xml-parser": "5.5.10"
+      "fast-xml-parser": "5.7.0"
     },
     "express": {
       "path-to-regexp": "0.1.13"

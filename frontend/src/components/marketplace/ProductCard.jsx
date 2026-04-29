@@ -58,6 +58,9 @@ export default function ProductCard({
             </div>
             <div className="marketplace-inline-actions">
               <button type="button" className="marketplace-secondary-btn" onClick={() => onEdit?.(product)}>
+                <span className="marketplace-btn__icon" aria-hidden="true">
+                  +
+                </span>
                 Edit
               </button>
               <button
@@ -65,9 +68,15 @@ export default function ProductCard({
                 className="marketplace-ghost-btn"
                 onClick={() => onPublishToggle?.(product)}
               >
+                <span className="marketplace-btn__icon" aria-hidden="true">
+                  &gt;
+                </span>
                 {isPublished ? "Unpublish" : "Publish"}
               </button>
               <button type="button" className="marketplace-ghost-btn" onClick={() => onDelete?.(product)}>
+                <span className="marketplace-btn__icon" aria-hidden="true">
+                  x
+                </span>
                 Delete
               </button>
             </div>

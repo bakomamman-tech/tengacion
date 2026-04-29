@@ -172,6 +172,9 @@ export default function MarketplacePage() {
               aria-label="Search Marketplace"
             />
             <button type="submit" className="marketplace-primary-btn">
+              <span className="marketplace-btn__icon" aria-hidden="true">
+                &gt;
+              </span>
               Search
             </button>
           </form>
@@ -213,9 +216,15 @@ export default function MarketplacePage() {
 
           <div className="marketplace-facebook-sidebar__cta">
             <Link className="marketplace-primary-btn" to="/marketplace/register">
+              <span className="marketplace-btn__icon" aria-hidden="true">
+                +
+              </span>
               Create new listing
             </Link>
             <Link className="marketplace-secondary-btn" to="/marketplace/register">
+              <span className="marketplace-btn__icon" aria-hidden="true">
+                &gt;
+              </span>
               Seller registration
             </Link>
           </div>
@@ -263,7 +272,7 @@ export default function MarketplacePage() {
                 {hasActiveFilters ? "Marketplace matches for your current filters" : "Today's picks"}
               </h2>
               <p className="marketplace-section__copy">
-                Explore trusted products, store highlights, and location-aware listings in a browse-first layout inspired by Facebook Marketplace.
+                Explore trusted products, store highlights, and location-aware listings in a calmer storefront experience built for Tengacion buyers and verified sellers.
               </p>
             </div>
 
@@ -304,9 +313,15 @@ export default function MarketplacePage() {
 
               <div className="marketplace-cta-row">
                 <Link className="marketplace-primary-btn" to="/marketplace/register">
+                  <span className="marketplace-btn__icon" aria-hidden="true">
+                    +
+                  </span>
                   Register as seller
                 </Link>
                 <Link className="marketplace-ghost-btn" to="/marketplace/orders">
+                  <span className="marketplace-btn__icon" aria-hidden="true">
+                    &gt;
+                  </span>
                   View buying activity
                 </Link>
               </div>
@@ -427,9 +442,15 @@ export default function MarketplacePage() {
 
             <div className="marketplace-inline-actions">
               <button type="button" className="marketplace-primary-btn" onClick={applyFilters}>
+                <span className="marketplace-btn__icon" aria-hidden="true">
+                  &gt;
+                </span>
                 Apply filters
               </button>
               <button type="button" className="marketplace-ghost-btn" onClick={resetFilters}>
+                <span className="marketplace-btn__icon" aria-hidden="true">
+                  x
+                </span>
                 Reset
               </button>
             </div>
@@ -440,6 +461,9 @@ export default function MarketplacePage() {
               <strong>Marketplace unavailable</strong>
               <p>{error}</p>
               <button type="button" className="marketplace-primary-btn" onClick={() => loadMarketplace(filters)}>
+                <span className="marketplace-btn__icon" aria-hidden="true">
+                  &gt;
+                </span>
                 Try again
               </button>
             </div>

@@ -96,7 +96,7 @@ export default function ProductForm({
         <div>
           <h3>{initialProduct ? "Edit listing" : "Add a marketplace listing"}</h3>
           <p className="marketplace-muted">
-            Upload clean product photos, set your location, and remember the ₦300
+            Upload clean product photos, set your location, and remember the NGN 300
             service charge stays included inside the listed price.
           </p>
         </div>
@@ -246,7 +246,7 @@ export default function ProductForm({
                       )
                     }
                   >
-                    ×
+                    x
                   </button>
                 </div>
               ))}
@@ -276,10 +276,16 @@ export default function ProductForm({
             })
           }
         >
+          <span className="marketplace-btn__icon" aria-hidden="true">
+            {initialProduct ? ">" : "+"}
+          </span>
           {submitting ? "Saving..." : initialProduct ? "Save changes" : "Create listing"}
         </button>
         {onCancel ? (
           <button type="button" className="marketplace-ghost-btn" onClick={onCancel}>
+            <span className="marketplace-btn__icon" aria-hidden="true">
+              x
+            </span>
             Cancel
           </button>
         ) : null}

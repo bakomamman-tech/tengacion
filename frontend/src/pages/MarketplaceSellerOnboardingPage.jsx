@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -65,14 +65,110 @@ const formatDateLabel = (value) => {
 };
 
 const buildLinkedAccountFields = (user = null) => [
-  { label: "Full name", value: user?.name || "Not added yet" },
-  { label: "Username", value: user?.username ? `@${user.username}` : "Not added yet" },
-  { label: "Email", value: user?.email || "Not added yet" },
-  { label: "Mobile number", value: user?.phone || "Not added yet" },
-  { label: "Country", value: user?.country || "Not added yet" },
-  { label: "State of origin", value: user?.stateOfOrigin || "Not added yet" },
-  { label: "Gender", value: user?.gender || "Not added yet" },
-  { label: "Date of birth", value: formatDateLabel(user?.dob) },
+  { label: "Full name", value: user?.name || "Not added yet", present: Boolean(user?.name) },
+  {
+    label: "Username",
+    value: user?.username ? `@${user.username}` : "Not added yet",
+    present: Boolean(user?.username),
+  },
+  { label: "Email", value: user?.email || "Not added yet", present: Boolean(user?.email) },
+  { label: "Mobile number", value: user?.phone || "Not added yet", present: Boolean(user?.phone) },
+  { label: "Country", value: user?.country || "Not added yet", present: Boolean(user?.country) },
+  {
+    label: "State of origin",
+    value: user?.stateOfOrigin || "Not added yet",
+    present: Boolean(user?.stateOfOrigin),
+  },
+  { label: "Gender", value: user?.gender || "Not added yet", present: Boolean(user?.gender) },
+  { label: "Date of birth", value: formatDateLabel(user?.dob), present: Boolean(user?.dob) },
+];
+
+const NIGERIAN_STATES = [
+  "Abia",
+  "Adamawa",
+  "Akwa Ibom",
+  "Anambra",
+  "Bauchi",
+  "Bayelsa",
+  "Benue",
+  "Borno",
+  "Cross River",
+  "Delta",
+  "Ebonyi",
+  "Edo",
+  "Ekiti",
+  "Enugu",
+  "Federal Capital Territory",
+  "Gombe",
+  "Imo",
+  "Jigawa",
+  "Kaduna",
+  "Kano",
+  "Katsina",
+  "Kebbi",
+  "Kogi",
+  "Kwara",
+  "Lagos",
+  "Nasarawa",
+  "Niger",
+  "Ogun",
+  "Ondo",
+  "Osun",
+  "Oyo",
+  "Plateau",
+  "Rivers",
+  "Sokoto",
+  "Taraba",
+  "Yobe",
+  "Zamfara",
+];
+
+const NIGERIAN_BANKS = [
+  "Access Bank",
+  "Citibank Nigeria",
+  "Ecobank Nigeria",
+  "Fidelity Bank",
+  "First Bank of Nigeria",
+  "First City Monument Bank",
+  "Globus Bank",
+  "Guaranty Trust Bank",
+  "Keystone Bank",
+  "Kuda Microfinance Bank",
+  "Moniepoint Microfinance Bank",
+  "Opay Digital Services",
+  "PalmPay",
+  "Polaris Bank",
+  "Providus Bank",
+  "Stanbic IBTC Bank",
+  "Standard Chartered Bank Nigeria",
+  "Sterling Bank",
+  "SunTrust Bank",
+  "Titan Trust Bank",
+  "Union Bank of Nigeria",
+  "United Bank for Africa",
+  "Unity Bank",
+  "Wema Bank",
+  "Zenith Bank",
+];
+
+const CITY_SUGGESTIONS = [
+  "Abuja",
+  "Abeokuta",
+  "Asaba",
+  "Benin City",
+  "Calabar",
+  "Enugu",
+  "Ibadan",
+  "Ikeja",
+  "Ilorin",
+  "Jos",
+  "Kaduna",
+  "Kano",
+  "Lekki",
+  "Lagos Island",
+  "Port Harcourt",
+  "Uyo",
+  "Yaba",
 ];
 
 export default function MarketplaceSellerOnboardingPage() {
@@ -131,6 +227,37 @@ export default function MarketplaceSellerOnboardingPage() {
 
   const currentStatus = seller?.status || "draft";
   const linkedAccountFields = buildLinkedAccountFields(user);
+  const hasCacDocument = Boolean(
+    form.cacCertificate ||
+      seller?.cacCertificate?.secureUrl ||
+      seller?.cacCertificate?.url
+  );
+  const bankOptions = useMemo(
+    () => [...new Set([form.bankName, ...NIGERIAN_BANKS].filter(Boolean))],
+    [form.bankName]
+  );
+  const completion = useMemo(() => {
+    const requiredChecks = [
+      form.fullName,
+      form.storeName,
+      form.phoneNumber,
+      form.bankName,
+      form.accountNumber,
+      form.accountName,
+      form.residentialAddress,
+      form.businessAddress,
+      form.state,
+      form.city,
+      hasCacDocument,
+      form.acceptedTerms,
+    ];
+    const completed = requiredChecks.filter(Boolean).length;
+    return {
+      completed,
+      total: requiredChecks.length,
+      percent: Math.round((completed / requiredChecks.length) * 100),
+    };
+  }, [form, hasCacDocument]);
 
   return (
     <QuickAccessLayout
@@ -159,6 +286,19 @@ export default function MarketplaceSellerOnboardingPage() {
               <p className="marketplace-muted">
                 This registration page combines your core Tengacion signup identity with the business details needed for marketplace approval.
               </p>
+
+              <div className="marketplace-registration-progress" aria-label="Seller registration completion">
+                <div className="marketplace-registration-progress__top">
+                  <strong>Seller readiness</strong>
+                  <span>{completion.percent}%</span>
+                </div>
+                <div className="marketplace-registration-progress__bar" aria-hidden="true">
+                  <span style={{ width: `${completion.percent}%` }} />
+                </div>
+                <p>
+                  {completion.completed} of {completion.total} review fields are complete.
+                </p>
+              </div>
 
               <div className="marketplace-registration-highlights">
                 <article className="marketplace-summary-card">
@@ -199,9 +339,15 @@ export default function MarketplaceSellerOnboardingPage() {
 
               <div className="marketplace-cta-row">
                 <Link className="marketplace-secondary-btn" to="/marketplace">
+                  <span className="marketplace-btn__icon" aria-hidden="true">
+                    &lt;
+                  </span>
                   Back to marketplace
                 </Link>
                 <Link className="marketplace-ghost-btn" to="/marketplace/dashboard">
+                  <span className="marketplace-btn__icon" aria-hidden="true">
+                    &gt;
+                  </span>
                   Open seller dashboard
                 </Link>
               </div>
@@ -230,7 +376,10 @@ export default function MarketplaceSellerOnboardingPage() {
 
                 <div className="marketplace-registration-account-grid">
                   {linkedAccountFields.map((entry) => (
-                    <article key={entry.label} className="marketplace-registration-account-card">
+                    <article
+                      key={entry.label}
+                      className={`marketplace-registration-account-card${entry.present ? "" : " is-missing"}`}
+                    >
                       <span>{entry.label}</span>
                       <strong>{entry.value}</strong>
                     </article>
@@ -247,22 +396,100 @@ export default function MarketplaceSellerOnboardingPage() {
                 </div>
 
                 <div className="marketplace-form-grid">
-                  {[
-                    ["fullName", "Full name"],
-                    ["storeName", "Store or business name"],
-                    ["phoneNumber", "Phone number"],
-                    ["state", "State or location"],
-                    ["city", "City"],
-                  ].map(([field, label]) => (
-                    <div key={field} className="marketplace-form-field">
-                      <label htmlFor={`seller-${field}`}>{label}</label>
-                      <input
-                        id={`seller-${field}`}
-                        value={form[field]}
-                        onChange={(event) => updateField(field, event.target.value)}
-                      />
+                  <div className="marketplace-form-field">
+                    <div className="marketplace-form-field__top">
+                      <label htmlFor="seller-fullName">Legal full name</label>
+                      <span>Required</span>
                     </div>
-                  ))}
+                    <input
+                      id="seller-fullName"
+                      name="fullName"
+                      value={form.fullName}
+                      autoComplete="name"
+                      required
+                      onChange={(event) => updateField("fullName", event.target.value)}
+                    />
+                    <p className="marketplace-field-hint">Use the name that matches your bank and account identity.</p>
+                  </div>
+
+                  <div className="marketplace-form-field">
+                    <div className="marketplace-form-field__top">
+                      <label htmlFor="seller-storeName">Store or business name</label>
+                      <span>Required</span>
+                    </div>
+                    <input
+                      id="seller-storeName"
+                      name="storeName"
+                      value={form.storeName}
+                      autoComplete="organization"
+                      required
+                      onChange={(event) => updateField("storeName", event.target.value)}
+                    />
+                    <p className="marketplace-field-hint">This is the storefront name buyers will see after approval.</p>
+                  </div>
+
+                  <div className="marketplace-form-field">
+                    <div className="marketplace-form-field__top">
+                      <label htmlFor="seller-phoneNumber">Phone number</label>
+                      <span>Required</span>
+                    </div>
+                    <input
+                      id="seller-phoneNumber"
+                      name="phoneNumber"
+                      type="tel"
+                      value={form.phoneNumber}
+                      autoComplete="tel"
+                      inputMode="tel"
+                      required
+                      onChange={(event) => updateField("phoneNumber", event.target.value)}
+                    />
+                    <p className="marketplace-field-hint">Use a reachable Nigerian number for admin review and buyer issues.</p>
+                  </div>
+
+                  <div className="marketplace-form-field">
+                    <div className="marketplace-form-field__top">
+                      <label htmlFor="seller-state">Operating state</label>
+                      <span>Required</span>
+                    </div>
+                    <select
+                      id="seller-state"
+                      name="state"
+                      value={form.state}
+                      autoComplete="address-level1"
+                      required
+                      onChange={(event) => updateField("state", event.target.value)}
+                    >
+                      <option value="">Select operating state</option>
+                      {NIGERIAN_STATES.map((state) => (
+                        <option key={state} value={state}>
+                          {state}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="marketplace-field-hint">Choose where the store mainly operates from.</p>
+                  </div>
+
+                  <div className="marketplace-form-field marketplace-form-field--full">
+                    <div className="marketplace-form-field__top">
+                      <label htmlFor="seller-city">City or service area</label>
+                      <span>Required</span>
+                    </div>
+                    <input
+                      id="seller-city"
+                      name="city"
+                      list="seller-city-suggestions"
+                      value={form.city}
+                      autoComplete="address-level2"
+                      required
+                      onChange={(event) => updateField("city", event.target.value)}
+                    />
+                    <datalist id="seller-city-suggestions">
+                      {CITY_SUGGESTIONS.map((city) => (
+                        <option key={city} value={city} />
+                      ))}
+                    </datalist>
+                    <p className="marketplace-field-hint">Add the city buyers should associate with your pickup or delivery base.</p>
+                  </div>
                 </div>
               </section>
 
@@ -275,20 +502,65 @@ export default function MarketplaceSellerOnboardingPage() {
                 </div>
 
                 <div className="marketplace-form-grid">
-                  {[
-                    ["bankName", "Bank name"],
-                    ["accountNumber", "Account number"],
-                    ["accountName", "Account name"],
-                  ].map(([field, label]) => (
-                    <div key={field} className="marketplace-form-field">
-                      <label htmlFor={`seller-${field}`}>{label}</label>
-                      <input
-                        id={`seller-${field}`}
-                        value={form[field]}
-                        onChange={(event) => updateField(field, event.target.value)}
-                      />
+                  <div className="marketplace-form-field">
+                    <div className="marketplace-form-field__top">
+                      <label htmlFor="seller-bankName">Bank name</label>
+                      <span>Required</span>
                     </div>
-                  ))}
+                    <select
+                      id="seller-bankName"
+                      name="bankName"
+                      value={form.bankName}
+                      autoComplete="organization"
+                      required
+                      onChange={(event) => updateField("bankName", event.target.value)}
+                    >
+                      <option value="">Select payout bank</option>
+                      {bankOptions.map((bank) => (
+                        <option key={bank} value={bank}>
+                          {bank}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="marketplace-field-hint">Select the bank that will receive marketplace settlements.</p>
+                  </div>
+
+                  <div className="marketplace-form-field">
+                    <div className="marketplace-form-field__top">
+                      <label htmlFor="seller-accountNumber">Account number</label>
+                      <span>10-20 digits</span>
+                    </div>
+                    <input
+                      id="seller-accountNumber"
+                      name="accountNumber"
+                      value={form.accountNumber}
+                      autoComplete="off"
+                      inputMode="numeric"
+                      maxLength={20}
+                      pattern="[0-9]{10,20}"
+                      required
+                      onChange={(event) =>
+                        updateField("accountNumber", event.target.value.replace(/\D/g, "").slice(0, 20))
+                      }
+                    />
+                    <p className="marketplace-field-hint">Numbers only. Admin review checks this before approval.</p>
+                  </div>
+
+                  <div className="marketplace-form-field marketplace-form-field--full">
+                    <div className="marketplace-form-field__top">
+                      <label htmlFor="seller-accountName">Account name</label>
+                      <span>Required</span>
+                    </div>
+                    <input
+                      id="seller-accountName"
+                      name="accountName"
+                      value={form.accountName}
+                      autoComplete="name"
+                      required
+                      onChange={(event) => updateField("accountName", event.target.value)}
+                    />
+                    <p className="marketplace-field-hint">Enter the exact name attached to the payout account.</p>
+                  </div>
                 </div>
               </section>
 
@@ -302,23 +574,39 @@ export default function MarketplaceSellerOnboardingPage() {
 
                 <div className="marketplace-form-grid">
                   <div className="marketplace-form-field marketplace-form-field--full">
-                    <label htmlFor="seller-residential-address">Home address</label>
+                    <div className="marketplace-form-field__top">
+                      <label htmlFor="seller-residential-address">Home address</label>
+                      <span>Required</span>
+                    </div>
                     <textarea
                       id="seller-residential-address"
+                      name="residentialAddress"
                       rows={4}
                       value={form.residentialAddress}
+                      autoComplete="street-address"
+                      maxLength={300}
+                      required
                       onChange={(event) => updateField("residentialAddress", event.target.value)}
                     />
+                    <p className="marketplace-field-hint">Include house number, street, area, city, and state.</p>
                   </div>
 
                   <div className="marketplace-form-field marketplace-form-field--full">
-                    <label htmlFor="seller-business-address">Office address</label>
+                    <div className="marketplace-form-field__top">
+                      <label htmlFor="seller-business-address">Office or pickup address</label>
+                      <span>Required</span>
+                    </div>
                     <textarea
                       id="seller-business-address"
+                      name="businessAddress"
                       rows={4}
                       value={form.businessAddress}
+                      autoComplete="street-address"
+                      maxLength={300}
+                      required
                       onChange={(event) => updateField("businessAddress", event.target.value)}
                     />
+                    <p className="marketplace-field-hint">Use the verified office, warehouse, or pickup address for this store.</p>
                   </div>
                 </div>
               </section>
@@ -333,16 +621,23 @@ export default function MarketplaceSellerOnboardingPage() {
 
                 <div className="marketplace-form-grid">
                   <div className="marketplace-form-field marketplace-form-field--full">
-                    <label htmlFor="seller-cac">CAC registration certificate</label>
+                    <div className="marketplace-form-field__top">
+                      <label htmlFor="seller-cac">CAC registration certificate</label>
+                      <span>{hasCacDocument ? "On file" : "Required"}</span>
+                    </div>
                     <input
                       id="seller-cac"
+                      name="cacCertificate"
                       type="file"
-                      accept=".pdf,image/*"
+                      accept=".pdf,image/jpeg,image/png,image/webp"
                       onChange={(event) => updateField("cacCertificate", event.target.files?.[0] || null)}
                     />
-                    <p className="marketplace-muted">
-                      Upload a PDF or clear image copy of the registered CAC certificate for admin review.
+                    <p className="marketplace-field-hint">
+                      Upload a PDF, JPG, PNG, or WEBP copy of the registered CAC certificate for admin review.
                     </p>
+                    {form.cacCertificate ? (
+                      <p className="marketplace-field-value-note">{form.cacCertificate.name}</p>
+                    ) : null}
                     {seller?.cacCertificate?.secureUrl ? (
                       <a
                         className="marketplace-link"
@@ -356,7 +651,7 @@ export default function MarketplaceSellerOnboardingPage() {
                   </div>
 
                   <div className="marketplace-form-field marketplace-form-field--full">
-                    <label className="marketplace-checkbox">
+                    <label className="marketplace-checkbox marketplace-checkbox--statement">
                       <input
                         type="checkbox"
                         checked={Boolean(form.acceptedTerms)}
@@ -377,6 +672,9 @@ export default function MarketplaceSellerOnboardingPage() {
                   disabled={saving}
                   onClick={() => submitForm("draft")}
                 >
+                  <span className="marketplace-btn__icon" aria-hidden="true">
+                    +
+                  </span>
                   {saving ? "Saving..." : "Save draft"}
                 </button>
                 {currentStatus === "rejected" ? (
@@ -386,6 +684,9 @@ export default function MarketplaceSellerOnboardingPage() {
                     disabled={saving}
                     onClick={() => submitForm("resubmit")}
                   >
+                    <span className="marketplace-btn__icon" aria-hidden="true">
+                      &gt;
+                    </span>
                     {saving ? "Sending..." : "Resubmit application"}
                   </button>
                 ) : (
@@ -395,6 +696,9 @@ export default function MarketplaceSellerOnboardingPage() {
                     disabled={saving || currentStatus === "pending_review"}
                     onClick={() => submitForm("submit")}
                   >
+                    <span className="marketplace-btn__icon" aria-hidden="true">
+                      &gt;
+                    </span>
                     {saving ? "Sending..." : currentStatus === "pending_review" ? "Under review" : "Submit for review"}
                   </button>
                 )}

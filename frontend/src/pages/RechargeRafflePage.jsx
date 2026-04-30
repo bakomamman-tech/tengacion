@@ -28,6 +28,10 @@ const WHEEL_SEGMENTS = [
   "Mystery",
 ];
 
+const SPIN_FEEDBACK_DURATION_MS = 2800;
+const RATE_LIMIT_MESSAGE = "Try Again After 2 days";
+const CONFETTI_COLORS = ["#ffe08b", "#34d399", "#60a5fa", "#fb7185", "#ffffff"];
+
 const formatCount = (value) => Number(value || 0).toLocaleString();
 
 const formatDateTime = (value) => {
@@ -65,6 +69,58 @@ const copyText = async (value, label = "Copied") => {
     toast.error("Copy failed. Please select the PIN manually.");
   }
 };
+
+const getConfettiStyle = (index, seed = 0) => {
+  const left = (index * 17 + seed * 11) % 100;
+  const drift = (index % 2 === 0 ? 1 : -1) * (28 + ((index * 13 + seed) % 74));
+  const rotate = 180 + ((index * 31 + seed) % 340);
+  const duration = 1700 + ((index * 47 + seed) % 900);
+  const delay = (index * 37 + seed) % 680;
+
+  return {
+    left: `${left}%`,
+    backgroundColor: CONFETTI_COLORS[index % CONFETTI_COLORS.length],
+    animationDelay: `${delay}ms`,
+    animationDuration: `${duration}ms`,
+    "--confetti-drift": `${drift}px`,
+    "--confetti-rotate": `${rotate}deg`,
+  };
+};
+
+function RaffleSpinFeedback({ feedback }) {
+  if (!feedback) {
+    return null;
+  }
+
+  const isSuccess = feedback.type === "success";
+  const confettiSeed = Number(feedback.key || 0);
+
+  return (
+    <div
+      key={feedback.key}
+      className={`raffle-spin-feedback is-${feedback.type}`}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      {isSuccess ? (
+        <>
+          <div className="raffle-confetti-rain" aria-hidden="true">
+            {Array.from({ length: 64 }).map((_, index) => (
+              <span
+                key={index}
+                style={getConfettiStyle(index, confettiSeed)}
+              />
+            ))}
+          </div>
+          <span className="raffle-stage-smoke raffle-stage-smoke--one" aria-hidden="true" />
+          <span className="raffle-stage-smoke raffle-stage-smoke--two" aria-hidden="true" />
+        </>
+      ) : null}
+      <strong>{feedback.message}</strong>
+    </div>
+  );
+}
 
 function RaffleWheel({ rotation, spinning, disabled, onSpin }) {
   return (
@@ -150,6 +206,7 @@ function PrizePanel({ prize, networkMeta, cooldown }) {
   const dialCodes = Array.isArray(prize.dialCodes) && prize.dialCodes.length
     ? prize.dialCodes
     : (networkMeta?.dialCodes || []).map((code) => code.replace("PIN", prize.pin));
+  const nextAvailable = formatDateTime(cooldown?.nextAvailableAt);
 
   return (
     <section className="raffle-panel raffle-prize-panel is-won">
@@ -179,7 +236,8 @@ function PrizePanel({ prize, networkMeta, cooldown }) {
 
       {cooldown?.active ? (
         <div className="raffle-limit-note" role="status">
-          Rate limit reached. Try again after {formatDateTime(cooldown.nextAvailableAt)}.
+          <strong>{RATE_LIMIT_MESSAGE}</strong>
+          {nextAvailable ? ` Next available: ${nextAvailable}.` : null}
         </div>
       ) : null}
     </section>
@@ -195,6 +253,7 @@ export default function RechargeRafflePage({ user }) {
   const [wheelRotation, setWheelRotation] = useState(0);
   const [error, setError] = useState("");
   const [resultMessage, setResultMessage] = useState("");
+  const [spinFeedback, setSpinFeedback] = useState(null);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -240,6 +299,19 @@ export default function RechargeRafflePage({ user }) {
   const stockForNetwork = selectedNetwork
     ? Number(status?.availability?.[selectedNetwork]?.available || 0)
     : 0;
+  const displayResultMessage = cooldown.active ? RATE_LIMIT_MESSAGE : resultMessage;
+
+  useEffect(() => {
+    if (!spinFeedback) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSpinFeedback(null);
+    }, SPIN_FEEDBACK_DURATION_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [spinFeedback]);
 
   const goProfile = () => navigate(`/profile/${user?.username || ""}`);
   const goPostFeed = () => navigate("/home", { state: { openComposer: true } });
@@ -262,21 +334,40 @@ export default function RechargeRafflePage({ user }) {
     try {
       const payload = await spinRechargeRaffle({ network: selectedNetwork });
       window.setTimeout(() => {
+        const rateLimited = Boolean(payload?.rateLimited);
+        const won = Boolean(payload?.spin?.won);
+
         setStatus(payload);
-        setResultMessage(payload?.spin?.message || "");
+        setResultMessage(rateLimited ? RATE_LIMIT_MESSAGE : won ? (payload?.spin?.message || "") : "Try Again");
         if (payload?.play?.network) {
           setSelectedNetwork(payload.play.network);
         }
-        if (payload?.spin?.won) {
+        if (won && !rateLimited) {
+          setSpinFeedback({
+            type: "success",
+            message: "Congratulations",
+            key: Date.now(),
+          });
           toast.success("Recharge PIN unlocked.");
+        } else if (!rateLimited) {
+          setSpinFeedback({
+            type: "loss",
+            message: "Try Again",
+            key: Date.now(),
+          });
         }
         setSpinning(false);
       }, 900);
     } catch (err) {
       setSpinning(false);
       const message = err?.message || "Spin failed. Please try again.";
-      setError(message);
-      toast.error(message);
+      const rateLimited = err?.status === 429 || err?.payload?.rateLimited;
+      if (rateLimited) {
+        setResultMessage(RATE_LIMIT_MESSAGE);
+      } else {
+        setError(message);
+        toast.error(message);
+      }
       if (err?.payload?.eligibility) {
         setStatus((current) => ({
           ...(current || {}),
@@ -351,16 +442,18 @@ export default function RechargeRafflePage({ user }) {
                   onClick={handleSpin}
                   disabled={!canSpin}
                 >
-                  {spinning ? "Spinning..." : cooldown.active ? "Rate limit reached" : "Spin the wheel"}
+                  {spinning ? "Spinning..." : cooldown.active ? RATE_LIMIT_MESSAGE : "Spin the wheel"}
                 </button>
                 <button type="button" className="raffle-refresh-btn" onClick={loadStatus}>
                   Refresh
                 </button>
               </div>
 
-              {resultMessage ? <div className="raffle-result-note">{resultMessage}</div> : null}
+              {displayResultMessage ? <div className="raffle-result-note">{displayResultMessage}</div> : null}
               {error ? <div className="raffle-error" role="alert">{error}</div> : null}
             </div>
+
+            <RaffleSpinFeedback feedback={spinFeedback} />
           </section>
 
           <section className="raffle-dashboard" aria-label="Game registration dashboard">

@@ -141,6 +141,7 @@ app.use("/api/messages", require("./routes/messages"));
 app.use("/api/reports", require("./routes/reports"));
 app.use("/api/support", require("./routes/support"));
 app.use("/api/talent-show", require("./routes/talentShow"));
+app.use("/api/recharge-raffle", require("./routes/rechargeRaffle"));
 app.use("/api/search", require("./routes/search"));
 app.use("/api/assistant", require("./routes/assistant"));
 app.use("/api/akuso", require("./routes/akuso"));

@@ -727,6 +727,21 @@ export const submitKadunaGotTalentApplication = (payload = {}) =>
     suppressAuthFailure: true,
   });
 
+export const getRechargeRaffleStatus = () =>
+  request(`${API_BASE}/recharge-raffle/me`, {
+    headers: getAuthHeaders(),
+  });
+
+export const spinRechargeRaffle = (payload = {}) =>
+  request(`${API_BASE}/recharge-raffle/spin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
 export const getFriendsHub = () =>
   request(`${API_BASE}/users/me/friends-hub`, {
     headers: getAuthHeaders(),
@@ -2189,6 +2204,28 @@ export const adminGetDashboard = (params = {}) => {
     timeoutMs: 45000,
   });
 };
+
+export const adminGetRaffleCards = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  });
+  return request(`${API_BASE}/admin/raffle/cards?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminLoadRaffleCards = (payload = {}) =>
+  request(`${API_BASE}/admin/raffle/cards/bulk`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
 
 export const adminGetAssistantMetrics = (params = {}) => {
   const query = new URLSearchParams();

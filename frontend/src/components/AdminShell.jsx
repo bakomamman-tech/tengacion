@@ -9,6 +9,7 @@ const ADMIN_ITEMS = [
   { key: "content", label: "Content", path: "/admin/content" },
   { key: "messages", label: "Messages", path: "/admin/messages" },
   { key: "campaigns", label: "Campaigns", path: "/admin/campaigns" },
+  { key: "raffle", label: "Raffle Cards", path: "/admin/recharge-raffle" },
   { key: "marketplace", label: "Marketplace", path: "/admin/marketplace" },
   { key: "transactions", label: "Transactions", path: "/admin/transactions" },
   { key: "reports", label: "Moderation", path: "/admin/reports" },
@@ -28,6 +29,7 @@ export default function AdminShell({ title, subtitle = "", user, actions = null,
     if (location.pathname.startsWith("/admin/moderation")) {return "/admin/reports";}
     if (location.pathname.startsWith("/admin/assistant")) {return "/admin/assistant";}
     if (location.pathname.startsWith("/admin/storage")) {return "/admin/storage";}
+    if (location.pathname.startsWith("/admin/recharge-raffle")) {return "/admin/recharge-raffle";}
     return ADMIN_ITEMS.find((item) => location.pathname.startsWith(item.path))?.path || "/admin/dashboard";
   }, [location.pathname]);
 

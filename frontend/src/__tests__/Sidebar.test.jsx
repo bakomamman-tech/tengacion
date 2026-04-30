@@ -57,10 +57,10 @@ describe("Sidebar", () => {
 
     expect(screen.getByRole("navigation")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /home/i })).toBeInTheDocument();
-    expect(container.querySelector(".sidebar-mobile-sponsored")).not.toBeInTheDocument();
+    expect(container.querySelector(".sidebar-mobile-feature")).not.toBeInTheDocument();
   });
 
-  it("renders the sponsored card on mobile instead of the desktop nav", () => {
+  it("renders the raffle card on mobile instead of the desktop nav", () => {
     setMatchMedia(true);
 
     const { container } = render(
@@ -68,9 +68,9 @@ describe("Sidebar", () => {
     );
 
     expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
-    expect(container.querySelector(".sidebar-mobile-sponsored")).toBeInTheDocument();
-    expect(screen.getByText(/kaduna got talent/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /register/i })).toBeInTheDocument();
+    expect(container.querySelector(".sidebar-mobile-feature")).toBeInTheDocument();
+    expect(screen.getByText(/recharge raffle/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /play/i })).toBeInTheDocument();
   });
 
   it("navigates to the standalone messages page when no chat launcher is provided", () => {

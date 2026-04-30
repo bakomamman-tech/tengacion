@@ -23,6 +23,7 @@ const Register = lazy(() => import("./pages/Register"));
 const KadunaGotTalentRegisterPage = lazy(() => import("./pages/KadunaGotTalentRegisterPage"));
 const Search = lazy(() => import("./pages/Search"));
 const Home = lazy(() => import("./pages/Home"));
+const RechargeRafflePage = lazy(() => import("./pages/RechargeRafflePage"));
 const MessagesPage = lazy(() => import("./pages/MessagesPage"));
 const FindCreatorsPage = lazy(() => import("./pages/FindCreatorsPage"));
 const FindFriendsPage = lazy(() => import("./pages/FindFriendsPage"));
@@ -53,6 +54,7 @@ const AdminAssistantPage = lazy(() => import("./pages/AdminAssistant"));
 const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalytics"));
 const AdminMessagesPage = lazy(() => import("./pages/AdminMessages"));
 const AdminCampaignsPage = lazy(() => import("./pages/AdminCampaigns"));
+const AdminRaffleCardsPage = lazy(() => import("./pages/AdminRaffleCards"));
 const AdminSettingsPage = lazy(() => import("./pages/AdminSettings"));
 const AdminStoragePage = lazy(() => import("./pages/AdminStorage"));
 const CreatorPage = lazy(() => import("./pages/CreatorPage"));
@@ -347,6 +349,14 @@ export default function App() {
             element={
               <ProtectedRoute user={user}>
                 <GamingPage user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recharge-raffle"
+            element={
+              <ProtectedRoute user={user}>
+                <RechargeRafflePage user={user} />
               </ProtectedRoute>
             }
           />
@@ -830,6 +840,14 @@ export default function App() {
             element={
               <AdminRoute user={user}>
                 <AdminCampaignsPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/recharge-raffle"
+            element={
+              <AdminRoute user={user}>
+                <AdminRaffleCardsPage user={user} />
               </AdminRoute>
             }
           />

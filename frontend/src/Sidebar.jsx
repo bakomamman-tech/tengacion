@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { resolveImage } from "./api";
-import kadunaGotTalentPoster from "./assets/kaduna-got-talent-poster.jpg";
 
 const MOBILE_SIDEBAR_QUERY = "(max-width: 1020px)";
 
@@ -18,21 +17,21 @@ const getIsMobileSidebar = () => {
   return window.matchMedia(MOBILE_SIDEBAR_QUERY).matches;
 };
 
-function SponsoredAdCard({ isExpanded, onToggle, onRegister }) {
+function RaffleGameCard({ isExpanded, onToggle, onPlay }) {
   return (
     <section
-      className={`sidebar-sponsored-card${isExpanded ? " expanded" : " compact"}`}
-      aria-label="Sponsored Kaduna Got Talent advert"
+      className={`sidebar-raffle-card${isExpanded ? " expanded" : " compact"}`}
+      aria-label="Tengacion Spin and Win raffle game"
     >
-      <div className="sidebar-sponsored-topline">
-        <div className="sidebar-sponsored-heading">
-          <span className="sidebar-sponsored-badge">Sponsored</span>
-          <strong>Kaduna Got Talent</strong>
+      <div className="sidebar-raffle-topline">
+        <div className="sidebar-raffle-heading">
+          <span className="sidebar-raffle-badge">Spin & Win</span>
+          <strong>Recharge Raffle</strong>
         </div>
 
         <button
           type="button"
-          className="sidebar-sponsored-toggle"
+          className="sidebar-raffle-toggle"
           onClick={onToggle}
           aria-expanded={isExpanded}
         >
@@ -42,36 +41,32 @@ function SponsoredAdCard({ isExpanded, onToggle, onRegister }) {
 
       {isExpanded ? (
         <>
-          <img
-            src={kadunaGotTalentPoster}
-            alt="Kaduna Got Talent flyer"
-            className="sidebar-sponsored-image"
-          />
+          <div className="sidebar-raffle-wheel" aria-hidden="true">
+            <span>100</span>
+          </div>
 
-          <p className="sidebar-sponsored-copy">
-            Showcase your talent on Tengacion and apply for Kaduna Got Talent.
+          <p className="sidebar-raffle-copy">
+            Upload a profile picture, choose MTN or Airtel, then spin for a recharge PIN.
           </p>
         </>
       ) : (
-        <div className="sidebar-sponsored-compact-body">
-          <img
-            src={kadunaGotTalentPoster}
-            alt="Kaduna Got Talent flyer"
-            className="sidebar-sponsored-thumb"
-          />
+        <div className="sidebar-raffle-compact-body">
+          <div className="sidebar-raffle-thumb" aria-hidden="true">
+            <span>PIN</span>
+          </div>
 
-          <p className="sidebar-sponsored-copy">
-            Open the flyer when you want it, while keeping the left menu free to use.
+          <p className="sidebar-raffle-copy">
+            Five spins, MTN or Airtel, and your winning PIN stays ready to copy.
           </p>
         </div>
       )}
 
       <button
         type="button"
-        className="sidebar-sponsored-btn"
-        onClick={onRegister}
+        className="sidebar-raffle-btn"
+        onClick={onPlay}
       >
-        Register
+        Play
       </button>
     </section>
   );
@@ -80,7 +75,7 @@ function SponsoredAdCard({ isExpanded, onToggle, onRegister }) {
 export default function Sidebar({ user, openChat, openProfile }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isSponsoredExpanded, setIsSponsoredExpanded] = useState(false);
+  const [isRaffleExpanded, setIsRaffleExpanded] = useState(false);
   const [isMobileSidebar, setIsMobileSidebar] = useState(getIsMobileSidebar);
 
   const avatar = resolveImage(user?.avatar) || fallbackAvatar(user?.name);
@@ -117,8 +112,8 @@ export default function Sidebar({ user, openChat, openProfile }) {
 
   const isProfileRoute = location.pathname.startsWith("/profile/");
   const sidebarBtnClass = (isActive) => `sidebar-btn${isActive ? " active" : ""}`;
-  const toggleSponsoredAd = () => setIsSponsoredExpanded((current) => !current);
-  const openSponsoredAd = () => navigate("/kaduna-got-talent/register");
+  const toggleRaffleCard = () => setIsRaffleExpanded((current) => !current);
+  const openRaffleGame = () => navigate("/recharge-raffle");
   const openMessages = () => {
     if (typeof openChat === "function") {
       openChat();
@@ -130,11 +125,11 @@ export default function Sidebar({ user, openChat, openProfile }) {
 
   if (isMobileSidebar) {
     return (
-      <div className="sidebar-mobile-sponsored">
-        <SponsoredAdCard
-          isExpanded={isSponsoredExpanded}
-          onToggle={toggleSponsoredAd}
-          onRegister={openSponsoredAd}
+      <div className="sidebar-mobile-feature">
+        <RaffleGameCard
+          isExpanded={isRaffleExpanded}
+          onToggle={toggleRaffleCard}
+          onPlay={openRaffleGame}
         />
       </div>
     );
@@ -165,6 +160,13 @@ export default function Sidebar({ user, openChat, openProfile }) {
           onClick={() => navigate("/trending")}
         >
           Trending
+        </button>
+
+        <button
+          className={sidebarBtnClass(location.pathname === "/recharge-raffle")}
+          onClick={openRaffleGame}
+        >
+          Spin & Win
         </button>
 
         <button
@@ -243,10 +245,10 @@ export default function Sidebar({ user, openChat, openProfile }) {
         </button>
       </div>
 
-      <SponsoredAdCard
-        isExpanded={isSponsoredExpanded}
-        onToggle={toggleSponsoredAd}
-        onRegister={openSponsoredAd}
+      <RaffleGameCard
+        isExpanded={isRaffleExpanded}
+        onToggle={toggleRaffleCard}
+        onPlay={openRaffleGame}
       />
     </aside>
   );

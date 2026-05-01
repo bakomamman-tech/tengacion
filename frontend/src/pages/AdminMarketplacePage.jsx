@@ -12,6 +12,16 @@ import "../components/marketplace/marketplace.css";
 
 const adminRequest = (path, options = {}) => apiRequest(`${API_BASE}${path}`, options);
 
+const isStepUpRequired = (err) => err?.details?.code === "STEP_UP_REQUIRED";
+
+const getAdminMutationError = (err, action, fallback) => {
+  if (isStepUpRequired(err)) {
+    return `Confirm your admin session with your authenticator code before ${action}.`;
+  }
+
+  return err?.message || fallback;
+};
+
 export default function AdminMarketplacePage({ user }) {
   const [payload, setPayload] = useState({
     sellers: { sellers: [] },
@@ -111,7 +121,7 @@ export default function AdminMarketplacePage({ user }) {
                   toast.success("Seller approved.");
                   await loadMarketplaceAdmin();
                 } catch (err) {
-                  toast.error(err?.message || "Could not approve seller.");
+                  toast.error(getAdminMutationError(err, "approving this seller", "Could not approve seller."));
                 }
               }}
               onReject={async (seller) => {
@@ -124,7 +134,7 @@ export default function AdminMarketplacePage({ user }) {
                   toast.success("Seller rejected.");
                   await loadMarketplaceAdmin();
                 } catch (err) {
-                  toast.error(err?.message || "Could not reject seller.");
+                  toast.error(getAdminMutationError(err, "rejecting this seller", "Could not reject seller."));
                 }
               }}
               onSuspend={async (seller) => {
@@ -137,7 +147,7 @@ export default function AdminMarketplacePage({ user }) {
                   toast.success("Seller suspended.");
                   await loadMarketplaceAdmin();
                 } catch (err) {
-                  toast.error(err?.message || "Could not suspend seller.");
+                  toast.error(getAdminMutationError(err, "suspending this seller", "Could not suspend seller."));
                 }
               }}
             />
@@ -158,7 +168,7 @@ export default function AdminMarketplacePage({ user }) {
                   toast.success("Product hidden.");
                   await loadMarketplaceAdmin();
                 } catch (err) {
-                  toast.error(err?.message || "Could not hide product.");
+                  toast.error(getAdminMutationError(err, "hiding this product", "Could not hide product."));
                 }
               }}
               onDelete={async (product) => {
@@ -170,7 +180,7 @@ export default function AdminMarketplacePage({ user }) {
                   toast.success("Product removed.");
                   await loadMarketplaceAdmin();
                 } catch (err) {
-                  toast.error(err?.message || "Could not remove product.");
+                  toast.error(getAdminMutationError(err, "removing this product", "Could not remove product."));
                 }
               }}
             />

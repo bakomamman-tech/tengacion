@@ -55,14 +55,80 @@ const defaultWritingPreferences = {
   language: "English",
 };
 
+const FLOATING_MARGIN = 12;
+const DRAG_CLICK_THRESHOLD = 6;
+const LAUNCHER_POSITION_KEY = "tg_akuso_launcher_position_v1";
+const PANEL_POSITION_KEY = "tg_akuso_panel_position_v1";
+
+const clampNumber = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const positionsMatch = (a, b) =>
+  Boolean(a && b && Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5);
+
+const clampFloatingPosition = (position, size = {}) => {
+  if (typeof window === "undefined") {
+    return position;
+  }
+
+  const width = Math.max(1, Number(size.width) || 1);
+  const height = Math.max(1, Number(size.height) || 1);
+  const viewportWidth = window.innerWidth || document.documentElement?.clientWidth || width;
+  const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || height;
+  const maxX = Math.max(FLOATING_MARGIN, viewportWidth - width - FLOATING_MARGIN);
+  const maxY = Math.max(FLOATING_MARGIN, viewportHeight - height - FLOATING_MARGIN);
+
+  return {
+    x: clampNumber(Number(position?.x) || FLOATING_MARGIN, FLOATING_MARGIN, maxX),
+    y: clampNumber(Number(position?.y) || FLOATING_MARGIN, FLOATING_MARGIN, maxY),
+  };
+};
+
+const readStoredPosition = (key) => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(key) || "null");
+    const x = Number(parsed?.x);
+    const y = Number(parsed?.y);
+    return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+  } catch {
+    return null;
+  }
+};
+
+const persistPosition = (key, position) => {
+  if (typeof window === "undefined" || !position) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      key,
+      JSON.stringify({
+        x: Math.round(Number(position.x) || 0),
+        y: Math.round(Number(position.y) || 0),
+      })
+    );
+  } catch {
+    // Ignore storage failures; dragging should still work for this session.
+  }
+};
+
 export default function TengacionAssistantDock() {
   const { loading: authLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const launcherRef = useRef(null);
+  const launcherWrapRef = useRef(null);
+  const panelRef = useRef(null);
   const composerRef = useRef(null);
   const prevOpenRef = useRef(false);
   const lastQueryRef = useRef("");
+  const launcherDragRef = useRef({ active: false });
+  const panelDragRef = useRef({ active: false });
+  const suppressNextLauncherClickRef = useRef(false);
 
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -77,6 +143,14 @@ export default function TengacionAssistantDock() {
   const [streamingLabel, setStreamingLabel] = useState("");
   const [streamingResponseId, setStreamingResponseId] = useState("");
   const [routeHints, setRouteHints] = useState([]);
+  const [launcherPosition, setLauncherPosition] = useState(() =>
+    readStoredPosition(LAUNCHER_POSITION_KEY)
+  );
+  const [panelPosition, setPanelPosition] = useState(() =>
+    readStoredPosition(PANEL_POSITION_KEY)
+  );
+  const [draggingLauncher, setDraggingLauncher] = useState(false);
+  const [draggingPanel, setDraggingPanel] = useState(false);
 
   const focusComposerSoon = useCallback(() => {
     window.setTimeout(() => {
@@ -121,6 +195,154 @@ export default function TengacionAssistantDock() {
       document.body.style.overflow = previousOverflow;
     };
   }, [pendingAction]);
+
+  useEffect(() => {
+    persistPosition(LAUNCHER_POSITION_KEY, launcherPosition);
+  }, [launcherPosition]);
+
+  useEffect(() => {
+    persistPosition(PANEL_POSITION_KEY, panelPosition);
+  }, [panelPosition]);
+
+  useEffect(() => {
+    const clampStoredPositions = () => {
+      setLauncherPosition((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const rect = launcherWrapRef.current?.getBoundingClientRect();
+        const next = clampFloatingPosition(current, {
+          width: rect?.width || 260,
+          height: rect?.height || 72,
+        });
+        return positionsMatch(current, next) ? current : next;
+      });
+
+      setPanelPosition((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const rect = panelRef.current?.getBoundingClientRect();
+        const next = clampFloatingPosition(current, {
+          width: rect?.width || 480,
+          height: rect?.height || 560,
+        });
+        return positionsMatch(current, next) ? current : next;
+      });
+    };
+
+    clampStoredPositions();
+    window.addEventListener("resize", clampStoredPositions);
+    return () => {
+      window.removeEventListener("resize", clampStoredPositions);
+    };
+  }, [expanded, open]);
+
+  useEffect(() => {
+    if (!draggingLauncher) {
+      return undefined;
+    }
+
+    const onPointerMove = (event) => {
+      const drag = launcherDragRef.current;
+      if (!drag.active) {
+        return;
+      }
+
+      const deltaX = event.clientX - drag.startPointerX;
+      const deltaY = event.clientY - drag.startPointerY;
+      if (
+        Math.abs(deltaX) > DRAG_CLICK_THRESHOLD ||
+        Math.abs(deltaY) > DRAG_CLICK_THRESHOLD
+      ) {
+        drag.moved = true;
+      }
+
+      setLauncherPosition(
+        clampFloatingPosition(
+          {
+            x: drag.startLeft + deltaX,
+            y: drag.startTop + deltaY,
+          },
+          {
+            width: drag.width,
+            height: drag.height,
+          }
+        )
+      );
+    };
+
+    const onPointerEnd = () => {
+      const drag = launcherDragRef.current;
+      if (!drag.active) {
+        return;
+      }
+
+      if (drag.moved) {
+        suppressNextLauncherClickRef.current = true;
+      }
+      drag.active = false;
+      setDraggingLauncher(false);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerEnd);
+    window.addEventListener("pointercancel", onPointerEnd);
+
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerEnd);
+      window.removeEventListener("pointercancel", onPointerEnd);
+    };
+  }, [draggingLauncher]);
+
+  useEffect(() => {
+    if (!draggingPanel) {
+      return undefined;
+    }
+
+    const onPointerMove = (event) => {
+      const drag = panelDragRef.current;
+      if (!drag.active) {
+        return;
+      }
+
+      const deltaX = event.clientX - drag.startPointerX;
+      const deltaY = event.clientY - drag.startPointerY;
+      setPanelPosition(
+        clampFloatingPosition(
+          {
+            x: drag.startLeft + deltaX,
+            y: drag.startTop + deltaY,
+          },
+          {
+            width: drag.width,
+            height: drag.height,
+          }
+        )
+      );
+    };
+
+    const onPointerEnd = () => {
+      if (!panelDragRef.current.active) {
+        return;
+      }
+      panelDragRef.current.active = false;
+      setDraggingPanel(false);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerEnd);
+    window.addEventListener("pointercancel", onPointerEnd);
+
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerEnd);
+      window.removeEventListener("pointercancel", onPointerEnd);
+    };
+  }, [draggingPanel]);
 
   useEffect(() => {
     if (prevOpenRef.current && !open) {
@@ -404,6 +626,11 @@ export default function TengacionAssistantDock() {
   );
 
   const handleLauncherClick = useCallback(() => {
+    if (suppressNextLauncherClickRef.current) {
+      suppressNextLauncherClickRef.current = false;
+      return;
+    }
+
     setOpen((current) => {
       const next = !current;
       if (!next) {
@@ -411,6 +638,82 @@ export default function TengacionAssistantDock() {
       }
       return next;
     });
+  }, []);
+
+  const handleLauncherPointerDown = useCallback((event) => {
+    if (event.button !== undefined && event.button !== 0) {
+      return;
+    }
+
+    const launcherWrap = launcherWrapRef.current;
+    const rect = launcherWrap?.getBoundingClientRect();
+    if (!rect) {
+      return;
+    }
+
+    launcherDragRef.current = {
+      active: true,
+      moved: false,
+      startPointerX: event.clientX,
+      startPointerY: event.clientY,
+      startLeft: rect.left,
+      startTop: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+    setDraggingLauncher(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }, []);
+
+  const handleLauncherPointerEnd = useCallback(() => {
+    const drag = launcherDragRef.current;
+    if (!drag.active) {
+      return;
+    }
+
+    if (drag.moved) {
+      suppressNextLauncherClickRef.current = true;
+    }
+    drag.active = false;
+    setDraggingLauncher(false);
+  }, []);
+
+  const handlePanelHeaderPointerDown = useCallback((event) => {
+    if (event.button !== undefined && event.button !== 0) {
+      return;
+    }
+    if (
+      event.target instanceof Element &&
+      event.target.closest("button, a, input, textarea, select, [role=\"button\"]")
+    ) {
+      return;
+    }
+
+    const rect = panelRef.current?.getBoundingClientRect();
+    if (!rect) {
+      return;
+    }
+
+    panelDragRef.current = {
+      active: true,
+      startPointerX: event.clientX,
+      startPointerY: event.clientY,
+      startLeft: rect.left,
+      startTop: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+    setDraggingPanel(true);
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }, []);
+
+  const handlePanelHeaderPointerEnd = useCallback(() => {
+    if (!panelDragRef.current.active) {
+      return;
+    }
+    panelDragRef.current.active = false;
+    setDraggingPanel(false);
   }, []);
 
   const handleToggleExpanded = useCallback(() => {
@@ -432,20 +735,49 @@ export default function TengacionAssistantDock() {
     return null;
   }
 
+  const launcherStyle = launcherPosition
+    ? {
+        left: `${launcherPosition.x}px`,
+        top: `${launcherPosition.y}px`,
+        right: "auto",
+        bottom: "auto",
+      }
+    : undefined;
+  const panelStyle = panelPosition
+    ? {
+        left: `${panelPosition.x}px`,
+        top: `${panelPosition.y}px`,
+        right: "auto",
+        bottom: "auto",
+      }
+    : undefined;
+
   return (
     <>
       <TengacionAssistantLauncher
         ref={launcherRef}
+        containerRef={launcherWrapRef}
+        containerStyle={launcherStyle}
+        dragging={draggingLauncher}
         open={open}
         hint={proactiveSuggestion}
         onClick={handleLauncherClick}
+        onPointerDown={handleLauncherPointerDown}
+        onPointerUp={handleLauncherPointerEnd}
+        onPointerCancel={handleLauncherPointerEnd}
       />
 
       <TengacionAssistantPanel
+        panelRef={panelRef}
+        panelStyle={panelStyle}
+        dragging={draggingPanel}
         open={open}
         expanded={expanded}
         onMinimize={minimizePanel}
         onClose={closePanel}
+        onHeaderPointerDown={handlePanelHeaderPointerDown}
+        onHeaderPointerUp={handlePanelHeaderPointerEnd}
+        onHeaderPointerCancel={handlePanelHeaderPointerEnd}
         onToggleExpanded={handleToggleExpanded}
         onClearHistory={clearConversation}
         assistantContext={assistantContext}

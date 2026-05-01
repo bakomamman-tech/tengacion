@@ -10,13 +10,27 @@ function SparkIcon() {
 }
 
 const TengacionAssistantLauncher = forwardRef(function TengacionAssistantLauncher(
-  { open = false, hint = "", onClick },
+  {
+    open = false,
+    hint = "",
+    onClick,
+    containerRef,
+    containerStyle,
+    dragging = false,
+    onPointerDown,
+    onPointerUp,
+    onPointerCancel,
+  },
   ref
 ) {
   const prompt = String(hint || "").trim();
 
   return (
-    <div className="tg-assistant-launcher-wrap">
+    <div
+      ref={containerRef}
+      className={`tg-assistant-launcher-wrap${dragging ? " is-dragging" : ""}`}
+      style={containerStyle}
+    >
       {prompt && !open ? (
         <div className="tg-assistant-launcher__hint" aria-hidden="true">
           <span>Try now</span>
@@ -29,6 +43,9 @@ const TengacionAssistantLauncher = forwardRef(function TengacionAssistantLaunche
         type="button"
         className={`tg-assistant-launcher${open ? " is-open" : ""}`}
         onClick={onClick}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={open ? "Close Akuso assistant" : "Open Akuso assistant"}

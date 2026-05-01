@@ -8,6 +8,10 @@
   gap: 0.55rem;
 }
 
+.tg-assistant-launcher-wrap.is-dragging {
+  cursor: grabbing;
+}
+
 .tg-assistant-launcher {
   display: inline-flex;
   align-items: center;
@@ -23,11 +27,17 @@
     0 16px 34px rgba(13, 33, 25, 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.78);
   cursor: pointer;
+  touch-action: none;
   transition:
     transform 180ms ease,
     box-shadow 180ms ease,
     border-color 180ms ease,
     background 180ms ease;
+}
+
+.tg-assistant-launcher-wrap.is-dragging .tg-assistant-launcher {
+  cursor: grabbing;
+  transition: none;
 }
 
 .tg-assistant-launcher:hover {
@@ -54,6 +64,7 @@
   border-radius: 18px;
   background: rgba(255, 255, 252, 0.96);
   box-shadow: 0 14px 32px rgba(13, 33, 25, 0.12);
+  pointer-events: none;
 }
 
 .tg-assistant-launcher__hint span {
@@ -122,6 +133,10 @@
   pointer-events: none;
 }
 
+.tg-assistant-dock.is-dragging {
+  user-select: none;
+}
+
 .tg-assistant-panel {
   width: 100%;
   height: 100%;
@@ -141,6 +156,10 @@
     height 220ms ease,
     transform 220ms ease,
     box-shadow 220ms ease;
+}
+
+.tg-assistant-dock.is-dragging .tg-assistant-panel {
+  transition: none;
 }
 
 .tg-assistant-panel--minimized {
@@ -164,6 +183,12 @@
   gap: 1rem;
   padding: 1.05rem 1.2rem 1rem;
   border-bottom: 1px solid rgba(42, 111, 79, 0.08);
+  cursor: grab;
+  touch-action: none;
+}
+
+.tg-assistant-dock.is-dragging .tg-assistant-panel__header {
+  cursor: grabbing;
 }
 
 .tg-assistant-panel__identity {
@@ -215,6 +240,7 @@
   border: 1px solid rgba(42, 111, 79, 0.08);
   border-radius: 14px;
   background: rgba(42, 111, 79, 0.04);
+  cursor: default;
 }
 
 .tg-assistant-panel__window-control {

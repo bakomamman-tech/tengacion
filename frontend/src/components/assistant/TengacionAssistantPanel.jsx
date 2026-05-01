@@ -119,6 +119,12 @@ export default function TengacionAssistantPanel({
   onFollowUpClick,
   composerDisabled = false,
   composerRef,
+  panelRef,
+  panelStyle,
+  dragging = false,
+  onHeaderPointerDown,
+  onHeaderPointerUp,
+  onHeaderPointerCancel,
 }) {
   const titleId = useId();
   const descriptionId = useId();
@@ -165,15 +171,26 @@ export default function TengacionAssistantPanel({
   }
 
   return createPortal(
-    <div className="tg-assistant-dock" role="presentation">
+    <div
+      className={`tg-assistant-dock${dragging ? " is-dragging" : ""}`}
+      role="presentation"
+      style={panelStyle}
+    >
       <aside
+        ref={panelRef}
         className={`tg-assistant-panel ${
           expanded ? "tg-assistant-panel--expanded" : "tg-assistant-panel--minimized"
         }`}
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
       >
-        <header className="tg-assistant-panel__header">
+        <header
+          className="tg-assistant-panel__header"
+          onPointerDown={onHeaderPointerDown}
+          onPointerUp={onHeaderPointerUp}
+          onPointerCancel={onHeaderPointerCancel}
+          title="Drag Akuso panel"
+        >
           <div className="tg-assistant-panel__identity">
             <span className="tg-assistant-panel__icon" aria-hidden="true">
               <AssistantHeaderIcon />

@@ -47,6 +47,7 @@ function UserActionModal({ open, user, loading, onClose, onBan, onUnban, onForce
         <div className="adminx-list-grid" style={{ marginTop: 12 }}>
           <div><strong>{user.displayName || user.username}</strong> @{user.username}</div>
           <div>{user.email || "-"}</div>
+          <div>Phone: {user.phone || "Not supplied"}</div>
           <div>Role: {user.role}</div>
           <div>Status: {statusLabel(user)}</div>
           <div>Joined: {formatDate(user.createdAt)}</div>

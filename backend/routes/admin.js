@@ -66,6 +66,7 @@ const {
   reconcilePurchase,
 } = require("../services/paymentOpsService");
 const { normalizeMediaValue } = require("../utils/userMedia");
+const { sanitizePhoneValue } = require("../utils/profileFields");
 
 const router = express.Router();
 
@@ -155,6 +156,7 @@ const toAdminUserDTO = (user, requesterRole = "admin") => ({
   email: ["admin", "super_admin"].includes(String(requesterRole || "").toLowerCase())
     ? user.email || ""
     : "",
+  phone: sanitizePhoneValue(user.phone),
   role: user.role || "user",
   isBanned: Boolean(user.isBanned),
   isDeleted: Boolean(user.isDeleted),
@@ -404,7 +406,7 @@ router.get("/users/:id", async (req, res) => {
     }
     const user = await User.findById(req.params.id)
       .select(
-        "_id name username email role lastLogin isActive isBanned banReason bannedAt isDeleted deletedAt forcePasswordReset tokenVersion followers following createdAt updatedAt"
+        "_id name username email phone role lastLogin isActive isBanned banReason bannedAt isDeleted deletedAt forcePasswordReset tokenVersion followers following createdAt updatedAt"
       )
       .lean();
     if (!user) {

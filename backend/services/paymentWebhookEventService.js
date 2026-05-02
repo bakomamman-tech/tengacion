@@ -48,6 +48,26 @@ const reservePaymentWebhookEvent = async ({
   }
 
   const payloadHash = buildPayloadHash({ rawBody, payload });
+  const existing = await PaymentWebhookEvent.findOne({
+    provider: normalizedProvider,
+    eventId: normalizedEventId,
+  });
+  if (existing) {
+    const event = await PaymentWebhookEvent.findOneAndUpdate(
+      {
+        provider: normalizedProvider,
+        eventId: normalizedEventId,
+      },
+      {
+        $inc: { duplicateCount: 1 },
+        $set: { lastSeenAt: new Date() },
+      },
+      { new: true }
+    );
+
+    return { duplicate: true, event: event || existing };
+  }
+
   try {
     const event = await PaymentWebhookEvent.create({
       provider: normalizedProvider,

@@ -13,12 +13,33 @@ process.env.PAYSTACK_SECRET_KEY =
 process.env.PAYSTACK_CALLBACK_URL =
   process.env.PAYSTACK_CALLBACK_URL || "https://tengacion.test/payment/verify";
 process.env.PAYSTACK_CURRENCY = process.env.PAYSTACK_CURRENCY || "NGN";
+process.env.STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "sk_test_tengacion";
+process.env.STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "whsec_tengacion";
+
+const mockStripeCheckoutCreate = jest.fn();
+const mockStripeCheckoutRetrieve = jest.fn();
+const mockStripeConstructEvent = jest.fn();
+
+jest.mock("stripe", () =>
+  jest.fn().mockImplementation(() => ({
+    checkout: {
+      sessions: {
+        create: mockStripeCheckoutCreate,
+        retrieve: mockStripeCheckoutRetrieve,
+      },
+    },
+    webhooks: {
+      constructEvent: mockStripeConstructEvent,
+    },
+  }))
+);
 
 const app = require("../app");
 const Book = require("../models/Book");
 const CreatorProfile = require("../models/CreatorProfile");
 const Entitlement = require("../models/Entitlement");
 const Message = require("../models/Message");
+const PaymentWebhookEvent = require("../models/PaymentWebhookEvent");
 const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const User = require("../models/User");
@@ -78,6 +99,7 @@ const createCreator = async () => {
     onboardingCompleted: true,
     onboardingComplete: true,
     status: "active",
+    subscriptionPriceGlobal: 6.99,
   });
 
   return { user, profile };
@@ -149,6 +171,9 @@ describe("Paystack payments", () => {
   beforeEach(async () => {
     await mongoose.connection.db.dropDatabase();
     global.fetch = originalFetch;
+    mockStripeCheckoutCreate.mockReset();
+    mockStripeCheckoutRetrieve.mockReset();
+    mockStripeConstructEvent.mockReset();
 
     await createAdmin();
     creator = await createCreator();
@@ -160,6 +185,7 @@ describe("Paystack payments", () => {
       title: "Paid Music Track",
       description: "Premium release",
       price: 2500,
+      priceNGN: 2500,
       audioUrl: "https://example.com/full-track.mp3",
       previewUrl: "https://example.com/preview-track.mp3",
       previewStartSec: 30,
@@ -169,6 +195,7 @@ describe("Paystack payments", () => {
       contentType: "track",
       publishedStatus: "published",
       isPublished: true,
+      priceGlobal: 7.5,
     });
 
     book = await Book.create({
@@ -176,6 +203,7 @@ describe("Paystack payments", () => {
       title: "Paid Book",
       description: "Premium ebook",
       price: 1800,
+      priceNGN: 1800,
       contentUrl: "https://example.com/full-book.pdf",
       previewUrl: "https://example.com/preview-book.pdf",
       creatorCategory: "books",
@@ -313,6 +341,148 @@ describe("Paystack payments", () => {
     });
     expect(stored.itemId.toString()).toBe(creator.profile._id.toString());
     expect(stored.creatorId.toString()).toBe(creator.profile._id.toString());
+  });
+
+  test("legacy billing purchase route initializes Stripe checkout for USD", async () => {
+    mockStripeCheckoutCreate.mockImplementation(async (payload) => ({
+      id: "cs_test_legacy_purchase",
+      url: "https://stripe.test/legacy-purchase",
+      amount_total: payload.line_items[0].price_data.unit_amount,
+      currency: "usd",
+      payment_status: "unpaid",
+      status: "open",
+      metadata: payload.metadata,
+    }));
+
+    const response = await request(app)
+      .post("/api/billing/purchase")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        itemType: "music",
+        itemId: track._id.toString(),
+        currency: "USD",
+      })
+      .expect(201);
+
+    expect(response.body).toMatchObject({
+      success: true,
+      kind: "purchase",
+      checkoutUrl: "https://stripe.test/legacy-purchase",
+      authorization_url: "https://stripe.test/legacy-purchase",
+      itemType: "track",
+      itemId: track._id.toString(),
+      amount: 7.5,
+      currency: "USD",
+      currencyMode: "GLOBAL",
+      purchase: expect.objectContaining({
+        provider: "stripe",
+        currency: "USD",
+        status: "pending",
+      }),
+    });
+
+    expect(mockStripeCheckoutCreate).toHaveBeenCalledTimes(1);
+    const stripePayload = mockStripeCheckoutCreate.mock.calls[0][0];
+    expect(stripePayload.line_items[0].price_data).toMatchObject({
+      currency: "usd",
+      unit_amount: 750,
+    });
+    expect(stripePayload.metadata).toMatchObject({
+      buyerId: viewer._id.toString(),
+      creatorId: creator.profile._id.toString(),
+      productId: track._id.toString(),
+      productType: "track",
+      productTitle: track.title,
+      currencyMode: "GLOBAL",
+    });
+
+    const stored = await Purchase.findById(response.body.purchaseId).lean();
+    expect(stored).toMatchObject({
+      itemType: "track",
+      status: "pending",
+      provider: "stripe",
+      amount: 7.5,
+      currency: "USD",
+      providerSessionId: "cs_test_legacy_purchase",
+    });
+  });
+
+  test("Stripe checkout webhook settles access once and records replay deliveries", async () => {
+    mockStripeCheckoutCreate.mockImplementation(async (payload) => ({
+      id: "cs_test_webhook_purchase",
+      url: "https://stripe.test/webhook-purchase",
+      amount_total: payload.line_items[0].price_data.unit_amount,
+      currency: "usd",
+      payment_status: "unpaid",
+      status: "open",
+      metadata: payload.metadata,
+    }));
+
+    const initResponse = await request(app)
+      .post("/api/billing/purchase")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        itemType: "music",
+        itemId: track._id.toString(),
+        currency: "USD",
+      })
+      .expect(201);
+
+    const purchase = await Purchase.findById(initResponse.body.purchaseId).lean();
+    const stripeSession = {
+      id: "cs_test_webhook_purchase",
+      amount_total: 750,
+      currency: "usd",
+      payment_status: "paid",
+      status: "complete",
+      metadata: {
+        providerRef: purchase.providerRef,
+        purchaseId: purchase._id.toString(),
+      },
+    };
+
+    mockStripeConstructEvent.mockReturnValue({
+      id: "evt_checkout_paid_once",
+      type: "checkout.session.completed",
+      data: {
+        object: stripeSession,
+      },
+    });
+    mockStripeCheckoutRetrieve.mockResolvedValue(stripeSession);
+
+    await request(app)
+      .post("/api/payments/stripe/webhook")
+      .set("stripe-signature", "test_signature")
+      .send({ id: "evt_checkout_paid_once" })
+      .expect(200);
+
+    await request(app)
+      .post("/api/payments/stripe/webhook")
+      .set("stripe-signature", "test_signature")
+      .send({ id: "evt_checkout_paid_once" })
+      .expect(200);
+
+    expect(mockStripeConstructEvent).toHaveBeenCalledTimes(2);
+    expect(mockStripeCheckoutRetrieve).toHaveBeenCalledTimes(1);
+
+    const stored = await Purchase.findById(purchase._id).lean();
+    expect(stored).toMatchObject({
+      status: "paid",
+      provider: "stripe",
+      currency: "USD",
+    });
+    expect(await Entitlement.countDocuments({ buyerId: viewer._id, itemType: "track", itemId: track._id })).toBe(1);
+    expect(await WalletEntry.countDocuments({ sourceId: purchase._id })).toBe(2);
+
+    const webhookEvent = await PaymentWebhookEvent.findOne({
+      provider: "stripe",
+      eventId: "evt_checkout_paid_once",
+    }).lean();
+    expect(webhookEvent).toMatchObject({
+      status: "processed",
+      providerRef: purchase.providerRef,
+      duplicateCount: 1,
+    });
   });
 
   test("unauthenticated initialize is rejected", async () => {

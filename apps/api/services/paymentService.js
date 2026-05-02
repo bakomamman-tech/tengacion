@@ -1,22 +1,15 @@
 const ApiError = require("../utils/ApiError");
 const { config } = require("../config/env");
 const {
-  initializePaystackCheckout,
+  initializeCheckout,
+  resolveCheckoutCurrency,
+  selectProviderForCurrency,
   toLegacyCheckoutPayload,
   toPurchasePayload,
 } = require("../../../backend/services/paymentOpsService");
 
-const CURRENCY_MAP = {
-  NGN: "paystack",
-  USD: "stripe",
-};
-
-const getProviderName = (currency) => {
-  const normalizedCurrency = String(currency || config.PAYSTACK_CURRENCY || "NGN")
-    .trim()
-    .toUpperCase();
-  return CURRENCY_MAP[normalizedCurrency] || "stripe";
-};
+const getProviderName = ({ currency = "", currencyMode = "" } = {}) =>
+  selectProviderForCurrency(resolveCheckoutCurrency({ currency, currencyMode }));
 
 const normalizeCheckoutPayload = (payload = {}) => {
   const itemType = String(
@@ -25,6 +18,9 @@ const normalizeCheckoutPayload = (payload = {}) => {
   const itemId = String(
     payload.productId || payload.itemId || payload.contentId || payload.creatorId || ""
   ).trim();
+  const currency = String(payload.currency || config.PAYSTACK_CURRENCY || "NGN")
+    .trim()
+    .toUpperCase();
 
   return {
     req: payload.req || null,
@@ -32,22 +28,13 @@ const normalizeCheckoutPayload = (payload = {}) => {
     productType: itemType,
     productId: itemId,
     returnUrl: payload.returnUrl || payload.callbackUrl || "",
-    currencyMode: payload.currencyMode || "NG",
+    currency,
+    currencyMode: payload.currencyMode || (currency === "USD" ? "GLOBAL" : "NG"),
     actorRole: payload.actorRole || "",
   };
 };
 
-const assertPaystackSupported = (payload = {}) => {
-  const provider = PaymentService.selectProvider(payload.currency);
-  if (provider !== "paystack") {
-    throw ApiError.serviceUnavailable(
-      `${provider} checkout is not available on this commerce path yet`
-    );
-  }
-};
-
-const createPaystackCheckout = async (payload = {}) => {
-  assertPaystackSupported(payload);
+const createProviderCheckout = async (payload = {}) => {
   const checkoutPayload = normalizeCheckoutPayload(payload);
   if (!checkoutPayload.userId) {
     throw ApiError.badRequest("Authenticated user is required for checkout");
@@ -56,7 +43,7 @@ const createPaystackCheckout = async (payload = {}) => {
     throw ApiError.badRequest("productType and productId are required");
   }
 
-  const checkout = await initializePaystackCheckout(checkoutPayload);
+  const checkout = await initializeCheckout(checkoutPayload);
   return {
     purchase: toPurchasePayload(checkout.purchase),
     checkout: toLegacyCheckoutPayload({
@@ -70,16 +57,19 @@ const createPaystackCheckout = async (payload = {}) => {
 };
 
 const PaymentService = {
-  selectProvider(currency) {
-    return getProviderName(currency);
+  selectProvider(currency, currencyMode = "") {
+    if (typeof currency === "object" && currency !== null) {
+      return getProviderName(currency);
+    }
+    return getProviderName({ currency, currencyMode });
   },
 
   async createPaymentIntent(payload = {}) {
-    return createPaystackCheckout(payload);
+    return createProviderCheckout(payload);
   },
 
   async createSubscription(payload = {}) {
-    return createPaystackCheckout({
+    return createProviderCheckout({
       ...payload,
       productType: "subscription",
       itemType: "subscription",

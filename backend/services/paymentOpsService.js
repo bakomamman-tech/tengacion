@@ -1006,9 +1006,10 @@ const updatePurchaseStatus = async (purchase, status) =>
     { new: true }
   );
 
-const reconcilePurchase = async ({
+const reconcileVerifiedPurchase = async ({
   req = null,
   purchase,
+  verified,
   actorUserId = "",
   actorRole = "",
   source = "verify",
@@ -1016,10 +1017,6 @@ const reconcilePurchase = async ({
 } = {}) => {
   if (!purchase?._id) {
     throw createServiceError("Payment not found", 404);
-  }
-
-  if (purchase.provider !== "paystack") {
-    throw createServiceError("Unsupported payment provider", 400);
   }
 
   if (purchase.status === "refunded") {
@@ -1049,7 +1046,6 @@ const reconcilePurchase = async ({
     }).catch(() => null);
   }
 
-  const verified = await verifyTransaction(purchase.providerRef);
   const match = verifyGatewayMatch({ purchase, verified });
 
   if (!match.ok) {
@@ -1188,6 +1184,418 @@ const reconcilePurchase = async ({
     walletResult: sideEffects.walletResult,
     alertResult: sideEffects.alertResult,
   };
+};
+
+const reconcilePurchase = async ({
+  req = null,
+  purchase,
+  actorUserId = "",
+  actorRole = "",
+  source = "verify",
+  reason = "",
+} = {}) => {
+  if (!purchase?._id) {
+    throw createServiceError("Payment not found", 404);
+  }
+
+  if (purchase.provider !== "paystack") {
+    throw createServiceError("Unsupported payment provider", 400);
+  }
+
+  if (purchase.status === "refunded") {
+    throw createServiceError("Refunded purchases cannot be reconciled automatically", 400);
+  }
+
+  const verified = await verifyTransaction(purchase.providerRef);
+  return reconcileVerifiedPurchase({
+    req,
+    purchase,
+    verified,
+    actorUserId,
+    actorRole,
+    source,
+    reason,
+  });
+};
+
+const logDuplicateWebhookEvent = async ({
+  purchase = null,
+  provider = "",
+  eventId = "",
+  eventType = "",
+} = {}) => {
+  if (!purchase?._id) {
+    return null;
+  }
+
+  return logPurchaseLifecycleEvent({
+    type: "purchase_webhook_duplicate",
+    purchase,
+    actorRole: "system",
+    metadata: {
+      source: "webhook",
+      provider,
+      eventId,
+      eventType,
+    },
+  }).catch(() => null);
+};
+
+const handlePaystackWebhookEvent = async ({
+  req = null,
+  rawBody = "",
+  signature = "",
+  event = null,
+} = {}) => {
+  if (!validateWebhookSignature({ rawBody, signature })) {
+    throw createServiceError("Invalid Paystack signature", 401);
+  }
+
+  const payload = event || {};
+  const eventType = String(payload?.event || "").trim();
+  const reference = String(payload?.data?.reference || "").trim();
+  const eventId = buildPaystackEventId({ event: payload, rawBody });
+  const reservation = await reservePaymentWebhookEvent({
+    provider: "paystack",
+    eventId,
+    eventType,
+    providerRef: reference,
+    rawBody,
+    payload,
+    payloadSummary: {
+      reference,
+      gatewayId: String(payload?.data?.id || payload?.id || ""),
+      amount: Number(payload?.data?.amount || 0),
+      currency: String(payload?.data?.currency || "").trim().toUpperCase(),
+    },
+  });
+
+  if (reservation.duplicate && reservation.event?.status !== "failed") {
+    if (reference) {
+      const purchase = await Purchase.findOne({ providerRef: reference }).catch(() => null);
+      await logDuplicateWebhookEvent({
+        purchase,
+        provider: "paystack",
+        eventId,
+        eventType,
+      });
+    }
+    return { received: true, duplicate: true };
+  }
+
+  if (eventType !== "charge.success" || !reference) {
+    await markPaymentWebhookEvent({
+      event: reservation.event,
+      status: "skipped",
+      providerRef: reference,
+    });
+    return { received: true, skipped: true };
+  }
+
+  const purchase = await Purchase.findOne({ providerRef: reference });
+  if (!purchase) {
+    await markPaymentWebhookEvent({
+      event: reservation.event,
+      status: "skipped",
+      providerRef: reference,
+    });
+    return { received: true, skipped: true };
+  }
+
+  try {
+    const result = await reconcilePurchase({
+      req,
+      purchase,
+      actorUserId: toIdString(purchase.userId),
+      actorRole: "system",
+      source: "webhook",
+      reason: eventType,
+    });
+
+    await markPaymentWebhookEvent({
+      event: reservation.event,
+      status: "processed",
+      purchaseId: purchase._id,
+      providerRef: reference,
+    });
+
+    return { received: true, ...result };
+  } catch (error) {
+    await markPaymentWebhookEvent({
+      event: reservation.event,
+      status: "failed",
+      purchaseId: purchase._id,
+      providerRef: reference,
+      errorMessage: error.message || "Paystack webhook processing failed",
+    });
+    throw error;
+  }
+};
+
+const STRIPE_SUCCESS_WEBHOOK_EVENTS = new Set([
+  "checkout.session.completed",
+  "checkout.session.async_payment_succeeded",
+]);
+
+const STRIPE_FAILURE_WEBHOOK_EVENTS = new Set([
+  "checkout.session.async_payment_failed",
+  "checkout.session.expired",
+]);
+
+const getStripeSessionMetadata = (session = {}) =>
+  session?.metadata || session?.raw?.metadata || {};
+
+const getStripeSessionId = (session = {}) =>
+  String(session?.id || session?.raw?.id || "").trim();
+
+const getStripeProviderRef = (session = {}) => {
+  const metadata = getStripeSessionMetadata(session);
+  return String(metadata.providerRef || session?.reference || "").trim();
+};
+
+const getStripePurchaseId = (session = {}) => {
+  const metadata = getStripeSessionMetadata(session);
+  return String(metadata.purchaseId || session?.client_reference_id || session?.raw?.client_reference_id || "").trim();
+};
+
+const findStripePurchaseForSession = async (session = {}, fallbackSession = null) => {
+  const sessions = [session, fallbackSession].filter(Boolean);
+
+  for (const candidate of sessions) {
+    const purchaseId = getStripePurchaseId(candidate);
+    if (purchaseId) {
+      const purchase = await Purchase.findById(purchaseId).catch(() => null);
+      if (purchase) {
+        return purchase;
+      }
+    }
+  }
+
+  for (const candidate of sessions) {
+    const providerRef = getStripeProviderRef(candidate);
+    if (providerRef) {
+      const purchase = await Purchase.findOne({ providerRef }).catch(() => null);
+      if (purchase) {
+        return purchase;
+      }
+    }
+  }
+
+  for (const candidate of sessions) {
+    const sessionId = getStripeSessionId(candidate);
+    if (sessionId) {
+      const purchase = await Purchase.findOne({
+        provider: "stripe",
+        providerSessionId: sessionId,
+      }).catch(() => null);
+      if (purchase) {
+        return purchase;
+      }
+    }
+  }
+
+  return null;
+};
+
+const normalizeStripeSessionForVerification = (session = {}) => {
+  const raw = session?.raw || session || {};
+  const paymentStatus = String(session?.payment_status || raw.payment_status || "").trim().toLowerCase();
+  const checkoutStatus = String(session?.status || raw.status || "").trim().toLowerCase();
+  const amountMinor = Number(session?.amountMinor ?? raw.amount_total ?? 0) || 0;
+
+  let status = "pending";
+  if (paymentStatus === "paid") {
+    status = "success";
+  } else if (
+    ["failed", "canceled", "cancelled"].includes(paymentStatus) ||
+    checkoutStatus === "expired"
+  ) {
+    status = "failed";
+  }
+
+  return {
+    status,
+    amountKobo: amountMinor,
+    amountMinor,
+    currency: String(session?.currency || raw.currency || "USD").trim().toUpperCase() || "USD",
+    raw,
+  };
+};
+
+const handleStripeFailedCheckout = async ({
+  purchase,
+  eventType = "",
+  providerRef = "",
+} = {}) => {
+  if (!purchase?._id) {
+    return { purchase: null, success: false, skipped: true };
+  }
+
+  const currentStatus = String(purchase.status || "").trim().toLowerCase();
+  if (["paid", "refunded"].includes(currentStatus)) {
+    return { purchase, success: false, skipped: true };
+  }
+
+  const updatedPurchase = await updatePurchaseStatus(purchase, "failed").catch(() => purchase);
+  await logPurchaseLifecycleEvent({
+    type: "purchase_webhook_failed",
+    purchase: updatedPurchase || purchase,
+    userId: toIdString(purchase.userId),
+    actorRole: "system",
+    metadata: {
+      source: "webhook",
+      provider: "stripe",
+      eventType,
+      reason: "Stripe checkout did not complete",
+    },
+  }).catch(() => null);
+
+  await logAnalyticsEvent({
+    type: "purchase_failed",
+    userId: toIdString(purchase.userId),
+    actorRole: "system",
+    targetId: purchase._id,
+    targetType: "purchase",
+    contentType: purchase.itemType,
+    metadata: {
+      creatorId: toIdString(purchase.creatorId),
+      itemId: toIdString(purchase.itemId),
+      amount: Number(purchase.amount || 0),
+      provider: "stripe",
+      providerRef,
+      reason: "Stripe checkout did not complete",
+    },
+  }).catch(() => null);
+
+  return {
+    purchase: updatedPurchase || purchase,
+    success: false,
+    accessGranted: false,
+    reason: "Stripe checkout did not complete",
+  };
+};
+
+const constructStripeEventSafely = ({ rawBody = "", signature = "" } = {}) => {
+  try {
+    return constructStripeWebhookEvent({ rawBody, signature });
+  } catch (error) {
+    const status = /signature/i.test(error?.message || "") ? 401 : 500;
+    throw createServiceError(error?.message || "Invalid Stripe webhook signature", status);
+  }
+};
+
+const handleStripeWebhookEvent = async ({
+  req = null,
+  rawBody = "",
+  signature = "",
+} = {}) => {
+  const event = constructStripeEventSafely({ rawBody, signature });
+  const eventType = String(event?.type || "").trim();
+  const eventSession = event?.data?.object || {};
+  const providerRef = getStripeProviderRef(eventSession);
+  const eventId = buildStripeEventId(event);
+  const reservation = await reservePaymentWebhookEvent({
+    provider: "stripe",
+    eventId,
+    eventType,
+    providerRef,
+    rawBody,
+    payload: event,
+    payloadSummary: {
+      sessionId: getStripeSessionId(eventSession),
+      providerRef,
+      paymentStatus: String(eventSession?.payment_status || "").trim(),
+      checkoutStatus: String(eventSession?.status || "").trim(),
+    },
+  });
+
+  if (reservation.duplicate && reservation.event?.status !== "failed") {
+    const purchase = await findStripePurchaseForSession(eventSession).catch(() => null);
+    await logDuplicateWebhookEvent({
+      purchase,
+      provider: "stripe",
+      eventId,
+      eventType,
+    });
+    return { received: true, duplicate: true };
+  }
+
+  if (!STRIPE_SUCCESS_WEBHOOK_EVENTS.has(eventType) && !STRIPE_FAILURE_WEBHOOK_EVENTS.has(eventType)) {
+    await markPaymentWebhookEvent({
+      event: reservation.event,
+      status: "skipped",
+      providerRef,
+    });
+    return { received: true, skipped: true };
+  }
+
+  try {
+    if (STRIPE_FAILURE_WEBHOOK_EVENTS.has(eventType)) {
+      const purchase = await findStripePurchaseForSession(eventSession);
+      if (!purchase) {
+        await markPaymentWebhookEvent({
+          event: reservation.event,
+          status: "skipped",
+          providerRef,
+        });
+        return { received: true, skipped: true };
+      }
+
+      const result = await handleStripeFailedCheckout({
+        purchase,
+        eventType,
+        providerRef: providerRef || purchase.providerRef,
+      });
+      await markPaymentWebhookEvent({
+        event: reservation.event,
+        status: "processed",
+        purchaseId: purchase._id,
+        providerRef: providerRef || purchase.providerRef,
+      });
+      return { received: true, ...result };
+    }
+
+    const sessionId = getStripeSessionId(eventSession);
+    const verifiedSession = sessionId
+      ? await retrieveCheckoutSession(sessionId)
+      : eventSession;
+    const purchase = await findStripePurchaseForSession(verifiedSession, eventSession);
+    if (!purchase) {
+      await markPaymentWebhookEvent({
+        event: reservation.event,
+        status: "skipped",
+        providerRef: providerRef || getStripeProviderRef(verifiedSession),
+      });
+      return { received: true, skipped: true };
+    }
+
+    const result = await reconcileVerifiedPurchase({
+      req,
+      purchase,
+      verified: normalizeStripeSessionForVerification(verifiedSession),
+      actorUserId: toIdString(purchase.userId),
+      actorRole: "system",
+      source: "webhook",
+      reason: eventType,
+    });
+
+    await markPaymentWebhookEvent({
+      event: reservation.event,
+      status: "processed",
+      purchaseId: purchase._id,
+      providerRef: purchase.providerRef,
+    });
+
+    return { received: true, ...result };
+  } catch (error) {
+    await markPaymentWebhookEvent({
+      event: reservation.event,
+      status: "failed",
+      providerRef,
+      errorMessage: error.message || "Stripe webhook processing failed",
+    });
+    throw error;
+  }
 };
 
 const loadPurchaseOperationalArtifacts = async (purchase) => {
@@ -1410,12 +1818,18 @@ module.exports = {
   buildTimelineEntryFromEvent,
   buildTransactionListItem,
   createServiceError,
+  handlePaystackWebhookEvent,
+  handleStripeWebhookEvent,
+  initializeCheckout,
   refundPurchase,
   initializePaystackCheckout,
+  initializeStripeCheckout,
   loadPurchaseOperationalArtifacts,
   normalizeType,
   reconcilePurchase,
+  resolveCheckoutCurrency,
   resolveCheckoutTarget,
+  selectProviderForCurrency,
   toLegacyCheckoutPayload,
   toPurchasePayload,
   validateWebhookSignature,

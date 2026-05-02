@@ -102,8 +102,9 @@ app.use(
     verify: (req, _res, buf) => {
       const normalizedUrl = String(req.originalUrl || "").split("?")[0];
       if (
-        normalizedUrl === "/api/payments/webhook/paystack" ||
+        normalizedUrl.startsWith("/api/payments/webhook/") ||
         normalizedUrl === "/api/payments/paystack/webhook" ||
+        normalizedUrl === "/api/payments/stripe/webhook" ||
         normalizedUrl === "/api/marketplace/orders/webhook/paystack"
       ) {
         req.rawBody = buf.toString("utf8");

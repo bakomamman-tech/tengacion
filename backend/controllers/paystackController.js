@@ -1,11 +1,37 @@
 const asyncHandler = require("../middleware/asyncHandler");
 const Purchase = require("../models/Purchase");
 const {
+  handlePaystackWebhookEvent,
+  handleStripeWebhookEvent,
+  initializeCheckout,
   initializePaystackCheckout,
   reconcilePurchase,
+  toLegacyCheckoutPayload,
   toPurchasePayload,
-  validateWebhookSignature,
 } = require("../services/paymentOpsService");
+
+const buildCheckoutPayload = (checkout, currencyMode = "") => {
+  const fallbackCurrencyMode =
+    String(checkout.purchase?.currency || "").trim().toUpperCase() === "USD"
+      ? "GLOBAL"
+      : "NG";
+  const resolvedCurrencyMode = currencyMode || fallbackCurrencyMode;
+
+  return {
+    purchase: toPurchasePayload(checkout.purchase),
+    checkout: toLegacyCheckoutPayload({
+      purchase: checkout.purchase,
+      payment: checkout.payment,
+      currencyMode: resolvedCurrencyMode,
+    }),
+    authorization_url: checkout.payment.authorization_url,
+    checkoutUrl: checkout.payment.authorization_url,
+    access_code: checkout.payment.access_code || "",
+    reference: checkout.purchase.providerRef,
+    provider: checkout.purchase.provider || "",
+    providerSessionId: checkout.purchase.providerSessionId || checkout.payment.id || "",
+  };
+};
 
 exports.initializePaystackPayment = asyncHandler(async (req, res) => {
   const productType = String(req.body?.productType || req.body?.itemType || "").trim();
@@ -30,6 +56,27 @@ exports.initializePaystackPayment = asyncHandler(async (req, res) => {
     access_code: checkout.payment.access_code || "",
     reference: checkout.purchase.providerRef,
   });
+});
+
+exports.initializePaymentCheckout = asyncHandler(async (req, res) => {
+  const productType = String(req.body?.productType || req.body?.itemType || "").trim();
+  const productId = String(req.body?.productId || req.body?.itemId || "").trim();
+  if (!productType || !productId) {
+    return res.status(400).json({ error: "productType and productId are required" });
+  }
+
+  const checkout = await initializeCheckout({
+    req,
+    userId: req.user.id,
+    productType,
+    productId,
+    returnUrl: req.body?.returnUrl,
+    currency: req.body?.currency,
+    currencyMode: req.body?.currencyMode,
+    actorRole: req.user?.role || "user",
+  });
+
+  return res.status(201).json(buildCheckoutPayload(checkout, req.body?.currencyMode));
 });
 
 exports.verifyPaystackPayment = asyncHandler(async (req, res) => {
@@ -84,33 +131,24 @@ exports.verifyPaystackPayment = asyncHandler(async (req, res) => {
 exports.handlePaystackWebhook = asyncHandler(async (req, res) => {
   const signature = String(req.headers["x-paystack-signature"] || "");
   const rawBody = String(req.rawBody || "");
-
-  if (!validateWebhookSignature({ rawBody, signature })) {
-    return res.status(401).json({ error: "Invalid Paystack signature" });
-  }
-
-  const event = req.body || {};
-  if (String(event?.event || "").trim() !== "charge.success") {
-    return res.status(200).json({ received: true });
-  }
-
-  const reference = String(event?.data?.reference || "").trim();
-  if (!reference) {
-    return res.status(200).json({ received: true });
-  }
-
-  const purchase = await Purchase.findOne({ providerRef: reference });
-  if (!purchase) {
-    return res.status(200).json({ received: true });
-  }
-
-  await reconcilePurchase({
+  const result = await handlePaystackWebhookEvent({
     req,
-    purchase,
-    actorUserId: purchase.userId?.toString?.() || "",
-    actorRole: "system",
-    source: "webhook",
+    rawBody,
+    signature,
+    event: req.body || {},
   });
 
-  return res.status(200).json({ received: true });
+  return res.status(200).json({ received: true, duplicate: Boolean(result.duplicate) });
+});
+
+exports.handleStripeWebhook = asyncHandler(async (req, res) => {
+  const signature = String(req.headers["stripe-signature"] || "");
+  const rawBody = String(req.rawBody || "");
+  const result = await handleStripeWebhookEvent({
+    req,
+    rawBody,
+    signature,
+  });
+
+  return res.status(200).json({ received: true, duplicate: Boolean(result.duplicate) });
 });

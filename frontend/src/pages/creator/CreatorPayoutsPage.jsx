@@ -11,6 +11,8 @@ export default function CreatorPayoutsPage() {
   const wallet = dashboard.wallet || {};
   const summary = wallet.summary || dashboard.summary || {};
   const payoutReadiness = wallet.payoutReadiness || { ready: false, checks: [] };
+  const payoutStatusLabel =
+    payoutReadiness.label || (payoutReadiness.ready ? "Ready" : "Needs attention");
   const recentEntries = Array.isArray(wallet.recentEntries)
     ? wallet.recentEntries.slice(0, 8)
     : [];
@@ -28,7 +30,7 @@ export default function CreatorPayoutsPage() {
         <div className="creator-stack-list">
           <div className="creator-stack-row">
             <span>Account number</span>
-            <strong>{creatorProfile.accountNumber || "Not set"}</strong>
+            <strong>{payoutReadiness.accountNumberMasked || "Not set"}</strong>
           </div>
           <div className="creator-stack-row">
             <span>Country</span>
@@ -44,8 +46,14 @@ export default function CreatorPayoutsPage() {
           </div>
           <div className="creator-stack-row">
             <span>Payout status</span>
-            <strong>{payoutReadiness.ready ? "Ready" : "Needs attention"}</strong>
+            <strong>{payoutStatusLabel}</strong>
           </div>
+          {payoutReadiness.nextStep ? (
+            <div className="creator-stack-row">
+              <span>Next step</span>
+              <strong>{payoutReadiness.nextStep}</strong>
+            </div>
+          ) : null}
         </div>
 
         <div className="creator-stack-list">

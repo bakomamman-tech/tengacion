@@ -1,18 +1,35 @@
-const ApiError = require("../utils/ApiError");
 const paymentService = require("../services/paymentService");
 
-const notImplemented = (label, currency) => {
-  const provider = paymentService.selectProvider(currency);
-  throw ApiError.serviceUnavailable(`${label} via ${provider} is not implemented yet`, {
-    provider,
-    currency,
-  });
+const buildCheckoutResponse = ({ result, kind }) => {
+  const checkout = result.checkout || {};
+  return {
+    success: true,
+    kind,
+    purchase: result.purchase,
+    payment: result.payment || {},
+    ...checkout,
+  };
 };
 
 exports.subscribe = async (req, res) => {
-  notImplemented("Billing subscribe", req.body.currency);
+  const result = await paymentService.createSubscription({
+    ...req.body,
+    req,
+    userId: req.user.id,
+    actorRole: req.user?.role || "user",
+    productId: req.body?.creatorId || req.body?.itemId || req.body?.productId,
+  });
+
+  return res.status(201).json(buildCheckoutResponse({ result, kind: "subscription" }));
 };
 
 exports.purchase = async (req, res) => {
-  notImplemented("Billing purchase", req.body.currency);
+  const result = await paymentService.createPaymentIntent({
+    ...req.body,
+    req,
+    userId: req.user.id,
+    actorRole: req.user?.role || "user",
+  });
+
+  return res.status(201).json(buildCheckoutResponse({ result, kind: "purchase" }));
 };

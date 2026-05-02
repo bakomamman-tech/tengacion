@@ -243,6 +243,78 @@ describe("Paystack payments", () => {
     expect(await Entitlement.countDocuments({ buyerId: viewer._id, itemType: "track", itemId: track._id })).toBe(0);
   });
 
+  test("legacy billing purchase route initializes the real Paystack checkout", async () => {
+    mockPaystackResponse({
+      authorization_url: "https://paystack.test/legacy-purchase",
+      access_code: "ACCESS_LEGACY_PURCHASE",
+      reference: "TGN_LEGACY_PURCHASE",
+    });
+
+    const response = await request(app)
+      .post("/api/billing/purchase")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        itemType: "music",
+        itemId: track._id.toString(),
+      })
+      .expect(201);
+
+    expect(response.body).toMatchObject({
+      success: true,
+      kind: "purchase",
+      checkoutUrl: "https://paystack.test/legacy-purchase",
+      authorization_url: "https://paystack.test/legacy-purchase",
+      access_code: "ACCESS_LEGACY_PURCHASE",
+      itemType: "track",
+      itemId: track._id.toString(),
+      amount: 2500,
+      currency: "NGN",
+    });
+
+    const stored = await Purchase.findById(response.body.purchaseId).lean();
+    expect(stored).toMatchObject({
+      itemType: "track",
+      status: "pending",
+      provider: "paystack",
+      amount: 2500,
+    });
+  });
+
+  test("legacy billing subscribe route initializes creator membership checkout", async () => {
+    mockPaystackResponse({
+      authorization_url: "https://paystack.test/legacy-subscribe",
+      access_code: "ACCESS_LEGACY_SUBSCRIBE",
+      reference: "TGN_LEGACY_SUBSCRIBE",
+    });
+
+    const response = await request(app)
+      .post("/api/billing/subscribe")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        creatorId: creator.profile._id.toString(),
+      })
+      .expect(201);
+
+    expect(response.body).toMatchObject({
+      success: true,
+      kind: "subscription",
+      checkoutUrl: "https://paystack.test/legacy-subscribe",
+      itemType: "subscription",
+      itemId: creator.profile._id.toString(),
+      amount: 2000,
+      currency: "NGN",
+    });
+
+    const stored = await Purchase.findById(response.body.purchaseId).lean();
+    expect(stored).toMatchObject({
+      itemType: "subscription",
+      status: "pending",
+      billingInterval: "monthly",
+    });
+    expect(stored.itemId.toString()).toBe(creator.profile._id.toString());
+    expect(stored.creatorId.toString()).toBe(creator.profile._id.toString());
+  });
+
   test("unauthenticated initialize is rejected", async () => {
     await request(app)
       .post("/api/payments/paystack/initialize")

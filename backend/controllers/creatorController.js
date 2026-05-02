@@ -6,6 +6,7 @@ const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const User = require("../models/User");
 const Video = require("../models/Video");
+const { buildPayoutReadiness } = require("../services/payoutReadinessService");
 const { buildCreatorWalletSnapshot } = require("../services/walletService");
 const {
   normalizeBooksProfile,
@@ -273,54 +274,6 @@ const resolveCreatorTypes = ({ profile, content }) => {
     return storedTypes;
   }
   return inferCreatorTypesFromContent(content);
-};
-
-const maskAccountNumber = (value = "") => {
-  const normalized = String(value || "").replace(/\s+/g, "");
-  if (!normalized) {
-    return "";
-  }
-  if (normalized.length <= 4) {
-    return normalized;
-  }
-  return `${"*".repeat(normalized.length - 4)}${normalized.slice(-4)}`;
-};
-
-const buildPayoutReadiness = (profile = {}) => {
-  const accountNumber = String(profile?.accountNumber || "").trim();
-  const country = String(profile?.country || "").trim();
-  const countryOfResidence = String(profile?.countryOfResidence || "").trim();
-  const active = String(profile?.status || "active").trim().toLowerCase() === "active";
-  const checks = [
-    {
-      key: "account_number",
-      label: "Account number",
-      complete: Boolean(accountNumber),
-    },
-    {
-      key: "country",
-      label: "Country",
-      complete: Boolean(country),
-    },
-    {
-      key: "country_of_residence",
-      label: "Country of residence",
-      complete: Boolean(countryOfResidence),
-    },
-    {
-      key: "creator_status",
-      label: "Creator status",
-      complete: active,
-    },
-  ];
-
-  return {
-    ready: checks.every((entry) => entry.complete),
-    checks,
-    accountNumberMasked: maskAccountNumber(accountNumber),
-    country,
-    countryOfResidence,
-  };
 };
 
 const buildRecentActivity = ({

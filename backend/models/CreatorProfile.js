@@ -225,6 +225,11 @@ const CreatorProfileSchema = new mongoose.Schema(
       default: 2000,
       min: 0,
     },
+    subscriptionPriceGlobal: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   {
     timestamps: true,

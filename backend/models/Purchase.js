@@ -44,8 +44,8 @@ const PurchaseSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "abandoned", "paid", "failed", "refunded"],
-      default: "pending",
+      enum: ["initiated", "pending", "abandoned", "paid", "failed", "refunded"],
+      default: "initiated",
       index: true,
     },
     provider: {
@@ -59,6 +59,12 @@ const PurchaseSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      trim: true,
+      index: true,
+    },
+    providerSessionId: {
+      type: String,
+      default: "",
       trim: true,
       index: true,
     },
@@ -103,5 +109,6 @@ const PurchaseSchema = new mongoose.Schema(
 
 PurchaseSchema.index({ userId: 1, itemType: 1, itemId: 1, status: 1 });
 PurchaseSchema.index({ status: 1, updatedAt: 1 });
+PurchaseSchema.index({ provider: 1, providerSessionId: 1 });
 
 module.exports = mongoose.model("Purchase", PurchaseSchema);

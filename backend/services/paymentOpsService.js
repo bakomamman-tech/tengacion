@@ -15,11 +15,23 @@ const {
   validateWebhookSignature,
   verifyTransaction,
 } = require("./paystackService");
+const {
+  constructWebhookEvent: constructStripeWebhookEvent,
+  createCheckoutSession,
+  generateStripeReference,
+  retrieveCheckoutSession,
+} = require("./stripeService");
 const { sendCreatorPurchaseMessengerAlert } = require("./creatorSalesMessengerService");
 const {
   recordPurchaseRefundEntries,
   recordPurchaseSettlementEntries,
 } = require("./walletService");
+const {
+  buildPaystackEventId,
+  buildStripeEventId,
+  markPaymentWebhookEvent,
+  reservePaymentWebhookEvent,
+} = require("./paymentWebhookEventService");
 const { logAnalyticsEvent } = require("./analyticsService");
 const {
   buildPurchaseLifecyclePayload,
@@ -44,6 +56,7 @@ const TIMELINE_EVENT_META = {
   purchase_verification_failed: { label: "Verification failed", tone: "danger" },
   purchase_verification_succeeded: { label: "Payment verified", tone: "success" },
   purchase_webhook_received: { label: "Webhook received", tone: "info" },
+  purchase_webhook_duplicate: { label: "Duplicate webhook ignored", tone: "info" },
   purchase_webhook_pending: { label: "Webhook left payment pending", tone: "warn" },
   purchase_webhook_failed: { label: "Webhook verification failed", tone: "danger" },
   purchase_webhook_settled: { label: "Webhook settled purchase", tone: "success" },
@@ -109,6 +122,7 @@ const toPurchasePayload = (purchase) => ({
   status: purchase?.status || "pending",
   provider: purchase?.provider || "paystack",
   providerRef: purchase?.providerRef || "",
+  providerSessionId: purchase?.providerSessionId || "",
   billingInterval: purchase?.billingInterval || "one_time",
   accessExpiresAt: purchase?.accessExpiresAt || null,
   cancelAtPeriodEnd: Boolean(purchase?.cancelAtPeriodEnd),
@@ -130,6 +144,8 @@ const toLegacyCheckoutPayload = ({
   checkoutUrl: payment?.authorization_url || "",
   authorization_url: payment?.authorization_url || "",
   access_code: payment?.access_code || "",
+  sessionId: payment?.id || payment?.session_id || purchase?.providerSessionId || "",
+  providerSessionId: payment?.id || payment?.session_id || purchase?.providerSessionId || "",
   reference: purchase?.providerRef || payment?.reference || "",
   itemType: purchase?.itemType || "",
   itemId: toIdString(purchase?.itemId),
@@ -158,7 +174,7 @@ const isPublishablePayload = (payload = {}) => {
   return true;
 };
 
-const validatePurchasableItem = (item) => {
+const validatePurchasableItem = (item, { currency = "NGN" } = {}) => {
   if (!item) {
     return "Item not found";
   }
@@ -168,8 +184,9 @@ const validatePurchasableItem = (item) => {
   if (!isPublishablePayload(item.payload)) {
     return "Item is not published";
   }
-  if (!Number.isFinite(Number(item.price)) || Number(item.price) <= 0) {
-    return "Item is free and does not require payment";
+  const amount = resolveItemAmountForCurrency(item, currency);
+  if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+    return buildMissingCurrencyPriceMessage(currency);
   }
   return "";
 };
@@ -181,6 +198,39 @@ const getReturnUrl = (value = "") => {
   }
   return String(config.PAYSTACK_CALLBACK_URL || "").trim();
 };
+
+const normalizeCurrency = (value = "NGN") =>
+  String(value || "NGN").trim().toUpperCase() || "NGN";
+
+const normalizeCurrencyMode = (value = "") =>
+  String(value || "").trim().toUpperCase() === "GLOBAL" ? "GLOBAL" : "NG";
+
+const resolveCheckoutCurrency = ({ currency = "", currencyMode = "" } = {}) => {
+  const normalizedCurrency = normalizeCurrency(currency);
+  if (normalizedCurrency === "USD") {
+    return "USD";
+  }
+  if (normalizeCurrencyMode(currencyMode) === "GLOBAL") {
+    return "USD";
+  }
+  return "NGN";
+};
+
+const selectProviderForCurrency = (currency = "NGN") =>
+  normalizeCurrency(currency) === "USD" ? "stripe" : "paystack";
+
+const resolveItemAmountForCurrency = (item = {}, currency = "NGN") => {
+  const normalizedCurrency = normalizeCurrency(currency);
+  if (normalizedCurrency === "USD") {
+    return Number(item.priceGlobal || item.priceUSD || 0) || 0;
+  }
+  return Number(item.priceNGN ?? item.price ?? 0) || 0;
+};
+
+const buildMissingCurrencyPriceMessage = (currency = "NGN") =>
+  normalizeCurrency(currency) === "USD"
+    ? "USD price is not configured for this item"
+    : "Item is free and does not require payment";
 
 const buildPurchaseEventMetadata = (purchase, metadata = {}) => ({
   purchaseId: toIdString(purchase?._id) || String(metadata.purchaseId || ""),
@@ -263,10 +313,10 @@ const decrementPurchasedItemCounter = async (purchase) => {
   }
 };
 
-const resolveCheckoutTarget = async ({ productType, productId, userId }) => {
+const resolveCheckoutTarget = async ({ productType, productId, userId, currency = "NGN" }) => {
   const normalizedType = normalizeType(productType);
   const item = await resolvePurchasableItem(normalizedType, productId);
-  const validationError = validatePurchasableItem(item);
+  const validationError = validatePurchasableItem(item, { currency });
   if (validationError) {
     return { error: validationError, item: null };
   }
@@ -286,18 +336,27 @@ const resolveCheckoutTarget = async ({ productType, productId, userId }) => {
   return { error: "", item };
 };
 
-const createPendingPurchase = async ({ userId, item, providerRef, currency = "NGN" }) =>
+const createPendingPurchase = async ({
+  userId,
+  item,
+  providerRef,
+  currency = "NGN",
+  provider = "paystack",
+  amount = null,
+  providerSessionId = "",
+} = {}) =>
   Purchase.create({
     userId,
     creatorId: item.creatorId || undefined,
     itemType: item.itemType,
     itemId: item.itemId,
-    amount: Number(item.price) || 0,
-    priceNGN: Number(item.price) || 0,
-    currency: String(currency || "NGN").trim().toUpperCase() || "NGN",
-    status: "pending",
-    provider: "paystack",
+    amount: Number(amount ?? resolveItemAmountForCurrency(item, currency)) || 0,
+    priceNGN: Number(item.priceNGN ?? item.price) || 0,
+    currency: normalizeCurrency(currency),
+    status: "initiated",
+    provider,
     providerRef,
+    providerSessionId,
     billingInterval: item.itemType === "subscription" ? "monthly" : "one_time",
   });
 
@@ -315,18 +374,26 @@ const initializePaystackCheckout = async ({
     throw createServiceError("User email is required for payment", 400);
   }
 
-  const checkout = await resolveCheckoutTarget({ productType, productId, userId });
+  const checkout = await resolveCheckoutTarget({
+    productType,
+    productId,
+    userId,
+    currency: "NGN",
+  });
   if (checkout.error) {
     throw createServiceError(checkout.error, checkout.error === "Item not found" ? 404 : 400);
   }
 
   const item = checkout.item;
+  const amount = resolveItemAmountForCurrency(item, "NGN");
   const reference = generatePaymentReference(item.itemType);
   const purchase = await createPendingPurchase({
     userId,
     item,
     providerRef: reference,
     currency: config.PAYSTACK_CURRENCY || "NGN",
+    provider: "paystack",
+    amount,
   });
 
   await logPurchaseLifecycleEvent({
@@ -337,13 +404,14 @@ const initializePaystackCheckout = async ({
       source: "checkout",
       returnUrl: getReturnUrl(returnUrl),
       currencyMode: String(currencyMode || "NG").trim().toUpperCase(),
+      provider: "paystack",
     },
   }).catch(() => null);
 
   try {
     const payment = await initializeTransaction({
       email: user.email,
-      amountNgn: Number(item.price) || 0,
+      amountNgn: amount,
       reference,
       callbackUrl: getReturnUrl(returnUrl),
       metadata: {
@@ -358,18 +426,30 @@ const initializePaystackCheckout = async ({
       },
     });
 
+    const pendingPurchase = await Purchase.findByIdAndUpdate(
+      purchase._id,
+      {
+        $set: {
+          status: "pending",
+          providerSessionId: payment?.id || payment?.access_code || "",
+        },
+      },
+      { new: true }
+    );
+
     await logPurchaseLifecycleEvent({
       type: "purchase_checkout_initialized",
-      purchase,
+      purchase: pendingPurchase || purchase,
       actorRole,
       metadata: {
         source: "checkout",
+        provider: "paystack",
         authorizationUrl: payment.authorization_url || "",
         accessCodePresent: Boolean(payment.access_code),
       },
     }).catch(() => null);
 
-    return { purchase, payment, item };
+    return { purchase: pendingPurchase || purchase, payment, item };
   } catch (error) {
     await Purchase.updateOne(
       { _id: purchase._id },
@@ -398,13 +478,156 @@ const initializePaystackCheckout = async ({
       metadata: {
         creatorId: toIdString(item.creatorId),
         itemId: toIdString(item.itemId),
-        amount: Number(item.price || 0),
+        amount,
         reason: error.message || "Payment initialization failed",
       },
     }).catch(() => null);
 
     throw createServiceError(error.message || "Payment initialization failed", 502);
   }
+};
+
+const initializeStripeCheckout = async ({
+  userId,
+  productType,
+  productId,
+  returnUrl = "",
+  actorRole = "",
+} = {}) => {
+  const user = await User.findById(userId).select("email").lean();
+  if (!user?.email) {
+    throw createServiceError("User email is required for payment", 400);
+  }
+
+  const checkout = await resolveCheckoutTarget({
+    productType,
+    productId,
+    userId,
+    currency: "USD",
+  });
+  if (checkout.error) {
+    throw createServiceError(checkout.error, checkout.error === "Item not found" ? 404 : 400);
+  }
+
+  const item = checkout.item;
+  const amount = resolveItemAmountForCurrency(item, "USD");
+  const reference = generateStripeReference(item.itemType);
+  const purchase = await createPendingPurchase({
+    userId,
+    item,
+    providerRef: reference,
+    currency: "USD",
+    provider: "stripe",
+    amount,
+  });
+
+  await logPurchaseLifecycleEvent({
+    type: "purchase_record_created",
+    purchase,
+    actorRole,
+    metadata: {
+      source: "checkout",
+      provider: "stripe",
+      returnUrl: getReturnUrl(returnUrl),
+      currencyMode: "GLOBAL",
+    },
+  }).catch(() => null);
+
+  try {
+    const payment = await createCheckoutSession({
+      email: user.email,
+      amountUsd: amount,
+      reference,
+      purchaseId: purchase._id,
+      item,
+      returnUrl: getReturnUrl(returnUrl),
+      metadata: {
+        buyerId: toIdString(userId),
+        creatorId: toIdString(item.creatorId),
+        productId: toIdString(item.itemId),
+        productType: item.itemType,
+        productTitle: item.title || "",
+        currencyMode: "GLOBAL",
+      },
+    });
+
+    const pendingPurchase = await Purchase.findByIdAndUpdate(
+      purchase._id,
+      {
+        $set: {
+          status: "pending",
+          providerSessionId: payment.id || "",
+        },
+      },
+      { new: true }
+    );
+
+    await logPurchaseLifecycleEvent({
+      type: "purchase_checkout_initialized",
+      purchase: pendingPurchase || purchase,
+      actorRole,
+      metadata: {
+        source: "checkout",
+        provider: "stripe",
+        authorizationUrl: payment.authorization_url || "",
+        sessionId: payment.id || "",
+      },
+    }).catch(() => null);
+
+    return { purchase: pendingPurchase || purchase, payment, item };
+  } catch (error) {
+    await Purchase.updateOne(
+      { _id: purchase._id },
+      { $set: { status: "failed" } }
+    ).catch(() => null);
+    const failedPurchase = await Purchase.findById(purchase._id).catch(() => null);
+    const eventPurchase = failedPurchase || purchase;
+
+    await logPurchaseLifecycleEvent({
+      type: "purchase_checkout_failed",
+      purchase: eventPurchase,
+      actorRole,
+      metadata: {
+        source: "checkout",
+        provider: "stripe",
+        reason: error.message || "Stripe checkout initialization failed",
+      },
+    }).catch(() => null);
+
+    await logAnalyticsEvent({
+      type: "purchase_failed",
+      userId,
+      actorRole,
+      targetId: purchase._id,
+      targetType: "purchase",
+      contentType: item.itemType,
+      metadata: {
+        creatorId: toIdString(item.creatorId),
+        itemId: toIdString(item.itemId),
+        amount,
+        provider: "stripe",
+        reason: error.message || "Stripe checkout initialization failed",
+      },
+    }).catch(() => null);
+
+    throw createServiceError(error.message || "Stripe checkout initialization failed", 502);
+  }
+};
+
+const initializeCheckout = async ({
+  currency = "",
+  currencyMode = "",
+  ...payload
+} = {}) => {
+  const resolvedCurrency = resolveCheckoutCurrency({ currency, currencyMode });
+  const provider = selectProviderForCurrency(resolvedCurrency);
+  if (provider === "stripe") {
+    return initializeStripeCheckout(payload);
+  }
+  return initializePaystackCheckout({
+    ...payload,
+    currencyMode: normalizeCurrencyMode(currencyMode),
+  });
 };
 
 const settlePurchasedAccess = async (purchase, { paidAt = new Date() } = {}) => {
@@ -419,7 +642,7 @@ const settlePurchasedAccess = async (purchase, { paidAt = new Date() } = {}) => 
   const settledPurchase = await Purchase.findOneAndUpdate(
     {
       _id: purchase._id,
-      status: { $in: ["pending", "abandoned", "failed"] },
+      status: { $in: ["initiated", "pending", "abandoned", "failed"] },
     },
     {
       $set: {

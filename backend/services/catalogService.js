@@ -30,6 +30,8 @@ const resolvePurchasableItem = async (itemType, itemId) => {
       itemId: track._id,
       title: track.title || "Track",
       price: Number(track.price) || 0,
+      priceNGN: Number(track.priceNGN ?? track.price) || 0,
+      priceGlobal: Number(track.priceGlobal) || 0,
       creatorId: track.creatorId?.toString() || "",
       payload: track,
     };
@@ -45,6 +47,8 @@ const resolvePurchasableItem = async (itemType, itemId) => {
       itemId: book._id,
       title: book.title || "Book",
       price: Number(book.price) || 0,
+      priceNGN: Number(book.priceNGN ?? book.price) || 0,
+      priceGlobal: Number(book.priceGlobal) || 0,
       creatorId: book.creatorId?.toString() || "",
       payload: book,
     };
@@ -60,6 +64,8 @@ const resolvePurchasableItem = async (itemType, itemId) => {
       itemId: album._id,
       title: album.title || "Album",
       price: Number(album.price) || 0,
+      priceNGN: Number(album.priceNGN ?? album.price) || 0,
+      priceGlobal: Number(album.priceGlobal) || 0,
       creatorId: album.creatorId?.toString() || "",
       payload: album,
     };
@@ -75,6 +81,8 @@ const resolvePurchasableItem = async (itemType, itemId) => {
       itemId: video._id,
       title: video.caption || "Video",
       price: Number(video.price) || 0,
+      priceNGN: Number(video.priceNGN ?? video.price) || 0,
+      priceGlobal: Number(video.priceGlobal) || 0,
       creatorId: String(video.creatorProfileId || ""),
       payload: video,
     };
@@ -96,6 +104,8 @@ const resolvePurchasableItem = async (itemType, itemId) => {
       itemId: creatorProfile._id,
       title: `${creatorName} Membership`,
       price: Number(creatorProfile.subscriptionPrice ?? 2000) || 2000,
+      priceNGN: Number(creatorProfile.subscriptionPrice ?? 2000) || 2000,
+      priceGlobal: Number(creatorProfile.subscriptionPriceGlobal) || 0,
       creatorId: creatorProfile._id.toString(),
       ownerUserId: creatorProfile.userId?.toString?.() || "",
       payload: creatorProfile,

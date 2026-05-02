@@ -5,6 +5,7 @@ const requirePermissions = require("../middleware/requirePermissions");
 const { attachAkusoUser, requireAkusoAuth } = require("../middleware/akusoAuthGuard");
 const akusoPromptInjectionGuard = require("../middleware/akusoPromptInjectionGuard");
 const akusoRateLimit = require("../middleware/akusoRateLimit");
+const { akusoMediaUpload } = require("../middleware/akusoMediaUpload");
 const {
   validateAkusoChatRequest,
   validateAkusoFeedbackRequest,
@@ -25,6 +26,7 @@ router.post(
   "/chat",
   attachAkusoUser,
   akusoRateLimit,
+  akusoMediaUpload,
   validateAkusoChatRequest,
   akusoPromptInjectionGuard,
   akusoController.chat

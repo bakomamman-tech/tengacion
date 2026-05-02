@@ -43,6 +43,7 @@ const createAssistantThreadMessage = (role, content, extras = {}) => ({
   followUps: Array.isArray(extras.followUps) ? extras.followUps : [],
   cards: Array.isArray(extras.cards) ? extras.cards : [],
   actions: Array.isArray(extras.actions) ? extras.actions : [],
+  attachments: Array.isArray(extras.attachments) ? extras.attachments : [],
   requiresConfirmation: Boolean(extras.requiresConfirmation),
   pendingAction: extras.pendingAction || null,
 });
@@ -59,8 +60,43 @@ const FLOATING_MARGIN = 12;
 const DRAG_CLICK_THRESHOLD = 6;
 const LAUNCHER_POSITION_KEY = "tg_akuso_launcher_position_v1";
 const PANEL_POSITION_KEY = "tg_akuso_panel_position_v1";
+const AKUSO_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const AKUSO_AUDIO_MAX_BYTES = 25 * 1024 * 1024;
+const AKUSO_MAX_IMAGES = 3;
 
 const clampNumber = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const getPreferredAudioMimeType = () => {
+  if (typeof MediaRecorder === "undefined" || typeof MediaRecorder.isTypeSupported !== "function") {
+    return "";
+  }
+
+  return [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/ogg;codecs=opus",
+  ].find((candidate) => MediaRecorder.isTypeSupported(candidate)) || "";
+};
+
+const canRecordVoice = () =>
+  typeof navigator !== "undefined" &&
+  Boolean(navigator.mediaDevices?.getUserMedia) &&
+  typeof MediaRecorder !== "undefined";
+
+const getAttachmentType = (file) => {
+  const mimeType = String(file?.type || "").toLowerCase();
+  if (mimeType.startsWith("image/")) {
+    return "image";
+  }
+  if (mimeType.startsWith("audio/")) {
+    return "audio";
+  }
+  return "";
+};
+
+const stripAudioMimeParameters = (mimeType = "") =>
+  String(mimeType || "audio/webm").split(";")[0] || "audio/webm";
 
 const positionsMatch = (a, b) =>
   Boolean(a && b && Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5);
@@ -126,9 +162,17 @@ export default function TengacionAssistantDock() {
   const composerRef = useRef(null);
   const prevOpenRef = useRef(false);
   const lastQueryRef = useRef("");
+  const lastRequestRef = useRef({ text: "", attachments: [] });
   const launcherDragRef = useRef({ active: false });
   const panelDragRef = useRef({ active: false });
   const suppressNextLauncherClickRef = useRef(false);
+  const attachmentUrlsRef = useRef(new Set());
+  const recorderRef = useRef(null);
+  const recorderChunksRef = useRef([]);
+  const recordingStreamRef = useRef(null);
+  const recordingIntervalRef = useRef(null);
+  const recordingMimeRef = useRef("audio/webm");
+  const recordingCancelledRef = useRef(false);
 
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -143,6 +187,9 @@ export default function TengacionAssistantDock() {
   const [streamingLabel, setStreamingLabel] = useState("");
   const [streamingResponseId, setStreamingResponseId] = useState("");
   const [routeHints, setRouteHints] = useState([]);
+  const [pendingAttachments, setPendingAttachments] = useState([]);
+  const [recording, setRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [launcherPosition, setLauncherPosition] = useState(() =>
     readStoredPosition(LAUNCHER_POSITION_KEY)
   );
@@ -157,6 +204,212 @@ export default function TengacionAssistantDock() {
       composerRef.current?.focus?.();
     }, 0);
   }, []);
+
+  const registerPreviewUrl = useCallback((file) => {
+    if (typeof URL === "undefined" || typeof URL.createObjectURL !== "function") {
+      return "";
+    }
+
+    try {
+      const previewUrl = URL.createObjectURL(file);
+      attachmentUrlsRef.current.add(previewUrl);
+      return previewUrl;
+    } catch {
+      return "";
+    }
+  }, []);
+
+  const revokePreviewUrl = useCallback((previewUrl = "") => {
+    if (!previewUrl || !attachmentUrlsRef.current.has(previewUrl)) {
+      return;
+    }
+
+    try {
+      URL.revokeObjectURL?.(previewUrl);
+    } catch {
+      // Ignore object URL cleanup failures.
+    }
+    attachmentUrlsRef.current.delete(previewUrl);
+  }, []);
+
+  const revokeAttachmentPreviews = useCallback(
+    (attachments = []) => {
+      attachments.forEach((attachment) => revokePreviewUrl(attachment?.previewUrl));
+    },
+    [revokePreviewUrl]
+  );
+
+  const createPendingAttachment = useCallback(
+    (file, type) => ({
+      id: makeId("akuso-media"),
+      type,
+      file,
+      name: String(file?.name || (type === "image" ? "Image" : "Voice message")).trim(),
+      size: Number(file?.size || 0),
+      mimeType: String(file?.type || ""),
+      previewUrl: registerPreviewUrl(file),
+    }),
+    [registerPreviewUrl]
+  );
+
+  const addAttachmentsFromFiles = useCallback(
+    (fileList) => {
+      const files = Array.from(fileList || []).filter(Boolean);
+      if (files.length === 0) {
+        return;
+      }
+
+      setPendingAttachments((current) => {
+        const next = [...current];
+        let imageCount = next.filter((attachment) => attachment.type === "image").length;
+        let audioCount = next.filter((attachment) => attachment.type === "audio").length;
+
+        files.forEach((file) => {
+          const type = getAttachmentType(file);
+          if (!type) {
+            toast.error("Akuso can assess images and voice messages.");
+            return;
+          }
+
+          const size = Number(file.size || 0);
+          if (type === "image" && size > AKUSO_IMAGE_MAX_BYTES) {
+            toast.error("Akuso images must be 10MB or smaller.");
+            return;
+          }
+          if (type === "audio" && size > AKUSO_AUDIO_MAX_BYTES) {
+            toast.error("Akuso voice messages must be 25MB or smaller.");
+            return;
+          }
+          if (type === "image" && imageCount >= AKUSO_MAX_IMAGES) {
+            toast.error("Akuso can assess up to 3 images at a time.");
+            return;
+          }
+          if (type === "audio" && audioCount >= 1) {
+            toast.error("Akuso can reply to one voice message at a time.");
+            return;
+          }
+
+          next.push(createPendingAttachment(file, type));
+          if (type === "image") {
+            imageCount += 1;
+          } else {
+            audioCount += 1;
+          }
+        });
+
+        return next;
+      });
+    },
+    [createPendingAttachment]
+  );
+
+  const removePendingAttachment = useCallback(
+    (attachmentId) => {
+      setPendingAttachments((current) => {
+        const removed = current.find((attachment) => attachment.id === attachmentId);
+        revokePreviewUrl(removed?.previewUrl);
+        return current.filter((attachment) => attachment.id !== attachmentId);
+      });
+    },
+    [revokePreviewUrl]
+  );
+
+  const releaseRecordingResources = useCallback(({ resetState = true } = {}) => {
+    if (recordingIntervalRef.current) {
+      window.clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    if (recordingStreamRef.current) {
+      recordingStreamRef.current.getTracks().forEach((track) => track.stop());
+      recordingStreamRef.current = null;
+    }
+    if (resetState) {
+      setRecording(false);
+      setRecordingSeconds(0);
+    }
+  }, []);
+
+  const toggleRecording = useCallback(async () => {
+    if (recording) {
+      recordingCancelledRef.current = false;
+      if (recorderRef.current && recorderRef.current.state !== "inactive") {
+        recorderRef.current.stop();
+      }
+      return;
+    }
+
+    if (!canRecordVoice()) {
+      toast.error("Voice recording is not available in this browser.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const preferredMimeType = getPreferredAudioMimeType();
+      const recorder = preferredMimeType
+        ? new MediaRecorder(stream, { mimeType: preferredMimeType })
+        : new MediaRecorder(stream);
+
+      recordingStreamRef.current = stream;
+      recorderRef.current = recorder;
+      recorderChunksRef.current = [];
+      recordingCancelledRef.current = false;
+      recordingMimeRef.current = stripAudioMimeParameters(
+        preferredMimeType || recorder.mimeType || "audio/webm"
+      );
+      setRecording(true);
+      setRecordingSeconds(0);
+
+      recordingIntervalRef.current = window.setInterval(() => {
+        setRecordingSeconds((seconds) => seconds + 1);
+      }, 1000);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data?.size > 0) {
+          recorderChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const chunks = recorderChunksRef.current;
+        const cancelled = recordingCancelledRef.current;
+        recorderRef.current = null;
+        recorderChunksRef.current = [];
+        releaseRecordingResources();
+
+        if (cancelled || chunks.length === 0) {
+          return;
+        }
+
+        const mimeType = recordingMimeRef.current || "audio/webm";
+        const extension = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : "webm";
+        const blob = new Blob(chunks, { type: mimeType });
+        if (blob.size <= 0) {
+          return;
+        }
+
+        addAttachmentsFromFiles([
+          new File([blob], `akuso-voice-${Date.now()}.${extension}`, {
+            type: mimeType,
+          }),
+        ]);
+      };
+
+      recorder.start();
+    } catch {
+      releaseRecordingResources();
+      toast.error("Akuso could not access your microphone.");
+    }
+  }, [addAttachmentsFromFiles, recording, releaseRecordingResources]);
+
+  const cancelRecording = useCallback(() => {
+    recordingCancelledRef.current = true;
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      recorderRef.current.stop();
+      return;
+    }
+    releaseRecordingResources();
+  }, [releaseRecordingResources]);
 
   const assistantContext = useMemo(() => buildAssistantContext(location), [location]);
   const fallbackSuggestions = useMemo(
@@ -182,6 +435,7 @@ export default function TengacionAssistantDock() {
   }, [fallbackSuggestions, routeHints]);
   const proactiveSuggestion = routeHints[0] || fallbackSuggestions[0] || "";
   const canRender = !authLoading;
+  const recordingSupported = useMemo(() => canRecordVoice(), []);
 
   useEffect(() => {
     if (!pendingAction) {
@@ -195,6 +449,30 @@ export default function TengacionAssistantDock() {
       document.body.style.overflow = previousOverflow;
     };
   }, [pendingAction]);
+
+  useEffect(
+    () => () => {
+      if (recorderRef.current) {
+        recorderRef.current.onstop = null;
+        if (recorderRef.current.state !== "inactive") {
+          recordingCancelledRef.current = true;
+          recorderRef.current.stop();
+        }
+      }
+      releaseRecordingResources({ resetState: false });
+      attachmentUrlsRef.current.forEach((previewUrl) => {
+        try {
+          if (typeof URL !== "undefined") {
+            URL.revokeObjectURL?.(previewUrl);
+          }
+        } catch {
+          // Ignore object URL cleanup failures.
+        }
+      });
+      attachmentUrlsRef.current.clear();
+    },
+    [releaseRecordingResources]
+  );
 
   useEffect(() => {
     persistPosition(LAUNCHER_POSITION_KEY, launcherPosition);
@@ -395,14 +673,20 @@ export default function TengacionAssistantDock() {
   }, []);
 
   const clearConversation = useCallback(() => {
-    setMessages([]);
+    setMessages((current) => {
+      current.forEach((message) => revokeAttachmentPreviews(message?.attachments || []));
+      return [];
+    });
+    revokeAttachmentPreviews(pendingAttachments);
     setConversationId("");
     setPendingAction(null);
     setError("");
     setComposerValue("");
+    setPendingAttachments([]);
     setStreamingLabel("");
     setStreamingResponseId("");
-  }, []);
+    lastRequestRef.current = { text: "", attachments: [] };
+  }, [pendingAttachments, revokeAttachmentPreviews]);
 
   const upsertStreamingAssistantReply = useCallback((responseId, updater) => {
     if (!responseId || typeof updater !== "function") {
@@ -458,9 +742,13 @@ export default function TengacionAssistantDock() {
   );
 
   const submitMessage = useCallback(
-    async (rawText) => {
+    async (rawText, attachmentOverride = null) => {
       const text = String(rawText || "").trim();
-      if (!text || loading) {
+      const activeAttachments = Array.isArray(attachmentOverride)
+        ? attachmentOverride
+        : pendingAttachments;
+      const hasAttachments = activeAttachments.length > 0;
+      if ((!text && !hasAttachments) || loading) {
         return;
       }
 
@@ -469,19 +757,50 @@ export default function TengacionAssistantDock() {
         setExpanded(false);
       }
 
-      lastQueryRef.current = text;
+      const attachmentSummary = hasAttachments
+        ? activeAttachments.some((attachment) => attachment.type === "image") &&
+          activeAttachments.some((attachment) => attachment.type === "audio")
+          ? "Image and voice message"
+          : activeAttachments.some((attachment) => attachment.type === "image")
+            ? "Image assessment request"
+            : "Voice message"
+        : "";
+      const userDisplayText = text || attachmentSummary || "Media message";
+      const userAttachments = activeAttachments.map(({ id, type, name, size, mimeType, previewUrl }) => ({
+        id,
+        type,
+        name,
+        size,
+        mimeType,
+        previewUrl,
+      }));
+
+      lastQueryRef.current = text || userDisplayText;
+      lastRequestRef.current = {
+        text,
+        attachments: activeAttachments,
+      };
       setComposerValue("");
+      if (!attachmentOverride) {
+        setPendingAttachments([]);
+      }
       setLoading(true);
       setError("");
       setPendingAction(null);
       setStreamingLabel("Checking policy and grounding");
       setStreamingResponseId("");
 
-      setMessages((current) => [...current, createAssistantThreadMessage("user", text)]);
+      setMessages((current) => [
+        ...current,
+        createAssistantThreadMessage("user", userDisplayText, {
+          attachments: userAttachments,
+        }),
+      ]);
 
       try {
         const response = await streamAssistantMessage({
           message: text,
+          attachments: activeAttachments,
           conversationId,
           context: assistantContext,
           assistantModeHint: assistantMode,
@@ -586,6 +905,7 @@ export default function TengacionAssistantDock() {
       executeAssistantReplyActions,
       loading,
       open,
+      pendingAttachments,
       upsertStreamingAssistantReply,
       writingPreferences,
     ]
@@ -604,7 +924,9 @@ export default function TengacionAssistantDock() {
   );
 
   const handleRetry = useCallback(() => {
-    if (lastQueryRef.current) {
+    if (lastRequestRef.current.text || lastRequestRef.current.attachments.length > 0) {
+      void submitMessage(lastRequestRef.current.text, lastRequestRef.current.attachments);
+    } else if (lastQueryRef.current) {
       void submitMessage(lastQueryRef.current);
     }
   }, [submitMessage]);
@@ -795,6 +1117,14 @@ export default function TengacionAssistantDock() {
         composerValue={composerValue}
         onComposerChange={setComposerValue}
         onComposerSubmit={submitMessage}
+        composerAttachments={pendingAttachments}
+        onComposerAttachmentSelect={addAttachmentsFromFiles}
+        onComposerAttachmentRemove={removePendingAttachment}
+        composerRecording={recording}
+        composerRecordingSeconds={recordingSeconds}
+        composerRecordingSupported={recordingSupported}
+        onComposerToggleRecording={toggleRecording}
+        onComposerCancelRecording={cancelRecording}
         onFollowUpClick={handleFollowUpClick}
         composerDisabled={loading}
         composerRef={composerRef}

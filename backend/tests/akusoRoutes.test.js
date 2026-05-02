@@ -226,6 +226,54 @@ describe("Akuso routes", () => {
     );
   });
 
+  it("accepts an image attachment for Akuso assessment without typed text", async () => {
+    const response = await request(app)
+      .post("/api/akuso/chat")
+      .field("mode", "knowledge_learning")
+      .attach("attachments", Buffer.from("fake image"), {
+        filename: "poster.png",
+        contentType: "image/png",
+      })
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        ok: true,
+        category: "SAFE_ANSWER",
+        answer: expect.stringMatching(/image|visual|attached/i),
+      })
+    );
+    expect(response.body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Image assessment",
+        }),
+      ])
+    );
+  });
+
+  it("accepts a voice attachment and returns a grounded voice fallback when transcription is unavailable", async () => {
+    const response = await request(app)
+      .post("/api/akuso/chat")
+      .field("mode", "knowledge_learning")
+      .attach("attachments", Buffer.from("fake voice"), {
+        filename: "voice.webm",
+        contentType: "audio/webm",
+      })
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        ok: true,
+        category: "SAFE_ANSWER",
+        answer: expect.stringMatching(/voice|transcript/i),
+      })
+    );
+    expect(response.body.warnings).toEqual(
+      expect.arrayContaining([expect.stringMatching(/transcription|model layer/i)])
+    );
+  });
+
   it("returns a safe sign-in guidance response instead of failing chat for guest-sensitive requests", async () => {
     const response = await request(app)
       .post("/api/akuso/chat")

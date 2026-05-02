@@ -117,6 +117,49 @@ const buildAkusoRequestBody = ({
   return body;
 };
 
+const getAttachmentFile = (attachment) => {
+  if (!attachment) {
+    return null;
+  }
+  if (typeof File !== "undefined" && attachment instanceof File) {
+    return attachment;
+  }
+  if (typeof Blob !== "undefined" && attachment instanceof Blob) {
+    return attachment;
+  }
+  const file = attachment.file;
+  if (typeof File !== "undefined" && file instanceof File) {
+    return file;
+  }
+  if (typeof Blob !== "undefined" && file instanceof Blob) {
+    return file;
+  }
+  return null;
+};
+
+const buildAkusoFormData = (body = {}, attachments = []) => {
+  const formData = new FormData();
+  Object.entries(body).forEach(([key, value]) => {
+    if (value === undefined || value === null) {
+      return;
+    }
+    if (typeof value === "object" && !Array.isArray(value)) {
+      formData.append(key, JSON.stringify(value));
+      return;
+    }
+    formData.append(key, String(value));
+  });
+
+  attachments
+    .map(getAttachmentFile)
+    .filter(Boolean)
+    .forEach((file) => {
+      formData.append("attachments", file, file.name || "akuso-media");
+    });
+
+  return formData;
+};
+
 const buildAkusoHintsQuery = ({
   context = null,
   assistantModeHint = "",
@@ -518,6 +561,7 @@ export const sendAssistantMessage = async ({
   context = null,
   assistantModeHint = "",
   preferences = null,
+  attachments = [],
 }) => {
   const body = buildAkusoRequestBody({
     message,
@@ -527,8 +571,20 @@ export const sendAssistantMessage = async ({
     preferences,
     stream: false,
   });
+  const hasAttachments = Array.isArray(attachments) && attachments.some(getAttachmentFile);
 
   try {
+    if (hasAttachments) {
+      const response = await apiRequest(`${API_BASE}/akuso/chat`, {
+        method: "POST",
+        body: buildAkusoFormData(body, attachments),
+        suppressAuthFailure: true,
+        timeoutMs: 60000,
+      });
+
+      return normalizeAkusoResponse(response, { preferredMode: assistantModeHint });
+    }
+
     const response = await apiRequest(`${API_BASE}/akuso/chat`, {
       method: "POST",
       headers: {
@@ -582,11 +638,26 @@ export const streamAssistantMessage = async ({
   context = null,
   assistantModeHint = "",
   preferences = null,
+  attachments = [],
   onStatus,
   onStart,
   onDelta,
   onComplete,
 }) => {
+  if (Array.isArray(attachments) && attachments.some(getAttachmentFile)) {
+    onStatus?.({ label: "Uploading media to Akuso" });
+    const fallback = await sendAssistantMessage({
+      message,
+      conversationId,
+      context,
+      assistantModeHint,
+      preferences,
+      attachments,
+    });
+    onComplete?.(fallback);
+    return fallback;
+  }
+
   if (!supportsAkusoStreaming) {
     const fallback = await sendAssistantMessage({
       message,

@@ -294,6 +294,8 @@ const openAiModelPrimary = toText(process.env.OPENAI_MODEL_PRIMARY) || openAiMod
 const openAiModelFast = toText(process.env.OPENAI_MODEL_FAST) || openAiModelPrimary;
 const openAiModelWriting = toText(process.env.OPENAI_MODEL_WRITING) || openAiModelPrimary;
 const openAiModelReasoning = toText(process.env.OPENAI_MODEL_REASONING) || openAiModelPrimary;
+const openAiModelTranscription =
+  toText(process.env.OPENAI_MODEL_TRANSCRIPTION) || "gpt-4o-mini-transcribe";
 const hasOpenAI = Boolean(openAiApiKey);
 const assistantEnabled = assistantEnabledInput ? toBool(assistantEnabledInput) : true;
 const assistantAbuseWindowMs = parsePort(process.env.ASSISTANT_ABUSE_WINDOW_MS, 10 * 60 * 1000);
@@ -366,6 +368,7 @@ const akuso = {
     fast: openAiModelFast,
     writing: openAiModelWriting,
     reasoning: openAiModelReasoning,
+    transcription: openAiModelTranscription,
   },
   apiKeyConfigured: hasOpenAI,
 };
@@ -416,6 +419,7 @@ const config = {
   openAiModelFast,
   openAiModelWriting,
   openAiModelReasoning,
+  openAiModelTranscription,
   hasOpenAI,
   assistantEnabled,
   assistantAbuseWindowMs,
@@ -474,6 +478,7 @@ const config = {
   OPENAI_MODEL_FAST: openAiModelFast,
   OPENAI_MODEL_WRITING: openAiModelWriting,
   OPENAI_MODEL_REASONING: openAiModelReasoning,
+  OPENAI_MODEL_TRANSCRIPTION: openAiModelTranscription,
   HAS_OPENAI: hasOpenAI,
   ASSISTANT_ENABLED: assistantEnabled,
   ASSISTANT_ABUSE_WINDOW_MS: assistantAbuseWindowMs,

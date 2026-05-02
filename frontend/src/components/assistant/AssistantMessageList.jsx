@@ -46,6 +46,47 @@ function TypingIndicator({ label = "Akuso is thinking" }) {
   );
 }
 
+function AssistantMessageAttachments({ attachments = [] }) {
+  const media = Array.isArray(attachments) ? attachments.filter(Boolean) : [];
+  if (media.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="tg-assistant-message__attachments">
+      {media.map((attachment) => {
+        const isImage = attachment?.type === "image";
+        return (
+          <div
+            key={attachment.id || attachment.previewUrl || attachment.name}
+            className={`tg-assistant-message__attachment${isImage ? " is-image" : " is-audio"}`}
+          >
+            {isImage && attachment.previewUrl ? (
+              <img src={attachment.previewUrl} alt={attachment.name || "Attached image"} />
+            ) : (
+              <>
+                <span className="tg-assistant-message__attachment-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 4.75a3.25 3.25 0 0 0-3.25 3.25v3.2a3.25 3.25 0 0 0 6.5 0V8A3.25 3.25 0 0 0 12 4.75z" />
+                    <path d="M6.5 11.25a5.5 5.5 0 0 0 11 0" />
+                    <path d="M12 16.75v2.5" />
+                  </svg>
+                </span>
+                <span>{attachment.name || "Voice message"}</span>
+                {attachment.previewUrl ? (
+                  <audio controls src={attachment.previewUrl}>
+                    Your browser cannot play this voice message.
+                  </audio>
+                ) : null}
+              </>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 const SAFETY_LABELS = {
   safe: "Safe",
   caution: "Use caution",
@@ -328,7 +369,10 @@ export default function AssistantMessageList({
             </div>
 
             {isUser ? (
-              <div className="tg-assistant-message__bubble">{message?.content}</div>
+              <div className="tg-assistant-message__bubble">
+                {message?.content ? <span>{message.content}</span> : null}
+                <AssistantMessageAttachments attachments={message?.attachments} />
+              </div>
             ) : (
               <div className="tg-assistant-message__reply">
                 <button

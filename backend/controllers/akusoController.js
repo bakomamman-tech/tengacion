@@ -36,6 +36,7 @@ const {
   sendReasoningRequest,
   sendWritingRequest,
 } = require("../services/akusoOpenAIService");
+const { prepareAkusoMediaInput } = require("../services/akusoMediaService");
 const { getAkusoHints } = require("../services/akusoFeatureRegistryService");
 const {
   loadAkusoMemory,
@@ -496,6 +497,96 @@ const buildKnowledgeFallback = ({ input, policyResult }) => {
   };
 };
 
+const buildMediaFallback = ({
+  policyResult,
+  media = {},
+  mediaWarnings = [],
+  baseFallback = null,
+}) => {
+  const images = Array.isArray(media.images) ? media.images : [];
+  const audio = Array.isArray(media.audio) ? media.audio : [];
+  const transcripts = Array.isArray(media.transcripts)
+    ? media.transcripts.filter(Boolean)
+    : [];
+  const hasImage = images.length > 0;
+  const hasAudio = audio.length > 0;
+
+  if (!hasImage && hasAudio && transcripts.length > 0 && baseFallback) {
+    return {
+      ...baseFallback,
+      warnings: mergeWarnings(baseFallback.warnings, mediaWarnings),
+      details: [
+        buildAkusoDetail(
+          "Voice transcript",
+          transcripts.join("\n\n")
+        ),
+        ...(baseFallback.details || []),
+      ].filter(Boolean),
+    };
+  }
+
+  const mediaLabel =
+    hasImage && hasAudio
+      ? "image and voice message"
+      : hasImage
+        ? images.length > 1
+          ? "images"
+          : "image"
+        : "voice message";
+  const modelReady = Boolean(config.akuso?.hasOpenAI);
+  const baseAnswer = baseFallback?.answer
+    ? ["", "Based on your typed context:", baseFallback.answer]
+    : [];
+  const transcriptBlock =
+    transcripts.length > 0
+      ? ["", "Voice transcript:", transcripts.join("\n\n")]
+      : [];
+
+  return {
+    answer: [
+      modelReady
+        ? `I received the attached ${mediaLabel}. Akuso will assess the visible or spoken content directly and keep the answer grounded in what was provided.`
+        : `I received the attached ${mediaLabel}, but direct media assessment needs Akuso's model layer to be configured in this environment.`,
+      hasImage
+        ? "For image checks, I can look at visible text, layout, composition, quality, and likely improvement opportunities without inventing unseen details."
+        : "",
+      hasAudio
+        ? "For voice notes, I use the transcript first and reply to the request in the message."
+        : "",
+      ...transcriptBlock,
+      ...baseAnswer,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    warnings: mergeWarnings(policyResult.warnings, mediaWarnings, baseFallback?.warnings || []),
+    suggestions: mergeSuggestions(
+      baseFallback?.suggestions || [],
+      hasImage ? ["Ask Akuso what to improve in this image."] : [],
+      hasAudio ? ["Send a shorter voice note or type the exact wording."] : []
+    ),
+    actions: baseFallback?.actions || [],
+    sources: baseFallback?.sources || [],
+    details: [
+      hasImage
+        ? buildAkusoDetail(
+            "Image assessment",
+            `${images.length} image${images.length === 1 ? "" : "s"} attached for visual review.`
+          )
+        : null,
+      hasAudio
+        ? buildAkusoDetail(
+            "Voice message",
+            transcripts.length > 0
+              ? transcripts.join("\n\n")
+              : "Voice message attached; transcript was not available."
+          )
+        : null,
+      ...(baseFallback?.details || []),
+    ].filter(Boolean),
+    cards: baseFallback?.cards || [],
+  };
+};
+
 const buildReasoningFallback = ({ input, policyResult }) => {
   const mathResponse = buildMathResponse({
     message: input.message || input.prompt || "",
@@ -783,6 +874,8 @@ const maybeEnhanceFallback = async ({
   context,
   policyResult,
   fallback,
+  imageInputs = [],
+  mediaWarnings = [],
   traceId,
   req,
 }) => {
@@ -790,6 +883,7 @@ const maybeEnhanceFallback = async ({
   if (!routeDecision.useModel) {
     return {
       ...fallback,
+      warnings: mergeWarnings(fallback.warnings, mediaWarnings),
       observability: {
         provider: "local_fallback",
         fallbackReason: "model_router_local",
@@ -833,6 +927,7 @@ const maybeEnhanceFallback = async ({
       model: routeDecision.model,
       systemPrompt: promptBundle.systemPrompt,
       userPrompt: promptBundle.userPrompt,
+      imageInputs,
       responseSchema: promptBundle.responseSchema,
     };
     const response =
@@ -848,6 +943,7 @@ const maybeEnhanceFallback = async ({
     if (!parsed || typeof parsed !== "object") {
       return {
         ...fallback,
+        warnings: mergeWarnings(fallback.warnings, mediaWarnings),
         observability: {
           provider: "local_fallback",
           fallbackReason: "invalid_model_payload",
@@ -866,7 +962,7 @@ const maybeEnhanceFallback = async ({
 
     return {
       answer: sanitizeCodeCapableText(parsed.answer || fallback.answer, 6000),
-      warnings: mergeWarnings(fallback.warnings, parsed.warnings || []),
+      warnings: mergeWarnings(fallback.warnings, mediaWarnings, parsed.warnings || []),
       suggestions: mergeSuggestions(fallback.suggestions, parsed.suggestions || []),
       actions: fallback.actions || [],
       drafts:
@@ -910,7 +1006,11 @@ const maybeEnhanceFallback = async ({
         provider: "local_fallback",
         fallbackReason: "openai_error",
       },
-      warnings: mergeWarnings(fallback.warnings, "Akuso used a safe local fallback for this reply."),
+      warnings: mergeWarnings(
+        fallback.warnings,
+        mediaWarnings,
+        "Akuso used a safe local fallback for this reply."
+      ),
       meta: {
         provider: "local_fallback",
         model: "",
@@ -1000,17 +1100,18 @@ const withAkusoHandler = (handler) => async (req, res) => {
 const runAkusoChatRequest = async ({ req, traceId }) => {
   recordAkusoRequest({ routeName: "chat" });
   const input = req.akusoInput || {};
+  const preparedMedia = await prepareAkusoMediaInput({ req, input });
   const storedPreferences = await loadAkusoPreferences({ userId: req.user?.id || "" });
   const memory = await loadAkusoMemory({
     userId: req.user?.id || "",
-    conversationId: input.conversationId,
-    sessionKey: input.sessionKey,
+    conversationId: preparedMedia.input.conversationId,
+    sessionKey: preparedMedia.input.sessionKey,
   });
   const mergedInput = {
-    ...input,
+    ...preparedMedia.input,
     preferences: {
       ...storedPreferences,
-      ...(input.preferences || {}),
+      ...(preparedMedia.input.preferences || {}),
     },
   };
 
@@ -1087,6 +1188,7 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
       }),
       warnings: mergeWarnings(
         policyResult.warnings,
+        preparedMedia.warnings,
         !sensitiveGuidance?.canNavigate ? policyFeature?.cautionNotes || [] : []
       ),
       suggestions: sensitiveGuidance?.suggestions || policyResult.suggestions,
@@ -1133,7 +1235,7 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
     };
   }
 
-  const fallback =
+  const baseFallback =
     policyResult.mode === "creator_writing"
       ? buildWritingFallback({ input: mergedInput, context, policyResult })
       : policyResult.taskType === "software_engineering"
@@ -1148,6 +1250,14 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
                 user: req.user || {},
               })
             : buildKnowledgeFallback({ input: mergedInput, policyResult });
+  const fallback = preparedMedia.hasMedia
+    ? buildMediaFallback({
+        policyResult,
+        media: preparedMedia.media,
+        mediaWarnings: preparedMedia.warnings,
+        baseFallback,
+      })
+    : baseFallback;
 
   const responsePayload = await maybeEnhanceFallback({
     routePurpose: "chat",
@@ -1155,6 +1265,8 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
     context,
     policyResult,
     fallback,
+    imageInputs: preparedMedia.imageInputs,
+    mediaWarnings: preparedMedia.warnings,
     traceId,
     req,
   });

@@ -8,6 +8,11 @@ const getOpenAIConstructor = () => {
   return openaiModule.OpenAI || openaiModule.default || openaiModule;
 };
 
+const getOpenAIToFile = () => {
+  const openaiModule = require("openai");
+  return openaiModule.toFile || openaiModule.default?.toFile || null;
+};
+
 const createClient = () => {
   if (cachedClient) {
     return cachedClient;
@@ -104,10 +109,71 @@ const handleOpenAIError = (error = {}) => {
   };
 };
 
+const sanitizeUploadName = (name = "", fallback = "akuso-voice.webm") => {
+  const cleaned = String(name || "")
+    .replace(/[^\w.\-() ]+/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+  return cleaned || fallback;
+};
+
+const normalizeImageInputs = (imageInputs = []) =>
+  (Array.isArray(imageInputs) ? imageInputs : [])
+    .map((image) => {
+      const imageUrl = String(image?.imageUrl || image?.dataUrl || "").trim();
+      if (!imageUrl) {
+        return null;
+      }
+      return {
+        type: "input_image",
+        image_url: imageUrl,
+        detail: ["low", "high", "auto"].includes(String(image?.detail || "").toLowerCase())
+          ? String(image.detail).toLowerCase()
+          : "auto",
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 3);
+
+const transcribeAudioAttachment = async ({
+  file,
+  timeoutMs = config.akuso?.requestTimeoutMs || 12000,
+} = {}) => {
+  const client = createClient();
+  if (!client || !file?.buffer) {
+    return null;
+  }
+
+  const toFile = getOpenAIToFile();
+  if (typeof toFile !== "function") {
+    throw Object.assign(new Error("OpenAI file upload helper is unavailable."), {
+      status: 500,
+      code: "AKUSO_OPENAI_FILE_HELPER_UNAVAILABLE",
+    });
+  }
+
+  const upload = await toFile(
+    file.buffer,
+    sanitizeUploadName(file.originalname),
+    file.mimetype ? { type: file.mimetype } : undefined
+  );
+  const response = await withTimeout(
+    client.audio.transcriptions.create({
+      file: upload,
+      model: config.akuso?.models?.transcription || "gpt-4o-mini-transcribe",
+    }),
+    timeoutMs
+  );
+
+  return sanitizeMultilineText(response?.text || "", config.akuso?.maxInputChars || 4000);
+};
+
 const performRequest = async ({
   model,
   systemPrompt,
   userPrompt,
+  imageInputs = [],
   responseSchema,
   timeoutMs = config.akuso?.requestTimeoutMs || 12000,
   maxOutputTokens = config.akuso?.maxOutputTokens || 600,
@@ -133,6 +199,11 @@ const performRequest = async ({
     };
   }
 
+  const userContent = [
+    { type: "input_text", text: userPrompt },
+    ...normalizeImageInputs(imageInputs),
+  ];
+
   const payload = {
     model,
     input: [
@@ -142,7 +213,7 @@ const performRequest = async ({
       },
       {
         role: "user",
-        content: [{ type: "input_text", text: userPrompt }],
+        content: userContent,
       },
     ],
     max_output_tokens: maxOutputTokens,
@@ -218,4 +289,5 @@ module.exports = {
   sendChatRequest,
   sendReasoningRequest,
   sendWritingRequest,
+  transcribeAudioAttachment,
 };

@@ -7,6 +7,8 @@ const navigateMock = vi.hoisted(() => vi.fn());
 const fetchAssistantHintsMock = vi.hoisted(() => vi.fn());
 const streamAssistantMessageMock = vi.hoisted(() => vi.fn());
 const clipboardWriteTextMock = vi.hoisted(() => vi.fn());
+const createObjectUrlMock = vi.hoisted(() => vi.fn());
+const revokeObjectUrlMock = vi.hoisted(() => vi.fn());
 const authState = vi.hoisted(() => ({
   user: {
     id: "user-1",
@@ -47,6 +49,17 @@ describe("TengacionAssistantDock", () => {
     streamAssistantMessageMock.mockReset();
     clipboardWriteTextMock.mockReset();
     clipboardWriteTextMock.mockResolvedValue(undefined);
+    createObjectUrlMock.mockReset();
+    createObjectUrlMock.mockReturnValue("blob:akuso-media");
+    revokeObjectUrlMock.mockReset();
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: createObjectUrlMock,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeObjectUrlMock,
+    });
     Object.defineProperty(window.navigator, "clipboard", {
       configurable: true,
       value: {
@@ -161,6 +174,70 @@ describe("TengacionAssistantDock", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /message akuso/i })).toBeVisible();
     expect(screen.getByRole("button", { name: /send/i })).toBeVisible();
+  });
+
+  it("uploads an image attachment to Akuso without requiring typed text", async () => {
+    const user = userEvent.setup();
+    const file = new File(["fake image"], "poster.png", { type: "image/png" });
+    streamAssistantMessageMock.mockResolvedValue({
+      message: "I can assess the poster image.",
+      actions: [],
+      cards: [],
+      followUps: [],
+      sources: [],
+      details: [],
+      requiresConfirmation: false,
+      pendingAction: null,
+      conversationId: "conversation-image-1",
+      responseId: "trace-image-1",
+      feedbackToken: "token-image-1",
+      category: "SAFE_ANSWER",
+      mode: "knowledge",
+      safety: { level: "safe", notice: "", escalation: "" },
+      trust: {
+        provider: "local-fallback",
+        mode: "public-knowledge",
+        grounded: true,
+        usedModel: false,
+        confidenceLabel: "medium",
+        note: "",
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <TengacionAssistantDock />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("button", { name: /open akuso assistant/i }));
+    const input = await waitFor(() => {
+      const node = document.querySelector(
+        "input[type='file'][aria-label='Attach image or voice file']"
+      );
+      expect(node).toBeTruthy();
+      return node;
+    });
+
+    await user.upload(input, file);
+
+    expect(await screen.findByText("poster.png")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /send/i }));
+
+    await waitFor(() => {
+      expect(streamAssistantMessageMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "",
+          attachments: expect.arrayContaining([
+            expect.objectContaining({
+              file,
+              type: "image",
+            }),
+          ]),
+        })
+      );
+    });
+    expect(await screen.findByText("I can assess the poster image.")).toBeInTheDocument();
   });
 
   it("formats structured Akuso replies and copies the answer text", async () => {

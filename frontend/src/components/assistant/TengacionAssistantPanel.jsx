@@ -116,6 +116,14 @@ export default function TengacionAssistantPanel({
   composerValue = "",
   onComposerChange,
   onComposerSubmit,
+  composerAttachments = [],
+  onComposerAttachmentSelect,
+  onComposerAttachmentRemove,
+  composerRecording = false,
+  composerRecordingSeconds = 0,
+  composerRecordingSupported = true,
+  onComposerToggleRecording,
+  onComposerCancelRecording,
   onFollowUpClick,
   composerDisabled = false,
   composerRef,
@@ -445,6 +453,14 @@ export default function TengacionAssistantPanel({
                     value={composerValue}
                     onChange={onComposerChange}
                     onSubmit={onComposerSubmit}
+                    attachments={composerAttachments}
+                    onAttachmentSelect={onComposerAttachmentSelect}
+                    onRemoveAttachment={onComposerAttachmentRemove}
+                    recording={composerRecording}
+                    recordingSeconds={composerRecordingSeconds}
+                    recordingSupported={composerRecordingSupported}
+                    onToggleRecording={onComposerToggleRecording}
+                    onCancelRecording={onComposerCancelRecording}
                     disabled={composerDisabled}
                     compact={compactConversation}
                     placeholder={

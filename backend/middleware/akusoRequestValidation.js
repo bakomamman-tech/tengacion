@@ -5,6 +5,33 @@ const { sanitizeRoute } = require("../services/assistant/outputSanitizer");
 
 const isSafeRoute = (value = "") => !value || sanitizeRoute(value) === value;
 
+const parseBooleanInput = (value) => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "string") {
+    return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+  }
+  return value;
+};
+
+const parseObjectInput = (value) => {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+};
+
 const routeSchema = z
   .string()
   .trim()
@@ -43,13 +70,13 @@ const contextHintsSchema = z
 
 const chatSchema = z
   .object({
-    message: z.string().trim().min(1).max(config.akuso?.maxInputChars || 2000),
+    message: z.string().trim().max(config.akuso?.maxInputChars || 2000).optional().default(""),
     mode: modeSchema,
-    stream: z.boolean().optional().default(false),
+    stream: z.preprocess(parseBooleanInput, z.boolean().optional().default(false)),
     currentRoute: routeSchema,
     currentPage: z.string().trim().max(120).optional().default(""),
-    contextHints: contextHintsSchema.optional().default({}),
-    preferences: preferencesSchema.optional().default({}),
+    contextHints: z.preprocess(parseObjectInput, contextHintsSchema.optional().default({})),
+    preferences: z.preprocess(parseObjectInput, preferencesSchema.optional().default({})),
     conversationId: z.string().trim().max(80).optional().default(""),
     sessionKey: z.string().trim().max(80).optional().default(""),
   })
@@ -61,7 +88,7 @@ const templateSchema = z
     contentType: z.string().trim().max(40).optional().default("caption"),
     currentRoute: routeSchema,
     currentPage: z.string().trim().max(120).optional().default(""),
-    preferences: preferencesSchema.optional().default({}),
+    preferences: z.preprocess(parseObjectInput, preferencesSchema.optional().default({})),
     conversationId: z.string().trim().max(80).optional().default(""),
     sessionKey: z.string().trim().max(80).optional().default(""),
   })
@@ -88,7 +115,7 @@ const hintsSchema = z
   })
   .strict();
 
-const buildValidator = (schema, source = "body") => (req, res, next) => {
+const buildValidator = (schema, source = "body", options = {}) => (req, res, next) => {
   const input = source === "query" ? req.query || {} : req.body || {};
   const parsed = schema.safeParse(input);
   if (!parsed.success) {
@@ -99,12 +126,26 @@ const buildValidator = (schema, source = "body") => (req, res, next) => {
     });
   }
 
+  if (
+    options.requireMessageOrMedia &&
+    !String(parsed.data.message || "").trim() &&
+    !req.akusoHasMediaAttachments
+  ) {
+    return res.status(400).json({
+      ok: false,
+      error: "AKUSO_VALIDATION_ERROR",
+      message: "Akuso needs a message, image, or voice note to answer.",
+    });
+  }
+
   req.akusoInput = parsed.data;
   return next();
 };
 
 module.exports = {
-  validateAkusoChatRequest: buildValidator(chatSchema),
+  validateAkusoChatRequest: buildValidator(chatSchema, "body", {
+    requireMessageOrMedia: true,
+  }),
   validateAkusoFeedbackRequest: buildValidator(feedbackSchema),
   validateAkusoHintsRequest: buildValidator(hintsSchema, "query"),
   validateAkusoTemplateRequest: buildValidator(templateSchema),

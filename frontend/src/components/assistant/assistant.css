@@ -890,6 +890,64 @@
   color: color-mix(in srgb, var(--text) 96%, black 4%);
 }
 
+.tg-assistant-message__attachments {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.62rem;
+}
+
+.tg-assistant-message__attachment {
+  min-width: min(17rem, 100%);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.46rem;
+  border: 1px solid rgba(42, 111, 79, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.66);
+  overflow: hidden;
+}
+
+.tg-assistant-message__attachment.is-image {
+  display: block;
+  width: min(18rem, 100%);
+  padding: 0.32rem;
+}
+
+.tg-assistant-message__attachment img {
+  display: block;
+  width: 100%;
+  max-height: 14rem;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.tg-assistant-message__attachment-icon {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(42, 111, 79, 0.1);
+  color: var(--brand-strong);
+}
+
+.tg-assistant-message__attachment-icon svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tg-assistant-message__attachment audio {
+  width: min(13rem, 100%);
+  height: 2rem;
+}
+
 .tg-assistant-message__bubble--loading {
   display: flex;
   align-items: center;
@@ -1204,6 +1262,105 @@
   background: rgba(255, 255, 255, 0.98);
 }
 
+.tg-assistant-composer__attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tg-assistant-composer__attachment {
+  width: min(100%, 13.5rem);
+  min-height: 2.8rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.45rem;
+  border: 1px solid rgba(42, 111, 79, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.tg-assistant-composer__attachment img {
+  width: 2.2rem;
+  height: 2.2rem;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.tg-assistant-composer__attachment-icon {
+  width: 2.2rem;
+  height: 2.2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(42, 111, 79, 0.1);
+  color: var(--brand-strong);
+}
+
+.tg-assistant-composer__attachment-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--text) 88%, var(--muted) 12%);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.tg-assistant-composer__attachment-remove,
+.tg-assistant-composer__tool {
+  width: 2.45rem;
+  height: 2.45rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(42, 111, 79, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: color-mix(in srgb, var(--text) 76%, var(--brand-strong) 24%);
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.tg-assistant-composer__attachment-remove {
+  width: 1.65rem;
+  height: 1.65rem;
+}
+
+.tg-assistant-composer__attachment-remove:hover,
+.tg-assistant-composer__attachment-remove:focus-visible,
+.tg-assistant-composer__tool:hover,
+.tg-assistant-composer__tool:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(42, 111, 79, 0.26);
+  background: rgba(244, 250, 245, 0.98);
+  color: var(--brand-strong);
+}
+
+.tg-assistant-composer__attachment-remove:focus-visible,
+.tg-assistant-composer__tool:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(42, 111, 79, 0.14);
+}
+
+.tg-assistant-composer__tool.is-recording {
+  border-color: rgba(206, 55, 78, 0.26);
+  background: rgba(255, 237, 240, 0.96);
+  color: #c12842;
+}
+
+.tg-assistant-composer__attachment-remove:disabled,
+.tg-assistant-composer__tool:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .tg-assistant-composer__actions {
   display: flex;
   align-items: center;
@@ -1219,6 +1376,14 @@
   color: var(--muted);
   font-size: 0.77rem;
   line-height: 1.4;
+}
+
+.tg-assistant-composer__tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex: 0 0 auto;
 }
 
 .tg-assistant-composer__send {
@@ -1268,6 +1433,23 @@
   width: 1.1rem;
   height: 1.1rem;
   fill: currentColor;
+}
+
+.tg-assistant-composer__tool svg,
+.tg-assistant-composer__attachment-remove svg,
+.tg-assistant-composer__attachment-icon svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tg-assistant-composer__tool svg rect {
+  fill: currentColor;
+  stroke: none;
 }
 
 .tg-assistant-confirm-backdrop {
@@ -1409,7 +1591,9 @@ html.dark-mode .tg-assistant-safety,
 html.dark-mode .tg-assistant-feedback,
 html.dark-mode .tg-assistant-source-chip,
 html.dark-mode .tg-assistant-error,
-html.dark-mode .tg-assistant-composer__textarea {
+html.dark-mode .tg-assistant-composer__textarea,
+html.dark-mode .tg-assistant-composer__attachment,
+html.dark-mode .tg-assistant-message__attachment {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(121, 207, 162, 0.14);
 }
@@ -1417,7 +1601,9 @@ html.dark-mode .tg-assistant-composer__textarea {
 html.dark-mode .tg-assistant-mode-pill,
 html.dark-mode .tg-assistant-chip,
 html.dark-mode .tg-assistant-sidebar__new-chat,
-html.dark-mode .tg-assistant-panel__header-actions {
+html.dark-mode .tg-assistant-panel__header-actions,
+html.dark-mode .tg-assistant-composer__tool,
+html.dark-mode .tg-assistant-composer__attachment-remove {
   background: linear-gradient(180deg, rgba(28, 46, 37, 0.98) 0%, rgba(17, 31, 24, 0.94) 100%);
   border-color: rgba(121, 207, 162, 0.14);
 }
@@ -1431,7 +1617,11 @@ html.dark-mode .tg-assistant-sidebar__starter:hover,
 html.dark-mode .tg-assistant-sidebar__starter:focus-visible,
 html.dark-mode .tg-assistant-sidebar__new-chat:hover,
 html.dark-mode .tg-assistant-sidebar__new-chat:focus-visible,
-html.dark-mode .tg-assistant-panel__header-actions:hover {
+html.dark-mode .tg-assistant-panel__header-actions:hover,
+html.dark-mode .tg-assistant-composer__tool:hover,
+html.dark-mode .tg-assistant-composer__tool:focus-visible,
+html.dark-mode .tg-assistant-composer__attachment-remove:hover,
+html.dark-mode .tg-assistant-composer__attachment-remove:focus-visible {
   border-color: rgba(121, 207, 162, 0.28);
   background: linear-gradient(180deg, rgba(30, 49, 40, 0.98) 0%, rgba(20, 35, 28, 0.96) 100%);
 }
@@ -1472,6 +1662,16 @@ html.dark-mode .tg-assistant-message__meta-tag {
 
 html.dark-mode .tg-assistant-message__bubble {
   background: rgba(255, 255, 255, 0.08);
+  color: #effaf3;
+}
+
+html.dark-mode .tg-assistant-message__attachment-icon,
+html.dark-mode .tg-assistant-composer__attachment-icon {
+  background: rgba(121, 207, 162, 0.12);
+  color: #bff0d6;
+}
+
+html.dark-mode .tg-assistant-composer__attachment-name {
   color: #effaf3;
 }
 

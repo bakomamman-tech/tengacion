@@ -322,17 +322,17 @@ const getOnboardingReminderActionLink = (payload = {}) => {
     return actionLink;
   }
 
-  return Boolean(payload?.needsEmailVerification) && !Boolean(payload?.needsProfile)
+  return payload?.needsEmailVerification && !payload?.needsProfile
     ? "/settings/security"
     : "/onboarding";
 };
 
 const getOnboardingReminderCtaLabel = (payload = {}) => {
-  if (Boolean(payload?.needsProfile)) {
+  if (payload?.needsProfile) {
     return "Open profile editor";
   }
 
-  if (Boolean(payload?.needsEmailVerification)) {
+  if (payload?.needsEmailVerification) {
     return "Verify email";
   }
 
@@ -1357,7 +1357,7 @@ export default function Messenger({
     return () => {
       alive = false;
     };
-  }, [conversationOnly, meId, preferredSelectedId]);
+  }, [autoSelectFirstConversation, conversationOnly, meId, preferredSelectedId]);
 
   useEffect(() => {
     let alive = true;
@@ -2053,7 +2053,7 @@ export default function Messenger({
       );
       setError(err?.message || "Failed to react to message");
     }
-  }, [meId, preferredSelectedId]);
+  }, [meId]);
 
   const handleForwardMessage = useCallback((message) => {
     const payload = buildForwardPayload(message);

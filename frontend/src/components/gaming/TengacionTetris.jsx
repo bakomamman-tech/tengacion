@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 20;
@@ -186,10 +186,18 @@ const getLevelFromLines = (lines) => 1 + Math.floor(lines / 10);
 const getDropDelay = (level) => Math.max(MIN_DROP_DELAY, BASE_DROP_DELAY - (level - 1) * 58);
 
 const getClearLabel = (count) => {
-  if (count === 1) return "Single";
-  if (count === 2) return "Double";
-  if (count === 3) return "Triple";
-  if (count >= 4) return "Tetris";
+  if (count === 1) {
+    return "Single";
+  }
+  if (count === 2) {
+    return "Double";
+  }
+  if (count === 3) {
+    return "Triple";
+  }
+  if (count >= 4) {
+    return "Tetris";
+  }
   return "Lock";
 };
 
@@ -334,7 +342,6 @@ export default function TengacionTetris({ onSessionChange }) {
     board,
     current,
     queue,
-    bag,
     hold,
     canHold,
     score,
@@ -374,7 +381,7 @@ export default function TengacionTetris({ onSessionChange }) {
     });
   }, [bestScore, combo, gameOver, lastPlaced, level, lines, moves, onSessionChange, score, status]);
 
-  const spawnNextPiece = (currentState, customType = null) => {
+  const spawnNextPiece = useCallback((currentState, customType = null) => {
     let nextQueue = currentState.queue;
     let nextBag = currentState.bag;
     let nextType = customType;
@@ -400,9 +407,9 @@ export default function TengacionTetris({ onSessionChange }) {
       paused: false,
       status: spawnBlocked ? "Stack jammed at spawn. Start a fresh run." : currentState.status,
     };
-  };
+  }, []);
 
-  const lockCurrentPiece = (currentState, extraScore = 0) => {
+  const lockCurrentPiece = useCallback((currentState, extraScore = 0) => {
     const merged = mergePieceIntoBoard(currentState.board, currentState.current);
     if (merged.toppedOut) {
       return {
@@ -445,9 +452,9 @@ export default function TengacionTetris({ onSessionChange }) {
     );
 
     return prepared;
-  };
+  }, [spawnNextPiece]);
 
-  const moveHorizontally = (direction) => {
+  const moveHorizontally = useCallback((direction) => {
     setState((currentState) => {
       if (currentState.gameOver || currentState.paused) {
         return currentState;
@@ -464,9 +471,9 @@ export default function TengacionTetris({ onSessionChange }) {
         status: direction < 0 ? "Shifted left." : "Shifted right.",
       };
     });
-  };
+  }, []);
 
-  const rotatePiece = () => {
+  const rotatePiece = useCallback(() => {
     setState((currentState) => {
       if (currentState.gameOver || currentState.paused) {
         return currentState;
@@ -500,9 +507,9 @@ export default function TengacionTetris({ onSessionChange }) {
 
       return currentState;
     });
-  };
+  }, []);
 
-  const stepDown = (withBonus = false) => {
+  const stepDown = useCallback((withBonus = false) => {
     setState((currentState) => {
       if (currentState.gameOver || currentState.paused) {
         return currentState;
@@ -523,9 +530,9 @@ export default function TengacionTetris({ onSessionChange }) {
 
       return lockCurrentPiece(currentState, withBonus ? 1 : 0);
     });
-  };
+  }, [lockCurrentPiece]);
 
-  const hardDrop = () => {
+  const hardDrop = useCallback(() => {
     setState((currentState) => {
       if (currentState.gameOver || currentState.paused) {
         return currentState;
@@ -547,9 +554,9 @@ export default function TengacionTetris({ onSessionChange }) {
         dropDistance * 2
       );
     });
-  };
+  }, [lockCurrentPiece]);
 
-  const holdCurrentPiece = () => {
+  const holdCurrentPiece = useCallback(() => {
     setState((currentState) => {
       if (currentState.gameOver || currentState.paused || !currentState.canHold) {
         return currentState;
@@ -590,9 +597,9 @@ export default function TengacionTetris({ onSessionChange }) {
         status: blocked ? "Hold pull blocked the spawn lane." : swappedState.status,
       };
     });
-  };
+  }, []);
 
-  const togglePause = () => {
+  const togglePause = useCallback(() => {
     setState((currentState) =>
       currentState.gameOver
         ? currentState
@@ -602,7 +609,7 @@ export default function TengacionTetris({ onSessionChange }) {
             status: currentState.paused ? "Stack back in motion." : "Run paused.",
           }
     );
-  };
+  }, []);
 
   const startNewRun = () => {
     setState((currentState) => createFreshState(Math.max(currentState.bestScore, currentState.score)));
@@ -632,7 +639,7 @@ export default function TengacionTetris({ onSessionChange }) {
     }, getDropDelay(level));
 
     return () => window.clearInterval(timer);
-  }, [gameOver, level, paused]);
+  }, [gameOver, level, lockCurrentPiece, paused]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -680,7 +687,7 @@ export default function TengacionTetris({ onSessionChange }) {
 
     window.addEventListener("keydown", onKeyDown, { passive: false });
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [gameOver, paused]);
+  }, [hardDrop, holdCurrentPiece, moveHorizontally, rotatePiece, stepDown, togglePause]);
 
   const ghostRow = useMemo(() => getGhostRow(board, current), [board, current]);
 

@@ -158,14 +158,14 @@ const advanceFrame = (state, deltaMs, input, jumpQueued) => {
   let status = state.status;
   let score = state.score;
   let coinsCollected = state.coinsCollected;
-  let hearts = state.hearts;
+  const hearts = state.hearts;
   let jumps = state.jumps;
   let checkpointIndex = state.checkpointIndex;
   let checkpointX = state.checkpointX;
-  let recovering = Math.max(0, state.recovering - deltaMs);
+  const recovering = Math.max(0, state.recovering - deltaMs);
   let wins = state.wins;
   let cleared = state.cleared;
-  let gameOver = state.gameOver;
+  const gameOver = state.gameOver;
 
   const player = { ...state.player };
   const enemies = state.enemies.map((enemy) => {

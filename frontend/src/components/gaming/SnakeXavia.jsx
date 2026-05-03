@@ -148,7 +148,7 @@ const getSpeedForState = (difficulty, score) => {
 export default function SnakeXavia({ onSessionChange }) {
   const [state, setState] = useState(() => createFreshState(getStoredSnapshot()));
   const touchStartRef = useRef(null);
-  const { snake, direction, pendingDirection, food, score, bestScore, moves, gameOver, paused, difficulty, foodsEaten } =
+  const { snake, food, score, bestScore, moves, gameOver, paused, difficulty, foodsEaten } =
     state;
 
   useEffect(() => {

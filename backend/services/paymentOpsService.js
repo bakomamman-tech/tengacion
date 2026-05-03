@@ -39,9 +39,11 @@ const {
   resolveSubscriptionLifecycle,
 } = require("./purchaseLifecycleService");
 const { config } = require("../config/env");
+const logger = require("../utils/logger");
 
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 const DEFAULT_STUCK_PENDING_MINUTES = 15;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const LEGACY_SUPPORTED_PAYMENT_OPTIONS = {
   NG: ["Paystack Card", "Bank Transfer", "USSD", "Verve", "Flutterwave"],
@@ -160,7 +162,61 @@ const toLegacyCheckoutPayload = ({
 const createServiceError = (message, status = 400) => {
   const error = new Error(message);
   error.status = status;
+  error.statusCode = status;
+  error.isOperational = true;
   return error;
+};
+
+const isValidPaymentEmail = (value = "") =>
+  EMAIL_PATTERN.test(String(value || "").trim().toLowerCase());
+
+const getPaymentInitRoute = (req = null) =>
+  String(req?.originalUrl || req?.path || "/api/payments/init");
+
+const buildPaymentInitDiagnostics = ({
+  req = null,
+  itemType = "",
+  itemId = "",
+  amount = null,
+  email = "",
+  callbackUrl = "",
+  error = null,
+} = {}) => ({
+  route: getPaymentInitRoute(req),
+  itemType: String(itemType || "").trim().toLowerCase(),
+  itemId: String(itemId || "").trim(),
+  amount:
+    amount === null || amount === undefined || amount === ""
+      ? null
+      : Number.isFinite(Number(amount))
+        ? Number(amount)
+        : null,
+  emailPresent: Boolean(String(email || "").trim()),
+  callbackUrl: String(callbackUrl || "").trim(),
+  paystackResponseStatus:
+    error?.paystackStatus ||
+    error?.providerStatus ||
+    error?.providerHttpStatus ||
+    error?.statusCode ||
+    error?.status ||
+    "",
+  paystackResponseMessage:
+    error?.paystackMessage ||
+    error?.providerMessage ||
+    error?.message ||
+    "",
+});
+
+const logPaymentInitFailure = (details = {}) => {
+  logger.warn("Payment initialization failed", buildPaymentInitDiagnostics(details));
+};
+
+const resolvePaymentProviderErrorStatus = (error = {}) => {
+  const status = Number(error?.status || error?.statusCode || 0);
+  if (status >= 400 && status < 500) {
+    return status;
+  }
+  return 503;
 };
 
 const isPublishablePayload = (payload = {}) => {
@@ -230,7 +286,7 @@ const resolveItemAmountForCurrency = (item = {}, currency = "NGN") => {
 const buildMissingCurrencyPriceMessage = (currency = "NGN") =>
   normalizeCurrency(currency) === "USD"
     ? "USD price is not configured for this item"
-    : "Item is free and does not require payment";
+    : "A valid amount is required to start payment.";
 
 const buildPurchaseEventMetadata = (purchase, metadata = {}) => ({
   purchaseId: toIdString(purchase?._id) || String(metadata.purchaseId || ""),
@@ -370,8 +426,19 @@ const initializePaystackCheckout = async ({
   actorRole = "",
 } = {}) => {
   const user = await User.findById(userId).select("email").lean();
-  if (!user?.email) {
-    throw createServiceError("User email is required for payment", 400);
+  const userEmail = String(user?.email || "").trim().toLowerCase();
+  const callbackUrl = getReturnUrl(returnUrl);
+  const requestedType = normalizeType(productType);
+  if (!isValidPaymentEmail(userEmail)) {
+    logPaymentInitFailure({
+      req,
+      itemType: requestedType,
+      itemId: productId,
+      email: userEmail,
+      callbackUrl,
+      error: { message: "A valid email is required to start payment.", status: 400 },
+    });
+    throw createServiceError("A valid email is required to start payment.", 400);
   }
 
   const checkout = await resolveCheckoutTarget({
@@ -381,11 +448,32 @@ const initializePaystackCheckout = async ({
     currency: "NGN",
   });
   if (checkout.error) {
+    logPaymentInitFailure({
+      req,
+      itemType: requestedType,
+      itemId: productId,
+      email: userEmail,
+      callbackUrl,
+      error: { message: checkout.error, status: checkout.error === "Item not found" ? 404 : 400 },
+    });
     throw createServiceError(checkout.error, checkout.error === "Item not found" ? 404 : 400);
   }
 
   const item = checkout.item;
   const amount = resolveItemAmountForCurrency(item, "NGN");
+  if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
+    logPaymentInitFailure({
+      req,
+      itemType: item.itemType,
+      itemId: toIdString(item.itemId),
+      amount,
+      email: userEmail,
+      callbackUrl,
+      error: { message: "A valid amount is required to start payment.", status: 400 },
+    });
+    throw createServiceError("A valid amount is required to start payment.", 400);
+  }
+
   const reference = generatePaymentReference(item.itemType);
   const purchase = await createPendingPurchase({
     userId,
@@ -402,7 +490,7 @@ const initializePaystackCheckout = async ({
     actorRole,
     metadata: {
       source: "checkout",
-      returnUrl: getReturnUrl(returnUrl),
+      returnUrl: callbackUrl,
       currencyMode: String(currencyMode || "NG").trim().toUpperCase(),
       provider: "paystack",
     },
@@ -410,10 +498,10 @@ const initializePaystackCheckout = async ({
 
   try {
     const payment = await initializeTransaction({
-      email: user.email,
+      email: userEmail,
       amountNgn: amount,
       reference,
-      callbackUrl: getReturnUrl(returnUrl),
+      callbackUrl,
       metadata: {
         app: "tengacion",
         buyerId: toIdString(userId),
@@ -451,6 +539,16 @@ const initializePaystackCheckout = async ({
 
     return { purchase: pendingPurchase || purchase, payment, item };
   } catch (error) {
+    logPaymentInitFailure({
+      req,
+      itemType: item.itemType,
+      itemId: toIdString(item.itemId),
+      amount,
+      email: userEmail,
+      callbackUrl,
+      error,
+    });
+
     await Purchase.updateOne(
       { _id: purchase._id },
       { $set: { status: "failed" } }
@@ -465,6 +563,8 @@ const initializePaystackCheckout = async ({
       metadata: {
         source: "checkout",
         reason: error.message || "Payment initialization failed",
+        providerStatus: error.providerStatus || error.paystackStatus || "",
+        providerHttpStatus: error.providerHttpStatus || "",
       },
     }).catch(() => null);
 
@@ -480,10 +580,15 @@ const initializePaystackCheckout = async ({
         itemId: toIdString(item.itemId),
         amount,
         reason: error.message || "Payment initialization failed",
+        providerStatus: error.providerStatus || error.paystackStatus || "",
+        providerHttpStatus: error.providerHttpStatus || "",
       },
     }).catch(() => null);
 
-    throw createServiceError(error.message || "Payment initialization failed", 502);
+    throw createServiceError(
+      error.message || "Payment provider is unavailable. Please try again shortly.",
+      resolvePaymentProviderErrorStatus(error)
+    );
   }
 };
 
@@ -495,8 +600,8 @@ const initializeStripeCheckout = async ({
   actorRole = "",
 } = {}) => {
   const user = await User.findById(userId).select("email").lean();
-  if (!user?.email) {
-    throw createServiceError("User email is required for payment", 400);
+  if (!isValidPaymentEmail(user?.email)) {
+    throw createServiceError("A valid email is required to start payment.", 400);
   }
 
   const checkout = await resolveCheckoutTarget({
@@ -610,7 +715,7 @@ const initializeStripeCheckout = async ({
       },
     }).catch(() => null);
 
-    throw createServiceError(error.message || "Stripe checkout initialization failed", 502);
+    throw createServiceError(error.message || "Stripe checkout initialization failed", 503);
   }
 };
 

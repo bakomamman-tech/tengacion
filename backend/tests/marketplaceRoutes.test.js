@@ -397,6 +397,8 @@ describe("Marketplace routes", () => {
     expect(initializeResponse.body.authorizationUrl).toBe(
       "https://paystack.test/authorize-marketplace"
     );
+    expect(initializeResponse.body.accessCode).toBe("ACCESS_MARKETPLACE_123");
+    expect(initializeResponse.body.reference).toBe("TGN_MARKETPLACE_TEST_123");
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining("/transaction/initialize"),
       expect.objectContaining({
@@ -404,6 +406,13 @@ describe("Marketplace routes", () => {
         body: expect.stringContaining('"amount":500000'),
       })
     );
+    const marketplaceInitPayload = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(marketplaceInitPayload).toMatchObject({
+      email: "marketplace-buyer@example.com",
+      amount: 5000 * 100,
+      callback_url: "http://localhost:5173/marketplace/orders",
+      channels: ["card", "ussd", "bank_transfer"],
+    });
 
     const storedPendingOrder = await MarketplaceOrder.findOne({
       paymentReference: "TGN_MARKETPLACE_TEST_123",

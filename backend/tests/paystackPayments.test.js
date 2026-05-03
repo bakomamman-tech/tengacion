@@ -272,6 +272,135 @@ describe("Paystack payments", () => {
     expect(await Entitlement.countDocuments({ buyerId: viewer._id, itemType: "track", itemId: track._id })).toBe(0);
   });
 
+  test("/api/payments/init initializes a song checkout and returns Paystack redirect details", async () => {
+    mockPaystackResponse({
+      authorization_url: "https://paystack.test/song-checkout",
+      access_code: "ACCESS_SONG_INIT",
+      reference: "PAYSTACK_PROVIDER_REF",
+    });
+
+    const returnUrl = "https://tengacion.test/payment/verify?itemType=track";
+    const response = await request(app)
+      .post("/api/payments/init")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        itemType: "track",
+        itemId: track._id.toString(),
+        returnUrl,
+      })
+      .expect(201);
+
+    expect(response.body).toMatchObject({
+      authorization_url: "https://paystack.test/song-checkout",
+      checkoutUrl: "https://paystack.test/song-checkout",
+      access_code: "ACCESS_SONG_INIT",
+      provider: "paystack",
+    });
+    expect(response.body.reference).toMatch(/^TGN_TRACK_/);
+
+    const initCall = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(initCall).toMatchObject({
+      email: viewer.email,
+      amount: 2500 * 100,
+      callback_url: returnUrl,
+      currency: "NGN",
+      reference: response.body.reference,
+      channels: ["card", "ussd", "bank_transfer"],
+      metadata: expect.objectContaining({
+        buyerId: viewer._id.toString(),
+        creatorId: creator.profile._id.toString(),
+        productId: track._id.toString(),
+        productType: "track",
+        purchaseId: response.body.purchase._id,
+      }),
+    });
+  });
+
+  test("/api/payments/init rejects a song without a payable amount", async () => {
+    const freeTrack = await Track.create({
+      creatorId: creator.profile._id,
+      title: "Free Song Missing Amount",
+      description: "No payable price",
+      price: 0,
+      priceNGN: 0,
+      audioUrl: "https://example.com/free-track.mp3",
+      previewUrl: "https://example.com/free-preview.mp3",
+      kind: "music",
+      creatorCategory: "music",
+      contentType: "track",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+    global.fetch = jest.fn();
+
+    const response = await request(app)
+      .post("/api/payments/init")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        itemType: "track",
+        itemId: freeTrack._id.toString(),
+      })
+      .expect(400);
+
+    expect(response.body.message || response.body.error).toBe("A valid amount is required to start payment.");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("/api/payments/init rejects missing buyer email before calling Paystack", async () => {
+    await User.updateOne({ _id: viewer._id }, { $unset: { email: "" } });
+    global.fetch = jest.fn();
+
+    const response = await request(app)
+      .post("/api/payments/init")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        itemType: "track",
+        itemId: track._id.toString(),
+      })
+      .expect(400);
+
+    expect(response.body.message || response.body.error).toBe("A valid email is required to start payment.");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("/api/payments/init rejects a missing song id", async () => {
+    global.fetch = jest.fn();
+
+    const response = await request(app)
+      .post("/api/payments/init")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        itemType: "track",
+      })
+      .expect(400);
+
+    expect(response.body.message || response.body.error).toBe("itemType and itemId are required");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("/api/payments/init returns 503 when Paystack rejects initialization", async () => {
+    mockPaystackFailure("Paystack rejected payload");
+
+    const response = await request(app)
+      .post("/api/payments/init")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        itemType: "track",
+        itemId: track._id.toString(),
+      })
+      .expect(503);
+
+    expect(response.body.message || response.body.error).toBe("Paystack rejected payload");
+
+    const stored = await Purchase.findOne({
+      userId: viewer._id,
+      itemType: "track",
+      itemId: track._id,
+    }).lean();
+    expect(stored).toBeTruthy();
+    expect(stored.status).toBe("failed");
+  });
+
   test("live mode refuses Paystack test keys before checkout opens", async () => {
     const previousRequireLiveKey = process.env.PAYSTACK_REQUIRE_LIVE_KEY;
     const previousSecretKey = process.env.PAYSTACK_SECRET_KEY;

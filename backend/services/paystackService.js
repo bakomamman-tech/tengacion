@@ -3,6 +3,7 @@ const { config } = require("../config/env");
 
 const PAYSTACK_BASE_URL = String(config.PAYSTACK_BASE_URL || "https://api.paystack.co").replace(/\/+$/, "");
 const PAYSTACK_CHECKOUT_CHANNELS = ["card", "ussd", "bank_transfer"];
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const parseBooleanFlag = (value, fallback = false) => {
   if (value == null || value === "") {
@@ -66,6 +67,31 @@ const normalizeProductTypeToken = (value = "") =>
     .replace(/^_+|_+$/g, "")
     .toUpperCase() || "PAYMENT";
 
+const createPaystackError = ({
+  message = "Failed to initialize Paystack transaction",
+  status = 503,
+  providerHttpStatus = 0,
+  providerStatus = "",
+} = {}) => {
+  const error = new Error(message);
+  error.status = status;
+  error.statusCode = status;
+  error.isOperational = true;
+  error.provider = "paystack";
+  error.providerHttpStatus = providerHttpStatus;
+  error.providerStatus = providerStatus;
+  error.providerMessage = message;
+  error.paystackStatus = providerStatus || providerHttpStatus || "";
+  error.paystackMessage = message;
+  return error;
+};
+
+const createValidationError = (message) =>
+  createPaystackError({
+    message,
+    status: 400,
+  });
+
 const generatePaymentReference = (productType = "") => {
   const token = normalizeProductTypeToken(productType);
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -110,27 +136,54 @@ const initializeTransaction = async ({
   metadata = {},
 }) => {
   const secret = assertPaystackSecretUsable();
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!EMAIL_PATTERN.test(normalizedEmail)) {
+    throw createValidationError("A valid email is required to start payment.");
+  }
 
-  const response = await fetch(`${PAYSTACK_BASE_URL}/transaction/initialize`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secret}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      email,
-      amount: Math.round(Number(amountNgn) * 100),
-      reference,
-      callback_url: callbackUrl || undefined,
-      metadata,
-      currency: getCurrency(),
-      channels: PAYSTACK_CHECKOUT_CHANNELS,
-    }),
-  });
+  const amount = Number(amountNgn);
+  const amountKobo = Math.round(amount * 100);
+  if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(amountKobo) || amountKobo <= 0) {
+    throw createValidationError("A valid amount is required to start payment.");
+  }
+
+  const normalizedReference = String(reference || "").trim();
+  if (!normalizedReference) {
+    throw createValidationError("A payment reference is required to start payment.");
+  }
+
+  let response;
+  try {
+    response = await fetch(`${PAYSTACK_BASE_URL}/transaction/initialize`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        amount: amountKobo,
+        reference: normalizedReference,
+        callback_url: callbackUrl || undefined,
+        metadata,
+        currency: getCurrency(),
+        channels: PAYSTACK_CHECKOUT_CHANNELS,
+      }),
+    });
+  } catch (error) {
+    throw createPaystackError({
+      message: error.message || "Paystack initialize request failed",
+      providerStatus: "network_error",
+    });
+  }
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.status !== true || !payload?.data?.authorization_url) {
-    throw new Error(payload?.message || "Failed to initialize Paystack transaction");
+    throw createPaystackError({
+      message: payload?.message || "Failed to initialize Paystack transaction",
+      providerHttpStatus: response.status,
+      providerStatus: payload?.status === false ? "false" : String(payload?.status || ""),
+    });
   }
 
   return normalizePaystackResponse(payload);

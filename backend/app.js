@@ -14,6 +14,15 @@ const app = express();
 const isProduction = config.isProduction;
 const requestBodyLimit = "2mb";
 const allowedOriginSet = new Set(config.allowedOrigins);
+const googleAnalyticsScriptSrc = [
+  "https://www.googletagmanager.com",
+  "https://www.google-analytics.com",
+];
+const googleAnalyticsConnectSrc = [
+  "https://www.google-analytics.com",
+  "https://region1.google-analytics.com",
+  "https://www.googletagmanager.com",
+];
 const corsOrigin = (origin, callback) => {
   if (!origin || allowedOriginSet.has(origin)) {
     callback(null, true);
@@ -59,11 +68,14 @@ app.use(
           "wss://*.livekit.cloud",
           "https://tengacioncom-8unikgcj.livekit.cloud",
           "wss://tengacioncom-8unikgcj.livekit.cloud",
+          ...googleAnalyticsConnectSrc,
         ],
         imgSrc: ["'self'", "data:", "blob:", "https:", "https://ui-avatars.com"],
         mediaSrc: ["'self'", "blob:", "https:"],
         workerSrc: ["'self'", "blob:"],
-        scriptSrc: isProduction ? ["'self'"] : ["'self'", "'unsafe-inline'"],
+        scriptSrc: isProduction
+          ? ["'self'", ...googleAnalyticsScriptSrc]
+          : ["'self'", "'unsafe-inline'", ...googleAnalyticsScriptSrc],
       },
     },
   })

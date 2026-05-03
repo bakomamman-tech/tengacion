@@ -15,13 +15,17 @@ const errorHandler = (err, req, res, _next) => {
 
   const statusCode = err.statusCode || err.status || 500;
   const isOperational =
-    err instanceof ApiError || (Number(statusCode) >= 400 && Number(statusCode) < 500);
+    Boolean(err.isOperational) ||
+    err instanceof ApiError ||
+    (Number(statusCode) >= 400 && Number(statusCode) < 500) ||
+    Number(statusCode) === 503;
   const isProduction = config.NODE_ENV === "production";
   const message =
     isProduction && !isOperational ? "Internal Server Error" : err.message || "Internal Server Error";
   const payload = {
     success: false,
     message,
+    error: message,
   };
 
   if (err.details && (!isProduction || isOperational)) {

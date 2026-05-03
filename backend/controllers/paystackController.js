@@ -37,7 +37,11 @@ exports.initializePaystackPayment = asyncHandler(async (req, res) => {
   const productType = String(req.body?.productType || req.body?.itemType || "").trim();
   const productId = String(req.body?.productId || req.body?.itemId || "").trim();
   if (!productType || !productId) {
-    return res.status(400).json({ error: "productType and productId are required" });
+    return res.status(400).json({
+      success: false,
+      error: "itemType and itemId are required",
+      message: "itemType and itemId are required",
+    });
   }
 
   const checkout = await initializePaystackCheckout({
@@ -53,8 +57,10 @@ exports.initializePaystackPayment = asyncHandler(async (req, res) => {
   return res.status(201).json({
     purchase: toPurchasePayload(checkout.purchase),
     authorization_url: checkout.payment.authorization_url,
+    checkoutUrl: checkout.payment.authorization_url,
     access_code: checkout.payment.access_code || "",
     reference: checkout.purchase.providerRef,
+    provider: checkout.purchase.provider || "paystack",
   });
 });
 
@@ -62,7 +68,11 @@ exports.initializePaymentCheckout = asyncHandler(async (req, res) => {
   const productType = String(req.body?.productType || req.body?.itemType || "").trim();
   const productId = String(req.body?.productId || req.body?.itemId || "").trim();
   if (!productType || !productId) {
-    return res.status(400).json({ error: "productType and productId are required" });
+    return res.status(400).json({
+      success: false,
+      error: "itemType and itemId are required",
+      message: "itemType and itemId are required",
+    });
   }
 
   const checkout = await initializeCheckout({

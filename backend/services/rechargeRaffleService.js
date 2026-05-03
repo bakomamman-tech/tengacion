@@ -3,6 +3,10 @@ const RechargeRafflePlay = require("../models/RechargeRafflePlay");
 const Post = require("../models/Post");
 const User = require("../models/User");
 const { mediaToUrl } = require("../utils/userMedia");
+const {
+  sanitizeCountryValue,
+  sanitizePhoneValue,
+} = require("../utils/profileFields");
 
 const MAX_SPINS = 5;
 const COOLDOWN_MS = 2 * 24 * 60 * 60 * 1000;
@@ -91,21 +95,56 @@ const getNetworkPayload = () =>
 
 const hasProfilePhoto = (user = {}) => Boolean(mediaToUrl(user.avatar));
 
+const hasDateValue = (value) => {
+  if (!value) {
+    return false;
+  }
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime());
+};
+
+const hasCompletedProfileDetails = (user = {}) => {
+  if (user?.onboarding?.completed) {
+    return true;
+  }
+
+  return Boolean(
+    user?.name &&
+      user?.username &&
+      user?.email &&
+      sanitizePhoneValue(user?.phone) &&
+      sanitizeCountryValue(user?.country) &&
+      hasDateValue(user?.dob) &&
+      String(user?.gender || "").trim()
+  );
+};
+
+const hasCompletedProfileWithPhoto = (user = {}) =>
+  hasCompletedProfileDetails(user) && hasProfilePhoto(user);
+
+const hasActiveAccount = (user = {}) =>
+  Boolean(user?._id) &&
+  user.isActive !== false &&
+  user.isDeleted !== true &&
+  user.isBanned !== true &&
+  user.isSuspended !== true;
+
 const getEligibility = (user = {}) => {
   const accountBasicsComplete = Boolean(user?.name && user?.username && user?.email);
+  const profileDetailsComplete = hasCompletedProfileDetails(user);
   const profilePhotoComplete = hasProfilePhoto(user);
-  const activeAccount =
-    Boolean(user?._id) &&
-    user.isActive !== false &&
-    user.isDeleted !== true &&
-    user.isBanned !== true &&
-    user.isSuspended !== true;
+  const activeAccount = hasActiveAccount(user);
 
   const requirements = [
     {
       id: "account",
-      label: "Complete account basics",
+      label: "Keep account active",
       complete: accountBasicsComplete && activeAccount,
+    },
+    {
+      id: "profile",
+      label: "Update profile details",
+      complete: profileDetailsComplete,
     },
     {
       id: "avatar",
@@ -115,11 +154,84 @@ const getEligibility = (user = {}) => {
   ];
 
   return {
-    eligible: requirements.every((item) => item.complete),
+    eligible: activeAccount,
     requirements,
     accountBasicsComplete,
+    profileDetailsComplete,
     profilePhotoComplete,
     activeAccount,
+  };
+};
+
+const hasClaimedRaffleWin = async (userId) => {
+  if (!userId) {
+    return false;
+  }
+
+  const [wonPlay, claimedCard] = await Promise.all([
+    RechargeRafflePlay.exists({
+      userId,
+      status: "won",
+      prizePin: { $ne: "" },
+    }),
+    RechargeRaffleCard.exists({
+      claimedBy: userId,
+      status: "claimed",
+    }),
+  ]);
+
+  return Boolean(wonPlay || claimedCard);
+};
+
+const buildRaffleVisibility = ({ user = {}, hasClaimedWin = false } = {}) => {
+  const profileDetailsComplete = hasCompletedProfileDetails(user);
+  const profilePhotoComplete = hasProfilePhoto(user);
+  const profileCompleteWithPhoto = profileDetailsComplete && profilePhotoComplete;
+
+  if (!hasActiveAccount(user)) {
+    return {
+      visible: false,
+      reason: "inactive_account",
+      message: "Spin & Win is not available for this account.",
+      hasClaimedWin,
+      profileDetailsComplete,
+      profilePhotoComplete,
+      profileCompleteWithPhoto,
+    };
+  }
+
+  if (hasClaimedWin) {
+    return {
+      visible: false,
+      reason: "claimed_win",
+      message: "Spin & Win is complete for this account.",
+      hasClaimedWin,
+      profileDetailsComplete,
+      profilePhotoComplete,
+      profileCompleteWithPhoto,
+    };
+  }
+
+  if (profileCompleteWithPhoto) {
+    return {
+      visible: false,
+      reason: "profile_complete_with_photo",
+      message: "Spin & Win is reserved for new and unfinished profiles.",
+      hasClaimedWin,
+      profileDetailsComplete,
+      profilePhotoComplete,
+      profileCompleteWithPhoto,
+    };
+  }
+
+  return {
+    visible: true,
+    reason: "available",
+    message: "",
+    hasClaimedWin,
+    profileDetailsComplete,
+    profilePhotoComplete,
+    profileCompleteWithPhoto,
   };
 };
 
@@ -280,12 +392,18 @@ const getAvailabilitySummary = async () => {
 const getLatestPlay = (userId) =>
   RechargeRafflePlay.findOne({ userId }).sort({ createdAt: -1, _id: -1 });
 
-const buildRaffleStatus = async (userId) => {
+const buildRaffleStatus = async (userId, options = {}) => {
   const now = new Date();
-  const [user, latestPlay, availability] = await Promise.all([
-    User.findById(userId).select("_id name username email avatar isActive isDeleted isBanned isSuspended").lean(),
+  const exposeUnavailablePlay = Boolean(options.exposeUnavailablePlay);
+  const [user, latestPlay, availability, hasClaimedWin] = await Promise.all([
+    User.findById(userId)
+      .select(
+        "_id name username email phone country dob gender onboarding avatar isActive isDeleted isBanned isSuspended"
+      )
+      .lean(),
     RechargeRafflePlay.findOne({ userId }).sort({ createdAt: -1, _id: -1 }).lean(),
     getAvailabilitySummary(),
+    hasClaimedRaffleWin(userId),
   ]);
 
   if (!user) {
@@ -293,7 +411,9 @@ const buildRaffleStatus = async (userId) => {
   }
 
   const eligibility = await getEffectiveEligibility(user, latestPlay, now);
-  const play = serializePlay(latestPlay, now);
+  const visibility = buildRaffleVisibility({ user, hasClaimedWin });
+  const hidePlayableState = !visibility.visible && !exposeUnavailablePlay;
+  const play = hidePlayableState ? null : serializePlay(latestPlay, now);
   const cooldownActive = Boolean(play?.cooldownActive);
   const retryAfterSeconds = cooldownActive
     ? Math.max(0, Math.ceil((new Date(play.nextAvailableAt).getTime() - now.getTime()) / 1000))
@@ -301,6 +421,8 @@ const buildRaffleStatus = async (userId) => {
   const hasActivePlay = play?.status === "active" && play.spinsRemaining > 0;
 
   return {
+    visible: visibility.visible,
+    visibility,
     eligibility,
     prizeTiers: ADVERTISED_PRIZE_TIERS,
     networks: getNetworkPayload(),
@@ -318,8 +440,12 @@ const buildRaffleStatus = async (userId) => {
       retryAfterSeconds,
       nextAvailableAt: cooldownActive ? play.nextAvailableAt : null,
     },
-    canStart: eligibility.eligible && !cooldownActive && !hasActivePlay,
-    canSpin: eligibility.eligible && !cooldownActive && (!play || hasActivePlay || play.status !== "active"),
+    canStart: visibility.visible && eligibility.eligible && !cooldownActive && !hasActivePlay,
+    canSpin:
+      visibility.visible &&
+      eligibility.eligible &&
+      !cooldownActive &&
+      (!play || hasActivePlay || play.status !== "active"),
     rules: {
       maxSpins: MAX_SPINS,
       cooldownHours: COOLDOWN_MS / (60 * 60 * 1000),
@@ -397,13 +523,26 @@ const spinRaffle = async ({ userId, network: rawNetwork }) => {
   }
 
   const user = await User.findById(userId)
-    .select("_id name username email avatar isActive isDeleted isBanned isSuspended")
+    .select(
+      "_id name username email phone country dob gender onboarding avatar isActive isDeleted isBanned isSuspended"
+    )
     .lean();
   if (!user) {
     throw new RechargeRaffleError("User not found", 404, "user_not_found");
   }
 
   const latest = await getLatestPlay(userId);
+  const hasClaimedWin = await hasClaimedRaffleWin(userId);
+  const visibility = buildRaffleVisibility({ user, hasClaimedWin });
+  if (!visibility.visible) {
+    throw new RechargeRaffleError(
+      visibility.message || "Spin & Win is not available for this account.",
+      403,
+      "raffle_unavailable",
+      { visibility }
+    );
+  }
+
   const eligibility = await getEffectiveEligibility(user, latest, now);
   if (!eligibility.eligible) {
     throw new RechargeRaffleError(
@@ -516,7 +655,7 @@ const spinRaffle = async ({ userId, network: rawNetwork }) => {
   });
   await play.save();
 
-  const status = await buildRaffleStatus(userId);
+  const status = await buildRaffleStatus(userId, { exposeUnavailablePlay: true });
   return {
     ...status,
     spin: {

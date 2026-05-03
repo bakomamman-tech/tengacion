@@ -281,7 +281,7 @@ const MFA_SUMMARY_SELECT =
 const MFA_SECRET_SELECT = `${MFA_SUMMARY_SELECT} +twoFactor.secretCipher`;
 const MFA_SETUP_SECRET_SELECT = `${MFA_SECRET_SELECT} +twoFactor.pendingSecretCipher`;
 const USER_PROFILE_SELECT =
-  "_id name username email role permissions moderationProfile avatar cover audioPrefs emailVerified isActive isBanned isDeleted isSuspended lastLogin lastLoginAt lastSeenAt";
+  "_id name username email phone country stateOfOrigin dob gender onboarding role permissions moderationProfile avatar cover audioPrefs emailVerified isActive isBanned isDeleted isSuspended lastLogin lastLoginAt lastSeenAt";
 const SESSION_SELECT =
   "sessions.sessionId sessions.deviceName sessions.ip sessions.userAgent sessions.country sessions.city sessions.fingerprint sessions.createdAt sessions.lastSeenAt sessions.revokedAt";
 const SESSION_SELECT_WITH_HASH = `${SESSION_SELECT} +sessions.refreshTokenHash`;

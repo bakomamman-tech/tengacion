@@ -168,13 +168,18 @@ function RequirementList({ requirements = [], onProfile, onPostFeed }) {
             <small>
               {item.complete
                 ? "Ready"
+                : item.id === "profile"
+                  ? "Account details pending"
                 : item.id === "avatar"
-                  ? "Required before spinning"
+                  ? "Profile photo pending"
                   : item.id === "feed_post"
                     ? "Share a post on your registered feed page"
                     : "Needs attention"}
             </small>
           </div>
+          {!item.complete && item.id === "profile" ? (
+            <button type="button" onClick={onProfile}>Update</button>
+          ) : null}
           {!item.complete && item.id === "avatar" ? (
             <button type="button" onClick={onProfile}>Upload</button>
           ) : null}
@@ -287,10 +292,12 @@ export default function RechargeRafflePage({ user }) {
   const prize = play?.prize || null;
   const eligibility = status?.eligibility || { eligible: false, requirements: [] };
   const cooldown = status?.cooldown || { active: false };
+  const raffleVisible = status?.visibility?.visible !== false;
   const activeRound = play?.status === "active";
   const spinsUsed = activeRound ? Number(play?.spinsUsed || 0) : 0;
   const spinsRemaining = activeRound ? Number(play?.spinsRemaining || 5) : 5;
   const canSpin =
+    raffleVisible &&
     Boolean(eligibility.eligible) &&
     Boolean(selectedNetwork) &&
     !cooldown.active &&
@@ -313,6 +320,12 @@ export default function RechargeRafflePage({ user }) {
     return () => window.clearTimeout(timeoutId);
   }, [spinFeedback]);
 
+  useEffect(() => {
+    if (!loading && status?.visibility?.visible === false && !status?.spin) {
+      navigate("/home", { replace: true });
+    }
+  }, [loading, navigate, status?.spin, status?.visibility?.visible]);
+
   const goProfile = () => navigate(`/profile/${user?.username || ""}`);
   const goPostFeed = () => navigate("/home", { state: { openComposer: true } });
 
@@ -322,7 +335,11 @@ export default function RechargeRafflePage({ user }) {
       return;
     }
     if (!eligibility.eligible) {
-      toast.error("Upload a profile picture to unlock the wheel.");
+      toast.error("Your account cannot play Spin & Win right now.");
+      return;
+    }
+    if (!raffleVisible) {
+      navigate("/home", { replace: true });
       return;
     }
 
@@ -374,8 +391,15 @@ export default function RechargeRafflePage({ user }) {
           eligibility: err.payload.eligibility,
         }));
       }
+      if (err?.payload?.visibility?.visible === false) {
+        navigate("/home", { replace: true });
+      }
     }
   };
+
+  if (!loading && status?.visibility?.visible === false && !status?.spin) {
+    return null;
+  }
 
   return (
     <>
@@ -401,8 +425,8 @@ export default function RechargeRafflePage({ user }) {
               <span className="raffle-eyebrow">Tengacion Spin & Win</span>
               <h1 id="raffle-title">Choose your network, spin the wheel, copy your recharge PIN.</h1>
               <p>
-                Complete your account, upload a profile picture, and stand a chance to win
-                N100, N500, N1,000 or N10,000 recharge card PINs.
+                New and unfinished accounts can stand a chance to win N100, N500,
+                N1,000 or N10,000 recharge card PINs.
               </p>
 
               <div className="raffle-prize-strip" aria-label="Prize tiers">

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { resolveImage } from "./api";
+import { getRechargeRaffleStatus, resolveImage } from "./api";
 
 const MOBILE_SIDEBAR_QUERY = "(max-width: 1020px)";
 
@@ -16,6 +16,51 @@ const getIsMobileSidebar = () => {
 
   return window.matchMedia(MOBILE_SIDEBAR_QUERY).matches;
 };
+
+const getMediaUrl = (value) => {
+  if (!value) {
+    return "";
+  }
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  return String(value.secureUrl || value.secure_url || value.url || "").trim();
+};
+
+const hasDateValue = (value) => {
+  if (!value) {
+    return false;
+  }
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime());
+};
+
+const cleanProfileValue = (value, placeholderPrefix = "") => {
+  const nextValue = String(value || "").trim();
+  if (!nextValue) {
+    return "";
+  }
+  return placeholderPrefix && nextValue.startsWith(placeholderPrefix) ? "" : nextValue;
+};
+
+const hasCompletedProfileDetails = (user = {}) => {
+  if (user?.onboarding?.completed) {
+    return true;
+  }
+
+  return Boolean(
+    user?.name &&
+      user?.username &&
+      user?.email &&
+      cleanProfileValue(user?.phone, "tmp_phone_") &&
+      cleanProfileValue(user?.country, "tmp_country_") &&
+      hasDateValue(user?.dob) &&
+      String(user?.gender || "").trim()
+  );
+};
+
+const hidesRaffleByProfile = (user = {}) =>
+  hasCompletedProfileDetails(user) && Boolean(getMediaUrl(user?.avatar));
 
 function RaffleGameCard({ isExpanded, onToggle, onPlay }) {
   return (
@@ -46,7 +91,7 @@ function RaffleGameCard({ isExpanded, onToggle, onPlay }) {
           </div>
 
           <p className="sidebar-raffle-copy">
-            Upload a profile picture, choose MTN or Airtel, then spin for a recharge PIN.
+            New or unfinished accounts can choose MTN or Airtel, then spin for a recharge PIN.
           </p>
         </>
       ) : (
@@ -56,7 +101,7 @@ function RaffleGameCard({ isExpanded, onToggle, onPlay }) {
           </div>
 
           <p className="sidebar-raffle-copy">
-            Five spins, MTN or Airtel, and your winning PIN stays ready to copy.
+            Five spins, MTN or Airtel, for new and unfinished profiles.
           </p>
         </div>
       )}
@@ -77,8 +122,19 @@ export default function Sidebar({ user, openChat, openProfile }) {
   const location = useLocation();
   const [isRaffleExpanded, setIsRaffleExpanded] = useState(false);
   const [isMobileSidebar, setIsMobileSidebar] = useState(getIsMobileSidebar);
+  const [raffleVisible, setRaffleVisible] = useState(() => !hidesRaffleByProfile(user));
 
   const avatar = resolveImage(user?.avatar) || fallbackAvatar(user?.name);
+  const raffleProfileHidden = hidesRaffleByProfile(user);
+  const raffleVisibilityKey = [
+    user?._id || "",
+    getMediaUrl(user?.avatar),
+    user?.onboarding?.completed ? "done" : "pending",
+    user?.phone || "",
+    user?.country || "",
+    user?.dob || "",
+    user?.gender || "",
+  ].join("|");
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -98,6 +154,41 @@ export default function Sidebar({ user, openChat, openProfile }) {
     mediaQuery.addListener(handleChange);
     return () => mediaQuery.removeListener(handleChange);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!user?._id) {
+      setRaffleVisible(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (raffleProfileHidden) {
+      setRaffleVisible(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setRaffleVisible(true);
+    getRechargeRaffleStatus()
+      .then((payload) => {
+        if (!cancelled) {
+          setRaffleVisible(payload?.visibility?.visible !== false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRaffleVisible(!raffleProfileHidden);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [raffleProfileHidden, raffleVisibilityKey, user?._id]);
 
   const goProfile = () => {
     if (typeof openProfile === "function") {
@@ -124,6 +215,10 @@ export default function Sidebar({ user, openChat, openProfile }) {
   };
 
   if (isMobileSidebar) {
+    if (!raffleVisible) {
+      return null;
+    }
+
     return (
       <div className="sidebar-mobile-feature">
         <RaffleGameCard
@@ -162,12 +257,14 @@ export default function Sidebar({ user, openChat, openProfile }) {
           Trending
         </button>
 
-        <button
-          className={sidebarBtnClass(location.pathname === "/recharge-raffle")}
-          onClick={openRaffleGame}
-        >
-          Spin & Win
-        </button>
+        {raffleVisible ? (
+          <button
+            className={sidebarBtnClass(location.pathname === "/recharge-raffle")}
+            onClick={openRaffleGame}
+          >
+            Spin & Win
+          </button>
+        ) : null}
 
         <button
           className={sidebarBtnClass(location.pathname === "/live")}
@@ -245,11 +342,13 @@ export default function Sidebar({ user, openChat, openProfile }) {
         </button>
       </div>
 
-      <RaffleGameCard
-        isExpanded={isRaffleExpanded}
-        onToggle={toggleRaffleCard}
-        onPlay={openRaffleGame}
-      />
+      {raffleVisible ? (
+        <RaffleGameCard
+          isExpanded={isRaffleExpanded}
+          onToggle={toggleRaffleCard}
+          onPlay={openRaffleGame}
+        />
+      ) : null}
     </aside>
   );
 }

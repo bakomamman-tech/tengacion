@@ -9,8 +9,6 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "recharge_raffle_test_secret_
 
 const app = require("../app");
 const RechargeRaffleCard = require("../models/RechargeRaffleCard");
-const RechargeRafflePlay = require("../models/RechargeRafflePlay");
-const Post = require("../models/Post");
 const User = require("../models/User");
 
 let mongod;
@@ -46,6 +44,11 @@ const createUser = async ({
   email = "raffle-user@example.com",
   username = "raffleuser",
   avatar = "",
+  phone = "",
+  country = "",
+  dob = null,
+  gender = "",
+  onboarding = undefined,
 } = {}) =>
   User.create({
     name: "Raffle User",
@@ -55,6 +58,11 @@ const createUser = async ({
     role,
     isVerified: true,
     emailVerified: true,
+    ...(phone ? { phone } : {}),
+    ...(country ? { country } : {}),
+    ...(dob ? { dob } : {}),
+    ...(gender ? { gender } : {}),
+    ...(onboarding ? { onboarding } : {}),
     ...(avatar ? { avatar: { url: avatar, secureUrl: avatar } } : {}),
   });
 
@@ -87,32 +95,46 @@ describe("recharge raffle routes", () => {
     }
   });
 
-  test("users must upload a profile picture before spinning", async () => {
+  test("new and incomplete users can see and play before uploading a profile picture", async () => {
     const user = await createUser();
     const token = await issueSessionToken(user._id);
+    await RechargeRaffleCard.create({
+      network: "mtn",
+      amount: 100,
+      pin: "1234567890123456",
+    });
 
     const statusResponse = await request(app)
       .get("/api/recharge-raffle/me")
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
 
-    expect(statusResponse.body.eligibility.eligible).toBe(false);
+    expect(statusResponse.body.visibility.visible).toBe(true);
+    expect(statusResponse.body.eligibility.eligible).toBe(true);
     expect(statusResponse.body.eligibility.requirements).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ id: "profile", complete: false }),
         expect.objectContaining({ id: "avatar", complete: false }),
       ])
     );
 
-    const spinResponse = await request(app)
-      .post("/api/recharge-raffle/spin")
-      .set("Authorization", `Bearer ${token}`)
-      .send({ network: "mtn" })
-      .expect(403);
+    const randomSpy = jest.spyOn(Math, "random").mockReturnValue(0.99);
+    let spinResponse;
+    try {
+      spinResponse = await request(app)
+        .post("/api/recharge-raffle/spin")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ network: "mtn" })
+        .expect(200);
+    } finally {
+      randomSpy.mockRestore();
+    }
 
-    expect(spinResponse.body.code).toBe("not_eligible");
+    expect(spinResponse.body.spin.won).toBe(false);
+    expect(spinResponse.body.visibility.visible).toBe(true);
   });
 
-  test("admin can load cards and an eligible user wins within five spins", async () => {
+  test("admin can load cards and a user win hides the raffle on future requests", async () => {
     const admin = await createUser({
       role: "admin",
       email: "raffle-admin@example.com",
@@ -164,49 +186,68 @@ describe("recharge raffle routes", () => {
     expect(pins).toContain(winningBody.play.prize.pin);
     expect(winningBody.play.prize.dialCodes).toContain(`*555*${winningBody.play.prize.pin}#`);
 
-    const rateLimitResponse = await request(app)
-      .post("/api/recharge-raffle/spin")
+    expect(winningBody.visibility).toMatchObject({
+      visible: false,
+      reason: "claimed_win",
+      hasClaimedWin: true,
+    });
+
+    const hiddenStatusResponse = await request(app)
+      .get("/api/recharge-raffle/me")
       .set("Authorization", `Bearer ${userToken}`)
-      .send({ network: "mtn" })
       .expect(200);
 
-    expect(rateLimitResponse.body.rateLimited).toBe(true);
-    expect(rateLimitResponse.body.play.prize.pin).toBe(winningBody.play.prize.pin);
-    expect(rateLimitResponse.body.cooldown.active).toBe(true);
+    expect(hiddenStatusResponse.body.visibility).toMatchObject({
+      visible: false,
+      reason: "claimed_win",
+      hasClaimedWin: true,
+    });
+    expect(hiddenStatusResponse.body.play).toBeNull();
+    expect(hiddenStatusResponse.body.canSpin).toBe(false);
 
-    await RechargeRafflePlay.updateOne(
-      { _id: winningBody.play._id },
-      { $set: { nextAvailableAt: new Date(Date.now() - 1000) } }
-    );
-
-    const repeatBlockedResponse = await request(app)
+    const blockedSpinResponse = await request(app)
       .post("/api/recharge-raffle/spin")
       .set("Authorization", `Bearer ${userToken}`)
       .send({ network: "mtn" })
       .expect(403);
 
-    expect(repeatBlockedResponse.body.eligibility.requirements).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: "feed_post", complete: false }),
-      ])
-    );
+    expect(blockedSpinResponse.body.code).toBe("raffle_unavailable");
+    expect(blockedSpinResponse.body.visibility.reason).toBe("claimed_win");
+  });
 
-    await Post.create({
-      author: user._id,
-      text: "Back on my feed before the next Spin & Win round.",
-      type: "text",
-      privacy: "public",
-      visibility: "public",
+  test("completed profiles with uploaded photos do not see or play the raffle", async () => {
+    const user = await createUser({
+      email: "complete-profile@example.com",
+      username: "completeprofile",
+      avatar: "/uploads/complete-avatar.jpg",
+      phone: "+2348012345678",
+      country: "Nigeria",
+      dob: new Date("1998-05-12T00:00:00.000Z"),
+      gender: "female",
     });
+    const token = await issueSessionToken(user._id);
 
-    const repeatAllowedResponse = await request(app)
-      .post("/api/recharge-raffle/spin")
-      .set("Authorization", `Bearer ${userToken}`)
-      .send({ network: "mtn" })
+    const statusResponse = await request(app)
+      .get("/api/recharge-raffle/me")
+      .set("Authorization", `Bearer ${token}`)
       .expect(200);
 
-    expect(repeatAllowedResponse.body.eligibility.eligible).toBe(true);
-    expect(repeatAllowedResponse.body.play.spinsUsed).toBeGreaterThanOrEqual(1);
+    expect(statusResponse.body.visibility).toMatchObject({
+      visible: false,
+      reason: "profile_complete_with_photo",
+      profileDetailsComplete: true,
+      profilePhotoComplete: true,
+    });
+    expect(statusResponse.body.play).toBeNull();
+    expect(statusResponse.body.canSpin).toBe(false);
+
+    const spinResponse = await request(app)
+      .post("/api/recharge-raffle/spin")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ network: "mtn" })
+      .expect(403);
+
+    expect(spinResponse.body.code).toBe("raffle_unavailable");
   });
 
   test("admin bulk loading rejects invalid network PIN lengths", async () => {

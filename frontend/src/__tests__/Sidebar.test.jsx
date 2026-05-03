@@ -1,8 +1,9 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import Sidebar from "../Sidebar";
+import { getRechargeRaffleStatus } from "../api";
 
 const navigateMock = vi.fn();
 const locationMock = { pathname: "/home" };
@@ -37,11 +38,18 @@ vi.mock("react-router-dom", async () => {
 
 vi.mock("../api", () => ({
   resolveImage: (value) => value,
+  getRechargeRaffleStatus: vi.fn(() =>
+    Promise.resolve({ visibility: { visible: true, reason: "available" } })
+  ),
 }));
 
 describe("Sidebar", () => {
   beforeEach(() => {
     navigateMock.mockReset();
+    getRechargeRaffleStatus.mockReset();
+    getRechargeRaffleStatus.mockResolvedValue({
+      visibility: { visible: true, reason: "available" },
+    });
   });
 
   afterEach(() => {
@@ -52,7 +60,7 @@ describe("Sidebar", () => {
     setMatchMedia(false);
 
     const { container } = render(
-      <Sidebar user={{ name: "Ada", username: "ada" }} openChat={vi.fn()} />
+      <Sidebar user={{ _id: "user-1", name: "Ada", username: "ada" }} openChat={vi.fn()} />
     );
 
     expect(screen.getByRole("navigation")).toBeInTheDocument();
@@ -64,7 +72,7 @@ describe("Sidebar", () => {
     setMatchMedia(true);
 
     const { container } = render(
-      <Sidebar user={{ name: "Ada", username: "ada" }} />
+      <Sidebar user={{ _id: "user-1", name: "Ada", username: "ada" }} />
     );
 
     expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
@@ -76,10 +84,48 @@ describe("Sidebar", () => {
   it("navigates to the standalone messages page when no chat launcher is provided", () => {
     setMatchMedia(false);
 
-    render(<Sidebar user={{ name: "Ada", username: "ada" }} />);
+    render(<Sidebar user={{ _id: "user-1", name: "Ada", username: "ada" }} />);
 
     fireEvent.click(screen.getByRole("button", { name: /messages/i }));
 
     expect(navigateMock).toHaveBeenCalledWith("/messages");
+  });
+
+  it("hides the raffle for completed profiles with an uploaded avatar", () => {
+    setMatchMedia(false);
+
+    render(
+      <Sidebar
+        user={{
+          _id: "user-1",
+          name: "Ada",
+          username: "ada",
+          email: "ada@example.com",
+          phone: "+2348012345678",
+          country: "Nigeria",
+          dob: "1998-05-12T00:00:00.000Z",
+          gender: "female",
+          avatar: { url: "/uploads/ada.jpg" },
+        }}
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: /spin & win/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/recharge raffle/i)).not.toBeInTheDocument();
+    expect(getRechargeRaffleStatus).not.toHaveBeenCalled();
+  });
+
+  it("hides the raffle after the account status reports a claimed win", async () => {
+    setMatchMedia(false);
+    getRechargeRaffleStatus.mockResolvedValueOnce({
+      visibility: { visible: false, reason: "claimed_win" },
+    });
+
+    render(<Sidebar user={{ _id: "user-1", name: "Ada", username: "ada" }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: /spin & win/i })).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText(/recharge raffle/i)).not.toBeInTheDocument();
   });
 });

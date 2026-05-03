@@ -3,6 +3,7 @@ const CreatorProfile = require("../models/CreatorProfile");
 const Purchase = require("../models/Purchase");
 const WalletAccount = require("../models/WalletAccount");
 const WalletEntry = require("../models/WalletEntry");
+const { config } = require("../config/env");
 
 const CREATOR_SHARE_RATE = 0.4;
 const PLATFORM_SHARE_RATE = 0.6;
@@ -47,6 +48,27 @@ const roundMoney = (value) => Math.round((Number(value || 0) + Number.EPSILON) *
 const clampMoney = (value) => Math.max(0, roundMoney(value));
 
 const normalizeCurrency = (value = "NGN") => String(value || "NGN").trim().toUpperCase() || "NGN";
+
+const getPlatformSettlementAccount = () => ({
+  accountName: String(
+    process.env.PLATFORM_SETTLEMENT_ACCOUNT_NAME ||
+      config.platformSettlementAccount?.accountName ||
+      config.PLATFORM_SETTLEMENT_ACCOUNT_NAME ||
+      ""
+  ).trim(),
+  bankName: String(
+    process.env.PLATFORM_SETTLEMENT_BANK_NAME ||
+      config.platformSettlementAccount?.bankName ||
+      config.PLATFORM_SETTLEMENT_BANK_NAME ||
+      ""
+  ).trim(),
+  accountNumber: String(
+    process.env.PLATFORM_SETTLEMENT_ACCOUNT_NUMBER ||
+      config.platformSettlementAccount?.accountNumber ||
+      config.PLATFORM_SETTLEMENT_ACCOUNT_NUMBER ||
+      ""
+  ).trim(),
+});
 
 const normalizeItemType = (value = "") => {
   const normalized = String(value || "").trim().toLowerCase();
@@ -101,7 +123,10 @@ const getCreatorWalletSlug = (creatorId, currency = "NGN") =>
 const buildWalletLabel = ({ ownerType, ownerId, currency }) => {
   const normalizedCurrency = normalizeCurrency(currency);
   if (ownerType === "platform") {
-    return `Tengacion platform wallet (${normalizedCurrency})`;
+    const settlement = getPlatformSettlementAccount();
+    const holder = settlement.accountName || "Tengacion platform";
+    const bank = settlement.bankName ? ` - ${settlement.bankName}` : "";
+    return `${holder}${bank} platform wallet (${normalizedCurrency})`;
   }
   return `Creator wallet ${toIdString(ownerId)} (${normalizedCurrency})`;
 };
@@ -113,18 +138,29 @@ const ensureWalletAccount = async ({ ownerType, ownerId = null, currency = "NGN"
       ? getPlatformWalletSlug(normalizedCurrency)
       : getCreatorWalletSlug(ownerId, normalizedCurrency);
 
+  const update = {
+    $setOnInsert: {
+      slug,
+      ownerType,
+      ownerId: ownerType === "platform" ? null : ownerId || null,
+      currency: normalizedCurrency,
+      status: "active",
+    },
+  };
+
+  if (ownerType === "platform") {
+    update.$set = {
+      label: label || buildWalletLabel({ ownerType, ownerId, currency: normalizedCurrency }),
+      settlementAccount: getPlatformSettlementAccount(),
+    };
+  } else {
+    update.$setOnInsert.label =
+      label || buildWalletLabel({ ownerType, ownerId, currency: normalizedCurrency });
+  }
+
   const account = await WalletAccount.findOneAndUpdate(
     { slug },
-    {
-      $setOnInsert: {
-        slug,
-        ownerType,
-        ownerId: ownerType === "platform" ? null : ownerId || null,
-        currency: normalizedCurrency,
-        label: label || buildWalletLabel({ ownerType, ownerId, currency: normalizedCurrency }),
-        status: "active",
-      },
-    },
+    update,
     {
       new: true,
       upsert: true,
@@ -881,6 +917,7 @@ module.exports = {
   CREATOR_SHARE_RATE,
   PLATFORM_SHARE_RATE,
   DEFAULT_WALLET_RECONCILIATION_INTERVAL_MS,
+  getPlatformSettlementAccount,
   getPlatformWalletSlug,
   getCreatorWalletSlug,
   ensureCreatorWalletAccount,

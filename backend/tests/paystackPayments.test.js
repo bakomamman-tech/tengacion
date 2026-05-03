@@ -9,7 +9,7 @@ process.env.NODE_ENV = "test";
 process.env.MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/tengacion-paystack-test";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test_secret_1234567890123456789012";
 process.env.PAYSTACK_SECRET_KEY =
-  process.env.PAYSTACK_SECRET_KEY || "test_paystack_secret_1234567890";
+  process.env.PAYSTACK_SECRET_KEY || "sk_test_paystack_secret_1234567890";
 process.env.PAYSTACK_CALLBACK_URL =
   process.env.PAYSTACK_CALLBACK_URL || "https://tengacion.test/payment/verify";
 process.env.PAYSTACK_CURRENCY = process.env.PAYSTACK_CURRENCY || "NGN";
@@ -44,6 +44,7 @@ const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const User = require("../models/User");
 const WalletEntry = require("../models/WalletEntry");
+const { initializeTransaction } = require("../services/paystackService");
 
 let mongod;
 const originalFetch = global.fetch;
@@ -269,6 +270,39 @@ describe("Paystack payments", () => {
     expect(stored).toBeTruthy();
     expect(stored.status).toBe("pending");
     expect(await Entitlement.countDocuments({ buyerId: viewer._id, itemType: "track", itemId: track._id })).toBe(0);
+  });
+
+  test("live mode refuses Paystack test keys before checkout opens", async () => {
+    const previousRequireLiveKey = process.env.PAYSTACK_REQUIRE_LIVE_KEY;
+    const previousSecretKey = process.env.PAYSTACK_SECRET_KEY;
+
+    process.env.PAYSTACK_REQUIRE_LIVE_KEY = "true";
+    process.env.PAYSTACK_SECRET_KEY = "sk_test_paystack_secret_1234567890";
+    global.fetch = jest.fn();
+
+    try {
+      await expect(
+        initializeTransaction({
+          email: viewer.email,
+          amountNgn: 2500,
+          reference: "TGN_TRACK_LIVE_GUARD",
+          callbackUrl: "https://tengacion.test/payment/verify",
+        })
+      ).rejects.toThrow(/live secret key/i);
+      expect(global.fetch).not.toHaveBeenCalled();
+    } finally {
+      if (previousRequireLiveKey == null) {
+        delete process.env.PAYSTACK_REQUIRE_LIVE_KEY;
+      } else {
+        process.env.PAYSTACK_REQUIRE_LIVE_KEY = previousRequireLiveKey;
+      }
+
+      if (previousSecretKey == null) {
+        delete process.env.PAYSTACK_SECRET_KEY;
+      } else {
+        process.env.PAYSTACK_SECRET_KEY = previousSecretKey;
+      }
+    }
   });
 
   test("legacy billing purchase route initializes the real Paystack checkout", async () => {

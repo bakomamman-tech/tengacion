@@ -19,6 +19,14 @@ services:
         value: https://tengacion.com,https://www.tengacion.com,http://localhost:5173
       - key: PAYSTACK_CALLBACK_URL
         value: https://tengacion.com/payment/verify
+      - key: PAYSTACK_REQUIRE_LIVE_KEY
+        value: "true"
+      - key: PLATFORM_SETTLEMENT_ACCOUNT_NAME
+        value: Stephen Mamman Kurah
+      - key: PLATFORM_SETTLEMENT_BANK_NAME
+        value: Opay
+      - key: PLATFORM_SETTLEMENT_ACCOUNT_NUMBER
+        value: "8061201090"
       - key: VITE_API_URL
         value: /api
 

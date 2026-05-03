@@ -34,13 +34,19 @@ The server now runs a preflight check (`backend/scripts/preflight.js`) before co
 | `VITE_API_URL` | Frontend API base used during the Vite build | Warning if missing |
 | `VITE_GA_MEASUREMENT_ID` | Optional GA4 Measurement ID baked into the frontend build | Warning if missing |
 | `VITE_GA_DEBUG_MODE` | Optional GA4 debug toggle for non-production validation | Optional |
-| `PAYSTACK_SECRET_KEY` | Paystack production secret key | Warning if missing |
+| `PAYSTACK_SECRET_KEY` | Paystack live production secret key. Use an `sk_live_...` key for real charges; `sk_test_...` keys are blocked when live mode is required. | Required in production |
+| `PAYSTACK_REQUIRE_LIVE_KEY` | Set to `true` outside production when you want live-key enforcement. Production always requires an `sk_live_...` key so Paystack checkout cannot open in test mode. | Required for production payments |
+| `PLATFORM_SETTLEMENT_ACCOUNT_NAME` | Platform-owned settlement account name for Tengacion funds. Current value: Stephen Mamman Kurah. | Warning if missing |
+| `PLATFORM_SETTLEMENT_BANK_NAME` | Platform-owned settlement bank. Current value: Opay. | Warning if missing |
+| `PLATFORM_SETTLEMENT_ACCOUNT_NUMBER` | Platform-owned settlement account number. Current value: 8061201090. | Warning if missing |
 | `STRIPE_SECRET_KEY` | Stripe secret key | Warning if missing |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret | Warning if missing |
 
 The preflight prints pass/warn/fail markers per key and aborts startup when any hard required value is missing or too short.
 
 Because these `VITE_*` values are compiled into the frontend bundle, changing them requires a fresh frontend build/deploy.
+
+Paystack card fields stay inside Paystack's hosted checkout. To debit real cards, set the Render `PAYSTACK_SECRET_KEY` secret to the live Paystack key from the Paystack dashboard and ensure the business settlement bank in Paystack is the Opay account above.
 
 ## Smoke tests (post-deploy)
 After each deploy, exercise these endpoints:

@@ -6,6 +6,7 @@ const Book = require("../models/Book");
 const Album = require("../models/Album");
 const Video = require("../models/Video");
 const { buildDateRange } = require("./analyticsService");
+const { getPlatformSettlementAccount } = require("./walletService");
 
 const PLATFORM_SHARE_PERCENT = 60;
 const CREATOR_SHARE_PERCENT = 40;
@@ -238,6 +239,7 @@ const createEmptyResponse = (dates) => ({
     activeCreators: 0,
     platformSharePercent: PLATFORM_SHARE_PERCENT,
     creatorSharePercent: CREATOR_SHARE_PERCENT,
+    settlementAccount: getPlatformSettlementAccount(),
     purpose:
       "This repository holds Tengacion's 60% share of paid creator earnings for platform operations and worldwide office expansion.",
     accountingNote:
@@ -441,6 +443,7 @@ const buildCreatorFinanceRepository = async ({
       activeCreators: creatorsAggregate.size,
       platformSharePercent: PLATFORM_SHARE_PERCENT,
       creatorSharePercent: CREATOR_SHARE_PERCENT,
+      settlementAccount: getPlatformSettlementAccount(),
       purpose:
         "This repository holds Tengacion's 60% share of paid creator earnings for platform operations and worldwide office expansion.",
       accountingNote:

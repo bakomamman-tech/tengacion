@@ -4,11 +4,60 @@ const { config } = require("../config/env");
 const PAYSTACK_BASE_URL = String(config.PAYSTACK_BASE_URL || "https://api.paystack.co").replace(/\/+$/, "");
 const PAYSTACK_CHECKOUT_CHANNELS = ["card", "ussd", "bank_transfer"];
 
-const getSecretKey = () => String(config.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_SECRET_KEY || "").trim();
+const parseBooleanFlag = (value, fallback = false) => {
+  if (value == null || value === "") {
+    return fallback;
+  }
+  if (typeof value === "boolean") {
+    return value;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+  return fallback;
+};
 
-const getCurrency = () => String(config.PAYSTACK_CURRENCY || process.env.PAYSTACK_CURRENCY || "NGN")
+const getSecretKey = () => String(process.env.PAYSTACK_SECRET_KEY || config.PAYSTACK_SECRET_KEY || "").trim();
+
+const getCurrency = () => String(process.env.PAYSTACK_CURRENCY || config.PAYSTACK_CURRENCY || "NGN")
   .trim()
   .toUpperCase() || "NGN";
+
+const getPaystackKeyMode = (secret = getSecretKey()) => {
+  const normalized = String(secret || "").trim();
+  if (normalized.startsWith("sk_live_")) {
+    return "live";
+  }
+  if (normalized.startsWith("sk_test_")) {
+    return "test";
+  }
+  return normalized ? "unknown" : "missing";
+};
+
+const isPaystackLiveKeyRequired = () =>
+  Boolean(config.isProduction || process.env.NODE_ENV === "production") ||
+  parseBooleanFlag(
+    process.env.PAYSTACK_REQUIRE_LIVE_KEY,
+    parseBooleanFlag(config.PAYSTACK_REQUIRE_LIVE_KEY, false)
+  );
+
+const assertPaystackSecretUsable = (secret = getSecretKey()) => {
+  if (!secret) {
+    throw new Error("Paystack secret key is not configured");
+  }
+
+  if (isPaystackLiveKeyRequired() && getPaystackKeyMode(secret) !== "live") {
+    throw new Error(
+      "Paystack live secret key is required for production payments. Configure PAYSTACK_SECRET_KEY with an sk_live_ key before accepting real card payments."
+    );
+  }
+
+  return secret;
+};
 
 const normalizeProductTypeToken = (value = "") =>
   String(value || "")
@@ -60,10 +109,7 @@ const initializeTransaction = async ({
   callbackUrl,
   metadata = {},
 }) => {
-  const secret = getSecretKey();
-  if (!secret) {
-    throw new Error("Paystack secret key is not configured");
-  }
+  const secret = assertPaystackSecretUsable();
 
   const response = await fetch(`${PAYSTACK_BASE_URL}/transaction/initialize`, {
     method: "POST",
@@ -91,10 +137,7 @@ const initializeTransaction = async ({
 };
 
 const verifyTransaction = async (reference) => {
-  const secret = getSecretKey();
-  if (!secret) {
-    throw new Error("Paystack secret key is not configured");
-  }
+  const secret = assertPaystackSecretUsable();
 
   const response = await fetch(
     `${PAYSTACK_BASE_URL}/transaction/verify/${encodeURIComponent(reference)}`,
@@ -115,7 +158,12 @@ const verifyTransaction = async (reference) => {
 };
 
 const validateWebhookSignature = ({ rawBody = "", signature = "" }) => {
-  const secret = getSecretKey();
+  let secret = "";
+  try {
+    secret = assertPaystackSecretUsable();
+  } catch {
+    return false;
+  }
   if (!secret || !rawBody || !signature) {
     return false;
   }
@@ -143,8 +191,11 @@ const validateWebhookSignature = ({ rawBody = "", signature = "" }) => {
 
 module.exports = {
   PAYSTACK_CHECKOUT_CHANNELS,
+  assertPaystackSecretUsable,
   generatePaymentReference,
+  getPaystackKeyMode,
   initializeTransaction,
+  isPaystackLiveKeyRequired,
   mapGatewayStatus,
   normalizePaystackResponse,
   validateWebhookSignature,

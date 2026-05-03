@@ -41,6 +41,26 @@ const WalletAccountSchema = new mongoose.Schema(
       default: "active",
       index: true,
     },
+    settlementAccount: {
+      accountName: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 160,
+      },
+      bankName: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 120,
+      },
+      accountNumber: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 30,
+      },
+    },
   },
   {
     timestamps: true,

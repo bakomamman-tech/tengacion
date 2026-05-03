@@ -85,7 +85,7 @@ const secretLogKeyLabels = new Map([
 ]);
 
 const sensitiveLogKeyPattern =
-  /(?:api[_-]?key|apikey|apiSecret|api[_-]?secret|secret|token|password|mongo(?:db)?[_-]?uri|mongoUri|private[_-]?key|signing)/i;
+  /(?:api[_-]?key|apikey|apiSecret|api[_-]?secret|secret|token|password|mongo(?:db)?[_-]?uri|mongoUri|private[_-]?key|signing|account[_-]?number)/i;
 
 const toConfiguredLogKey = (key) => {
   if (secretLogKeyLabels.has(key)) {
@@ -283,6 +283,19 @@ const paystackCallbackUrl =
   resolveCallbackUrl(process.env.PAYSTACK_CALLBACK_URL, appUrl) || `${appUrl}/payment/verify`;
 const paystackBaseUrl = toText(process.env.PAYSTACK_BASE_URL) || "https://api.paystack.co";
 const paystackCurrency = toText(process.env.PAYSTACK_CURRENCY) || "NGN";
+const paystackRequireLiveKey =
+  isProduction || toBool(process.env.PAYSTACK_REQUIRE_LIVE_KEY || "false");
+const platformSettlementAccountName =
+  toText(process.env.PLATFORM_SETTLEMENT_ACCOUNT_NAME) || "Stephen Mamman Kurah";
+const platformSettlementBankName =
+  toText(process.env.PLATFORM_SETTLEMENT_BANK_NAME) || "Opay";
+const platformSettlementAccountNumber =
+  toText(process.env.PLATFORM_SETTLEMENT_ACCOUNT_NUMBER) || "8061201090";
+const platformSettlementAccount = {
+  accountName: platformSettlementAccountName,
+  bankName: platformSettlementBankName,
+  accountNumber: platformSettlementAccountNumber,
+};
 const stripeSecretKey = toText(process.env.STRIPE_SECRET_KEY);
 const stripePublishableKey = toText(process.env.STRIPE_PUBLISHABLE_KEY);
 const stripeWebhookSecret = toText(process.env.STRIPE_WEBHOOK_SECRET);
@@ -410,6 +423,8 @@ const config = {
   paystackCallbackUrl,
   paystackBaseUrl,
   paystackCurrency,
+  paystackRequireLiveKey,
+  platformSettlementAccount,
   stripeSecretKey,
   stripePublishableKey,
   stripeWebhookSecret,
@@ -469,6 +484,10 @@ const config = {
   PAYSTACK_CALLBACK_URL: paystackCallbackUrl,
   PAYSTACK_BASE_URL: paystackBaseUrl,
   PAYSTACK_CURRENCY: paystackCurrency,
+  PAYSTACK_REQUIRE_LIVE_KEY: paystackRequireLiveKey,
+  PLATFORM_SETTLEMENT_ACCOUNT_NAME: platformSettlementAccountName,
+  PLATFORM_SETTLEMENT_BANK_NAME: platformSettlementBankName,
+  PLATFORM_SETTLEMENT_ACCOUNT_NUMBER: platformSettlementAccountNumber,
   STRIPE_SECRET_KEY: stripeSecretKey,
   STRIPE_PUBLISHABLE_KEY: stripePublishableKey,
   STRIPE_WEBHOOK_SECRET: stripeWebhookSecret,

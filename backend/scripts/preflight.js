@@ -1,5 +1,12 @@
 const { config } = require("../config/env");
 
+const getPaystackKeyMode = (value = "") => {
+  const secret = String(value || "").trim();
+  if (secret.startsWith("sk_live_")) return "live";
+  if (secret.startsWith("sk_test_")) return "test";
+  return secret ? "unknown" : "missing";
+};
+
 const baseChecks = [
   { key: "MONGO_URI", label: "MongoDB URI", type: "hard" },
   { key: "JWT_SECRET", label: "JWT secret", type: "hard", minLength: 32 },
@@ -15,7 +22,15 @@ const baseChecks = [
   { key: "CLOUDINARY_API_KEY", label: "Cloudinary API key", type: "warn" },
   { key: "CLOUDINARY_API_SECRET", label: "Cloudinary API secret", type: "warn" },
   { key: "PAYSTACK_CALLBACK_URL", label: "Paystack callback URL", type: "warn" },
-  { key: "PAYSTACK_SECRET_KEY", label: "Paystack secret", type: "warn" },
+  {
+    key: "PAYSTACK_SECRET_KEY",
+    label: "Paystack live secret",
+    type: config.paystackRequireLiveKey ? "hard" : "warn",
+    paystackLiveKey: config.paystackRequireLiveKey,
+  },
+  { key: "PLATFORM_SETTLEMENT_ACCOUNT_NAME", label: "Platform settlement account name", type: "warn" },
+  { key: "PLATFORM_SETTLEMENT_BANK_NAME", label: "Platform settlement bank", type: "warn" },
+  { key: "PLATFORM_SETTLEMENT_ACCOUNT_NUMBER", label: "Platform settlement account number", type: "warn" },
   { key: "STRIPE_SECRET_KEY", label: "Stripe secret", type: "warn" },
   { key: "STRIPE_WEBHOOK_SECRET", label: "Stripe webhook secret", type: "warn" },
 ];
@@ -32,6 +47,12 @@ const defaultedAkusoKeys = new Set([
   "AKUSO_RATE_LIMIT_MAX",
   "AKUSO_ENABLE_AUDIT_LOGS",
   "AKUSO_ENABLE_STREAMING",
+]);
+
+const defaultedPlatformSettlementKeys = new Set([
+  "PLATFORM_SETTLEMENT_ACCOUNT_NAME",
+  "PLATFORM_SETTLEMENT_BANK_NAME",
+  "PLATFORM_SETTLEMENT_ACCOUNT_NUMBER",
 ]);
 
 const statusIcons = {
@@ -67,7 +88,7 @@ const buildChecks = () => {
 };
 
 const readCheckValue = (check) => {
-  if (defaultedAkusoKeys.has(check.key)) {
+  if (defaultedAkusoKeys.has(check.key) || defaultedPlatformSettlementKeys.has(check.key)) {
     return process.env[check.key] || config[check.key];
   }
 
@@ -96,6 +117,9 @@ const runPreflight = () => {
     } else if (check.minLength && value.length < check.minLength) {
       status = "weak";
       note = `too short (needs >= ${check.minLength} chars)`;
+    } else if (check.paystackLiveKey && getPaystackKeyMode(value) !== "live") {
+      status = "weak";
+      note = "must start with sk_live_ for live charges";
     }
 
     if ((status === "missing" || status === "weak") && check.type === "hard") {

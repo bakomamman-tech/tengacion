@@ -114,6 +114,11 @@ describe("creatorFinanceRepositoryService", () => {
       creatorAmount: 1000,
       paidTransactions: 1,
       activeCreators: 1,
+      settlementAccount: {
+        accountName: "Stephen Mamman Kurah",
+        bankName: "Opay",
+        accountNumber: "8061201090",
+      },
     });
     expect(repository.breakdown.items[0]).toMatchObject({
       key: "music",

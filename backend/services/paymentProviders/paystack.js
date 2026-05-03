@@ -1,4 +1,8 @@
 const crypto = require("crypto");
+const {
+  PAYSTACK_CHECKOUT_CHANNELS,
+  assertPaystackSecretUsable,
+} = require("../paystackService");
 
 const PAYSTACK_BASE_URL = "https://api.paystack.co";
 
@@ -16,10 +20,7 @@ const initializeTransaction = async ({
   callbackUrl,
   metadata = {},
 }) => {
-  const secret = getSecretKey();
-  if (!secret) {
-    throw new Error("Paystack secret key is not configured");
-  }
+  const secret = assertPaystackSecretUsable(getSecretKey());
 
   const response = await fetch(`${PAYSTACK_BASE_URL}/transaction/initialize`, {
     method: "POST",
@@ -34,6 +35,7 @@ const initializeTransaction = async ({
       callback_url: callbackUrl || undefined,
       metadata,
       currency: "NGN",
+      channels: PAYSTACK_CHECKOUT_CHANNELS,
     }),
   });
 
@@ -46,10 +48,7 @@ const initializeTransaction = async ({
 };
 
 const verifyTransaction = async (reference) => {
-  const secret = getSecretKey();
-  if (!secret) {
-    throw new Error("Paystack secret key is not configured");
-  }
+  const secret = assertPaystackSecretUsable(getSecretKey());
 
   const response = await fetch(
     `${PAYSTACK_BASE_URL}/transaction/verify/${encodeURIComponent(reference)}`,
@@ -70,7 +69,12 @@ const verifyTransaction = async (reference) => {
 };
 
 const verifyWebhookSignature = ({ rawBody = "", signature = "" }) => {
-  const secret = getSecretKey();
+  let secret = "";
+  try {
+    secret = assertPaystackSecretUsable(getSecretKey());
+  } catch {
+    return false;
+  }
   if (!secret || !rawBody || !signature) {
     return false;
   }

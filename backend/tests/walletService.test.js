@@ -114,6 +114,16 @@ describe("walletService", () => {
     expect(await WalletAccount.countDocuments({})).toBe(2);
     expect(await WalletEntry.countDocuments({})).toBe(4);
 
+    const platformWallet = await WalletAccount.findOne({ ownerType: "platform" }).lean();
+    expect(platformWallet).toMatchObject({
+      label: "Stephen Mamman Kurah - Opay platform wallet (NGN)",
+      settlementAccount: {
+        accountName: "Stephen Mamman Kurah",
+        bankName: "Opay",
+        accountNumber: "8061201090",
+      },
+    });
+
     const summary = await buildCreatorWalletSummary({
       creatorId: creator.profile._id,
     });

@@ -46,6 +46,7 @@ export default function AdminCreatorEarningsPage({ user }) {
   }, [load]);
 
   const repository = payload?.repository || {};
+  const settlementAccount = repository.settlementAccount || {};
   const breakdownItems = payload?.breakdown?.items || [];
   const topCreators = payload?.topCreators || [];
   const recentEntries = payload?.recentEntries || [];
@@ -126,6 +127,11 @@ export default function AdminCreatorEarningsPage({ user }) {
                 </span>
               </div>
               <p className="adminx-repository-copy">{repository.purpose}</p>
+              <div className="adminx-finance-meta">
+                <span>Settlement: {settlementAccount.accountName || "Not set"}</span>
+                <span>{settlementAccount.bankName || "Bank not set"}</span>
+                <span>{settlementAccount.accountNumber || "Account not set"}</span>
+              </div>
               <p className="adminx-muted">{repository.accountingNote}</p>
             </section>
 

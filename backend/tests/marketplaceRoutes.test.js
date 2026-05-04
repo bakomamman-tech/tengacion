@@ -411,7 +411,7 @@ describe("Marketplace routes", () => {
       email: "marketplace-buyer@example.com",
       amount: 5000 * 100,
       callback_url: "http://localhost:5173/marketplace/orders",
-      channels: ["card", "ussd", "bank_transfer"],
+      channels: ["card", "bank", "ussd", "bank_transfer"],
     });
 
     const storedPendingOrder = await MarketplaceOrder.findOne({

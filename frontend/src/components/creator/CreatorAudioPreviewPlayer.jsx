@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { checkEntitlement, getDownloadUrl, initPayment } from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -122,25 +122,36 @@ export default function CreatorAudioPreviewPlayer({
     && Number(item?.price || 0) > 0
     && !(hasFullAccess || isCreatorOwner);
   const canDownloadRelease = isPublicVariant && canPlayAudio && (hasFullAccess || isCreatorOwner);
-  const availableSources = [];
+  const canRepeatPurchase =
+    isPublicVariant
+    && canPlayAudio
+    && Number(item?.price || 0) > 0
+    && hasFullAccess
+    && !isCreatorOwner
+    && ["track", "podcast"].includes(purchaseItemType);
+  const availableSources = useMemo(() => {
+    const sources = [];
 
-  if (fullSource && (!purchaseLocked || !isPublicVariant)) {
-    availableSources.push({
-      key: "full",
-      label: "Full Track",
-      helper: "Creator full-track preview",
-      src: fullSource,
-    });
-  }
+    if (fullSource && (!purchaseLocked || !isPublicVariant)) {
+      sources.push({
+        key: "full",
+        label: "Full Track",
+        helper: "Creator full-track preview",
+        src: fullSource,
+      });
+    }
 
-  if (previewSource && previewSource !== fullSource) {
-    availableSources.push({
-      key: "preview",
-      label: "Preview Sample",
-      helper: "30-second chorus preview sample",
-      src: previewSource,
-    });
-  }
+    if (previewSource && previewSource !== fullSource) {
+      sources.push({
+        key: "preview",
+        label: "Preview Sample",
+        helper: "30-second chorus preview sample",
+        src: previewSource,
+      });
+    }
+
+    return sources;
+  }, [fullSource, isPublicVariant, previewSource, purchaseLocked]);
 
   const activeSourceMode = availableSources.some((entry) => entry.key === sourceMode)
     ? sourceMode
@@ -460,7 +471,7 @@ export default function CreatorAudioPreviewPlayer({
 
   const disableQueueNavigation = queueLength <= 1;
   const showSourceRow =
-    purchaseLocked || canDownloadRelease || availableSources.length > 1;
+    purchaseLocked || canDownloadRelease || canRepeatPurchase || availableSources.length > 1;
 
   return (
     <div
@@ -536,6 +547,16 @@ export default function CreatorAudioPreviewPlayer({
               disabled={downloadBusy}
             >
               {downloadBusy ? "Preparing..." : "Download"}
+            </button>
+          ) : null}
+          {canRepeatPurchase ? (
+            <button
+              type="button"
+              className="creator-audio-preview-player__mode-btn creator-audio-preview-player__mode-btn--purchase"
+              onClick={handleBuyFullTrack}
+              disabled={checkoutBusy}
+            >
+              {checkoutBusy ? "Opening..." : "Buy again"}
             </button>
           ) : null}
         </div>

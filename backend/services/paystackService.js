@@ -2,7 +2,7 @@ const crypto = require("crypto");
 const { config } = require("../config/env");
 
 const PAYSTACK_BASE_URL = String(config.PAYSTACK_BASE_URL || "https://api.paystack.co").replace(/\/+$/, "");
-const PAYSTACK_CHECKOUT_CHANNELS = ["card", "ussd", "bank_transfer"];
+const PAYSTACK_CHECKOUT_CHANNELS = ["card", "bank", "ussd", "bank_transfer"];
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const parseBooleanFlag = (value, fallback = false) => {

@@ -71,7 +71,7 @@ const NotificationSchema = new mongoose.Schema(
       },
       model: {
         type: String,
-        enum: ["Post", "Comment", "Message", "User"],
+        enum: ["Post", "Comment", "Message", "User","ModerationCase"],
         default: null,
       },
     },

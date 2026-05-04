@@ -123,6 +123,8 @@ export const resolvePurchaseCtaLabel = (item = {}, { busy = false } = {}) => {
   const type = normalizePurchaseType(item.itemType || item.productType || item.mediaType);
   const amount = Number(item.price ?? item.amount ?? 0);
   const currency = String(item.currency || "NGN").toUpperCase();
+  const repeatPurchaseAllowed = Boolean(item.canAccessFull || item.owned || item.entitled)
+    && ["track", "podcast"].includes(type);
 
   if (amount <= 0) {
     if (type === "book" || item.mediaType === "document") {
@@ -138,6 +140,10 @@ export const resolvePurchaseCtaLabel = (item = {}, { busy = false } = {}) => {
   }
 
   const formatted = `${currency} ${amount.toLocaleString()}`;
+
+  if (repeatPurchaseAllowed) {
+    return `Buy again for ${formatted}`;
+  }
 
   if (type === "book" || item.mediaType === "document") {
     return `Unlock book for ${formatted}`;

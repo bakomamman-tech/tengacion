@@ -35,6 +35,7 @@ const {
 const { logAnalyticsEvent } = require("./analyticsService");
 const {
   buildPurchaseLifecyclePayload,
+  isSubscriptionAccessActive,
   isSubscriptionPurchase,
   resolveSubscriptionLifecycle,
 } = require("./purchaseLifecycleService");
@@ -1111,6 +1112,79 @@ const updatePurchaseStatus = async (purchase, status) =>
     { new: true }
   );
 
+const findActiveDuplicateSubscription = async (purchase, { at = new Date() } = {}) => {
+  if (!isSubscriptionPurchase(purchase) || !purchase?.userId || !purchase?.creatorId) {
+    return null;
+  }
+
+  const rows = await Purchase.find({
+    _id: { $ne: purchase._id },
+    userId: purchase.userId,
+    creatorId: purchase.creatorId,
+    itemType: "subscription",
+    status: "paid",
+  })
+    .sort({ accessExpiresAt: -1, paidAt: -1, createdAt: -1 })
+    .lean();
+
+  return rows.find((row) => isSubscriptionAccessActive(row, { at })) || null;
+};
+
+const blockDuplicateActiveSubscription = async ({
+  purchase,
+  duplicate,
+  verified,
+  actorUserId = "",
+  actorRole = "",
+  source = "verify",
+} = {}) => {
+  const message = "You already have an active subscription for this creator";
+  const updatedPurchase = await updatePurchaseStatus(purchase, "failed").catch(() => purchase);
+  const failureEventType =
+    source === "webhook"
+      ? "purchase_webhook_failed"
+      : source === "admin_reconcile"
+        ? "purchase_reconciliation_failed"
+        : "purchase_verification_failed";
+
+  await logPurchaseLifecycleEvent({
+    type: failureEventType,
+    purchase: updatedPurchase || purchase,
+    userId: actorUserId || toIdString(purchase.userId),
+    actorRole,
+    metadata: {
+      source,
+      reason: message,
+      duplicatePurchaseId: toIdString(duplicate?._id),
+      duplicateAccessExpiresAt: duplicate?.accessExpiresAt || null,
+    },
+  }).catch(() => null);
+
+  await logAnalyticsEvent({
+    type: "purchase_failed",
+    userId: toIdString(purchase.userId),
+    actorRole,
+    targetId: purchase._id,
+    targetType: "purchase",
+    contentType: purchase.itemType,
+    metadata: {
+      creatorId: toIdString(purchase.creatorId),
+      itemId: toIdString(purchase.itemId),
+      amount: Number(purchase.amount || 0),
+      provider: purchase.provider || "",
+      reason: message,
+    },
+  }).catch(() => null);
+
+  return {
+    purchase: updatedPurchase || purchase,
+    verified,
+    accessGranted: false,
+    success: false,
+    reason: message,
+  };
+};
+
 const reconcileVerifiedPurchase = async ({
   req = null,
   purchase,
@@ -1204,6 +1278,20 @@ const reconcileVerifiedPurchase = async ({
       success: false,
       reason: match.reason,
     };
+  }
+
+  if (isSubscriptionPurchase(purchase) && String(purchase.status || "").trim().toLowerCase() !== "paid") {
+    const duplicate = await findActiveDuplicateSubscription(purchase);
+    if (duplicate) {
+      return blockDuplicateActiveSubscription({
+        purchase,
+        duplicate,
+        verified,
+        actorUserId,
+        actorRole,
+        source,
+      });
+    }
   }
 
   const settled = await settlePurchasedAccess(purchase, { paidAt: new Date() });

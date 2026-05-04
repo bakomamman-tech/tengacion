@@ -403,10 +403,7 @@ const normalizeSummaryTrack = ({ track, viewerState, viewerId, req }) => {
     purchaseItemType: isPodcast ? "podcast" : "track",
     purchaseItemId: itemId,
     canPreview: Boolean(previewSource || fullSource),
-    canBuy:
-      price > 0 &&
-      !viewerState.entitlementKeys.has(`track:${itemId}`) &&
-      !viewerState.subscribedCreatorIds.has(meta.creatorId),
+    canBuy: price > 0 && String(viewerId || "") !== meta.creatorUserId,
     canFollow: Boolean(meta.creatorId),
     canSubscribe: Number(meta.subscriptionPrice || 0) > 0,
     viewerFollowing: viewerState.followingUserIds.has(meta.creatorUserId),

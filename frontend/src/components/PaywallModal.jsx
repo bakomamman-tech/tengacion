@@ -79,7 +79,7 @@ export default function PaywallModal({
           </button>
 
           <p className="mt-3 text-center text-xs text-slate-500">
-            Card, USSD, and bank transfer are collected securely inside Paystack.
+            Card, bank account, USSD, and bank transfer are collected securely inside Paystack.
           </p>
         </div>
       </div>

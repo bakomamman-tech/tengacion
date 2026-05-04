@@ -358,7 +358,7 @@ export default function BookDetail() {
                   {resolvePurchaseCtaLabel(book)}
                 </button>
                 <p className="mt-2 text-xs text-slate-500">
-                  Pay securely with Paystack using card, USSD, or bank transfer.
+                  Pay securely with Paystack using card, bank account, USSD, or bank transfer.
                 </p>
               </>
             ) : (

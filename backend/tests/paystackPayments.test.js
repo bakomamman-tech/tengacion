@@ -257,7 +257,7 @@ describe("Paystack payments", () => {
 
     const initCall = JSON.parse(global.fetch.mock.calls[0][1].body);
     expect(initCall.amount).toBe(2500 * 100);
-    expect(initCall.channels).toEqual(["card", "ussd", "bank_transfer"]);
+    expect(initCall.channels).toEqual(["card", "bank", "ussd", "bank_transfer"]);
     expect(initCall.metadata).toMatchObject({
       buyerId: viewer._id.toString(),
       creatorId: creator.profile._id.toString(),
@@ -305,7 +305,7 @@ describe("Paystack payments", () => {
       callback_url: returnUrl,
       currency: "NGN",
       reference: response.body.reference,
-      channels: ["card", "ussd", "bank_transfer"],
+      channels: ["card", "bank", "ussd", "bank_transfer"],
       metadata: expect.objectContaining({
         buyerId: viewer._id.toString(),
         creatorId: creator.profile._id.toString(),
@@ -504,6 +504,97 @@ describe("Paystack payments", () => {
     });
     expect(stored.itemId.toString()).toBe(creator.profile._id.toString());
     expect(stored.creatorId.toString()).toBe(creator.profile._id.toString());
+  });
+
+  test("subscription payment can settle only once during an active monthly period", async () => {
+    mockPaystackResponse({
+      authorization_url: "https://paystack.test/subscription-first",
+      access_code: "ACCESS_SUBSCRIPTION_ONE",
+      reference: "TGN_SUBSCRIPTION_ONE",
+    });
+
+    const firstInit = await request(app)
+      .post("/api/payments/paystack/initialize")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        productType: "subscription",
+        productId: creator.profile._id.toString(),
+      })
+      .expect(201);
+
+    mockPaystackResponse({
+      authorization_url: "https://paystack.test/subscription-second",
+      access_code: "ACCESS_SUBSCRIPTION_TWO",
+      reference: "TGN_SUBSCRIPTION_TWO",
+    });
+
+    const secondInit = await request(app)
+      .post("/api/payments/paystack/initialize")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        productType: "subscription",
+        productId: creator.profile._id.toString(),
+      })
+      .expect(201);
+
+    mockPaystackResponse({
+      id: 21,
+      status: "success",
+      reference: firstInit.body.reference,
+      amount: 2000 * 100,
+      currency: "NGN",
+    });
+
+    await request(app)
+      .get(`/api/payments/paystack/verify/${encodeURIComponent(firstInit.body.reference)}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+
+    mockPaystackResponse({
+      id: 22,
+      status: "success",
+      reference: secondInit.body.reference,
+      amount: 2000 * 100,
+      currency: "NGN",
+    });
+
+    const duplicateVerify = await request(app)
+      .get(`/api/payments/paystack/verify/${encodeURIComponent(secondInit.body.reference)}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(400);
+
+    expect(duplicateVerify.body.message || duplicateVerify.body.error).toBe(
+      "You already have an active subscription for this creator"
+    );
+
+    const paidSubscriptions = await Purchase.find({
+      userId: viewer._id,
+      creatorId: creator.profile._id,
+      itemType: "subscription",
+      status: "paid",
+    }).lean();
+    expect(paidSubscriptions).toHaveLength(1);
+    expect(paidSubscriptions[0].billingInterval).toBe("monthly");
+    expect(paidSubscriptions[0].accessExpiresAt).toBeTruthy();
+    expect(await WalletEntry.countDocuments({ sourceId: paidSubscriptions[0]._id })).toBe(2);
+
+    const duplicatePurchase = await Purchase.findOne({ providerRef: secondInit.body.reference }).lean();
+    expect(duplicatePurchase.status).toBe("failed");
+
+    global.fetch = jest.fn();
+    const activeSubscriptionResponse = await request(app)
+      .post("/api/payments/paystack/initialize")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        productType: "subscription",
+        productId: creator.profile._id.toString(),
+      })
+      .expect(400);
+
+    expect(activeSubscriptionResponse.body.message || activeSubscriptionResponse.body.error).toBe(
+      "You already have an active subscription for this creator"
+    );
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   test("legacy billing purchase route initializes Stripe checkout for USD", async () => {
@@ -828,6 +919,79 @@ describe("Paystack payments", () => {
         }),
       ])
     );
+  });
+
+  test("same buyer can buy the same song multiple times", async () => {
+    mockPaystackResponse({
+      authorization_url: "https://paystack.test/first-song-purchase",
+      access_code: "ACCESS_REPEAT_ONE",
+      reference: "TGN_TRACK_REPEAT_ONE",
+    });
+
+    const firstInit = await request(app)
+      .post("/api/payments/paystack/initialize")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        productType: "music",
+        productId: track._id.toString(),
+      })
+      .expect(201);
+
+    mockPaystackResponse({
+      id: 11,
+      status: "success",
+      reference: firstInit.body.reference,
+      amount: 2500 * 100,
+      currency: "NGN",
+    });
+
+    await request(app)
+      .get(`/api/payments/paystack/verify/${encodeURIComponent(firstInit.body.reference)}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+
+    mockPaystackResponse({
+      authorization_url: "https://paystack.test/second-song-purchase",
+      access_code: "ACCESS_REPEAT_TWO",
+      reference: "TGN_TRACK_REPEAT_TWO",
+    });
+
+    const secondInit = await request(app)
+      .post("/api/payments/paystack/initialize")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        productType: "music",
+        productId: track._id.toString(),
+      })
+      .expect(201);
+
+    expect(secondInit.body.reference).not.toBe(firstInit.body.reference);
+
+    mockPaystackResponse({
+      id: 12,
+      status: "success",
+      reference: secondInit.body.reference,
+      amount: 2500 * 100,
+      currency: "NGN",
+    });
+
+    await request(app)
+      .get(`/api/payments/paystack/verify/${encodeURIComponent(secondInit.body.reference)}`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+
+    const paidPurchases = await Purchase.find({
+      userId: viewer._id,
+      itemType: "track",
+      itemId: track._id,
+      status: "paid",
+    }).lean();
+    expect(paidPurchases).toHaveLength(2);
+    expect(await Entitlement.countDocuments({ buyerId: viewer._id, itemType: "track", itemId: track._id })).toBe(1);
+    expect(await WalletEntry.countDocuments({ sourceId: { $in: paidPurchases.map((row) => row._id) } })).toBe(4);
+
+    const updatedTrack = await Track.findById(track._id).lean();
+    expect(Number(updatedTrack.purchaseCount || 0)).toBe(2);
   });
 
   test("amount mismatch blocks access", async () => {

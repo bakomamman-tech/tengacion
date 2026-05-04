@@ -454,17 +454,29 @@ export default function TrackDetail() {
                 {resolvePurchaseCtaLabel(track)}
               </button>
               <p className="mt-2 text-xs text-slate-500">
-                Pay securely with Paystack using card, USSD, or bank transfer.
+                Pay securely with Paystack using card, bank account, USSD, or bank transfer.
               </p>
             </>
           ) : (
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-2xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(15,64,39,0.24)] transition hover:bg-brand-700"
-              onClick={openPlayer}
-            >
-              {resolveOwnedPurchaseLabel(track)}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-2xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(15,64,39,0.24)] transition hover:bg-brand-700"
+                onClick={openPlayer}
+              >
+                {resolveOwnedPurchaseLabel(track)}
+              </button>
+              {Number(track.price || 0) > 0 ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-2xl border border-brand-200 bg-white px-5 py-2.5 text-sm font-semibold text-brand-900 shadow-[0_12px_24px_rgba(18,44,30,0.08)] transition hover:-translate-y-0.5 hover:bg-brand-50"
+                  onClick={buyNow}
+                  disabled={paying}
+                >
+                  {paying ? "Opening secure checkout..." : "Buy again"}
+                </button>
+              ) : null}
+            </div>
           )}
         </div>
 

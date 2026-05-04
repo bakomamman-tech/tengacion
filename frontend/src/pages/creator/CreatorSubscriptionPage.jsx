@@ -194,7 +194,7 @@ export default function CreatorSubscriptionPage() {
       if (!payment?.authorization_url) {
         throw new Error("Payment link is missing");
       }
-      toast.success("Secure checkout opened. Complete the card authorization to unlock this creator page.");
+      toast.success("Secure checkout opened. Complete payment inside Paystack to unlock this creator page.");
       window.location.assign(payment.authorization_url);
     } catch (err) {
       const requiresStepUp = err?.details?.code === "STEP_UP_REQUIRED";

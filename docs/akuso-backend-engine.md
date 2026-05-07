@@ -317,13 +317,21 @@ Eval harness:
 
 - `backend/services/akusoEvalRunner.js`
 - `backend/scripts/runAkusoEvals.js`
+- The seeded eval set covers app guidance, creator onboarding, purchases, subscriptions, payout readiness, account security, creator writing, reasoning, software engineering, prompt-injection refusal, disallowed-content refusal, emergency escalation, and health/finance caution.
+- Each scenario has an id, suite, severity, tags, input, expected policy/model outputs, and failure diagnostics.
+- The runner returns aggregate summaries by suite, severity, and tag so weekly review can spot regressions by product area.
 
 Useful commands:
 
 ```bash
 npm test --prefix backend -- --runTestsByPath tests/akusoRoutes.test.js tests/akusoServices.test.js tests/akusoRateLimit.test.js
 npm run eval:akuso --prefix backend
+npm run eval:akuso --prefix backend -- --suite commerce
+npm run eval:akuso --prefix backend -- --tag policy_denial
+npm run eval:akuso --prefix backend -- --json --output reports/akuso-eval-latest.json
 ```
+
+When adding an Akuso feature or policy behavior, add at least one eval fixture before shipping. Use `severity: "critical"` for safety, payment, payout, account-security, and feature-grounding cases that should block release on regression.
 
 ## Adding Future Akuso Tools Safely
 

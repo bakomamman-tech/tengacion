@@ -12,7 +12,7 @@ const {
   detectPromptInjectionAttempt,
 } = require("../services/akusoClassifierService");
 const { buildAkusoContext } = require("../services/akusoContextBuilder");
-const { runAkusoEvals } = require("../services/akusoEvalRunner");
+const { EVAL_SCENARIOS, runAkusoEvals } = require("../services/akusoEvalRunner");
 const { buildMathResponse } = require("../services/assistant/math");
 const { buildAkusoPromptBundle } = require("../services/akusoPromptBuilder");
 const {
@@ -396,6 +396,31 @@ describe("Akuso services", () => {
   it("runs the seeded Akuso eval harness successfully", () => {
     const results = runAkusoEvals();
     expect(results.every((entry) => entry.passed)).toBe(true);
+    expect(results).toHaveLength(EVAL_SCENARIOS.length);
+    expect(results.summary).toEqual(
+      expect.objectContaining({
+        total: EVAL_SCENARIOS.length,
+        passed: EVAL_SCENARIOS.length,
+        failed: 0,
+        failedCritical: 0,
+      })
+    );
+    expect(results.summary.byTag).toEqual(
+      expect.objectContaining({
+        creator_onboarding: expect.objectContaining({ total: 1, passed: 1 }),
+        policy_denial: expect.objectContaining({ total: 5, passed: 5 }),
+        subscriptions: expect.objectContaining({ total: 1, passed: 1 }),
+      })
+    );
+  });
+
+  it("can run a targeted Akuso eval suite with diagnostic checks", () => {
+    const results = runAkusoEvals({ suite: "commerce", includeChecks: true });
+
+    expect(results.length).toBeGreaterThan(1);
+    expect(results.every((entry) => entry.suite === "commerce")).toBe(true);
+    expect(results.every((entry) => Array.isArray(entry.checks))).toBe(true);
+    expect(results.summary.bySuite.commerce.total).toBe(results.length);
   });
 
   it("computes Akuso observability rates from recorded events", () => {

@@ -384,6 +384,9 @@ This workstream should run in parallel with product shipping.
   - refusal where help should have been given
   - unsafe answer that should have been blocked
 - convert those cases into eval fixtures
+- current implementation anchor:
+  - `backend/services/akusoEvalRunner.js` maintains seeded eval fixtures with suite, severity, and tag summaries
+  - `backend/scripts/runAkusoEvals.js` can generate JSON reports for weekly review or deployment artifacts
 
 ### Phase 2: Route and feature grounding
 

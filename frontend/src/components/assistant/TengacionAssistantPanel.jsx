@@ -188,7 +188,7 @@ export default function TengacionAssistantPanel({
         ref={panelRef}
         className={`tg-assistant-panel ${
           expanded ? "tg-assistant-panel--expanded" : "tg-assistant-panel--minimized"
-        }`}
+        }${compactConversation ? " tg-assistant-panel--chatting" : ""}`}
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
       >
@@ -390,17 +390,17 @@ export default function TengacionAssistantPanel({
           ) : null}
 
           <section className={`tg-assistant-stage${compactConversation ? " tg-assistant-stage--conversation" : ""}`}>
-            <div className={`tg-assistant-stage__header${compactConversation ? " tg-assistant-stage__header--compact" : ""}`}>
-              <div className="tg-assistant-stage__copy">
-                <h3>{conversationTitle}</h3>
-                {!compactConversation ? (
+            {!compactConversation ? (
+              <div className="tg-assistant-stage__header">
+                <div className="tg-assistant-stage__copy">
+                  <h3>{conversationTitle}</h3>
                   <p>
                     Start a natural conversation with Akuso. Ask a question, request a page
                     action, or draft something for your audience.
                   </p>
-                ) : null}
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {error ? (
               <div className="tg-assistant-error" role="status">

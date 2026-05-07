@@ -60,6 +60,23 @@ Coding intelligence:
 - Never claim you changed files, ran commands, or inspected a repository unless that context was explicitly provided by the backend or user.
 `.trim();
 
+const AKUSO_OPEN_KNOWLEDGE_RULES = `
+Open-domain knowledge mode:
+- You may answer broad safe questions using general knowledge, reasoning, examples, and explanation.
+- Do not limit the answer to Tengacion unless the user asked about Tengacion or app navigation.
+- If the question asks about current events, laws, prices, schedules, public figures, or other time-sensitive facts, say the information may need current verification.
+- For definitions and school-style questions, give a simple definition, a plain example, and any important notes.
+- For opinion or advice questions, separate practical guidance from facts and avoid pretending there is one universal answer.
+`.trim();
+
+const AKUSO_APP_GROUNDING_RULES = `
+App-grounded mode:
+- Only describe Tengacion features that appear in the trusted feature summary below.
+- Never invent routes, permissions, admin powers, unpublished creator data, or internal configuration.
+- If the user asks a general question while inside the app, answer it normally, but keep app actions and feature claims grounded in trusted features.
+- If the user asks for code, you may explain general engineering patterns, but do not pretend to know project files that were not provided.
+`.trim();
+
 const buildFeatureSummary = (features = []) =>
   (Array.isArray(features) ? features : [])
     .slice(0, 4)
@@ -81,6 +98,11 @@ const buildAkusoPromptBundle = ({
   routePurpose = "chat",
 } = {}) => {
   const isSoftwareEngineering = policyResult.taskType === "software_engineering";
+  const isAppGuidance =
+    policyResult.taskType === "app_guidance" || policyResult.mode === "app_help";
+  const isCreatorWriting =
+    policyResult.taskType === "creator_writing" || policyResult.mode === "creator_writing";
+  const currentDate = new Date().toISOString().slice(0, 10);
   const groundingRules = isSoftwareEngineering
     ? `
 Software-engineering mode:
@@ -92,12 +114,9 @@ Software-engineering mode:
 - For backend work, include validation, authorization checks, data-shape notes, and failure paths.
 - Keep security boundaries: never help with credential theft, malware, bypassing auth, or exposing secrets.
 `.trim()
-    : `
-App-grounded mode:
-- Only describe Tengacion features that appear in the trusted feature summary below.
-- Never invent routes, permissions, admin powers, unpublished creator data, or internal configuration.
-- If the user asks for code, you may explain general engineering patterns, but do not pretend to know project files that were not provided.
-`.trim();
+    : isAppGuidance
+      ? AKUSO_APP_GROUNDING_RULES
+      : AKUSO_OPEN_KNOWLEDGE_RULES;
 
   const systemPrompt = `
 You are Akuso, Tengacion's backend-controlled assistant.
@@ -124,6 +143,7 @@ Policy category: ${sanitizePlainText(policyResult.categoryBucket || "SAFE_ANSWER
 Safety level: ${sanitizePlainText(policyResult.safetyLevel || "safe", 20)}
 Task type: ${sanitizePlainText(policyResult.taskType || "knowledge", 60)}
 Route purpose: ${sanitizePlainText(routePurpose, 40)}
+Current date: ${sanitizePlainText(currentDate, 20)}
 Current route: ${sanitizePlainText(context?.page?.currentRoute || "", 160)}
 Current page: ${sanitizePlainText(context?.page?.currentPage || "", 120)}
 Current feature: ${sanitizePlainText(context?.page?.currentFeatureTitle || "", 120)}
@@ -176,8 +196,9 @@ Recent memory: ${sanitizeMultilineText(
   )}
 `.trim();
 
-  const userPrompt = isSoftwareEngineering
-    ? `
+  let userPrompt = "";
+  if (isSoftwareEngineering) {
+    userPrompt = `
 Turn the fallback below into a stronger software-engineering answer.
 
 User request:
@@ -197,9 +218,10 @@ Return JSON with:
 - "warnings": a short list that keeps any needed safety or assumption notices.
 - "suggestions": short follow-up prompts, tests, or next implementation steps.
 - "drafts": [].
-`.trim()
-    : `
-Revise the safe fallback response below without inventing app facts.
+`.trim();
+  } else if (isAppGuidance) {
+    userPrompt = `
+Revise the safe app-grounded fallback response below without inventing Tengacion facts.
 
 User request:
 ${sanitizeMultilineText(input.message || input.prompt || "", 1200)}
@@ -222,6 +244,54 @@ Return JSON with:
 - "suggestions": short follow-up prompts or next steps
 - "drafts": only for creator writing requests, otherwise []
 `.trim();
+  } else if (isCreatorWriting) {
+    userPrompt = `
+Create or refine the creator-facing writing response below.
+
+User request:
+${sanitizeMultilineText(input.message || input.prompt || "", 1600)}
+
+Fallback answer:
+${sanitizeMultilineText(fallback.answer || "", 1400)}
+
+Fallback warnings:
+${(fallback.warnings || []).map((entry) => `- ${sanitizePlainText(entry, 180)}`).join("\n") || "- none"}
+
+Fallback suggestions:
+${(fallback.suggestions || []).map((entry) => `- ${sanitizePlainText(entry, 140)}`).join("\n") || "- none"}
+
+Fallback drafts:
+${(fallback.drafts || []).map((entry) => `- ${sanitizeMultilineText(entry, 400)}`).join("\n") || "- none"}
+
+Return JSON with:
+- "answer": a useful explanation of what you drafted or improved
+- "warnings": a short list that keeps any needed cautions
+- "suggestions": short follow-up prompts for alternate tone, length, or audience
+- "drafts": up to 3 polished draft options when the user asked for writing
+`.trim();
+  } else {
+    userPrompt = `
+Answer the user's safe general question directly. Use the fallback below as optional grounding, not as a ceiling.
+
+User request:
+${sanitizeMultilineText(input.message || input.prompt || "", 2000)}
+
+Fallback answer:
+${sanitizeMultilineText(fallback.answer || "", 1400)}
+
+Fallback warnings:
+${(fallback.warnings || []).map((entry) => `- ${sanitizePlainText(entry, 180)}`).join("\n") || "- none"}
+
+Fallback suggestions:
+${(fallback.suggestions || []).map((entry) => `- ${sanitizePlainText(entry, 140)}`).join("\n") || "- none"}
+
+Return JSON with:
+- "answer": the final answer using the clear answer formatting rules. Start with the answer, then explain.
+- "warnings": a short list that preserves medical, legal, financial, safety, or time-sensitive uncertainty notices
+- "suggestions": short follow-up prompts that help the user go deeper, get examples, or check understanding
+- "drafts": []
+`.trim();
+  }
 
   return {
     systemPrompt,
@@ -233,7 +303,9 @@ Return JSON with:
 module.exports = {
   AKUSO_RESPONSE_SCHEMA,
   AKUSO_ANSWERING_INTELLIGENCE_RULES,
+  AKUSO_APP_GROUNDING_RULES,
   AKUSO_CODING_INTELLIGENCE_RULES,
   AKUSO_FORMATTING_RULES,
+  AKUSO_OPEN_KNOWLEDGE_RULES,
   buildAkusoPromptBundle,
 };

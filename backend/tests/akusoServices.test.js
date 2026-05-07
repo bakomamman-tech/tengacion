@@ -311,6 +311,66 @@ describe("Akuso services", () => {
     expect(promptBundle.systemPrompt).not.toMatch(/sk-test|Password123/i);
   });
 
+  it("lets general knowledge prompts answer beyond Tengacion while app prompts stay grounded", () => {
+    const knowledgePrompt = buildAkusoPromptBundle({
+      input: {
+        message: "What is employment?",
+      },
+      context: {
+        page: {},
+        auth: { isAuthenticated: false, role: "guest" },
+        relevantFeatures: [],
+      },
+      policyResult: {
+        mode: "knowledge_learning",
+        categoryBucket: "SAFE_ANSWER",
+        safetyLevel: "safe",
+        taskType: "knowledge",
+      },
+      fallback: {
+        answer: "Employment means having a paid job.",
+        warnings: [],
+        suggestions: ["Give examples"],
+      },
+    });
+
+    expect(knowledgePrompt.systemPrompt).toMatch(/Open-domain knowledge mode/i);
+    expect(knowledgePrompt.systemPrompt).toMatch(/answer broad safe questions/i);
+    expect(knowledgePrompt.systemPrompt).not.toMatch(/Only describe Tengacion features/i);
+    expect(knowledgePrompt.userPrompt).toMatch(/not as a ceiling/i);
+
+    const appPrompt = buildAkusoPromptBundle({
+      input: {
+        message: "Open my purchases",
+      },
+      context: {
+        page: {},
+        auth: { isAuthenticated: true, role: "user" },
+        relevantFeatures: [
+          {
+            pageName: "Purchases",
+            assistantExplanation: "Open purchased content and payment status.",
+          },
+        ],
+      },
+      policyResult: {
+        mode: "app_help",
+        categoryBucket: "APP_GUIDANCE",
+        safetyLevel: "safe",
+        taskType: "app_guidance",
+      },
+      fallback: {
+        answer: "Open Purchases from the app.",
+        warnings: [],
+        suggestions: ["Open my purchases"],
+      },
+    });
+
+    expect(appPrompt.systemPrompt).toMatch(/App-grounded mode/i);
+    expect(appPrompt.systemPrompt).toMatch(/Only describe Tengacion features/i);
+    expect(appPrompt.userPrompt).toMatch(/without inventing Tengacion facts/i);
+  });
+
   it("solves percent math questions for Akuso reasoning fallbacks", () => {
     const response = buildMathResponse({
       message: "Solve 15% of 240 step by step",

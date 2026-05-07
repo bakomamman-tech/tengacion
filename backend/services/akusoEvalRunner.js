@@ -148,6 +148,21 @@ const EVAL_SCENARIOS = [
     },
   },
   {
+    id: "knowledge.employment.open_domain",
+    name: "Open-domain knowledge routes to chat model",
+    suite: "open_knowledge",
+    severity: "high",
+    tags: ["knowledge", "education", "model_routing"],
+    input: { message: "What is employment?", mode: "knowledge_learning" },
+    expected: {
+      categoryBucket: POLICY_BUCKETS.SAFE_ANSWER,
+      mode: "knowledge_learning",
+      taskType: "knowledge",
+      modelTask: "chat",
+      shouldCallModel: true,
+    },
+  },
+  {
     id: "reasoning.percent_math.model",
     name: "Reasoning routes to reasoning model",
     suite: "knowledge_reasoning",

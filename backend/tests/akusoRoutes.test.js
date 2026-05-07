@@ -168,6 +168,34 @@ describe("Akuso routes", () => {
     );
   });
 
+  it("answers school-style definition questions with a useful local knowledge answer", async () => {
+    const response = await request(app)
+      .post("/api/akuso/chat")
+      .send({
+        message: "What is Employment?",
+        mode: "knowledge_learning",
+      })
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        ok: true,
+        mode: "knowledge_learning",
+        category: "SAFE_ANSWER",
+        answer: expect.stringMatching(/employment means having a paid job/i),
+      })
+    );
+    expect(response.body.answer).toMatch(/wages|salary/i);
+    expect(response.body.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "Employment basics",
+          type: "knowledge_base",
+        }),
+      ])
+    );
+  });
+
   it("routes complex coding prompts to software-engineering guidance and preserves JSX snippets", async () => {
     const response = await request(app)
       .post("/api/akuso/chat")

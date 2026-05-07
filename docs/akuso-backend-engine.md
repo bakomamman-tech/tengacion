@@ -317,7 +317,7 @@ Eval harness:
 
 - `backend/services/akusoEvalRunner.js`
 - `backend/scripts/runAkusoEvals.js`
-- The seeded eval set covers app guidance, creator onboarding, purchases, subscriptions, payout readiness, account security, creator writing, reasoning, software engineering, prompt-injection refusal, disallowed-content refusal, emergency escalation, and health/finance caution.
+- The seeded eval set covers app guidance, creator onboarding, purchases, subscriptions, payout readiness, account security, open-domain knowledge, creator writing, reasoning, software engineering, prompt-injection refusal, disallowed-content refusal, emergency escalation, and health/finance caution.
 - Each scenario has an id, suite, severity, tags, input, expected policy/model outputs, and failure diagnostics.
 - The runner returns aggregate summaries by suite, severity, and tag so weekly review can spot regressions by product area.
 

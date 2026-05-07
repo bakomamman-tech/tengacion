@@ -182,6 +182,18 @@ const KNOWLEDGE_ARTICLES = [
     ],
   },
   {
+    id: "employment-basics",
+    title: "Employment basics",
+    tags: ["employment", "job", "work", "career", "salary", "wages", "labor"],
+    summary:
+      "Employment means having a paid job or work arrangement where a person provides labor or services in exchange for wages, salary, or other agreed compensation.",
+    bullets: [
+      "Employment can be full-time, part-time, temporary, contract-based, remote, or in-person.",
+      "A basic employment relationship usually includes duties, pay, working hours, expectations, and rights or protections under local rules.",
+      "Self-employment is different because the person works for themselves or their own business instead of being hired as an employee.",
+    ],
+  },
+  {
     id: "literature-basics",
     title: "Literature basics",
     tags: ["literature", "books", "writing", "analysis"],

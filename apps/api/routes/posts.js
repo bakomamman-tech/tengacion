@@ -88,6 +88,7 @@ router.post("/:id/like", auth, postController.toggleLike);
 router.post("/:id/share", auth, postController.sharePost);
 router.post("/:id/comment", auth, postController.addComment);
 router.post("/:id/comments", auth, postController.addComment);
+router.post("/:id/comments/:commentId/like", auth, postController.toggleCommentLike);
 router.put("/:id/comments/:commentId", auth, postController.updateComment);
 router.get("/:id/comments", optionalAuth, postController.getComments);
 router.post("/:id/poll/vote", auth, postController.votePoll);

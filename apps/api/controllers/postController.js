@@ -103,6 +103,17 @@ exports.updateComment = catchAsync(async (req, res) => {
   res.json(payload);
 });
 
+exports.toggleCommentLike = catchAsync(async (req, res) => {
+  const payload = await PostService.toggleCommentLike({
+    userId: req.user.id,
+    postId: req.params.id,
+    commentId: req.params.commentId,
+    io: req.app.get("io"),
+    onlineUsers: req.app.get("onlineUsers"),
+  });
+  res.json(payload);
+});
+
 exports.votePoll = catchAsync(async (req, res) => {
   const payload = await PostService.votePoll({
     userId: req.user.id,

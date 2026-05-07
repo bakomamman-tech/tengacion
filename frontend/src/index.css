@@ -12171,6 +12171,43 @@ html.dark-mode .reaction-bar-btn.is-selected {
   cursor: not-allowed;
 }
 
+.comment-v2-time {
+  color: #7b7268;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.comment-like-action.is-liked {
+  color: #1877f2;
+}
+
+.comment-like-count {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  padding: 2px 8px 2px 4px;
+  border-radius: 999px;
+  background: rgba(24, 119, 242, 0.1);
+  color: #1f4f91;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.comment-like-count__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #1877f2;
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+}
+
 .comment-v2-editor {
   margin-top: 8px;
   display: grid;
@@ -12472,6 +12509,24 @@ html.dark-mode .comment-inline-action {
 
 html.dark-mode .comment-inline-action--primary {
   color: #93bfff;
+}
+
+html.dark-mode .comment-v2-time {
+  color: #d5bea6;
+}
+
+html.dark-mode .comment-like-action.is-liked {
+  color: #7db5ff;
+}
+
+html.dark-mode .comment-like-count {
+  background: rgba(125, 181, 255, 0.16);
+  color: #d6e8ff;
+}
+
+html.dark-mode .comment-like-count__icon {
+  background: #2f86ff;
+  color: #ffffff;
 }
 
 html.dark-mode .comment-v2-editor-input {

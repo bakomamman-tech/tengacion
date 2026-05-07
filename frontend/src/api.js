@@ -1537,6 +1537,15 @@ export const updatePostComment = (postId, commentId, payload = {}) =>
     }
   );
 
+export const togglePostCommentLike = (postId, commentId) =>
+  request(
+    `${API_BASE}/posts/${encodeURIComponent(postId || "")}/comments/${encodeURIComponent(commentId || "")}/like`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+    }
+  );
+
 export const likePost = (id, reactionKey = null) =>
   request(`${API_BASE}/posts/${id}/like`, {
     method: "POST",

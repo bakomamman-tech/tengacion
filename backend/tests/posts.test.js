@@ -717,4 +717,72 @@ describe("Posts feed", () => {
       .send({ text: "Should not work" })
       .expect(403);
   });
+
+  test("POST /api/posts/:id/comments/:commentId/like toggles comment likes", async () => {
+    const commenter = await User.create({
+      name: "Comment Like Target",
+      username: "comment_like_target",
+      email: "comment_like_target@test.com",
+      password: "Password123!",
+    });
+    const commenterToken = await issueSessionToken(commenter._id);
+
+    const post = await Post.create({
+      author: artist._id,
+      text: "A post with likeable comments",
+      privacy: "public",
+    });
+
+    const createdComment = await request(app)
+      .post(`/api/posts/${post._id}/comment`)
+      .set("Authorization", `Bearer ${commenterToken}`)
+      .send({ text: "This comment can be liked." })
+      .expect(201);
+
+    const commentId = createdComment.body.comment._id;
+
+    const liked = await request(app)
+      .post(`/api/posts/${post._id}/comments/${commentId}/like`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .expect(200);
+
+    expect(liked.body).toMatchObject({
+      success: true,
+      liked: true,
+      likedByViewer: true,
+      likesCount: 1,
+      commentId,
+      comment: {
+        _id: commentId,
+        likesCount: 1,
+        likedByViewer: true,
+      },
+    });
+
+    const threaded = await request(app)
+      .get(`/api/posts/${post._id}/comments?threaded=true`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .expect(200);
+
+    expect(threaded.body[0]).toMatchObject({
+      _id: commentId,
+      likesCount: 1,
+      likedByViewer: true,
+    });
+
+    const unliked = await request(app)
+      .post(`/api/posts/${post._id}/comments/${commentId}/like`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .expect(200);
+
+    expect(unliked.body).toMatchObject({
+      success: true,
+      liked: false,
+      likedByViewer: false,
+      likesCount: 0,
+    });
+
+    const stored = await Post.findById(post._id).lean();
+    expect(stored.comments[0].likes).toHaveLength(0);
+  });
 });

@@ -26,6 +26,7 @@ vi.mock("../../api", () => ({
     },
   ]),
   resolveImage: (value) => value,
+  togglePostCommentLike: vi.fn(),
   updatePostComment: vi.fn(),
 }));
 

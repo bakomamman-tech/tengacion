@@ -6,6 +6,7 @@ import {
   createReport,
   getPostComments,
   resolveImage,
+  togglePostCommentLike,
   updatePostComment,
 } from "../api";
 import { useAuth } from "../context/AuthContext";
@@ -40,7 +41,7 @@ const countWords = (value) => {
   return matches ? matches.length : 0;
 };
 
-const normalizeComment = (comment, parentCommentId = "") => {
+const normalizeComment = (comment, parentCommentId = "", viewerId = "") => {
   if (!comment || typeof comment !== "object") {
     return null;
   }
@@ -61,6 +62,17 @@ const normalizeComment = (comment, parentCommentId = "") => {
     .trim()
     .replace(/^@+/, "");
   const authorAvatar = String(comment.authorAvatar || resolveImage(author.avatar) || "").trim();
+  const viewerIdString = String(viewerId || "").trim();
+  const likes = Array.isArray(comment.likes)
+    ? comment.likes.map((value) => String(value || "").trim()).filter(Boolean)
+    : [];
+  const parsedLikesCount = Number(comment.likesCount ?? comment.likeCount ?? likes.length);
+  const likesCount = Number.isFinite(parsedLikesCount) && parsedLikesCount >= 0
+    ? parsedLikesCount
+    : likes.length;
+  const likedByViewer = Boolean(
+    comment.likedByViewer || (viewerIdString && likes.includes(viewerIdString))
+  );
 
   return {
     id,
@@ -75,13 +87,22 @@ const normalizeComment = (comment, parentCommentId = "") => {
     edited: Boolean(comment.edited),
     editedAt: comment.editedAt || null,
     mediaPreview: String(comment.mediaPreview || "").trim(),
+    likes,
+    likesCount,
+    likedByViewer,
     replies: [],
   };
 };
 
-const flattenCommentInput = (items = [], parentCommentId = "", output = [], seen = new Set()) => {
+const flattenCommentInput = (
+  items = [],
+  parentCommentId = "",
+  output = [],
+  seen = new Set(),
+  viewerId = ""
+) => {
   (Array.isArray(items) ? items : []).forEach((comment) => {
-    const normalized = normalizeComment(comment, parentCommentId);
+    const normalized = normalizeComment(comment, parentCommentId, viewerId);
     if (!normalized || seen.has(normalized.id)) {
       return;
     }
@@ -90,7 +111,7 @@ const flattenCommentInput = (items = [], parentCommentId = "", output = [], seen
     output.push(normalized);
 
     if (Array.isArray(comment?.replies) && comment.replies.length > 0) {
-      flattenCommentInput(comment.replies, normalized.id, output, seen);
+      flattenCommentInput(comment.replies, normalized.id, output, seen, viewerId);
     }
   });
 
@@ -294,13 +315,17 @@ function CommentItem({
   onStartEdit = () => {},
   onCancelEdit = () => {},
   onSaveEdit = () => {},
+  onToggleLike = () => {},
   onReport = () => {},
+  likingCommentId = "",
 }) {
   const isMine = Boolean(currentUserId && String(currentUserId) === String(comment.authorId || ""));
   const isEditing = String(editingCommentId || "") === String(comment.id || "");
   const avatar = resolveImage(comment.authorAvatar) || "/avatar.png";
   const timeLabel = formatCommentTime(comment.createdAt);
   const saving = String(savingCommentId || "") === String(comment.id || "");
+  const liking = String(likingCommentId || "") === String(comment.id || "");
+  const likesCount = Math.max(0, Number(comment.likesCount) || 0);
   const [expanded, setExpanded] = useState(false);
   const commentText = String(comment.text || "").trim();
   const commentWordCount = countWords(commentText);
@@ -327,7 +352,6 @@ function CommentItem({
               <strong>{comment.authorName || "User"}</strong>
               {comment.authorUsername ? <span>@{comment.authorUsername}</span> : null}
             </ProfileNameLink>
-            {timeLabel ? <span>{timeLabel}</span> : null}
             {comment.edited ? <span>Edited</span> : null}
           </div>
 
@@ -392,6 +416,21 @@ function CommentItem({
               ) : null}
 
               <div className="comment-v2-actions">
+                {timeLabel ? <span className="comment-v2-time">{timeLabel}</span> : null}
+
+                <button
+                  type="button"
+                  className={`comment-inline-action comment-like-action ${
+                    comment.likedByViewer ? "is-liked" : ""
+                  }`.trim()}
+                  onClick={() => onToggleLike(comment)}
+                  disabled={liking}
+                  aria-pressed={Boolean(comment.likedByViewer)}
+                  aria-label={comment.likedByViewer ? "Unlike comment" : "Like comment"}
+                >
+                  Like
+                </button>
+
                 {canReply ? (
                   <button
                     type="button"
@@ -420,6 +459,18 @@ function CommentItem({
                 >
                   Report
                 </Button>
+
+                {likesCount > 0 ? (
+                  <span
+                    className="comment-like-count"
+                    aria-label={`${likesCount} ${likesCount === 1 ? "like" : "likes"}`}
+                  >
+                    <span className="comment-like-count__icon" aria-hidden="true">
+                      {"\u{1F44D}"}
+                    </span>
+                    <span>{likesCount.toLocaleString()}</span>
+                  </span>
+                ) : null}
               </div>
             </>
           )}
@@ -443,7 +494,9 @@ function CommentItem({
               onStartEdit={onStartEdit}
               onCancelEdit={onCancelEdit}
               onSaveEdit={onSaveEdit}
+              onToggleLike={onToggleLike}
               onReport={onReport}
+              likingCommentId={likingCommentId}
             />
           ))}
         </div>
@@ -470,8 +523,11 @@ export default function PostComments({
   const postOwnerProfileUsername = String(postOwnerUsername || "").trim();
   const { prompt } = useDialog();
   const initialCommentTree = useMemo(
-    () => buildCommentTree(flattenCommentInput(Array.isArray(initialComments) ? initialComments : [])),
-    [initialComments]
+    () =>
+      buildCommentTree(
+        flattenCommentInput(Array.isArray(initialComments) ? initialComments : [], "", [], new Set(), currentUserId)
+      ),
+    [currentUserId, initialComments]
   );
   const [comments, setComments] = useState(() => initialCommentTree);
   const [text, setText] = useState("");
@@ -484,6 +540,7 @@ export default function PostComments({
   const [editingCommentId, setEditingCommentId] = useState("");
   const [editingDraft, setEditingDraft] = useState("");
   const [savingCommentId, setSavingCommentId] = useState("");
+  const [likingCommentId, setLikingCommentId] = useState("");
   const imageInputRef = useRef(null);
   const commentWordCount = useMemo(() => countWords(text), [text]);
   const isCommentOverLimit = commentWordCount > COMMENT_WORD_LIMIT;
@@ -520,7 +577,9 @@ export default function PostComments({
           return;
         }
 
-        const normalized = buildCommentTree(flattenCommentInput(Array.isArray(data) ? data : []));
+        const normalized = buildCommentTree(
+          flattenCommentInput(Array.isArray(data) ? data : [], "", [], new Set(), currentUserId)
+        );
         setComments(normalized);
       } catch (err) {
         if (!alive) {
@@ -540,7 +599,7 @@ export default function PostComments({
     return () => {
       alive = false;
     };
-  }, [postId]);
+  }, [currentUserId, postId]);
 
   const totalCount = useMemo(() => {
     const fromTree = countCommentTree(comments);
@@ -562,6 +621,61 @@ export default function PostComments({
 
   const clearPickedImage = () => {
     setPickedImage("");
+  };
+
+  const handleToggleCommentLike = async (comment) => {
+    if (!postId || !comment?.id || likingCommentId) {
+      return;
+    }
+
+    if (!currentUserId) {
+      toast.error("Sign in to like comments");
+      return;
+    }
+
+    const previousLiked = Boolean(comment.likedByViewer);
+    const previousLikesCount = Math.max(0, Number(comment.likesCount) || 0);
+    const nextLiked = !previousLiked;
+    const optimisticLikesCount = Math.max(
+      0,
+      previousLikesCount + (nextLiked ? 1 : -1)
+    );
+
+    setLikingCommentId(comment.id);
+    setComments((current) =>
+      updateCommentInTree(current, {
+        id: comment.id,
+        likedByViewer: nextLiked,
+        likesCount: optimisticLikesCount,
+      }).nodes
+    );
+
+    try {
+      const data = await togglePostCommentLike(postId, comment.id);
+      const updated = normalizeComment(data?.comment, comment.parentCommentId, currentUserId);
+      const serverLikesCount = Number(data?.likesCount);
+
+      setComments((current) =>
+        updateCommentInTree(current, updated || {
+          id: comment.id,
+          likedByViewer: Boolean(data?.liked ?? data?.likedByViewer ?? nextLiked),
+          likesCount: Number.isFinite(serverLikesCount)
+            ? Math.max(0, serverLikesCount)
+            : optimisticLikesCount,
+        }).nodes
+      );
+    } catch (err) {
+      setComments((current) =>
+        updateCommentInTree(current, {
+          id: comment.id,
+          likedByViewer: previousLiked,
+          likesCount: previousLikesCount,
+        }).nodes
+      );
+      toast.error(err?.message || "Failed to update comment like");
+    } finally {
+      setLikingCommentId("");
+    }
   };
 
   const handleReport = async (comment) => {
@@ -625,7 +739,7 @@ export default function PostComments({
         text: textValue,
       });
 
-      const updated = normalizeComment(data?.comment, comment.parentCommentId);
+      const updated = normalizeComment(data?.comment, comment.parentCommentId, currentUserId);
       if (updated) {
         setComments((current) => {
           const result = updateCommentInTree(current, updated);
@@ -658,7 +772,7 @@ export default function PostComments({
         parentCommentId: replyTarget?.id || null,
       });
 
-      const serverComment = normalizeComment(data?.comment, replyTarget?.id || "");
+      const serverComment = normalizeComment(data?.comment, replyTarget?.id || "", currentUserId);
       const nextComment = serverComment
         ? {
             ...serverComment,
@@ -796,7 +910,9 @@ export default function PostComments({
             onStartEdit={handleStartEdit}
             onCancelEdit={handleCancelEdit}
             onSaveEdit={handleSaveEdit}
+            onToggleLike={handleToggleCommentLike}
             onReport={handleReport}
+            likingCommentId={likingCommentId}
           />
         ))}
       </div>

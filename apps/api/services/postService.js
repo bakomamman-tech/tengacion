@@ -105,6 +105,11 @@ const getPostLikeCount = (post) => {
   return Math.max(likes.length, reactions.length);
 };
 
+const getCommentLikeCount = (comment) => {
+  const likes = Array.isArray(comment?.likes) ? comment.likes : [];
+  return likes.length;
+};
+
 const inferMediaKind = (file) => {
   const mime = String(file?.mimetype || "").toLowerCase();
   if (mime.startsWith("video/")) return "video";
@@ -652,7 +657,7 @@ const normalizeCommentAuthor = (author = {}) => {
   };
 };
 
-const normalizeCommentItem = (comment = {}, parentCommentId = null) => {
+const normalizeCommentItem = (comment = {}, parentCommentId = null, viewerId = "") => {
   const author = comment?.author && typeof comment.author === "object" ? comment.author : null;
   const authorInfo = normalizeCommentAuthor(author || {});
   const rawAuthorId =
@@ -660,6 +665,9 @@ const normalizeCommentItem = (comment = {}, parentCommentId = null) => {
       ? comment.author._id || comment.author.id || ""
       : comment.author || "";
   const authorId = authorInfo._id || toIdString(rawAuthorId);
+  const viewerIdString = toIdString(viewerId);
+  const likes = Array.isArray(comment.likes) ? comment.likes.map((id) => toIdString(id)).filter(Boolean) : [];
+  const likedByViewer = Boolean(viewerIdString && likes.some((id) => id === viewerIdString));
   const reactions = Array.isArray(comment.reactions)
     ? comment.reactions
         .map((reaction) => ({
@@ -689,7 +697,9 @@ const normalizeCommentItem = (comment = {}, parentCommentId = null) => {
       ? comment.hashtags.map((tag) => normalizeText(String(tag || ""), 60).toLowerCase()).filter(Boolean)
       : [],
     audience: comment.audience || "friends",
-    likes: Array.isArray(comment.likes) ? comment.likes.map((id) => toIdString(id)).filter(Boolean) : [],
+    likes,
+    likesCount: getCommentLikeCount(comment),
+    likedByViewer,
     reactions,
     reactionsCount: Number(comment.reactionsCount) || reactions.length || 0,
     edited: Boolean(comment.edited),
@@ -700,7 +710,7 @@ const normalizeCommentItem = (comment = {}, parentCommentId = null) => {
   };
 };
 
-const flattenCommentTree = (comments = [], parentCommentId = null, output = [], seen = new Set()) => {
+const flattenCommentTree = (comments = [], parentCommentId = null, output = [], seen = new Set(), viewerId = "") => {
   if (!Array.isArray(comments)) {
     return output;
   }
@@ -710,7 +720,7 @@ const flattenCommentTree = (comments = [], parentCommentId = null, output = [], 
       continue;
     }
 
-    const normalized = normalizeCommentItem(comment, parentCommentId);
+    const normalized = normalizeCommentItem(comment, parentCommentId, viewerId);
     if (!normalized._id || seen.has(normalized._id)) {
       continue;
     }
@@ -719,7 +729,7 @@ const flattenCommentTree = (comments = [], parentCommentId = null, output = [], 
     output.push(normalized);
 
     if (Array.isArray(comment.replies) && comment.replies.length > 0) {
-      flattenCommentTree(comment.replies, normalized._id, output, seen);
+      flattenCommentTree(comment.replies, normalized._id, output, seen, viewerId);
     }
   }
 
@@ -1008,7 +1018,7 @@ const toPostPayload = (post, viewerId) => {
         }))
         .filter((entry) => entry.userId || entry.emoji)
     : [];
-  const comments = flattenCommentTree(Array.isArray(post.comments) ? post.comments : []);
+  const comments = flattenCommentTree(Array.isArray(post.comments) ? post.comments : [], null, [], new Set(), viewerId);
   const videoPayload = buildVideoMeta(post.video);
   const firstMediaType = String(firstMedia?.type || "").toLowerCase();
   const inferredType =
@@ -2105,6 +2115,68 @@ class PostService {
       success: true,
       comment: updatedComment,
       commentsCount: Number(refreshed?.commentsCount) || refreshedComments.length,
+    };
+  }
+
+  static async toggleCommentLike({ userId, postId, commentId, io, onlineUsers }) {
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      throw ApiError.badRequest("Invalid post id");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(commentId)) {
+      throw ApiError.badRequest("Invalid comment id");
+    }
+
+    const post = await postRepository.findById(postId);
+    if (!post) throw ApiError.notFound("Post not found");
+
+    const comment = post.comments.id(commentId);
+    if (!comment) throw ApiError.notFound("Comment not found");
+
+    const viewerId = userId.toString();
+    const liked = (Array.isArray(comment.likes) ? comment.likes : []).some(
+      (id) => toIdString(id) === viewerId
+    );
+
+    if (liked) {
+      comment.likes.pull(viewerId);
+    } else {
+      comment.likes.addToSet(viewerId);
+
+      await createNotification({
+        recipient: toIdString(comment.author),
+        sender: viewerId,
+        type: "like",
+        text: "liked your comment",
+        entity: {
+          id: comment._id,
+          model: "Comment",
+        },
+        metadata: {
+          link: `/posts/${post._id.toString()}`,
+          previewText: normalizeCommentText(comment.text || ""),
+        },
+        io,
+        onlineUsers,
+      });
+    }
+
+    await post.save();
+
+    const nextLiked = !liked;
+    const refreshed = await withPostAuthor(Post.findById(post._id)).lean();
+    const refreshedComments = flattenCommentTree(refreshed?.comments || [], null, [], new Set(), viewerId);
+    const updatedComment =
+      refreshedComments.find((entry) => String(entry._id) === String(commentId)) ||
+      normalizeCommentItem(comment, null, viewerId);
+
+    return {
+      success: true,
+      liked: nextLiked,
+      likedByViewer: nextLiked,
+      likesCount: getCommentLikeCount(comment),
+      commentId: commentId.toString(),
+      comment: updatedComment,
     };
   }
 

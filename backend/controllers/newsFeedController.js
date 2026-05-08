@@ -15,7 +15,7 @@ const ensurePreferencesDoc = async (userId) =>
   NewsUserPreference.findOneAndUpdate(
     { userId },
     { $setOnInsert: { userId } },
-    { new: true, upsert: true, setDefaultsOnInsert: true }
+    { returnDocument: "after", upsert: true, setDefaultsOnInsert: true }
   );
 
 const parseLimit = (value, fallback = 20) => {

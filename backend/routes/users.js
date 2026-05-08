@@ -316,7 +316,7 @@ router.put("/me", auth, async (req, res) => {
     const safeUser = await User.findByIdAndUpdate(
       req.user.id,
       { $set: updates },
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     ).select("-password");
     if (!safeUser) {
       return res.status(401).json({ error: "User not found" });
@@ -1049,7 +1049,7 @@ router.post(
       const safeUser = await User.findByIdAndUpdate(
         req.user.id,
         { $set: { avatar } },
-        { new: true, runValidators: true }
+        { returnDocument: "after", runValidators: true }
       ).select("-password");
       if (!safeUser) {
         return res.status(404).json({ error: "User not found" });
@@ -1127,7 +1127,7 @@ router.post(
       const safeUser = await User.findByIdAndUpdate(
         req.user.id,
         { $set: { cover } },
-        { new: true, runValidators: true }
+        { returnDocument: "after", runValidators: true }
       ).select("-password");
       if (!safeUser) {
         return res.status(404).json({ error: "User not found" });

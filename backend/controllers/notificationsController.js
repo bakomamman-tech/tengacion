@@ -75,7 +75,7 @@ exports.markAsRead = asyncHandler(async (req, res) => {
         retentionDays: notificationReadRetentionDays,
       }),
     },
-    { new: true }
+    { returnDocument: "after" }
   ).populate("sender", "_id name username avatar");
 
   if (!notification) {

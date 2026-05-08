@@ -136,7 +136,7 @@ const updateAssistantReview = async ({ reviewId, reviewerId, status = "", resolu
     update.reviewerId = reviewerId;
   }
 
-  const item = await AssistantReviewItem.findByIdAndUpdate(reviewId, { $set: update }, { new: true }).lean();
+  const item = await AssistantReviewItem.findByIdAndUpdate(reviewId, { $set: update }, { returnDocument: "after" }).lean();
   if (!item) {
     throw new Error("Assistant review item not found");
   }

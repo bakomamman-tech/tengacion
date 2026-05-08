@@ -140,7 +140,7 @@ const saveAkusoMemory = async ({
         conversationId: memoryKey,
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 };
 
@@ -170,7 +170,7 @@ const saveAkusoPreferences = async ({ userId = "", preferences = {} } = {}) => {
         conversationId: "",
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 };
 

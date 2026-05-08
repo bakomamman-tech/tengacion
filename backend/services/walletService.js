@@ -162,7 +162,7 @@ const ensureWalletAccount = async ({ ownerType, ownerId = null, currency = "NGN"
     { slug },
     update,
     {
-      new: true,
+      returnDocument: "after",
       upsert: true,
       setDefaultsOnInsert: true,
     }

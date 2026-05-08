@@ -89,7 +89,7 @@ const incrementDailyMetric = async (field, amount = 1, date = new Date()) => {
   return DailyAnalytics.findOneAndUpdate(
     { date: formatDateKey(date) },
     { $inc: { [field]: Number(amount) || 1 } },
-    { new: true, upsert: true, setDefaultsOnInsert: true }
+    { returnDocument: "after", upsert: true, setDefaultsOnInsert: true }
   );
 };
 
@@ -101,7 +101,7 @@ const touchUserActivity = async ({ userId, login = false, seenAt = new Date() } 
       ...(login ? { lastLogin: seenAt, lastLoginAt: seenAt } : {}),
     },
   };
-  return User.findByIdAndUpdate(userId, update, { new: true }).catch(() => null);
+  return User.findByIdAndUpdate(userId, update, { returnDocument: "after" }).catch(() => null);
 };
 
 const logAnalyticsEvent = async ({
@@ -337,7 +337,7 @@ const computeDailySummary = async ({ date = new Date() } = {}) => {
         loginWarnings: Number(loginWarnings) || 0,
       },
     },
-    { new: true, upsert: true, setDefaultsOnInsert: true }
+    { returnDocument: "after", upsert: true, setDefaultsOnInsert: true }
   );
 };
 

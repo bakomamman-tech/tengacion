@@ -285,7 +285,7 @@ exports.upsertMyCreatorProfile = asyncHandler(async (req, res) => {
     },
     {
       upsert: true,
-      new: true,
+      returnDocument: "after",
       setDefaultsOnInsert: true,
     }
   ).populate("userId", "name username avatar followers isVerified emailVerified");

@@ -69,7 +69,7 @@ const saveConversationMemory = async ({
         conversationId: normalizeKey(conversationId),
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 };
 
@@ -91,7 +91,7 @@ const saveUserPreferences = async ({ userId, preferences = {}, metadata = {} } =
         conversationId: "",
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 };
 

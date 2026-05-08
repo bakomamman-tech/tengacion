@@ -74,7 +74,7 @@ const markPurchasePaidAndGrantEntitlement = async (purchase) => {
         grantedAt: new Date(),
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 
   if (purchase.itemType === "track") {

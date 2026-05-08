@@ -166,7 +166,7 @@ const releaseReservedStock = async (order, { markFailed = false } = {}) => {
           : {}),
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   );
 
   if (!updatedOrder) {
@@ -198,7 +198,7 @@ const upsertMarketplaceTransaction = async ({ order, verified, status = "" } = {
         rawVerificationSnapshot: verified?.raw || verified || {},
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 
 const validateVerifiedOrderPayment = ({ order, verified } = {}) => {
@@ -245,7 +245,7 @@ const markOrderPaid = async ({ order, verified } = {}) => {
           paymentReference: verified?.reference || order.paymentReference || "",
         },
       },
-      { new: true }
+      { returnDocument: "after" }
     )) || (await MarketplaceOrder.findById(order._id));
 
   if (!updatedOrder) {
@@ -307,7 +307,7 @@ const initializeMarketplaceOrder = async ({
       stock: { $gte: value.quantity },
     },
     { $inc: { stock: -value.quantity } },
-    { new: true }
+    { returnDocument: "after" }
   );
 
   if (!reservedProduct) {
@@ -436,7 +436,7 @@ const reconcileMarketplaceOrder = async ({ order } = {}) => {
               : {}),
           },
         },
-        { new: true }
+        { returnDocument: "after" }
       )) || (await MarketplaceOrder.findById(order._id));
 
     if (match.nextStatus === "failed") {

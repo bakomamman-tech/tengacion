@@ -36,7 +36,7 @@ const syncNewsSourceCatalog = async () => {
     await NewsSource.findOneAndUpdate(
       { slug: entry.slug },
       { $set: entry },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
     );
   }
 };
@@ -46,7 +46,7 @@ const syncNewsTopicCatalog = async () => {
     await NewsTopic.findOneAndUpdate(
       { slug: entry.slug },
       { $set: entry },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
     );
   }
 };

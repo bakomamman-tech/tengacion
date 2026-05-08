@@ -523,7 +523,7 @@ const initializePaystackCheckout = async ({
           providerSessionId: payment?.id || payment?.access_code || "",
         },
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     await logPurchaseLifecycleEvent({
@@ -665,7 +665,7 @@ const initializeStripeCheckout = async ({
           providerSessionId: payment.id || "",
         },
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     await logPurchaseLifecycleEvent({
@@ -766,7 +766,7 @@ const settlePurchasedAccess = async (purchase, { paidAt = new Date() } = {}) => 
           : {}),
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   );
 
   const finalPurchase = settledPurchase || (await Purchase.findById(purchase._id));
@@ -928,7 +928,7 @@ const cancelSubscriptionPurchase = async ({
         canceledAt,
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   );
 
   await logPurchaseLifecycleEvent({
@@ -991,7 +991,7 @@ const refundPurchase = async ({
           : {}),
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   );
 
   if (!updatedPurchase) {
@@ -1109,7 +1109,7 @@ const updatePurchaseStatus = async (purchase, status) =>
   Purchase.findByIdAndUpdate(
     purchase._id,
     { $set: { status } },
-    { new: true }
+    { returnDocument: "after" }
   );
 
 const findActiveDuplicateSubscription = async (purchase, { at = new Date() } = {}) => {

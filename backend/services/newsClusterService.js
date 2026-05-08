@@ -219,7 +219,7 @@ const rebuildClusters = async ({ storyIds = [], since = null, limit = 300 } = {}
     let clusterDoc;
     if (existingId) {
       clusterDoc = await NewsCluster.findByIdAndUpdate(existingId, payload, {
-        new: true,
+        returnDocument: "after",
       });
     }
     if (!clusterDoc) {

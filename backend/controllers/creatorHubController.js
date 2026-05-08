@@ -138,7 +138,7 @@ exports.savePlayerProgress = asyncHandler(async (req, res) => {
         playedAt: new Date(),
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   ).lean();
 
   return res.status(201).json({

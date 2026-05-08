@@ -1669,7 +1669,7 @@ const recordUserStrike = async ({
         lastModeratorId: actorId || null,
       },
     },
-    { new: true, upsert: true, setDefaultsOnInsert: true }
+    { returnDocument: "after", upsert: true, setDefaultsOnInsert: true }
   );
 };
 

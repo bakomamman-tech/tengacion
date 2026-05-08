@@ -62,7 +62,7 @@ const reservePaymentWebhookEvent = async ({
         $inc: { duplicateCount: 1 },
         $set: { lastSeenAt: new Date() },
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     return { duplicate: true, event: event || existing };
@@ -96,7 +96,7 @@ const reservePaymentWebhookEvent = async ({
         $inc: { duplicateCount: 1 },
         $set: { lastSeenAt: new Date() },
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     return { duplicate: true, event };
@@ -127,7 +127,7 @@ const markPaymentWebhookEvent = async ({
           : {}),
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   ).catch(() => null);
 };
 

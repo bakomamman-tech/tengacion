@@ -72,7 +72,7 @@ describe("newsCatalogService", () => {
             states: ["Lagos", "FCT"],
           },
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
       )
     ).resolves.toBeTruthy();
   });

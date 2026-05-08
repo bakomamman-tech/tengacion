@@ -65,7 +65,7 @@ const updateSource = asyncHandler(async (req, res) => {
   }
 
   const source = await NewsSource.findByIdAndUpdate(req.params.id, payload, {
-    new: true,
+    returnDocument: "after",
   });
   if (!source) {
     return res.status(404).json({ error: "Source not found" });

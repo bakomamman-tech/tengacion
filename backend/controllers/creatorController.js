@@ -652,7 +652,7 @@ exports.registerCreator = asyncHandler(async (req, res) => {
     },
     {
       upsert: true,
-      new: true,
+      returnDocument: "after",
       setDefaultsOnInsert: true,
     }
   ).lean();
@@ -742,7 +742,7 @@ exports.updateCreatorProfile = asyncHandler(async (req, res) => {
         links: buildSocialLinks(nextHandles),
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   ).lean();
 
   const user = await User.findById(req.user.id)

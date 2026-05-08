@@ -56,7 +56,7 @@ const run = async () => {
         ],
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 
   await ArtistProfile.findOneAndUpdate(
@@ -76,7 +76,7 @@ const run = async () => {
         ],
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 
   const track = await Track.findOneAndUpdate(
@@ -90,7 +90,7 @@ const run = async () => {
         durationSec: 180,
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 
   const book = await Book.findOneAndUpdate(
@@ -104,7 +104,7 @@ const run = async () => {
           "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=800&q=80",
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 
   await Chapter.findOneAndUpdate(
@@ -117,7 +117,7 @@ const run = async () => {
         isFree: true,
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 
   await Chapter.findOneAndUpdate(
@@ -130,7 +130,7 @@ const run = async () => {
         isFree: false,
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 
   console.log("Seed complete:");

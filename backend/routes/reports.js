@@ -218,7 +218,7 @@ const applyStrikes = async ({ userId, count, reason, reportId }) => {
       $push: { history: { reportId, count, reason, createdAt: new Date() } },
       $set: { lastActionAt: new Date() },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
   const user = await User.findById(userId);
   if (!user) return { strikeCount: strike.count, action: "" };

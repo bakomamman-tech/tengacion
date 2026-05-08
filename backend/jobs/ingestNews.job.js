@@ -96,7 +96,7 @@ const upsertAssets = async ({ storyId, sourceId, sourceSlug, assets = [], rights
           },
         },
       },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
     );
 
     assetRefs.push({ assetId: doc._id, role: doc.role || "thumbnail" });
@@ -230,7 +230,7 @@ const ingestSource = async ({
           externalId: updatePayload.externalId,
         },
         { $set: updatePayload },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
       );
 
       const assetRefs = await upsertAssets({

@@ -486,7 +486,7 @@ const claimAvailableCard = (network, userId, playId, now) =>
     },
     {
       sort: { createdAt: 1, _id: 1 },
-      new: true,
+      returnDocument: "after",
     }
   );
 

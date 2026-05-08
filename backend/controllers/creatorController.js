@@ -6,6 +6,7 @@ const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const User = require("../models/User");
 const Video = require("../models/Video");
+const { buildCreatorActivationProgress } = require("../services/creatorActivationService");
 const { buildPayoutReadiness } = require("../services/payoutReadinessService");
 const { buildCreatorWalletSnapshot } = require("../services/walletService");
 const {
@@ -479,14 +480,23 @@ const getDashboardPayload = async ({ profile, user }) => {
   );
 
   const { itemEarningsMap: _walletItemEarningsMap, ...walletPayload } = walletSnapshot;
+  const payoutReadiness = buildPayoutReadiness(profile);
+  const activation = buildCreatorActivationProgress({
+    profile,
+    user,
+    creatorTypes,
+    content,
+    payoutReadiness,
+  });
 
   return {
     creatorProfile,
     summary,
     wallet: {
       ...walletPayload,
-      payoutReadiness: buildPayoutReadiness(profile),
+      payoutReadiness,
     },
+    activation,
     categories: contentCounts,
     content: {
       music: {
@@ -763,6 +773,7 @@ exports.getCreatorContentSummary = asyncHandler(async (req, res) => {
   return res.json({
     creatorProfile: payload.creatorProfile,
     summary: payload.summary,
+    activation: payload.activation,
     categories: payload.categories,
     verificationOverview: payload.verificationOverview,
     recentActivity: payload.recentActivity,

@@ -35,6 +35,43 @@ describe("CreatorDashboardPage", () => {
         },
         verificationOverview: {},
         recentActivity: [],
+        activation: {
+          completedCount: 3,
+          totalSteps: 6,
+          progressPercent: 50,
+          nextStep: {
+            key: "first_upload_started",
+            label: "First upload started",
+            actionLabel: "Start first upload",
+            actionTo: "/creator/music/upload",
+          },
+          steps: [
+            {
+              key: "account_created",
+              label: "Account created",
+              description: "Your creator profile exists in Tengacion.",
+              complete: true,
+            },
+            {
+              key: "creator_lane_selected",
+              label: "Creator lane selected",
+              description: "Music, book publishing, or podcast lanes are enabled.",
+              complete: true,
+            },
+            {
+              key: "profile_ready",
+              label: "Profile ready",
+              description: "Identity, creator terms, and publishing basics are saved.",
+              complete: true,
+            },
+            {
+              key: "first_upload_started",
+              label: "First upload started",
+              description: "A draft or submitted creator upload exists.",
+              complete: false,
+            },
+          ],
+        },
       },
     });
 
@@ -47,6 +84,8 @@ describe("CreatorDashboardPage", () => {
     expect(screen.getAllByRole("link", { name: /music uploads/i })[0]).toHaveAttribute("href", "/creator/music/upload");
     expect(screen.getAllByRole("link", { name: /book publishing uploads/i })[0]).toHaveAttribute("href", "/creator/books/upload");
     expect(screen.getAllByRole("link", { name: /podcast uploads/i })[0]).toHaveAttribute("href", "/creator/podcasts/upload");
+    expect(screen.getByText(/3 of 6 steps complete/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /start first upload/i })).toHaveAttribute("href", "/creator/music/upload");
     expect(screen.queryByRole("link", { name: /open music/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /open book publishing/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /open podcast/i })).not.toBeInTheDocument();

@@ -1859,6 +1859,97 @@ textarea {
   font-weight: 600;
 }
 
+.creator-activation-panel {
+  display: grid;
+  gap: 18px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 252, 247, 0.96),
+    rgba(244, 248, 241, 0.92)
+  );
+}
+
+.creator-activation-progress {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(49, 93, 67, 0.1);
+  overflow: hidden;
+}
+
+.creator-activation-progress span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 12px;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(49, 93, 67, 0.95),
+    rgba(183, 138, 66, 0.9)
+  );
+}
+
+.creator-activation-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.creator-activation-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 84px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 249, 241, 0.72);
+  border: 1px solid rgba(95, 76, 33, 0.08);
+}
+
+.creator-activation-step.is-current {
+  border-color: rgba(156, 112, 29, 0.2);
+  background: rgba(255, 248, 235, 0.92);
+}
+
+.creator-activation-step.is-complete {
+  border-color: rgba(49, 93, 67, 0.16);
+  background: rgba(241, 248, 241, 0.92);
+}
+
+.creator-activation-step__marker {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(100, 90, 71, 0.22);
+}
+
+.creator-activation-step.is-current .creator-activation-step__marker {
+  background: var(--creator-warning);
+}
+
+.creator-activation-step.is-complete .creator-activation-step__marker {
+  background: var(--creator-accent);
+}
+
+.creator-activation-step__copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.creator-activation-step__copy strong,
+.creator-activation-step__copy small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.creator-activation-step__copy small {
+  color: var(--creator-muted);
+  line-height: 1.45;
+}
+
 .creator-page-main,
 .creator-page-side {
   display: grid;
@@ -2974,6 +3065,7 @@ textarea {
   .creator-form-grid,
   .creator-identity-layout,
   .creator-type-grid,
+  .creator-activation-list,
   .creator-panel-grid,
   .creator-metric-grid,
   .creator-profile-summary-grid,

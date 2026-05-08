@@ -12,9 +12,24 @@ import {
   normalizeCreatorLaneKeys,
 } from "../../components/creator/creatorConfig";
 
+const getActivationStepClass = (step, nextStepKey) => {
+  if (step?.complete) {
+    return " is-complete";
+  }
+  if (step?.key === nextStepKey) {
+    return " is-current";
+  }
+  return "";
+};
+
 export default function CreatorDashboardPage() {
   const { creatorProfile, dashboard } = useCreatorWorkspace();
   const creatorLanes = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes);
+  const activation = dashboard.activation || {};
+  const activationSteps = Array.isArray(activation.steps) ? activation.steps : [];
+  const nextActivationStep =
+    activation.nextStep || activationSteps.find((step) => !step.complete);
+  const nextStepKey = nextActivationStep?.key || "";
 
   return (
     <div className="creator-page-grid">
@@ -23,6 +38,74 @@ export default function CreatorDashboardPage() {
           creatorProfile={creatorProfile}
           summary={dashboard.summary}
         />
+
+        {activationSteps.length ? (
+          <section className="creator-panel creator-activation-panel">
+            <div className="creator-panel-head">
+              <div>
+                <h2>Creator activation</h2>
+                <p>
+                  {activation.completedCount || 0} of{" "}
+                  {activation.totalSteps || activationSteps.length} steps complete.
+                </p>
+              </div>
+
+              {nextActivationStep ? (
+                <Link
+                  className="creator-secondary-btn"
+                  to={nextActivationStep.actionTo || "/creator/dashboard"}
+                >
+                  {nextActivationStep.actionLabel || "Continue setup"}
+                </Link>
+              ) : (
+                <span className="creator-status-badge success">Complete</span>
+              )}
+            </div>
+
+            <div
+              className="creator-activation-progress"
+              aria-label={`Creator activation ${activation.progressPercent || 0}% complete`}
+            >
+              <span style={{ width: `${activation.progressPercent || 0}%` }} />
+            </div>
+
+            <div className="creator-activation-list">
+              {activationSteps.map((step) => (
+                <article
+                  key={step.key}
+                  className={`creator-activation-step${getActivationStepClass(
+                    step,
+                    nextStepKey
+                  )}`}
+                >
+                  <span
+                    className="creator-activation-step__marker"
+                    aria-hidden="true"
+                  />
+                  <div className="creator-activation-step__copy">
+                    <strong>{step.label}</strong>
+                    <small>{step.description}</small>
+                  </div>
+                  <span
+                    className={`creator-status-badge ${
+                      step.complete
+                        ? "success"
+                        : step.key === nextStepKey
+                          ? "warning"
+                          : "neutral"
+                    }`}
+                  >
+                    {step.complete
+                      ? "Done"
+                      : step.key === nextStepKey
+                        ? "Next"
+                        : "Pending"}
+                  </span>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className="creator-metric-grid">
           <CreatorStatsCard

@@ -216,6 +216,46 @@ describe("creator profile routes", () => {
     expect(response.headers.pragma).toBe("no-cache");
   });
 
+  test("GET /api/creator/me/content-summary includes activation progress", async () => {
+    const { profile, token } = await createUserAndProfile({ creatorTypes: ["music"] });
+
+    await Track.create({
+      creatorId: profile._id,
+      title: "Activation Draft",
+      description: "Creator started a first upload",
+      price: 0,
+      audioUrl: "https://example.com/draft.mp3",
+      kind: "music",
+      creatorCategory: "music",
+      contentType: "track",
+      publishedStatus: "draft",
+      isPublished: false,
+    });
+
+    const response = await request(app)
+      .get("/api/creator/me/content-summary")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body.activation).toMatchObject({
+      status: "in_progress",
+      firstUploadStarted: true,
+      firstUploadCompleted: false,
+      nextStep: expect.objectContaining({
+        key: "first_upload_completed",
+        actionTo: "/creator/music/upload",
+      }),
+    });
+    expect(response.body.activation.steps.map((step) => step.key)).toEqual([
+      "account_created",
+      "creator_lane_selected",
+      "profile_ready",
+      "first_upload_started",
+      "first_upload_completed",
+      "payment_readiness_started",
+    ]);
+  });
+
   test("GET /api/creator/:creatorId/public-profile returns grouped published creator content", async () => {
     const { profile } = await createUserAndProfile({
       creatorTypes: ["music", "bookPublishing", "podcast"],

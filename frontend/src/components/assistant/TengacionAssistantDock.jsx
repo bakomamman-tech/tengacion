@@ -1076,18 +1076,20 @@ export default function TengacionAssistantDock() {
 
   return (
     <>
-      <TengacionAssistantLauncher
-        ref={launcherRef}
-        containerRef={launcherWrapRef}
-        containerStyle={launcherStyle}
-        dragging={draggingLauncher}
-        open={open}
-        hint={proactiveSuggestion}
-        onClick={handleLauncherClick}
-        onPointerDown={handleLauncherPointerDown}
-        onPointerUp={handleLauncherPointerEnd}
-        onPointerCancel={handleLauncherPointerEnd}
-      />
+      {open && expanded ? null : (
+        <TengacionAssistantLauncher
+          ref={launcherRef}
+          containerRef={launcherWrapRef}
+          containerStyle={launcherStyle}
+          dragging={draggingLauncher}
+          open={open}
+          hint={proactiveSuggestion}
+          onClick={handleLauncherClick}
+          onPointerDown={handleLauncherPointerDown}
+          onPointerUp={handleLauncherPointerEnd}
+          onPointerCancel={handleLauncherPointerEnd}
+        />
+      )}
 
       <TengacionAssistantPanel
         panelRef={panelRef}

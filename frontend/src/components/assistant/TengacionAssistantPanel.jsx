@@ -180,9 +180,9 @@ export default function TengacionAssistantPanel({
 
   return createPortal(
     <div
-      className={`tg-assistant-dock${dragging ? " is-dragging" : ""}`}
+      className={`tg-assistant-dock${expanded ? " tg-assistant-dock--expanded" : ""}${dragging ? " is-dragging" : ""}`}
       role="presentation"
-      style={panelStyle}
+      style={expanded ? undefined : panelStyle}
     >
       <aside
         ref={panelRef}
@@ -194,10 +194,10 @@ export default function TengacionAssistantPanel({
       >
         <header
           className="tg-assistant-panel__header"
-          onPointerDown={onHeaderPointerDown}
-          onPointerUp={onHeaderPointerUp}
-          onPointerCancel={onHeaderPointerCancel}
-          title="Drag Akuso panel"
+          onPointerDown={expanded ? undefined : onHeaderPointerDown}
+          onPointerUp={expanded ? undefined : onHeaderPointerUp}
+          onPointerCancel={expanded ? undefined : onHeaderPointerCancel}
+          title={expanded ? undefined : "Drag Akuso panel"}
         >
           <div className="tg-assistant-panel__identity">
             <span className="tg-assistant-panel__icon" aria-hidden="true">

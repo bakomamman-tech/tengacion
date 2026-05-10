@@ -730,6 +730,7 @@
 }
 
 .story-viewer {
+  position: relative;
   width: min(460px, 100%);
   max-height: calc(100dvh - 32px);
   border-radius: 16px;
@@ -740,6 +741,46 @@
   color: #fff;
   display: flex;
   flex-direction: column;
+}
+
+.story-viewer-reaction-burst-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.story-viewer-reaction-burst {
+  position: absolute;
+  left: var(--burst-x, 50%);
+  top: var(--burst-y, 50%);
+  width: 0;
+  height: 0;
+}
+
+.story-viewer-reaction-pop,
+.story-viewer-reaction-particle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  will-change: transform, opacity;
+}
+
+.story-viewer-reaction-pop {
+  font-size: 28px;
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.28));
+  animation: storyReactionPop 820ms cubic-bezier(0.18, 0.88, 0.28, 1.18) forwards;
+}
+
+.story-viewer-reaction-particle {
+  width: 7px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--particle-color, #fff);
+  animation: storyReactionConfetti 860ms ease-out forwards;
+  animation-delay: var(--particle-delay, 0ms);
 }
 
 .story-viewer-progress-row {
@@ -957,6 +998,7 @@
 }
 
 .story-viewer-quick-reactions button {
+  position: relative;
   min-width: 34px !important;
   min-height: 34px;
   border-radius: 999px !important;
@@ -965,6 +1007,27 @@
   color: #fff !important;
   padding: 0 8px !important;
   font-size: 16px;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.story-viewer-quick-reactions button:hover:not(:disabled),
+.story-viewer-quick-reactions button:focus-visible {
+  background: rgba(234, 242, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.56);
+  transform: translateY(-1px) scale(1.05);
+}
+
+.story-viewer-quick-reactions button.is-reacting {
+  animation: storyReactionButton 360ms ease;
+}
+
+.story-viewer-quick-reactions button:disabled {
+  cursor: wait;
+  opacity: 0.72;
 }
 
 .story-viewer-reply-row {
@@ -1027,6 +1090,69 @@
 .story-viewer-controls button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+@keyframes storyReactionButton {
+  0% {
+    transform: scale(1);
+  }
+
+  45% {
+    transform: scale(1.16);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes storyReactionPop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -72%) scale(1.32);
+  }
+
+  64% {
+    opacity: 1;
+    transform: translate(-50%, -128%) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -190%) scale(0.82);
+  }
+}
+
+@keyframes storyReactionConfetti {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.2);
+  }
+
+  16% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate(calc(-50% + var(--tx, 0px)), calc(-50% + var(--ty, -48px)))
+      rotate(var(--rot, 90deg))
+      scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-viewer-reaction-pop,
+  .story-viewer-reaction-particle,
+  .story-viewer-quick-reactions button.is-reacting {
+    animation-duration: 1ms;
+  }
 }
 
 @media (max-width: 700px) {

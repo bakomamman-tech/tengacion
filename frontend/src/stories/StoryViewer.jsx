@@ -5,6 +5,32 @@ import { getStoryMedia } from "./storyMedia";
 
 const IMAGE_DURATION_MS = 5000;
 
+const QUICK_REACTIONS = [
+  "\u2764\uFE0F",
+  "\u{1F525}",
+  "\u{1F602}",
+  "\u{1F62E}",
+  "\u{1F389}",
+];
+
+const REACTION_BURST_PARTICLES = [
+  { tx: "-44px", ty: "-58px", rot: "-34deg", color: "#ff4d6d", delay: "0ms" },
+  { tx: "-18px", ty: "-72px", rot: "28deg", color: "#ffd166", delay: "35ms" },
+  { tx: "28px", ty: "-66px", rot: "58deg", color: "#06d6a0", delay: "15ms" },
+  { tx: "52px", ty: "-36px", rot: "112deg", color: "#4cc9f0", delay: "45ms" },
+  { tx: "-52px", ty: "-18px", rot: "-88deg", color: "#f72585", delay: "55ms" },
+  { tx: "38px", ty: "-10px", rot: "148deg", color: "#b8f35c", delay: "25ms" },
+  { tx: "-8px", ty: "-92px", rot: "-128deg", color: "#ffffff", delay: "70ms" },
+  { tx: "4px", ty: "-42px", rot: "76deg", color: "#ff9f1c", delay: "5ms" },
+];
+
+const isTextEntryTarget = (target) => {
+  if (!target || typeof target.closest !== "function") {
+    return false;
+  }
+  return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+};
+
 const formatStoryTime = (value) => {
   const time = new Date(value || "");
   if (Number.isNaN(time.getTime())) {
@@ -42,26 +68,30 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
   const [progress, setProgress] = useState(0);
   const seenRef = useRef(new Set());
   const timerRef = useRef(null);
+  const viewerRef = useRef(null);
   const videoRef = useRef(null);
   const soundtrackRef = useRef(null);
+  const replyInputRef = useRef(null);
+  const holdAdvanceRef = useRef(false);
+  const pendingVideoAdvanceRef = useRef(false);
+  const burstIdRef = useRef(0);
+  const burstTimeoutsRef = useRef(new Set());
   const [replyText, setReplyText] = useState("");
   const [replyBusy, setReplyBusy] = useState(false);
+  const [replyFocused, setReplyFocused] = useState(false);
   const [reactionBusy, setReactionBusy] = useState("");
+  const [reactionBursts, setReactionBursts] = useState([]);
   const [soundtrackPlaying, setSoundtrackPlaying] = useState(false);
   const [soundtrackProgress, setSoundtrackProgress] = useState(0);
   const [soundtrackError, setSoundtrackError] = useState("");
 
-  const quickReactions = [
-    "\u2764\uFE0F",
-    "\u{1F525}",
-    "\u{1F602}",
-    "\u{1F62E}",
-    "\u{1F389}",
-  ];
-
   const activeStory = orderedStories[index] || story;
+  const activeStoryKey = activeStory
+    ? String(activeStory?._id || activeStory?.id || activeStory?.time || index)
+    : "";
   const { mediaType, mediaUrl } = getStoryMedia(activeStory);
   const soundtrack = activeStory?.musicAttachment || null;
+  const holdStoryAdvance = replyFocused || Boolean(replyText.trim()) || replyBusy;
   const avatarSrc = activeStory?.avatar
     ? resolveImage(activeStory.avatar)
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -81,6 +111,61 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
   const goToPrev = useCallback(() => {
     setIndex((current) => Math.max(current - 1, 0));
   }, []);
+
+  const handleVideoEnded = useCallback(() => {
+    if (holdAdvanceRef.current) {
+      pendingVideoAdvanceRef.current = true;
+      setProgress(1);
+      return;
+    }
+
+    goToNext();
+  }, [goToNext]);
+
+  const spawnReactionBurst = useCallback((emoji, event) => {
+    const viewerRect = viewerRef.current?.getBoundingClientRect();
+    const buttonRect = event?.currentTarget?.getBoundingClientRect?.();
+    if (!viewerRect || !buttonRect) {
+      return;
+    }
+
+    burstIdRef.current += 1;
+    const burstId = burstIdRef.current;
+    const burst = {
+      id: burstId,
+      emoji,
+      x: buttonRect.left + buttonRect.width / 2 - viewerRect.left,
+      y: buttonRect.top + buttonRect.height / 2 - viewerRect.top,
+    };
+
+    setReactionBursts((current) => [...current, burst].slice(-5));
+
+    const timeoutId = window.setTimeout(() => {
+      setReactionBursts((current) => current.filter((entry) => entry.id !== burstId));
+      burstTimeoutsRef.current.delete(timeoutId);
+    }, 950);
+    burstTimeoutsRef.current.add(timeoutId);
+  }, []);
+
+  useEffect(
+    () => () => {
+      burstTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      burstTimeoutsRef.current.clear();
+    },
+    []
+  );
+
+  useEffect(() => {
+    holdAdvanceRef.current = holdStoryAdvance;
+    if (!holdStoryAdvance && pendingVideoAdvanceRef.current) {
+      pendingVideoAdvanceRef.current = false;
+      goToNext();
+    }
+  }, [goToNext, holdStoryAdvance]);
+
+  useEffect(() => {
+    pendingVideoAdvanceRef.current = false;
+  }, [activeStoryKey, mediaType]);
 
   useEffect(() => {
     if (!activeStory?._id) {
@@ -103,7 +188,7 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
     }
     setProgress(0);
 
-    if (!activeStory) {
+    if (!activeStoryKey) {
       return undefined;
     }
 
@@ -111,9 +196,19 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
       return undefined;
     }
 
-    const start = Date.now();
+    let elapsed = 0;
+    let lastTick = Date.now();
     timerRef.current = window.setInterval(() => {
-      const ratio = Math.min(1, (Date.now() - start) / IMAGE_DURATION_MS);
+      const now = Date.now();
+      const delta = now - lastTick;
+      lastTick = now;
+
+      if (holdAdvanceRef.current) {
+        return;
+      }
+
+      elapsed += delta;
+      const ratio = Math.min(1, elapsed / IMAGE_DURATION_MS);
       setProgress(ratio);
       if (ratio >= 1) {
         clearInterval(timerRef.current);
@@ -128,7 +223,7 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
         timerRef.current = null;
       }
     };
-  }, [activeStory, goToNext, mediaType]);
+  }, [activeStoryKey, goToNext, mediaType]);
 
   useEffect(() => {
     if (mediaType !== "video") {
@@ -166,6 +261,14 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
 
   useEffect(() => {
     const onKeyDown = (event) => {
+      if (isTextEntryTarget(event.target)) {
+        return;
+      }
+
+      if (holdAdvanceRef.current && (event.key === "ArrowRight" || event.key === "ArrowLeft")) {
+        return;
+      }
+
       if (event.key === "Escape") {
         onClose?.();
       } else if (event.key === "ArrowRight") {
@@ -177,16 +280,17 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  });
+  }, [goToNext, goToPrev, onClose]);
 
   if (!activeStory) {
     return null;
   }
 
-  const handleReact = async (emoji) => {
+  const handleReact = async (emoji, event) => {
     if (!activeStory?._id || reactionBusy) {
       return;
     }
+    spawnReactionBurst(emoji, event);
     try {
       setReactionBusy(emoji);
       await reactToStory(activeStory._id, emoji);
@@ -206,6 +310,8 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
       setReplyBusy(true);
       await replyToStory(activeStory._id, text);
       setReplyText("");
+      setReplyFocused(false);
+      replyInputRef.current?.blur();
     } catch {
       // Keep existing UI stable on network errors.
     } finally {
@@ -240,9 +346,38 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
   return (
     <div className="story-viewer-overlay" onClick={onClose}>
       <div
+        ref={viewerRef}
         className={`story-viewer${soundtrack?.previewUrl ? " story-viewer--with-soundtrack" : ""}`}
         onClick={(event) => event.stopPropagation()}
       >
+        <div className="story-viewer-reaction-burst-layer" aria-hidden="true">
+          {reactionBursts.map((burst) => (
+            <span
+              key={burst.id}
+              className="story-viewer-reaction-burst"
+              style={{
+                "--burst-x": `${burst.x}px`,
+                "--burst-y": `${burst.y}px`,
+              }}
+            >
+              <span className="story-viewer-reaction-pop">{burst.emoji}</span>
+              {REACTION_BURST_PARTICLES.map((particle, particleIndex) => (
+                <span
+                  key={`${burst.id}-${particleIndex}`}
+                  className="story-viewer-reaction-particle"
+                  style={{
+                    "--particle-color": particle.color,
+                    "--particle-delay": particle.delay,
+                    "--rot": particle.rot,
+                    "--tx": particle.tx,
+                    "--ty": particle.ty,
+                  }}
+                />
+              ))}
+            </span>
+          ))}
+        </div>
+
         <div className="story-viewer-progress-row">
           {orderedStories.map((entry, idx) => {
             const fill = idx < index ? 1 : idx > index ? 0 : progress;
@@ -287,7 +422,7 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
                   const now = event.currentTarget.currentTime || 0;
                   setProgress(duration > 0 ? Math.min(1, now / duration) : 0);
                 }}
-                onEnded={goToNext}
+                onEnded={handleVideoEnded}
               />
             ) : (
               <img src={mediaUrl} alt="Story" />
@@ -349,21 +484,26 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
 
         <div className="story-viewer-actions">
           <div className="story-viewer-quick-reactions">
-            {quickReactions.map((emoji) => (
+            {QUICK_REACTIONS.map((emoji) => (
               <button
                 key={emoji}
                 type="button"
-                onClick={() => handleReact(emoji)}
+                className={reactionBusy === emoji ? "is-reacting" : ""}
+                onClick={(event) => handleReact(emoji, event)}
                 disabled={Boolean(reactionBusy)}
+                aria-label={`React with ${emoji}`}
               >
-                {reactionBusy === emoji ? "..." : emoji}
+                {emoji}
               </button>
             ))}
           </div>
           <div className="story-viewer-reply-row">
             <input
+              ref={replyInputRef}
               value={replyText}
               onChange={(event) => setReplyText(event.target.value)}
+              onBlur={() => setReplyFocused(false)}
+              onFocus={() => setReplyFocused(true)}
               placeholder="Reply to story..."
               maxLength={220}
             />

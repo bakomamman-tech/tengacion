@@ -404,6 +404,9 @@ describe("Akuso services", () => {
         expression: "sin(theta) = K; find tan(theta)",
       })
     );
+    expect(response.solutionText).toMatch(/## Given/);
+    expect(response.solutionText).toMatch(/```math/);
+    expect(response.solutionText).toMatch(/## Final answer/);
     expect(response.steps.join("\n")).toMatch(/first quadrant/i);
     expect(response.steps.join("\n")).toMatch(/tan\(theta\) = opposite \/ adjacent/i);
     expect(policy).toEqual(

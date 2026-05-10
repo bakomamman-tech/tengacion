@@ -83,8 +83,12 @@ const extractSinToTanIdentity = (message = "") => {
   };
 };
 
+const buildFormulaBlock = (lines = []) =>
+  ["```math", ...lines.filter(Boolean), "```"].join("\n");
+
 const buildSinToTanResponse = ({ value, firstQuadrant }) => {
   const answerText = `${value} / sqrt(1 - ${value}^2)`;
+  const expression = `sin(theta) = ${value}; find tan(theta)`;
   const domainNote = `This formula works for 0 <= ${value} < 1; if ${value} = 1, theta = 90 degrees and tan(theta) is undefined.`;
   const steps = [
     firstQuadrant
@@ -95,6 +99,35 @@ const buildSinToTanResponse = ({ value, firstQuadrant }) => {
     `tan(theta) = opposite / adjacent = ${answerText}.`,
     domainNote,
   ];
+  const solutionText = [
+    "## Given",
+    buildFormulaBlock([
+      `sin(theta) = ${value}`,
+      firstQuadrant ? "0 degrees <= theta <= 90 degrees" : "",
+    ]),
+    firstQuadrant
+      ? "For 0 degrees <= theta <= 90 degrees, theta is in the first quadrant, so all trigonometric values are positive."
+      : "Use the positive adjacent side for an acute first-quadrant angle.",
+    "",
+    "## Using",
+    buildFormulaBlock(["sin(theta) = opposite / hypotenuse"]),
+    "",
+    "## Let",
+    buildFormulaBlock([`opposite = ${value}`, "hypotenuse = 1"]),
+    "",
+    "Then the adjacent side is:",
+    buildFormulaBlock([`adjacent = sqrt(1^2 - ${value}^2) = sqrt(1 - ${value}^2)`]),
+    "",
+    "## So",
+    buildFormulaBlock([
+      "tan(theta) = opposite / adjacent",
+      `tan(theta) = ${answerText}`,
+    ]),
+    "",
+    "## Final answer",
+    buildFormulaBlock([`tan(theta) = ${answerText}`]),
+    domainNote,
+  ].join("\n");
 
   return {
     mode: "math",
@@ -103,11 +136,11 @@ const buildSinToTanResponse = ({ value, firstQuadrant }) => {
       notice: "",
       escalation: "",
     },
-    message: `The answer is ${answerText}. ${domainNote}`,
+    message: solutionText,
     details: [
       {
         title: "Expression",
-        body: `sin(theta) = ${value}; find tan(theta)`,
+        body: expression,
       },
       {
         title: "Steps",
@@ -119,8 +152,9 @@ const buildSinToTanResponse = ({ value, firstQuadrant }) => {
       { label: "Another trig problem", prompt: "Solve another trigonometry problem step by step" },
     ],
     answer: answerText,
-    expression: `sin(theta) = ${value}; find tan(theta)`,
+    expression,
     answerText,
+    solutionText,
     steps,
   };
 };
@@ -353,6 +387,21 @@ const buildMathResponse = ({ message = "", expression = "" } = {}) => {
   if (!solved) {
     return null;
   }
+  const displayExpression = percentExpression?.display || solved.expression;
+  const arithmeticSolutionText = [
+    `The answer is ${solved.answerText}.`,
+    "",
+    "## Expression",
+    buildFormulaBlock([displayExpression]),
+    "",
+    "## Steps",
+    ...(solved.steps.length > 0
+      ? solved.steps.map((step, index) => `${index + 1}. ${step}`)
+      : ["1. I used the standard order of operations."]),
+    "",
+    "## Final answer",
+    buildFormulaBlock([solved.answerText]),
+  ].join("\n");
 
   return {
     mode: "math",
@@ -361,11 +410,11 @@ const buildMathResponse = ({ message = "", expression = "" } = {}) => {
       notice: "",
       escalation: "",
     },
-    message: `The answer is ${solved.answerText}.`,
+    message: arithmeticSolutionText,
     details: [
       {
         title: "Expression",
-        body: percentExpression?.display || solved.expression,
+        body: displayExpression,
       },
       {
         title: "Steps",
@@ -377,8 +426,9 @@ const buildMathResponse = ({ message = "", expression = "" } = {}) => {
       { label: "Another problem", prompt: "Solve another math problem step by step" },
     ],
     answer: solved.answer,
-    expression: percentExpression?.display || solved.expression,
+    expression: displayExpression,
     answerText: solved.answerText,
+    solutionText: arithmeticSolutionText,
     steps: solved.steps,
   };
 };

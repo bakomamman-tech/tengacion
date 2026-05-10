@@ -893,6 +893,31 @@
   white-space: pre;
 }
 
+.tg-assistant-message__formula {
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  justify-items: center;
+  margin: 0.05rem 0;
+  padding: 0.72rem 0.9rem;
+  overflow-x: auto;
+  border: 1px solid rgba(42, 111, 79, 0.14);
+  border-radius: 14px;
+  background: rgba(244, 250, 245, 0.92);
+  color: color-mix(in srgb, var(--text) 90%, var(--brand-strong) 10%);
+}
+
+.tg-assistant-message__formula code {
+  display: block;
+  min-width: max-content;
+  font-family: "Times New Roman", Georgia, ui-serif, serif;
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.65;
+  text-align: center;
+  white-space: pre;
+}
+
 .tg-assistant-message__formatted code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
@@ -1750,6 +1775,12 @@ html.dark-mode .tg-assistant-message__formatted h6 {
 html.dark-mode .tg-assistant-message__formatted pre {
   border-color: rgba(121, 207, 162, 0.14);
   background: rgba(2, 8, 23, 0.82);
+}
+
+html.dark-mode .tg-assistant-message__formula {
+  border-color: rgba(119, 184, 143, 0.24);
+  background: rgba(25, 44, 34, 0.92);
+  color: rgba(235, 255, 242, 0.96);
 }
 
 html.dark-mode .tg-assistant-card__action,

@@ -252,6 +252,10 @@ describe("TengacionAssistantDock", () => {
       "Implementation instructions:",
       "- Find the best location in the project.",
       "- Keep the existing layout intact.",
+      "",
+      "```math",
+      "tan(theta) = K / sqrt(1 - K^2)",
+      "```",
     ].join("\n");
 
     streamAssistantMessageMock.mockResolvedValue({
@@ -295,6 +299,9 @@ describe("TengacionAssistantDock", () => {
     expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual(
       expect.arrayContaining(["Addition", "Subtraction"])
     );
+    expect(
+      screen.getByText("tan(theta) = K / sqrt(1 - K^2)").closest(".tg-assistant-message__formula")
+    ).not.toBeNull();
 
     await user.click(await screen.findByRole("button", { name: /copy akuso response/i }));
 

@@ -249,6 +249,14 @@ function AssistantFormattedContent({ content = "" }) {
         }
 
         if (block.type === "code") {
+          if (String(block.language || "").toLowerCase() === "math") {
+            return (
+              <div key={`math-${index}`} className="tg-assistant-message__formula">
+                <code>{block.text}</code>
+              </div>
+            );
+          }
+
           return (
             <pre key={`code-${index}`}>
               <code>{block.text}</code>

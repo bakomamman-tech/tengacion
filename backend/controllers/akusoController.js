@@ -594,17 +594,19 @@ const buildReasoningFallback = ({ input, policyResult }) => {
 
   if (mathResponse) {
     return {
-      answer: [
-        `The answer is ${mathResponse.answerText}.`,
-        "",
-        "Expression:",
-        mathResponse.expression,
-        "",
-        "Steps:",
-        ...(mathResponse.steps.length > 0
-          ? mathResponse.steps.map((step, index) => `${index + 1}. ${step}`)
-          : ["1. I used the standard order of operations."]),
-      ].join("\n"),
+      answer:
+        mathResponse.solutionText ||
+        [
+          `The answer is ${mathResponse.answerText}.`,
+          "",
+          "Expression:",
+          mathResponse.expression,
+          "",
+          "Steps:",
+          ...(mathResponse.steps.length > 0
+            ? mathResponse.steps.map((step, index) => `${index + 1}. ${step}`)
+            : ["1. I used the standard order of operations."]),
+        ].join("\n"),
       warnings: policyResult.warnings,
       suggestions: [
         "Ask Akuso to check another calculation.",

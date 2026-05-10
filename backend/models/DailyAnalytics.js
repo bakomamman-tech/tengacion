@@ -24,6 +24,7 @@ const DailyAnalyticsSchema = new mongoose.Schema(
     messagesSent: { type: Number, default: 0, min: 0 },
     friendRequestsSent: { type: Number, default: 0, min: 0 },
     friendRequestsAccepted: { type: Number, default: 0, min: 0 },
+    creatorOnboardingStepCompletions: { type: Number, default: 0, min: 0 },
     successfulPurchases: { type: Number, default: 0, min: 0 },
     failedPurchases: { type: Number, default: 0, min: 0 },
     revenueAmount: { type: Number, default: 0, min: 0 },

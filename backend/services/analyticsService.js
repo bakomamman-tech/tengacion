@@ -159,6 +159,7 @@ const logAnalyticsEvent = async ({
     download_completed: "downloads",
     purchase_success: "successfulPurchases",
     purchase_failed: "failedPurchases",
+    creator_onboarding_step_completed: "creatorOnboardingStepCompletions",
     content_reported: "reportsCount",
     upload_failed: "uploadFailuresCount",
     login_warning: "loginWarnings",

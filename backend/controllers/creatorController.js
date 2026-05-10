@@ -7,6 +7,9 @@ const Track = require("../models/Track");
 const User = require("../models/User");
 const Video = require("../models/Video");
 const { buildCreatorActivationProgress } = require("../services/creatorActivationService");
+const {
+  logCreatorProfileOnboardingTransitions,
+} = require("../services/creatorOnboardingAnalyticsService");
 const { buildPayoutReadiness } = require("../services/payoutReadinessService");
 const { buildCreatorWalletSnapshot } = require("../services/walletService");
 const {
@@ -623,6 +626,7 @@ exports.registerCreator = asyncHandler(async (req, res) => {
   const musicProfile = normalizeMusicProfile(req.body?.musicProfile);
   const booksProfile = normalizeBooksProfile(req.body?.booksProfile);
   const podcastsProfile = normalizePodcastsProfile(req.body?.podcastsProfile);
+  const existingProfile = await CreatorProfile.findOne({ userId: req.user.id }).lean();
 
   const profile = await CreatorProfile.findOneAndUpdate(
     { userId: req.user.id },
@@ -664,6 +668,13 @@ exports.registerCreator = asyncHandler(async (req, res) => {
       country: country || user.country || "",
     },
   }).catch(() => null);
+  await logCreatorProfileOnboardingTransitions({
+    userId: req.user.id,
+    profileId: profile._id,
+    beforeProfile: existingProfile,
+    afterProfile: profile,
+    source: existingProfile ? "creator_registration_update" : "creator_registration",
+  });
 
   return res.status(201).json({
     success: true,
@@ -748,6 +759,13 @@ exports.updateCreatorProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id)
     .select("name username email avatar phone country isVerified emailVerified followers")
     .lean();
+  await logCreatorProfileOnboardingTransitions({
+    userId: req.user.id,
+    profileId: profile._id,
+    beforeProfile: existing,
+    afterProfile: profile,
+    source: "creator_profile_update",
+  });
 
   return res.json({
     success: true,

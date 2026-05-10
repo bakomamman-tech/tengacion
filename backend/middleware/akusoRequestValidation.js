@@ -43,7 +43,7 @@ const routeSchema = z
   });
 
 const modeSchema = z
-  .enum(["auto", "app_help", "creator_writing", "knowledge_learning"])
+  .enum(["auto", "app_help", "creator_writing", "knowledge_learning", "math"])
   .optional()
   .default("auto");
 

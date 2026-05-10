@@ -6,6 +6,7 @@ const AKUSO_MODES = {
   APP_HELP: "app_help",
   CREATOR_WRITING: "creator_writing",
   KNOWLEDGE_LEARNING: "knowledge_learning",
+  MATH: "math",
 };
 
 const PROMPT_INJECTION_PATTERNS = [
@@ -98,7 +99,22 @@ const REASONING_PATTERNS = [
   /\bphysics\b/i,
   /\bscience\b/i,
   /\bstep by step\b/i,
+  /\b(?:algebra|geometry|trigonometry|calculus|arithmetic)\b/i,
+  /\b(?:sin|cos|tan|cot|sec|csc|cosec)\s*(?:\(?\s*)?(?:theta|\u03b8|[a-z])\b/i,
+  /\bfind\b.*\b(?:sin|cos|tan|cot|sec|csc|cosec)\b/i,
+  /\u03b8/i,
+  /\btheta\b/i,
   /[0-9].*[\+\-\*\/]/,
+];
+const MATH_PATTERNS = [
+  /\bmath(?:ematics)?\b/i,
+  /\b(?:algebra|geometry|trigonometry|calculus|arithmetic)\b/i,
+  /\b(?:sin|cos|tan|cot|sec|csc|cosec)\s*(?:\(?\s*)?(?:theta|\u03b8|[a-z])\b/i,
+  /\bfind\b.*\b(?:sin|cos|tan|cot|sec|csc|cosec)\b/i,
+  /\u03b8/i,
+  /\btheta\b/i,
+  /[0-9].*[\+\-\*\/^=]/,
+  /[\u2264\u2265]/,
 ];
 const SOFTWARE_ENGINEERING_PATTERNS = [
   /\bcode\b/i,
@@ -179,6 +195,18 @@ const normalizeMode = (value = "") => {
   }
   if (
     [
+      AKUSO_MODES.MATH,
+      "mathematics",
+      "calculation",
+      "calculations",
+      "trig",
+      "trigonometry",
+    ].includes(input)
+  ) {
+    return AKUSO_MODES.MATH;
+  }
+  if (
+    [
       AKUSO_MODES.KNOWLEDGE_LEARNING,
       "knowledge",
       "learning",
@@ -243,15 +271,18 @@ const classifyAkusoRequest = ({
     normalizedMessage,
     SOFTWARE_ENGINEERING_PATTERNS
   );
+  const mathRequested =
+    normalizedMode === AKUSO_MODES.MATH || hasPattern(normalizedMessage, MATH_PATTERNS);
+  const needsReasoning =
+    mathRequested || softwareEngineeringRequested || hasPattern(normalizedMessage, REASONING_PATTERNS);
   const appHelpRequested =
     !softwareEngineeringRequested &&
+    !needsReasoning &&
     (
       normalizedMode === AKUSO_MODES.APP_HELP ||
       Boolean(feature) ||
       hasPattern(normalizedMessage, APP_HELP_PATTERNS)
     );
-  const needsReasoning =
-    softwareEngineeringRequested || hasPattern(normalizedMessage, REASONING_PATTERNS);
   const sensitive = hasPattern(normalizedMessage, SENSITIVE_PATTERNS);
 
   let inferredMode = AKUSO_MODES.KNOWLEDGE_LEARNING;
@@ -259,6 +290,8 @@ const classifyAkusoRequest = ({
     inferredMode = AKUSO_MODES.CREATOR_WRITING;
   } else if (appHelpRequested) {
     inferredMode = AKUSO_MODES.APP_HELP;
+  } else if (mathRequested) {
+    inferredMode = AKUSO_MODES.MATH;
   }
 
   return {
@@ -278,6 +311,7 @@ const classifyAkusoRequest = ({
     financial,
     sensitive,
     needsReasoning,
+    mathRequested,
     softwareEngineeringRequested,
     creatorWritingRequested,
     appHelpRequested,

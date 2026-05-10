@@ -16,7 +16,10 @@ const normalizeAssistantMode = (value = "") => {
   if (mode === "writing") {
     return "creator_writing";
   }
-  if (["knowledge", "math", "health"].includes(mode)) {
+  if (mode === "math") {
+    return "math";
+  }
+  if (["knowledge", "health"].includes(mode)) {
     return "knowledge_learning";
   }
   return "auto";
@@ -350,6 +353,9 @@ const mapAkusoModeToAssistantMode = (mode = "", category = "", preferredMode = "
   }
   if (normalizedMode === "creator_writing") {
     return "writing";
+  }
+  if (normalizedMode === "math") {
+    return "math";
   }
   if (normalizedPreferredMode === "math") {
     return "math";

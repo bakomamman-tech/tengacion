@@ -254,6 +254,39 @@ describe("Akuso routes", () => {
     );
   });
 
+  it("answers trig math questions instead of route search guidance", async () => {
+    const response = await request(app)
+      .post("/api/akuso/chat")
+      .send({
+        message: "If sin\u03b8 = K find tan\u03b8, 0\u00b0 \u2264 \u03b8 \u2264 90\u00b0.",
+        mode: "math",
+        currentRoute: "/search",
+        currentPage: "Search",
+      })
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        ok: true,
+        mode: "math",
+        category: "SAFE_ANSWER",
+        answer: expect.stringMatching(/K \/ sqrt\(1 - K\^2\)/),
+        meta: expect.objectContaining({
+          task: "reasoning",
+        }),
+      })
+    );
+    expect(response.body.answer).toMatch(/first quadrant/i);
+    expect(response.body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Expression",
+          body: "sin(theta) = K; find tan(theta)",
+        }),
+      ])
+    );
+  });
+
   it("accepts an image attachment for Akuso assessment without typed text", async () => {
     const response = await request(app)
       .post("/api/akuso/chat")

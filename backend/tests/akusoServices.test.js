@@ -385,6 +385,37 @@ describe("Akuso services", () => {
     expect(response.steps.join("\n")).toMatch(/240 \* 0.15 = 36|15 \/ 100 = 0.15/i);
   });
 
+  it("solves symbolic sine-to-tangent trig questions for math mode", () => {
+    const message = "If sin\u03b8 = K find tan\u03b8, 0\u00b0 \u2264 \u03b8 \u2264 90\u00b0.";
+    const response = buildMathResponse({ message });
+    const policy = evaluateAkusoPolicy({
+      input: {
+        message,
+        mode: "math",
+        currentRoute: "/search",
+        currentPage: "Search",
+      },
+      user: { id: userId },
+    });
+
+    expect(response).toEqual(
+      expect.objectContaining({
+        answerText: "K / sqrt(1 - K^2)",
+        expression: "sin(theta) = K; find tan(theta)",
+      })
+    );
+    expect(response.steps.join("\n")).toMatch(/first quadrant/i);
+    expect(response.steps.join("\n")).toMatch(/tan\(theta\) = opposite \/ adjacent/i);
+    expect(policy).toEqual(
+      expect.objectContaining({
+        mode: "math",
+        categoryBucket: POLICY_BUCKETS.SAFE_ANSWER,
+        taskType: "reasoning",
+      })
+    );
+    expect(policy.classification.appHelpRequested).toBe(false);
+  });
+
   it("builds minimized context without leaking unsafe route content", async () => {
     const context = await buildAkusoContext({
       input: {

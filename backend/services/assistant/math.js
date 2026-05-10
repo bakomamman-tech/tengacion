@@ -8,6 +8,13 @@ const stripLeadingPromptWords = (value = "") =>
     .replace(/^(please\s+)?(solve|calculate|work out|work out for me|check|evaluate|find|what is|what's|compute|help me solve)\b[:\s-]*/i, "")
     .trim();
 
+const normalizeMathProblemText = (value = "") =>
+  normalizeText(value)
+    .replace(/[\u03b8\u0398]/g, "theta")
+    .replace(/\u2264/g, "<=")
+    .replace(/\u2265/g, ">=")
+    .replace(/\u00b0/g, " degrees");
+
 const isValidMathExpression = (expression = "") =>
   /^[0-9+\-*/^().,\s]+$/.test(String(expression || "").replace(/,/g, ""));
 
@@ -48,6 +55,73 @@ const extractPercentOfExpression = (message = "") => {
   return {
     display: `${formatNumber(percent)}% of ${formatNumber(base)}`,
     expression: `${formatNumber(base)} * (${formatNumber(percent)} / 100)`,
+  };
+};
+
+const extractSinToTanIdentity = (message = "") => {
+  const source = normalizeMathProblemText(message);
+  const given = source.match(
+    /\bsin\s*\(?\s*theta\s*\)?\s*=\s*([a-z][a-z0-9_]*|\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)?)/i
+  );
+  const asksForTan =
+    /\b(?:find|calculate|solve|determine|what is|work out)\b.*\btan\s*\(?\s*theta\s*\)?/i.test(source) ||
+    /\btan\s*\(?\s*theta\s*\)?/i.test(source);
+
+  if (!given || !asksForTan) {
+    return null;
+  }
+
+  const value = given[1].replace(/\s+/g, "");
+  const firstQuadrant =
+    /\b0\s*(?:degrees?)?\s*(?:<=|<|to|-)\s*theta\s*(?:<=|<|to|-)\s*90\s*(?:degrees?)?\b/i.test(source) ||
+    /\bfirst quadrant\b/i.test(source) ||
+    /\bacute angle\b/i.test(source);
+
+  return {
+    value,
+    firstQuadrant,
+  };
+};
+
+const buildSinToTanResponse = ({ value, firstQuadrant }) => {
+  const answerText = `${value} / sqrt(1 - ${value}^2)`;
+  const domainNote = `This formula works for 0 <= ${value} < 1; if ${value} = 1, theta = 90 degrees and tan(theta) is undefined.`;
+  const steps = [
+    firstQuadrant
+      ? "Because 0 <= theta <= 90 degrees, theta is in the first quadrant, so the tangent value is non-negative."
+      : "Use the positive adjacent side for an acute first-quadrant angle.",
+    `sin(theta) = opposite / hypotenuse = ${value} / 1, so take opposite = ${value} and hypotenuse = 1.`,
+    `adjacent = sqrt(1^2 - ${value}^2) = sqrt(1 - ${value}^2).`,
+    `tan(theta) = opposite / adjacent = ${answerText}.`,
+    domainNote,
+  ];
+
+  return {
+    mode: "math",
+    safety: {
+      level: "safe",
+      notice: "",
+      escalation: "",
+    },
+    message: `The answer is ${answerText}. ${domainNote}`,
+    details: [
+      {
+        title: "Expression",
+        body: `sin(theta) = ${value}; find tan(theta)`,
+      },
+      {
+        title: "Steps",
+        body: steps.join("\n"),
+      },
+    ],
+    followUps: [
+      { label: "Check my answer", prompt: `Check why tan(theta) = ${answerText}` },
+      { label: "Another trig problem", prompt: "Solve another trigonometry problem step by step" },
+    ],
+    answer: answerText,
+    expression: `sin(theta) = ${value}; find tan(theta)`,
+    answerText,
+    steps,
   };
 };
 
@@ -265,6 +339,11 @@ const solveMathExpression = (expression = "") => {
 };
 
 const buildMathResponse = ({ message = "", expression = "" } = {}) => {
+  const sinToTanIdentity = expression ? null : extractSinToTanIdentity(message);
+  if (sinToTanIdentity) {
+    return buildSinToTanResponse(sinToTanIdentity);
+  }
+
   const percentExpression = expression ? null : extractPercentOfExpression(message);
   const sourceExpression =
     String(expression || "").trim() ||
@@ -306,6 +385,7 @@ const buildMathResponse = ({ message = "", expression = "" } = {}) => {
 
 module.exports = {
   buildMathResponse,
+  extractSinToTanIdentity,
   extractPercentOfExpression,
   formatNumber,
   extractMathExpression,

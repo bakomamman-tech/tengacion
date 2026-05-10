@@ -126,6 +126,8 @@ const evaluateAkusoPolicy = ({
         ? "creator_writing"
         : classification.softwareEngineeringRequested
           ? "software_engineering"
+        : classification.mode === AKUSO_MODES.MATH
+          ? "reasoning"
         : classification.needsReasoning
           ? "reasoning"
           : classification.mode === AKUSO_MODES.APP_HELP

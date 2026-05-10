@@ -266,6 +266,52 @@ describe("assistantApi", () => {
     });
   });
 
+  it("sends Math mode to Akuso without downgrading it to general knowledge", async () => {
+    apiRequestMock.mockResolvedValue({
+      ok: true,
+      mode: "math",
+      category: "SAFE_ANSWER",
+      answer: "The answer is K / sqrt(1 - K^2).",
+      warnings: [],
+      suggestions: [],
+      actions: [],
+      drafts: [],
+      traceId: "trace-math-1",
+      conversationId: "conversation-math-1",
+      meta: {
+        provider: "local_fallback",
+        task: "reasoning",
+        grounded: true,
+        usedModel: false,
+      },
+    });
+
+    const response = await sendAssistantMessage({
+      message: "If sin theta = K find tan theta",
+      assistantModeHint: "math",
+      context: {
+        currentPath: "/search",
+        pageTitle: "Search",
+      },
+    });
+
+    const [, requestOptions] = apiRequestMock.mock.calls[0];
+    expect(JSON.parse(requestOptions.body)).toEqual(
+      expect.objectContaining({
+        message: "If sin theta = K find tan theta",
+        mode: "math",
+        currentRoute: "/search",
+        currentPage: "Search",
+      })
+    );
+    expect(response).toEqual(
+      expect.objectContaining({
+        mode: "math",
+        message: "The answer is K / sqrt(1 - K^2).",
+      })
+    );
+  });
+
   it("sends Akuso feedback with trace and category metadata", async () => {
     apiRequestMock.mockResolvedValue({ ok: true, feedbackId: "feedback-1" });
 

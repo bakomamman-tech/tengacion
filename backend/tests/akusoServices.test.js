@@ -419,6 +419,52 @@ describe("Akuso services", () => {
     expect(policy.classification.appHelpRequested).toBe(false);
   });
 
+  it("keeps math questions in math mode even when the user is in App mode", () => {
+    const message = "If cos theta = K find tan theta, 0 <= theta <= 90.";
+    const response = buildMathResponse({ message });
+    const policy = evaluateAkusoPolicy({
+      input: {
+        message,
+        mode: "app_help",
+        currentRoute: "/search",
+        currentPage: "Search",
+      },
+      user: { id: userId },
+    });
+    const promptBundle = buildAkusoPromptBundle({
+      input: { message },
+      context: {
+        page: { currentRoute: "/search", currentPage: "Search" },
+        auth: { isAuthenticated: true, role: "user" },
+        relevantFeatures: [],
+      },
+      policyResult: policy,
+      fallback: {
+        answer: response.message,
+        warnings: [],
+        suggestions: [],
+      },
+    });
+
+    expect(response).toEqual(
+      expect.objectContaining({
+        answerText: "sqrt(1 - K^2) / K",
+        expression: "cos(theta) = K; find tan(theta)",
+      })
+    );
+    expect(policy).toEqual(
+      expect.objectContaining({
+        mode: "math",
+        categoryBucket: POLICY_BUCKETS.SAFE_ANSWER,
+        taskType: "reasoning",
+      })
+    );
+    expect(policy.classification.appHelpRequested).toBe(false);
+    expect(promptBundle.systemPrompt).toMatch(/Math problem-solving mode/i);
+    expect(promptBundle.systemPrompt).not.toMatch(/Only describe Tengacion features/i);
+    expect(promptBundle.userPrompt).toMatch(/Solve the user's mathematics problem/i);
+  });
+
   it("builds minimized context without leaking unsafe route content", async () => {
     const context = await buildAkusoContext({
       input: {

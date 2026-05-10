@@ -637,6 +637,44 @@ const buildReasoningFallback = ({ input, policyResult }) => {
     };
   }
 
+  if (policyResult.classification?.mathRequested) {
+    return {
+      answer: [
+        "I recognized this as a mathematics problem.",
+        "",
+        "## Accuracy note",
+        "Akuso's local deterministic solver does not cover this exact format yet. When the reasoning model is available, Akuso will use it to solve the problem step by step. If the model layer is unavailable, I would rather ask for the exact equation or a clearer photo than guess.",
+        "",
+        "## Send it clearly",
+        "- Include every symbol, exponent, fraction, and condition.",
+        "- Say what value or expression to find.",
+        "- Add the answer options if it is a multiple-choice question.",
+      ].join("\n"),
+      warnings: policyResult.warnings,
+      suggestions: [
+        "Rewrite the problem with all symbols included.",
+        "Ask Akuso to solve it step by step.",
+        "Ask Akuso to check a proposed answer.",
+      ],
+      actions: [],
+      sources: [],
+      details: [
+        buildAkusoDetail("Math reliability", "Unhandled local math format; route through the reasoning model when available."),
+      ],
+      cards: [
+        buildAkusoCard({
+          type: "knowledge",
+          title: "Math problem",
+          subtitle: "Needs reasoning model or clearer input",
+          description: "Akuso recognized the request as math and avoided an unverified guess.",
+          payload: {
+            text: "Solve this math problem step by step",
+          },
+        }),
+      ].filter(Boolean),
+    };
+  }
+
   return buildKnowledgeFallback({ input, policyResult });
 };
 
@@ -932,6 +970,11 @@ const maybeEnhanceFallback = async ({
       imageInputs,
       responseSchema: promptBundle.responseSchema,
     };
+    if (routeDecision.task === "reasoning" && policyResult.classification?.mathRequested) {
+      requestOptions.reasoningEffort = "high";
+      requestOptions.verbosity = "medium";
+      requestOptions.maxOutputTokens = Math.max(Number(config.akuso?.maxOutputTokens || 0), 1800);
+    }
     const response =
       routeDecision.task === "creator_writing"
         ? await sendWritingRequest(requestOptions)

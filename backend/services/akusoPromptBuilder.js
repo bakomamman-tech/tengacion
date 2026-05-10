@@ -69,6 +69,17 @@ Open-domain knowledge mode:
 - For opinion or advice questions, separate practical guidance from facts and avoid pretending there is one universal answer.
 `.trim();
 
+const AKUSO_MATH_REASONING_RULES = `
+Math problem-solving mode:
+- Treat the user's request as a mathematics problem even if the user is on a Tengacion app page or in App mode.
+- Solve the problem yourself; use the fallback only as a hint, not as the source of truth.
+- Show a clear classroom-style solution with short sections such as "Given", "Using", "Let", "So", and "Final answer".
+- Put important equations and final formulas in fenced math blocks using \`\`\`math.
+- State assumptions, domains, positive/negative root choices, and undefined cases when they affect the answer.
+- Verify the final result by substitution, simplification, or checking special cases when practical.
+- If the problem is unreadable or missing a value, ask one precise clarifying question instead of guessing.
+`.trim();
+
 const AKUSO_APP_GROUNDING_RULES = `
 App-grounded mode:
 - Only describe Tengacion features that appear in the trusted feature summary below.
@@ -98,8 +109,12 @@ const buildAkusoPromptBundle = ({
   routePurpose = "chat",
 } = {}) => {
   const isSoftwareEngineering = policyResult.taskType === "software_engineering";
+  const isMathReasoning =
+    policyResult.taskType === "reasoning" &&
+    (policyResult.mode === "math" || policyResult.classification?.mathRequested);
   const isAppGuidance =
-    policyResult.taskType === "app_guidance" || policyResult.mode === "app_help";
+    policyResult.taskType === "app_guidance" ||
+    (policyResult.mode === "app_help" && !isMathReasoning && !isSoftwareEngineering);
   const isCreatorWriting =
     policyResult.taskType === "creator_writing" || policyResult.mode === "creator_writing";
   const currentDate = new Date().toISOString().slice(0, 10);
@@ -116,6 +131,8 @@ Software-engineering mode:
 `.trim()
     : isAppGuidance
       ? AKUSO_APP_GROUNDING_RULES
+      : isMathReasoning
+        ? AKUSO_MATH_REASONING_RULES
       : AKUSO_OPEN_KNOWLEDGE_RULES;
 
   const systemPrompt = `
@@ -219,6 +236,28 @@ Return JSON with:
 - "suggestions": short follow-up prompts, tests, or next implementation steps.
 - "drafts": [].
 `.trim();
+  } else if (isMathReasoning) {
+    userPrompt = `
+Solve the user's mathematics problem accurately and clearly.
+
+User request:
+${sanitizeMultilineText(input.message || input.prompt || "", 2000)}
+
+Fallback answer:
+${sanitizeMultilineText(fallback.answer || "", 1600)}
+
+Fallback warnings:
+${(fallback.warnings || []).map((entry) => `- ${sanitizePlainText(entry, 180)}`).join("\n") || "- none"}
+
+Fallback suggestions:
+${(fallback.suggestions || []).map((entry) => `- ${sanitizePlainText(entry, 140)}`).join("\n") || "- none"}
+
+Return JSON with:
+- "answer": the final mathematics solution using the math problem-solving rules. Include concise steps, math fences for equations, and a checked final answer.
+- "warnings": a short list for domain limits, undefined values, unreadable input, or assumptions.
+- "suggestions": short follow-up prompts for checking, practicing, or explaining a step more simply.
+- "drafts": []
+`.trim();
   } else if (isAppGuidance) {
     userPrompt = `
 Revise the safe app-grounded fallback response below without inventing Tengacion facts.
@@ -306,6 +345,7 @@ module.exports = {
   AKUSO_APP_GROUNDING_RULES,
   AKUSO_CODING_INTELLIGENCE_RULES,
   AKUSO_FORMATTING_RULES,
+  AKUSO_MATH_REASONING_RULES,
   AKUSO_OPEN_KNOWLEDGE_RULES,
   buildAkusoPromptBundle,
 };

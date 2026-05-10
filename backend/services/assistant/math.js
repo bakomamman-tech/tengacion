@@ -58,51 +58,177 @@ const extractPercentOfExpression = (message = "") => {
   };
 };
 
-const extractSinToTanIdentity = (message = "") => {
+const TRIG_RATIO_ALIASES = {
+  sin: "sin",
+  cos: "cos",
+  tan: "tan",
+  cot: "cot",
+  sec: "sec",
+  csc: "csc",
+  cosec: "csc",
+};
+
+const normalizeTrigRatio = (value = "") => TRIG_RATIO_ALIASES[String(value || "").toLowerCase()] || "";
+
+const formatRatio = (numerator = "", denominator = "") => {
+  if (!numerator || !denominator) {
+    return "";
+  }
+  if (denominator === "1") {
+    return numerator;
+  }
+  if (numerator === "1") {
+    return `1 / ${denominator}`;
+  }
+  return `${numerator} / ${denominator}`;
+};
+
+const getTrigRatioDefinition = (ratio = "") => {
+  if (ratio === "sin") return "opposite / hypotenuse";
+  if (ratio === "cos") return "adjacent / hypotenuse";
+  if (ratio === "tan") return "opposite / adjacent";
+  if (ratio === "cot") return "adjacent / opposite";
+  if (ratio === "sec") return "hypotenuse / adjacent";
+  if (ratio === "csc") return "hypotenuse / opposite";
+  return "";
+};
+
+const getTrigTriangleSides = ({ ratio, value }) => {
+  if (ratio === "sin") {
+    return {
+      opposite: value,
+      adjacent: `sqrt(1 - ${value}^2)`,
+      hypotenuse: "1",
+      missingSideStep: `adjacent = sqrt(1^2 - ${value}^2) = sqrt(1 - ${value}^2)`,
+    };
+  }
+  if (ratio === "cos") {
+    return {
+      opposite: `sqrt(1 - ${value}^2)`,
+      adjacent: value,
+      hypotenuse: "1",
+      missingSideStep: `opposite = sqrt(1^2 - ${value}^2) = sqrt(1 - ${value}^2)`,
+    };
+  }
+  if (ratio === "tan") {
+    return {
+      opposite: value,
+      adjacent: "1",
+      hypotenuse: `sqrt(1 + ${value}^2)`,
+      missingSideStep: `hypotenuse = sqrt(${value}^2 + 1^2) = sqrt(1 + ${value}^2)`,
+    };
+  }
+  if (ratio === "cot") {
+    return {
+      opposite: "1",
+      adjacent: value,
+      hypotenuse: `sqrt(1 + ${value}^2)`,
+      missingSideStep: `hypotenuse = sqrt(1^2 + ${value}^2) = sqrt(1 + ${value}^2)`,
+    };
+  }
+  if (ratio === "sec") {
+    return {
+      opposite: `sqrt(${value}^2 - 1)`,
+      adjacent: "1",
+      hypotenuse: value,
+      missingSideStep: `opposite = sqrt(${value}^2 - 1^2) = sqrt(${value}^2 - 1)`,
+    };
+  }
+  if (ratio === "csc") {
+    return {
+      opposite: "1",
+      adjacent: `sqrt(${value}^2 - 1)`,
+      hypotenuse: value,
+      missingSideStep: `adjacent = sqrt(${value}^2 - 1^2) = sqrt(${value}^2 - 1)`,
+    };
+  }
+  return null;
+};
+
+const getTrigRatioFromSides = ({ ratio, sides }) => {
+  if (!sides) {
+    return "";
+  }
+  if (ratio === "sin") return formatRatio(sides.opposite, sides.hypotenuse);
+  if (ratio === "cos") return formatRatio(sides.adjacent, sides.hypotenuse);
+  if (ratio === "tan") return formatRatio(sides.opposite, sides.adjacent);
+  if (ratio === "cot") return formatRatio(sides.adjacent, sides.opposite);
+  if (ratio === "sec") return formatRatio(sides.hypotenuse, sides.adjacent);
+  if (ratio === "csc") return formatRatio(sides.hypotenuse, sides.opposite);
+  return "";
+};
+
+const extractTrigIdentityProblem = (message = "") => {
   const source = normalizeMathProblemText(message);
   const given = source.match(
-    /\bsin\s*\(?\s*theta\s*\)?\s*=\s*([a-z][a-z0-9_]*|\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)?)/i
+    /\b(sin|cos|tan|cot|sec|csc|cosec)\s*\(?\s*theta\s*\)?\s*=\s*([a-z][a-z0-9_]*|\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)?)/i
   );
-  const asksForTan =
-    /\b(?:find|calculate|solve|determine|what is|work out)\b.*\btan\s*\(?\s*theta\s*\)?/i.test(source) ||
-    /\btan\s*\(?\s*theta\s*\)?/i.test(source);
+  const target = source.match(
+    /\b(?:find|calculate|solve|determine|what is|work out)\b.*?\b(sin|cos|tan|cot|sec|csc|cosec)\s*\(?\s*theta\s*\)?/i
+  );
 
-  if (!given || !asksForTan) {
+  if (!given || !target) {
     return null;
   }
 
-  const value = given[1].replace(/\s+/g, "");
+  const givenRatio = normalizeTrigRatio(given[1]);
+  const targetRatio = normalizeTrigRatio(target[1]);
+  const value = given[2].replace(/\s+/g, "");
+  if (!givenRatio || !targetRatio || givenRatio === targetRatio) {
+    return null;
+  }
+
   const firstQuadrant =
     /\b0\s*(?:degrees?)?\s*(?:<=|<|to|-)\s*theta\s*(?:<=|<|to|-)\s*90\s*(?:degrees?)?\b/i.test(source) ||
     /\bfirst quadrant\b/i.test(source) ||
     /\bacute angle\b/i.test(source);
 
   return {
+    givenRatio,
+    targetRatio,
     value,
     firstQuadrant,
   };
 };
 
+const extractSinToTanIdentity = (message = "") => {
+  const problem = extractTrigIdentityProblem(message);
+  if (!problem || problem.givenRatio !== "sin" || problem.targetRatio !== "tan") {
+    return null;
+  }
+  return problem;
+};
+
 const buildFormulaBlock = (lines = []) =>
   ["```math", ...lines.filter(Boolean), "```"].join("\n");
 
-const buildSinToTanResponse = ({ value, firstQuadrant }) => {
-  const answerText = `${value} / sqrt(1 - ${value}^2)`;
-  const expression = `sin(theta) = ${value}; find tan(theta)`;
-  const domainNote = `This formula works for 0 <= ${value} < 1; if ${value} = 1, theta = 90 degrees and tan(theta) is undefined.`;
+const buildTrigIdentityResponse = ({ givenRatio, targetRatio, value, firstQuadrant }) => {
+  const sides = getTrigTriangleSides({ ratio: givenRatio, value });
+  const answerText = getTrigRatioFromSides({ ratio: targetRatio, sides });
+  if (!sides || !answerText) {
+    return null;
+  }
+
+  const expression = `${givenRatio}(theta) = ${value}; find ${targetRatio}(theta)`;
+  const domainNote = [
+    "This first-quadrant formula uses the positive square root.",
+    "If the denominator in the final expression becomes 0, the requested ratio is undefined.",
+  ].join(" ");
+  const givenDefinition = getTrigRatioDefinition(givenRatio);
+  const targetDefinition = getTrigRatioDefinition(targetRatio);
   const steps = [
     firstQuadrant
-      ? "Because 0 <= theta <= 90 degrees, theta is in the first quadrant, so the tangent value is non-negative."
+      ? "Because 0 <= theta <= 90 degrees, theta is in the first quadrant, so the requested ratio is non-negative where it is defined."
       : "Use the positive adjacent side for an acute first-quadrant angle.",
-    `sin(theta) = opposite / hypotenuse = ${value} / 1, so take opposite = ${value} and hypotenuse = 1.`,
-    `adjacent = sqrt(1^2 - ${value}^2) = sqrt(1 - ${value}^2).`,
-    `tan(theta) = opposite / adjacent = ${answerText}.`,
+    `${givenRatio}(theta) = ${givenDefinition}, so set the matching sides from ${givenRatio}(theta) = ${value}.`,
+    `${sides.missingSideStep}.`,
+    `${targetRatio}(theta) = ${targetDefinition} = ${answerText}.`,
     domainNote,
   ];
   const solutionText = [
     "## Given",
     buildFormulaBlock([
-      `sin(theta) = ${value}`,
+      `${givenRatio}(theta) = ${value}`,
       firstQuadrant ? "0 degrees <= theta <= 90 degrees" : "",
     ]),
     firstQuadrant
@@ -110,22 +236,26 @@ const buildSinToTanResponse = ({ value, firstQuadrant }) => {
       : "Use the positive adjacent side for an acute first-quadrant angle.",
     "",
     "## Using",
-    buildFormulaBlock(["sin(theta) = opposite / hypotenuse"]),
+    buildFormulaBlock([`${givenRatio}(theta) = ${givenDefinition}`]),
     "",
     "## Let",
-    buildFormulaBlock([`opposite = ${value}`, "hypotenuse = 1"]),
+    buildFormulaBlock([
+      `opposite = ${sides.opposite}`,
+      `adjacent = ${sides.adjacent}`,
+      `hypotenuse = ${sides.hypotenuse}`,
+    ]),
     "",
-    "Then the adjacent side is:",
-    buildFormulaBlock([`adjacent = sqrt(1^2 - ${value}^2) = sqrt(1 - ${value}^2)`]),
+    "The missing side comes from Pythagoras:",
+    buildFormulaBlock([sides.missingSideStep]),
     "",
     "## So",
     buildFormulaBlock([
-      "tan(theta) = opposite / adjacent",
-      `tan(theta) = ${answerText}`,
+      `${targetRatio}(theta) = ${targetDefinition}`,
+      `${targetRatio}(theta) = ${answerText}`,
     ]),
     "",
     "## Final answer",
-    buildFormulaBlock([`tan(theta) = ${answerText}`]),
+    buildFormulaBlock([`${targetRatio}(theta) = ${answerText}`]),
     domainNote,
   ].join("\n");
 
@@ -148,7 +278,7 @@ const buildSinToTanResponse = ({ value, firstQuadrant }) => {
       },
     ],
     followUps: [
-      { label: "Check my answer", prompt: `Check why tan(theta) = ${answerText}` },
+      { label: "Check my answer", prompt: `Check why ${targetRatio}(theta) = ${answerText}` },
       { label: "Another trig problem", prompt: "Solve another trigonometry problem step by step" },
     ],
     answer: answerText,
@@ -373,9 +503,9 @@ const solveMathExpression = (expression = "") => {
 };
 
 const buildMathResponse = ({ message = "", expression = "" } = {}) => {
-  const sinToTanIdentity = expression ? null : extractSinToTanIdentity(message);
-  if (sinToTanIdentity) {
-    return buildSinToTanResponse(sinToTanIdentity);
+  const trigIdentity = expression ? null : extractTrigIdentityProblem(message);
+  if (trigIdentity) {
+    return buildTrigIdentityResponse(trigIdentity);
   }
 
   const percentExpression = expression ? null : extractPercentOfExpression(message);
@@ -435,6 +565,7 @@ const buildMathResponse = ({ message = "", expression = "" } = {}) => {
 
 module.exports = {
   buildMathResponse,
+  extractTrigIdentityProblem,
   extractSinToTanIdentity,
   extractPercentOfExpression,
   formatNumber,

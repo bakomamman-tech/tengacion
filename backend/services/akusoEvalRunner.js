@@ -176,6 +176,25 @@ const EVAL_SCENARIOS = [
     },
   },
   {
+    id: "reasoning.math_overrides_app_mode.model",
+    name: "Math questions override app mode",
+    suite: "knowledge_reasoning",
+    severity: "high",
+    tags: ["math", "reasoning", "model_routing"],
+    input: {
+      message: "If cos theta = K find tan theta, 0 <= theta <= 90.",
+      mode: "app_help",
+      currentRoute: "/search",
+      currentPage: "Search",
+    },
+    expected: {
+      mode: "math",
+      taskType: "reasoning",
+      modelTask: "reasoning",
+      shouldCallModel: true,
+    },
+  },
+  {
     id: "engineering.calculator.model",
     name: "Calculator feature routes to software engineering",
     suite: "software_engineering",

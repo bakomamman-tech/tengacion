@@ -109,6 +109,11 @@ const REASONING_PATTERNS = [
 const MATH_PATTERNS = [
   /\bmath(?:ematics)?\b/i,
   /\b(?:algebra|geometry|trigonometry|calculus|arithmetic)\b/i,
+  /\b(?:factorise|factorize|expand|simplify|differentiate|integrate|derive|prove)\b/i,
+  /\b(?:quadratic|polynomial|simultaneous|linear equation|inequality|indices|surds?)\b/i,
+  /\b(?:probability|statistics|median|variance|standard deviation)\b/i,
+  /\bmean\s+(?:of|=)\b/i,
+  /\b(?:matrix|matrices|determinant|logarithm|log|sequence|series|bearing|angle|triangle)\b/i,
   /\b(?:sin|cos|tan|cot|sec|csc|cosec)\s*(?:\(?\s*)?(?:theta|\u03b8|[a-z])\b/i,
   /\bfind\b.*\b(?:sin|cos|tan|cot|sec|csc|cosec)\b/i,
   /\u03b8/i,
@@ -293,11 +298,17 @@ const classifyAkusoRequest = ({
   } else if (mathRequested) {
     inferredMode = AKUSO_MODES.MATH;
   }
+  const resolvedMode =
+    mathRequested && !creatorWritingRequested && !softwareEngineeringRequested
+      ? AKUSO_MODES.MATH
+      : normalizedMode === AKUSO_MODES.AUTO
+        ? inferredMode
+        : normalizedMode;
 
   return {
     normalizedMessage,
     requestedMode: normalizedMode,
-    mode: normalizedMode === AKUSO_MODES.AUTO ? inferredMode : normalizedMode,
+    mode: resolvedMode,
     topic: extractTopic(message) || sanitizePlainText(message, 160),
     currentRoute: route,
     currentPage: sanitizePlainText(currentPage, 120),

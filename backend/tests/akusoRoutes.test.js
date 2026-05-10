@@ -260,7 +260,7 @@ describe("Akuso routes", () => {
       .post("/api/akuso/chat")
       .send({
         message: "If sin\u03b8 = K find tan\u03b8, 0\u00b0 \u2264 \u03b8 \u2264 90\u00b0.",
-        mode: "math",
+        mode: "app_help",
         currentRoute: "/search",
         currentPage: "Search",
       })

@@ -547,9 +547,10 @@ describe("Akuso services", () => {
     );
     expect(results.summary.byTag).toEqual(
       expect.objectContaining({
-        creator_onboarding: expect.objectContaining({ total: 1, passed: 1 }),
+        creator_onboarding: expect.objectContaining({ total: 2, passed: 2 }),
+        creator_workflow: expect.objectContaining({ total: 4, passed: 4 }),
         policy_denial: expect.objectContaining({ total: 5, passed: 5 }),
-        subscriptions: expect.objectContaining({ total: 1, passed: 1 }),
+        subscriptions: expect.objectContaining({ total: 2, passed: 2 }),
       })
     );
   });
@@ -561,6 +562,24 @@ describe("Akuso services", () => {
     expect(results.every((entry) => entry.suite === "commerce")).toBe(true);
     expect(results.every((entry) => Array.isArray(entry.checks))).toBe(true);
     expect(results.summary.bySuite.commerce.total).toBe(results.length);
+  });
+
+  it("covers creator workflow eval cases from the roadmap", () => {
+    const results = runAkusoEvals({ suite: "creator_workflow", includeChecks: true });
+
+    expect(results).toHaveLength(4);
+    expect(results.every((entry) => entry.passed)).toBe(true);
+    expect(results.map((entry) => entry.featureKey)).toEqual(
+      expect.arrayContaining([
+        "creator_onboarding",
+        "creator_subscription",
+        "creator_books_upload",
+        "creator_support",
+      ])
+    );
+    expect(results.summary.byTag.creator_workflow).toEqual(
+      expect.objectContaining({ total: 4, passed: 4 })
+    );
   });
 
   it("computes Akuso observability rates from recorded events", () => {

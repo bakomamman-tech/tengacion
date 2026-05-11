@@ -263,6 +263,8 @@ Help creators succeed faster and more often.
   - pricing and packaging guidance
   - content metadata help
   - support triage answers
+- Current implementation anchor:
+  - `backend/services/akusoEvalRunner.js` now includes a `creator_workflow` eval suite covering onboarding navigation, subscription packaging, book metadata help, and creator support triage
 
 #### 5. Launch a real quality operations loop
 

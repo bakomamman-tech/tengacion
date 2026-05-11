@@ -7,6 +7,7 @@ import { executeAssistantActions, isSafeAssistantRoute } from "../../services/as
 import { buildAssistantContext, getAssistantSuggestions } from "../../services/assistantRoutes";
 import {
   fetchAssistantHints,
+  sendAssistantFeedback,
   streamAssistantMessage,
 } from "../../services/assistantApi";
 import AssistantConfirmDialog from "./AssistantConfirmDialog";
@@ -188,6 +189,7 @@ export default function TengacionAssistantDock() {
   const [streamingResponseId, setStreamingResponseId] = useState("");
   const [routeHints, setRouteHints] = useState([]);
   const [pendingAttachments, setPendingAttachments] = useState([]);
+  const [feedbackStatusByMessageId, setFeedbackStatusByMessageId] = useState({});
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [launcherPosition, setLauncherPosition] = useState(() =>
@@ -683,6 +685,7 @@ export default function TengacionAssistantDock() {
     setError("");
     setComposerValue("");
     setPendingAttachments([]);
+    setFeedbackStatusByMessageId({});
     setStreamingLabel("");
     setStreamingResponseId("");
     lastRequestRef.current = { text: "", attachments: [] };
@@ -931,6 +934,65 @@ export default function TengacionAssistantDock() {
     }
   }, [submitMessage]);
 
+  const handleMessageFeedback = useCallback(
+    async (message, rating) => {
+      const normalizedRating =
+        rating === "report"
+          ? "report"
+          : rating === "not_helpful"
+            ? "not_helpful"
+            : "helpful";
+      const feedbackKey = message?.responseId || message?.id || "";
+      if (!feedbackKey) {
+        toast.error("Akuso could not identify that response.");
+        return;
+      }
+
+      let reason = "Marked helpful from Akuso response controls.";
+      if (normalizedRating === "not_helpful") {
+        reason = "Marked not helpful from Akuso response controls.";
+      }
+      if (normalizedRating === "report") {
+        reason = "Reported from Akuso response controls for offensive or unsafe AI-generated content.";
+      }
+
+      setFeedbackStatusByMessageId((current) => ({
+        ...current,
+        [feedbackKey]: "sending",
+      }));
+
+      try {
+        await sendAssistantFeedback({
+          conversationId,
+          responseId: message?.responseId || "",
+          feedbackToken: message?.feedbackToken || "",
+          rating: normalizedRating,
+          reason,
+          mode: message?.mode || assistantMode,
+          category: message?.category || "",
+        });
+
+        setFeedbackStatusByMessageId((current) => ({
+          ...current,
+          [feedbackKey]: normalizedRating,
+        }));
+        toast.success(
+          normalizedRating === "report"
+            ? "Akuso response reported for review"
+            : "Thanks for rating Akuso"
+        );
+      } catch (err) {
+        setFeedbackStatusByMessageId((current) => {
+          const next = { ...current };
+          delete next[feedbackKey];
+          return next;
+        });
+        toast.error(err?.message || "Please sign in to send Akuso feedback.");
+      }
+    },
+    [assistantMode, conversationId]
+  );
+
   const handlePendingActionConfirm = useCallback(
     (action) => {
       const target = String(action?.route || "").trim();
@@ -1114,6 +1176,8 @@ export default function TengacionAssistantDock() {
         messages={messages}
         loading={loading && !streamingResponseId}
         streamingLabel={streamingLabel}
+        onMessageFeedback={handleMessageFeedback}
+        feedbackStatusByMessageId={feedbackStatusByMessageId}
         error={error}
         onRetry={handleRetry}
         composerValue={composerValue}

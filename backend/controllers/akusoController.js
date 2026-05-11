@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const { config } = require("../config/env");
 const AssistantFeedback = require("../models/AssistantFeedback");
 const { sanitizeCodeCapableText } = require("../services/assistant/outputSanitizer");
+const { queueAssistantReview } = require("../services/assistant/reviewQueue");
 const { searchHelpArticles } = require("../services/assistant/helpDocs");
 const { searchKnowledgeArticles } = require("../services/assistant/knowledgeBase");
 const { buildMathResponse } = require("../services/assistant/math");
@@ -1411,6 +1412,35 @@ const runAkusoFeedbackRequest = async ({ req, traceId }) => {
   recordAkusoFeedback({
     rating: input.rating,
   });
+
+  if (["not_helpful", "report"].includes(input.rating)) {
+    await queueAssistantReview({
+      userId: req.user.id,
+      feedbackId: feedback._id,
+      conversationId: input.conversationId,
+      responseId: input.traceId,
+      category: input.rating === "report" ? "abuse" : "feedback",
+      severity: input.rating === "report" ? "high" : "medium",
+      reason:
+        input.comment ||
+        (input.rating === "report"
+          ? "User reported offensive or unsafe Akuso output."
+          : "User marked this Akuso reply as not helpful."),
+      mode: input.mode,
+      surface: "akuso",
+      responseMode: input.mode,
+      safetyLevel: input.rating === "report" ? "reported" : "safe",
+      responseSummary: input.category,
+      metadata: {
+        akuso: true,
+        traceId: input.traceId,
+        feedbackToken: input.feedbackToken,
+        category: input.category,
+        rating: input.rating,
+        source: "akuso_feedback",
+      },
+    });
+  }
 
   await logAkusoEvent({
     event: "feedback",

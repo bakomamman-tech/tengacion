@@ -111,6 +111,8 @@ export default function TengacionAssistantPanel({
   messages = [],
   loading = false,
   streamingLabel = "",
+  onMessageFeedback,
+  feedbackStatusByMessageId = {},
   error = "",
   onRetry,
   composerValue = "",
@@ -422,6 +424,8 @@ export default function TengacionAssistantPanel({
                   messages={messages}
                   loading={loading}
                   streamingLabel={streamingLabel}
+                  onFeedback={onMessageFeedback}
+                  feedbackStatusByMessageId={feedbackStatusByMessageId}
                 />
               </div>
 

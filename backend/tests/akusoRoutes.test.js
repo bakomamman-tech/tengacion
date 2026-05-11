@@ -12,6 +12,7 @@ const { config } = require("../config/env");
 const errorHandler = require("../../apps/api/middleware/errorHandler");
 const User = require("../models/User");
 const CreatorProfile = require("../models/CreatorProfile");
+const AssistantReviewItem = require("../models/AssistantReviewItem");
 const { resetAkusoMetrics } = require("../services/akusoMetricsService");
 
 let mongod;
@@ -545,6 +546,44 @@ describe("Akuso routes", () => {
         ok: true,
         feedbackId: expect.any(String),
         traceId: expect.any(String),
+      })
+    );
+  });
+
+  it("queues reported Akuso output for admin review", async () => {
+    await request(app)
+      .post("/api/akuso/feedback")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        traceId: "trace-report-1",
+        conversationId: "conversation-report-1",
+        rating: "report",
+        comment: "This Akuso answer looked offensive or unsafe.",
+        mode: "knowledge_learning",
+        category: "SAFE_ANSWER",
+      })
+      .expect(201);
+
+    const review = await AssistantReviewItem.findOne({
+      responseId: "trace-report-1",
+    }).lean();
+
+    expect(review).toEqual(
+      expect.objectContaining({
+        conversationId: "conversation-report-1",
+        category: "abuse",
+        severity: "high",
+        status: "open",
+        surface: "akuso",
+        reason: expect.stringMatching(/offensive or unsafe/i),
+        responseSummary: "SAFE_ANSWER",
+      })
+    );
+    expect(review.metadata).toEqual(
+      expect.objectContaining({
+        akuso: true,
+        rating: "report",
+        source: "akuso_feedback",
       })
     );
   });

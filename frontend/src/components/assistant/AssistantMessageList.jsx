@@ -25,6 +25,31 @@ function AssistantCopyIcon({ copied = false }) {
   );
 }
 
+function AssistantThumbIcon({ down = false }) {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M6.25 8.5v7" />
+      <path d="M3.75 8.5h2.5v7h-2.5z" />
+      <path
+        d={
+          down
+            ? "M6.25 14.75h6.5a1.5 1.5 0 0 0 1.42-1.03l1.12-3.36a1.5 1.5 0 0 0-1.42-1.97H10.5l.44-2.29a1.35 1.35 0 0 0-.72-1.45l-.27-.14-3.7 4.24"
+            : "M6.25 5.25h6.5a1.5 1.5 0 0 1 1.42 1.03l1.12 3.36a1.5 1.5 0 0 1-1.42 1.97H10.5l.44 2.29a1.35 1.35 0 0 1-.72 1.45l-.27.14-3.7-4.24"
+        }
+      />
+    </svg>
+  );
+}
+
+function AssistantFlagIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M5 16V4.75" />
+      <path d="M5 5h7.25l-.85 2.25.85 2.25H5" />
+    </svg>
+  );
+}
+
 function TypingIndicator({ label = "Akuso is thinking" }) {
   return (
     <div className="tg-assistant-message tg-assistant-message--assistant">
@@ -312,6 +337,8 @@ export default function AssistantMessageList({
   messages = [],
   loading = false,
   streamingLabel = "",
+  onFeedback,
+  feedbackStatusByMessageId = {},
 }) {
   const endRef = useRef(null);
   const copyTimeoutRef = useRef(null);
@@ -355,6 +382,14 @@ export default function AssistantMessageList({
         const safety = message?.safety || { level: "safe", notice: "", escalation: "" };
         const messageId = message?.id || `${message?.role || "assistant"}-${message?.content || ""}`;
         const copied = copiedMessageId === messageId;
+        const feedbackKey = message?.responseId || messageId;
+        const feedbackStatus =
+          feedbackStatusByMessageId[feedbackKey] || feedbackStatusByMessageId[messageId] || "";
+        const feedbackBusy = feedbackStatus === "sending";
+        const feedbackDisabled = feedbackBusy || typeof onFeedback !== "function";
+        const isHelpful = feedbackStatus === "helpful";
+        const isNotHelpful = feedbackStatus === "not_helpful";
+        const isReported = feedbackStatus === "report";
         return (
           <article
             key={messageId}
@@ -383,18 +418,60 @@ export default function AssistantMessageList({
               </div>
             ) : (
               <div className="tg-assistant-message__reply">
-                <button
-                  type="button"
-                  className={`tg-assistant-message__copy${copied ? " is-copied" : ""}`}
-                  onClick={() => handleCopy(message)}
-                  aria-label={copied ? "Akuso response copied" : "Copy Akuso response"}
-                  title={copied ? "Copied" : "Copy response"}
+                <div
+                  className="tg-assistant-message__actions"
+                  role="group"
+                  aria-label="Akuso response actions"
                 >
-                  <AssistantCopyIcon copied={copied} />
-                  <span className="tg-assistant-visually-hidden">
-                    {copied ? "Copied" : "Copy"}
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    className={`tg-assistant-message__action${copied ? " is-copied" : ""}`}
+                    onClick={() => handleCopy(message)}
+                    aria-label={copied ? "Akuso response copied" : "Copy Akuso response"}
+                    title={copied ? "Copied" : "Copy response"}
+                  >
+                    <AssistantCopyIcon copied={copied} />
+                    <span className="tg-assistant-visually-hidden">
+                      {copied ? "Copied" : "Copy"}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`tg-assistant-message__action${isHelpful ? " is-active" : ""}`}
+                    onClick={() => onFeedback?.(message, "helpful")}
+                    disabled={feedbackDisabled}
+                    aria-label={
+                      isHelpful ? "Akuso response marked helpful" : "Mark Akuso response helpful"
+                    }
+                    title={isHelpful ? "Marked helpful" : "Helpful"}
+                  >
+                    <AssistantThumbIcon />
+                  </button>
+                  <button
+                    type="button"
+                    className={`tg-assistant-message__action${isNotHelpful ? " is-active" : ""}`}
+                    onClick={() => onFeedback?.(message, "not_helpful")}
+                    disabled={feedbackDisabled}
+                    aria-label={
+                      isNotHelpful
+                        ? "Akuso response marked not helpful"
+                        : "Mark Akuso response not helpful"
+                    }
+                    title={isNotHelpful ? "Marked not helpful" : "Not helpful"}
+                  >
+                    <AssistantThumbIcon down />
+                  </button>
+                  <button
+                    type="button"
+                    className={`tg-assistant-message__action tg-assistant-message__action--report${isReported ? " is-reported" : ""}`}
+                    onClick={() => onFeedback?.(message, "report")}
+                    disabled={feedbackDisabled}
+                    aria-label={isReported ? "Akuso response reported" : "Report Akuso response"}
+                    title={isReported ? "Reported" : "Report offensive or unsafe content"}
+                  >
+                    <AssistantFlagIcon />
+                  </button>
+                </div>
 
                 <div className="tg-assistant-message__bubble tg-assistant-message__bubble--assistant">
                   <AssistantFormattedContent content={message?.content} />

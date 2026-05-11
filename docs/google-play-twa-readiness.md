@@ -7,6 +7,9 @@ Tengacion can be packaged for Google Play as a Trusted Web Activity (TWA) once t
 - `GET /.well-known/assetlinks.json` is served by the backend.
 - The endpoint is disabled with a clear `404` until Android signing values are configured.
 - When configured, it returns the Digital Asset Links statement required by Android/Chrome TWA verification.
+- Akuso answers have in-app helpful, not helpful, and report controls so users can flag offensive or unsafe AI output without leaving the app.
+- Reported Akuso output is stored as assistant feedback and queued for admin review.
+- Public UGC already has in-app reporting paths for posts, comments, messages, and profiles; direct messaging also exposes user blocking.
 
 ## Required production environment
 
@@ -31,8 +34,11 @@ Notes:
 3. Build and upload the Android App Bundle to Play Console.
 4. Copy the Play App Signing SHA-256 fingerprint into `ANDROID_TWA_SHA256_CERT_FINGERPRINTS`.
 5. Redeploy the backend and confirm the `assetlinks.json` endpoint.
+6. During Play review, use a test account that can demonstrate post/comment/message/profile reporting, direct-message blocking, and Akuso response reporting.
 
 Reference anchors:
 
-- Chrome for Developers: Trusted Web Activity Digital Asset Links setup.
-- Android Developers: Google Play distribution guidance.
+- [Google Play: AI-Generated Content policy](https://support.google.com/googleplay/android-developer/answer/13985936?hl=en).
+- [Google Play: User Generated Content policy](https://support.google.com/googleplay/android-developer/answer/9876937?hl=en).
+- [Chrome for Developers: Trusted Web Activity Digital Asset Links setup](https://developer.chrome.com/docs/android/trusted-web-activity/android-for-web-devs).
+- [Android Developers: Android App Bundle](https://developer.android.com/guide/app-bundle).

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const navigateMock = vi.hoisted(() => vi.fn());
 const fetchAssistantHintsMock = vi.hoisted(() => vi.fn());
 const streamAssistantMessageMock = vi.hoisted(() => vi.fn());
+const sendAssistantFeedbackMock = vi.hoisted(() => vi.fn());
 const clipboardWriteTextMock = vi.hoisted(() => vi.fn());
 const createObjectUrlMock = vi.hoisted(() => vi.fn());
 const revokeObjectUrlMock = vi.hoisted(() => vi.fn());
@@ -31,6 +32,7 @@ vi.mock("../../../context/AuthContext", () => ({
 
 vi.mock("../../../services/assistantApi", () => ({
   fetchAssistantHints: (...args) => fetchAssistantHintsMock(...args),
+  sendAssistantFeedback: (...args) => sendAssistantFeedbackMock(...args),
   streamAssistantMessage: (...args) => streamAssistantMessageMock(...args),
 }));
 
@@ -47,6 +49,8 @@ describe("TengacionAssistantDock", () => {
     fetchAssistantHintsMock.mockReset();
     fetchAssistantHintsMock.mockResolvedValue({ hints: [] });
     streamAssistantMessageMock.mockReset();
+    sendAssistantFeedbackMock.mockReset();
+    sendAssistantFeedbackMock.mockResolvedValue({ ok: true, feedbackId: "feedback-1" });
     clipboardWriteTextMock.mockReset();
     clipboardWriteTextMock.mockResolvedValue(undefined);
     createObjectUrlMock.mockReset();
@@ -307,6 +311,66 @@ describe("TengacionAssistantDock", () => {
 
     expect(
       await screen.findByRole("button", { name: /akuso response copied/i })
+    ).toBeInTheDocument();
+  });
+
+  it("lets users report unsafe Akuso answers for review", async () => {
+    const user = userEvent.setup();
+    streamAssistantMessageMock.mockResolvedValue({
+      message: "A response that should be reviewed.",
+      actions: [],
+      cards: [],
+      followUps: [],
+      sources: [],
+      details: [],
+      requiresConfirmation: false,
+      pendingAction: null,
+      conversationId: "conversation-report-1",
+      responseId: "trace-report-1",
+      feedbackToken: "token-report-1",
+      category: "SAFE_ANSWER",
+      mode: "knowledge",
+      safety: { level: "safe", notice: "", escalation: "" },
+      trust: {
+        provider: "local-fallback",
+        mode: "public-knowledge",
+        grounded: true,
+        usedModel: false,
+        confidenceLabel: "medium",
+        note: "",
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <TengacionAssistantDock />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("button", { name: /open akuso assistant/i }));
+    const composer = await screen.findByRole("textbox", { name: /message akuso/i });
+    await user.type(composer, "Say something unsafe");
+    await user.click(screen.getByRole("button", { name: /send/i }));
+
+    expect(await screen.findByText("A response that should be reviewed.")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: /report akuso response/i }));
+
+    await waitFor(() => {
+      expect(sendAssistantFeedbackMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          conversationId: "conversation-report-1",
+          responseId: "trace-report-1",
+          feedbackToken: "token-report-1",
+          rating: "report",
+          mode: "knowledge",
+          category: "SAFE_ANSWER",
+          reason: expect.stringMatching(/offensive or unsafe/i),
+        })
+      );
+    });
+
+    expect(
+      await screen.findByRole("button", { name: /akuso response reported/i })
     ).toBeInTheDocument();
   });
 

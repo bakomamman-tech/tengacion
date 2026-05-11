@@ -316,6 +316,84 @@ describe("Paystack payments", () => {
     });
   });
 
+  test("legacy music route creates, previews, and streams through the real track pipeline", async () => {
+    const createResponse = await request(app)
+      .post("/api/music/tracks")
+      .set("Authorization", `Bearer ${creatorToken}`)
+      .send({
+        title: "Legacy Route Single",
+        description: "Created through the legacy music route",
+        price: 1200,
+        audioUrl: "https://example.com/legacy-route-single.mp3",
+        previewUrl: "https://example.com/legacy-route-preview.mp3",
+        previewStartSec: 12,
+        genre: "Afrobeats",
+      })
+      .expect(201);
+
+    expect(createResponse.body).toMatchObject({
+      title: "Legacy Route Single",
+      price: 1200,
+      audioUrl: "https://example.com/legacy-route-single.mp3",
+      previewUrl: "https://example.com/legacy-route-preview.mp3",
+      previewStartSec: 12,
+      publishedStatus: "published",
+    });
+
+    const created = await Track.findById(createResponse.body._id).lean();
+    expect(created).toMatchObject({
+      title: "Legacy Route Single",
+      isPublished: true,
+    });
+    expect(created.creatorId.toString()).toBe(creator.profile._id.toString());
+
+    const previewResponse = await request(app)
+      .get(`/api/music/tracks/${created._id}/preview`)
+      .expect(200);
+
+    expect(previewResponse.body).toMatchObject({
+      itemId: created._id.toString(),
+      trackId: created._id.toString(),
+      previewOnly: true,
+      allowedFullAccess: false,
+      previewStartSec: 12,
+      previewLimitSec: 30,
+      source: "preview",
+    });
+    expect(previewResponse.body.streamUrl).toContain("/api/media/delivery/");
+
+    const unpaidStreamResponse = await request(app)
+      .get(`/api/music/tracks/${created._id}/stream`)
+      .expect(200);
+
+    expect(unpaidStreamResponse.body).toMatchObject({
+      itemId: created._id.toString(),
+      allowedFullAccess: false,
+      previewOnly: true,
+      previewStartSec: 12,
+      previewLimitSec: 30,
+    });
+    expect(unpaidStreamResponse.body.streamUrl).toContain("/api/media/delivery/");
+
+    await Entitlement.create({
+      buyerId: viewer._id,
+      itemType: "track",
+      itemId: created._id,
+    });
+
+    const paidStreamResponse = await request(app)
+      .get(`/api/music/tracks/${created._id}/stream`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+
+    expect(paidStreamResponse.body).toMatchObject({
+      itemId: created._id.toString(),
+      allowedFullAccess: true,
+      previewOnly: false,
+    });
+    expect(paidStreamResponse.body.streamUrl).toContain("/api/media/delivery/");
+  });
+
   test("/api/payments/init rejects a song without a payable amount", async () => {
     const freeTrack = await Track.create({
       creatorId: creator.profile._id,

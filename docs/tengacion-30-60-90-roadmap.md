@@ -23,7 +23,7 @@ The repo already has:
 
 Important current gaps:
 
-- billing and music purchase flows still contain placeholder or `501` responses
+- billing and legacy music commerce surfaces now have provider-backed and entitlement-aware coverage, but still need broader production monitoring
 - creator subscriptions and payout operations are not complete end-to-end
 - advanced analytics, recommendations, and fraud/risk systems are still phase-3 level work
 - Akuso has a strong backend foundation, but it still needs a disciplined eval and quality loop before broader expansion
@@ -146,6 +146,10 @@ Make Tengacion economically real.
   - failed
   - refunded
 - Harden webhook handling and replay protection
+- Current implementation anchors:
+  - `/api/billing/purchase` and `/api/billing/subscribe` initialize real Paystack or Stripe checkouts through the shared payment service
+  - `/api/music/tracks` now bridges legacy track creation, preview, and stream routes into the real track pipeline instead of returning service-unavailable stubs
+  - entitlement-aware stream access is covered for unpaid previews and paid full playback
 
 #### 2. Harden entitlements and library access
 

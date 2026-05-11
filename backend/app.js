@@ -7,6 +7,7 @@ const auth = require("./middleware/auth");
 const upload = require("./utils/upload");
 const errorHandler = require("../apps/api/middleware/errorHandler");
 const { config } = require("./config/env");
+const { buildAndroidAssetLinksFromConfig } = require("./services/androidAssetLinksService");
 const User = require("./models/User");
 const { normalizeUserMediaDocument } = require("./utils/userMedia");
 
@@ -127,6 +128,25 @@ app.use(
 
 app.use(express.urlencoded({ extended: true, limit: "512kb", parameterLimit: 1000 }));
 app.use("/uploads", express.static(upload.uploadDir));
+
+app.get("/.well-known/assetlinks.json", (_req, res) => {
+  const statements = buildAndroidAssetLinksFromConfig(config);
+  if (!statements) {
+    return res
+      .status(404)
+      .set("Cache-Control", "no-store")
+      .type("application/json")
+      .send({
+        error: "Android Digital Asset Links are not configured.",
+      });
+  }
+
+  return res
+    .status(200)
+    .set("Cache-Control", isProduction ? "public, max-age=3600" : "no-store")
+    .type("application/json")
+    .send(`${JSON.stringify(statements, null, 2)}\n`);
+});
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", time: new Date() });

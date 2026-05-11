@@ -167,6 +167,20 @@ const parseOriginList = (...sources) => {
   return origins;
 };
 
+const parseTextList = (...sources) => {
+  const values = [];
+  for (const source of sources) {
+    const entries = Array.isArray(source) ? source : String(source || "").split(/[,\n]+/);
+    for (const entry of entries) {
+      const value = toText(entry);
+      if (value && !values.includes(value)) {
+        values.push(value);
+      }
+    }
+  }
+  return values;
+};
+
 const isLikelyRenderRuntime = Boolean(
   process.env.RENDER ||
     process.env.RENDER_EXTERNAL_URL ||
@@ -188,6 +202,11 @@ const jwtRefreshSecretInput = toText(process.env.JWT_REFRESH_SECRET);
 const authChallengeSecretInput = toText(process.env.AUTH_CHALLENGE_SECRET);
 const mediaSigningSecretInput = toText(process.env.MEDIA_SIGNING_SECRET);
 const port = parsePort(process.env.PORT, isProduction ? NaN : 5000);
+const androidTwaPackageName = toText(process.env.ANDROID_TWA_PACKAGE_NAME);
+const androidTwaSha256CertFingerprints = parseTextList(
+  process.env.ANDROID_TWA_SHA256_CERT_FINGERPRINTS,
+  process.env.ANDROID_TWA_SHA256_CERT_FINGERPRINT
+);
 
 const defaultAppUrl = isProduction ? "https://tengacion.com" : "http://localhost:5173";
 const appUrl =
@@ -444,6 +463,11 @@ const config = {
   assistantFeedbackRetentionDays,
   assistantModelTimeoutMs,
   akuso,
+  androidTwa: {
+    packageName: androidTwaPackageName,
+    sha256CertFingerprints: androidTwaSha256CertFingerprints,
+    configured: Boolean(androidTwaPackageName && androidTwaSha256CertFingerprints.length > 0),
+  },
   requireEmailOtp,
   livekit:
     livekitApiKey || livekitApiSecret || livekitHost || livekitWsUrl
@@ -513,6 +537,8 @@ const config = {
   AKUSO_RATE_LIMIT_MAX: akusoRateLimitMax,
   AKUSO_ENABLE_AUDIT_LOGS: akusoEnableAuditLogs,
   AKUSO_ENABLE_STREAMING: akusoEnableStreaming,
+  ANDROID_TWA_PACKAGE_NAME: androidTwaPackageName,
+  ANDROID_TWA_SHA256_CERT_FINGERPRINTS: androidTwaSha256CertFingerprints.join(","),
   REQUIRE_EMAIL_OTP: requireEmailOtp,
   LIVEKIT_API_KEY: livekitApiKey,
   LIVEKIT_API_SECRET: livekitApiSecret,

@@ -11,6 +11,7 @@ export default function CreatorContentShelf({
   onStream,
   onDownload,
   onBuy,
+  onOpen,
   purchaseBusyKey = "",
   featured = false,
 }) {
@@ -36,6 +37,7 @@ export default function CreatorContentShelf({
               onStream={onStream}
               onDownload={onDownload}
               onBuy={onBuy}
+              onOpen={onOpen}
               purchaseBusyKey={purchaseBusyKey}
             />
           ))}

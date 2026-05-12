@@ -19,6 +19,7 @@ export default function MediaPreviewCard({
   onStream,
   onDownload,
   onBuy,
+  onOpen,
   purchaseBusyKey = "",
 }) {
   if (!item) {
@@ -57,8 +58,13 @@ export default function MediaPreviewCard({
               {item.title}
             </Link>
           </h3>
-          {item.subtitle ? <p>{item.subtitle}</p> : null}
-        </div>
+        {item.subtitle ? <p>{item.subtitle}</p> : null}
+        {item.discoveryMeta?.reasonLabel ? (
+          <span className="creator-public-card__reason">
+            {item.discoveryMeta.reasonLabel}
+          </span>
+        ) : null}
+      </div>
         <strong>{formatPrice(item.price)}</strong>
       </div>
 
@@ -82,7 +88,11 @@ export default function MediaPreviewCard({
             {buyLabel}
           </button>
         ) : null}
-        <Link to={detailRoute} className="creator-ghost-btn">
+        <Link
+          to={detailRoute}
+          className="creator-ghost-btn"
+          onClick={() => onOpen?.(item)}
+        >
           Open page
         </Link>
         <ShareActions

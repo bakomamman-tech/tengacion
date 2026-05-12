@@ -5,11 +5,13 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   createCheckout,
   getDownloadUrl,
+  getDiscoveryCreatorHub,
   getPublicCreatorProfile,
   getStreamUrl,
   initPayment,
   resolveImage,
   toggleFollowCreator,
+  trackDiscoveryEvents,
 } from "../api";
 import CreatorHero from "../components/creator/media/CreatorHero";
 import CreatorContentShelf from "../components/creator/media/CreatorContentShelf";
@@ -49,6 +51,7 @@ const PUBLIC_TABS = [
 const EMPTY_MUSIC = { tracks: [], albums: [], videos: [] };
 const EMPTY_PODCASTS = { series: {}, episodes: [] };
 const EMPTY_ITEMS = [];
+const CREATOR_HUB_DISCOVERY_LIMIT = 12;
 
 const formatMoney = (value = 0) =>
   Number(value || 0) <= 0 ? "Free" : `NGN ${Number(value || 0).toLocaleString()}`;
@@ -249,6 +252,7 @@ export default function CreatorHubPage() {
   const [followBusy, setFollowBusy] = useState(false);
   const [buyingItemKey, setBuyingItemKey] = useState("");
   const [purchaseError, setPurchaseError] = useState("");
+  const [creatorHubDiscovery, setCreatorHubDiscovery] = useState(null);
 
   const activeTab = useMemo(() => resolveTab(location.pathname), [location.pathname]);
   const requestedPreviewId = useMemo(() => new URLSearchParams(location.search).get("previewItem") || "", [location.search]);
@@ -293,6 +297,37 @@ export default function CreatorHubPage() {
   const viewer = payload?.viewer || {};
   const subscription = payload?.subscription || {};
   const creatorName = creator?.displayName || "Creator";
+
+  useEffect(() => {
+    const resolvedCreatorId = String(creator?.id || "").trim();
+    if (!resolvedCreatorId) {
+      setCreatorHubDiscovery(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const loadDiscovery = async () => {
+      try {
+        const response = await getDiscoveryCreatorHub({
+          creatorId: resolvedCreatorId,
+          limit: CREATOR_HUB_DISCOVERY_LIMIT,
+        });
+        if (!cancelled) {
+          setCreatorHubDiscovery(response || null);
+        }
+      } catch {
+        if (!cancelled) {
+          setCreatorHubDiscovery(null);
+        }
+      }
+    };
+
+    loadDiscovery();
+    return () => {
+      cancelled = true;
+    };
+  }, [creator?.id]);
+
   const creatorPublicPath = creator?.canonicalPath || buildCreatorPublicPath({
     creatorId: creator?.id || creatorId,
     username: creator?.username,
@@ -349,6 +384,69 @@ export default function CreatorHubPage() {
       count: Number(payload?.stats?.totalBooks || 0),
     },
   ].filter((entry) => entry.count > 0);
+  const creatorContentItems = useMemo(
+    () => [
+      ...(Array.isArray(music.tracks) ? music.tracks : []),
+      ...(Array.isArray(music.albums) ? music.albums : []),
+      ...(Array.isArray(music.videos) ? music.videos : []),
+      ...(Array.isArray(podcasts.episodes) ? podcasts.episodes : []),
+      ...(Array.isArray(books) ? books : []),
+    ],
+    [books, music.albums, music.tracks, music.videos, podcasts.episodes]
+  );
+  const creatorContentByKey = useMemo(() => {
+    const map = new Map();
+    for (const item of creatorContentItems) {
+      const itemType = normalizePurchaseType(item?.itemType || item?.productType || "");
+      const itemId = String(item?.id || "").trim();
+      if (itemType && itemId) {
+        map.set(`${itemType}:${itemId}`, item);
+      }
+      if (itemType === "podcast" && itemId) {
+        map.set(`track:${itemId}`, item);
+      }
+    }
+    return map;
+  }, [creatorContentItems]);
+  const recommendedContentItems = useMemo(() => {
+    const requestId = String(creatorHubDiscovery?.requestId || "").trim();
+    const seen = new Set();
+
+    return (Array.isArray(creatorHubDiscovery?.items) ? creatorHubDiscovery.items : [])
+      .map((entry) => {
+        const entityType = normalizePurchaseType(entry?.entityType || "");
+        const entityId = String(entry?.id || entry?.entityId || "").trim();
+        const sourceItem =
+          creatorContentByKey.get(`${entityType}:${entityId}`) ||
+          (entityType === "track" ? creatorContentByKey.get(`podcast:${entityId}`) : null);
+
+        if (!sourceItem || !entityId) {
+          return null;
+        }
+
+        const itemKey = `${sourceItem.itemType || entityType}:${sourceItem.id || entityId}`;
+        if (seen.has(itemKey)) {
+          return null;
+        }
+        seen.add(itemKey);
+
+        return {
+          ...sourceItem,
+          discoveryMeta: {
+            requestId,
+            entityId,
+            entityType: entityType || sourceItem.itemType || "",
+            rank: Number(entry?.rank || 0),
+            reason: String(entry?.reason || "").trim(),
+            reasonLabel: String(entry?.reasonLabel || "").trim(),
+            creatorId: String(entry?.creatorId || creator?.id || creatorId || "").trim(),
+            authorUserId: String(entry?.authorUserId || creator?.userId || "").trim(),
+          },
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 8);
+  }, [creator?.id, creator?.userId, creatorContentByKey, creatorHubDiscovery, creatorId]);
   const seoTitle =
     activeTab === "music"
       ? `${creatorName} Music on Tengacion | Singles, Videos & Releases`
@@ -437,6 +535,35 @@ export default function CreatorHubPage() {
     onEntitlement: handleEntitlementGranted,
   });
 
+  const trackRecommendedContentAction = useCallback(
+    ({ item, action = "open", eventType = "recommendation_clicked" } = {}) => {
+      const discoveryMeta = item?.discoveryMeta || {};
+      const requestId = String(discoveryMeta.requestId || "").trim();
+      if (!requestId) {
+        return;
+      }
+
+      void trackDiscoveryEvents({
+        requestId,
+        surface: "creator_hub",
+        events: [
+          {
+            type: eventType,
+            entityType: String(discoveryMeta.entityType || item?.itemType || "").trim().toLowerCase(),
+            entityId: String(discoveryMeta.entityId || item?.id || "").trim(),
+            position: Number(discoveryMeta.rank || 0),
+            metadata: {
+              action,
+              creatorId: String(discoveryMeta.creatorId || creator?.id || creatorId || "").trim(),
+              reason: discoveryMeta.reason || "",
+            },
+          },
+        ],
+      }).catch(() => null);
+    },
+    [creator?.id, creatorId]
+  );
+
   const handleFollow = async () => {
     if (!creator?.id || !requireViewer()) {
       return;
@@ -481,6 +608,7 @@ export default function CreatorHubPage() {
     if (!item?.id || !requireViewer()) {
       return;
     }
+    trackRecommendedContentAction({ item, action: "buy" });
 
     const itemType = normalizePurchaseType(item.itemType || item.productType || "");
     const itemKey = `${itemType || "item"}:${item.id}`;
@@ -532,6 +660,7 @@ export default function CreatorHubPage() {
     if (!item) {
       return;
     }
+    trackRecommendedContentAction({ item, action: "preview" });
 
     if (item.mediaType === "document") {
       const previewUrl = item.previewUrl || item.streamUrl || item.route;
@@ -558,6 +687,7 @@ export default function CreatorHubPage() {
     if (!item) {
       return;
     }
+    trackRecommendedContentAction({ item, action: "stream" });
 
     if (item.mediaType === "document") {
       const targetUrl = item.streamUrl;
@@ -594,6 +724,7 @@ export default function CreatorHubPage() {
     if (!item) {
       return;
     }
+    trackRecommendedContentAction({ item, action: "download" });
 
     if (item.downloadUrl) {
       window.open(item.downloadUrl, "_blank", "noopener,noreferrer");
@@ -689,6 +820,22 @@ export default function CreatorHubPage() {
 
   const renderHome = () => (
     <>
+      {recommendedContentItems.length ? (
+        <CreatorContentShelf
+          title="Recommended for you"
+          subtitle="Ranked from your listening, reading, and creator activity."
+          creatorId={creator.id}
+          creatorRoute={creatorPublicPath}
+          items={recommendedContentItems}
+          emptyMessage=""
+          onPreview={handlePreview}
+          onStream={handleStream}
+          onDownload={handleDownload}
+          onBuy={handleBuy}
+          onOpen={(item) => trackRecommendedContentAction({ item, action: "open_page" })}
+          purchaseBusyKey={buyingItemKey}
+        />
+      ) : null}
       <CreatorContentShelf
         title="Top Singles"
         subtitle="Fresh tracks ready to preview, stream, download, or buy."

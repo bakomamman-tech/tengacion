@@ -1288,6 +1288,23 @@ export const getDiscoveryLive = ({ limit = 24 } = {}) => {
   );
 };
 
+export const getDiscoveryCreatorHub = ({ creatorId = "", limit = 12 } = {}) => {
+  const params = new URLSearchParams();
+  if (creatorId) {
+    params.set("creatorId", String(creatorId));
+  }
+  if (limit) {
+    params.set("limit", String(limit));
+  }
+
+  return request(
+    `${API_BASE}/discovery/creator-hub${params.toString() ? `?${params.toString()}` : ""}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+};
+
 export const trackDiscoveryEvents = ({ requestId = "", surface = "home", events = [] } = {}) =>
   request(`${API_BASE}/discovery/events`, {
     method: "POST",

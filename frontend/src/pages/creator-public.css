@@ -753,6 +753,18 @@
   font-size: 0.92rem;
 }
 
+.creator-public-card__reason {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid rgba(21, 95, 63, 0.16);
+  border-radius: 999px;
+  padding: 4px 9px;
+  color: #426152;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-top: 10px;
+}
+
 .creator-public-card__body strong {
   white-space: nowrap;
   color: var(--creator-public-accent-strong);

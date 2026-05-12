@@ -2,8 +2,43 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
-import { getLiveSessions } from "../api";
+import { getDiscoveryLive, getLiveSessions, trackDiscoveryEvents } from "../api";
 import { connectSocket } from "../socket";
+
+const LIVE_DISCOVERY_LIMIT = 24;
+
+const normalizeLiveSession = (session = {}, discoveryMeta = null) => ({
+  ...session,
+  id: String(session?.id || session?._id || discoveryMeta?.entityId || "").trim(),
+  roomName: String(session?.roomName || "").trim(),
+  title: session?.title || "Live stream",
+  viewerCount: Number(session?.viewerCount || 0),
+  discoveryMeta,
+});
+
+const normalizeLegacyLiveSessions = (sessions = []) =>
+  (Array.isArray(sessions) ? sessions : [])
+    .filter((session) => session?.roomName)
+    .map((session) => normalizeLiveSession(session));
+
+const normalizeDiscoveryLiveSessions = (payload = {}) => {
+  const requestId = String(payload?.requestId || "").trim();
+
+  return (Array.isArray(payload?.items) ? payload.items : [])
+    .filter((item) => item?.entityType === "live" && item?.payload?.roomName)
+    .map((item) =>
+      normalizeLiveSession(item.payload, {
+        requestId,
+        entityId: String(item.id || item?.payload?.id || item?.payload?.roomName || "").trim(),
+        entityType: String(item.entityType || "live").trim().toLowerCase(),
+        rank: Number(item.rank || 0),
+        reason: String(item.reason || "").trim(),
+        reasonLabel: String(item.reasonLabel || "").trim(),
+        creatorId: String(item.creatorId || item?.payload?.host?.creatorId || "").trim(),
+        authorUserId: String(item.authorUserId || item?.payload?.host?.userId || "").trim(),
+      })
+    );
+};
 
 export default function LiveDirectory() {
   const navigate = useNavigate();
@@ -17,11 +52,20 @@ export default function LiveDirectory() {
     const load = async () => {
       try {
         setLoading(true);
-        const result = await getLiveSessions();
+        let nextSessions = [];
+
+        try {
+          const discoveryPayload = await getDiscoveryLive({ limit: LIVE_DISCOVERY_LIMIT });
+          nextSessions = normalizeDiscoveryLiveSessions(discoveryPayload);
+        } catch {
+          const result = await getLiveSessions();
+          nextSessions = normalizeLegacyLiveSessions(result?.sessions);
+        }
+
         if (!alive) {
           return;
         }
-        setSessions(Array.isArray(result?.sessions) ? result.sessions : []);
+        setSessions(nextSessions);
       } catch (err) {
         console.error("Failed to load live sessions", err);
       } finally {
@@ -49,7 +93,7 @@ export default function LiveDirectory() {
 
     const handleCreated = (session) => {
       setSessions((prev) => [
-        session,
+        normalizeLiveSession(session),
         ...prev.filter((entry) => entry.roomName !== session.roomName),
       ]);
     };
@@ -86,6 +130,40 @@ export default function LiveDirectory() {
     minute: "numeric",
   });
 
+  const formatStartedAt = (value) => {
+    const date = new Date(value || Date.now());
+    if (Number.isNaN(date.getTime())) {
+      return "now";
+    }
+    return formatter.format(date);
+  };
+
+  const watchSession = (session = {}) => {
+    const discoveryMeta = session.discoveryMeta || {};
+    const requestId = String(discoveryMeta.requestId || "").trim();
+
+    if (requestId) {
+      void trackDiscoveryEvents({
+        requestId,
+        surface: "live",
+        events: [
+          {
+            type: "live_joined",
+            entityType: "live",
+            entityId: String(discoveryMeta.entityId || session.id || session.roomName || "").trim(),
+            position: Number(discoveryMeta.rank || 0),
+            metadata: {
+              roomName: session.roomName,
+              reason: discoveryMeta.reason || "",
+            },
+          },
+        ],
+      }).catch(() => null);
+    }
+
+    navigate(`/live/watch/${session.roomName}`);
+  };
+
   return (
     <main className="live-directory-page">
       <header className="live-directory-header">
@@ -99,7 +177,7 @@ export default function LiveDirectory() {
       </header>
 
       {loading ? (
-        <p className="live-directory-empty">Loading live sessions…</p>
+        <p className="live-directory-empty">Loading live sessions...</p>
       ) : sessions.length === 0 ? (
         <p className="live-directory-empty">
           No one is live right now. Start your own stream!
@@ -111,17 +189,22 @@ export default function LiveDirectory() {
               <header>
                 <strong>{session.title || "Live stream"}</strong>
                 <span className="live-directory-meta">
-                  {session.host?.name || session.host?.username || "Creator"} ·{" "}
-                  {formatter.format(new Date(session.startedAt))}
+                  {session.host?.name || session.host?.username || "Creator"} -{" "}
+                  {formatStartedAt(session.startedAt)}
                 </span>
               </header>
+              {session.discoveryMeta?.reasonLabel ? (
+                <span className="live-directory-reason">
+                  {session.discoveryMeta.reasonLabel}
+                </span>
+              ) : null}
               <div className="live-directory-stats">
                 {session.viewerCount || 0} viewers
               </div>
               <button
                 type="button"
                 className="primary"
-                onClick={() => navigate(`/live/watch/${session.roomName}`)}
+                onClick={() => watchSession(session)}
               >
                 Watch live
               </button>

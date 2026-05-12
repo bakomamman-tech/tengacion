@@ -1274,6 +1274,20 @@ export const getDiscoveryHome = ({ limit = 24 } = {}) => {
   );
 };
 
+export const getDiscoveryLive = ({ limit = 24 } = {}) => {
+  const params = new URLSearchParams();
+  if (limit) {
+    params.set("limit", String(limit));
+  }
+
+  return request(
+    `${API_BASE}/discovery/live${params.toString() ? `?${params.toString()}` : ""}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+};
+
 export const trackDiscoveryEvents = ({ requestId = "", surface = "home", events = [] } = {}) =>
   request(`${API_BASE}/discovery/events`, {
     method: "POST",

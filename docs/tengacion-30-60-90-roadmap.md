@@ -345,7 +345,8 @@ Turn usage into compounding growth.
 - Add guardrails for diversity and overfitting
 - Current implementation anchor:
   - the home feed now requests `/api/discovery/home` first, carries recommendation metadata through `PostCard`, and falls back to the legacy `/api/posts` feed if discovery is unavailable
-  - focused frontend coverage verifies both personalized feed rendering and fallback continuity
+  - the live directory now requests `/api/discovery/live` first, shows ranked explanation labels, tracks `live_joined` clicks, and falls back to `/api/live/active` when discovery is unavailable
+  - focused frontend coverage verifies personalized home/live rendering and fallback continuity
 
 #### 4. Move Akuso from reactive help to measured product intelligence
 

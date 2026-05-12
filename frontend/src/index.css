@@ -222,6 +222,16 @@ html.dark-mode .live-preview-panel {
   font-size: 0.85rem;
 }
 
+.live-directory-reason {
+  width: fit-content;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .live-directory-stats {
   font-weight: 600;
 }

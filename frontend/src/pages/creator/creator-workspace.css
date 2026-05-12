@@ -1950,6 +1950,80 @@ textarea {
   line-height: 1.45;
 }
 
+.creator-console-panel {
+  display: grid;
+  gap: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(32, 86, 109, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(242, 247, 246, 0.9));
+}
+
+.creator-console-funnel,
+.creator-console-prompt-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.creator-console-funnel div,
+.creator-console-prompt {
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 249, 241, 0.72);
+  border: 1px solid rgba(95, 76, 33, 0.08);
+}
+
+.creator-console-funnel div {
+  display: grid;
+  gap: 5px;
+}
+
+.creator-console-funnel span,
+.creator-console-prompt p,
+.creator-stack-row small {
+  color: var(--creator-muted);
+}
+
+.creator-console-funnel strong {
+  font-size: 1.25rem;
+}
+
+.creator-console-prompt-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.creator-console-prompt {
+  display: grid;
+  gap: 14px;
+  align-content: space-between;
+}
+
+.creator-console-prompt > div {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.creator-console-prompt strong,
+.creator-console-prompt p,
+.creator-stack-row small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.creator-console-prompt p,
+.creator-stack-row small {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.creator-stack-row small {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.82rem;
+}
+
 .creator-page-main,
 .creator-page-side {
   display: grid;
@@ -3066,6 +3140,8 @@ textarea {
   .creator-identity-layout,
   .creator-type-grid,
   .creator-activation-list,
+  .creator-console-funnel,
+  .creator-console-prompt-grid,
   .creator-panel-grid,
   .creator-metric-grid,
   .creator-profile-summary-grid,

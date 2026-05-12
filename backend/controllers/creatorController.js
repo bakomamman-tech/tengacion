@@ -8,6 +8,9 @@ const User = require("../models/User");
 const Video = require("../models/Video");
 const { buildCreatorActivationProgress } = require("../services/creatorActivationService");
 const {
+  buildCreatorDashboardConsole,
+} = require("../services/creatorDashboardConsoleService");
+const {
   logCreatorProfileOnboardingTransitions,
 } = require("../services/creatorOnboardingAnalyticsService");
 const { buildPayoutReadiness } = require("../services/payoutReadinessService");
@@ -339,7 +342,12 @@ const buildRecentActivity = ({
   const salesActivity = purchases.map((entry) => ({
     id: `sale-${entry._id}`,
     kind: "sale",
-    category: entry.itemType === "book" ? "books" : entry.itemType === "video" ? "music" : "music",
+    category:
+      entry.itemType === "book"
+        ? "books"
+        : entry.itemType === "subscription"
+          ? "subscriptions"
+          : "music",
     title: "New purchase",
     description: `${entry.itemType} sale completed`,
     timestamp: entry.paidAt || entry.updatedAt || entry.createdAt,
@@ -392,9 +400,13 @@ const getDashboardPayload = async ({ profile, user }) => {
   const purchases = await Purchase.find({
     creatorId: profile._id,
     status: "paid",
-    itemType: { $in: ["track", "book", "album", "video"] },
+    itemType: { $in: ["track", "book", "album", "video", "subscription"] },
   })
-    .select("itemType itemId amount status paidAt createdAt updatedAt")
+    .select(
+      "userId itemType itemId amount currency status provider providerRef accessExpiresAt cancelAtPeriodEnd canceledAt refundedAt paidAt createdAt updatedAt"
+    )
+    .populate("userId", "name username avatar")
+    .sort({ paidAt: -1, createdAt: -1, _id: -1 })
     .lean();
 
   const walletSnapshot = await buildCreatorWalletSnapshot({
@@ -426,6 +438,15 @@ const getDashboardPayload = async ({ profile, user }) => {
     withdrawn: clampMoney(walletSnapshot.summary?.withdrawn),
     walletBacked: Boolean(walletSnapshot.walletBacked),
   };
+  const subscriptionPurchases = purchases.filter(
+    (entry) => String(entry?.itemType || "").trim().toLowerCase() === "subscription"
+  );
+  const subscriptionWalletBucket = (walletSnapshot.breakdown || []).find(
+    (entry) => entry.key === "subscriptions" || entry.key === "subscription"
+  );
+  const subscriptionEarnings = subscriptionWalletBucket
+    ? clampMoney(subscriptionWalletBucket.creatorEarnings)
+    : subscriptionPurchases.reduce((sum, entry) => sum + clampMoney(Number(entry.amount || 0) * 0.4), 0);
   const laneCounts = {
     music: {
       uploads: musicTracks.filter((entry) => entry.publishedStatus !== "draft").length
@@ -452,6 +473,13 @@ const getDashboardPayload = async ({ profile, user }) => {
       drafts: podcastTracks.filter((entry) => entry.publishedStatus === "draft").length,
       earnings: podcastTracks.reduce((sum, entry) => sum + clampMoney(entry.earnings), 0),
       underReview: podcastTracks.filter((entry) => entry.publishedStatus === "under_review").length,
+    },
+    subscriptions: {
+      uploads: 0,
+      drafts: 0,
+      earnings: subscriptionEarnings,
+      underReview: 0,
+      active: subscriptionPurchases.length,
     },
   };
   const contentCounts = {
@@ -491,6 +519,19 @@ const getDashboardPayload = async ({ profile, user }) => {
     content,
     payoutReadiness,
   });
+  const dashboardContent = {
+    musicTracks,
+    podcastTracks,
+    books,
+    albums,
+    videos,
+  };
+  const operatingConsole = buildCreatorDashboardConsole({
+    activation,
+    content: dashboardContent,
+    payoutReadiness,
+    purchases,
+  });
 
   return {
     creatorProfile,
@@ -500,6 +541,7 @@ const getDashboardPayload = async ({ profile, user }) => {
       payoutReadiness,
     },
     activation,
+    operatingConsole,
     categories: contentCounts,
     content: {
       music: {
@@ -791,7 +833,9 @@ exports.getCreatorContentSummary = asyncHandler(async (req, res) => {
   return res.json({
     creatorProfile: payload.creatorProfile,
     summary: payload.summary,
+    wallet: payload.wallet,
     activation: payload.activation,
+    operatingConsole: payload.operatingConsole,
     categories: payload.categories,
     verificationOverview: payload.verificationOverview,
     recentActivity: payload.recentActivity,

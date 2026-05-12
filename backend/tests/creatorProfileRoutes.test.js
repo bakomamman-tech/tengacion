@@ -256,6 +256,86 @@ describe("creator profile routes", () => {
     ]);
   });
 
+  test("GET /api/creator/me/content-summary exposes operating console insights", async () => {
+    const { profile, token } = await createUserAndProfile({ creatorTypes: ["music"] });
+    const { user: viewer } = await createViewer();
+
+    const track = await Track.create({
+      creatorId: profile._id,
+      title: "Console Single",
+      description: "",
+      price: 2500,
+      priceNGN: 2500,
+      audioUrl: "https://example.com/console-single.mp3",
+      previewUrl: "",
+      kind: "music",
+      creatorCategory: "music",
+      contentType: "track",
+      publishedStatus: "published",
+      isPublished: true,
+      playsCount: 31,
+      purchaseCount: 1,
+    });
+
+    await Purchase.create([
+      {
+        userId: viewer._id,
+        creatorId: profile._id,
+        itemType: "track",
+        itemId: track._id,
+        amount: 2500,
+        priceNGN: 2500,
+        currency: "NGN",
+        status: "paid",
+        provider: "paystack",
+        providerRef: "console_track_ref_001",
+        paidAt: new Date(),
+      },
+      {
+        userId: viewer._id,
+        creatorId: profile._id,
+        itemType: "subscription",
+        itemId: profile._id,
+        amount: 2000,
+        priceNGN: 2000,
+        currency: "NGN",
+        status: "paid",
+        provider: "paystack",
+        providerRef: "console_subscription_ref_001",
+        billingInterval: "monthly",
+        accessExpiresAt: new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)),
+        paidAt: new Date(),
+      },
+    ]);
+
+    const response = await request(app)
+      .get("/api/creator/me/content-summary")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body.wallet.payoutReadiness).toBeTruthy();
+    expect(response.body.operatingConsole.funnel).toMatchObject({
+      contentItems: 1,
+      publishedItems: 1,
+      paidItems: 1,
+      paidPurchases: 1,
+      subscribers: 1,
+    });
+    expect(response.body.operatingConsole.recentSales[0]).toMatchObject({
+      itemTitle: "Console Single",
+      buyer: expect.objectContaining({ name: "Viewer Example" }),
+      creatorAmount: 1000,
+    });
+    expect(response.body.operatingConsole.recentSubscribers[0]).toMatchObject({
+      buyer: expect.objectContaining({ name: "Viewer Example" }),
+      lifecycleStatus: "active",
+    });
+    expect(response.body.operatingConsole.metadataFixes[0]).toMatchObject({
+      title: "Console Single",
+      missingFields: expect.arrayContaining(["Description", "Cover image", "Paid preview", "Genre"]),
+    });
+  });
+
   test("GET /api/creator/:creatorId/public-profile returns grouped published creator content", async () => {
     const { profile } = await createUserAndProfile({
       creatorTypes: ["music", "bookPublishing", "podcast"],

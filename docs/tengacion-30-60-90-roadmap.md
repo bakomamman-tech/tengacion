@@ -253,6 +253,9 @@ Help creators succeed faster and more often.
   - payout readiness
   - content needing metadata fixes
 - Add actionable prompts, not just stats
+- Current implementation anchor:
+  - `/api/creator/me/content-summary` now returns an `operatingConsole` payload with funnel counters, action prompts, top content, metadata fixes, recent sales, and recent subscribers
+  - the creator dashboard renders payout readiness, recent commerce activity, top-performing content, and metadata repair prompts in the main workspace
 
 #### 4. Make Akuso useful inside creator workflows
 

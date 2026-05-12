@@ -22,6 +22,19 @@ const getActivationStepClass = (step, nextStepKey) => {
   return "";
 };
 
+const formatNumber = (value = 0) =>
+  new Intl.NumberFormat("en-NG").format(Number(value || 0));
+
+const getToneClass = (tone = "") => {
+  const normalized = String(tone || "").trim().toLowerCase();
+  return ["success", "warning", "danger", "neutral"].includes(normalized)
+    ? normalized
+    : "neutral";
+};
+
+const getBuyerName = (buyer) =>
+  buyer?.name || buyer?.username || "Fan";
+
 export default function CreatorDashboardPage() {
   const { creatorProfile, dashboard } = useCreatorWorkspace();
   const creatorLanes = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes);
@@ -30,6 +43,25 @@ export default function CreatorDashboardPage() {
   const nextActivationStep =
     activation.nextStep || activationSteps.find((step) => !step.complete);
   const nextStepKey = nextActivationStep?.key || "";
+  const operatingConsole = dashboard.operatingConsole || {};
+  const actionPrompts = Array.isArray(operatingConsole.actionPrompts)
+    ? operatingConsole.actionPrompts
+    : [];
+  const topContent = Array.isArray(operatingConsole.topContent)
+    ? operatingConsole.topContent
+    : [];
+  const metadataFixes = Array.isArray(operatingConsole.metadataFixes)
+    ? operatingConsole.metadataFixes
+    : [];
+  const recentSales = Array.isArray(operatingConsole.recentSales)
+    ? operatingConsole.recentSales
+    : [];
+  const recentSubscribers = Array.isArray(operatingConsole.recentSubscribers)
+    ? operatingConsole.recentSubscribers
+    : [];
+  const funnel = operatingConsole.funnel || {};
+  const payoutReadiness = dashboard.wallet?.payoutReadiness || {};
+  const payoutStatus = payoutReadiness.label || (payoutReadiness.ready ? "Ready" : "Needs attention");
 
   return (
     <div className="creator-page-grid">
@@ -106,6 +138,61 @@ export default function CreatorDashboardPage() {
             </div>
           </section>
         ) : null}
+
+        <section className="creator-panel creator-console-panel">
+          <div className="creator-panel-head">
+            <div>
+              <h2>Operating console</h2>
+              <p>Today&apos;s highest-priority sales, content, and setup signals.</p>
+            </div>
+          </div>
+
+          <div className="creator-console-funnel">
+            <div>
+              <span>Published</span>
+              <strong>{formatNumber(funnel.publishedItems || 0)}</strong>
+            </div>
+            <div>
+              <span>Paid items</span>
+              <strong>{formatNumber(funnel.paidItems || 0)}</strong>
+            </div>
+            <div>
+              <span>Engagement</span>
+              <strong>{formatNumber(funnel.engagement || 0)}</strong>
+            </div>
+            <div>
+              <span>Purchase rate</span>
+              <strong>{Number(funnel.engagementToPurchaseRate || 0).toFixed(1)}%</strong>
+            </div>
+          </div>
+
+          <div className="creator-console-prompt-grid">
+            {actionPrompts.length ? (
+              actionPrompts.map((prompt) => (
+                <article key={prompt.key} className="creator-console-prompt">
+                  <div>
+                    <span className={`creator-status-badge ${getToneClass(prompt.tone)}`}>
+                      {prompt.tone || "next"}
+                    </span>
+                    <strong>{prompt.title}</strong>
+                    <p>{prompt.description}</p>
+                  </div>
+                  <Link
+                    className="creator-secondary-btn"
+                    to={prompt.actionTo || "/creator/dashboard"}
+                  >
+                    {prompt.actionLabel || "Open"}
+                  </Link>
+                </article>
+              ))
+            ) : (
+              <div className="creator-empty-card">
+                Your highest-priority creator actions will appear here as fans
+                interact with your catalog.
+              </div>
+            )}
+          </div>
+        </section>
 
         <section className="creator-metric-grid">
           <CreatorStatsCard
@@ -216,6 +303,71 @@ export default function CreatorDashboardPage() {
           </div>
         </section>
 
+        <div className="creator-panel-grid">
+          <section className="creator-panel">
+            <div className="creator-panel-head">
+              <div>
+                <h2>Top-performing content</h2>
+                <p>Ranked by earnings, purchases, then engagement.</p>
+              </div>
+            </div>
+
+            <div className="creator-stack-list">
+              {topContent.length ? (
+                topContent.map((item) => (
+                  <article key={`${item.itemType}-${item.id}`} className="creator-stack-row">
+                    <span>
+                      {item.title}
+                      <small>
+                        {formatCurrency(item.earnings || 0)} earned -{" "}
+                        {formatNumber(item.purchases || 0)} purchase
+                        {Number(item.purchases || 0) === 1 ? "" : "s"} -{" "}
+                        {formatNumber(item.engagement || 0)} engagement
+                      </small>
+                    </span>
+                    <Link className="creator-chip-link" to={item.actionTo || "/creator/dashboard"}>
+                      Open
+                    </Link>
+                  </article>
+                ))
+              ) : (
+                <div className="creator-empty-card">
+                  Performance rankings appear once you publish creator content.
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="creator-panel">
+            <div className="creator-panel-head">
+              <div>
+                <h2>Metadata fixes</h2>
+                <p>Content fields most likely to block conversion or review.</p>
+              </div>
+            </div>
+
+            <div className="creator-stack-list">
+              {metadataFixes.length ? (
+                metadataFixes.map((item) => (
+                  <article key={`${item.itemType}-${item.id}`} className="creator-stack-row">
+                    <span>
+                      {item.title}
+                      <small>{item.missingFields.join(", ")}</small>
+                    </span>
+                    <Link className="creator-chip-link" to={item.actionTo || "/creator/dashboard"}>
+                      Fix
+                    </Link>
+                  </article>
+                ))
+              ) : (
+                <div className="creator-empty-card">
+                  No metadata fixes are blocking your active catalog.
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+
         <section className="creator-panel">
           <div className="creator-panel-head">
             <div>
@@ -256,6 +408,33 @@ export default function CreatorDashboardPage() {
         <section className="creator-panel">
           <div className="creator-panel-head">
             <div>
+              <h2>Payout readiness</h2>
+              <p>{payoutReadiness.nextStep || "Keep payout details ready before withdrawal requests."}</p>
+            </div>
+            <span className={`creator-status-badge ${payoutReadiness.ready ? "success" : "warning"}`}>
+              {payoutStatus}
+            </span>
+          </div>
+
+          <div className="creator-stack-list">
+            <div className="creator-stack-row">
+              <span>Account</span>
+              <strong>{payoutReadiness.accountNumberMasked || "Not set"}</strong>
+            </div>
+            <div className="creator-stack-row">
+              <span>Status</span>
+              <strong>{payoutReadiness.status || "not_started"}</strong>
+            </div>
+          </div>
+
+          <Link className="creator-secondary-btn" to="/creator/payouts">
+            Review payout details
+          </Link>
+        </section>
+
+        <section className="creator-panel">
+          <div className="creator-panel-head">
+            <div>
               <h2>Quick earnings snapshot</h2>
               <p>Your current creator finance position.</p>
             </div>
@@ -287,6 +466,76 @@ export default function CreatorDashboardPage() {
               <span>Withdrawn</span>
               <strong>{formatCurrency(dashboard.summary?.withdrawn || 0)}</strong>
             </div>
+          </div>
+        </section>
+
+        <section className="creator-panel">
+          <div className="creator-panel-head">
+            <div>
+              <h2>Recent sales</h2>
+              <p>Latest confirmed purchases across your paid catalog.</p>
+            </div>
+          </div>
+
+          <div className="creator-activity-list">
+            {recentSales.length ? (
+              recentSales.slice(0, 4).map((sale) => (
+                <article key={sale.id} className="creator-activity-item">
+                  <div>
+                    <strong>{sale.itemTitle}</strong>
+                    <p>
+                      {getBuyerName(sale.buyer)} - Your share{" "}
+                      {formatCurrency(sale.creatorAmount || 0)}
+                    </p>
+                  </div>
+                  <div className="creator-activity-meta">
+                    <span className="creator-status-badge success">
+                      {sale.itemLabel}
+                    </span>
+                    <span>{formatShortDate(sale.paidAt)}</span>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="creator-empty-card">
+                Confirmed paid purchases will appear here.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="creator-panel">
+          <div className="creator-panel-head">
+            <div>
+              <h2>Recent subscribers</h2>
+              <p>Fans who joined your monthly creator membership.</p>
+            </div>
+          </div>
+
+          <div className="creator-activity-list">
+            {recentSubscribers.length ? (
+              recentSubscribers.slice(0, 4).map((subscriber) => (
+                <article key={subscriber.id} className="creator-activity-item">
+                  <div>
+                    <strong>{getBuyerName(subscriber.buyer)}</strong>
+                    <p>
+                      {formatCurrency(subscriber.amount || 0)} membership -{" "}
+                      {subscriber.label || "Active"}
+                    </p>
+                  </div>
+                  <div className="creator-activity-meta">
+                    <span className="creator-status-badge success">
+                      Subscriber
+                    </span>
+                    <span>{formatShortDate(subscriber.paidAt)}</span>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="creator-empty-card">
+                New member purchases will appear here after checkout.
+              </div>
+            )}
           </div>
         </section>
 

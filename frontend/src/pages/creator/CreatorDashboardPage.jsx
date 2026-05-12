@@ -60,6 +60,14 @@ export default function CreatorDashboardPage() {
     ? operatingConsole.recentSubscribers
     : [];
   const funnel = operatingConsole.funnel || {};
+  const discoveryInsights = dashboard.discoveryInsights || {};
+  const discoverySummary = discoveryInsights.summary || {};
+  const discoverySurfaces = Array.isArray(discoveryInsights.surfaceBreakdown)
+    ? discoveryInsights.surfaceBreakdown
+    : [];
+  const discoveryPrompts = Array.isArray(discoveryInsights.actionPrompts)
+    ? discoveryInsights.actionPrompts
+    : [];
   const payoutReadiness = dashboard.wallet?.payoutReadiness || {};
   const payoutStatus = payoutReadiness.label || (payoutReadiness.ready ? "Ready" : "Needs attention");
 
@@ -191,6 +199,83 @@ export default function CreatorDashboardPage() {
                 interact with your catalog.
               </div>
             )}
+          </div>
+        </section>
+
+        <section className="creator-panel creator-discovery-insights-panel">
+          <div className="creator-panel-head">
+            <div>
+              <h2>Discovery insights</h2>
+              <p>How recommendation surfaces are introducing fans to your creator work.</p>
+            </div>
+          </div>
+
+          <div className="creator-console-funnel creator-discovery-insights-grid">
+            <div>
+              <span>Impressions</span>
+              <strong>{formatNumber(discoverySummary.impressions || 0)}</strong>
+            </div>
+            <div>
+              <span>Clicks</span>
+              <strong>{formatNumber(discoverySummary.clicks || 0)}</strong>
+            </div>
+            <div>
+              <span>Follows</span>
+              <strong>{formatNumber(discoverySummary.follows || 0)}</strong>
+            </div>
+            <div>
+              <span>Click rate</span>
+              <strong>{Number(discoverySummary.clickThroughRate || 0).toFixed(1)}%</strong>
+            </div>
+          </div>
+
+          <div className="creator-panel-grid">
+            <div className="creator-stack-list">
+              {discoverySurfaces.length ? (
+                discoverySurfaces.slice(0, 4).map((surface) => (
+                  <article key={surface.surface} className="creator-stack-row">
+                    <span>
+                      {String(surface.surface || "Discovery").replace(/_/g, " ")}
+                      <small>
+                        {formatNumber(surface.impressions || 0)} impressions -{" "}
+                        {Number(surface.clickThroughRate || 0).toFixed(1)}% click rate
+                      </small>
+                    </span>
+                    <strong>{formatNumber(surface.follows || 0)}</strong>
+                  </article>
+                ))
+              ) : (
+                <div className="creator-empty-card">
+                  Recommendation insights will appear once your content is served in discovery.
+                </div>
+              )}
+            </div>
+
+            <div className="creator-stack-list">
+              {discoveryPrompts.length ? (
+                discoveryPrompts.slice(0, 3).map((prompt) => (
+                  <article key={prompt.key} className="creator-console-prompt">
+                    <div>
+                      <span className={`creator-status-badge ${getToneClass(prompt.tone)}`}>
+                        {prompt.tone || "next"}
+                      </span>
+                      <strong>{prompt.title}</strong>
+                      <p>{prompt.description}</p>
+                    </div>
+                    <Link
+                      className="creator-secondary-btn"
+                      to={prompt.actionTo || "/creator/dashboard"}
+                    >
+                      {prompt.actionLabel || "Open"}
+                    </Link>
+                  </article>
+                ))
+              ) : (
+                <div className="creator-empty-card">
+                  Discovery recommendations will appear here after the next insights window.
+                </div>
+              )}
+            </div>
           </div>
         </section>
 

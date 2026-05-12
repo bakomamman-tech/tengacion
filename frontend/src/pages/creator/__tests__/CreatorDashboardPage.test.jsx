@@ -138,6 +138,33 @@ describe("CreatorDashboardPage", () => {
             },
           ],
         },
+        discoveryInsights: {
+          summary: {
+            impressions: 42,
+            clicks: 6,
+            follows: 2,
+            clickThroughRate: 14.3,
+          },
+          surfaceBreakdown: [
+            {
+              surface: "creator_hub",
+              impressions: 42,
+              clicks: 6,
+              follows: 2,
+              clickThroughRate: 14.3,
+            },
+          ],
+          actionPrompts: [
+            {
+              key: "discovery_follow_momentum",
+              title: "Convert discovery momentum",
+              description: "Fans are responding to your recommendations.",
+              actionLabel: "Preview fan page",
+              actionTo: "/creator/fan-page-view",
+              tone: "success",
+            },
+          ],
+        },
       },
     });
 
@@ -153,6 +180,9 @@ describe("CreatorDashboardPage", () => {
     expect(screen.getByText(/3 of 6 steps complete/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /start first upload/i })).toHaveAttribute("href", "/creator/music/upload");
     expect(screen.getByText(/operating console/i)).toBeInTheDocument();
+    expect(screen.getByText(/discovery insights/i)).toBeInTheDocument();
+    expect(screen.getByText(/42 impressions/i)).toBeInTheDocument();
+    expect(screen.getByText(/convert discovery momentum/i)).toBeInTheDocument();
     expect(screen.getByText(/1 content metadata fix/i)).toBeInTheDocument();
     expect(screen.getAllByText(/paid single/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/profile incomplete/i)).toBeInTheDocument();

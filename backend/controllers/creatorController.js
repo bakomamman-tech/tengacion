@@ -11,6 +11,10 @@ const {
   buildCreatorDashboardConsole,
 } = require("../services/creatorDashboardConsoleService");
 const {
+  buildCreatorDiscoveryInsights,
+  buildCreatorDiscoveryInsightsForUser,
+} = require("../services/creatorDiscoveryInsightsService");
+const {
   logCreatorProfileOnboardingTransitions,
 } = require("../services/creatorOnboardingAnalyticsService");
 const { buildPayoutReadiness } = require("../services/payoutReadinessService");
@@ -532,6 +536,10 @@ const getDashboardPayload = async ({ profile, user }) => {
     payoutReadiness,
     purchases,
   });
+  const discoveryInsights = await buildCreatorDiscoveryInsights({
+    profile,
+    range: "30d",
+  });
 
   return {
     creatorProfile,
@@ -542,6 +550,7 @@ const getDashboardPayload = async ({ profile, user }) => {
     },
     activation,
     operatingConsole,
+    discoveryInsights,
     categories: contentCounts,
     content: {
       music: {
@@ -836,11 +845,24 @@ exports.getCreatorContentSummary = asyncHandler(async (req, res) => {
     wallet: payload.wallet,
     activation: payload.activation,
     operatingConsole: payload.operatingConsole,
+    discoveryInsights: payload.discoveryInsights,
     categories: payload.categories,
     verificationOverview: payload.verificationOverview,
     recentActivity: payload.recentActivity,
     support: payload.support,
   });
+});
+
+exports.getCreatorDiscoveryInsights = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const insights = await buildCreatorDiscoveryInsightsForUser({
+    userId: req.user.id,
+    range: req.query?.range || "30d",
+    startDate: req.query?.startDate,
+    endDate: req.query?.endDate,
+  });
+
+  return res.json(insights);
 });
 
 exports.getCreatorPrivateContent = asyncHandler(async (req, res) => {

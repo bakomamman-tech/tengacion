@@ -264,6 +264,8 @@ describe("Discovery endpoints", () => {
     expect(log).toBeTruthy();
     expect(log.surface).toBe("home");
     expect(log.rankedIds.length).toBeGreaterThan(0);
+    expect(log.creatorIds.length).toBeGreaterThan(0);
+    expect(log.creatorExposures.length).toBeGreaterThan(0);
   });
 
   test("GET discovery creators, live, and creator-hub return ranked payloads", async () => {
@@ -296,7 +298,7 @@ describe("Discovery endpoints", () => {
   });
 
   test("POST /api/discovery/events accepts feedback and appends it to the recommendation log", async () => {
-    const { token, trackOne } = await seedScenario();
+    const { token, trackOne, creatorOne } = await seedScenario();
 
     const discoveryResponse = await request(app)
       .get("/api/discovery/creator-hub")
@@ -333,6 +335,9 @@ describe("Discovery endpoints", () => {
       type: "recommendation_clicked",
       entityType: "track",
       entityId: trackOne._id.toString(),
+      metadata: expect.objectContaining({
+        creatorId: expect.any(String),
+      }),
     });
 
     const trackedEvent = await AnalyticsEvent.findOne({
@@ -340,5 +345,6 @@ describe("Discovery endpoints", () => {
       targetId: trackOne._id.toString(),
     }).lean();
     expect(trackedEvent).toBeTruthy();
+    expect(trackedEvent.metadata.creatorId).toBe(creatorOne._id.toString());
   });
 });

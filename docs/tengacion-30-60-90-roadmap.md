@@ -330,6 +330,10 @@ Turn usage into compounding growth.
   - what worked
   - what changed
   - what to do next
+- Current implementation anchor:
+  - recommendation logs now retain creator exposure counts, best ranks, and ranked item refs for aggregate creator-facing analysis
+  - `GET /api/creator/discovery/insights` returns 7/30/90-day recommendation impressions, clicks, follows, negative feedback, surface breakdowns, and action prompts
+  - the creator dashboard renders discovery insights beside the operating console so creators can see how recommendation surfaces are introducing fans to their catalog
 
 #### 3. Ship first-pass personalized recommendations
 

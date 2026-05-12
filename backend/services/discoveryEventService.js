@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const mongoose = require("mongoose");
 const RecommendationLog = require("../models/RecommendationLog");
 const { logAnalyticsEvent } = require("./analyticsService");
 const {
@@ -37,6 +38,78 @@ const normalizeText = (value, maxLength = 80) =>
     .toLowerCase()
     .slice(0, maxLength);
 
+const normalizeId = (value = "") => {
+  if (!value) return "";
+  if (value instanceof mongoose.Types.ObjectId) return value.toString();
+  if (typeof value === "string") return value;
+  if (value._id && value._id !== value) return normalizeId(value._id);
+  return String(value);
+};
+
+const toObjectId = (value = "") => {
+  const normalized = normalizeId(value);
+  return mongoose.Types.ObjectId.isValid(normalized)
+    ? new mongoose.Types.ObjectId(normalized)
+    : null;
+};
+
+const makeEntityKey = (entityType = "", entityId = "") =>
+  `${normalizeText(entityType, 40)}:${String(entityId || "").trim().slice(0, 120)}`;
+
+const buildRankedItemRefs = (rankedItems = []) =>
+  limitArray(Array.isArray(rankedItems) ? rankedItems : [], 40)
+    .map((item) => {
+      const entityType = normalizeText(item?.entityType, 40);
+      const entityId = String(item?.id || item?.entityId || "").trim().slice(0, 120);
+      const creatorId = toObjectId(item?.creatorId);
+
+      return {
+        entityKey: entityType && entityId ? makeEntityKey(entityType, entityId) : "",
+        entityType,
+        entityId,
+        creatorId,
+        rank: Number(item?.rank || 0),
+        reason: normalizeText(item?.reason, 80),
+      };
+    })
+    .filter((item) => item.entityKey);
+
+const buildCreatorExposures = (rankedItemRefs = []) => {
+  const byCreator = new Map();
+
+  for (const item of Array.isArray(rankedItemRefs) ? rankedItemRefs : []) {
+    const creatorId = toObjectId(item?.creatorId);
+    if (!creatorId) continue;
+
+    const key = creatorId.toString();
+    const existing = byCreator.get(key) || {
+      creatorId,
+      count: 0,
+      highestRank: Number(item?.rank || 0),
+      entityTypes: new Set(),
+    };
+
+    existing.count += 1;
+    const rank = Number(item?.rank || 0);
+    if (rank > 0) {
+      existing.highestRank = existing.highestRank
+        ? Math.min(existing.highestRank, rank)
+        : rank;
+    }
+    if (item?.entityType) {
+      existing.entityTypes.add(normalizeText(item.entityType, 40));
+    }
+    byCreator.set(key, existing);
+  }
+
+  return Array.from(byCreator.values()).map((entry) => ({
+    creatorId: entry.creatorId,
+    count: entry.count,
+    highestRank: entry.highestRank,
+    entityTypes: Array.from(entry.entityTypes).filter(Boolean),
+  }));
+};
+
 const createRecommendationLog = async ({
   userId,
   surface,
@@ -45,6 +118,9 @@ const createRecommendationLog = async ({
   affinity,
 }) => {
   const requestId = crypto.randomUUID();
+  const rankedItemRefs = buildRankedItemRefs(rankedItems);
+  const creatorExposures = buildCreatorExposures(rankedItemRefs);
+  const creatorIds = creatorExposures.map((entry) => entry.creatorId).filter(Boolean);
   const doc = await RecommendationLog.create({
     requestId,
     userId,
@@ -57,6 +133,9 @@ const createRecommendationLog = async ({
       .map((item) => `${String(item?.entityType || "")}:${String(item?.id || "")}`)
       .map((value) => truncate(value, 160))
       .filter(Boolean),
+    creatorIds,
+    rankedItemRefs,
+    creatorExposures,
     featuresSnapshot: sanitizePlainObject({
       topCreators: Array.isArray(affinity?.topCreators) ? affinity.topCreators.slice(0, 8) : [],
       preferredContentTypes: Array.isArray(affinity?.preferredContentTypes)
@@ -72,6 +151,7 @@ const createRecommendationLog = async ({
     }),
     responseMeta: sanitizePlainObject({
       itemCount: Array.isArray(rankedItems) ? rankedItems.length : 0,
+      creatorCount: creatorIds.length,
     }, {
       maxDepth: 1,
       maxKeys: 8,
@@ -97,6 +177,29 @@ const createRecommendationLog = async ({
   return doc.requestId;
 };
 
+const loadRankedCreatorMap = async ({ userId, requestId }) => {
+  if (!requestId) {
+    return new Map();
+  }
+
+  const log = await RecommendationLog.findOne({ requestId, userId })
+    .select("rankedItemRefs")
+    .lean()
+    .catch(() => null);
+  if (!log?.rankedItemRefs?.length) {
+    return new Map();
+  }
+
+  return new Map(
+    log.rankedItemRefs
+      .map((item) => [
+        item.entityKey || makeEntityKey(item.entityType, item.entityId),
+        normalizeId(item.creatorId),
+      ])
+      .filter(([, creatorId]) => creatorId)
+  );
+};
+
 const trackDiscoveryEvents = async ({
   userId,
   requestId,
@@ -118,8 +221,28 @@ const trackDiscoveryEvents = async ({
     return { accepted: 0 };
   }
 
+  const creatorByEntityKey = await loadRankedCreatorMap({ userId, requestId });
+  const eventsWithCreator = normalizedEvents.map((event) => {
+    const metadata = event.metadata && typeof event.metadata === "object"
+      ? { ...event.metadata }
+      : {};
+    const creatorId =
+      String(metadata.creatorId || "").trim() ||
+      creatorByEntityKey.get(makeEntityKey(event.entityType, event.entityId)) ||
+      "";
+
+    if (creatorId) {
+      metadata.creatorId = creatorId;
+    }
+
+    return {
+      ...event,
+      metadata,
+    };
+  });
+
   await Promise.all(
-    normalizedEvents.map((event) =>
+    eventsWithCreator.map((event) =>
       logAnalyticsEvent({
         type: event.type,
         userId,
@@ -143,7 +266,7 @@ const trackDiscoveryEvents = async ({
       {
         $push: {
           feedback: {
-            $each: normalizedEvents.map((event) => ({
+            $each: eventsWithCreator.map((event) => ({
               type: event.type,
               entityType: event.entityType,
               entityId: event.entityId,
@@ -161,7 +284,7 @@ const trackDiscoveryEvents = async ({
     ).catch(() => null);
   }
 
-  return { accepted: normalizedEvents.length };
+  return { accepted: eventsWithCreator.length };
 };
 
 module.exports = {

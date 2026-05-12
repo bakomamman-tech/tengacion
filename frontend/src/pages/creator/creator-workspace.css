@@ -1958,6 +1958,14 @@ textarea {
     linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(242, 247, 246, 0.9));
 }
 
+.creator-discovery-insights-panel {
+  display: grid;
+  gap: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(32, 86, 109, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(240, 246, 247, 0.92));
+}
+
 .creator-console-funnel,
 .creator-console-prompt-grid {
   display: grid;

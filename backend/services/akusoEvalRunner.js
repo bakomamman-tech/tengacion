@@ -2,7 +2,189 @@ const { config } = require("../config/env");
 const { evaluateAkusoPolicy, POLICY_BUCKETS } = require("./akusoPolicyService");
 const { selectAkusoModel } = require("./akusoModelRouter");
 
+const ROUTE_QUALITY_TARGETS = {
+  home: {
+    key: "home",
+    label: "Home",
+    route: "/home",
+    minScenarios: 1,
+    minPassRate: 1,
+    maxCriticalFailures: 0,
+  },
+  creator_dashboard: {
+    key: "creator_dashboard",
+    label: "Creator Dashboard",
+    route: "/creator/dashboard",
+    minScenarios: 1,
+    minPassRate: 1,
+    maxCriticalFailures: 0,
+  },
+  subscriptions: {
+    key: "subscriptions",
+    label: "Creator Subscriptions",
+    route: "/creators/:creatorId/subscribe",
+    minScenarios: 1,
+    minPassRate: 1,
+    maxCriticalFailures: 0,
+  },
+  purchases: {
+    key: "purchases",
+    label: "Purchases",
+    route: "/purchases",
+    minScenarios: 1,
+    minPassRate: 1,
+    maxCriticalFailures: 0,
+  },
+  settings: {
+    key: "settings",
+    label: "Settings",
+    route: "/settings",
+    minScenarios: 1,
+    minPassRate: 1,
+    maxCriticalFailures: 0,
+  },
+};
+
 const EVAL_SCENARIOS = [
+  {
+    id: "route.home.current_page_guidance",
+    name: "Home route guidance stays grounded",
+    suite: "route_quality",
+    severity: "high",
+    routeKey: "home",
+    tags: ["route_quality", "route_home", "app_help", "feature_grounding"],
+    routePurpose: "hints",
+    input: {
+      message: "What can I do here?",
+      mode: "app_help",
+      currentRoute: "/home",
+      currentPage: "Home",
+    },
+    user: { id: "viewer-1" },
+    expected: {
+      categoryBucket: POLICY_BUCKETS.APP_GUIDANCE,
+      featureKey: "home",
+      taskType: "app_guidance",
+      modelTask: "app_guidance",
+      featureAccessAllowed: true,
+    },
+  },
+  {
+    id: "route.creator_dashboard.current_page_guidance",
+    name: "Creator dashboard route guidance stays grounded",
+    suite: "route_quality",
+    severity: "critical",
+    routeKey: "creator_dashboard",
+    tags: [
+      "route_quality",
+      "route_creator_dashboard",
+      "app_help",
+      "creator_dashboard",
+      "feature_grounding",
+    ],
+    routePurpose: "hints",
+    input: {
+      message: "What can I do in creator dashboard?",
+      mode: "app_help",
+      currentRoute: "/creator/dashboard",
+      currentPage: "Creator Dashboard",
+    },
+    user: { id: "creator-1", isCreator: true },
+    expected: {
+      categoryBucket: POLICY_BUCKETS.APP_GUIDANCE,
+      featureKey: "creator_dashboard",
+      taskType: "app_guidance",
+      modelTask: "app_guidance",
+      featureAccessAllowed: true,
+    },
+  },
+  {
+    id: "route.subscriptions.current_page_guidance",
+    name: "Creator subscription route guidance stays grounded",
+    suite: "route_quality",
+    severity: "critical",
+    routeKey: "subscriptions",
+    tags: [
+      "route_quality",
+      "route_subscriptions",
+      "app_help",
+      "subscriptions",
+      "feature_grounding",
+    ],
+    routePurpose: "hints",
+    input: {
+      message: "What does this creator subscription unlock?",
+      mode: "app_help",
+      currentRoute: "/creators/creator-1/subscribe",
+      currentPage: "Creator Membership",
+    },
+    user: { id: "viewer-1" },
+    expected: {
+      categoryBucket: POLICY_BUCKETS.APP_GUIDANCE,
+      featureKey: "creator_subscription",
+      taskType: "app_guidance",
+      modelTask: "app_guidance",
+      featureAccessAllowed: true,
+    },
+  },
+  {
+    id: "route.purchases.current_page_guidance",
+    name: "Purchases route guidance stays grounded",
+    suite: "route_quality",
+    severity: "critical",
+    routeKey: "purchases",
+    tags: [
+      "route_quality",
+      "route_purchases",
+      "app_help",
+      "purchases",
+      "feature_grounding",
+    ],
+    routePurpose: "hints",
+    input: {
+      message: "Open my purchases",
+      mode: "app_help",
+      currentRoute: "/purchases",
+      currentPage: "Purchases",
+    },
+    user: { id: "viewer-1" },
+    expected: {
+      categoryBucket: POLICY_BUCKETS.APP_GUIDANCE,
+      featureKey: "purchases",
+      taskType: "app_guidance",
+      modelTask: "app_guidance",
+      featureAccessAllowed: true,
+    },
+  },
+  {
+    id: "route.settings.current_page_guidance",
+    name: "Settings route guidance stays grounded",
+    suite: "route_quality",
+    severity: "critical",
+    routeKey: "settings",
+    tags: [
+      "route_quality",
+      "route_settings",
+      "app_help",
+      "settings",
+      "feature_grounding",
+    ],
+    routePurpose: "hints",
+    input: {
+      message: "Open settings",
+      mode: "app_help",
+      currentRoute: "/settings",
+      currentPage: "Settings Hub",
+    },
+    user: { id: "viewer-1" },
+    expected: {
+      categoryBucket: POLICY_BUCKETS.APP_GUIDANCE,
+      featureKey: "settings_hub",
+      taskType: "app_guidance",
+      modelTask: "app_guidance",
+      featureAccessAllowed: true,
+    },
+  },
   {
     id: "app.creator_music_upload.grounded",
     name: "App guidance picks music upload",
@@ -442,6 +624,7 @@ const runScenario = (scenario) => {
     name: scenario.name,
     suite: scenario.suite || "general",
     severity: scenario.severity || "medium",
+    routeKey: scenario.routeKey || "",
     tags: Array.isArray(scenario.tags) ? scenario.tags : [],
     passed: failedChecks.length === 0,
     failedChecks,
@@ -457,7 +640,48 @@ const runScenario = (scenario) => {
   };
 };
 
-const summarizeAkusoEvalResults = (results = []) => {
+const evaluateRouteQualityTargets = (results = [], { enforce = true } = {}) =>
+  Object.values(ROUTE_QUALITY_TARGETS).map((target) => {
+    const routeResults = results.filter((result) => result.routeKey === target.key);
+    const passed = routeResults.filter((result) => result.passed).length;
+    const failed = routeResults.length - passed;
+    const failedCritical = routeResults.filter(
+      (result) => !result.passed && result.severity === "critical"
+    ).length;
+    const targetPassRate = passRate(passed, routeResults.length);
+    const covered = routeResults.length >= Number(target.minScenarios || 1);
+    const passedTarget =
+      covered &&
+      targetPassRate >= Number(target.minPassRate || 1) &&
+      failedCritical <= Number(target.maxCriticalFailures || 0);
+
+    return {
+      key: target.key,
+      label: target.label,
+      route: target.route,
+      minScenarios: Number(target.minScenarios || 1),
+      minPassRate: Number(target.minPassRate || 1),
+      maxCriticalFailures: Number(target.maxCriticalFailures || 0),
+      total: routeResults.length,
+      passed,
+      failed,
+      failedCritical,
+      passRate: targetPassRate,
+      covered,
+      enforced: Boolean(enforce),
+      passedTarget,
+      failedScenarios: routeResults
+        .filter((result) => !result.passed)
+        .map((result) => ({
+          id: result.id,
+          name: result.name,
+          severity: result.severity,
+          failedChecks: result.failedChecks,
+        })),
+    };
+  });
+
+const summarizeAkusoEvalResults = (results = [], { enforceRouteTargets = true } = {}) => {
   const summary = {
     total: results.length,
     passed: 0,
@@ -468,6 +692,9 @@ const summarizeAkusoEvalResults = (results = []) => {
     bySuite: {},
     bySeverity: {},
     byTag: {},
+    byRoute: {},
+    routeTargets: [],
+    failedRouteTargets: [],
   };
 
   results.forEach((result) => {
@@ -489,12 +716,30 @@ const summarizeAkusoEvalResults = (results = []) => {
 
     incrementBucket(summary.bySuite, result.suite, result.passed);
     incrementBucket(summary.bySeverity, result.severity, result.passed);
+    if (result.routeKey) {
+      incrementBucket(summary.byRoute, result.routeKey, result.passed);
+    }
     (result.tags.length ? result.tags : ["untagged"]).forEach((tag) => {
       incrementBucket(summary.byTag, tag, result.passed);
     });
   });
 
   summary.passRate = passRate(summary.passed, summary.total);
+  summary.routeTargets = evaluateRouteQualityTargets(results, {
+    enforce: enforceRouteTargets,
+  });
+  summary.failedRouteTargets = summary.routeTargets
+    .filter((target) => target.enforced && !target.passedTarget)
+    .map((target) => ({
+      key: target.key,
+      label: target.label,
+      route: target.route,
+      total: target.total,
+      passRate: target.passRate,
+      failedCritical: target.failedCritical,
+      covered: target.covered,
+      failedScenarios: target.failedScenarios,
+    }));
   return summary;
 };
 
@@ -529,7 +774,9 @@ const runAkusoEvals = ({ suite = "", tag = "", includeChecks = false } = {}) => 
       const { checks, ...compactResult } = result;
       return compactResult;
     });
-    const summary = summarizeAkusoEvalResults(results);
+    const summary = summarizeAkusoEvalResults(results, {
+      enforceRouteTargets: !suite && !tag,
+    });
     Object.defineProperty(results, "summary", {
       value: summary,
       enumerable: false,
@@ -545,6 +792,8 @@ const runAkusoEvals = ({ suite = "", tag = "", includeChecks = false } = {}) => 
 
 module.exports = {
   EVAL_SCENARIOS,
+  ROUTE_QUALITY_TARGETS,
+  evaluateRouteQualityTargets,
   runAkusoEvals,
   summarizeAkusoEvalResults,
 };

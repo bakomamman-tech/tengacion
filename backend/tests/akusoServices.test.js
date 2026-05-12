@@ -12,7 +12,11 @@ const {
   detectPromptInjectionAttempt,
 } = require("../services/akusoClassifierService");
 const { buildAkusoContext } = require("../services/akusoContextBuilder");
-const { EVAL_SCENARIOS, runAkusoEvals } = require("../services/akusoEvalRunner");
+const {
+  EVAL_SCENARIOS,
+  ROUTE_QUALITY_TARGETS,
+  runAkusoEvals,
+} = require("../services/akusoEvalRunner");
 const { buildMathResponse } = require("../services/assistant/math");
 const { buildAkusoPromptBundle } = require("../services/akusoPromptBuilder");
 const {
@@ -550,8 +554,22 @@ describe("Akuso services", () => {
         creator_onboarding: expect.objectContaining({ total: 2, passed: 2 }),
         creator_workflow: expect.objectContaining({ total: 4, passed: 4 }),
         policy_denial: expect.objectContaining({ total: 5, passed: 5 }),
-        subscriptions: expect.objectContaining({ total: 2, passed: 2 }),
+        route_quality: expect.objectContaining({ total: 5, passed: 5 }),
+        subscriptions: expect.objectContaining({ total: 3, passed: 3 }),
       })
+    );
+    expect(results.summary.byRoute).toEqual(
+      expect.objectContaining({
+        home: expect.objectContaining({ total: 1, passed: 1 }),
+        creator_dashboard: expect.objectContaining({ total: 1, passed: 1 }),
+        subscriptions: expect.objectContaining({ total: 1, passed: 1 }),
+        purchases: expect.objectContaining({ total: 1, passed: 1 }),
+        settings: expect.objectContaining({ total: 1, passed: 1 }),
+      })
+    );
+    expect(results.summary.failedRouteTargets).toEqual([]);
+    expect(results.summary.routeTargets).toHaveLength(
+      Object.keys(ROUTE_QUALITY_TARGETS).length
     );
   });
 
@@ -579,6 +597,51 @@ describe("Akuso services", () => {
     );
     expect(results.summary.byTag.creator_workflow).toEqual(
       expect.objectContaining({ total: 4, passed: 4 })
+    );
+  });
+
+  it("enforces route-specific quality targets from the roadmap", () => {
+    const results = runAkusoEvals({ suite: "route_quality", includeChecks: true });
+
+    expect(results).toHaveLength(Object.keys(ROUTE_QUALITY_TARGETS).length);
+    expect(results.every((entry) => entry.passed)).toBe(true);
+    expect(results.map((entry) => entry.routeKey).sort()).toEqual(
+      Object.keys(ROUTE_QUALITY_TARGETS).sort()
+    );
+    expect(results.summary.failedRouteTargets).toEqual([]);
+    expect(results.summary.routeTargets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "home",
+          total: 1,
+          passedTarget: true,
+          enforced: false,
+        }),
+        expect.objectContaining({
+          key: "creator_dashboard",
+          total: 1,
+          passedTarget: true,
+          enforced: false,
+        }),
+        expect.objectContaining({
+          key: "subscriptions",
+          total: 1,
+          passedTarget: true,
+          enforced: false,
+        }),
+        expect.objectContaining({
+          key: "purchases",
+          total: 1,
+          passedTarget: true,
+          enforced: false,
+        }),
+        expect.objectContaining({
+          key: "settings",
+          total: 1,
+          passedTarget: true,
+          enforced: false,
+        }),
+      ])
     );
   });
 

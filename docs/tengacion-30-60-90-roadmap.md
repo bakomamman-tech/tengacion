@@ -354,6 +354,9 @@ Turn usage into compounding growth.
   - subscriptions
   - purchases
   - settings
+- Current implementation anchor:
+  - `backend/services/akusoEvalRunner.js` defines route-quality fixtures and target thresholds for these routes
+  - `backend/scripts/runAkusoEvals.js` reports route pass rates and fails full eval runs when an enforced route target regresses
 
 #### 5. Decide whether fine-tuning is justified
 
@@ -412,6 +415,9 @@ This workstream should run in parallel with product shipping.
   - denial quality
   - route-specific failure rate
 - gate releases when critical evals regress
+- current implementation anchor:
+  - route-quality summaries now include `byRoute`, `routeTargets`, and `failedRouteTargets`
+  - filtered eval runs keep route target diagnostics visible while full eval runs enforce the route gates
 
 ### Phase 4: Personalization and memory refinement
 

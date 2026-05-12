@@ -72,10 +72,14 @@ const results = runAkusoEvals({
 });
 const report = buildReport(results);
 const failed = results.filter((entry) => !entry.passed);
+const failedRouteTargets = Array.isArray(report.summary?.failedRouteTargets)
+  ? report.summary.failedRouteTargets
+  : [];
 const tableRows = results.map((entry) => ({
   id: entry.id,
   suite: entry.suite,
   severity: entry.severity,
+  route: entry.routeKey || "",
   passed: entry.passed,
   bucket: entry.categoryBucket,
   feature: entry.featureKey,
@@ -89,11 +93,14 @@ if (options.json) {
 } else {
   console.table(tableRows);
   console.log("Akuso eval summary:", report.summary);
+  if (failedRouteTargets.length) {
+    console.log("Akuso route quality target failures:", failedRouteTargets);
+  }
   if (writtenPath) {
     console.log(`Akuso eval report written to ${writtenPath}`);
   }
 }
 
-if (failed.length > 0) {
+if (failed.length > 0 || failedRouteTargets.length > 0) {
   process.exitCode = 1;
 }

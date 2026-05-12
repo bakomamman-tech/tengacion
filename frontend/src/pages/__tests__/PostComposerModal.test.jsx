@@ -81,6 +81,7 @@ vi.mock("../../socket", () => ({
 vi.mock("../../api", () => ({
   createPost: createPostMock,
   createPostWithUploadProgress: createPostWithUploadProgressMock,
+  getDiscoveryHome: vi.fn(),
   getFeed: vi.fn(),
   getProfile: vi.fn(),
   getUsers: getUsersMock,

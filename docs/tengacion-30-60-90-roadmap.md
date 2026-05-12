@@ -343,6 +343,9 @@ Turn usage into compounding growth.
   - news/feed personalization
 - Keep cold-start fallbacks deterministic
 - Add guardrails for diversity and overfitting
+- Current implementation anchor:
+  - the home feed now requests `/api/discovery/home` first, carries recommendation metadata through `PostCard`, and falls back to the legacy `/api/posts` feed if discovery is unavailable
+  - focused frontend coverage verifies both personalized feed rendering and fallback continuity
 
 #### 4. Move Akuso from reactive help to measured product intelligence
 

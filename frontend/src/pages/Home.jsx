@@ -22,6 +22,7 @@ import { connectSocket } from "../socket";
 import {
   createPost,
   createPostWithUploadProgress,
+  getDiscoveryHome,
   getFeed,
   getProfile,
   getUsers,
@@ -50,6 +51,7 @@ const MORE_OPTIONS = [
 
 const INITIAL_VISIBLE_POSTS = 10;
 const LOAD_MORE_INCREMENT = 8;
+const HOME_DISCOVERY_LIMIT = 40;
 const DISCOVERY_BATCH_DELAY_MS = 1400;
 const FEED_AUTO_REFRESH_MS = 5 * 60 * 1000;
 const HOME_NEWS_INTERVAL = Math.max(
@@ -1221,12 +1223,19 @@ export default function Home({ user }) {
     }
 
     try {
-      const payload = await getFeed();
+      let nextItems = [];
+
+      try {
+        const discoveryPayload = await getDiscoveryHome({ limit: HOME_DISCOVERY_LIMIT });
+        nextItems = normalizeDiscoveryFeedItems(discoveryPayload);
+      } catch {
+        const legacyPayload = await getFeed();
+        nextItems = normalizeLegacyFeedItems(legacyPayload);
+      }
+
       if (requestSequence !== feedRequestSequenceRef.current) {
         return;
       }
-
-      const nextItems = normalizeLegacyFeedItems(payload);
 
       if (requestSequence === feedRequestSequenceRef.current) {
         setFeedItems(nextItems);

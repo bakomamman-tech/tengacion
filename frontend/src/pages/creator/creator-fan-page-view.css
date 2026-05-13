@@ -604,6 +604,22 @@
   text-justify: inter-word;
 }
 
+.creator-fan-page__support-benefits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.creator-fan-page__support-benefits small {
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid rgba(47, 39, 24, 0.16);
+  border-radius: 8px;
+  color: rgba(47, 39, 24, 0.78);
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
 .creator-fan-page__support-card span {
   text-transform: uppercase;
   letter-spacing: 0.08em;

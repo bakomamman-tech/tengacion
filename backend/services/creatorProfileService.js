@@ -1,4 +1,9 @@
 const VALID_CREATOR_TYPES = ["music", "bookPublishing", "podcast"];
+const DEFAULT_SUBSCRIPTION_BENEFITS = [
+  "Unlimited streaming across this creator page",
+  "Premium downloads for unlocked releases",
+  "Direct support for the creator's next projects",
+];
 
 const trimCreatorText = (value = "", maxLength = 200) =>
   String(value || "").trim().slice(0, maxLength);
@@ -52,6 +57,19 @@ const normalizeGenres = (values = []) => {
       .map((entry) => trimCreatorText(entry, 60))
       .filter(Boolean)
   )].slice(0, 12);
+};
+
+const normalizeSubscriptionBenefits = (values = []) => {
+  const list = Array.isArray(values)
+    ? values
+    : String(values || "")
+      .split(/\r?\n|,/);
+
+  return [...new Set(
+    list
+      .map((entry) => trimCreatorText(entry, 120))
+      .filter(Boolean)
+  )].slice(0, 6);
 };
 
 const normalizeMusicProfile = (profile = {}) => ({
@@ -109,6 +127,7 @@ const creatorHasCategory = (profile, category, { allowLegacyFallback = true } = 
 };
 
 module.exports = {
+  DEFAULT_SUBSCRIPTION_BENEFITS,
   VALID_CREATOR_TYPES,
   trimCreatorText,
   normalizeCreatorType,
@@ -116,6 +135,7 @@ module.exports = {
   normalizeSocialHandles,
   normalizeSocialHandleValue,
   normalizeGenres,
+  normalizeSubscriptionBenefits,
   normalizeMusicProfile,
   normalizeBooksProfile,
   normalizePodcastsProfile,

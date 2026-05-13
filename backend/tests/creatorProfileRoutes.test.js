@@ -189,6 +189,51 @@ describe("creator profile routes", () => {
     expect(profile.creatorTypes).toEqual(["music", "bookPublishing", "podcast"]);
   });
 
+  test("PUT /api/creator/profile saves creator subscription packaging for fan-facing pages", async () => {
+    const { profile, token } = await createUserAndProfile({ creatorTypes: ["music"] });
+
+    const updateResponse = await request(app)
+      .put("/api/creator/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        ...buildProfileUpdatePayload(["music"]),
+        subscriptionPrice: 3500,
+        subscriptionPriceGlobal: 8.99,
+        subscriptionDescription: "Join the studio circle for private demos and monthly release notes.",
+        subscriptionBenefits: [
+          "Private demo listening sessions",
+          "Monthly production notes",
+          "Member-only download drops",
+        ],
+      })
+      .expect(200);
+
+    expect(updateResponse.body.creatorProfile).toMatchObject({
+      subscriptionPrice: 3500,
+      subscriptionPriceGlobal: 8.99,
+      subscriptionDescription: "Join the studio circle for private demos and monthly release notes.",
+      subscriptionBenefits: [
+        "Private demo listening sessions",
+        "Monthly production notes",
+        "Member-only download drops",
+      ],
+    });
+
+    const publicResponse = await request(app)
+      .get(`/api/creator/${profile._id}/public-profile`)
+      .expect(200);
+
+    expect(publicResponse.body.subscription).toMatchObject({
+      price: 3500,
+      description: "Join the studio circle for private demos and monthly release notes.",
+      benefits: [
+        "Private demo listening sessions",
+        "Monthly production notes",
+        "Member-only download drops",
+      ],
+    });
+  });
+
   test("GET /api/creator/profile returns the saved creator types even when content exists in another lane", async () => {
     const { profile, token } = await createUserAndProfile();
 

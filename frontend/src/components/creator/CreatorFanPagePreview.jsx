@@ -408,6 +408,13 @@ export default function CreatorFanPagePreview({
         <span>Unlock Exclusive Content</span>
         <h3>{formatCurrency(data.supportPrice)}/month</h3>
         <p>{data.supporterCopy}</p>
+        {Array.isArray(data.subscriptionBenefits) && data.subscriptionBenefits.length ? (
+          <div className="creator-fan-page__support-benefits">
+            {data.subscriptionBenefits.slice(0, 4).map((benefit) => (
+              <small key={benefit}>{benefit}</small>
+            ))}
+          </div>
+        ) : null}
         <button
           type="button"
           className="creator-fan-page__button creator-fan-page__button--accent"

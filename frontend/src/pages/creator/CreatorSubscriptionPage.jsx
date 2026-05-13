@@ -117,6 +117,19 @@ export default function CreatorSubscriptionPage() {
   const benefitCopy =
     subscription?.description
     || "Supporters unlock endless streams, premium downloads, and direct support access from the creator page.";
+  const benefitItems = useMemo(() => {
+    const configured = Array.isArray(subscription?.benefits)
+      ? subscription.benefits.map((entry) => String(entry || "").trim()).filter(Boolean)
+      : [];
+
+    return configured.length
+      ? configured
+      : [
+        "Unlimited streaming across this creator page",
+        "Premium downloads for unlocked releases",
+        "Direct support for the creator's next projects",
+      ];
+  }, [subscription?.benefits]);
   const accessUntilLabel = useMemo(() => {
     if (!subscription?.accessExpiresAt) {
       return "";
@@ -296,18 +309,12 @@ export default function CreatorSubscriptionPage() {
             </p>
 
             <div className="creator-subscription-benefits">
-              <div>
-                <strong>Unlimited streaming</strong>
-                <span>Play full tracks, albums, podcasts, and videos across this creator page.</span>
-              </div>
-              <div>
-                <strong>Premium downloads</strong>
-                <span>Download unlocked books, tracks, videos, and albums after payment is confirmed.</span>
-              </div>
-              <div>
-                <strong>Secure card checkout</strong>
-                <span>ATM card number, expiry, CVV, and OTP are collected inside encrypted Paystack checkout.</span>
-              </div>
+              {benefitItems.map((benefit) => (
+                <div key={benefit}>
+                  <strong>{benefit}</strong>
+                  <span>Included with this creator membership.</span>
+                </div>
+              ))}
             </div>
 
             <div className="creator-subscription-fields">

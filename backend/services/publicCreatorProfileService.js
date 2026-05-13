@@ -18,7 +18,11 @@ const {
   buildCreatorSubscribePath,
 } = require("./publicRouteService");
 const { resolveSubscriptionLifecycle } = require("./purchaseLifecycleService");
-const { normalizeCreatorTypes } = require("./creatorProfileService");
+const {
+  DEFAULT_SUBSCRIPTION_BENEFITS,
+  normalizeCreatorTypes,
+  normalizeSubscriptionBenefits,
+} = require("./creatorProfileService");
 
 const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
@@ -110,12 +114,16 @@ const buildSubscriptionPayload = ({
   ownerAccess = false,
   latestSubscription = null,
 } = {}) => {
+  const benefits = normalizeSubscriptionBenefits(profile?.subscriptionBenefits);
+  const description = toCleanString(profile?.subscriptionDescription)
+    || "Supporters unlock endless streams, premium downloads, and direct support access from the creator page.";
+
   if (ownerAccess) {
     return {
       price: numberOrZero(profile?.subscriptionPrice || 2000) || 2000,
       interval: "monthly",
-      description:
-        "Supporters unlock endless streams, premium downloads, and direct support access from the creator page.",
+      description,
+      benefits: benefits.length ? benefits : DEFAULT_SUBSCRIPTION_BENEFITS,
       purchaseId: "",
       isSubscribed: true,
       lifecycleStatus: "owner",
@@ -134,8 +142,8 @@ const buildSubscriptionPayload = ({
   return {
     price: numberOrZero(profile?.subscriptionPrice || 2000) || 2000,
     interval: "monthly",
-    description:
-      "Supporters unlock endless streams, premium downloads, and direct support access from the creator page.",
+    description,
+    benefits: benefits.length ? benefits : DEFAULT_SUBSCRIPTION_BENEFITS,
     purchaseId: String(latestSubscription?._id || ""),
     isSubscribed: lifecycle.isSubscribed,
     lifecycleStatus: lifecycle.lifecycleStatus,

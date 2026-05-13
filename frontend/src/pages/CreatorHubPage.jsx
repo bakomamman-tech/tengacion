@@ -296,6 +296,9 @@ export default function CreatorHubPage() {
     : [];
   const viewer = payload?.viewer || {};
   const subscription = payload?.subscription || {};
+  const subscriptionBenefits = Array.isArray(subscription?.benefits)
+    ? subscription.benefits.map((entry) => String(entry || "").trim()).filter(Boolean)
+    : [];
   const creatorName = creator?.displayName || "Creator";
 
   useEffect(() => {
@@ -1177,6 +1180,13 @@ export default function CreatorHubPage() {
               {subscription?.description
                 || "Supporters unlock endless streams, premium downloads, and direct support access from the creator page."}
             </p>
+            {subscriptionBenefits.length ? (
+              <div className="creator-public-tags">
+                {subscriptionBenefits.slice(0, 4).map((benefit) => (
+                  <span key={benefit}>{benefit}</span>
+                ))}
+              </div>
+            ) : null}
             {subscription?.isSubscribed ? (
               <div className="creator-public-panel__status">
                 <strong>Membership active</strong>

@@ -243,6 +243,8 @@ Help creators succeed faster and more often.
   - expired
 - Make subscription benefits explicit in creator and fan-facing surfaces
 - Add creator settings for subscription configuration
+- Current implementation anchor:
+  - creators can configure monthly subscription price, checkout description, and supporter benefits from profile settings; public creator pages and subscription checkout now render the saved membership packaging
 
 #### 3. Improve creator dashboard from status page to operating console
 

@@ -697,6 +697,9 @@ export function buildCreatorFanPageData({ creatorProfile, dashboard } = {}) {
       "A premium fan page where supporters can stream, preview, buy, and unlock every drop in one place.",
     lanes: lanes.length ? lanes : ["Music", "Podcasts", "Book Publishing"],
     supportPrice: Number(creatorProfile?.subscriptionPrice ?? 2000) || 2000,
+    subscriptionBenefits: Array.isArray(creatorProfile?.subscriptionBenefits)
+      ? creatorProfile.subscriptionBenefits.map((entry) => String(entry || "").trim()).filter(Boolean)
+      : [],
     tabs: CREATOR_FAN_PAGE_TABS,
     sidebarLinks: CREATOR_FAN_PAGE_TABS,
     sections,
@@ -796,6 +799,7 @@ export function buildCreatorFanPageData({ creatorProfile, dashboard } = {}) {
       },
     ],
     supporterCopy:
+      creatorProfile?.subscriptionDescription ||
       "Supporters unlock endless streams, premium downloads, and direct support access from the public page.",
     rewardsCopy:
       "Weekly rewards land here for top supporters and subscribers.",

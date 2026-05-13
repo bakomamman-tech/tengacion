@@ -37,6 +37,8 @@ describe("CreatorFanPagePreview", () => {
             _id: "507f1f77bcf86cd799439011",
             displayName: "Creator Example",
             creatorTypes: ["music", "bookPublishing", "podcast"],
+            subscriptionDescription: "Join the studio circle for demos and monthly notes.",
+            subscriptionBenefits: ["Private demos", "Monthly notes"],
             user: {
               _id: "creator-user-1",
               followersCount: 2048,
@@ -101,6 +103,8 @@ describe("CreatorFanPagePreview", () => {
     expect(screen.getAllByRole("button", { name: /follow/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: /donate/i }).length).toBeGreaterThan(0);
     expect(screen.getByText(/unlock exclusive content/i)).toBeInTheDocument();
+    expect(screen.getByText(/join the studio circle/i)).toBeInTheDocument();
+    expect(screen.getByText(/private demos/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /stream on spotify/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /stream on youtube/i })).toBeInTheDocument();
     expect(

@@ -7,6 +7,7 @@ const {
   normalizeMusicProfile,
   normalizePodcastsProfile,
   normalizeSocialHandles,
+  normalizeSubscriptionBenefits,
 } = require("../services/creatorProfileService");
 
 const SocialHandlesSchema = new mongoose.Schema(
@@ -230,6 +231,19 @@ const CreatorProfileSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    subscriptionDescription: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 360,
+    },
+    subscriptionBenefits: [
+      {
+        type: String,
+        trim: true,
+        maxlength: 120,
+      },
+    ],
   },
   {
     timestamps: true,
@@ -255,6 +269,8 @@ CreatorProfileSchema.pre("validate", function syncCreatorProfile(next) {
   if (!this.status) {
     this.status = "active";
   }
+  this.subscriptionDescription = String(this.subscriptionDescription || "").trim().slice(0, 360);
+  this.subscriptionBenefits = normalizeSubscriptionBenefits(this.subscriptionBenefits);
   if (typeof next === "function") {
     next();
   }

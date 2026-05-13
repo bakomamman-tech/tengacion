@@ -48,6 +48,10 @@ const settingsSchema = z.object({
   tagline: z.string().max(200, "Tagline cannot exceed 200 characters").optional(),
   bio: z.string().max(2000, "Bio cannot exceed 2000 characters").optional(),
   genresRaw: z.string().optional(),
+  subscriptionPrice: z.coerce.number().min(0, "Monthly price cannot be negative").optional(),
+  subscriptionPriceGlobal: z.coerce.number().min(0, "Global monthly price cannot be negative").optional(),
+  subscriptionDescription: z.string().max(360, "Membership description cannot exceed 360 characters").optional(),
+  subscriptionBenefitsRaw: z.string().max(800, "Membership benefits cannot exceed 800 characters").optional(),
   socialHandles: socialHandleSchema,
   creatorTypes: z.array(z.enum(["music", "bookPublishing", "podcast"])).min(1, "Select at least one creator category"),
   musicProfile: musicProfileSchema,
@@ -65,6 +69,10 @@ const DEFAULT_VALUES = {
   tagline: "",
   bio: "",
   genresRaw: "",
+  subscriptionPrice: 2000,
+  subscriptionPriceGlobal: 0,
+  subscriptionDescription: "",
+  subscriptionBenefitsRaw: "",
   creatorTypes: [],
   socialHandles: {
     facebook: "",
@@ -99,6 +107,12 @@ const toDefaultValues = (initialValues = {}) => ({
   ...DEFAULT_VALUES,
   ...initialValues,
   genresRaw: Array.isArray(initialValues?.genres) ? initialValues.genres.join(", ") : "",
+  subscriptionPrice: Number(initialValues?.subscriptionPrice ?? 2000) || 2000,
+  subscriptionPriceGlobal: Number(initialValues?.subscriptionPriceGlobal || 0),
+  subscriptionDescription: initialValues?.subscriptionDescription || "",
+  subscriptionBenefitsRaw: Array.isArray(initialValues?.subscriptionBenefits)
+    ? initialValues.subscriptionBenefits.join("\n")
+    : "",
   creatorTypes: normalizeCreatorLaneKeys(initialValues?.creatorTypes),
   socialHandles: {
     ...DEFAULT_VALUES.socialHandles,
@@ -125,6 +139,14 @@ const normalizeGenres = (value = "") =>
       .map((entry) => entry.trim())
       .filter(Boolean)
   )].slice(0, 12);
+
+const normalizeBenefits = (value = "") =>
+  [...new Set(
+    String(value || "")
+      .split(/\r?\n|,/)
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+  )].slice(0, 6);
 
 export default function CreatorAccountSettingsForm({
   initialValues = {},
@@ -179,6 +201,10 @@ export default function CreatorAccountSettingsForm({
     onSubmit({
       ...payload,
       genres: normalizeGenres(payload.genresRaw),
+      subscriptionPrice: Number(payload.subscriptionPrice || 0) || 2000,
+      subscriptionPriceGlobal: Number(payload.subscriptionPriceGlobal || 0) || 0,
+      subscriptionDescription: String(payload.subscriptionDescription || "").trim(),
+      subscriptionBenefits: normalizeBenefits(payload.subscriptionBenefitsRaw),
       acceptedTerms: Boolean(initialValues?.acceptedTerms),
       acceptedCopyrightDeclaration: Boolean(initialValues?.acceptedCopyrightDeclaration),
     });
@@ -253,6 +279,53 @@ export default function CreatorAccountSettingsForm({
           <label className="creator-form-full">
             <span>Creator bio</span>
             <textarea {...register("bio")} placeholder="Tell fans and review teams about your creator profile." />
+          </label>
+        </div>
+      </section>
+
+      <section className="creator-form-card">
+        <div className="creator-form-block-head">
+          <div>
+            <h3>Membership offer</h3>
+            <p>Set the monthly supporter price and benefits shown on your public subscription checkout.</p>
+          </div>
+        </div>
+
+        <div className="creator-form-grid">
+          <label>
+            <span>Monthly price (NGN)</span>
+            <input type="number" min="0" step="100" {...register("subscriptionPrice")} />
+            {errors.subscriptionPrice ? (
+              <em className="creator-field-error">{errors.subscriptionPrice.message}</em>
+            ) : null}
+          </label>
+          <label>
+            <span>Monthly price (USD)</span>
+            <input type="number" min="0" step="0.01" {...register("subscriptionPriceGlobal")} />
+            {errors.subscriptionPriceGlobal ? (
+              <em className="creator-field-error">{errors.subscriptionPriceGlobal.message}</em>
+            ) : null}
+          </label>
+          <label className="creator-form-full">
+            <span>Membership description</span>
+            <textarea
+              {...register("subscriptionDescription")}
+              placeholder="Tell fans what your monthly supporter pass unlocks."
+            />
+            {errors.subscriptionDescription ? (
+              <em className="creator-field-error">{errors.subscriptionDescription.message}</em>
+            ) : null}
+          </label>
+          <label className="creator-form-full">
+            <span>Membership benefits</span>
+            <textarea
+              {...register("subscriptionBenefitsRaw")}
+              placeholder={"Private demos\nMonthly notes\nMember-only downloads"}
+            />
+            <small className="creator-field-hint">Enter one benefit per line or separate benefits with commas.</small>
+            {errors.subscriptionBenefitsRaw ? (
+              <em className="creator-field-error">{errors.subscriptionBenefitsRaw.message}</em>
+            ) : null}
           </label>
         </div>
       </section>

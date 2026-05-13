@@ -28,6 +28,7 @@ const {
   normalizePodcastsProfile,
   normalizeCreatorTypes,
   normalizeSocialHandles,
+  normalizeSubscriptionBenefits,
   trimCreatorText,
 } = require("../services/creatorProfileService");
 
@@ -77,6 +78,15 @@ const buildSocialLinks = (socialHandles = {}) => {
 };
 
 const clampMoney = (value) => Math.max(0, Math.round(Number(value || 0)));
+const clampSubscriptionAmount = (value, fallback = 0) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return Math.max(0, Number(fallback || 0));
+  }
+  return Math.max(0, Math.round((parsed + Number.EPSILON) * 100) / 100);
+};
+
+const hasOwn = (object = {}, key = "") => Object.prototype.hasOwnProperty.call(object || {}, key);
 
 const serializeCreatorProfile = ({
   profile,
@@ -113,6 +123,9 @@ const serializeCreatorProfile = ({
     coverImageUrl: profile?.coverImageUrl || "",
     paymentModeDefault: profile?.paymentModeDefault || "NG",
     subscriptionPrice: Number(profile?.subscriptionPrice ?? 2000) || 2000,
+    subscriptionPriceGlobal: Number(profile?.subscriptionPriceGlobal || 0),
+    subscriptionDescription: profile?.subscriptionDescription || "",
+    subscriptionBenefits: normalizeSubscriptionBenefits(profile?.subscriptionBenefits),
     genres: normalizeGenres(profile?.genres),
     links: buildSocialLinks(profile?.socialHandles),
     contentCounts,
@@ -677,6 +690,10 @@ exports.registerCreator = asyncHandler(async (req, res) => {
   const musicProfile = normalizeMusicProfile(req.body?.musicProfile);
   const booksProfile = normalizeBooksProfile(req.body?.booksProfile);
   const podcastsProfile = normalizePodcastsProfile(req.body?.podcastsProfile);
+  const subscriptionPrice = clampSubscriptionAmount(req.body?.subscriptionPrice, 2000) || 2000;
+  const subscriptionPriceGlobal = clampSubscriptionAmount(req.body?.subscriptionPriceGlobal, 0);
+  const subscriptionDescription = trimCreatorText(req.body?.subscriptionDescription || "", 360);
+  const subscriptionBenefits = normalizeSubscriptionBenefits(req.body?.subscriptionBenefits);
   const existingProfile = await CreatorProfile.findOne({ userId: req.user.id }).lean();
 
   const profile = await CreatorProfile.findOneAndUpdate(
@@ -695,6 +712,10 @@ exports.registerCreator = asyncHandler(async (req, res) => {
         podcastsProfile,
         creatorTypes,
         coverImageUrl,
+        subscriptionPrice,
+        subscriptionPriceGlobal,
+        subscriptionDescription,
+        subscriptionBenefits,
         acceptedTerms,
         acceptedCopyrightDeclaration,
         onboardingCompleted: true,
@@ -761,6 +782,18 @@ exports.updateCreatorProfile = asyncHandler(async (req, res) => {
   const nextPodcastsProfile = normalizePodcastsProfile(
     req.body?.podcastsProfile || existing.podcastsProfile || {}
   );
+  const subscriptionPrice = hasOwn(req.body, "subscriptionPrice")
+    ? clampSubscriptionAmount(req.body?.subscriptionPrice, existing.subscriptionPrice ?? 2000)
+    : clampSubscriptionAmount(existing.subscriptionPrice ?? 2000, 2000);
+  const subscriptionPriceGlobal = hasOwn(req.body, "subscriptionPriceGlobal")
+    ? clampSubscriptionAmount(req.body?.subscriptionPriceGlobal, existing.subscriptionPriceGlobal || 0)
+    : clampSubscriptionAmount(existing.subscriptionPriceGlobal || 0, 0);
+  const subscriptionDescription = hasOwn(req.body, "subscriptionDescription")
+    ? trimCreatorText(req.body?.subscriptionDescription, 360)
+    : trimCreatorText(existing.subscriptionDescription || "", 360);
+  const subscriptionBenefits = hasOwn(req.body, "subscriptionBenefits")
+    ? normalizeSubscriptionBenefits(req.body?.subscriptionBenefits)
+    : normalizeSubscriptionBenefits(existing.subscriptionBenefits || []);
 
   if (!String(req.body?.fullName || existing.fullName || existing.displayName || "").trim()) {
     return res.status(400).json({ error: "Full Name is required" });
@@ -797,6 +830,10 @@ exports.updateCreatorProfile = asyncHandler(async (req, res) => {
         tagline: trimCreatorText(req.body?.tagline || existing.tagline || "", 200),
         bio: trimCreatorText(req.body?.bio || existing.bio || "", 2000),
         genres: nextGenres,
+        subscriptionPrice: subscriptionPrice || 2000,
+        subscriptionPriceGlobal,
+        subscriptionDescription,
+        subscriptionBenefits,
         acceptedTerms,
         acceptedCopyrightDeclaration,
         onboardingCompleted: acceptedTerms && acceptedCopyrightDeclaration && nextCreatorTypes.length > 0,

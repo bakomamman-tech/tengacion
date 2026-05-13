@@ -159,6 +159,8 @@ Make Tengacion economically real.
   - books
   - creator membership access
 - Add admin-visible audit trail for payment to entitlement transitions
+- Current implementation anchors:
+  - paid track, book, album, and video purchases are now covered by an idempotent entitlement reconciliation job that backfills missing entitlement records and logs grant events for admin audit trails
 
 #### 3. Define payout readiness, not full payout automation yet
 

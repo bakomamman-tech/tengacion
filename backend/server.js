@@ -169,6 +169,7 @@ if (process.env.NODE_ENV !== "test") {
   const { repairUserSecurityFields } = require("./scripts/repairUserSecurityFields");
   const { runBirthdayRecognition } = require("./services/birthdayService");
   const { startNewsSchedulers } = require("./services/newsSchedulerService");
+  const { startEntitlementMaintenance } = require("./services/entitlementService");
   const { startPaymentMaintenance } = require("./services/paymentMaintenanceService");
   const { startWalletMaintenance } = require("./services/walletService");
   const { cleanupUploadDir } = require("./services/uploadCleanupService");
@@ -742,6 +743,7 @@ if (process.env.NODE_ENV !== "test") {
         await repairUserSecurityFields({ logger: console });
         await runBirthdayRecognition({ logger: console });
         await startPaymentMaintenance({ logger: console });
+        await startEntitlementMaintenance({ logger: console });
         await startWalletMaintenance({ logger: console });
         await startNewsSchedulers({ logger: console });
       } catch (err) {

@@ -8,7 +8,7 @@ const {
   listLiveCandidates,
   listCreatorHubCandidates,
 } = require("../services/candidateService");
-const { rankCandidates } = require("../services/rankingService");
+const { rankCandidatesWithDiagnostics } = require("../services/rankingService");
 const { decorateRankedItems } = require("../services/explanationService");
 const { createRecommendationLog, trackDiscoveryEvents } = require("../services/discoveryEventService");
 
@@ -37,7 +37,7 @@ const serveDiscoverySurface = async ({ req, res, surface, candidateLoader, loade
   const creatorQualityMap = await loadCreatorQualityProfiles({
     creatorIds: collectCreatorIds(candidates),
   });
-  const ranked = rankCandidates({
+  const { items: ranked, meta: recommendationMeta } = rankCandidatesWithDiagnostics({
     surface,
     candidates,
     affinity,
@@ -51,12 +51,14 @@ const serveDiscoverySurface = async ({ req, res, surface, candidateLoader, loade
     candidates,
     rankedItems: items,
     affinity,
+    recommendationMeta,
   });
 
   return res.json({
     requestId,
     surface,
     items,
+    meta: recommendationMeta,
     nextCursor: null,
   });
 };

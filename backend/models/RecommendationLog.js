@@ -239,8 +239,8 @@ RecommendationLogSchema.pre("validate", function () {
   }
   if (this.responseMeta && typeof this.responseMeta === "object") {
     this.responseMeta = sanitizePlainObject(this.responseMeta, {
-      maxDepth: 1,
-      maxKeys: 8,
+      maxDepth: 2,
+      maxKeys: 12,
       maxStringLength: 200,
       maxArrayLength: 4,
     });

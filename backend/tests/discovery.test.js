@@ -237,6 +237,7 @@ const seedScenario = async () => {
     creatorOne,
     creatorTwo,
     creatorOneUser,
+    creatorTwoUser,
     trackOne,
     token: await issueSessionToken(viewer._id),
   };
@@ -295,6 +296,64 @@ describe("Discovery endpoints", () => {
     expect(hubResponse.body.surface).toBe("creator_hub");
     expect(hubResponse.body.items.length).toBeGreaterThan(0);
     expect(["track", "book", "album", "video"]).toContain(hubResponse.body.items[0].entityType);
+  });
+
+  test("GET /api/discovery/live filters blocked authors and logs eligibility metadata", async () => {
+    const { token, viewer, creatorTwoUser } = await seedScenario();
+    await User.updateOne(
+      { _id: viewer._id },
+      { $addToSet: { blockedUsers: creatorTwoUser._id } }
+    );
+
+    const response = await request(app)
+      .get("/api/discovery/live")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body.items.map((item) => item.payload.host.username)).not.toContain("creator_two");
+    expect(response.body.meta).toMatchObject({
+      candidateCount: 2,
+      eligibleCount: 1,
+      filteredCount: 1,
+      fallbackMode: "personalized",
+    });
+    expect(response.body.meta.filteredByReason.blocked_author).toBe(1);
+
+    const log = await RecommendationLog.findOne({ requestId: response.body.requestId }).lean();
+    expect(log.responseMeta).toMatchObject({
+      candidateCount: 2,
+      eligibleCount: 1,
+      filteredCount: 1,
+      fallbackMode: "personalized",
+    });
+    expect(log.responseMeta.filteredByReason.blocked_author).toBe(1);
+  });
+
+  test("GET /api/discovery/live marks deterministic cold-start fallback when no affinity signals exist", async () => {
+    await seedScenario();
+    const coldViewer = await User.create({
+      name: "Cold Fan",
+      username: "cold_fan",
+      email: "cold@test.com",
+      password: "Password123!",
+    });
+    const token = await issueSessionToken(coldViewer._id);
+
+    const response = await request(app)
+      .get("/api/discovery/live")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body.items.length).toBeGreaterThan(0);
+    expect(response.body.meta).toMatchObject({
+      candidateCount: 2,
+      eligibleCount: 2,
+      filteredCount: 0,
+      fallbackMode: "cold_start",
+    });
+
+    const log = await RecommendationLog.findOne({ requestId: response.body.requestId }).lean();
+    expect(log.responseMeta.fallbackMode).toBe("cold_start");
   });
 
   test("POST /api/discovery/events accepts feedback and appends it to the recommendation log", async () => {

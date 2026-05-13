@@ -347,6 +347,7 @@ Turn usage into compounding growth.
   - the home feed now requests `/api/discovery/home` first, carries recommendation metadata through `PostCard`, and falls back to the legacy `/api/posts` feed if discovery is unavailable
   - the live directory now requests `/api/discovery/live` first, shows ranked explanation labels, tracks `live_joined` clicks, and falls back to `/api/live/active` when discovery is unavailable
   - creator public pages now render a `Recommended for you` rail from `/api/discovery/creator-hub`, joining ranked IDs back to entitlement-aware content objects before preview, stream, download, or checkout actions
+  - discovery responses now include backend eligibility and fallback diagnostics, with blocked/muted/restricted authors filtered before ranking and the same metadata retained in recommendation logs for audit and analytics
   - focused frontend coverage verifies personalized home, live, and creator-hub rendering plus fallback continuity
 
 #### 4. Move Akuso from reactive help to measured product intelligence

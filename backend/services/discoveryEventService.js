@@ -110,12 +110,26 @@ const buildCreatorExposures = (rankedItemRefs = []) => {
   }));
 };
 
+const buildResponseMeta = ({ rankedItems = [], creatorIds = [], recommendationMeta = {} } = {}) => ({
+  itemCount: Array.isArray(rankedItems) ? rankedItems.length : 0,
+  creatorCount: Array.isArray(creatorIds) ? creatorIds.length : 0,
+  candidateCount: Number(recommendationMeta?.candidateCount || 0),
+  eligibleCount: Number(recommendationMeta?.eligibleCount || 0),
+  filteredCount: Number(recommendationMeta?.filteredCount || 0),
+  filteredByReason: recommendationMeta?.filteredByReason || {},
+  fallbackMode: normalizeText(recommendationMeta?.fallbackMode, 40),
+  rankedCount: Number(recommendationMeta?.rankedCount || 0),
+  diversityCap: Number(recommendationMeta?.diversityCap || 0),
+  limit: Number(recommendationMeta?.limit || 0),
+});
+
 const createRecommendationLog = async ({
   userId,
   surface,
   candidates = [],
   rankedItems = [],
   affinity,
+  recommendationMeta = {},
 }) => {
   const requestId = crypto.randomUUID();
   const rankedItemRefs = buildRankedItemRefs(rankedItems);
@@ -149,12 +163,13 @@ const createRecommendationLog = async ({
       maxStringLength: 280,
       maxArrayLength: 8,
     }),
-    responseMeta: sanitizePlainObject({
-      itemCount: Array.isArray(rankedItems) ? rankedItems.length : 0,
-      creatorCount: creatorIds.length,
-    }, {
-      maxDepth: 1,
-      maxKeys: 8,
+    responseMeta: sanitizePlainObject(buildResponseMeta({
+      rankedItems,
+      creatorIds,
+      recommendationMeta,
+    }), {
+      maxDepth: 2,
+      maxKeys: 12,
       maxStringLength: 120,
       maxArrayLength: 4,
     }),

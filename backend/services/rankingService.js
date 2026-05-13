@@ -10,6 +10,11 @@ const hoursSince = (value) => {
 
 const buildReason = (key, score) => ({ key, score: Number(score.toFixed(3)) });
 
+const incrementReasonCount = (counts, reason) => {
+  if (!reason) return;
+  counts[reason] = Number(counts[reason] || 0) + 1;
+};
+
 const getRelationshipBoost = (candidate, affinity) => {
   const sets = affinity?.relationshipSets || {};
   const authorUserId = normalizeId(candidate?.authorUserId);
@@ -113,15 +118,31 @@ const getTrustPenalty = (candidate, creatorQualityMap) => {
   };
 };
 
-const shouldFilterCandidate = (candidate, affinity) => {
+const getIneligibleReason = (candidate, affinity) => {
+  if (!candidate?.candidateId) {
+    return "missing_candidate_id";
+  }
+
   const sets = affinity?.relationshipSets || {};
   const authorUserId = normalizeId(candidate?.authorUserId);
-  return (
-    sets.blockedUserIds?.has(authorUserId)
-    || sets.mutedUserIds?.has(authorUserId)
-    || sets.restrictedUserIds?.has(authorUserId)
-  );
+  if (!authorUserId) {
+    return "";
+  }
+
+  if (sets.blockedUserIds?.has(authorUserId)) {
+    return "blocked_author";
+  }
+  if (sets.mutedUserIds?.has(authorUserId)) {
+    return "muted_author";
+  }
+  if (sets.restrictedUserIds?.has(authorUserId)) {
+    return "restricted_author";
+  }
+
+  return "";
 };
+
+const shouldFilterCandidate = (candidate, affinity) => Boolean(getIneligibleReason(candidate, affinity));
 
 const getExplorationBonus = (candidate, affinity) => {
   const sets = affinity?.relationshipSets || {};
@@ -168,13 +189,70 @@ const diversify = (items, perCreatorCap = 2) => {
   return [...diversified, ...overflow];
 };
 
-const rankCandidates = ({ surface, candidates = [], affinity, creatorQualityMap, limit = 20 } = {}) => {
+const hasPositiveAffinityEntries = (entries = [], keyName) =>
+  Array.isArray(entries)
+  && entries.some((entry) => entry?.[keyName] && Number(entry?.score || 0) > 0);
+
+const hasPositiveAffinitySignals = (affinity) => {
+  if (!affinity) return false;
+
+  const recentSignals = affinity.recentSignals || {};
+  const hasRecentActivity = ["events", "progressRows", "purchases", "messagePartners"]
+    .some((key) => Number(recentSignals?.[key] || 0) > 0);
+  const sets = affinity.relationshipSets || {};
+  const hasRelationshipActivity = [
+    "followingUserIds",
+    "friendUserIds",
+    "closeFriendUserIds",
+    "followingCreatorIds",
+    "friendCreatorIds",
+    "closeFriendCreatorIds",
+    "messagePartnerIds",
+    "purchaseCreatorIds",
+  ].some((key) => Number(sets?.[key]?.size || 0) > 0);
+
+  return (
+    hasRecentActivity
+    || hasRelationshipActivity
+    || hasPositiveAffinityEntries(affinity.topCreators, "creatorId")
+    || hasPositiveAffinityEntries(affinity.preferredContentTypes, "contentType")
+    || hasPositiveAffinityEntries(affinity.topTopics, "topic")
+  );
+};
+
+const getFallbackMode = ({ affinity, rankedCount }) => {
+  if (Number(rankedCount || 0) <= 0) {
+    return "empty";
+  }
+  return hasPositiveAffinitySignals(affinity) ? "personalized" : "cold_start";
+};
+
+const normalizeLimit = (limit) => Math.max(1, Math.min(50, Number(limit) || 20));
+
+const rankCandidatesWithDiagnostics = ({ surface, candidates = [], affinity, creatorQualityMap, limit = 20 } = {}) => {
+  const candidateList = Array.isArray(candidates) ? candidates : [];
+  const cappedLimit = normalizeLimit(limit);
+  const diversityCap = surface === "home" ? 3 : 2;
+  const meta = {
+    candidateCount: candidateList.length,
+    eligibleCount: 0,
+    filteredCount: 0,
+    filteredByReason: {},
+    rankedCount: 0,
+    fallbackMode: "empty",
+    diversityCap,
+    limit: cappedLimit,
+  };
   const ranked = [];
 
-  for (const candidate of Array.isArray(candidates) ? candidates : []) {
-    if (!candidate?.candidateId || shouldFilterCandidate(candidate, affinity)) {
+  for (const candidate of candidateList) {
+    const ineligibleReason = getIneligibleReason(candidate, affinity);
+    if (ineligibleReason) {
+      meta.filteredCount += 1;
+      incrementReasonCount(meta.filteredByReason, ineligibleReason);
       continue;
     }
+    meta.eligibleCount += 1;
 
     const relationship = getRelationshipBoost(candidate, affinity);
     const affinityBoost = getAffinityBoost(candidate, affinity);
@@ -209,12 +287,25 @@ const rankCandidates = ({ surface, candidates = [], affinity, creatorQualityMap,
     });
   }
 
-  return diversify(
+  const items = diversify(
     ranked.sort((a, b) => Number(b.score || 0) - Number(a.score || 0)),
-    surface === "home" ? 3 : 2
-  ).slice(0, Math.max(1, Math.min(50, Number(limit) || 20)));
+    diversityCap
+  ).slice(0, cappedLimit);
+
+  meta.rankedCount = items.length;
+  meta.fallbackMode = getFallbackMode({ affinity, rankedCount: items.length });
+
+  return { items, meta };
+};
+
+const rankCandidates = (options = {}) => {
+  const { items } = rankCandidatesWithDiagnostics(options);
+  return items;
 };
 
 module.exports = {
+  getIneligibleReason,
   rankCandidates,
+  rankCandidatesWithDiagnostics,
+  shouldFilterCandidate,
 };

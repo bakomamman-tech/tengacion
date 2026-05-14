@@ -123,6 +123,78 @@ const metricsPayload = {
       openAIFailureRate: 0.125,
     },
   },
+  operationsReview: {
+    summary: {
+      purchaseAttempts: 4,
+      failedPurchases: 1,
+      webhookFailures: 0,
+      openAssistantBacklog: 1,
+      negativeFeedbackRate: 0.25,
+      fallbackRate: 0.3,
+    },
+    lanes: [
+      {
+        key: "commerce_failures",
+        title: "Commerce failures",
+        severity: "medium",
+        summary: "Payment or webhook failures need product and operations triage before new commerce expansion.",
+        actionLabel: "Review transactions",
+        actionPath: "/admin/transactions",
+        metrics: [
+          { label: "Purchase attempts", value: 4 },
+          { label: "Failed purchases", value: 1 },
+          { label: "Purchase failure rate", value: 0.25, format: "percent" },
+        ],
+      },
+      {
+        key: "onboarding_dropoff",
+        title: "Onboarding drop-off",
+        severity: "low",
+        summary: "Creator onboarding completion is holding inside the selected window.",
+        actionLabel: "Open analytics",
+        actionPath: "/admin/analytics",
+        metrics: [
+          { label: "Creators started", value: 3 },
+          { label: "Completion rate", value: 0.8, format: "percent" },
+        ],
+      },
+      {
+        key: "akuso_quality",
+        title: "Akuso quality backlog",
+        severity: "low",
+        summary: "Assistant fallback, feedback, and review queue signals are under the action threshold.",
+        actionLabel: "Open reviews",
+        actionPath: "/admin/assistant/reviews",
+        metrics: [
+          { label: "Open review backlog", value: 1 },
+          { label: "Negative feedback rate", value: 0.25, format: "percent" },
+        ],
+      },
+    ],
+    actions: [
+      {
+        type: "product_fix",
+        title: "Audit failed checkouts and webhook failures",
+        priority: "medium",
+        owner: "Product and marketplace",
+        actionPath: "/admin/transactions",
+      },
+      {
+        type: "assistant_fix",
+        title: "Promote one reviewed Akuso answer into an eval fixture",
+        priority: "low",
+        owner: "AI and assistant",
+        actionPath: "/admin/assistant/metrics",
+      },
+      {
+        type: "instrumentation_fix",
+        title: "Confirm weekly review metrics match admin analytics snapshots",
+        priority: "low",
+        owner: "Infrastructure and backend",
+        actionPath: "/admin/analytics",
+      },
+    ],
+  },
 };
 
 const openReview = {
@@ -190,6 +262,9 @@ describe("AdminAssistantPage", () => {
 
     expect(await screen.findByText("Akuso prompt injection attempts detected")).toBeInTheDocument();
     expect(screen.getByText("Live Responses")).toBeInTheDocument();
+    expect(screen.getByText("Weekly Quality Loop")).toBeInTheDocument();
+    expect(screen.getByText("Commerce failures")).toBeInTheDocument();
+    expect(screen.getByText("Audit failed checkouts and webhook failures")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Reviews" }));
 

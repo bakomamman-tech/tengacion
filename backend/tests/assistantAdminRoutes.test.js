@@ -11,6 +11,10 @@ const assistantRoutes = require("../routes/assistant");
 const akusoRoutes = require("../routes/akuso");
 const adminRoutes = require("../routes/admin");
 const errorHandler = require("../../apps/api/middleware/errorHandler");
+const AnalyticsEvent = require("../models/AnalyticsEvent");
+const CreatorProfile = require("../models/CreatorProfile");
+const PaymentWebhookEvent = require("../models/PaymentWebhookEvent");
+const Purchase = require("../models/Purchase");
 const User = require("../models/User");
 const { resetAkusoMetrics } = require("../services/akusoMetricsService");
 
@@ -18,6 +22,7 @@ let mongod;
 let app;
 let viewerToken;
 let adminToken;
+let viewerId;
 
 const issueSessionToken = async (userId) => {
   const sessionId = new mongoose.Types.ObjectId().toString();
@@ -82,6 +87,7 @@ beforeEach(async () => {
     permissions: ["view_audit_logs"],
   });
 
+  viewerId = viewer._id;
   viewerToken = await issueSessionToken(viewer._id);
   adminToken = await issueSessionToken(admin._id);
   resetAkusoMetrics();
@@ -200,6 +206,62 @@ describe("Assistant admin review routes", () => {
   });
 
   it("returns Akuso admin metrics with historical analytics and live snapshot", async () => {
+    const creator = await CreatorProfile.create({
+      userId: new mongoose.Types.ObjectId(),
+      displayName: "Ops Creator",
+      fullName: "Ops Creator",
+      creatorTypes: ["music"],
+      acceptedTerms: true,
+      acceptedCopyrightDeclaration: true,
+      onboardingComplete: false,
+      onboardingCompleted: false,
+    });
+    const itemId = new mongoose.Types.ObjectId();
+
+    await Purchase.create([
+      {
+        userId: viewerId,
+        creatorId: creator._id,
+        itemType: "track",
+        itemId,
+        amount: 2500,
+        currency: "NGN",
+        status: "failed",
+        provider: "paystack",
+        providerRef: "ops-failed-1",
+      },
+      {
+        userId: viewerId,
+        creatorId: creator._id,
+        itemType: "track",
+        itemId: new mongoose.Types.ObjectId(),
+        amount: 1500,
+        currency: "NGN",
+        status: "paid",
+        provider: "paystack",
+        providerRef: "ops-paid-1",
+        paidAt: new Date(),
+      },
+    ]);
+    await PaymentWebhookEvent.create({
+      provider: "paystack",
+      eventId: "ops-webhook-failed-1",
+      eventType: "charge.success",
+      providerRef: "ops-failed-1",
+      purchaseId: null,
+      payloadHash: "ops-webhook-hash-1",
+      status: "failed",
+      errorMessage: "Purchase reconciliation failed",
+    });
+    await AnalyticsEvent.create({
+      type: "creator_onboarding_step_completed",
+      userId: viewerId,
+      actorRole: "artist",
+      targetType: "creator_profile",
+      contentType: "account_created",
+      metadata: { source: "test" },
+    });
+
     await request(app)
       .post("/api/akuso/chat")
       .send({
@@ -258,6 +320,24 @@ describe("Assistant admin review routes", () => {
           feedback: expect.objectContaining({
             notHelpful: 1,
           }),
+        }),
+        operationsReview: expect.objectContaining({
+          summary: expect.objectContaining({
+            purchaseAttempts: 2,
+            failedPurchases: 1,
+            webhookFailures: 1,
+          }),
+          lanes: expect.arrayContaining([
+            expect.objectContaining({
+              key: "commerce_failures",
+              severity: "high",
+            }),
+          ]),
+          actions: expect.arrayContaining([
+            expect.objectContaining({ type: "product_fix" }),
+            expect.objectContaining({ type: "assistant_fix" }),
+            expect.objectContaining({ type: "instrumentation_fix" }),
+          ]),
         }),
       })
     );

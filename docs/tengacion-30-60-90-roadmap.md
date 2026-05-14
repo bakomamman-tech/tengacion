@@ -288,6 +288,9 @@ Help creators succeed faster and more often.
   - one product fix
   - one assistant fix
   - one instrumentation fix
+- Current implementation anchor:
+  - `/api/admin/assistant/metrics` now returns an `operationsReview` payload that combines commerce failures, webhook outcomes, creator onboarding drop-off, assistant fallback rates, negative feedback, and unresolved Akuso review backlog
+  - the admin Akuso Assistant Ops page renders a weekly quality loop with product, assistant, and instrumentation action prompts tied to the relevant admin surfaces
 
 ### Exit criteria for day 60
 

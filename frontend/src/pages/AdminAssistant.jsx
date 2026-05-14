@@ -51,6 +51,9 @@ const percent = (value) => {
   return `${(safeValue * 100).toFixed(safeValue >= 0.1 ? 1 : 2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1")}%`;
 };
 
+const metricValue = (item = {}) =>
+  item?.format === "percent" ? percent(item.value) : number(item?.value);
+
 const titleCase = (value = "") =>
   String(value || "")
     .replace(/_/g, " ")
@@ -129,6 +132,92 @@ function InsightList({ title, meta = "", items = [] }) {
           </article>
         ))}
       </div>
+    </section>
+  );
+}
+
+function QualityOperationsReview({ review, onNavigate }) {
+  const lanes = Array.isArray(review?.lanes) ? review.lanes : [];
+  const actions = Array.isArray(review?.actions) ? review.actions : [];
+
+  if (!lanes.length && !actions.length) {
+    return null;
+  }
+
+  return (
+    <section className="adminx-panel adminx-panel--span-12">
+      <div className="adminx-panel-head">
+        <div>
+          <h2 className="adminx-panel-title">Weekly Quality Loop</h2>
+          <span className="adminx-section-meta">
+            Commerce, onboarding, and Akuso signals for the selected range.
+          </span>
+        </div>
+      </div>
+
+      {lanes.length ? (
+        <div
+          className="adminx-leaderboard"
+          style={{ marginTop: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}
+        >
+          {lanes.map((lane) => (
+            <article key={lane.key} className="adminx-leaderboard-item">
+              <div className="adminx-panel-head">
+                <div>
+                  <h3 className="adminx-panel-title">{lane.title}</h3>
+                  <span className="adminx-section-meta">{lane.summary}</span>
+                </div>
+                <span className={`adminx-badge ${badgeToneClass({ severity: lane.severity, type: "severity" })}`}>
+                  {titleCase(lane.severity || "low")}
+                </span>
+              </div>
+              <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+                {(Array.isArray(lane.metrics) ? lane.metrics : []).map((item) => (
+                  <div key={item.label} className="adminx-row" style={{ gap: 12 }}>
+                    <span className="adminx-muted">{item.label}</span>
+                    <strong>{metricValue(item)}</strong>
+                  </div>
+                ))}
+              </div>
+              {lane.actionLabel ? (
+                <button
+                  type="button"
+                  className="adminx-btn"
+                  onClick={() => onNavigate(lane.actionPath || VIEW_PATHS.metrics)}
+                  style={{ marginTop: 12 }}
+                >
+                  {lane.actionLabel}
+                </button>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      {actions.length ? (
+        <div className="adminx-leaderboard" style={{ marginTop: 16 }}>
+          {actions.map((action) => (
+            <button
+              key={`${action.type}:${action.title}`}
+              type="button"
+              className="adminx-leaderboard-item"
+              onClick={() => onNavigate(action.actionPath || VIEW_PATHS.metrics)}
+            >
+              <div className="adminx-row" style={{ alignItems: "flex-start", gap: 12 }}>
+                <div>
+                  <strong>{action.title}</strong>
+                  <div className="adminx-muted" style={{ marginTop: 6 }}>
+                    {titleCase(action.type || "action")} | {action.owner || "Operations"}
+                  </div>
+                </div>
+                <span className={`adminx-badge ${badgeToneClass({ severity: action.priority, type: "severity" })}`}>
+                  {titleCase(action.priority || "low")}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -540,6 +629,10 @@ export default function AdminAssistantPage({ user }) {
           {metricsLoading ? <div className="adminx-loading">Loading Akuso metrics...</div> : null}
           {!metricsLoading ? (
             <div className="adminx-analytics-grid">
+              <QualityOperationsReview
+                review={metricsPayload?.operationsReview}
+                onNavigate={navigate}
+              />
               <InsightList title="Live Snapshot" meta="Current in-process counters" items={liveInsights} />
               <InsightList title="Historical Window" meta="Aggregated analytics event history" items={historicalInsights} />
               <InsightList title="Policy Breakdown" meta="Safety buckets used by Akuso" items={policyBreakdown} />

@@ -2407,6 +2407,48 @@ textarea {
   text-decoration: none;
 }
 
+.creator-support-topic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.creator-support-topic {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.creator-support-topic.is-active {
+  border-color: rgba(49, 93, 67, 0.28);
+  background: rgba(241, 248, 241, 0.94);
+  box-shadow: inset 0 0 0 1px rgba(49, 93, 67, 0.1);
+}
+
+.creator-support-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.creator-support-form textarea {
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+  border-radius: 16px;
+  border: 1px solid rgba(95, 76, 33, 0.12);
+  background: rgba(255, 252, 247, 0.9);
+  color: var(--creator-text);
+  padding: 14px;
+  font: inherit;
+}
+
+.creator-support-form textarea:focus {
+  outline: 2px solid rgba(49, 93, 67, 0.2);
+  border-color: rgba(49, 93, 67, 0.32);
+}
+
 .creator-empty-card,
 .creator-page-loading,
 .creator-page-error,

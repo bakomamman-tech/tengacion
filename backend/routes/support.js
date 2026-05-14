@@ -33,6 +33,18 @@ const normalizeCategory = (value = "") => {
   return allowed.has(next) ? next : "general";
 };
 
+const normalizeSupportFlow = (value = "") => {
+  const allowed = new Set([
+    "creator_onboarding",
+    "creator_payouts",
+    "creator_uploads",
+    "creator_verification",
+    "creator_catalog",
+  ]);
+  const next = String(value || "").trim().toLowerCase();
+  return allowed.has(next) ? next : "";
+};
+
 const priorityWeights = {
   low: 100,
   medium: 200,
@@ -75,6 +87,7 @@ router.post("/complaints", auth, complaintLimiter, async (req, res) => {
     const category = normalizeCategory(req.body?.category || "general");
     const sourcePath = String(req.body?.sourcePath || "").trim().slice(0, 260);
     const sourceLabel = normalizeText(req.body?.sourceLabel || "", 120);
+    const supportFlow = normalizeSupportFlow(req.body?.supportFlow || "");
 
     if (!subject) {
       return res.status(400).json({ error: "Subject is required" });
@@ -96,6 +109,7 @@ router.post("/complaints", auth, complaintLimiter, async (req, res) => {
       status: "open",
       metadata: {
         userAgent: String(req.headers["user-agent"] || "").slice(0, 220),
+        supportFlow,
       },
     });
 
@@ -124,6 +138,7 @@ router.post("/complaints", auth, complaintLimiter, async (req, res) => {
         category,
         priority,
         sourcePath,
+        supportFlow,
       },
     }).catch(() => null);
 

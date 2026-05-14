@@ -10,6 +10,7 @@ require("../../apps/api/config/env");
 const app = require("../app");
 const User = require("../models/User");
 const AdminComplaint = require("../models/AdminComplaint");
+const AnalyticsEvent = require("../models/AnalyticsEvent");
 const Notification = require("../models/Notification");
 const { signAccessToken } = require("../services/authTokens");
 
@@ -159,5 +160,46 @@ describe("admin complaint inbox flow", () => {
     }).lean();
     expect(reporterNotification).toBeTruthy();
     expect(String(reporterNotification.text || "")).toContain("marked resolved");
+  });
+
+  test("stores creator support flow metadata for blocked creator escalations", async () => {
+    const submitResponse = await request(app)
+      .post("/api/support/complaints")
+      .set("Authorization", `Bearer ${userToken}`)
+      .send({
+        subject: "Creator payout readiness blocked",
+        details: "The payout page still says profile incomplete after I added bank details.",
+        category: "account",
+        sourcePath: "/creator/payouts",
+        sourceLabel: "Creator payouts",
+        supportFlow: "creator_payouts",
+      })
+      .expect(201);
+
+    const storedComplaint = await AdminComplaint.findById(submitResponse.body.complaint._id).lean();
+    expect(storedComplaint).toEqual(
+      expect.objectContaining({
+        subject: "Creator payout readiness blocked",
+        category: "account",
+        priority: "high",
+        metadata: expect.objectContaining({
+          supportFlow: "creator_payouts",
+        }),
+      })
+    );
+
+    const analyticsEvent = await AnalyticsEvent.findOne({
+      type: "support_complaint_submitted",
+      targetId: storedComplaint._id,
+    }).lean();
+    expect(analyticsEvent).toEqual(
+      expect.objectContaining({
+        targetType: "support_complaint",
+        metadata: expect.objectContaining({
+          supportFlow: "creator_payouts",
+          sourcePath: "/creator/payouts",
+        }),
+      })
+    );
   });
 });

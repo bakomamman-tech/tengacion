@@ -15,6 +15,7 @@ const {
   getCreatorDiscoveryInsights,
   getCreatorPrivateContent,
   getCreatorProfile,
+  getCreatorSubscriptionAnalytics,
   registerCreator,
   updatePodcastSeries,
   updateCreatorProfile,
@@ -31,6 +32,7 @@ router.put("/profile", auth, updateCreatorProfile);
 router.get("/dashboard", auth, getCreatorDashboard);
 router.get("/discovery/insights", auth, getCreatorDiscoveryInsights);
 router.get("/discovery/content/:itemType/:itemId", auth, getCreatorDiscoveryContentInsights);
+router.get("/subscriptions/analytics", auth, getCreatorSubscriptionAnalytics);
 router.get("/me/content-summary", auth, getCreatorContentSummary);
 router.get("/me/content", auth, getCreatorPrivateContent);
 router.put("/podcasts/series", auth, creatorAuth, updatePodcastSeries);

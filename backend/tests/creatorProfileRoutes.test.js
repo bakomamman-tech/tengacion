@@ -134,6 +134,8 @@ const fetchCreatorProfile = (token) =>
 const toDataUrl = (contentType, content) =>
   `data:${contentType};base64,${Buffer.from(String(content || ""), "utf8").toString("base64")}`;
 
+const daysFromNow = (days) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
 describe("creator profile routes", () => {
   beforeAll(async () => {
     mongod = await MongoMemoryServer.create({
@@ -380,6 +382,135 @@ describe("creator profile routes", () => {
     expect(response.body.operatingConsole.metadataFixes[0]).toMatchObject({
       title: "Console Single",
       missingFields: expect.arrayContaining(["Description", "Cover image", "Paid preview", "Genre"]),
+    });
+  });
+
+  test("GET /api/creator/subscriptions/analytics reports churn, retention, and cohort revenue", async () => {
+    const { profile, token } = await createUserAndProfile({ creatorTypes: ["music"] });
+    const { user: retainedFan } = await createViewer({
+      name: "Retained Fan",
+      username: "retained_fan",
+      email: "retained-fan@example.com",
+    });
+    const { user: churnedFan } = await createViewer({
+      name: "Churned Fan",
+      username: "churned_fan",
+      email: "churned-fan@example.com",
+    });
+    const { user: newFan } = await createViewer({
+      name: "New Member",
+      username: "new_member",
+      email: "new-member@example.com",
+    });
+
+    await Purchase.create([
+      {
+        userId: retainedFan._id,
+        creatorId: profile._id,
+        itemType: "subscription",
+        itemId: profile._id,
+        amount: 2000,
+        priceNGN: 2000,
+        currency: "NGN",
+        status: "paid",
+        provider: "paystack",
+        providerRef: "subscription_retained_initial",
+        billingInterval: "monthly",
+        paidAt: daysFromNow(-35),
+        accessExpiresAt: daysFromNow(20),
+      },
+      {
+        userId: retainedFan._id,
+        creatorId: profile._id,
+        itemType: "subscription",
+        itemId: profile._id,
+        amount: 2000,
+        priceNGN: 2000,
+        currency: "NGN",
+        status: "paid",
+        provider: "paystack",
+        providerRef: "subscription_retained_renewal",
+        billingInterval: "monthly",
+        paidAt: daysFromNow(-2),
+        accessExpiresAt: daysFromNow(50),
+      },
+      {
+        userId: churnedFan._id,
+        creatorId: profile._id,
+        itemType: "subscription",
+        itemId: profile._id,
+        amount: 2000,
+        priceNGN: 2000,
+        currency: "NGN",
+        status: "paid",
+        provider: "paystack",
+        providerRef: "subscription_churned_initial",
+        billingInterval: "monthly",
+        paidAt: daysFromNow(-35),
+        accessExpiresAt: daysFromNow(-1),
+      },
+      {
+        userId: newFan._id,
+        creatorId: profile._id,
+        itemType: "subscription",
+        itemId: profile._id,
+        amount: 2000,
+        priceNGN: 2000,
+        currency: "NGN",
+        status: "paid",
+        provider: "paystack",
+        providerRef: "subscription_new_cancel_scheduled",
+        billingInterval: "monthly",
+        paidAt: daysFromNow(-3),
+        accessExpiresAt: daysFromNow(27),
+        cancelAtPeriodEnd: true,
+        canceledAt: daysFromNow(-1),
+      },
+    ]);
+
+    const response = await request(app)
+      .get("/api/creator/subscriptions/analytics?range=30d")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body.summary).toMatchObject({
+      totalSubscribers: 3,
+      activeSubscribers: 2,
+      startingSubscribers: 2,
+      newSubscribers: 1,
+      retainedSubscribers: 1,
+      churnedSubscribers: 1,
+      cancelScheduledSubscribers: 1,
+      expiredSubscribers: 1,
+      renewalPurchases: 1,
+      revenue: 4000,
+      creatorRevenue: 1600,
+      retentionRate: 50,
+      churnRate: 50,
+      repeatSubscribers: 1,
+      repeatSubscriberRate: 33.3,
+    });
+    expect(response.body.cohortRevenue.length).toBeGreaterThan(0);
+    expect(response.body.repeatBuyerIndicators).toMatchObject({
+      repeatSubscribers: 1,
+      renewalPurchases: 1,
+    });
+    expect(response.body.actionPrompts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "subscription_churn_attention" }),
+        expect.objectContaining({ key: "subscription_new_member_momentum" }),
+      ])
+    );
+
+    const summaryResponse = await request(app)
+      .get("/api/creator/me/content-summary")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(summaryResponse.body.subscriptionAnalytics.summary).toMatchObject({
+      activeSubscribers: 2,
+      churnedSubscribers: 1,
+      revenue: 4000,
     });
   });
 

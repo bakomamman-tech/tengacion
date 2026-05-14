@@ -341,6 +341,7 @@ Turn usage into compounding growth.
   - recommendation logs now retain creator exposure counts, best ranks, and ranked item refs for aggregate creator-facing analysis
   - `GET /api/creator/discovery/insights` returns 7/30/90-day recommendation impressions, clicks, follows, negative feedback, surface breakdowns, and action prompts
   - `GET /api/creator/discovery/content/:itemType/:itemId` returns item-level recommendation impressions, clicks, preview/stream/download actions, purchases, revenue, conversion rates, surface/rank breakdowns, and action prompts for creator-owned content
+  - `GET /api/creator/subscriptions/analytics` returns subscription churn, retention, renewal, repeat-subscriber, cohort revenue, recent subscriber, and action-prompt analytics; the creator content summary includes the same 30-day payload for dashboard use
   - the creator dashboard renders discovery insights beside the operating console so creators can see how recommendation surfaces are introducing fans to their catalog
 
 #### 3. Ship first-pass personalized recommendations

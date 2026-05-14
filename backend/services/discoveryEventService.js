@@ -121,6 +121,9 @@ const buildResponseMeta = ({ rankedItems = [], creatorIds = [], recommendationMe
   rankedCount: Number(recommendationMeta?.rankedCount || 0),
   diversityCap: Number(recommendationMeta?.diversityCap || 0),
   limit: Number(recommendationMeta?.limit || 0),
+  featuredCollectionActive: Boolean(recommendationMeta?.featuredCollectionActive),
+  featuredCandidateCount: Number(recommendationMeta?.featuredCandidateCount || 0),
+  featuredBoostedCount: Number(recommendationMeta?.featuredBoostedCount || 0),
 });
 
 const createRecommendationLog = async ({
@@ -169,7 +172,7 @@ const createRecommendationLog = async ({
       recommendationMeta,
     }), {
       maxDepth: 2,
-      maxKeys: 12,
+      maxKeys: 16,
       maxStringLength: 120,
       maxArrayLength: 4,
     }),

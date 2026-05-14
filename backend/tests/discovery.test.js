@@ -356,6 +356,53 @@ describe("Discovery endpoints", () => {
     expect(log.responseMeta.fallbackMode).toBe("cold_start");
   });
 
+  test("GET /api/discovery/creators boosts featured collections for cold-start viewers", async () => {
+    await seedScenario();
+    const coldViewer = await User.create({
+      name: "Cold Fan",
+      username: "cold_featured_fan",
+      email: "cold-featured@test.com",
+      password: "Password123!",
+    });
+    const token = await issueSessionToken(coldViewer._id);
+    const previousFeaturedUsernames = process.env.DISCOVERY_FEATURED_USERNAMES;
+
+    process.env.DISCOVERY_FEATURED_USERNAMES = "creator_two";
+
+    try {
+      const response = await request(app)
+        .get("/api/discovery/creators")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.meta).toMatchObject({
+        fallbackMode: "cold_start",
+        featuredCollectionActive: true,
+        featuredCandidateCount: 1,
+        featuredBoostedCount: 1,
+      });
+      expect(response.body.items[0]).toMatchObject({
+        entityType: "creator",
+        reason: "featured_collection",
+        reasonLabel: "Featured by Tengacion for new discovery",
+      });
+      expect(response.body.items[0].payload.username).toBe("creator_two");
+
+      const log = await RecommendationLog.findOne({ requestId: response.body.requestId }).lean();
+      expect(log.responseMeta).toMatchObject({
+        featuredCollectionActive: true,
+        featuredCandidateCount: 1,
+        featuredBoostedCount: 1,
+      });
+    } finally {
+      if (previousFeaturedUsernames === undefined) {
+        delete process.env.DISCOVERY_FEATURED_USERNAMES;
+      } else {
+        process.env.DISCOVERY_FEATURED_USERNAMES = previousFeaturedUsernames;
+      }
+    }
+  });
+
   test("POST /api/discovery/events accepts feedback and appends it to the recommendation log", async () => {
     const { token, trackOne, creatorOne } = await seedScenario();
 

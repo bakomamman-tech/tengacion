@@ -490,6 +490,142 @@ describe("creator profile routes", () => {
     expect(endpointResponse.body.summary.impressions).toBe(1);
   });
 
+  test("GET /api/creator/discovery/content/:itemType/:itemId returns item-level conversion insights", async () => {
+    const { profile, token } = await createUserAndProfile({ creatorTypes: ["music"] });
+    const { user: viewer } = await createViewer({
+      name: "Content Insights Viewer",
+      username: "content_insights_viewer",
+      email: "content-insights-viewer@example.com",
+    });
+    const track = await Track.create({
+      creatorId: profile._id,
+      title: "Conversion Single",
+      description: "Track with recommendation conversion data",
+      price: 1800,
+      audioUrl: "https://example.com/conversion-single.mp3",
+      previewUrl: "https://example.com/conversion-single-preview.mp3",
+      kind: "music",
+      creatorCategory: "music",
+      contentType: "track",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+    const entityKey = `track:${track._id}`;
+
+    await RecommendationLog.create({
+      requestId: "content-discovery-insights-001",
+      userId: viewer._id,
+      surface: "creator_hub",
+      candidateIds: [entityKey],
+      rankedIds: [entityKey],
+      creatorIds: [profile._id],
+      rankedItemRefs: [
+        {
+          entityKey,
+          entityType: "track",
+          entityId: track._id.toString(),
+          creatorId: profile._id,
+          rank: 2,
+          reason: "popular_now",
+        },
+      ],
+      creatorExposures: [
+        {
+          creatorId: profile._id,
+          count: 1,
+          highestRank: 2,
+          entityTypes: ["track"],
+        },
+      ],
+      servedAt: new Date(),
+    });
+
+    await AnalyticsEvent.create([
+      {
+        type: "recommendation_clicked",
+        userId: viewer._id,
+        targetId: track._id.toString(),
+        targetType: "track",
+        contentType: "creator_hub",
+        metadata: {
+          creatorId: profile._id.toString(),
+          surface: "creator_hub",
+        },
+      },
+      {
+        type: "track_preview_started",
+        userId: viewer._id,
+        targetId: track._id.toString(),
+        targetType: "track",
+        contentType: "creator_hub",
+        metadata: {
+          creatorId: profile._id.toString(),
+          surface: "creator_hub",
+        },
+      },
+    ]);
+
+    await Purchase.create({
+      userId: viewer._id,
+      creatorId: profile._id,
+      itemType: "track",
+      itemId: track._id,
+      amount: 1800,
+      priceNGN: 1800,
+      currency: "NGN",
+      status: "paid",
+      provider: "paystack",
+      providerRef: "content_insights_purchase_001",
+      paidAt: new Date(),
+    });
+
+    const response = await request(app)
+      .get(`/api/creator/discovery/content/track/${track._id}?range=7d`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body.filters.range).toBe("7d");
+    expect(response.body.item).toMatchObject({
+      id: track._id.toString(),
+      itemType: "track",
+      title: "Conversion Single",
+      price: 1800,
+    });
+    expect(response.body.summary).toMatchObject({
+      impressions: 1,
+      recommendationRequests: 1,
+      clicks: 1,
+      previews: 1,
+      purchases: 1,
+      revenue: 1800,
+      uniqueBuyers: 1,
+      clickThroughRate: 100,
+      purchaseConversionRate: 100,
+      clickToPurchaseRate: 100,
+    });
+    expect(response.body.surfaceBreakdown[0]).toMatchObject({
+      surface: "creator_hub",
+      impressions: 1,
+      clicks: 1,
+      previews: 1,
+      averageRank: 2,
+      bestRank: 2,
+    });
+    expect(response.body.reasonBreakdown[0]).toMatchObject({
+      reason: "popular_now",
+      impressions: 1,
+      averageRank: 2,
+    });
+    expect(response.body.actionPrompts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "content_purchase_momentum",
+          tone: "success",
+        }),
+      ])
+    );
+  });
+
   test("GET /api/creator/:creatorId/public-profile returns grouped published creator content", async () => {
     const { profile } = await createUserAndProfile({
       creatorTypes: ["music", "bookPublishing", "podcast"],

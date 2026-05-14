@@ -1,4 +1,8 @@
 const { normalizeId } = require("./affinityService");
+const {
+  getFeaturedDiscoveryCollections,
+  getFeaturedDiscoverySignals,
+} = require("../config/discoveryCollections");
 
 const log1p = (value) => Math.log(1 + Math.max(0, Number(value) || 0));
 
@@ -166,6 +170,24 @@ const getExplorationBonus = (candidate, affinity) => {
   };
 };
 
+const getFeaturedCollectionBoost = (candidate, { isColdStart = false } = {}) => {
+  const signals = getFeaturedDiscoverySignals(candidate);
+  if (!signals.matched || !isColdStart) {
+    return {
+      matched: signals.matched,
+      score: 0,
+      reasons: [],
+    };
+  }
+
+  const score = Math.min(16, Math.max(0, Number(signals.boost || 0)));
+  return {
+    matched: true,
+    score,
+    reasons: score > 0 ? [buildReason("featured_collection", score)] : [],
+  };
+};
+
 const diversify = (items, perCreatorCap = 2) => {
   const creatorCounts = new Map();
   const diversified = [];
@@ -233,6 +255,8 @@ const rankCandidatesWithDiagnostics = ({ surface, candidates = [], affinity, cre
   const candidateList = Array.isArray(candidates) ? candidates : [];
   const cappedLimit = normalizeLimit(limit);
   const diversityCap = surface === "home" ? 3 : 2;
+  const isColdStart = !hasPositiveAffinitySignals(affinity);
+  const featuredCollections = getFeaturedDiscoveryCollections();
   const meta = {
     candidateCount: candidateList.length,
     eligibleCount: 0,
@@ -242,6 +266,9 @@ const rankCandidatesWithDiagnostics = ({ surface, candidates = [], affinity, cre
     fallbackMode: "empty",
     diversityCap,
     limit: cappedLimit,
+    featuredCollectionActive: featuredCollections.active,
+    featuredCandidateCount: 0,
+    featuredBoostedCount: 0,
   };
   const ranked = [];
 
@@ -259,17 +286,26 @@ const rankCandidatesWithDiagnostics = ({ surface, candidates = [], affinity, cre
     const freshness = getFreshnessBoost(candidate, surface);
     const popularity = getPopularityBoost(candidate, surface);
     const exploration = getExplorationBonus(candidate, affinity);
+    const featuredCollection = getFeaturedCollectionBoost(candidate, { isColdStart });
     const trustPenalty = getTrustPenalty(candidate, creatorQualityMap);
     const viewerFollowsCreator = Boolean(
       normalizeId(candidate?.creatorId)
       && affinity?.relationshipSets?.followingCreatorIds?.has(normalizeId(candidate?.creatorId))
     );
 
+    if (featuredCollection.matched) {
+      meta.featuredCandidateCount += 1;
+    }
+    if (featuredCollection.score > 0) {
+      meta.featuredBoostedCount += 1;
+    }
+
     const score = relationship.score
       + affinityBoost.score
       + freshness.score
       + popularity.score
       + exploration.score
+      + featuredCollection.score
       - trustPenalty.score;
 
     ranked.push({
@@ -282,6 +318,7 @@ const rankCandidatesWithDiagnostics = ({ surface, candidates = [], affinity, cre
         ...freshness.reasons,
         ...popularity.reasons,
         ...exploration.reasons,
+        ...featuredCollection.reasons,
         ...trustPenalty.reasons.map((entry) => ({ ...entry, penalty: true })),
       ],
     });

@@ -11,6 +11,7 @@ const {
   buildCreatorDashboardConsole,
 } = require("../services/creatorDashboardConsoleService");
 const {
+  buildCreatorDiscoveryContentInsightsForUser,
   buildCreatorDiscoveryInsights,
   buildCreatorDiscoveryInsightsForUser,
 } = require("../services/creatorDiscoveryInsightsService");
@@ -894,6 +895,20 @@ exports.getCreatorDiscoveryInsights = asyncHandler(async (req, res) => {
   applyNoStore(res);
   const insights = await buildCreatorDiscoveryInsightsForUser({
     userId: req.user.id,
+    range: req.query?.range || "30d",
+    startDate: req.query?.startDate,
+    endDate: req.query?.endDate,
+  });
+
+  return res.json(insights);
+});
+
+exports.getCreatorDiscoveryContentInsights = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const insights = await buildCreatorDiscoveryContentInsightsForUser({
+    userId: req.user.id,
+    itemType: req.params?.itemType,
+    itemId: req.params?.itemId,
     range: req.query?.range || "30d",
     startDate: req.query?.startDate,
     endDate: req.query?.endDate,

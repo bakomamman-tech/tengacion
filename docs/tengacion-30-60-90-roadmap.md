@@ -321,6 +321,9 @@ Turn usage into compounding growth.
   - conversion indicators
   - diversity controls
 - Add editorial or featured collections for cold-start support
+- Current implementation anchor:
+  - discovery ranking now supports configurable featured collections for cold-start users through `DISCOVERY_FEATURED_CREATOR_IDS`, `DISCOVERY_FEATURED_AUTHOR_USER_IDS`, `DISCOVERY_FEATURED_USERNAMES`, `DISCOVERY_FEATURED_TOPICS`, and `DISCOVERY_FEATURED_CONTENT_TYPES`
+  - featured matches receive a bounded cold-start boost, return a `featured_collection` explanation label, and persist featured collection diagnostics into recommendation logs for audit and analytics
 
 #### 2. Launch meaningful creator analytics
 
@@ -337,6 +340,7 @@ Turn usage into compounding growth.
 - Current implementation anchor:
   - recommendation logs now retain creator exposure counts, best ranks, and ranked item refs for aggregate creator-facing analysis
   - `GET /api/creator/discovery/insights` returns 7/30/90-day recommendation impressions, clicks, follows, negative feedback, surface breakdowns, and action prompts
+  - `GET /api/creator/discovery/content/:itemType/:itemId` returns item-level recommendation impressions, clicks, preview/stream/download actions, purchases, revenue, conversion rates, surface/rank breakdowns, and action prompts for creator-owned content
   - the creator dashboard renders discovery insights beside the operating console so creators can see how recommendation surfaces are introducing fans to their catalog
 
 #### 3. Ship first-pass personalized recommendations

@@ -272,6 +272,23 @@ describe("Assistant routes", () => {
     );
   });
 
+  it("opens marketplace orders from monetization grounding", async () => {
+    const response = await request(app)
+      .post("/api/assistant/chat")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ message: "Open marketplace orders" })
+      .expect(200);
+
+    expect(response.body.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "navigate",
+          target: "/marketplace/orders",
+        }),
+      ])
+    );
+  });
+
   it("returns quick links for a general capability question", async () => {
     const response = await request(app)
       .post("/api/assistant/chat")

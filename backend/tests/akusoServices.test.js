@@ -13,6 +13,13 @@ const {
 } = require("../services/akusoClassifierService");
 const { buildAkusoContext } = require("../services/akusoContextBuilder");
 const {
+  loadAkusoMemory,
+  redactLowRiskMemoryText,
+  resolveAkusoMemoryRoleScope,
+  sanitizeAkusoState,
+  saveAkusoMemory,
+} = require("../services/akusoMemoryService");
+const {
   EVAL_SCENARIOS,
   ROUTE_QUALITY_TARGETS,
   runAkusoEvals,
@@ -167,6 +174,42 @@ describe("Akuso services", () => {
         featureKey: "creator_subscription",
       })
     );
+
+    expect(findFeatureByRoute(`/creators/${creatorProfileId}/subscribe`)).toEqual(
+      expect.objectContaining({
+        featureKey: "creator_subscription",
+      })
+    );
+
+    expect(findFeatureByRoute(`/creators/${creatorProfileId}/music`)).toEqual(
+      expect.objectContaining({
+        featureKey: "public_creator_profile",
+      })
+    );
+
+    expect(findFeatureByRoute("/tracks/track-123")).toEqual(
+      expect.objectContaining({
+        featureKey: "creator_content_detail",
+      })
+    );
+
+    expect(findFeatureByRoute("/payment/verify?reference=pay_123")).toEqual(
+      expect.objectContaining({
+        featureKey: "payment_status",
+      })
+    );
+
+    expect(findFeatureByRoute("/marketplace/orders")).toEqual(
+      expect.objectContaining({
+        featureKey: "marketplace_orders",
+      })
+    );
+
+    expect(findFeatureByIntent("open marketplace payouts")).toEqual(
+      expect.objectContaining({
+        featureKey: "marketplace_payouts",
+      })
+    );
   });
 
   it("returns grounded hints for live and creator membership flows", () => {
@@ -195,6 +238,14 @@ describe("Akuso services", () => {
         limit: 20,
       })
     ).toEqual(expect.arrayContaining(["How do I withdraw earnings?"]));
+
+    expect(
+      getAkusoHints({
+        currentRoute: "/marketplace/payouts",
+        user: { id: userId },
+        limit: 20,
+      })
+    ).toEqual(expect.arrayContaining(["How to review marketplace payouts"]));
   });
 
   it("uses current page titles to keep hints relevant even before route matching settles", () => {
@@ -504,6 +555,91 @@ describe("Akuso services", () => {
       })
     );
     expect(JSON.stringify(context)).not.toMatch(/token|secret|password/i);
+  });
+
+  it("keeps Akuso memory low-risk, bounded, and role-aware", async () => {
+    expect(resolveAkusoMemoryRoleScope({ id: userId, isCreator: true })).toBe("creator");
+    expect(resolveAkusoMemoryRoleScope({ id: userId, role: "admin" })).toBe("admin");
+    expect(redactLowRiskMemoryText("password is Hunter2 and card number 4242424242424242")).not.toMatch(
+      /Hunter2|4242424242424242/
+    );
+    expect(sanitizeAkusoState({ lastRoute: "https://evil.example.com/steal" }).lastRoute).toBe("");
+
+    await saveAkusoMemory({
+      userId,
+      conversationId: "creator-memory",
+      user: { id: userId, isCreator: true },
+      state: {
+        recentSummary: "Opened creator dashboard after OTP is 123456.",
+        lastTopic: "creator payouts",
+        lastRoute: "/creator/dashboard",
+        lastFeatureKey: "creator_dashboard",
+      },
+      preferences: {
+        answerLength: "detailed",
+        tone: "warm",
+      },
+    });
+
+    const creatorMemory = await loadAkusoMemory({
+      userId,
+      conversationId: "creator-memory",
+      user: { id: userId, isCreator: true },
+    });
+    expect(creatorMemory).toEqual(
+      expect.objectContaining({
+        lastRoute: "/creator/dashboard",
+        roleScope: "creator",
+        memorySuppressed: false,
+      })
+    );
+    expect(creatorMemory.recentSummary).not.toMatch(/123456/);
+
+    const downgradedMemory = await loadAkusoMemory({
+      userId,
+      conversationId: "creator-memory",
+      user: { id: userId, role: "user", isCreator: false },
+    });
+    expect(downgradedMemory).toEqual(
+      expect.objectContaining({
+        recentSummary: "",
+        lastRoute: "",
+        roleScope: "authenticated",
+        memorySuppressed: true,
+      })
+    );
+
+    await saveAkusoMemory({
+      userId,
+      conversationId: "admin-memory",
+      user: { id: userId, role: "admin", isAdmin: true },
+      state: {
+        recentSummary: "Reviewed assistant ops backlog.",
+        lastRoute: "/admin/assistant",
+        lastFeatureKey: "admin_assistant",
+      },
+    });
+
+    const adminMemory = await loadAkusoMemory({
+      userId,
+      conversationId: "admin-memory",
+      user: { id: userId, role: "admin", isAdmin: true },
+    });
+    expect(adminMemory.lastRoute).toBe("/admin/assistant");
+
+    const nonAdminMemory = await loadAkusoMemory({
+      userId,
+      conversationId: "admin-memory",
+      user: { id: userId, role: "user", isCreator: true },
+    });
+    expect(nonAdminMemory).toEqual(
+      expect.objectContaining({
+        recentSummary: "",
+        lastRoute: "",
+        roleScope: "creator",
+        memorySuppressed: true,
+      })
+    );
   });
 
   it("sanitizes unsafe action targets in formatted responses", () => {

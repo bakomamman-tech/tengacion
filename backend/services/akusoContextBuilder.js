@@ -119,8 +119,10 @@ const buildAkusoContext = async ({ input = {}, user = {}, memory = {} } = {}) =>
       recentSummary: sanitizePlainText(memory?.recentSummary || "", 400),
       lastTopic: sanitizePlainText(memory?.lastTopic || "", 160),
       lastMode: sanitizePlainText(memory?.lastMode || "", 40),
-      lastRoute: sanitizePlainText(memory?.lastRoute || "", 160),
+      lastRoute: sanitizeRoute(memory?.lastRoute || ""),
       lastFeatureKey: sanitizePlainText(memory?.lastFeatureKey || "", 80),
+      roleScope: sanitizePlainText(memory?.roleScope || "", 40),
+      memoryVersion: sanitizePlainText(memory?.memoryVersion || "", 40),
     },
     relevantFeatures: listRelevantFeatures({
       query: input.message || currentPage,

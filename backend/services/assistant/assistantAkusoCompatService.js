@@ -381,6 +381,7 @@ const chat = async ({
           userId: enrichedUser?.id || "",
           conversationId: safeText(conversationId, 80),
           sessionKey: safeText(enrichedUser?.sessionId || "", 80),
+          user: enrichedUser,
         }).catch(() => null)
       : null;
 

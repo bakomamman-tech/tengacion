@@ -1082,6 +1082,7 @@ const persistMemoryFromResponse = async ({
     userId: req.user?.id || "",
     conversationId: input.conversationId || response.conversationId,
     sessionKey: input.sessionKey,
+    user: req.user || {},
     state: {
       recentSummary: response.answer,
       lastTopic: policyResult.classification.topic,
@@ -1152,6 +1153,7 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
     userId: req.user?.id || "",
     conversationId: preparedMedia.input.conversationId,
     sessionKey: preparedMedia.input.sessionKey,
+    user: req.user || {},
   });
   const mergedInput = {
     ...preparedMedia.input,
@@ -1470,6 +1472,7 @@ const runAkusoTemplateRequest = async ({ req, traceId }) => {
     userId: req.user?.id || "",
     conversationId: input.conversationId,
     sessionKey: input.sessionKey,
+    user: req.user || {},
   });
   const mergedInput = {
     ...input,

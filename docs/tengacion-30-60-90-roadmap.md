@@ -428,6 +428,10 @@ This workstream should run in parallel with product shipping.
 - expand feature registry coverage for all monetization, onboarding, and creator surfaces
 - add route-aware hints where users routinely stall
 - add better conservative fallbacks for unsupported features
+- current implementation anchor:
+  - Akuso's assistant feature registry now covers creator content detail pages, payment callback/status routes, public creator profile hubs, and marketplace buyer/seller/order/payout surfaces
+  - `/creators` route matching is now precise enough that creator subscriptions and catalog pages stay grounded to their specific surfaces instead of falling back to generic discovery
+  - focused service and assistant route tests verify marketplace monetization navigation, payment status grounding, content unlock grounding, public creator hub grounding, and route-aware marketplace payout hints
 
 ### Phase 3: Quality automation
 
@@ -447,6 +451,10 @@ This workstream should run in parallel with product shipping.
 - refine low-risk memory only after baseline quality is stable
 - keep memory bounded and role-aware
 - do not let memory become a proxy for unsafe personalization
+- current implementation anchor:
+  - Akuso conversation memory now stores a low-risk memory version with redacted secrets, payment/account identifiers, and unsafe external routes removed before persistence
+  - saved memory is tagged with authenticated, creator, or admin role scope, and higher-privilege memory is suppressed when a later request no longer has that access level
+  - Akuso service coverage verifies redaction, route sanitization, creator/admin role scoping, and suppressed-memory behavior
 
 ## Weekly operating cadence
 

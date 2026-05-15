@@ -48,6 +48,8 @@ router.patch("/reviews/:id", requirePermissions(["view_audit_logs"]), async (req
       reviewId: req.params.id,
       reviewerId: req.user?.id || "",
       status: req.body?.status,
+      category: req.body?.category,
+      severity: req.body?.severity,
       resolutionNote: req.body?.resolutionNote,
     });
 
@@ -62,6 +64,8 @@ router.patch("/reviews/:id", requirePermissions(["view_audit_logs"]), async (req
         status: item?.status || "",
         severity: item?.severity || "",
         category: item?.category || "",
+        actionType: item?.triage?.actionType || "",
+        triageOwner: item?.triage?.owner || "",
       },
     }).catch(() => null);
 

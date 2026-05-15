@@ -217,6 +217,13 @@ const openReview = {
     usedModel: true,
     confidenceLabel: "medium",
   },
+  triage: {
+    title: "Review the assistant answer and decide whether an eval is needed",
+    nextStep: "Compare the request, response, trust signals, and user feedback before changing prompts or docs.",
+    owner: "AI and assistant",
+    actionType: "assistant_fix",
+    priority: "medium",
+  },
 };
 
 const resolvedReview = {
@@ -239,6 +246,12 @@ describe("AdminAssistantPage", () => {
         page: 1,
         limit: 25,
         hasMore: false,
+        triageSummary: {
+          unresolved: 1,
+          recommendation: "Work the oldest open review and capture the decision note.",
+          bySeverity: { high: 0, medium: 1 },
+          byCategory: { feedback: 1, quality: 0, safety: 0 },
+        },
       })
       .mockResolvedValueOnce({
         items: [resolvedReview],
@@ -246,6 +259,12 @@ describe("AdminAssistantPage", () => {
         page: 1,
         limit: 25,
         hasMore: false,
+        triageSummary: {
+          unresolved: 0,
+          recommendation: "No unresolved Akuso review backlog is currently blocking expansion.",
+          bySeverity: {},
+          byCategory: {},
+        },
       });
     vi.mocked(adminUpdateAssistantReview).mockResolvedValue({
       ok: true,
@@ -269,10 +288,19 @@ describe("AdminAssistantPage", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Reviews" }));
 
     expect(await screen.findByText("Review Queue")).toBeInTheDocument();
+    expect(screen.getByText("Triage Focus")).toBeInTheDocument();
+    expect(screen.getByText("Work the oldest open review and capture the decision note.")).toBeInTheDocument();
+    expect(screen.getByText("Review the assistant answer and decide whether an eval is needed")).toBeInTheDocument();
     expect(await screen.findAllByText(openReview.requestSummary)).toHaveLength(2);
 
     fireEvent.change(screen.getByLabelText("Review status"), {
       target: { value: "resolved" },
+    });
+    fireEvent.change(screen.getByLabelText("Review category"), {
+      target: { value: "quality" },
+    });
+    fireEvent.change(screen.getByLabelText("Review severity"), {
+      target: { value: "high" },
     });
     fireEvent.change(screen.getByLabelText("Resolution note"), {
       target: { value: "Triaged and queued for prompt tuning." },
@@ -283,6 +311,8 @@ describe("AdminAssistantPage", () => {
     await waitFor(() => {
       expect(adminUpdateAssistantReview).toHaveBeenCalledWith("review-1", {
         status: "resolved",
+        category: "quality",
+        severity: "high",
         resolutionNote: "Triaged and queued for prompt tuning.",
       });
     });

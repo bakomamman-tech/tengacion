@@ -149,18 +149,29 @@ describe("Assistant admin review routes", () => {
       .expect(200);
 
     expect(Array.isArray(listResponse.body.items)).toBe(true);
+    expect(listResponse.body.triageSummary).toEqual(
+      expect.objectContaining({
+        unresolved: 1,
+        recommendation: expect.stringMatching(/review|eval|work/i),
+      })
+    );
     expect(listResponse.body.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           responseId: "response-1",
           status: "open",
           category: "feedback",
+          triage: expect.objectContaining({
+            actionType: expect.any(String),
+            owner: expect.any(String),
+            nextStep: expect.any(String),
+          }),
         }),
       ])
     );
   });
 
-  it("allows an admin to resolve a queued assistant review", async () => {
+  it("allows an admin to triage and resolve a queued assistant review", async () => {
     await request(app)
       .post("/api/assistant/feedback")
       .set("Authorization", `Bearer ${viewerToken}`)
@@ -190,6 +201,8 @@ describe("Assistant admin review routes", () => {
       .set("Authorization", `Bearer ${adminToken}`)
       .send({
         status: "resolved",
+        category: "quality",
+        severity: "high",
         resolutionNote: "Triaged and added to the assistant quality backlog.",
       })
       .expect(200);
@@ -200,6 +213,13 @@ describe("Assistant admin review routes", () => {
         item: expect.objectContaining({
           _id: reviewId,
           status: "resolved",
+          category: "quality",
+          severity: "high",
+          triage: expect.objectContaining({
+            actionType: "eval_candidate",
+            evalCandidate: true,
+            closed: true,
+          }),
         }),
       })
     );

@@ -28,6 +28,120 @@ const normalizeCategory = (value = "") => {
   return REVIEW_CATEGORIES.has(normalized) ? normalized : "feedback";
 };
 
+const buildReviewTriage = (item = {}) => {
+  const category = normalizeCategory(item.category);
+  const severity = normalizeSeverity(item.severity);
+  const status = normalizeStatus(item.status);
+  const surface = sanitizePlainText(item.surface || "general", 60) || "general";
+  const mode = sanitizePlainText(item.mode || item.responseMode || "general", 40) || "general";
+  const trust = item.trust && typeof item.trust === "object" ? item.trust : {};
+  const safetyLevel = String(item.safetyLevel || "safe").trim().toLowerCase();
+  const isResolved = status === "resolved" || status === "dismissed";
+  const grounded = trust.grounded !== false;
+  const confidenceLabel = String(trust.confidenceLabel || "").trim().toLowerCase();
+  const usedModel = Boolean(trust.usedModel);
+
+  let actionType = "assistant_fix";
+  let owner = "AI and assistant";
+  let title = "Review the assistant answer and decide whether an eval is needed";
+  let nextStep = "Compare the request, response, trust signals, and user feedback before changing prompts or docs.";
+
+  if (category === "safety" || safetyLevel === "refusal" || safetyLevel === "emergency") {
+    actionType = "safety_review";
+    owner = "AI and assistant";
+    title = "Review safety and refusal quality";
+    nextStep = "Check whether Akuso denied correctly, gave useful next steps, and needs a policy or eval fixture.";
+  } else if (category === "abuse") {
+    actionType = "abuse_review";
+    owner = "Trust and safety";
+    title = "Review abuse and rate-limit signals";
+    nextStep = "Inspect whether the request should affect abuse guard thresholds, rate limits, or moderation guidance.";
+  } else if (category === "quality" || !grounded || confidenceLabel === "low") {
+    actionType = "eval_candidate";
+    owner = "AI and assistant";
+    title = `Create or update a ${surface} eval fixture`;
+    nextStep = "Turn the failure into a labeled eval case before broad prompt or model changes.";
+  } else if (!usedModel && mode === "app_help") {
+    actionType = "grounding_review";
+    owner = "AI and assistant";
+    title = "Check app grounding coverage";
+    nextStep = "Confirm the feature registry and help docs cover the route, action, and safe fallback copy.";
+  }
+
+  return {
+    status,
+    category,
+    severity,
+    actionType,
+    owner,
+    title,
+    nextStep,
+    priority: severity === "high" ? "high" : severity === "medium" ? "medium" : "low",
+    evalCandidate: ["quality", "safety"].includes(category) || !grounded || confidenceLabel === "low",
+    routeScope: surface,
+    closed: isResolved,
+  };
+};
+
+const buildQueueSummary = async ({ filter = {} } = {}) => {
+  const unresolvedFilter = {
+    ...filter,
+    status: { $in: ["open", "under_review"] },
+  };
+
+  const [statusRows, categoryRows, severityRows, oldestOpen, newestHigh] = await Promise.all([
+    AssistantReviewItem.aggregate([
+      { $match: unresolvedFilter },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]).catch(() => []),
+    AssistantReviewItem.aggregate([
+      { $match: unresolvedFilter },
+      { $group: { _id: "$category", count: { $sum: 1 } } },
+    ]).catch(() => []),
+    AssistantReviewItem.aggregate([
+      { $match: unresolvedFilter },
+      { $group: { _id: "$severity", count: { $sum: 1 } } },
+    ]).catch(() => []),
+    AssistantReviewItem.findOne(unresolvedFilter).sort({ createdAt: 1 }).lean(),
+    AssistantReviewItem.findOne({ ...unresolvedFilter, severity: "high" }).sort({ createdAt: 1 }).lean(),
+  ]);
+
+  const countRows = (rows = []) =>
+    rows.reduce((acc, row) => {
+      const key = String(row?._id || "").trim();
+      if (key) {
+        acc[key] = Number(row?.count || 0);
+      }
+      return acc;
+    }, {});
+  const byStatus = countRows(statusRows);
+  const byCategory = countRows(categoryRows);
+  const bySeverity = countRows(severityRows);
+  const unresolved = Number(byStatus.open || 0) + Number(byStatus.under_review || 0);
+  const high = Number(bySeverity.high || 0);
+  const quality = Number(byCategory.quality || 0);
+  const safety = Number(byCategory.safety || 0);
+  const nextReview = newestHigh || oldestOpen || null;
+
+  return {
+    unresolved,
+    byStatus,
+    byCategory,
+    bySeverity,
+    nextReviewId: nextReview?._id ? String(nextReview._id) : "",
+    recommendation:
+      high > 0
+        ? "Start with the oldest high-severity Akuso review before shipping new assistant behavior."
+        : safety > 0
+          ? "Review safety-labeled feedback before broad prompt changes."
+          : quality > 0
+            ? "Convert quality failures into eval fixtures before tuning prompts."
+            : unresolved > 0
+              ? "Work the oldest open review and capture the decision note."
+              : "No unresolved Akuso review backlog is currently blocking expansion.",
+  };
+};
+
 const deriveSeverity = ({ safetyLevel = "", reason = "", trust = {} } = {}) => {
   const normalizedSafety = String(safetyLevel || "").trim().toLowerCase();
   const normalizedReason = String(reason || "").trim().toLowerCase();
@@ -97,25 +211,37 @@ const listAssistantReviews = async ({ status = "", category = "", page = 1, limi
     filter.category = normalizedCategory;
   }
 
-  const [items, total] = await Promise.all([
+  const [items, total, triageSummary] = await Promise.all([
     AssistantReviewItem.find(filter)
       .sort({ createdAt: -1 })
       .skip((safePage - 1) * safeLimit)
       .limit(safeLimit)
       .lean(),
     AssistantReviewItem.countDocuments(filter),
+    buildQueueSummary({ filter: normalizedCategory && REVIEW_CATEGORIES.has(normalizedCategory) ? { category: normalizedCategory } : {} }),
   ]);
 
   return {
-    items,
+    items: items.map((item) => ({
+      ...item,
+      triage: buildReviewTriage(item),
+    })),
     page: safePage,
     limit: safeLimit,
     total,
     hasMore: safePage * safeLimit < total,
+    triageSummary,
   };
 };
 
-const updateAssistantReview = async ({ reviewId, reviewerId, status = "", resolutionNote = "" } = {}) => {
+const updateAssistantReview = async ({
+  reviewId,
+  reviewerId,
+  status = "",
+  category = "",
+  severity = "",
+  resolutionNote = "",
+} = {}) => {
   if (!mongoose.Types.ObjectId.isValid(reviewId)) {
     throw new Error("Invalid review id");
   }
@@ -125,6 +251,14 @@ const updateAssistantReview = async ({ reviewId, reviewerId, status = "", resolu
     status: nextStatus,
     resolutionNote: sanitizePlainText(resolutionNote, 500),
   };
+
+  if (String(category || "").trim()) {
+    update.category = normalizeCategory(category);
+  }
+
+  if (String(severity || "").trim()) {
+    update.severity = normalizeSeverity(severity);
+  }
 
   if (nextStatus === "resolved" || nextStatus === "dismissed") {
     update.resolvedAt = new Date();
@@ -140,10 +274,15 @@ const updateAssistantReview = async ({ reviewId, reviewerId, status = "", resolu
   if (!item) {
     throw new Error("Assistant review item not found");
   }
-  return item;
+  return {
+    ...item,
+    triage: buildReviewTriage(item),
+  };
 };
 
 module.exports = {
+  buildReviewTriage,
+  buildQueueSummary,
   deriveSeverity,
   listAssistantReviews,
   queueAssistantReview,

@@ -31,6 +31,12 @@ const REVIEW_CATEGORY_OPTIONS = [
   { value: "abuse", label: "Abuse" },
 ];
 
+const REVIEW_SEVERITY_OPTIONS = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+];
+
 const VIEW_PATHS = {
   metrics: "/admin/assistant/metrics",
   reviews: "/admin/assistant/reviews",
@@ -284,7 +290,12 @@ export default function AdminAssistantPage({ user }) {
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewsError, setReviewsError] = useState("");
   const [selectedReviewId, setSelectedReviewId] = useState("");
-  const [reviewDraft, setReviewDraft] = useState({ status: "open", resolutionNote: "" });
+  const [reviewDraft, setReviewDraft] = useState({
+    status: "open",
+    category: "feedback",
+    severity: "medium",
+    resolutionNote: "",
+  });
   const [reviewActionLoading, setReviewActionLoading] = useState(false);
   const [reviewActionError, setReviewActionError] = useState("");
   const [reviewActionNotice, setReviewActionNotice] = useState("");
@@ -360,12 +371,19 @@ export default function AdminAssistantPage({ user }) {
 
   useEffect(() => {
     if (!selectedReview) {
-      setReviewDraft({ status: "open", resolutionNote: "" });
+      setReviewDraft({
+        status: "open",
+        category: "feedback",
+        severity: "medium",
+        resolutionNote: "",
+      });
       return;
     }
 
     setReviewDraft({
       status: String(selectedReview.status || "open"),
+      category: String(selectedReview.category || "feedback"),
+      severity: String(selectedReview.severity || "medium"),
       resolutionNote: String(selectedReview.resolutionNote || ""),
     });
   }, [selectedReview]);
@@ -514,6 +532,8 @@ export default function AdminAssistantPage({ user }) {
     try {
       await adminUpdateAssistantReview(selectedReview._id, {
         status: reviewDraft.status,
+        category: reviewDraft.category,
+        severity: reviewDraft.severity,
         resolutionNote: reviewDraft.resolutionNote,
       });
 
@@ -688,6 +708,30 @@ export default function AdminAssistantPage({ user }) {
             </div>
 
             {reviewsError ? <div className="adminx-error">{reviewsError}</div> : null}
+            {reviewsPayload?.triageSummary ? (
+              <div className="adminx-leaderboard" style={{ marginBottom: 16 }}>
+                <article className="adminx-leaderboard-item">
+                  <div className="adminx-row">
+                    <strong>Triage Focus</strong>
+                    <span>{number(reviewsPayload.triageSummary.unresolved)} unresolved</span>
+                  </div>
+                  <div className="adminx-muted" style={{ marginTop: 8 }}>
+                    {reviewsPayload.triageSummary.recommendation}
+                  </div>
+                  <div className="adminx-row" style={{ justifyContent: "flex-start", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                    <span className="adminx-badge">
+                      High: {number(reviewsPayload.triageSummary?.bySeverity?.high)}
+                    </span>
+                    <span className="adminx-badge">
+                      Quality: {number(reviewsPayload.triageSummary?.byCategory?.quality)}
+                    </span>
+                    <span className="adminx-badge">
+                      Safety: {number(reviewsPayload.triageSummary?.byCategory?.safety)}
+                    </span>
+                  </div>
+                </article>
+              </div>
+            ) : null}
             {reviewsLoading ? <div className="adminx-loading">Loading assistant review queue...</div> : null}
 
             {!reviewsLoading && !reviews.length ? (
@@ -735,6 +779,21 @@ export default function AdminAssistantPage({ user }) {
                   </span>
                   <span className="adminx-badge">{titleCase(selectedReview.category || "feedback")}</span>
                 </div>
+
+                {selectedReview?.triage ? (
+                  <article className="adminx-leaderboard-item">
+                    <div className="adminx-row">
+                      <strong>{selectedReview.triage.title}</strong>
+                      <span>{titleCase(selectedReview.triage.priority || "medium")}</span>
+                    </div>
+                    <div className="adminx-muted" style={{ marginTop: 8 }}>
+                      {selectedReview.triage.nextStep}
+                    </div>
+                    <div className="adminx-muted" style={{ marginTop: 6 }}>
+                      Owner: {selectedReview.triage.owner || "AI and assistant"} | Action: {titleCase(selectedReview.triage.actionType || "assistant_fix")}
+                    </div>
+                  </article>
+                ) : null}
 
                 <div className="adminx-leaderboard">
                   <article className="adminx-leaderboard-item">
@@ -787,6 +846,48 @@ export default function AdminAssistantPage({ user }) {
                     }
                   >
                     {REVIEW_STATUS_OPTIONS.filter((option) => option.value).map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="adminx-section-meta" style={{ display: "block", marginBottom: 6 }}>Review category</span>
+                  <select
+                    className="adminx-select"
+                    aria-label="Review category"
+                    value={reviewDraft.category}
+                    onChange={(event) =>
+                      setReviewDraft((current) => ({
+                        ...current,
+                        category: event.target.value,
+                      }))
+                    }
+                  >
+                    {REVIEW_CATEGORY_OPTIONS.filter((option) => option.value).map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span className="adminx-section-meta" style={{ display: "block", marginBottom: 6 }}>Review severity</span>
+                  <select
+                    className="adminx-select"
+                    aria-label="Review severity"
+                    value={reviewDraft.severity}
+                    onChange={(event) =>
+                      setReviewDraft((current) => ({
+                        ...current,
+                        severity: event.target.value,
+                      }))
+                    }
+                  >
+                    {REVIEW_SEVERITY_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>

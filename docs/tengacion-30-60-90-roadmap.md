@@ -292,6 +292,7 @@ Help creators succeed faster and more often.
   - `/api/admin/assistant/metrics` now returns an `operationsReview` payload that combines commerce failures, webhook outcomes, creator onboarding drop-off, assistant fallback rates, negative feedback, and unresolved Akuso review backlog
   - the admin Akuso Assistant Ops page renders a weekly quality loop with product, assistant, and instrumentation action prompts tied to the relevant admin surfaces
   - the creator support page now submits flow-tagged escalation tickets for blocked onboarding, payout readiness, upload/catalog, and verification issues through the admin complaint inbox
+  - the assistant review queue now exposes per-item triage recommendations, queue-level backlog summaries, and admin-editable category/severity/status fields so weekly reviews can produce structured assistant fixes and eval candidates
 
 ### Exit criteria for day 60
 

@@ -55,6 +55,11 @@
   gap: 20px;
   max-width: 1540px;
   margin: 0 auto;
+  padding-bottom: 112px;
+}
+
+.creator-fan-page--video {
+  padding-bottom: 0;
 }
 
 .creator-fan-page button,
@@ -650,8 +655,11 @@
 }
 
 .creator-fan-page__player {
-  position: sticky;
-  bottom: 12px;
+  position: fixed;
+  left: max(16px, calc((100vw - 1540px) / 2 + 16px));
+  right: max(16px, calc((100vw - 1540px) / 2 + 16px));
+  bottom: 16px;
+  z-index: 40;
   padding: 0;
   border: 0;
   background: transparent;
@@ -808,7 +816,19 @@
   }
 
   .creator-fan-page__player {
-    grid-template-columns: 1fr;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .creator-fan-page {
+    padding-bottom: 164px;
+  }
+
+  .creator-fan-page--video {
+    padding-bottom: 0;
   }
 }
 

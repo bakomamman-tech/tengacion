@@ -494,7 +494,10 @@ export default function CreatorFanPagePreview({
   );
 
   return (
-    <section className="creator-fan-page" aria-label="Fan Page View">
+    <section
+      className={`creator-fan-page${isVideoTab ? " creator-fan-page--video" : ""}`}
+      aria-label="Fan Page View"
+    >
       <header className="creator-fan-page__topbar">
         <div className="creator-fan-page__brand">
           <span className="creator-fan-page__brand-mark" aria-hidden="true">

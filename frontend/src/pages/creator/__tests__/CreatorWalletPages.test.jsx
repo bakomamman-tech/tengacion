@@ -39,10 +39,16 @@ const baseWorkspace = {
       },
       payoutReadiness: {
         ready: true,
+        canRequestPayout: true,
         status: "ready",
         label: "Ready",
         nextStep: "Your creator payout profile is ready for settlement review.",
+        primaryAction: {
+          label: "Review earnings",
+          path: "/creator/earnings",
+        },
         accountNumberMasked: "******4805",
+        blockingReasons: [],
         checks: [
           { key: "account_number", label: "Account number", complete: true },
           { key: "country", label: "Country", complete: true },
@@ -110,7 +116,13 @@ describe("Creator wallet pages", () => {
     expect(screen.getByText("Settlement source")).toBeInTheDocument();
     expect(screen.getByText("Live wallet ledger")).toBeInTheDocument();
     expect(screen.getByText("******4805")).toBeInTheDocument();
+    expect(screen.getByText("Payout request")).toBeInTheDocument();
+    expect(screen.getByText("Available")).toBeInTheDocument();
     expect(screen.getByText("Next step")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Review earnings" })).toHaveAttribute(
+      "href",
+      "/creator/earnings"
+    );
     expect(screen.getByText("Recent settlement activity")).toBeInTheDocument();
     expect(screen.getByText("Sale credited")).toBeInTheDocument();
   });

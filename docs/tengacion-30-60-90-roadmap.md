@@ -173,6 +173,10 @@ Make Tengacion economically real.
   - restricted
 - Expose creator-facing explanation and next steps in dashboard UI
 - Keep sensitive payout actions deterministic and secured
+- Current implementation anchors:
+  - `buildPayoutReadiness` now centralizes creator payout readiness states, creator-facing copy, support flow routing, blocking reasons, primary actions, and the request gate without introducing automated payout execution
+  - the creator payouts page renders payout request availability and follows the readiness API's recommended next action instead of sending every creator to settings
+  - focused backend and creator wallet page tests cover masked account display, state-specific actions, profile-vs-payout blocker copy, and ready payout request availability
 
 #### 4. Add baseline analytics and operations visibility
 

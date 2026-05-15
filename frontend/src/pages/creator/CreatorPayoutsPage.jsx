@@ -13,6 +13,15 @@ export default function CreatorPayoutsPage() {
   const payoutReadiness = wallet.payoutReadiness || { ready: false, checks: [] };
   const payoutStatusLabel =
     payoutReadiness.label || (payoutReadiness.ready ? "Ready" : "Needs attention");
+  const payoutAction = payoutReadiness.primaryAction || {};
+  const payoutActionPath = payoutAction.path || "/creator/settings";
+  const payoutActionLabel = payoutAction.label || "Update payout details";
+  const blockingReasons = Array.isArray(payoutReadiness.blockingReasons)
+    ? payoutReadiness.blockingReasons
+    : [];
+  const canRequestPayout = typeof payoutReadiness.canRequestPayout === "boolean"
+    ? payoutReadiness.canRequestPayout
+    : Boolean(payoutReadiness.ready);
   const recentEntries = Array.isArray(wallet.recentEntries)
     ? wallet.recentEntries.slice(0, 8)
     : [];
@@ -48,6 +57,10 @@ export default function CreatorPayoutsPage() {
             <span>Payout status</span>
             <strong>{payoutStatusLabel}</strong>
           </div>
+          <div className="creator-stack-row">
+            <span>Payout request</span>
+            <strong>{canRequestPayout ? "Available" : "Blocked"}</strong>
+          </div>
           {payoutReadiness.nextStep ? (
             <div className="creator-stack-row">
               <span>Next step</span>
@@ -65,10 +78,16 @@ export default function CreatorPayoutsPage() {
               </div>
             ))
           ) : null}
+          {blockingReasons.map((entry) => (
+            <div key={`blocker-${entry.key}`} className="creator-stack-row">
+              <span>{entry.label}</span>
+              <strong>{entry.nextStep || "Complete this item before payout review."}</strong>
+            </div>
+          ))}
         </div>
 
-        <Link className="creator-secondary-btn" to="/creator/settings">
-          Update payout details
+        <Link className="creator-secondary-btn" to={payoutActionPath}>
+          {payoutActionLabel}
         </Link>
       </section>
 

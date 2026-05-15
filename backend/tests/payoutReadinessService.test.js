@@ -23,10 +23,18 @@ describe("payoutReadinessService", () => {
 
     expect(readiness).toMatchObject({
       ready: true,
+      canRequestPayout: true,
       status: "ready",
       label: "Ready",
+      supportFlow: "creator_payouts",
+      primaryAction: {
+        label: "Review earnings",
+        path: "/creator/earnings",
+      },
       accountNumberMasked: "******4805",
       missingChecks: [],
+      blockingReasons: [],
+      missingCheckCount: 0,
     });
   });
 
@@ -50,7 +58,14 @@ describe("payoutReadinessService", () => {
       })
     ).toMatchObject({
       ready: false,
+      canRequestPayout: false,
       status: "payout_method_missing",
+      label: "Payout method missing",
+      supportFlow: "creator_payouts",
+      primaryAction: {
+        label: "Update payout details",
+        path: "/creator/settings",
+      },
     });
 
     expect(
@@ -68,6 +83,11 @@ describe("payoutReadinessService", () => {
     ).toMatchObject({
       ready: false,
       status: "verification_pending",
+      label: "Verification pending",
+      primaryAction: {
+        label: "Review verification status",
+        path: "/creator/verification",
+      },
     });
 
     expect(
@@ -85,6 +105,46 @@ describe("payoutReadinessService", () => {
     ).toMatchObject({
       ready: false,
       status: "restricted",
+      label: "Restricted",
+      primaryAction: {
+        label: "Contact creator support",
+        path: "/creator/support",
+      },
     });
+  });
+
+  test("keeps profile incomplete copy when an onboarded creator is missing profile fields", () => {
+    const readiness = buildPayoutReadiness({
+      _id: "creator-1",
+      userId: "user-1",
+      accountNumber: "0048044805",
+      country: "",
+      countryOfResidence: "Nigeria",
+      onboardingCompleted: true,
+      acceptedTerms: true,
+      acceptedCopyrightDeclaration: true,
+      status: "active",
+    });
+
+    expect(readiness).toMatchObject({
+      ready: false,
+      status: "profile_incomplete",
+      label: "Profile incomplete",
+      supportFlow: "creator_onboarding",
+      primaryAction: {
+        label: "Update creator profile",
+        path: "/creator/settings",
+      },
+      missingChecks: ["country"],
+      missingCheckCount: 1,
+    });
+    expect(readiness.blockingReasons).toEqual([
+      expect.objectContaining({
+        key: "country",
+        label: "Country",
+        group: "profile",
+        status: "profile_incomplete",
+      }),
+    ]);
   });
 });

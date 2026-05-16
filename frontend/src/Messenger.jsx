@@ -732,6 +732,7 @@ export default function Messenger({
   const [gifQuery, setGifQuery] = useState("");
   const [gifResults, setGifResults] = useState(FALLBACK_GIFS);
   const [gifError, setGifError] = useState("");
+  const [toolsTrayOpen, setToolsTrayOpen] = useState(false);
   const [headerNotice, setHeaderNotice] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -831,7 +832,25 @@ export default function Messenger({
     setHoveredMessageId("");
     setOpenMessageReactionId("");
     setOpenMessageMenuId("");
+    setToolsTrayOpen(false);
   }, [selectedId]);
+
+  const resizeComposerInput = useCallback(() => {
+    const node = composerInputRef.current;
+    if (!node) {
+      return;
+    }
+
+    const maxHeight = 128;
+    node.style.height = "auto";
+    const nextHeight = Math.min(node.scrollHeight, maxHeight);
+    node.style.height = `${nextHeight}px`;
+    node.style.overflowY = node.scrollHeight > maxHeight ? "auto" : "hidden";
+  }, []);
+
+  useEffect(() => {
+    resizeComposerInput();
+  }, [resizeComposerInput, selectedId, text]);
 
   useEffect(() => {
     sheetHeightRef.current = sheetHeight;
@@ -1771,6 +1790,7 @@ export default function Messenger({
     setShowEmojiPicker(false);
     setShowReactions(false);
     setGifOpen(false);
+    setToolsTrayOpen(false);
     await sendPayload({ text: value, type: "text" });
   };
 
@@ -1980,6 +2000,7 @@ export default function Messenger({
     setShowReactions(false);
     setShowEmojiPicker(false);
     setGifOpen(false);
+    setToolsTrayOpen(false);
   };
 
   const openShareComposer = useCallback((payload = null) => {
@@ -2481,6 +2502,7 @@ export default function Messenger({
   };
 
   const openAttachmentPicker = () => {
+    setToolsTrayOpen(false);
     mediaInputRef.current?.click();
   };
 
@@ -3128,9 +3150,30 @@ export default function Messenger({
                 )}
 
                 {!loadingMessages &&
-                  messages.map((m) => {
+                  messages.map((m, index) => {
                     const isMe = toIdString(m.senderId) === meId;
                     const messageKey = toIdString(m._id || m.clientId);
+                    const previousMessage = messages[index - 1] || null;
+                    const nextMessage = messages[index + 1] || null;
+                    const messageTimeValue = Number(m.time) || 0;
+                    const previousTimeValue = Number(previousMessage?.time) || 0;
+                    const nextTimeValue = Number(nextMessage?.time) || 0;
+                    const previousSameSender =
+                      Boolean(previousMessage)
+                      && toIdString(previousMessage?.senderId) === toIdString(m.senderId)
+                      && Math.abs(messageTimeValue - previousTimeValue) <= 5 * 60 * 1000;
+                    const nextSameSender =
+                      Boolean(nextMessage)
+                      && toIdString(nextMessage?.senderId) === toIdString(m.senderId)
+                      && Math.abs(nextTimeValue - messageTimeValue) <= 5 * 60 * 1000;
+                    let groupClass = "is-group-single";
+                    if (previousSameSender && nextSameSender) {
+                      groupClass = "is-group-middle";
+                    } else if (previousSameSender) {
+                      groupClass = "is-group-end";
+                    } else if (nextSameSender) {
+                      groupClass = "is-group-start";
+                    }
                     const hasAudioAttachment = Array.isArray(m.attachments)
                       && m.attachments.some((file) => file?.type === "audio");
                     const isTextOnlyMessage =
@@ -3142,7 +3185,7 @@ export default function Messenger({
                       m.type === "voice"
                       && !String(m.text || "").trim()
                       && hasAudioAttachment;
-                    const bubbleClass = `${isMe ? "me" : "them"} ${
+                    const bubbleClass = `${isMe ? "me" : "them"} ${groupClass} ${
                       m.failed ? "failed" : ""
                     }`;
                     const reactionSummary = summarizeReactions(m.reactions, meId);
@@ -3173,6 +3216,7 @@ export default function Messenger({
                         fromMessengerReminder: true,
                       }
                       : undefined;
+                    const showSenderAvatar = !isMe && !nextSameSender;
                     const messageTime = (
                       <div className="msg-time">
                         {new Date(m.time).toLocaleTimeString([], {
@@ -3314,27 +3358,29 @@ export default function Messenger({
                           );
                         }}
                       >
-                        {!isMe && (
+                        {!isMe && showSenderAvatar ? (
                           <img
                             src={m.senderAvatar || getAvatar(selectedContact)}
                             className="msg-avatar"
                             alt=""
                           />
-                        )}
+                        ) : !isMe ? (
+                          <span className="msg-avatar-spacer" aria-hidden="true" />
+                        ) : null}
 
                         <div className="msg-stack">
-                        <div
-                          className={`msg-bubble${isPinnedMessage ? " is-pinned" : ""}${
-                            isVoiceOnlyMessage ? " msg-bubble--voice" : ""
-                          }${isTextOnlyMessage ? " msg-bubble--text" : ""}${
-                            onboardingReminderCard ? " msg-bubble--reminder" : ""
-                          }`}
-                          onClick={() =>
-                            setActiveMessageId((current) =>
-                              current === messageKey ? "" : messageKey
-                            )
-                          }
-                        >
+                          <div
+                            className={`msg-bubble${isPinnedMessage ? " is-pinned" : ""}${
+                              isVoiceOnlyMessage ? " msg-bubble--voice" : ""
+                            }${isTextOnlyMessage ? " msg-bubble--text" : ""}${
+                              onboardingReminderCard ? " msg-bubble--reminder" : ""
+                            }`}
+                            onClick={() =>
+                              setActiveMessageId((current) =>
+                                current === messageKey ? "" : messageKey
+                              )
+                            }
+                          >
                           {m.replyTo ? (
                             <div className="msg-reply-preview">
                               <small>{getReplyLabel({ message: m, meId })}</small>
@@ -3601,20 +3647,20 @@ export default function Messenger({
                               ))}
                             </div>
                           ) : null}
-                        </div>
-                        {isMe ? (
-                          <>
-                            {messageTime}
-                            {!m.pending ? renderMessageTools() : null}
-                          </>
-                        ) : (
-                          <div
-                            className={`msg-meta msg-meta--them${toolsVisible ? " is-visible" : ""}`}
-                          >
-                            {!m.pending ? renderMessageTools() : null}
-                            {messageTime}
                           </div>
-                        )}
+                          {isMe ? (
+                            <>
+                              {messageTime}
+                              {!m.pending ? renderMessageTools() : null}
+                            </>
+                          ) : (
+                            <div
+                              className={`msg-meta msg-meta--them${toolsVisible ? " is-visible" : ""}`}
+                            >
+                              {!m.pending ? renderMessageTools() : null}
+                              {messageTime}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -3911,11 +3957,11 @@ export default function Messenger({
                     </div>
                   </div>
                 )}
-                <div className="messenger-composer-row">
-                  <div className="messenger-composer-tools" aria-label="Chat tools">
+                {toolsTrayOpen ? (
+                  <div className="messenger-composer-tray" aria-label="Chat tools">
                     <button
                       type="button"
-                      className="messenger-composer-btn messenger-composer-btn--camera"
+                      className="messenger-composer-tray-btn"
                       onClick={openAttachmentPicker}
                       title="Camera"
                       aria-label="Camera"
@@ -3925,10 +3971,11 @@ export default function Messenger({
                         <path d="M8 7.5 9.5 5h5L16 7.5h2A2.5 2.5 0 0 1 20.5 10v6.5A2.5 2.5 0 0 1 18 19H6a2.5 2.5 0 0 1-2.5-2.5V10A2.5 2.5 0 0 1 6 7.5z" />
                         <circle cx="12" cy="13" r="3.25" />
                       </svg>
+                      <span>Camera</span>
                     </button>
                     <button
                       type="button"
-                      className={`messenger-composer-btn${isRecording ? " is-active" : ""}`}
+                      className={`messenger-composer-tray-btn${isRecording ? " is-active" : ""}`}
                       onClick={isRecording ? stopVoiceNote : startVoiceNote}
                       title="Voice message"
                       aria-label="Voice message"
@@ -3944,10 +3991,11 @@ export default function Messenger({
                         <path d="M12 17v3.5" />
                         <path d="M9 20.5h6" />
                       </svg>
+                      <span>{isRecording ? "Stop" : "Voice"}</span>
                     </button>
                     <button
                       type="button"
-                      className="messenger-composer-btn"
+                      className="messenger-composer-tray-btn"
                       onClick={openAttachmentPicker}
                       title="Attach photo or file"
                       aria-label="Attach photo or file"
@@ -3958,50 +4006,86 @@ export default function Messenger({
                         <path d="M8.25 10.25h.01" />
                         <path d="m19.5 15-4.71-4.71a1.5 1.5 0 0 0-2.12 0L7.5 15.46" />
                       </svg>
+                      <span>Photo</span>
                     </button>
                     <button
                       type="button"
-                      className={`messenger-composer-btn${showReactions ? " is-active" : ""}`}
-                      onClick={() => {
-                        setShowReactions((prev) => !prev);
-                        setShowEmojiPicker(false);
-                        setGifOpen(false);
-                      }}
-                      title="Emoji"
-                      aria-label="Emoji"
-                      disabled={isRecording || isSendingVoice}
-                    >
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <circle cx="12" cy="12" r="8.5" />
-                        <path d="M9 10h.01" />
-                        <path d="M15 10h.01" />
-                        <path d="M8.8 14.1c1 .95 2.08 1.4 3.2 1.4 1.12 0 2.2-.45 3.2-1.4" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      className={`messenger-composer-btn messenger-composer-btn--gif${gifOpen ? " is-active" : ""}`}
+                      className={`messenger-composer-tray-btn${gifOpen ? " is-active" : ""}`}
                       onClick={() => {
                         setGifOpen((prev) => !prev);
                         setShowEmojiPicker(false);
                         setShowReactions(false);
+                        setToolsTrayOpen(false);
                       }}
                       title="GIF"
                       aria-label="GIF"
                       disabled={isRecording || isSendingVoice}
                     >
-                      GIF
+                      <strong>GIF</strong>
+                      <span>GIF</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="messenger-composer-tray-btn"
+                      onClick={() => {
+                        setToolsTrayOpen(false);
+                        openShareComposer();
+                      }}
+                      title="Share"
+                      aria-label="Share"
+                      disabled={isRecording || isSendingVoice || !selectedId}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M18 8a3 3 0 1 0-2.83-4H15a3 3 0 0 0 .17 1L8.9 8.13a3 3 0 1 0 0 3.74l6.27 3.13A3 3 0 1 0 16 13.3L9.74 10.17a3.3 3.3 0 0 0 0-.34L16 6.7A3 3 0 0 0 18 8Z" />
+                      </svg>
+                      <span>Share</span>
                     </button>
                   </div>
+                ) : null}
+
+                <div className="messenger-composer-row">
+                  <button
+                    type="button"
+                    className={`messenger-composer-plus${toolsTrayOpen ? " is-active" : ""}`}
+                    onClick={() => {
+                      setToolsTrayOpen((prev) => !prev);
+                      setShowEmojiPicker(false);
+                      setShowReactions(false);
+                      setGifOpen(false);
+                    }}
+                    title="More tools"
+                    aria-label="More tools"
+                    aria-expanded={toolsTrayOpen}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 5v14" />
+                      <path d="M5 12h14" />
+                    </svg>
+                  </button>
 
                   <div className="messenger-composer-entry">
-                    <input
+                    <textarea
                       ref={composerInputRef}
                       value={text}
-                      onChange={(e) => setText(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && send()}
-                      placeholder="Aa"
+                      onChange={(e) => {
+                        setText(e.target.value);
+                        if (typeof window !== "undefined"
+                          && typeof window.requestAnimationFrame === "function"
+                        ) {
+                          window.requestAnimationFrame(resizeComposerInput);
+                        } else {
+                          resizeComposerInput();
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          send();
+                        }
+                      }}
+                      placeholder="Message"
                       disabled={isRecording}
+                      rows={1}
                     />
                     <button
                       type="button"
@@ -4010,6 +4094,7 @@ export default function Messenger({
                         setShowReactions((prev) => !prev);
                         setShowEmojiPicker(false);
                         setGifOpen(false);
+                        setToolsTrayOpen(false);
                       }}
                       title="Emoji"
                       aria-label="Emoji"

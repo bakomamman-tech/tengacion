@@ -22021,6 +22021,17 @@ html.dark-mode.neon-purple-mode .messenger-messages {
   flex: 0 0 auto;
 }
 
+.msg-avatar-spacer {
+  width: 34px;
+  height: 1px;
+  flex: 0 0 34px;
+}
+
+.message-row.is-group-middle,
+.message-row.is-group-end {
+  margin-top: -5px;
+}
+
 .msg-stack {
   max-width: min(74%, 580px);
   gap: 5px !important;
@@ -22063,6 +22074,32 @@ html.dark-mode.neon-purple-mode .messenger .message-row.me .msg-bubble {
   background: var(--ms-accent-gradient) !important;
   color: #ffffff !important;
   border-color: transparent !important;
+}
+
+.message-row.me.is-group-start .msg-bubble {
+  border-bottom-right-radius: 8px !important;
+}
+
+.message-row.me.is-group-middle .msg-bubble {
+  border-top-right-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
+}
+
+.message-row.me.is-group-end .msg-bubble {
+  border-top-right-radius: 8px !important;
+}
+
+.message-row.them.is-group-start .msg-bubble {
+  border-bottom-left-radius: 8px !important;
+}
+
+.message-row.them.is-group-middle .msg-bubble {
+  border-top-left-radius: 8px !important;
+  border-bottom-left-radius: 8px !important;
+}
+
+.message-row.them.is-group-end .msg-bubble {
+  border-top-left-radius: 8px !important;
 }
 
 .msg-text,
@@ -22164,6 +22201,7 @@ html.dark-mode.neon-purple-mode .messenger-input {
 
 .messenger-composer-row {
   grid-template-columns: max-content minmax(0, 1fr) max-content !important;
+  align-items: end !important;
   gap: 4px !important;
 }
 
@@ -22217,6 +22255,103 @@ html.dark-mode.neon-purple-mode .messenger-composer-btn.is-active {
   width: 40px !important;
   padding: 0 !important;
   font-size: 10px !important;
+}
+
+.messenger-composer-tray {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 2px 2px;
+  scrollbar-width: none;
+}
+
+.messenger-composer-tray::-webkit-scrollbar {
+  display: none;
+}
+
+.messenger-composer-plus,
+.messenger-composer-tray-btn,
+html.dark-mode .messenger-composer-plus,
+html.dark-mode .messenger-composer-tray-btn,
+html.dark-mode.neon-purple-mode .messenger-composer-plus,
+html.dark-mode.neon-purple-mode .messenger-composer-tray-btn {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--ms-accent) !important;
+  box-shadow: none !important;
+}
+
+.messenger-composer-plus {
+  width: 40px !important;
+  height: 46px !important;
+  min-width: 40px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  touch-action: manipulation;
+}
+
+.messenger-composer-plus svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.messenger-composer-tray-btn {
+  min-width: 86px !important;
+  height: 40px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px !important;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+.messenger-composer-tray-btn svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.messenger-composer-tray-btn strong {
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.messenger-composer-plus:hover,
+.messenger-composer-plus.is-active,
+.messenger-composer-tray-btn:hover,
+.messenger-composer-tray-btn.is-active,
+html.dark-mode .messenger-composer-plus:hover,
+html.dark-mode .messenger-composer-plus.is-active,
+html.dark-mode .messenger-composer-tray-btn:hover,
+html.dark-mode .messenger-composer-tray-btn.is-active,
+html.dark-mode.neon-purple-mode .messenger-composer-plus:hover,
+html.dark-mode.neon-purple-mode .messenger-composer-plus.is-active,
+html.dark-mode.neon-purple-mode .messenger-composer-tray-btn:hover,
+html.dark-mode.neon-purple-mode .messenger-composer-tray-btn.is-active {
+  background: color-mix(in srgb, var(--ms-accent) 10%, transparent) !important;
+}
+
+.messenger-composer-plus:disabled,
+.messenger-composer-tray-btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
 }
 
 .messenger-composer-entry,
@@ -22278,16 +22413,40 @@ html.dark-mode.neon-purple-mode .messenger-composer-entry:focus-within {
 }
 
 .messenger-composer-entry input,
+.messenger-composer-entry textarea,
 html.dark-mode .messenger-composer-entry input,
-html.dark-mode.neon-purple-mode .messenger-composer-entry input {
+html.dark-mode .messenger-composer-entry textarea,
+html.dark-mode.neon-purple-mode .messenger-composer-entry input,
+html.dark-mode.neon-purple-mode .messenger-composer-entry textarea {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
   min-height: 48px !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
   color: var(--ms-text) !important;
   caret-color: var(--ms-accent) !important;
+  box-shadow: none !important;
+  font: inherit;
+  line-height: 1.35 !important;
+}
+
+.messenger-composer-entry textarea {
+  box-sizing: border-box;
+  height: auto;
+  max-height: 128px;
+  padding: 12px 4px 10px 0 !important;
+  resize: none !important;
+  overflow: hidden;
 }
 
 .messenger-composer-entry input::placeholder,
+.messenger-composer-entry textarea::placeholder,
 html.dark-mode .messenger-composer-entry input::placeholder,
-html.dark-mode.neon-purple-mode .messenger-composer-entry input::placeholder {
+html.dark-mode .messenger-composer-entry textarea::placeholder,
+html.dark-mode.neon-purple-mode .messenger-composer-entry input::placeholder,
+html.dark-mode.neon-purple-mode .messenger-composer-entry textarea::placeholder {
   color: var(--ms-muted) !important;
 }
 
@@ -22466,6 +22625,35 @@ html.dark-mode.neon-purple-mode .messenger-reaction-chip {
     gap: 2px !important;
   }
 
+  .messenger-composer-tray {
+    gap: 6px;
+    padding-bottom: 5px;
+  }
+
+  .messenger-composer-plus {
+    width: 34px !important;
+    height: 42px !important;
+    min-width: 34px !important;
+  }
+
+  .messenger-composer-plus svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .messenger-composer-tray-btn {
+    min-width: 72px !important;
+    height: 38px !important;
+    gap: 5px;
+    padding: 0 10px !important;
+    font-size: 11px;
+  }
+
+  .messenger-composer-tray-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
   .messenger-composer-tools {
     gap: 0 !important;
   }
@@ -22492,6 +22680,11 @@ html.dark-mode.neon-purple-mode .messenger-reaction-chip {
   }
 
   .messenger-composer-entry input {
+    min-height: 46px !important;
+    font-size: 17px !important;
+  }
+
+  .messenger-composer-entry textarea {
     min-height: 46px !important;
     font-size: 17px !important;
   }

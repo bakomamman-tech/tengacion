@@ -22158,27 +22158,28 @@ html.dark-mode.neon-purple-mode .messenger-input {
   min-height: 72px !important;
   border-top: 1px solid var(--ms-border) !important;
   background: var(--ms-header-bg) !important;
-  padding: 10px 16px 14px !important;
+  padding: 10px 10px 14px !important;
   gap: 8px !important;
 }
 
 .messenger-composer-row {
-  grid-template-columns: auto minmax(0, 1fr) auto !important;
-  gap: 8px !important;
+  grid-template-columns: max-content minmax(0, 1fr) max-content !important;
+  gap: 4px !important;
 }
 
 .messenger-composer-tools {
   max-width: none !important;
-  gap: 2px !important;
+  gap: 0 !important;
   overflow: visible !important;
+  flex: 0 0 auto;
 }
 
 .messenger-composer-btn,
 html.dark-mode .messenger-composer-btn,
 html.dark-mode.neon-purple-mode .messenger-composer-btn {
-  width: 40px !important;
+  width: 34px !important;
   height: 40px !important;
-  min-width: 40px !important;
+  min-width: 34px !important;
   border: 0 !important;
   background: transparent !important;
   color: var(--ms-accent) !important;
@@ -22221,12 +22222,13 @@ html.dark-mode.neon-purple-mode .messenger-composer-btn.is-active {
 .messenger-composer-entry,
 html.dark-mode .messenger-composer-entry,
 html.dark-mode.neon-purple-mode .messenger-composer-entry {
+  width: 100% !important;
   min-height: 48px !important;
   border: 0 !important;
   border-radius: 999px !important;
   background: var(--ms-input-bg) !important;
   box-shadow: none !important;
-  padding: 0 14px 0 18px !important;
+  padding: 0 8px 0 18px !important;
 }
 
 .messenger-composer-entry:focus-within,
@@ -22241,9 +22243,9 @@ html.dark-mode.neon-purple-mode .messenger-composer-entry:focus-within {
 }
 
 .messenger-composer-emoji-inline {
-  width: 36px;
+  width: 32px;
   height: 36px;
-  min-width: 36px !important;
+  min-width: 32px !important;
   border: 0 !important;
   border-radius: 999px !important;
   background: transparent !important;
@@ -22292,9 +22294,9 @@ html.dark-mode.neon-purple-mode .messenger-composer-entry input::placeholder {
 .messenger-composer-send,
 html.dark-mode .messenger-composer-send,
 html.dark-mode.neon-purple-mode .messenger-composer-send {
-  width: 46px !important;
+  width: 40px !important;
   height: 46px !important;
-  min-width: 46px !important;
+  min-width: 40px !important;
   border: 0 !important;
   background: transparent !important;
   color: var(--ms-accent) !important;
@@ -22457,11 +22459,11 @@ html.dark-mode.neon-purple-mode .messenger-reaction-chip {
 
   .messenger.mobile-sheet .messenger-input,
   .messenger-input {
-    padding: 9px 10px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 8px 6px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .messenger-composer-row {
-    gap: 6px !important;
+    gap: 2px !important;
   }
 
   .messenger-composer-tools {
@@ -22471,9 +22473,9 @@ html.dark-mode.neon-purple-mode .messenger-reaction-chip {
   .messenger-composer-btn,
   html.dark-mode .messenger-composer-btn,
   html.dark-mode.neon-purple-mode .messenger-composer-btn {
-    width: 37px !important;
-    height: 37px !important;
-    min-width: 37px !important;
+    width: 30px !important;
+    height: 40px !important;
+    min-width: 30px !important;
   }
 
   .messenger-composer-btn svg {
@@ -22485,8 +22487,8 @@ html.dark-mode.neon-purple-mode .messenger-reaction-chip {
   html.dark-mode .messenger-composer-entry,
   html.dark-mode.neon-purple-mode .messenger-composer-entry {
     min-height: 46px !important;
-    padding-left: 16px !important;
-    padding-right: 12px !important;
+    padding-left: 15px !important;
+    padding-right: 6px !important;
   }
 
   .messenger-composer-entry input {
@@ -22495,9 +22497,9 @@ html.dark-mode.neon-purple-mode .messenger-reaction-chip {
   }
 
   .messenger-composer-emoji-inline {
-    width: 34px;
+    width: 30px;
     height: 34px;
-    min-width: 34px !important;
+    min-width: 30px !important;
   }
 
   .messenger-composer-emoji-inline svg {
@@ -22508,9 +22510,9 @@ html.dark-mode.neon-purple-mode .messenger-reaction-chip {
   .messenger-composer-send,
   html.dark-mode .messenger-composer-send,
   html.dark-mode.neon-purple-mode .messenger-composer-send {
-    width: 42px !important;
+    width: 36px !important;
     height: 42px !important;
-    min-width: 42px !important;
+    min-width: 36px !important;
   }
 }
 

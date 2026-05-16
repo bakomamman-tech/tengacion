@@ -2346,6 +2346,26 @@ export default function Messenger({
     setMobileView("inbox");
   }, [conversationOnly, isMobileSheet]);
 
+  const handleHeaderBack = useCallback(() => {
+    setChatMenuOpen(false);
+    setOpenMessageMenuId("");
+    setOpenMessageReactionId("");
+    setOpenVoiceMenuId("");
+    setWatchOpen(false);
+
+    if (isMobileSheet && !conversationOnly) {
+      goToInbox();
+      return;
+    }
+
+    if (!conversationOnly) {
+      setSelectedId("");
+      return;
+    }
+
+    onClose?.();
+  }, [conversationOnly, goToInbox, isMobileSheet, onClose]);
+
   const downloadVoiceNote = useCallback((url, timeValue) => {
     const resolved = resolveImage(url);
     if (!resolved) {
@@ -2499,6 +2519,13 @@ export default function Messenger({
           ? "Online"
           : "Offline"
     : "";
+  const selectedHeaderStatusLabel = selectedContact
+    ? selectedStatusLabel === "Online"
+      ? "Active now"
+      : selectedStatusLabel === "Offline"
+        ? "Waiting for network"
+        : selectedStatusLabel
+    : "";
   const selectedStatusMeta =
     selectedContact?.status?.emoji || selectedContact?.status?.text
       ? `${selectedContact?.status?.emoji || ""} ${selectedContact?.status?.text || ""}`.trim()
@@ -2538,32 +2565,60 @@ export default function Messenger({
           aria-label="Drag messenger panel"
         />
 
-        <div className="messenger-header-main" onPointerDown={onDesktopHeaderPointerDown}>
-          <div className={`mh-left${conversationOnly ? " mh-left--conversation" : ""}`}>
-            {conversationOnly && selectedContact ? (
-              <div className="mh-chat-contact">
-                <div className="mh-chat-avatar-wrap">
+        <div
+          className="messenger-header-main"
+          ref={selectedContact ? chatMenuRef : null}
+          onPointerDown={onDesktopHeaderPointerDown}
+        >
+          <div className={`mh-left${selectedContact ? " mh-left--conversation" : ""}`}>
+            {selectedContact ? (
+              <>
+                <button
+                  type="button"
+                  className="mh-back"
+                  onClick={handleHeaderBack}
+                  aria-label={isMobileSheet && !conversationOnly ? "Back to chats" : "Back"}
+                  title={isMobileSheet && !conversationOnly ? "Back to chats" : "Back"}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M15 5 8 12l7 7" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className={`mh-chat-contact${chatMenuOpen ? " active" : ""}`}
+                  onClick={() => setChatMenuOpen((prev) => !prev)}
+                  aria-haspopup="menu"
+                  aria-expanded={chatMenuOpen}
+                  aria-label={`Open chat options for ${
+                    selectedContact.name || selectedContact.username || "this user"
+                  }`}
+                >
+                <span className="mh-chat-avatar-wrap">
                   <img src={getAvatar(selectedContact)} alt="" className="mh-chat-avatar" />
                   {onlineUsers.has(selectedContact._id) ? (
                     <span className="mh-chat-online-dot" />
                   ) : null}
-                </div>
-                <div className="mh-chat-copy">
+                </span>
+                <span className="mh-chat-copy">
                   <strong>{selectedHeaderName}</strong>
                   <span>
-                    {selectedStatusLabel}
+                    {selectedHeaderStatusLabel}
                     {selectedStatusMeta ? ` - ${selectedStatusMeta}` : ""}
                   </span>
-                </div>
-              </div>
+                </span>
+                </button>
+              </>
             ) : (
               <strong>Messenger</strong>
             )}
           </div>
           <div className="mh-actions">
+            {selectedContact ? (
+              <>
             <button
               type="button"
-              className="mh-action-btn"
+              className="mh-action-btn mh-call-btn"
               title="Voice call"
               aria-label="Voice call"
               onClick={() => setHeaderNotice("Voice calling coming soon")}
@@ -2574,7 +2629,7 @@ export default function Messenger({
             </button>
             <button
               type="button"
-              className="mh-action-btn"
+              className="mh-action-btn mh-call-btn"
               title="Video call"
               aria-label="Video call"
               onClick={() => setHeaderNotice("Video calling coming soon")}
@@ -2584,9 +2639,81 @@ export default function Messenger({
                 <path d="M16 10.5l5-2.5v8l-5-2.5z" />
               </svg>
             </button>
+              </>
+            ) : null}
+            {selectedContact && chatMenuOpen ? (
+              <div className="chat-top-menu mh-chat-menu" role="menu" aria-label="Conversation options">
+                <div className="chat-top-menu-header">
+                  <div className="chat-top-menu-title">
+                    {selectedContact.name || selectedContact.username}
+                  </div>
+                  <div className="chat-top-menu-sub">
+                    {selectedContact.username ? `@${selectedContact.username}` : "Chat options"}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="chat-top-menu-item"
+                  role="menuitem"
+                  onClick={openSelectedProfile}
+                >
+                  <span className="chat-top-menu-item-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5Z" />
+                    </svg>
+                  </span>
+                  <span className="chat-top-menu-item-copy">
+                    <strong>View profile</strong>
+                    <small>Open their Tengacion profile page.</small>
+                  </span>
+                </button>
+
+                {!conversationOnly ? (
+                  <button
+                    type="button"
+                    className="chat-top-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setChatMenuOpen(false);
+                      setWatchOpen((prev) => !prev);
+                    }}
+                  >
+                    <span className="chat-top-menu-item-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h8A2.5 2.5 0 0 1 16 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 3 16.5z" />
+                        <path d="M16 10.5l5-2.5v8l-5-2.5z" />
+                      </svg>
+                    </span>
+                    <span className="chat-top-menu-item-copy">
+                      <strong>{watchOpen ? "Close watch together" : "Watch together"}</strong>
+                      <small>Share a synced video moment in this chat.</small>
+                    </span>
+                  </button>
+                ) : null}
+
+                <button
+                  type="button"
+                  className="chat-top-menu-item danger"
+                  role="menuitem"
+                  onClick={handleBlockSelectedContact}
+                  disabled={isBlockingUser}
+                >
+                  <span className="chat-top-menu-item-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 2a9 9 0 1 0 9 9 9.01 9.01 0 0 0-9-9Zm0 2a6.94 6.94 0 0 1 4.95 2.05L6.05 16.95A7 7 0 0 1 12 4Zm0 14a6.94 6.94 0 0 1-4.95-2.05L17.95 5.05A7 7 0 0 1 12 18Z" />
+                    </svg>
+                  </span>
+                  <span className="chat-top-menu-item-copy">
+                    <strong>{isBlockingUser ? "Blocking user..." : "Block user"}</strong>
+                    <small>Stop new messages from this person if you feel unsafe.</small>
+                  </span>
+                </button>
+              </div>
+            ) : null}
             <button
               type="button"
-              className="mh-action-btn"
+              className="mh-action-btn mh-window-btn"
               title="Minimize"
               aria-label="Minimize chat"
               onClick={() =>
@@ -2599,7 +2726,7 @@ export default function Messenger({
               —
             </button>
             <button
-              className="mh-close"
+              className="mh-close mh-window-btn"
               onClick={onClose}
               aria-label="Close chat"
               title="Close"
@@ -2609,6 +2736,9 @@ export default function Messenger({
             </button>
           </div>
         </div>
+        {selectedContact && (
+          <div className="messenger-network-status">{selectedHeaderStatusLabel}</div>
+        )}
         {headerNotice && <div className="messenger-header-notice">{headerNotice}</div>}
       </div>
 
@@ -2804,7 +2934,7 @@ export default function Messenger({
               ) : null}
 
               {!conversationOnly && (
-              <div className={`chat-topbar${isMobileSheet ? " chat-topbar--mobile" : ""}`} ref={chatMenuRef}>
+              <div className={`chat-topbar${isMobileSheet ? " chat-topbar--mobile" : ""}`}>
                 <button
                   type="button"
                   className={`chat-top-profile-btn ${chatMenuOpen ? "active" : ""}`}
@@ -3184,7 +3314,7 @@ export default function Messenger({
                           );
                         }}
                       >
-                        {!isMe && !conversationOnly && (
+                        {!isMe && (
                           <img
                             src={m.senderAvatar || getAvatar(selectedContact)}
                             className="msg-avatar"
@@ -3785,6 +3915,19 @@ export default function Messenger({
                   <div className="messenger-composer-tools" aria-label="Chat tools">
                     <button
                       type="button"
+                      className="messenger-composer-btn messenger-composer-btn--camera"
+                      onClick={openAttachmentPicker}
+                      title="Camera"
+                      aria-label="Camera"
+                      disabled={isRecording || isSendingVoice}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 7.5 9.5 5h5L16 7.5h2A2.5 2.5 0 0 1 20.5 10v6.5A2.5 2.5 0 0 1 18 19H6a2.5 2.5 0 0 1-2.5-2.5V10A2.5 2.5 0 0 1 6 7.5z" />
+                        <circle cx="12" cy="13" r="3.25" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
                       className={`messenger-composer-btn${isRecording ? " is-active" : ""}`}
                       onClick={isRecording ? stopVoiceNote : startVoiceNote}
                       title="Voice message"
@@ -3860,6 +4003,25 @@ export default function Messenger({
                       placeholder="Aa"
                       disabled={isRecording}
                     />
+                    <button
+                      type="button"
+                      className={`messenger-composer-emoji-inline${showReactions ? " is-active" : ""}`}
+                      onClick={() => {
+                        setShowReactions((prev) => !prev);
+                        setShowEmojiPicker(false);
+                        setGifOpen(false);
+                      }}
+                      title="Emoji"
+                      aria-label="Emoji"
+                      disabled={isRecording || isSendingVoice}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="8.5" />
+                        <path d="M9 10h.01" />
+                        <path d="M15 10h.01" />
+                        <path d="M8.8 14.1c1 .95 2.08 1.4 3.2 1.4 1.12 0 2.2-.45 3.2-1.4" />
+                      </svg>
+                    </button>
                   </div>
 
                   <button

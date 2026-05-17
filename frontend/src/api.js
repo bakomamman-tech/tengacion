@@ -1071,6 +1071,14 @@ export const cancelSubscriptionPurchase = (purchaseId) =>
     },
   });
 
+export const resumeSubscriptionPurchase = (purchaseId) =>
+  request(`${API_BASE}/purchases/${encodeURIComponent(purchaseId || "")}/resume-subscription`, {
+    method: "POST",
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
+
 export const getCreatorSales = () =>
   request(`${API_BASE}/purchases/creator/sales`, {
     headers: getAuthHeaders(),

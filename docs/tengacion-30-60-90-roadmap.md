@@ -253,6 +253,7 @@ Help creators succeed faster and more often.
 - Add creator settings for subscription configuration
 - Current implementation anchor:
   - creators can configure monthly subscription price, checkout description, and supporter benefits from profile settings; public creator pages and subscription checkout now render the saved membership packaging
+  - cancelled creator memberships now expose a resume-renewal action before expiry, so users can move from cancel-scheduled or grace-period status back to active renewal without starting a duplicate checkout
 
 #### 3. Improve creator dashboard from status page to operating console
 

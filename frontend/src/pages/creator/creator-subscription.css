@@ -253,6 +253,12 @@
   color: #2f281c;
 }
 
+.creator-subscription__secondary--positive {
+  background: rgba(31, 75, 52, 0.1);
+  border-color: rgba(31, 75, 52, 0.22);
+  color: #173928;
+}
+
 .creator-subscription-error {
   padding: 14px 16px;
   border-radius: 18px;

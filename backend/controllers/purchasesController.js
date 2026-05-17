@@ -6,6 +6,7 @@ const { hasEntitlement } = require("../services/entitlementService");
 const { buildCreatorWalletSnapshot } = require("../services/walletService");
 const {
   cancelSubscriptionPurchase,
+  resumeSubscriptionRenewal,
   toPurchasePayload,
 } = require("../services/paymentOpsService");
 
@@ -41,6 +42,34 @@ exports.cancelMySubscription = asyncHandler(async (req, res) => {
   return res.json({
     success: true,
     alreadyCancelled: Boolean(result?.alreadyCancelled),
+    purchase: toPurchasePayload(result.purchase),
+  });
+});
+
+exports.resumeMySubscriptionRenewal = asyncHandler(async (req, res) => {
+  const purchaseId = String(req.params?.id || "").trim();
+  if (!purchaseId || !mongoose.Types.ObjectId.isValid(purchaseId)) {
+    return res.status(400).json({ error: "Valid purchase id is required" });
+  }
+
+  const purchase = await Purchase.findOne({
+    _id: purchaseId,
+    userId: req.user.id,
+  });
+  if (!purchase) {
+    return res.status(404).json({ error: "Purchase not found" });
+  }
+
+  const result = await resumeSubscriptionRenewal({
+    purchase,
+    actorUserId: req.user.id,
+    actorRole: req.user?.role || "user",
+    reason: "user_resumed_subscription",
+  });
+
+  return res.json({
+    success: true,
+    alreadyResumed: Boolean(result?.alreadyResumed),
     purchase: toPurchasePayload(result.purchase),
   });
 });

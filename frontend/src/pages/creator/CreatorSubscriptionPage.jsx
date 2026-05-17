@@ -7,6 +7,7 @@ import {
   getPublicCreatorProfile,
   initPayment,
   resolveImage,
+  resumeSubscriptionPurchase,
 } from "../../api";
 import { useAuth } from "../../context/AuthContext";
 
@@ -36,6 +37,7 @@ export default function CreatorSubscriptionPage() {
   const [paying, setPaying] = useState(false);
   const [checkingReturn, setCheckingReturn] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [resuming, setResuming] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -239,6 +241,25 @@ export default function CreatorSubscriptionPage() {
     }
   };
 
+  const handleResume = async () => {
+    if (!subscription?.purchaseId) {
+      return;
+    }
+
+    try {
+      setResuming(true);
+      setPaymentError("");
+      await resumeSubscriptionPurchase(subscription.purchaseId);
+      const nextPayload = await getPublicCreatorProfile(creatorId);
+      setPayload(nextPayload || null);
+      toast.success("Renewal resumed. Your creator membership will continue after this period.");
+    } catch (err) {
+      setPaymentError(err?.message || "Failed to resume renewal right now.");
+    } finally {
+      setResuming(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="creator-subscription-page">
@@ -402,9 +423,20 @@ export default function CreatorSubscriptionPage() {
                   type="button"
                   className="creator-subscription__secondary"
                   onClick={handleCancel}
-                  disabled={cancelling}
+                  disabled={cancelling || resuming}
                 >
                   {cancelling ? "Cancelling renewal..." : "Cancel renewal"}
+                </button>
+              ) : null}
+
+              {subscription?.canResume ? (
+                <button
+                  type="button"
+                  className="creator-subscription__secondary creator-subscription__secondary--positive"
+                  onClick={handleResume}
+                  disabled={resuming || cancelling}
+                >
+                  {resuming ? "Resuming renewal..." : "Resume renewal"}
                 </button>
               ) : null}
 

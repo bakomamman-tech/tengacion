@@ -134,6 +134,7 @@ const buildSubscriptionPayload = ({
       refundedAt: null,
       inGracePeriod: false,
       canCancel: false,
+      canResume: false,
       canRenew: false,
     };
   }
@@ -154,6 +155,7 @@ const buildSubscriptionPayload = ({
     refundedAt: latestSubscription?.refundedAt || null,
     inGracePeriod: lifecycle.inGracePeriod,
     canCancel: lifecycle.canCancel,
+    canResume: lifecycle.canResume,
     canRenew: lifecycle.canRenew,
   };
 };

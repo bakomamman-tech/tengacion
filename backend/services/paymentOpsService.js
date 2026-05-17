@@ -71,6 +71,7 @@ const TIMELINE_EVENT_META = {
   purchase_reconciliation_completed: { label: "Admin reconciliation completed", tone: "success" },
   purchase_reconciliation_failed: { label: "Admin reconciliation failed", tone: "danger" },
   purchase_subscription_cancel_scheduled: { label: "Subscription cancel scheduled", tone: "warn" },
+  purchase_subscription_renewal_resumed: { label: "Subscription renewal resumed", tone: "success" },
   purchase_access_revoked: { label: "Access revoked", tone: "danger" },
   purchase_refund_requested: { label: "Refund requested", tone: "info" },
   purchase_refunded: { label: "Refund completed", tone: "danger" },
@@ -946,6 +947,61 @@ const cancelSubscriptionPurchase = async ({
   return {
     purchase: updatedPurchase,
     alreadyCancelled: false,
+  };
+};
+
+const resumeSubscriptionRenewal = async ({
+  purchase,
+  actorUserId = "",
+  actorRole = "",
+  reason = "user_resumed_subscription",
+} = {}) => {
+  if (!purchase?._id) {
+    throw createServiceError("Subscription purchase not found", 404);
+  }
+
+  if (!isSubscriptionPurchase(purchase)) {
+    throw createServiceError("Only subscription purchases can resume renewal", 400);
+  }
+
+  const lifecycle = resolveSubscriptionLifecycle(purchase);
+  if (!lifecycle.hasActiveAccess) {
+    throw createServiceError("This subscription is not active anymore", 400);
+  }
+
+  if (!lifecycle.cancelAtPeriodEnd) {
+    return {
+      purchase,
+      alreadyResumed: true,
+    };
+  }
+
+  const updatedPurchase = await Purchase.findByIdAndUpdate(
+    purchase._id,
+    {
+      $set: {
+        cancelAtPeriodEnd: false,
+        canceledAt: null,
+      },
+    },
+    { returnDocument: "after" }
+  );
+
+  await logPurchaseLifecycleEvent({
+    type: "purchase_subscription_renewal_resumed",
+    purchase: updatedPurchase,
+    userId: actorUserId || toIdString(updatedPurchase?.userId),
+    actorRole,
+    metadata: {
+      reason,
+      accessExpiresAt: updatedPurchase?.accessExpiresAt || null,
+      cancelAtPeriodEnd: false,
+    },
+  }).catch(() => null);
+
+  return {
+    purchase: updatedPurchase,
+    alreadyResumed: false,
   };
 };
 
@@ -2015,6 +2071,7 @@ module.exports = {
   handleStripeWebhookEvent,
   initializeCheckout,
   refundPurchase,
+  resumeSubscriptionRenewal,
   initializePaystackCheckout,
   initializeStripeCheckout,
   loadPurchaseOperationalArtifacts,

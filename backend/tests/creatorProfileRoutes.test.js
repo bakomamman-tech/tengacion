@@ -1073,6 +1073,7 @@ describe("creator profile routes", () => {
       isSubscribed: true,
       lifecycleStatus: "active",
       canCancel: true,
+      canResume: false,
       canRenew: false,
     });
     expect(activeProfileResponse.body.music.tracks[0].canAccessFull).toBe(true);
@@ -1092,6 +1093,7 @@ describe("creator profile routes", () => {
         lifecycle: expect.objectContaining({
           lifecycleStatus: "cancel_scheduled",
           canCancel: false,
+          canResume: true,
         }),
       }),
     });
@@ -1106,8 +1108,50 @@ describe("creator profile routes", () => {
       lifecycleStatus: "cancel_scheduled",
       cancelAtPeriodEnd: true,
       canCancel: false,
+      canResume: true,
       canRenew: false,
     });
+
+    const resumeResponse = await request(app)
+      .post(`/api/purchases/${purchase._id}/resume-subscription`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({})
+      .expect(200);
+
+    expect(resumeResponse.body).toMatchObject({
+      success: true,
+      alreadyResumed: false,
+      purchase: expect.objectContaining({
+        status: "paid",
+        cancelAtPeriodEnd: false,
+        canceledAt: null,
+        lifecycle: expect.objectContaining({
+          lifecycleStatus: "active",
+          canCancel: true,
+          canResume: false,
+        }),
+      }),
+    });
+
+    const resumedProfileResponse = await request(app)
+      .get(`/api/creator/${profile._id}/public-profile`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .expect(200);
+
+    expect(resumedProfileResponse.body.subscription).toMatchObject({
+      isSubscribed: true,
+      lifecycleStatus: "active",
+      cancelAtPeriodEnd: false,
+      canCancel: true,
+      canResume: false,
+      canRenew: false,
+    });
+
+    await request(app)
+      .post(`/api/purchases/${purchase._id}/cancel-subscription`)
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({})
+      .expect(200);
 
     const entitlementWhileActive = await request(app)
       .get(`/api/entitlements/check?itemType=track&itemId=${paidTrack._id}`)
@@ -1135,6 +1179,7 @@ describe("creator profile routes", () => {
       lifecycleStatus: "expired",
       cancelAtPeriodEnd: true,
       canCancel: false,
+      canResume: false,
       canRenew: true,
     });
     expect(expiredProfileResponse.body.music.tracks[0].canAccessFull).toBe(false);

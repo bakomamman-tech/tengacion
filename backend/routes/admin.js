@@ -42,6 +42,7 @@ const {
   buildUserGrowth,
   buildContentUploads,
   buildRevenueAnalytics,
+  buildCommerceOperationsAnalytics,
   buildEngagementAnalytics,
   buildMessagesOverview,
   buildTopCreators,
@@ -1544,6 +1545,15 @@ router.get("/analytics/revenue", async (req, res) => {
   } catch (err) {
     const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
     return res.status(code).json({ error: err.message || "Failed to load revenue analytics" });
+  }
+});
+
+router.get("/analytics/commerce-ops", async (req, res) => {
+  try {
+    return res.json(await buildCommerceOperationsAnalytics(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load commerce operations analytics" });
   }
 });
 

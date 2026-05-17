@@ -8,6 +8,8 @@ const Album = require("../models/Album");
 const Book = require("../models/Book");
 const Video = require("../models/Video");
 const Purchase = require("../models/Purchase");
+const Entitlement = require("../models/Entitlement");
+const PaymentWebhookEvent = require("../models/PaymentWebhookEvent");
 const Report = require("../models/Report");
 const Message = require("../models/Message");
 const Post = require("../models/Post");
@@ -25,12 +27,53 @@ const DEFAULT_ALERT_THRESHOLDS = {
   unresolvedReports: 10,
 };
 
+const ENTITLEMENT_ITEM_TYPES = ["track", "book", "album", "video"];
+const COMMERCE_OPS_EVENT_TYPES = [
+  "purchase_record_created",
+  "purchase_checkout_initialized",
+  "purchase_checkout_failed",
+  "purchase_verification_pending",
+  "purchase_verification_failed",
+  "purchase_verification_succeeded",
+  "purchase_webhook_received",
+  "purchase_webhook_duplicate",
+  "purchase_webhook_pending",
+  "purchase_webhook_failed",
+  "purchase_webhook_settled",
+  "purchase_access_granted",
+  "purchase_entitlement_granted",
+  "purchase_success",
+  "purchase_failed",
+  "creator_onboarding_step_completed",
+];
+const CREATOR_ONBOARDING_STEP_ORDER = [
+  "account_created",
+  "creator_lane_selected",
+  "profile_ready",
+  "first_upload_started",
+  "first_upload_completed",
+  "payment_readiness_started",
+];
+
 const formatDateKey = (date = new Date()) => {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   const day = String(date.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
+const roundRate = (value = 0) =>
+  Number.isFinite(Number(value)) ? Number(Number(value).toFixed(4)) : 0;
+
+const toCounterMap = (rows = []) =>
+  rows.reduce((acc, row) => {
+    const key = String(row?._id || "").trim();
+    if (!key || key === "null" || key === "undefined") {
+      return acc;
+    }
+    acc[key] = Number(row?.count || 0);
+    return acc;
+  }, {});
 
 const parseDateKey = (dateKey) => new Date(`${dateKey}T00:00:00.000Z`);
 
@@ -91,6 +134,59 @@ const incrementDailyMetric = async (field, amount = 1, date = new Date()) => {
     { $inc: { [field]: Number(amount) || 1 } },
     { returnDocument: "after", upsert: true, setDefaultsOnInsert: true }
   );
+};
+
+const aggregateEntitlementAudit = async ({ start, end } = {}) => {
+  const rows = await Purchase.aggregate([
+    {
+      $match: {
+        status: "paid",
+        itemType: { $in: ENTITLEMENT_ITEM_TYPES },
+        paidAt: { $gte: start, $lte: end },
+      },
+    },
+    {
+      $lookup: {
+        from: Entitlement.collection.name,
+        let: {
+          buyerId: "$userId",
+          itemType: "$itemType",
+          itemId: "$itemId",
+        },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$buyerId", "$$buyerId"] },
+                  { $eq: ["$itemType", "$$itemType"] },
+                  { $eq: ["$itemId", "$$itemId"] },
+                ],
+              },
+            },
+          },
+          { $limit: 1 },
+        ],
+        as: "entitlementRecords",
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        eligiblePurchases: { $sum: 1 },
+        missingEntitlements: {
+          $sum: {
+            $cond: [{ $gt: [{ $size: "$entitlementRecords" }, 0] }, 0, 1],
+          },
+        },
+      },
+    },
+  ]).catch(() => []);
+
+  return {
+    eligiblePurchases: Number(rows[0]?.eligiblePurchases || 0),
+    missingEntitlements: Number(rows[0]?.missingEntitlements || 0),
+  };
 };
 
 const touchUserActivity = async ({ userId, login = false, seenAt = new Date() } = {}) => {
@@ -157,8 +253,16 @@ const logAnalyticsEvent = async ({
     stream_started: "streams",
     stream_completed: "streams",
     download_completed: "downloads",
+    purchase_record_created: "purchaseAttempts",
+    purchase_checkout_initialized: "checkoutInitialized",
+    purchase_checkout_failed: "checkoutFailures",
     purchase_success: "successfulPurchases",
     purchase_failed: "failedPurchases",
+    purchase_webhook_received: "webhookEventsReceived",
+    purchase_webhook_duplicate: "webhookDuplicateDeliveries",
+    purchase_webhook_failed: "webhookEventsFailed",
+    purchase_webhook_settled: "webhookEventsProcessed",
+    purchase_entitlement_granted: "entitlementGrants",
     creator_onboarding_step_completed: "creatorOnboardingStepCompletions",
     content_reported: "reportsCount",
     upload_failed: "uploadFailuresCount",
@@ -259,6 +363,14 @@ const computeDailySummary = async ({ date = new Date() } = {}) => {
     reportsCount,
     purchaseSummary,
     failedPurchases,
+    purchaseAttempts,
+    checkoutInitialized,
+    checkoutFailures,
+    webhookEventsReceived,
+    webhookStatusRows,
+    webhookDuplicateRows,
+    entitlementGrants,
+    entitlementAudit,
     streams,
     downloads,
     friendRequestsSent,
@@ -289,6 +401,20 @@ const computeDailySummary = async ({ date = new Date() } = {}) => {
       { $group: { _id: null, count: { $sum: 1 }, revenue: { $sum: "$amount" } } },
     ]),
     Purchase.countDocuments({ status: "failed", updatedAt: { $gte: start, $lte: end } }),
+    Purchase.countDocuments({ createdAt: { $gte: start, $lte: end } }),
+    AnalyticsEvent.countDocuments({ type: "purchase_checkout_initialized", createdAt: { $gte: start, $lte: end } }),
+    AnalyticsEvent.countDocuments({ type: "purchase_checkout_failed", createdAt: { $gte: start, $lte: end } }),
+    PaymentWebhookEvent.countDocuments({ createdAt: { $gte: start, $lte: end } }),
+    PaymentWebhookEvent.aggregate([
+      { $match: { createdAt: { $gte: start, $lte: end } } },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]).catch(() => []),
+    PaymentWebhookEvent.aggregate([
+      { $match: { createdAt: { $gte: start, $lte: end } } },
+      { $group: { _id: null, count: { $sum: "$duplicateCount" } } },
+    ]).catch(() => []),
+    AnalyticsEvent.countDocuments({ type: "purchase_entitlement_granted", createdAt: { $gte: start, $lte: end } }),
+    aggregateEntitlementAudit({ start, end }),
     AnalyticsEvent.countDocuments({ type: { $in: ["stream_started", "stream_completed"] }, createdAt: { $gte: start, $lte: end } }),
     AnalyticsEvent.countDocuments({ type: "download_completed", createdAt: { $gte: start, $lte: end } }),
     AnalyticsEvent.countDocuments({ type: "friend_request_sent", createdAt: { $gte: start, $lte: end } }),
@@ -300,6 +426,7 @@ const computeDailySummary = async ({ date = new Date() } = {}) => {
   ]);
 
   const purchaseRow = purchaseSummary[0] || {};
+  const webhookStatusCounts = toCounterMap(webhookStatusRows);
   const postInteractionsCount =
     Number(postSummary.likesCount || 0) +
     Number(postSummary.commentsCount || 0) +
@@ -330,9 +457,19 @@ const computeDailySummary = async ({ date = new Date() } = {}) => {
         streams: Number(streams) || 0,
         friendRequestsSent: Number(friendRequestsSent) || 0,
         friendRequestsAccepted: Number(friendRequestsAccepted) || 0,
+        purchaseAttempts: Number(purchaseAttempts) || 0,
+        checkoutInitialized: Number(checkoutInitialized) || 0,
+        checkoutFailures: Number(checkoutFailures) || 0,
         successfulPurchases: Number(purchaseRow.count || 0),
         failedPurchases: Number(failedPurchases) || 0,
         revenueAmount: Number(purchaseRow.revenue || 0),
+        webhookEventsReceived: Number(webhookEventsReceived) || 0,
+        webhookEventsProcessed: Number(webhookStatusCounts.processed || 0),
+        webhookEventsSkipped: Number(webhookStatusCounts.skipped || 0),
+        webhookEventsFailed: Number(webhookStatusCounts.failed || 0),
+        webhookDuplicateDeliveries: Number(webhookDuplicateRows[0]?.count || 0),
+        entitlementGrants: Number(entitlementGrants) || 0,
+        entitlementGrantFailures: Number(entitlementAudit?.missingEntitlements || 0),
         reportsCount: Number(reportsCount) || 0,
         uploadFailuresCount: Number(uploadFailures) || 0,
         loginWarnings: Number(loginWarnings) || 0,
@@ -500,9 +637,389 @@ const buildRevenueAnalytics = async ({ range, startDate, endDate, interval = "da
     series: series.map((row) => ({
       date: row.date,
       revenue: Number(row.revenueAmount || 0),
+      purchaseAttempts: Number(row.purchaseAttempts || 0),
+      checkoutInitialized: Number(row.checkoutInitialized || 0),
+      checkoutFailures: Number(row.checkoutFailures || 0),
       successfulPurchases: Number(row.successfulPurchases || 0),
       failedPurchases: Number(row.failedPurchases || 0),
+      webhookEventsReceived: Number(row.webhookEventsReceived || 0),
+      webhookEventsProcessed: Number(row.webhookEventsProcessed || 0),
+      webhookEventsSkipped: Number(row.webhookEventsSkipped || 0),
+      webhookEventsFailed: Number(row.webhookEventsFailed || 0),
+      webhookDuplicateDeliveries: Number(row.webhookDuplicateDeliveries || 0),
+      entitlementGrants: Number(row.entitlementGrants || 0),
+      entitlementGrantFailures: Number(row.entitlementGrantFailures || 0),
     })),
+  };
+};
+
+const buildCommerceSeriesSkeleton = ({ start, end } = {}) => {
+  const rows = new Map();
+  for (
+    let cursor = startOfUtcDay(start || new Date());
+    cursor <= startOfUtcDay(end || new Date());
+    cursor = new Date(cursor.getTime() + ONE_DAY_MS)
+  ) {
+    const date = formatDateKey(cursor);
+    rows.set(date, {
+      date,
+      purchaseAttempts: 0,
+      checkoutInitialized: 0,
+      checkoutFailures: 0,
+      successfulPurchases: 0,
+      failedPurchases: 0,
+      webhookReceived: 0,
+      webhookProcessed: 0,
+      webhookSkipped: 0,
+      webhookFailures: 0,
+      webhookReplays: 0,
+      entitlementGrants: 0,
+      entitlementGrantFailures: 0,
+      onboardingStepCompletions: 0,
+    });
+  }
+  return rows;
+};
+
+const addSeriesCount = (seriesMap, date, field, count = 0) => {
+  if (!date || !field) return;
+  const row = seriesMap.get(date);
+  if (!row) return;
+  row[field] = Number(row[field] || 0) + Number(count || 0);
+};
+
+const setSeriesMax = (seriesMap, date, field, count = 0) => {
+  if (!date || !field) return;
+  const row = seriesMap.get(date);
+  if (!row) return;
+  row[field] = Math.max(Number(row[field] || 0), Number(count || 0));
+};
+
+const buildCommerceOperationsAnalytics = async ({
+  range,
+  startDate,
+  endDate,
+  interval = "daily",
+} = {}) => {
+  const dates = buildDateRange({ range, startDate, endDate });
+  const normalizedInterval = normalizeInterval(interval);
+
+  const [
+    eventCountRows,
+    eventSeriesRows,
+    purchaseCreatedRows,
+    paidPurchaseRows,
+    failedPurchaseRows,
+    webhookStatusRows,
+    webhookProviderRows,
+    webhookSeriesRows,
+    webhookDuplicateRows,
+    entitlementAudit,
+    onboardingStepRows,
+  ] = await Promise.all([
+    AnalyticsEvent.aggregate([
+      {
+        $match: {
+          type: { $in: COMMERCE_OPS_EVENT_TYPES },
+          createdAt: { $gte: dates.start, $lte: dates.end },
+        },
+      },
+      { $group: { _id: "$type", count: { $sum: 1 } } },
+    ]).catch(() => []),
+    AnalyticsEvent.aggregate([
+      {
+        $match: {
+          type: { $in: COMMERCE_OPS_EVENT_TYPES },
+          createdAt: { $gte: dates.start, $lte: dates.end },
+        },
+      },
+      {
+        $project: {
+          date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          type: "$type",
+          contentType: "$contentType",
+        },
+      },
+      {
+        $group: {
+          _id: { date: "$date", type: "$type", contentType: "$contentType" },
+          count: { $sum: 1 },
+        },
+      },
+    ]).catch(() => []),
+    Purchase.aggregate([
+      { $match: { createdAt: { $gte: dates.start, $lte: dates.end } } },
+      {
+        $project: {
+          date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+        },
+      },
+      { $group: { _id: "$date", count: { $sum: 1 } } },
+    ]).catch(() => []),
+    Purchase.aggregate([
+      { $match: { status: "paid", paidAt: { $gte: dates.start, $lte: dates.end } } },
+      {
+        $project: {
+          date: { $dateToString: { format: "%Y-%m-%d", date: "$paidAt" } },
+        },
+      },
+      { $group: { _id: "$date", count: { $sum: 1 } } },
+    ]).catch(() => []),
+    Purchase.aggregate([
+      { $match: { status: "failed", updatedAt: { $gte: dates.start, $lte: dates.end } } },
+      {
+        $project: {
+          date: { $dateToString: { format: "%Y-%m-%d", date: "$updatedAt" } },
+        },
+      },
+      { $group: { _id: "$date", count: { $sum: 1 } } },
+    ]).catch(() => []),
+    PaymentWebhookEvent.aggregate([
+      { $match: { createdAt: { $gte: dates.start, $lte: dates.end } } },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]).catch(() => []),
+    PaymentWebhookEvent.aggregate([
+      { $match: { createdAt: { $gte: dates.start, $lte: dates.end } } },
+      { $group: { _id: "$provider", count: { $sum: 1 } } },
+    ]).catch(() => []),
+    PaymentWebhookEvent.aggregate([
+      { $match: { createdAt: { $gte: dates.start, $lte: dates.end } } },
+      {
+        $project: {
+          date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          status: "$status",
+          duplicateCount: "$duplicateCount",
+        },
+      },
+      {
+        $group: {
+          _id: { date: "$date", status: "$status" },
+          count: { $sum: 1 },
+          duplicates: { $sum: "$duplicateCount" },
+        },
+      },
+    ]).catch(() => []),
+    PaymentWebhookEvent.aggregate([
+      { $match: { createdAt: { $gte: dates.start, $lte: dates.end } } },
+      { $group: { _id: null, count: { $sum: "$duplicateCount" } } },
+    ]).catch(() => []),
+    aggregateEntitlementAudit({ start: dates.start, end: dates.end }),
+    AnalyticsEvent.aggregate([
+      {
+        $match: {
+          type: "creator_onboarding_step_completed",
+          createdAt: { $gte: dates.start, $lte: dates.end },
+        },
+      },
+      { $group: { _id: "$contentType", count: { $sum: 1 } } },
+    ]).catch(() => []),
+  ]);
+
+  const eventCounts = toCounterMap(eventCountRows);
+  const webhookStatusCounts = toCounterMap(webhookStatusRows);
+  const webhookProviderCounts = toCounterMap(webhookProviderRows);
+  const onboardingStepCounts = toCounterMap(onboardingStepRows);
+  const purchaseAttemptsFromRecords = purchaseCreatedRows.reduce(
+    (total, row) => total + Number(row?.count || 0),
+    0
+  );
+  const paidPurchasesFromRecords = paidPurchaseRows.reduce(
+    (total, row) => total + Number(row?.count || 0),
+    0
+  );
+  const failedPurchasesFromRecords = failedPurchaseRows.reduce(
+    (total, row) => total + Number(row?.count || 0),
+    0
+  );
+
+  const seriesMap = buildCommerceSeriesSkeleton({ start: dates.start, end: dates.end });
+
+  for (const row of eventSeriesRows) {
+    const type = String(row?._id?.type || "");
+    const date = String(row?._id?.date || "");
+    const count = Number(row?.count || 0);
+    if (type === "purchase_record_created") addSeriesCount(seriesMap, date, "purchaseAttempts", count);
+    if (type === "purchase_checkout_initialized") addSeriesCount(seriesMap, date, "checkoutInitialized", count);
+    if (type === "purchase_checkout_failed") addSeriesCount(seriesMap, date, "checkoutFailures", count);
+    if (type === "purchase_success") addSeriesCount(seriesMap, date, "successfulPurchases", count);
+    if (type === "purchase_failed") addSeriesCount(seriesMap, date, "failedPurchases", count);
+    if (type === "purchase_webhook_received") addSeriesCount(seriesMap, date, "webhookReceived", count);
+    if (type === "purchase_webhook_settled") addSeriesCount(seriesMap, date, "webhookProcessed", count);
+    if (type === "purchase_webhook_pending") addSeriesCount(seriesMap, date, "webhookSkipped", count);
+    if (type === "purchase_webhook_failed") addSeriesCount(seriesMap, date, "webhookFailures", count);
+    if (type === "purchase_webhook_duplicate") addSeriesCount(seriesMap, date, "webhookReplays", count);
+    if (type === "purchase_entitlement_granted") addSeriesCount(seriesMap, date, "entitlementGrants", count);
+    if (type === "creator_onboarding_step_completed") addSeriesCount(seriesMap, date, "onboardingStepCompletions", count);
+  }
+
+  for (const row of purchaseCreatedRows) {
+    setSeriesMax(seriesMap, String(row?._id || ""), "purchaseAttempts", row?.count || 0);
+  }
+  for (const row of paidPurchaseRows) {
+    setSeriesMax(seriesMap, String(row?._id || ""), "successfulPurchases", row?.count || 0);
+  }
+  for (const row of failedPurchaseRows) {
+    setSeriesMax(seriesMap, String(row?._id || ""), "failedPurchases", row?.count || 0);
+  }
+  const webhookTotalsByDate = new Map();
+  for (const row of webhookSeriesRows) {
+    const date = String(row?._id?.date || "");
+    const status = String(row?._id?.status || "");
+    const count = Number(row?.count || 0);
+    webhookTotalsByDate.set(date, Number(webhookTotalsByDate.get(date) || 0) + count);
+    if (status === "processed") addSeriesCount(seriesMap, date, "webhookProcessed", count);
+    if (status === "skipped") addSeriesCount(seriesMap, date, "webhookSkipped", count);
+    if (status === "failed") addSeriesCount(seriesMap, date, "webhookFailures", count);
+    if (Number(row?.duplicates || 0) > 0) addSeriesCount(seriesMap, date, "webhookReplays", row.duplicates);
+  }
+  for (const [date, count] of webhookTotalsByDate.entries()) {
+    setSeriesMax(seriesMap, date, "webhookReceived", count);
+  }
+
+  const purchaseAttempts = Math.max(
+    purchaseAttemptsFromRecords,
+    Number(eventCounts.purchase_record_created || 0),
+    Number(eventCounts.purchase_checkout_initialized || 0) +
+      Number(eventCounts.purchase_checkout_failed || 0)
+  );
+  const checkoutInitialized = Number(eventCounts.purchase_checkout_initialized || 0);
+  const checkoutFailures = Number(eventCounts.purchase_checkout_failed || 0);
+  const successfulPurchases = Math.max(
+    paidPurchasesFromRecords,
+    Number(eventCounts.purchase_success || 0),
+    Number(eventCounts.purchase_verification_succeeded || 0)
+  );
+  const failedPurchases = Math.max(
+    failedPurchasesFromRecords,
+    Number(eventCounts.purchase_failed || 0),
+    Number(eventCounts.purchase_verification_failed || 0),
+    checkoutFailures,
+    Number(eventCounts.purchase_webhook_failed || 0)
+  );
+  const webhookReceived = Math.max(
+    Object.values(webhookStatusCounts).reduce((total, value) => total + Number(value || 0), 0),
+    Number(eventCounts.purchase_webhook_received || 0)
+  );
+  const webhookFailures = Math.max(
+    Number(webhookStatusCounts.failed || 0),
+    Number(eventCounts.purchase_webhook_failed || 0)
+  );
+  const webhookReplays = Math.max(
+    Number(webhookDuplicateRows[0]?.count || 0),
+    Number(eventCounts.purchase_webhook_duplicate || 0)
+  );
+  const entitlementEligiblePurchases = Number(entitlementAudit?.eligiblePurchases || 0);
+  const entitlementGrantFailures = Number(entitlementAudit?.missingEntitlements || 0);
+  const entitlementGrants = Number(eventCounts.purchase_entitlement_granted || 0);
+  const onboardingStepCompletions = Number(eventCounts.creator_onboarding_step_completed || 0);
+  const onboardingStarts = Number(onboardingStepCounts.account_created || 0);
+  const profileReady = Number(onboardingStepCounts.profile_ready || 0);
+  const firstUploadStarted = Number(onboardingStepCounts.first_upload_started || 0);
+  const firstUploadCompleted = Number(onboardingStepCounts.first_upload_completed || 0);
+
+  const purchaseFailureRate = roundRate(
+    purchaseAttempts > 0 ? failedPurchases / purchaseAttempts : 0
+  );
+  const purchaseSuccessRate = roundRate(
+    purchaseAttempts > 0 ? successfulPurchases / purchaseAttempts : 0
+  );
+  const entitlementContinuityRate = roundRate(
+    entitlementEligiblePurchases > 0
+      ? (entitlementEligiblePurchases - entitlementGrantFailures) / entitlementEligiblePurchases
+      : 0
+  );
+  const firstUploadCompletionRate = roundRate(
+    firstUploadStarted > 0 ? firstUploadCompleted / firstUploadStarted : 0
+  );
+
+  const actions = [];
+  if (purchaseAttempts >= 3 && purchaseFailureRate >= 0.25) {
+    actions.push({
+      key: "purchase_failure_rate",
+      severity: purchaseFailureRate >= 0.5 ? "high" : "medium",
+      title: "Audit failed checkout and verification events",
+      actionPath: "/admin/transactions",
+    });
+  }
+  if (webhookFailures > 0 || webhookReplays >= 3) {
+    actions.push({
+      key: "webhook_outcomes",
+      severity: webhookFailures > 0 ? "high" : "medium",
+      title: "Review webhook failures and replay diagnostics",
+      actionPath: "/admin/transactions",
+    });
+  }
+  if (entitlementGrantFailures > 0) {
+    actions.push({
+      key: "entitlement_continuity",
+      severity: "high",
+      title: "Reconcile paid purchases missing entitlement records",
+      actionPath: "/admin/transactions?attention=stuck",
+    });
+  }
+  if (onboardingStarts > 0 && firstUploadStarted === 0) {
+    actions.push({
+      key: "creator_activation",
+      severity: "medium",
+      title: "Investigate creators who register but do not start first upload",
+      actionPath: "/admin/analytics",
+    });
+  }
+
+  return {
+    filters: {
+      range: dates.range,
+      startDate: dates.start,
+      endDate: dates.end,
+      interval: normalizedInterval,
+    },
+    summary: {
+      purchaseAttempts,
+      checkoutInitialized,
+      checkoutFailures,
+      successfulPurchases,
+      failedPurchases,
+      purchaseSuccessRate,
+      purchaseFailureRate,
+      webhookReceived,
+      webhookProcessed: Number(webhookStatusCounts.processed || 0),
+      webhookSkipped: Number(webhookStatusCounts.skipped || 0),
+      webhookFailures,
+      webhookReplays,
+      entitlementEligiblePurchases,
+      entitlementGrants,
+      entitlementGrantFailures,
+      entitlementContinuityRate,
+      onboardingStepCompletions,
+      onboardingStarts,
+      profileReady,
+      firstUploadStarted,
+      firstUploadCompleted,
+      firstUploadCompletionRate,
+    },
+    webhooks: {
+      statusCounts: {
+        received: Number(webhookStatusCounts.received || 0),
+        processed: Number(webhookStatusCounts.processed || 0),
+        skipped: Number(webhookStatusCounts.skipped || 0),
+        failed: Number(webhookStatusCounts.failed || 0),
+      },
+      providerCounts: {
+        paystack: Number(webhookProviderCounts.paystack || 0),
+        stripe: Number(webhookProviderCounts.stripe || 0),
+      },
+    },
+    onboarding: {
+      steps: CREATOR_ONBOARDING_STEP_ORDER.map((key) => ({
+        key,
+        count: Number(onboardingStepCounts[key] || 0),
+      })),
+    },
+    series: groupSeries(
+      Array.from(seriesMap.values()).sort((left, right) => left.date.localeCompare(right.date)),
+      normalizedInterval
+    ),
+    actions,
   };
 };
 
@@ -827,6 +1344,7 @@ module.exports = {
   buildUserGrowth,
   buildContentUploads,
   buildRevenueAnalytics,
+  buildCommerceOperationsAnalytics,
   buildEngagementAnalytics,
   buildMessagesOverview,
   buildTopCreators,

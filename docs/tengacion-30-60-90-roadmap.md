@@ -187,6 +187,10 @@ Make Tengacion economically real.
   - entitlement grant success/failure
   - creator onboarding step completion
 - Make these visible through admin/internal dashboards or reports
+- Current implementation anchor:
+  - `/api/admin/analytics/commerce-ops` now returns a focused operations snapshot for purchase attempts, checkout failures, payment success/failure, webhook status outcomes, replay counts, entitlement continuity gaps, and creator onboarding step completions
+  - admin analytics now renders the commerce ops snapshot beside the existing revenue and operational health views, and analytics exports include the new baseline ops fields
+  - daily analytics backfills now persist purchase attempt, checkout, webhook, entitlement grant, and entitlement gap counters so operations reviews can be rebuilt from the same source of truth
 
 #### 5. Start Akuso training loop with instrumentation, not fine-tuning
 

@@ -2355,6 +2355,17 @@ export const adminGetAnalyticsRevenue = (params = {}) => {
   });
 };
 
+export const adminGetAnalyticsCommerceOps = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/analytics/commerce-ops?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
 export const adminGetAnalyticsEngagement = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {

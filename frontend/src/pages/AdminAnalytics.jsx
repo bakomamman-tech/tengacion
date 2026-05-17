@@ -20,6 +20,7 @@ import {
   adminGetAnalyticsUserGrowth,
   adminGetAnalyticsContentUploads,
   adminGetAnalyticsRevenue,
+  adminGetAnalyticsCommerceOps,
   adminGetAnalyticsEngagement,
   adminGetAnalyticsTopCreators,
   adminGetAnalyticsTopContent,
@@ -48,6 +49,7 @@ const CATEGORY_OPTIONS = [
 
 const currency = (value) => `NGN ${Number(value || 0).toLocaleString()}`;
 const number = (value) => Number(value || 0).toLocaleString();
+const percent = (value) => `${Math.round(Number(value || 0) * 100)}%`;
 const todayInput = () => new Date().toISOString().slice(0, 10);
 const dateTime = (value) => {
   if (!value) {return "-";}
@@ -116,6 +118,7 @@ export default function AdminAnalyticsPage({ user }) {
   const [userGrowth, setUserGrowth] = useState({ series: [] });
   const [contentUploads, setContentUploads] = useState({ series: [] });
   const [revenue, setRevenue] = useState({ series: [] });
+  const [commerceOps, setCommerceOps] = useState({ summary: {}, series: [], actions: [], onboarding: { steps: [] }, webhooks: {} });
   const [engagement, setEngagement] = useState({ series: [] });
   const [topCreators, setTopCreators] = useState({ items: [] });
   const [topContent, setTopContent] = useState({ items: [] });
@@ -153,6 +156,7 @@ export default function AdminAnalyticsPage({ user }) {
         growthPayload,
         uploadsPayload,
         revenuePayload,
+        commerceOpsPayload,
         engagementPayload,
         topCreatorsPayload,
         topContentPayload,
@@ -164,6 +168,7 @@ export default function AdminAnalyticsPage({ user }) {
         adminGetAnalyticsUserGrowth(filterParams),
         adminGetAnalyticsContentUploads(filterParams),
         adminGetAnalyticsRevenue(filterParams),
+        adminGetAnalyticsCommerceOps(filterParams),
         adminGetAnalyticsEngagement(filterParams),
         adminGetAnalyticsTopCreators({ ...filterParams, mode: creatorMode }),
         adminGetAnalyticsTopContent(filterParams),
@@ -175,6 +180,7 @@ export default function AdminAnalyticsPage({ user }) {
       setUserGrowth(growthPayload || { series: [] });
       setContentUploads(uploadsPayload || { series: [] });
       setRevenue(revenuePayload || { series: [] });
+      setCommerceOps(commerceOpsPayload || { summary: {}, series: [], actions: [], onboarding: { steps: [] }, webhooks: {} });
       setEngagement(engagementPayload || { series: [] });
       setTopCreators(topCreatorsPayload || { items: [] });
       setTopContent(topContentPayload || { items: [] });
@@ -204,12 +210,13 @@ export default function AdminAnalyticsPage({ user }) {
   const exportJson = () => {
     downloadBlob({
       filename: `tengacion-admin-analytics-${filters.range}.json`,
-      content: JSON.stringify({ filters, overview, userGrowth, contentUploads, revenue, engagement, topCreators, topContent, recentActivity, systemAlerts, reportsSummary }, null, 2),
+      content: JSON.stringify({ filters, overview, userGrowth, contentUploads, revenue, commerceOps, engagement, topCreators, topContent, recentActivity, systemAlerts, reportsSummary }, null, 2),
       type: "application/json",
     });
   };
 
   const exportCsv = () => {
+    const opsByDate = new Map((commerceOps.series || []).map((row) => [row.date, row]));
     const rows = (overview.series || []).map((row) => [
       row.date,
       row.newUsers || 0,
@@ -222,8 +229,13 @@ export default function AdminAnalyticsPage({ user }) {
       row.revenueAmount || 0,
       row.downloads || 0,
       row.streams || 0,
+      opsByDate.get(row.date)?.purchaseAttempts || row.purchaseAttempts || 0,
+      opsByDate.get(row.date)?.checkoutFailures || row.checkoutFailures || 0,
+      opsByDate.get(row.date)?.webhookFailures || row.webhookEventsFailed || 0,
+      opsByDate.get(row.date)?.entitlementGrantFailures || row.entitlementGrantFailures || 0,
+      opsByDate.get(row.date)?.onboardingStepCompletions || row.creatorOnboardingStepCompletions || 0,
     ]);
-    const header = ["date", "newUsers", "activeUsers", "songsUploaded", "albumsUploaded", "booksUploaded", "podcastsUploaded", "videosUploaded", "revenueAmount", "downloads", "streams"];
+    const header = ["date", "newUsers", "activeUsers", "songsUploaded", "albumsUploaded", "booksUploaded", "podcastsUploaded", "videosUploaded", "revenueAmount", "downloads", "streams", "purchaseAttempts", "checkoutFailures", "webhookFailures", "entitlementGrantFailures", "onboardingStepCompletions"];
     const csv = [header, ...rows].map((row) => row.join(",")).join("\n");
     downloadBlob({ filename: `tengacion-admin-analytics-${filters.range}.csv`, content: csv, type: "text/csv;charset=utf-8" });
   };
@@ -295,6 +307,49 @@ export default function AdminAnalyticsPage({ user }) {
 
       {!loading ? (
         <div className="adminx-analytics-grid">
+          <section className="adminx-panel adminx-panel--span-12">
+            <div className="adminx-panel-head">
+              <h2 className="adminx-panel-title">Commerce Ops Snapshot</h2>
+              <button type="button" className="adminx-link-btn" onClick={() => navigate("/admin/transactions")}>Open Transactions</button>
+            </div>
+            <div className="adminx-ops-grid">
+              {[
+                ["Purchase attempts", number(commerceOps.summary?.purchaseAttempts)],
+                ["Success rate", percent(commerceOps.summary?.purchaseSuccessRate)],
+                ["Failure rate", percent(commerceOps.summary?.purchaseFailureRate)],
+                ["Webhook failures", number(commerceOps.summary?.webhookFailures)],
+                ["Webhook replays", number(commerceOps.summary?.webhookReplays)],
+                ["Entitlement gaps", number(commerceOps.summary?.entitlementGrantFailures)],
+                ["Entitlement continuity", percent(commerceOps.summary?.entitlementContinuityRate)],
+                ["Onboarding steps", number(commerceOps.summary?.onboardingStepCompletions)],
+              ].map(([label, value]) => (
+                <div key={label} className="adminx-ops-metric">
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+            <div className="adminx-mobile-stack adminx-mobile-stack--spaced">
+              {(commerceOps.onboarding?.steps || []).map((step) => (
+                <span key={step.key} className="adminx-badge">
+                  {eventLabel(step.key)} {number(step.count)}
+                </span>
+              ))}
+            </div>
+            {(commerceOps.actions || []).length ? (
+              <div className="adminx-alert-list adminx-alert-list--inline">
+                {(commerceOps.actions || []).map((action) => (
+                  <button key={action.key} type="button" className="adminx-alert-item" onClick={() => navigate(action.actionPath || "/admin/analytics")}>
+                    <div className="adminx-row">
+                      <strong>{action.title}</strong>
+                      <span className={`adminx-badge ${action.severity === "high" ? "adminx-badge--danger" : "adminx-badge--warn"}`}>{action.severity}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
           <section className="adminx-panel adminx-panel--span-6">
             <div className="adminx-panel-head"><h2 className="adminx-panel-title">User Growth</h2><span className="adminx-section-meta">New and active users</span></div>
             <div className="adminx-chart-box">

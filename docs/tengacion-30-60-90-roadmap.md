@@ -238,6 +238,8 @@ Help creators succeed faster and more often.
   - first upload completed
   - payment readiness started
 - Add save-and-resume behavior
+- Current implementation anchor:
+  - creator activation analytics now tracks the full six-step onboarding path, including first upload started and first upload completed milestones from creator music, podcast, book, album, and video upload flows
 
 #### 2. Complete creator subscription flow
 

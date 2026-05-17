@@ -126,8 +126,8 @@ describe("creator onboarding analytics", () => {
           targetType: "creator_profile",
           metadata: expect.objectContaining({
             source: "creator_registration",
-            totalSteps: 4,
-            progressPercent: 100,
+            totalSteps: 6,
+            progressPercent: 67,
           }),
         }),
       ])

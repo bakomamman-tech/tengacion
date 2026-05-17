@@ -9,6 +9,7 @@ process.env.MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/teng
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test_secret_1234567890123456789012";
 
 const app = require("../app");
+const AnalyticsEvent = require("../models/AnalyticsEvent");
 const Book = require("../models/Book");
 const CreatorProfile = require("../models/CreatorProfile");
 const Track = require("../models/Track");
@@ -213,6 +214,82 @@ describe("creator upload routes", () => {
       }),
       expect.any(Function)
     );
+  });
+
+  test("creator uploads record first upload onboarding milestones once", async () => {
+    const { profile, token } = await createUserAndProfile();
+
+    await request(app)
+      .post("/api/creator/music")
+      .set("Authorization", `Bearer ${token}`)
+      .field("title", "First Draft")
+      .field("artistName", "Creator Example")
+      .field("genre", "Afrobeats")
+      .field("description", "First draft upload")
+      .field("releaseType", "single")
+      .field("price", "0")
+      .field("publishedStatus", "draft")
+      .attach("audio", Buffer.from("draft-audio"), {
+        filename: "first-draft.mp3",
+        contentType: "audio/mpeg",
+      })
+      .expect(201);
+
+    let events = await AnalyticsEvent.find({
+      type: "creator_onboarding_step_completed",
+      targetId: profile._id,
+    })
+      .sort({ createdAt: 1, _id: 1 })
+      .lean();
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      contentType: "first_upload_started",
+      metadata: expect.objectContaining({
+        source: "creator_music_upload",
+        totalSteps: 6,
+        progressPercent: 83,
+        uploadStatus: "draft",
+        uploadContentType: "music",
+      }),
+    });
+
+    await request(app)
+      .post("/api/creator/music")
+      .set("Authorization", `Bearer ${token}`)
+      .field("title", "First Published")
+      .field("artistName", "Creator Example")
+      .field("genre", "Afrobeats")
+      .field("description", "First completed upload")
+      .field("releaseType", "single")
+      .field("price", "0")
+      .field("publishedStatus", "published")
+      .attach("audio", Buffer.from("published-audio"), {
+        filename: "first-published.mp3",
+        contentType: "audio/mpeg",
+      })
+      .expect(201);
+
+    events = await AnalyticsEvent.find({
+      type: "creator_onboarding_step_completed",
+      targetId: profile._id,
+    })
+      .sort({ createdAt: 1, _id: 1 })
+      .lean();
+
+    expect(events.map((event) => event.contentType)).toEqual([
+      "first_upload_started",
+      "first_upload_completed",
+    ]);
+    expect(events[1]).toMatchObject({
+      metadata: expect.objectContaining({
+        source: "creator_music_upload",
+        totalSteps: 6,
+        progressPercent: 100,
+        uploadStatus: "published",
+        uploadContentType: "music",
+      }),
+    });
   });
 
   test("POST /api/creator/music/videos creates a music video upload with supported formats", async () => {

@@ -10,6 +10,7 @@ const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 
 const MAX_ALBUM_TRACKS = 25;
@@ -237,6 +238,14 @@ exports.createAlbum = asyncHandler(async (req, res) => {
       title: album.title || "",
       tracksCount: tracks.length,
     },
+  }).catch(() => null);
+  await logCreatorUploadOnboardingMilestones({
+    userId: req.user.id,
+    profile: req.creatorProfile,
+    upload: album,
+    source: "creator_album_upload",
+    uploadContentType: "album",
+    uploadTargetId: album._id,
   }).catch(() => null);
 
   return res.status(201).json({

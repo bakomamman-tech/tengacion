@@ -8,6 +8,7 @@ const { hasEntitlement } = require("../services/entitlementService");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 
 // TODO(phase2): add audiobook media support alongside chapter text content.
@@ -234,6 +235,14 @@ exports.createBook = asyncHandler(async (req, res) => {
       price: Number(book.price || 0),
       title: book.title || "",
     },
+  }).catch(() => null);
+  await logCreatorUploadOnboardingMilestones({
+    userId: req.user.id,
+    profile: req.creatorProfile,
+    upload: book,
+    source: "creator_book_upload",
+    uploadContentType: "book",
+    uploadTargetId: book._id,
   }).catch(() => null);
 
   return res.status(201).json(toBookPayload(hydrated));

@@ -1,3 +1,4 @@
+const AnalyticsEvent = require("../models/AnalyticsEvent");
 const { logAnalyticsEvent } = require("./analyticsService");
 const {
   calculateCreatorProfileCompletionScore,
@@ -19,6 +20,14 @@ const CREATOR_ONBOARDING_STEPS = [
     label: "Profile ready",
   },
   {
+    key: "first_upload_started",
+    label: "First upload started",
+  },
+  {
+    key: "first_upload_completed",
+    label: "First upload completed",
+  },
+  {
     key: "payment_readiness_started",
     label: "Payment readiness started",
   },
@@ -29,6 +38,19 @@ const CREATOR_ONBOARDING_STEP_MAP = new Map(
 );
 
 const toText = (value = "") => String(value || "").trim();
+
+const toIdString = (value = "") => {
+  if (!value) {
+    return "";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value._id) {
+    return value._id.toString();
+  }
+  return value.toString();
+};
 
 const hasCreatorProfileIdentity = (profile = {}) =>
   Boolean(toText(profile?.displayName || profile?.fullName));
@@ -76,6 +98,19 @@ const getCompletedStepKeys = (snapshot = {}) =>
 
 const summarizeSnapshot = (snapshot = {}) => {
   const completedSteps = getCompletedStepKeys(snapshot);
+  return summarizeStepKeys(completedSteps);
+};
+
+const summarizeStepKeys = (stepKeys = []) => {
+  const completedSet = new Set(
+    (Array.isArray(stepKeys) ? stepKeys : [])
+      .map((stepKey) => String(stepKey || "").trim())
+      .filter((stepKey) => CREATOR_ONBOARDING_STEP_MAP.has(stepKey))
+  );
+  const completedSteps = CREATOR_ONBOARDING_STEPS
+    .filter((step) => completedSet.has(step.key))
+    .map((step) => step.key);
+
   return {
     completedSteps,
     completedCount: completedSteps.length,
@@ -90,13 +125,17 @@ const logCreatorOnboardingStepCompleted = ({
   stepKey,
   source = "",
   snapshot = {},
+  completedSteps = null,
+  metadata = {},
 } = {}) => {
   const step = CREATOR_ONBOARDING_STEP_MAP.get(stepKey);
   if (!userId || !profileId || !step) {
     return Promise.resolve(null);
   }
 
-  const summary = summarizeSnapshot(snapshot);
+  const summary = Array.isArray(completedSteps)
+    ? summarizeStepKeys(completedSteps)
+    : summarizeSnapshot(snapshot);
   return logAnalyticsEvent({
     type: "creator_onboarding_step_completed",
     userId,
@@ -112,6 +151,7 @@ const logCreatorOnboardingStepCompleted = ({
       totalSteps: summary.totalSteps,
       progressPercent: summary.progressPercent,
       completedSteps: summary.completedSteps,
+      ...metadata,
     },
   }).catch(() => null);
 };
@@ -153,9 +193,94 @@ const logCreatorProfileOnboardingTransitions = async ({
   }
 };
 
+const normalizeUploadStatus = (upload = {}) =>
+  String(upload?.publishedStatus || (upload?.isPublished ? "published" : "draft"))
+    .trim()
+    .toLowerCase();
+
+const isCompletedUploadStatus = (status = "") =>
+  status === "published" || status === "under_review";
+
+const getLoggedCreatorOnboardingStepKeys = async ({ profileId } = {}) => {
+  if (!profileId) {
+    return [];
+  }
+
+  const rows = await AnalyticsEvent.find({
+    type: "creator_onboarding_step_completed",
+    targetType: "creator_profile",
+    targetId: profileId,
+  })
+    .select("contentType")
+    .lean()
+    .catch(() => []);
+
+  return rows
+    .map((row) => String(row?.contentType || "").trim())
+    .filter((stepKey) => CREATOR_ONBOARDING_STEP_MAP.has(stepKey));
+};
+
+const logCreatorUploadOnboardingMilestones = async ({
+  userId,
+  profile = null,
+  profileId = "",
+  upload = {},
+  source = "creator_upload",
+  uploadContentType = "",
+  uploadTargetId = "",
+} = {}) => {
+  const resolvedProfileId = profileId || profile?._id || profile?.id || "";
+  if (!userId || !resolvedProfileId || !upload) {
+    return [];
+  }
+
+  const status = normalizeUploadStatus(upload);
+  const milestoneKeys = ["first_upload_started"];
+  if (isCompletedUploadStatus(status)) {
+    milestoneKeys.push("first_upload_completed");
+  }
+
+  const [loggedKeys] = await Promise.all([
+    getLoggedCreatorOnboardingStepKeys({ profileId: resolvedProfileId }),
+  ]);
+  const profileSnapshot = buildCreatorProfileOnboardingSnapshot(profile);
+  const completedKeys = new Set([
+    ...getCompletedStepKeys(profileSnapshot),
+    ...loggedKeys,
+    ...milestoneKeys,
+  ]);
+
+  const events = [];
+  for (const stepKey of milestoneKeys) {
+    if (loggedKeys.includes(stepKey)) {
+      continue;
+    }
+
+    const event = await logCreatorOnboardingStepCompleted({
+      userId,
+      profileId: resolvedProfileId,
+      stepKey,
+      source,
+      completedSteps: [...completedKeys],
+      metadata: {
+        uploadStatus: status || "draft",
+        uploadContentType: uploadContentType || upload?.contentType || upload?.creatorCategory || "",
+        uploadTargetId: toIdString(uploadTargetId || upload?._id || upload?.id || ""),
+      },
+    });
+    if (event) {
+      events.push(event);
+    }
+  }
+
+  return events;
+};
+
 module.exports = {
   CREATOR_ONBOARDING_STEPS,
   buildCreatorProfileOnboardingSnapshot,
+  getLoggedCreatorOnboardingStepKeys,
   logCreatorOnboardingStepCompleted,
   logCreatorProfileOnboardingTransitions,
+  logCreatorUploadOnboardingMilestones,
 };

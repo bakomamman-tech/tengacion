@@ -12,6 +12,7 @@ const { deleteUploadedMediaBatch, saveUploadedMedia } = require("../services/med
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 const {
   IMAGE_EXTENSIONS,
@@ -448,6 +449,14 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
       price: Number(video.price || 0),
       title: video.caption || "",
     },
+  }).catch(() => null);
+  await logCreatorUploadOnboardingMilestones({
+    userId: req.user.id,
+    profile: req.creatorProfile,
+    upload: video,
+    source: "creator_video_upload",
+    uploadContentType: "video",
+    uploadTargetId: video._id,
   }).catch(() => null);
 
   return res.status(201).json(toVideoPayload(video));

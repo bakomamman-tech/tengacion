@@ -7,6 +7,7 @@ const { saveUploadedMedia } = require("../services/mediaStore");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
 const { mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 const {
   AUDIO_EXTENSIONS,
@@ -341,6 +342,14 @@ exports.createMusicUpload = asyncHandler(async (req, res) => {
       releaseType: track.releaseType || "single",
     },
   }).catch(() => null);
+  await logCreatorUploadOnboardingMilestones({
+    userId: req.user.id,
+    profile: req.creatorProfile,
+    upload: track,
+    source: "creator_music_upload",
+    uploadContentType: "music",
+    uploadTargetId: track._id,
+  }).catch(() => null);
 
   const hydrated = await hydrateTrack(track._id);
   return res.status(201).json(toTrackPayload(hydrated, { includeAudio: true }));
@@ -554,6 +563,14 @@ exports.createPodcastUpload = asyncHandler(async (req, res) => {
       podcastSeries: track.podcastSeries || "",
     },
   }).catch(() => null);
+  await logCreatorUploadOnboardingMilestones({
+    userId: req.user.id,
+    profile: req.creatorProfile,
+    upload: track,
+    source: "creator_podcast_upload",
+    uploadContentType: "podcast",
+    uploadTargetId: track._id,
+  }).catch(() => null);
 
   const hydrated = await hydrateTrack(track._id);
   return res.status(201).json(toTrackPayload(hydrated, { includeAudio: true }));
@@ -705,6 +722,14 @@ exports.createBookUpload = asyncHandler(async (req, res) => {
       title: book.title || "",
       fileFormat: book.fileFormat || "",
     },
+  }).catch(() => null);
+  await logCreatorUploadOnboardingMilestones({
+    userId: req.user.id,
+    profile: req.creatorProfile,
+    upload: book,
+    source: "creator_book_upload",
+    uploadContentType: "book",
+    uploadTargetId: book._id,
   }).catch(() => null);
 
   const hydrated = await hydrateBook(book._id);

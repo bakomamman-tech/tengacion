@@ -9,6 +9,7 @@ const { logAnalyticsEvent } = require("../services/analyticsService");
 const Post = require("../models/Post");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 
 const resolveRequestedStatus = (body = {}) => {
@@ -292,6 +293,14 @@ exports.createTrack = asyncHandler(async (req, res) => {
       price: Number(track.price || 0),
       title: track.title || "",
     },
+  }).catch(() => null);
+  await logCreatorUploadOnboardingMilestones({
+    userId: req.user.id,
+    profile: req.creatorProfile,
+    upload: track,
+    source: kind === "podcast" ? "creator_podcast_upload" : "creator_music_upload",
+    uploadContentType: kind,
+    uploadTargetId: track._id,
   }).catch(() => null);
 
   return res.status(201).json(toTrackPayload(hydrated, { includeAudio: true }));

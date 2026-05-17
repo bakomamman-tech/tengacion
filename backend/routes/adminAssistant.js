@@ -3,6 +3,7 @@ const express = require("express");
 const requirePermissions = require("../middleware/requirePermissions");
 const { writeAuditLog } = require("../services/auditLogService");
 const { buildAkusoAdminMetrics } = require("../services/assistant/adminMetricsService");
+const { buildAssistantEvalCandidates } = require("../services/assistant/evalCandidateService");
 const { listAssistantReviews, updateAssistantReview } = require("../services/assistant/reviewQueue");
 
 const router = express.Router();
@@ -39,6 +40,23 @@ router.get("/reviews", requirePermissions(["view_audit_logs"]), async (req, res)
     return res.json(result);
   } catch (error) {
     return res.status(500).json({ error: error?.message || "Failed to load assistant reviews" });
+  }
+});
+
+router.get("/eval-candidates", requirePermissions(["view_audit_logs"]), async (req, res) => {
+  try {
+    const result = await buildAssistantEvalCandidates({
+      status: req.query.status,
+      category: req.query.category,
+      limit: req.query.limit,
+    });
+
+    return res.json({
+      ok: true,
+      ...result,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error?.message || "Failed to load assistant eval candidates" });
   }
 });
 

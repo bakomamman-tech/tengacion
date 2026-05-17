@@ -225,6 +225,78 @@ describe("Assistant admin review routes", () => {
     );
   });
 
+  it("turns unresolved Akuso review items into eval candidate drafts", async () => {
+    await request(app)
+      .post("/api/assistant/feedback")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        conversationId: "conversation-eval-1",
+        messageId: "message-eval-1",
+        responseId: "response-eval-1",
+        rating: "not_helpful",
+        reason: "The answer gave the wrong navigation route and invented an upload flow.",
+        mode: "app_help",
+        surface: "creator_dashboard",
+        responseMode: "app_help",
+        responseSummary: "Use the dashboard tools.",
+        metadata: {
+          requestSummary: "Where do I upload a paid song?",
+          currentRoute: "/creator/dashboard",
+          currentPage: "Creator Dashboard",
+          trust: {
+            provider: "openai",
+            mode: "app_aware",
+            grounded: false,
+            usedModel: true,
+            confidenceLabel: "low",
+          },
+        },
+      })
+      .expect(201);
+
+    const response = await request(app)
+      .get("/api/admin/assistant/eval-candidates")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        ok: true,
+        summary: expect.objectContaining({
+          total: 1,
+          grounding: 1,
+          recommendation: expect.stringMatching(/grounding|route|eval/i),
+        }),
+        candidates: expect.arrayContaining([
+          expect.objectContaining({
+            qualityBucket: "hallucinated_feature_claim",
+            category: "feedback",
+            fixtureDraft: expect.objectContaining({
+              suite: "feedback_app_guidance",
+              input: expect.objectContaining({
+                message: "Where do I upload a paid song?",
+                mode: "app_help",
+                currentRoute: "/creator/dashboard",
+              }),
+              expected: expect.objectContaining({
+                needsHumanLabel: true,
+                shouldStayGrounded: true,
+                shouldUseFeatureRegistry: true,
+                shouldFallbackWhenUnsupported: true,
+              }),
+            }),
+          }),
+        ]),
+      })
+    );
+    expect(response.body.fixtureDrafts[0]).toEqual(
+      expect.objectContaining({
+        sourceReviewId: expect.any(String),
+        tags: expect.arrayContaining(["feedback_derived", "eval_candidate"]),
+      })
+    );
+  });
+
   it("returns Akuso admin metrics with historical analytics and live snapshot", async () => {
     const creator = await CreatorProfile.create({
       userId: new mongoose.Types.ObjectId(),

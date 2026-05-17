@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import AdminAssistantPage from "../AdminAssistant";
 import {
+  adminGetAssistantEvalCandidates,
   adminGetAssistantMetrics,
   adminGetAssistantReviews,
   adminUpdateAssistantReview,
@@ -24,6 +25,7 @@ vi.mock("../../components/AdminShell", () => ({
 }));
 
 vi.mock("../../api", () => ({
+  adminGetAssistantEvalCandidates: vi.fn(),
   adminGetAssistantMetrics: vi.fn(),
   adminGetAssistantReviews: vi.fn(),
   adminUpdateAssistantReview: vi.fn(),
@@ -232,6 +234,64 @@ const resolvedReview = {
   resolutionNote: "Triaged and queued for prompt tuning.",
 };
 
+const evalCandidatesPayload = {
+  summary: {
+    total: 1,
+    highPriority: 1,
+    safety: 0,
+    grounding: 1,
+    byCategory: { quality: 1 },
+    recommendation: "Prioritize route and grounding evals before prompt tuning.",
+  },
+  candidates: [
+    {
+      reviewId: "review-1",
+      status: "open",
+      category: "quality",
+      severity: "high",
+      qualityBucket: "wrong_navigation_guidance",
+      source: {
+        createdAt: "2026-04-15T07:45:00.000Z",
+      },
+      fixtureDraft: {
+        id: "feedback.feedback_app_guidance.creator_dashboard.review_1",
+        name: "How do I upload a song from my creator dashboard?",
+        suite: "feedback_app_guidance",
+        severity: "high",
+        tags: ["feedback_derived", "wrong_navigation_guidance", "surface_creator_dashboard"],
+        input: {
+          message: "How do I upload a song from my creator dashboard?",
+          mode: "app_help",
+        },
+        expected: {
+          needsHumanLabel: true,
+          qualityBucket: "wrong_navigation_guidance",
+          shouldUseCorrectRoute: true,
+        },
+      },
+      context: {
+        reason: "The answer skipped the actual creator upload flow.",
+      },
+    },
+  ],
+  fixtureDrafts: [
+    {
+      id: "feedback.feedback_app_guidance.creator_dashboard.review_1",
+      suite: "feedback_app_guidance",
+      severity: "high",
+      tags: ["feedback_derived", "wrong_navigation_guidance"],
+      input: {
+        message: "How do I upload a song from my creator dashboard?",
+        mode: "app_help",
+      },
+      expected: {
+        needsHumanLabel: true,
+        qualityBucket: "wrong_navigation_guidance",
+      },
+    },
+  ],
+};
+
 describe("AdminAssistantPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -239,6 +299,7 @@ describe("AdminAssistantPage", () => {
 
   it("loads assistant metrics, switches to reviews, and saves a triage update", async () => {
     vi.mocked(adminGetAssistantMetrics).mockResolvedValue(metricsPayload);
+    vi.mocked(adminGetAssistantEvalCandidates).mockResolvedValue(evalCandidatesPayload);
     vi.mocked(adminGetAssistantReviews)
       .mockResolvedValueOnce({
         items: [openReview],
@@ -281,6 +342,7 @@ describe("AdminAssistantPage", () => {
 
     expect(await screen.findByText("Akuso prompt injection attempts detected")).toBeInTheDocument();
     expect(screen.getByText("Live Responses")).toBeInTheDocument();
+    expect(screen.getAllByText("Eval Candidates").length).toBeGreaterThan(0);
     expect(screen.getByText("Weekly Quality Loop")).toBeInTheDocument();
     expect(screen.getByText("Commerce failures")).toBeInTheDocument();
     expect(screen.getByText("Audit failed checkouts and webhook failures")).toBeInTheDocument();
@@ -320,5 +382,13 @@ describe("AdminAssistantPage", () => {
     expect(await screen.findByText("Assistant review updated.")).toBeInTheDocument();
 
     expect(adminGetAssistantReviews).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Eval Candidates" }));
+
+    expect(await screen.findByText("Eval Candidate Bridge")).toBeInTheDocument();
+    expect(screen.getByText("Prioritize route and grounding evals before prompt tuning.")).toBeInTheDocument();
+    expect(screen.getByText("Candidate Reviews")).toBeInTheDocument();
+    expect(screen.getByText("Fixture Drafts")).toBeInTheDocument();
+    expect(screen.getAllByText("How do I upload a song from my creator dashboard?").length).toBeGreaterThan(0);
   });
 });

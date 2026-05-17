@@ -206,6 +206,10 @@ Make Tengacion economically real.
   - unanswered feature gaps
   - policy denials that need better UX copy
 - Convert the first batch into eval cases
+- Current implementation anchor:
+  - negative assistant feedback and Akuso feedback now flow into the admin assistant review queue with triage metadata for quality, safety, grounding, and abuse review
+  - `/api/admin/assistant/eval-candidates` converts unresolved review items into feedback-derived eval fixture drafts with quality buckets, suite suggestions, tags, expected-behavior labels, source review links, and human-labeling flags
+  - the Akuso Assistant Ops page now includes an Eval Candidates tab so admins can inspect review-derived fixture drafts beside the existing metrics and review queue before promoting them into seeded evals
 
 ### Exit criteria for day 30
 

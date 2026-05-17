@@ -828,6 +828,14 @@ export default function App() {
             }
           />
           <Route
+            path="/admin/assistant/evals"
+            element={
+              <AdminRoute user={user} requiredPermissions={["view_audit_logs"]}>
+                <AdminAssistantPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
             path="/admin/messages"
             element={
               <AdminRoute user={user}>

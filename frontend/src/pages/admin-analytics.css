@@ -454,6 +454,20 @@
   color: #ffd6d6;
 }
 
+.adminx-code-block {
+  max-height: 260px;
+  overflow: auto;
+  margin: 12px 0 0;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(3, 10, 6, 0.46);
+  color: var(--adminx-text);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 .adminx-mobile-stack {
   display: flex;
   gap: 10px;

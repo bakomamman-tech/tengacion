@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import AdminShell from "../components/AdminShell";
 import {
+  adminGetAssistantEvalCandidates,
   adminGetAssistantMetrics,
   adminGetAssistantReviews,
   adminUpdateAssistantReview,
@@ -40,6 +41,7 @@ const REVIEW_SEVERITY_OPTIONS = [
 const VIEW_PATHS = {
   metrics: "/admin/assistant/metrics",
   reviews: "/admin/assistant/reviews",
+  evals: "/admin/assistant/evals",
 };
 
 const EMPTY_REVIEWS = {
@@ -48,6 +50,12 @@ const EMPTY_REVIEWS = {
   page: 1,
   limit: 25,
   hasMore: false,
+};
+
+const EMPTY_EVAL_CANDIDATES = {
+  candidates: [],
+  fixtureDrafts: [],
+  summary: {},
 };
 
 const number = (value) => Number(value || 0).toLocaleString();
@@ -278,7 +286,11 @@ function ReviewCard({ item, isActive, onSelect }) {
 export default function AdminAssistantPage({ user }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const activeView = location.pathname.includes("/reviews") ? "reviews" : "metrics";
+  const activeView = location.pathname.includes("/evals")
+    ? "evals"
+    : location.pathname.includes("/reviews")
+      ? "reviews"
+      : "metrics";
 
   const [range, setRange] = useState("30d");
   const [reviewStatus, setReviewStatus] = useState("");
@@ -289,6 +301,9 @@ export default function AdminAssistantPage({ user }) {
   const [reviewsPayload, setReviewsPayload] = useState(EMPTY_REVIEWS);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewsError, setReviewsError] = useState("");
+  const [evalCandidatesPayload, setEvalCandidatesPayload] = useState(EMPTY_EVAL_CANDIDATES);
+  const [evalCandidatesLoading, setEvalCandidatesLoading] = useState(true);
+  const [evalCandidatesError, setEvalCandidatesError] = useState("");
   const [selectedReviewId, setSelectedReviewId] = useState("");
   const [reviewDraft, setReviewDraft] = useState({
     status: "open",
@@ -336,10 +351,33 @@ export default function AdminAssistantPage({ user }) {
     }
   }, [reviewCategory, reviewStatus]);
 
+  const loadEvalCandidates = useCallback(async () => {
+    setEvalCandidatesLoading(true);
+    setEvalCandidatesError("");
+
+    try {
+      const payload = await adminGetAssistantEvalCandidates({
+        status: reviewStatus,
+        category: reviewCategory,
+        limit: 25,
+      });
+      setEvalCandidatesPayload({
+        ...EMPTY_EVAL_CANDIDATES,
+        ...(payload || {}),
+        candidates: Array.isArray(payload?.candidates) ? payload.candidates : [],
+        fixtureDrafts: Array.isArray(payload?.fixtureDrafts) ? payload.fixtureDrafts : [],
+      });
+    } catch (error) {
+      setEvalCandidatesError(error?.message || "Failed to load assistant eval candidates.");
+    } finally {
+      setEvalCandidatesLoading(false);
+    }
+  }, [reviewCategory, reviewStatus]);
+
   const refreshAll = useCallback(() => {
     setReviewActionNotice("");
-    void Promise.all([loadMetrics(), loadReviews()]);
-  }, [loadMetrics, loadReviews]);
+    void Promise.all([loadMetrics(), loadReviews(), loadEvalCandidates()]);
+  }, [loadEvalCandidates, loadMetrics, loadReviews]);
 
   useEffect(() => {
     void loadMetrics();
@@ -348,6 +386,10 @@ export default function AdminAssistantPage({ user }) {
   useEffect(() => {
     void loadReviews();
   }, [loadReviews]);
+
+  useEffect(() => {
+    void loadEvalCandidates();
+  }, [loadEvalCandidates]);
 
   const reviews = useMemo(
     () => (Array.isArray(reviewsPayload?.items) ? reviewsPayload.items : []),
@@ -426,8 +468,13 @@ export default function AdminAssistantPage({ user }) {
         value: number(reviewsPayload?.total),
         helper: "Current filtered review queue volume",
       },
+      {
+        label: "Eval Candidates",
+        value: number(evalCandidatesPayload?.summary?.total),
+        helper: "Review items ready for fixture drafting",
+      },
     ];
-  }, [metricsPayload, reviewStatus, reviewsPayload?.total]);
+  }, [evalCandidatesPayload?.summary?.total, metricsPayload, reviewStatus, reviewsPayload?.total]);
 
   const liveInsights = useMemo(() => {
     const live = metricsPayload?.live || {};
@@ -611,6 +658,15 @@ export default function AdminAssistantPage({ user }) {
             >
               Reviews
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === "evals"}
+              className={`adminx-tab ${activeView === "evals" ? "is-active" : ""}`}
+              onClick={() => navigate(VIEW_PATHS.evals)}
+            >
+              Eval Candidates
+            </button>
           </div>
         </div>
 
@@ -660,6 +716,111 @@ export default function AdminAssistantPage({ user }) {
             </div>
           ) : null}
         </>
+      ) : activeView === "evals" ? (
+        <div className="adminx-analytics-grid">
+          <section className="adminx-panel adminx-panel--span-12">
+            <div className="adminx-panel-head">
+              <div>
+                <h2 className="adminx-panel-title">Eval Candidate Bridge</h2>
+                <span className="adminx-section-meta">
+                  Feedback-derived drafts that need human expected labels before release gating.
+                </span>
+              </div>
+              <button type="button" className="adminx-btn" onClick={() => void loadEvalCandidates()}>
+                Refresh Candidates
+              </button>
+            </div>
+            {evalCandidatesError ? <div className="adminx-error">{evalCandidatesError}</div> : null}
+            {evalCandidatesLoading ? <div className="adminx-loading">Loading eval candidates...</div> : null}
+            {!evalCandidatesLoading ? (
+              <div className="adminx-leaderboard">
+                <article className="adminx-leaderboard-item">
+                  <div className="adminx-row">
+                    <strong>{number(evalCandidatesPayload?.summary?.total)} candidates</strong>
+                    <span>{number(evalCandidatesPayload?.summary?.highPriority)} high priority</span>
+                  </div>
+                  <div className="adminx-muted" style={{ marginTop: 8 }}>
+                    {evalCandidatesPayload?.summary?.recommendation || "No eval candidate recommendation available."}
+                  </div>
+                  <div className="adminx-row" style={{ justifyContent: "flex-start", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                    <span className="adminx-badge">Safety {number(evalCandidatesPayload?.summary?.safety)}</span>
+                    <span className="adminx-badge">Grounding {number(evalCandidatesPayload?.summary?.grounding)}</span>
+                    <span className="adminx-badge">Quality {number(evalCandidatesPayload?.summary?.byCategory?.quality)}</span>
+                  </div>
+                </article>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="adminx-panel adminx-panel--span-7">
+            <div className="adminx-panel-head">
+              <h2 className="adminx-panel-title">Candidate Reviews</h2>
+              <button type="button" className="adminx-link-btn" onClick={() => navigate(VIEW_PATHS.reviews)}>
+                Open Reviews
+              </button>
+            </div>
+            {!evalCandidatesLoading && !(evalCandidatesPayload?.candidates || []).length ? (
+              <div className="adminx-empty">No unresolved assistant reviews currently need eval conversion.</div>
+            ) : null}
+            <div className="adminx-leaderboard">
+              {(evalCandidatesPayload?.candidates || []).map((candidate) => (
+                <article key={candidate.reviewId} className="adminx-leaderboard-item">
+                  <div className="adminx-row" style={{ alignItems: "flex-start", gap: 12 }}>
+                    <div>
+                      <strong>{candidate.fixtureDraft?.name || "Akuso eval candidate"}</strong>
+                      <div className="adminx-muted" style={{ marginTop: 6 }}>
+                        {titleCase(candidate.qualityBucket)} | {titleCase(candidate.fixtureDraft?.suite)} | {dateTime(candidate.source?.createdAt)}
+                      </div>
+                    </div>
+                    <span className={`adminx-badge ${badgeToneClass({ severity: candidate.severity, type: "severity" })}`}>
+                      {titleCase(candidate.severity || "medium")}
+                    </span>
+                  </div>
+                  <div className="adminx-muted" style={{ marginTop: 10 }}>
+                    {candidate.context?.reason || candidate.context?.responseSummary || "No review context was captured."}
+                  </div>
+                  <div className="adminx-row" style={{ justifyContent: "flex-start", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                    {(candidate.fixtureDraft?.tags || []).slice(0, 5).map((tag) => (
+                      <span key={`${candidate.reviewId}:${tag}`} className="adminx-badge">{titleCase(tag)}</span>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="adminx-panel adminx-panel--span-5">
+            <div className="adminx-panel-head">
+              <h2 className="adminx-panel-title">Fixture Drafts</h2>
+              <span className="adminx-section-meta">JSON-ready draft shape</span>
+            </div>
+            <div className="adminx-leaderboard">
+              {(evalCandidatesPayload?.fixtureDrafts || []).slice(0, 4).map((fixture) => (
+                <article key={fixture.id} className="adminx-leaderboard-item">
+                  <div className="adminx-row">
+                    <strong>{fixture.id}</strong>
+                    <span>{titleCase(fixture.severity)}</span>
+                  </div>
+                  <pre className="adminx-code-block">
+                    {JSON.stringify(
+                      {
+                        suite: fixture.suite,
+                        tags: fixture.tags,
+                        input: fixture.input,
+                        expected: fixture.expected,
+                      },
+                      null,
+                      2
+                    )}
+                  </pre>
+                </article>
+              ))}
+              {!evalCandidatesLoading && !(evalCandidatesPayload?.fixtureDrafts || []).length ? (
+                <div className="adminx-empty">No fixture drafts are available for the current filters.</div>
+              ) : null}
+            </div>
+          </section>
+        </div>
       ) : (
         <div className="adminx-analytics-grid">
           <section className="adminx-panel adminx-panel--span-7">

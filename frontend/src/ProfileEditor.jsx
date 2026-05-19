@@ -39,6 +39,8 @@ const iconPathByName = {
   cake: "M4 10h16v10H4V10zm0 4h16M8 10V8a2 2 0 1 1 4 0v2M12 10V8a2 2 0 1 1 4 0v2",
   join: "M4 4h16v16H4V4zm0 5h16M8 2v4M16 2v4",
   edit: "M4 20l4.2-1 10-10a1.8 1.8 0 0 0 0-2.5l-1.8-1.8a1.8 1.8 0 0 0-2.5 0l-10 10L4 20z",
+  profilePicture: "M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3 13c.8-2 2.2-3 4-3s3.2 1 4 3M12 8.2a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8z",
+  image: "M4 5h16v14H4V5zm3 11 3.5-4 2.5 3 2-2.2L18 16M8 9h.01",
 };
 
 const isVideoMedia = (entry, url) => {
@@ -240,6 +242,8 @@ export default function ProfileEditor({ user }) {
   const [postViewMode, setPostViewMode] = useState("list");
   const [activeTab, setActiveTab] = useState("all");
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [avatarViewerOpen, setAvatarViewerOpen] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [postFilter, setPostFilter] = useState("all");
   const [avatarPreview, setAvatarPreview] = useState("");
@@ -262,6 +266,8 @@ export default function ProfileEditor({ user }) {
   const friendsRef = useRef(null);
   const postsRef = useRef(null);
   const tabsRef = useRef(null);
+  const avatarMenuRef = useRef(null);
+  const avatarFileInputRef = useRef(null);
   const profileReminderStateKeyRef = useRef("");
 
   const isOwner = Boolean(profile?.isOwner);
@@ -427,6 +433,43 @@ export default function ProfileEditor({ user }) {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [moreMenuOpen]);
 
+  useEffect(() => {
+    if (!avatarMenuOpen) {
+      return undefined;
+    }
+
+    const onDocClick = (event) => {
+      if (avatarMenuRef.current && avatarMenuRef.current.contains(event.target)) {
+        return;
+      }
+      setAvatarMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("touchstart", onDocClick);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("touchstart", onDocClick);
+    };
+  }, [avatarMenuOpen]);
+
+  useEffect(() => {
+    if (!avatarMenuOpen && !avatarViewerOpen) {
+      return undefined;
+    }
+
+    const onKeyDown = (event) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      setAvatarMenuOpen(false);
+      setAvatarViewerOpen(false);
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [avatarMenuOpen, avatarViewerOpen]);
+
   const jumpTo = useCallback((ref) => {
     if (!ref?.current) {
       return;
@@ -477,6 +520,20 @@ export default function ProfileEditor({ user }) {
     setEditingDetails(true);
     setTimeout(() => jumpTo(aboutRef), 50);
   }, [jumpTo]);
+
+  const openAvatarViewer = useCallback(() => {
+    setAvatarMenuOpen(false);
+    setAvatarViewerOpen(true);
+  }, []);
+
+  const chooseAvatarFile = useCallback(() => {
+    if (!isOwner || avatarUploading) {
+      return;
+    }
+    setAvatarMenuOpen(false);
+    setAvatarViewerOpen(false);
+    avatarFileInputRef.current?.click();
+  }, [avatarUploading, isOwner]);
 
   useEffect(() => {
     if (!isOwner || !profile || !location.state?.openEditProfile) {
@@ -769,22 +826,59 @@ export default function ProfileEditor({ user }) {
           </div>
 
           <div className="profile-head-v2">
-            <div className="profile-avatar-v2-wrap">
-              <img src={displayAvatar} alt={profile.name} className="profile-avatar-v2" />
+            <div className="profile-avatar-v2-wrap" ref={avatarMenuRef}>
+              <button
+                type="button"
+                className="profile-avatar-v2-button"
+                onClick={() => setAvatarMenuOpen((current) => !current)}
+                aria-label={`Open profile picture options for ${profile.name}`}
+                aria-haspopup="menu"
+                aria-expanded={avatarMenuOpen}
+              >
+                <img src={displayAvatar} alt={profile.name} className="profile-avatar-v2" />
+              </button>
+              <input
+                ref={avatarFileInputRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(event) => {
+                  const nextFile = event.target.files?.[0];
+                  changeAvatar(nextFile);
+                  event.target.value = "";
+                }}
+              />
               {isOwner && (
-                <label className="profile-avatar-v2-action">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    onChange={(event) => {
-                      const nextFile = event.target.files?.[0];
-                      changeAvatar(nextFile);
-                      event.target.value = "";
-                    }}
-                  />
+                <button
+                  type="button"
+                  className="profile-avatar-v2-action"
+                  onClick={() => setAvatarMenuOpen((current) => !current)}
+                  aria-label="Profile picture options"
+                  aria-haspopup="menu"
+                  aria-expanded={avatarMenuOpen}
+                >
                   {avatarUploading ? "..." : "Edit"}
-                </label>
+                </button>
+              )}
+              {avatarMenuOpen && (
+                <div className="profile-avatar-menu" role="menu" aria-label="Profile picture options">
+                  <span className="profile-avatar-menu__arrow" aria-hidden="true" />
+                  <button type="button" role="menuitem" onClick={openAvatarViewer}>
+                    <Glyph name="profilePicture" className="profile-avatar-menu__icon" />
+                    <span>See profile picture</span>
+                  </button>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={chooseAvatarFile}
+                      disabled={avatarUploading}
+                    >
+                      <Glyph name="image" className="profile-avatar-menu__icon" />
+                      <span>{avatarUploading ? "Uploading..." : "Choose profile picture"}</span>
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -1350,6 +1444,50 @@ export default function ProfileEditor({ user }) {
           </section>
         </section>
       </main>
+
+      {avatarViewerOpen && (
+        <div
+          className="profile-picture-viewer"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setAvatarViewerOpen(false);
+            }
+          }}
+        >
+          <section
+            className="profile-picture-viewer__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${profile.name} profile picture`}
+          >
+            <header className="profile-picture-viewer__head">
+              <div>
+                <span>Profile picture</span>
+                <strong>{profile.name}</strong>
+              </div>
+              <button
+                type="button"
+                className="profile-picture-viewer__close"
+                onClick={() => setAvatarViewerOpen(false)}
+                aria-label="Close profile picture"
+              >
+                x
+              </button>
+            </header>
+            <div className="profile-picture-viewer__media">
+              <img src={displayAvatar} alt={`${profile.name} profile`} />
+            </div>
+            {isOwner && (
+              <footer className="profile-picture-viewer__actions">
+                <button type="button" onClick={chooseAvatarFile} disabled={avatarUploading}>
+                  {avatarUploading ? "Uploading..." : "Choose profile picture"}
+                </button>
+              </footer>
+            )}
+          </section>
+        </div>
+      )}
     </>
   );
 }

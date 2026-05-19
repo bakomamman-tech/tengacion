@@ -59,8 +59,9 @@ Akuso-specific configuration:
 Backend architecture, safety boundaries, and extension guidance live here:
 - [`docs/akuso-backend-engine.md`](docs/akuso-backend-engine.md)
 
-Execution roadmap for the next build/training cycle:
-- [`docs/tengacion-30-60-90-roadmap.md`](docs/tengacion-30-60-90-roadmap.md)
+Execution roadmaps for the marketplace and Akuso build cycles:
+- [`docs/tengacion-30-60-90-roadmap.md`](docs/tengacion-30-60-90-roadmap.md) - foundation cycle for commerce, creator activation, discovery, analytics, and Akuso evals
+- [`docs/tengacion-next-30-60-90-roadmap.md`](docs/tengacion-next-30-60-90-roadmap.md) - next cycle for reliability, payout operations, creator growth, fan retention, trust, and governance
 
 ## Creator + Artist Enhancements
 - Artist profile now exposes `links` (Spotify, Instagram, Facebook, TikTok, YouTube, Apple Music, Audiomack, Boomplay, Website) plus a `customLinks` array.

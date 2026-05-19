@@ -1,5 +1,8 @@
 # Tengacion 30/60/90 Day Execution Roadmap
 
+Follow-on roadmap:
+[Tengacion Next 30/60/90 Day Execution Roadmap](./tengacion-next-30-60-90-roadmap.md)
+
 ## Purpose
 
 This roadmap turns the current Tengacion MVP into an execution sequence the team can ship against. It follows the priority order already identified for the product:

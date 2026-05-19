@@ -10,6 +10,7 @@ const Video = require("../models/Video");
 const Purchase = require("../models/Purchase");
 const Entitlement = require("../models/Entitlement");
 const PaymentWebhookEvent = require("../models/PaymentWebhookEvent");
+const MarketplacePayout = require("../models/MarketplacePayout");
 const Report = require("../models/Report");
 const Message = require("../models/Message");
 const Post = require("../models/Post");
@@ -72,6 +73,16 @@ const toCounterMap = (rows = []) =>
       return acc;
     }
     acc[key] = Number(row?.count || 0);
+    return acc;
+  }, {});
+
+const toAmountMap = (rows = [], field = "netAmount") =>
+  rows.reduce((acc, row) => {
+    const key = String(row?._id || "").trim();
+    if (!key || key === "null" || key === "undefined") {
+      return acc;
+    }
+    acc[key] = Number(row?.[field] || 0);
     return acc;
   }, {});
 
@@ -371,6 +382,9 @@ const computeDailySummary = async ({ date = new Date() } = {}) => {
     webhookDuplicateRows,
     entitlementGrants,
     entitlementAudit,
+    payoutStatusRows,
+    payoutPaidOutRows,
+    payoutFailedRows,
     streams,
     downloads,
     friendRequestsSent,
@@ -415,6 +429,36 @@ const computeDailySummary = async ({ date = new Date() } = {}) => {
     ]).catch(() => []),
     AnalyticsEvent.countDocuments({ type: "purchase_entitlement_granted", createdAt: { $gte: start, $lte: end } }),
     aggregateEntitlementAudit({ start, end }),
+    MarketplacePayout.aggregate([
+      { $match: { createdAt: { $gte: start, $lte: end } } },
+      {
+        $group: {
+          _id: "$payoutStatus",
+          count: { $sum: 1 },
+          netAmount: { $sum: "$netAmount" },
+        },
+      },
+    ]).catch(() => []),
+    MarketplacePayout.aggregate([
+      { $match: { payoutStatus: "paid_out", paidAt: { $gte: start, $lte: end } } },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          netAmount: { $sum: "$netAmount" },
+        },
+      },
+    ]).catch(() => []),
+    MarketplacePayout.aggregate([
+      { $match: { payoutStatus: "failed", updatedAt: { $gte: start, $lte: end } } },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          netAmount: { $sum: "$netAmount" },
+        },
+      },
+    ]).catch(() => []),
     AnalyticsEvent.countDocuments({ type: { $in: ["stream_started", "stream_completed"] }, createdAt: { $gte: start, $lte: end } }),
     AnalyticsEvent.countDocuments({ type: "download_completed", createdAt: { $gte: start, $lte: end } }),
     AnalyticsEvent.countDocuments({ type: "friend_request_sent", createdAt: { $gte: start, $lte: end } }),
@@ -427,6 +471,13 @@ const computeDailySummary = async ({ date = new Date() } = {}) => {
 
   const purchaseRow = purchaseSummary[0] || {};
   const webhookStatusCounts = toCounterMap(webhookStatusRows);
+  const payoutStatusCounts = toCounterMap(payoutStatusRows);
+  const payoutNetAmount = payoutStatusRows.reduce(
+    (total, row) => total + Number(row?.netAmount || 0),
+    0
+  );
+  const payoutPaidOutRow = payoutPaidOutRows[0] || {};
+  const payoutFailedRow = payoutFailedRows[0] || {};
   const postInteractionsCount =
     Number(postSummary.likesCount || 0) +
     Number(postSummary.commentsCount || 0) +
@@ -470,6 +521,15 @@ const computeDailySummary = async ({ date = new Date() } = {}) => {
         webhookDuplicateDeliveries: Number(webhookDuplicateRows[0]?.count || 0),
         entitlementGrants: Number(entitlementGrants) || 0,
         entitlementGrantFailures: Number(entitlementAudit?.missingEntitlements || 0),
+        payoutCreated: payoutStatusRows.reduce(
+          (total, row) => total + Number(row?.count || 0),
+          0
+        ),
+        payoutQueued: Number(payoutStatusCounts.queued || 0),
+        payoutPaidOut: Number(payoutPaidOutRow.count || 0),
+        payoutFailed: Number(payoutFailedRow.count || 0),
+        payoutNetAmount: Number(payoutNetAmount || 0),
+        payoutPaidOutAmount: Number(payoutPaidOutRow.netAmount || 0),
         reportsCount: Number(reportsCount) || 0,
         uploadFailuresCount: Number(uploadFailures) || 0,
         loginWarnings: Number(loginWarnings) || 0,
@@ -675,6 +735,12 @@ const buildCommerceSeriesSkeleton = ({ start, end } = {}) => {
       webhookReplays: 0,
       entitlementGrants: 0,
       entitlementGrantFailures: 0,
+      payoutCreated: 0,
+      payoutQueued: 0,
+      payoutPaidOut: 0,
+      payoutFailed: 0,
+      payoutNetAmount: 0,
+      payoutPaidOutAmount: 0,
       onboardingStepCompletions: 0,
     });
   }
@@ -715,6 +781,13 @@ const buildCommerceOperationsAnalytics = async ({
     webhookSeriesRows,
     webhookDuplicateRows,
     entitlementAudit,
+    payoutStatusRows,
+    payoutCreatedSeriesRows,
+    payoutPaidOutRows,
+    payoutPaidOutSeriesRows,
+    payoutFailedRows,
+    payoutFailedSeriesRows,
+    stalePayoutRows,
     onboardingStepRows,
   ] = await Promise.all([
     AnalyticsEvent.aggregate([
@@ -804,6 +877,102 @@ const buildCommerceOperationsAnalytics = async ({
       { $group: { _id: null, count: { $sum: "$duplicateCount" } } },
     ]).catch(() => []),
     aggregateEntitlementAudit({ start: dates.start, end: dates.end }),
+    MarketplacePayout.aggregate([
+      { $match: { createdAt: { $gte: dates.start, $lte: dates.end } } },
+      {
+        $group: {
+          _id: "$payoutStatus",
+          count: { $sum: 1 },
+          netAmount: { $sum: "$netAmount" },
+        },
+      },
+    ]).catch(() => []),
+    MarketplacePayout.aggregate([
+      { $match: { createdAt: { $gte: dates.start, $lte: dates.end } } },
+      {
+        $project: {
+          date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          status: "$payoutStatus",
+          netAmount: "$netAmount",
+        },
+      },
+      {
+        $group: {
+          _id: { date: "$date", status: "$status" },
+          count: { $sum: 1 },
+          netAmount: { $sum: "$netAmount" },
+        },
+      },
+    ]).catch(() => []),
+    MarketplacePayout.aggregate([
+      { $match: { payoutStatus: "paid_out", paidAt: { $gte: dates.start, $lte: dates.end } } },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          netAmount: { $sum: "$netAmount" },
+        },
+      },
+    ]).catch(() => []),
+    MarketplacePayout.aggregate([
+      { $match: { payoutStatus: "paid_out", paidAt: { $gte: dates.start, $lte: dates.end } } },
+      {
+        $project: {
+          date: { $dateToString: { format: "%Y-%m-%d", date: "$paidAt" } },
+          netAmount: "$netAmount",
+        },
+      },
+      {
+        $group: {
+          _id: "$date",
+          count: { $sum: 1 },
+          netAmount: { $sum: "$netAmount" },
+        },
+      },
+    ]).catch(() => []),
+    MarketplacePayout.aggregate([
+      { $match: { payoutStatus: "failed", updatedAt: { $gte: dates.start, $lte: dates.end } } },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          netAmount: { $sum: "$netAmount" },
+        },
+      },
+    ]).catch(() => []),
+    MarketplacePayout.aggregate([
+      { $match: { payoutStatus: "failed", updatedAt: { $gte: dates.start, $lte: dates.end } } },
+      {
+        $project: {
+          date: { $dateToString: { format: "%Y-%m-%d", date: "$updatedAt" } },
+          netAmount: "$netAmount",
+        },
+      },
+      {
+        $group: {
+          _id: "$date",
+          count: { $sum: 1 },
+          netAmount: { $sum: "$netAmount" },
+        },
+      },
+    ]).catch(() => []),
+    MarketplacePayout.aggregate([
+      {
+        $match: {
+          payoutStatus: { $in: ["pending", "queued"] },
+          createdAt: {
+            $lte: new Date(Date.now() - 7 * ONE_DAY_MS),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$payoutStatus",
+          count: { $sum: 1 },
+          netAmount: { $sum: "$netAmount" },
+        },
+      },
+    ]).catch(() => []),
     AnalyticsEvent.aggregate([
       {
         $match: {
@@ -875,6 +1044,24 @@ const buildCommerceOperationsAnalytics = async ({
   for (const [date, count] of webhookTotalsByDate.entries()) {
     setSeriesMax(seriesMap, date, "webhookReceived", count);
   }
+  for (const row of payoutCreatedSeriesRows) {
+    const date = String(row?._id?.date || "");
+    const status = String(row?._id?.status || "");
+    const count = Number(row?.count || 0);
+    const netAmount = Number(row?.netAmount || 0);
+    addSeriesCount(seriesMap, date, "payoutCreated", count);
+    addSeriesCount(seriesMap, date, "payoutNetAmount", netAmount);
+    if (status === "queued") addSeriesCount(seriesMap, date, "payoutQueued", count);
+  }
+  for (const row of payoutPaidOutSeriesRows) {
+    const date = String(row?._id || "");
+    addSeriesCount(seriesMap, date, "payoutPaidOut", row?.count || 0);
+    addSeriesCount(seriesMap, date, "payoutPaidOutAmount", row?.netAmount || 0);
+  }
+  for (const row of payoutFailedSeriesRows) {
+    const date = String(row?._id || "");
+    addSeriesCount(seriesMap, date, "payoutFailed", row?.count || 0);
+  }
 
   const purchaseAttempts = Math.max(
     purchaseAttemptsFromRecords,
@@ -916,6 +1103,27 @@ const buildCommerceOperationsAnalytics = async ({
   const profileReady = Number(onboardingStepCounts.profile_ready || 0);
   const firstUploadStarted = Number(onboardingStepCounts.first_upload_started || 0);
   const firstUploadCompleted = Number(onboardingStepCounts.first_upload_completed || 0);
+  const payoutStatusCounts = toCounterMap(payoutStatusRows);
+  const payoutNetByStatus = toAmountMap(payoutStatusRows);
+  const stalePayoutCounts = toCounterMap(stalePayoutRows);
+  const stalePayoutNetByStatus = toAmountMap(stalePayoutRows);
+  const payoutCreated = Object.values(payoutStatusCounts)
+    .reduce((total, value) => total + Number(value || 0), 0);
+  const payoutPending = Number(payoutStatusCounts.pending || 0);
+  const payoutQueued = Number(payoutStatusCounts.queued || 0);
+  const payoutPaidOut = Number(payoutPaidOutRows[0]?.count || 0);
+  const payoutFailed = Number(payoutFailedRows[0]?.count || 0);
+  const payoutTerminalCount = payoutPaidOut + payoutFailed;
+  const payoutStuckPending =
+    Number(stalePayoutCounts.pending || 0) + Number(stalePayoutCounts.queued || 0);
+  const payoutStuckNetAmount =
+    Number(stalePayoutNetByStatus.pending || 0) + Number(stalePayoutNetByStatus.queued || 0);
+  const payoutNetAmount = Object.values(payoutNetByStatus)
+    .reduce((total, value) => total + Number(value || 0), 0);
+  const payoutPendingNetAmount =
+    Number(payoutNetByStatus.pending || 0) + Number(payoutNetByStatus.queued || 0);
+  const payoutPaidOutAmount = Number(payoutPaidOutRows[0]?.netAmount || 0);
+  const payoutFailedNetAmount = Number(payoutFailedRows[0]?.netAmount || 0);
 
   const purchaseFailureRate = roundRate(
     purchaseAttempts > 0 ? failedPurchases / purchaseAttempts : 0
@@ -930,6 +1138,12 @@ const buildCommerceOperationsAnalytics = async ({
   );
   const firstUploadCompletionRate = roundRate(
     firstUploadStarted > 0 ? firstUploadCompleted / firstUploadStarted : 0
+  );
+  const payoutSuccessRate = roundRate(
+    payoutTerminalCount > 0 ? payoutPaidOut / payoutTerminalCount : 0
+  );
+  const payoutFailureRate = roundRate(
+    payoutTerminalCount > 0 ? payoutFailed / payoutTerminalCount : 0
   );
 
   const actions = [];
@@ -965,6 +1179,22 @@ const buildCommerceOperationsAnalytics = async ({
       actionPath: "/admin/analytics",
     });
   }
+  if (payoutFailed > 0) {
+    actions.push({
+      key: "payout_failures",
+      severity: payoutFailed >= 3 ? "high" : "medium",
+      title: "Review failed marketplace payout records",
+      actionPath: "/admin/marketplace",
+    });
+  }
+  if (payoutStuckPending > 0) {
+    actions.push({
+      key: "payout_stuck_pending",
+      severity: payoutStuckPending >= 3 ? "high" : "medium",
+      title: "Review pending or queued payouts older than seven days",
+      actionPath: "/admin/marketplace",
+    });
+  }
 
   return {
     filters: {
@@ -996,6 +1226,19 @@ const buildCommerceOperationsAnalytics = async ({
       firstUploadStarted,
       firstUploadCompleted,
       firstUploadCompletionRate,
+      payoutCreated,
+      payoutPending,
+      payoutQueued,
+      payoutPaidOut,
+      payoutFailed,
+      payoutSuccessRate,
+      payoutFailureRate,
+      payoutStuckPending,
+      payoutNetAmount,
+      payoutPendingNetAmount,
+      payoutPaidOutAmount,
+      payoutFailedNetAmount,
+      payoutStuckNetAmount,
     },
     webhooks: {
       statusCounts: {
@@ -1014,6 +1257,25 @@ const buildCommerceOperationsAnalytics = async ({
         key,
         count: Number(onboardingStepCounts[key] || 0),
       })),
+    },
+    payouts: {
+      statusCounts: {
+        pending: payoutPending,
+        queued: payoutQueued,
+        paid_out: payoutPaidOut,
+        failed: payoutFailed,
+      },
+      stalePending: {
+        count: payoutStuckPending,
+        netAmount: payoutStuckNetAmount,
+        thresholdDays: 7,
+      },
+      amounts: {
+        net: payoutNetAmount,
+        pending: payoutPendingNetAmount,
+        paidOut: payoutPaidOutAmount,
+        failed: payoutFailedNetAmount,
+      },
     },
     series: groupSeries(
       Array.from(seriesMap.values()).sort((left, right) => left.date.localeCompare(right.date)),

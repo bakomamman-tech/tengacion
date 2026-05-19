@@ -118,7 +118,14 @@ export default function AdminAnalyticsPage({ user }) {
   const [userGrowth, setUserGrowth] = useState({ series: [] });
   const [contentUploads, setContentUploads] = useState({ series: [] });
   const [revenue, setRevenue] = useState({ series: [] });
-  const [commerceOps, setCommerceOps] = useState({ summary: {}, series: [], actions: [], onboarding: { steps: [] }, webhooks: {} });
+  const [commerceOps, setCommerceOps] = useState({
+    summary: {},
+    series: [],
+    actions: [],
+    onboarding: { steps: [] },
+    webhooks: {},
+    payouts: { statusCounts: {}, stalePending: {}, amounts: {} },
+  });
   const [engagement, setEngagement] = useState({ series: [] });
   const [topCreators, setTopCreators] = useState({ items: [] });
   const [topContent, setTopContent] = useState({ items: [] });
@@ -180,7 +187,14 @@ export default function AdminAnalyticsPage({ user }) {
       setUserGrowth(growthPayload || { series: [] });
       setContentUploads(uploadsPayload || { series: [] });
       setRevenue(revenuePayload || { series: [] });
-      setCommerceOps(commerceOpsPayload || { summary: {}, series: [], actions: [], onboarding: { steps: [] }, webhooks: {} });
+      setCommerceOps(commerceOpsPayload || {
+        summary: {},
+        series: [],
+        actions: [],
+        onboarding: { steps: [] },
+        webhooks: {},
+        payouts: { statusCounts: {}, stalePending: {}, amounts: {} },
+      });
       setEngagement(engagementPayload || { series: [] });
       setTopCreators(topCreatorsPayload || { items: [] });
       setTopContent(topContentPayload || { items: [] });
@@ -234,8 +248,12 @@ export default function AdminAnalyticsPage({ user }) {
       opsByDate.get(row.date)?.webhookFailures || row.webhookEventsFailed || 0,
       opsByDate.get(row.date)?.entitlementGrantFailures || row.entitlementGrantFailures || 0,
       opsByDate.get(row.date)?.onboardingStepCompletions || row.creatorOnboardingStepCompletions || 0,
+      opsByDate.get(row.date)?.payoutCreated || row.payoutCreated || 0,
+      opsByDate.get(row.date)?.payoutPaidOut || row.payoutPaidOut || 0,
+      opsByDate.get(row.date)?.payoutFailed || row.payoutFailed || 0,
+      opsByDate.get(row.date)?.payoutPaidOutAmount || row.payoutPaidOutAmount || 0,
     ]);
-    const header = ["date", "newUsers", "activeUsers", "songsUploaded", "albumsUploaded", "booksUploaded", "podcastsUploaded", "videosUploaded", "revenueAmount", "downloads", "streams", "purchaseAttempts", "checkoutFailures", "webhookFailures", "entitlementGrantFailures", "onboardingStepCompletions"];
+    const header = ["date", "newUsers", "activeUsers", "songsUploaded", "albumsUploaded", "booksUploaded", "podcastsUploaded", "videosUploaded", "revenueAmount", "downloads", "streams", "purchaseAttempts", "checkoutFailures", "webhookFailures", "entitlementGrantFailures", "onboardingStepCompletions", "payoutCreated", "payoutPaidOut", "payoutFailed", "payoutPaidOutAmount"];
     const csv = [header, ...rows].map((row) => row.join(",")).join("\n");
     downloadBlob({ filename: `tengacion-admin-analytics-${filters.range}.csv`, content: csv, type: "text/csv;charset=utf-8" });
   };
@@ -322,12 +340,32 @@ export default function AdminAnalyticsPage({ user }) {
                 ["Entitlement gaps", number(commerceOps.summary?.entitlementGrantFailures)],
                 ["Entitlement continuity", percent(commerceOps.summary?.entitlementContinuityRate)],
                 ["Onboarding steps", number(commerceOps.summary?.onboardingStepCompletions)],
+                ["Pending payouts", number(commerceOps.summary?.payoutPending)],
+                ["Payout success", percent(commerceOps.summary?.payoutSuccessRate)],
+                ["Payout failures", number(commerceOps.summary?.payoutFailed)],
+                ["Stuck payouts", number(commerceOps.summary?.payoutStuckPending)],
+                ["Paid out net", currency(commerceOps.summary?.payoutPaidOutAmount)],
               ].map(([label, value]) => (
                 <div key={label} className="adminx-ops-metric">
                   <span>{label}</span>
                   <strong>{value}</strong>
                 </div>
               ))}
+            </div>
+            <div className="adminx-mobile-stack adminx-mobile-stack--spaced">
+              {[
+                ["Pending", commerceOps.payouts?.statusCounts?.pending],
+                ["Queued", commerceOps.payouts?.statusCounts?.queued],
+                ["Paid out", commerceOps.payouts?.statusCounts?.paid_out],
+                ["Failed", commerceOps.payouts?.statusCounts?.failed],
+              ].map(([label, value]) => (
+                <span key={label} className="adminx-badge">
+                  {label} payouts {number(value)}
+                </span>
+              ))}
+              <span className="adminx-badge">
+                Stale net {currency(commerceOps.payouts?.stalePending?.netAmount)}
+              </span>
             </div>
             <div className="adminx-mobile-stack adminx-mobile-stack--spaced">
               {(commerceOps.onboarding?.steps || []).map((step) => (

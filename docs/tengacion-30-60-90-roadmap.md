@@ -23,7 +23,7 @@ The repo already has:
 
 Important current gaps:
 
-- billing and legacy music commerce surfaces now have provider-backed and entitlement-aware coverage, but still need broader production monitoring
+- billing and legacy music commerce surfaces now have provider-backed, entitlement-aware, and admin-alert-backed coverage, but still need external uptime and error monitoring
 - creator subscriptions and payout operations are not complete end-to-end
 - advanced analytics, recommendations, and fraud/risk systems are still phase-3 level work
 - Akuso has a strong backend foundation, but it still needs a disciplined eval and quality loop before broader expansion
@@ -192,6 +192,7 @@ Make Tengacion economically real.
   - admin analytics now renders the commerce ops snapshot beside the existing revenue and operational health views, and analytics exports include the new baseline ops fields
   - daily analytics backfills now persist purchase attempt, checkout, webhook, entitlement grant, entitlement gap, and payout counters so operations reviews can be rebuilt from the same source of truth
   - marketplace payout status counts, success/failure rates, paid-out amounts, failed payout amounts, and stale pending payout prompts now flow into the same commerce ops report and admin analytics export
+  - system alerts now promote checkout failures, webhook failures/replays, paid-purchase entitlement gaps, stale pending payments, payout failures, and stuck payouts into the Admin Analytics production monitoring panel
 
 #### 5. Start Akuso training loop with instrumentation, not fine-tuning
 

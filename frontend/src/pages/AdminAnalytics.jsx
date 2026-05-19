@@ -586,6 +586,13 @@ export default function AdminAnalyticsPage({ user }) {
             <div className="adminx-panel-head"><h2 className="adminx-panel-title">Operational Metrics</h2><button type="button" className="adminx-link-btn" onClick={() => navigate("/admin/transactions")}>Open Transactions</button></div>
             <div className="adminx-leaderboard">
               <div className="adminx-leaderboard-item"><div className="adminx-row"><strong>Failed Payments</strong><span>{number(systemAlerts.metrics?.failedPayments)}</span></div></div>
+              <div className="adminx-leaderboard-item"><div className="adminx-row"><strong>Checkout Failures</strong><span>{number(systemAlerts.metrics?.checkoutFailures)}</span></div></div>
+              <div className="adminx-leaderboard-item"><div className="adminx-row"><strong>Webhook Failures</strong><span>{number(systemAlerts.metrics?.webhookFailures)}</span></div></div>
+              <div className="adminx-leaderboard-item"><div className="adminx-row"><strong>Webhook Replays</strong><span>{number(systemAlerts.metrics?.webhookReplays)}</span></div></div>
+              <div className="adminx-leaderboard-item"><div className="adminx-row"><strong>Entitlement Gaps</strong><span>{number(systemAlerts.metrics?.entitlementGaps)}</span></div></div>
+              <div className="adminx-leaderboard-item"><div className="adminx-row"><strong>Stale Payments</strong><span>{number(systemAlerts.metrics?.stalePendingPayments)}</span></div></div>
+              <div className="adminx-leaderboard-item"><div className="adminx-row"><strong>Payout Failures</strong><span>{number(systemAlerts.metrics?.payoutFailures)}</span></div></div>
+              <div className="adminx-leaderboard-item"><div className="adminx-row"><strong>Stuck Payouts</strong><span>{number(systemAlerts.metrics?.stuckPayouts)}</span></div></div>
               <div className="adminx-leaderboard-item"><div className="adminx-row"><strong>Upload Failures</strong><span>{number(systemAlerts.metrics?.uploadFailures)}</span></div></div>
               <div className="adminx-leaderboard-item"><div className="adminx-row"><strong>Login Warnings</strong><span>{number(systemAlerts.metrics?.loginWarnings)}</span></div></div>
               <div className="adminx-leaderboard-item"><div className="adminx-row"><strong>Unresolved Reports</strong><span>{number(systemAlerts.metrics?.unresolvedReports)}</span></div></div>

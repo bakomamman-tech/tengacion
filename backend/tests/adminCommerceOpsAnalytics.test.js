@@ -360,5 +360,30 @@ describe("admin commerce operations analytics", () => {
     );
     expect(response.body.series.some((row) => row.purchaseAttempts >= 3)).toBe(true);
     expect(response.body.series.some((row) => row.payoutPaidOut >= 1)).toBe(true);
+
+    const alertsResponse = await request(app)
+      .get("/api/admin/analytics/system-alerts?range=7d")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(alertsResponse.body.metrics).toMatchObject({
+      failedPayments: 1,
+      checkoutFailures: 1,
+      webhookFailures: 1,
+      webhookReplays: 2,
+      entitlementEligiblePurchases: 2,
+      entitlementGaps: 1,
+      payoutFailures: 1,
+      stuckPayouts: 1,
+      stuckPayoutNetAmount: 2700,
+    });
+    expect(alertsResponse.body.alerts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "webhook_failures", severity: "high" }),
+        expect.objectContaining({ key: "entitlement_gaps", severity: "high" }),
+        expect.objectContaining({ key: "payout_failures", severity: "medium" }),
+        expect.objectContaining({ key: "stuck_payouts", severity: "medium" }),
+      ])
+    );
   });
 });

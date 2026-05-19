@@ -23,9 +23,14 @@ const {
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_ALERT_THRESHOLDS = {
   failedPayments: 5,
+  checkoutFailures: 3,
+  webhookReplays: 3,
   uploadFailures: 3,
   loginWarnings: 5,
   unresolvedReports: 10,
+  stalePendingPayments: 3,
+  payoutFailures: 0,
+  stuckPayouts: 0,
 };
 
 const ENTITLEMENT_ITEM_TYPES = ["track", "book", "album", "video"];
@@ -1534,8 +1539,57 @@ const buildRecentActivity = async ({ range, startDate, endDate, page = 1, limit 
 
 const buildSystemAlerts = async ({ range, startDate, endDate } = {}) => {
   const dates = buildDateRange({ range, startDate, endDate });
-  const [failedPayments, uploadFailures, loginWarnings, unresolvedReports, repeatFailedUploads] = await Promise.all([
+  const stalePaymentCutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
+  const stalePayoutCutoff = new Date(Date.now() - 7 * ONE_DAY_MS);
+  const [
+    failedPayments,
+    checkoutFailures,
+    webhookFailuresFromRecords,
+    webhookFailuresFromEvents,
+    webhookReplayRows,
+    webhookReplayEvents,
+    entitlementAudit,
+    stalePendingPayments,
+    payoutFailures,
+    stuckPayoutRows,
+    uploadFailures,
+    loginWarnings,
+    unresolvedReports,
+    repeatFailedUploads,
+  ] = await Promise.all([
     Purchase.countDocuments({ status: "failed", updatedAt: { $gte: dates.start, $lte: dates.end } }),
+    AnalyticsEvent.countDocuments({ type: "purchase_checkout_failed", createdAt: { $gte: dates.start, $lte: dates.end } }),
+    PaymentWebhookEvent.countDocuments({ status: "failed", updatedAt: { $gte: dates.start, $lte: dates.end } }),
+    AnalyticsEvent.countDocuments({ type: "purchase_webhook_failed", createdAt: { $gte: dates.start, $lte: dates.end } }),
+    PaymentWebhookEvent.aggregate([
+      { $match: { updatedAt: { $gte: dates.start, $lte: dates.end } } },
+      { $group: { _id: null, count: { $sum: "$duplicateCount" } } },
+    ]).catch(() => []),
+    AnalyticsEvent.countDocuments({ type: "purchase_webhook_duplicate", createdAt: { $gte: dates.start, $lte: dates.end } }),
+    aggregateEntitlementAudit({ start: dates.start, end: dates.end }),
+    Purchase.countDocuments({
+      status: { $in: ["initiated", "pending"] },
+      updatedAt: { $lte: stalePaymentCutoff },
+    }),
+    MarketplacePayout.countDocuments({
+      payoutStatus: "failed",
+      updatedAt: { $gte: dates.start, $lte: dates.end },
+    }),
+    MarketplacePayout.aggregate([
+      {
+        $match: {
+          payoutStatus: { $in: ["pending", "queued"] },
+          createdAt: { $lte: stalePayoutCutoff },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          netAmount: { $sum: "$netAmount" },
+        },
+      },
+    ]).catch(() => []),
     AnalyticsEvent.countDocuments({ type: "upload_failed", createdAt: { $gte: dates.start, $lte: dates.end } }),
     AnalyticsEvent.countDocuments({ type: "login_warning", createdAt: { $gte: dates.start, $lte: dates.end } }),
     Report.countDocuments({ status: { $in: ["open", "reviewing"] } }),
@@ -1547,8 +1601,23 @@ const buildSystemAlerts = async ({ range, startDate, endDate } = {}) => {
     ]),
   ]);
 
+  const webhookFailures = Math.max(Number(webhookFailuresFromRecords || 0), Number(webhookFailuresFromEvents || 0));
+  const webhookReplays = Math.max(Number(webhookReplayRows[0]?.count || 0), Number(webhookReplayEvents || 0));
+  const entitlementGaps = Number(entitlementAudit?.missingEntitlements || 0);
+  const entitlementEligiblePurchases = Number(entitlementAudit?.eligiblePurchases || 0);
+  const stuckPayouts = Number(stuckPayoutRows[0]?.count || 0);
+  const stuckPayoutNetAmount = Number(stuckPayoutRows[0]?.netAmount || 0);
+  const repeatedUploadFailureCreators = Number(repeatFailedUploads[0]?.count || 0);
+
   const alerts = [];
   if (failedPayments > DEFAULT_ALERT_THRESHOLDS.failedPayments) alerts.push({ key: "failed_payments", severity: "high", title: "Failed payments spike", value: failedPayments, actionPath: "/admin/transactions" });
+  if (checkoutFailures > DEFAULT_ALERT_THRESHOLDS.checkoutFailures) alerts.push({ key: "checkout_failures", severity: "high", title: "Checkout initialization failures elevated", value: checkoutFailures, actionPath: "/admin/transactions" });
+  if (webhookFailures > 0) alerts.push({ key: "webhook_failures", severity: "high", title: "Payment webhook failures need review", value: webhookFailures, actionPath: "/admin/transactions" });
+  if (webhookReplays >= DEFAULT_ALERT_THRESHOLDS.webhookReplays) alerts.push({ key: "webhook_replays", severity: "medium", title: "Payment webhook replays elevated", value: webhookReplays, actionPath: "/admin/transactions" });
+  if (entitlementGaps > 0) alerts.push({ key: "entitlement_gaps", severity: "high", title: "Paid purchases missing entitlements", value: entitlementGaps, actionPath: "/admin/transactions?attention=stuck" });
+  if (stalePendingPayments > DEFAULT_ALERT_THRESHOLDS.stalePendingPayments) alerts.push({ key: "stale_pending_payments", severity: "medium", title: "Pending payments older than cleanup window", value: stalePendingPayments, actionPath: "/admin/transactions?status=pending" });
+  if (payoutFailures > DEFAULT_ALERT_THRESHOLDS.payoutFailures) alerts.push({ key: "payout_failures", severity: payoutFailures >= 3 ? "high" : "medium", title: "Marketplace payout failures need review", value: payoutFailures, actionPath: "/admin/marketplace" });
+  if (stuckPayouts > DEFAULT_ALERT_THRESHOLDS.stuckPayouts) alerts.push({ key: "stuck_payouts", severity: stuckPayouts >= 3 ? "high" : "medium", title: "Marketplace payouts stuck pending", value: stuckPayouts, actionPath: "/admin/marketplace" });
   if (uploadFailures > DEFAULT_ALERT_THRESHOLDS.uploadFailures) alerts.push({ key: "upload_failures", severity: "medium", title: "Upload failures elevated", value: uploadFailures, actionPath: "/admin/content" });
   if (loginWarnings > DEFAULT_ALERT_THRESHOLDS.loginWarnings) alerts.push({ key: "login_warnings", severity: "high", title: "Suspicious login activity", value: loginWarnings, actionPath: "/admin/analytics" });
   if (unresolvedReports > 0) {
@@ -1561,11 +1630,26 @@ const buildSystemAlerts = async ({ range, startDate, endDate } = {}) => {
       actionPath: "/admin/reports",
     });
   }
-  if (Number(repeatFailedUploads[0]?.count || 0) > 0) alerts.push({ key: "repeat_upload_failures", severity: "medium", title: "Creators with repeated failed uploads", value: Number(repeatFailedUploads[0]?.count || 0), actionPath: "/admin/content" });
+  if (repeatedUploadFailureCreators > 0) alerts.push({ key: "repeat_upload_failures", severity: "medium", title: "Creators with repeated failed uploads", value: repeatedUploadFailureCreators, actionPath: "/admin/content" });
 
   return {
     thresholds: DEFAULT_ALERT_THRESHOLDS,
-    metrics: { failedPayments, uploadFailures, loginWarnings, unresolvedReports, repeatFailedUploads: Number(repeatFailedUploads[0]?.count || 0) },
+    metrics: {
+      failedPayments,
+      checkoutFailures,
+      webhookFailures,
+      webhookReplays,
+      entitlementGaps,
+      entitlementEligiblePurchases,
+      stalePendingPayments,
+      payoutFailures,
+      stuckPayouts,
+      stuckPayoutNetAmount,
+      uploadFailures,
+      loginWarnings,
+      unresolvedReports,
+      repeatFailedUploads: repeatedUploadFailureCreators,
+    },
     alerts,
   };
 };

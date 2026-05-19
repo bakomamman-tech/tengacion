@@ -431,6 +431,29 @@ describe("Assistant admin review routes", () => {
             expect.objectContaining({ type: "instrumentation_fix" }),
           ]),
         }),
+        fineTuningReadiness: expect.objectContaining({
+          status: "not_ready",
+          recommendationTitle: "Continue prompt, eval, and grounding work",
+          summary: expect.objectContaining({
+            criteriaTotal: 5,
+            labeledExamples: 0,
+          }),
+          criteria: expect.arrayContaining([
+            expect.objectContaining({
+              key: "labeled_examples",
+              passed: false,
+            }),
+            expect.objectContaining({
+              key: "stable_repeated_use_cases",
+              passed: false,
+            }),
+          ]),
+          blockers: expect.arrayContaining([
+            expect.objectContaining({
+              key: "labeled_examples",
+            }),
+          ]),
+        }),
       })
     );
     expect(Array.isArray(metricsResponse.body.alerts)).toBe(true);

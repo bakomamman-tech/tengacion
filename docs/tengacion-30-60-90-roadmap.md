@@ -413,6 +413,9 @@ If those conditions are not met, continue improving:
 - feature registry coverage
 - route-specific evals
 - safety and refusal quality
+- Current implementation anchor:
+  - `/api/admin/assistant/metrics` now returns a fine-tuning readiness gate with repeated-use-case, labeled-example, backlog, quality, safety, and reliability criteria
+  - the Akuso Assistant Ops metrics view renders the readiness decision, blockers, top repeated use cases, and links back to reviews and eval candidates so admins can keep fine-tuning behind evidence instead of instinct
 
 ### Exit criteria for day 90
 

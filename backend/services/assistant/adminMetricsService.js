@@ -89,6 +89,275 @@ const buildLane = ({
   actionPath,
 });
 
+const FINE_TUNING_THRESHOLDS = Object.freeze({
+  minRepeatedUseCases: 2,
+  minUseCaseEvents: 20,
+  minLabeledExamples: 50,
+  maxOpenBacklog: 3,
+  maxHighSeverityBacklog: 0,
+  maxNegativeFeedbackRate: 0.15,
+  maxLocalFallbackRate: 0.2,
+  maxPromptInjectionRate: 0.03,
+  minDominantUseCaseShare: 0.35,
+});
+
+const formatLabel = (value = "") =>
+  String(value || "")
+    .replace(/[_:]+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1))
+    .join(" ");
+
+const sumCounts = (counter = {}) =>
+  Object.values(counter).reduce((total, value) => total + Number(value || 0), 0);
+
+const buildCriterion = ({
+  key,
+  title,
+  passed,
+  metric = {},
+  threshold = "",
+  detail = "",
+  nextStep = "",
+} = {}) => ({
+  key,
+  title,
+  passed: Boolean(passed),
+  metric,
+  threshold,
+  detail,
+  nextStep,
+});
+
+const addUseCaseEntries = ({ entries, counter = {}, source = "", prefix = "" } = {}) => {
+  Object.entries(counter).forEach(([key, count]) => {
+    const safeKey = String(key || "").trim();
+    const safeCount = Number(count || 0);
+    if (!safeKey || safeCount <= 0) {
+      return;
+    }
+
+    entries.push({
+      key: `${prefix}:${safeKey}`,
+      label: formatLabel(safeKey),
+      count: safeCount,
+      source,
+    });
+  });
+};
+
+const buildFineTuningReadiness = async ({
+  dates,
+  historical = {},
+  operationsReview = {},
+} = {}) => {
+  const [
+    policyModeCounts,
+    reviewModeCounts,
+    reviewSurfaceCounts,
+    resolvedReviewCounts,
+    labeledExamples,
+  ] = await Promise.all([
+    countByField({
+      dates,
+      type: "akuso_policy_decision",
+      fieldPath: "metadata.mode",
+    }),
+    countModelByField({
+      model: AssistantReviewItem,
+      dates,
+      fieldPath: "mode",
+    }),
+    countModelByField({
+      model: AssistantReviewItem,
+      dates,
+      fieldPath: "surface",
+    }),
+    countModelByField({
+      model: AssistantReviewItem,
+      dates,
+      fieldPath: "status",
+    }),
+    countDocumentsSafe(AssistantReviewItem, {
+      createdAt: { $gte: dates.start, $lte: dates.end },
+      status: "resolved",
+      resolutionNote: { $exists: true, $ne: "" },
+    }),
+  ]);
+
+  const useCaseEntries = [];
+  addUseCaseEntries({
+    entries: useCaseEntries,
+    counter: policyModeCounts,
+    source: "Akuso policy mode",
+    prefix: "mode",
+  });
+  addUseCaseEntries({
+    entries: useCaseEntries,
+    counter: reviewModeCounts,
+    source: "Review mode",
+    prefix: "review_mode",
+  });
+  addUseCaseEntries({
+    entries: useCaseEntries,
+    counter: reviewSurfaceCounts,
+    source: "Review surface",
+    prefix: "review_surface",
+  });
+
+  const responseTotal = Number(historical?.responses?.total || 0);
+  const feedbackTotal = Number(historical?.feedback?.total || 0);
+  const totalUseCaseEvents = Math.max(
+    Number(historical?.policy?.total || 0),
+    sumCounts(policyModeCounts),
+    sumCounts(reviewModeCounts)
+  );
+  const topUseCases = useCaseEntries
+    .sort((left, right) => right.count - left.count)
+    .slice(0, 5)
+    .map((entry) => ({
+      ...entry,
+      share: roundRate(totalUseCaseEvents > 0 ? entry.count / totalUseCaseEvents : 0),
+    }));
+
+  const stableUseCases = useCaseEntries.filter(
+    (entry) => entry.count >= FINE_TUNING_THRESHOLDS.minUseCaseEvents
+  ).length;
+  const dominantUseCaseShare = Number(topUseCases[0]?.share || 0);
+  const creatorWritingEvents =
+    Number(policyModeCounts.creator_writing || 0) +
+    Number(reviewModeCounts.creator_writing || 0);
+  const creatorWritingShare = roundRate(
+    totalUseCaseEvents > 0 ? creatorWritingEvents / totalUseCaseEvents : 0
+  );
+  const resolvedReviews = Number(resolvedReviewCounts.resolved || 0);
+  const openAssistantBacklog = Number(operationsReview?.summary?.openAssistantBacklog || 0);
+  const highSeverityBacklog = Number(operationsReview?.summary?.highSeverityBacklog || 0);
+  const negativeFeedbackRate = Number(historical?.feedback?.quality?.negativeRate || 0);
+  const localFallbackRate = Number(historical?.rates?.localFallbackRate || 0);
+  const promptInjectionRate = Number(historical?.rates?.promptInjectionRate || 0);
+  const openAIFailureRate = Number(historical?.rates?.openAIFailureRate || 0);
+
+  const criteria = [
+    buildCriterion({
+      key: "stable_repeated_use_cases",
+      title: "Stable repeated use cases",
+      passed: stableUseCases >= FINE_TUNING_THRESHOLDS.minRepeatedUseCases,
+      metric: { label: "Repeated use cases", value: stableUseCases },
+      threshold: `${FINE_TUNING_THRESHOLDS.minRepeatedUseCases}+ use cases with ${FINE_TUNING_THRESHOLDS.minUseCaseEvents}+ events`,
+      detail:
+        topUseCases.length > 0
+          ? `${topUseCases[0].label} is the largest observed use case.`
+          : "No repeated Akuso use-case pattern is visible yet.",
+      nextStep: "Keep collecting mode and surface-level assistant traffic before model-specific training work.",
+    }),
+    buildCriterion({
+      key: "labeled_examples",
+      title: "Enough labeled examples",
+      passed: labeledExamples >= FINE_TUNING_THRESHOLDS.minLabeledExamples,
+      metric: { label: "Resolved labeled reviews", value: labeledExamples },
+      threshold: `${FINE_TUNING_THRESHOLDS.minLabeledExamples}+ resolved reviews with decision notes`,
+      detail: `${resolvedReviews} review item${resolvedReviews === 1 ? "" : "s"} resolved in this window.`,
+      nextStep: "Resolve review items with expected behavior notes and promote strong examples into eval fixtures.",
+    }),
+    buildCriterion({
+      key: "prompt_eval_bottleneck_reduced",
+      title: "Prompts and evals are not the bottleneck",
+      passed:
+        openAssistantBacklog <= FINE_TUNING_THRESHOLDS.maxOpenBacklog &&
+        highSeverityBacklog <= FINE_TUNING_THRESHOLDS.maxHighSeverityBacklog &&
+        negativeFeedbackRate <= FINE_TUNING_THRESHOLDS.maxNegativeFeedbackRate &&
+        localFallbackRate <= FINE_TUNING_THRESHOLDS.maxLocalFallbackRate,
+      metric: { label: "Open backlog", value: openAssistantBacklog },
+      threshold:
+        `<=${FINE_TUNING_THRESHOLDS.maxOpenBacklog} open, no high-severity backlog, ` +
+        `<=${Math.round(FINE_TUNING_THRESHOLDS.maxNegativeFeedbackRate * 100)}% negative feedback`,
+      detail:
+        `Negative feedback ${roundRate(negativeFeedbackRate * 100)}%, local fallback ${roundRate(localFallbackRate * 100)}%.`,
+      nextStep: "Work down review backlog, route failures, grounding gaps, and fallback causes first.",
+    }),
+    buildCriterion({
+      key: "style_or_domain_repetition",
+      title: "Style or domain repetition is strong enough",
+      passed:
+        creatorWritingShare >= FINE_TUNING_THRESHOLDS.minDominantUseCaseShare ||
+        dominantUseCaseShare >= FINE_TUNING_THRESHOLDS.minDominantUseCaseShare,
+      metric: { label: "Top use-case share", value: dominantUseCaseShare, format: "percent" },
+      threshold: `${Math.round(FINE_TUNING_THRESHOLDS.minDominantUseCaseShare * 100)}%+ of observed use-case traffic`,
+      detail: `Creator-writing share is ${roundRate(creatorWritingShare * 100)}%.`,
+      nextStep: "Prefer prompt, retrieval, and feature-registry improvements until one repeated behavior dominates.",
+    }),
+    buildCriterion({
+      key: "safe_operating_baseline",
+      title: "Safety and reliability are stable",
+      passed:
+        promptInjectionRate <= FINE_TUNING_THRESHOLDS.maxPromptInjectionRate &&
+        highSeverityBacklog <= FINE_TUNING_THRESHOLDS.maxHighSeverityBacklog &&
+        openAIFailureRate < 0.25,
+      metric: { label: "Prompt injection rate", value: promptInjectionRate, format: "percent" },
+      threshold: `<=${Math.round(FINE_TUNING_THRESHOLDS.maxPromptInjectionRate * 100)}% prompt injection rate and no high-severity backlog`,
+      detail: `OpenAI failure rate is ${roundRate(openAIFailureRate * 100)}%.`,
+      nextStep: "Keep safety, refusal quality, and provider reliability under review before training a specialized model.",
+    }),
+  ];
+
+  const passedCount = criteria.filter((criterion) => criterion.passed).length;
+  const status =
+    passedCount === criteria.length
+      ? "ready_for_experiment"
+      : passedCount >= criteria.length - 1
+        ? "watch"
+        : "not_ready";
+  const blockers = criteria
+    .filter((criterion) => !criterion.passed)
+    .map((criterion) => ({
+      key: criterion.key,
+      title: criterion.title,
+      nextStep: criterion.nextStep,
+    }));
+
+  return {
+    window: historical.window || {
+      range: dates.range,
+      startDate: dates.start.toISOString(),
+      endDate: dates.end.toISOString(),
+    },
+    status,
+    recommendationTitle:
+      status === "ready_for_experiment"
+        ? "Prepare a constrained fine-tuning experiment"
+        : status === "watch"
+          ? "Keep watching before fine-tuning"
+          : "Continue prompt, eval, and grounding work",
+    recommendation:
+      status === "ready_for_experiment"
+        ? "Fine-tuning may be justified for the repeated use cases shown here, but keep the experiment narrow and eval-gated."
+        : "Fine-tuning is not justified yet. Improve prompts, retrieval, feature registry coverage, eval labels, and safety quality first.",
+    summary: {
+      criteriaPassed: passedCount,
+      criteriaTotal: criteria.length,
+      responsesTotal: responseTotal,
+      feedbackTotal,
+      totalUseCaseEvents,
+      stableUseCases,
+      labeledExamples,
+      resolvedReviews,
+      openAssistantBacklog,
+      highSeverityBacklog,
+      negativeFeedbackRate,
+      localFallbackRate,
+      promptInjectionRate,
+      dominantUseCaseShare,
+      creatorWritingShare,
+    },
+    topUseCases,
+    criteria,
+    blockers,
+    thresholds: FINE_TUNING_THRESHOLDS,
+  };
+};
+
 const buildQualityOperationsReview = async ({ dates, historical = {} } = {}) => {
   const [
     purchaseStatusCounts,
@@ -589,11 +858,17 @@ const buildAkusoAdminMetrics = async ({
   };
 
   const operationsReview = await buildQualityOperationsReview({ dates, historical });
+  const fineTuningReadiness = await buildFineTuningReadiness({
+    dates,
+    historical,
+    operationsReview,
+  });
 
   return {
     live,
     historical,
     operationsReview,
+    fineTuningReadiness,
     alerts: buildHistoricalAlerts({
       promptInjectionAttempts,
       openAIFailureRate: historical.rates.openAIFailureRate,
@@ -607,5 +882,6 @@ const buildAkusoAdminMetrics = async ({
 
 module.exports = {
   buildAkusoAdminMetrics,
+  buildFineTuningReadiness,
   buildQualityOperationsReview,
 };

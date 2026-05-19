@@ -236,6 +236,133 @@ function QualityOperationsReview({ review, onNavigate }) {
   );
 }
 
+function FineTuningReadiness({ readiness, onNavigate }) {
+  const criteria = Array.isArray(readiness?.criteria) ? readiness.criteria : [];
+  const topUseCases = Array.isArray(readiness?.topUseCases) ? readiness.topUseCases : [];
+
+  if (!readiness || (!criteria.length && !topUseCases.length)) {
+    return null;
+  }
+
+  const status = String(readiness.status || "not_ready");
+  const statusSeverity =
+    status === "ready_for_experiment"
+      ? "low"
+      : status === "watch"
+        ? "medium"
+        : "high";
+
+  return (
+    <section className="adminx-panel adminx-panel--span-12">
+      <div className="adminx-panel-head">
+        <div>
+          <h2 className="adminx-panel-title">Fine-tuning Readiness</h2>
+          <span className="adminx-section-meta">
+            {readiness.recommendationTitle || "Continue prompt, eval, and grounding work"}
+          </span>
+        </div>
+        <span className={`adminx-badge ${badgeToneClass({ severity: statusSeverity, type: "severity" })}`}>
+          {titleCase(status)}
+        </span>
+      </div>
+
+      <div className="adminx-muted" style={{ marginTop: 8 }}>
+        {readiness.recommendation}
+      </div>
+
+      <div
+        className="adminx-leaderboard"
+        style={{ marginTop: 14, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}
+      >
+        <article className="adminx-leaderboard-item">
+          <div className="adminx-row">
+            <strong>Criteria Passed</strong>
+            <span>
+              {number(readiness?.summary?.criteriaPassed)} / {number(readiness?.summary?.criteriaTotal)}
+            </span>
+          </div>
+          <div className="adminx-muted" style={{ marginTop: 8 }}>
+            {number(readiness?.summary?.labeledExamples)} labeled examples | {number(readiness?.summary?.stableUseCases)} repeated use cases
+          </div>
+        </article>
+        <article className="adminx-leaderboard-item">
+          <div className="adminx-row">
+            <strong>Quality Baseline</strong>
+            <span>{percent(readiness?.summary?.negativeFeedbackRate)}</span>
+          </div>
+          <div className="adminx-muted" style={{ marginTop: 8 }}>
+            {number(readiness?.summary?.openAssistantBacklog)} open reviews | {percent(readiness?.summary?.localFallbackRate)} fallback
+          </div>
+        </article>
+      </div>
+
+      {topUseCases.length ? (
+        <div className="adminx-leaderboard" style={{ marginTop: 14 }}>
+          {topUseCases.map((item) => (
+            <article key={item.key} className="adminx-leaderboard-item">
+              <div className="adminx-row">
+                <strong>{item.label}</strong>
+                <span>{number(item.count)}</span>
+              </div>
+              <div className="adminx-muted" style={{ marginTop: 8 }}>
+                {item.source} | {percent(item.share)} of observed use-case traffic
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="adminx-leaderboard" style={{ marginTop: 14 }}>
+        {criteria.map((criterion) => (
+          <article key={criterion.key} className="adminx-leaderboard-item">
+            <div className="adminx-row" style={{ alignItems: "flex-start", gap: 12 }}>
+              <div>
+                <strong>{criterion.title}</strong>
+                <div className="adminx-muted" style={{ marginTop: 6 }}>
+                  {criterion.detail || criterion.threshold}
+                </div>
+              </div>
+              <span className={`adminx-badge ${badgeToneClass({
+                severity: criterion.passed ? "low" : "medium",
+                type: "severity",
+              })}`}
+              >
+                {criterion.passed ? "Passed" : "Needs Work"}
+              </span>
+            </div>
+            <div className="adminx-row" style={{ gap: 12, marginTop: 10 }}>
+              <span className="adminx-muted">{criterion.metric?.label || "Signal"}</span>
+              <strong>{metricValue(criterion.metric)}</strong>
+            </div>
+            <div className="adminx-muted" style={{ marginTop: 8 }}>
+              Target: {criterion.threshold}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {readiness?.blockers?.length ? (
+        <div className="adminx-action-row" style={{ marginTop: 14 }}>
+          <button
+            type="button"
+            className="adminx-btn"
+            onClick={() => onNavigate(VIEW_PATHS.reviews)}
+          >
+            Review Blockers
+          </button>
+          <button
+            type="button"
+            className="adminx-btn"
+            onClick={() => onNavigate(VIEW_PATHS.evals)}
+          >
+            Open Eval Candidates
+          </button>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function ReviewCard({ item, isActive, onSelect }) {
   const title =
     String(item?.requestSummary || "").trim() ||
@@ -473,6 +600,11 @@ export default function AdminAssistantPage({ user }) {
         value: number(evalCandidatesPayload?.summary?.total),
         helper: "Review items ready for fixture drafting",
       },
+      {
+        label: "Fine-tune Gate",
+        value: titleCase(metricsPayload?.fineTuningReadiness?.status || "not_ready"),
+        helper: `${number(metricsPayload?.fineTuningReadiness?.summary?.criteriaPassed)} of ${number(metricsPayload?.fineTuningReadiness?.summary?.criteriaTotal)} readiness checks pass`,
+      },
     ];
   }, [evalCandidatesPayload?.summary?.total, metricsPayload, reviewStatus, reviewsPayload?.total]);
 
@@ -707,6 +839,10 @@ export default function AdminAssistantPage({ user }) {
             <div className="adminx-analytics-grid">
               <QualityOperationsReview
                 review={metricsPayload?.operationsReview}
+                onNavigate={navigate}
+              />
+              <FineTuningReadiness
+                readiness={metricsPayload?.fineTuningReadiness}
                 onNavigate={navigate}
               />
               <InsightList title="Live Snapshot" meta="Current in-process counters" items={liveInsights} />

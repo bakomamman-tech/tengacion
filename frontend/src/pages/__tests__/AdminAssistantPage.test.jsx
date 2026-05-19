@@ -197,6 +197,55 @@ const metricsPayload = {
       },
     ],
   },
+  fineTuningReadiness: {
+    status: "not_ready",
+    recommendationTitle: "Continue prompt, eval, and grounding work",
+    recommendation:
+      "Fine-tuning is not justified yet. Improve prompts, retrieval, feature registry coverage, eval labels, and safety quality first.",
+    summary: {
+      criteriaPassed: 1,
+      criteriaTotal: 5,
+      labeledExamples: 4,
+      stableUseCases: 0,
+      openAssistantBacklog: 1,
+      negativeFeedbackRate: 0.25,
+      localFallbackRate: 0.3,
+    },
+    topUseCases: [
+      {
+        key: "mode:app_help",
+        label: "App Help",
+        count: 8,
+        share: 0.4,
+        source: "Akuso policy mode",
+      },
+    ],
+    criteria: [
+      {
+        key: "stable_repeated_use_cases",
+        title: "Stable repeated use cases",
+        passed: false,
+        metric: { label: "Repeated use cases", value: 0 },
+        threshold: "2+ use cases with 20+ events",
+        detail: "App Help is the largest observed use case.",
+      },
+      {
+        key: "labeled_examples",
+        title: "Enough labeled examples",
+        passed: false,
+        metric: { label: "Resolved labeled reviews", value: 4 },
+        threshold: "50+ resolved reviews with decision notes",
+        detail: "4 review items resolved in this window.",
+      },
+    ],
+    blockers: [
+      {
+        key: "labeled_examples",
+        title: "Enough labeled examples",
+        nextStep: "Resolve review items with expected behavior notes and promote strong examples into eval fixtures.",
+      },
+    ],
+  },
 };
 
 const openReview = {
@@ -346,6 +395,10 @@ describe("AdminAssistantPage", () => {
     expect(screen.getByText("Weekly Quality Loop")).toBeInTheDocument();
     expect(screen.getByText("Commerce failures")).toBeInTheDocument();
     expect(screen.getByText("Audit failed checkouts and webhook failures")).toBeInTheDocument();
+    expect(screen.getByText("Fine-tuning Readiness")).toBeInTheDocument();
+    expect(screen.getAllByText("Continue prompt, eval, and grounding work").length).toBeGreaterThan(0);
+    expect(screen.getByText("Enough labeled examples")).toBeInTheDocument();
+    expect(screen.getByText("App Help")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Reviews" }));
 

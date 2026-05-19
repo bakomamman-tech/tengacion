@@ -63,7 +63,16 @@
       "path-to-regexp": "0.1.13"
     },
     "socket.io": {
-      "socket.io-parser": "4.2.6"
+      "socket.io-parser": "4.2.6",
+      "engine.io": {
+        "ws": "8.20.1"
+      },
+      "socket.io-adapter": {
+        "ws": "8.20.1"
+      }
+    },
+    "openai": {
+      "ws": "8.20.1"
     },
     "jest-util": {
       "picomatch": "4.0.4"
@@ -80,15 +89,13 @@
     "mongodb-memory-server-core": {
       "yauzl": "3.3.0"
     },
-    "test-exclude": {
-      "minimatch": {
-        "brace-expansion": "1.1.13"
-      }
+    "minimatch@10.2.5": {
+      "brace-expansion": "5.0.6"
     },
     "archiver-utils": {
       "glob": {
         "minimatch": "9.0.7",
-        "brace-expansion": "5.0.5"
+        "brace-expansion": "5.0.6"
       },
       "readdir-glob": {
         "brace-expansion": "2.0.3"

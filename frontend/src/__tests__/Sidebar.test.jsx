@@ -162,6 +162,33 @@ describe("Sidebar", () => {
     expect(await screen.findByText(/thanks, your vote has been saved/i)).toBeInTheDocument();
   });
 
+  it("opens the full sponsored flyer from the advert image and closes it", async () => {
+    setMatchMedia(false);
+
+    render(<Sidebar user={{ _id: "user-1", name: "Ada", username: "ada" }} />);
+
+    const flyerButton = screen.getByRole("button", {
+      name: /open full onward baptist children's day flyer/i,
+    });
+
+    fireEvent.click(flyerButton);
+
+    expect(
+      screen.getByRole("dialog", { name: /onward baptist children's day full flyer/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: /full onward baptist's children's day celebration flyer/i })
+    ).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: /onward baptist children's day full flyer/i })
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("hides the raffle for completed profiles with an uploaded avatar", async () => {
     setMatchMedia(false);
 

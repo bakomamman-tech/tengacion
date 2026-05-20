@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   getRechargeRaffleStatus,
@@ -143,12 +143,15 @@ function RaffleGameCard({ isExpanded, onToggle, onPlay }) {
 
 function SponsoredChildrenDayCard({ user }) {
   const userPhone = cleanProfileValue(user?.phone, "tmp_phone_");
+  const flyerButtonRef = useRef(null);
+  const flyerCloseButtonRef = useRef(null);
   const [phone, setPhone] = useState(userPhone);
   const [vote, setVote] = useState("");
   const [stats, setStats] = useState(emptyPollStats);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const [flyerOpen, setFlyerOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -190,6 +193,32 @@ function SponsoredChildrenDayCard({ user }) {
 
   const yesPercent = stats.total > 0 ? Math.round((stats.yes / stats.total) * 100) : 0;
   const noPercent = stats.total > 0 ? 100 - yesPercent : 0;
+
+  const closeFlyer = useCallback(() => {
+    setFlyerOpen(false);
+    flyerButtonRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!flyerOpen || typeof document === "undefined") {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        closeFlyer();
+      }
+    };
+
+    document.body.classList.add("sidebar-sponsored-lightbox-open");
+    document.addEventListener("keydown", handleKeyDown);
+    flyerCloseButtonRef.current?.focus();
+
+    return () => {
+      document.body.classList.remove("sidebar-sponsored-lightbox-open");
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeFlyer, flyerOpen]);
 
   const submitVote = async (event) => {
     event.preventDefault();
@@ -239,11 +268,52 @@ function SponsoredChildrenDayCard({ user }) {
         <strong>May 27</strong>
       </div>
 
-      <img
-        src={CHILDRENS_DAY_SPONSOR_IMAGE}
-        className="sidebar-sponsored-image"
-        alt="Onward Baptist's Children's Day Celebration flyer"
-      />
+      <button
+        type="button"
+        ref={flyerButtonRef}
+        className="sidebar-sponsored-image-button"
+        onClick={() => setFlyerOpen(true)}
+        aria-label="Open full Onward Baptist Children's Day flyer"
+      >
+        <img
+          src={CHILDRENS_DAY_SPONSOR_IMAGE}
+          className="sidebar-sponsored-image"
+          alt="Onward Baptist's Children's Day Celebration flyer"
+        />
+      </button>
+
+      {flyerOpen ? (
+        <div
+          className="sidebar-sponsored-lightbox"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeFlyer();
+            }
+          }}
+        >
+          <div
+            className="sidebar-sponsored-lightbox-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Onward Baptist Children's Day full flyer"
+          >
+            <button
+              type="button"
+              ref={flyerCloseButtonRef}
+              className="sidebar-sponsored-lightbox-close"
+              onClick={closeFlyer}
+              aria-label="Close full flyer"
+            >
+              ×
+            </button>
+            <img
+              src={CHILDRENS_DAY_SPONSOR_IMAGE}
+              className="sidebar-sponsored-lightbox-image"
+              alt="Full Onward Baptist's Children's Day Celebration flyer"
+            />
+          </div>
+        </div>
+      ) : null}
 
       <div className="sidebar-sponsored-copy">
         <h3>Onward Baptist's Children's Day</h3>

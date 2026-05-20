@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   getRechargeRaffleStatus,
@@ -258,6 +259,45 @@ function SponsoredChildrenDayCard({ user }) {
   const voteButtonClass = (value) =>
     `sidebar-sponsored-choice${vote === value ? " active" : ""}`;
 
+  const flyerLightbox =
+    flyerOpen && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            className="sidebar-sponsored-lightbox"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                closeFlyer();
+              }
+            }}
+          >
+            <div
+              className="sidebar-sponsored-lightbox-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Onward Baptist Children's Day full flyer"
+            >
+              <div className="sidebar-sponsored-lightbox-actions">
+                <button
+                  type="button"
+                  ref={flyerCloseButtonRef}
+                  className="sidebar-sponsored-lightbox-close"
+                  onClick={closeFlyer}
+                  aria-label="Close full flyer"
+                >
+                  X
+                </button>
+              </div>
+              <img
+                src={CHILDRENS_DAY_SPONSOR_IMAGE}
+                className="sidebar-sponsored-lightbox-image"
+                alt="Full Onward Baptist's Children's Day Celebration flyer"
+              />
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
     <section
       className="sidebar-sponsored-card"
@@ -282,38 +322,7 @@ function SponsoredChildrenDayCard({ user }) {
         />
       </button>
 
-      {flyerOpen ? (
-        <div
-          className="sidebar-sponsored-lightbox"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              closeFlyer();
-            }
-          }}
-        >
-          <div
-            className="sidebar-sponsored-lightbox-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Onward Baptist Children's Day full flyer"
-          >
-            <button
-              type="button"
-              ref={flyerCloseButtonRef}
-              className="sidebar-sponsored-lightbox-close"
-              onClick={closeFlyer}
-              aria-label="Close full flyer"
-            >
-              ×
-            </button>
-            <img
-              src={CHILDRENS_DAY_SPONSOR_IMAGE}
-              className="sidebar-sponsored-lightbox-image"
-              alt="Full Onward Baptist's Children's Day Celebration flyer"
-            />
-          </div>
-        </div>
-      ) : null}
+      {flyerLightbox}
 
       <div className="sidebar-sponsored-copy">
         <h3>Onward Baptist's Children's Day</h3>

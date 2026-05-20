@@ -8,6 +8,9 @@ const { sanitizeMultilineText, sanitizePlainText } = require("./assistant/output
 const { calculateMarketplaceAmounts } = require("./marketplaceFeeService");
 const { createPayoutForPaidOrder } = require("./marketplacePayoutService");
 const {
+  recordMarketplaceOrderLedgerEntries,
+} = require("./revenueLedgerService");
+const {
   initializeMarketplaceTransaction,
   verifyMarketplaceTransaction,
 } = require("./marketplacePaystackService");
@@ -258,6 +261,7 @@ const markOrderPaid = async ({ order, verified } = {}) => {
     status: "paid",
   });
   const payout = await createPayoutForPaidOrder({ order: updatedOrder });
+  await recordMarketplaceOrderLedgerEntries({ order: updatedOrder }).catch(() => null);
 
   return {
     order: updatedOrder,
@@ -404,6 +408,7 @@ const reconcileMarketplaceOrder = async ({ order } = {}) => {
       status: "paid",
     });
     const payout = await createPayoutForPaidOrder({ order });
+    await recordMarketplaceOrderLedgerEntries({ order }).catch(() => null);
 
     return {
       success: true,

@@ -8,9 +8,11 @@ const Purchase = require("../models/Purchase");
 const User = require("../models/User");
 const WalletAccount = require("../models/WalletAccount");
 const WalletEntry = require("../models/WalletEntry");
+const RevenueLedgerEntry = require("../models/RevenueLedgerEntry");
 const {
   buildCreatorWalletSummary,
   reconcilePaidPurchaseWalletEntries,
+  recordPurchaseRefundEntries,
 } = require("../services/walletService");
 
 let mongod;
@@ -113,6 +115,7 @@ describe("walletService", () => {
 
     expect(await WalletAccount.countDocuments({})).toBe(2);
     expect(await WalletEntry.countDocuments({})).toBe(4);
+    expect(await RevenueLedgerEntry.countDocuments({})).toBe(6);
 
     const platformWallet = await WalletAccount.findOne({ ownerType: "platform" }).lean();
     expect(platformWallet).toMatchObject({
@@ -135,9 +138,80 @@ describe("walletService", () => {
       withdrawn: 0,
       walletBacked: true,
     });
+    const creatorLedgerEntries = await RevenueLedgerEntry.find({
+      accountType: "creator",
+      ledgerEventType: "creator_earning_credited",
+    })
+      .sort({ occurredAt: 1, createdAt: 1 })
+      .lean();
+    expect(creatorLedgerEntries).toHaveLength(2);
+    expect(creatorLedgerEntries[0]).toMatchObject({
+      amount: 1000,
+      previousBalance: 0,
+      resultingBalance: 1000,
+      balanceScope: "available",
+      providerReference: "wallet_ref_one",
+    });
+    expect(creatorLedgerEntries[1]).toMatchObject({
+      amount: 720,
+      previousBalance: 1000,
+      resultingBalance: 1720,
+      balanceScope: "available",
+      providerReference: "wallet_ref_two",
+    });
 
     const secondRun = await reconcilePaidPurchaseWalletEntries({ logger: null, reason: "test" });
     expect(secondRun.createdCount).toBe(0);
     expect(await WalletEntry.countDocuments({})).toBe(4);
+    expect(await RevenueLedgerEntry.countDocuments({})).toBe(6);
+  });
+
+  test("records refund ledger reversals without drifting balances", async () => {
+    const purchase = await createPurchase({
+      creatorId: creator.profile._id,
+      amount: 2500,
+      providerRef: "wallet_ref_refund",
+    });
+
+    await reconcilePaidPurchaseWalletEntries({ logger: null, reason: "test" });
+
+    purchase.status = "refunded";
+    purchase.refundedAt = new Date();
+    purchase.refundReason = "buyer_support_refund";
+    await purchase.save();
+
+    const refundResult = await recordPurchaseRefundEntries({
+      purchase,
+      logger: null,
+      actorUserId: new mongoose.Types.ObjectId(),
+      actorRole: "admin",
+      reason: "buyer_support_refund",
+    });
+
+    expect(refundResult).toMatchObject({
+      createdCount: 2,
+      revenueLedgerCreatedCount: 2,
+    });
+
+    const creatorRefund = await RevenueLedgerEntry.findOne({
+      ledgerEventType: "refund_settled",
+      accountType: "creator",
+    }).lean();
+    expect(creatorRefund).toMatchObject({
+      amount: 1000,
+      direction: "debit",
+      balanceScope: "available",
+      previousBalance: 1000,
+      resultingBalance: 0,
+      actorType: "admin",
+    });
+
+    const secondRefund = await recordPurchaseRefundEntries({
+      purchase,
+      logger: null,
+      reason: "buyer_support_refund",
+    });
+    expect(secondRefund.createdCount).toBe(0);
+    expect(secondRefund.revenueLedgerCreatedCount).toBe(0);
   });
 });

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminShell from "../components/AdminShell";
-import { adminGetCreatorEarningsRepository } from "../api";
+import { adminGetCreatorEarningsRepository, adminGetRevenueLedger } from "../api";
 
 const RANGE_OPTIONS = [
   { value: "7d", label: "Last 7 days" },
@@ -12,6 +12,12 @@ const RANGE_OPTIONS = [
 
 const number = (value) => Number(value || 0).toLocaleString();
 const currency = (value) => `NGN ${Number(value || 0).toLocaleString()}`;
+const eventLabel = (value = "") =>
+  String(value || "")
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(" ");
 
 const dateTime = (value) => {
   if (!value) {
@@ -25,6 +31,7 @@ export default function AdminCreatorEarningsPage({ user }) {
   const navigate = useNavigate();
   const [range, setRange] = useState("30d");
   const [payload, setPayload] = useState(null);
+  const [ledger, setLedger] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -32,8 +39,12 @@ export default function AdminCreatorEarningsPage({ user }) {
     setLoading(true);
     setError("");
     try {
-      const next = await adminGetCreatorEarningsRepository({ range });
+      const [next, ledgerPayload] = await Promise.all([
+        adminGetCreatorEarningsRepository({ range }),
+        adminGetRevenueLedger({ range, limit: 12 }),
+      ]);
       setPayload(next || null);
+      setLedger(ledgerPayload || null);
     } catch (err) {
       setError(err?.message || "Failed to load creator earnings repository");
     } finally {
@@ -50,15 +61,19 @@ export default function AdminCreatorEarningsPage({ user }) {
   const breakdownItems = payload?.breakdown?.items || [];
   const topCreators = payload?.topCreators || [];
   const recentEntries = payload?.recentEntries || [];
+  const ledgerSummary = ledger?.summary || {};
+  const ledgerBalances = ledger?.balances || [];
+  const ledgerRecentEntries = ledger?.recentEntries || [];
 
   const headlineCards = useMemo(
     () => [
       ["Earnings From Creators", currency(repository.repositoryAmount)],
       ["Gross Creator Revenue", currency(repository.grossRevenue)],
       ["Creator Share Liability", currency(repository.creatorAmount)],
-      ["Paid Transactions", number(repository.paidTransactions)],
+      ["Ledger Entries", number(ledgerSummary.totalEntries || repository.paidTransactions)],
     ],
     [
+      ledgerSummary.totalEntries,
       repository.creatorAmount,
       repository.grossRevenue,
       repository.paidTransactions,
@@ -238,6 +253,94 @@ export default function AdminCreatorEarningsPage({ user }) {
               </div>
             </section>
           </div>
+
+          <div className="adminx-analytics-grid">
+            <section className="adminx-panel adminx-panel--span-5">
+              <div className="adminx-panel-head">
+                <h2 className="adminx-panel-title">Revenue Ledger</h2>
+                <span className="adminx-section-meta">Finance event trail</span>
+              </div>
+              <div className="adminx-ops-grid">
+                {[
+                  ["Payment settled", number(ledgerSummary.paymentSettled)],
+                  ["Commission reserved", currency(ledgerSummary.platformCommissionReserved)],
+                  ["Creator credited", currency(ledgerSummary.creatorEarningCredited)],
+                  ["Refund settled", currency(ledgerSummary.refundSettled)],
+                  ["Payout requested", currency(ledgerSummary.payoutRequested)],
+                  ["Payout sent", currency(ledgerSummary.payoutSent)],
+                ].map(([label, value]) => (
+                  <div key={label} className="adminx-ops-metric">
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="adminx-panel adminx-panel--span-7">
+              <div className="adminx-panel-head">
+                <h2 className="adminx-panel-title">Ledger Balances</h2>
+                <span className="adminx-section-meta">Latest resulting balances by account scope</span>
+              </div>
+              <div className="adminx-leaderboard">
+                {ledgerBalances.map((entry) => (
+                  <article key={`${entry.accountType}-${entry.balanceScope}-${entry.currency}`} className="adminx-leaderboard-item">
+                    <div className="adminx-row">
+                      <strong>{eventLabel(entry.accountType)} - {eventLabel(entry.balanceScope)}</strong>
+                      <span className="adminx-badge adminx-badge--good">{currency(entry.balance)}</span>
+                    </div>
+                    <div className="adminx-finance-meta">
+                      <span>{number(entry.accountCount)} account{Number(entry.accountCount || 0) === 1 ? "" : "s"}</span>
+                      <span>{entry.currency || "NGN"}</span>
+                    </div>
+                  </article>
+                ))}
+                {!ledgerBalances.length ? <div className="adminx-empty">No balance-bearing ledger entries yet.</div> : null}
+              </div>
+            </section>
+          </div>
+
+          <section className="adminx-panel adminx-panel--span-12">
+            <div className="adminx-panel-head">
+              <h2 className="adminx-panel-title">Recent Ledger Entries</h2>
+              <span className="adminx-section-meta">Actor, source, amount, and resulting balance</span>
+            </div>
+            <div className="adminx-table-wrap adminx-table-wrap--flush">
+              <table className="adminx-table">
+                <thead>
+                  <tr>
+                    <th>Occurred</th>
+                    <th>Event</th>
+                    <th>Account</th>
+                    <th>Source</th>
+                    <th>Amount</th>
+                    <th>Balance</th>
+                    <th>Actor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledgerRecentEntries.map((entry) => (
+                    <tr key={entry.id}>
+                      <td>{dateTime(entry.occurredAt)}</td>
+                      <td>{eventLabel(entry.ledgerEventType)}</td>
+                      <td>{eventLabel(entry.accountType)} {entry.balanceScope !== "none" ? `- ${eventLabel(entry.balanceScope)}` : ""}</td>
+                      <td>{eventLabel(entry.sourceType)} {entry.providerReference ? `- ${entry.providerReference}` : ""}</td>
+                      <td>{entry.direction === "debit" ? "-" : ""}{currency(entry.amount)}</td>
+                      <td>{currency(entry.resultingBalance)}</td>
+                      <td>{eventLabel(entry.actorType)} {entry.actorRole ? `(${entry.actorRole})` : ""}</td>
+                    </tr>
+                  ))}
+                  {!ledgerRecentEntries.length ? (
+                    <tr>
+                      <td colSpan={7} className="adminx-table-empty">
+                        No revenue ledger entries found.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </>
       ) : null}
     </AdminShell>

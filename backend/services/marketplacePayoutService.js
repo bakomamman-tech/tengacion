@@ -2,6 +2,9 @@ const mongoose = require("mongoose");
 
 const MarketplaceOrder = require("../models/MarketplaceOrder");
 const MarketplacePayout = require("../models/MarketplacePayout");
+const {
+  recordMarketplacePayoutRequested,
+} = require("./revenueLedgerService");
 
 const toIdString = (value) => {
   if (!value) {
@@ -36,7 +39,7 @@ const createPayoutForPaidOrder = async ({ order } = {}) => {
     throw new Error("Marketplace order is required");
   }
 
-  return MarketplacePayout.findOneAndUpdate(
+  const payout = await MarketplacePayout.findOneAndUpdate(
     { order: order._id },
     {
       $setOnInsert: {
@@ -54,6 +57,10 @@ const createPayoutForPaidOrder = async ({ order } = {}) => {
       setDefaultsOnInsert: true,
     }
   );
+
+  await recordMarketplacePayoutRequested({ payout }).catch(() => null);
+
+  return payout;
 };
 
 const getSellerPayoutSummary = async (sellerId) => {

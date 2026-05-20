@@ -27,6 +27,10 @@ const {
   recordPurchaseSettlementEntries,
 } = require("./walletService");
 const {
+  recordPurchaseAuthorized,
+  recordRefundInitiated,
+} = require("./revenueLedgerService");
+const {
   buildPaystackEventId,
   buildStripeEventId,
   markPaymentWebhookEvent,
@@ -497,6 +501,12 @@ const initializePaystackCheckout = async ({
       provider: "paystack",
     },
   }).catch(() => null);
+  await recordPurchaseAuthorized({
+    purchase,
+    actorUserId: userId,
+    actorRole,
+    actorType: "user",
+  }).catch(() => null);
 
   try {
     const payment = await initializeTransaction({
@@ -638,6 +648,12 @@ const initializeStripeCheckout = async ({
       returnUrl: getReturnUrl(returnUrl),
       currencyMode: "GLOBAL",
     },
+  }).catch(() => null);
+  await recordPurchaseAuthorized({
+    purchase,
+    actorUserId: userId,
+    actorRole,
+    actorType: "user",
   }).catch(() => null);
 
   try {
@@ -836,7 +852,13 @@ const runSettlementSideEffects = async ({
 
   let walletResult;
   try {
-    walletResult = await recordPurchaseSettlementEntries({ purchase, logger: console });
+    walletResult = await recordPurchaseSettlementEntries({
+      purchase,
+      logger: console,
+      actorUserId: req?.user?.id || "",
+      actorRole,
+      actorType: req?.user?.id ? "admin" : "provider",
+    });
   } catch (error) {
     walletResult = {
       createdCount: 0,
@@ -1029,8 +1051,20 @@ const refundPurchase = async ({
       reason,
     },
   }).catch(() => null);
+  await recordRefundInitiated({
+    purchase,
+    actorUserId,
+    actorRole,
+    reason,
+  }).catch(() => null);
 
-  await recordPurchaseSettlementEntries({ purchase, logger: null }).catch(() => null);
+  await recordPurchaseSettlementEntries({
+    purchase,
+    logger: null,
+    actorUserId,
+    actorRole,
+    actorType: actorUserId ? "admin" : "system",
+  }).catch(() => null);
 
   const refundedAt = new Date();
   const updatedPurchase = await Purchase.findByIdAndUpdate(
@@ -1065,7 +1099,13 @@ const refundPurchase = async ({
 
   let walletResult;
   try {
-    walletResult = await recordPurchaseRefundEntries({ purchase: updatedPurchase, logger: console });
+    walletResult = await recordPurchaseRefundEntries({
+      purchase: updatedPurchase,
+      logger: console,
+      actorUserId,
+      actorRole,
+      reason,
+    });
   } catch (error) {
     walletResult = {
       createdCount: 0,

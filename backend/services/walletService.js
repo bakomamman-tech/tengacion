@@ -4,6 +4,10 @@ const Purchase = require("../models/Purchase");
 const WalletAccount = require("../models/WalletAccount");
 const WalletEntry = require("../models/WalletEntry");
 const { config } = require("../config/env");
+const {
+  recordPurchaseSettlementLedgerEntries,
+  recordRefundSettledLedgerEntries,
+} = require("./revenueLedgerService");
 
 const CREATOR_SHARE_RATE = 0.4;
 const PLATFORM_SHARE_RATE = 0.6;
@@ -352,7 +356,13 @@ const upsertWalletEntry = async (payload) => {
   };
 };
 
-const recordPurchaseSettlementEntries = async ({ purchase, logger = console } = {}) => {
+const recordPurchaseSettlementEntries = async ({
+  purchase,
+  logger = console,
+  actorUserId = "",
+  actorRole = "",
+  actorType = "provider",
+} = {}) => {
   if (!purchase?._id) {
     return {
       createdCount: 0,
@@ -378,22 +388,42 @@ const recordPurchaseSettlementEntries = async ({ purchase, logger = console } = 
     }
   }
 
+  const revenueLedgerResult = await recordPurchaseSettlementLedgerEntries({
+    purchase,
+    actorUserId,
+    actorRole,
+    actorType,
+  }).catch((error) => ({
+    createdCount: 0,
+    failed: true,
+    reason: error?.message || "Revenue ledger settlement failed",
+  }));
+
   if (createdCount > 0 && logger?.info) {
     logger.info("[wallet] purchase settlement recorded", {
       purchaseId: toIdString(purchase._id),
       createdCount,
+      revenueLedgerCreatedCount: Number(revenueLedgerResult?.createdCount || 0),
       providerRef: purchase.providerRef || "",
     });
   }
 
   return {
     createdCount,
+    revenueLedgerCreatedCount: Number(revenueLedgerResult?.createdCount || 0),
+    revenueLedgerFailed: Boolean(revenueLedgerResult?.failed),
     skipped: false,
     purchaseId: toIdString(purchase._id),
   };
 };
 
-const recordPurchaseRefundEntries = async ({ purchase, logger = console } = {}) => {
+const recordPurchaseRefundEntries = async ({
+  purchase,
+  logger = console,
+  actorUserId = "",
+  actorRole = "",
+  reason = "",
+} = {}) => {
   if (!purchase?._id) {
     return {
       createdCount: 0,
@@ -419,16 +449,30 @@ const recordPurchaseRefundEntries = async ({ purchase, logger = console } = {}) 
     }
   }
 
+  const revenueLedgerResult = await recordRefundSettledLedgerEntries({
+    purchase,
+    actorUserId,
+    actorRole,
+    reason,
+  }).catch((error) => ({
+    createdCount: 0,
+    failed: true,
+    reason: error?.message || "Revenue ledger refund failed",
+  }));
+
   if (createdCount > 0 && logger?.info) {
     logger.info("[wallet] purchase refund recorded", {
       purchaseId: toIdString(purchase._id),
       createdCount,
+      revenueLedgerCreatedCount: Number(revenueLedgerResult?.createdCount || 0),
       providerRef: purchase.providerRef || "",
     });
   }
 
   return {
     createdCount,
+    revenueLedgerCreatedCount: Number(revenueLedgerResult?.createdCount || 0),
+    revenueLedgerFailed: Boolean(revenueLedgerResult?.failed),
     skipped: false,
     purchaseId: toIdString(purchase._id),
   };

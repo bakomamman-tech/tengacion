@@ -38,6 +38,9 @@ const {
   buildCreatorFinanceRepository,
 } = require("../services/creatorFinanceRepositoryService");
 const {
+  buildRevenueLedgerSummary,
+} = require("../services/revenueLedgerService");
+const {
   buildOverview,
   buildUserGrowth,
   buildContentUploads,
@@ -1427,6 +1430,20 @@ router.get("/finance/creator-earnings", async (req, res) => {
     return res
       .status(code)
       .json({ error: err.message || "Failed to load creator earnings repository" });
+  }
+});
+
+router.get("/finance/revenue-ledger", async (req, res) => {
+  try {
+    return res.json(await buildRevenueLedgerSummary({
+      ...getAnalyticsFilters(req),
+      limit: req.query.limit,
+    }));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res
+      .status(code)
+      .json({ error: err.message || "Failed to load revenue ledger" });
   }
 });
 

@@ -8,6 +8,7 @@ const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const User = require("../models/User");
 const { buildCreatorFinanceRepository } = require("../services/creatorFinanceRepositoryService");
+const { buildRevenueLedgerSummary } = require("../services/revenueLedgerService");
 const { reconcilePaidPurchaseWalletEntries } = require("../services/walletService");
 
 let mongod;
@@ -134,5 +135,27 @@ describe("creatorFinanceRepositoryService", () => {
       repositoryAmount: 1500,
       creatorAmount: 1000,
     });
+
+    const ledger = await buildRevenueLedgerSummary({ range: "30d" });
+    expect(ledger.summary).toMatchObject({
+      totalEntries: 3,
+      paymentSettled: 1,
+      platformCommissionReserved: 1500,
+      creatorEarningCredited: 1000,
+    });
+    expect(ledger.balances).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          accountType: "creator",
+          balanceScope: "available",
+          balance: 1000,
+        }),
+        expect.objectContaining({
+          accountType: "platform",
+          balanceScope: "commission",
+          balance: 1500,
+        }),
+      ])
+    );
   });
 });

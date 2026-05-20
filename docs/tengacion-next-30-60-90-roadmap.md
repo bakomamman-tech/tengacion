@@ -224,6 +224,10 @@ Make the product operable.
   - resulting balance
   - audit metadata
 - Keep payout execution manual or review-gated until finance reports reconcile cleanly.
+- Current implementation anchor:
+  - `RevenueLedgerEntry` now records finance-facing ledger events for purchase authorization, settled payments, platform commission reservation, creator earning credits, refund initiation/settlement, and marketplace payout request/status events with actor, source object, amount, currency, provider reference, previous balance, resulting balance, and audit metadata.
+  - purchase checkout, payment settlement, admin refunds, creator wallet reconciliation, marketplace order settlement, and pending marketplace payout creation now write idempotent revenue ledger entries without replacing the existing wallet balance ledger.
+  - `/api/admin/finance/revenue-ledger` exposes event counts, amount totals, latest resulting balances by account scope, and recent ledger entries; the Earnings From Creators admin page renders the ledger beside the repository view.
 
 ### Exit criteria
 

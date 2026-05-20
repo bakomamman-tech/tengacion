@@ -26,6 +26,7 @@ import {
   adminGetAnalyticsTopContent,
   adminGetAnalyticsRecentActivity,
   adminGetAnalyticsSystemAlerts,
+  adminGetAnalyticsReliabilityHealth,
   adminGetAnalyticsReportsSummary,
 } from "../api";
 
@@ -64,6 +65,22 @@ const eventLabel = (type = "") =>
     .filter(Boolean)
     .map((part) => part[0]?.toUpperCase() + part.slice(1))
     .join(" ");
+
+const statusBadgeClass = (status = "") => {
+  const normalized = String(status || "").toLowerCase();
+  if (["blocked", "incident"].includes(normalized)) {return "adminx-badge--danger";}
+  if (["degraded", "watch"].includes(normalized)) {return "adminx-badge--warn";}
+  return "adminx-badge--good";
+};
+
+const formatReliabilityMetric = (snapshot = {}) => {
+  const metric = snapshot.metric || {};
+  const value = number(metric.value);
+  const total = metric.total == null ? "" : ` / ${number(metric.total)}`;
+  const rate = metric.rate == null ? "" : ` (${percent(metric.rate)})`;
+  const unit = metric.unit ? ` - ${metric.unit}` : "";
+  return `${value}${total}${rate}${unit}`;
+};
 
 const downloadBlob = ({ filename, content, type }) => {
   const blob = new Blob([content], { type });
@@ -131,6 +148,12 @@ export default function AdminAnalyticsPage({ user }) {
   const [topContent, setTopContent] = useState({ items: [] });
   const [recentActivity, setRecentActivity] = useState({ items: [], total: 0, page: 1, limit: 10 });
   const [systemAlerts, setSystemAlerts] = useState({ alerts: [], metrics: {} });
+  const [reliabilityHealth, setReliabilityHealth] = useState({
+    summary: {},
+    snapshots: [],
+    incidentNotes: [],
+    runbooks: [],
+  });
   const [reportsSummary, setReportsSummary] = useState({ summary: {}, series: [] });
 
   const filterParams = useMemo(() => ({
@@ -169,6 +192,7 @@ export default function AdminAnalyticsPage({ user }) {
         topContentPayload,
         activityPayload,
         alertsPayload,
+        reliabilityPayload,
         reportsPayload,
       ] = await Promise.all([
         adminGetAnalyticsOverview(filterParams),
@@ -181,6 +205,7 @@ export default function AdminAnalyticsPage({ user }) {
         adminGetAnalyticsTopContent(filterParams),
         adminGetAnalyticsRecentActivity({ ...filterParams, page: activityPage, limit: 10 }),
         adminGetAnalyticsSystemAlerts(filterParams),
+        adminGetAnalyticsReliabilityHealth(filterParams),
         adminGetAnalyticsReportsSummary(filterParams),
       ]);
       setOverview(overviewPayload || { summary: {}, series: [] });
@@ -209,6 +234,12 @@ export default function AdminAnalyticsPage({ user }) {
         return next;
       });
       setSystemAlerts(alertsPayload || { alerts: [], metrics: {} });
+      setReliabilityHealth(reliabilityPayload || {
+        summary: {},
+        snapshots: [],
+        incidentNotes: [],
+        runbooks: [],
+      });
       setReportsSummary(reportsPayload || { summary: {}, series: [] });
     } catch (err) {
       setError(err?.message || "Failed to load analytics");
@@ -224,7 +255,7 @@ export default function AdminAnalyticsPage({ user }) {
   const exportJson = () => {
     downloadBlob({
       filename: `tengacion-admin-analytics-${filters.range}.json`,
-      content: JSON.stringify({ filters, overview, userGrowth, contentUploads, revenue, commerceOps, engagement, topCreators, topContent, recentActivity, systemAlerts, reportsSummary }, null, 2),
+      content: JSON.stringify({ filters, overview, userGrowth, contentUploads, revenue, commerceOps, engagement, topCreators, topContent, recentActivity, systemAlerts, reliabilityHealth, reportsSummary }, null, 2),
       type: "application/json",
     });
   };
@@ -325,6 +356,62 @@ export default function AdminAnalyticsPage({ user }) {
 
       {!loading ? (
         <div className="adminx-analytics-grid">
+          <section className="adminx-panel adminx-panel--span-12">
+            <div className="adminx-panel-head">
+              <div>
+                <h2 className="adminx-panel-title">Production Reliability</h2>
+                <span className="adminx-section-meta">Money, access, media, live, discovery, and Akuso health</span>
+              </div>
+              <div className="adminx-mobile-stack">
+                <span className={`adminx-badge ${statusBadgeClass(reliabilityHealth.summary?.overallStatus)}`}>
+                  {eventLabel(reliabilityHealth.summary?.overallStatus || "healthy")}
+                </span>
+                <span className="adminx-badge">Active incidents {number(reliabilityHealth.summary?.activeIncidentCount)}</span>
+              </div>
+            </div>
+            <div className="adminx-ops-grid">
+              {[
+                ["Healthy", reliabilityHealth.summary?.healthySurfaces],
+                ["Watch", reliabilityHealth.summary?.watchedSurfaces],
+                ["Degraded", reliabilityHealth.summary?.degradedSurfaces],
+                ["Incident", reliabilityHealth.summary?.incidentSurfaces],
+                ["Blocked", reliabilityHealth.summary?.blockedSurfaces],
+                ["Runbooks", reliabilityHealth.runbooks?.length],
+              ].map(([label, value]) => (
+                <div key={label} className="adminx-ops-metric">
+                  <span>{label}</span>
+                  <strong>{number(value)}</strong>
+                </div>
+              ))}
+            </div>
+            <div className="adminx-alert-list adminx-alert-list--inline adminx-health-grid">
+              {(reliabilityHealth.snapshots || []).map((snapshot) => (
+                <button key={snapshot.key} type="button" className="adminx-alert-item" onClick={() => navigate(snapshot.actionPath || "/admin/analytics")}>
+                  <div className="adminx-row">
+                    <strong>{snapshot.title}</strong>
+                    <span className={`adminx-badge ${statusBadgeClass(snapshot.status)}`}>{eventLabel(snapshot.status)}</span>
+                  </div>
+                  <div className="adminx-muted">{snapshot.metric?.label}: {formatReliabilityMetric(snapshot)}</div>
+                  <div className="adminx-muted">{snapshot.nextAction}</div>
+                </button>
+              ))}
+            </div>
+            {(reliabilityHealth.incidentNotes || []).length ? (
+              <div className="adminx-alert-list adminx-alert-list--inline">
+                {(reliabilityHealth.incidentNotes || []).map((note) => (
+                  <button key={note.key} type="button" className="adminx-alert-item" onClick={() => navigate(note.actionPath || "/admin/analytics")}>
+                    <div className="adminx-row">
+                      <strong>{note.affectedSurface}</strong>
+                      <span className={`adminx-badge ${statusBadgeClass(note.currentStatus)}`}>{eventLabel(note.currentStatus)}</span>
+                    </div>
+                    <div className="adminx-muted">Owner: {note.owner}</div>
+                    <div className="adminx-muted">Runbook: {note.runbookTitle || eventLabel(note.runbookKey)}</div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
           <section className="adminx-panel adminx-panel--span-12">
             <div className="adminx-panel-head">
               <h2 className="adminx-panel-title">Commerce Ops Snapshot</h2>

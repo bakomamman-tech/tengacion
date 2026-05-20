@@ -11,6 +11,8 @@ const Purchase = require("../models/Purchase");
 const Entitlement = require("../models/Entitlement");
 const PaymentWebhookEvent = require("../models/PaymentWebhookEvent");
 const MarketplacePayout = require("../models/MarketplacePayout");
+const RecommendationLog = require("../models/RecommendationLog");
+const LiveSession = require("../models/LiveSession");
 const Report = require("../models/Report");
 const Message = require("../models/Message");
 const Post = require("../models/Post");
@@ -31,6 +33,71 @@ const DEFAULT_ALERT_THRESHOLDS = {
   stalePendingPayments: 3,
   payoutFailures: 0,
   stuckPayouts: 0,
+};
+const RELIABILITY_STATUS_RANK = {
+  healthy: 0,
+  watch: 1,
+  degraded: 2,
+  incident: 3,
+  blocked: 4,
+};
+const RELIABILITY_RUNBOOKS = {
+  checkout_failure: {
+    key: "checkout_failure",
+    title: "Checkout Failure",
+    docPath: "docs/production-reliability-runbooks.md#checkout-failure",
+  },
+  paystack_verification: {
+    key: "paystack_verification",
+    title: "Paystack Verification Delay",
+    docPath: "docs/production-reliability-runbooks.md#paystack-verification-delay",
+  },
+  stripe_webhook: {
+    key: "stripe_webhook",
+    title: "Stripe Webhook Processing",
+    docPath: "docs/production-reliability-runbooks.md#stripe-webhook-processing",
+  },
+  entitlement_mismatch: {
+    key: "entitlement_mismatch",
+    title: "Entitlement Mismatch",
+    docPath: "docs/production-reliability-runbooks.md#entitlement-mismatch",
+  },
+  payout_blocker: {
+    key: "payout_blocker",
+    title: "Payout Blocker",
+    docPath: "docs/production-reliability-runbooks.md#payout-blocker",
+  },
+  media_upload_failure: {
+    key: "media_upload_failure",
+    title: "Media Upload Failure",
+    docPath: "docs/production-reliability-runbooks.md#media-upload-failure",
+  },
+  live_creation_failure: {
+    key: "live_creation_failure",
+    title: "Live Creation Failure",
+    docPath: "docs/production-reliability-runbooks.md#live-creation-failure",
+  },
+  discovery_fallback_spike: {
+    key: "discovery_fallback_spike",
+    title: "Discovery Fallback Spike",
+    docPath: "docs/production-reliability-runbooks.md#discovery-fallback-spike",
+  },
+  akuso_eval_regression: {
+    key: "akuso_eval_regression",
+    title: "Akuso Eval Regression",
+    docPath: "docs/production-reliability-runbooks.md#akuso-eval-regression",
+  },
+};
+const RELIABILITY_THRESHOLDS = {
+  paymentInitializationFailureRate: { watch: 0.1, degraded: 0.25, incident: 0.5, blocked: 0.75 },
+  paystackVerificationFailureRate: { watch: 0.08, degraded: 0.2, incident: 0.4, blocked: 0.7 },
+  stripeWebhookFailureRate: { watch: 0.02, degraded: 0.1, incident: 0.25, blocked: 0.5 },
+  entitlementGapRate: { watch: 0.01, degraded: 0.05, incident: 0.15, blocked: 0.35 },
+  mediaUploadFailureCount: { watch: 1, degraded: 3, incident: 8, blocked: 15 },
+  liveFailureRate: { watch: 0.1, degraded: 0.25, incident: 0.5, blocked: 0.75 },
+  discoveryEmptyFallbackRate: { watch: 0.05, degraded: 0.15, incident: 0.35, blocked: 0.6 },
+  akusoFallbackRate: { watch: 0.3, degraded: 0.5, incident: 0.75, blocked: 0.9 },
+  akusoAverageLatencyMs: { watch: 2500, degraded: 5000, incident: 9000, blocked: 15000 },
 };
 
 const ENTITLEMENT_ITEM_TYPES = ["track", "book", "album", "video"];
@@ -70,6 +137,78 @@ const formatDateKey = (date = new Date()) => {
 
 const roundRate = (value = 0) =>
   Number.isFinite(Number(value)) ? Number(Number(value).toFixed(4)) : 0;
+
+const roundMs = (value = 0) =>
+  Number.isFinite(Number(value)) ? Math.round(Number(value)) : 0;
+
+const pickWorstReliabilityStatus = (statuses = []) =>
+  statuses.reduce((worst, status) => {
+    const currentRank = RELIABILITY_STATUS_RANK[status] ?? 0;
+    const worstRank = RELIABILITY_STATUS_RANK[worst] ?? 0;
+    return currentRank > worstRank ? status : worst;
+  }, "healthy");
+
+const reliabilityStatusFromCount = (value = 0, thresholds = {}) => {
+  const count = Number(value || 0);
+  if (count >= Number(thresholds.blocked || Infinity)) return "blocked";
+  if (count >= Number(thresholds.incident || Infinity)) return "incident";
+  if (count >= Number(thresholds.degraded || Infinity)) return "degraded";
+  if (count >= Number(thresholds.watch || Infinity)) return "watch";
+  return "healthy";
+};
+
+const reliabilityStatusFromRate = ({ value = 0, total = 0, thresholds = {}, minimumTotal = 3 } = {}) => {
+  const rate = Number(value || 0);
+  const sampleSize = Number(total || 0);
+  if (rate <= 0) return "healthy";
+  if (sampleSize > 0 && sampleSize < minimumTotal) return "watch";
+  if (rate >= Number(thresholds.blocked || Infinity)) return "blocked";
+  if (rate >= Number(thresholds.incident || Infinity)) return "incident";
+  if (rate >= Number(thresholds.degraded || Infinity)) return "degraded";
+  if (rate >= Number(thresholds.watch || Infinity)) return "watch";
+  return "healthy";
+};
+
+const buildReliabilitySnapshot = ({
+  key,
+  surface,
+  title,
+  status = "healthy",
+  metricLabel = "Events",
+  value = 0,
+  total = null,
+  rate = null,
+  unit = "",
+  owner = "Infrastructure and backend",
+  nextAction = "Review the runbook and inspect the related admin surface.",
+  runbookKey = "",
+  actionPath = "/admin/analytics",
+  startedAt = null,
+  details = {},
+} = {}) => {
+  const runbook = RELIABILITY_RUNBOOKS[runbookKey] || null;
+  return {
+    key,
+    surface,
+    title,
+    status,
+    metric: {
+      label: metricLabel,
+      value: Number(value || 0),
+      total: total == null ? null : Number(total || 0),
+      rate: rate == null ? null : roundRate(rate),
+      unit,
+    },
+    owner,
+    nextAction,
+    runbookKey,
+    runbookTitle: runbook?.title || "",
+    runbookPath: runbook?.docPath || "",
+    actionPath,
+    startedAt,
+    details,
+  };
+};
 
 const toCounterMap = (rows = []) =>
   rows.reduce((acc, row) => {
@@ -1654,6 +1793,578 @@ const buildSystemAlerts = async ({ range, startDate, endDate } = {}) => {
   };
 };
 
+const buildReliabilityHealth = async ({ range, startDate, endDate } = {}) => {
+  const dates = buildDateRange({ range, startDate, endDate });
+  const stalePaymentCutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
+  const stalePayoutCutoff = new Date(Date.now() - 7 * ONE_DAY_MS);
+  const reliabilityEventTypes = [
+    ...COMMERCE_OPS_EVENT_TYPES,
+    "upload_failed",
+    "live_session_created",
+    "live_session_create_failed",
+    "live_token_issued",
+    "live_token_failed",
+    "akuso_response",
+    "akuso_openai_failure",
+    "akuso_rate_limit",
+    "akuso_prompt_injection",
+  ];
+
+  const [
+    eventCountRows,
+    providerVerificationRows,
+    stripeWebhookRows,
+    entitlementAudit,
+    stalePendingPayments,
+    payoutFailures,
+    stuckPayoutRows,
+    repeatFailedUploads,
+    liveSessionsCreated,
+    discoveryFallbackRows,
+    discoverySurfaceRows,
+    akusoResponseProviderRows,
+    akusoLatencyRows,
+  ] = await Promise.all([
+    AnalyticsEvent.aggregate([
+      {
+        $match: {
+          type: { $in: reliabilityEventTypes },
+          createdAt: { $gte: dates.start, $lte: dates.end },
+        },
+      },
+      { $group: { _id: "$type", count: { $sum: 1 } } },
+    ]).catch(() => []),
+    AnalyticsEvent.aggregate([
+      {
+        $match: {
+          type: {
+            $in: [
+              "purchase_verification_succeeded",
+              "purchase_verification_failed",
+              "purchase_verification_pending",
+            ],
+          },
+          createdAt: { $gte: dates.start, $lte: dates.end },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            type: "$type",
+            provider: { $ifNull: ["$metadata.provider", ""] },
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]).catch(() => []),
+    PaymentWebhookEvent.aggregate([
+      {
+        $match: {
+          provider: "stripe",
+          createdAt: { $gte: dates.start, $lte: dates.end },
+        },
+      },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+          duplicates: { $sum: "$duplicateCount" },
+        },
+      },
+    ]).catch(() => []),
+    aggregateEntitlementAudit({ start: dates.start, end: dates.end }),
+    Purchase.countDocuments({
+      status: { $in: ["initiated", "pending"] },
+      updatedAt: { $lte: stalePaymentCutoff },
+    }),
+    MarketplacePayout.countDocuments({
+      payoutStatus: "failed",
+      updatedAt: { $gte: dates.start, $lte: dates.end },
+    }),
+    MarketplacePayout.aggregate([
+      {
+        $match: {
+          payoutStatus: { $in: ["pending", "queued"] },
+          createdAt: { $lte: stalePayoutCutoff },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          netAmount: { $sum: "$netAmount" },
+        },
+      },
+    ]).catch(() => []),
+    AnalyticsEvent.aggregate([
+      {
+        $match: {
+          type: "upload_failed",
+          createdAt: { $gte: dates.start, $lte: dates.end },
+          userId: { $ne: null },
+        },
+      },
+      { $group: { _id: "$userId", count: { $sum: 1 } } },
+      { $match: { count: { $gte: 3 } } },
+      { $count: "count" },
+    ]).catch(() => []),
+    LiveSession.countDocuments({
+      createdAt: { $gte: dates.start, $lte: dates.end },
+    }).catch(() => 0),
+    RecommendationLog.aggregate([
+      { $match: { servedAt: { $gte: dates.start, $lte: dates.end } } },
+      {
+        $group: {
+          _id: { $ifNull: ["$responseMeta.fallbackMode", "unknown"] },
+          count: { $sum: 1 },
+        },
+      },
+    ]).catch(() => []),
+    RecommendationLog.aggregate([
+      { $match: { servedAt: { $gte: dates.start, $lte: dates.end } } },
+      {
+        $group: {
+          _id: {
+            surface: "$surface",
+            fallbackMode: { $ifNull: ["$responseMeta.fallbackMode", "unknown"] },
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]).catch(() => []),
+    AnalyticsEvent.aggregate([
+      {
+        $match: {
+          type: "akuso_response",
+          createdAt: { $gte: dates.start, $lte: dates.end },
+        },
+      },
+      { $group: { _id: "$contentType", count: { $sum: 1 } } },
+    ]).catch(() => []),
+    AnalyticsEvent.aggregate([
+      {
+        $match: {
+          type: "akuso_response",
+          createdAt: { $gte: dates.start, $lte: dates.end },
+          "metadata.durationMs": { $type: "number" },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          averageDurationMs: { $avg: "$metadata.durationMs" },
+          maxDurationMs: { $max: "$metadata.durationMs" },
+        },
+      },
+    ]).catch(() => []),
+  ]);
+
+  const eventCounts = toCounterMap(eventCountRows);
+  const stripeWebhookCounts = toCounterMap(stripeWebhookRows);
+  const discoveryFallbackCounts = toCounterMap(discoveryFallbackRows);
+  const akusoProviderCounts = toCounterMap(akusoResponseProviderRows);
+
+  const countProviderVerification = (type, provider = "paystack") =>
+    providerVerificationRows.reduce((total, row) => {
+      const rowType = String(row?._id?.type || "");
+      const rowProvider = String(row?._id?.provider || "").trim().toLowerCase();
+      if (rowType !== type) return total;
+      if (rowProvider && rowProvider !== provider) return total;
+      return total + Number(row?.count || 0);
+    }, 0);
+
+  const checkoutInitialized = Number(eventCounts.purchase_checkout_initialized || 0);
+  const checkoutFailures = Number(eventCounts.purchase_checkout_failed || 0);
+  const checkoutAttempts = checkoutInitialized + checkoutFailures;
+  const checkoutFailureRate = checkoutAttempts > 0 ? checkoutFailures / checkoutAttempts : 0;
+  const paystackVerificationSuccesses = countProviderVerification("purchase_verification_succeeded");
+  const paystackVerificationFailures = countProviderVerification("purchase_verification_failed");
+  const paystackVerificationPending = countProviderVerification("purchase_verification_pending");
+  const paystackVerificationTotal =
+    paystackVerificationSuccesses + paystackVerificationFailures + paystackVerificationPending;
+  const paystackVerificationIssueCount =
+    paystackVerificationFailures + paystackVerificationPending;
+  const paystackVerificationIssueRate =
+    paystackVerificationTotal > 0
+      ? paystackVerificationIssueCount / paystackVerificationTotal
+      : 0;
+  const stripeWebhookTotal = Object.values(stripeWebhookCounts)
+    .reduce((total, value) => total + Number(value || 0), 0);
+  const stripeWebhookFailures = Number(stripeWebhookCounts.failed || 0);
+  const stripeWebhookFailureRate =
+    stripeWebhookTotal > 0 ? stripeWebhookFailures / stripeWebhookTotal : 0;
+  const entitlementEligiblePurchases = Number(entitlementAudit?.eligiblePurchases || 0);
+  const entitlementGaps = Number(entitlementAudit?.missingEntitlements || 0);
+  const entitlementGapRate =
+    entitlementEligiblePurchases > 0 ? entitlementGaps / entitlementEligiblePurchases : 0;
+  const payoutBlockers =
+    Number(payoutFailures || 0) + Number(stuckPayoutRows[0]?.count || 0);
+  const uploadFailures = Number(eventCounts.upload_failed || 0);
+  const repeatedUploadFailureCreators = Number(repeatFailedUploads[0]?.count || 0);
+  const liveCreateFailures = Number(eventCounts.live_session_create_failed || 0);
+  const liveTokenFailures = Number(eventCounts.live_token_failed || 0);
+  const liveSuccesses =
+    Math.max(Number(liveSessionsCreated || 0), Number(eventCounts.live_session_created || 0)) +
+    Number(eventCounts.live_token_issued || 0);
+  const liveFailures = liveCreateFailures + liveTokenFailures;
+  const liveAttempts = liveSuccesses + liveFailures;
+  const liveFailureRate = liveAttempts > 0 ? liveFailures / liveAttempts : 0;
+  const discoveryTotal = Object.values(discoveryFallbackCounts)
+    .reduce((total, value) => total + Number(value || 0), 0);
+  const discoveryEmptyFallbacks = Number(discoveryFallbackCounts.empty || 0);
+  const discoveryColdStartFallbacks = Number(discoveryFallbackCounts.cold_start || 0);
+  const discoveryEmptyFallbackRate =
+    discoveryTotal > 0 ? discoveryEmptyFallbacks / discoveryTotal : 0;
+  const akusoResponses = Object.values(akusoProviderCounts)
+    .reduce((total, value) => total + Number(value || 0), 0);
+  const akusoLocalFallbacks = Number(akusoProviderCounts.local_fallback || 0);
+  const akusoFallbackRate =
+    akusoResponses > 0 ? akusoLocalFallbacks / akusoResponses : 0;
+  const akusoAverageLatencyMs = roundMs(akusoLatencyRows[0]?.averageDurationMs || 0);
+  const akusoMaxLatencyMs = roundMs(akusoLatencyRows[0]?.maxDurationMs || 0);
+
+  const checkoutStatus = pickWorstReliabilityStatus([
+    reliabilityStatusFromRate({
+      value: checkoutFailureRate,
+      total: checkoutAttempts,
+      thresholds: RELIABILITY_THRESHOLDS.paymentInitializationFailureRate,
+      minimumTotal: 1,
+    }),
+    reliabilityStatusFromCount(stalePendingPayments, {
+      watch: 1,
+      degraded: DEFAULT_ALERT_THRESHOLDS.stalePendingPayments + 1,
+      incident: 8,
+      blocked: 15,
+    }),
+  ]);
+  const paystackStatus = reliabilityStatusFromRate({
+    value: paystackVerificationIssueRate,
+    total: paystackVerificationTotal,
+    thresholds: RELIABILITY_THRESHOLDS.paystackVerificationFailureRate,
+  });
+  const stripeWebhookStatus = reliabilityStatusFromRate({
+    value: stripeWebhookFailureRate,
+    total: stripeWebhookTotal,
+    thresholds: RELIABILITY_THRESHOLDS.stripeWebhookFailureRate,
+    minimumTotal: 1,
+  });
+  const entitlementStatus = reliabilityStatusFromRate({
+    value: entitlementGapRate,
+    total: entitlementEligiblePurchases,
+    thresholds: RELIABILITY_THRESHOLDS.entitlementGapRate,
+    minimumTotal: 1,
+  });
+  const payoutStatus = reliabilityStatusFromCount(payoutBlockers, {
+    watch: 1,
+    degraded: 3,
+    incident: 8,
+    blocked: 15,
+  });
+  const mediaStatus = pickWorstReliabilityStatus([
+    reliabilityStatusFromCount(uploadFailures, RELIABILITY_THRESHOLDS.mediaUploadFailureCount),
+    reliabilityStatusFromCount(repeatedUploadFailureCreators, {
+      watch: 1,
+      degraded: 3,
+      incident: 8,
+      blocked: 15,
+    }),
+  ]);
+  const liveStatus = reliabilityStatusFromRate({
+    value: liveFailureRate,
+    total: liveAttempts,
+    thresholds: RELIABILITY_THRESHOLDS.liveFailureRate,
+  });
+  const discoveryStatus = reliabilityStatusFromRate({
+    value: discoveryEmptyFallbackRate,
+    total: discoveryTotal,
+    thresholds: RELIABILITY_THRESHOLDS.discoveryEmptyFallbackRate,
+    minimumTotal: 1,
+  });
+  const akusoStatus = pickWorstReliabilityStatus([
+    reliabilityStatusFromRate({
+      value: akusoFallbackRate,
+      total: akusoResponses,
+      thresholds: RELIABILITY_THRESHOLDS.akusoFallbackRate,
+    }),
+    reliabilityStatusFromCount(
+      akusoAverageLatencyMs,
+      RELIABILITY_THRESHOLDS.akusoAverageLatencyMs
+    ),
+    reliabilityStatusFromCount(Number(eventCounts.akuso_openai_failure || 0), {
+      watch: 1,
+      degraded: 3,
+      incident: 8,
+      blocked: 15,
+    }),
+  ]);
+
+  const snapshots = [
+    buildReliabilitySnapshot({
+      key: "payment_initialization",
+      surface: "Checkout",
+      title: "Payment Initialization",
+      status: checkoutStatus,
+      metricLabel: "Checkout failures",
+      value: checkoutFailures,
+      total: checkoutAttempts,
+      rate: checkoutFailureRate,
+      owner: "Infrastructure and backend",
+      nextAction:
+        checkoutStatus === "healthy"
+          ? "Keep monitoring checkout attempts and provider initialization latency."
+          : "Review failed checkout events, provider credentials, callback URLs, and stale pending purchases.",
+      runbookKey: "checkout_failure",
+      actionPath: "/admin/transactions",
+      startedAt: checkoutStatus === "healthy" ? null : dates.start,
+      details: {
+        initialized: checkoutInitialized,
+        failed: checkoutFailures,
+        stalePendingPayments: Number(stalePendingPayments || 0),
+      },
+    }),
+    buildReliabilitySnapshot({
+      key: "paystack_verification",
+      surface: "Paystack",
+      title: "Paystack Verification",
+      status: paystackStatus,
+      metricLabel: "Verification issues",
+      value: paystackVerificationIssueCount,
+      total: paystackVerificationTotal,
+      rate: paystackVerificationIssueRate,
+      owner: "Infrastructure and backend",
+      nextAction:
+        paystackStatus === "healthy"
+          ? "Keep Paystack verification and pending callbacks in the normal weekly review."
+          : "Compare provider references against Paystack, retry safe verification, and reconcile pending purchases.",
+      runbookKey: "paystack_verification",
+      actionPath: "/admin/transactions",
+      startedAt: paystackStatus === "healthy" ? null : dates.start,
+      details: {
+        succeeded: paystackVerificationSuccesses,
+        failed: paystackVerificationFailures,
+        pending: paystackVerificationPending,
+      },
+    }),
+    buildReliabilitySnapshot({
+      key: "stripe_webhook_processing",
+      surface: "Stripe",
+      title: "Stripe Webhook Processing",
+      status: stripeWebhookStatus,
+      metricLabel: "Webhook failures",
+      value: stripeWebhookFailures,
+      total: stripeWebhookTotal,
+      rate: stripeWebhookFailureRate,
+      owner: "Infrastructure and backend",
+      nextAction:
+        stripeWebhookStatus === "healthy"
+          ? "Keep webhook replay counts and processed events in the normal weekly review."
+          : "Inspect failed Stripe webhook records, signature config, replay volume, and purchase settlement state.",
+      runbookKey: "stripe_webhook",
+      actionPath: "/admin/transactions",
+      startedAt: stripeWebhookStatus === "healthy" ? null : dates.start,
+      details: {
+        processed: Number(stripeWebhookCounts.processed || 0),
+        skipped: Number(stripeWebhookCounts.skipped || 0),
+        failed: stripeWebhookFailures,
+        duplicates: stripeWebhookRows.reduce((total, row) => total + Number(row?.duplicates || 0), 0),
+      },
+    }),
+    buildReliabilitySnapshot({
+      key: "entitlement_reconciliation",
+      surface: "Entitlements",
+      title: "Entitlement Reconciliation",
+      status: entitlementStatus,
+      metricLabel: "Paid purchases missing access",
+      value: entitlementGaps,
+      total: entitlementEligiblePurchases,
+      rate: entitlementGapRate,
+      owner: "Infrastructure and backend",
+      nextAction:
+        entitlementStatus === "healthy"
+          ? "Keep reconciliation output attached to commerce operations review."
+          : "Run entitlement reconciliation, inspect paid purchase audit events, and verify user access records.",
+      runbookKey: "entitlement_mismatch",
+      actionPath: "/admin/transactions?attention=stuck",
+      startedAt: entitlementStatus === "healthy" ? null : dates.start,
+      details: {
+        eligiblePurchases: entitlementEligiblePurchases,
+        missingEntitlements: entitlementGaps,
+      },
+    }),
+    buildReliabilitySnapshot({
+      key: "payout_blockers",
+      surface: "Payouts",
+      title: "Payout Blockers",
+      status: payoutStatus,
+      metricLabel: "Failed or stuck payouts",
+      value: payoutBlockers,
+      total: null,
+      owner: "Finance and operations",
+      nextAction:
+        payoutStatus === "healthy"
+          ? "Keep payout readiness and failed payout counts in weekly finance review."
+          : "Review failed payout records, stale queued payouts, creator-visible messages, and manual retry eligibility.",
+      runbookKey: "payout_blocker",
+      actionPath: "/admin/marketplace",
+      startedAt: payoutStatus === "healthy" ? null : dates.start,
+      details: {
+        failedPayouts: Number(payoutFailures || 0),
+        stuckPayouts: Number(stuckPayoutRows[0]?.count || 0),
+        stuckPayoutNetAmount: Number(stuckPayoutRows[0]?.netAmount || 0),
+      },
+    }),
+    buildReliabilitySnapshot({
+      key: "media_upload_failures",
+      surface: "Media",
+      title: "Media Upload Failures",
+      status: mediaStatus,
+      metricLabel: "Upload failures",
+      value: uploadFailures,
+      owner: "Backend and infrastructure",
+      nextAction:
+        mediaStatus === "healthy"
+          ? "Keep storage provider errors and repeated creator failures under review."
+          : "Inspect storage provider errors, upload validators, and creators with repeated failed upload attempts.",
+      runbookKey: "media_upload_failure",
+      actionPath: "/admin/content",
+      startedAt: mediaStatus === "healthy" ? null : dates.start,
+      details: {
+        uploadFailures,
+        repeatedUploadFailureCreators,
+      },
+    }),
+    buildReliabilitySnapshot({
+      key: "live_session_creation",
+      surface: "Live",
+      title: "Live Session Creation",
+      status: liveStatus,
+      metricLabel: "Live creation/token failures",
+      value: liveFailures,
+      total: liveAttempts,
+      rate: liveFailureRate,
+      owner: "Backend and infrastructure",
+      nextAction:
+        liveStatus === "healthy"
+          ? "Keep LiveKit config and join success in weekly health checks."
+          : "Check LiveKit config, quota edge cases, create-session errors, and token issuance failures.",
+      runbookKey: "live_creation_failure",
+      actionPath: "/admin/analytics",
+      startedAt: liveStatus === "healthy" ? null : dates.start,
+      details: {
+        sessionsCreated: Number(liveSessionsCreated || 0),
+        createFailures: liveCreateFailures,
+        tokenFailures: liveTokenFailures,
+      },
+    }),
+    buildReliabilitySnapshot({
+      key: "discovery_fallback_rate",
+      surface: "Discovery",
+      title: "Discovery Fallback Rate",
+      status: discoveryStatus,
+      metricLabel: "Empty recommendation fallbacks",
+      value: discoveryEmptyFallbacks,
+      total: discoveryTotal,
+      rate: discoveryEmptyFallbackRate,
+      owner: "Discovery and analytics",
+      nextAction:
+        discoveryStatus === "healthy"
+          ? "Keep cold-start and empty fallback diagnostics in recommendation review."
+          : "Inspect candidate loaders, blocked/restricted filters, and surface-level empty fallback spikes.",
+      runbookKey: "discovery_fallback_spike",
+      actionPath: "/admin/analytics",
+      startedAt: discoveryStatus === "healthy" ? null : dates.start,
+      details: {
+        personalized: Number(discoveryFallbackCounts.personalized || 0),
+        coldStart: discoveryColdStartFallbacks,
+        empty: discoveryEmptyFallbacks,
+        bySurface: discoverySurfaceRows.map((row) => ({
+          surface: String(row?._id?.surface || "unknown"),
+          fallbackMode: String(row?._id?.fallbackMode || "unknown"),
+          count: Number(row?.count || 0),
+        })),
+      },
+    }),
+    buildReliabilitySnapshot({
+      key: "akuso_latency_fallback",
+      surface: "Akuso",
+      title: "Akuso Latency and Fallback",
+      status: akusoStatus,
+      metricLabel: "Local fallback responses",
+      value: akusoLocalFallbacks,
+      total: akusoResponses,
+      rate: akusoFallbackRate,
+      unit: akusoAverageLatencyMs ? `${akusoAverageLatencyMs} ms avg` : "",
+      owner: "AI and safety",
+      nextAction:
+        akusoStatus === "healthy"
+          ? "Keep route target pass rates and response latency in assistant release review."
+          : "Run Akuso evals, inspect OpenAI failures, review fallback quality, and attach the latest eval report.",
+      runbookKey: "akuso_eval_regression",
+      actionPath: "/admin/assistant/metrics",
+      startedAt: akusoStatus === "healthy" ? null : dates.start,
+      details: {
+        responses: akusoResponses,
+        localFallbacks: akusoLocalFallbacks,
+        policyEngine: Number(akusoProviderCounts.policy_engine || 0),
+        openai: Number(akusoProviderCounts.openai || 0),
+        openAIFailures: Number(eventCounts.akuso_openai_failure || 0),
+        rateLimitHits: Number(eventCounts.akuso_rate_limit || 0),
+        promptInjectionAttempts: Number(eventCounts.akuso_prompt_injection || 0),
+        averageDurationMs: akusoAverageLatencyMs,
+        maxDurationMs: akusoMaxLatencyMs,
+      },
+    }),
+  ];
+
+  const statusCounts = snapshots.reduce((acc, snapshot) => {
+    acc[snapshot.status] = Number(acc[snapshot.status] || 0) + 1;
+    return acc;
+  }, {});
+  const overallStatus = pickWorstReliabilityStatus(snapshots.map((snapshot) => snapshot.status));
+  const incidentNotes = snapshots
+    .filter((snapshot) => snapshot.status !== "healthy")
+    .map((snapshot) => ({
+      key: `incident_${snapshot.key}`,
+      affectedSurface: snapshot.surface,
+      startTime: snapshot.startedAt || dates.start,
+      currentStatus: snapshot.status,
+      owner: snapshot.owner,
+      nextAction: snapshot.nextAction,
+      runbookKey: snapshot.runbookKey,
+      runbookTitle: snapshot.runbookTitle,
+      runbookPath: snapshot.runbookPath,
+      actionPath: snapshot.actionPath,
+      metric: snapshot.metric,
+    }));
+
+  return {
+    filters: {
+      range: dates.range,
+      startDate: dates.start,
+      endDate: dates.end,
+    },
+    generatedAt: new Date(),
+    severityLevels: ["watch", "degraded", "incident", "blocked"],
+    summary: {
+      overallStatus,
+      totalSurfaces: snapshots.length,
+      healthySurfaces: Number(statusCounts.healthy || 0),
+      watchedSurfaces: Number(statusCounts.watch || 0),
+      degradedSurfaces: Number(statusCounts.degraded || 0),
+      incidentSurfaces: Number(statusCounts.incident || 0),
+      blockedSurfaces: Number(statusCounts.blocked || 0),
+      activeIncidentCount: incidentNotes.filter(
+        (note) => (RELIABILITY_STATUS_RANK[note.currentStatus] || 0) >= RELIABILITY_STATUS_RANK.degraded
+      ).length,
+    },
+    statusCounts,
+    thresholds: RELIABILITY_THRESHOLDS,
+    snapshots,
+    incidentNotes,
+    runbooks: Object.values(RELIABILITY_RUNBOOKS),
+  };
+};
+
 const buildReportsSummary = async ({ range, startDate, endDate, interval = "daily" } = {}) => {
   const dates = buildDateRange({ range, startDate, endDate });
   const series = await fetchDailyRows({ start: dates.start, end: dates.end, interval });
@@ -1697,6 +2408,7 @@ module.exports = {
   buildTopContent,
   buildRecentActivity,
   buildSystemAlerts,
+  buildReliabilityHealth,
   buildReportsSummary,
   backfillDailyAnalytics,
 };

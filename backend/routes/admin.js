@@ -49,6 +49,7 @@ const {
   buildTopContent,
   buildRecentActivity,
   buildSystemAlerts,
+  buildReliabilityHealth,
   buildReportsSummary,
   backfillDailyAnalytics,
   logAnalyticsEvent,
@@ -1733,6 +1734,15 @@ router.get("/analytics/system-alerts", async (req, res) => {
   } catch (err) {
     const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
     return res.status(code).json({ error: err.message || "Failed to load system alerts" });
+  }
+});
+
+router.get("/analytics/reliability-health", async (req, res) => {
+  try {
+    return res.json(await buildReliabilityHealth(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res.status(code).json({ error: err.message || "Failed to load reliability health" });
   }
 });
 

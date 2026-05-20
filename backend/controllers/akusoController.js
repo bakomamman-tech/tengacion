@@ -1145,6 +1145,7 @@ const withAkusoHandler = (handler) => async (req, res) => {
 };
 
 const runAkusoChatRequest = async ({ req, traceId }) => {
+  const requestStartedAt = Date.now();
   recordAkusoRequest({ routeName: "chat" });
   const input = req.akusoInput || {};
   const preparedMedia = await prepareAkusoMediaInput({ req, input });
@@ -1274,6 +1275,7 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
         routePurpose: "chat",
         provider: "policy_engine",
         categoryBucket: policyResult.categoryBucket,
+        durationMs: Date.now() - requestStartedAt,
       },
     }).catch(() => null);
 
@@ -1351,6 +1353,7 @@ const runAkusoChatRequest = async ({ req, traceId }) => {
         responsePayload.observability?.provider || responsePayload.meta?.provider || "local_fallback",
       fallbackReason: responsePayload.observability?.fallbackReason || "",
       categoryBucket: policyResult.categoryBucket,
+      durationMs: Date.now() - requestStartedAt,
     },
   }).catch(() => null);
 
@@ -1466,6 +1469,7 @@ const runAkusoFeedbackRequest = async ({ req, traceId }) => {
 };
 
 const runAkusoTemplateRequest = async ({ req, traceId }) => {
+  const requestStartedAt = Date.now();
   recordAkusoRequest({ routeName: "templates" });
   const input = req.akusoInput || {};
   const memory = await loadAkusoMemory({
@@ -1571,6 +1575,7 @@ const runAkusoTemplateRequest = async ({ req, traceId }) => {
         routePurpose: "template",
         provider: "policy_engine",
         categoryBucket: policyResult.categoryBucket,
+        durationMs: Date.now() - requestStartedAt,
       },
     }).catch(() => null);
 
@@ -1626,6 +1631,7 @@ const runAkusoTemplateRequest = async ({ req, traceId }) => {
         responsePayload.observability?.provider || responsePayload.meta?.provider || "local_fallback",
       fallbackReason: responsePayload.observability?.fallbackReason || "",
       categoryBucket: policyResult.categoryBucket,
+      durationMs: Date.now() - requestStartedAt,
     },
   }).catch(() => null);
 

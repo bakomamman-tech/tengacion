@@ -3,6 +3,7 @@ const catchAsync = require("../utils/catchAsync");
 const LiveService = require("../services/liveService");
 const { ensureValidLivekitConfig } = require("../services/livekitConfig");
 const User = require("../../../backend/models/User");
+const { logAnalyticsEvent } = require("../../../backend/services/analyticsService");
 
 const emitEvent = (req, event, payload) => {
   const io = req.app.get("io");
@@ -11,30 +12,63 @@ const emitEvent = (req, event, payload) => {
   }
 };
 
+const logLiveReliabilityEvent = (req, type, metadata = {}) =>
+  logAnalyticsEvent({
+    type,
+    userId: req.user?.id || null,
+    targetId: metadata.roomName || null,
+    targetType: "live",
+    contentType: "live",
+    metadata,
+  }).catch(() => null);
+
 exports.createLiveSession = catchAsync(async (req, res) => {
   const { title } = req.body || {};
-  const livekit = ensureValidLivekitConfig();
-  const session = await LiveService.createSession({
-    userId: req.user.id,
-    title,
-  });
-  const sessionPayload = LiveService.toPublic(session);
+  let session = null;
+  try {
+    const livekit = ensureValidLivekitConfig();
+    session = await LiveService.createSession({
+      userId: req.user.id,
+      title,
+    });
+    const sessionPayload = LiveService.toPublic(session);
 
-  const token = await LiveService.createToken({
-    identity: req.user.id,
-    name: session.hostName,
-    roomName: session.roomName,
-    canPublish: true,
-    ttl: `${Math.max(1, sessionPayload?.quota?.remainingMilliseconds || 0)}ms`,
-  });
+    await logLiveReliabilityEvent(req, "live_session_created", {
+      roomName: session.roomName,
+      title: session.title,
+    });
 
-  res.status(201).json({
-    session: sessionPayload,
-    token,
-    livekit,
-  });
+    const token = await LiveService.createToken({
+      identity: req.user.id,
+      name: session.hostName,
+      roomName: session.roomName,
+      canPublish: true,
+      ttl: `${Math.max(1, sessionPayload?.quota?.remainingMilliseconds || 0)}ms`,
+    });
 
-  emitEvent(req, "live:created", sessionPayload);
+    await logLiveReliabilityEvent(req, "live_token_issued", {
+      roomName: session.roomName,
+      publish: true,
+    });
+
+    res.status(201).json({
+      session: sessionPayload,
+      token,
+      livekit,
+    });
+
+    emitEvent(req, "live:created", sessionPayload);
+  } catch (error) {
+    await logLiveReliabilityEvent(
+      req,
+      session ? "live_token_failed" : "live_session_create_failed",
+      {
+        roomName: session?.roomName || "",
+        reason: error.message || "Live session creation failed",
+      }
+    );
+    throw error;
+  }
 });
 
 exports.endLiveSession = catchAsync(async (req, res) => {
@@ -60,36 +94,50 @@ exports.getActiveSessions = catchAsync(async (req, res) => {
 
 exports.requestToken = catchAsync(async (req, res) => {
   const { roomName, publish = false } = req.body || {};
-  if (!roomName) {
-    throw ApiError.badRequest("Room name is required");
+  try {
+    if (!roomName) {
+      throw ApiError.badRequest("Room name is required");
+    }
+    const livekit = ensureValidLivekitConfig();
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      throw ApiError.unauthorized("User not found");
+    }
+
+    const session = await LiveService.getActiveSessionByRoom(roomName);
+    if (publish && session.hostUserId.toString() !== req.user.id.toString()) {
+      throw ApiError.forbidden("Only the host can publish");
+    }
+
+    const sessionPayload = LiveService.toPublic(session);
+
+    const token = await LiveService.createToken({
+      identity: req.user.id,
+      name: user.name || user.username || "Guest",
+      roomName,
+      canPublish: Boolean(publish),
+      ttl: `${Math.max(1, sessionPayload?.quota?.remainingMilliseconds || 0)}ms`,
+    });
+
+    await logLiveReliabilityEvent(req, "live_token_issued", {
+      roomName,
+      publish: Boolean(publish),
+    });
+
+    res.json({
+      token,
+      session: sessionPayload,
+      livekit,
+    });
+  } catch (error) {
+    await logLiveReliabilityEvent(req, "live_token_failed", {
+      roomName: roomName || "",
+      publish: Boolean(publish),
+      reason: error.message || "Live token request failed",
+    });
+    throw error;
   }
-  const livekit = ensureValidLivekitConfig();
-
-  const user = await User.findById(req.user.id);
-  if (!user) {
-    throw ApiError.unauthorized("User not found");
-  }
-
-  const session = await LiveService.getActiveSessionByRoom(roomName);
-  if (publish && session.hostUserId.toString() !== req.user.id.toString()) {
-    throw ApiError.forbidden("Only the host can publish");
-  }
-
-  const sessionPayload = LiveService.toPublic(session);
-
-  const token = await LiveService.createToken({
-    identity: req.user.id,
-    name: user.name || user.username || "Guest",
-    roomName,
-    canPublish: Boolean(publish),
-    ttl: `${Math.max(1, sessionPayload?.quota?.remainingMilliseconds || 0)}ms`,
-  });
-
-  res.json({
-    token,
-    session: sessionPayload,
-    livekit,
-  });
 });
 
 exports.getLiveConfig = catchAsync(async (req, res) => {

@@ -188,6 +188,11 @@ Make the product operable.
   - owner
   - next action
 - Add runbook docs for checkout failure, webhook delay, entitlement mismatch, payout blocker, discovery fallback spike, and Akuso eval regression.
+- Current implementation anchor:
+  - `/api/admin/analytics/reliability-health` now returns production health snapshots for payment initialization, Paystack verification, Stripe webhooks, entitlement reconciliation, payout blockers, media uploads, live session/token failures, discovery fallback rate, and Akuso latency/fallback health.
+  - Admin Analytics now renders the reliability snapshot, severity states, incident notes, owners, next actions, and runbook links beside the existing commerce operations and system alerts surfaces.
+  - live session creation and token issuance now emit success/failure analytics events so LiveKit configuration or quota failures can show up in weekly operations review.
+  - `docs/production-reliability-runbooks.md` defines response paths for checkout failure, Paystack verification delay, Stripe webhook processing, entitlement mismatch, payout blockers, media upload failure, live creation failure, discovery fallback spikes, and Akuso eval regression.
 
 ### Exit criteria
 

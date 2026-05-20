@@ -354,6 +354,10 @@
   gap: 12px;
 }
 
+.adminx-health-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .adminx-leaderboard-item,
 .adminx-activity-item,
 .adminx-alert-item {
@@ -651,6 +655,10 @@
 
   .adminx-ops-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .adminx-health-grid {
+    grid-template-columns: 1fr;
   }
 
   .adminx-finance-meta {

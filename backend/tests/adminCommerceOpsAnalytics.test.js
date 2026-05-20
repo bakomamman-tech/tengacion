@@ -16,6 +16,7 @@ const MarketplaceProduct = require("../models/MarketplaceProduct");
 const MarketplaceSeller = require("../models/MarketplaceSeller");
 const PaymentWebhookEvent = require("../models/PaymentWebhookEvent");
 const Purchase = require("../models/Purchase");
+const RecommendationLog = require("../models/RecommendationLog");
 const User = require("../models/User");
 
 let mongod;
@@ -176,9 +177,35 @@ describe("admin commerce operations analytics", () => {
       { type: "purchase_webhook_received", userId: buyerId, targetId: paidPurchase._id, targetType: "purchase", contentType: "track", createdAt: now },
       { type: "purchase_webhook_failed", userId: buyerId, targetId: paidMissingEntitlement._id, targetType: "purchase", contentType: "track", createdAt: now },
       { type: "purchase_entitlement_granted", userId: buyerId, targetId: paidPurchase._id, targetType: "purchase", contentType: "track", createdAt: now },
+      { type: "purchase_verification_succeeded", userId: buyerId, targetId: paidPurchase._id, targetType: "purchase", contentType: "track", metadata: { provider: "paystack" }, createdAt: now },
+      { type: "purchase_verification_failed", userId: buyerId, targetId: paidMissingEntitlement._id, targetType: "purchase", contentType: "track", metadata: { provider: "paystack" }, createdAt: now },
       { type: "creator_onboarding_step_completed", userId: buyerId, targetId: new mongoose.Types.ObjectId(), targetType: "creator_profile", contentType: "account_created", createdAt: now },
       { type: "creator_onboarding_step_completed", userId: buyerId, targetId: new mongoose.Types.ObjectId(), targetType: "creator_profile", contentType: "profile_ready", createdAt: now },
       { type: "creator_onboarding_step_completed", userId: buyerId, targetId: new mongoose.Types.ObjectId(), targetType: "creator_profile", contentType: "first_upload_started", createdAt: now },
+      { type: "upload_failed", userId: buyerId, targetId: new mongoose.Types.ObjectId(), targetType: "track", contentType: "music", metadata: { reason: "storage timeout" }, createdAt: now },
+      { type: "live_session_create_failed", userId: buyerId, targetType: "live", contentType: "live", metadata: { reason: "LiveKit credentials are not configured" }, createdAt: now },
+      { type: "live_token_failed", userId: buyerId, targetType: "live", contentType: "live", metadata: { reason: "LiveKit host is not configured" }, createdAt: now },
+      { type: "live_token_issued", userId: buyerId, targetType: "live", contentType: "live", metadata: { roomName: "ops-live" }, createdAt: now },
+      { type: "akuso_response", userId: buyerId, targetType: "akuso", contentType: "local_fallback", metadata: { durationMs: 6200, provider: "local_fallback" }, createdAt: now },
+      { type: "akuso_response", userId: buyerId, targetType: "akuso", contentType: "openai", metadata: { durationMs: 1200, provider: "openai" }, createdAt: now },
+      { type: "akuso_openai_failure", userId: buyerId, targetType: "akuso", contentType: "openai", metadata: { reason: "timeout" }, createdAt: now },
+    ]);
+
+    await RecommendationLog.create([
+      {
+        requestId: "ops-rec-empty",
+        userId: buyerId,
+        surface: "home",
+        responseMeta: { fallbackMode: "empty", rankedCount: 0 },
+        servedAt: now,
+      },
+      {
+        requestId: "ops-rec-personalized",
+        userId: buyerId,
+        surface: "live",
+        responseMeta: { fallbackMode: "personalized", rankedCount: 3 },
+        servedAt: now,
+      },
     ]);
 
     const sellerUser = await User.create({
@@ -383,6 +410,54 @@ describe("admin commerce operations analytics", () => {
         expect.objectContaining({ key: "entitlement_gaps", severity: "high" }),
         expect.objectContaining({ key: "payout_failures", severity: "medium" }),
         expect.objectContaining({ key: "stuck_payouts", severity: "medium" }),
+      ])
+    );
+
+    const reliabilityResponse = await request(app)
+      .get("/api/admin/analytics/reliability-health?range=7d")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(reliabilityResponse.body.severityLevels).toEqual(["watch", "degraded", "incident", "blocked"]);
+    expect(reliabilityResponse.body.summary).toMatchObject({
+      totalSurfaces: 9,
+    });
+    expect(reliabilityResponse.body.snapshots).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "payment_initialization",
+          status: "incident",
+          metric: expect.objectContaining({ value: 1, total: 2, rate: 0.5 }),
+          runbookPath: "docs/production-reliability-runbooks.md#checkout-failure",
+        }),
+        expect.objectContaining({
+          key: "entitlement_reconciliation",
+          status: "blocked",
+          metric: expect.objectContaining({ value: 1, total: 2, rate: 0.5 }),
+        }),
+        expect.objectContaining({
+          key: "discovery_fallback_rate",
+          status: "incident",
+          metric: expect.objectContaining({ value: 1, total: 2, rate: 0.5 }),
+        }),
+        expect.objectContaining({
+          key: "akuso_latency_fallback",
+          details: expect.objectContaining({
+            responses: 2,
+            localFallbacks: 1,
+            openAIFailures: 1,
+            averageDurationMs: 3700,
+          }),
+        }),
+      ])
+    );
+    expect(reliabilityResponse.body.incidentNotes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          affectedSurface: "Entitlements",
+          currentStatus: "blocked",
+          runbookKey: "entitlement_mismatch",
+        }),
       ])
     );
   });

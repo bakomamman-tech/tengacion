@@ -38,6 +38,10 @@ const {
   buildCreatorFinanceRepository,
 } = require("../services/creatorFinanceRepositoryService");
 const {
+  listAdminCreatorPayoutRequests,
+  updateCreatorPayoutRequestStatus,
+} = require("../services/creatorPayoutRequestService");
+const {
   buildRevenueLedgerSummary,
 } = require("../services/revenueLedgerService");
 const {
@@ -1432,6 +1436,90 @@ router.get("/finance/creator-earnings", async (req, res) => {
       .json({ error: err.message || "Failed to load creator earnings repository" });
   }
 });
+
+router.get("/finance/payout-requests", async (req, res) => {
+  try {
+    return res.json(await listAdminCreatorPayoutRequests({
+      status: req.query.status || "",
+      page: req.query.page || 1,
+      limit: req.query.limit || 20,
+    }));
+  } catch (err) {
+    const code = err?.status || 500;
+    return res
+      .status(code)
+      .json({ error: err.message || "Failed to load creator payout requests" });
+  }
+});
+
+router.patch(
+  "/finance/payout-requests/:id/status",
+  requireStepUp({ adminOnly: true }),
+  async (req, res) => {
+    try {
+      const result = await updateCreatorPayoutRequestStatus({
+        requestId: req.params.id,
+        status: req.body?.status,
+        adminUserId: req.user.id,
+        adminRole: req.user?.role || "admin",
+        adminNote: req.body?.adminNote || "",
+        creatorMessage: req.body?.creatorMessage || "",
+        payoutReference: req.body?.payoutReference || "",
+      });
+
+      await writeAuditLog({
+        actorId: req.user.id,
+        action: "creator_payout_request_status_update",
+        targetType: "creator_payout_request",
+        targetId: result.request.id,
+        reason: req.body?.adminNote || `Status changed to ${result.request.status}`,
+        ip: req.ip,
+        userAgent: req.get("user-agent") || "",
+        metadata: {
+          previousStatus: result.previousStatus || "",
+          nextStatus: result.request.status || "",
+          creatorProfileId: result.request.creatorProfileId || "",
+          creatorUserId: result.request.creatorUserId || "",
+          amount: Number(result.request.amount || 0),
+          currency: result.request.currency || "NGN",
+          requestReference: result.request.requestReference || "",
+          payoutReference: result.request.payoutReference || "",
+          walletEntryCreated: Boolean(result.walletEntryCreated),
+          revenueLedgerCreatedCount: Number(result.revenueLedgerCreatedCount || 0),
+        },
+      }).catch(() => null);
+
+      if (result.request.creatorUserId && req.body?.creatorMessage) {
+        await createNotification({
+          recipient: result.request.creatorUserId,
+          sender: req.user.id,
+          type: "system",
+          text: req.body.creatorMessage,
+          entity: {
+            type: "creator_payout_request",
+            id: result.request.id,
+          },
+          metadata: {
+            dedupeKey: `creator-payout-request:${result.request.id}:${result.request.status}`,
+            requestReference: result.request.requestReference || "",
+            status: result.request.status || "",
+          },
+        }).catch(() => null);
+      }
+
+      return res.json({
+        success: true,
+        ...result,
+      });
+    } catch (err) {
+      const code = err?.status || 500;
+      return res.status(code).json({
+        error: err.message || "Failed to update creator payout request",
+        details: err?.details || undefined,
+      });
+    }
+  }
+);
 
 router.get("/finance/revenue-ledger", async (req, res) => {
   try {

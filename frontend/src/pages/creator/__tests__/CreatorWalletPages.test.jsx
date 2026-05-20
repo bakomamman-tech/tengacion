@@ -6,9 +6,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import CreatorEarningsPage from "../CreatorEarningsPage";
 import CreatorPayoutsPage from "../CreatorPayoutsPage";
 import { useCreatorWorkspace } from "../../../components/creator/useCreatorWorkspace";
+import {
+  createCreatorPayoutRequest,
+  getCreatorPayoutRequests,
+} from "../../../api";
 
 vi.mock("../../../components/creator/useCreatorWorkspace", () => ({
   useCreatorWorkspace: vi.fn(),
+}));
+
+vi.mock("../../../api", () => ({
+  createCreatorPayoutRequest: vi.fn(),
+  getCreatorPayoutRequests: vi.fn(),
 }));
 
 const baseWorkspace = {
@@ -90,6 +99,22 @@ describe("Creator wallet pages", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useCreatorWorkspace.mockReturnValue(baseWorkspace);
+    createCreatorPayoutRequest.mockResolvedValue({ success: true });
+    getCreatorPayoutRequests.mockResolvedValue({
+      summary: {
+        availableForRequest: 1000,
+        openRequestAmount: 0,
+      },
+      requests: [
+        {
+          id: "payout-request-1",
+          amount: 1000,
+          status: "pending_review",
+          requestReference: "CPR_TEST",
+          requestedAt: "2026-04-08T05:18:26.928Z",
+        },
+      ],
+    });
   });
 
   it("renders wallet-backed earnings details", () => {
@@ -105,7 +130,7 @@ describe("Creator wallet pages", () => {
     expect(screen.getAllByText(/₦1,000/i).length).toBeGreaterThan(0);
   });
 
-  it("renders payout readiness and recent settlement activity", () => {
+  it("renders payout readiness and recent settlement activity", async () => {
     render(
       <MemoryRouter>
         <CreatorPayoutsPage />
@@ -125,5 +150,8 @@ describe("Creator wallet pages", () => {
     );
     expect(screen.getByText("Recent settlement activity")).toBeInTheDocument();
     expect(screen.getByText("Sale credited")).toBeInTheDocument();
+    expect(screen.getByText("Request payout review")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Submit request" })).toBeInTheDocument();
+    expect(await screen.findByText("CPR_TEST")).toBeInTheDocument();
   });
 });

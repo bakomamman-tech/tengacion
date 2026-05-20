@@ -841,6 +841,27 @@ export const getCreatorDashboardSummary = () =>
     cache: "no-store",
   });
 
+export const getCreatorPayoutRequests = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(withCacheBust(`${API_BASE}/creator/payout-requests${query.toString() ? `?${query.toString()}` : ""}`), {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+};
+
+export const createCreatorPayoutRequest = (payload = {}) =>
+  request(`${API_BASE}/creator/payout-requests`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
 export const getCreatorPrivateContent = () =>
   request(withCacheBust(`${API_BASE}/creator/me/content`), {
     headers: getAuthHeaders(),
@@ -2579,6 +2600,27 @@ export const adminGetRevenueLedger = (params = {}) => {
     timeoutMs: 45000,
   });
 };
+
+export const adminListCreatorPayoutRequests = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/finance/payout-requests?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminUpdateCreatorPayoutRequestStatus = (requestId, body = {}) =>
+  request(`${API_BASE}/admin/finance/payout-requests/${encodeURIComponent(requestId || "")}/status`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(body || {}),
+  });
 
 export const adminGetCreatorDetail = (creatorId) =>
   request(`${API_BASE}/admin/creators/${encodeURIComponent(creatorId || "")}`, {

@@ -22,6 +22,10 @@ const {
   buildCreatorSubscriptionAnalytics,
   buildCreatorSubscriptionAnalyticsForUser,
 } = require("../services/creatorSubscriptionAnalyticsService");
+const {
+  createCreatorPayoutRequest,
+  listCreatorPayoutRequests,
+} = require("../services/creatorPayoutRequestService");
 const { buildPayoutReadiness } = require("../services/payoutReadinessService");
 const { buildCreatorWalletSnapshot } = require("../services/walletService");
 const {
@@ -937,6 +941,32 @@ exports.getCreatorSubscriptionAnalytics = asyncHandler(async (req, res) => {
   });
 
   return res.json(analytics);
+});
+
+exports.getCreatorPayoutRequests = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const payload = await listCreatorPayoutRequests({
+    userId: req.user.id,
+    page: req.query?.page || 1,
+    limit: req.query?.limit || 20,
+  });
+
+  return res.json(payload);
+});
+
+exports.createCreatorPayoutRequest = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const payload = await createCreatorPayoutRequest({
+    userId: req.user.id,
+    amount: req.body?.amount,
+    currency: req.body?.currency || "NGN",
+    creatorNote: req.body?.creatorNote || req.body?.note || "",
+  });
+
+  return res.status(201).json({
+    success: true,
+    ...payload,
+  });
 });
 
 exports.getCreatorPrivateContent = asyncHandler(async (req, res) => {

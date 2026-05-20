@@ -253,6 +253,10 @@ Make the product operable.
   - failed
 - Add admin notes and creator-visible support messages.
 - Add retry handling for failed payout attempts without duplicating ledger movement.
+- Current implementation anchors:
+  - creators can submit payout requests from `/creator/payouts` after readiness and wallet available-balance checks; open requests reserve available balance so duplicate pending withdrawals cannot overdraw the creator wallet
+  - finance admins can review payout requests from the Earnings From Creators admin page, move requests through pending, needs-action, approved, processing, paid, failed, or rejected states, and attach admin notes, payout references, and creator-visible messages
+  - paid requests create one idempotent `payout_debit` wallet entry and a `payout_sent` revenue-ledger debit; failed retry attempts create audit-visible `payout_failed` ledger events without moving wallet balance
 
 ### Exit criteria
 

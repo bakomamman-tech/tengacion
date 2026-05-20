@@ -92,7 +92,7 @@ const RevenueLedgerEntrySchema = new mongoose.Schema(
     },
     sourceType: {
       type: String,
-      enum: ["purchase", "marketplace_order", "marketplace_payout", "refund", "system"],
+      enum: ["purchase", "marketplace_order", "marketplace_payout", "creator_payout", "refund", "system"],
       required: true,
       index: true,
     },

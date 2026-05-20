@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminShell from "../components/AdminShell";
-import { adminGetCreatorEarningsRepository, adminGetRevenueLedger } from "../api";
+import {
+  adminGetCreatorEarningsRepository,
+  adminGetRevenueLedger,
+  adminListCreatorPayoutRequests,
+  adminUpdateCreatorPayoutRequestStatus,
+} from "../api";
 
 const RANGE_OPTIONS = [
   { value: "7d", label: "Last 7 days" },
@@ -12,6 +17,16 @@ const RANGE_OPTIONS = [
 
 const number = (value) => Number(value || 0).toLocaleString();
 const currency = (value) => `NGN ${Number(value || 0).toLocaleString()}`;
+const payoutStatusOptions = [
+  { value: "", label: "All requests" },
+  { value: "pending_review", label: "Pending" },
+  { value: "needs_creator_action", label: "Needs action" },
+  { value: "approved", label: "Approved" },
+  { value: "processing", label: "Processing" },
+  { value: "paid", label: "Paid" },
+  { value: "failed", label: "Failed" },
+  { value: "rejected", label: "Rejected" },
+];
 const eventLabel = (value = "") =>
   String(value || "")
     .split("_")
@@ -30,27 +45,32 @@ const dateTime = (value) => {
 export default function AdminCreatorEarningsPage({ user }) {
   const navigate = useNavigate();
   const [range, setRange] = useState("30d");
+  const [payoutStatus, setPayoutStatus] = useState("");
   const [payload, setPayload] = useState(null);
   const [ledger, setLedger] = useState(null);
+  const [payoutRequests, setPayoutRequests] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [payoutActionBusy, setPayoutActionBusy] = useState("");
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const [next, ledgerPayload] = await Promise.all([
+      const [next, ledgerPayload, payoutPayload] = await Promise.all([
         adminGetCreatorEarningsRepository({ range }),
         adminGetRevenueLedger({ range, limit: 12 }),
+        adminListCreatorPayoutRequests({ status: payoutStatus, limit: 8 }),
       ]);
       setPayload(next || null);
       setLedger(ledgerPayload || null);
+      setPayoutRequests(payoutPayload || null);
     } catch (err) {
       setError(err?.message || "Failed to load creator earnings repository");
     } finally {
       setLoading(false);
     }
-  }, [range]);
+  }, [payoutStatus, range]);
 
   useEffect(() => {
     load();
@@ -64,6 +84,56 @@ export default function AdminCreatorEarningsPage({ user }) {
   const ledgerSummary = ledger?.summary || {};
   const ledgerBalances = ledger?.balances || [];
   const ledgerRecentEntries = ledger?.recentEntries || [];
+  const payoutRequestRows = payoutRequests?.requests || [];
+  const payoutRequestSummary = payoutRequests?.summary || {};
+
+  const reviewPayoutRequest = async (entry, nextStatus) => {
+    const adminNote = window.prompt(
+      `Admin note for ${eventLabel(nextStatus)}:`,
+      entry.adminNote || ""
+    );
+    if (adminNote === null) {
+      return;
+    }
+
+    let creatorMessage = "";
+    if (["needs_creator_action", "rejected", "failed", "paid"].includes(nextStatus)) {
+      creatorMessage = window.prompt(
+        "Creator-visible message:",
+        entry.creatorVisibleMessage || ""
+      );
+      if (creatorMessage === null) {
+        return;
+      }
+    }
+
+    let payoutReference = entry.payoutReference || "";
+    if (nextStatus === "paid") {
+      payoutReference = window.prompt(
+        "Payout reference:",
+        entry.payoutReference || entry.requestReference || ""
+      );
+      if (payoutReference === null) {
+        return;
+      }
+    }
+
+    setPayoutActionBusy(`${entry.id}:${nextStatus}`);
+    setError("");
+    try {
+      await adminUpdateCreatorPayoutRequestStatus(entry.id, {
+        status: nextStatus,
+        adminNote,
+        creatorMessage,
+        payoutReference,
+      });
+      await load();
+    } catch (err) {
+      setError(err?.message || "Failed to update payout request");
+    } finally {
+      setPayoutActionBusy("");
+    }
+  };
 
   const headlineCards = useMemo(
     () => [
@@ -119,6 +189,149 @@ export default function AdminCreatorEarningsPage({ user }) {
               </article>
             ))}
           </div>
+
+          <section className="adminx-panel adminx-panel--span-12">
+            <div className="adminx-panel-head">
+              <div>
+                <h2 className="adminx-panel-title">Creator Payout Review</h2>
+                <span className="adminx-section-meta">Requests validated against creator readiness and available wallet balance</span>
+              </div>
+              <div className="adminx-filter-row">
+                {payoutStatusOptions.map((option) => (
+                  <button
+                    key={option.value || "all"}
+                    type="button"
+                    className={`adminx-tab ${payoutStatus === option.value ? "is-active" : ""}`}
+                    onClick={() => setPayoutStatus(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="adminx-ops-grid">
+              {[
+                ["Requested", currency(payoutRequestSummary.requestedAmount)],
+                ["Open", currency(payoutRequestSummary.openAmount)],
+                ["Paid", currency(payoutRequestSummary.paidAmount)],
+                ["Pending", number(payoutRequestSummary.statusCounts?.pending_review)],
+              ].map(([label, value]) => (
+                <div key={label} className="adminx-ops-metric">
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+
+            <div className="adminx-table-wrap adminx-table-wrap--flush">
+              <table className="adminx-table">
+                <thead>
+                  <tr>
+                    <th>Requested</th>
+                    <th>Creator</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Reference</th>
+                    <th>Message</th>
+                    <th>Review</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payoutRequestRows.map((entry) => (
+                    <tr key={entry.id}>
+                      <td>{dateTime(entry.requestedAt)}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="adminx-link-btn adminx-link-btn--inline"
+                          onClick={() => navigate(`/admin/creators/${entry.creatorProfileId}`)}
+                        >
+                          {entry.creatorDisplayName}
+                        </button>
+                      </td>
+                      <td>{currency(entry.amount)}</td>
+                      <td>{eventLabel(entry.status)}</td>
+                      <td>{entry.payoutReference || entry.requestReference || "-"}</td>
+                      <td>{entry.creatorVisibleMessage || entry.adminNote || "-"}</td>
+                      <td>
+                        <div className="adminx-action-row">
+                          {["pending_review", "needs_creator_action"].includes(entry.status) ? (
+                            <>
+                              <button
+                                type="button"
+                                className="adminx-btn"
+                                disabled={Boolean(payoutActionBusy)}
+                                onClick={() => reviewPayoutRequest(entry, "approved")}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                className="adminx-btn"
+                                disabled={Boolean(payoutActionBusy)}
+                                onClick={() => reviewPayoutRequest(entry, "needs_creator_action")}
+                              >
+                                Need action
+                              </button>
+                            </>
+                          ) : null}
+                          {["approved", "failed"].includes(entry.status) ? (
+                            <button
+                              type="button"
+                              className="adminx-btn"
+                              disabled={Boolean(payoutActionBusy)}
+                              onClick={() => reviewPayoutRequest(entry, "processing")}
+                            >
+                              Process
+                            </button>
+                          ) : null}
+                          {entry.status === "processing" ? (
+                            <>
+                              <button
+                                type="button"
+                                className="adminx-btn adminx-btn--primary"
+                                disabled={Boolean(payoutActionBusy)}
+                                onClick={() => reviewPayoutRequest(entry, "paid")}
+                              >
+                                Paid
+                              </button>
+                              <button
+                                type="button"
+                                className="adminx-btn adminx-btn--danger"
+                                disabled={Boolean(payoutActionBusy)}
+                                onClick={() => reviewPayoutRequest(entry, "failed")}
+                              >
+                                Failed
+                              </button>
+                            </>
+                          ) : null}
+                          {["pending_review", "needs_creator_action", "approved"].includes(entry.status) ? (
+                            <button
+                              type="button"
+                              className="adminx-btn adminx-btn--danger"
+                              disabled={Boolean(payoutActionBusy)}
+                              onClick={() => reviewPayoutRequest(entry, "rejected")}
+                            >
+                              Reject
+                            </button>
+                          ) : null}
+                          {["paid", "rejected"].includes(entry.status) ? <span className="adminx-muted">Final</span> : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {!payoutRequestRows.length ? (
+                    <tr>
+                      <td colSpan={7} className="adminx-table-empty">
+                        No creator payout requests found.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
           <div className="adminx-analytics-grid">
             <section className="adminx-panel adminx-panel--span-5">

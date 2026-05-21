@@ -31,7 +31,7 @@ const toUploadedFiles = (value) => {
   );
 };
 
-const validateCreatePostUploads = (req, res, next) => {
+const validatePostUploads = (req, res, next) => {
   try {
     const files = toUploadedFiles(req.files || req.file);
 
@@ -70,7 +70,7 @@ router.post(
   "/",
   auth,
   upload.any(),
-  validateCreatePostUploads,
+  validatePostUploads,
   moderateUpload({
     sourceType: "post",
     titleFields: ["text", "title", "caption"],
@@ -82,7 +82,19 @@ router.post(
 router.get("/", optionalAuth, postController.getFeed);
 router.get("/user/:username", auth, postController.getUserPosts);
 router.get("/:id", optionalAuth, postController.getPostById);
-router.put("/:id", auth, postController.updatePost);
+router.put(
+  "/:id",
+  auth,
+  upload.any(),
+  validatePostUploads,
+  moderateUpload({
+    sourceType: "post",
+    titleFields: ["text", "title", "caption"],
+    descriptionFields: ["text", "description", "caption"],
+    deferDecisionResponse: true,
+  }),
+  postController.updatePost
+);
 router.delete("/:id", auth, postController.deletePost);
 router.post("/:id/like", auth, postController.toggleLike);
 router.post("/:id/share", auth, postController.sharePost);

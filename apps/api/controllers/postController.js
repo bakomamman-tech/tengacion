@@ -42,8 +42,10 @@ exports.updatePost = catchAsync(async (req, res) => {
     userId: req.user.id,
     postId: req.params.id,
     text: req.body.text,
+    files: req.files,
+    moderationUpload: req.moderationUpload,
   });
-  res.json(payload);
+  res.status(Number(payload?.httpStatus) || 200).json(payload);
 });
 
 exports.deletePost = catchAsync(async (req, res) => {

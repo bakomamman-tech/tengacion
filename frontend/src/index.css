@@ -13626,6 +13626,98 @@ html.dark-mode .comments-v2--panel .comment-v2-children {
   resize: vertical;
 }
 
+.pc-edit-media {
+  margin-top: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.pc-edit-media-section {
+  display: grid;
+  gap: 8px;
+}
+
+.pc-edit-media-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.pc-edit-media-heading span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.pc-edit-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+}
+
+.pc-edit-media-item {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+
+.pc-edit-media-item img,
+.pc-edit-media-item video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: #0f172a;
+}
+
+.pc-edit-media-item span {
+  display: block;
+  padding: 6px 8px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-edit-media-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pc-edit-media-button {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 800;
+  padding: 8px 12px;
+}
+
+.pc-edit-media-button:hover {
+  border-color: rgba(42, 111, 79, 0.45);
+}
+
+.pc-edit-media-button--ghost {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.pc-edit-media-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
 .pc-divider {
   border-top: 1px solid var(--border);
   margin: 14px 0;

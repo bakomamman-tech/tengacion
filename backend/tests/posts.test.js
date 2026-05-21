@@ -215,6 +215,74 @@ describe("Posts feed", () => {
     expect(cloudinary.uploader.upload_stream).toHaveBeenCalledTimes(2);
   });
 
+  test("PUT /api/posts/:id replaces uploaded post images", async () => {
+    const post = await Post.create({
+      author: artist._id,
+      text: "Original caption",
+      media: [
+        {
+          publicId: "tengacion/posts/images/old-photo",
+          public_id: "tengacion/posts/images/old-photo",
+          url: "https://res.cloudinary.com/test-cloud/image/upload/v1/tengacion/posts/images/old-photo.jpg",
+          secureUrl:
+            "https://res.cloudinary.com/test-cloud/image/upload/v1/tengacion/posts/images/old-photo.jpg",
+          secure_url:
+            "https://res.cloudinary.com/test-cloud/image/upload/v1/tengacion/posts/images/old-photo.jpg",
+          resourceType: "image",
+          resource_type: "image",
+          provider: "cloudinary",
+          type: "image",
+        },
+      ],
+      type: "image",
+      privacy: "public",
+    });
+
+    const response = await request(app)
+      .put(`/api/posts/${post._id}`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .field("text", "Updated caption")
+      .attach("media", Buffer.from("replacement-image"), {
+        filename: "replacement.png",
+        contentType: "image/png",
+      })
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      _id: post._id.toString(),
+      text: "Updated caption",
+      type: "image",
+      edited: true,
+    });
+    expect(response.body.image).toContain("https://res.cloudinary.com/test-cloud/image/upload/");
+
+    const stored = await Post.findById(post._id).lean();
+    expect(stored.media).toHaveLength(1);
+    expect(stored.media[0]).toMatchObject({
+      publicId: "tengacion/posts/images/mock-1",
+      type: "image",
+      mimeType: "image/png",
+      originalFilename: "replacement.png",
+    });
+    expect(stored.text).toBe("Updated caption");
+    expect(stored.edited).toBe(true);
+
+    expect(cloudinary.uploader.upload_stream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folder: "tengacion/posts/images",
+        resource_type: "image",
+      }),
+      expect.any(Function)
+    );
+    expect(cloudinary.uploader.destroy).toHaveBeenCalledWith(
+      "tengacion/posts/images/old-photo",
+      expect.objectContaining({
+        resource_type: "image",
+        invalidate: true,
+      })
+    );
+  });
+
   test("POST /api/posts rejects unsupported upload types", async () => {
     const response = await request(app)
       .post("/api/posts")

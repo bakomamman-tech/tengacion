@@ -52,6 +52,8 @@ describe("PostCard reactions", () => {
 
     globalThis.IntersectionObserver = MockIntersectionObserver;
     globalThis.ResizeObserver = MockResizeObserver;
+    globalThis.URL.createObjectURL = vi.fn(() => "blob:post-edit-preview");
+    globalThis.URL.revokeObjectURL = vi.fn();
     apiRequestMock.mockReset();
   });
 
@@ -61,11 +63,11 @@ describe("PostCard reactions", () => {
     vi.restoreAllMocks();
   });
 
-  const renderPostCard = (post) =>
+  const renderPostCard = (post, props = {}) =>
     render(
       <MemoryRouter initialEntries={["/home"]}>
         <Routes>
-          <Route path="/home" element={<PostCard post={post} />} />
+          <Route path="/home" element={<PostCard post={post} {...props} />} />
         </Routes>
       </MemoryRouter>
     );
@@ -120,5 +122,73 @@ describe("PostCard reactions", () => {
         "true"
       )
     );
+  });
+
+  it("submits replacement pictures from the edit post modal", async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    apiRequestMock.mockResolvedValueOnce({
+      _id: "post-1",
+      text: "Updated caption",
+      media: [{ url: "https://cdn.test/replacement.jpg", type: "image" }],
+      image: "https://cdn.test/replacement.jpg",
+      isOwner: true,
+    });
+
+    renderPostCard(
+      {
+        _id: "post-1",
+        text: "Original caption",
+        image: "https://cdn.test/original.jpg",
+        createdAt: "2026-03-30T10:00:00.000Z",
+        isOwner: true,
+        user: {
+          _id: "user-1",
+          name: "Admin User",
+          username: "admin",
+          profilePic: "",
+        },
+        comments: [],
+        likesCount: 0,
+        shareCount: 0,
+        likedByViewer: false,
+      },
+      { onEdit }
+    );
+
+    await user.click(screen.getByTitle("More"));
+    await user.click(screen.getByRole("button", { name: /^Edit post$/i }));
+
+    const textarea = screen.getByRole("textbox");
+    await user.clear(textarea);
+    await user.type(textarea, "Updated caption");
+
+    const replacement = new File(["replacement-image"], "replacement.png", {
+      type: "image/png",
+    });
+    const fileInput = document.querySelector('input[type="file"]');
+    await user.upload(fileInput, replacement);
+
+    expect(screen.getByText(/replacement pictures/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await waitFor(() => expect(apiRequestMock).toHaveBeenCalledTimes(1));
+    expect(apiRequestMock).toHaveBeenCalledWith(
+      "/api/posts/post-1",
+      expect.objectContaining({
+        method: "PUT",
+        body: expect.any(FormData),
+      })
+    );
+
+    const requestOptions = apiRequestMock.mock.calls[0][1];
+    expect(requestOptions.body.get("text")).toBe("Updated caption");
+    expect(requestOptions.body.getAll("media")).toHaveLength(1);
+    expect(requestOptions.body.getAll("media")[0].name).toBe("replacement.png");
+    await waitFor(() => expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({
+      _id: "post-1",
+      text: "Updated caption",
+    })));
   });
 });

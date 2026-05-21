@@ -136,6 +136,30 @@ const getTaggedUserHeadline = (person = {}) => {
   return name || (username ? `@${username}` : "");
 };
 
+const EDIT_POST_MAX_IMAGE_FILES = 10;
+const EDIT_POST_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
+const formatEditMediaSize = (bytes = 0) => {
+  const value = Number(bytes) || 0;
+  if (value >= 1024 * 1024) {
+    return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  if (value >= 1024) {
+    return `${Math.round(value / 1024)} KB`;
+  }
+  return `${value} B`;
+};
+
+const getEditablePostMedia = (post = {}) => {
+  const normalized = normalizePostMedia(Array.isArray(post?.media) ? post.media : []);
+  if (normalized.length > 0) {
+    return normalized;
+  }
+
+  const image = resolveImage(post?.image || post?.photo || "");
+  return image ? [{ id: "post-image", url: image, type: "image" }] : [];
+};
+
 /* ======================================================
    EDIT MODAL
    ====================================================== */
@@ -143,7 +167,14 @@ const getTaggedUserHeadline = (person = {}) => {
 function EditPostModal({ post, onClose, onSave }) {
   const [text, setText] = useState(post?.text || "");
   const [loading, setLoading] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [selectedPreviews, setSelectedPreviews] = useState([]);
+  const [mediaError, setMediaError] = useState("");
   const boxRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const currentMedia = useMemo(() => getEditablePostMedia(post), [post]);
+  const hasReplacementMedia = selectedFiles.length > 0;
+  const canSave = Boolean(text.trim() || hasReplacementMedia || currentMedia.length > 0);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -166,21 +197,110 @@ function EditPostModal({ post, onClose, onSave }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  useEffect(
+    () => () => {
+      selectedPreviews.forEach((preview) => {
+        if (preview?.previewUrl) {
+          URL.revokeObjectURL(preview.previewUrl);
+        }
+      });
+    },
+    [selectedPreviews]
+  );
+
+  const replaceSelectedMedia = useCallback((files = []) => {
+    setSelectedPreviews((current) => {
+      current.forEach((preview) => {
+        if (preview?.previewUrl) {
+          URL.revokeObjectURL(preview.previewUrl);
+        }
+      });
+
+      return (Array.isArray(files) ? files : []).map((file, index) => ({
+        id: `${file?.name || "image"}-${file?.lastModified || Date.now()}-${index}`,
+        name: file?.name || "Selected photo",
+        previewUrl: URL.createObjectURL(file),
+        size: Number(file?.size || 0),
+      }));
+    });
+    setSelectedFiles(Array.isArray(files) ? files : []);
+  }, []);
+
+  const validatePickedImages = (files = []) => {
+    const images = (Array.isArray(files) ? files : []).filter(Boolean);
+    if (images.length === 0) {
+      return "Choose at least one photo.";
+    }
+    if (images.length > EDIT_POST_MAX_IMAGE_FILES) {
+      return "You can replace a post with up to 10 photos.";
+    }
+
+    const unsupported = images.find((file) => !String(file?.type || "").startsWith("image/"));
+    if (unsupported) {
+      return "Only image files can replace post pictures.";
+    }
+
+    const oversized = images.find((file) => (Number(file?.size) || 0) > EDIT_POST_MAX_IMAGE_BYTES);
+    if (oversized) {
+      return "Each replacement photo must be 10MB or smaller.";
+    }
+
+    return "";
+  };
+
+  const handleMediaChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+
+    const validationMessage = validatePickedImages(files);
+    if (validationMessage) {
+      setMediaError(validationMessage);
+      return;
+    }
+
+    replaceSelectedMedia(files);
+    setMediaError("");
+  };
+
+  const clearReplacementMedia = () => {
+    replaceSelectedMedia([]);
+    setMediaError("");
+  };
+
   const submit = async () => {
-    if (!text.trim() || loading) {
+    if (!canSave || loading) {
       return;
     }
 
     try {
       setLoading(true);
 
-      const data = await apiRequest(`/api/posts/${post._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text }),
-      });
+      const requestOptions = hasReplacementMedia
+        ? (() => {
+            const form = new FormData();
+            form.append("text", text.trim());
+            selectedFiles.forEach((file) => form.append("media", file));
+            return {
+              method: "PUT",
+              body: form,
+              timeoutMs: 10 * 60 * 1000,
+            };
+          })()
+        : {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ text }),
+          };
+
+      const data = await apiRequest(`/api/posts/${post._id}`, requestOptions);
+
+      if (!data?._id) {
+        toast.success(data?.message || "Your replacement media was submitted for review.");
+        onClose();
+        return;
+      }
 
       onSave(data);
       onClose();
@@ -208,9 +328,84 @@ function EditPostModal({ post, onClose, onSave }) {
           autoFocus
         />
 
+        {(currentMedia.length > 0 || selectedPreviews.length > 0 || mediaError) && (
+          <div className="pc-edit-media">
+            {currentMedia.length > 0 && (
+              <div className="pc-edit-media-section">
+                <div className="pc-edit-media-heading">
+                  <strong>Current pictures</strong>
+                  {hasReplacementMedia && <span>Will be replaced after saving</span>}
+                </div>
+                <div className="pc-edit-media-grid">
+                  {currentMedia.map((entry, index) => {
+                    const mediaUrl = resolveImage(entry?.previewUrl || entry?.url || "");
+                    return (
+                      <div className="pc-edit-media-item" key={entry?.id || mediaUrl || index}>
+                        {String(entry?.type || "").toLowerCase() === "video" ? (
+                          <video src={mediaUrl} muted preload="metadata" />
+                        ) : (
+                          <img src={mediaUrl} alt={`Current post media ${index + 1}`} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {selectedPreviews.length > 0 && (
+              <div className="pc-edit-media-section">
+                <div className="pc-edit-media-heading">
+                  <strong>Replacement pictures</strong>
+                  <span>{selectedPreviews.length}/10 selected</span>
+                </div>
+                <div className="pc-edit-media-grid">
+                  {selectedPreviews.map((preview) => (
+                    <div className="pc-edit-media-item" key={preview.id}>
+                      <img src={preview.previewUrl} alt={preview.name} />
+                      <span title={preview.name}>
+                        {preview.name} · {formatEditMediaSize(preview.size)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {mediaError && <p className="pc-edit-media-error">{mediaError}</p>}
+          </div>
+        )}
+
+        <div className="pc-edit-media-actions">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={handleMediaChange}
+          />
+          <button
+            type="button"
+            className="pc-edit-media-button"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {hasReplacementMedia ? "Choose different pictures" : "Change pictures"}
+          </button>
+          {hasReplacementMedia && (
+            <button
+              type="button"
+              className="pc-edit-media-button pc-edit-media-button--ghost"
+              onClick={clearReplacementMedia}
+            >
+              Keep current pictures
+            </button>
+          )}
+        </div>
+
         <button
-          className={`pc-submit ${text.trim() ? "active" : ""}`}
-          disabled={!text.trim() || loading}
+          className={`pc-submit ${canSave ? "active" : ""}`}
+          disabled={!canSave || loading}
           onClick={submit}
         >
           {loading ? "Saving..." : "Save changes"}

@@ -1844,22 +1844,270 @@ class PostService {
     return attachPostModerationOverlays(posts, viewerId);
   }
 
-  static async updatePost({ userId, postId, text }) {
+  static async updatePost({ userId, postId, text, files, moderationUpload = null }) {
     if (!mongoose.Types.ObjectId.isValid(postId)) {
       throw ApiError.badRequest("Invalid post id");
     }
 
     const normalizedText = normalizeText(text, 5000);
-    if (!normalizedText) {
-      throw ApiError.badRequest("Post text is required");
-    }
+    const uploadFiles = ensureValidPostUploadFiles(collectPostUploadFiles(files));
 
     const post = await postRepository.findOne({ _id: postId, author: userId });
     if (!post) throw ApiError.notFound("Post not found");
 
+    const existingHasMedia = Boolean(
+      (Array.isArray(post.media) && post.media.length > 0) || post.video
+    );
+    if (!normalizedText && uploadFiles.length === 0 && !existingHasMedia) {
+      throw ApiError.badRequest("Post cannot be empty");
+    }
+
+    const oldAssets = collectPostCloudinaryAssets(post.toObject ? post.toObject() : post);
+
     post.text = normalizedText;
     post.edited = true;
+
+    if (uploadFiles.length > 0) {
+      const viewer = await userRepository.findById(userId);
+      const firstUploadFile = uploadFiles[0] || null;
+      const firstVideoUploadFile = getFirstVideoUploadFile(uploadFiles);
+      const hasUploadVideo = Boolean(firstVideoUploadFile);
+
+      const preflightModerationMedia = buildPostModerationMedia({
+        media: [],
+        uploadFiles,
+      });
+      const preflightResult = await createOrUpdateModerationCase({
+        targetType: "post_upload",
+        targetId: `pending:post_edit:${userId}:${new mongoose.Types.ObjectId().toString()}`,
+        title: normalizedText.slice(0, 240),
+        description: normalizedText,
+        metadata: {
+          type: hasUploadVideo ? "video" : "image",
+          editOfPostId: postId,
+        },
+        media: preflightModerationMedia,
+        uploader: {
+          userId,
+          email: viewer?.email || "",
+          username: viewer?.username || "",
+          displayName: viewer?.name || "",
+        },
+        detectionSource: "automated_upload_scan",
+        req: null,
+        subjectMediaType: hasUploadVideo ? "video" : inferMediaKind(firstUploadFile),
+      });
+
+      const moderationUploadDecision = mergeModerationDecisions({
+        nextDecision: moderationUpload || null,
+        legacyStatus: preflightResult.moderationDecision?.status || "",
+      });
+
+      if (moderationUploadDecision.decision !== "approve") {
+        const tempTargetId = `pending:post_edit:${userId}:${new mongoose.Types.ObjectId().toString()}`;
+        const quarantinedMedia = [];
+        for (const uploadFile of uploadFiles) {
+          const quarantined = await moveToQuarantineStorage({
+            file: uploadFile,
+            caseId: tempTargetId,
+            stage: "quarantine",
+          });
+          quarantinedMedia.push({
+            role: quarantinedMedia.length === 0 ? "primary" : `attachment_${quarantinedMedia.length + 1}`,
+            mediaType: inferMediaKind(uploadFile),
+            mimeType: uploadFile.mimetype || "",
+            sourceUrl: quarantined.fileUrl,
+            previewUrl: quarantined.fileUrl,
+            originalFilename: uploadFile.originalname || uploadFile.filename || "",
+            fileSizeBytes: Number(uploadFile.size || 0),
+          });
+        }
+        await createUploadModerationCase({
+          targetType: "post_edit_upload",
+          targetId: tempTargetId,
+          uploader: {
+            userId,
+            email: viewer?.email || "",
+            username: viewer?.username || "",
+            displayName: viewer?.name || "",
+          },
+          fileUrl: quarantinedMedia[0]?.sourceUrl || "",
+          mimeType: quarantinedMedia[0]?.mimeType || "",
+          labels: moderationUploadDecision.labels || [],
+          reason: moderationUploadDecision.reason || "",
+          confidence: moderationUploadDecision.confidence || 0,
+          status: moderationUploadDecision.decision === "quarantine" ? "quarantined" : "rejected",
+          visibility: moderationUploadDecision.decision === "quarantine" ? "private" : "blocked",
+          storageStage: "quarantine",
+          subject: {
+            title: normalizedText.slice(0, 240),
+            description: normalizedText,
+            mediaType: hasUploadVideo ? "video" : inferMediaKind(firstUploadFile),
+            createdAt: new Date(),
+          },
+          media: quarantinedMedia,
+          file: firstUploadFile,
+        });
+
+        if (moderationUploadDecision.decision === "reject") {
+          return {
+            success: false,
+            moderationStatus: preflightResult.moderationDecision?.status || "rejected",
+            reviewRequired: false,
+            message: "This upload violates Tengacion safety rules and could not be published.",
+            httpStatus: 422,
+          };
+        }
+
+        return {
+          success: true,
+          moderationStatus: "quarantined",
+          reviewRequired: true,
+          message: "Your replacement media is under review. The current post media is unchanged for now.",
+          httpStatus: 202,
+        };
+      }
+
+      let videoMeta = null;
+      if (firstVideoUploadFile) {
+        videoMeta = {
+          url: "",
+          playbackUrl: "",
+          thumbnailUrl: "",
+          duration: 0,
+          width: 0,
+          height: 0,
+          sizeBytes: Number(firstVideoUploadFile.size) || 0,
+          mimeType: normalizeMimeType(firstVideoUploadFile.mimetype),
+        };
+      }
+      validateVideoMeta(videoMeta);
+
+      const media = [];
+      for (const uploadFile of uploadFiles) {
+        const uploadKind = inferMediaKind(uploadFile);
+        const persisted = await saveUploadedMedia(uploadFile, {
+          source: uploadKind === "video" ? "post_video" : "post_image",
+          resourceType: uploadKind === "video" ? "video" : "image",
+        });
+        media.push(
+          buildPostMediaEntry(
+            {
+              ...persisted,
+              mimeType: uploadFile.mimetype || "",
+            },
+            uploadKind
+          )
+        );
+
+        if (
+          uploadKind === "video" &&
+          (!videoMeta?.playbackUrl || !videoMeta?.publicId)
+        ) {
+          videoMeta = buildCloudinaryVideoMeta(persisted, uploadFile, videoMeta);
+        }
+      }
+
+      const replacementType =
+        hasUploadVideo
+          ? post.type === "reel" && uploadFiles.length === 1 ? "reel" : "video"
+          : "image";
+      const visibility = toVisibility(post.visibility || post.privacy);
+      const privacy = toPrivacy(post.privacy || post.visibility);
+      const hashtags = extractHashtags(normalizedText);
+      const mentions = await resolveMentionUserIds(normalizedText);
+      const moderationMedia = buildPostModerationMedia({
+        media,
+        video: ["video", "reel"].includes(replacementType) ? videoMeta : null,
+        uploadFiles,
+      });
+      const { moderationDecision, moderationCase } = await createOrUpdateModerationCase({
+        targetType: "post",
+        targetId: post._id.toString(),
+        title: normalizedText.slice(0, 240),
+        description: normalizedText,
+        metadata: {
+          type: replacementType,
+          visibility,
+          privacy,
+          editOfPostId: post._id.toString(),
+        },
+        media: moderationMedia,
+        uploader: {
+          userId,
+          email: viewer?.email || "",
+          username: viewer?.username || "",
+          displayName: viewer?.name || "",
+        },
+        detectionSource: "automated_upload_scan",
+        req: null,
+      });
+
+      post.media = media;
+      post.video = ["video", "reel"].includes(replacementType) ? videoMeta : null;
+      post.type = replacementType;
+      post.hashtags = hashtags;
+      post.mentions = mentions;
+      post.moderationStatus = "approved";
+      post.moderationLabels = moderationUploadDecision.labels || [];
+      post.moderationReason = moderationUploadDecision.reason || "";
+      post.moderationConfidence = Number(moderationUploadDecision.confidence || 0);
+      post.reviewedBy = null;
+      post.reviewedAt = null;
+      post.storageStage = "permanent";
+      post.sensitiveContent = false;
+      post.sensitiveType = "";
+      post.blurPreviewUrl = "";
+      post.reviewRequired = false;
+
+      if (moderationCase?._id) {
+        const publicSensitivity = resolvePublicSensitivity({
+          moderationStatus: moderationCase.status,
+          queue: moderationCase.queue,
+        });
+        post.moderationStatus = publicSensitivity.moderationStatus;
+        post.moderationCaseId = moderationCase._id;
+        post.sensitiveContent = publicSensitivity.sensitiveContent;
+        post.sensitiveType = publicSensitivity.sensitiveType;
+        post.blurPreviewUrl = moderationCase.media?.[0]?.restrictedPreviewUrl || "";
+        post.originalVisibility = visibility;
+        post.reviewRequired = publicSensitivity.moderationStatus === "HOLD_FOR_REVIEW";
+      }
+
+      await logAnalyticsEvent({
+        type: "post_media_replaced",
+        userId,
+        targetId: post._id,
+        targetType: "post",
+        metadata: {
+          type: replacementType,
+          mediaCount: media.length,
+        },
+      }).catch(() => null);
+
+      if (
+        moderationDecision?.status === "BLOCK_SUSPECTED_CHILD_EXPLOITATION"
+        || moderationDecision?.status === "BLOCK_EXPLICIT_ADULT"
+      ) {
+        await deleteUploadedMediaBatch(media).catch(() => null);
+        return {
+          success: false,
+          moderationStatus: moderationDecision.status,
+          reviewRequired: false,
+          message: "This upload violates Tengacion's safety rules and cannot be published.",
+          httpStatus: 422,
+        };
+      }
+    } else {
+      post.hashtags = extractHashtags(normalizedText);
+      post.mentions = await resolveMentionUserIds(normalizedText);
+    }
+
     await post.save();
+
+    if (uploadFiles.length > 0 && oldAssets.length > 0) {
+      await deleteUploadedMediaBatch(oldAssets).catch(() => null);
+    }
 
     const updated = await withPostAuthor(Post.findById(post._id)).lean();
     return toPostPayload(updated, userId);

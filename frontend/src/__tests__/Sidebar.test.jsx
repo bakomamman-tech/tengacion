@@ -108,10 +108,19 @@ describe("Sidebar", () => {
     expect(screen.getByRole("navigation")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /home/i })).toBeInTheDocument();
     expect(container.querySelector(".sidebar-mobile-feature")).not.toBeInTheDocument();
+
+    const raffleCard = container.querySelector(".sidebar-raffle-card");
+    const sponsoredCard = container.querySelector(".sidebar-sponsored-card");
+    expect(raffleCard).toBeInTheDocument();
+    expect(sponsoredCard).toBeInTheDocument();
+    expect(raffleCard.compareDocumentPosition(sponsoredCard)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+
     await waitForSponsoredPoll();
   });
 
-  it("renders the raffle card on mobile instead of the desktop nav", async () => {
+  it("renders the raffle card first on mobile instead of the desktop nav", async () => {
     setMatchMedia(true);
 
     const { container } = render(
@@ -122,6 +131,15 @@ describe("Sidebar", () => {
     expect(container.querySelector(".sidebar-mobile-feature")).toBeInTheDocument();
     expect(screen.getByText(/recharge raffle/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /play/i })).toBeInTheDocument();
+
+    const feature = container.querySelector(".sidebar-mobile-feature");
+    const raffleCard = feature.querySelector(".sidebar-raffle-card");
+    const sponsoredCard = feature.querySelector(".sidebar-sponsored-card");
+    expect(feature.firstElementChild).toBe(raffleCard);
+    expect(raffleCard.compareDocumentPosition(sponsoredCard)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+
     await waitForSponsoredPoll();
   });
 
@@ -189,8 +207,12 @@ describe("Sidebar", () => {
     });
   });
 
-  it("hides the raffle for completed profiles with an uploaded avatar", async () => {
+  it("uses the raffle status API when a complete local profile may not have spun yet", async () => {
     setMatchMedia(false);
+    getRechargeRaffleStatus.mockResolvedValueOnce({
+      visibility: { visible: true, reason: "available" },
+      play: null,
+    });
 
     render(
       <Sidebar
@@ -208,9 +230,38 @@ describe("Sidebar", () => {
       />
     );
 
+    expect(await screen.findByText(/recharge raffle/i)).toBeInTheDocument();
+    expect(getRechargeRaffleStatus).toHaveBeenCalled();
+    await waitForSponsoredPoll();
+  });
+
+  it("hides the raffle when the account status says the completed profile is unavailable", async () => {
+    setMatchMedia(false);
+    getRechargeRaffleStatus.mockResolvedValueOnce({
+      visibility: { visible: false, reason: "profile_complete_with_photo" },
+    });
+
+    render(
+      <Sidebar
+        user={{
+          _id: "user-1",
+          name: "Ada",
+          username: "ada",
+          email: "ada@example.com",
+          phone: "+2348012345678",
+          country: "Nigeria",
+          dob: "1998-05-12T00:00:00.000Z",
+          gender: "female",
+          avatar: { url: "/uploads/ada.jpg" },
+        }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(getRechargeRaffleStatus).toHaveBeenCalled();
+    });
     expect(screen.queryByRole("button", { name: /spin & win/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/recharge raffle/i)).not.toBeInTheDocument();
-    expect(getRechargeRaffleStatus).not.toHaveBeenCalled();
     await waitForSponsoredPoll();
   });
 

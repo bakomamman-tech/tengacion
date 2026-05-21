@@ -436,14 +436,7 @@ export default function Sidebar({ user, openChat, openProfile }) {
       };
     }
 
-    if (raffleProfileHidden) {
-      setRaffleVisible(false);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setRaffleVisible(true);
+    setRaffleVisible(!raffleProfileHidden);
     getRechargeRaffleStatus()
       .then((payload) => {
         if (!cancelled) {
@@ -488,8 +481,6 @@ export default function Sidebar({ user, openChat, openProfile }) {
   if (isMobileSidebar) {
     return (
       <div className="sidebar-mobile-feature">
-        <SponsoredChildrenDayCard user={user} />
-
         {raffleVisible ? (
           <RaffleGameCard
             isExpanded={isRaffleExpanded}
@@ -497,6 +488,8 @@ export default function Sidebar({ user, openChat, openProfile }) {
             onPlay={openRaffleGame}
           />
         ) : null}
+
+        <SponsoredChildrenDayCard user={user} />
       </div>
     );
   }
@@ -512,6 +505,14 @@ export default function Sidebar({ user, openChat, openProfile }) {
       </button>
 
       <div className="sb-divider" />
+
+      {raffleVisible ? (
+        <RaffleGameCard
+          isExpanded={isRaffleExpanded}
+          onToggle={toggleRaffleCard}
+          onPlay={openRaffleGame}
+        />
+      ) : null}
 
       <SponsoredChildrenDayCard user={user} />
 
@@ -617,13 +618,6 @@ export default function Sidebar({ user, openChat, openProfile }) {
         </button>
       </div>
 
-      {raffleVisible ? (
-        <RaffleGameCard
-          isExpanded={isRaffleExpanded}
-          onToggle={toggleRaffleCard}
-          onPlay={openRaffleGame}
-        />
-      ) : null}
     </aside>
   );
 }

@@ -76,8 +76,8 @@ const statusBadgeClass = (status = "") => {
 const formatReliabilityMetric = (snapshot = {}) => {
   const metric = snapshot.metric || {};
   const value = number(metric.value);
-  const total = metric.total == null ? "" : ` / ${number(metric.total)}`;
-  const rate = metric.rate == null ? "" : ` (${percent(metric.rate)})`;
+  const total = metric.total === null || metric.total === undefined ? "" : ` / ${number(metric.total)}`;
+  const rate = metric.rate === null || metric.rate === undefined ? "" : ` (${percent(metric.rate)})`;
   const unit = metric.unit ? ` - ${metric.unit}` : "";
   return `${value}${total}${rate}${unit}`;
 };

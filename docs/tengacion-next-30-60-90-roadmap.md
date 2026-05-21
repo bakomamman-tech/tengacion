@@ -1,5 +1,8 @@
 # Tengacion Next 30/60/90 Day Execution Roadmap
 
+Follow-on roadmap:
+[Tengacion Scale 30/60/90 Day Execution Roadmap](./tengacion-scale-30-60-90-roadmap.md)
+
 ## Purpose
 
 This roadmap is the next execution cycle after the first Tengacion 30/60/90 roadmap. The first cycle made the marketplace, creator commerce, discovery, analytics, and Akuso foundations real. This cycle is about turning that foundation into a production operating system:

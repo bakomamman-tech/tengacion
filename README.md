@@ -68,6 +68,9 @@ Execution roadmaps for the marketplace and Akuso build cycles:
 - [`docs/tengacion-ecosystem-30-60-90-roadmap.md`](docs/tengacion-ecosystem-30-60-90-roadmap.md) - ecosystem cycle for creator services, fan community loops, partner integrations, ecosystem finance, multi-market readiness, and Akuso ecosystem support
 - [`docs/tengacion-network-30-60-90-roadmap.md`](docs/tengacion-network-30-60-90-roadmap.md) - network cycle for creator business networks, fan advocacy loops, partner and channel integrations, network finance, data products, governance, and Akuso network support
 - [`docs/tengacion-intelligence-30-60-90-roadmap.md`](docs/tengacion-intelligence-30-60-90-roadmap.md) - intelligence cycle for trusted data products, creator and fan intelligence, partner/API readiness, finance confidence, predictive operations, and Akuso intelligence support
+- [`docs/tengacion-automation-30-60-90-roadmap.md`](docs/tengacion-automation-30-60-90-roadmap.md) - automation cycle for workflow controls, creator and fan lifecycle automation, partner/API checks, finance validation, predictive operations, and Akuso automation support
+- [`docs/tengacion-orchestration-30-60-90-roadmap.md`](docs/tengacion-orchestration-30-60-90-roadmap.md) - orchestration cycle for workflow state, dependencies, approvals, creator and fan journeys, partner/API coordination, finance and trust routing, and Akuso workflow support
+- [`docs/tengacion-resilience-30-60-90-roadmap.md`](docs/tengacion-resilience-30-60-90-roadmap.md) - resilience cycle for SLOs, degradation modes, incident drills, rollback, finance resilience, partner/API continuity, trust response, and Akuso incident support
 
 ## Creator + Artist Enhancements
 - Artist profile now exposes `links` (Spotify, Instagram, Facebook, TikTok, YouTube, Apple Music, Audiomack, Boomplay, Website) plus a `customLinks` array.

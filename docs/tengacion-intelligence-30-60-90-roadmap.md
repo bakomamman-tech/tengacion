@@ -1,5 +1,8 @@
 # Tengacion Intelligence 30/60/90 Day Execution Roadmap
 
+Follow-on roadmap:
+[Tengacion Automation 30/60/90 Day Execution Roadmap](./tengacion-automation-30-60-90-roadmap.md)
+
 ## Purpose
 
 This roadmap is the eighth execution cycle after the foundation, operating-system, scale, expansion, platform, ecosystem, and network roadmaps. The earlier cycles made Tengacion usable, operable, launchable, expandable, platformized, ecosystem-ready, and network-aware. This cycle is about turning that network into an intelligence layer:

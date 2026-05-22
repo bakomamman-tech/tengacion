@@ -66,6 +66,8 @@ Execution roadmaps for the marketplace and Akuso build cycles:
 - [`docs/tengacion-expansion-30-60-90-roadmap.md`](docs/tengacion-expansion-30-60-90-roadmap.md) - expansion cycle for market scorecards, self-serve creator growth, referrals, campaigns, partner packages, automation, and unit economics
 - [`docs/tengacion-platform-30-60-90-roadmap.md`](docs/tengacion-platform-30-60-90-roadmap.md) - platform cycle for reusable workflow models, creator business tooling, fan relationship infrastructure, partner operations, data intelligence, and resilient governance
 - [`docs/tengacion-ecosystem-30-60-90-roadmap.md`](docs/tengacion-ecosystem-30-60-90-roadmap.md) - ecosystem cycle for creator services, fan community loops, partner integrations, ecosystem finance, multi-market readiness, and Akuso ecosystem support
+- [`docs/tengacion-network-30-60-90-roadmap.md`](docs/tengacion-network-30-60-90-roadmap.md) - network cycle for creator business networks, fan advocacy loops, partner and channel integrations, network finance, data products, governance, and Akuso network support
+- [`docs/tengacion-intelligence-30-60-90-roadmap.md`](docs/tengacion-intelligence-30-60-90-roadmap.md) - intelligence cycle for trusted data products, creator and fan intelligence, partner/API readiness, finance confidence, predictive operations, and Akuso intelligence support
 
 ## Creator + Artist Enhancements
 - Artist profile now exposes `links` (Spotify, Instagram, Facebook, TikTok, YouTube, Apple Music, Audiomack, Boomplay, Website) plus a `customLinks` array.

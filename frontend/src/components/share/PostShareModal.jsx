@@ -451,7 +451,7 @@ export default function PostShareModal({
     } finally {
       setBusyAction("");
     }
-  }, [busyAction, onShareCountChange, recordShare, resolvedPostId, shareUrl]);
+  }, [busyAction, recordShare, resolvedPostId, shareUrl]);
 
   const handleMessengerShare = useCallback(
     async (target) => {

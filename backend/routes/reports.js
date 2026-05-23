@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 let rateLimit;
 try {
   rateLimit = require("express-rate-limit");
@@ -6,6 +7,7 @@ try {
   rateLimit = () => (_req, _res, next) => next();
 }
 const auth = require("../middleware/auth");
+const requireRole = require("../middleware/requireRole");
 const Report = require("../models/Report");
 const User = require("../models/User");
 const Post = require("../models/Post");
@@ -205,10 +207,6 @@ router.post("/", auth, reportLimiter, async (req, res) => {
   }
 });
 
-router.post("/internal/apply-strike", auth, async (_req, res) => {
-  return res.status(501).json({ error: "Not implemented here. Use admin moderation endpoints." });
-});
-
 const applyStrikes = async ({ userId, count, reason, reportId }) => {
   if (!userId || !count) return { strikeCount: 0, action: "" };
   const strike = await UserStrike.findOneAndUpdate(
@@ -239,6 +237,61 @@ const applyStrikes = async ({ userId, count, reason, reportId }) => {
   await user.save();
   return { strikeCount: total, action };
 };
+
+router.post("/internal/apply-strike", auth, requireRole(["admin", "super_admin"]), async (req, res) => {
+  try {
+    const userId = String(req.body?.userId || req.body?.targetUserId || "").trim();
+    const reportId = String(req.body?.reportId || "").trim();
+    const count = Math.max(1, Math.min(10, Number(req.body?.count || 1) || 1));
+    const reason = String(req.body?.reason || "Moderation strike").trim().slice(0, 300);
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: "Valid userId is required" });
+    }
+    if (reportId && !mongoose.Types.ObjectId.isValid(reportId)) {
+      return res.status(400).json({ error: "reportId must be a valid id when provided" });
+    }
+
+    const result = await applyStrikes({
+      userId,
+      count,
+      reason,
+      reportId: reportId || null,
+    });
+
+    if (reportId) {
+      await Report.findByIdAndUpdate(reportId, {
+        status: "actioned",
+        actionTaken: `strike${result.action ? ` + ${result.action}` : ""}`,
+        assignedTo: req.user.id,
+        strikesApplied: {
+          userId,
+          count,
+        },
+      });
+    }
+
+    await logAnalyticsEvent({
+      type: "moderation_strike_applied",
+      userId: req.user.id,
+      actorRole: req.user.role,
+      targetId: userId,
+      targetType: "user",
+      metadata: {
+        count,
+        reason,
+        reportId,
+        strikeCount: result.strikeCount,
+        action: result.action,
+      },
+    }).catch(() => null);
+
+    return res.json({ success: true, ...result });
+  } catch (err) {
+    console.error("Apply strike failed:", err);
+    return res.status(500).json({ error: "Failed to apply strike" });
+  }
+});
 
 router.applyStrikes = applyStrikes;
 

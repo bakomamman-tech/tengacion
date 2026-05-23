@@ -11,7 +11,7 @@ const { creatorHasCategory } = require("../services/creatorProfileService");
 const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 
-// TODO(phase2): add audiobook media support alongside chapter text content.
+// Non-goal for the current book flow: audiobook media is handled through music/podcast uploads.
 
 const collectBookMediaAssets = (book = {}) => [
   book?.coverMedia || book?.coverImageUrl,

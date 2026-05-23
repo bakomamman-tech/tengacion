@@ -30,6 +30,7 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
 
   useEffect(() => {
     let alive = true;
+    const audio = audioRef.current;
 
     const loadFeed = async () => {
       try {
@@ -63,7 +64,6 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
     loadFeed();
     return () => {
       alive = false;
-      const audio = audioRef.current;
       if (audio) {
         audio.pause();
         audio.removeAttribute("src");

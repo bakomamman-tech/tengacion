@@ -252,6 +252,7 @@ export default function GoLive() {
       return;
     }
     socketRef.current = socket;
+    socket.emit("live:join", { roomName: liveSession.roomName });
 
     const handleViewers = (payload) => {
       if (payload.roomName === liveSession.roomName) {
@@ -288,6 +289,7 @@ export default function GoLive() {
       socket.off("live:viewers", handleViewers);
       socket.off("live:reaction", handleReaction);
       socket.off("live:chat", handleChat);
+      socket.emit("live:leave", { roomName: liveSession.roomName });
       if (socketRef.current === socket) {
         socketRef.current = null;
       }
@@ -386,7 +388,6 @@ export default function GoLive() {
 
   const sendReaction = (emoji) => {
     pushReaction(emoji);
-    // TODO: backend broadcast event can be formalized for all viewers.
     socketRef.current?.emit("live:reaction", {
       roomName: liveSession?.roomName,
       emoji,
@@ -408,7 +409,7 @@ export default function GoLive() {
 
     setChatMessages((prev) => [...prev, ownMessage]);
     setChatDraft("");
-    // TODO: backend persistence/broadcast for live chat can be expanded.
+    // Live chat is intentionally ephemeral here; durable chat history remains out of scope for host streams.
     socketRef.current?.emit("live:chat", {
       roomName: liveSession?.roomName,
       sender: ownMessage.sender,

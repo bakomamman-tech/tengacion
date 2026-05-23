@@ -687,6 +687,41 @@ if (process.env.NODE_ENV !== "test") {
       socket.join(`room:${roomId}`);
     });
 
+    socket.on("live:join", ({ roomName }) => {
+      const normalizedRoomName = String(roomName || "").trim();
+      if (!normalizedRoomName) return;
+      socket.join(`live:${normalizedRoomName}`);
+    });
+
+    socket.on("live:leave", ({ roomName }) => {
+      const normalizedRoomName = String(roomName || "").trim();
+      if (!normalizedRoomName) return;
+      socket.leave(`live:${normalizedRoomName}`);
+    });
+
+    socket.on("live:reaction", ({ roomName, emoji, sender }) => {
+      const normalizedRoomName = String(roomName || "").trim();
+      const normalizedEmoji = String(emoji || "").trim().slice(0, 16);
+      if (!normalizedRoomName || !normalizedEmoji) return;
+      socket.to(`live:${normalizedRoomName}`).emit("live:reaction", {
+        roomName: normalizedRoomName,
+        emoji: normalizedEmoji,
+        sender: String(sender || socket.userId || "Viewer").slice(0, 80),
+      });
+    });
+
+    socket.on("live:chat", ({ roomName, sender, text }) => {
+      const normalizedRoomName = String(roomName || "").trim();
+      const normalizedText = String(text || "").trim().slice(0, 500);
+      if (!normalizedRoomName || !normalizedText) return;
+      socket.to(`live:${normalizedRoomName}`).emit("live:chat", {
+        roomName: normalizedRoomName,
+        sender: String(sender || socket.userId || "Viewer").slice(0, 80),
+        text: normalizedText,
+        createdAt: new Date().toISOString(),
+      });
+    });
+
     socket.on("disconnect", () => {
       removeOnlineUserSocket(socket.userId, socket.id);
       removeSessionSocket(socket.sessionId, socket.id);

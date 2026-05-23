@@ -77,6 +77,7 @@ export default function WatchLive() {
     if (!socket) {
       return;
     }
+    socket.emit("live:join", { roomName });
 
     const handleViewers = (payload) => {
       if (payload.roomName === roomName) {
@@ -88,6 +89,7 @@ export default function WatchLive() {
 
     return () => {
       socket.off("live:viewers", handleViewers);
+      socket.emit("live:leave", { roomName });
     };
   }, [roomName, user?._id]);
 

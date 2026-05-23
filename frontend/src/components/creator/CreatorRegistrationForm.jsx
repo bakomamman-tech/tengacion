@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -103,13 +102,14 @@ export default function CreatorRegistrationForm({
     setProfileImageError("");
   }, [initialValues?.profileImageUrl]);
 
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       if (profileImagePreview?.startsWith("blob:")) {
         URL.revokeObjectURL(profileImagePreview);
       }
-    };
-  }, [profileImagePreview]);
+    },
+    [profileImagePreview]
+  );
 
   const stepMeta = useMemo(
     () => [

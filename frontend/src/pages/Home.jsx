@@ -17,7 +17,6 @@ import Messenger from "../Messenger";
 import FriendRequests from "../FriendRequests";
 import RightQuickNav from "../components/RightQuickNav";
 import Stories from "../stories/StoriesBar";
-import { connectSocket } from "../socket";
 
 import {
   createPost,
@@ -1425,9 +1424,10 @@ export default function Home({ user }) {
   };
 
   const currentUser = profile || user;
-  const visibleFeedItems = Array.isArray(feedItems)
-    ? feedItems.slice(0, visiblePostCount)
-    : [];
+  const visibleFeedItems = useMemo(
+    () => (Array.isArray(feedItems) ? feedItems.slice(0, visiblePostCount) : []),
+    [feedItems, visiblePostCount]
+  );
   const visibleMixedFeedItems = useMemo(
     () => injectNewsCards(visibleFeedItems, newsFeed.cards || [], HOME_NEWS_INTERVAL),
     [newsFeed.cards, visibleFeedItems]

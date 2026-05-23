@@ -1,5 +1,8 @@
 # Tengacion Resilience 30/60/90 Day Execution Roadmap
 
+Follow-on roadmap:
+[Tengacion Assurance 30/60/90 Day Execution Roadmap](./tengacion-assurance-30-60-90-roadmap.md)
+
 ## Purpose
 
 This roadmap is the eleventh execution cycle after the foundation, operating-system, scale, expansion, platform, ecosystem, network, intelligence, automation, and orchestration roadmaps. The earlier cycles made Tengacion usable, operable, launchable, expandable, platformized, ecosystem-ready, network-aware, intelligence-led, automation-ready, and orchestration-capable. This cycle is about proving that the coordinated system is resilient:

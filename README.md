@@ -71,6 +71,12 @@ Execution roadmaps for the marketplace and Akuso build cycles:
 - [`docs/tengacion-automation-30-60-90-roadmap.md`](docs/tengacion-automation-30-60-90-roadmap.md) - automation cycle for workflow controls, creator and fan lifecycle automation, partner/API checks, finance validation, predictive operations, and Akuso automation support
 - [`docs/tengacion-orchestration-30-60-90-roadmap.md`](docs/tengacion-orchestration-30-60-90-roadmap.md) - orchestration cycle for workflow state, dependencies, approvals, creator and fan journeys, partner/API coordination, finance and trust routing, and Akuso workflow support
 - [`docs/tengacion-resilience-30-60-90-roadmap.md`](docs/tengacion-resilience-30-60-90-roadmap.md) - resilience cycle for SLOs, degradation modes, incident drills, rollback, finance resilience, partner/API continuity, trust response, and Akuso incident support
+- [`docs/tengacion-assurance-30-60-90-roadmap.md`](docs/tengacion-assurance-30-60-90-roadmap.md) - assurance cycle for control evidence, finance close, partner/API and market readiness, data trust, privacy, rights, and Akuso governance
+- [`docs/tengacion-compliance-30-60-90-roadmap.md`](docs/tengacion-compliance-30-60-90-roadmap.md) - compliance cycle for obligation ownership, policy governance, data protection, finance controls, content rights, partner/API review, and Akuso AI governance
+- [`docs/tengacion-audit-30-60-90-roadmap.md`](docs/tengacion-audit-30-60-90-roadmap.md) - audit cycle for audit scope, evidence rooms, control testing, findings, remediation, external readiness, and Akuso AI audit evidence
+- [`docs/tengacion-certification-30-60-90-roadmap.md`](docs/tengacion-certification-30-60-90-roadmap.md) - certification cycle for external review scope, trust center evidence, claims governance, certification blockers, and Akuso AI governance packets
+- [`docs/tengacion-institutional-30-60-90-roadmap.md`](docs/tengacion-institutional-30-60-90-roadmap.md) - institutional cycle for board-grade governance, data-room readiness, finance discipline, enterprise commitments, risk appetite, and Akuso AI risk governance
+- [`docs/tengacion-capital-30-60-90-roadmap.md`](docs/tengacion-capital-30-60-90-roadmap.md) - capital cycle for financing readiness, investor and strategic partner diligence, unit economics, capital allocation, and Akuso AI investment governance
 
 ## Creator + Artist Enhancements
 - Artist profile now exposes `links` (Spotify, Instagram, Facebook, TikTok, YouTube, Apple Music, Audiomack, Boomplay, Website) plus a `customLinks` array.

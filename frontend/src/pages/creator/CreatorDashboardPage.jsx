@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import CreatorProfileSummaryCard from "../../components/creator/CreatorProfileSummaryCard";
@@ -25,6 +26,11 @@ const getActivationStepClass = (step, nextStepKey) => {
 const formatNumber = (value = 0) =>
   new Intl.NumberFormat("en-NG").format(Number(value || 0));
 
+const formatBadgeLabel = (value = "") =>
+  String(value || "")
+    .replace(/_/g, " ")
+    .trim();
+
 const getToneClass = (tone = "") => {
   const normalized = String(tone || "").trim().toLowerCase();
   return ["success", "warning", "danger", "neutral"].includes(normalized)
@@ -36,6 +42,7 @@ const getBuyerName = (buyer) =>
   buyer?.name || buyer?.username || "Fan";
 
 export default function CreatorDashboardPage() {
+  const [copiedTemplateKey, setCopiedTemplateKey] = useState("");
   const { creatorProfile, dashboard } = useCreatorWorkspace();
   const creatorLanes = normalizeCreatorLaneKeys(creatorProfile?.creatorTypes);
   const activation = dashboard.activation || {};
@@ -60,6 +67,13 @@ export default function CreatorDashboardPage() {
     ? operatingConsole.recentSubscribers
     : [];
   const funnel = operatingConsole.funnel || {};
+  const catalogHealth = operatingConsole.catalogHealth || {};
+  const catalogGrowthPrompts = Array.isArray(operatingConsole.catalogGrowthPrompts)
+    ? operatingConsole.catalogGrowthPrompts
+    : [];
+  const akusoTemplates = Array.isArray(operatingConsole.akusoTemplates)
+    ? operatingConsole.akusoTemplates
+    : [];
   const discoveryInsights = dashboard.discoveryInsights || {};
   const discoverySummary = discoveryInsights.summary || {};
   const discoverySurfaces = Array.isArray(discoveryInsights.surfaceBreakdown)
@@ -70,6 +84,19 @@ export default function CreatorDashboardPage() {
     : [];
   const payoutReadiness = dashboard.wallet?.payoutReadiness || {};
   const payoutStatus = payoutReadiness.label || (payoutReadiness.ready ? "Ready" : "Needs attention");
+  const topCatalogIssue = catalogHealth.topIssue || {};
+
+  const handleCopyTemplate = async (template) => {
+    const prompt = String(template?.prompt || "").trim();
+    if (!prompt) {
+      return;
+    }
+
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(prompt).catch(() => null);
+    }
+    setCopiedTemplateKey(template.key);
+  };
 
   return (
     <div className="creator-page-grid">
@@ -197,6 +224,99 @@ export default function CreatorDashboardPage() {
               <div className="creator-empty-card">
                 Your highest-priority creator actions will appear here as fans
                 interact with your catalog.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="creator-panel creator-catalog-quality-panel">
+          <div className="creator-panel-head">
+            <div>
+              <h2>Catalog health</h2>
+              <p>Highest-impact catalog fixes and copy drafts.</p>
+            </div>
+            <span className={`creator-status-badge ${getToneClass(catalogHealth.tone)}`}>
+              {catalogHealth.label || "Not scored"}
+            </span>
+          </div>
+
+          <div className="creator-catalog-health-summary">
+            <div className="creator-catalog-score">
+              <span>Catalog score</span>
+              <strong>{formatNumber(catalogHealth.score || 0)}</strong>
+              <small>
+                {formatNumber(catalogHealth.itemsNeedingWork || 0)} of{" "}
+                {formatNumber(catalogHealth.itemCount || 0)} items need work
+              </small>
+            </div>
+
+            <div className="creator-catalog-health-detail">
+              <span className={`creator-status-badge ${getToneClass(topCatalogIssue.tone)}`}>
+                {topCatalogIssue.severity || "next"}
+              </span>
+              <strong>{topCatalogIssue.title || "Publish the first catalog item"}</strong>
+              <p>
+                {topCatalogIssue.description ||
+                  "Catalog quality signals will appear once creator content is available."}
+              </p>
+            </div>
+          </div>
+
+          <div className="creator-catalog-prompt-list">
+            {catalogGrowthPrompts.length ? (
+              catalogGrowthPrompts.slice(0, 4).map((prompt) => (
+                <article key={prompt.key} className="creator-console-prompt">
+                  <div>
+                    <span className={`creator-status-badge ${getToneClass(prompt.tone)}`}>
+                      {formatBadgeLabel(prompt.source || "catalog")}
+                    </span>
+                    <strong>{prompt.title}</strong>
+                    <p>{prompt.description}</p>
+                  </div>
+                  <Link
+                    className="creator-secondary-btn"
+                    to={prompt.actionTo || "/creator/dashboard"}
+                  >
+                    {prompt.actionLabel || "Open"}
+                  </Link>
+                </article>
+              ))
+            ) : (
+              <div className="creator-empty-card">
+                Catalog prompts will appear after your next content update.
+              </div>
+            )}
+          </div>
+
+          <div className="creator-panel-head creator-panel-head--compact">
+            <div>
+              <h2>Akuso copy templates</h2>
+              <p>Review-ready prompts for descriptions, blurbs, benefits, and launches.</p>
+            </div>
+          </div>
+
+          <div className="creator-akuso-template-grid">
+            {akusoTemplates.length ? (
+              akusoTemplates.map((template) => (
+                <article key={template.key} className="creator-akuso-template">
+                  <div>
+                    <strong>{template.title}</strong>
+                    <p>{template.description}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="creator-chip-link"
+                    onClick={() => handleCopyTemplate(template)}
+                  >
+                    {copiedTemplateKey === template.key
+                      ? "Copied"
+                      : template.actionLabel || "Copy prompt"}
+                  </button>
+                </article>
+              ))
+            ) : (
+              <div className="creator-empty-card">
+                Akuso templates will appear after your creator profile loads.
               </div>
             )}
           </div>

@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const PlayerProgressSchema = new mongoose.Schema(
+const SavedCreatorContentSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -16,7 +16,7 @@ const PlayerProgressSchema = new mongoose.Schema(
     },
     itemType: {
       type: String,
-      enum: ["song", "podcast", "book"],
+      enum: ["track", "book", "album", "video"],
       required: true,
       index: true,
     },
@@ -25,25 +25,23 @@ const PlayerProgressSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    positionSec: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    durationSec: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    playedAt: {
+    savedAt: {
       type: Date,
       default: Date.now,
       index: true,
+    },
+    lastNotifiedAt: {
+      type: Date,
+      default: null,
     },
   },
   { timestamps: true }
 );
 
-PlayerProgressSchema.index({ userId: 1, itemType: 1, itemId: 1 }, { unique: true });
+SavedCreatorContentSchema.index(
+  { userId: 1, itemType: 1, itemId: 1 },
+  { unique: true }
+);
+SavedCreatorContentSchema.index({ creatorId: 1, savedAt: -1 });
 
-module.exports = mongoose.model("PlayerProgress", PlayerProgressSchema);
+module.exports = mongoose.model("SavedCreatorContent", SavedCreatorContentSchema);

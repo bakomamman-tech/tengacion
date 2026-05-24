@@ -454,6 +454,12 @@ const ACTIVE_EVENT_TYPES = [
   "stream_completed",
   "download_completed",
   "purchase_success",
+  "creator_followed",
+  "content_saved",
+  "continue_progress_saved",
+  "paid_content_unlocked",
+  "creator_subscribed",
+  "live_reminder_set",
   "friend_request_sent",
   "friend_request_accepted",
 ];

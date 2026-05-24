@@ -7,6 +7,7 @@ const { saveUploadedMedia } = require("../services/mediaStore");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const { notifyCreatorPublishedPaidContent } = require("../services/fanReturnPathService");
 const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
 const { mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 const {
@@ -350,6 +351,16 @@ exports.createMusicUpload = asyncHandler(async (req, res) => {
     uploadContentType: "music",
     uploadTargetId: track._id,
   }).catch(() => null);
+  if (track.publishedStatus === "published" && Number(track.price || 0) > 0) {
+    await notifyCreatorPublishedPaidContent({
+      req,
+      creatorProfile: req.creatorProfile,
+      itemType: "track",
+      itemId: track._id,
+      title: track.title,
+      price: Number(track.price || 0),
+    }).catch(() => null);
+  }
 
   const hydrated = await hydrateTrack(track._id);
   return res.status(201).json(toTrackPayload(hydrated, { includeAudio: true }));
@@ -571,6 +582,16 @@ exports.createPodcastUpload = asyncHandler(async (req, res) => {
     uploadContentType: "podcast",
     uploadTargetId: track._id,
   }).catch(() => null);
+  if (track.publishedStatus === "published" && Number(track.price || 0) > 0) {
+    await notifyCreatorPublishedPaidContent({
+      req,
+      creatorProfile: req.creatorProfile,
+      itemType: "track",
+      itemId: track._id,
+      title: track.title,
+      price: Number(track.price || 0),
+    }).catch(() => null);
+  }
 
   const hydrated = await hydrateTrack(track._id);
   return res.status(201).json(toTrackPayload(hydrated, { includeAudio: true }));
@@ -731,6 +752,16 @@ exports.createBookUpload = asyncHandler(async (req, res) => {
     uploadContentType: "book",
     uploadTargetId: book._id,
   }).catch(() => null);
+  if (book.publishedStatus === "published" && Number(book.price || 0) > 0) {
+    await notifyCreatorPublishedPaidContent({
+      req,
+      creatorProfile: req.creatorProfile,
+      itemType: "book",
+      itemId: book._id,
+      title: book.title,
+      price: Number(book.price || 0),
+    }).catch(() => null);
+  }
 
   const hydrated = await hydrateBook(book._id);
   return res.status(201).json(toBookPayload(hydrated));

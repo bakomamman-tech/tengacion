@@ -43,6 +43,7 @@ const {
   isSubscriptionPurchase,
   resolveSubscriptionLifecycle,
 } = require("./purchaseLifecycleService");
+const { notifyPurchaseUnlocked } = require("./fanReturnPathService");
 const { config } = require("../config/env");
 const logger = require("../utils/logger");
 
@@ -71,6 +72,7 @@ const TIMELINE_EVENT_META = {
   purchase_entitlement_granted: { label: "Entitlement granted", tone: "success" },
   purchase_wallet_settled: { label: "Wallet settlement recorded", tone: "success" },
   purchase_creator_alert_sent: { label: "Creator sales alert processed", tone: "info" },
+  purchase_fan_return_notified: { label: "Fan return notification processed", tone: "info" },
   purchase_reconciliation_requested: { label: "Admin reconciliation requested", tone: "info" },
   purchase_reconciliation_completed: { label: "Admin reconciliation completed", tone: "success" },
   purchase_reconciliation_failed: { label: "Admin reconciliation failed", tone: "danger" },
@@ -910,9 +912,33 @@ const runSettlementSideEffects = async ({
     },
   }).catch(() => null);
 
+  const fanReturnResult = await notifyPurchaseUnlocked({
+    req,
+    purchase,
+  }).catch((error) => ({
+    sent: false,
+    skipped: false,
+    failed: true,
+    reason: error?.message || "Fan return notification failed",
+  }));
+
+  await logPurchaseLifecycleEvent({
+    type: "purchase_fan_return_notified",
+    purchase,
+    actorRole,
+    metadata: {
+      source,
+      sent: Boolean(fanReturnResult?.sent),
+      failed: Boolean(fanReturnResult?.failed),
+      reason: fanReturnResult?.reason || "",
+      notificationId: fanReturnResult?.notificationId || "",
+    },
+  }).catch(() => null);
+
   return {
     walletResult,
     alertResult,
+    fanReturnResult,
   };
 };
 
@@ -1472,6 +1498,7 @@ const reconcileVerifiedPurchase = async ({
     entitlementCreated: Boolean(settled.entitlementCreated),
     walletResult: sideEffects.walletResult,
     alertResult: sideEffects.alertResult,
+    fanReturnResult: sideEffects.fanReturnResult,
   };
 };
 

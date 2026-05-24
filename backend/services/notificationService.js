@@ -30,6 +30,11 @@ const normalizeNotificationMetadata = (metadata = {}) => {
   });
 };
 
+const getMetadataDedupeKey = (metadata = {}) =>
+  String(metadata?.dedupeKey || "")
+    .trim()
+    .slice(0, 160);
+
 const buildNotificationDedupeKey = ({ recipient, sender, type, text, entity, metadata }) => {
   if (!metadata?.dedupeKey && !entity?.id) {
     return "";
@@ -78,13 +83,16 @@ exports.createNotification = async ({
     const normalizedType = String(type || "").trim().toLowerCase();
     const safeText = truncate(text, 500);
     const safeMetadata = normalizeNotificationMetadata(metadata);
+    const metadataDedupeKey = getMetadataDedupeKey(metadata);
     const dedupeKey = buildNotificationDedupeKey({
       recipient,
       sender,
       type: normalizedType,
       text: safeText,
       entity,
-      metadata: safeMetadata,
+      metadata: metadataDedupeKey
+        ? { ...safeMetadata, dedupeKey: metadataDedupeKey }
+        : safeMetadata,
     });
     const now = new Date();
     const unreadExpiresAt = buildExpiryDate({

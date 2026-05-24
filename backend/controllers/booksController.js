@@ -8,6 +8,7 @@ const { hasEntitlement } = require("../services/entitlementService");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const { notifySavedContentUpdated } = require("../services/fanReturnPathService");
 const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 
@@ -371,6 +372,16 @@ exports.updateBook = asyncHandler(async (req, res) => {
   book.isPublished = verification.publishedStatus === "published";
 
   await book.save();
+  if (book.publishedStatus === "published") {
+    await notifySavedContentUpdated({
+      req,
+      creatorProfile: req.creatorProfile,
+      itemType: "book",
+      itemId: book._id,
+      title: book.title,
+      reason: "metadata_updated",
+    }).catch(() => null);
+  }
   await Promise.all([
     coverFile ? cleanupReplacedMedia(previousCoverMedia, book.coverMedia) : Promise.resolve(false),
     contentFile ? cleanupReplacedMedia(previousContentMedia, book.contentMedia) : Promise.resolve(false),

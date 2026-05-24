@@ -118,6 +118,46 @@ describe("CreatorDashboardPage", () => {
               actionTo: "/creator/music",
             },
           ],
+          catalogHealth: {
+            score: 42,
+            label: "At risk",
+            tone: "danger",
+            itemCount: 3,
+            itemsNeedingWork: 2,
+            topIssue: {
+              title: "Add a paid preview",
+              description: "Paid Single is paid content without a preview path for fans.",
+              severity: "high",
+              tone: "warning",
+            },
+          },
+          catalogGrowthPrompts: [
+            {
+              key: "catalog_preview_track_track-1",
+              title: "Add a paid preview",
+              description: "Paid Single needs a fan-safe preview before paid traffic.",
+              actionLabel: "Add preview",
+              actionTo: "/creator/music",
+              tone: "warning",
+              source: "catalog_health",
+            },
+          ],
+          akusoTemplates: [
+            {
+              key: "track_description",
+              title: "Track description",
+              description: "Draft stronger copy for Paid Single.",
+              prompt: "Draft three truthful Tengacion track descriptions for Paid Single.",
+              actionLabel: "Copy prompt",
+            },
+            {
+              key: "subscription_benefits",
+              title: "Fan pass benefits",
+              description: "Create a clearer monthly supporter package.",
+              prompt: "Draft six clear monthly fan pass benefits.",
+              actionLabel: "Copy prompt",
+            },
+          ],
           recentSales: [
             {
               id: "sale-1",
@@ -180,6 +220,11 @@ describe("CreatorDashboardPage", () => {
     expect(screen.getByText(/3 of 6 steps complete/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /start first upload/i })).toHaveAttribute("href", "/creator/music/upload");
     expect(screen.getByText(/operating console/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/catalog health/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/catalog score/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/add a paid preview/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/akuso copy templates/i)).toBeInTheDocument();
+    expect(screen.getByText(/track description/i)).toBeInTheDocument();
     expect(screen.getByText(/discovery insights/i)).toBeInTheDocument();
     expect(screen.getByText(/42 impressions/i)).toBeInTheDocument();
     expect(screen.getByText(/convert discovery momentum/i)).toBeInTheDocument();

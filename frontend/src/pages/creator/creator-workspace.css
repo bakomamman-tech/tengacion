@@ -1966,6 +1966,14 @@ textarea {
     linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(240, 246, 247, 0.92));
 }
 
+.creator-catalog-quality-panel {
+  display: grid;
+  gap: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(183, 138, 66, 0.12), transparent 26%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(248, 242, 231, 0.92));
+}
+
 .creator-console-funnel,
 .creator-console-prompt-grid {
   display: grid;
@@ -2030,6 +2038,73 @@ textarea {
   display: block;
   margin-top: 4px;
   font-size: 0.82rem;
+}
+
+.creator-panel-head--compact {
+  margin-bottom: 0;
+}
+
+.creator-catalog-health-summary,
+.creator-catalog-prompt-list,
+.creator-akuso-template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.creator-catalog-score,
+.creator-catalog-health-detail,
+.creator-akuso-template {
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 249, 241, 0.72);
+  border: 1px solid rgba(95, 76, 33, 0.08);
+}
+
+.creator-catalog-score {
+  display: grid;
+  gap: 6px;
+}
+
+.creator-catalog-score span,
+.creator-catalog-score small,
+.creator-catalog-health-detail p,
+.creator-akuso-template p {
+  color: var(--creator-muted);
+}
+
+.creator-catalog-score strong {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.creator-catalog-score small,
+.creator-catalog-health-detail p,
+.creator-akuso-template p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.creator-catalog-health-detail,
+.creator-akuso-template {
+  display: grid;
+  gap: 10px;
+  align-content: space-between;
+}
+
+.creator-catalog-health-detail strong,
+.creator-catalog-health-detail p,
+.creator-akuso-template strong,
+.creator-akuso-template p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.creator-akuso-template .creator-chip-link {
+  width: fit-content;
+  min-height: 40px;
+  padding: 0 14px;
 }
 
 .creator-page-main,
@@ -3192,6 +3267,9 @@ textarea {
   .creator-activation-list,
   .creator-console-funnel,
   .creator-console-prompt-grid,
+  .creator-catalog-health-summary,
+  .creator-catalog-prompt-list,
+  .creator-akuso-template-grid,
   .creator-panel-grid,
   .creator-metric-grid,
   .creator-profile-summary-grid,

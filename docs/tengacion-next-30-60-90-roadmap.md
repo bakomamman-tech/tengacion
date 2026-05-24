@@ -287,6 +287,10 @@ Make the product operable.
   - book blurbs
   - subscription benefit copy
   - launch announcement drafts
+- Current implementation anchor:
+  - `/api/creator/me/content-summary` now returns catalog health scoring with item-level issue severity, top issues, category summaries, monetized item counts, and highest-impact catalog fixes across music, podcasts, books, albums, and videos.
+  - the creator dashboard renders catalog health, ranked growth prompts, and review-gated Akuso copy templates for track descriptions, book blurbs, fan pass benefits, and launch announcements.
+  - focused backend and creator dashboard tests cover the new catalog health payload, growth prompt ordering, Akuso template availability, and UI rendering.
 
 ### Exit criteria
 
@@ -309,6 +313,12 @@ Make the product operable.
   - payment succeeded and content is unlocked
   - subscription renewal is upcoming or failed
 - Keep notification frequency bounded to avoid spam.
+- Current implementation anchor:
+  - fan return-path primitives now log retention events for creator follows, saved content, listening or reading progress, paid content unlocks, creator subscriptions, live reminder setup, renewal reminders, paid-release fan alerts, saved-content updates, and creator live notifications.
+  - `/api/library/saved`, `/api/library/save`, `/api/library/save/:itemType/:itemId`, and `/api/player/continue` now support saved creator content and resumable listening/reading flows backed by `SavedCreatorContent`, `PlayerProgress`, and focused analytics events.
+  - payment settlement, legacy Paystack settlement, creator uploads, catalog updates, follow toggles, and live-session creation now call bounded notification helpers for unlocks, paid releases, saved-content updates, follower alerts, subscriber-live alerts, and live reminders.
+  - subscription renewal upcoming/failed notification helpers are available for the next scheduler or provider-renewal webhook, with per-purchase/date dedupe and fan-return analytics.
+  - focused backend tests cover follow/save/progress return signals, purchase unlocks, paid release alerts, saved-content update alerts, subscription renewal alerts, and live reminder/subscriber live notifications.
 
 ### Exit criteria
 

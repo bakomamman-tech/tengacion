@@ -110,11 +110,42 @@ describe("creatorDashboardConsoleService", () => {
       title: "Paid Single",
       missingFields: expect.arrayContaining(["Description", "Cover image", "Paid preview", "Genre"]),
     });
+    expect(consolePayload.catalogHealth).toMatchObject({
+      itemCount: 2,
+      monetizedItems: 2,
+      issueCount: 6,
+      label: "At risk",
+    });
+    expect(consolePayload.catalogHealth.topIssue).toMatchObject({
+      itemTitle: "Paid Single",
+      title: "Add cover art",
+    });
+    expect(consolePayload.catalogGrowthPrompts.map((prompt) => prompt.key)).toEqual(
+      expect.arrayContaining([
+        "catalog_missing_cover_art_track_track-1",
+        "catalog_preview_track_track-1",
+        "catalog_subscription_package",
+      ])
+    );
+    expect(consolePayload.akusoTemplates.map((template) => template.key)).toEqual(
+      expect.arrayContaining([
+        "track_description",
+        "book_blurb",
+        "subscription_benefits",
+        "launch_announcement",
+      ])
+    );
+    expect(consolePayload.akusoTemplates[0]).toMatchObject({
+      title: "Track description",
+      actionLabel: "Copy prompt",
+      requiresReview: true,
+    });
     expect(consolePayload.actionPrompts.map((prompt) => prompt.key)).toEqual(
       expect.arrayContaining([
         "activation_first_upload_completed",
         "payout_readiness",
         "metadata_fixes",
+        "growth_catalog_missing_cover_art_track_track-1",
       ])
     );
   });

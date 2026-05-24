@@ -10,6 +10,7 @@ const User = require("../models/User");
 const PlayerProgress = require("../models/PlayerProgress");
 const { buildAlbumArchiveUrl } = require("../services/albumArchiveService");
 const { hasEntitlement } = require("../services/entitlementService");
+const { recordCreatorFollow } = require("../services/fanReturnPathService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const { buildCreatorPublicPayload } = require("../services/publicCreatorProfileService");
 const {
@@ -614,6 +615,12 @@ exports.toggleFollowCreator = asyncHandler(async (req, res) => {
   }
 
   await Promise.all([me.save(), creatorUser.save()]);
+  await recordCreatorFollow({
+    req,
+    viewerId: req.user.id,
+    creatorProfile: profile,
+    following: !isFollowing,
+  }).catch(() => null);
 
   return res.json({
     success: true,

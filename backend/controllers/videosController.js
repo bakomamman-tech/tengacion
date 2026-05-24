@@ -12,6 +12,10 @@ const { deleteUploadedMediaBatch, saveUploadedMedia } = require("../services/med
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const {
+  notifyCreatorPublishedPaidContent,
+  notifySavedContentUpdated,
+} = require("../services/fanReturnPathService");
 const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 const {
@@ -458,6 +462,16 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
     uploadContentType: "video",
     uploadTargetId: video._id,
   }).catch(() => null);
+  if (video.publishedStatus === "published" && Number(video.price || 0) > 0) {
+    await notifyCreatorPublishedPaidContent({
+      req,
+      creatorProfile: req.creatorProfile,
+      itemType: "video",
+      itemId: video._id,
+      title: video.caption || "Music video",
+      price: Number(video.price || 0),
+    }).catch(() => null);
+  }
 
   return res.status(201).json(toVideoPayload(video));
 });
@@ -740,6 +754,16 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
   video.storageStage = "permanent";
 
   await video.save();
+  if (video.publishedStatus === "published") {
+    await notifySavedContentUpdated({
+      req,
+      creatorProfile: req.creatorProfile,
+      itemType: "video",
+      itemId: video._id,
+      title: video.caption || "Music video",
+      reason: "metadata_updated",
+    }).catch(() => null);
+  }
   await Promise.all([
     videoFile ? cleanupReplacedMedia(previousVideoMedia, video.videoMedia) : Promise.resolve(false),
     thumbnailFile ? cleanupReplacedMedia(previousCoverMedia, video.coverMedia) : Promise.resolve(false),

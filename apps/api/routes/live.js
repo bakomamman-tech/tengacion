@@ -11,5 +11,6 @@ router.post("/create", auth, liveController.createLiveSession);
 router.post("/token", auth, liveController.requestToken);
 router.post("/end", auth, liveController.endLiveSession);
 router.post("/viewers", auth, liveController.updateViewerCount);
+router.post("/reminders", auth, liveController.setReminder);
 
 module.exports = router;

@@ -4,6 +4,10 @@ const LiveService = require("../services/liveService");
 const { ensureValidLivekitConfig } = require("../services/livekitConfig");
 const User = require("../../../backend/models/User");
 const { logAnalyticsEvent } = require("../../../backend/services/analyticsService");
+const {
+  notifyCreatorWentLive,
+  setLiveReminder,
+} = require("../../../backend/services/fanReturnPathService");
 
 const emitEvent = (req, event, payload) => {
   const io = req.app.get("io");
@@ -50,6 +54,7 @@ exports.createLiveSession = catchAsync(async (req, res) => {
       roomName: session.roomName,
       publish: true,
     });
+    await notifyCreatorWentLive({ req, session }).catch(() => null);
 
     res.status(201).json({
       session: sessionPayload,
@@ -173,4 +178,14 @@ exports.updateViewerCount = catchAsync(async (req, res) => {
   };
   res.json(payload);
   emitEvent(req, "live:viewers", payload);
+});
+
+exports.setReminder = catchAsync(async (req, res) => {
+  const payload = await setLiveReminder({
+    req,
+    userId: req.user.id,
+    creatorId: req.body?.creatorId || "",
+    roomName: req.body?.roomName || "",
+  });
+  res.status(201).json(payload);
 });

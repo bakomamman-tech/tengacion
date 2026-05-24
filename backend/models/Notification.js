@@ -71,7 +71,20 @@ const NotificationSchema = new mongoose.Schema(
       },
       model: {
         type: String,
-        enum: ["Post", "Comment", "Message", "User","ModerationCase"],
+        enum: [
+          "Post",
+          "Comment",
+          "Message",
+          "User",
+          "ModerationCase",
+          "CreatorProfile",
+          "Purchase",
+          "Track",
+          "Book",
+          "Album",
+          "Video",
+          "LiveSession",
+        ],
         default: null,
       },
     },
@@ -103,9 +116,8 @@ const NotificationSchema = new mongoose.Schema(
 
     // Preview helpers for UI
     metadata: {
-      previewImage: { type: String, default: "" },
-      previewText: { type: String, default: "" },
-      link: { type: String, default: "" },
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
   },
   {

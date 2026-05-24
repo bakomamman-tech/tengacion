@@ -383,6 +383,19 @@ describe("creator profile routes", () => {
       title: "Console Single",
       missingFields: expect.arrayContaining(["Description", "Cover image", "Paid preview", "Genre"]),
     });
+    expect(response.body.operatingConsole.catalogHealth).toMatchObject({
+      itemCount: 1,
+      monetizedItems: 1,
+      issueCount: 4,
+      label: "At risk",
+    });
+    expect(response.body.operatingConsole.catalogGrowthPrompts[0]).toMatchObject({
+      title: "Add cover art",
+      actionLabel: "Add cover",
+    });
+    expect(response.body.operatingConsole.akusoTemplates.map((template) => template.key)).toEqual(
+      expect.arrayContaining(["track_description", "subscription_benefits", "launch_announcement"])
+    );
   });
 
   test("GET /api/creator/subscriptions/analytics reports churn, retention, and cohort revenue", async () => {

@@ -9,6 +9,7 @@ const { logAnalyticsEvent } = require("../services/analyticsService");
 const Post = require("../models/Post");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const { notifySavedContentUpdated } = require("../services/fanReturnPathService");
 const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 
@@ -478,6 +479,16 @@ exports.updateTrack = asyncHandler(async (req, res) => {
   track.isPublished = verification.publishedStatus === "published";
 
   await track.save();
+  if (track.publishedStatus === "published") {
+    await notifySavedContentUpdated({
+      req,
+      creatorProfile: req.creatorProfile,
+      itemType: "track",
+      itemId: track._id,
+      title: track.title,
+      reason: "metadata_updated",
+    }).catch(() => null);
+  }
   await Promise.all([
     mediaFile ? cleanupReplacedMedia(previousAudioMedia, track.audioMedia) : Promise.resolve(false),
     (mediaFile || previousVideoMedia) && mediaType === "video"

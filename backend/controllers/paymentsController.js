@@ -6,6 +6,7 @@ const Book = require("../models/Book");
 const Album = require("../models/Album");
 const User = require("../models/User");
 const { resolvePurchasableItem } = require("../services/catalogService");
+const { notifyPurchaseUnlocked } = require("../services/fanReturnPathService");
 const { hasCreatorSubscriptionAccess } = require("../services/entitlementService");
 const {
   createProviderReference,
@@ -242,6 +243,7 @@ const handlePaystackWebhook = async (req, res) => {
 
   await markPurchasePaidAndGrantEntitlement(purchase);
   emitEntitlementGranted({ req, purchase });
+  await notifyPurchaseUnlocked({ req, purchase }).catch(() => null);
   await logAnalyticsEvent({
     type: "purchase_success",
     userId: purchase.userId,

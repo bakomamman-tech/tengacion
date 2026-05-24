@@ -10,6 +10,10 @@ const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { evaluateVerification } = require("../services/contentVerificationService");
 const { creatorHasCategory } = require("../services/creatorProfileService");
+const {
+  notifyCreatorPublishedPaidContent,
+  notifySavedContentUpdated,
+} = require("../services/fanReturnPathService");
 const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 
@@ -247,6 +251,16 @@ exports.createAlbum = asyncHandler(async (req, res) => {
     uploadContentType: "album",
     uploadTargetId: album._id,
   }).catch(() => null);
+  if (album.publishedStatus === "published" && Number(album.price || 0) > 0) {
+    await notifyCreatorPublishedPaidContent({
+      req,
+      creatorProfile: req.creatorProfile,
+      itemType: "album",
+      itemId: album._id,
+      title: album.title,
+      price: Number(album.price || 0),
+    }).catch(() => null);
+  }
 
   return res.status(201).json({
     ...toAlbumListPayload(album),
@@ -336,6 +350,16 @@ exports.updateAlbum = asyncHandler(async (req, res) => {
   album.isPublished = verification.publishedStatus === "published";
 
   await album.save();
+  if (album.publishedStatus === "published") {
+    await notifySavedContentUpdated({
+      req,
+      creatorProfile: req.creatorProfile,
+      itemType: "album",
+      itemId: album._id,
+      title: album.title,
+      reason: "metadata_updated",
+    }).catch(() => null);
+  }
   await (coverFile ? cleanupReplacedMedia(previousCoverMedia, album.coverMedia) : Promise.resolve(false)).catch(() => null);
 
   return res.json({

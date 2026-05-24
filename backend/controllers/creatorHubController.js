@@ -17,6 +17,13 @@ const {
   toLegacyCheckoutPayload,
 } = require("../services/paymentOpsService");
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
+const {
+  listSavedCreatorContent,
+  normalizeProgressItemType,
+  recordProgressSaved,
+  removeSavedCreatorContent,
+  saveCreatorContent,
+} = require("../services/fanReturnPathService");
 
 const isValidId = (value) => mongoose.Types.ObjectId.isValid(value);
 
@@ -97,32 +104,40 @@ const resolveCreatorProfileIdFromItem = (item) => {
 
 exports.savePlayerProgress = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const itemType = String(req.body?.itemType || "").trim().toLowerCase();
+  const itemType = normalizeProgressItemType(req.body?.itemType || "");
   const itemId = String(req.body?.itemId || "").trim();
   const creatorIdBody = String(req.body?.creatorId || "").trim();
   const positionSec = Math.max(0, Number(req.body?.positionSec || 0));
   const durationSec = Math.max(0, Number(req.body?.durationSec || 0));
 
-  if (!["song", "podcast"].includes(itemType)) {
-    return res.status(400).json({ error: "itemType must be song or podcast" });
+  if (!["song", "podcast", "book"].includes(itemType)) {
+    return res.status(400).json({ error: "itemType must be song, podcast, or book" });
   }
 
   if (!isValidId(itemId)) {
     return res.status(400).json({ error: "itemId must be a valid id" });
   }
 
-  const track = await Track.findById(itemId).select("creatorId kind durationSec").lean();
-  if (!track) {
+  let item = null;
+  if (itemType === "book") {
+    item = await Book.findById(itemId).select("creatorId pageCount").lean();
+  } else {
+    item = await Track.findById(itemId).select("creatorId kind durationSec").lean();
+  }
+  if (!item) {
     return res.status(404).json({ error: "Item not found" });
   }
 
-  if (itemType === "podcast" && track.kind !== "podcast") {
+  if (itemType === "podcast" && item.kind !== "podcast") {
     return res.status(400).json({ error: "Item type mismatch for podcast progress" });
+  }
+  if (itemType === "song" && item.kind === "podcast") {
+    return res.status(400).json({ error: "Item type mismatch for song progress" });
   }
 
   const creatorId = isValidId(creatorIdBody)
     ? creatorIdBody
-    : track.creatorId?.toString();
+    : item.creatorId?.toString();
 
   if (!creatorId || !isValidId(creatorId)) {
     return res.status(400).json({ error: "creatorId is required" });
@@ -134,12 +149,22 @@ exports.savePlayerProgress = asyncHandler(async (req, res) => {
       $set: {
         creatorId,
         positionSec,
-        durationSec: durationSec || Number(track.durationSec || 0),
+        durationSec: durationSec || Number(item.durationSec || item.pageCount || 0),
         playedAt: new Date(),
       },
     },
     { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   ).lean();
+
+  await recordProgressSaved({
+    req,
+    userId,
+    itemType,
+    itemId,
+    creatorId,
+    positionSec,
+    durationSec: durationSec || Number(item.durationSec || item.pageCount || 0),
+  }).catch(() => null);
 
   return res.status(201).json({
     success: true,
@@ -169,6 +194,30 @@ exports.getContinueListening = asyncHandler(async (req, res) => {
   const rows = await PlayerProgress.find(query).sort({ playedAt: -1 }).limit(20).lean();
   const items = await Promise.all(
     rows.map(async (row) => {
+      if (row.itemType === "book") {
+        const book = await Book.findById(row.itemId)
+          .select("title coverImageUrl pageCount price previewUrl contentUrl creatorId")
+          .lean();
+        if (!book) return null;
+        const entitled = Number(book.price || 0) <= 0 || (await hasEntitlement({
+          userId,
+          itemType: "book",
+          itemId: book._id,
+          creatorId: book.creatorId,
+        }));
+        return {
+          type: "book",
+          itemId: row.itemId.toString(),
+          title: book.title || "",
+          coverUrl: book.coverImageUrl || "",
+          progressSec: Number(row.positionSec || 0),
+          durationSec: Number(row.durationSec || book.pageCount || 0),
+          lockedPreview: !entitled,
+          route: `/books/${row.itemId.toString()}`,
+          downloadUrl: "",
+        };
+      }
+
       const track = await Track.findById(row.itemId)
         .select("title coverImageUrl durationSec price previewUrl audioUrl previewStartSec previewLimitSec creatorId")
         .lean();
@@ -334,6 +383,46 @@ exports.getMyLibrary = asyncHandler(async (req, res) => {
       grantedAt: row.grantedAt || row.createdAt || null,
     })),
   });
+});
+
+exports.saveContentForLater = asyncHandler(async (req, res) => {
+  try {
+    const payload = await saveCreatorContent({
+      req,
+      userId: req.user.id,
+      itemType: req.body?.itemType,
+      itemId: req.body?.itemId,
+    });
+    return res.status(201).json(payload);
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      error: error.message || "Failed to save content",
+    });
+  }
+});
+
+exports.removeSavedContent = asyncHandler(async (req, res) => {
+  try {
+    const payload = await removeSavedCreatorContent({
+      req,
+      userId: req.user.id,
+      itemType: req.params?.itemType,
+      itemId: req.params?.itemId,
+    });
+    return res.json(payload);
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      error: error.message || "Failed to remove saved content",
+    });
+  }
+});
+
+exports.getSavedContent = asyncHandler(async (req, res) => {
+  const payload = await listSavedCreatorContent({
+    userId: req.user.id,
+    limit: req.query?.limit || 30,
+  });
+  return res.json(payload);
 });
 
 exports.getProtectedStream = asyncHandler(async (req, res) => {

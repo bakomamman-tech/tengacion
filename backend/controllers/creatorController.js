@@ -556,6 +556,7 @@ const getDashboardPayload = async ({ profile, user }) => {
     activation,
     content: dashboardContent,
     payoutReadiness,
+    profile,
     purchases,
   });
   const discoveryInsights = await buildCreatorDiscoveryInsights({

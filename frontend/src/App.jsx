@@ -20,6 +20,7 @@ const lazyNamedExport = (loader, exportName) =>
 
 const Login = lazy(() => import("./pages/Login"));
 const PublicHomePage = lazy(() => import("./pages/PublicHomePage"));
+const PublicInfoPage = lazy(() => import("./pages/PublicInfoPage"));
 const Register = lazy(() => import("./pages/Register"));
 const KadunaGotTalentRegisterPage = lazy(() => import("./pages/KadunaGotTalentRegisterPage"));
 const Search = lazy(() => import("./pages/Search"));
@@ -152,6 +153,13 @@ export default function App() {
       <Suspense fallback={<AppShellFallback />}>
         <Routes>
           <Route path="/" element={user ? <Navigate to="/home" replace /> : <PublicHomePage />} />
+          <Route path="/about" element={<PublicInfoPage pageKey="about" />} />
+          <Route path="/how-it-works" element={<PublicInfoPage pageKey="how-it-works" />} />
+          <Route path="/for-creators" element={<PublicInfoPage pageKey="for-creators" />} />
+          <Route path="/for-music-artists" element={<PublicInfoPage pageKey="for-music-artists" />} />
+          <Route path="/for-authors" element={<PublicInfoPage pageKey="for-authors" />} />
+          <Route path="/for-podcasters" element={<PublicInfoPage pageKey="for-podcasters" />} />
+          <Route path="/safety" element={<PublicInfoPage pageKey="safety" />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/kaduna-got-talent/register" element={<KadunaGotTalentRegisterPage user={user} />} />

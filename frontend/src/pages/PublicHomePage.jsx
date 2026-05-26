@@ -36,7 +36,31 @@ const DISCOVERY_LINKS = [
   },
 ];
 
+const CONTENT_LINKS = [
+  {
+    path: "/about",
+    label: "About Tengacion",
+    description: "Understand the platform mission, public discovery model, and creator-first structure.",
+  },
+  {
+    path: "/how-it-works",
+    label: "How it works",
+    description: "See how creator profiles, category pages, and release detail pages connect.",
+  },
+  {
+    path: "/for-creators",
+    label: "For creators",
+    description: "Learn how music artists, authors, podcasters, and multi-format creators can present work.",
+  },
+  {
+    path: "/safety",
+    label: "Safety",
+    description: "Review the trust, moderation, copyright, and reporting principles behind public discovery.",
+  },
+];
+
 const TRUST_LINKS = [
+  { path: "/about", label: "About" },
   { path: "/terms", label: "Terms" },
   { path: "/privacy", label: "Privacy" },
   { path: "/community-guidelines", label: "Guidelines" },
@@ -66,6 +90,7 @@ export default function PublicHomePage() {
             <span>Tengacion</span>
           </Link>
           <div className="public-home__nav-actions">
+            <Link to="/about">About</Link>
             <Link to="/creators">Creators</Link>
             <Link to="/login">Log in</Link>
           </div>
@@ -101,6 +126,26 @@ export default function PublicHomePage() {
 
         <div className="public-home__grid">
           {DISCOVERY_LINKS.map((entry) => (
+            <Link key={entry.path} className="public-home__tile" to={entry.path}>
+              <span>{entry.label}</span>
+              <p>{entry.description}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="public-home__section" aria-labelledby="public-home-learn-title">
+        <div className="public-home__section-head">
+          <p className="public-home__eyebrow">Platform guide</p>
+          <h2 id="public-home-learn-title">Learn what Tengacion is built for</h2>
+          <p>
+            Public explainer pages help fans, creators, search engines, and social previews
+            understand the platform beyond the private app experience.
+          </p>
+        </div>
+
+        <div className="public-home__grid">
+          {CONTENT_LINKS.map((entry) => (
             <Link key={entry.path} className="public-home__tile" to={entry.path}>
               <span>{entry.label}</span>
               <p>{entry.description}</p>

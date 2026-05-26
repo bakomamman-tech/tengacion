@@ -172,6 +172,27 @@ describe("SEO routes", () => {
     expect(response.headers["x-robots-tag"]).toBeUndefined();
   });
 
+  test("public explainer pages render indexable metadata for content depth", async () => {
+    const aboutResponse = await request(server).get("/about").expect(200);
+    const creatorsResponse = await request(server).get("/for-creators").expect(200);
+
+    expect(aboutResponse.text).toContain(
+      '<title data-seo-key="title">About Tengacion | African Creator Discovery Platform</title>'
+    );
+    expect(aboutResponse.text).toContain(
+      'content="Learn about Tengacion, a creator and social platform for discovering African music, books, podcasts, and public creator profiles."'
+    );
+    expect(aboutResponse.text).toContain('href="https://tengacion.com/about"');
+    expect(aboutResponse.text).toContain('content="index,follow"');
+    expect(aboutResponse.text).toContain("About Tengacion");
+
+    expect(creatorsResponse.text).toContain(
+      '<title data-seo-key="title">For Creators | Publish Music, Books &amp; Podcasts on Tengacion</title>'
+    );
+    expect(creatorsResponse.text).toContain('href="https://tengacion.com/for-creators"');
+    expect(creatorsResponse.text).toContain('content="index,follow"');
+  });
+
   test("baseline browser security headers are served", async () => {
     const response = await request(server).get("/api/health").expect(200);
 
@@ -255,6 +276,10 @@ describe("SEO routes", () => {
     expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/books-1.xml</loc>");
 
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/</loc>");
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/about</loc>");
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/how-it-works</loc>");
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/for-creators</loc>");
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/safety</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/creators</loc>");
     expect(creatorsResponse.text).toContain("<loc>https://tengacion.com/creator/seo_creator</loc>");
     expect(creatorsResponse.text).toContain("<loc>https://tengacion.com/creator/seo_creator/music</loc>");

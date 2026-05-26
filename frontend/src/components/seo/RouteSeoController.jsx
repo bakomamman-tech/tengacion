@@ -15,6 +15,13 @@ import { useLocation } from "react-router-dom";
 
 const PUBLIC_STATIC_PATHS = new Set([
   "/",
+  "/about",
+  "/how-it-works",
+  "/for-creators",
+  "/for-music-artists",
+  "/for-authors",
+  "/for-podcasters",
+  "/safety",
   "/creators",
   "/find-creators",
   "/music",

@@ -1,0 +1,282 @@
+.public-info-page {
+  min-height: 100vh;
+  background: #eef3ed;
+  color: #122c21;
+}
+
+.public-info-hero {
+  min-height: 52svh;
+  padding: 22px 24px 54px;
+  color: #f6fbf7;
+  background-image:
+    linear-gradient(90deg, rgba(13, 32, 22, 0.96) 0%, rgba(27, 73, 48, 0.9) 58%, rgba(27, 73, 48, 0.68) 100%),
+    url("/tengacion_logo_1024.png");
+  background-position: center, right 9% center;
+  background-repeat: no-repeat;
+  background-size: cover, min(360px, 36%);
+}
+
+.public-info-nav,
+.public-info-hero__content,
+.public-info-section,
+.public-info-band {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.public-info-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.public-info-brand,
+.public-info-nav__links,
+.public-info-actions,
+.public-info-related {
+  display: flex;
+  align-items: center;
+}
+
+.public-info-brand {
+  gap: 10px;
+  color: #ffffff;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.public-info-brand img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+}
+
+.public-info-nav__links,
+.public-info-actions,
+.public-info-related {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.public-info-nav__links a,
+.public-info-related a {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  color: #f6fbf7;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.public-info-nav__links a:hover,
+.public-info-nav__links a:focus-visible,
+.public-info-related a:hover,
+.public-info-related a:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  outline: 0;
+}
+
+.public-info-hero__content {
+  max-width: 780px;
+  padding-top: 76px;
+}
+
+.public-info-eyebrow {
+  margin: 0 0 10px;
+  color: #d7b46a;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.public-info-page h1,
+.public-info-page h2,
+.public-info-page p {
+  letter-spacing: 0;
+}
+
+.public-info-page h1 {
+  margin: 0;
+  max-width: 780px;
+  font-size: 48px;
+  line-height: 1.05;
+  font-weight: 900;
+}
+
+.public-info-hero__content > p:not(.public-info-eyebrow) {
+  max-width: 690px;
+  margin: 20px 0 0;
+  color: #e4f0e7;
+  font-size: 18px;
+  line-height: 1.62;
+}
+
+.public-info-actions {
+  margin-top: 28px;
+}
+
+.public-info-button {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 8px;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.public-info-button--primary {
+  border-color: #d7b46a;
+  background: #d7b46a;
+  color: #14251b;
+}
+
+.public-info-button:hover,
+.public-info-button:focus-visible {
+  transform: translateY(-1px);
+  outline: 0;
+}
+
+.public-info-section {
+  width: min(1120px, calc(100% - 32px));
+  padding: 42px 0 26px;
+}
+
+.public-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.public-info-card {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid #c9d8cb;
+  border-radius: 8px;
+  background: #f9fbf6;
+  box-shadow: 0 10px 22px rgba(13, 33, 25, 0.06);
+}
+
+.public-info-card h2 {
+  margin: 0;
+  color: #17402b;
+  font-size: 22px;
+  line-height: 1.22;
+  font-weight: 900;
+}
+
+.public-info-card p {
+  margin: 0;
+  color: #54675b;
+  font-size: 15px;
+  line-height: 1.58;
+}
+
+.public-info-band {
+  width: min(1120px, calc(100% - 32px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 42px;
+  padding: 26px;
+  border: 1px solid #c7d6c8;
+  border-radius: 8px;
+  background: #173f2c;
+  color: #f6fbf7;
+}
+
+.public-info-band h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 900;
+}
+
+.public-info-band .public-info-eyebrow {
+  color: #f0c56b;
+}
+
+@media (max-width: 900px) {
+  .public-info-hero {
+    min-height: 48svh;
+    background-position: center, right -80px center;
+    background-size: cover, 300px;
+  }
+
+  .public-info-page h1 {
+    font-size: 40px;
+  }
+
+  .public-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .public-info-card {
+    min-height: 0;
+  }
+
+  .public-info-band {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 560px) {
+  .public-info-hero {
+    min-height: auto;
+    padding: 18px 16px 42px;
+    background-position: center, right -118px top 82px;
+    background-size: cover, 250px;
+  }
+
+  .public-info-nav {
+    align-items: flex-start;
+  }
+
+  .public-info-nav__links {
+    justify-content: flex-end;
+  }
+
+  .public-info-hero__content {
+    padding-top: 64px;
+  }
+
+  .public-info-page h1 {
+    font-size: 33px;
+  }
+
+  .public-info-hero__content > p:not(.public-info-eyebrow) {
+    font-size: 16px;
+  }
+
+  .public-info-actions,
+  .public-info-related {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .public-info-button {
+    width: 100%;
+  }
+
+  .public-info-card h2,
+  .public-info-band h2 {
+    font-size: 22px;
+  }
+}

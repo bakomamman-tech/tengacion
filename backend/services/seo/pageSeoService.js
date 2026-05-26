@@ -70,6 +70,69 @@ const PUBLIC_INFO_PAGES = {
     previewDescription:
       "Browse podcasts and spoken-word releases from Tengacion creators.",
   },
+  "/about": {
+    title: "About Tengacion | African Creator Discovery Platform",
+    description:
+      "Learn about Tengacion, a creator and social platform for discovering African music, books, podcasts, and public creator profiles.",
+    canonicalPath: "/about",
+    previewTitle: "About Tengacion",
+    previewDescription:
+      "Tengacion helps fans discover African creators across music, books, podcasts, videos, and public profiles.",
+  },
+  "/how-it-works": {
+    title: "How Tengacion Works | Creator Discovery, Profiles & Releases",
+    description:
+      "See how Tengacion connects public creator profiles, releases, discovery categories, and fan support across music, books, and podcasts.",
+    canonicalPath: "/how-it-works",
+    previewTitle: "How Tengacion works",
+    previewDescription:
+      "Creator profiles anchor public releases, category discovery, and shareable pages on Tengacion.",
+  },
+  "/for-creators": {
+    title: "For Creators | Publish Music, Books & Podcasts on Tengacion",
+    description:
+      "Tengacion helps creators present public profiles, publish releases, and build discovery across music, books, podcasts, and fan communities.",
+    canonicalPath: "/for-creators",
+    previewTitle: "For creators on Tengacion",
+    previewDescription:
+      "Build a public creator presence for music, books, podcasts, videos, and fan discovery.",
+  },
+  "/for-music-artists": {
+    title: "For Music Artists | Share Songs, Albums & Videos on Tengacion",
+    description:
+      "Music artists can use Tengacion to share public songs, albums, videos, and creator profiles for fan discovery.",
+    canonicalPath: "/for-music-artists",
+    previewTitle: "For music artists on Tengacion",
+    previewDescription:
+      "Make songs, albums, videos, and artist profiles easier for fans to discover and share.",
+  },
+  "/for-authors": {
+    title: "For Authors | Publish Books and Reading Releases on Tengacion",
+    description:
+      "Authors can use Tengacion public creator pages to present books, reading releases, descriptions, previews, and author profiles.",
+    canonicalPath: "/for-authors",
+    previewTitle: "For authors on Tengacion",
+    previewDescription:
+      "Present books, reading releases, descriptions, previews, and author profiles in one public catalog.",
+  },
+  "/for-podcasters": {
+    title: "For Podcasters | Share Podcast Episodes on Tengacion",
+    description:
+      "Podcasters can publish public episodes and creator pages on Tengacion for discoverable spoken-word and audio series.",
+    canonicalPath: "/for-podcasters",
+    previewTitle: "For podcasters on Tengacion",
+    previewDescription:
+      "Connect public podcast episodes and spoken-word releases to a discoverable creator profile.",
+  },
+  "/safety": {
+    title: "Safety & Moderation | Tengacion",
+    description:
+      "Learn how Tengacion approaches community safety, copyright screening, moderation, reporting, and trustworthy public creator discovery.",
+    canonicalPath: "/safety",
+    previewTitle: "Safety and moderation on Tengacion",
+    previewDescription:
+      "Review Tengacion safety, copyright, moderation, reporting, and public discovery trust principles.",
+  },
   "/terms": {
     title: "Terms of Service | Tengacion",
     description:
@@ -305,10 +368,13 @@ const buildSeoPayload = ({
 
 const buildHomePreviewMarkup = () => {
   const links = [
+    { href: "/about", label: "About Tengacion" },
+    { href: "/how-it-works", label: "How Tengacion works" },
     { href: "/creators", label: "Find creators" },
     { href: "/music", label: "Music releases" },
     { href: "/books", label: "Books" },
     { href: "/podcasts", label: "Podcasts" },
+    { href: "/for-creators", label: "For creators" },
     { href: "/community-guidelines", label: "Community guidelines" },
   ];
 

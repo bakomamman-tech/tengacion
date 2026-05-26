@@ -15,6 +15,13 @@ const MAX_URLS_PER_SITEMAP = 1000;
 
 const STATIC_PUBLIC_ROUTES = [
   { path: "/" },
+  { path: "/about" },
+  { path: "/how-it-works" },
+  { path: "/for-creators" },
+  { path: "/for-music-artists" },
+  { path: "/for-authors" },
+  { path: "/for-podcasters" },
+  { path: "/safety" },
   { path: "/creators" },
   { path: "/music" },
   { path: "/books" },

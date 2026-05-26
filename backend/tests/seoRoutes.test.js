@@ -226,6 +226,87 @@ describe("SEO routes", () => {
     expect(response.text).toContain('content="index,follow"');
   });
 
+  test("public directory pages render crawlable links to recent creators and releases", async () => {
+    const { profile } = await createCreator();
+    const track = await Track.create({
+      creatorId: profile._id,
+      title: "Directory SEO Single",
+      description: "A public song that should appear in crawlable category HTML.",
+      price: 0,
+      audioUrl: "https://example.com/directory-song.mp3",
+      previewUrl: "https://example.com/directory-song-preview.mp3",
+      kind: "music",
+      creatorCategory: "music",
+      contentType: "track",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+    const podcast = await Track.create({
+      creatorId: profile._id,
+      title: "Directory SEO Podcast",
+      description: "A public podcast episode that should appear in crawlable category HTML.",
+      price: 0,
+      audioUrl: "https://example.com/directory-podcast.mp3",
+      previewUrl: "https://example.com/directory-podcast-preview.mp3",
+      kind: "podcast",
+      creatorCategory: "podcasts",
+      contentType: "podcast_episode",
+      podcastSeries: "Directory Talks",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+    const book = await Book.create({
+      creatorId: profile._id,
+      title: "Directory SEO Book",
+      description: "A public book that should appear in crawlable category HTML.",
+      price: 0,
+      contentUrl: "https://example.com/directory-book.pdf",
+      previewUrl: "https://example.com/directory-book-preview.pdf",
+      fileFormat: "pdf",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+    const album = await Album.create({
+      creatorId: profile._id,
+      title: "Directory SEO Album",
+      description: "A public album that should appear in crawlable category HTML.",
+      price: 0,
+      coverUrl: "https://example.com/directory-album.jpg",
+      tracks: [
+        {
+          title: "Directory Album Track",
+          trackUrl: "https://example.com/directory-album-track.mp3",
+          previewUrl: "https://example.com/directory-album-preview.mp3",
+          order: 1,
+        },
+      ],
+      totalTracks: 1,
+      status: "published",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+
+    const creatorsResponse = await request(server).get("/creators").expect(200);
+    const musicResponse = await request(server).get("/music").expect(200);
+    const booksResponse = await request(server).get("/books").expect(200);
+    const podcastsResponse = await request(server).get("/podcasts").expect(200);
+
+    expect(creatorsResponse.text).toContain('href="/creator/seo_creator"');
+    expect(creatorsResponse.text).toContain("SEO Creator");
+    expect(creatorsResponse.text).toContain('"@type":"ItemList"');
+
+    expect(musicResponse.text).toContain(`href="/tracks/${track._id}"`);
+    expect(musicResponse.text).toContain(`href="/albums/${album._id}"`);
+    expect(musicResponse.text).toContain("Directory SEO Single");
+    expect(musicResponse.text).toContain("Directory SEO Album");
+
+    expect(booksResponse.text).toContain(`href="/books/${book._id}"`);
+    expect(booksResponse.text).toContain("Directory SEO Book");
+
+    expect(podcastsResponse.text).toContain(`href="/tracks/${podcast._id}"`);
+    expect(podcastsResponse.text).toContain("Directory SEO Podcast");
+  });
+
   test("sitemap.xml exposes a sitemap index and child sitemap files for public sections", async () => {
     const { profile } = await createCreator();
     const track = await Track.create({

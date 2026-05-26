@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const Album = require("../../models/Album");
 const Book = require("../../models/Book");
+const CreatorProfile = require("../../models/CreatorProfile");
 const Track = require("../../models/Track");
 const Video = require("../../models/Video");
 const { findCreatorProfileByReference } = require("../creatorLookupService");
@@ -29,6 +30,7 @@ const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null };
+const CATEGORY_PREVIEW_LIMIT = 8;
 const HOME_TITLE = "Tengacion | Discover African Creators, Music, Books & Podcasts";
 const HOME_DESCRIPTION =
   "Tengacion helps fans discover African creators, stream music, read books, listen to podcasts, and follow public creator profiles.";
@@ -320,6 +322,18 @@ const buildBreadcrumbJsonLd = (items = []) => ({
   })),
 });
 
+const buildItemListJsonLd = ({ name = "Tengacion public directory", items = [] } = {}) => ({
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  name,
+  itemListElement: items.map((item, index) => ({
+    "@type": "ListItem",
+    position: index + 1,
+    name: String(item?.label || "").trim(),
+    url: toCanonicalUrl(item?.href || "/"),
+  })),
+});
+
 const buildPreviewMarkup = ({ title = SITE_NAME, description = DEFAULT_DESCRIPTION } = {}) =>
   `<h1>${escapeHtml(title)}</h1><p>${escapeHtml(description)}</p>`;
 
@@ -416,6 +430,303 @@ const buildHomePageSeo = () =>
     previewHtml: buildHomePreviewMarkup(),
   });
 
+const getEntryTime = (entry = {}) => new Date(entry?.updatedAt || entry?.createdAt || 0).getTime() || 0;
+
+const getCreatorName = (profile = {}) =>
+  pickText(profile?.displayName, profile?.fullName, profile?.userId?.name, "Tengacion Creator");
+
+const getCreatorPathFromProfile = (profile = {}) =>
+  buildCreatorPublicPath({
+    creatorId: profile?._id || profile,
+    username: profile?.userId?.username,
+  });
+
+const mapCreatorItem = (profile = {}) => ({
+  href: getCreatorPathFromProfile(profile),
+  label: getCreatorName(profile),
+  description: pickText(
+    profile?.tagline,
+    profile?.bio,
+    Array.isArray(profile?.creatorTypes) && profile.creatorTypes.length
+      ? `Creator categories: ${profile.creatorTypes.join(", ")}.`
+      : "",
+    "Public creator profile on Tengacion."
+  ),
+});
+
+const mapReleaseCreator = (entry = {}) => {
+  const profile = entry?.creatorId || {};
+  return {
+    name: getCreatorName(profile),
+    path: getCreatorPathFromProfile(profile),
+  };
+};
+
+const fetchCreatorDirectoryItems = async (limit = CATEGORY_PREVIEW_LIMIT) => {
+  const [musicRows, podcastRows, bookRows, albumRows, videoRows] = await Promise.all([
+    Track.aggregate([
+      { $match: { ...ACTIVE_TRACK_FILTER, kind: { $in: ["music", null] } } },
+      { $group: { _id: "$creatorId", updatedAt: { $max: "$updatedAt" }, createdAt: { $max: "$createdAt" } } },
+    ]),
+    Track.aggregate([
+      { $match: { ...ACTIVE_TRACK_FILTER, kind: "podcast" } },
+      { $group: { _id: "$creatorId", updatedAt: { $max: "$updatedAt" }, createdAt: { $max: "$createdAt" } } },
+    ]),
+    Book.aggregate([
+      { $match: ACTIVE_BOOK_FILTER },
+      { $group: { _id: "$creatorId", updatedAt: { $max: "$updatedAt" }, createdAt: { $max: "$createdAt" } } },
+    ]),
+    Album.aggregate([
+      { $match: ACTIVE_ALBUM_FILTER },
+      { $group: { _id: "$creatorId", updatedAt: { $max: "$updatedAt" }, createdAt: { $max: "$createdAt" } } },
+    ]),
+    Video.aggregate([
+      { $match: { ...ACTIVE_VIDEO_FILTER, creatorProfileId: { $ne: null } } },
+      { $group: { _id: "$creatorProfileId", updatedAt: { $max: "$updatedAt" }, createdAt: { $max: "$createdAt" } } },
+    ]),
+  ]);
+
+  const latestByCreator = new Map();
+  [...musicRows, ...podcastRows, ...bookRows, ...albumRows, ...videoRows].forEach((row) => {
+    const creatorId = String(row?._id || "");
+    if (!creatorId) {
+      return;
+    }
+    const nextTime = getEntryTime(row);
+    const current = latestByCreator.get(creatorId) || 0;
+    if (nextTime >= current) {
+      latestByCreator.set(creatorId, nextTime);
+    }
+  });
+
+  const creatorIds = Array.from(latestByCreator.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit * 3)
+    .map(([creatorId]) => creatorId);
+
+  if (!creatorIds.length) {
+    return [];
+  }
+
+  const creators = await CreatorProfile.find({ _id: { $in: creatorIds }, status: "active" })
+    .select("_id displayName fullName tagline bio creatorTypes userId")
+    .populate("userId", "name username")
+    .lean();
+  const byId = new Map(creators.map((profile) => [String(profile?._id || ""), profile]));
+
+  return creatorIds
+    .map((creatorId) => byId.get(creatorId))
+    .filter(Boolean)
+    .slice(0, limit)
+    .map(mapCreatorItem);
+};
+
+const fetchMusicDirectoryItems = async (limit = CATEGORY_PREVIEW_LIMIT) => {
+  const [tracks, albums] = await Promise.all([
+    Track.find({ ...ACTIVE_TRACK_FILTER, kind: { $in: ["music", null] } })
+      .select("_id title description genre artistName creatorId updatedAt createdAt")
+      .populate({
+        path: "creatorId",
+        select: "displayName fullName userId",
+        populate: { path: "userId", select: "name username" },
+      })
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .lean(),
+    Album.find(ACTIVE_ALBUM_FILTER)
+      .select("_id title description releaseType totalTracks creatorId updatedAt createdAt")
+      .populate({
+        path: "creatorId",
+        select: "displayName fullName userId",
+        populate: { path: "userId", select: "name username" },
+      })
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .lean(),
+  ]);
+
+  return [
+    ...tracks.map((track) => {
+      const creator = mapReleaseCreator(track);
+      return {
+        href: `/tracks/${track._id}`,
+        label: track.title || "Music release",
+        description: pickText(
+          track.description,
+          track.genre ? `${creator.name} - ${track.genre}` : "",
+          `Music release by ${creator.name} on Tengacion.`
+        ),
+        updatedAt: track.updatedAt,
+        createdAt: track.createdAt,
+      };
+    }),
+    ...albums.map((album) => {
+      const creator = mapReleaseCreator(album);
+      const trackCount = Number(album.totalTracks || 0);
+      return {
+        href: `/albums/${album._id}`,
+        label: album.title || "Album",
+        description: pickText(
+          album.description,
+          `${album.releaseType || "Album"} by ${creator.name}${trackCount ? ` with ${trackCount} tracks` : ""}.`
+        ),
+        updatedAt: album.updatedAt,
+        createdAt: album.createdAt,
+      };
+    }),
+  ]
+    .sort((a, b) => getEntryTime(b) - getEntryTime(a))
+    .slice(0, limit);
+};
+
+const fetchBookDirectoryItems = async (limit = CATEGORY_PREVIEW_LIMIT) =>
+  (
+    await Book.find(ACTIVE_BOOK_FILTER)
+      .select("_id title description subtitle genre authorName creatorId updatedAt createdAt")
+      .populate({
+        path: "creatorId",
+        select: "displayName fullName userId",
+        populate: { path: "userId", select: "name username" },
+      })
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .lean()
+  ).map((book) => {
+    const creator = mapReleaseCreator(book);
+    return {
+      href: `/books/${book._id}`,
+      label: book.title || "Book",
+      description: pickText(
+        book.description,
+        book.subtitle,
+        book.genre ? `${book.genre} book by ${pickText(book.authorName, creator.name)}.` : "",
+        `Book by ${pickText(book.authorName, creator.name)} on Tengacion.`
+      ),
+    };
+  });
+
+const fetchPodcastDirectoryItems = async (limit = CATEGORY_PREVIEW_LIMIT) =>
+  (
+    await Track.find({ ...ACTIVE_TRACK_FILTER, kind: "podcast" })
+      .select("_id title description showNotes podcastSeries podcastCategory creatorId updatedAt createdAt")
+      .populate({
+        path: "creatorId",
+        select: "displayName fullName userId",
+        populate: { path: "userId", select: "name username" },
+      })
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .lean()
+  ).map((episode) => {
+    const creator = mapReleaseCreator(episode);
+    return {
+      href: `/tracks/${episode._id}`,
+      label: episode.title || "Podcast episode",
+      description: pickText(
+        episode.description,
+        episode.showNotes,
+        episode.podcastSeries ? `${episode.podcastSeries} by ${creator.name}.` : "",
+        episode.podcastCategory ? `${episode.podcastCategory} podcast episode on Tengacion.` : "",
+        `Podcast episode by ${creator.name} on Tengacion.`
+      ),
+    };
+  });
+
+const DIRECTORY_PAGE_CONFIG = {
+  "/creators": {
+    listName: "Public creators on Tengacion",
+    emptyText: "Public creator profiles will appear here as creators publish music, books, podcasts, or videos.",
+    loadItems: fetchCreatorDirectoryItems,
+  },
+  "/music": {
+    listName: "Public music releases on Tengacion",
+    emptyText: "Public songs and albums will appear here as creators publish music releases.",
+    loadItems: fetchMusicDirectoryItems,
+  },
+  "/books": {
+    listName: "Public books on Tengacion",
+    emptyText: "Public books and reading releases will appear here as authors publish.",
+    loadItems: fetchBookDirectoryItems,
+  },
+  "/podcasts": {
+    listName: "Public podcasts on Tengacion",
+    emptyText: "Public podcast episodes will appear here as creators publish spoken-word releases.",
+    loadItems: fetchPodcastDirectoryItems,
+  },
+};
+
+const buildDirectoryPreviewMarkup = ({ title, description, items = [], emptyText = "" } = {}) => {
+  const parts = [
+    '<section class="seo-directory-preview">',
+    `  <h1>${escapeHtml(title)}</h1>`,
+    `  <p>${escapeHtml(description)}</p>`,
+  ];
+
+  if (items.length) {
+    parts.push('  <ul aria-label="Public Tengacion links">');
+    items.forEach((item) => {
+      parts.push("    <li>");
+      parts.push(`      <a href="${escapeHtmlAttribute(item.href)}">${escapeHtml(item.label)}</a>`);
+      if (item.description) {
+        parts.push(`      <p>${escapeHtml(truncateText(item.description, 180))}</p>`);
+      }
+      parts.push("    </li>");
+    });
+    parts.push("  </ul>");
+  } else if (emptyText) {
+    parts.push(`  <p>${escapeHtml(emptyText)}</p>`);
+  }
+
+  parts.push("</section>");
+  return parts.join("\n");
+};
+
+const buildDirectoryPageSeo = async (pathname, page) => {
+  const directory = DIRECTORY_PAGE_CONFIG[pathname];
+  if (!directory) {
+    return buildSeoPayload({
+      ...page,
+      structuredData: [
+        buildBreadcrumbJsonLd([
+          { name: "Tengacion", url: "/" },
+          { name: page.previewTitle || page.title, url: page.canonicalPath || pathname },
+        ]),
+      ],
+    });
+  }
+
+  let items = [];
+  try {
+    items = await directory.loadItems(CATEGORY_PREVIEW_LIMIT);
+  } catch (error) {
+    console.warn("Failed to build public directory SEO preview:", pathname, error?.message || error);
+  }
+
+  const previewTitle = page.previewTitle || page.title;
+  const previewDescription = page.previewDescription || page.description;
+  const structuredData = [
+    buildBreadcrumbJsonLd([
+      { name: "Tengacion", url: "/" },
+      { name: previewTitle, url: page.canonicalPath || pathname },
+    ]),
+  ];
+
+  if (items.length) {
+    structuredData.push(buildItemListJsonLd({ name: directory.listName, items }));
+  }
+
+  return buildSeoPayload({
+    ...page,
+    structuredData,
+    previewHtml: buildDirectoryPreviewMarkup({
+      title: previewTitle,
+      description: previewDescription,
+      items,
+      emptyText: directory.emptyText,
+    }),
+  });
+};
+
 const replaceTagAttribute = (html, key, attribute, value) =>
   html.replace(
     new RegExp(`(<[^>]+data-seo-key="${key}"[^>]*\\b${attribute}=")([^"]*)(")`, "i"),
@@ -463,12 +774,12 @@ const renderSeoHtml = (template = "", seo = {}) => {
   return html;
 };
 
-const buildStaticPageSeo = (pathname) => {
+const buildStaticPageSeo = async (pathname) => {
   const page = PUBLIC_INFO_PAGES[pathname];
   if (!page) {
     return null;
   }
-  return buildSeoPayload(page);
+  return buildDirectoryPageSeo(pathname, page);
 };
 
 const buildNoIndexPageSeo = (pathname) => {
@@ -1013,7 +1324,7 @@ const resolvePageSeo = async ({ path = "/" } = {}) => {
     });
   }
 
-  const staticPageSeo = buildStaticPageSeo(pathname);
+  const staticPageSeo = await buildStaticPageSeo(pathname);
   if (staticPageSeo) {
     return staticPageSeo;
   }

@@ -33,6 +33,7 @@ const PUBLIC_STATIC_PATHS = new Set([
   "/copyright-policy",
   "/contact",
   "/developer-contact",
+  "/marketplace",
 ]);
 
 const NOINDEX_RULES = [
@@ -88,7 +89,15 @@ const NOINDEX_RULES = [
     description: "Private Tengacion subscription flow.",
   },
   {
-    patterns: ["/admin", "/admin/*", "/marketplace", "/marketplace/*"],
+    patterns: [
+      "/admin",
+      "/admin/*",
+      "/marketplace/register",
+      "/marketplace/become-seller",
+      "/marketplace/dashboard",
+      "/marketplace/orders",
+      "/marketplace/payouts",
+    ],
     title: "Private Page | Tengacion",
     description: "Private Tengacion page.",
   },
@@ -127,11 +136,15 @@ const isPublicCreatorAliasRoute = (pathname) => {
 const isPublicDetailRoute = (pathname) =>
   /^\/(tracks|books|albums)\/[^/]+$/i.test(pathname);
 
+const isPublicMarketplaceRoute = (pathname) =>
+  /^\/marketplace\/(?:product|store)\/[^/]+$/i.test(pathname);
+
 const isHandledPublicRoute = (pathname) =>
   PUBLIC_STATIC_PATHS.has(pathname)
   || isPublicCreatorRoute(pathname)
   || isPublicCreatorAliasRoute(pathname)
-  || isPublicDetailRoute(pathname);
+  || isPublicDetailRoute(pathname)
+  || isPublicMarketplaceRoute(pathname);
 
 export default function RouteSeoController() {
   const location = useLocation();

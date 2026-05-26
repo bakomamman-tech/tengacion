@@ -12,6 +12,8 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "test_secret_1234567890123456
 const Album = require("../models/Album");
 const Book = require("../models/Book");
 const CreatorProfile = require("../models/CreatorProfile");
+const MarketplaceProduct = require("../models/MarketplaceProduct");
+const MarketplaceSeller = require("../models/MarketplaceSeller");
 const Track = require("../models/Track");
 const User = require("../models/User");
 
@@ -117,6 +119,62 @@ const createCreator = async () => {
   return { user, profile, token: await issueSessionToken(user._id) };
 };
 
+const createMarketplaceListing = async () => {
+  const sellerUser = await User.create({
+    name: "SEO Seller",
+    username: "seo_seller",
+    email: "seo-seller@example.com",
+    password: "Password123!",
+    emailVerified: true,
+  });
+  const seller = await MarketplaceSeller.create({
+    user: sellerUser._id,
+    fullName: "SEO Seller Owner",
+    storeName: "SEO Market Store",
+    slug: "seo-market-store",
+    phoneNumber: "08012345678",
+    bankName: "Access Bank",
+    accountNumber: "0123456789",
+    accountName: "SEO Market Store",
+    residentialAddress: "1 Market Road",
+    businessAddress: "2 Store Avenue",
+    state: "Lagos",
+    city: "Ikeja",
+    status: "approved",
+    isActive: true,
+    approvedAt: new Date(),
+  });
+  const product = await MarketplaceProduct.create({
+    seller: seller._id,
+    title: "SEO Marketplace Bag",
+    slug: "seo-marketplace-bag",
+    description: "A discoverable marketplace bag from an approved Tengacion seller.",
+    images: [
+      {
+        publicId: "seo-marketplace-bag",
+        url: "https://example.com/seo-marketplace-bag.jpg",
+        secureUrl: "https://example.com/seo-marketplace-bag.jpg",
+        resourceType: "image",
+        type: "image",
+      },
+    ],
+    category: "Fashion",
+    price: 6500,
+    currency: "NGN",
+    stock: 5,
+    condition: "new",
+    state: "Lagos",
+    city: "Ikeja",
+    deliveryOptions: ["pickup", "nationwide_delivery"],
+    deliveryNotes: "Dispatch available",
+    isPublished: true,
+    isHidden: false,
+    moderationStatus: "approved",
+  });
+
+  return { seller, product };
+};
+
 describe("SEO routes", () => {
   beforeAll(async () => {
     ensureFrontendTemplate();
@@ -152,6 +210,8 @@ describe("SEO routes", () => {
     expect(response.text).toContain("User-agent: *");
     expect(response.text).toContain("Disallow: /login");
     expect(response.text).toContain("Disallow: /admin");
+    expect(response.text).toContain("Disallow: /marketplace/orders");
+    expect(response.text).not.toContain("Disallow: /marketplace\n");
     expect(response.text).toContain("Sitemap: https://tengacion.com/sitemap.xml");
   });
 
@@ -307,8 +367,40 @@ describe("SEO routes", () => {
     expect(podcastsResponse.text).toContain("Directory SEO Podcast");
   });
 
+  test("marketplace public pages render indexable SEO for approved products and stores", async () => {
+    const { seller, product } = await createMarketplaceListing();
+
+    const marketplaceResponse = await request(server).get("/marketplace").expect(200);
+    const productResponse = await request(server).get(`/marketplace/product/${product.slug}`).expect(200);
+    const storeResponse = await request(server).get(`/marketplace/store/${seller.slug}`).expect(200);
+
+    expect(marketplaceResponse.text).toContain(
+      '<title data-seo-key="title">Tengacion Marketplace | Shop Approved Creator Stores</title>'
+    );
+    expect(marketplaceResponse.text).toContain('href="https://tengacion.com/marketplace"');
+    expect(marketplaceResponse.text).toContain('content="index,follow"');
+    expect(marketplaceResponse.text).toContain(`href="/marketplace/product/${product.slug}"`);
+    expect(marketplaceResponse.text).toContain("SEO Marketplace Bag");
+
+    expect(productResponse.text).toContain(
+      '<title data-seo-key="title">SEO Marketplace Bag | Tengacion Marketplace</title>'
+    );
+    expect(productResponse.text).toContain('href="https://tengacion.com/marketplace/product/seo-marketplace-bag"');
+    expect(productResponse.text).toContain('content="product"');
+    expect(productResponse.text).toContain('"@type":"Product"');
+    expect(productResponse.text).toContain('"price":6500');
+
+    expect(storeResponse.text).toContain(
+      '<title data-seo-key="title">SEO Market Store | Tengacion Marketplace Store</title>'
+    );
+    expect(storeResponse.text).toContain('href="https://tengacion.com/marketplace/store/seo-market-store"');
+    expect(storeResponse.text).toContain('"@type":"Store"');
+    expect(storeResponse.text).toContain(`href="/marketplace/product/${product.slug}"`);
+  });
+
   test("sitemap.xml exposes a sitemap index and child sitemap files for public sections", async () => {
     const { profile } = await createCreator();
+    const { seller, product: marketplaceProduct } = await createMarketplaceListing();
     const track = await Track.create({
       creatorId: profile._id,
       title: "SEO Single",
@@ -358,6 +450,7 @@ describe("SEO routes", () => {
     const creatorsResponse = await request(server).get("/sitemaps/creators-1.xml").expect(200);
     const musicResponse = await request(server).get("/sitemaps/music-1.xml").expect(200);
     const booksResponse = await request(server).get("/sitemaps/books-1.xml").expect(200);
+    const marketplaceResponse = await request(server).get("/sitemaps/marketplace-1.xml").expect(200);
 
     expect(indexResponse.headers["content-type"]).toContain("application/xml");
     expect(indexResponse.text).toContain("<sitemapindex");
@@ -365,6 +458,7 @@ describe("SEO routes", () => {
     expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/creators-1.xml</loc>");
     expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/music-1.xml</loc>");
     expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/books-1.xml</loc>");
+    expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/marketplace-1.xml</loc>");
 
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/about</loc>");
@@ -372,6 +466,7 @@ describe("SEO routes", () => {
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/for-creators</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/safety</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/contact</loc>");
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/marketplace</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/creators</loc>");
     expect(creatorsResponse.text).toContain("<loc>https://tengacion.com/creator/seo_creator</loc>");
     expect(creatorsResponse.text).toContain("<loc>https://tengacion.com/creator/seo_creator/music</loc>");
@@ -379,6 +474,8 @@ describe("SEO routes", () => {
     expect(musicResponse.text).toContain(`<loc>https://tengacion.com/tracks/${track._id}</loc>`);
     expect(musicResponse.text).toContain(`<loc>https://tengacion.com/albums/${album._id}</loc>`);
     expect(booksResponse.text).toContain(`<loc>https://tengacion.com/books/${book._id}</loc>`);
+    expect(marketplaceResponse.text).toContain(`<loc>https://tengacion.com/marketplace/product/${marketplaceProduct.slug}</loc>`);
+    expect(marketplaceResponse.text).toContain(`<loc>https://tengacion.com/marketplace/store/${seller.slug}</loc>`);
   });
 
   test("canonical creator route renders indexable metadata and legacy creator route canonicalizes to username path", async () => {

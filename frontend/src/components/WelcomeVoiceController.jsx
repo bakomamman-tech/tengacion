@@ -93,6 +93,9 @@ const PUBLIC_ROUTE_PATTERNS = [
   "/tracks/:trackId",
   "/books/:bookId",
   "/albums/:albumId",
+  "/marketplace",
+  "/marketplace/product/:idOrSlug",
+  "/marketplace/store/:idOrSlug",
 ];
 
 const matchesRoutePattern = (pathname, pattern) =>

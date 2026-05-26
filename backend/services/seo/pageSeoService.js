@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const Album = require("../../models/Album");
 const Book = require("../../models/Book");
 const CreatorProfile = require("../../models/CreatorProfile");
+const MarketplaceProduct = require("../../models/MarketplaceProduct");
+const MarketplaceSeller = require("../../models/MarketplaceSeller");
 const Track = require("../../models/Track");
 const Video = require("../../models/Video");
 const { findCreatorProfileByReference } = require("../creatorLookupService");
@@ -30,6 +32,15 @@ const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null };
+const ACTIVE_MARKETPLACE_PRODUCT_FILTER = {
+  isPublished: true,
+  isHidden: false,
+  moderationStatus: "approved",
+};
+const ACTIVE_MARKETPLACE_SELLER_FILTER = {
+  status: "approved",
+  isActive: true,
+};
 const CATEGORY_PREVIEW_LIMIT = 8;
 const HOME_TITLE = "Tengacion | Discover African Creators, Music, Books & Podcasts";
 const HOME_DESCRIPTION =
@@ -71,6 +82,15 @@ const PUBLIC_INFO_PAGES = {
     previewTitle: "Discover podcasts on Tengacion",
     previewDescription:
       "Browse podcasts and spoken-word releases from Tengacion creators.",
+  },
+  "/marketplace": {
+    title: "Tengacion Marketplace | Shop Approved Creator Stores",
+    description:
+      "Browse approved Tengacion marketplace sellers, products, local pickup options, and delivery-ready listings.",
+    canonicalPath: "/marketplace",
+    previewTitle: "Tengacion Marketplace",
+    previewDescription:
+      "Shop approved sellers, product listings, local pickup, and delivery-ready marketplace items on Tengacion.",
   },
   "/about": {
     title: "About Tengacion | African Creator Discovery Platform",
@@ -239,9 +259,15 @@ const NOINDEX_PAGE_CONFIG = [
     description: "Private Tengacion admin area.",
   },
   {
-    patterns: ["/marketplace", "/marketplace/*"],
-    title: "Marketplace | Tengacion",
-    description: "Private Tengacion marketplace page.",
+    patterns: [
+      "/marketplace/register",
+      "/marketplace/become-seller",
+      "/marketplace/dashboard",
+      "/marketplace/orders",
+      "/marketplace/payouts",
+    ],
+    title: "Marketplace Account | Tengacion",
+    description: "Private Tengacion marketplace account page.",
   },
   {
     patterns: ["/creator/*/subscribe", "/creators/*/subscribe"],
@@ -397,6 +423,7 @@ const buildHomePreviewMarkup = () => {
     { href: "/music", label: "Music releases" },
     { href: "/books", label: "Books" },
     { href: "/podcasts", label: "Podcasts" },
+    { href: "/marketplace", label: "Marketplace" },
     { href: "/for-creators", label: "For creators" },
     { href: "/community-guidelines", label: "Community guidelines" },
     { href: "/contact", label: "Contact and reports" },
@@ -460,6 +487,37 @@ const mapReleaseCreator = (entry = {}) => {
     name: getCreatorName(profile),
     path: getCreatorPathFromProfile(profile),
   };
+};
+
+const getMarketplaceImage = (product = {}) => {
+  const images = Array.isArray(product.images) ? product.images : [];
+  const first = images[0] || {};
+  return pickText(first.secureUrl, first.url, DEFAULT_IMAGE_PATH);
+};
+
+const getMarketplaceProductPath = (product = {}) =>
+  `/marketplace/product/${encodeURIComponent(product.slug || product._id || "")}`;
+
+const getMarketplaceStorePath = (seller = {}) =>
+  `/marketplace/store/${encodeURIComponent(seller.slug || seller._id || "")}`;
+
+const getMarketplaceSellerLocation = (seller = {}) =>
+  [seller.city, seller.state].filter(Boolean).join(", ");
+
+const getMarketplaceProductDescription = (product = {}) => {
+  const seller = product?.seller || {};
+  const sellerName = pickText(seller.storeName, "an approved Tengacion seller");
+  const location = getMarketplaceSellerLocation(seller) || [product.city, product.state].filter(Boolean).join(", ");
+  return truncateText(
+    pickText(
+      product.description,
+      product.category && location
+        ? `${product.title} is a ${product.category} listing from ${sellerName} in ${location}.`
+        : "",
+      `${product.title || "This marketplace product"} from ${sellerName} on Tengacion Marketplace.`
+    ),
+    180
+  );
 };
 
 const fetchCreatorDirectoryItems = async (limit = CATEGORY_PREVIEW_LIMIT) => {
@@ -632,6 +690,23 @@ const fetchPodcastDirectoryItems = async (limit = CATEGORY_PREVIEW_LIMIT) =>
     };
   });
 
+const fetchMarketplaceDirectoryItems = async (limit = CATEGORY_PREVIEW_LIMIT) =>
+  (
+    await MarketplaceProduct.find(ACTIVE_MARKETPLACE_PRODUCT_FILTER)
+      .select("_id title slug description category price currency city state seller updatedAt createdAt")
+      .populate("seller", "_id storeName slug city state status isActive")
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .limit(limit * 2)
+      .lean()
+  )
+    .filter((product) => product?.seller?.status === "approved" && product?.seller?.isActive)
+    .slice(0, limit)
+    .map((product) => ({
+      href: getMarketplaceProductPath(product),
+      label: product.title || "Marketplace product",
+      description: getMarketplaceProductDescription(product),
+    }));
+
 const DIRECTORY_PAGE_CONFIG = {
   "/creators": {
     listName: "Public creators on Tengacion",
@@ -652,6 +727,11 @@ const DIRECTORY_PAGE_CONFIG = {
     listName: "Public podcasts on Tengacion",
     emptyText: "Public podcast episodes will appear here as creators publish spoken-word releases.",
     loadItems: fetchPodcastDirectoryItems,
+  },
+  "/marketplace": {
+    listName: "Tengacion Marketplace products",
+    emptyText: "Published marketplace products will appear here as approved sellers list items.",
+    loadItems: fetchMarketplaceDirectoryItems,
   },
 };
 
@@ -1266,6 +1346,189 @@ const buildAlbumSeo = async (albumId) => {
   });
 };
 
+const resolveMarketplaceProduct = async (idOrSlug = "") => {
+  const raw = String(idOrSlug || "").trim();
+  if (!raw) {
+    return null;
+  }
+
+  const lookup = mongoose.Types.ObjectId.isValid(raw)
+    ? { _id: raw }
+    : { slug: raw.toLowerCase() };
+
+  const product = await MarketplaceProduct.findOne({
+    ...lookup,
+    ...ACTIVE_MARKETPLACE_PRODUCT_FILTER,
+  })
+    .populate("seller", "_id storeName slug city state status isActive updatedAt createdAt")
+    .lean();
+
+  if (!product || product?.seller?.status !== "approved" || !product?.seller?.isActive) {
+    return null;
+  }
+
+  return product;
+};
+
+const buildMarketplaceProductSeo = async (idOrSlug) => {
+  const product = await resolveMarketplaceProduct(idOrSlug);
+  const fallbackPath = `/marketplace/product/${encodeURIComponent(idOrSlug || "")}`;
+
+  if (!product) {
+    return buildSeoPayload({
+      title: "Marketplace Product Not Found | Tengacion",
+      description: DEFAULT_DESCRIPTION,
+      canonicalPath: fallbackPath,
+      robots: "noindex,nofollow",
+      statusCode: 404,
+    });
+  }
+
+  const seller = product.seller || {};
+  const canonicalPath = getMarketplaceProductPath(product);
+  const image = getMarketplaceImage(product);
+  const description = getMarketplaceProductDescription(product);
+  const sellerName = pickText(seller.storeName, "Tengacion Marketplace seller");
+  const availability = Number(product.stock || 0) > 0
+    ? "https://schema.org/InStock"
+    : "https://schema.org/OutOfStock";
+
+  return buildSeoPayload({
+    title: `${product.title} | Tengacion Marketplace`,
+    description,
+    canonicalPath,
+    ogType: "product",
+    image,
+    imageAlt: `${product.title} marketplace listing`,
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: product.title || "Marketplace product",
+        description,
+        url: toCanonicalUrl(canonicalPath),
+        image: image ? [toAbsoluteUrl(image)] : undefined,
+        category: product.category || undefined,
+        sku: String(product._id || ""),
+        brand: {
+          "@type": "Brand",
+          name: sellerName,
+        },
+        offers: {
+          "@type": "Offer",
+          url: toCanonicalUrl(canonicalPath),
+          priceCurrency: product.currency || "NGN",
+          price: Number(product.price || 0),
+          availability,
+          itemCondition:
+            product.condition === "used"
+              ? "https://schema.org/UsedCondition"
+              : "https://schema.org/NewCondition",
+          seller: {
+            "@type": "Organization",
+            name: sellerName,
+            url: toCanonicalUrl(getMarketplaceStorePath(seller)),
+          },
+        },
+      },
+      buildBreadcrumbJsonLd([
+        { name: "Marketplace", url: "/marketplace" },
+        { name: sellerName, url: getMarketplaceStorePath(seller) },
+        { name: product.title || "Product", url: canonicalPath },
+      ]),
+    ],
+    previewTitle: `${product.title} | Tengacion Marketplace`,
+    previewDescription: description,
+  });
+};
+
+const buildMarketplaceStoreDescription = (seller = {}) => {
+  const location = getMarketplaceSellerLocation(seller);
+  if (seller.storeName && location) {
+    return `${seller.storeName} is an approved Tengacion marketplace store serving ${location}. Browse live product listings and delivery options.`;
+  }
+  if (seller.storeName) {
+    return `${seller.storeName} is an approved Tengacion marketplace store. Browse live product listings and delivery options.`;
+  }
+  return "Browse this approved Tengacion marketplace store and its live product listings.";
+};
+
+const buildMarketplaceStoreSeo = async (idOrSlug) => {
+  const raw = String(idOrSlug || "").trim();
+  const lookup = mongoose.Types.ObjectId.isValid(raw)
+    ? { _id: raw }
+    : { slug: raw.toLowerCase() };
+  const fallbackPath = `/marketplace/store/${encodeURIComponent(raw || "")}`;
+
+  const seller = await MarketplaceSeller.findOne({
+    ...lookup,
+    ...ACTIVE_MARKETPLACE_SELLER_FILTER,
+  }).lean();
+
+  if (!seller) {
+    return buildSeoPayload({
+      title: "Marketplace Store Not Found | Tengacion",
+      description: DEFAULT_DESCRIPTION,
+      canonicalPath: fallbackPath,
+      robots: "noindex,nofollow",
+      statusCode: 404,
+    });
+  }
+
+  const products = await MarketplaceProduct.find({
+    ...ACTIVE_MARKETPLACE_PRODUCT_FILTER,
+    seller: seller._id,
+  })
+    .select("_id title slug description category images updatedAt createdAt")
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .limit(CATEGORY_PREVIEW_LIMIT)
+    .lean();
+  const canonicalPath = getMarketplaceStorePath(seller);
+  const description = truncateText(buildMarketplaceStoreDescription(seller), 180);
+  const productItems = products.map((product) => ({
+    href: getMarketplaceProductPath(product),
+    label: product.title || "Marketplace product",
+    description: getMarketplaceProductDescription({ ...product, seller }),
+  }));
+
+  return buildSeoPayload({
+    title: `${seller.storeName || "Marketplace Store"} | Tengacion Marketplace Store`,
+    description,
+    canonicalPath,
+    ogType: "website",
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "Store",
+        name: seller.storeName || "Tengacion Marketplace Store",
+        description,
+        url: toCanonicalUrl(canonicalPath),
+        address: getMarketplaceSellerLocation(seller)
+          ? {
+              "@type": "PostalAddress",
+              addressLocality: seller.city || undefined,
+              addressRegion: seller.state || undefined,
+              addressCountry: "NG",
+            }
+          : undefined,
+      },
+      ...(productItems.length
+        ? [buildItemListJsonLd({ name: `${seller.storeName || "Store"} products`, items: productItems })]
+        : []),
+      buildBreadcrumbJsonLd([
+        { name: "Marketplace", url: "/marketplace" },
+        { name: seller.storeName || "Store", url: canonicalPath },
+      ]),
+    ],
+    previewHtml: buildDirectoryPreviewMarkup({
+      title: `${seller.storeName || "Marketplace Store"} on Tengacion`,
+      description,
+      items: productItems,
+      emptyText: "This approved seller has no live marketplace products yet.",
+    }),
+  });
+};
+
 const resolveDynamicSeo = async (pathname) => {
   const creatorMatch = pathname.match(/^\/creators\/([^/]+)(?:\/(music|albums|podcasts|books))?$/i);
   if (creatorMatch) {
@@ -1301,6 +1564,16 @@ const resolveDynamicSeo = async (pathname) => {
   const albumMatch = pathname.match(/^\/albums\/([^/]+)$/i);
   if (albumMatch) {
     return buildAlbumSeo(albumMatch[1]);
+  }
+
+  const marketplaceProductMatch = pathname.match(/^\/marketplace\/product\/([^/]+)$/i);
+  if (marketplaceProductMatch) {
+    return buildMarketplaceProductSeo(marketplaceProductMatch[1]);
+  }
+
+  const marketplaceStoreMatch = pathname.match(/^\/marketplace\/store\/([^/]+)$/i);
+  if (marketplaceStoreMatch) {
+    return buildMarketplaceStoreSeo(marketplaceStoreMatch[1]);
   }
 
   return null;

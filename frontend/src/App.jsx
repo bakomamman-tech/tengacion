@@ -188,11 +188,7 @@ export default function App() {
           <Route path="/creators" element={<FindCreatorsPage />} />
           <Route
             path="/marketplace"
-            element={
-              <ProtectedRoute user={user}>
-                <MarketplacePage />
-              </ProtectedRoute>
-            }
+            element={<MarketplacePage />}
           />
           <Route
             path="/marketplace/become-seller"
@@ -220,19 +216,11 @@ export default function App() {
           />
           <Route
             path="/marketplace/store/:idOrSlug"
-            element={
-              <ProtectedRoute user={user}>
-                <MarketplaceStorefrontPage />
-              </ProtectedRoute>
-            }
+            element={<MarketplaceStorefrontPage />}
           />
           <Route
             path="/marketplace/product/:idOrSlug"
-            element={
-              <ProtectedRoute user={user}>
-                <MarketplaceProductDetailsPage />
-              </ProtectedRoute>
-            }
+            element={<MarketplaceProductDetailsPage />}
           />
           <Route
             path="/marketplace/orders"

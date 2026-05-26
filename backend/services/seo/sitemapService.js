@@ -1,6 +1,8 @@
 const Album = require("../../models/Album");
 const Book = require("../../models/Book");
 const CreatorProfile = require("../../models/CreatorProfile");
+const MarketplaceProduct = require("../../models/MarketplaceProduct");
+const MarketplaceSeller = require("../../models/MarketplaceSeller");
 const Track = require("../../models/Track");
 const Video = require("../../models/Video");
 const { buildCreatorPublicPath } = require("../publicRouteService");
@@ -10,6 +12,15 @@ const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null };
+const ACTIVE_MARKETPLACE_PRODUCT_FILTER = {
+  isPublished: true,
+  isHidden: false,
+  moderationStatus: "approved",
+};
+const ACTIVE_MARKETPLACE_SELLER_FILTER = {
+  status: "approved",
+  isActive: true,
+};
 const SITEMAP_CACHE_TTL_MS = 15 * 60 * 1000;
 const MAX_URLS_PER_SITEMAP = 1000;
 
@@ -26,6 +37,7 @@ const STATIC_PUBLIC_ROUTES = [
   { path: "/music" },
   { path: "/books" },
   { path: "/podcasts" },
+  { path: "/marketplace" },
   { path: "/terms" },
   { path: "/privacy" },
   { path: "/community-guidelines" },
@@ -336,6 +348,44 @@ const buildPodcastEntries = async () =>
     }))
   );
 
+const marketplaceProductPath = (product = {}) =>
+  `/marketplace/product/${encodeURIComponent(product.slug || product._id || "")}`;
+
+const marketplaceStorePath = (seller = {}) =>
+  `/marketplace/store/${encodeURIComponent(seller.slug || seller._id || "")}`;
+
+const buildMarketplaceEntries = async () => {
+  const products = await MarketplaceProduct.find(ACTIVE_MARKETPLACE_PRODUCT_FILTER)
+    .select("_id slug seller updatedAt createdAt")
+    .sort({ updatedAt: -1 })
+    .populate("seller", "_id slug status isActive updatedAt createdAt")
+    .lean();
+
+  const approvedProducts = products.filter(
+    (product) => product?.seller?.status === "approved" && product?.seller?.isActive
+  );
+  const productEntries = approvedProducts.map((product) => ({
+    path: marketplaceProductPath(product),
+    lastModified: product.updatedAt || product.createdAt,
+  }));
+  const sellerEntries = approvedProducts.map((product) => ({
+    path: marketplaceStorePath(product.seller),
+    lastModified: product.seller?.updatedAt || product.updatedAt || product.createdAt,
+  }));
+
+  const sellersWithoutProducts = await MarketplaceSeller.find(ACTIVE_MARKETPLACE_SELLER_FILTER)
+    .select("_id slug updatedAt createdAt")
+    .sort({ updatedAt: -1 })
+    .limit(500)
+    .lean();
+  const storeEntries = sellersWithoutProducts.map((seller) => ({
+    path: marketplaceStorePath(seller),
+    lastModified: seller.updatedAt || seller.createdAt,
+  }));
+
+  return dedupeEntries([...productEntries, ...sellerEntries, ...storeEntries]);
+};
+
 const buildSectionFiles = (baseName, entries = []) =>
   chunkEntries(entries).map((chunk, index) => ({
     name: `${baseName}-${index + 1}`,
@@ -345,12 +395,13 @@ const buildSectionFiles = (baseName, entries = []) =>
   }));
 
 const buildSitemapManifest = async () => {
-  const [staticEntries, creatorEntries, musicEntries, bookEntries, podcastEntries] = await Promise.all([
+  const [staticEntries, creatorEntries, musicEntries, bookEntries, podcastEntries, marketplaceEntries] = await Promise.all([
     Promise.resolve(buildStaticEntries()),
     buildCreatorEntries(),
     buildMusicEntries(),
     buildBookEntries(),
     buildPodcastEntries(),
+    buildMarketplaceEntries(),
   ]);
 
   const sections = [
@@ -364,6 +415,7 @@ const buildSitemapManifest = async () => {
     ...buildSectionFiles("music", musicEntries),
     ...buildSectionFiles("books", bookEntries),
     ...buildSectionFiles("podcasts", podcastEntries),
+    ...buildSectionFiles("marketplace", marketplaceEntries),
   ].filter((section) => Array.isArray(section.entries) && section.entries.length > 0);
 
   return {
@@ -427,7 +479,11 @@ const buildRobotsTxt = () =>
     "Disallow: /payments",
     "Disallow: /purchases",
     "Disallow: /onboarding",
-    "Disallow: /marketplace",
+    "Disallow: /marketplace/register",
+    "Disallow: /marketplace/become-seller",
+    "Disallow: /marketplace/dashboard",
+    "Disallow: /marketplace/orders",
+    "Disallow: /marketplace/payouts",
     "Disallow: /creator/register",
     "Disallow: /creator/dashboard",
     "Disallow: /creator/categories",

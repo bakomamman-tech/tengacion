@@ -34,6 +34,11 @@ const DISCOVERY_LINKS = [
     label: "Podcasts",
     description: "Listen to public episodes and spoken-word releases from creators across Africa.",
   },
+  {
+    path: "/marketplace",
+    label: "Marketplace",
+    description: "Browse approved seller storefronts, products, local pickup, and delivery-ready listings.",
+  },
 ];
 
 const CONTENT_LINKS = [
@@ -93,6 +98,7 @@ export default function PublicHomePage() {
           <div className="public-home__nav-actions">
             <Link to="/about">About</Link>
             <Link to="/creators">Creators</Link>
+            <Link to="/marketplace">Marketplace</Link>
             <Link to="/contact">Contact</Link>
             <Link to="/login">Log in</Link>
           </div>

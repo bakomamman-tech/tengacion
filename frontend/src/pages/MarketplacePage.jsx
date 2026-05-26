@@ -4,7 +4,14 @@ import toast from "react-hot-toast";
 
 import QuickAccessLayout from "../components/QuickAccessLayout";
 import ProductGrid from "../components/marketplace/ProductGrid";
+import SeoHead from "../components/seo/SeoHead";
 import { useAuth } from "../context/AuthContext";
+import {
+  buildBreadcrumbJsonLd,
+  buildCanonicalUrl,
+  buildOrganizationJsonLd,
+  buildWebSiteJsonLd,
+} from "../lib/seo";
 import {
   MARKETPLACE_CATEGORY_SUGGESTIONS,
   MARKETPLACE_DELIVERY_OPTIONS,
@@ -21,6 +28,10 @@ const defaultFilters = {
   deliveryOption: "",
   sort: "latest",
 };
+
+const MARKETPLACE_TITLE = "Tengacion Marketplace | Shop Approved Creator Stores";
+const MARKETPLACE_DESCRIPTION =
+  "Browse approved Tengacion marketplace sellers, products, local pickup options, and delivery-ready listings.";
 
 const sidebarNav = [
   { id: "browse", label: "Browse all", description: "Reset filters and explore everything.", action: "reset" },
@@ -96,6 +107,30 @@ export default function MarketplacePage() {
     return (primary.length ? primary : fallback).slice(0, 12);
   }, [payload.latestProducts, payload.products]);
 
+  const seoStructuredData = useMemo(() => {
+    const items = highlightedProducts.slice(0, 8).map((product, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: product?.title || "Marketplace product",
+      url: buildCanonicalUrl(`/marketplace/product/${product?.slug || product?._id || ""}`),
+    }));
+
+    return [
+      buildWebSiteJsonLd(),
+      buildOrganizationJsonLd(),
+      buildBreadcrumbJsonLd([
+        { name: "Tengacion", url: "/" },
+        { name: "Marketplace", url: "/marketplace" },
+      ]),
+      {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        name: "Tengacion Marketplace products",
+        itemListElement: items,
+      },
+    ];
+  }, [highlightedProducts]);
+
   const locationLabel = useMemo(() => {
     const label = [filters.city, filters.state].filter(Boolean).join(", ");
     if (label) {
@@ -146,6 +181,13 @@ export default function MarketplacePage() {
       shellClassName="quick-access-shell--marketplace"
       mainClassName="quick-access-main--marketplace"
     >
+      <SeoHead
+        title={MARKETPLACE_TITLE}
+        description={MARKETPLACE_DESCRIPTION}
+        canonical="/marketplace"
+        robots="index,follow"
+        structuredData={seoStructuredData}
+      />
       <div className="marketplace-page marketplace-facebook-shell">
         <aside className="marketplace-facebook-sidebar marketplace-shell-card">
           <div className="marketplace-facebook-sidebar__header">

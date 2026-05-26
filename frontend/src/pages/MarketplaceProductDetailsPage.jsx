@@ -5,7 +5,16 @@ import toast from "react-hot-toast";
 import QuickAccessLayout from "../components/QuickAccessLayout";
 import ProductGrid from "../components/marketplace/ProductGrid";
 import OrderStatusBadge from "../components/marketplace/OrderStatusBadge";
+import SeoHead from "../components/seo/SeoHead";
 import { useAuth } from "../context/AuthContext";
+import {
+  buildBreadcrumbJsonLd,
+  buildCanonicalUrl,
+  buildOrganizationJsonLd,
+  buildWebSiteJsonLd,
+  resolveSeoImage,
+  truncateDescription,
+} from "../lib/seo";
 import { initializeMarketplacePayment } from "../services/marketplaceOrderService";
 import { fetchMarketplaceProductDetail } from "../services/marketplaceService";
 
@@ -45,6 +54,60 @@ export default function MarketplaceProductDetailsPage() {
   const product = payload.product;
   const images = product?.images || [];
   const selectedImage = images[selectedIndex] || images[0] || null;
+  const productPath = product ? `/marketplace/product/${product.slug || product._id || idOrSlug}` : `/marketplace/product/${idOrSlug}`;
+  const seoDescription = truncateDescription(
+    product
+      ? product.description ||
+          `${product.title} from ${product.seller?.storeName || "a Tengacion marketplace seller"} in ${product.location?.label || "Nigeria"}.`
+      : "Review a Tengacion marketplace product from an approved seller.",
+    180
+  );
+  const seoImage = selectedImage?.secureUrl || selectedImage?.url || product?.primaryImage?.secureUrl || product?.primaryImage?.url || "";
+  const seoStructuredData = useMemo(() => {
+    if (!product) {
+      return [buildWebSiteJsonLd(), buildOrganizationJsonLd()];
+    }
+
+    const availability = Number(product.stock || 0) > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
+
+    return [
+      buildWebSiteJsonLd(),
+      buildOrganizationJsonLd(),
+      buildBreadcrumbJsonLd([
+        { name: "Tengacion", url: "/" },
+        { name: "Marketplace", url: "/marketplace" },
+        { name: product.title || "Product", url: productPath },
+      ]),
+      {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: product.title || "Marketplace product",
+        description: seoDescription,
+        image: seoImage ? [resolveSeoImage(seoImage)] : undefined,
+        category: product.category || undefined,
+        sku: product._id || undefined,
+        brand: {
+          "@type": "Brand",
+          name: product.seller?.storeName || "Tengacion Marketplace",
+        },
+        offers: {
+          "@type": "Offer",
+          url: buildCanonicalUrl(productPath),
+          priceCurrency: product.currency || "NGN",
+          price: Number(product.price || 0),
+          availability,
+          itemCondition:
+            product.condition === "used"
+              ? "https://schema.org/UsedCondition"
+              : "https://schema.org/NewCondition",
+          seller: {
+            "@type": "Organization",
+            name: product.seller?.storeName || "Tengacion Marketplace seller",
+          },
+        },
+      },
+    ];
+  }, [product, productPath, seoDescription, seoImage]);
 
   const handleBuyNow = async () => {
     if (!product) {
@@ -98,6 +161,15 @@ export default function MarketplaceProductDetailsPage() {
       shellClassName="quick-access-shell--marketplace"
       mainClassName="quick-access-main--marketplace"
     >
+      <SeoHead
+        title={product ? `${product.title} | Tengacion Marketplace` : "Marketplace Product | Tengacion"}
+        description={seoDescription}
+        canonical={productPath}
+        robots={product ? "index,follow" : "noindex,follow"}
+        ogType="product"
+        ogImage={seoImage}
+        structuredData={seoStructuredData}
+      />
       <div className="marketplace-page">
         {loading ? <div className="marketplace-loading-state">Loading product details...</div> : null}
         {!loading && product ? (
@@ -184,14 +256,20 @@ export default function MarketplaceProductDetailsPage() {
                     </>
                   ) : null}
 
-                  <button
-                    type="button"
-                    className="marketplace-primary-btn"
-                    disabled={processing || Number(product.stock || 0) < 1}
-                    onClick={handleBuyNow}
-                  >
-                    {processing ? "Opening Paystack..." : "Buy now"}
-                  </button>
+                  {user ? (
+                    <button
+                      type="button"
+                      className="marketplace-primary-btn"
+                      disabled={processing || Number(product.stock || 0) < 1}
+                      onClick={handleBuyNow}
+                    >
+                      {processing ? "Opening Paystack..." : "Buy now"}
+                    </button>
+                  ) : (
+                    <Link className="marketplace-primary-btn" to="/login">
+                      Log in to buy
+                    </Link>
+                  )}
                 </div>
 
                 <div className="marketplace-card-stack">

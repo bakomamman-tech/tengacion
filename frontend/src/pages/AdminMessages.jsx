@@ -34,6 +34,8 @@ const titleCase = (value = "") =>
     .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1))
     .join(" ");
 
+const isExternalUrl = (value = "") => /^https?:\/\//i.test(String(value || ""));
+
 export default function AdminMessagesPage({ user }) {
   const navigate = useNavigate();
   const [range, setRange] = useState("30d");
@@ -289,86 +291,116 @@ export default function AdminMessagesPage({ user }) {
               <span className="adminx-section-meta">User complaints waiting for review or resolution</span>
             </div>
             <div className="adminx-leaderboard">
-              {(payload.complaints || []).map((complaint) => (
-                <article key={complaint._id} className="adminx-leaderboard-item">
-                  <div className="adminx-row" style={{ alignItems: "flex-start" }}>
-                    <div style={{ display: "grid", gap: 6 }}>
-                      <strong>{complaint.subject || "Complaint"}</strong>
-                      <div className="adminx-muted">
-                        From {(complaint.reporter?.name || complaint.reporter?.username || "Unknown user")}
-                        {complaint.reporter?.username ? ` @${complaint.reporter.username}` : ""}
+              {(payload.complaints || []).map((complaint) => {
+                const publicReporter = complaint.publicReporter || null;
+                const reporterName = complaint.reporter
+                  ? (complaint.reporter.name || complaint.reporter.username || "Unknown user")
+                  : (publicReporter?.name || "Public reporter");
+                const externalSource = isExternalUrl(complaint.sourcePath);
+
+                return (
+                  <article key={complaint._id} className="adminx-leaderboard-item">
+                    <div className="adminx-row" style={{ alignItems: "flex-start" }}>
+                      <div style={{ display: "grid", gap: 6 }}>
+                        <strong>{complaint.subject || "Complaint"}</strong>
+                        <div className="adminx-muted">
+                          From {reporterName}
+                          {complaint.reporter?.username ? ` @${complaint.reporter.username}` : ""}
+                          {publicReporter ? " (public report)" : ""}
+                        </div>
+                      </div>
+                      <div className="adminx-pill-row" style={{ flexWrap: "wrap", justifyContent: "flex-end" }}>
+                        <span className={`adminx-badge ${complaintBadgeClass(complaint.status)}`}>
+                          {titleCase(complaint.status || "open")}
+                        </span>
+                        <span className={`adminx-badge ${priorityBadgeClass(complaint.priority)}`}>
+                          {titleCase(complaint.priority || "medium")}
+                        </span>
+                        {complaint.category ? <span className="adminx-badge">{complaint.category}</span> : null}
                       </div>
                     </div>
-                    <div className="adminx-pill-row" style={{ flexWrap: "wrap", justifyContent: "flex-end" }}>
-                      <span className={`adminx-badge ${complaintBadgeClass(complaint.status)}`}>
-                        {titleCase(complaint.status || "open")}
-                      </span>
-                      <span className={`adminx-badge ${priorityBadgeClass(complaint.priority)}`}>
-                        {titleCase(complaint.priority || "medium")}
-                      </span>
-                      {complaint.category ? <span className="adminx-badge">{complaint.category}</span> : null}
-                    </div>
-                  </div>
 
-                  <div className="adminx-muted">{complaint.details}</div>
-                  <div className="adminx-row" style={{ flexWrap: "wrap" }}>
-                    <span className="adminx-muted">
-                      {dateTime(complaint.createdAt)}
-                      {complaint.sourceLabel ? ` - ${complaint.sourceLabel}` : ""}
-                    </span>
-                    <div className="adminx-action-row" style={{ flexWrap: "wrap", justifyContent: "flex-end" }}>
-                      {complaint.sourcePath ? (
-                        <button
-                          type="button"
-                          className="adminx-link-btn"
-                          onClick={() => navigate(complaint.sourcePath)}
-                        >
-                          Open source
-                        </button>
-                      ) : null}
-                      {complaint.reporter?._id ? (
-                        <button
-                          type="button"
-                          className="adminx-btn adminx-btn--primary"
-                          onClick={() => openReplyComposer(complaint)}
-                        >
-                          Reply user
-                        </button>
-                      ) : null}
-                      {complaint.status !== "reviewing" ? (
-                        <button
-                          type="button"
-                          className="adminx-btn"
-                          disabled={busyId === `${complaint._id}:reviewing`}
-                          onClick={() => handleComplaintStatus(complaint._id, "reviewing")}
-                        >
-                          {busyId === `${complaint._id}:reviewing` ? "Updating..." : "Mark reviewing"}
-                        </button>
-                      ) : null}
-                      {complaint.status !== "resolved" ? (
-                        <button
-                          type="button"
-                          className="adminx-btn adminx-btn--primary"
-                          disabled={busyId === `${complaint._id}:resolved`}
-                          onClick={() => handleComplaintStatus(complaint._id, "resolved")}
-                        >
-                          {busyId === `${complaint._id}:resolved` ? "Resolving..." : "Resolve"}
-                        </button>
-                      ) : null}
-                      {complaint.status !== "dismissed" ? (
-                        <button
-                          type="button"
-                          className="adminx-btn"
-                          disabled={busyId === `${complaint._id}:dismissed`}
-                          onClick={() => handleComplaintStatus(complaint._id, "dismissed")}
-                        >
-                          {busyId === `${complaint._id}:dismissed` ? "Dismissing..." : "Dismiss"}
-                        </button>
-                      ) : null}
+                    <div className="adminx-muted">{complaint.details}</div>
+                    {publicReporter?.email ? (
+                      <div className="adminx-muted">
+                        Public contact:{" "}
+                        <a className="adminx-link-btn" href={`mailto:${publicReporter.email}`}>
+                          {publicReporter.email}
+                        </a>
+                        {publicReporter.workTitle ? ` - Work: ${publicReporter.workTitle}` : ""}
+                        {publicReporter.rightsOwner ? ` - Rights owner: ${publicReporter.rightsOwner}` : ""}
+                      </div>
+                    ) : null}
+                    <div className="adminx-row" style={{ flexWrap: "wrap" }}>
+                      <span className="adminx-muted">
+                        {dateTime(complaint.createdAt)}
+                        {complaint.sourceLabel ? ` - ${complaint.sourceLabel}` : ""}
+                      </span>
+                      <div className="adminx-action-row" style={{ flexWrap: "wrap", justifyContent: "flex-end" }}>
+                        {complaint.sourcePath ? (
+                          externalSource ? (
+                            <a
+                              className="adminx-link-btn"
+                              href={complaint.sourcePath}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Open source
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              className="adminx-link-btn"
+                              onClick={() => navigate(complaint.sourcePath)}
+                            >
+                              Open source
+                            </button>
+                          )
+                        ) : null}
+                        {complaint.reporter?._id ? (
+                          <button
+                            type="button"
+                            className="adminx-btn adminx-btn--primary"
+                            onClick={() => openReplyComposer(complaint)}
+                          >
+                            Reply user
+                          </button>
+                        ) : null}
+                        {complaint.status !== "reviewing" ? (
+                          <button
+                            type="button"
+                            className="adminx-btn"
+                            disabled={busyId === `${complaint._id}:reviewing`}
+                            onClick={() => handleComplaintStatus(complaint._id, "reviewing")}
+                          >
+                            {busyId === `${complaint._id}:reviewing` ? "Updating..." : "Mark reviewing"}
+                          </button>
+                        ) : null}
+                        {complaint.status !== "resolved" ? (
+                          <button
+                            type="button"
+                            className="adminx-btn adminx-btn--primary"
+                            disabled={busyId === `${complaint._id}:resolved`}
+                            onClick={() => handleComplaintStatus(complaint._id, "resolved")}
+                          >
+                            {busyId === `${complaint._id}:resolved` ? "Resolving..." : "Resolve"}
+                          </button>
+                        ) : null}
+                        {complaint.status !== "dismissed" ? (
+                          <button
+                            type="button"
+                            className="adminx-btn"
+                            disabled={busyId === `${complaint._id}:dismissed`}
+                            onClick={() => handleComplaintStatus(complaint._id, "dismissed")}
+                          >
+                            {busyId === `${complaint._id}:dismissed` ? "Dismissing..." : "Dismiss"}
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
               {!(payload.complaints || []).length ? (
                 <div className="adminx-empty">No complaints have been sent to Admin yet.</div>
               ) : null}

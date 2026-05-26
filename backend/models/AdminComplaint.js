@@ -5,7 +5,7 @@ const AdminComplaintSchema = new mongoose.Schema(
     reporterId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      default: null,
       index: true,
     },
     subject: {
@@ -16,7 +16,17 @@ const AdminComplaintSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["general", "safety", "abuse", "privacy", "bug", "account", "other"],
+      enum: [
+        "general",
+        "safety",
+        "abuse",
+        "privacy",
+        "copyright",
+        "child_safety",
+        "bug",
+        "account",
+        "other",
+      ],
       default: "general",
       index: true,
     },

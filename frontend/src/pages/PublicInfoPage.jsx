@@ -204,7 +204,7 @@ const PAGE_CONFIG = {
           "Public reporting and admin moderation workflows help the platform respond to content, account, safety, and trust concerns.",
       },
     ],
-    primaryAction: { path: "/community-guidelines", label: "Read guidelines" },
+    primaryAction: { path: "/contact", label: "Report a concern" },
   },
 };
 
@@ -216,6 +216,7 @@ const RELATED_LINKS = [
   { path: "/for-authors", label: "Authors" },
   { path: "/for-podcasters", label: "Podcasters" },
   { path: "/safety", label: "Safety" },
+  { path: "/contact", label: "Contact" },
 ];
 
 export default function PublicInfoPage({ pageKey = "about" }) {

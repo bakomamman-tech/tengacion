@@ -202,4 +202,80 @@ describe("admin complaint inbox flow", () => {
       })
     );
   });
+
+  test("accepts public copyright reports without login and exposes contact details to admin", async () => {
+    const submitResponse = await request(app)
+      .post("/api/support/public-reports")
+      .send({
+        name: "Rights Holder",
+        email: "rights-holder@example.com",
+        category: "copyright",
+        subject: "Unauthorized song upload",
+        sourceUrl: "https://tengacion.com/tracks/public-track-id",
+        rightsOwner: "Rights Holder Music",
+        workTitle: "Original Song",
+        details: "This track appears to use my recording without permission.",
+        website: "",
+      })
+      .expect(201);
+
+    expect(submitResponse.body).toMatchObject({
+      success: true,
+      reportId: expect.any(String),
+    });
+
+    const storedComplaint = await AdminComplaint.findById(submitResponse.body.reportId).lean();
+    expect(storedComplaint).toEqual(
+      expect.objectContaining({
+        reporterId: null,
+        subject: "Unauthorized song upload",
+        category: "copyright",
+        sourcePath: "https://tengacion.com/tracks/public-track-id",
+        sourceLabel: "Public report form",
+        priority: "high",
+        metadata: expect.objectContaining({
+          publicReport: true,
+          reporterName: "Rights Holder",
+          reporterEmail: "rights-holder@example.com",
+          rightsOwner: "Rights Holder Music",
+          workTitle: "Original Song",
+        }),
+      })
+    );
+
+    const adminInbox = await request(app)
+      .get("/api/admin/messages/complaints")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(adminInbox.body.summary.open).toBe(1);
+    expect(adminInbox.body.complaints[0]).toMatchObject({
+      subject: "Unauthorized song upload",
+      category: "copyright",
+      reporter: null,
+      publicReporter: {
+        name: "Rights Holder",
+        email: "rights-holder@example.com",
+        sourceUrl: "https://tengacion.com/tracks/public-track-id",
+        rightsOwner: "Rights Holder Music",
+        workTitle: "Original Song",
+      },
+    });
+
+    const analyticsEvent = await AnalyticsEvent.findOne({
+      type: "support_public_report_submitted",
+      targetId: storedComplaint._id,
+    }).lean();
+    expect(analyticsEvent).toEqual(
+      expect.objectContaining({
+        targetType: "support_complaint",
+        actorRole: "public",
+        metadata: expect.objectContaining({
+          category: "copyright",
+          priority: "high",
+          hasSourceUrl: true,
+        }),
+      })
+    );
+  });
 });

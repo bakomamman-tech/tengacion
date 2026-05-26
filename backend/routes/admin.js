@@ -125,38 +125,54 @@ const normalizeComplaintStatus = (value = "") => {
   return ["open", "reviewing", "resolved", "dismissed"].includes(next) ? next : "";
 };
 const avatarToUrl = (avatar) => normalizeMediaValue(avatar).url;
-const mapComplaint = (entry = {}) => ({
-  _id: toId(entry._id),
-  subject: String(entry.subject || ""),
-  category: String(entry.category || "general"),
-  details: String(entry.details || ""),
-  sourcePath: String(entry.sourcePath || ""),
-  sourceLabel: String(entry.sourceLabel || ""),
-  priority: String(entry.priority || "medium"),
-  priorityScore: Number(entry.priorityScore || 0),
-  status: String(entry.status || "open"),
-  adminNote: String(entry.adminNote || ""),
-  createdAt: entry.createdAt || null,
-  updatedAt: entry.updatedAt || null,
-  reviewedAt: entry.reviewedAt || null,
-  resolvedAt: entry.resolvedAt || null,
-  reporter: entry.reporterId
-    ? {
-        _id: toId(entry.reporterId._id || entry.reporterId),
-        name: String(entry.reporterId.name || ""),
-        username: String(entry.reporterId.username || ""),
-        avatar: avatarToUrl(entry.reporterId.avatar),
-      }
-    : null,
-  reviewedBy: entry.reviewedBy
-    ? {
-        _id: toId(entry.reviewedBy._id || entry.reviewedBy),
-        name: String(entry.reviewedBy.name || ""),
-        username: String(entry.reviewedBy.username || ""),
-        email: String(entry.reviewedBy.email || ""),
-      }
-    : null,
-});
+const mapComplaint = (entry = {}) => {
+  const metadata =
+    entry.metadata && typeof entry.metadata === "object" && !Array.isArray(entry.metadata)
+      ? entry.metadata
+      : {};
+
+  return {
+    _id: toId(entry._id),
+    subject: String(entry.subject || ""),
+    category: String(entry.category || "general"),
+    details: String(entry.details || ""),
+    sourcePath: String(entry.sourcePath || ""),
+    sourceLabel: String(entry.sourceLabel || ""),
+    priority: String(entry.priority || "medium"),
+    priorityScore: Number(entry.priorityScore || 0),
+    status: String(entry.status || "open"),
+    adminNote: String(entry.adminNote || ""),
+    createdAt: entry.createdAt || null,
+    updatedAt: entry.updatedAt || null,
+    reviewedAt: entry.reviewedAt || null,
+    resolvedAt: entry.resolvedAt || null,
+    reporter: entry.reporterId
+      ? {
+          _id: toId(entry.reporterId._id || entry.reporterId),
+          name: String(entry.reporterId.name || ""),
+          username: String(entry.reporterId.username || ""),
+          avatar: avatarToUrl(entry.reporterId.avatar),
+        }
+      : null,
+    publicReporter: metadata.publicReport
+      ? {
+          name: String(metadata.reporterName || ""),
+          email: String(metadata.reporterEmail || ""),
+          sourceUrl: String(metadata.sourceUrl || ""),
+          rightsOwner: String(metadata.rightsOwner || ""),
+          workTitle: String(metadata.workTitle || ""),
+        }
+      : null,
+    reviewedBy: entry.reviewedBy
+      ? {
+          _id: toId(entry.reviewedBy._id || entry.reviewedBy),
+          name: String(entry.reviewedBy.name || ""),
+          username: String(entry.reviewedBy.username || ""),
+          email: String(entry.reviewedBy.email || ""),
+        }
+      : null,
+  };
+};
 
 const toAdminUserDTO = (user, requesterRole = "admin") => ({
   _id: toId(user._id),

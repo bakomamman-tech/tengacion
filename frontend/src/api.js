@@ -710,6 +710,15 @@ export const submitAdminComplaint = (payload = {}) =>
     body: JSON.stringify(payload || {}),
   });
 
+export const submitPublicSupportReport = (payload = {}) =>
+  request(`${API_BASE}/support/public-reports`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+    skipAuthRefresh: true,
+    suppressAuthFailure: true,
+  });
+
 export const getKadunaGotTalentApplication = () =>
   request(`${API_BASE}/talent-show/kaduna-got-talent/application`, {
     headers: getAuthHeaders(),

@@ -157,6 +157,15 @@ const PUBLIC_INFO_PAGES = {
       "Understand how Tengacion handles copyright screening, creator responsibilities, and flagged uploads.",
     canonicalPath: "/copyright-policy",
   },
+  "/contact": {
+    title: "Contact Tengacion | Copyright, Safety and Privacy Reports",
+    description:
+      "Contact Tengacion for copyright, safety, privacy, abuse, and public platform reports without needing to log in.",
+    canonicalPath: "/contact",
+    previewTitle: "Contact Tengacion",
+    previewDescription:
+      "Send public copyright, safety, privacy, and abuse reports to Tengacion for admin review.",
+  },
   "/developer-contact": {
     title: "Developer Contact | Tengacion",
     description:
@@ -376,6 +385,7 @@ const buildHomePreviewMarkup = () => {
     { href: "/podcasts", label: "Podcasts" },
     { href: "/for-creators", label: "For creators" },
     { href: "/community-guidelines", label: "Community guidelines" },
+    { href: "/contact", label: "Contact and reports" },
   ];
 
   return [

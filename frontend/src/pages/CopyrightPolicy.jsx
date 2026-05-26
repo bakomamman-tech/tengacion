@@ -1,4 +1,5 @@
 import "./creator/creator-workspace.css";
+import { Link } from "react-router-dom";
 import SeoHead from "../components/seo/SeoHead";
 
 export default function CopyrightPolicy() {
@@ -22,6 +23,10 @@ export default function CopyrightPolicy() {
         <p>
           Flagged uploads remain visible inside the creator workspace with a verification status, notes, and a clear
           explanation of whether manual review is required.
+        </p>
+        <p>
+          To submit a rights concern for review, use the{" "}
+          <Link to="/contact">public contact and report form</Link>.
         </p>
       </section>
     </main>

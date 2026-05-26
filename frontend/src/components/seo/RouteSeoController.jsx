@@ -31,6 +31,7 @@ const PUBLIC_STATIC_PATHS = new Set([
   "/privacy",
   "/community-guidelines",
   "/copyright-policy",
+  "/contact",
   "/developer-contact",
 ]);
 

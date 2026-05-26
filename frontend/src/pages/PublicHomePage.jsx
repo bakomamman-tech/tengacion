@@ -65,6 +65,7 @@ const TRUST_LINKS = [
   { path: "/privacy", label: "Privacy" },
   { path: "/community-guidelines", label: "Guidelines" },
   { path: "/copyright-policy", label: "Copyright" },
+  { path: "/contact", label: "Contact" },
 ];
 
 export default function PublicHomePage() {
@@ -92,6 +93,7 @@ export default function PublicHomePage() {
           <div className="public-home__nav-actions">
             <Link to="/about">About</Link>
             <Link to="/creators">Creators</Link>
+            <Link to="/contact">Contact</Link>
             <Link to="/login">Log in</Link>
           </div>
         </nav>

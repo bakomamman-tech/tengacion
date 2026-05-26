@@ -1,0 +1,361 @@
+.public-contact-page {
+  min-height: 100vh;
+  background: #eef3ed;
+  color: #122c21;
+}
+
+.public-contact-hero {
+  min-height: 46svh;
+  padding: 22px 24px 54px;
+  color: #f6fbf7;
+  background-image:
+    linear-gradient(90deg, rgba(12, 31, 22, 0.96) 0%, rgba(27, 73, 48, 0.9) 56%, rgba(56, 75, 62, 0.72) 100%),
+    url("/tengacion_logo_1024.png");
+  background-position: center, right 9% center;
+  background-repeat: no-repeat;
+  background-size: cover, min(360px, 36%);
+}
+
+.public-contact-nav,
+.public-contact-hero__content,
+.public-contact-section {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.public-contact-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.public-contact-brand,
+.public-contact-nav__links,
+.public-contact-panel__links,
+.public-contact-actions {
+  display: flex;
+  align-items: center;
+}
+
+.public-contact-brand {
+  gap: 10px;
+  color: #ffffff;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.public-contact-brand img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+}
+
+.public-contact-nav__links,
+.public-contact-panel__links,
+.public-contact-actions {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.public-contact-nav__links a,
+.public-contact-panel__links a,
+.public-contact-actions a {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  color: #f6fbf7;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.public-contact-nav__links a:hover,
+.public-contact-nav__links a:focus-visible,
+.public-contact-panel__links a:hover,
+.public-contact-panel__links a:focus-visible,
+.public-contact-actions a:hover,
+.public-contact-actions a:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  outline: 0;
+}
+
+.public-contact-hero__content {
+  max-width: 780px;
+  padding-top: 76px;
+}
+
+.public-contact-eyebrow {
+  margin: 0 0 10px;
+  color: #d7b46a;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.public-contact-page h1,
+.public-contact-page h2,
+.public-contact-page p {
+  letter-spacing: 0;
+}
+
+.public-contact-page h1 {
+  margin: 0;
+  max-width: 780px;
+  font-size: 46px;
+  line-height: 1.06;
+  font-weight: 900;
+}
+
+.public-contact-hero__content > p:not(.public-contact-eyebrow) {
+  max-width: 690px;
+  margin: 20px 0 0;
+  color: #e4f0e7;
+  font-size: 18px;
+  line-height: 1.62;
+}
+
+.public-contact-section {
+  width: min(1120px, calc(100% - 32px));
+  padding: 42px 0 48px;
+}
+
+.public-contact-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.public-contact-panel,
+.public-contact-form {
+  border: 1px solid #c9d8cb;
+  border-radius: 8px;
+  background: #f9fbf6;
+  box-shadow: 0 10px 22px rgba(13, 33, 25, 0.06);
+}
+
+.public-contact-panel {
+  padding: 22px;
+}
+
+.public-contact-panel h2,
+.public-contact-form h2 {
+  margin: 0;
+  color: #17402b;
+  font-size: 25px;
+  line-height: 1.2;
+  font-weight: 900;
+}
+
+.public-contact-panel p {
+  margin: 14px 0 0;
+  color: #54675b;
+  font-size: 15px;
+  line-height: 1.58;
+}
+
+.public-contact-panel__links {
+  align-items: stretch;
+  margin-top: 22px;
+}
+
+.public-contact-panel__links a,
+.public-contact-actions a {
+  border-color: #c9d8cb;
+  color: #17402b;
+}
+
+.public-contact-panel__links a:hover,
+.public-contact-panel__links a:focus-visible,
+.public-contact-actions a:hover,
+.public-contact-actions a:focus-visible {
+  background: #edf4ee;
+}
+
+.public-contact-form {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+}
+
+.public-contact-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.public-contact-fields--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.public-contact-form label {
+  display: grid;
+  gap: 7px;
+  color: #223d2e;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.public-contact-form input,
+.public-contact-form select,
+.public-contact-form textarea {
+  width: 100%;
+  border: 1px solid #b9cabb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #10291d;
+  font: inherit;
+  font-weight: 600;
+}
+
+.public-contact-form input,
+.public-contact-form select {
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.public-contact-form textarea {
+  min-height: 170px;
+  resize: vertical;
+  padding: 12px;
+  line-height: 1.5;
+}
+
+.public-contact-form input:focus,
+.public-contact-form select:focus,
+.public-contact-form textarea:focus {
+  border-color: #2a6f4f;
+  outline: 3px solid rgba(42, 111, 79, 0.18);
+}
+
+.public-contact-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.public-contact-status {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.public-contact-status--success {
+  border: 1px solid #8dc8a0;
+  background: #e7f6ea;
+  color: #155b31;
+}
+
+.public-contact-status--error {
+  border: 1px solid #e0a09a;
+  background: #fff1ef;
+  color: #913327;
+}
+
+.public-contact-actions {
+  justify-content: space-between;
+}
+
+.public-contact-actions button {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border: 1px solid #d7b46a;
+  border-radius: 8px;
+  background: #d7b46a;
+  color: #14251b;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.public-contact-actions button:hover,
+.public-contact-actions button:focus-visible {
+  transform: translateY(-1px);
+  outline: 0;
+}
+
+.public-contact-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+  transform: none;
+}
+
+@media (max-width: 900px) {
+  .public-contact-hero {
+    min-height: 44svh;
+    background-position: center, right -80px center;
+    background-size: cover, 300px;
+  }
+
+  .public-contact-page h1 {
+    font-size: 39px;
+  }
+
+  .public-contact-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .public-contact-hero {
+    min-height: auto;
+    padding: 18px 16px 42px;
+    background-position: center, right -118px top 82px;
+    background-size: cover, 250px;
+  }
+
+  .public-contact-nav {
+    align-items: flex-start;
+  }
+
+  .public-contact-nav__links {
+    justify-content: flex-end;
+  }
+
+  .public-contact-hero__content {
+    padding-top: 64px;
+  }
+
+  .public-contact-page h1 {
+    font-size: 33px;
+  }
+
+  .public-contact-hero__content > p:not(.public-contact-eyebrow) {
+    font-size: 16px;
+  }
+
+  .public-contact-fields--two {
+    grid-template-columns: 1fr;
+  }
+
+  .public-contact-panel h2,
+  .public-contact-form h2 {
+    font-size: 22px;
+  }
+
+  .public-contact-actions,
+  .public-contact-panel__links {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .public-contact-actions button,
+  .public-contact-actions a {
+    width: 100%;
+  }
+}

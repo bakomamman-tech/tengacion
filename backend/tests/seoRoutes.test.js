@@ -175,6 +175,7 @@ describe("SEO routes", () => {
   test("public explainer pages render indexable metadata for content depth", async () => {
     const aboutResponse = await request(server).get("/about").expect(200);
     const creatorsResponse = await request(server).get("/for-creators").expect(200);
+    const contactResponse = await request(server).get("/contact").expect(200);
 
     expect(aboutResponse.text).toContain(
       '<title data-seo-key="title">About Tengacion | African Creator Discovery Platform</title>'
@@ -191,6 +192,15 @@ describe("SEO routes", () => {
     );
     expect(creatorsResponse.text).toContain('href="https://tengacion.com/for-creators"');
     expect(creatorsResponse.text).toContain('content="index,follow"');
+
+    expect(contactResponse.text).toContain(
+      '<title data-seo-key="title">Contact Tengacion | Copyright, Safety and Privacy Reports</title>'
+    );
+    expect(contactResponse.text).toContain(
+      'content="Contact Tengacion for copyright, safety, privacy, abuse, and public platform reports without needing to log in."'
+    );
+    expect(contactResponse.text).toContain('href="https://tengacion.com/contact"');
+    expect(contactResponse.text).toContain('content="index,follow"');
   });
 
   test("baseline browser security headers are served", async () => {
@@ -280,6 +290,7 @@ describe("SEO routes", () => {
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/how-it-works</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/for-creators</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/safety</loc>");
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/contact</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/creators</loc>");
     expect(creatorsResponse.text).toContain("<loc>https://tengacion.com/creator/seo_creator</loc>");
     expect(creatorsResponse.text).toContain("<loc>https://tengacion.com/creator/seo_creator/music</loc>");

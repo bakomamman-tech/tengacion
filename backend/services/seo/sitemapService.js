@@ -30,6 +30,7 @@ const STATIC_PUBLIC_ROUTES = [
   { path: "/privacy" },
   { path: "/community-guidelines" },
   { path: "/copyright-policy" },
+  { path: "/contact" },
   { path: "/developer-contact" },
 ];
 

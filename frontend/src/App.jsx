@@ -44,6 +44,7 @@ const DeveloperContactPage = lazy(() => import("./pages/DeveloperContact"));
 const OnboardingPage = lazy(() => import("./pages/Onboarding"));
 const TermsPage = lazy(() => import("./pages/Terms"));
 const CopyrightPolicyPage = lazy(() => import("./pages/CopyrightPolicy"));
+const PublicContactPage = lazy(() => import("./pages/PublicContactPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicy"));
 const CommunityGuidelinesPage = lazy(() => import("./pages/CommunityGuidelines"));
 const AdminReportsPage = lazy(() => import("./pages/AdminReports"));
@@ -167,6 +168,7 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/developer-contact" element={<DeveloperContactPage />} />
+          <Route path="/contact" element={<PublicContactPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/copyright-policy" element={<CopyrightPolicyPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />

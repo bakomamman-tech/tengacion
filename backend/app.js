@@ -58,9 +58,15 @@ const adminLimiter = rateLimit({
 app.use(
   helmet({
     crossOriginResourcePolicy: false,
+    frameguard: { action: "sameorigin" },
+    hsts: isProduction
+      ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+      : false,
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
+        baseUri: ["'self'"],
         // Required for LiveKit Cloud: region discovery fetch (/settings/regions)
         // and RTC signaling over WebSocket (/rtc/v1).
         connectSrc: [
@@ -71,8 +77,11 @@ app.use(
           "wss://tengacioncom-8unikgcj.livekit.cloud",
           ...googleAnalyticsConnectSrc,
         ],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'"],
         imgSrc: ["'self'", "data:", "blob:", "https:", "https://ui-avatars.com"],
         mediaSrc: ["'self'", "blob:", "https:"],
+        objectSrc: ["'none'"],
         workerSrc: ["'self'", "blob:"],
         scriptSrc: isProduction
           ? ["'self'", ...googleAnalyticsScriptSrc]
@@ -81,6 +90,14 @@ app.use(
     },
   })
 );
+
+app.use((_req, res, next) => {
+  res.set(
+    "Permissions-Policy",
+    "camera=(self), microphone=(self), geolocation=(self), payment=(self), fullscreen=(self)"
+  );
+  next();
+});
 
 app.use("/api", (req, res, next) => {
   if (

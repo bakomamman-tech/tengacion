@@ -155,6 +155,33 @@ describe("SEO routes", () => {
     expect(response.text).toContain("Sitemap: https://tengacion.com/sitemap.xml");
   });
 
+  test("homepage renders indexable public SEO metadata and crawlable discovery links", async () => {
+    const response = await request(server).get("/").expect(200);
+
+    expect(response.text).toContain(
+      '<title data-seo-key="title">Tengacion | Discover African Creators, Music, Books &amp; Podcasts</title>'
+    );
+    expect(response.text).toContain(
+      'content="Tengacion helps fans discover African creators, stream music, read books, listen to podcasts, and follow public creator profiles."'
+    );
+    expect(response.text).toContain('href="https://tengacion.com/"');
+    expect(response.text).toContain('content="index,follow"');
+    expect(response.text).toContain("Discover African creators, music, books, and podcasts on Tengacion");
+    expect(response.text).toContain('href="/creators"');
+    expect(response.text).toContain('href="/music"');
+    expect(response.headers["x-robots-tag"]).toBeUndefined();
+  });
+
+  test("baseline browser security headers are served", async () => {
+    const response = await request(server).get("/api/health").expect(200);
+
+    expect(response.headers["content-security-policy"]).toContain("frame-ancestors 'self'");
+    expect(response.headers["permissions-policy"]).toContain("camera=(self)");
+    expect(response.headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers["x-frame-options"]).toBe("SAMEORIGIN");
+  });
+
   test("public creators discovery route renders default crawlable metadata", async () => {
     const response = await request(server).get("/creators").expect(200);
 
@@ -215,6 +242,7 @@ describe("SEO routes", () => {
     });
 
     const indexResponse = await request(server).get("/sitemap.xml").expect(200);
+    const staticResponse = await request(server).get("/sitemaps/static.xml").expect(200);
     const creatorsResponse = await request(server).get("/sitemaps/creators-1.xml").expect(200);
     const musicResponse = await request(server).get("/sitemaps/music-1.xml").expect(200);
     const booksResponse = await request(server).get("/sitemaps/books-1.xml").expect(200);
@@ -226,6 +254,8 @@ describe("SEO routes", () => {
     expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/music-1.xml</loc>");
     expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/books-1.xml</loc>");
 
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/</loc>");
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/creators</loc>");
     expect(creatorsResponse.text).toContain("<loc>https://tengacion.com/creator/seo_creator</loc>");
     expect(creatorsResponse.text).toContain("<loc>https://tengacion.com/creator/seo_creator/music</loc>");
     expect(creatorsResponse.text).toContain("<loc>https://tengacion.com/creator/seo_creator/books</loc>");

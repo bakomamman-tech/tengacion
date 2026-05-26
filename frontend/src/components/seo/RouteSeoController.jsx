@@ -14,6 +14,7 @@ import SeoHead from "./SeoHead";
 import { useLocation } from "react-router-dom";
 
 const PUBLIC_STATIC_PATHS = new Set([
+  "/",
   "/creators",
   "/find-creators",
   "/music",
@@ -28,7 +29,7 @@ const PUBLIC_STATIC_PATHS = new Set([
 
 const NOINDEX_RULES = [
   {
-    patterns: ["/", "/login"],
+    patterns: ["/login"],
     title: "Log In | Tengacion",
     description: "Log in to Tengacion to access your feed, creators, purchases, and messages.",
     canonicalPath: "/login",

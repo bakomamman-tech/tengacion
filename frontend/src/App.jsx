@@ -19,6 +19,7 @@ const lazyNamedExport = (loader, exportName) =>
   });
 
 const Login = lazy(() => import("./pages/Login"));
+const PublicHomePage = lazy(() => import("./pages/PublicHomePage"));
 const Register = lazy(() => import("./pages/Register"));
 const KadunaGotTalentRegisterPage = lazy(() => import("./pages/KadunaGotTalentRegisterPage"));
 const Search = lazy(() => import("./pages/Search"));
@@ -150,7 +151,7 @@ export default function App() {
       <RouteSeoController />
       <Suspense fallback={<AppShellFallback />}>
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={user ? <Navigate to="/home" replace /> : <PublicHomePage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/kaduna-got-talent/register" element={<KadunaGotTalentRegisterPage user={user} />} />

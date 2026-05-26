@@ -1,0 +1,311 @@
+.public-home {
+  min-height: 100vh;
+  background: #eef3ed;
+  color: #122c21;
+}
+
+.public-home__hero {
+  min-height: 68svh;
+  padding: 22px 24px 56px;
+  color: #f6fbf7;
+  background-image:
+    linear-gradient(90deg, rgba(12, 31, 22, 0.94) 0%, rgba(23, 64, 43, 0.86) 54%, rgba(23, 64, 43, 0.62) 100%),
+    url("/tengacion_logo_1024.png");
+  background-position: center, right 8% center;
+  background-repeat: no-repeat;
+  background-size: cover, min(440px, 42%);
+}
+
+.public-home__nav {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.public-home__brand,
+.public-home__nav-actions,
+.public-home__actions,
+.public-home__trust-links {
+  display: flex;
+  align-items: center;
+}
+
+.public-home__brand {
+  gap: 10px;
+  color: #ffffff;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.public-home__brand img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+}
+
+.public-home__nav-actions,
+.public-home__actions,
+.public-home__trust-links {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.public-home__nav-actions a,
+.public-home__trust-links a {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  color: #f6fbf7;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.public-home__nav-actions a:hover,
+.public-home__nav-actions a:focus-visible,
+.public-home__trust-links a:hover,
+.public-home__trust-links a:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  outline: 0;
+}
+
+.public-home__hero-inner {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding-top: 92px;
+  max-width: 720px;
+}
+
+.public-home__eyebrow {
+  margin: 0 0 10px;
+  color: #d7b46a;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.public-home h1,
+.public-home h2,
+.public-home p {
+  letter-spacing: 0;
+}
+
+.public-home h1 {
+  margin: 0;
+  max-width: 720px;
+  font-size: 56px;
+  line-height: 1.02;
+  font-weight: 900;
+}
+
+.public-home__lede {
+  max-width: 640px;
+  margin: 22px 0 0;
+  color: #e4f0e7;
+  font-size: 19px;
+  line-height: 1.6;
+}
+
+.public-home__actions {
+  margin-top: 28px;
+}
+
+.public-home__button {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 8px;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.public-home__button--primary {
+  border-color: #d7b46a;
+  background: #d7b46a;
+  color: #14251b;
+}
+
+.public-home__button:hover,
+.public-home__button:focus-visible {
+  transform: translateY(-1px);
+  outline: 0;
+}
+
+.public-home__section,
+.public-home__band {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.public-home__section {
+  padding: 46px 0 34px;
+}
+
+.public-home__section-head {
+  max-width: 760px;
+}
+
+.public-home__section-head h2,
+.public-home__band h2 {
+  margin: 0;
+  color: #14251b;
+  font-size: 30px;
+  line-height: 1.18;
+  font-weight: 900;
+}
+
+.public-home__section-head p,
+.public-home__tile p {
+  color: #54675b;
+  line-height: 1.55;
+}
+
+.public-home__section-head p {
+  margin: 10px 0 0;
+  font-size: 16px;
+}
+
+.public-home__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.public-home__tile {
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid #c9d8cb;
+  border-radius: 8px;
+  background: #f9fbf6;
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 10px 22px rgba(13, 33, 25, 0.06);
+}
+
+.public-home__tile:hover,
+.public-home__tile:focus-visible {
+  border-color: #2a6f4f;
+  outline: 0;
+  transform: translateY(-2px);
+}
+
+.public-home__tile span {
+  color: #17402b;
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.public-home__tile p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.public-home__band {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 42px;
+  padding: 26px;
+  border: 1px solid #c7d6c8;
+  border-radius: 8px;
+  background: #173f2c;
+  color: #f6fbf7;
+}
+
+.public-home__band h2 {
+  color: #ffffff;
+  font-size: 24px;
+}
+
+.public-home__band .public-home__eyebrow {
+  color: #f0c56b;
+}
+
+@media (max-width: 900px) {
+  .public-home__hero {
+    min-height: 62svh;
+    background-position: center, right -90px center;
+    background-size: cover, 330px;
+  }
+
+  .public-home h1 {
+    font-size: 42px;
+  }
+
+  .public-home__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .public-home__band {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 560px) {
+  .public-home__hero {
+    min-height: auto;
+    padding: 18px 16px 44px;
+    background-position: center, right -120px top 82px;
+    background-size: cover, 260px;
+  }
+
+  .public-home__nav {
+    align-items: flex-start;
+  }
+
+  .public-home__nav-actions {
+    justify-content: flex-end;
+  }
+
+  .public-home__hero-inner {
+    padding-top: 70px;
+  }
+
+  .public-home h1 {
+    font-size: 34px;
+  }
+
+  .public-home__lede {
+    font-size: 16px;
+  }
+
+  .public-home__button {
+    width: 100%;
+  }
+
+  .public-home__actions,
+  .public-home__grid,
+  .public-home__trust-links {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .public-home__section-head h2,
+  .public-home__band h2 {
+    font-size: 24px;
+  }
+
+  .public-home__tile {
+    min-height: 150px;
+  }
+}

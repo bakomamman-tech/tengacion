@@ -29,6 +29,9 @@ const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null };
+const HOME_TITLE = "Tengacion | Discover African Creators, Music, Books & Podcasts";
+const HOME_DESCRIPTION =
+  "Tengacion helps fans discover African creators, stream music, read books, listen to podcasts, and follow public creator profiles.";
 
 const PUBLIC_INFO_PAGES = {
   "/creators": {
@@ -101,7 +104,7 @@ const PUBLIC_INFO_PAGES = {
 
 const NOINDEX_PAGE_CONFIG = [
   {
-    patterns: ["/", "/login"],
+    patterns: ["/login"],
     title: "Log In | Tengacion",
     description: "Log in to Tengacion to access your feed, creators, purchases, and messages.",
     canonicalPath: "/login",
@@ -257,6 +260,7 @@ const buildSeoPayload = ({
   image = DEFAULT_IMAGE_PATH,
   imageAlt = DEFAULT_IMAGE_ALT,
   structuredData = [],
+  previewHtml = "",
   previewTitle = "",
   previewDescription = "",
   statusCode = 200,
@@ -288,14 +292,53 @@ const buildSeoPayload = ({
     twitterImage: imageUrl,
     twitterImageAlt: imageAlt || DEFAULT_IMAGE_ALT,
     structuredData: resolvedStructuredData,
-    previewHtml: buildPreviewMarkup({
-      title: previewTitle || title,
-      description: previewDescription || normalizedDescription,
-    }),
+    previewHtml:
+      previewHtml ||
+      buildPreviewMarkup({
+        title: previewTitle || title,
+        description: previewDescription || normalizedDescription,
+      }),
     statusCode,
     xRobotsTag: String(robots || "").toLowerCase().includes("noindex") ? robots : "",
   };
 };
+
+const buildHomePreviewMarkup = () => {
+  const links = [
+    { href: "/creators", label: "Find creators" },
+    { href: "/music", label: "Music releases" },
+    { href: "/books", label: "Books" },
+    { href: "/podcasts", label: "Podcasts" },
+    { href: "/community-guidelines", label: "Community guidelines" },
+  ];
+
+  return [
+    '<section class="seo-home-preview">',
+    `  <h1>${escapeHtml("Discover African creators, music, books, and podcasts on Tengacion")}</h1>`,
+    `  <p>${escapeHtml(HOME_DESCRIPTION)}</p>`,
+    '  <nav aria-label="Public Tengacion sections">',
+    ...links.map(
+      (link) =>
+        `    <a href="${escapeHtmlAttribute(link.href)}">${escapeHtml(link.label)}</a>`
+    ),
+    "  </nav>",
+    "  <ul>",
+    `    <li>${escapeHtml("Explore public creator profiles and catalog pages.")}</li>`,
+    `    <li>${escapeHtml("Discover songs, albums, books, and podcast episodes from African creators.")}</li>`,
+    `    <li>${escapeHtml("Review Tengacion terms, privacy, copyright, and community standards.")}</li>`,
+    "  </ul>",
+    "</section>",
+  ].join("\n");
+};
+
+const buildHomePageSeo = () =>
+  buildSeoPayload({
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    canonicalPath: "/",
+    robots: "index,follow",
+    previewHtml: buildHomePreviewMarkup(),
+  });
 
 const replaceTagAttribute = (html, key, attribute, value) =>
   html.replace(
@@ -878,6 +921,10 @@ const resolveDynamicSeo = async (pathname) => {
 
 const resolvePageSeo = async ({ path = "/" } = {}) => {
   const pathname = normalizePathname(path);
+
+  if (pathname === "/") {
+    return buildHomePageSeo();
+  }
 
   if (pathname === "/find-creators") {
     return buildSeoPayload({

@@ -52,11 +52,12 @@ Paystack card fields stay inside Paystack's hosted checkout. To debit real cards
 After each deploy, exercise these endpoints:
 1. `GET https://<your-render-url>/api/health` -> 200 with `{"status":"ok"}` plus uptime and environment fields. Confirm the response includes an `X-Request-ID` header.
 2. `GET https://<your-render-url>/api/health/live` -> 200 for liveness monitoring
-3. `GET https://<your-render-url>/api/health/ready` -> 200 with `{"status":"ready"}` when MongoDB, required secrets, media storage, payments, assistant config, and allowed origins are ready. A `503` means at least one required dependency is degraded.
+3. `GET https://<your-render-url>/api/health/ready` -> 200 with `{"status":"ready"}` when MongoDB, required secrets, media storage, payments, assistant config, and allowed origins are ready. A `503` means at least one required dependency is degraded, or `{"status":"draining"}` during SIGTERM/SIGINT shutdown.
 4. `GET https://<your-render-url>/socket.io` -> 200 with response containing `socket ok`
 5. Trigger a harmless missing API route and confirm Render logs include `http.request.completed`, the returned `X-Request-ID`, status code, and request duration.
 
 ## Notes
 - The backend still preserves `/uploads` static serving and raw-body verification for `/api/payments/webhook/paystack`.
+- SIGTERM/SIGINT now marks readiness as draining, closes Socket.IO, closes the HTTP server, and disconnects MongoDB before process exit. Override the shutdown window with `GRACEFUL_SHUTDOWN_TIMEOUT_MS` if Render needs a different drain budget.
 - Ensure your Render service config installs devDependencies (`NPM_CONFIG_PRODUCTION=false`) so Jest/Socket.IO dependencies (like `zod`) are available.
 - Render's build step operates inside `backend/`, which runs `npm run build:frontend` and caches the Vite output under `frontend/dist`.

@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const { config } = require("../config/env");
+const { getRuntimeState } = require("./runtimeStateService");
 
 const DB_READY_STATE = {
   0: "disconnected",
@@ -42,6 +43,28 @@ const buildLivenessPayload = () => ({
   uptimeSeconds: getUptimeSeconds(),
   environment: config.nodeEnv,
 });
+
+const checkRuntimeState = () => {
+  const runtime = getRuntimeState();
+
+  if (runtime.draining) {
+    return buildCheck({
+      key: "runtime",
+      status: "fail",
+      required: true,
+      message: "Runtime is draining and should not receive new traffic.",
+      details: runtime,
+    });
+  }
+
+  return buildCheck({
+    key: "runtime",
+    status: "ok",
+    required: true,
+    message: "Runtime is accepting traffic.",
+    details: runtime,
+  });
+};
 
 const checkDatabase = async ({ timeoutMs = DEFAULT_DB_PING_TIMEOUT_MS } = {}) => {
   const readyState = Number(mongoose.connection.readyState);
@@ -231,7 +254,9 @@ const checkAllowedOrigins = () =>
   });
 
 const buildReadinessPayload = async (options = {}) => {
+  const runtimeCheck = checkRuntimeState();
   const checks = [
+    runtimeCheck,
     await checkDatabase(options),
     checkSecuritySecrets(),
     checkMediaStorage(),
@@ -244,7 +269,12 @@ const buildReadinessPayload = async (options = {}) => {
   );
 
   return {
-    status: requiredFailures.length > 0 ? "degraded" : "ready",
+    status:
+      runtimeCheck.status === "fail"
+        ? "draining"
+        : requiredFailures.length > 0
+          ? "degraded"
+          : "ready",
     time: nowIso(),
     uptimeSeconds: getUptimeSeconds(),
     environment: config.nodeEnv,

@@ -13,6 +13,7 @@ const { persistChatMessage } = require("./services/chatService");
 const { toIdString } = require("./utils/messagePayload");
 const Message = require("./models/Message");
 const { config, redactSecretsForLog } = require("./config/env");
+const { registerGracefulShutdown } = require("./services/gracefulShutdownService");
 const app = require("./app");
 const server = http.createServer(app);
 const allowedOriginSet = new Set(config.allowedOrigins);
@@ -183,6 +184,7 @@ if (process.env.NODE_ENV !== "test") {
     },
     transports: ["polling", "websocket"],
   });
+  registerGracefulShutdown({ server, io, logger: console });
 
   const DEFAULT_STORAGE_CLEANUP_ACTIONS = [
     "staleNotifications",

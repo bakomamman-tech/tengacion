@@ -54,6 +54,7 @@ After each deploy, exercise these endpoints:
 2. `GET https://<your-render-url>/api/health/live` -> 200 for liveness monitoring
 3. `GET https://<your-render-url>/api/health/ready` -> 200 with `{"status":"ready"}` when MongoDB, required secrets, media storage, payments, assistant config, and allowed origins are ready. A `503` means at least one required dependency is degraded.
 4. `GET https://<your-render-url>/socket.io` -> 200 with response containing `socket ok`
+5. Trigger a harmless missing API route and confirm Render logs include `http.request.completed`, the returned `X-Request-ID`, status code, and request duration.
 
 ## Notes
 - The backend still preserves `/uploads` static serving and raw-body verification for `/api/payments/webhook/paystack`.

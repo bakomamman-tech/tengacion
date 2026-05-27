@@ -13,6 +13,7 @@ const {
   buildReadinessPayload,
 } = require("./services/healthService");
 const { REQUEST_ID_HEADER, requestId } = require("./middleware/requestId");
+const { requestLogger } = require("./middleware/requestLogger");
 const User = require("./models/User");
 const { normalizeUserMediaDocument } = require("./utils/userMedia");
 
@@ -41,6 +42,7 @@ const corsOrigin = (origin, callback) => {
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
 app.use(requestId);
+app.use(requestLogger());
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

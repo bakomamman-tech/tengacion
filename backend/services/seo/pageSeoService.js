@@ -155,6 +155,51 @@ const PUBLIC_INFO_PAGES = {
     previewDescription:
       "Review Tengacion safety, copyright, moderation, reporting, and public discovery trust principles.",
   },
+  "/child-safety": {
+    title: "Child Safety Policy | Tengacion",
+    description:
+      "Review Tengacion child safety rules, reporting paths, and escalation principles for content or activity involving minors.",
+    canonicalPath: "/child-safety",
+    previewTitle: "Child safety on Tengacion",
+    previewDescription:
+      "Tengacion blocks suspected child exploitation, escalates urgent reports, and gives the public a child safety reporting path.",
+  },
+  "/moderation-policy": {
+    title: "Content Moderation Policy | Tengacion",
+    description:
+      "Learn how Tengacion reviews reports, copyright concerns, unsafe content, marketplace abuse, and creator trust issues.",
+    canonicalPath: "/moderation-policy",
+    previewTitle: "Content moderation on Tengacion",
+    previewDescription:
+      "Tengacion uses reporting, review queues, restrictions, and admin action to protect public discovery and creator trust.",
+  },
+  "/refund-policy": {
+    title: "Refund Policy | Tengacion",
+    description:
+      "Understand Tengacion refund review principles for digital purchases, marketplace orders, failed payments, and duplicate charges.",
+    canonicalPath: "/refund-policy",
+    previewTitle: "Tengacion refund policy",
+    previewDescription:
+      "Review how Tengacion handles failed payments, duplicate charges, entitlement issues, marketplace order problems, and refund requests.",
+  },
+  "/creator-monetization-terms": {
+    title: "Creator Monetization Terms | Tengacion",
+    description:
+      "Review Tengacion creator monetization terms for paid releases, subscriptions, earnings, payout readiness, and platform review.",
+    canonicalPath: "/creator-monetization-terms",
+    previewTitle: "Creator monetization terms",
+    previewDescription:
+      "Creator monetization on Tengacion depends on accurate rights, eligible content, payout readiness, and platform review.",
+  },
+  "/marketplace-seller-terms": {
+    title: "Marketplace Seller Terms | Tengacion",
+    description:
+      "Review Tengacion marketplace seller terms for store approval, product accuracy, delivery expectations, disputes, and payouts.",
+    canonicalPath: "/marketplace-seller-terms",
+    previewTitle: "Marketplace seller terms",
+    previewDescription:
+      "Marketplace sellers must keep listings accurate, fulfill orders responsibly, and follow Tengacion review and payout rules.",
+  },
   "/terms": {
     title: "Terms of Service | Tengacion",
     description:
@@ -426,6 +471,8 @@ const buildHomePreviewMarkup = () => {
     { href: "/marketplace", label: "Marketplace" },
     { href: "/for-creators", label: "For creators" },
     { href: "/community-guidelines", label: "Community guidelines" },
+    { href: "/child-safety", label: "Child safety" },
+    { href: "/refund-policy", label: "Refund policy" },
     { href: "/contact", label: "Contact and reports" },
   ];
 

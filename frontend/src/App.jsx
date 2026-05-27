@@ -161,6 +161,11 @@ export default function App() {
           <Route path="/for-authors" element={<PublicInfoPage pageKey="for-authors" />} />
           <Route path="/for-podcasters" element={<PublicInfoPage pageKey="for-podcasters" />} />
           <Route path="/safety" element={<PublicInfoPage pageKey="safety" />} />
+          <Route path="/child-safety" element={<PublicInfoPage pageKey="child-safety" />} />
+          <Route path="/moderation-policy" element={<PublicInfoPage pageKey="moderation-policy" />} />
+          <Route path="/refund-policy" element={<PublicInfoPage pageKey="refund-policy" />} />
+          <Route path="/creator-monetization-terms" element={<PublicInfoPage pageKey="creator-monetization-terms" />} />
+          <Route path="/marketplace-seller-terms" element={<PublicInfoPage pageKey="marketplace-seller-terms" />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/kaduna-got-talent/register" element={<KadunaGotTalentRegisterPage user={user} />} />

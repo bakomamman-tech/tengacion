@@ -236,6 +236,11 @@ describe("SEO routes", () => {
     const aboutResponse = await request(server).get("/about").expect(200);
     const creatorsResponse = await request(server).get("/for-creators").expect(200);
     const contactResponse = await request(server).get("/contact").expect(200);
+    const childSafetyResponse = await request(server).get("/child-safety").expect(200);
+    const moderationResponse = await request(server).get("/moderation-policy").expect(200);
+    const refundResponse = await request(server).get("/refund-policy").expect(200);
+    const monetizationResponse = await request(server).get("/creator-monetization-terms").expect(200);
+    const sellerTermsResponse = await request(server).get("/marketplace-seller-terms").expect(200);
 
     expect(aboutResponse.text).toContain(
       '<title data-seo-key="title">About Tengacion | African Creator Discovery Platform</title>'
@@ -261,6 +266,40 @@ describe("SEO routes", () => {
     );
     expect(contactResponse.text).toContain('href="https://tengacion.com/contact"');
     expect(contactResponse.text).toContain('content="index,follow"');
+
+    expect(childSafetyResponse.text).toContain(
+      '<title data-seo-key="title">Child Safety Policy | Tengacion</title>'
+    );
+    expect(childSafetyResponse.text).toContain(
+      'content="Review Tengacion child safety rules, reporting paths, and escalation principles for content or activity involving minors."'
+    );
+    expect(childSafetyResponse.text).toContain('href="https://tengacion.com/child-safety"');
+    expect(childSafetyResponse.text).toContain('content="index,follow"');
+    expect(childSafetyResponse.text).toContain("Child safety on Tengacion");
+
+    expect(moderationResponse.text).toContain(
+      '<title data-seo-key="title">Content Moderation Policy | Tengacion</title>'
+    );
+    expect(moderationResponse.text).toContain('href="https://tengacion.com/moderation-policy"');
+    expect(moderationResponse.text).toContain('content="index,follow"');
+
+    expect(refundResponse.text).toContain(
+      '<title data-seo-key="title">Refund Policy | Tengacion</title>'
+    );
+    expect(refundResponse.text).toContain('href="https://tengacion.com/refund-policy"');
+    expect(refundResponse.text).toContain('content="index,follow"');
+
+    expect(monetizationResponse.text).toContain(
+      '<title data-seo-key="title">Creator Monetization Terms | Tengacion</title>'
+    );
+    expect(monetizationResponse.text).toContain('href="https://tengacion.com/creator-monetization-terms"');
+    expect(monetizationResponse.text).toContain('content="index,follow"');
+
+    expect(sellerTermsResponse.text).toContain(
+      '<title data-seo-key="title">Marketplace Seller Terms | Tengacion</title>'
+    );
+    expect(sellerTermsResponse.text).toContain('href="https://tengacion.com/marketplace-seller-terms"');
+    expect(sellerTermsResponse.text).toContain('content="index,follow"');
   });
 
   test("baseline browser security headers are served", async () => {
@@ -465,6 +504,11 @@ describe("SEO routes", () => {
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/how-it-works</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/for-creators</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/safety</loc>");
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/child-safety</loc>");
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/moderation-policy</loc>");
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/refund-policy</loc>");
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/creator-monetization-terms</loc>");
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/marketplace-seller-terms</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/contact</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/marketplace</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/creators</loc>");

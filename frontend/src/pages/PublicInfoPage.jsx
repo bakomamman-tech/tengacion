@@ -206,6 +206,146 @@ const PAGE_CONFIG = {
     ],
     primaryAction: { path: "/contact", label: "Report a concern" },
   },
+  "child-safety": {
+    path: "/child-safety",
+    title: "Child Safety Policy | Tengacion",
+    description:
+      "Review Tengacion child safety rules, reporting paths, and escalation principles for content or activity involving minors.",
+    eyebrow: "Child safety",
+    heading: "Zero tolerance for child exploitation and minor-safety risk",
+    lead:
+      "Tengacion is built for creator discovery, not unsafe contact, exploitation, or sexualized content involving minors. Reports involving child safety are treated as urgent trust and safety issues.",
+    sections: [
+      {
+        title: "Blocked content",
+        body:
+          "Content, messages, accounts, listings, or uploads that appear to involve child sexual exploitation, grooming, coercion, or sexualized minor content are blocked or escalated for review.",
+      },
+      {
+        title: "Urgent reporting",
+        body:
+          "Public reporters can use the contact form and choose Child safety so the issue is routed with higher urgency for admin review and preservation of relevant context.",
+      },
+      {
+        title: "Account action",
+        body:
+          "Tengacion may remove content, restrict accounts, preserve records for review, and escalate severe safety reports according to applicable law and platform obligations.",
+      },
+    ],
+    primaryAction: { path: "/contact", label: "Report child safety concern" },
+  },
+  "moderation-policy": {
+    path: "/moderation-policy",
+    title: "Content Moderation Policy | Tengacion",
+    description:
+      "Learn how Tengacion reviews reports, copyright concerns, unsafe content, marketplace abuse, and creator trust issues.",
+    eyebrow: "Moderation policy",
+    heading: "How Tengacion reviews public content and platform abuse",
+    lead:
+      "Public discovery depends on clear review paths. Tengacion uses reports, automated signals, admin queues, and account restrictions to reduce abuse across creators, uploads, marketplace listings, and social features.",
+    sections: [
+      {
+        title: "What can be reviewed",
+        body:
+          "Reports may involve harassment, scams, impersonation, unsafe sexual content, hate or threats, copyright concerns, spam, misleading marketplace listings, or other platform misuse.",
+      },
+      {
+        title: "Possible outcomes",
+        body:
+          "Moderation outcomes can include no action, warning, visibility limits, content removal, upload restrictions, seller review, account restriction, or escalation for severe safety concerns.",
+      },
+      {
+        title: "Human review",
+        body:
+          "High-impact decisions such as account restriction, takedown escalation, payout-sensitive action, and severe child safety reports remain routed through admin review workflows.",
+      },
+    ],
+    primaryAction: { path: "/contact", label: "Submit a moderation report" },
+  },
+  "refund-policy": {
+    path: "/refund-policy",
+    title: "Refund Policy | Tengacion",
+    description:
+      "Understand Tengacion refund review principles for digital purchases, marketplace orders, failed payments, and duplicate charges.",
+    eyebrow: "Refund policy",
+    heading: "Clear review paths for payment and order issues",
+    lead:
+      "Tengacion handles refunds through a review process that considers payment status, entitlement delivery, duplicate charges, marketplace fulfillment, creator payouts, and abuse prevention.",
+    sections: [
+      {
+        title: "Digital purchases",
+        body:
+          "Refund review may apply when a payment succeeds but access is not delivered, a duplicate charge occurs, or a platform-side payment error affects the purchase.",
+      },
+      {
+        title: "Marketplace orders",
+        body:
+          "Marketplace refund or dispute review can consider seller approval status, product accuracy, delivery evidence, buyer reports, and order fulfillment records.",
+      },
+      {
+        title: "How to request review",
+        body:
+          "Users should include the transaction reference, account email, product or creator link, and a clear explanation so Tengacion can trace payment, entitlement, and order records.",
+      },
+    ],
+    primaryAction: { path: "/contact", label: "Request refund review" },
+  },
+  "creator-monetization-terms": {
+    path: "/creator-monetization-terms",
+    title: "Creator Monetization Terms | Tengacion",
+    description:
+      "Review Tengacion creator monetization terms for paid releases, subscriptions, earnings, payout readiness, and platform review.",
+    eyebrow: "Creator monetization",
+    heading: "Creator earnings require eligible content and payout readiness",
+    lead:
+      "Creators can monetize eligible releases, memberships, and creator commerce only when their account, rights, payout information, and platform status remain in good standing.",
+    sections: [
+      {
+        title: "Rights and eligibility",
+        body:
+          "Creators must have the rights needed to publish and monetize music, books, podcasts, videos, artwork, descriptions, and any related media they upload.",
+      },
+      {
+        title: "Earnings and payouts",
+        body:
+          "Payout readiness may depend on identity, account status, payout method, settlement checks, refund exposure, platform fees, and any unresolved review issues.",
+      },
+      {
+        title: "Review and restrictions",
+        body:
+          "Tengacion may hold, reverse, or restrict monetization when there are copyright flags, fraud signals, policy violations, chargebacks, refund risk, or incomplete payout details.",
+      },
+    ],
+    primaryAction: { path: "/for-creators", label: "Review creator tools" },
+  },
+  "marketplace-seller-terms": {
+    path: "/marketplace-seller-terms",
+    title: "Marketplace Seller Terms | Tengacion",
+    description:
+      "Review Tengacion marketplace seller terms for store approval, product accuracy, delivery expectations, disputes, and payouts.",
+    eyebrow: "Marketplace seller terms",
+    heading: "Seller trust starts with accurate listings and reliable fulfillment",
+    lead:
+      "Marketplace sellers are responsible for truthful store details, accurate listings, fair buyer communication, delivery expectations, and cooperation with order or dispute review.",
+    sections: [
+      {
+        title: "Store approval",
+        body:
+          "Seller access may require account review, contact information, payout readiness, location details, and continued compliance with Tengacion marketplace rules.",
+      },
+      {
+        title: "Listing standards",
+        body:
+          "Products should use accurate titles, prices, images, condition notes, availability, pickup or delivery terms, and category information.",
+      },
+      {
+        title: "Orders, disputes, and payouts",
+        body:
+          "Seller payouts can be affected by failed fulfillment, refund review, buyer disputes, policy violations, duplicate orders, or unresolved payment verification issues.",
+      },
+    ],
+    primaryAction: { path: "/marketplace", label: "Browse marketplace" },
+  },
 };
 
 const RELATED_LINKS = [
@@ -216,6 +356,11 @@ const RELATED_LINKS = [
   { path: "/for-authors", label: "Authors" },
   { path: "/for-podcasters", label: "Podcasters" },
   { path: "/safety", label: "Safety" },
+  { path: "/child-safety", label: "Child safety" },
+  { path: "/moderation-policy", label: "Moderation" },
+  { path: "/refund-policy", label: "Refunds" },
+  { path: "/creator-monetization-terms", label: "Monetization" },
+  { path: "/marketplace-seller-terms", label: "Seller terms" },
   { path: "/contact", label: "Contact" },
 ];
 

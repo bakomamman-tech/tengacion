@@ -149,6 +149,8 @@ export default function PublicContactPage() {
             <p>{selectedType.helper}</p>
             <div className="public-contact-panel__links">
               <Link to="/community-guidelines">Community Guidelines</Link>
+              <Link to="/child-safety">Child Safety Policy</Link>
+              <Link to="/moderation-policy">Moderation Policy</Link>
               <Link to="/copyright-policy">Copyright Policy</Link>
               <Link to="/privacy">Privacy Policy</Link>
             </div>

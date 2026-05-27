@@ -5,6 +5,33 @@ describe("backend bootstrap", () => {
   test("GET /api/health responds with ok status", async () => {
     const response = await request(app).get("/api/health").expect(200);
     expect(response.body).toMatchObject({ status: "ok" });
+    expect(response.body.uptimeSeconds).toEqual(expect.any(Number));
+    expect(response.body.environment).toBe("test");
+  });
+
+  test("GET /api/health/live responds with liveness payload", async () => {
+    const response = await request(app).get("/api/health/live").expect(200);
+    expect(response.body).toMatchObject({
+      status: "ok",
+      environment: "test",
+    });
+    expect(response.body.time).toEqual(expect.any(String));
+  });
+
+  test("GET /api/health/ready reports degraded when database is disconnected", async () => {
+    const response = await request(app).get("/api/health/ready").expect(503);
+
+    expect(response.body).toMatchObject({
+      status: "degraded",
+      environment: "test",
+      checks: {
+        database: {
+          status: "fail",
+          required: true,
+        },
+      },
+    });
+    expect(response.body.requiredFailures).toContain("database");
   });
 
   test("GET /socket.io returns socket probe", async () => {

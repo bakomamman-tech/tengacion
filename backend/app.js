@@ -8,6 +8,10 @@ const upload = require("./utils/upload");
 const errorHandler = require("../apps/api/middleware/errorHandler");
 const { config } = require("./config/env");
 const { buildAndroidAssetLinksFromConfig } = require("./services/androidAssetLinksService");
+const {
+  buildLivenessPayload,
+  buildReadinessPayload,
+} = require("./services/healthService");
 const User = require("./models/User");
 const { normalizeUserMediaDocument } = require("./utils/userMedia");
 
@@ -165,8 +169,17 @@ app.get("/.well-known/assetlinks.json", (_req, res) => {
     .send(`${JSON.stringify(statements, null, 2)}\n`);
 });
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", time: new Date() });
+app.get("/api/health", (_req, res) => {
+  res.json(buildLivenessPayload());
+});
+
+app.get("/api/health/live", (_req, res) => {
+  res.json(buildLivenessPayload());
+});
+
+app.get("/api/health/ready", async (_req, res) => {
+  const payload = await buildReadinessPayload();
+  res.status(payload.status === "ready" ? 200 : 503).json(payload);
 });
 
 app.get("/api/me", auth, async (req, res) => {

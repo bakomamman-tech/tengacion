@@ -39,6 +39,11 @@ const DISCOVERY_LINKS = [
     label: "Marketplace",
     description: "Browse approved seller storefronts, products, local pickup, and delivery-ready listings.",
   },
+  {
+    path: "/activity",
+    label: "Activity",
+    description: "See recent public posts, reactions, comments, and updates from Tengacion members.",
+  },
 ];
 
 const CONTENT_LINKS = [
@@ -100,6 +105,7 @@ export default function PublicHomePage() {
           <div className="public-home__nav-actions">
             <Link to="/about">About</Link>
             <Link to="/creators">Creators</Link>
+            <Link to="/activity">Activity</Link>
             <Link to="/marketplace">Marketplace</Link>
             <Link to="/contact">Contact</Link>
             <Link to="/login">Log in</Link>

@@ -14,6 +14,7 @@ const Book = require("../models/Book");
 const CreatorProfile = require("../models/CreatorProfile");
 const MarketplaceProduct = require("../models/MarketplaceProduct");
 const MarketplaceSeller = require("../models/MarketplaceSeller");
+const Post = require("../models/Post");
 const Track = require("../models/Track");
 const User = require("../models/User");
 
@@ -406,6 +407,43 @@ describe("SEO routes", () => {
     expect(podcastsResponse.text).toContain("Directory SEO Podcast");
   });
 
+  test("public activity page renders approved social activity without private posts", async () => {
+    const { user } = await createCreator();
+    await Post.create({
+      author: user._id,
+      text: "Approved public creator update with comments and reactions.",
+      type: "text",
+      privacy: "public",
+      visibility: "public",
+      audience: "public",
+      moderationStatus: "approved",
+      reactionsCount: 4,
+      commentsCount: 2,
+      shareCount: 1,
+    });
+    await Post.create({
+      author: user._id,
+      text: "Private update should not appear in public activity.",
+      type: "text",
+      privacy: "private",
+      visibility: "private",
+      audience: "friends",
+      moderationStatus: "approved",
+    });
+
+    const response = await request(server).get("/activity").expect(200);
+
+    expect(response.text).toContain(
+      '<title data-seo-key="title">Public Social Activity | Tengacion</title>'
+    );
+    expect(response.text).toContain('href="https://tengacion.com/activity"');
+    expect(response.text).toContain('content="index,follow"');
+    expect(response.text).toContain("Approved public creator update with comments and reactions.");
+    expect(response.text).toContain("SEO Creator shared a text");
+    expect(response.text).toContain('"@type":"ItemList"');
+    expect(response.text).not.toContain("Private update should not appear in public activity.");
+  });
+
   test("marketplace public pages render indexable SEO for approved products and stores", async () => {
     const { seller, product } = await createMarketplaceListing();
 
@@ -511,6 +549,7 @@ describe("SEO routes", () => {
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/marketplace-seller-terms</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/contact</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/marketplace</loc>");
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/activity</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/creators</loc>");
     expect(creatorsResponse.text).toContain("<loc>https://tengacion.com/creator/seo_creator</loc>");
     expect(creatorsResponse.text).toContain("<loc>https://tengacion.com/creator/seo_creator/music</loc>");

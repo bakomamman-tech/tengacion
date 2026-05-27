@@ -355,6 +355,7 @@ const RELATED_LINKS = [
   { path: "/for-music-artists", label: "Music artists" },
   { path: "/for-authors", label: "Authors" },
   { path: "/for-podcasters", label: "Podcasters" },
+  { path: "/activity", label: "Activity" },
   { path: "/safety", label: "Safety" },
   { path: "/child-safety", label: "Child safety" },
   { path: "/moderation-policy", label: "Moderation" },

@@ -1322,6 +1322,19 @@ export const getFeed = () =>
     headers: getAuthHeaders(),
   });
 
+export const getPublicActivity = ({ limit = 12 } = {}) => {
+  const params = new URLSearchParams();
+  params.set("public", "1");
+  if (limit) {
+    params.set("limit", String(limit));
+  }
+
+  return request(`${API_BASE}/posts?${params.toString()}`, {
+    headers: getAuthHeaders(),
+    suppressAuthFailure: true,
+  });
+};
+
 export const getDiscoveryHome = ({ limit = 24 } = {}) => {
   const params = new URLSearchParams();
   if (limit) {

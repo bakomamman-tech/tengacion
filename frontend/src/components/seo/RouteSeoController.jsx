@@ -32,6 +32,7 @@ const PUBLIC_STATIC_PATHS = new Set([
   "/music",
   "/books",
   "/podcasts",
+  "/activity",
   "/terms",
   "/privacy",
   "/community-guidelines",

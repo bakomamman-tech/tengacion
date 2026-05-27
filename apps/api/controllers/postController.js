@@ -14,9 +14,13 @@ exports.createPost = catchAsync(async (req, res) => {
 });
 
 exports.getFeed = catchAsync(async (req, res) => {
+  const publicOnly = String(req.query.public || "").toLowerCase() === "1"
+    || String(req.query.publicOnly || "").toLowerCase() === "true";
   const result = await PostService.getFeed({
-    userId: req.user?.id,
+    userId: publicOnly ? null : req.user?.id,
     search: req.query.search,
+    publicOnly,
+    limit: req.query.limit,
   });
   res.json(result);
 });

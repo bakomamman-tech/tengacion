@@ -116,6 +116,42 @@ describe("Posts feed", () => {
     );
   });
 
+  test("GET /api/posts public mode returns only approved public activity", async () => {
+    await Post.create([
+      {
+        author: artist._id,
+        text: "Approved public activity post",
+        privacy: "public",
+        visibility: "public",
+        audience: "public",
+        moderationStatus: "approved",
+      },
+      {
+        author: artist._id,
+        text: "Pending public activity post",
+        privacy: "public",
+        visibility: "public",
+        audience: "public",
+        moderationStatus: "pending",
+      },
+      {
+        author: artist._id,
+        text: "Private activity post",
+        privacy: "private",
+        visibility: "private",
+        audience: "friends",
+        moderationStatus: "approved",
+      },
+    ]);
+
+    const response = await request(app).get("/api/posts?public=1&limit=10").expect(200);
+    const texts = response.body.map((post) => post.text);
+
+    expect(texts).toContain("Approved public activity post");
+    expect(texts).not.toContain("Pending public activity post");
+    expect(texts).not.toContain("Private activity post");
+  });
+
   test("POST /api/posts requires auth and succeeds with token", async () => {
     await request(app)
       .post("/api/posts")

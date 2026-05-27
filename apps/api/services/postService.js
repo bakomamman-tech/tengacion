@@ -1655,10 +1655,12 @@ class PostService {
     return toPostPayload(refreshedPost, viewerId);
   }
 
-  static async getFeed({ userId, search }) {
+  static async getFeed({ userId, search, publicOnly = false, limit = null } = {}) {
     const viewerId = userId;
     const rawSearch = (search || "").trim();
     const searchTerm = rawSearch.replace(/^@+/, "");
+    const numericLimit = Math.floor(Number(limit || 0));
+    const safeLimit = numericLimit > 0 ? Math.min(numericLimit, 50) : 0;
 
     let matchedAuthorIds = [];
     if (searchTerm) {
@@ -1734,6 +1736,14 @@ class PostService {
     }
 
     const query = { $or: visibilityScopes };
+    if (publicOnly) {
+      query.privacy = "public";
+      query.visibility = "public";
+      query.audience = { $in: ["public", null] };
+      query.moderationStatus = { $in: ["approved", "ALLOW"] };
+      query.sensitiveContent = { $ne: true };
+      query.reviewRequired = { $ne: true };
+    }
     if (blockedIds.length > 0) {
       query.author = { $nin: blockedIds };
     }
@@ -1745,8 +1755,23 @@ class PostService {
       query.$and = [{ $or: searchFilters }];
     }
 
-    const posts = await withPostAuthor(Post.find(query).sort({ createdAt: -1 })).lean();
-    return attachPostModerationOverlays(posts, viewerId);
+    const findQuery = Post.find(query).sort({ createdAt: -1 });
+    if (safeLimit) {
+      findQuery.limit(safeLimit);
+    }
+
+    const posts = await withPostAuthor(findQuery).lean();
+    const payloads = await attachPostModerationOverlays(posts, viewerId);
+    if (!publicOnly) {
+      return payloads;
+    }
+
+    return payloads.filter(
+      (post) =>
+        ["approved", "ALLOW"].includes(String(post?.moderationStatus || ""))
+        && !post?.sensitiveContent
+        && !post?.reviewRequired
+    );
   }
 
   static async getPostById({ viewerId, postId }) {

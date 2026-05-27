@@ -19,6 +19,7 @@ const lazyNamedExport = (loader, exportName) =>
   });
 
 const Login = lazy(() => import("./pages/Login"));
+const PublicActivityPage = lazy(() => import("./pages/PublicActivityPage"));
 const PublicHomePage = lazy(() => import("./pages/PublicHomePage"));
 const PublicInfoPage = lazy(() => import("./pages/PublicInfoPage"));
 const Register = lazy(() => import("./pages/Register"));
@@ -182,6 +183,7 @@ export default function App() {
           <Route path="/music" element={<PublicCategoryPage category="music" />} />
           <Route path="/books" element={<PublicCategoryPage category="books" />} />
           <Route path="/podcasts" element={<PublicCategoryPage category="podcasts" />} />
+          <Route path="/activity" element={<PublicActivityPage />} />
           <Route
             path="/find-friends"
             element={

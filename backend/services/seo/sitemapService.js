@@ -43,6 +43,7 @@ const STATIC_PUBLIC_ROUTES = [
   { path: "/books" },
   { path: "/podcasts" },
   { path: "/marketplace" },
+  { path: "/activity" },
   { path: "/terms" },
   { path: "/privacy" },
   { path: "/community-guidelines" },

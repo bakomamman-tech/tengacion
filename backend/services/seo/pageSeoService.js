@@ -5,6 +5,7 @@ const Book = require("../../models/Book");
 const CreatorProfile = require("../../models/CreatorProfile");
 const MarketplaceProduct = require("../../models/MarketplaceProduct");
 const MarketplaceSeller = require("../../models/MarketplaceSeller");
+const Post = require("../../models/Post");
 const Track = require("../../models/Track");
 const Video = require("../../models/Video");
 const { findCreatorProfileByReference } = require("../creatorLookupService");
@@ -40,6 +41,14 @@ const ACTIVE_MARKETPLACE_PRODUCT_FILTER = {
 const ACTIVE_MARKETPLACE_SELLER_FILTER = {
   status: "approved",
   isActive: true,
+};
+const ACTIVE_PUBLIC_POST_FILTER = {
+  privacy: "public",
+  visibility: "public",
+  audience: { $in: ["public", null] },
+  moderationStatus: { $in: ["approved", "ALLOW"] },
+  sensitiveContent: { $ne: true },
+  reviewRequired: { $ne: true },
 };
 const CATEGORY_PREVIEW_LIMIT = 8;
 const HOME_TITLE = "Tengacion | Discover African Creators, Music, Books & Podcasts";
@@ -91,6 +100,15 @@ const PUBLIC_INFO_PAGES = {
     previewTitle: "Tengacion Marketplace",
     previewDescription:
       "Shop approved sellers, product listings, local pickup, and delivery-ready marketplace items on Tengacion.",
+  },
+  "/activity": {
+    title: "Public Social Activity | Tengacion",
+    description:
+      "See recent public creator updates, social posts, reactions, comments, and activity signals across Tengacion.",
+    canonicalPath: "/activity",
+    previewTitle: "Public activity on Tengacion",
+    previewDescription:
+      "Browse recent public posts, creator updates, reactions, comments, and social activity from Tengacion members.",
   },
   "/about": {
     title: "About Tengacion | African Creator Discovery Platform",
@@ -469,6 +487,7 @@ const buildHomePreviewMarkup = () => {
     { href: "/books", label: "Books" },
     { href: "/podcasts", label: "Podcasts" },
     { href: "/marketplace", label: "Marketplace" },
+    { href: "/activity", label: "Public activity" },
     { href: "/for-creators", label: "For creators" },
     { href: "/community-guidelines", label: "Community guidelines" },
     { href: "/child-safety", label: "Child safety" },
@@ -488,6 +507,7 @@ const buildHomePreviewMarkup = () => {
     "  </nav>",
     "  <ul>",
     `    <li>${escapeHtml("Explore public creator profiles and catalog pages.")}</li>`,
+    `    <li>${escapeHtml("See public posts, reactions, comments, and creator activity signals.")}</li>`,
     `    <li>${escapeHtml("Discover songs, albums, books, and podcast episodes from African creators.")}</li>`,
     `    <li>${escapeHtml("Review Tengacion terms, privacy, copyright, and community standards.")}</li>`,
     "  </ul>",
@@ -754,6 +774,43 @@ const fetchMarketplaceDirectoryItems = async (limit = CATEGORY_PREVIEW_LIMIT) =>
       description: getMarketplaceProductDescription(product),
     }));
 
+const getPublicActivityAuthorName = (post = {}) =>
+  pickText(post?.author?.name, post?.author?.username, "Tengacion member");
+
+const getPublicActivityDescription = (post = {}) => {
+  const engagement = [
+    `${Number(post?.reactionsCount || 0)} reactions`,
+    `${Number(post?.commentsCount || 0)} comments`,
+    `${Number(post?.shareCount || 0)} shares`,
+  ].join(", ");
+
+  return pickText(
+    post.text,
+    post?.audio?.title ? `Shared ${post.audio.title} with the community.` : "",
+    engagement
+  );
+};
+
+const fetchActivityDirectoryItems = async (limit = CATEGORY_PREVIEW_LIMIT) =>
+  (
+    await Post.find(ACTIVE_PUBLIC_POST_FILTER)
+      .select("_id author text type reactionsCount commentsCount shareCount audio updatedAt createdAt")
+      .populate("author", "name username")
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean()
+  ).map((post) => {
+    const authorName = getPublicActivityAuthorName(post);
+    const postType = String(post?.type || "post").replace(/_/g, " ");
+    return {
+      href: `/activity#post-${post._id}`,
+      label: `${authorName} shared a ${postType}`,
+      description: getPublicActivityDescription(post),
+      updatedAt: post.updatedAt,
+      createdAt: post.createdAt,
+    };
+  });
+
 const DIRECTORY_PAGE_CONFIG = {
   "/creators": {
     listName: "Public creators on Tengacion",
@@ -779,6 +836,11 @@ const DIRECTORY_PAGE_CONFIG = {
     listName: "Tengacion Marketplace products",
     emptyText: "Published marketplace products will appear here as approved sellers list items.",
     loadItems: fetchMarketplaceDirectoryItems,
+  },
+  "/activity": {
+    listName: "Public Tengacion social activity",
+    emptyText: "Public posts, creator updates, reactions, and comments will appear here as the community grows.",
+    loadItems: fetchActivityDirectoryItems,
   },
 };
 

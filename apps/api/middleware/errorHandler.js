@@ -27,6 +27,11 @@ const errorHandler = (err, req, res, _next) => {
     message,
     error: message,
   };
+  const requestId = req.requestId || res.locals?.requestId || "";
+
+  if (requestId) {
+    payload.requestId = requestId;
+  }
 
   if (err.details && (!isProduction || isOperational)) {
     payload.details = err.details;
@@ -40,6 +45,7 @@ const errorHandler = (err, req, res, _next) => {
     console.error("Unhandled exception", {
       path: req.originalUrl,
       method: req.method,
+      requestId,
       message: err.message,
       stack: err.stack,
     });

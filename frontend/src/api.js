@@ -94,18 +94,24 @@ const safeJSON = (text) => {
 const parseResponse = async (response, { suppressAuthFailure = false } = {}) => {
   const raw = await response.text();
   const contentType = response.headers.get("content-type") || "";
+  const responseRequestId = response.headers.get("x-request-id") || "";
   const isJson = contentType.includes("application/json");
   const data = raw
     ? isJson
       ? safeJSON(raw)
       : { error: raw }
     : {};
+  const requestId = String(data?.requestId || responseRequestId || "").trim();
 
   if (response.status === 401) {
     if (!suppressAuthFailure) {
       handleAuthFailure(data?.error || data?.message || "Unauthorized");
     }
-    throw new Error(data?.error || data?.message || "Unauthorized");
+    const error = new Error(data?.error || data?.message || "Unauthorized");
+    error.status = response.status;
+    error.requestId = requestId;
+    error.payload = data;
+    throw error;
   }
 
   if (!response.ok) {
@@ -117,6 +123,7 @@ const parseResponse = async (response, { suppressAuthFailure = false } = {}) => 
     error.status = response.status;
     error.details = data?.details || null;
     error.retryAfterSeconds = Number(data?.retryAfterSeconds || 0);
+    error.requestId = requestId;
     error.payload = data;
     throw error;
   }

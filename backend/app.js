@@ -12,6 +12,7 @@ const {
   buildLivenessPayload,
   buildReadinessPayload,
 } = require("./services/healthService");
+const { REQUEST_ID_HEADER, requestId } = require("./middleware/requestId");
 const User = require("./models/User");
 const { normalizeUserMediaDocument } = require("./utils/userMedia");
 
@@ -39,6 +40,7 @@ const corsOrigin = (origin, callback) => {
 
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
+app.use(requestId);
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -122,6 +124,7 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: [REQUEST_ID_HEADER],
   })
 );
 
@@ -236,6 +239,7 @@ app.use((req, res, next) => {
     return res.status(404).json({
       success: false,
       message: "API route not found",
+      requestId: req.requestId,
     });
   }
 

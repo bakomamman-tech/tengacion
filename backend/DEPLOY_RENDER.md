@@ -50,7 +50,7 @@ Paystack card fields stay inside Paystack's hosted checkout. To debit real cards
 
 ## Smoke tests (post-deploy)
 After each deploy, exercise these endpoints:
-1. `GET https://<your-render-url>/api/health` -> 200 with `{"status":"ok"}` plus uptime and environment fields
+1. `GET https://<your-render-url>/api/health` -> 200 with `{"status":"ok"}` plus uptime and environment fields. Confirm the response includes an `X-Request-ID` header.
 2. `GET https://<your-render-url>/api/health/live` -> 200 for liveness monitoring
 3. `GET https://<your-render-url>/api/health/ready` -> 200 with `{"status":"ready"}` when MongoDB, required secrets, media storage, payments, assistant config, and allowed origins are ready. A `503` means at least one required dependency is degraded.
 4. `GET https://<your-render-url>/socket.io` -> 200 with response containing `socket ok`

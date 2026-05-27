@@ -22,6 +22,7 @@ const errorHandler = (err, req, res, next) => {
   logger.error("Request error", {
     path: req.originalUrl,
     method: req.method,
+    requestId: req.requestId || res.locals?.requestId || "",
     message: err.message,
     stack:
       process.env.NODE_ENV === "production" ? undefined : err.stack,
@@ -36,6 +37,7 @@ const errorHandler = (err, req, res, next) => {
     success: false,
     error: err.message || "Server Error",
     message: err.message || "Server Error",
+    requestId: req.requestId || res.locals?.requestId || "",
     stack:
       process.env.NODE_ENV === "production" ? undefined : err.stack,
   });

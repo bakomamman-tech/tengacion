@@ -3,10 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiRequest } from "../api";
 import { clearSessionAccessToken, setSessionAccessToken } from "../authSession";
 
-const jsonResponse = (payload, status = 200) =>
+const jsonResponse = (payload, status = 200, headers = {}) =>
   new Response(JSON.stringify(payload), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
   });
 
 describe("apiRequest auth handling", () => {
@@ -60,5 +60,21 @@ describe("apiRequest auth handling", () => {
 
     const [, retryRequestInit] = fetchMock.mock.calls[2];
     expect(retryRequestInit.headers.get("Authorization")).toBe("Bearer fresh-token");
+  });
+
+  it("attaches response request IDs to thrown API errors", async () => {
+    vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        jsonResponse({ error: "Something failed" }, 500, {
+          "X-Request-ID": "api-error-123",
+        })
+      );
+
+    await expect(apiRequest("/api/fails")).rejects.toMatchObject({
+      message: "Something failed",
+      status: 500,
+      requestId: "api-error-123",
+    });
   });
 });

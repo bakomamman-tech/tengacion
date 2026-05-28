@@ -38,6 +38,12 @@ const {
   buildCreatorFinanceRepository,
 } = require("../services/creatorFinanceRepositoryService");
 const {
+  buildFinanceAssuranceClose,
+} = require("../services/financeAssuranceCloseService");
+const {
+  buildAssuranceDashboard,
+} = require("../services/assuranceDashboardService");
+const {
   listAdminCreatorPayoutRequests,
   updateCreatorPayoutRequestStatus,
 } = require("../services/creatorPayoutRequestService");
@@ -369,6 +375,17 @@ router.use("/news", require("./newsAdmin.routes"));
 router.use("/assistant", require("./adminAssistant"));
 router.use("/marketplace", require("./marketplaceAdminRoutes"));
 router.use("/raffle", require("./adminRaffle"));
+
+router.get("/assurance/dashboard", async (req, res) => {
+  try {
+    return res.json(await buildAssuranceDashboard(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res
+      .status(code)
+      .json({ error: err.message || "Failed to load assurance dashboard" });
+  }
+});
 
 router.get("/users", async (req, res) => {
   try {
@@ -1450,6 +1467,17 @@ router.get("/finance/creator-earnings", async (req, res) => {
     return res
       .status(code)
       .json({ error: err.message || "Failed to load creator earnings repository" });
+  }
+});
+
+router.get("/finance/assurance-close", async (req, res) => {
+  try {
+    return res.json(await buildFinanceAssuranceClose(getAnalyticsFilters(req)));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res
+      .status(code)
+      .json({ error: err.message || "Failed to load finance assurance close" });
   }
 });
 

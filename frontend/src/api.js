@@ -2320,6 +2320,19 @@ export const adminGetDashboard = (params = {}) => {
   });
 };
 
+export const adminGetAssuranceDashboard = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  });
+  return request(`${API_BASE}/admin/assurance/dashboard?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
 export const adminGetRaffleCards = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -2614,6 +2627,17 @@ export const adminGetCreatorEarningsRepository = (params = {}) => {
     if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
   });
   return request(`${API_BASE}/admin/finance/creator-earnings?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminGetFinanceAssuranceClose = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/finance/assurance-close?${query.toString()}`, {
     headers: getAuthHeaders(),
     timeoutMs: 45000,
   });

@@ -6,6 +6,7 @@ import AdminDashboardIcon from "./AdminDashboardIcon";
 const NAV_ITEMS = [
   { key: "dashboard", label: "Dashboard", icon: "dashboard", path: "/admin/dashboard" },
   { key: "creator-earnings", label: "Creator Earnings", icon: "finance", path: "/admin/creator-earnings" },
+  { key: "assurance", label: "Assurance", icon: "analytics", path: "/admin/assurance" },
   { key: "analytics", label: "Analytics", icon: "analytics", path: "/admin/analytics", dotKey: "analytics" },
   { key: "assistant", label: "Assistant Ops", icon: "analytics", path: "/admin/assistant", dotKey: "assistant" },
   { key: "posts", label: "Posts", icon: "posts", path: "/admin/content" },

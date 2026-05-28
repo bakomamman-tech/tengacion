@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AdminShell from "../components/AdminShell";
 import {
   adminGetCreatorEarningsRepository,
+  adminGetFinanceAssuranceClose,
   adminGetRevenueLedger,
   adminListCreatorPayoutRequests,
   adminUpdateCreatorPayoutRequestStatus,
@@ -16,7 +17,9 @@ const RANGE_OPTIONS = [
 ];
 
 const number = (value) => Number(value || 0).toLocaleString();
-const currency = (value) => `NGN ${Number(value || 0).toLocaleString()}`;
+const currency = (value, currencyCode = "NGN") =>
+  `${currencyCode === "MIXED" ? "Mixed" : currencyCode} ${Number(value || 0).toLocaleString()}`;
+const percent = (value) => `${Math.round(Number(value || 0) * 100)}%`;
 const payoutStatusOptions = [
   { value: "", label: "All requests" },
   { value: "pending_review", label: "Pending" },
@@ -34,6 +37,14 @@ const eventLabel = (value = "") =>
     .map((part) => part[0]?.toUpperCase() + part.slice(1))
     .join(" ");
 
+const readinessBadge = (value = "") => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "ready") {return "adminx-badge adminx-badge--good";}
+  if (normalized === "watch") {return "adminx-badge adminx-badge--warn";}
+  if (["needs_review", "blocked"].includes(normalized)) {return "adminx-badge adminx-badge--danger";}
+  return "adminx-badge";
+};
+
 const dateTime = (value) => {
   if (!value) {
     return "-";
@@ -47,6 +58,7 @@ export default function AdminCreatorEarningsPage({ user }) {
   const [range, setRange] = useState("30d");
   const [payoutStatus, setPayoutStatus] = useState("");
   const [payload, setPayload] = useState(null);
+  const [assuranceClose, setAssuranceClose] = useState(null);
   const [ledger, setLedger] = useState(null);
   const [payoutRequests, setPayoutRequests] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -57,12 +69,14 @@ export default function AdminCreatorEarningsPage({ user }) {
     setLoading(true);
     setError("");
     try {
-      const [next, ledgerPayload, payoutPayload] = await Promise.all([
+      const [next, closePayload, ledgerPayload, payoutPayload] = await Promise.all([
         adminGetCreatorEarningsRepository({ range }),
+        adminGetFinanceAssuranceClose({ range }),
         adminGetRevenueLedger({ range, limit: 12 }),
         adminListCreatorPayoutRequests({ status: payoutStatus, limit: 8 }),
       ]);
       setPayload(next || null);
+      setAssuranceClose(closePayload || null);
       setLedger(ledgerPayload || null);
       setPayoutRequests(payoutPayload || null);
     } catch (err) {
@@ -81,6 +95,10 @@ export default function AdminCreatorEarningsPage({ user }) {
   const breakdownItems = payload?.breakdown?.items || [];
   const topCreators = payload?.topCreators || [];
   const recentEntries = payload?.recentEntries || [];
+  const close = assuranceClose?.close || {};
+  const closeSummary = assuranceClose?.summary || {};
+  const closeExceptions = assuranceClose?.exceptions || [];
+  const closeEvidenceGaps = assuranceClose?.evidenceGaps || [];
   const ledgerSummary = ledger?.summary || {};
   const ledgerBalances = ledger?.balances || [];
   const ledgerRecentEntries = ledger?.recentEntries || [];
@@ -189,6 +207,80 @@ export default function AdminCreatorEarningsPage({ user }) {
               </article>
             ))}
           </div>
+
+          {assuranceClose ? (
+            <section className="adminx-panel adminx-panel--span-12">
+              <div className="adminx-panel-head">
+                <div>
+                  <h2 className="adminx-panel-title">Finance Assurance Close</h2>
+                  <span className="adminx-section-meta">{dateTime(assuranceClose.filters?.startDate)} to {dateTime(assuranceClose.filters?.endDate)}</span>
+                </div>
+                <span className={readinessBadge(close.readinessState)}>
+                  {eventLabel(close.readinessState || "not_ready")}
+                </span>
+              </div>
+
+              <div className="adminx-ops-grid">
+                {[
+                  ["Successful payments", number(closeSummary.successfulPayments)],
+                  ["Net settled", currency(closeSummary.netSettledAmount, closeSummary.currency || "NGN")],
+                  ["Missing access", number(closeSummary.entitlementMissing)],
+                  ["Wallet gaps", number(Number(closeSummary.walletMissingEntries || 0) + Number(closeSummary.refundWalletMissingEntries || 0))],
+                  ["Payout paid", currency(closeSummary.payoutPaidAmount, closeSummary.currency || "NGN")],
+                  ["Balance confidence", percent(closeSummary.creatorBalanceConfidenceRate)],
+                ].map(([label, value]) => (
+                  <div key={label} className="adminx-ops-metric">
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                  </div>
+                ))}
+              </div>
+
+              <div className="adminx-table-wrap adminx-table-wrap--flush">
+                <table className="adminx-table">
+                  <thead>
+                    <tr>
+                      <th>Exception</th>
+                      <th>Severity</th>
+                      <th>Expected</th>
+                      <th>Actual</th>
+                      <th>Owner</th>
+                      <th>Remediation</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {closeExceptions.map((entry) => (
+                      <tr key={entry.key}>
+                        <td>{entry.label}</td>
+                        <td><span className={readinessBadge(entry.severity === "critical" ? "blocked" : entry.severity === "high" ? "needs_review" : "watch")}>{eventLabel(entry.severity)}</span></td>
+                        <td>{entry.unit === "money" ? currency(entry.expected, closeSummary.currency || "NGN") : number(entry.expected)}</td>
+                        <td>{entry.unit === "money" ? currency(entry.actual, closeSummary.currency || "NGN") : number(entry.actual)}</td>
+                        <td>{entry.owner}</td>
+                        <td>{entry.remediation}</td>
+                      </tr>
+                    ))}
+                    {!closeExceptions.length ? (
+                      <tr>
+                        <td colSpan={6} className="adminx-table-empty">
+                          No finance assurance exceptions in this close window.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+
+              {closeEvidenceGaps.length ? (
+                <div className="adminx-pill-row">
+                  {closeEvidenceGaps.map((gap) => (
+                    <span key={gap.key} className="adminx-badge adminx-badge--warn">
+                      {eventLabel(gap.key)}: {eventLabel(gap.status)}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
 
           <section className="adminx-panel adminx-panel--span-12">
             <div className="adminx-panel-head">

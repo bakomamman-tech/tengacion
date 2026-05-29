@@ -25,6 +25,15 @@ const SEVERITY_RANK = {
   critical: 4,
 };
 
+const FRESHNESS_RANK = {
+  current: 0,
+  stale: 1,
+  delayed: 2,
+  disputed: 3,
+  blocked: 4,
+  withdrawn: 5,
+};
+
 const RELIABILITY_TO_READINESS = {
   healthy: "ready",
   watch: "watch",
@@ -295,6 +304,305 @@ const EVIDENCE_PACK_STANDARD = {
   ],
 };
 
+const PARTNER_API_MARKET_EVIDENCE_PACKS = [
+  {
+    key: "partner_assurance_pack",
+    title: "Partner Assurance Pack",
+    workstream: "partner_api_market",
+    owner: "Partnerships",
+    reviewer: "Security and compliance",
+    controlKeys: ["partner_export_access_review"],
+    sourceSystem: "manual_partner_api_market_trust_packs",
+    actionPath: "/admin/assurance",
+    sharingLevel: "partner_shareable_after_review",
+    audienceViews: ["internal_operations", "partner_success", "executive_review", "audit_or_due_diligence"],
+    summary: "Evidence for scoped partner access, minimized data sharing, reporting cadence, privacy review, incident history, and revocation readiness.",
+    revocationOrPauseRule: "Pause broader partner scope when export, dashboard, privacy, or revocation evidence is delayed, blocked, disputed, or withdrawn.",
+    requiredEvidence: [
+      { key: "access_scope", label: "Access scope" },
+      { key: "data_shared", label: "Data shared" },
+      { key: "reporting_cadence", label: "Reporting cadence" },
+      { key: "export_evidence", label: "Export evidence" },
+      { key: "dashboard_evidence", label: "Dashboard evidence" },
+      { key: "incident_history", label: "Incident history", shareability: "internal_only" },
+      { key: "privacy_review", label: "Privacy review" },
+      { key: "revocation_path", label: "Revocation path" },
+      { key: "unresolved_risks", label: "Unresolved risks" },
+    ],
+  },
+  {
+    key: "api_assurance_pack",
+    title: "API Assurance Pack",
+    workstream: "partner_api_market",
+    owner: "Backend and infrastructure",
+    reviewer: "Security and compliance",
+    controlKeys: ["api_access_review"],
+    sourceSystem: "manual_partner_api_market_trust_packs",
+    actionPath: "/admin/assurance",
+    sharingLevel: "partner_shareable_after_review",
+    audienceViews: ["internal_operations", "partner_success", "executive_review", "audit_or_due_diligence"],
+    summary: "Evidence for approved API use cases, key ownership, permission scope, rate limits, abuse review, audit events, and revocation testing.",
+    revocationOrPauseRule: "Do not approve broader API scope when key ownership, abuse review, rate limit, audit, or revocation evidence is not current.",
+    requiredEvidence: [
+      { key: "approved_use_case", label: "Approved use case" },
+      { key: "key_owner", label: "Key owner" },
+      { key: "rate_limit", label: "Rate limit" },
+      { key: "permission_scope", label: "Permission scope" },
+      { key: "abuse_review", label: "Abuse review" },
+      { key: "audit_events", label: "Audit events", shareability: "internal_only" },
+      { key: "revocation_test", label: "Revocation test" },
+      { key: "support_owner", label: "Support owner" },
+    ],
+  },
+  {
+    key: "market_assurance_pack",
+    title: "Market Assurance Pack",
+    workstream: "partner_api_market",
+    owner: "Product leadership",
+    reviewer: "Trust, policy, and legal",
+    controlKeys: [
+      "market_readiness_packet",
+      "finance_revenue_close",
+      "purchase_entitlement_continuity",
+      "wallet_settlement_accuracy",
+      "payout_outcome_control",
+      "privacy_consent_rights_control",
+      "moderation_appeal_assurance",
+      "akuso_source_eval_governance",
+    ],
+    sourceSystem: "manual_partner_api_market_trust_packs",
+    actionPath: "/admin/assurance",
+    sharingLevel: "executive_review_only",
+    audienceViews: ["internal_operations", "finance", "creator_support", "executive_review", "audit_or_due_diligence"],
+    summary: "Evidence for launch scope, money movement, creator support, moderation, rights, privacy, consent, partner, sponsor, and Akuso readiness.",
+    revocationOrPauseRule: "Market launch remains blocked when money movement, trust, privacy, rights, partner, support, or Akuso evidence is stale or unresolved.",
+    requiredEvidence: [
+      { key: "launch_scope", label: "Launch scope" },
+      { key: "money_movement_readiness", label: "Money movement readiness" },
+      { key: "creator_support_readiness", label: "Creator support readiness" },
+      { key: "moderation_rights_readiness", label: "Moderation and rights readiness" },
+      { key: "privacy_consent_readiness", label: "Privacy and consent readiness" },
+      { key: "partner_sponsor_readiness", label: "Partner and sponsor readiness" },
+      { key: "akuso_policy_readiness", label: "Akuso language and policy readiness" },
+    ],
+  },
+];
+
+const DATA_PRODUCT_EVIDENCE_PACKS = [
+  {
+    key: "metric_contract_registry",
+    title: "Metric Contract Registry",
+    workstream: "data_product",
+    owner: "Data and analytics",
+    reviewer: "Product leadership",
+    controlKeys: ["data_contract_coverage"],
+    sourceSystem: "metric_contract_registry",
+    actionPath: "/admin/analytics",
+    sharingLevel: "executive_review_only",
+    audienceViews: ["internal_operations", "finance", "creator_support", "executive_review", "audit_or_due_diligence"],
+    summary: "Definitions, owners, sources, freshness expectations, and trust states for executive, creator, finance, recommendation, experimentation, automation, and Akuso metrics.",
+    revocationOrPauseRule: "Withdraw external reports, automation inputs, experiment decisions, and partner claims when metric contracts are stale, disputed, blocked, or withdrawn.",
+    requiredEvidence: [
+      { key: "gmv", label: "GMV" },
+      { key: "purchase_conversion", label: "Purchase conversion" },
+      { key: "creator_earnings", label: "Creator earnings" },
+      { key: "payout_aging", label: "Payout aging" },
+      { key: "subscription_retention", label: "Subscription retention" },
+      { key: "discovery_impressions", label: "Discovery impressions" },
+      { key: "recommendation_clicks", label: "Recommendation clicks" },
+      { key: "recommendation_conversions", label: "Recommendation conversions" },
+      { key: "notification_delivery_complaints", label: "Notification delivery and complaints" },
+      { key: "support_moderation_queues", label: "Support and moderation queues" },
+      { key: "akuso_helpfulness_fallbacks", label: "Akuso helpfulness and fallbacks" },
+    ],
+  },
+  {
+    key: "experiment_assurance_pack",
+    title: "Experiment Assurance Pack",
+    workstream: "data_product",
+    owner: "Product leadership",
+    reviewer: "Data and analytics",
+    controlKeys: ["experiment_guardrails", "data_contract_coverage"],
+    sourceSystem: "experiment_assurance_pack",
+    actionPath: "/admin/analytics",
+    sharingLevel: "internal_only",
+    audienceViews: ["internal_operations", "executive_review"],
+    summary: "Evidence that experiments have a hypothesis owner, success metric, guardrail metric, exposure scope, rollback rule, data freshness requirement, and decision date.",
+    revocationOrPauseRule: "Do not launch or continue experiments when guardrails, rollback rules, or metric freshness evidence is missing.",
+    requiredEvidence: [
+      { key: "hypothesis_owner", label: "Hypothesis owner" },
+      { key: "success_metric", label: "Success metric" },
+      { key: "guardrail_metric", label: "Guardrail metric" },
+      { key: "exposure_scope", label: "Exposure scope" },
+      { key: "rollback_rule", label: "Rollback rule" },
+      { key: "data_freshness_requirement", label: "Data freshness requirement" },
+      { key: "decision_date", label: "Decision date" },
+    ],
+  },
+  {
+    key: "recommendation_assurance_pack",
+    title: "Recommendation Assurance Pack",
+    workstream: "data_product",
+    owner: "Discovery and analytics",
+    reviewer: "Trust, policy, and legal",
+    controlKeys: ["recommendation_measurement_trust", "data_contract_coverage"],
+    sourceSystem: "recommendation_logs",
+    actionPath: "/admin/analytics",
+    sharingLevel: "internal_only",
+    audienceViews: ["internal_operations", "executive_review", "audit_or_due_diligence"],
+    summary: "Evidence for recommendation eligibility, diversity guardrails, complaint review, creator exposure review, rollback evidence, and metric trust.",
+    revocationOrPauseRule: "Pause recommendation changes when eligibility, complaint, diversity, rollback, or metric trust evidence is stale or disputed.",
+    requiredEvidence: [
+      { key: "eligibility_evidence", label: "Eligibility evidence" },
+      { key: "diversity_guardrail_status", label: "Diversity guardrail status" },
+      { key: "complaint_review", label: "Complaint review" },
+      { key: "creator_exposure_review", label: "Creator exposure review" },
+      { key: "rollback_evidence", label: "Rollback evidence" },
+      { key: "metric_trust_evidence", label: "Metric trust evidence" },
+    ],
+  },
+];
+
+const ASSURANCE_EVIDENCE_PACKS = [
+  ...PARTNER_API_MARKET_EVIDENCE_PACKS,
+  ...DATA_PRODUCT_EVIDENCE_PACKS,
+];
+
+const METRIC_CONTRACT_DEFINITIONS = [
+  {
+    key: "gmv",
+    title: "GMV",
+    owner: "Finance and operations",
+    reviewer: "Data and analytics",
+    sourceSystem: "finance_assurance_close",
+    freshnessExpectation: "per close window",
+    controlKeys: ["finance_revenue_close", "wallet_settlement_accuracy"],
+    externalUse: "finance_and_executive",
+    definition: "Gross paid creator commerce volume before refunds, disputes, platform fees, and payout debits.",
+  },
+  {
+    key: "purchase_conversion",
+    title: "Purchase Conversion",
+    owner: "Data and analytics",
+    reviewer: "Product leadership",
+    sourceSystem: "purchase_and_payment_events",
+    freshnessExpectation: "daily",
+    controlKeys: ["payment_webhook_processing", "purchase_entitlement_continuity"],
+    externalUse: "executive_review",
+    definition: "Completed paid purchases divided by eligible purchase starts for the selected window.",
+  },
+  {
+    key: "creator_earnings",
+    title: "Creator Earnings",
+    owner: "Finance and operations",
+    reviewer: "Creator success",
+    sourceSystem: "wallet_entries",
+    freshnessExpectation: "daily",
+    controlKeys: ["finance_revenue_close", "wallet_settlement_accuracy"],
+    externalUse: "creator_support",
+    definition: "Creator-facing earned balances after platform fees, refunds, payout debits, and settlement adjustments.",
+  },
+  {
+    key: "payout_aging",
+    title: "Payout Aging",
+    owner: "Finance and operations",
+    reviewer: "Creator success",
+    sourceSystem: "creator_payout_requests",
+    freshnessExpectation: "daily",
+    controlKeys: ["payout_outcome_control"],
+    externalUse: "creator_support",
+    definition: "Open payout requests grouped by age, status, failure state, and owner follow-up.",
+  },
+  {
+    key: "subscription_retention",
+    title: "Subscription Retention",
+    owner: "Data and analytics",
+    reviewer: "Product leadership",
+    sourceSystem: "subscription_and_purchase_events",
+    freshnessExpectation: "weekly",
+    controlKeys: ["data_contract_coverage"],
+    externalUse: "executive_review",
+    definition: "Subscribers retained over a cohort window after churn, renewal, and entitlement continuity checks.",
+  },
+  {
+    key: "discovery_impressions",
+    title: "Discovery Impressions",
+    owner: "Discovery and analytics",
+    reviewer: "Product leadership",
+    sourceSystem: "recommendation_logs",
+    freshnessExpectation: "daily",
+    controlKeys: ["recommendation_measurement_trust"],
+    externalUse: "internal_operations",
+    definition: "Eligible discovery impressions emitted to users after fallback and dedupe rules.",
+  },
+  {
+    key: "recommendation_clicks",
+    title: "Recommendation Clicks",
+    owner: "Discovery and analytics",
+    reviewer: "Trust, policy, and legal",
+    sourceSystem: "recommendation_logs",
+    freshnessExpectation: "daily",
+    controlKeys: ["recommendation_measurement_trust"],
+    externalUse: "internal_operations",
+    definition: "User clicks attributed to recommendation surfaces with metric freshness and fallback context.",
+  },
+  {
+    key: "recommendation_conversions",
+    title: "Recommendation Conversions",
+    owner: "Discovery and analytics",
+    reviewer: "Finance and operations",
+    sourceSystem: "recommendation_logs_and_purchases",
+    freshnessExpectation: "weekly",
+    controlKeys: ["recommendation_measurement_trust", "purchase_entitlement_continuity"],
+    externalUse: "executive_review",
+    definition: "Paid or entitled outcomes attributed to recommendation exposure within approved windows.",
+  },
+  {
+    key: "notification_delivery_complaints",
+    title: "Notification Delivery And Complaints",
+    owner: "Fan growth",
+    reviewer: "Trust, policy, and legal",
+    sourceSystem: "notification_preferences",
+    freshnessExpectation: "weekly",
+    controlKeys: ["notification_consent_control"],
+    externalUse: "internal_operations",
+    definition: "Notification delivery, opt-out, consent exception, and complaint evidence by campaign or workflow.",
+  },
+  {
+    key: "support_moderation_queues",
+    title: "Support And Moderation Queues",
+    owner: "Trust, policy, and legal",
+    reviewer: "Product leadership",
+    sourceSystem: "moderation_cases",
+    freshnessExpectation: "weekly",
+    controlKeys: ["moderation_appeal_assurance"],
+    externalUse: "internal_operations",
+    definition: "Moderation queue, appeal, reversal, rights, and support escalation aging by severity.",
+  },
+  {
+    key: "akuso_helpfulness_fallbacks",
+    title: "Akuso Helpfulness And Fallbacks",
+    owner: "AI and assistant",
+    reviewer: "Trust, policy, and legal",
+    sourceSystem: "akuso_metrics_and_evals",
+    freshnessExpectation: "weekly",
+    controlKeys: ["akuso_source_eval_governance"],
+    externalUse: "internal_operations",
+    definition: "Akuso helpfulness, fallback rate, refusal quality, source coverage, unsupported claims, and cost evidence.",
+  },
+  {
+    key: "experiment_guardrail_pass_rate",
+    title: "Experiment Guardrail Pass Rate",
+    owner: "Product leadership",
+    reviewer: "Data and analytics",
+    sourceSystem: "experiment_assurance_pack",
+    freshnessExpectation: "per experiment",
+    controlKeys: ["experiment_guardrails", "data_contract_coverage"],
+    externalUse: "internal_operations",
+    definition: "Experiment guardrail pass status with rollback rules, exposure scope, and decision date.",
+  },
+];
+
 const toSeverity = (readinessState = "ready", fallback = "none") => {
   if (readinessState === "blocked") {
     return "critical";
@@ -321,6 +629,13 @@ const worstReadiness = (states = []) =>
     const worstRank = READINESS_RANK[worst] ?? 0;
     return currentRank > worstRank ? state : worst;
   }, "ready");
+
+const worstFreshness = (states = []) =>
+  states.reduce((worst, state) => {
+    const currentRank = FRESHNESS_RANK[state] ?? 0;
+    const worstRank = FRESHNESS_RANK[worst] ?? 0;
+    return currentRank > worstRank ? state : worst;
+  }, "current");
 
 const buildReliabilityMap = (reliabilityHealth = {}) =>
   new Map((reliabilityHealth.snapshots || []).map((snapshot) => [snapshot.key, snapshot]));
@@ -479,7 +794,124 @@ const serializeControl = ({ control, dynamicEvidence }) => {
   };
 };
 
-const buildSummary = (controls = []) => {
+const buildEvidencePacks = (controls = []) => {
+  const controlMap = new Map(controls.map((control) => [control.controlKey, control]));
+
+  return ASSURANCE_EVIDENCE_PACKS.map((pack) => {
+    const relatedControls = pack.controlKeys.map((key) => controlMap.get(key)).filter(Boolean);
+    const readinessState = worstReadiness(relatedControls.map((control) => control.readinessState));
+    const evidenceFreshness = worstFreshness(relatedControls.map((control) => control.evidenceFreshness));
+    const exceptionSeverity = worstSeverity(relatedControls.map((control) => control.exceptionSeverity));
+    const isCurrentAndReady = readinessState === "ready" && evidenceFreshness === "current";
+    const blockingControls = relatedControls.filter(
+      (control) => control.readinessState !== "ready" || control.evidenceFreshness !== "current"
+    );
+    const requiredEvidence = pack.requiredEvidence.map((section) => ({
+      ...section,
+      status: isCurrentAndReady ? "current" : "pending",
+      evidenceFreshness: isCurrentAndReady ? "current" : evidenceFreshness,
+      sourceSystem: pack.sourceSystem,
+      shareability: section.shareability || pack.sharingLevel,
+    }));
+    const openRisks = blockingControls.map((control) => ({
+      controlKey: control.controlKey,
+      surface: control.surface,
+      owner: control.owner,
+      severity: control.exceptionSeverity,
+      readinessState: control.readinessState,
+      evidenceFreshness: control.evidenceFreshness,
+      note: control.auditNotes,
+    }));
+
+    return {
+      key: pack.key,
+      title: pack.title,
+      workstream: pack.workstream,
+      owner: pack.owner,
+      reviewer: pack.reviewer,
+      readinessState,
+      evidenceFreshness,
+      exceptionSeverity,
+      sharingLevel: pack.sharingLevel,
+      audienceViews: pack.audienceViews,
+      summary: pack.summary,
+      revocationOrPauseRule: pack.revocationOrPauseRule,
+      latestEvidenceSummary: isCurrentAndReady
+        ? "Required evidence is current enough for review."
+        : `${requiredEvidence.length} required sections need current evidence before external reliance.`,
+      requiredEvidence,
+      controlKeys: pack.controlKeys,
+      blockingControls: blockingControls.map((control) => control.controlKey),
+      openRisks,
+      actionPath: pack.actionPath,
+    };
+  });
+};
+
+const trustStateFromEvidence = ({ readinessState = "ready", evidenceFreshness = "current" } = {}) => {
+  if (evidenceFreshness === "withdrawn") {
+    return "withdrawn";
+  }
+  if (evidenceFreshness === "blocked" || readinessState === "blocked") {
+    return "blocked";
+  }
+  if (evidenceFreshness === "delayed") {
+    return "needs_contract";
+  }
+  if (["disputed", "stale"].includes(evidenceFreshness) || readinessState === "needs_review") {
+    return "disputed";
+  }
+  if (readinessState === "watch") {
+    return "watch";
+  }
+  return "trusted";
+};
+
+const buildMetricContracts = (controls = []) => {
+  const controlMap = new Map(controls.map((control) => [control.controlKey, control]));
+
+  return METRIC_CONTRACT_DEFINITIONS.map((contract) => {
+    const relatedControls = contract.controlKeys.map((key) => controlMap.get(key)).filter(Boolean);
+    const readinessState = worstReadiness(relatedControls.map((control) => control.readinessState));
+    const evidenceFreshness = worstFreshness(relatedControls.map((control) => control.evidenceFreshness));
+    const exceptionSeverity = worstSeverity(relatedControls.map((control) => control.exceptionSeverity));
+    const trustState = trustStateFromEvidence({ readinessState, evidenceFreshness });
+    const blockingControls = relatedControls.filter(
+      (control) => control.readinessState !== "ready" || control.evidenceFreshness !== "current"
+    );
+    const externalUseAllowed = trustState === "trusted";
+
+    return {
+      key: contract.key,
+      title: contract.title,
+      owner: contract.owner,
+      reviewer: contract.reviewer,
+      definition: contract.definition,
+      sourceSystem: contract.sourceSystem,
+      freshnessExpectation: contract.freshnessExpectation,
+      externalUse: contract.externalUse,
+      trustState,
+      readinessState,
+      evidenceFreshness,
+      exceptionSeverity,
+      externalUseAllowed,
+      controlKeys: contract.controlKeys,
+      blockingControls: blockingControls.map((control) => control.controlKey),
+      latestEvidence: relatedControls.map((control) => ({
+        controlKey: control.controlKey,
+        surface: control.surface,
+        latestMetric: control.latestMetric,
+        readinessState: control.readinessState,
+        evidenceFreshness: control.evidenceFreshness,
+      })),
+      withdrawalRule: externalUseAllowed
+        ? "Metric can support its approved audience while evidence remains current."
+        : "Do not use this metric for external reports, automation, partner claims, experiments, or market approvals until trust evidence is current.",
+    };
+  });
+};
+
+const buildSummary = (controls = [], evidencePacks = [], metricContracts = []) => {
   const countsByFreshness = {};
   const countsByReadiness = {};
   const countsBySeverity = {};
@@ -493,10 +925,26 @@ const buildSummary = (controls = []) => {
   });
 
   const currentControls = Number(countsByFreshness.current || 0);
+  const currentEvidencePacks = evidencePacks.filter(
+    (pack) => pack.evidenceFreshness === "current" && pack.readinessState === "ready"
+  ).length;
+  const trustedMetricContracts = metricContracts.filter(
+    (contract) => contract.trustState === "trusted"
+  ).length;
   return {
     totalControls: controls.length,
     currentEvidenceControls: currentControls,
     controlCoverageRate: controls.length ? Number((currentControls / controls.length).toFixed(4)) : 0,
+    evidencePackCount: evidencePacks.length,
+    currentEvidencePackCount: currentEvidencePacks,
+    evidencePackCoverageRate: evidencePacks.length
+      ? Number((currentEvidencePacks / evidencePacks.length).toFixed(4))
+      : 0,
+    metricContractCount: metricContracts.length,
+    trustedMetricContractCount: trustedMetricContracts,
+    metricTrustRate: metricContracts.length
+      ? Number((trustedMetricContracts / metricContracts.length).toFixed(4))
+      : 0,
     readinessState: worstReadiness(controls.map((control) => control.readinessState)),
     blockerCount: Number(countsByReadiness.blocked || 0),
     needsReviewCount: Number(countsByReadiness.needs_review || 0),
@@ -654,7 +1102,9 @@ const buildAssuranceDashboard = async ({
       dynamicEvidence: buildDynamicEvidence({ control, financeClose, reliabilityMap }),
     })
   );
-  const summary = buildSummary(controls);
+  const evidencePacks = buildEvidencePacks(controls);
+  const metricContracts = buildMetricContracts(controls);
+  const summary = buildSummary(controls, evidencePacks, metricContracts);
 
   return {
     filters: financeClose.filters,
@@ -670,6 +1120,8 @@ const buildAssuranceDashboard = async ({
     summary,
     workstreams: buildWorkstreams(controls),
     controls,
+    evidencePacks,
+    metricContracts,
     alerts: buildMonitoringAlerts(controls),
     readinessGates: buildReadinessGates(controls),
     evidencePackStandard: EVIDENCE_PACK_STANDARD,
@@ -684,12 +1136,18 @@ const buildAssuranceDashboard = async ({
       "recommendation_logs",
       "akuso_metrics_and_evals",
       "manual_partner_api_market_trust_packs",
+      "metric_contract_registry",
+      "experiment_assurance_pack",
     ],
   };
 };
 
 module.exports = {
+  ASSURANCE_EVIDENCE_PACKS,
   CONTROL_DEFINITIONS,
+  DATA_PRODUCT_EVIDENCE_PACKS,
   EVIDENCE_PACK_STANDARD,
+  METRIC_CONTRACT_DEFINITIONS,
+  PARTNER_API_MARKET_EVIDENCE_PACKS,
   buildAssuranceDashboard,
 };

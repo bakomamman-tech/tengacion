@@ -7,8 +7,12 @@ const CreatorProfile = require("../models/CreatorProfile");
 const Purchase = require("../models/Purchase");
 const User = require("../models/User");
 const {
+  ASSURANCE_EVIDENCE_PACKS,
   CONTROL_DEFINITIONS,
+  DATA_PRODUCT_EVIDENCE_PACKS,
   EVIDENCE_PACK_STANDARD,
+  METRIC_CONTRACT_DEFINITIONS,
+  PARTNER_API_MARKET_EVIDENCE_PACKS,
   buildAssuranceDashboard,
 } = require("../services/assuranceDashboardService");
 
@@ -82,6 +86,8 @@ describe("assuranceDashboardService", () => {
       reviewer: "Assurance review board",
     });
     expect(dashboard.summary.totalControls).toBe(CONTROL_DEFINITIONS.length);
+    expect(dashboard.summary.evidencePackCount).toBe(ASSURANCE_EVIDENCE_PACKS.length);
+    expect(dashboard.summary.metricContractCount).toBe(METRIC_CONTRACT_DEFINITIONS.length);
     expect(dashboard.controls).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -101,6 +107,78 @@ describe("assuranceDashboardService", () => {
       ])
     );
     expect(dashboard.evidencePackStandard).toEqual(EVIDENCE_PACK_STANDARD);
+    expect(PARTNER_API_MARKET_EVIDENCE_PACKS.length).toBe(3);
+    expect(DATA_PRODUCT_EVIDENCE_PACKS.length).toBe(3);
+    expect(dashboard.evidencePacks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "partner_assurance_pack",
+          readinessState: "needs_review",
+          evidenceFreshness: "delayed",
+          sharingLevel: "partner_shareable_after_review",
+          requiredEvidence: expect.arrayContaining([
+            expect.objectContaining({
+              key: "access_scope",
+              status: "pending",
+            }),
+            expect.objectContaining({
+              key: "revocation_path",
+              status: "pending",
+            }),
+          ]),
+        }),
+        expect.objectContaining({
+          key: "api_assurance_pack",
+          blockingControls: ["api_access_review"],
+        }),
+        expect.objectContaining({
+          key: "market_assurance_pack",
+          reviewer: "Trust, policy, and legal",
+        }),
+        expect.objectContaining({
+          key: "metric_contract_registry",
+          workstream: "data_product",
+          requiredEvidence: expect.arrayContaining([
+            expect.objectContaining({
+              key: "gmv",
+              status: "pending",
+            }),
+            expect.objectContaining({
+              key: "recommendation_clicks",
+              status: "pending",
+            }),
+          ]),
+        }),
+        expect.objectContaining({
+          key: "experiment_assurance_pack",
+          blockingControls: expect.arrayContaining(["experiment_guardrails", "data_contract_coverage"]),
+        }),
+        expect.objectContaining({
+          key: "recommendation_assurance_pack",
+          owner: "Discovery and analytics",
+        }),
+      ])
+    );
+    expect(dashboard.metricContracts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "gmv",
+          trustState: "trusted",
+          externalUseAllowed: true,
+          controlKeys: ["finance_revenue_close", "wallet_settlement_accuracy"],
+        }),
+        expect.objectContaining({
+          key: "subscription_retention",
+          trustState: "needs_contract",
+          externalUseAllowed: false,
+          blockingControls: ["data_contract_coverage"],
+        }),
+        expect.objectContaining({
+          key: "recommendation_clicks",
+          sourceSystem: "recommendation_logs",
+        }),
+      ])
+    );
     expect(dashboard.readinessGates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ key: "finance_close_readiness" }),
@@ -151,6 +229,42 @@ describe("assuranceDashboardService", () => {
         expect.objectContaining({
           controlKey: "purchase_entitlement_continuity",
           severity: "critical",
+        }),
+      ])
+    );
+    expect(dashboard.evidencePacks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "market_assurance_pack",
+          readinessState: "blocked",
+          openRisks: expect.arrayContaining([
+            expect.objectContaining({
+              controlKey: "finance_revenue_close",
+              severity: "critical",
+            }),
+            expect.objectContaining({
+              controlKey: "purchase_entitlement_continuity",
+              readinessState: "blocked",
+            }),
+          ]),
+        }),
+      ])
+    );
+    expect(dashboard.metricContracts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "gmv",
+          trustState: "blocked",
+          externalUseAllowed: false,
+          blockingControls: expect.arrayContaining([
+            "finance_revenue_close",
+            "wallet_settlement_accuracy",
+          ]),
+        }),
+        expect.objectContaining({
+          key: "recommendation_conversions",
+          trustState: "blocked",
+          blockingControls: expect.arrayContaining(["purchase_entitlement_continuity"]),
         }),
       ])
     );

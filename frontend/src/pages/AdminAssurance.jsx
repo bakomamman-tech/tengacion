@@ -23,10 +23,10 @@ const eventLabel = (value = "") =>
 
 const statusClass = (value = "") => {
   const normalized = String(value || "").trim().toLowerCase();
-  if (["blocked", "critical", "high", "needs_review"].includes(normalized)) {
+  if (["blocked", "critical", "high", "needs_review", "withdrawn"].includes(normalized)) {
     return "adminx-badge adminx-badge--danger";
   }
-  if (["watch", "medium", "delayed", "stale", "disputed"].includes(normalized)) {
+  if (["watch", "medium", "delayed", "stale", "disputed", "pending", "needs_contract"].includes(normalized)) {
     return "adminx-badge adminx-badge--warn";
   }
   return "adminx-badge adminx-badge--good";
@@ -66,6 +66,8 @@ export default function AdminAssurancePage({ user }) {
   const summary = payload?.summary || {};
   const workstreams = payload?.workstreams || [];
   const controls = payload?.controls || [];
+  const evidencePacks = payload?.evidencePacks || [];
+  const metricContracts = payload?.metricContracts || [];
   const alerts = payload?.alerts || [];
   const readinessGates = payload?.readinessGates || [];
   const standard = payload?.evidencePackStandard || {};
@@ -74,6 +76,8 @@ export default function AdminAssurancePage({ user }) {
     ["Readiness", eventLabel(summary.readinessState || "unknown")],
     ["Control Coverage", percent(summary.controlCoverageRate)],
     ["Current Evidence", `${number(summary.currentEvidenceControls)} / ${number(summary.totalControls)}`],
+    ["Evidence Packs", `${number(summary.currentEvidencePackCount)} / ${number(summary.evidencePackCount)}`],
+    ["Metric Trust", `${number(summary.trustedMetricContractCount)} / ${number(summary.metricContractCount)}`],
     ["Blockers", number(summary.blockerCount)],
     ["Needs Review", number(summary.needsReviewCount)],
     ["High Severity", number(summary.highSeverityCount)],
@@ -153,6 +157,109 @@ export default function AdminAssurancePage({ user }) {
                   <div className="adminx-muted">{gate.blockerCondition}</div>
                 </article>
               ))}
+            </div>
+          </section>
+
+          <section className="adminx-panel adminx-panel--span-12">
+            <div className="adminx-panel-head">
+              <h2 className="adminx-panel-title">Assurance Evidence Packs</h2>
+              <span className="adminx-section-meta">{number(evidencePacks.length)} packs</span>
+            </div>
+            <div className="adminx-alert-list adminx-alert-list--inline">
+              {evidencePacks.map((pack) => (
+                <article key={pack.key} className="adminx-alert-item">
+                  <div className="adminx-row">
+                    <strong>{pack.title}</strong>
+                    <span className={statusClass(pack.readinessState)}>{eventLabel(pack.readinessState)}</span>
+                  </div>
+                  <div className="adminx-muted">{pack.summary}</div>
+                  <div className="adminx-pill-row">
+                    <span className={statusClass(pack.evidenceFreshness)}>
+                      {eventLabel(pack.evidenceFreshness)}
+                    </span>
+                    <span className={statusClass(pack.exceptionSeverity)}>
+                      {eventLabel(pack.exceptionSeverity)}
+                    </span>
+                    <span className="adminx-badge">{eventLabel(pack.sharingLevel)}</span>
+                  </div>
+                  <div className="adminx-muted">{pack.latestEvidenceSummary}</div>
+                  <div className="adminx-pill-row">
+                    {(pack.requiredEvidence || []).slice(0, 8).map((section) => (
+                      <span key={section.key} className={statusClass(section.status)}>
+                        {section.label}
+                      </span>
+                    ))}
+                  </div>
+                  {pack.openRisks?.length ? (
+                    <div className="adminx-muted">
+                      {number(pack.openRisks.length)} open risks - {pack.revocationOrPauseRule}
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="adminx-link-btn adminx-link-btn--inline"
+                    onClick={() => navigate(pack.actionPath || "/admin/assurance")}
+                  >
+                    Open controls
+                  </button>
+                </article>
+              ))}
+              {!evidencePacks.length ? <div className="adminx-empty">No evidence packs in this window.</div> : null}
+            </div>
+          </section>
+
+          <section className="adminx-panel adminx-panel--span-12">
+            <div className="adminx-panel-head">
+              <h2 className="adminx-panel-title">Metric Trust Contracts</h2>
+              <span className="adminx-section-meta">{number(metricContracts.length)} contracts</span>
+            </div>
+            <div className="adminx-table-wrap adminx-table-wrap--flush">
+              <table className="adminx-table">
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th>Owner</th>
+                    <th>Source</th>
+                    <th>Trust</th>
+                    <th>Freshness</th>
+                    <th>External Use</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metricContracts.map((contract) => (
+                    <tr key={contract.key}>
+                      <td>
+                        <strong>{contract.title}</strong>
+                        <div className="adminx-muted">{contract.definition}</div>
+                      </td>
+                      <td>{contract.owner}</td>
+                      <td>
+                        {eventLabel(contract.sourceSystem)}
+                        <div className="adminx-muted">{contract.freshnessExpectation}</div>
+                      </td>
+                      <td><span className={statusClass(contract.trustState)}>{eventLabel(contract.trustState)}</span></td>
+                      <td><span className={statusClass(contract.evidenceFreshness)}>{eventLabel(contract.evidenceFreshness)}</span></td>
+                      <td>
+                        <span className={statusClass(contract.externalUseAllowed ? "ready" : "blocked")}>
+                          {contract.externalUseAllowed ? eventLabel(contract.externalUse) : "Blocked"}
+                        </span>
+                        {contract.blockingControls?.length ? (
+                          <div className="adminx-muted">
+                            {number(contract.blockingControls.length)} blocking controls
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                  {!metricContracts.length ? (
+                    <tr>
+                      <td colSpan="6">
+                        <div className="adminx-empty">No metric contracts in this window.</div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
             </div>
           </section>
 

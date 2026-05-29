@@ -359,6 +359,21 @@ const akusoReady = assistantEnabled ? hasOpenAI : false;
 
 const missing = [];
 
+const requireProductionSecret = (value, key, { minLength = 32 } = {}) => {
+  if (!isProduction) {
+    return;
+  }
+
+  if (!value) {
+    missing.push(key);
+    return;
+  }
+
+  if (value.length < minLength) {
+    missing.push(`${key} (must be at least ${minLength} characters)`);
+  }
+};
+
 if (!mongoUri) {
   missing.push("MONGO_URI");
 }
@@ -368,6 +383,9 @@ if (!jwtSecret) {
 } else if (isProduction && jwtSecret.length < 32) {
   missing.push("JWT_SECRET (must be at least 32 characters)");
 }
+
+requireProductionSecret(jwtRefreshSecretInput, "JWT_REFRESH_SECRET");
+requireProductionSecret(authChallengeSecretInput, "AUTH_CHALLENGE_SECRET");
 
 if (!Number.isInteger(port) || port <= 0) {
   missing.push("PORT");

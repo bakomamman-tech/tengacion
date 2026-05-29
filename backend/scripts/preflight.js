@@ -10,6 +10,8 @@ const getPaystackKeyMode = (value = "") => {
 const baseChecks = [
   { key: "MONGO_URI", label: "MongoDB URI", type: "hard" },
   { key: "JWT_SECRET", label: "JWT secret", type: "hard", minLength: 32 },
+  { key: "JWT_REFRESH_SECRET", label: "JWT refresh secret", type: "hard", minLength: 32 },
+  { key: "AUTH_CHALLENGE_SECRET", label: "Auth challenge secret", type: "hard", minLength: 32 },
   { key: "MEDIA_SIGNING_SECRET", label: "Media signing secret", type: "warn", minLength: 32 },
   { key: "LIVEKIT_API_KEY", label: "LiveKit API key", type: "warn" },
   { key: "LIVEKIT_API_SECRET", label: "LiveKit API secret", type: "warn" },

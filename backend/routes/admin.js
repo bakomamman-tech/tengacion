@@ -24,6 +24,7 @@ const { createNotification } = require("../services/notificationService");
 const { disconnectUserSockets } = require("../utils/realtimeSessions");
 const { buildAdminDashboard } = require("../services/adminDashboardService");
 const { sendModerationMessengerWarning } = require("../services/moderationMessengerService");
+const { notifyCreatorPublishedPaidContent } = require("../services/fanReturnPathService");
 const {
   applyModerationAction,
   getModerationItem,
@@ -81,6 +82,7 @@ const {
   reconcilePurchase,
 } = require("../services/paymentOpsService");
 const { normalizeMediaValue } = require("../utils/userMedia");
+const { mediaDocumentToUrl } = require("../utils/cloudinaryMedia");
 const { sanitizePhoneValue } = require("../utils/profileFields");
 
 const router = express.Router();
@@ -386,6 +388,60 @@ router.get("/assurance/dashboard", async (req, res) => {
       .json({ error: err.message || "Failed to load assurance dashboard" });
   }
 });
+
+const resolveBookManuscriptUrl = (book = {}) =>
+  mediaDocumentToUrl(book.contentMedia, book.contentUrl || book.fileUrl || "");
+
+const resolveBookPreviewUrl = (book = {}) =>
+  mediaDocumentToUrl(book.previewMedia, book.previewUrl || "");
+
+const resolveBookCoverUrl = (book = {}) =>
+  mediaDocumentToUrl(book.coverMedia, book.coverImageUrl || book.coverUrl || "");
+
+const resolveContentStatus = (row = {}) => {
+  const status = String(row.publishedStatus || row.status || "").trim().toLowerCase();
+  if (status) return status;
+  return row.isPublished === false ? "draft" : "published";
+};
+
+const toAdminBookReviewDTO = (book = {}) => {
+  const creator = book.creatorId && typeof book.creatorId === "object" ? book.creatorId : null;
+  const creatorUser = creator?.userId && typeof creator.userId === "object" ? creator.userId : null;
+
+  return {
+    id: toId(book._id),
+    type: "book",
+    title: String(book.title || "Untitled Book"),
+    authorName: String(book.authorName || ""),
+    subtitle: String(book.subtitle || ""),
+    description: String(book.description || ""),
+    status: resolveContentStatus(book),
+    publishedStatus: resolveContentStatus(book),
+    copyrightScanStatus: String(book.copyrightScanStatus || "pending_scan"),
+    verificationNotes: String(book.verificationNotes || ""),
+    reviewRequired: Boolean(book.reviewRequired),
+    moderationStatus: String(book.moderationStatus || "ALLOW"),
+    price: Number(book.price || book.priceNGN || 0),
+    currency: String(book.currency || "NGN"),
+    genre: String(book.genre || ""),
+    language: String(book.language || ""),
+    fileFormat: String(book.fileFormat || ""),
+    manuscriptUrl: resolveBookManuscriptUrl(book),
+    previewUrl: resolveBookPreviewUrl(book),
+    coverImageUrl: resolveBookCoverUrl(book),
+    createdAt: book.createdAt || null,
+    updatedAt: book.updatedAt || null,
+    creator: creator
+      ? {
+          id: toId(creator._id),
+          displayName: String(creator.displayName || creator.fullName || ""),
+          username: String(creatorUser?.username || ""),
+          userId: toId(creatorUser?._id || creator.userId),
+          email: String(creatorUser?.email || ""),
+        }
+      : null,
+  };
+};
 
 router.get("/users", async (req, res) => {
   try {
@@ -1186,27 +1242,181 @@ router.post(
   }
 });
 
+router.get("/books/:bookId/review", async (req, res) => {
+  try {
+    const { bookId } = req.params;
+    if (!isValidId(bookId)) {
+      return res.status(400).json({ error: "Invalid book id" });
+    }
+
+    const book = await Book.findById(bookId)
+      .populate({
+        path: "creatorId",
+        select: "displayName fullName userId",
+        populate: { path: "userId", select: "_id name username email" },
+      })
+      .lean();
+    if (!book || book.archivedAt) {
+      return res.status(404).json({ error: "Book not found" });
+    }
+
+    return res.json({ book: toAdminBookReviewDTO(book) });
+  } catch (err) {
+    console.error("Admin book review detail error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
+router.post("/books/:bookId/approve", adminMutationLimiter, async (req, res) => {
+  try {
+    const { bookId } = req.params;
+    if (!isValidId(bookId)) {
+      return res.status(400).json({ error: "Invalid book id" });
+    }
+
+    const book = await Book.findById(bookId);
+    if (!book || book.archivedAt) {
+      return res.status(404).json({ error: "Book not found" });
+    }
+
+    const manuscriptUrl = resolveBookManuscriptUrl(book);
+    if (!manuscriptUrl) {
+      return res.status(400).json({ error: "Book manuscript is missing" });
+    }
+
+    if (book.publishedStatus === "blocked" || book.copyrightScanStatus === "blocked") {
+      return res.status(409).json({ error: "Blocked books must be cleared before approval" });
+    }
+
+    const previousStatus = resolveContentStatus(book);
+    const previousScanStatus = String(book.copyrightScanStatus || "pending_scan");
+    const reason = String(req.body?.reason || req.body?.note || "Admin approved manuscript").trim();
+    const adminLine = `Admin approved manuscript${reason ? `: ${reason}` : ""}`;
+    const existingNotes = String(book.verificationNotes || "").trim();
+
+    book.publishedStatus = "published";
+    book.isPublished = true;
+    book.reviewRequired = false;
+    book.copyrightScanStatus = "passed";
+    book.moderationStatus = "ALLOW";
+    book.verificationNotes = existingNotes
+      ? `${existingNotes} ${adminLine}`.slice(0, 2000)
+      : adminLine.slice(0, 2000);
+
+    await book.save();
+
+    const creatorProfile = await CreatorProfile.findById(book.creatorId)
+      .select("displayName fullName userId")
+      .lean();
+    const creatorUserId = toId(creatorProfile?.userId);
+
+    await Promise.all([
+      writeAuditLog({
+        req,
+        actorId: req.user.id,
+        action: "admin.book.approve",
+        targetType: "Book",
+        targetId: toId(book._id),
+        reason,
+        metadata: {
+          title: book.title || "",
+          previousStatus,
+          nextStatus: "published",
+          previousScanStatus,
+          nextScanStatus: "passed",
+          creatorId: toId(book.creatorId),
+        },
+      }),
+      logAnalyticsEvent({
+        type: "book_approved",
+        userId: req.user.id,
+        actorRole: req.user.role || "admin",
+        targetId: book._id,
+        targetType: "book",
+        contentType: "book",
+        metadata: {
+          creatorId: toId(book.creatorId),
+          title: book.title || "",
+          previousStatus,
+          price: Number(book.price || 0),
+        },
+      }).catch(() => null),
+      creatorUserId
+        ? createNotification({
+            recipient: creatorUserId,
+            sender: req.user.id,
+            type: "system",
+            text: `${book.title || "Your book"} has been approved and is now available for purchase.`,
+            entity: {
+              id: book._id,
+              model: "Book",
+            },
+            metadata: {
+              eventType: "book_approved",
+              creatorId: toId(book.creatorId),
+              itemType: "book",
+              itemId: toId(book._id),
+              link: `/books/${toId(book._id)}`,
+              dedupeKey: `book_approved:${toId(book._id)}`,
+            },
+          }).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    if (creatorProfile && Number(book.price || 0) > 0) {
+      await notifyCreatorPublishedPaidContent({
+        req,
+        creatorProfile,
+        itemType: "book",
+        itemId: book._id,
+        title: book.title,
+        price: Number(book.price || 0),
+      }).catch(() => null);
+    }
+
+    const hydrated = await Book.findById(book._id)
+      .populate({
+        path: "creatorId",
+        select: "displayName fullName userId",
+        populate: { path: "userId", select: "_id name username email" },
+      })
+      .lean();
+
+    return res.json({
+      success: true,
+      book: toAdminBookReviewDTO(hydrated),
+    });
+  } catch (err) {
+    console.error("Admin book approval error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
 router.get("/content", async (req, res) => {
   try {
     const page = clamp(req.query.page, 1, 500, 1);
     const limit = clamp(req.query.limit, 1, 100, 20);
     const skip = (page - 1) * limit;
     const category = String(req.query.category || "all").trim().toLowerCase();
+    const statusFilter = String(req.query.status || "all").trim().toLowerCase();
 
     const items = [];
-    const pushRows = (rows, type, getTitle, getCreatedAt, getMetric) => {
+    const pushRows = (rows, type, getTitle, getCreatedAt, getMetric, getExtra = () => ({})) => {
       for (const row of rows) {
+        const status = resolveContentStatus(row);
         items.push({
           id: toId(row._id),
           type,
           title: getTitle(row),
           createdAt: getCreatedAt(row),
           metricValue: getMetric(row),
-          status: row.isPublished === false ? "draft" : "published",
+          status,
+          publishedStatus: status,
           moderationStatus: row.moderationStatus || "ALLOW",
           reviewRequired: Boolean(row.reviewRequired),
           sensitiveType: row.sensitiveType || "",
           sensitiveContent: Boolean(row.sensitiveContent),
+          ...getExtra(row),
         });
       }
     };
@@ -1235,7 +1445,14 @@ router.get("/content", async (req, res) => {
         "book",
         (row) => row.title || "Untitled Book",
         (row) => row.createdAt,
-        (row) => Number(row.downloadCount || 0)
+        (row) => Number(row.downloadCount || row.purchaseCount || 0),
+        (row) => ({
+          authorName: row.authorName || "",
+          copyrightScanStatus: row.copyrightScanStatus || "pending_scan",
+          manuscriptAvailable: Boolean(resolveBookManuscriptUrl(row)),
+          price: Number(row.price || row.priceNGN || 0),
+          currency: row.currency || "NGN",
+        })
       );
     }
     if (["all", "podcasts"].includes(category)) {
@@ -1257,11 +1474,21 @@ router.get("/content", async (req, res) => {
       );
     }
 
-    const rows = items
+    const filteredItems = items.filter((entry) => {
+      if (!statusFilter || statusFilter === "all") {
+        return true;
+      }
+      if (statusFilter === "review_required") {
+        return Boolean(entry.reviewRequired);
+      }
+      return String(entry.status || "").toLowerCase() === statusFilter;
+    });
+
+    const rows = filteredItems
       .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
       .slice(skip, skip + limit);
 
-    return res.json({ page, limit, total: items.length, items: rows });
+    return res.json({ page, limit, total: filteredItems.length, items: rows });
   } catch (err) {
     console.error("Admin content list error:", req.requestId, err);
     return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });

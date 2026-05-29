@@ -122,6 +122,7 @@ const createEmptyDashboard = (range = "30d") => ({
   },
   navDots: {
     analytics: false,
+    content: false,
     messages: false,
     campaigns: false,
     settings: false,

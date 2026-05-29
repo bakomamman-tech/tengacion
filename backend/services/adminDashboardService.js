@@ -3,6 +3,7 @@ const Post = require("../models/Post");
 const Message = require("../models/Message");
 const Purchase = require("../models/Purchase");
 const AnalyticsEvent = require("../models/AnalyticsEvent");
+const Book = require("../models/Book");
 const {
   buildDateRange,
   normalizeInterval,
@@ -1047,6 +1048,7 @@ const buildAdminDashboard = async ({ range = "30d", startDate = "", endDate = ""
     totalUsers,
     totalPosts,
     monthlyRevenueRows,
+    pendingBookReviews,
   ] = await Promise.all([
     buildSystemAlerts({ range, startDate, endDate }),
     loadApprovedUsers(),
@@ -1067,6 +1069,13 @@ const buildAdminDashboard = async ({ range = "30d", startDate = "", endDate = ""
       },
       { $group: { _id: null, revenue: { $sum: "$amount" } } },
     ]),
+    Book.countDocuments({
+      archivedAt: null,
+      $or: [
+        { publishedStatus: "under_review" },
+        { reviewRequired: true },
+      ],
+    }).catch(() => 0),
   ]);
 
   const chartSeries = dashboardSeriesResult.series;
@@ -1090,6 +1099,19 @@ const buildAdminDashboard = async ({ range = "30d", startDate = "", endDate = ""
   const topUsers = await getTopUsers(approvedUsers);
 
   const messageVolume = sumField(chartSeries, "messagesSent");
+  const pendingBookReviewCount = Number(pendingBookReviews || 0);
+  const alerts = [
+    ...(systemAlerts.alerts || []),
+    ...(pendingBookReviewCount > 0
+      ? [{
+          key: "book_reviews",
+          title: "Book manuscripts need review",
+          severity: "medium",
+          value: pendingBookReviewCount,
+          description: "Books under review need Admin approval before buyers can purchase.",
+        }]
+      : []),
+  ];
   const dataMode = hasLiveSeriesData(chartSeries) || Number(overviewSummary.totalUsers || 0) > 0
     ? "live"
     : "limited";
@@ -1109,8 +1131,8 @@ const buildAdminDashboard = async ({ range = "30d", startDate = "", endDate = ""
       adminName: "Admin User",
       roleLabel: "Admin",
       secondaryText: "Platform oversight",
-      notificationCount: Number(systemAlerts.alerts?.length || 0),
-      alerts: systemAlerts.alerts || [],
+      notificationCount: Number(alerts.length || 0),
+      alerts,
     },
     overview: {
       cards: overviewCards.cards,
@@ -1133,6 +1155,7 @@ const buildAdminDashboard = async ({ range = "30d", startDate = "", endDate = ""
     audienceAge,
     navDots: {
       analytics: Boolean(systemAlerts.alerts?.length),
+      content: pendingBookReviewCount > 0,
       messages: messageVolume > 0,
       campaigns: Number(overviewSummary.revenueThisMonth || 0) > 0,
       settings: Boolean(systemAlerts.metrics?.loginWarnings || systemAlerts.metrics?.failedPayments),
@@ -1140,6 +1163,7 @@ const buildAdminDashboard = async ({ range = "30d", startDate = "", endDate = ""
     diagnostics: {
       totalPosts: Number(overviewSummary.totalPosts || 0),
       totalMessages: messageVolume,
+      pendingBookReviews: pendingBookReviewCount,
       approvedUserCount: topUsers.items.length,
       audienceTracked: audienceAge.items.reduce((sum, item) => sum + Number(item.value || 0), 0),
     },

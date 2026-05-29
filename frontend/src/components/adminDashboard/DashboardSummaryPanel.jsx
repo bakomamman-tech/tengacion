@@ -31,6 +31,12 @@ const alertRoutes = {
     hint: "Open reports are waiting for moderation.",
     icon: "posts",
   },
+  book_reviews: {
+    label: "Book Reviews",
+    path: "/admin/content?category=books&status=under_review",
+    hint: "Manuscripts are waiting for review before buyers can purchase.",
+    icon: "posts",
+  },
   unresolved_reports_backlog: {
     label: "Reports",
     path: "/admin/reports",
@@ -121,6 +127,7 @@ export default function DashboardSummaryPanel({ dashboard, onNavigate }) {
   const reach = Number(overviewMap.get("reach")?.value || 0);
   const totalPosts = Number(diagnostics.totalPosts || 0);
   const totalMessages = Number(diagnostics.totalMessages || 0);
+  const pendingBookReviews = Number(diagnostics.pendingBookReviews || 0);
 
   const primaryAlert = pickPrimaryAlert(alerts);
   const primaryRoute = getRouteForAlert(primaryAlert);
@@ -166,11 +173,15 @@ export default function DashboardSummaryPanel({ dashboard, onNavigate }) {
     {
       key: "content",
       label: "Content",
-      value: formatNumber(recentPosts || totalPosts),
-      hint: recentPosts ? `${recentPosts} recent posts are already surfaced.` : "Review the content queue and moderation paths.",
+      value: formatNumber(pendingBookReviews || recentPosts || totalPosts),
+      hint: pendingBookReviews
+        ? `${pendingBookReviews} book manuscript${pendingBookReviews === 1 ? "" : "s"} need approval.`
+        : recentPosts
+          ? `${recentPosts} recent posts are already surfaced.`
+          : "Review the content queue and moderation paths.",
       icon: "posts",
-      tone: recentPosts ? "low" : "medium",
-      path: "/admin/content",
+      tone: pendingBookReviews ? "medium" : recentPosts ? "low" : "medium",
+      path: pendingBookReviews ? "/admin/content?category=books&status=under_review" : "/admin/content",
     },
     {
       key: "analytics",
@@ -205,6 +216,11 @@ export default function DashboardSummaryPanel({ dashboard, onNavigate }) {
       label: "Messages",
       value: formatNumber(totalMessages),
       note: navDots.messages ? "Conversation traffic is active" : "Monitor the inbox",
+    },
+    {
+      label: "Book Review",
+      value: formatNumber(pendingBookReviews),
+      note: pendingBookReviews ? "Awaiting approval" : "No pending manuscripts",
     },
   ];
 

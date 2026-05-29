@@ -2561,6 +2561,21 @@ export const adminListContent = (params = {}) => {
   });
 };
 
+export const adminGetBookReview = (bookId) =>
+  request(`${API_BASE}/admin/books/${encodeURIComponent(bookId || "")}/review`, {
+    headers: getAuthHeaders(),
+  });
+
+export const adminApproveBook = (bookId, body = {}) =>
+  request(`${API_BASE}/admin/books/${encodeURIComponent(bookId || "")}/approve`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(body || {}),
+  });
+
 export const adminListTransactions = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {

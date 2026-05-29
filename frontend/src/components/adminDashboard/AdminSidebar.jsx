@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { key: "assurance", label: "Assurance", icon: "analytics", path: "/admin/assurance" },
   { key: "analytics", label: "Analytics", icon: "analytics", path: "/admin/analytics", dotKey: "analytics" },
   { key: "assistant", label: "Assistant Ops", icon: "analytics", path: "/admin/assistant", dotKey: "assistant" },
-  { key: "posts", label: "Posts", icon: "posts", path: "/admin/content" },
+  { key: "posts", label: "Posts", icon: "posts", path: "/admin/content", dotKey: "content" },
   { key: "users", label: "Users", icon: "users", path: "/admin/users" },
   { key: "messages", label: "Messages", icon: "messages", path: "/admin/messages", dotKey: "messages" },
   { key: "campaigns", label: "Campaigns", icon: "campaigns", path: "/admin/campaigns", dotKey: "campaigns" },

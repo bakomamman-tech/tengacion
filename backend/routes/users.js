@@ -47,6 +47,35 @@ const withActiveUsers = (query = {}) => ({
 const PRIVACY_VALUES = ["public", "friends", "private"];
 const MESSAGE_PERMISSION_VALUES = ["everyone", "friends", "no_one"];
 const AUDIENCE_VALUES = ["public", "friends", "close_friends"];
+const ONBOARDING_INTENT_VALUES = [
+  "discover",
+  "music_creator",
+  "author",
+  "podcaster",
+  "seller",
+  "social",
+];
+const ONBOARDING_CREATOR_LANE_VALUES = ["music", "bookPublishing", "podcast"];
+
+const normalizeOnboardingIntent = (value = "") => {
+  const normalized = String(value || "").trim();
+  return ONBOARDING_INTENT_VALUES.includes(normalized) ? normalized : "";
+};
+
+const normalizeOnboardingCreatorLanes = (values = []) => {
+  const seen = new Set();
+  return (Array.isArray(values) ? values : [])
+    .map((value) => String(value || "").trim())
+    .filter((value) => ONBOARDING_CREATOR_LANE_VALUES.includes(value))
+    .filter((value) => {
+      if (seen.has(value)) {
+        return false;
+      }
+      seen.add(value);
+      return true;
+    })
+    .slice(0, 4);
+};
 
 const buildRelationship = ({
   viewerId,
@@ -1446,15 +1475,33 @@ router.put("/me/onboarding", auth, async (req, res) => {
     const incomingSteps = req.body?.steps && typeof req.body.steps === "object" ? req.body.steps : {};
     user.onboarding = user.onboarding || { completed: false, steps: {} };
     user.onboarding.steps = user.onboarding.steps || {};
-    for (const key of ["avatar", "bio", "interests", "followSuggestions"]) {
+    for (const key of ["intent", "avatar", "bio", "interests", "followSuggestions"]) {
       if (Object.prototype.hasOwnProperty.call(incomingSteps, key)) {
         user.onboarding.steps[key] = Boolean(incomingSteps[key]);
       }
     }
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "intent")) {
+      user.onboarding.intent = normalizeOnboardingIntent(req.body.intent);
+      user.onboarding.steps.intent = Boolean(user.onboarding.intent);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "creatorLanes")) {
+      user.onboarding.creatorLanes = normalizeOnboardingCreatorLanes(req.body.creatorLanes);
+      user.onboarding.steps.intent = Boolean(
+        user.onboarding.intent || user.onboarding.creatorLanes.length
+      );
+    }
     if (Array.isArray(req.body?.interests)) {
+      const seenInterests = new Set();
       user.interests = req.body.interests
         .map((value) => String(value || "").trim().toLowerCase())
         .filter(Boolean)
+        .filter((value) => {
+          if (seenInterests.has(value)) {
+            return false;
+          }
+          seenInterests.add(value);
+          return true;
+        })
         .slice(0, 20);
       user.onboarding.steps.interests = user.interests.length > 0;
     }

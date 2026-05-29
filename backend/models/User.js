@@ -494,7 +494,15 @@ const UserSchema = new mongoose.Schema(
 
     onboarding: {
       completed: { type: Boolean, default: false },
+      intent: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 50,
+      },
+      creatorLanes: [{ type: String, default: "", trim: true, maxlength: 50 }],
       steps: {
+        intent: { type: Boolean, default: false },
         avatar: { type: Boolean, default: false },
         bio: { type: Boolean, default: false },
         interests: { type: Boolean, default: false },

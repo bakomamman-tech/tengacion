@@ -743,23 +743,6 @@ export const submitKadunaGotTalentApplication = (payload = {}) =>
     suppressAuthFailure: true,
   });
 
-export const getSponsoredPoll = (pollSlug) =>
-  request(`${API_BASE}/sponsored-polls/${encodeURIComponent(pollSlug || "")}`, {
-    headers: getAuthHeaders(),
-    suppressAuthFailure: true,
-  });
-
-export const submitSponsoredPollVote = (pollSlug, payload = {}) =>
-  request(`${API_BASE}/sponsored-polls/${encodeURIComponent(pollSlug || "")}/vote`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(),
-    },
-    body: JSON.stringify(payload || {}),
-    suppressAuthFailure: true,
-  });
-
 export const getRechargeRaffleStatus = () =>
   request(`${API_BASE}/recharge-raffle/me`, {
     headers: getAuthHeaders(),

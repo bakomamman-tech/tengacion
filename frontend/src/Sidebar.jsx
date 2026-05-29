@@ -1,16 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  getRechargeRaffleStatus,
-  getSponsoredPoll,
-  resolveImage,
-  submitSponsoredPollVote,
-} from "./api";
+import { getRechargeRaffleStatus, resolveImage } from "./api";
 
 const MOBILE_SIDEBAR_QUERY = "(max-width: 1020px)";
-const CHILDRENS_DAY_POLL_SLUG = "onward-baptist-childrens-day";
-const CHILDRENS_DAY_SPONSOR_IMAGE = "/assets/onward-baptist-childrens-day-sponsored.png";
 
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -70,23 +62,6 @@ const hasCompletedProfileDetails = (user = {}) => {
 const hidesRaffleByProfile = (user = {}) =>
   hasCompletedProfileDetails(user) && Boolean(getMediaUrl(user?.avatar));
 
-const emptyPollStats = { yes: 0, no: 0, total: 0 };
-
-const normalizePollStats = (stats = {}) => {
-  const yes = Number(stats?.yes) || 0;
-  const no = Number(stats?.no) || 0;
-  return {
-    yes,
-    no,
-    total: Number(stats?.total) || yes + no,
-  };
-};
-
-const isValidPhoneCandidate = (value = "") => {
-  const digits = String(value || "").replace(/\D/g, "");
-  return digits.length >= 7 && digits.length <= 15;
-};
-
 function RaffleGameCard({ isExpanded, onToggle, onPlay }) {
   return (
     <section
@@ -138,252 +113,6 @@ function RaffleGameCard({ isExpanded, onToggle, onPlay }) {
       >
         Play
       </button>
-    </section>
-  );
-}
-
-function SponsoredChildrenDayCard({ user }) {
-  const userPhone = cleanProfileValue(user?.phone, "tmp_phone_");
-  const flyerButtonRef = useRef(null);
-  const flyerCloseButtonRef = useRef(null);
-  const [phone, setPhone] = useState(userPhone);
-  const [vote, setVote] = useState("");
-  const [stats, setStats] = useState(emptyPollStats);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState("");
-  const [flyerOpen, setFlyerOpen] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    setLoading(true);
-    getSponsoredPoll(CHILDRENS_DAY_POLL_SLUG)
-      .then((payload) => {
-        if (cancelled) {
-          return;
-        }
-
-        const response = payload?.response || null;
-        setStats(normalizePollStats(payload?.stats));
-        if (response?.phone) {
-          setPhone(response.phone);
-        } else if (userPhone) {
-          setPhone((current) => current || userPhone);
-        }
-        if (response?.vote) {
-          setVote(response.vote);
-          setMessage("Your vote is saved. You can update it anytime.");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setMessage("Poll results are unavailable right now.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?._id, userPhone]);
-
-  const yesPercent = stats.total > 0 ? Math.round((stats.yes / stats.total) * 100) : 0;
-  const noPercent = stats.total > 0 ? 100 - yesPercent : 0;
-
-  const closeFlyer = useCallback(() => {
-    setFlyerOpen(false);
-    flyerButtonRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    if (!flyerOpen || typeof document === "undefined") {
-      return undefined;
-    }
-
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
-        closeFlyer();
-      }
-    };
-
-    document.body.classList.add("sidebar-sponsored-lightbox-open");
-    document.addEventListener("keydown", handleKeyDown);
-    flyerCloseButtonRef.current?.focus();
-
-    return () => {
-      document.body.classList.remove("sidebar-sponsored-lightbox-open");
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [closeFlyer, flyerOpen]);
-
-  const submitVote = async (event) => {
-    event.preventDefault();
-    if (submitting) {
-      return;
-    }
-
-    const nextPhone = phone.trim();
-    if (!isValidPhoneCandidate(nextPhone)) {
-      setMessage("Please enter a valid parent phone number.");
-      return;
-    }
-
-    if (!vote) {
-      setMessage("Please choose Yes or No before submitting.");
-      return;
-    }
-
-    setSubmitting(true);
-    setMessage("");
-    try {
-      const payload = await submitSponsoredPollVote(CHILDRENS_DAY_POLL_SLUG, {
-        phone: nextPhone,
-        vote,
-      });
-      setPhone(payload?.response?.phone || nextPhone);
-      setVote(payload?.response?.vote || vote);
-      setStats(normalizePollStats(payload?.stats));
-      setMessage("Thanks, your vote has been saved.");
-    } catch (error) {
-      setMessage(error?.message || "Could not submit your vote right now.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const voteButtonClass = (value) =>
-    `sidebar-sponsored-choice${vote === value ? " active" : ""}`;
-
-  const flyerLightbox =
-    flyerOpen && typeof document !== "undefined"
-      ? createPortal(
-          <div
-            className="sidebar-sponsored-lightbox"
-            onClick={(event) => {
-              if (event.target === event.currentTarget) {
-                closeFlyer();
-              }
-            }}
-          >
-            <div
-              className="sidebar-sponsored-lightbox-dialog"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Onward Baptist Children's Day full flyer"
-            >
-              <div className="sidebar-sponsored-lightbox-actions">
-                <button
-                  type="button"
-                  ref={flyerCloseButtonRef}
-                  className="sidebar-sponsored-lightbox-close"
-                  onClick={closeFlyer}
-                  aria-label="Close full flyer"
-                >
-                  X
-                </button>
-              </div>
-              <img
-                src={CHILDRENS_DAY_SPONSOR_IMAGE}
-                className="sidebar-sponsored-lightbox-image"
-                alt="Full Onward Baptist's Children's Day Celebration flyer"
-              />
-            </div>
-          </div>,
-          document.body
-        )
-      : null;
-
-  return (
-    <section
-      className="sidebar-sponsored-card"
-      aria-label="Sponsored post: Onward Baptist's Children's Day Celebration"
-    >
-      <div className="sidebar-sponsored-head">
-        <span>Sponsored Post</span>
-        <strong>May 27</strong>
-      </div>
-
-      <button
-        type="button"
-        ref={flyerButtonRef}
-        className="sidebar-sponsored-image-button"
-        onClick={() => setFlyerOpen(true)}
-        aria-label="Open full Onward Baptist Children's Day flyer"
-      >
-        <img
-          src={CHILDRENS_DAY_SPONSOR_IMAGE}
-          className="sidebar-sponsored-image"
-          alt="Onward Baptist's Children's Day Celebration flyer"
-        />
-      </button>
-
-      {flyerLightbox}
-
-      <div className="sidebar-sponsored-copy">
-        <h3>Onward Baptist's Children's Day</h3>
-        <p>Everything is free, 9:00am to 2:00pm at Onward Baptist's School Premises.</p>
-      </div>
-
-      <form className="sidebar-sponsored-poll" onSubmit={submitVote}>
-        <p className="sidebar-sponsored-question">Would you want your child to attend?</p>
-
-        <input
-          type="tel"
-          value={phone}
-          onChange={(event) => setPhone(event.target.value)}
-          placeholder="Parent phone number"
-          aria-label="Parent phone number"
-          autoComplete="tel"
-          disabled={submitting}
-        />
-
-        <div className="sidebar-sponsored-choices" aria-label="Attendance vote choices">
-          <button
-            type="button"
-            className={voteButtonClass("yes")}
-            onClick={() => setVote("yes")}
-            disabled={submitting}
-          >
-            Yes
-          </button>
-          <button
-            type="button"
-            className={voteButtonClass("no")}
-            onClick={() => setVote("no")}
-            disabled={submitting}
-          >
-            No
-          </button>
-        </div>
-
-        <button type="submit" className="sidebar-sponsored-submit" disabled={loading || submitting}>
-          {submitting ? "Saving..." : "Submit vote"}
-        </button>
-
-        {message ? (
-          <p className="sidebar-sponsored-status" role="status">
-            {message}
-          </p>
-        ) : null}
-      </form>
-
-      <div className="sidebar-sponsored-results" aria-label="Sponsored poll result summary">
-        <div className="sidebar-sponsored-result-row">
-          <span>Yes</span>
-          <strong>{stats.yes}</strong>
-          <i style={{ "--poll-size": `${yesPercent}%` }} />
-        </div>
-        <div className="sidebar-sponsored-result-row">
-          <span>No</span>
-          <strong>{stats.no}</strong>
-          <i style={{ "--poll-size": `${noPercent}%` }} />
-        </div>
-      </div>
     </section>
   );
 }
@@ -479,19 +208,15 @@ export default function Sidebar({ user, openChat, openProfile }) {
   };
 
   if (isMobileSidebar) {
-    return (
+    return raffleVisible ? (
       <div className="sidebar-mobile-feature">
-        {raffleVisible ? (
-          <RaffleGameCard
-            isExpanded={isRaffleExpanded}
-            onToggle={toggleRaffleCard}
-            onPlay={openRaffleGame}
-          />
-        ) : null}
-
-        <SponsoredChildrenDayCard user={user} />
+        <RaffleGameCard
+          isExpanded={isRaffleExpanded}
+          onToggle={toggleRaffleCard}
+          onPlay={openRaffleGame}
+        />
       </div>
-    );
+    ) : null;
   }
 
   return (
@@ -513,8 +238,6 @@ export default function Sidebar({ user, openChat, openProfile }) {
           onPlay={openRaffleGame}
         />
       ) : null}
-
-      <SponsoredChildrenDayCard user={user} />
 
       <div className="sb-divider" />
 

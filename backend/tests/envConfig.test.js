@@ -1,3 +1,5 @@
+const path = require("path");
+
 describe("environment configuration", () => {
   test("requires production auth token secrets before startup", () => {
     const originalEnv = { ...process.env };
@@ -52,5 +54,24 @@ describe("environment configuration", () => {
       jest.resetModules();
       require("../../apps/api/config/env");
     }
+  });
+});
+
+describe("environment config loading", () => {
+  test("prefers the repo root env file before backend-local fallbacks", () => {
+    const { buildEnvCandidates } = require("../config/env");
+    const backendDir = path.resolve(__dirname, "..");
+    const configDir = path.resolve(backendDir, "config");
+
+    expect(
+      buildEnvCandidates({
+        cwd: backendDir,
+        configDir,
+        fileName: ".env",
+      })
+    ).toEqual([
+      path.resolve(backendDir, "..", ".env"),
+      path.resolve(backendDir, ".env"),
+    ]);
   });
 });

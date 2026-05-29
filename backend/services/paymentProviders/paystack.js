@@ -2,11 +2,19 @@ const crypto = require("crypto");
 const {
   PAYSTACK_CHECKOUT_CHANNELS,
   assertPaystackSecretUsable,
+  normalizePaystackErrorMessage,
 } = require("../paystackService");
+const { config } = require("../../config/env");
 
-const PAYSTACK_BASE_URL = "https://api.paystack.co";
+const PAYSTACK_BASE_URL = String(config.PAYSTACK_BASE_URL || "https://api.paystack.co")
+  .replace(/\/+$/, "");
 
-const getSecretKey = () => process.env.PAYSTACK_SECRET_KEY || "";
+const getSecretKey = () =>
+  String(process.env.PAYSTACK_SECRET_KEY || config.PAYSTACK_SECRET_KEY || "").trim();
+const getCurrency = () =>
+  String(process.env.PAYSTACK_CURRENCY || config.PAYSTACK_CURRENCY || "NGN")
+    .trim()
+    .toUpperCase() || "NGN";
 
 const createProviderReference = ({ userId, itemType, itemId }) => {
   const seed = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
@@ -34,14 +42,16 @@ const initializeTransaction = async ({
       reference,
       callback_url: callbackUrl || undefined,
       metadata,
-      currency: "NGN",
+      currency: getCurrency(),
       channels: PAYSTACK_CHECKOUT_CHANNELS,
     }),
   });
 
-  const payload = await response.json();
+  const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.status !== true || !payload?.data?.authorization_url) {
-    throw new Error(payload?.message || "Failed to initialize Paystack transaction");
+    throw new Error(
+      normalizePaystackErrorMessage(payload?.message || "Failed to initialize Paystack transaction")
+    );
   }
 
   return payload.data;
@@ -60,9 +70,11 @@ const verifyTransaction = async (reference) => {
     }
   );
 
-  const payload = await response.json();
+  const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.status !== true || !payload?.data) {
-    throw new Error(payload?.message || "Failed to verify Paystack transaction");
+    throw new Error(
+      normalizePaystackErrorMessage(payload?.message || "Failed to verify Paystack transaction")
+    );
   }
 
   return payload.data;

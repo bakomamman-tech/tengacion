@@ -2,15 +2,27 @@ const path = require("path");
 const dotenv = require("dotenv");
 
 const envFile = process.env.NODE_ENV === "test" ? ".env.test" : ".env";
-const envCandidates = [
-  path.resolve(process.cwd(), envFile),
-  path.resolve(__dirname, "..", "..", envFile),
-];
+
+const buildEnvCandidates = ({
+  cwd = process.cwd(),
+  configDir = __dirname,
+  fileName = envFile,
+} = {}) => {
+  const repoRoot = path.resolve(configDir, "..", "..");
+  return Array.from(
+    new Set([
+      path.resolve(repoRoot, fileName),
+      path.resolve(cwd, fileName),
+    ])
+  );
+};
+
+const envCandidates = buildEnvCandidates();
 
 for (const envPath of envCandidates) {
   const result = dotenv.config({ path: envPath });
   if (!result.error) {
-    break;
+    continue;
   }
 
   if (result.error.code !== "ENOENT") {
@@ -564,4 +576,4 @@ const config = {
   LIVEKIT_WS_URL: livekitWsUrl,
 };
 
-module.exports = { config, redactSecretsForLog, ...config };
+module.exports = { config, redactSecretsForLog, buildEnvCandidates, ...config };

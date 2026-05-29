@@ -4,6 +4,12 @@ const { config } = require("../config/env");
 const PAYSTACK_BASE_URL = String(config.PAYSTACK_BASE_URL || "https://api.paystack.co").replace(/\/+$/, "");
 const PAYSTACK_CHECKOUT_CHANNELS = ["card", "bank", "ussd", "bank_transfer"];
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PAYSTACK_SECRET_PREFIX_PATTERN = /^sk_(test|live)_/i;
+const PAYSTACK_PLACEHOLDER_PATTERN =
+  /^sk_(test|live)_(x+|your[_-]?key|replace[_-]?me|placeholder|example|test[_-]?key)$/i;
+const PAYSTACK_INVALID_KEY_PATTERN = /\binvalid\s+key\b/i;
+const PAYSTACK_INVALID_KEY_MESSAGE =
+  "Paystack rejected the configured secret key. Set PAYSTACK_SECRET_KEY to the active sk_live_ key from the Paystack dashboard and restart the backend.";
 
 const parseBooleanFlag = (value, fallback = false) => {
   if (value == null || value === "") {
@@ -39,6 +45,14 @@ const getPaystackKeyMode = (secret = getSecretKey()) => {
   return normalized ? "unknown" : "missing";
 };
 
+const normalizePaystackErrorMessage = (message = "") => {
+  const normalized = String(message || "").trim();
+  if (PAYSTACK_INVALID_KEY_PATTERN.test(normalized)) {
+    return PAYSTACK_INVALID_KEY_MESSAGE;
+  }
+  return normalized || "Failed to initialize Paystack transaction";
+};
+
 const isPaystackLiveKeyRequired = () =>
   Boolean(config.isProduction || process.env.NODE_ENV === "production") ||
   parseBooleanFlag(
@@ -47,17 +61,30 @@ const isPaystackLiveKeyRequired = () =>
   );
 
 const assertPaystackSecretUsable = (secret = getSecretKey()) => {
-  if (!secret) {
+  const normalizedSecret = String(secret || "").trim();
+  if (!normalizedSecret) {
     throw new Error("Paystack secret key is not configured");
   }
 
-  if (isPaystackLiveKeyRequired() && getPaystackKeyMode(secret) !== "live") {
+  if (PAYSTACK_PLACEHOLDER_PATTERN.test(normalizedSecret)) {
+    throw new Error(
+      "Paystack secret key is still a placeholder. Configure PAYSTACK_SECRET_KEY with an active sk_live_ key from the Paystack dashboard."
+    );
+  }
+
+  if (!PAYSTACK_SECRET_PREFIX_PATTERN.test(normalizedSecret)) {
+    throw new Error(
+      "Paystack secret key must start with sk_live_ for live payments or sk_test_ for test payments. Do not use a public pk_ key here."
+    );
+  }
+
+  if (isPaystackLiveKeyRequired() && getPaystackKeyMode(normalizedSecret) !== "live") {
     throw new Error(
       "Paystack live secret key is required for production payments. Configure PAYSTACK_SECRET_KEY with an sk_live_ key before accepting real card payments."
     );
   }
 
-  return secret;
+  return normalizedSecret;
 };
 
 const normalizeProductTypeToken = (value = "") =>
@@ -73,16 +100,19 @@ const createPaystackError = ({
   providerHttpStatus = 0,
   providerStatus = "",
 } = {}) => {
-  const error = new Error(message);
+  const providerMessage = String(message || "").trim();
+  const safeMessage = normalizePaystackErrorMessage(providerMessage);
+  const error = new Error(safeMessage);
   error.status = status;
   error.statusCode = status;
   error.isOperational = true;
   error.provider = "paystack";
   error.providerHttpStatus = providerHttpStatus;
   error.providerStatus = providerStatus;
-  error.providerMessage = message;
+  error.providerMessage = safeMessage;
+  error.rawProviderMessage = providerMessage;
   error.paystackStatus = providerStatus || providerHttpStatus || "";
-  error.paystackMessage = message;
+  error.paystackMessage = safeMessage;
   return error;
 };
 
@@ -250,6 +280,7 @@ module.exports = {
   initializeTransaction,
   isPaystackLiveKeyRequired,
   mapGatewayStatus,
+  normalizePaystackErrorMessage,
   normalizePaystackResponse,
   validateWebhookSignature,
   verifyTransaction,

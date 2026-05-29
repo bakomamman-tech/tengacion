@@ -479,6 +479,30 @@ describe("Paystack payments", () => {
     expect(stored.status).toBe("failed");
   });
 
+  test("/api/payments/init returns a setup message when Paystack rejects the secret key", async () => {
+    mockPaystackFailure("Invalid key");
+
+    const response = await request(app)
+      .post("/api/payments/init")
+      .set("Authorization", `Bearer ${viewerToken}`)
+      .send({
+        itemType: "track",
+        itemId: track._id.toString(),
+      })
+      .expect(503);
+
+    expect(response.body.message || response.body.error).toMatch(/configured secret key/i);
+    expect(response.body.message || response.body.error).not.toBe("Invalid key");
+
+    const stored = await Purchase.findOne({
+      userId: viewer._id,
+      itemType: "track",
+      itemId: track._id,
+    }).lean();
+    expect(stored).toBeTruthy();
+    expect(stored.status).toBe("failed");
+  });
+
   test("live mode refuses Paystack test keys before checkout opens", async () => {
     const previousRequireLiveKey = process.env.PAYSTACK_REQUIRE_LIVE_KEY;
     const previousSecretKey = process.env.PAYSTACK_SECRET_KEY;

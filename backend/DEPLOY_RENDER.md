@@ -48,6 +48,14 @@ Because these `VITE_*` values are compiled into the frontend bundle, changing th
 
 Paystack card fields stay inside Paystack's hosted checkout. To debit real cards, set the Render `PAYSTACK_SECRET_KEY` secret to the live Paystack key from the Paystack dashboard and ensure the business settlement bank in Paystack is the Opay account above.
 
+To verify the secret Render is actually using, open a Render Shell for the service and run:
+
+```bash
+npm run verify:paystack --prefix backend
+```
+
+The command prints only the key mode, HTTP status, and Paystack message. It does not print the secret key or account balances.
+
 ## Smoke tests (post-deploy)
 After each deploy, exercise these endpoints:
 1. `GET https://<your-render-url>/api/health` -> 200 with `{"status":"ok"}` plus uptime and environment fields. Confirm the response includes an `X-Request-ID` header.

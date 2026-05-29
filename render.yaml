@@ -19,6 +19,8 @@ services:
         value: https://tengacion.com,https://www.tengacion.com,http://localhost:5173
       - key: PAYSTACK_CALLBACK_URL
         value: https://tengacion.com/payment/verify
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
       - key: PAYSTACK_REQUIRE_LIVE_KEY
         value: "true"
       - key: PLATFORM_SETTLEMENT_ACCOUNT_NAME

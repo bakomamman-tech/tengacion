@@ -15,6 +15,7 @@
     "audit:legacy-media": "node scripts/reportLegacyMedia.js",
     "report:legacy-media": "node scripts/reportLegacyMedia.js",
     "cleanup:storage": "node scripts/storageCleanup.js",
+    "verify:paystack": "node scripts/verifyPaystackKey.js",
     "eval:assistant": "cross-env NODE_PATH=./node_modules node scripts/runAssistantEvals.js",
     "eval:akuso": "cross-env NODE_PATH=./node_modules node scripts/runAkusoEvals.js",
     "test": "cross-env NODE_PATH=./node_modules jest --maxWorkers=2"

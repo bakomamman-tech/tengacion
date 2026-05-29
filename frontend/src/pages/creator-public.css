@@ -251,6 +251,29 @@
   line-height: 1.14;
 }
 
+.creator-public-hero__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.creator-public-hero__verified {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff8e8;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
 .creator-public-hero__tagline {
   color: rgba(248, 243, 231, 0.84);
   line-height: 1.7;
@@ -802,6 +825,12 @@
     linear-gradient(180deg, rgba(251, 253, 250, 0.98), rgba(238, 245, 239, 0.92));
 }
 
+.creator-public-panel--trust {
+  background:
+    radial-gradient(circle at top right, rgba(183, 138, 66, 0.16), transparent 36%),
+    linear-gradient(180deg, rgba(251, 253, 250, 0.96), rgba(239, 245, 242, 0.9));
+}
+
 .creator-public-panel__price {
   display: block;
   font-size: 1.5rem;
@@ -828,6 +857,45 @@
 
 .creator-public-panel__status span {
   color: var(--creator-public-muted);
+}
+
+.creator-public-trust-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.creator-public-trust-list span {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(78, 138, 101, 0.14);
+  background:
+    linear-gradient(180deg, rgba(249, 252, 248, 0.88), rgba(234, 243, 236, 0.72));
+  color: #253c2d;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.creator-public-policy-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.creator-public-policy-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(183, 138, 66, 0.24);
+  color: var(--creator-public-accent-strong);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-decoration: none;
 }
 
 .creator-public-side__list {
@@ -924,6 +992,10 @@
   .creator-public-hero__identity > div {
     justify-items: start;
     text-align: left;
+  }
+
+  .creator-public-hero__title-row {
+    justify-content: flex-start;
   }
 
   .creator-public-hero__tagline,

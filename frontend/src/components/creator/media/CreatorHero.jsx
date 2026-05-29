@@ -97,7 +97,17 @@ export default function CreatorHero({
           </div>
           <div>
             <p className="creator-public-hero__eyebrow">Tengacion Creator Studio</p>
-            <h1>{creator.displayName}</h1>
+            <div className="creator-public-hero__title-row">
+              <h1>{creator.displayName}</h1>
+              {creator.verified ? (
+                <span
+                  className="creator-public-hero__verified"
+                  aria-label={`${creator.displayName} is verified on Tengacion`}
+                >
+                  Verified
+                </span>
+              ) : null}
+            </div>
             <p className="creator-public-hero__tagline">{creator.tagline || creator.bio || "A premium creator hub on Tengacion."}</p>
             {creatorSignals.length ? (
               <div className="creator-public-hero__meta">

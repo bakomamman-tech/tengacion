@@ -1199,6 +1199,20 @@ export default function CreatorHubPage() {
             )}
           </section>
 
+          <section className="creator-public-panel creator-public-panel--trust">
+            <h3>Support With Confidence</h3>
+            <div className="creator-public-trust-list">
+              <span>Secured checkout through Tengacion payment verification</span>
+              <span>Preview or stream access follows each creator release setting</span>
+              <span>Purchases and memberships stay attached to your Tengacion account</span>
+            </div>
+            <div className="creator-public-policy-links">
+              <Link to="/refund-policy">Refund policy</Link>
+              <Link to="/copyright-policy">Copyright policy</Link>
+              <Link to="/contact">Support contact</Link>
+            </div>
+          </section>
+
           <section className="creator-public-panel">
             <h3>Creator Snapshot</h3>
             <div className="creator-public-side__list">
@@ -1240,7 +1254,7 @@ export default function CreatorHubPage() {
                     <strong>{item.title}</strong>
                     <span>
                       {item.contentLabel}
-                      {item.subtitle ? ` • ${item.subtitle}` : ""}
+                      {item.subtitle ? ` / ${item.subtitle}` : ""}
                     </span>
                   </Link>
                 ))}

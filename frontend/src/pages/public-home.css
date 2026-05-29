@@ -5,15 +5,16 @@
 }
 
 .public-home__hero {
-  min-height: 68svh;
-  padding: 22px 24px 56px;
+  min-height: 72svh;
+  padding: 22px 24px 72px;
   color: #f6fbf7;
   background-image:
-    linear-gradient(90deg, rgba(12, 31, 22, 0.94) 0%, rgba(23, 64, 43, 0.86) 54%, rgba(23, 64, 43, 0.62) 100%),
+    radial-gradient(circle at 82% 24%, rgba(215, 180, 106, 0.26), rgba(215, 180, 106, 0) 34%),
+    linear-gradient(90deg, rgba(12, 31, 22, 0.96) 0%, rgba(20, 57, 43, 0.88) 54%, rgba(23, 64, 43, 0.66) 100%),
     url("/tengacion_logo_1024.png");
-  background-position: center, right 8% center;
+  background-position: center, center, right 8% center;
   background-repeat: no-repeat;
-  background-size: cover, min(440px, 42%);
+  background-size: cover, cover, min(440px, 42%);
 }
 
 .public-home__nav {
@@ -79,7 +80,7 @@
 .public-home__hero-inner {
   width: min(1120px, 100%);
   margin: 0 auto;
-  padding-top: 92px;
+  padding-top: 84px;
   max-width: 720px;
 }
 
@@ -139,13 +140,38 @@
 }
 
 .public-home__button:hover,
-.public-home__button:focus-visible {
+.public-home__button:focus-visible,
+.public-home__section-link:hover,
+.public-home__section-link:focus-visible,
+.public-home__inline-button:hover,
+.public-home__inline-button:focus-visible {
   transform: translateY(-1px);
   outline: 0;
 }
 
+.public-home__hero-proof {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+.public-home__hero-proof span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f3f8ef;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .public-home__section,
-.public-home__band {
+.public-home__band,
+.public-home__proof {
   width: min(1120px, calc(100% - 32px));
   margin: 0 auto;
 }
@@ -154,12 +180,29 @@
   padding: 46px 0 34px;
 }
 
+.public-home__section--live {
+  padding-top: 38px;
+}
+
 .public-home__section-head {
   max-width: 760px;
 }
 
+.public-home__section-head--split {
+  max-width: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.public-home__section-head--split > div {
+  max-width: 760px;
+}
+
 .public-home__section-head h2,
-.public-home__band h2 {
+.public-home__band h2,
+.public-home__subhead h3 {
   margin: 0;
   color: #14251b;
   font-size: 30px;
@@ -168,7 +211,11 @@
 }
 
 .public-home__section-head p,
-.public-home__tile p {
+.public-home__tile p,
+.public-home-path p,
+.public-home-release__body p,
+.public-home-activity p,
+.public-home__empty p {
   color: #54675b;
   line-height: 1.55;
 }
@@ -176,6 +223,219 @@
 .public-home__section-head p {
   margin: 10px 0 0;
   font-size: 16px;
+}
+
+.public-home__section-link,
+.public-home__inline-button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border: 1px solid #2a6f4f;
+  border-radius: 8px;
+  color: #17402b;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.public-home__proof {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: -42px;
+  position: relative;
+  z-index: 2;
+}
+
+.public-home__proof-card {
+  min-height: 142px;
+  padding: 18px;
+  border: 1px solid #d7dfd4;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(13, 33, 25, 0.1);
+}
+
+.public-home__proof-card strong {
+  display: block;
+  color: #17402b;
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.public-home__proof-card span {
+  display: block;
+  margin-top: 12px;
+  color: #183326;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.public-home__proof-card p {
+  margin: 8px 0 0;
+  color: #627266;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.public-home__live-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.85fr);
+  gap: 22px;
+  margin-top: 24px;
+}
+
+.public-home__live-column,
+.public-home__activity-panel {
+  min-width: 0;
+}
+
+.public-home__subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.public-home__subhead h3 {
+  font-size: 22px;
+}
+
+.public-home__subhead a {
+  color: #2a6f4f;
+  font-size: 14px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.public-home__release-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.public-home-release,
+.public-home-activity,
+.public-home-path {
+  border: 1px solid #c9d8cb;
+  border-radius: 8px;
+  background: #f9fbf6;
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 10px 22px rgba(13, 33, 25, 0.06);
+}
+
+.public-home-release {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.public-home-release:hover,
+.public-home-release:focus-visible,
+.public-home-activity:hover,
+.public-home-activity:focus-visible,
+.public-home-path:hover,
+.public-home-path:focus-visible {
+  border-color: #2a6f4f;
+  outline: 0;
+  transform: translateY(-2px);
+}
+
+.public-home-release__art {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 0.82;
+  background: #dbe7dc;
+  color: #17402b;
+  font-size: 38px;
+  font-weight: 900;
+  overflow: hidden;
+}
+
+.public-home-release__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.public-home-release__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+}
+
+.public-home-release__body span,
+.public-home-activity span {
+  color: #8a6620;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.public-home-release__body strong,
+.public-home-activity strong,
+.public-home-path strong,
+.public-home__empty strong {
+  color: #183326;
+  font-size: 17px;
+  line-height: 1.25;
+  font-weight: 900;
+}
+
+.public-home-release__body p,
+.public-home-activity p,
+.public-home-path p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.public-home-release__body small,
+.public-home-activity small {
+  margin-top: auto;
+  color: #2a6f4f;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.public-home__activity-list {
+  display: grid;
+  gap: 12px;
+}
+
+.public-home-activity {
+  display: grid;
+  gap: 8px;
+  min-height: 132px;
+  padding: 16px;
+}
+
+.public-home__path-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.public-home-path {
+  min-height: 164px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+}
+
+.public-home-path strong {
+  font-size: 19px;
 }
 
 .public-home__grid {
@@ -218,6 +478,63 @@
   font-size: 14px;
 }
 
+.public-home__empty {
+  padding: 20px;
+  border: 1px dashed #b8c9ba;
+  border-radius: 8px;
+  background: #f9fbf6;
+}
+
+.public-home__empty--compact {
+  padding: 16px;
+}
+
+.public-home__empty p {
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+
+.public-home__empty .public-home__inline-button {
+  margin-top: 14px;
+}
+
+.public-home-release--loading,
+.public-home-activity--loading {
+  pointer-events: none;
+}
+
+.public-home-release--loading .public-home-release__art,
+.public-home-release--loading .public-home-release__body span,
+.public-home-release--loading .public-home-release__body strong,
+.public-home-release--loading .public-home-release__body p,
+.public-home-activity--loading span,
+.public-home-activity--loading strong,
+.public-home-activity--loading p {
+  border-radius: 8px;
+  background: linear-gradient(90deg, #dce6dc 0%, #edf3ea 50%, #dce6dc 100%);
+  background-size: 220% 100%;
+  animation: public-home-shimmer 1.4s linear infinite;
+  color: transparent;
+}
+
+.public-home-release--loading .public-home-release__body span,
+.public-home-activity--loading span {
+  width: 80px;
+  height: 12px;
+}
+
+.public-home-release--loading .public-home-release__body strong,
+.public-home-activity--loading strong {
+  width: 80%;
+  height: 18px;
+}
+
+.public-home-release--loading .public-home-release__body p,
+.public-home-activity--loading p {
+  width: 100%;
+  height: 42px;
+}
+
 .public-home__band {
   display: flex;
   align-items: center;
@@ -240,19 +557,54 @@
   color: #f0c56b;
 }
 
+.public-home__trust-signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.public-home__trust-signals span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(240, 197, 107, 0.44);
+  border-radius: 8px;
+  color: #f6fbf7;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@keyframes public-home-shimmer {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: -220% 0;
+  }
+}
+
 @media (max-width: 900px) {
   .public-home__hero {
     min-height: 62svh;
-    background-position: center, right -90px center;
-    background-size: cover, 330px;
+    background-position: center, center, right -90px center;
+    background-size: cover, cover, 330px;
   }
 
   .public-home h1 {
     font-size: 42px;
   }
 
+  .public-home__proof,
+  .public-home__path-grid,
   .public-home__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .public-home__live-layout {
+    grid-template-columns: 1fr;
   }
 
   .public-home__band {
@@ -265,8 +617,8 @@
   .public-home__hero {
     min-height: auto;
     padding: 18px 16px 44px;
-    background-position: center, right -120px top 82px;
-    background-size: cover, 260px;
+    background-position: center, center, right -120px top 82px;
+    background-size: cover, cover, 260px;
   }
 
   .public-home__nav {
@@ -294,10 +646,23 @@
   }
 
   .public-home__actions,
+  .public-home__proof,
+  .public-home__release-grid,
+  .public-home__path-grid,
   .public-home__grid,
   .public-home__trust-links {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .public-home__proof {
+    margin-top: -28px;
+  }
+
+  .public-home__section-head--split,
+  .public-home__subhead {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .public-home__section-head h2,
@@ -307,5 +672,9 @@
 
   .public-home__tile {
     min-height: 150px;
+  }
+
+  .public-home-release {
+    min-height: 260px;
   }
 }

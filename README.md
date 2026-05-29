@@ -77,6 +77,7 @@ Execution roadmaps for the marketplace and Akuso build cycles:
 - [`docs/tengacion-certification-30-60-90-roadmap.md`](docs/tengacion-certification-30-60-90-roadmap.md) - certification cycle for external review scope, trust center evidence, claims governance, certification blockers, and Akuso AI governance packets
 - [`docs/tengacion-institutional-30-60-90-roadmap.md`](docs/tengacion-institutional-30-60-90-roadmap.md) - institutional cycle for board-grade governance, data-room readiness, finance discipline, enterprise commitments, risk appetite, and Akuso AI risk governance
 - [`docs/tengacion-capital-30-60-90-roadmap.md`](docs/tengacion-capital-30-60-90-roadmap.md) - capital cycle for financing readiness, investor and strategic partner diligence, unit economics, capital allocation, and Akuso AI investment governance
+- [`docs/tengacion-distribution-30-60-90-roadmap.md`](docs/tengacion-distribution-30-60-90-roadmap.md) - distribution cycle for channel strategy, creator category activation, fan acquisition, partnerships, market readiness, and Akuso go-to-market governance
 
 ## Creator + Artist Enhancements
 - Artist profile now exposes `links` (Spotify, Instagram, Facebook, TikTok, YouTube, Apple Music, Audiomack, Boomplay, Website) plus a `customLinks` array.

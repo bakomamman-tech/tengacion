@@ -1,5 +1,8 @@
 # Tengacion Capital 30/60/90 Day Execution Roadmap
 
+Follow-on roadmap:
+[Tengacion Distribution 30/60/90 Day Execution Roadmap](./tengacion-distribution-30-60-90-roadmap.md)
+
 ## Purpose
 
 This roadmap is the seventeenth execution cycle after the foundation, operating-system, scale, expansion, platform, ecosystem, network, intelligence, automation, orchestration, resilience, assurance, compliance, audit, certification, and institutional roadmaps. The earlier cycles made Tengacion usable, operable, launchable, expandable, platformized, ecosystem-ready, network-aware, intelligence-led, automation-ready, orchestration-capable, resilience-tested, assurance-backed, compliance-mapped, audit-ready, certification-oriented, and institutionally governable. This cycle is about turning institutional readiness into disciplined capital strategy:

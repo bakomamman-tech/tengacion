@@ -12,6 +12,7 @@ const {
   getUserPaidPurchases,
 } = require("./entitlementService");
 const { buildSignedMediaUrl } = require("./mediaSigner");
+const { resolveBookDownloadMetadata } = require("../utils/bookDownloadMetadata");
 const {
   buildCreatorIdPath,
   buildCreatorPublicPath,
@@ -64,6 +65,8 @@ const buildSignedUrl = ({
   itemId,
   userId = "",
   allowDownload = false,
+  filename = "",
+  contentType = "",
 }) =>
   sourceUrl
     ? buildSignedMediaUrl({
@@ -72,6 +75,8 @@ const buildSignedUrl = ({
         itemId,
         userId,
         allowDownload,
+        filename,
+        contentType,
         req,
         expiresInSec: 10 * 60,
       })
@@ -464,6 +469,7 @@ const mapBookItem = ({ book, req, viewerId, ownerAccess, entitlements, creatorSu
           itemId: String(book._id),
           userId: viewerId,
           allowDownload: true,
+          ...resolveBookDownloadMetadata(book),
         })
       : "",
     route: `/books/${String(book._id)}`,

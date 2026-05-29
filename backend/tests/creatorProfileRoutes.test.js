@@ -971,6 +971,63 @@ describe("creator profile routes", () => {
     expect(archiveResponse.body.length).toBeGreaterThan(0);
   });
 
+  test("GET /api/download/book/:itemId streams the paid PDF with the manuscript filename", async () => {
+    const { profile } = await createUserAndProfile({
+      creatorTypes: ["bookPublishing"],
+    });
+    const { token } = await createViewer();
+
+    const book = await Book.create({
+      creatorId: profile._id,
+      title: "The Rustle of Death",
+      description: "Premium book release",
+      price: 0,
+      priceNGN: 0,
+      contentUrl: toDataUrl("application/pdf", "%PDF-1.4 original manuscript"),
+      fileUrl: toDataUrl("application/pdf", "%PDF-1.4 original manuscript"),
+      contentMedia: {
+        provider: "cloudinary",
+        publicId: "tengacion/books/files/ufj4jgvse6wybs1fckoz",
+        secureUrl: toDataUrl("application/pdf", "%PDF-1.4 original manuscript"),
+        resourceType: "raw",
+        format: "pdf",
+        originalFilename: "The Rustle of Death.pdf",
+      },
+      fileFormat: "pdf",
+      creatorCategory: "books",
+      contentType: "pdf_book",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+
+    const downloadResponse = await request(app)
+      .get(`/api/download/book/${book._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(downloadResponse.body.downloadUrl).toContain("/api/media/delivery/");
+    expect(downloadResponse.body.download).toMatchObject({
+      filename: "The Rustle of Death.pdf",
+      contentType: "application/pdf",
+    });
+
+    const downloadPath = new URL(downloadResponse.body.downloadUrl).pathname;
+    const pdfResponse = await request(app)
+      .get(downloadPath)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks = [];
+        res.on("data", (chunk) => chunks.push(chunk));
+        res.on("end", () => callback(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+
+    expect(pdfResponse.headers["content-type"]).toContain("application/pdf");
+    expect(pdfResponse.headers["content-disposition"]).toContain("attachment;");
+    expect(pdfResponse.headers["content-disposition"]).toContain("The Rustle of Death.pdf");
+    expect(pdfResponse.body.toString("utf8")).toContain("%PDF-1.4 original manuscript");
+  });
+
   test("creator subscriptions unlock full creator access for protected streams and public profile content", async () => {
     const { profile } = await createUserAndProfile({
       creatorTypes: ["music", "bookPublishing", "podcast"],

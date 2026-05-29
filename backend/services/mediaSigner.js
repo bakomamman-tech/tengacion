@@ -5,6 +5,12 @@ const { config } = require("../config/env");
 const base64UrlEncode = (value) => Buffer.from(value).toString("base64url");
 const base64UrlDecode = (value) => Buffer.from(value, "base64url").toString("utf8");
 
+const toTokenText = (value = "", maxLength = 180) =>
+  String(value || "")
+    .replace(/[\r\n]+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+
 const getSecret = () => {
   const secret = config.MEDIA_SIGNING_SECRET || config.JWT_SECRET;
   if (!secret && config.NODE_ENV === "production") {
@@ -36,6 +42,8 @@ const buildSignedMediaUrl = ({
   itemId = "",
   expiresInSec = 300,
   allowDownload = false,
+  filename = "",
+  contentType = "",
   req,
 }) => {
   if (!sourceUrl || !req) {
@@ -50,6 +58,14 @@ const buildSignedMediaUrl = ({
     dl: Boolean(allowDownload),
     exp: createStableExpiry(expiresInSec),
   };
+  const resolvedFilename = toTokenText(filename);
+  const resolvedContentType = toTokenText(contentType, 120);
+  if (resolvedFilename) {
+    payload.filename = resolvedFilename;
+  }
+  if (resolvedContentType) {
+    payload.contentType = resolvedContentType;
+  }
 
   const token = buildDeliveryToken(payload);
   return `${req.protocol}://${req.get("host")}/api/media/delivery/${encodeURIComponent(token)}`;

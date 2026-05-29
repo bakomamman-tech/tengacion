@@ -61,6 +61,8 @@ const serveSignedMedia = async (req, res, { token, headOnly = false }) => {
   const payload = verifySignedMediaToken(token);
   const sourceUrl = String(payload?.src || "").trim();
   const disposition = payload?.dl ? "attachment" : "inline";
+  const filename = String(payload?.filename || "").trim();
+  const contentType = String(payload?.contentType || "").trim();
 
   if (!sourceUrl) {
     return res.status(400).json({ error: "Invalid media token" });
@@ -84,6 +86,8 @@ const serveSignedMedia = async (req, res, { token, headOnly = false }) => {
     res,
     sourceUrl,
     disposition,
+    filename,
+    contentType,
     cacheControl: SIGNED_CACHE_CONTROL,
     headOnly,
   });

@@ -90,6 +90,12 @@ const sanitizeFilename = (value = "", fallback = "media") => {
   return normalized.slice(0, 180);
 };
 
+const normalizeContentType = (value = "") =>
+  String(value || "")
+    .replace(/[\r\n]+/g, " ")
+    .trim()
+    .slice(0, 120);
+
 const extensionFromContentType = (contentType = "") => {
   const normalized = String(contentType || "").split(";")[0].trim().toLowerCase();
   return CONTENT_TYPE_EXTENSION_MAP[normalized] || "";
@@ -196,6 +202,8 @@ const streamLocalMedia = async ({
   res,
   sourceUrl,
   disposition = "inline",
+  filename = "",
+  contentType = "",
   cacheControl = "public, max-age=31536000, immutable",
   headOnly = false,
 }) => {
@@ -204,7 +212,14 @@ const streamLocalMedia = async ({
     return false;
   }
 
-  const { filePath, filename, contentType, length } = details;
+  const {
+    filePath,
+    filename: detectedFilename,
+    contentType: detectedContentType,
+    length,
+  } = details;
+  const responseFilename = filename ? sanitizeFilename(filename) : detectedFilename;
+  const responseContentType = normalizeContentType(contentType) || detectedContentType;
   const range = parseRange(req.headers.range, length);
 
   if (range) {
@@ -213,8 +228,8 @@ const streamLocalMedia = async ({
     setResponseHeaders({
       res,
       fileSize: chunkSize,
-      mimeType: contentType,
-      filename,
+      mimeType: responseContentType,
+      filename: responseFilename,
       disposition,
       cacheControl,
       contentRange: `bytes ${start}-${end}/${length}`,
@@ -240,8 +255,8 @@ const streamLocalMedia = async ({
   setResponseHeaders({
     res,
     fileSize: length,
-    mimeType: contentType,
-    filename,
+    mimeType: responseContentType,
+    filename: responseFilename,
     disposition,
     cacheControl,
     passthroughStatus: 200,
@@ -297,6 +312,8 @@ const streamGridFsMedia = async ({
   res,
   objectId,
   disposition = "inline",
+  filename = "",
+  contentType = "",
   cacheControl = "public, max-age=31536000, immutable",
   headOnly = false,
 }) => {
@@ -310,7 +327,8 @@ const streamGridFsMedia = async ({
     fileDoc.contentType ||
     inferContentTypeFromFilename(fileDoc.filename || "") ||
     "application/octet-stream";
-  const filename = resolveFilenameFromFileDoc(fileDoc);
+  const responseContentType = normalizeContentType(contentType) || mimeType;
+  const responseFilename = filename ? sanitizeFilename(filename) : resolveFilenameFromFileDoc(fileDoc);
   const bucket = getBucket();
   const range = parseRange(req.headers.range, fileSize);
 
@@ -320,8 +338,8 @@ const streamGridFsMedia = async ({
     setResponseHeaders({
       res,
       fileSize: chunkSize,
-      mimeType,
-      filename,
+      mimeType: responseContentType,
+      filename: responseFilename,
       disposition,
       cacheControl,
       contentRange: `bytes ${start}-${end}/${fileSize}`,
@@ -346,8 +364,8 @@ const streamGridFsMedia = async ({
   setResponseHeaders({
     res,
     fileSize,
-    mimeType,
-    filename,
+    mimeType: responseContentType,
+    filename: responseFilename,
     disposition,
     cacheControl,
     passthroughStatus: 200,
@@ -368,6 +386,8 @@ const proxyRemoteMedia = async ({
   res,
   sourceUrl,
   disposition = "inline",
+  filename = "",
+  contentType = "",
   cacheControl = "private, max-age=300, stale-while-revalidate=86400",
   headOnly = false,
 }) => {
@@ -395,20 +415,23 @@ const proxyRemoteMedia = async ({
     }
   })();
 
-  const contentType =
+  const detectedContentType =
     response.headers.get("content-type") ||
     inferContentTypeFromFilename(pathname) ||
     "application/octet-stream";
+  const responseContentType = normalizeContentType(contentType) || detectedContentType;
   const length = Number.parseInt(response.headers.get("content-length") || "", 10);
-  const filename = sanitizeFilename(path.basename(pathname) || "media");
+  const responseFilename = filename
+    ? sanitizeFilename(filename)
+    : sanitizeFilename(path.basename(pathname) || "media");
   const contentRange = response.headers.get("content-range") || "";
   const acceptRanges = String(response.headers.get("accept-ranges") || "bytes").toLowerCase() !== "none";
 
   setResponseHeaders({
     res,
     fileSize: Number.isFinite(length) ? length : undefined,
-    mimeType: contentType,
-    filename,
+    mimeType: responseContentType,
+    filename: responseFilename,
     disposition,
     cacheControl,
     acceptRanges,
@@ -491,6 +514,8 @@ const streamSourceMedia = async ({
   res,
   sourceUrl,
   disposition = "inline",
+  filename = "",
+  contentType = "",
   cacheControl = "private, max-age=300, stale-while-revalidate=86400",
   headOnly = false,
 }) => {
@@ -499,6 +524,8 @@ const streamSourceMedia = async ({
     res,
     sourceUrl,
     disposition,
+    filename,
+    contentType,
     cacheControl,
     headOnly,
   });
@@ -513,6 +540,8 @@ const streamSourceMedia = async ({
       res,
       objectId,
       disposition,
+      filename,
+      contentType,
       cacheControl,
       headOnly,
     });
@@ -523,6 +552,8 @@ const streamSourceMedia = async ({
     res,
     sourceUrl,
     disposition,
+    filename,
+    contentType,
     cacheControl,
     headOnly,
   });

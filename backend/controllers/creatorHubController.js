@@ -17,6 +17,7 @@ const {
   toLegacyCheckoutPayload,
 } = require("../services/paymentOpsService");
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
+const { resolveBookDownloadMetadata } = require("../utils/bookDownloadMetadata");
 const {
   listSavedCreatorContent,
   normalizeProgressItemType,
@@ -35,7 +36,7 @@ const resolveSourceUrl = (item) => {
     return String(item.payload.audioUrl || "");
   }
   if (item.itemType === "book") {
-    return String(item.payload.contentUrl || "");
+    return String(item.payload.contentUrl || item.payload.fileUrl || "");
   }
   if (item.itemType === "album") {
     const tracks = Array.isArray(item.payload.tracks) ? item.payload.tracks : [];
@@ -559,6 +560,7 @@ exports.getProtectedDownload = asyncHandler(async (req, res) => {
         allowDownload: true,
         req,
         expiresInSec: 10 * 60,
+        ...(item.itemType === "book" ? resolveBookDownloadMetadata(item.payload) : {}),
       });
 
   await touchUserActivity({ userId, seenAt: new Date() }).catch(() => null);
@@ -578,5 +580,6 @@ exports.getProtectedDownload = asyncHandler(async (req, res) => {
     itemType: item.itemType,
     itemId: item.itemId.toString(),
     downloadUrl,
+    ...(item.itemType === "book" ? { download: resolveBookDownloadMetadata(item.payload) } : {}),
   });
 });

@@ -6,6 +6,7 @@ import {
   getBook,
   getBookChapter,
   getBookChapters,
+  getDownloadUrl,
   getPublicCreatorProfile,
   initPayment,
   resolveImage,
@@ -46,6 +47,7 @@ export default function BookDetail() {
   const [error, setError] = useState("");
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [downloadingBook, setDownloadingBook] = useState(false);
   const [payError, setPayError] = useState("");
   const readerRef = useRef(null);
 
@@ -219,6 +221,32 @@ export default function BookDetail() {
     readerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const downloadFullBook = async () => {
+    if (!book?._id) {
+      return;
+    }
+
+    if (!isLoggedIn) {
+      const returnTo = `${location.pathname}${location.search}`;
+      navigate(`/?returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
+      return;
+    }
+
+    try {
+      setDownloadingBook(true);
+      setPayError("");
+      const payload = await getDownloadUrl("book", book._id);
+      if (!payload?.downloadUrl) {
+        throw new Error("Book download is not available yet.");
+      }
+      window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setPayError(err.message || "Could not prepare book download.");
+    } finally {
+      setDownloadingBook(false);
+    }
+  };
+
   const selectedChapter = useMemo(
     () => chapters.find((entry) => entry._id === selectedChapterId) || null,
     [chapters, selectedChapterId]
@@ -362,13 +390,23 @@ export default function BookDetail() {
                 </p>
               </>
             ) : (
-              <button
-                type="button"
-                className="inline-flex w-full items-center justify-center rounded-2xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(15,64,39,0.24)] transition hover:bg-brand-700"
-                onClick={openReader}
-              >
-                {resolveOwnedPurchaseLabel(book)}
-              </button>
+              <div className="grid gap-2">
+                <button
+                  type="button"
+                  className="inline-flex w-full items-center justify-center rounded-2xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(15,64,39,0.24)] transition hover:bg-brand-700"
+                  onClick={openReader}
+                >
+                  {resolveOwnedPurchaseLabel(book)}
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-brand-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-900 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-70"
+                  onClick={downloadFullBook}
+                  disabled={downloadingBook}
+                >
+                  {downloadingBook ? "Preparing..." : "Download PDF"}
+                </button>
+              </div>
             )}
           </div>
 

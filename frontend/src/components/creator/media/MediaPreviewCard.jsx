@@ -31,6 +31,12 @@ export default function MediaPreviewCard({
   const isBuyBusy = purchaseBusyKey === itemKey;
   const purchaseType = normalizedType;
   const ownedActionLabel = resolveOwnedPurchaseLabel(item);
+  const downloadActionLabel =
+    purchaseType === "album"
+      ? "Download bundle"
+      : purchaseType === "book"
+        ? "Download PDF"
+        : ownedActionLabel;
   const buyLabel = resolvePurchaseCtaLabel(item, { busy: isBuyBusy });
   const detailRoute = item.route || creatorRoute || `/creators/${creatorId}`;
 
@@ -81,7 +87,7 @@ export default function MediaPreviewCard({
         ) : null}
         {item.canDownload ? (
           <button type="button" className="creator-ghost-btn" onClick={() => onDownload(item)}>
-            {purchaseType === "album" ? "Download bundle" : ownedActionLabel}
+            {downloadActionLabel}
           </button>
         ) : item.canBuy ? (
           <button type="button" className="creator-primary-btn" onClick={() => onBuy(item)} disabled={isBuyBusy}>

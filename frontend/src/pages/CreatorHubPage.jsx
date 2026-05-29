@@ -1114,7 +1114,11 @@ export default function CreatorHubPage() {
                     ) : null}
                     {featuredItem.canDownload ? (
                       <button type="button" className="creator-ghost-btn" onClick={() => handleDownload(featuredItem)}>
-                        {featuredItemType === "album" ? "Download bundle" : resolveOwnedPurchaseLabel(featuredItem)}
+                        {featuredItemType === "album"
+                          ? "Download bundle"
+                          : featuredItemType === "book"
+                            ? "Download PDF"
+                            : resolveOwnedPurchaseLabel(featuredItem)}
                       </button>
                     ) : null}
                     {featuredItem.canBuy ? (

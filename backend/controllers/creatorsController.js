@@ -12,6 +12,7 @@ const { buildAlbumArchiveUrl } = require("../services/albumArchiveService");
 const { hasEntitlement } = require("../services/entitlementService");
 const { recordCreatorFollow } = require("../services/fanReturnPathService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
+const { resolveBookDownloadMetadata } = require("../utils/bookDownloadMetadata");
 const { buildCreatorPublicPayload } = require("../services/publicCreatorProfileService");
 const {
   buildCreatorDiscoveryDirectory,
@@ -154,6 +155,7 @@ const mapBookForHub = async ({ book, req, userId }) => {
           req,
           allowDownload: true,
           expiresInSec: 10 * 60,
+          ...resolveBookDownloadMetadata(book),
         })
       : "",
   };

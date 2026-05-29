@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import QuickAccessLayout from "../components/QuickAccessLayout";
 import ProductGrid from "../components/marketplace/ProductGrid";
 import OrderStatusBadge from "../components/marketplace/OrderStatusBadge";
+import PaymentTrustPanel from "../components/payments/PaymentTrustPanel";
 import SeoHead from "../components/seo/SeoHead";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -270,6 +271,13 @@ export default function MarketplaceProductDetailsPage() {
                       Log in to buy
                     </Link>
                   )}
+
+                  <PaymentTrustPanel
+                    context="marketplace"
+                    compact
+                    showSellerTerms
+                    orderPath="/marketplace/orders"
+                  />
                 </div>
 
                 <div className="marketplace-card-stack">

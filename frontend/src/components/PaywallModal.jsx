@@ -1,3 +1,5 @@
+import PaymentTrustPanel from "./payments/PaymentTrustPanel";
+
 export default function PaywallModal({
   open,
   title = "Unlock content",
@@ -81,6 +83,8 @@ export default function PaywallModal({
           <p className="mt-3 text-center text-xs text-slate-500">
             Card, bank account, USSD, and bank transfer are collected securely inside Paystack.
           </p>
+
+          <PaymentTrustPanel className="mt-4" compact />
         </div>
       </div>
     </div>

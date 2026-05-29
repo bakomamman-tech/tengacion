@@ -1,0 +1,111 @@
+.payment-trust {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(16, 73, 52, 0.14);
+  background:
+    linear-gradient(135deg, rgba(31, 75, 52, 0.08), rgba(183, 138, 66, 0.08)),
+    rgba(255, 255, 255, 0.9);
+  color: #263425;
+}
+
+.payment-trust--compact {
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.payment-trust__head {
+  display: grid;
+  gap: 3px;
+}
+
+.payment-trust__head span {
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(31, 75, 52, 0.1);
+  color: #1f4b34;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.payment-trust__head strong {
+  font-size: 0.98rem;
+}
+
+.payment-trust__list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: #51614f;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.payment-trust__list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+}
+
+.payment-trust__list li::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin-top: 0.42em;
+  border-radius: 999px;
+  background: #1f4b34;
+  box-shadow: 0 0 0 3px rgba(31, 75, 52, 0.12);
+}
+
+.payment-trust__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.payment-trust__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(31, 75, 52, 0.14);
+  background: rgba(255, 255, 255, 0.78);
+  color: #1f4b34;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.payment-trust__links a:hover {
+  border-color: rgba(31, 75, 52, 0.32);
+  background: #fff;
+}
+
+.creator-audio-preview-player .payment-trust {
+  border-color: rgba(255, 247, 233, 0.14);
+  background: rgba(255, 247, 233, 0.08);
+  color: var(--creator-audio-player-text);
+}
+
+.creator-audio-preview-player .payment-trust__head span,
+.creator-audio-preview-player .payment-trust__links a {
+  background: rgba(255, 247, 233, 0.1);
+  color: #f7eedb;
+  border-color: rgba(255, 247, 233, 0.14);
+}
+
+.creator-audio-preview-player .payment-trust__list {
+  color: var(--creator-audio-player-muted);
+}
+
+.creator-audio-preview-player .payment-trust__list li::before {
+  background: #d6ad61;
+  box-shadow: 0 0 0 3px rgba(214, 173, 97, 0.14);
+}

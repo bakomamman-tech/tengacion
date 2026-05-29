@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { checkEntitlement, getDownloadUrl, initPayment } from "../../api";
+import PaymentTrustPanel from "../payments/PaymentTrustPanel";
 import { useAuth } from "../../context/AuthContext";
 import {
   buildPaystackCallbackUrl,
@@ -522,6 +523,14 @@ export default function CreatorAudioPreviewPlayer({
           </div>
         ) : null}
       </div>
+
+      {purchaseLocked ? (
+        <PaymentTrustPanel
+          compact
+          className="creator-audio-preview-player__trust"
+          purchasesPath="/purchases"
+        />
+      ) : null}
 
       {showSourceRow ? (
         <div className="creator-audio-preview-player__modes" role="tablist" aria-label="Choose playback source">

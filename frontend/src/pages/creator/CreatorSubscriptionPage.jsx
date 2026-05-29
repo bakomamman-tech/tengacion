@@ -9,6 +9,7 @@ import {
   resolveImage,
   resumeSubscriptionPurchase,
 } from "../../api";
+import PaymentTrustPanel from "../../components/payments/PaymentTrustPanel";
 import { useAuth } from "../../context/AuthContext";
 
 import "./creator-subscription.css";
@@ -374,6 +375,12 @@ export default function CreatorSubscriptionPage() {
                 deduction.
               </span>
             </div>
+
+            <PaymentTrustPanel
+              context="subscription"
+              compact
+              purchasesPath="/purchases"
+            />
 
             {statusCopy ? (
               <div className="creator-subscription-active">

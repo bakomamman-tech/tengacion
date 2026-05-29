@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { checkEntitlement, getPublicCreatorProfile, getTrack, getTrackStream, initPayment } from "../api";
 import PaywallModal from "../components/PaywallModal";
+import PaymentTrustPanel from "../components/payments/PaymentTrustPanel";
 import SeoHead from "../components/seo/SeoHead";
 import { useAuth } from "../context/AuthContext";
 import useEntitlementSocket from "../hooks/useEntitlementSocket";
@@ -456,6 +457,7 @@ export default function TrackDetail() {
               <p className="mt-2 text-xs text-slate-500">
                 Pay securely with Paystack using card, bank account, USSD, or bank transfer.
               </p>
+              <PaymentTrustPanel className="mt-3 max-w-xl" compact />
             </>
           ) : (
             <div className="flex flex-wrap gap-2">

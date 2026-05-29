@@ -121,6 +121,10 @@
   line-height: 1.35;
 }
 
+.creator-audio-preview-player__trust {
+  width: 100%;
+}
+
 .creator-audio-preview-player__badges,
 .creator-audio-preview-player__modes,
 .creator-audio-preview-player__buttons {
@@ -298,6 +302,10 @@
 .creator-audio-preview-player--public .creator-audio-preview-player__top-actions {
   margin-left: 8px;
   min-width: auto;
+}
+
+.creator-audio-preview-player--public .creator-audio-preview-player__trust {
+  grid-column: 1 / -1;
 }
 
 .creator-audio-preview-player--public .creator-audio-preview-player__buy-button {

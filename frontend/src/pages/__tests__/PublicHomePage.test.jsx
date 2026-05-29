@@ -68,11 +68,11 @@ describe("PublicHomePage", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getAllByRole("link", { name: /start listening/i })[0]).toHaveAttribute(
+    expect(screen.getAllByRole("link", { name: /explore creators/i })[0]).toHaveAttribute(
       "href",
-      "/music"
+      "/creators"
     );
-    expect(screen.getAllByRole("link", { name: /join as creator/i })[0]).toHaveAttribute(
+    expect(screen.getAllByRole("link", { name: /upload as creator/i })[0]).toHaveAttribute(
       "href",
       "/creator/register"
     );

@@ -11,9 +11,9 @@ import {
 
 import "./public-home.css";
 
-const PAGE_TITLE = "Tengacion | Discover African Creators, Music, Books & Podcasts";
+const PAGE_TITLE = "Tengacion | African Creator Discovery Network";
 const PAGE_DESCRIPTION =
-  "Tengacion helps fans discover African creators, stream music, read books, listen to podcasts, and follow public creator profiles.";
+  "Discover African creators, stream songs, read books, listen to podcasts, follow public profiles, and support creator work on Tengacion.";
 const HOME_RELEASE_LIMIT = 6;
 const HOME_ACTIVITY_LIMIT = 6;
 
@@ -349,21 +349,21 @@ export default function PublicHomePage() {
         </nav>
 
         <div className="public-home__hero-inner">
-          <p className="public-home__eyebrow">African creator discovery</p>
-          <h1>Discover creators you can stream, read, follow, and support</h1>
+          <p className="public-home__eyebrow">African creator discovery network</p>
+          <h1>Discover African creators before the world does.</h1>
           <p className="public-home__lede">
-            Tengacion brings public creator profiles, music releases, reading catalogs, podcast
-            episodes, marketplace listings, and community activity into one searchable home.
+            Stream songs, read books, listen to podcasts, follow creators, and support their work
+            on Tengacion.
           </p>
           <div className="public-home__actions">
-            <Link className="public-home__button public-home__button--primary" to="/music">
-              Start listening
+            <Link className="public-home__button public-home__button--primary" to="/creators">
+              Explore Creators
             </Link>
-            <Link className="public-home__button" to="/creators">
-              Find creators
+            <Link className="public-home__button" to="/register">
+              Join Tengacion
             </Link>
             <Link className="public-home__button" to="/creator/register">
-              Join as creator
+              Upload as Creator
             </Link>
           </div>
 

@@ -16,15 +16,24 @@ import "../components/creatorDiscovery/creatorDiscovery.css";
 
 const CATEGORY_TABS = [
   { id: "all", label: "All Creators" },
-  { id: "music", label: "Music Creators" },
-  { id: "books", label: "Book Authors" },
-  { id: "podcasts", label: "Podcast Hosts" },
+  { id: "music", label: "Music" },
+  { id: "books", label: "Books" },
+  { id: "podcasts", label: "Podcasts" },
 ];
 
 const SORT_OPTIONS = [
   { id: "popular", label: "Popular" },
   { id: "newest", label: "Newest" },
   { id: "alphabetical", label: "A-Z" },
+];
+
+const QUICK_FILTERS = [
+  { id: "trending", label: "Trending", category: "all", sort: "popular" },
+  { id: "music", label: "Music", category: "music", sort: "popular" },
+  { id: "books", label: "Books", category: "books", sort: "popular" },
+  { id: "podcasts", label: "Podcasts", category: "podcasts", sort: "popular" },
+  { id: "new", label: "New Creators", category: "all", sort: "newest" },
+  { id: "marketplace", label: "Marketplace", path: "/marketplace" },
 ];
 
 const PAGE_SIZE = 12;
@@ -166,6 +175,19 @@ export default function FindCreatorsPage() {
     setItems([]);
   };
 
+  const applyQuickFilter = (filter) => {
+    if (!filter || filter.path) {
+      return;
+    }
+    setItems([]);
+    setPage(1);
+    setCategory(filter.category || "all");
+    setSort(filter.sort || "popular");
+  };
+
+  const isQuickFilterActive = (filter) =>
+    !filter.path && category === filter.category && sort === filter.sort;
+
   return (
     <section className="creator-discovery-page creator-discovery-theme">
       <SeoHead
@@ -196,8 +218,8 @@ export default function FindCreatorsPage() {
 
       <div className="creator-discovery-page__banner">
         <div>
-          <strong>Discover every creator on Tengacion</strong>
-          <small>Music artists, book authors, and podcast hosts all appear here.</small>
+          <strong>African creator discovery starts here</strong>
+          <small>Filter by music, books, podcasts, marketplace activity, trending creators, and new creators.</small>
         </div>
         <small>{resultsLabel}</small>
       </div>
@@ -222,8 +244,27 @@ export default function FindCreatorsPage() {
         </button>
       </div>
 
-      <div className="creator-discovery-page__filters" role="tablist" aria-label="Creator categories">
-        <div className="creator-summary-feed__tabs">
+      <div className="creator-discovery-page__filters" aria-label="Creator categories">
+        <div className="creator-summary-feed__tabs" aria-label="Quick creator filters">
+          {QUICK_FILTERS.map((filter) =>
+            filter.path ? (
+              <Link key={filter.id} to={filter.path} className="creator-discovery-tab">
+                {filter.label}
+              </Link>
+            ) : (
+              <button
+                key={filter.id}
+                type="button"
+                aria-pressed={isQuickFilterActive(filter)}
+                className={`creator-discovery-tab ${isQuickFilterActive(filter) ? "is-active" : ""}`}
+                onClick={() => applyQuickFilter(filter)}
+              >
+                {filter.label}
+              </button>
+            )
+          )}
+        </div>
+        <div className="creator-summary-feed__tabs creator-summary-feed__tabs--compact" role="tablist" aria-label="Detailed creator categories">
           {CATEGORY_TABS.map((tab) => (
             <button
               key={tab.id}

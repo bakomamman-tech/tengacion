@@ -210,6 +210,7 @@ const serializeBookItem = (book, earnings = 0) => ({
   genre: book.genre || "",
   language: book.language || "",
   pageCount: Number(book.pageCount || 0),
+  chapterCount: Number(book.chapterCount || 0),
   isbn: book.isbn || "",
   edition: book.edition || "",
   audience: book.audience || "",

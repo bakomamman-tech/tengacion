@@ -29,6 +29,7 @@ const buildDefaultValues = (creatorProfile) => ({
   language: "",
   price: 0,
   pageCount: "",
+  chapterCount: "",
   isbn: "",
   edition: "",
   audience: "",
@@ -77,6 +78,7 @@ export default function BookUploadStudio({ showNotice = true }) {
   const language = watch("language");
   const price = Number(watch("price") || 0);
   const pageCount = watch("pageCount");
+  const chapterCount = watch("chapterCount");
   const copyrightDeclaration = watch("copyrightDeclaration");
   const fileFormat = inferFileFormat(manuscriptFile);
 
@@ -94,6 +96,7 @@ export default function BookUploadStudio({ showNotice = true }) {
       formData.append("language", values.language.trim());
       formData.append("price", String(values.price || 0));
       formData.append("pageCount", values.pageCount === "" ? "" : String(values.pageCount));
+      formData.append("chapterCount", values.chapterCount === "" ? "" : String(values.chapterCount));
       formData.append("isbn", values.isbn.trim());
       formData.append("edition", values.edition.trim());
       formData.append("audience", values.audience.trim());
@@ -189,6 +192,12 @@ export default function BookUploadStudio({ showNotice = true }) {
                 <span>Number of Pages</span>
                 <input type="number" min="0" inputMode="numeric" placeholder="Optional" {...register("pageCount")} />
                 {errors.pageCount ? <p className="creator-field-error">{errors.pageCount.message}</p> : null}
+              </label>
+
+              <label>
+                <span>Number of Chapters</span>
+                <input type="number" min="0" inputMode="numeric" placeholder="Optional" {...register("chapterCount")} />
+                {errors.chapterCount ? <p className="creator-field-error">{errors.chapterCount.message}</p> : null}
               </label>
 
               <label className="creator-form-full">
@@ -330,6 +339,10 @@ export default function BookUploadStudio({ showNotice = true }) {
             <div className="creator-stack-row">
               <span>Pages</span>
               <strong>{pageCount || "Optional"}</strong>
+            </div>
+            <div className="creator-stack-row">
+              <span>Chapters</span>
+              <strong>{chapterCount || "Optional"}</strong>
             </div>
           </div>
 

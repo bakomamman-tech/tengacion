@@ -8,7 +8,7 @@ process.env.MONGO_URI =
   process.env.MONGO_URI || "mongodb://127.0.0.1:27017/tengacion-marketplace-test";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test_secret_1234567890123456789012";
 process.env.PAYSTACK_SECRET_KEY =
-  process.env.PAYSTACK_SECRET_KEY || "test_paystack_secret_1234567890";
+  process.env.PAYSTACK_SECRET_KEY || "sk_test_mock_key_for_tests";
 process.env.PAYSTACK_CALLBACK_URL =
   process.env.PAYSTACK_CALLBACK_URL || "https://tengacion.test/marketplace/orders";
 process.env.PAYSTACK_CURRENCY = process.env.PAYSTACK_CURRENCY || "NGN";

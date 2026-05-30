@@ -91,6 +91,11 @@ const BookSchema = new mongoose.Schema(
       default: null,
       min: 0,
     },
+    chapterCount: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
     isbn: {
       type: String,
       default: "",

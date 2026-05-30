@@ -189,6 +189,7 @@ export const bookUploadSchema = z.object({
   language: z.string().trim().min(1, "Language is required").max(60),
   price: moneyField,
   pageCount: optionalIntegerField,
+  chapterCount: optionalIntegerField,
   isbn: z.string().trim().max(40).optional().default(""),
   edition: z.string().trim().max(40).optional().default(""),
   audience: z.string().trim().max(80).optional().default(""),

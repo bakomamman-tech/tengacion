@@ -484,6 +484,7 @@ const mapBookItem = ({ book, req, viewerId, ownerAccess, entitlements, creatorSu
     subtitle: toCleanString(book.subtitle),
     genre: toCleanString(book.genre),
     pageCount: numberOrZero(book.pageCount),
+    chapterCount: numberOrZero(book.chapterCount),
     fileFormat: toCleanString(book.fileFormat).toUpperCase(),
     language: toCleanString(book.language || ""),
     tags: Array.isArray(book.tags) ? book.tags : [],

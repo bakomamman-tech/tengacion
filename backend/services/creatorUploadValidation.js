@@ -167,6 +167,7 @@ const bookUploadSchema = z
     language: boundedString(60),
     price: nonNegativeMoney,
     pageCount: optionalInteger,
+    chapterCount: optionalInteger,
     isbn: boundedString(40),
     edition: boundedString(40),
     audience: boundedString(80),

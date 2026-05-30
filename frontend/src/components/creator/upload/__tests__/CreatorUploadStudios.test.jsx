@@ -94,6 +94,7 @@ describe("Creator upload studios", () => {
 
     expect(screen.getByLabelText(/book title/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/author name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/number of chapters/i)).toBeInTheDocument();
     expect(screen.getByText(/manuscript upload/i)).toBeInTheDocument();
     expect(screen.queryByText(/full audio upload/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/episode title/i)).not.toBeInTheDocument();

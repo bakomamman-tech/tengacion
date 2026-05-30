@@ -383,6 +383,7 @@ exports.getCreatorBooks = asyncHandler(async (req, res) => {
       description: book.description || "",
       price: Number(book.price) || 0,
       priceGlobal: Number(book.priceGlobal || 0),
+      chapterCount: Number(book.chapterCount || 0),
       coverImageUrl: book.coverImageUrl || "",
       contentUrl: book.contentUrl || "",
       isFreePreview: Boolean(book.isFreePreview),

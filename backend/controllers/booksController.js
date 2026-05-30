@@ -34,6 +34,7 @@ const toBookPayload = (book) => ({
   genre: book.genre || "",
   language: book.language || "",
   pageCount: Number(book.pageCount || 0),
+  chapterCount: Number(book.chapterCount || 0),
   isbn: book.isbn || "",
   edition: book.edition || "",
   audience: book.audience || "",
@@ -64,6 +65,17 @@ const toBookPayload = (book) => ({
         }
       : null,
 });
+
+const parseOptionalNonNegativeInteger = (value, fallback = null) => {
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return fallback;
+  }
+  return Math.floor(parsed);
+};
 
 const resolveRequestedStatus = (body = {}) => {
   const value = String(
@@ -123,6 +135,7 @@ exports.createBook = asyncHandler(async (req, res) => {
   const price = Number(req.body?.price);
   const genre = String(req.body?.genre || "").trim();
   const language = String(req.body?.language || "").trim();
+  const chapterCount = parseOptionalNonNegativeInteger(req.body?.chapterCount);
   const tags = Array.isArray(req.body?.tags)
     ? req.body.tags
     : String(req.body?.tags || "")
@@ -202,6 +215,7 @@ exports.createBook = asyncHandler(async (req, res) => {
     price,
     genre,
     language,
+    chapterCount,
     tags,
     fileFormat,
     previewExcerptText,
@@ -279,6 +293,10 @@ exports.updateBook = asyncHandler(async (req, res) => {
     req.body?.previewExcerptText || req.body?.previewExcerpt || book.previewExcerptText || ""
   ).trim();
   const price = Number(req.body?.price ?? book.price ?? 0);
+  const chapterCountRequested = Object.prototype.hasOwnProperty.call(req.body || {}, "chapterCount");
+  const chapterCount = chapterCountRequested
+    ? parseOptionalNonNegativeInteger(req.body?.chapterCount)
+    : book.chapterCount ?? null;
   const requestedStatus = resolveRequestedStatus(req.body);
 
   if (!title) {
@@ -350,6 +368,7 @@ exports.updateBook = asyncHandler(async (req, res) => {
   book.description = description;
   book.genre = genre;
   book.language = language;
+  book.chapterCount = chapterCount;
   book.tags = tags;
   book.fileFormat = fileFormat;
   book.previewExcerptText = previewExcerptText;
@@ -476,7 +495,8 @@ exports.getBookById = asyncHandler(async (req, res) => {
     return res.status(404).json({ error: "Book not found" });
   }
 
-  const chapterCount = await Chapter.countDocuments({ bookId: book._id });
+  const savedChapterCount = Number(book.chapterCount || 0);
+  const uploadedChapterCount = await Chapter.countDocuments({ bookId: book._id });
   const hasFullAccess = await canReadFullBook({
     book,
     userId: req.user?.id,
@@ -484,7 +504,7 @@ exports.getBookById = asyncHandler(async (req, res) => {
 
   return res.json({
     ...toBookPayload(book),
-    chapterCount,
+    chapterCount: uploadedChapterCount || savedChapterCount,
     canReadFull: hasFullAccess,
     freeChaptersRecommended: 2,
   });

@@ -9,6 +9,7 @@ import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspac
 import { formatCurrency, formatShortDate } from "../../components/creator/creatorConfig";
 
 function BookEditPanel({ item, onCancel, onSave }) {
+  const isPublishedBook = String(item.publishedStatus || "").toLowerCase() === "published";
   const [values, setValues] = useState({
     title: item.title || "",
     description: item.description || "",
@@ -16,6 +17,7 @@ function BookEditPanel({ item, onCancel, onSave }) {
     language: item.language || "",
     tags: Array.isArray(item.tags) ? item.tags.join(", ") : "",
     price: String(item.price ?? ""),
+    chapterCount: item.chapterCount || item.chapterCount === 0 ? String(item.chapterCount) : "",
     fileFormat: item.fileFormat || "pdf",
     previewExcerptText: item.previewExcerptText || "",
     publishedStatus: item.publishedStatus === "draft" ? "draft" : "published",
@@ -30,8 +32,8 @@ function BookEditPanel({ item, onCancel, onSave }) {
     <section className="creator-editor-card card">
       <div className="creator-panel-head">
         <div>
-          <h3>Edit book metadata</h3>
-          <p>Update cover, file, pricing, and publish mode without leaving the books workspace.</p>
+          <h3>{isPublishedBook ? "Edit Published Book" : "Edit book metadata"}</h3>
+          <p>Update cover, file, pricing, chapter count, and publish mode without leaving the books workspace.</p>
         </div>
       </div>
       <div className="creator-form-grid">
@@ -54,6 +56,16 @@ function BookEditPanel({ item, onCancel, onSave }) {
         <label>
           <span>Price</span>
           <input value={values.price} inputMode="numeric" onChange={(event) => update("price", event.target.value)} />
+        </label>
+        <label>
+          <span>Number of Chapters</span>
+          <input
+            type="number"
+            min="0"
+            value={values.chapterCount}
+            inputMode="numeric"
+            onChange={(event) => update("chapterCount", event.target.value)}
+          />
         </label>
         <label>
           <span>File format</span>
@@ -131,6 +143,7 @@ export default function CreatorBooksPage() {
       formData.append("language", values.language.trim());
       formData.append("tags", values.tags.trim());
       formData.append("price", values.price || "0");
+      formData.append("chapterCount", values.chapterCount === "" ? "" : String(values.chapterCount));
       formData.append("fileFormat", values.fileFormat || "pdf");
       formData.append("previewExcerptText", values.previewExcerptText.trim());
       formData.append("publishedStatus", values.publishedStatus);
@@ -210,11 +223,12 @@ export default function CreatorBooksPage() {
                 </div>
                 <div className="creator-release-meta">
                   <span>{formatCurrency(book.price || 0)}</span>
+                  <span>{Number(book.chapterCount || 0) > 0 ? `${Number(book.chapterCount)} chapters` : "Chapters not set"}</span>
                   <span>{formatShortDate(book.updatedAt || book.createdAt)}</span>
                   <CopyrightStatusBadge status={book.copyrightScanStatus} />
                 </div>
                 <button type="button" className="creator-ghost-btn" onClick={() => setEditingItem(book)}>
-                  Edit metadata
+                  {String(book.publishedStatus || "").toLowerCase() === "published" ? "Edit Published Book" : "Edit Book"}
                 </button>
               </article>
             ))

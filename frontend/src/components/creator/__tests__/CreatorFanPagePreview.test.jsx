@@ -194,6 +194,71 @@ describe("CreatorFanPagePreview", () => {
     expect(screen.getByRole("button", { name: /buy full track/i })).toBeInTheDocument();
   }, 10000);
 
+  it("keeps the books tab out of the audio player experience", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <CreatorFanPagePreview
+          creatorProfile={{
+            _id: "507f1f77bcf86cd799439011",
+            displayName: "Creator Example",
+            creatorTypes: ["music", "bookPublishing", "podcast"],
+            user: {
+              _id: "creator-user-1",
+              followersCount: 2048,
+            },
+          }}
+          dashboard={{
+            categories: {
+              music: { uploads: 1 },
+              bookPublishing: { uploads: 1 },
+              podcast: { uploads: 0 },
+            },
+            content: {
+              music: {
+                tracks: [
+                  {
+                    title: "Golden Echoes",
+                    artistName: "Creator Example",
+                    audioUrl: "https://cdn.example.com/golden-echoes.mp3",
+                    publishedStatus: "published",
+                  },
+                ],
+              },
+              books: {
+                items: [
+                  {
+                    _id: "book-1",
+                    title: "The Quiet Fire",
+                    authorName: "Creator Example",
+                    genre: "Literary Fiction",
+                    pageCount: 240,
+                    price: 2500,
+                    publishedStatus: "published",
+                    coverImageUrl: "https://cdn.example.com/the-quiet-fire.jpg",
+                  },
+                ],
+              },
+              podcasts: {
+                episodes: [],
+              },
+            },
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("tab", { name: /books/i }));
+
+    expect(screen.getByRole("button", { name: /read the quiet fire/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /read preview/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /open book/i })).toBeInTheDocument();
+    expect(screen.queryByRole("slider", { name: /seek within/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /play the quiet fire/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/books open in reader mode/i)).not.toBeInTheDocument();
+  }, 10000);
+
   it("opens a dedicated functional video player from the videos tab", async () => {
     const user = userEvent.setup();
 

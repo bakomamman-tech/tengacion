@@ -24,6 +24,23 @@ const getSectionActionLabel = (sectionKey = "") => {
   return "Stream all";
 };
 
+const isBookItem = (item = {}) =>
+  String(item?.itemType || "").trim().toLowerCase() === "book";
+
+const getPreviewActionLabel = (item = {}) =>
+  isBookItem(item) ? item?.primaryActionLabel || "Read preview" : "Preview";
+
+const getDetailsActionLabel = (item = {}) =>
+  isBookItem(item) ? item?.detailActionLabel || "Open book" : "Open details";
+
+const getReleaseQueueActionLabel = ({ item, isActive, isPlaying }) => {
+  if (isBookItem(item)) {
+    return "Read";
+  }
+
+  return isActive && isPlaying ? "Playing" : "Play";
+};
+
 const isExternalUrl = (value = "") => /^(https?:\/\/|spotify:)/i.test(String(value || "").trim());
 
 function FanPageImage({
@@ -80,6 +97,7 @@ export default function CreatorFanPagePreview({
     : [activeSection?.featured].filter(Boolean);
   const currentItem = queue[activeIndex] || activeSection?.featured;
   const isVideoTab = activeTab === "videos";
+  const isBookTab = activeTab === "books" || isBookItem(currentItem);
 
   const openPath = (path = "", options = undefined) => {
     if (!path) {
@@ -113,12 +131,13 @@ export default function CreatorFanPagePreview({
 
   const selectQueueItem = (index, autoplay = true) => {
     setActiveIndex(index);
+    setIsPlaying(false);
     if (autoplay) {
       setAutoplayRequest((current) => current + 1);
     }
   };
 
-  const movePlayer = (direction = 1) => {
+  const movePlayer = (direction = 1, autoplay = true) => {
     if (!queue.length) {
       return;
     }
@@ -127,7 +146,10 @@ export default function CreatorFanPagePreview({
       const total = queue.length;
       return (current + direction + total) % total;
     });
-    setAutoplayRequest((current) => current + 1);
+    setIsPlaying(false);
+    if (autoplay) {
+      setAutoplayRequest((current) => current + 1);
+    }
   };
 
   const renderStandardContent = () => (
@@ -147,12 +169,18 @@ export default function CreatorFanPagePreview({
           </button>
         </div>
 
-        <article className="creator-fan-page__feature-release">
+        <article
+          className={`creator-fan-page__feature-release${
+            isBookItem(currentItem) ? " creator-fan-page__feature-release--book" : ""
+          }`}
+        >
           <FanPageImage
             src={currentItem?.imageUrl}
             alt={currentItem?.title || activeSection?.label}
             initials={initials}
-            className="creator-fan-page__image--release"
+            className={`creator-fan-page__image--release${
+              isBookItem(currentItem) ? " creator-fan-page__image--book-release" : ""
+            }`}
           />
 
           <div className="creator-fan-page__feature-copy">
@@ -177,14 +205,14 @@ export default function CreatorFanPagePreview({
               className="creator-fan-page__button creator-fan-page__button--light"
               onClick={() => openPreview()}
             >
-              Preview
+              {getPreviewActionLabel(currentItem)}
             </button>
             <button
               type="button"
               className="creator-fan-page__button creator-fan-page__button--accent"
               onClick={() => openDetails()}
             >
-              Open details
+              {getDetailsActionLabel(currentItem)}
             </button>
             <button
               type="button"
@@ -197,28 +225,46 @@ export default function CreatorFanPagePreview({
         </article>
 
         <div className="creator-fan-page__release-list">
-          {queue.slice(0, 3).map((release, index) => (
-            <article key={release.id || `${release.title}-${index}`} className="creator-fan-page__release-row">
-              <span className="creator-fan-page__release-index">{index + 1}.</span>
-              <FanPageImage
-                src={release.imageUrl}
-                alt={release.title}
-                initials={initials}
-                className="creator-fan-page__image--row"
-              />
-              <div className="creator-fan-page__release-copy">
-                <strong className="creator-fan-page__release-title">{release.title}</strong>
-                <span className="creator-fan-page__release-artist">{release.subtitle || data.creatorName}</span>
-              </div>
-              <button
-                type="button"
-                className="creator-fan-page__button creator-fan-page__button--icon"
-                onClick={() => selectQueueItem(index)}
+          {queue.slice(0, 3).map((release, index) => {
+            const releaseIsBook = isBookItem(release);
+            const isActive = index === activeIndex;
+            const actionLabel = getReleaseQueueActionLabel({
+              item: release,
+              isActive,
+              isPlaying,
+            });
+
+            return (
+              <article
+                key={release.id || `${release.title}-${index}`}
+                className={`creator-fan-page__release-row${
+                  releaseIsBook ? " creator-fan-page__release-row--book" : ""
+                }`}
               >
-                {index === activeIndex && isPlaying ? "Playing" : "Play"}
-              </button>
-            </article>
-          ))}
+                <span className="creator-fan-page__release-index">{index + 1}.</span>
+                <FanPageImage
+                  src={release.imageUrl}
+                  alt={release.title}
+                  initials={initials}
+                  className={`creator-fan-page__image--row${
+                    releaseIsBook ? " creator-fan-page__image--book-row" : ""
+                  }`}
+                />
+                <div className="creator-fan-page__release-copy">
+                  <strong className="creator-fan-page__release-title">{release.title}</strong>
+                  <span className="creator-fan-page__release-artist">{release.subtitle || data.creatorName}</span>
+                </div>
+                <button
+                  type="button"
+                  className="creator-fan-page__button creator-fan-page__button--icon"
+                  aria-label={releaseIsBook ? `${actionLabel} ${release.title}` : undefined}
+                  onClick={() => selectQueueItem(index, !releaseIsBook)}
+                >
+                  {actionLabel}
+                </button>
+              </article>
+            );
+          })}
         </div>
       </section>
 
@@ -675,7 +721,7 @@ export default function CreatorFanPagePreview({
         </aside>
       </div>
 
-      {isVideoTab ? null : (
+      {isVideoTab || isBookTab ? null : (
         <footer className="creator-fan-page__player">
           <CreatorAudioPreviewPlayer
             item={currentItem || data.music}

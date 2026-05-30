@@ -23,6 +23,123 @@ function FanPreviewImage({
   );
 }
 
+const isBookPreviewItem = (item = {}) =>
+  String(item?.itemType || "").trim().toLowerCase() === "book";
+
+const getQueueActionLabel = ({ item, isActive, isPlaying }) => {
+  if (isBookPreviewItem(item)) {
+    return isActive ? "Selected" : "View";
+  }
+
+  return isActive && isPlaying ? "Playing" : "Play";
+};
+
+function CreatorBookWorkspacePanel({
+  item,
+  creatorName,
+  initials,
+  queueLength,
+  queueIndex,
+  onPrevious,
+  onNext,
+  onPreview,
+  onDetails,
+  onStudio,
+}) {
+  const title = item?.title || "Untitled book";
+  const author = item?.subtitle || creatorName || "Creator";
+  const status = item?.statusLabel || "Workspace preview";
+  const details = item?.secondaryLine || item?.genre || "Digital book";
+  const priceLabel = Number(item?.price || 0) > 0 ? formatCurrency(item.price) : "Free";
+  const disableBookNavigation = queueLength <= 1;
+
+  return (
+    <article className="creator-fan-preview__book-reader" aria-label="Book reader preview">
+      <div className="creator-fan-preview__book-reader-main">
+        <FanPreviewImage
+          src={item?.imageUrl}
+          alt={title}
+          initials={initials}
+          className="creator-fan-preview__book-cover"
+        />
+
+        <div className="creator-fan-preview__book-copy">
+          <span className="creator-fan-preview__book-badge">Reader preview</span>
+          <strong>{title}</strong>
+          <span>{author}</span>
+
+          <div className="creator-fan-preview__book-meta-grid">
+            <div>
+              <small>Status</small>
+              <b>{status}</b>
+            </div>
+            <div>
+              <small>Details</small>
+              <b>{details}</b>
+            </div>
+            <div>
+              <small>Price</small>
+              <b>{priceLabel}</b>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p className="creator-fan-preview__book-description">
+        {item?.description || "A reader-facing book release from your publishing workspace."}
+      </p>
+
+      <div className="creator-fan-preview__book-actions">
+        <button
+          type="button"
+          className="creator-fan-preview__primary-action"
+          onClick={onPreview}
+        >
+          {item?.primaryActionLabel || "Read preview"}
+        </button>
+        <button
+          type="button"
+          className="creator-fan-preview__secondary-action"
+          onClick={onDetails}
+        >
+          {item?.detailActionLabel || "Open book"}
+        </button>
+        <button
+          type="button"
+          className="creator-fan-preview__secondary-action"
+          onClick={onStudio}
+        >
+          Open studio
+        </button>
+      </div>
+
+      <div className="creator-fan-preview__book-navigation">
+        <span>
+          Book {Math.min(queueIndex + 1, Math.max(queueLength, 1))} of {Math.max(queueLength, 1)}
+        </span>
+        <div>
+          <button
+            type="button"
+            className="creator-fan-preview__secondary-action"
+            onClick={onPrevious}
+            disabled={disableBookNavigation}
+          >
+            Previous book
+          </button>
+          <button
+            type="button"
+            className="creator-fan-preview__secondary-action"
+            onClick={onNext}
+            disabled={disableBookNavigation}
+          >
+            Next book
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function CreatorFanPageWorkspacePreview({
   creatorProfile,
   dashboard,
@@ -58,6 +175,7 @@ export default function CreatorFanPageWorkspacePreview({
     ? activeSection.items
     : [activeSection.featured];
   const currentItem = queue[activeIndex] || activeSection.featured;
+  const currentItemIsBook = isBookPreviewItem(currentItem);
   const progressWidth = `${Math.max(
     18,
     Math.round(((activeIndex + 1) / Math.max(queue.length, 1)) * 100)
@@ -82,7 +200,7 @@ export default function CreatorFanPageWorkspacePreview({
     openPath(item?.publicPath || activeSection.publicPath || activeSection.uploadPath);
   };
 
-  const movePlayer = (direction = 1) => {
+  const movePlayer = (direction = 1, autoplay = true) => {
     if (!queue.length) {
       return;
     }
@@ -91,7 +209,19 @@ export default function CreatorFanPageWorkspacePreview({
       const total = queue.length;
       return (current + direction + total) % total;
     });
-    setAutoplayRequest((current) => current + 1);
+    setIsPlaying(false);
+    if (autoplay) {
+      setAutoplayRequest((current) => current + 1);
+    }
+  };
+
+  const selectQueueItem = (item, index) => {
+    setActiveIndex(index);
+    setIsPlaying(false);
+
+    if (!isBookPreviewItem(item)) {
+      setAutoplayRequest((current) => current + 1);
+    }
   };
 
   return (
@@ -159,7 +289,11 @@ export default function CreatorFanPageWorkspacePreview({
       </div>
 
       <div className="creator-fan-preview__grid">
-        <article className="creator-fan-preview__music-card">
+        <article
+          className={`creator-fan-preview__music-card${
+            currentItemIsBook ? " creator-fan-preview__music-card--books" : ""
+          }`}
+        >
           <div className="creator-fan-preview__section-head">
             <div className="creator-fan-preview__section-copy">
               <span className="creator-fan-preview__section-label">{activeSection.label}</span>
@@ -179,7 +313,9 @@ export default function CreatorFanPageWorkspacePreview({
               src={currentItem?.imageUrl}
               alt={currentItem?.title || activeSection.label}
               initials={initials}
-              className="creator-fan-preview__image--tile"
+              className={`creator-fan-preview__image--tile${
+                currentItemIsBook ? " creator-fan-preview__image--book-tile" : ""
+              }`}
             />
             <div className="creator-fan-preview__feature-copy">
               <span className="creator-fan-preview__pill">
@@ -222,34 +358,44 @@ export default function CreatorFanPageWorkspacePreview({
           </div>
 
           <div className="creator-fan-preview__queue">
-            {queue.slice(0, 3).map((item, index) => (
-              <div key={item.id || `${item.title}-${index}`} className="creator-fan-preview__queue-row">
-                <button
-                  type="button"
-                  className={`creator-fan-preview__play-pill${index === activeIndex ? " is-active" : ""}`}
-                  onClick={() => {
-                    setActiveIndex(index);
-                    setAutoplayRequest((current) => current + 1);
-                  }}
+            {queue.slice(0, 3).map((item, index) => {
+              const isActive = index === activeIndex;
+              const actionLabel = getQueueActionLabel({ item, isActive, isPlaying });
+
+              return (
+                <div
+                  key={item.id || `${item.title}-${index}`}
+                  className={`creator-fan-preview__queue-row${
+                    isBookPreviewItem(item) ? " creator-fan-preview__queue-row--book" : ""
+                  }`}
                 >
-                  {index === activeIndex && isPlaying ? "Playing" : "Play"}
-                </button>
-                <div className="creator-fan-preview__queue-copy">
-                  <strong>{item.title}</strong>
-                  <span>{item.subtitle || data.creatorName}</span>
-                </div>
-                <div className="creator-fan-preview__queue-meta">
-                  <small>{item.statusLabel}</small>
                   <button
                     type="button"
-                    className="creator-fan-preview__mini-action"
-                    onClick={() => openDetails(item)}
+                    className={`creator-fan-preview__play-pill${isActive ? " is-active" : ""}`}
+                    aria-label={
+                      isBookPreviewItem(item) ? `${actionLabel} ${item.title}` : undefined
+                    }
+                    onClick={() => selectQueueItem(item, index)}
                   >
-                    Open
+                    {actionLabel}
                   </button>
+                  <div className="creator-fan-preview__queue-copy">
+                    <strong>{item.title}</strong>
+                    <span>{item.subtitle || data.creatorName}</span>
+                  </div>
+                  <div className="creator-fan-preview__queue-meta">
+                    <small>{item.statusLabel}</small>
+                    <button
+                      type="button"
+                      className="creator-fan-preview__mini-action"
+                      onClick={() => openDetails(item)}
+                    >
+                      Open
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </article>
 
@@ -329,28 +475,43 @@ export default function CreatorFanPageWorkspacePreview({
         })}
       </div>
 
-      <div className="creator-fan-preview__player">
-        <CreatorAudioPreviewPlayer
+      {currentItemIsBook ? (
+        <CreatorBookWorkspacePanel
           item={currentItem}
           creatorName={data.creatorName}
-          creatorUserId={
-            data.creatorUserId || creatorProfile?.user?._id || creatorProfile?.user?.id || ""
-          }
+          initials={initials}
           queueLength={queue.length}
           queueIndex={activeIndex}
-          onPrevious={() => movePlayer(-1)}
-          onNext={() => movePlayer(1)}
-          onPlayingChange={setIsPlaying}
-          autoplayRequest={autoplayRequest}
-          variant="workspace"
+          onPrevious={() => movePlayer(-1, false)}
+          onNext={() => movePlayer(1, false)}
+          onPreview={() => openPreview()}
+          onDetails={() => openDetails()}
+          onStudio={() => openPath(activeSection.uploadPath)}
         />
+      ) : (
+        <div className="creator-fan-preview__player">
+          <CreatorAudioPreviewPlayer
+            item={currentItem}
+            creatorName={data.creatorName}
+            creatorUserId={
+              data.creatorUserId || creatorProfile?.user?._id || creatorProfile?.user?.id || ""
+            }
+            queueLength={queue.length}
+            queueIndex={activeIndex}
+            onPrevious={() => movePlayer(-1)}
+            onNext={() => movePlayer(1)}
+            onPlayingChange={setIsPlaying}
+            autoplayRequest={autoplayRequest}
+            variant="workspace"
+          />
 
-        <div>
-          <div className="creator-fan-preview__player-progress">
-            <span style={{ width: progressWidth }} />
+          <div>
+            <div className="creator-fan-preview__player-progress">
+              <span style={{ width: progressWidth }} />
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

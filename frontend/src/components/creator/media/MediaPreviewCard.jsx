@@ -2,8 +2,9 @@ import { Link } from "react-router-dom";
 
 import ShareActions from "./ShareActions";
 import {
-  resolveOwnedPurchaseLabel,
   resolvePurchaseCtaLabel,
+  resolveDownloadActionLabel,
+  resolvePrimaryAccessLabel,
   normalizePurchaseType,
 } from "../../../utils/purchaseUx";
 
@@ -29,16 +30,11 @@ export default function MediaPreviewCard({
   const normalizedType = normalizePurchaseType(item.itemType || item.productType || item.mediaType);
   const itemKey = `${normalizedType || "item"}:${item.id || ""}`;
   const isBuyBusy = purchaseBusyKey === itemKey;
-  const purchaseType = normalizedType;
-  const ownedActionLabel = resolveOwnedPurchaseLabel(item);
-  const downloadActionLabel =
-    purchaseType === "album"
-      ? "Download bundle"
-      : purchaseType === "book"
-        ? "Download PDF"
-        : ownedActionLabel;
+  const streamActionLabel = resolvePrimaryAccessLabel(item);
+  const downloadActionLabel = resolveDownloadActionLabel(item);
   const buyLabel = resolvePurchaseCtaLabel(item, { busy: isBuyBusy });
   const detailRoute = item.route || creatorRoute || `/creators/${creatorId}`;
+  const showDownloadAction = Boolean(item.canDownload && downloadActionLabel !== streamActionLabel);
 
   return (
     <article
@@ -60,7 +56,11 @@ export default function MediaPreviewCard({
       <div className="creator-public-card__body">
         <div>
           <h3>
-            <Link to={detailRoute} className="creator-public-card__title-link">
+            <Link
+              to={detailRoute}
+              className="creator-public-card__title-link"
+              onClick={() => onOpen?.(item)}
+            >
               {item.title}
             </Link>
           </h3>
@@ -82,10 +82,10 @@ export default function MediaPreviewCard({
         ) : null}
         {item.canStream ? (
           <button type="button" className="creator-secondary-btn" onClick={() => onStream(item)}>
-            {ownedActionLabel}
+            {streamActionLabel}
           </button>
         ) : null}
-        {item.canDownload ? (
+        {showDownloadAction ? (
           <button type="button" className="creator-ghost-btn" onClick={() => onDownload(item)}>
             {downloadActionLabel}
           </button>
@@ -94,13 +94,6 @@ export default function MediaPreviewCard({
             {buyLabel}
           </button>
         ) : null}
-        <Link
-          to={detailRoute}
-          className="creator-ghost-btn"
-          onClick={() => onOpen?.(item)}
-        >
-          Open page
-        </Link>
         <ShareActions
           className="creator-ghost-btn"
           title={item.title}

@@ -36,7 +36,8 @@ import {
 import {
   buildPaystackCallbackUrl,
   normalizePurchaseType,
-  resolveOwnedPurchaseLabel,
+  resolveDownloadActionLabel,
+  resolvePrimaryAccessLabel,
   resolvePurchaseCtaLabel,
 } from "../utils/purchaseUx";
 import "./creator-public.css";
@@ -765,6 +766,11 @@ export default function CreatorHubPage() {
     ? normalizePurchaseType(featuredItem.itemType || featuredItem.productType || "")
     : "";
   const featuredPurchaseKey = featuredItem ? `${featuredItemType || "item"}:${featuredItem.id}` : "";
+  const featuredStreamLabel = featuredItem ? resolvePrimaryAccessLabel(featuredItem) : "";
+  const featuredDownloadLabel = featuredItem ? resolveDownloadActionLabel(featuredItem) : "";
+  const showFeaturedDownloadAction = Boolean(
+    featuredItem?.canDownload && featuredDownloadLabel !== featuredStreamLabel
+  );
 
   useEffect(() => {
     if (!requestedPreviewId) {
@@ -1109,16 +1115,12 @@ export default function CreatorHubPage() {
                     ) : null}
                     {featuredItem.canStream ? (
                       <button type="button" className="creator-primary-btn" onClick={() => handleStream(featuredItem)}>
-                        {resolveOwnedPurchaseLabel(featuredItem)}
+                        {featuredStreamLabel}
                       </button>
                     ) : null}
-                    {featuredItem.canDownload ? (
+                    {showFeaturedDownloadAction ? (
                       <button type="button" className="creator-ghost-btn" onClick={() => handleDownload(featuredItem)}>
-                        {featuredItemType === "album"
-                          ? "Download bundle"
-                          : featuredItemType === "book"
-                            ? "Download PDF"
-                            : resolveOwnedPurchaseLabel(featuredItem)}
+                        {featuredDownloadLabel}
                       </button>
                     ) : null}
                     {featuredItem.canBuy ? (

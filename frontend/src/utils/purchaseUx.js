@@ -115,6 +115,56 @@ export const resolveOwnedPurchaseLabel = (item = {}) => {
   return "Listen now";
 };
 
+export const resolvePrimaryAccessLabel = (item = {}) => {
+  const type = normalizePurchaseType(item.itemType || item.productType || item.mediaType);
+  const mediaType = normalizeValue(item.mediaType);
+
+  if (type === "book" || mediaType === "document") {
+    return "Read now";
+  }
+
+  if (type === "video" || mediaType === "video") {
+    return "Watch now";
+  }
+
+  if (type === "album") {
+    return "Open album";
+  }
+
+  if (type === "podcast") {
+    return "Listen now";
+  }
+
+  if (type === "track" || mediaType === "audio") {
+    return "Listen now";
+  }
+
+  return "Open now";
+};
+
+export const resolveDownloadActionLabel = (item = {}) => {
+  const type = normalizePurchaseType(item.itemType || item.productType || item.mediaType);
+  const mediaType = normalizeValue(item.mediaType);
+
+  if (type === "book" || mediaType === "document") {
+    return "Download PDF";
+  }
+
+  if (type === "album") {
+    return "Download bundle";
+  }
+
+  if (type === "podcast") {
+    return "Download episode";
+  }
+
+  if (type === "video" || mediaType === "video") {
+    return "Download video";
+  }
+
+  return "Download now";
+};
+
 export const resolvePurchaseCtaLabel = (item = {}, { busy = false } = {}) => {
   if (busy) {
     return "Opening secure checkout...";

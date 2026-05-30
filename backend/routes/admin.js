@@ -49,6 +49,12 @@ const {
   updateCreatorPayoutRequestStatus,
 } = require("../services/creatorPayoutRequestService");
 const {
+  createCreatorPayoutBatch,
+  exportCreatorPayoutBatch,
+  listCreatorPayoutBatches,
+  reconcileCreatorPayoutBatch,
+} = require("../services/creatorPayoutBatchService");
+const {
   buildRevenueLedgerSummary,
 } = require("../services/revenueLedgerService");
 const {
@@ -1722,6 +1728,157 @@ router.get("/finance/payout-requests", async (req, res) => {
       .json({ error: err.message || "Failed to load creator payout requests" });
   }
 });
+
+router.get("/finance/payout-batches", async (req, res) => {
+  try {
+    return res.json(await listCreatorPayoutBatches({
+      status: req.query.status || "",
+      page: req.query.page || 1,
+      limit: req.query.limit || 20,
+    }));
+  } catch (err) {
+    const code = err?.status || 500;
+    return res
+      .status(code)
+      .json({ error: err.message || "Failed to load creator payout batches" });
+  }
+});
+
+router.post(
+  "/finance/payout-batches",
+  requireStepUp({ adminOnly: true }),
+  async (req, res) => {
+    try {
+      const result = await createCreatorPayoutBatch({
+        requestIds: Array.isArray(req.body?.requestIds) ? req.body.requestIds : [],
+        adminUserId: req.user.id,
+        adminRole: req.user?.role || "admin",
+        note: req.body?.note || "",
+        provider: req.body?.provider || "manual_bank_export",
+      });
+
+      await writeAuditLog({
+        actorId: req.user.id,
+        action: "creator_payout_batch_create",
+        targetType: "creator_payout_batch",
+        targetId: result.batch.id,
+        reason: req.body?.note || "Payout batch created",
+        ip: req.ip,
+        userAgent: req.get("user-agent") || "",
+        metadata: {
+          batchReference: result.batch.batchReference || "",
+          requestIds: result.batch.requestIds || [],
+          itemCount: Number(result.batch.itemCount || 0),
+          totalAmount: Number(result.batch.totalAmount || 0),
+          currency: result.batch.currency || "NGN",
+          provider: result.batch.provider || "",
+        },
+      }).catch(() => null);
+
+      return res.status(201).json({
+        success: true,
+        ...result,
+      });
+    } catch (err) {
+      const code = err?.status || 500;
+      return res.status(code).json({
+        error: err.message || "Failed to create payout batch",
+        details: err?.details || undefined,
+      });
+    }
+  }
+);
+
+router.post(
+  "/finance/payout-batches/:id/export",
+  requireStepUp({ adminOnly: true }),
+  async (req, res) => {
+    try {
+      const result = await exportCreatorPayoutBatch({
+        batchId: req.params.id,
+        adminUserId: req.user.id,
+        adminRole: req.user?.role || "admin",
+        note: req.body?.note || "",
+        providerResponse: req.body?.providerResponse || {},
+      });
+
+      await writeAuditLog({
+        actorId: req.user.id,
+        action: "creator_payout_batch_export",
+        targetType: "creator_payout_batch",
+        targetId: result.batch.id,
+        reason: req.body?.note || "Payout batch exported",
+        ip: req.ip,
+        userAgent: req.get("user-agent") || "",
+        metadata: {
+          batchReference: result.batch.batchReference || "",
+          itemCount: Number(result.batch.itemCount || 0),
+          totalAmount: Number(result.batch.totalAmount || 0),
+          currency: result.batch.currency || "NGN",
+          provider: result.batch.provider || "",
+          exportFilename: result.providerExport?.filename || "",
+        },
+      }).catch(() => null);
+
+      return res.json({
+        success: true,
+        ...result,
+      });
+    } catch (err) {
+      const code = err?.status || 500;
+      return res.status(code).json({
+        error: err.message || "Failed to export payout batch",
+        details: err?.details || undefined,
+      });
+    }
+  }
+);
+
+router.post(
+  "/finance/payout-batches/:id/reconcile",
+  requireStepUp({ adminOnly: true }),
+  async (req, res) => {
+    try {
+      const result = await reconcileCreatorPayoutBatch({
+        batchId: req.params.id,
+        outcomes: Array.isArray(req.body?.outcomes) ? req.body.outcomes : [],
+        adminUserId: req.user.id,
+        adminRole: req.user?.role || "admin",
+        note: req.body?.note || "",
+        providerResponse: req.body?.providerResponse || {},
+      });
+
+      await writeAuditLog({
+        actorId: req.user.id,
+        action: "creator_payout_batch_reconcile",
+        targetType: "creator_payout_batch",
+        targetId: result.batch.id,
+        reason: req.body?.note || "Payout batch reconciled",
+        ip: req.ip,
+        userAgent: req.get("user-agent") || "",
+        metadata: {
+          batchReference: result.batch.batchReference || "",
+          status: result.batch.status || "",
+          paidCount: Number(result.batch.reconciliationSummary?.paidCount || 0),
+          failedCount: Number(result.batch.reconciliationSummary?.failedCount || 0),
+          pendingCount: Number(result.batch.reconciliationSummary?.pendingCount || 0),
+          resultCount: Array.isArray(result.results) ? result.results.length : 0,
+        },
+      }).catch(() => null);
+
+      return res.json({
+        success: true,
+        ...result,
+      });
+    } catch (err) {
+      const code = err?.status || 500;
+      return res.status(code).json({
+        error: err.message || "Failed to reconcile payout batch",
+        details: err?.details || undefined,
+      });
+    }
+  }
+);
 
 router.patch(
   "/finance/payout-requests/:id/status",

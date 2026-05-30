@@ -9,6 +9,12 @@ const RevenueLedgerEntry = require("../models/RevenueLedgerEntry");
 const User = require("../models/User");
 const WalletEntry = require("../models/WalletEntry");
 const {
+  createCreatorPayoutBatch,
+  exportCreatorPayoutBatch,
+  listCreatorPayoutBatches,
+  reconcileCreatorPayoutBatch,
+} = require("../services/creatorPayoutBatchService");
+const {
   createCreatorPayoutRequest,
   listCreatorPayoutRequests,
   updateCreatorPayoutRequestStatus,
@@ -275,6 +281,141 @@ describe("creatorPayoutRequestService", () => {
       status: "failed",
       amount: 1000,
       creatorVisibleMessage: "We need to retry this payout.",
+    });
+  });
+
+  test("creates, exports, and reconciles payout batches with retry-safe outcomes", async () => {
+    await createPaidPurchase({
+      creatorId: creator.profile._id,
+      amount: 5000,
+      providerRef: "creator_payout_batch_sale",
+    });
+    await reconcilePaidPurchaseWalletEntries({ logger: null, reason: "test" });
+
+    const first = await createCreatorPayoutRequest({
+      userId: creator.user._id,
+      amount: 1000,
+      creatorNote: "First batch payout",
+    });
+    const second = await createCreatorPayoutRequest({
+      userId: creator.user._id,
+      amount: 1000,
+      creatorNote: "Second batch payout",
+    });
+
+    await updateCreatorPayoutRequestStatus({
+      requestId: first.request.id,
+      status: "approved",
+      adminUserId: admin._id,
+      adminRole: "admin",
+    });
+    await updateCreatorPayoutRequestStatus({
+      requestId: second.request.id,
+      status: "approved",
+      adminUserId: admin._id,
+      adminRole: "admin",
+    });
+
+    const createdBatch = await createCreatorPayoutBatch({
+      requestIds: [first.request.id, second.request.id],
+      adminUserId: admin._id,
+      adminRole: "admin",
+      note: "Weekly creator payouts",
+    });
+
+    expect(createdBatch.batch).toMatchObject({
+      status: "ready_for_export",
+      itemCount: 2,
+      totalAmount: 2000,
+      currency: "NGN",
+    });
+
+    const creatorHistory = await listCreatorPayoutRequests({ userId: creator.user._id });
+    expect(creatorHistory.requests.every((entry) => entry.payoutBatchReference === createdBatch.batch.batchReference)).toBe(true);
+
+    const exportedBatch = await exportCreatorPayoutBatch({
+      batchId: createdBatch.batch.id,
+      adminUserId: admin._id,
+      adminRole: "admin",
+      note: "Export to bank ops",
+    });
+
+    expect(exportedBatch.batch.status).toBe("exported");
+    expect(exportedBatch.providerExport).toMatchObject({
+      filename: `${createdBatch.batch.batchReference}.csv`,
+    });
+    expect(exportedBatch.providerExport.rows).toHaveLength(2);
+    expect(exportedBatch.providerExport.csv).toContain("batch_reference,request_reference");
+
+    const partial = await reconcileCreatorPayoutBatch({
+      batchId: createdBatch.batch.id,
+      adminUserId: admin._id,
+      adminRole: "admin",
+      note: "Provider returned mixed outcomes",
+      outcomes: [
+        {
+          requestId: first.request.id,
+          status: "paid",
+          payoutReference: "BANK_BATCH_001",
+        },
+        {
+          requestId: second.request.id,
+          status: "failed",
+          adminNote: "Bank rejected account",
+          creatorMessage: "We need to retry this payout.",
+        },
+      ],
+    });
+
+    expect(partial.batch).toMatchObject({
+      status: "partially_paid",
+      reconciliationSummary: {
+        paidCount: 1,
+        failedCount: 1,
+        pendingCount: 0,
+      },
+    });
+    expect(await WalletEntry.countDocuments({ entryType: "payout_debit" })).toBe(1);
+    expect(await RevenueLedgerEntry.countDocuments({ ledgerEventType: "payout_sent" })).toBe(1);
+    expect(await RevenueLedgerEntry.countDocuments({ ledgerEventType: "payout_failed" })).toBe(1);
+
+    const retried = await reconcileCreatorPayoutBatch({
+      batchId: createdBatch.batch.id,
+      adminUserId: admin._id,
+      adminRole: "admin",
+      note: "Retry succeeded",
+      outcomes: [
+        {
+          requestId: second.request.id,
+          status: "paid",
+          payoutReference: "BANK_BATCH_002",
+        },
+      ],
+    });
+
+    expect(retried.batch).toMatchObject({
+      status: "paid",
+      reconciliationSummary: {
+        paidCount: 2,
+        failedCount: 0,
+        pendingCount: 0,
+      },
+      slaSummary: {
+        paidAfterFailureCount: 1,
+      },
+    });
+    expect(await WalletEntry.countDocuments({ entryType: "payout_debit" })).toBe(2);
+    expect(await RevenueLedgerEntry.countDocuments({ ledgerEventType: "payout_sent" })).toBe(2);
+    expect(await RevenueLedgerEntry.countDocuments({ ledgerEventType: "payout_failed" })).toBe(1);
+
+    const batches = await listCreatorPayoutBatches();
+    expect(batches).toMatchObject({
+      total: 1,
+      summary: {
+        statusCounts: {
+          paid: 1,
+        },
+      },
     });
   });
 });

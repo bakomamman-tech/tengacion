@@ -63,6 +63,24 @@ const CreatorPayoutRequestSchema = new mongoose.Schema(
       maxlength: 160,
       index: true,
     },
+    payoutBatch: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CreatorPayoutBatch",
+      default: null,
+      index: true,
+    },
+    payoutBatchReference: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 80,
+      index: true,
+    },
+    batchedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
     creatorNote: {
       type: String,
       default: "",

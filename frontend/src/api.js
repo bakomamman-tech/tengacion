@@ -2673,6 +2673,47 @@ export const adminUpdateCreatorPayoutRequestStatus = (requestId, body = {}) =>
     body: JSON.stringify(body || {}),
   });
 
+export const adminListCreatorPayoutBatches = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/finance/payout-batches?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminCreateCreatorPayoutBatch = (body = {}) =>
+  request(`${API_BASE}/admin/finance/payout-batches`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(body || {}),
+  });
+
+export const adminExportCreatorPayoutBatch = (batchId, body = {}) =>
+  request(`${API_BASE}/admin/finance/payout-batches/${encodeURIComponent(batchId || "")}/export`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(body || {}),
+  });
+
+export const adminReconcileCreatorPayoutBatch = (batchId, body = {}) =>
+  request(`${API_BASE}/admin/finance/payout-batches/${encodeURIComponent(batchId || "")}/reconcile`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(body || {}),
+  });
+
 export const adminGetCreatorDetail = (creatorId) =>
   request(`${API_BASE}/admin/creators/${encodeURIComponent(creatorId || "")}`, {
     headers: getAuthHeaders(),

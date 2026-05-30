@@ -2,10 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminShell from "../components/AdminShell";
 import {
+  adminCreateCreatorPayoutBatch,
+  adminExportCreatorPayoutBatch,
   adminGetCreatorEarningsRepository,
   adminGetFinanceAssuranceClose,
   adminGetRevenueLedger,
+  adminListCreatorPayoutBatches,
   adminListCreatorPayoutRequests,
+  adminReconcileCreatorPayoutBatch,
   adminUpdateCreatorPayoutRequestStatus,
 } from "../api";
 
@@ -53,6 +57,21 @@ const dateTime = (value) => {
   return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString();
 };
 
+const downloadTextFile = ({ filename, text, type = "text/csv;charset=utf-8" }) => {
+  if (typeof document === "undefined" || typeof URL === "undefined") {
+    return;
+  }
+  const blob = new Blob([text || ""], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename || "payout-batch.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
 export default function AdminCreatorEarningsPage({ user }) {
   const navigate = useNavigate();
   const [range, setRange] = useState("30d");
@@ -61,24 +80,29 @@ export default function AdminCreatorEarningsPage({ user }) {
   const [assuranceClose, setAssuranceClose] = useState(null);
   const [ledger, setLedger] = useState(null);
   const [payoutRequests, setPayoutRequests] = useState(null);
+  const [payoutBatches, setPayoutBatches] = useState(null);
+  const [selectedPayoutRequestIds, setSelectedPayoutRequestIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [payoutActionBusy, setPayoutActionBusy] = useState("");
+  const [batchActionBusy, setBatchActionBusy] = useState("");
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const [next, closePayload, ledgerPayload, payoutPayload] = await Promise.all([
+      const [next, closePayload, ledgerPayload, payoutPayload, batchPayload] = await Promise.all([
         adminGetCreatorEarningsRepository({ range }),
         adminGetFinanceAssuranceClose({ range }),
         adminGetRevenueLedger({ range, limit: 12 }),
         adminListCreatorPayoutRequests({ status: payoutStatus, limit: 8 }),
+        adminListCreatorPayoutBatches({ limit: 8 }),
       ]);
       setPayload(next || null);
       setAssuranceClose(closePayload || null);
       setLedger(ledgerPayload || null);
       setPayoutRequests(payoutPayload || null);
+      setPayoutBatches(batchPayload || null);
     } catch (err) {
       setError(err?.message || "Failed to load creator earnings repository");
     } finally {
@@ -104,6 +128,134 @@ export default function AdminCreatorEarningsPage({ user }) {
   const ledgerRecentEntries = ledger?.recentEntries || [];
   const payoutRequestRows = payoutRequests?.requests || [];
   const payoutRequestSummary = payoutRequests?.summary || {};
+  const payoutBatchRows = payoutBatches?.batches || [];
+  const payoutBatchSummary = payoutBatches?.summary || {};
+  const selectedApprovedRequests = payoutRequestRows.filter((entry) =>
+    selectedPayoutRequestIds.includes(entry.id)
+      && entry.status === "approved"
+      && !entry.payoutBatchId
+  );
+
+  const togglePayoutRequestSelection = (entry) => {
+    if (entry.status !== "approved" || entry.payoutBatchId) {
+      return;
+    }
+    setSelectedPayoutRequestIds((current) =>
+      current.includes(entry.id)
+        ? current.filter((id) => id !== entry.id)
+        : [...current, entry.id]
+    );
+  };
+
+  const createPayoutBatch = async () => {
+    if (!selectedApprovedRequests.length) {
+      setError("Select at least one approved, unbatched payout request.");
+      return;
+    }
+    const note = window.prompt("Batch note:", "Finance payout batch");
+    if (note === null) {
+      return;
+    }
+
+    setBatchActionBusy("create");
+    setError("");
+    try {
+      await adminCreateCreatorPayoutBatch({
+        requestIds: selectedApprovedRequests.map((entry) => entry.id),
+        note,
+      });
+      setSelectedPayoutRequestIds([]);
+      await load();
+    } catch (err) {
+      setError(err?.message || "Failed to create payout batch");
+    } finally {
+      setBatchActionBusy("");
+    }
+  };
+
+  const exportPayoutBatch = async (batch) => {
+    const note = window.prompt("Export note:", `Export ${batch.batchReference}`);
+    if (note === null) {
+      return;
+    }
+
+    setBatchActionBusy(`${batch.id}:export`);
+    setError("");
+    try {
+      const result = await adminExportCreatorPayoutBatch(batch.id, { note });
+      if (result?.providerExport?.csv) {
+        downloadTextFile({
+          filename: result.providerExport.filename || `${batch.batchReference}.csv`,
+          text: result.providerExport.csv,
+        });
+      }
+      await load();
+    } catch (err) {
+      setError(err?.message || "Failed to export payout batch");
+    } finally {
+      setBatchActionBusy("");
+    }
+  };
+
+  const reconcilePayoutBatch = async (batch, status) => {
+    const targetItems = (batch.items || []).filter((item) =>
+      status === "paid"
+        ? item.outcomeStatus !== "paid"
+        : item.outcomeStatus === "pending"
+    );
+    if (!targetItems.length) {
+      setError("No batch items are available for that reconciliation action.");
+      return;
+    }
+
+    const note = window.prompt(
+      `Reconciliation note for ${eventLabel(status)}:`,
+      status === "paid" ? "Provider confirmed transfer" : "Provider reported failed transfer"
+    );
+    if (note === null) {
+      return;
+    }
+
+    let payoutReferencePrefix = "";
+    if (status === "paid") {
+      payoutReferencePrefix = window.prompt(
+        "Payout reference prefix:",
+        batch.batchReference || ""
+      );
+      if (payoutReferencePrefix === null) {
+        return;
+      }
+    }
+
+    const creatorMessage = status === "failed"
+      ? window.prompt("Creator-visible failure message:", "Your payout attempt failed and finance will review it.")
+      : "";
+    if (creatorMessage === null) {
+      return;
+    }
+
+    setBatchActionBusy(`${batch.id}:${status}`);
+    setError("");
+    try {
+      await adminReconcileCreatorPayoutBatch(batch.id, {
+        note,
+        outcomes: targetItems.map((item, index) => ({
+          requestId: item.requestId,
+          status,
+          payoutReference: status === "paid"
+            ? `${payoutReferencePrefix || batch.batchReference}-${index + 1}`
+            : "",
+          adminNote: note,
+          creatorMessage: creatorMessage || "",
+        })),
+      });
+      await load();
+    } catch (err) {
+      setError(err?.message || "Failed to reconcile payout batch");
+    } finally {
+      setBatchActionBusy("");
+    }
+  };
 
   const reviewPayoutRequest = async (entry, nextStatus) => {
     const adminNote = window.prompt(
@@ -289,6 +441,14 @@ export default function AdminCreatorEarningsPage({ user }) {
                 <span className="adminx-section-meta">Requests validated against creator readiness and available wallet balance</span>
               </div>
               <div className="adminx-filter-row">
+                <button
+                  type="button"
+                  className="adminx-btn adminx-btn--primary"
+                  disabled={!selectedApprovedRequests.length || Boolean(batchActionBusy)}
+                  onClick={createPayoutBatch}
+                >
+                  Create batch ({selectedApprovedRequests.length})
+                </button>
                 {payoutStatusOptions.map((option) => (
                   <button
                     key={option.value || "all"}
@@ -320,10 +480,12 @@ export default function AdminCreatorEarningsPage({ user }) {
               <table className="adminx-table">
                 <thead>
                   <tr>
+                    <th>Batch</th>
                     <th>Requested</th>
                     <th>Creator</th>
                     <th>Amount</th>
                     <th>Status</th>
+                    <th>Batch Ref</th>
                     <th>Reference</th>
                     <th>Message</th>
                     <th>Review</th>
@@ -332,6 +494,18 @@ export default function AdminCreatorEarningsPage({ user }) {
                 <tbody>
                   {payoutRequestRows.map((entry) => (
                     <tr key={entry.id}>
+                      <td>
+                        {entry.status === "approved" && !entry.payoutBatchId ? (
+                          <input
+                            type="checkbox"
+                            checked={selectedPayoutRequestIds.includes(entry.id)}
+                            onChange={() => togglePayoutRequestSelection(entry)}
+                            aria-label={`Select payout request ${entry.requestReference || entry.id}`}
+                          />
+                        ) : (
+                          <span className="adminx-muted">-</span>
+                        )}
+                      </td>
                       <td>{dateTime(entry.requestedAt)}</td>
                       <td>
                         <button
@@ -344,6 +518,7 @@ export default function AdminCreatorEarningsPage({ user }) {
                       </td>
                       <td>{currency(entry.amount)}</td>
                       <td>{eventLabel(entry.status)}</td>
+                      <td>{entry.payoutBatchReference || "-"}</td>
                       <td>{entry.payoutReference || entry.requestReference || "-"}</td>
                       <td>{entry.creatorVisibleMessage || entry.adminNote || "-"}</td>
                       <td>
@@ -415,8 +590,120 @@ export default function AdminCreatorEarningsPage({ user }) {
                   ))}
                   {!payoutRequestRows.length ? (
                     <tr>
-                      <td colSpan={7} className="adminx-table-empty">
+                      <td colSpan={9} className="adminx-table-empty">
                         No creator payout requests found.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="adminx-panel adminx-panel--span-12">
+            <div className="adminx-panel-head">
+              <div>
+                <h2 className="adminx-panel-title">Payout Batches</h2>
+                <span className="adminx-section-meta">Export-ready groups, provider outcomes, and payout SLA evidence</span>
+              </div>
+              <span className="adminx-badge">
+                {number(payoutBatches?.total)} batch{Number(payoutBatches?.total || 0) === 1 ? "" : "es"}
+              </span>
+            </div>
+
+            <div className="adminx-ops-grid">
+              {[
+                ["Ready", number(payoutBatchSummary.statusCounts?.ready_for_export)],
+                ["Exported", number(payoutBatchSummary.statusCounts?.exported)],
+                ["Partial", number(payoutBatchSummary.statusCounts?.partially_paid)],
+                ["Paid", currency(payoutBatchSummary.statusAmounts?.paid)],
+              ].map(([label, value]) => (
+                <div key={label} className="adminx-ops-metric">
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+
+            <div className="adminx-table-wrap adminx-table-wrap--flush">
+              <table className="adminx-table">
+                <thead>
+                  <tr>
+                    <th>Created</th>
+                    <th>Batch</th>
+                    <th>Items</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Outcomes</th>
+                    <th>SLA</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payoutBatchRows.map((batch) => {
+                    const summary = batch.reconciliationSummary || {};
+                    const sla = batch.slaSummary || {};
+                    const paidCount = Number(summary.paidCount || 0);
+                    const pendingCount = Number(summary.pendingCount || 0);
+                    const canReconcileOpenBatch = ["exported", "partially_paid"].includes(batch.status);
+                    return (
+                      <tr key={batch.id}>
+                        <td>{dateTime(batch.createdAt)}</td>
+                        <td>
+                          <div>{batch.batchReference}</div>
+                          <span className="adminx-muted">{eventLabel(batch.provider)}</span>
+                        </td>
+                        <td>{number(batch.itemCount)}</td>
+                        <td>{currency(batch.totalAmount, batch.currency)}</td>
+                        <td>{eventLabel(batch.status)}</td>
+                        <td>
+                          Paid {number(summary.paidCount)} / Failed {number(summary.failedCount)} / Pending {number(summary.pendingCount)}
+                        </td>
+                        <td>
+                          Review {sla.avgRequestedToReviewedHours ?? "-"}h / Paid {sla.avgReviewedToPaidHours ?? "-"}h
+                        </td>
+                        <td>
+                          <div className="adminx-action-row">
+                            {batch.status === "ready_for_export" ? (
+                              <button
+                                type="button"
+                                className="adminx-btn"
+                                disabled={Boolean(batchActionBusy)}
+                                onClick={() => exportPayoutBatch(batch)}
+                              >
+                                Export
+                              </button>
+                            ) : null}
+                            {canReconcileOpenBatch && paidCount < Number(batch.itemCount || 0) ? (
+                              <button
+                                type="button"
+                                className="adminx-btn adminx-btn--primary"
+                                disabled={Boolean(batchActionBusy)}
+                                onClick={() => reconcilePayoutBatch(batch, "paid")}
+                              >
+                                Mark paid
+                              </button>
+                            ) : null}
+                            {canReconcileOpenBatch && pendingCount > 0 ? (
+                                <button
+                                  type="button"
+                                  className="adminx-btn adminx-btn--danger"
+                                  disabled={Boolean(batchActionBusy)}
+                                  onClick={() => reconcilePayoutBatch(batch, "failed")}
+                                >
+                                  Mark failed
+                                </button>
+                            ) : null}
+                            {["paid", "failed"].includes(batch.status) ? <span className="adminx-muted">Final</span> : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {!payoutBatchRows.length ? (
+                    <tr>
+                      <td colSpan={8} className="adminx-table-empty">
+                        No payout batches created yet.
                       </td>
                     </tr>
                   ) : null}

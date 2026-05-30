@@ -369,6 +369,11 @@ Turn operations into growth.
   - requested to reviewed
   - reviewed to paid
   - failed to resolved
+- Current implementation anchor:
+  - finance admins can create payout batches from approved creator payout requests, with current balance/readiness validation, method freshness snapshots, batch references, and request-level batch audit fields.
+  - payout batches can be exported as provider-ready CSV payloads that move included requests into processing while preserving single-request payout ledgers as the source of money movement.
+  - batch reconciliation supports paid, failed, and partial outcomes, retries failed items through the existing processing path, records provider responses, and summarizes paid/failed/pending counts plus payout SLA timing.
+  - the Earnings From Creators admin page now lets admins select approved requests, create payout batches, export provider files, and reconcile batch outcomes beside the existing request review and revenue ledger views.
 
 ### Exit criteria
 

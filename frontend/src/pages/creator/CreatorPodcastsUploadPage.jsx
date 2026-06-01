@@ -6,7 +6,7 @@ import CreatorUploadSupportPanels from "../../components/creator/upload/CreatorU
 import PodcastUploadStudio from "../../components/creator/upload/PodcastUploadStudio";
 
 export default function CreatorPodcastsUploadPage() {
-  const { creatorProfile, dashboard } = useCreatorWorkspace();
+  const { creatorProfile, dashboard, refreshWorkspace } = useCreatorWorkspace();
   const podcastStats = dashboard.categories?.podcast || dashboard.categories?.podcasts || {};
   const podcastAnalytics = dashboard.content?.podcasts?.analytics || {};
 
@@ -45,6 +45,7 @@ export default function CreatorPodcastsUploadPage() {
           creatorProfile={creatorProfile}
           dashboard={dashboard}
           currentCategoryKey="podcast"
+          onBookVersionUploaded={refreshWorkspace}
         />
 
         <div className="creator-upload-studio creator-upload-studio--podcasts">

@@ -1785,6 +1785,44 @@ textarea {
   flex-wrap: wrap;
 }
 
+.creator-fan-preview__book-actions .creator-fan-preview__secondary-action:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.creator-fan-preview__book-version-status {
+  display: grid;
+  grid-template-rows: 7px auto;
+  gap: 6px;
+  max-width: 320px;
+}
+
+.creator-fan-preview__book-version-status::before {
+  content: "";
+  grid-column: 1;
+  grid-row: 1;
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 247, 233, 0.1);
+}
+
+.creator-fan-preview__book-version-status span {
+  grid-column: 1;
+  grid-row: 1;
+  display: block;
+  height: 7px;
+  max-width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #d7aa58, #f2ce85);
+}
+
+.creator-fan-preview__book-version-status small {
+  color: rgba(246, 239, 223, 0.68);
+  font-size: 0.82rem;
+}
+
 .creator-fan-preview__book-navigation {
   justify-content: space-between;
   padding-top: 12px;

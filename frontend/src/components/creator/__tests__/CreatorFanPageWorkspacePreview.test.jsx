@@ -115,6 +115,7 @@ describe("CreatorFanPageWorkspacePreview", () => {
     expect(screen.getAllByText(/the rustle of death/i).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: /read preview/i }).length).toBeGreaterThan(1);
     expect(screen.getAllByRole("button", { name: /open book/i }).length).toBeGreaterThan(1);
+    expect(screen.getByRole("button", { name: /upload edited version/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /selected the rustle of death/i })).toBeInTheDocument();
     expect(screen.queryByRole("slider", { name: /seek within/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /play the rustle of death/i })).not.toBeInTheDocument();

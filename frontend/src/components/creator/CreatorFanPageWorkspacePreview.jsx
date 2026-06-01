@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
+import { updateBookWithUploadProgress } from "../../api";
 import CreatorAudioPreviewPlayer from "./CreatorAudioPreviewPlayer";
 import { formatCurrency } from "./creatorConfig";
 import {
@@ -9,6 +11,22 @@ import {
   getCreatorFanPageInitials,
   resolveCreatorFanPageTabKey,
 } from "./creatorFanPageData";
+
+const BOOK_VERSION_ACCEPT = ".pdf,.epub,.mobi,.txt";
+const BOOK_VERSION_EXTENSIONS = new Set(["pdf", "epub", "mobi", "txt"]);
+
+const inferBookVersionFormat = (file = {}) => {
+  const name = String(file?.name || "");
+  const dotIndex = name.lastIndexOf(".");
+  return dotIndex >= 0 ? name.slice(dotIndex + 1).toLowerCase() : "";
+};
+
+const resolveBookPublishMode = (item = {}) => {
+  const status = String(item?.publishedStatus || item?.status || "")
+    .trim()
+    .toLowerCase();
+  return status === "draft" ? "draft" : "published";
+};
 
 function FanPreviewImage({
   src,
@@ -45,13 +63,71 @@ function CreatorBookWorkspacePanel({
   onPreview,
   onDetails,
   onStudio,
+  onEditedVersionUploaded,
 }) {
+  const fileInputRef = useRef(null);
+  const [isVersionUploading, setIsVersionUploading] = useState(false);
+  const [versionProgress, setVersionProgress] = useState(0);
   const title = item?.title || "Untitled book";
   const author = item?.subtitle || creatorName || "Creator";
   const status = item?.statusLabel || "Workspace preview";
   const details = item?.secondaryLine || item?.genre || "Digital book";
   const priceLabel = Number(item?.price || 0) > 0 ? formatCurrency(item.price) : "Free";
   const disableBookNavigation = queueLength <= 1;
+  const canUploadEditedVersion = Boolean(item?.id);
+
+  const resetFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const chooseEditedVersionFile = () => {
+    if (!canUploadEditedVersion || isVersionUploading) {
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const uploadEditedVersion = async (event) => {
+    const file = event.target.files?.[0] || null;
+    if (!file) {
+      return;
+    }
+
+    const fileFormat = inferBookVersionFormat(file);
+    if (!BOOK_VERSION_EXTENSIONS.has(fileFormat)) {
+      toast.error("Upload a PDF, EPUB, MOBI, or TXT file");
+      resetFileInput();
+      return;
+    }
+
+    try {
+      setIsVersionUploading(true);
+      setVersionProgress(0);
+
+      const formData = new FormData();
+      formData.append("content", file);
+      formData.append("fileFormat", fileFormat);
+      formData.append("publishedStatus", resolveBookPublishMode(item));
+
+      const updated = await updateBookWithUploadProgress(item.id, formData, {
+        onProgress: setVersionProgress,
+      });
+      await Promise.resolve(onEditedVersionUploaded?.(updated)).catch(() => null);
+      toast.success(
+        updated?.publishedStatus === "under_review"
+          ? "Edited version uploaded for review"
+          : "Edited version uploaded"
+      );
+    } catch (err) {
+      toast.error(err?.message || "Could not upload the edited version");
+    } finally {
+      setIsVersionUploading(false);
+      setVersionProgress(0);
+      resetFileInput();
+    }
+  };
 
   return (
     <article className="creator-fan-preview__book-reader" aria-label="Book reader preview">
@@ -111,7 +187,35 @@ function CreatorBookWorkspacePanel({
         >
           Open studio
         </button>
+        {canUploadEditedVersion ? (
+          <>
+            <button
+              type="button"
+              className="creator-fan-preview__secondary-action"
+              onClick={chooseEditedVersionFile}
+              disabled={isVersionUploading}
+            >
+              {isVersionUploading ? `Uploading ${versionProgress}%` : "Upload Edited Version"}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={BOOK_VERSION_ACCEPT}
+              onChange={uploadEditedVersion}
+              style={{ display: "none" }}
+              aria-hidden="true"
+              tabIndex={-1}
+            />
+          </>
+        ) : null}
       </div>
+
+      {isVersionUploading ? (
+        <div className="creator-fan-preview__book-version-status" role="status" aria-live="polite">
+          <span style={{ width: `${versionProgress}%` }} />
+          <small>Replacing the uploaded book file...</small>
+        </div>
+      ) : null}
 
       <div className="creator-fan-preview__book-navigation">
         <span>
@@ -144,6 +248,7 @@ export default function CreatorFanPageWorkspacePreview({
   creatorProfile,
   dashboard,
   currentCategoryKey = "music",
+  onBookVersionUploaded,
 }) {
   const navigate = useNavigate();
   const data = useMemo(
@@ -487,6 +592,7 @@ export default function CreatorFanPageWorkspacePreview({
           onPreview={() => openPreview()}
           onDetails={() => openDetails()}
           onStudio={() => openPath(activeSection.uploadPath)}
+          onEditedVersionUploaded={onBookVersionUploaded}
         />
       ) : (
         <div className="creator-fan-preview__player">

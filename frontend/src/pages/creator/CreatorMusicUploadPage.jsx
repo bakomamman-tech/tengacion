@@ -6,7 +6,7 @@ import CreatorUploadSupportPanels from "../../components/creator/upload/CreatorU
 import MusicUploadStudio from "../../components/creator/upload/MusicUploadStudio";
 
 export default function CreatorMusicUploadPage() {
-  const { creatorProfile, dashboard } = useCreatorWorkspace();
+  const { creatorProfile, dashboard, refreshWorkspace } = useCreatorWorkspace();
   const musicStats = dashboard.categories?.music || {};
   const musicAnalytics = dashboard.content?.music?.analytics || {};
 
@@ -45,6 +45,7 @@ export default function CreatorMusicUploadPage() {
           creatorProfile={creatorProfile}
           dashboard={dashboard}
           currentCategoryKey="music"
+          onBookVersionUploaded={refreshWorkspace}
         />
 
         <div className="creator-upload-studio creator-upload-studio--music">

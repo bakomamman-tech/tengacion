@@ -6,7 +6,7 @@ import CreatorUploadSupportPanels from "../../components/creator/upload/CreatorU
 import BookUploadStudio from "../../components/creator/upload/BookUploadStudio";
 
 export default function CreatorBooksUploadPage() {
-  const { creatorProfile, dashboard } = useCreatorWorkspace();
+  const { creatorProfile, dashboard, refreshWorkspace } = useCreatorWorkspace();
   const bookStats = dashboard.categories?.bookPublishing || dashboard.categories?.books || {};
   const bookAnalytics = dashboard.content?.books?.analytics || {};
 
@@ -45,6 +45,7 @@ export default function CreatorBooksUploadPage() {
           creatorProfile={creatorProfile}
           dashboard={dashboard}
           currentCategoryKey="bookPublishing"
+          onBookVersionUploaded={refreshWorkspace}
         />
 
         <div className="creator-upload-studio creator-upload-studio--books">

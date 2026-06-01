@@ -355,6 +355,7 @@ exports.updateBook = asyncHandler(async (req, res) => {
     title,
     description,
     primaryFile: contentFile || null,
+    excludeContentId: book._id,
     metadata: {
       creatorId: req.creatorProfile._id?.toString?.() || "",
       authorName: req.creatorProfile.displayName || "",

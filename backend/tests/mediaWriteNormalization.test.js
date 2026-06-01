@@ -229,4 +229,49 @@ describe("media write normalization", () => {
     });
     expect(classifyRecordMedia(refreshed, bookSource).status).toBe("cloudinary");
   });
+
+  test("replacing a published book file does not flag the book as a duplicate of itself", async () => {
+    const { profile, token } = await createCreator();
+
+    const book = await Book.create({
+      creatorId: profile._id,
+      title: "Edited Version Book",
+      description: "A published book receiving a new manuscript version",
+      price: 0,
+      priceNGN: 0,
+      contentUrl:
+        "https://res.cloudinary.com/test-cloud/raw/upload/v1/tengacion/books/files/original-book.pdf",
+      fileUrl:
+        "https://res.cloudinary.com/test-cloud/raw/upload/v1/tengacion/books/files/original-book.pdf",
+      fileFormat: "pdf",
+      creatorCategory: "books",
+      contentType: "pdf_book",
+      publishedStatus: "published",
+      copyrightScanStatus: "passed",
+      isPublished: true,
+      archivedAt: null,
+    });
+
+    const response = await request(app)
+      .put(`/api/books/${book._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .field("publishedStatus", "published")
+      .attach("content", Buffer.from("new manuscript version"), {
+        filename: "edited-version-book.pdf",
+        contentType: "application/pdf",
+      })
+      .expect(200);
+
+    expect(response.body.publishedStatus).toBe("published");
+    expect(response.body.copyrightScanStatus).toBe("passed");
+
+    const refreshed = await Book.findById(book._id).lean();
+    expect(refreshed.publishedStatus).toBe("published");
+    expect(refreshed.isPublished).toBe(true);
+    expect(refreshed.reviewRequired).toBe(false);
+
+    await request(app)
+      .get(`/api/books/${book._id}`)
+      .expect(200);
+  });
 });

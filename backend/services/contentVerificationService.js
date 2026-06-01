@@ -162,8 +162,13 @@ const buildPublishedStatus = ({ requestedStatus = "published", scanStatus = "pen
 
 const collectKeywordSignals = (text = "") => {
   const normalized = String(text || "").trim().toLowerCase();
-  const suspiciousMatches = SUSPICIOUS_KEYWORDS.filter((entry) => normalized.includes(entry));
-  const blockedMatches = BLOCKED_KEYWORDS.filter((entry) => normalized.includes(entry));
+  const matchesKeyword = (entry = "") => {
+    const pattern = escapeRegExp(String(entry || "").trim().toLowerCase())
+      .replace(/\s+/g, "\\s+");
+    return pattern ? new RegExp(`\\b${pattern}\\b`, "i").test(normalized) : false;
+  };
+  const suspiciousMatches = SUSPICIOUS_KEYWORDS.filter(matchesKeyword);
+  const blockedMatches = BLOCKED_KEYWORDS.filter(matchesKeyword);
   return { suspiciousMatches, blockedMatches };
 };
 
@@ -174,6 +179,7 @@ const getDuplicateMatches = async ({
   contentType = "",
   fileHash = "",
   fingerprintHash = "",
+  excludeContentId = "",
 }) => {
   const target = getVerificationTarget({ creatorCategory, contentType });
   const titleRegex = title ? new RegExp(`^${escapeRegExp(title.trim())}$`, "i") : null;
@@ -202,20 +208,24 @@ const getDuplicateMatches = async ({
       : [],
   ]);
 
+  const isExcludedMatch = (entry = {}) =>
+    excludeContentId && String(entry?._id || "") === String(excludeContentId);
+  const filteredFingerprint = sameFingerprint.filter((entry) => !isExcludedMatch(entry));
+  const filteredTitle = sameTitle.filter((entry) => !isExcludedMatch(entry));
   const normalizedCreatorId = String(creatorProfileId || "");
-  const exactCreatorMatch = sameFingerprint.find((entry) => {
+  const exactCreatorMatch = filteredFingerprint.find((entry) => {
     const ownerId = String(entry?.creatorId || entry?.creatorProfileId || "");
     return ownerId && ownerId === normalizedCreatorId;
   });
-  const exactOtherCreatorMatch = sameFingerprint.find((entry) => {
+  const exactOtherCreatorMatch = filteredFingerprint.find((entry) => {
     const ownerId = String(entry?.creatorId || entry?.creatorProfileId || "");
     return ownerId && ownerId !== normalizedCreatorId;
   });
-  const duplicateTitleSameCreator = sameTitle.find((entry) => {
+  const duplicateTitleSameCreator = filteredTitle.find((entry) => {
     const ownerId = String(entry?.creatorId || entry?.creatorProfileId || "");
     return ownerId && ownerId === normalizedCreatorId;
   });
-  const duplicateTitleOtherCreator = sameTitle.find((entry) => {
+  const duplicateTitleOtherCreator = filteredTitle.find((entry) => {
     const ownerId = String(entry?.creatorId || entry?.creatorProfileId || "");
     return ownerId && ownerId !== normalizedCreatorId;
   });
@@ -237,6 +247,7 @@ const evaluateVerification = async ({
   description = "",
   primaryFile = null,
   metadata = {},
+  excludeContentId = "",
 }) => {
   const textForScreening = [title, description, metadata?.authorName, metadata?.seriesName]
     .filter(Boolean)
@@ -260,6 +271,7 @@ const evaluateVerification = async ({
     contentType,
     fileHash,
     fingerprintHash,
+    excludeContentId,
   });
 
   const notes = ["Queued for metadata and duplicate screening."];

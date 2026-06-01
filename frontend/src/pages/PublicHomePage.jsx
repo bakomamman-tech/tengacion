@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { getCreatorSummaryFeed, getPublicActivity, resolveImage } from "../api";
+import { getCreatorDiscovery, getCreatorSummaryFeed, getPublicActivity, resolveImage } from "../api";
 import SeoHead from "../components/seo/SeoHead";
 import {
   buildBreadcrumbJsonLd,
@@ -16,6 +16,7 @@ const PAGE_DESCRIPTION =
   "Discover African creators, stream songs, read books, listen to podcasts, follow public profiles, and support creator work on Tengacion.";
 const HOME_RELEASE_LIMIT = 6;
 const HOME_ACTIVITY_LIMIT = 6;
+const HOME_CREATOR_LIMIT = 4;
 
 const DISCOVERY_LINKS = [
   {
@@ -108,10 +109,31 @@ const PATHWAYS = [
 ];
 
 const TRUST_SIGNALS = [
+  "Verified creator badges",
+  "Approved seller checks",
   "Secured payment flow",
   "Refund and dispute policy",
   "Public reporting routes",
   "Copyright takedown process",
+];
+
+const AUDIENCE_BENEFITS = [
+  {
+    label: "Fans",
+    description: "Follow creators, sample releases, join public activity, and return to one profile for the full catalog.",
+  },
+  {
+    label: "Creators",
+    description: "Publish music, books, podcasts, videos, and public updates with shareable pages and creator-first discovery.",
+  },
+  {
+    label: "Sellers",
+    description: "Open approved storefronts, list products with delivery terms, and build buyer confidence inside the marketplace.",
+  },
+  {
+    label: "Communities",
+    description: "Connect around African talent with safety routes, content rules, and reporting paths visible from the public web.",
+  },
 ];
 
 const formatCount = (value = 0) => Number(value || 0).toLocaleString();
@@ -136,6 +158,8 @@ const truncateText = (value = "", maxLength = 140) => {
   }
   return `${normalized.slice(0, Math.max(0, maxLength - 1)).trim()}...`;
 };
+
+const getInitial = (value = "") => String(value || "T").trim().slice(0, 1).toUpperCase();
 
 const getCreatorName = (item = {}) =>
   item.creatorName ||
@@ -203,6 +227,13 @@ const getActivityKind = (post = {}) => {
 
 const getActivityRoute = (post = {}) => (post._id ? `/activity#post-${post._id}` : "/activity");
 
+const getCreatorAvatar = (creator = {}) => resolveImage(creator.avatar || creator.banner || "");
+
+const getCreatorRoute = (creator = {}) =>
+  creator.creatorRoute ||
+  creator.route ||
+  (creator.creatorId ? `/creators/${encodeURIComponent(creator.creatorId)}` : "/creators");
+
 const ReleaseSkeleton = () => (
   <article className="public-home-release public-home-release--loading" aria-hidden="true">
     <div className="public-home-release__art" />
@@ -217,6 +248,7 @@ const ReleaseSkeleton = () => (
 export default function PublicHomePage() {
   const [releaseItems, setReleaseItems] = useState([]);
   const [releaseTotal, setReleaseTotal] = useState(0);
+  const [featuredCreators, setFeaturedCreators] = useState([]);
   const [activityItems, setActivityItems] = useState([]);
   const [loadingProof, setLoadingProof] = useState(true);
   const [proofError, setProofError] = useState("");
@@ -229,12 +261,18 @@ export default function PublicHomePage() {
       setProofError("");
 
       try {
-        const [feedPayload, activityPayload] = await Promise.all([
+        const [feedResult, creatorResult, activityResult] = await Promise.allSettled([
           getCreatorSummaryFeed({
             category: "all",
             mode: "mixed",
             page: 1,
             limit: HOME_RELEASE_LIMIT,
+          }),
+          getCreatorDiscovery({
+            category: "all",
+            sort: "popular",
+            page: 1,
+            limit: HOME_CREATOR_LIMIT,
           }),
           getPublicActivity({ limit: HOME_ACTIVITY_LIMIT }),
         ]);
@@ -243,10 +281,20 @@ export default function PublicHomePage() {
           return;
         }
 
+        const feedPayload = feedResult.status === "fulfilled" ? feedResult.value : null;
+        const creatorPayload = creatorResult.status === "fulfilled" ? creatorResult.value : null;
+        const activityPayload = activityResult.status === "fulfilled" ? activityResult.value : null;
+        const failedLoads = [feedResult, creatorResult, activityResult].filter(
+          (result) => result.status === "rejected"
+        );
         const feedItems = Array.isArray(feedPayload?.items) ? feedPayload.items : [];
         setReleaseItems(feedItems);
         setReleaseTotal(Number(feedPayload?.total || feedItems.length || 0));
+        setFeaturedCreators(Array.isArray(creatorPayload?.items) ? creatorPayload.items : []);
         setActivityItems(Array.isArray(activityPayload) ? activityPayload : []);
+        if (failedLoads.length) {
+          setProofError("Some public content could not load right now.");
+        }
       } catch (err) {
         if (!isMounted) {
           return;
@@ -254,6 +302,7 @@ export default function PublicHomePage() {
         setProofError(err?.message || "Public content could not load right now.");
         setReleaseItems([]);
         setReleaseTotal(0);
+        setFeaturedCreators([]);
         setActivityItems([]);
       } finally {
         if (isMounted) {
@@ -271,6 +320,12 @@ export default function PublicHomePage() {
 
   const proofStats = useMemo(() => {
     const creatorKeys = new Set();
+    featuredCreators.forEach((creator) => {
+      const key = creator.creatorId || creator.id || creator.username || creator.name;
+      if (key) {
+        creatorKeys.add(String(key));
+      }
+    });
     releaseItems.forEach((item) => {
       const key = item.creatorId || item.creatorUsername || item.creatorRoute || getCreatorName(item);
       if (key) {
@@ -314,7 +369,7 @@ export default function PublicHomePage() {
         detail: "Reactions and comments from public posts",
       },
     ];
-  }, [activityItems, releaseItems, releaseTotal]);
+  }, [activityItems, featuredCreators, releaseItems, releaseTotal]);
 
   return (
     <main className="public-home">
@@ -352,8 +407,8 @@ export default function PublicHomePage() {
           <p className="public-home__eyebrow">African creator discovery network</p>
           <h1>Discover African creators before the world does.</h1>
           <p className="public-home__lede">
-            Stream songs, read books, listen to podcasts, follow creators, and support their work
-            on Tengacion.
+            Discover African creators, stream music, read books, listen to podcasts, shop trusted
+            sellers, and connect with people on Tengacion.
           </p>
           <div className="public-home__actions">
             <Link className="public-home__button public-home__button--primary" to="/creators">
@@ -368,9 +423,9 @@ export default function PublicHomePage() {
           </div>
 
           <div className="public-home__hero-proof" aria-label="Tengacion public proof points">
-            <span>Creator profiles</span>
+            <span>Verified creator profiles</span>
             <span>Music and books</span>
-            <span>Marketplace trust</span>
+            <span>Approved seller marketplace</span>
             <span>Safety routes</span>
           </div>
         </div>
@@ -384,6 +439,81 @@ export default function PublicHomePage() {
             <p>{stat.detail}</p>
           </div>
         ))}
+      </section>
+
+      <section className="public-home__section" aria-labelledby="public-home-creators-title">
+        <div className="public-home__section-head public-home__section-head--split">
+          <div>
+            <p className="public-home__eyebrow">Featured creators</p>
+            <h2 id="public-home-creators-title">Start with people, not empty shelves</h2>
+            <p>
+              Public creator cards give visitors names, categories, latest activity, trust signals,
+              and a clear path into each profile.
+            </p>
+          </div>
+          <Link className="public-home__section-link" to="/creators">
+            View creator directory
+          </Link>
+        </div>
+
+        {loadingProof ? (
+          <div className="public-home__creator-grid" aria-busy="true">
+            {[0, 1, 2, 3].map((entry) => (
+              <article key={entry} className="public-home-creator public-home-creator--loading">
+                <span />
+                <strong />
+                <p />
+              </article>
+            ))}
+          </div>
+        ) : featuredCreators.length ? (
+          <div className="public-home__creator-grid">
+            {featuredCreators.map((creator) => {
+              const avatar = getCreatorAvatar(creator);
+              const badges = Array.isArray(creator.trustBadges) ? creator.trustBadges : [];
+              return (
+                <Link
+                  key={creator.creatorId || creator.id || creator.username}
+                  className="public-home-creator"
+                  to={getCreatorRoute(creator)}
+                >
+                  <div className="public-home-creator__avatar" aria-hidden="true">
+                    {avatar ? (
+                      <img src={avatar} alt="" loading="lazy" />
+                    ) : (
+                      <span>{getInitial(creator.name || creator.username)}</span>
+                    )}
+                  </div>
+                  <div className="public-home-creator__body">
+                    <span>{creator.categoryLabels?.join(" / ") || creator.category || "Creator"}</span>
+                    <strong>{creator.name || "Tengacion creator"}</strong>
+                    <p>{truncateText(creator.bio || creator.tagline || "A creator on Tengacion.", 96)}</p>
+                    <div className="public-home-creator__meta">
+                      <small>{formatCount(creator.followerCount)} followers</small>
+                      <small>{formatCount(creator.contentCount)} releases</small>
+                    </div>
+                    <div className="public-home-creator__badges">
+                      {(badges.length ? badges : ["Public Profile"]).slice(0, 2).map((badge) => (
+                        <em key={badge}>{badge}</em>
+                      ))}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="public-home__empty">
+            <strong>Featured creators will appear as profiles are verified</strong>
+            <p>
+              Seed the directory with high-quality creator profiles so new visitors can explore
+              music, books, podcasts, and public updates immediately.
+            </p>
+            <Link className="public-home__inline-button" to="/creator/register">
+              Set up a creator profile
+            </Link>
+          </div>
+        )}
       </section>
 
       <section className="public-home__section public-home__section--live" aria-labelledby="public-home-live-title">
@@ -526,6 +656,26 @@ export default function PublicHomePage() {
               <strong>{entry.label}</strong>
               <p>{entry.description}</p>
             </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="public-home__section" aria-labelledby="public-home-join-title">
+        <div className="public-home__section-head">
+          <p className="public-home__eyebrow">Why join Tengacion?</p>
+          <h2 id="public-home-join-title">A platform for fans, creators, sellers, and communities</h2>
+          <p>
+            Tengacion works best when discovery, publishing, commerce, and public trust feel like
+            one connected product.
+          </p>
+        </div>
+
+        <div className="public-home__benefit-grid">
+          {AUDIENCE_BENEFITS.map((entry) => (
+            <article key={entry.label} className="public-home-benefit">
+              <strong>{entry.label}</strong>
+              <p>{entry.description}</p>
+            </article>
           ))}
         </div>
       </section>

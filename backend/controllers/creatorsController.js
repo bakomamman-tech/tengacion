@@ -471,11 +471,18 @@ exports.getCreatorSummaryFeed = asyncHandler(async (req, res) => {
 });
 
 exports.getCreatorDiscoveryDirectory = asyncHandler(async (req, res) => {
+  const verifiedOnly =
+    String(req.query?.verifiedOnly || "").toLowerCase() === "true"
+    || String(req.query?.verifiedOnly || "") === "1"
+    || String(req.query?.verified || "").toLowerCase() === "true"
+    || String(req.query?.verified || "") === "1";
+
   const payload = await buildCreatorDiscoveryDirectory({
     viewerId: req.user?.id || "",
     category: req.query?.category || "all",
     search: req.query?.search || "",
     sort: req.query?.sort || "popular",
+    verifiedOnly,
     page: req.query?.page || 1,
     limit: req.query?.limit || 12,
   });

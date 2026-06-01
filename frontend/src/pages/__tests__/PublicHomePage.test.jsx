@@ -3,9 +3,10 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import PublicHomePage from "../PublicHomePage";
-import { getCreatorSummaryFeed, getPublicActivity } from "../../api";
+import { getCreatorDiscovery, getCreatorSummaryFeed, getPublicActivity } from "../../api";
 
 vi.mock("../../api", () => ({
+  getCreatorDiscovery: vi.fn(),
   getCreatorSummaryFeed: vi.fn(),
   getPublicActivity: vi.fn(),
   resolveImage: (value) => value,
@@ -41,6 +42,25 @@ describe("PublicHomePage", () => {
           creatorName: "Ada Writes",
           summaryLabel: "Book",
           creatorRoute: "/creators/ada-writes",
+        },
+      ],
+    });
+
+    vi.mocked(getCreatorDiscovery).mockResolvedValue({
+      total: 1,
+      items: [
+        {
+          id: "creator-1",
+          creatorId: "creator-1",
+          name: "Zainab Sounds",
+          username: "zainab",
+          category: "Music",
+          categoryLabels: ["Music"],
+          bio: "Soulful northern music.",
+          followerCount: 120,
+          contentCount: 6,
+          creatorRoute: "/creator/zainab",
+          trustBadges: ["Verified Creator"],
         },
       ],
     });
@@ -84,9 +104,17 @@ describe("PublicHomePage", () => {
         page: 1,
         limit: 6,
       });
+      expect(getCreatorDiscovery).toHaveBeenCalledWith({
+        category: "all",
+        sort: "popular",
+        page: 1,
+        limit: 4,
+      });
       expect(getPublicActivity).toHaveBeenCalledWith({ limit: 6 });
     });
 
+    expect(await screen.findByText("Zainab Sounds")).toBeInTheDocument();
+    expect(screen.getByText("Verified Creator")).toBeInTheDocument();
     expect(await screen.findByText("Firelight")).toBeInTheDocument();
     expect(screen.getByText("Pyrexx_Singz")).toBeInTheDocument();
     expect(screen.getByText("Market Days")).toBeInTheDocument();

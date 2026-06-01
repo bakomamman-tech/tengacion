@@ -70,6 +70,7 @@ export default function FindCreatorsPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [sort, setSort] = useState("popular");
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -102,6 +103,7 @@ export default function FindCreatorsPage() {
           category,
           search,
           sort,
+          verifiedOnly,
           page: nextPage,
           limit: PAGE_SIZE,
         });
@@ -127,7 +129,7 @@ export default function FindCreatorsPage() {
         }
       }
     },
-    [category, search, sort]
+    [category, search, sort, verifiedOnly]
   );
 
   useEffect(() => {
@@ -171,6 +173,7 @@ export default function FindCreatorsPage() {
     setSearch("");
     setCategory("all");
     setSort("popular");
+    setVerifiedOnly(false);
     setPage(1);
     setItems([]);
   };
@@ -183,10 +186,14 @@ export default function FindCreatorsPage() {
     setPage(1);
     setCategory(filter.category || "all");
     setSort(filter.sort || "popular");
+    setVerifiedOnly(Boolean(filter.verifiedOnly));
   };
 
   const isQuickFilterActive = (filter) =>
-    !filter.path && category === filter.category && sort === filter.sort;
+    !filter.path
+    && category === filter.category
+    && sort === filter.sort
+    && verifiedOnly === Boolean(filter.verifiedOnly);
 
   return (
     <section className="creator-discovery-page creator-discovery-theme">
@@ -276,6 +283,7 @@ export default function FindCreatorsPage() {
                 setItems([]);
                 setPage(1);
                 setCategory(tab.id);
+                setVerifiedOnly(false);
               }}
             >
               {tab.label}
@@ -292,11 +300,26 @@ export default function FindCreatorsPage() {
                 setItems([]);
                 setPage(1);
                 setSort(option.id);
+                if (option.id !== "popular") {
+                  setVerifiedOnly(false);
+                }
               }}
             >
               {option.label}
             </button>
           ))}
+          <button
+            type="button"
+            className={verifiedOnly ? "is-active" : ""}
+            aria-pressed={verifiedOnly}
+            onClick={() => {
+              setItems([]);
+              setPage(1);
+              setVerifiedOnly((current) => !current);
+            }}
+          >
+            Verified only
+          </button>
         </div>
       </div>
 

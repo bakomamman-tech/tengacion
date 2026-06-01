@@ -83,4 +83,23 @@ describe("FindCreatorsPage", () => {
 
     expect(screen.getByRole("link", { name: /visit page/i })).toHaveAttribute("href", "/creator/jordan.bangoji");
   });
+
+  it("can limit discovery to verified creators", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/creators"]}>
+        <FindCreatorsPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("heading", { name: "Jordan Bangoji" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /verified only/i }));
+
+    await waitFor(() => {
+      expect(getCreatorDiscovery).toHaveBeenLastCalledWith(
+        expect.objectContaining({ verifiedOnly: true })
+      );
+    });
+  });
 });

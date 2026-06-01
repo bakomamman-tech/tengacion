@@ -147,6 +147,12 @@ export default function PublicContactPage() {
             <p className="public-contact-eyebrow">Report type</p>
             <h2>{selectedType.label}</h2>
             <p>{selectedType.helper}</p>
+            <ul className="public-contact-expectations">
+              <li>Child safety reports should be marked Child safety and treated as urgent review work.</li>
+              <li>Copyright reports should include the rights owner, work title, and source or Tengacion URL.</li>
+              <li>Payment or marketplace reports should include transaction, order, product, or seller details.</li>
+              <li>Privacy requests should include the account email and the action requested.</li>
+            </ul>
             <div className="public-contact-panel__links">
               <Link to="/community-guidelines">Community Guidelines</Link>
               <Link to="/child-safety">Child Safety Policy</Link>

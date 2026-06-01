@@ -15,6 +15,8 @@ export default function ProductCard({
   const createdAtMs = Date.parse(product?.createdAt || "");
   const isFreshListing = Number.isFinite(createdAtMs) && Date.now() - createdAtMs < 1000 * 60 * 60 * 48;
   const sellerName = product?.seller?.storeName || "Marketplace seller";
+  const sellerApproved = Boolean(product?.seller?.approvedBadge);
+  const stockCount = Number(product?.stock || 0);
   const locationLabel = product?.location?.label || product?.state || "Location set by seller";
 
   return (
@@ -40,6 +42,12 @@ export default function ProductCard({
 
         <div className="marketplace-product-card__price">
           NGN {Number(product?.price || 0).toLocaleString()}
+        </div>
+
+        <div className="marketplace-product-card__trust" aria-label="Marketplace trust signals">
+          {sellerApproved ? <span>Approved Seller</span> : null}
+          <span>Trusted Item</span>
+          <span>{stockCount > 0 ? `${stockCount.toLocaleString()} in stock` : "Stock check needed"}</span>
         </div>
 
         <div className="marketplace-pill-row">
@@ -82,15 +90,20 @@ export default function ProductCard({
             </div>
           </>
         ) : (
-          <div className="marketplace-card-meta marketplace-product-card__footer">
-            <span>{product?.condition || "new"}</span>
-            <Link
-              className="marketplace-link"
-              to={`/marketplace/product/${encodeURIComponent(product?.slug || product?._id || "")}`}
-            >
-              Open product
-            </Link>
-          </div>
+          <>
+            <p className="marketplace-product-card__buyer-note">
+              Buyer protection starts with approved sellers, clear delivery terms, and reportable product pages.
+            </p>
+            <div className="marketplace-card-meta marketplace-product-card__footer">
+              <span>{product?.condition || "new"}</span>
+              <Link
+                className="marketplace-link"
+                to={`/marketplace/product/${encodeURIComponent(product?.slug || product?._id || "")}`}
+              >
+                Open product
+              </Link>
+            </div>
+          </>
         )}
       </div>
     </article>

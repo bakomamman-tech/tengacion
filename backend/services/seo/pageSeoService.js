@@ -118,6 +118,11 @@ const PUBLIC_INFO_PAGES = {
     previewTitle: "About Tengacion",
     previewDescription:
       "Tengacion helps fans discover African creators across music, books, podcasts, videos, and public profiles.",
+    previewItems: [
+      { label: "Creator profiles", description: "Public pages connect releases, activity, and catalog depth back to the person behind the work." },
+      { label: "Marketplace trust", description: "Approved sellers and visible commerce rules help buyers understand product and delivery expectations." },
+      { label: "Public safety routes", description: "Terms, privacy, child safety, copyright, refunds, and reports are available outside the logged-in app." },
+    ],
   },
   "/how-it-works": {
     title: "How Tengacion Works | Creator Discovery, Profiles & Releases",
@@ -181,6 +186,11 @@ const PUBLIC_INFO_PAGES = {
     previewTitle: "Child safety on Tengacion",
     previewDescription:
       "Tengacion blocks suspected child exploitation, escalates urgent reports, and gives the public a child safety reporting path.",
+    previewItems: [
+      { label: "Blocked conduct", description: "Exploitation, grooming, coercion, sexualized minor content, and unsafe contact are prohibited." },
+      { label: "Urgent reports", description: "Child safety reports should include usernames, links, timestamps, and context where available." },
+      { label: "Escalation", description: "Severe reports can trigger account restriction, evidence preservation, and external escalation where required." },
+    ],
   },
   "/moderation-policy": {
     title: "Content Moderation Policy | Tengacion",
@@ -223,24 +233,56 @@ const PUBLIC_INFO_PAGES = {
     description:
       "Read the Tengacion Terms of Service covering platform rules, creator responsibilities, and paid features.",
     canonicalPath: "/terms",
+    previewTitle: "Tengacion Terms of Service",
+    previewDescription:
+      "Review account rules, content standards, creator monetization, marketplace selling, payments, refunds, reports, and enforcement.",
+    previewItems: [
+      { label: "Age and account rules", description: "Users must meet age requirements, keep account details accurate, and use the platform lawfully." },
+      { label: "Creator and seller responsibility", description: "Uploads, listings, payouts, and monetization require eligible content and accurate information." },
+      { label: "Payments and disputes", description: "Refund and payment issues are reviewed with transaction references, order details, and platform records." },
+    ],
   },
   "/privacy": {
     title: "Privacy Policy | Tengacion",
     description:
       "Learn how Tengacion processes account information, creator content, and privacy controls across the platform.",
     canonicalPath: "/privacy",
+    previewTitle: "Tengacion Privacy Policy",
+    previewDescription:
+      "Learn how Tengacion uses account, creator, marketplace, payment, safety, and technical information to operate and protect the platform.",
+    previewItems: [
+      { label: "Information used", description: "Account details, public content, payment references, reports, security events, and technical logs support platform operation." },
+      { label: "Controls and requests", description: "Users can request access, correction, deletion, or privacy review through public support routes." },
+      { label: "Safety retention", description: "Some records may be retained for disputes, fraud, safety, accounting, legal obligations, or platform integrity." },
+    ],
   },
   "/community-guidelines": {
     title: "Community Guidelines | Tengacion",
     description:
       "Review Tengacion community guidelines for respectful participation, safety, moderation, and reporting.",
     canonicalPath: "/community-guidelines",
+    previewTitle: "Tengacion Community Guidelines",
+    previewDescription:
+      "Review standards for respectful participation, prohibited content, creator rights, marketplace trust, reporting, and enforcement.",
+    previewItems: [
+      { label: "Respectful participation", description: "Harassment, threats, impersonation, coordinated abuse, spam, and scams are not allowed." },
+      { label: "Creator and rights standards", description: "Creators must publish work they own or have permission to use." },
+      { label: "Marketplace trust", description: "Listings must use accurate product, price, condition, stock, pickup, and delivery details." },
+    ],
   },
   "/copyright-policy": {
     title: "Copyright Policy | Tengacion",
     description:
       "Understand how Tengacion handles copyright screening, creator responsibilities, and flagged uploads.",
     canonicalPath: "/copyright-policy",
+    previewTitle: "Tengacion Copyright Policy",
+    previewDescription:
+      "Understand creator upload responsibility, rights reports, takedown review, creator responses, and payout-sensitive copyright handling.",
+    previewItems: [
+      { label: "Creator responsibility", description: "Creators must own or have permission to upload and monetize music, books, podcasts, videos, images, and metadata." },
+      { label: "Takedown reports", description: "Rights owners should include work title, rights owner, source URL, Tengacion URL, contact email, and issue details." },
+      { label: "Repeat issues", description: "Repeated infringement claims or false ownership statements can restrict creator tools, payouts, and account access." },
+    ],
   },
   "/contact": {
     title: "Contact Tengacion | Copyright, Safety and Privacy Reports",
@@ -855,7 +897,11 @@ const buildDirectoryPreviewMarkup = ({ title, description, items = [], emptyText
     parts.push('  <ul aria-label="Public Tengacion links">');
     items.forEach((item) => {
       parts.push("    <li>");
-      parts.push(`      <a href="${escapeHtmlAttribute(item.href)}">${escapeHtml(item.label)}</a>`);
+      if (item.href) {
+        parts.push(`      <a href="${escapeHtmlAttribute(item.href)}">${escapeHtml(item.label)}</a>`);
+      } else {
+        parts.push(`      <strong>${escapeHtml(item.label)}</strong>`);
+      }
       if (item.description) {
         parts.push(`      <p>${escapeHtml(truncateText(item.description, 180))}</p>`);
       }
@@ -873,6 +919,7 @@ const buildDirectoryPreviewMarkup = ({ title, description, items = [], emptyText
 const buildDirectoryPageSeo = async (pathname, page) => {
   const directory = DIRECTORY_PAGE_CONFIG[pathname];
   if (!directory) {
+    const previewItems = Array.isArray(page.previewItems) ? page.previewItems.filter(Boolean) : [];
     return buildSeoPayload({
       ...page,
       structuredData: [
@@ -881,6 +928,13 @@ const buildDirectoryPageSeo = async (pathname, page) => {
           { name: page.previewTitle || page.title, url: page.canonicalPath || pathname },
         ]),
       ],
+      previewHtml: previewItems.length
+        ? buildDirectoryPreviewMarkup({
+            title: page.previewTitle || page.title,
+            description: page.previewDescription || page.description,
+            items: previewItems,
+          })
+        : undefined,
     });
   }
 

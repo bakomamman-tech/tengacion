@@ -160,6 +160,20 @@
   line-height: 1.58;
 }
 
+.public-contact-expectations {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 0;
+  padding-left: 18px;
+  color: #54675b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.public-contact-expectations li::marker {
+  color: #2a6f4f;
+}
+
 .public-contact-panel__links {
   align-items: stretch;
   margin-top: 22px;

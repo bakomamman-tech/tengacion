@@ -932,11 +932,19 @@ export const getCreatorDiscovery = ({
   category = "all",
   search = "",
   sort = "popular",
+  verifiedOnly = false,
   page = 1,
   limit = 12,
 } = {}) =>
   request(
-    `${API_BASE}/creators/discover${buildQueryString({ category, search, sort, page, limit })}`,
+    `${API_BASE}/creators/discover${buildQueryString({
+      category,
+      search,
+      sort,
+      verifiedOnly: verifiedOnly ? "true" : "",
+      page,
+      limit,
+    })}`,
     {
       headers: getAuthHeaders(),
       cache: "no-store",

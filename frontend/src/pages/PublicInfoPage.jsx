@@ -24,16 +24,29 @@ const PAGE_CONFIG = {
         title: "What Tengacion brings together",
         body:
           "Creator profiles, music releases, digital books, podcast episodes, and public discovery pages live in one connected platform so fans can move from a release to a deeper creator catalog.",
+        items: [
+          "Music, books, podcasts, videos, marketplace listings, and public activity are connected through creator identity.",
+          "Public pages are designed for search, link previews, and visitors who are not logged in yet.",
+        ],
       },
       {
         title: "Who it is for",
         body:
           "Fans use Tengacion to discover talent, while creators use it to present their work, grow their audience, and make their public presence easier to share.",
+        items: [
+          "Fans can explore and follow.",
+          "Creators can publish and monetize eligible work.",
+          "Approved sellers can build commerce around trusted storefronts.",
+        ],
       },
       {
         title: "Why public pages matter",
         body:
           "Indexable public pages help creator work travel beyond private feeds, social posts, and chat links into search results and share previews.",
+        items: [
+          "Creator, release, marketplace, policy, and contact pages should build confidence before sign-up.",
+          "Public trust pages make safety, privacy, refunds, copyright, and reporting routes visible.",
+        ],
       },
     ],
     primaryAction: { path: "/creators", label: "Browse creators" },
@@ -220,16 +233,28 @@ const PAGE_CONFIG = {
         title: "Blocked content",
         body:
           "Content, messages, accounts, listings, or uploads that appear to involve child sexual exploitation, grooming, coercion, or sexualized minor content are blocked or escalated for review.",
+        items: [
+          "Do not upload, request, share, buy, sell, or link to exploitative minor-related content.",
+          "Do not use creator pages, messages, comments, marketplace listings, or live features to contact, groom, coerce, or exploit minors.",
+        ],
       },
       {
         title: "Urgent reporting",
         body:
           "Public reporters can use the contact form and choose Child safety so the issue is routed with higher urgency for admin review and preservation of relevant context.",
+        items: [
+          "Include links, usernames, screenshots context, timestamps, and a clear description when available.",
+          "Do not forward or redistribute illegal or exploitative material while reporting it.",
+        ],
       },
       {
         title: "Account action",
         body:
           "Tengacion may remove content, restrict accounts, preserve records for review, and escalate severe safety reports according to applicable law and platform obligations.",
+        items: [
+          "Severe reports can trigger immediate restriction while review is pending.",
+          "Child-safety reports may be escalated to appropriate external authorities or safety partners where required.",
+        ],
       },
     ],
     primaryAction: { path: "/contact", label: "Report child safety concern" },
@@ -276,16 +301,28 @@ const PAGE_CONFIG = {
         title: "Digital purchases",
         body:
           "Refund review may apply when a payment succeeds but access is not delivered, a duplicate charge occurs, or a platform-side payment error affects the purchase.",
+        items: [
+          "Requests should include transaction reference, account email, item link, amount, and issue summary.",
+          "Accessing or downloading paid digital content may limit refund eligibility unless there is a platform delivery problem.",
+        ],
       },
       {
         title: "Marketplace orders",
         body:
           "Marketplace refund or dispute review can consider seller approval status, product accuracy, delivery evidence, buyer reports, and order fulfillment records.",
+        items: [
+          "Eligible review reasons may include wrong item, missing item, duplicate charge, unavailable stock, or unresolved fulfillment issue.",
+          "Buyers and sellers may be asked for delivery proof, product photos, chat context, or order records.",
+        ],
       },
       {
         title: "How to request review",
         body:
           "Users should include the transaction reference, account email, product or creator link, and a clear explanation so Tengacion can trace payment, entitlement, and order records.",
+        items: [
+          "Refund and dispute outcomes can affect creator earnings, seller payouts, reserves, and account trust status.",
+          "Abusive, fraudulent, or repeated bad-faith requests may be restricted.",
+        ],
       },
     ],
     primaryAction: { path: "/contact", label: "Request refund review" },
@@ -419,6 +456,13 @@ export default function PublicInfoPage({ pageKey = "about" }) {
             <article key={section.title} className="public-info-card">
               <h2>{section.title}</h2>
               <p>{section.body}</p>
+              {Array.isArray(section.items) && section.items.length ? (
+                <ul>
+                  {section.items.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              ) : null}
             </article>
           ))}
         </div>

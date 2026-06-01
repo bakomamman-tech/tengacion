@@ -319,9 +319,19 @@
   gap: 14px;
 }
 
+.public-home__creator-grid,
+.public-home__benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
 .public-home-release,
 .public-home-activity,
-.public-home-path {
+.public-home-path,
+.public-home-creator,
+.public-home-benefit {
   border: 1px solid #c9d8cb;
   border-radius: 8px;
   background: #f9fbf6;
@@ -342,7 +352,9 @@
 .public-home-activity:hover,
 .public-home-activity:focus-visible,
 .public-home-path:hover,
-.public-home-path:focus-visible {
+.public-home-path:focus-visible,
+.public-home-creator:hover,
+.public-home-creator:focus-visible {
   border-color: #2a6f4f;
   outline: 0;
   transform: translateY(-2px);
@@ -438,6 +450,91 @@
   font-size: 19px;
 }
 
+.public-home-creator {
+  min-height: 268px;
+  display: grid;
+  grid-template-rows: 108px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.public-home-creator__avatar {
+  display: grid;
+  place-items: center;
+  background: #dbe7dc;
+  color: #17402b;
+  font-size: 34px;
+  font-weight: 900;
+  overflow: hidden;
+}
+
+.public-home-creator__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.public-home-creator__body {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+}
+
+.public-home-creator__body > span,
+.public-home-creator__badges em {
+  color: #8a6620;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.public-home-creator__body strong,
+.public-home-benefit strong {
+  color: #183326;
+  font-size: 17px;
+  line-height: 1.25;
+  font-weight: 900;
+}
+
+.public-home-creator__body p,
+.public-home-benefit p {
+  margin: 0;
+  color: #54675b;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.public-home-creator__meta,
+.public-home-creator__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.public-home-creator__meta small,
+.public-home-creator__badges em {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #edf4ed;
+}
+
+.public-home-creator__meta small {
+  color: #2a6f4f;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.public-home-benefit {
+  min-height: 164px;
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  padding: 18px;
+}
+
 .public-home__grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -499,7 +596,8 @@
 }
 
 .public-home-release--loading,
-.public-home-activity--loading {
+.public-home-activity--loading,
+.public-home-creator--loading {
   pointer-events: none;
 }
 
@@ -509,7 +607,10 @@
 .public-home-release--loading .public-home-release__body p,
 .public-home-activity--loading span,
 .public-home-activity--loading strong,
-.public-home-activity--loading p {
+.public-home-activity--loading p,
+.public-home-creator--loading span,
+.public-home-creator--loading strong,
+.public-home-creator--loading p {
   border-radius: 8px;
   background: linear-gradient(90deg, #dce6dc 0%, #edf3ea 50%, #dce6dc 100%);
   background-size: 220% 100%;
@@ -518,19 +619,22 @@
 }
 
 .public-home-release--loading .public-home-release__body span,
-.public-home-activity--loading span {
+.public-home-activity--loading span,
+.public-home-creator--loading span {
   width: 80px;
   height: 12px;
 }
 
 .public-home-release--loading .public-home-release__body strong,
-.public-home-activity--loading strong {
+.public-home-activity--loading strong,
+.public-home-creator--loading strong {
   width: 80%;
   height: 18px;
 }
 
 .public-home-release--loading .public-home-release__body p,
-.public-home-activity--loading p {
+.public-home-activity--loading p,
+.public-home-creator--loading p {
   width: 100%;
   height: 42px;
 }
@@ -599,7 +703,9 @@
 
   .public-home__proof,
   .public-home__path-grid,
-  .public-home__grid {
+  .public-home__grid,
+  .public-home__creator-grid,
+  .public-home__benefit-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -650,6 +756,8 @@
   .public-home__release-grid,
   .public-home__path-grid,
   .public-home__grid,
+  .public-home__creator-grid,
+  .public-home__benefit-grid,
   .public-home__trust-links {
     display: grid;
     grid-template-columns: 1fr;

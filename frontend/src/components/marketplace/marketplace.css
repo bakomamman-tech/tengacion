@@ -374,6 +374,31 @@
   color: #0f4e6f;
 }
 
+.marketplace-product-card__trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.marketplace-product-card__trust span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(33, 132, 92, 0.1);
+  color: #126845;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.marketplace-product-card__buyer-note {
+  margin: 0;
+  color: #5b7283;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
 .marketplace-card-meta {
   display: flex;
   justify-content: space-between;

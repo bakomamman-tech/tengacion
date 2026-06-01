@@ -49,6 +49,7 @@ const seedCreator = async ({
   subscriptionPrice = 2500,
   coverImageUrl = "",
   userAvatar = "",
+  isVerified = true,
 }) => {
   const user = await User.create({
     name,
@@ -57,7 +58,7 @@ const seedCreator = async ({
     password: "Password123!",
     role: "artist",
     isArtist: true,
-    isVerified: true,
+    isVerified,
     avatar: userAvatar || undefined,
   });
 
@@ -213,6 +214,35 @@ describe("creator discovery routes", () => {
       username: "jordan.bangoji",
       route: "/creator/jordan.bangoji",
       subscribeRoute: `/creators/${creator._id.toString()}/subscribe`,
+    });
+  });
+
+  it("can return only verified creators for public discovery trust filters", async () => {
+    await seedCreator({
+      name: "Verified Artist",
+      username: "verified_artist",
+      displayName: "Verified Artist",
+      creatorTypes: ["music"],
+      isVerified: true,
+    });
+    await seedCreator({
+      name: "New Artist",
+      username: "new_artist",
+      displayName: "New Artist",
+      creatorTypes: ["music"],
+      isVerified: false,
+    });
+
+    const response = await request(app)
+      .get("/api/creators/discover?verifiedOnly=true&limit=10")
+      .expect(200);
+
+    expect(response.body.verifiedOnly).toBe(true);
+    expect(response.body.items.map((item) => item.username)).toEqual(["verified_artist"]);
+    expect(response.body.items[0]).toMatchObject({
+      isVerified: true,
+      trustBadges: expect.arrayContaining(["Verified Creator", "Active Profile"]),
+      locationLabel: "Nigeria",
     });
   });
 });

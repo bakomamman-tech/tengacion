@@ -710,6 +710,7 @@ const buildCreatorDiscoveryDirectory = async ({
   category = "all",
   search = "",
   sort = "popular",
+  verifiedOnly = false,
   page = 1,
   limit = 12,
 }) => {
@@ -757,9 +758,19 @@ const buildCreatorDiscoveryDirectory = async ({
         username: "$user.username",
         avatar: "$user.avatar",
         userName: "$user.name",
+        isVerified: { $eq: ["$user.isVerified", true] },
+        emailVerified: { $eq: ["$user.emailVerified", true] },
       },
     },
   ];
+
+  if (verifiedOnly) {
+    basePipeline.push({
+      $match: {
+        isVerified: true,
+      },
+    });
+  }
 
   if (searchRegex) {
     basePipeline.push({
@@ -972,6 +983,15 @@ const buildCreatorDiscoveryDirectory = async ({
       subscribed,
       canSubscribe: Number(entry.subscriptionPrice || 0) > 0,
       subscriptionPrice: Number(entry.subscriptionPrice || 0),
+      isVerified: Boolean(entry.isVerified),
+      emailVerified: Boolean(entry.emailVerified),
+      status: entry.status || "active",
+      locationLabel: entry.countryOfResidence || entry.country || "",
+      trustBadges: [
+        ...(entry.isVerified ? ["Verified Creator"] : []),
+        ...(entry.status === "active" ? ["Active Profile"] : []),
+        ...(entry.emailVerified && !entry.isVerified ? ["Email Checked"] : []),
+      ],
       tagline: entry.tagline || "",
       latestContentAt:
         latestByCreator.get(key) || entry.updatedAt || entry.createdAt || null,
@@ -1011,6 +1031,7 @@ const buildCreatorDiscoveryDirectory = async ({
     limit: pageSize,
     total,
     hasMore: offset + pageSize < total,
+    verifiedOnly: Boolean(verifiedOnly),
     items,
   };
 };

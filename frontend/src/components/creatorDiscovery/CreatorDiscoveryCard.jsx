@@ -30,6 +30,12 @@ export default function CreatorDiscoveryCard({ item }) {
   const categoryLabel = String(item?.category || item?.categoryLabels?.[0] || "Creator").trim();
   const canSubscribe = Boolean(item?.canSubscribe);
   const isSubscribed = Boolean(item?.subscribed);
+  const trustBadges = Array.isArray(item?.trustBadges)
+    ? item.trustBadges.filter(Boolean)
+    : [
+        ...(item?.isVerified ? ["Verified Creator"] : []),
+        ...(item?.status === "active" ? ["Active Profile"] : []),
+      ];
   const creatorRoute = String(item?.creatorRoute || "").trim() || buildCreatorPublicPath({
     creatorId: item?.creatorId,
     username: item?.username,
@@ -88,6 +94,9 @@ export default function CreatorDiscoveryCard({ item }) {
           </div>
         )}
         <span className="creator-discovery-card__badge">{categoryLabel}</span>
+        {item?.isVerified ? (
+          <span className="creator-discovery-card__verified">Verified Creator</span>
+        ) : null}
       </div>
 
       <div className="creator-discovery-card__body">
@@ -120,9 +129,18 @@ export default function CreatorDiscoveryCard({ item }) {
         <div className="creator-discovery-card__meta-list">
           <span>{Number(item?.followerCount || 0).toLocaleString()} followers</span>
           <span>{Number(item?.contentCount || 0).toLocaleString()} releases</span>
+          {item?.locationLabel ? <span>{item.locationLabel}</span> : null}
           {item?.subscriptionPrice > 0 ? <span>{formatCurrency(item.subscriptionPrice)}</span> : <span>Free to follow</span>}
           {item?.latestContentAt ? <span>Updated recently</span> : null}
         </div>
+
+        {trustBadges.length ? (
+          <div className="creator-discovery-card__trust" aria-label={`${item?.name || "Creator"} trust signals`}>
+            {trustBadges.slice(0, 3).map((badge) => (
+              <span key={badge}>{badge}</span>
+            ))}
+          </div>
+        ) : null}
 
         <div className="creator-discovery-card__actions">
           <Link

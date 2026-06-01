@@ -459,6 +459,23 @@
   letter-spacing: 0.08em;
 }
 
+.creator-discovery-card__verified {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(248, 243, 231, 0.92);
+  color: var(--creator-discovery-accent-strong);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .creator-summary-card__body,
 .creator-discovery-card__body {
   display: grid;
@@ -550,7 +567,8 @@
 }
 
 .creator-summary-card__meta,
-.creator-discovery-card__meta-list {
+.creator-discovery-card__meta-list,
+.creator-discovery-card__trust {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -564,6 +582,16 @@
   border-radius: 999px;
   background: rgba(255, 248, 238, 0.82);
   border: 1px solid rgba(70, 56, 31, 0.08);
+}
+
+.creator-discovery-card__trust span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(31, 75, 52, 0.1);
+  border: 1px solid rgba(31, 75, 52, 0.14);
+  color: var(--creator-discovery-accent-strong);
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 .creator-summary-card__actions,

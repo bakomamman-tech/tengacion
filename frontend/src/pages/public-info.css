@@ -186,6 +186,20 @@
   line-height: 1.58;
 }
 
+.public-info-card ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: #54675b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.public-info-card li::marker {
+  color: #2a6f4f;
+}
+
 .public-info-band {
   width: min(1120px, calc(100% - 32px));
   display: flex;

@@ -85,8 +85,10 @@ const normalizePreviewPayload = ({
   mode = "preview",
   streamPayload = null,
 }) => {
+  const mediaType = String(item.mediaType || "").trim().toLowerCase();
+  const itemType = normalizePurchaseType(item.itemType || item.productType || mediaType);
   const defaultPreviewLimitSec =
-    item.itemType === "track" || item.itemType === "podcast" ? 30 : 0;
+    itemType === "track" || itemType === "podcast" ? 30 : 0;
   const previewStartSec = Math.max(
     0,
     Number(streamPayload?.previewStartSec ?? item.previewStartSec ?? 0)
@@ -103,27 +105,54 @@ const normalizePreviewPayload = ({
     Boolean(streamPayload?.previewOnly) ||
     Boolean(
       mode === "stream"
-        && item.mediaType === "audio"
+        && mediaType === "audio"
         && !item.canAccessFull
         && previewLimitSec > 0
     );
 
   return {
     id: item.id,
-    kind: item.mediaType,
+    itemType,
+    kind: mediaType,
     title: item.title,
     subtitle: item.subtitle || "",
-    artwork: item.coverUrl || "",
+    artwork: item.coverUrl || item.coverImageUrl || item.thumbnailUrl || "",
     src,
     mode,
     durationSec: Number(item.durationSec || 0),
     previewStartSec,
     previewLimitSec,
     enforcePreviewWindow:
-      item.mediaType === "audio"
+      mediaType === "audio"
       && previewLimitSec > 0
       && (mode === "preview" || previewOnly),
   };
+};
+
+const shouldRenderCoverPreview = (preview = {}) =>
+  normalizePurchaseType(preview?.itemType || preview?.kind || "") === "book";
+
+const resolvePreviewStatusLabel = (preview = {}) => {
+  const itemType = normalizePurchaseType(preview?.itemType || preview?.kind || "");
+  const kind = String(preview?.kind || "").trim().toLowerCase();
+
+  if (itemType === "book") {
+    return preview?.mode === "stream" ? "Reading now" : "Reading preview";
+  }
+
+  if (preview?.mode !== "stream") {
+    return "Previewing";
+  }
+
+  if (itemType === "podcast") {
+    return "Now listening";
+  }
+
+  if (itemType === "video" || kind === "video") {
+    return "Now watching";
+  }
+
+  return "Now streaming";
 };
 
 function CreatorPublicAudioPreview({ preview }) {
@@ -669,6 +698,9 @@ export default function CreatorHubPage() {
     if (item.mediaType === "document") {
       const previewUrl = item.previewUrl || item.streamUrl || item.route;
       if (previewUrl) {
+        setActivePreview(
+          normalizePreviewPayload({ item, src: previewUrl, mode: "preview" })
+        );
         window.open(previewUrl, "_blank", "noopener,noreferrer");
       } else {
         toast.error("Preview unavailable for this book.");
@@ -696,6 +728,9 @@ export default function CreatorHubPage() {
     if (item.mediaType === "document") {
       const targetUrl = item.streamUrl;
       if (targetUrl) {
+        setActivePreview(
+          normalizePreviewPayload({ item, src: targetUrl, mode: "stream" })
+        );
         window.open(targetUrl, "_blank", "noopener,noreferrer");
         return;
       }
@@ -808,6 +843,9 @@ export default function CreatorHubPage() {
       })
     );
   }, [books, music.albums, music.tracks, music.videos, podcasts.episodes, requestedPreviewId]);
+
+  const activePreviewStatusLabel = resolvePreviewStatusLabel(activePreview);
+  const activePreviewShowsCover = shouldRenderCoverPreview(activePreview);
 
   if (loading) {
     return (
@@ -1148,7 +1186,7 @@ export default function CreatorHubPage() {
                 <>
                   <div className="creator-public-preview__head">
                     <div>
-                      <p>{activePreview.mode === "stream" ? "Now streaming" : "Previewing"}</p>
+                      <p>{activePreviewStatusLabel}</p>
                       <strong>{activePreview.title}</strong>
                       {activePreview.subtitle ? <span>{activePreview.subtitle}</span> : null}
                     </div>
@@ -1157,6 +1195,16 @@ export default function CreatorHubPage() {
                     <video className="creator-public-preview__player" controls src={activePreview.src} poster={activePreview.artwork} />
                   ) : activePreview.kind === "audio" ? (
                     <CreatorPublicAudioPreview preview={activePreview} />
+                  ) : activePreviewShowsCover ? (
+                    <div className="creator-public-preview__cover">
+                      {activePreview.artwork ? (
+                        <img src={resolveImage(activePreview.artwork)} alt={`${activePreview.title} cover`} />
+                      ) : (
+                        <div className="creator-public-preview__empty">
+                          Book cover unavailable.
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <iframe className="creator-public-preview__frame" src={activePreview.src} title={activePreview.title} />
                   )}

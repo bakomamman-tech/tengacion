@@ -136,11 +136,12 @@ const buildCreatorPayload = () => ({
   },
 });
 
-const renderCreatorHub = () =>
+const renderCreatorHub = (initialEntry = `/creators/${creatorId}`) =>
   render(
-    <MemoryRouter initialEntries={[`/creators/${creatorId}`]}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/creators/:creatorId" element={<CreatorHubPage />} />
+        <Route path="/creators/:creatorId/:tab" element={<CreatorHubPage />} />
       </Routes>
     </MemoryRouter>
   );
@@ -220,5 +221,58 @@ describe("CreatorHubPage recommendations", () => {
     expect(await screen.findByRole("heading", { name: /top singles/i })).toBeInTheDocument();
     expect(screen.getByText("Recommended Track")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /recommended for you/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a book cover in the hero preview without music streaming copy", async () => {
+    const payload = buildCreatorPayload();
+    const book = {
+      id: "book-1",
+      itemType: "book",
+      mediaType: "document",
+      title: "The Rustle of Death",
+      subtitle: "Tragedy / PDF",
+      description: "A gripping African cultural tragedy.",
+      coverUrl: "https://cdn.test/books/rustle-cover.jpg",
+      previewUrl: "/books/book-1",
+      streamUrl: "/books/book-1",
+      route: "/books/book-1",
+      price: 0,
+      canPreview: true,
+      canStream: true,
+      canDownload: true,
+      canBuy: false,
+    };
+
+    getPublicCreatorProfileMock.mockResolvedValue({
+      ...payload,
+      creator: {
+        ...payload.creator,
+        creatorTypes: ["bookPublishing"],
+      },
+      stats: {
+        ...payload.stats,
+        totalTracks: 0,
+        totalBooks: 1,
+      },
+      featured: {
+        headline: "New reading release",
+        item: book,
+      },
+      music: {
+        tracks: [],
+        albums: [],
+        videos: [],
+      },
+      books: [book],
+    });
+
+    renderCreatorHub(`/creators/${creatorId}/books?previewItem=book-1`);
+
+    expect(await screen.findByText("Reading now")).toBeInTheDocument();
+    expect(screen.queryByText(/^Now streaming$/i)).not.toBeInTheDocument();
+    expect(screen.getByAltText("The Rustle of Death cover")).toHaveAttribute(
+      "src",
+      "https://cdn.test/books/rustle-cover.jpg"
+    );
   });
 });

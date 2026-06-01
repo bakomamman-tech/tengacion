@@ -45,6 +45,9 @@ const {
   buildAssuranceDashboard,
 } = require("../services/assuranceDashboardService");
 const {
+  buildCapitalReadiness,
+} = require("../services/capitalReadinessService");
+const {
   listAdminCreatorPayoutRequests,
   updateCreatorPayoutRequestStatus,
 } = require("../services/creatorPayoutRequestService");
@@ -392,6 +395,20 @@ router.get("/assurance/dashboard", async (req, res) => {
     return res
       .status(code)
       .json({ error: err.message || "Failed to load assurance dashboard" });
+  }
+});
+
+router.get("/capital/readiness", async (req, res) => {
+  try {
+    return res.json(await buildCapitalReadiness({
+      ...getAnalyticsFilters(req),
+      startingCashBalance: req.query.startingCashBalance,
+    }));
+  } catch (err) {
+    const code = /invalid/i.test(String(err?.message || "")) ? 400 : 500;
+    return res
+      .status(code)
+      .json({ error: err.message || "Failed to load capital readiness" });
   }
 });
 

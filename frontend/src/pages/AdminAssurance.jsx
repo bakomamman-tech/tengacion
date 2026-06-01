@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import AdminShell from "../components/AdminShell";
-import { adminGetAssuranceDashboard } from "../api";
+import { adminGetAssuranceDashboard, adminGetCapitalReadiness } from "../api";
 
 const RANGE_OPTIONS = [
   { value: "7d", label: "Last 7 days" },
@@ -13,6 +13,12 @@ const RANGE_OPTIONS = [
 
 const number = (value) => Number(value || 0).toLocaleString();
 const percent = (value) => `${Math.round(Number(value || 0) * 100)}%`;
+const money = (value = {}) => {
+  if (!value || value.amount === null || value.amount === undefined) {
+    return "-";
+  }
+  return `${value.currency || "NGN"} ${number(value.amount)}`;
+};
 
 const eventLabel = (value = "") =>
   String(value || "")
@@ -23,10 +29,31 @@ const eventLabel = (value = "") =>
 
 const statusClass = (value = "") => {
   const normalized = String(value || "").trim().toLowerCase();
-  if (["blocked", "critical", "high", "needs_review", "withdrawn"].includes(normalized)) {
+  if (["blocked", "critical", "high", "needs_review", "withdrawn", "not_ready", "restricted"].includes(normalized)) {
     return "adminx-badge adminx-badge--danger";
   }
-  if (["watch", "medium", "delayed", "stale", "disputed", "pending", "needs_contract"].includes(normalized)) {
+  if (
+    [
+      "watch",
+      "medium",
+      "delayed",
+      "stale",
+      "disputed",
+      "pending",
+      "needs_contract",
+      "near_ready",
+      "evidence_needed",
+      "remediation_needed",
+      "conditional",
+      "internal_with_conditions",
+      "internal_draft",
+      "internal_only",
+      "cash_balance_required",
+      "coverage_gap",
+      "not_configured",
+      "not_approved_for_external_use",
+    ].includes(normalized)
+  ) {
     return "adminx-badge adminx-badge--warn";
   }
   return "adminx-badge adminx-badge--good";
@@ -44,6 +71,7 @@ export default function AdminAssurancePage({ user }) {
   const navigate = useNavigate();
   const [range, setRange] = useState("30d");
   const [payload, setPayload] = useState(null);
+  const [capitalPayload, setCapitalPayload] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -51,7 +79,12 @@ export default function AdminAssurancePage({ user }) {
     setLoading(true);
     setError("");
     try {
-      setPayload(await adminGetAssuranceDashboard({ range }));
+      const [assurance, capital] = await Promise.all([
+        adminGetAssuranceDashboard({ range }),
+        adminGetCapitalReadiness({ range }),
+      ]);
+      setPayload(assurance);
+      setCapitalPayload(capital);
     } catch (err) {
       setError(err?.message || "Failed to load assurance dashboard");
     } finally {
@@ -71,6 +104,13 @@ export default function AdminAssurancePage({ user }) {
   const alerts = payload?.alerts || [];
   const readinessGates = payload?.readinessGates || [];
   const standard = payload?.evidencePackStandard || {};
+  const capitalSummary = capitalPayload?.summary || {};
+  const capitalScorecard = capitalPayload?.scorecard || [];
+  const runwayScenarios = capitalPayload?.runwayScenarios || [];
+  const useOfFundsGates = capitalPayload?.useOfFundsGates || [];
+  const claimRegister = capitalPayload?.claimRegister || [];
+  const capitalRisks = capitalPayload?.riskRegister || [];
+  const dataRoomPackets = capitalPayload?.dataRoomPackets || [];
 
   const headlineCards = [
     ["Readiness", eventLabel(summary.readinessState || "unknown")],
@@ -81,6 +121,22 @@ export default function AdminAssurancePage({ user }) {
     ["Blockers", number(summary.blockerCount)],
     ["Needs Review", number(summary.needsReviewCount)],
     ["High Severity", number(summary.highSeverityCount)],
+  ];
+
+  const capitalCards = [
+    [
+      "Capital Score",
+      capitalSummary.readinessScore === null || capitalSummary.readinessScore === undefined
+        ? "-"
+        : `${capitalSummary.readinessScore}/100`,
+    ],
+    ["Recommended Path", capitalSummary.recommendedPath?.title || "-"],
+    ["Ready Areas", `${number(capitalSummary.readyCount)} / ${number(capitalSummary.totalScorecardAreas)}`],
+    ["Evidence Needed", number(capitalSummary.evidenceNeededCount)],
+    ["Capital Blockers", number(capitalSummary.blockerCount)],
+    ["Advisor Claims", `${number(capitalSummary.advisorApprovedClaimCount)} / ${number(capitalSummary.claimCount)}`],
+    ["Ready Spend Gates", `${number(capitalSummary.readyUseOfFundsGateCount)} / ${number(capitalSummary.useOfFundsGateCount)}`],
+    ["High Capital Risks", number(capitalSummary.highRiskCount)],
   ];
 
   return (
@@ -118,6 +174,191 @@ export default function AdminAssurancePage({ user }) {
               </article>
             ))}
           </div>
+
+          {capitalPayload ? (
+            <>
+              <section className="adminx-panel adminx-panel--span-12">
+                <div className="adminx-panel-head">
+                  <div>
+                    <h2 className="adminx-panel-title">Capital Readiness</h2>
+                    <span className="adminx-section-meta">
+                      Scorecard, runway scenarios, spend gates, claims, and diligence blockers from the capital roadmap.
+                    </span>
+                  </div>
+                  <span className={statusClass(capitalSummary.readinessState)}>
+                    {eventLabel(capitalSummary.readinessState || "unknown")}
+                  </span>
+                </div>
+                <div className="adminx-ops-grid">
+                  {capitalCards.map(([label, value]) => (
+                    <div key={label} className="adminx-ops-metric">
+                      <span>{label}</span>
+                      <strong>{value}</strong>
+                    </div>
+                  ))}
+                </div>
+                {capitalSummary.recommendedPath?.rationale ? (
+                  <div className="adminx-muted">{capitalSummary.recommendedPath.rationale}</div>
+                ) : null}
+              </section>
+
+              <section className="adminx-panel adminx-panel--span-12">
+                <div className="adminx-panel-head">
+                  <h2 className="adminx-panel-title">Runway Scenario Inputs</h2>
+                  <span className="adminx-section-meta">{number(runwayScenarios.length)} scenarios</span>
+                </div>
+                <div className="adminx-alert-list adminx-alert-list--inline">
+                  {runwayScenarios.map((scenario) => (
+                    <article key={scenario.key} className="adminx-alert-item">
+                      <div className="adminx-row">
+                        <strong>{scenario.title}</strong>
+                        <span className={statusClass(scenario.runwayStatus)}>
+                          {eventLabel(scenario.runwayStatus)}
+                        </span>
+                      </div>
+                      <div className="adminx-muted">{scenario.assumption}</div>
+                      <div className="adminx-ops-grid">
+                        <div className="adminx-ops-metric">
+                          <span>GMV</span>
+                          <strong>{money(scenario.grossPaidAmount)}</strong>
+                        </div>
+                        <div className="adminx-ops-metric">
+                          <span>Platform Revenue</span>
+                          <strong>{money(scenario.platformRevenue)}</strong>
+                        </div>
+                        <div className="adminx-ops-metric">
+                          <span>Operating Cost</span>
+                          <strong>{money(scenario.operatingCost)}</strong>
+                        </div>
+                        <div className="adminx-ops-metric">
+                          <span>Net Burn</span>
+                          <strong>{money(scenario.netBurn)}</strong>
+                        </div>
+                      </div>
+                      <div className="adminx-pill-row">
+                        {(scenario.inputLabels || []).slice(0, 5).map((input) => (
+                          <span key={input.key} className={statusClass(input.classification)}>
+                            {input.label}: {eventLabel(input.classification)}
+                          </span>
+                        ))}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              <section className="adminx-panel adminx-panel--span-12">
+                <div className="adminx-panel-head">
+                  <h2 className="adminx-panel-title">Capital Scorecard</h2>
+                  <span className="adminx-section-meta">{number(capitalScorecard.length)} readiness areas</span>
+                </div>
+                <div className="adminx-table-wrap adminx-table-wrap--flush">
+                  <table className="adminx-table">
+                    <thead>
+                      <tr>
+                        <th>Area</th>
+                        <th>Owner</th>
+                        <th>State</th>
+                        <th>Latest Evidence</th>
+                        <th>External Use</th>
+                        <th>Gap</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {capitalScorecard.map((entry) => (
+                        <tr key={entry.key}>
+                          <td>
+                            <strong>{entry.title}</strong>
+                            <div className="adminx-muted">{entry.workstream}</div>
+                          </td>
+                          <td>{entry.owner}</td>
+                          <td><span className={statusClass(entry.state)}>{eventLabel(entry.state)}</span></td>
+                          <td>{entry.latestMetric}</td>
+                          <td>
+                            <span className={statusClass(entry.externalUseAllowed ? "approved_for_advisor_review" : entry.approvalState)}>
+                              {entry.externalUseAllowed ? "Advisor Review" : eventLabel(entry.approvalState)}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="adminx-muted">{(entry.gaps || [])[0] || entry.decisionRule}</div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="adminx-panel adminx-panel--span-12">
+                <div className="adminx-panel-head">
+                  <h2 className="adminx-panel-title">Use-of-funds Gates</h2>
+                  <span className="adminx-section-meta">{number(useOfFundsGates.length)} categories</span>
+                </div>
+                <div className="adminx-alert-list adminx-alert-list--inline">
+                  {useOfFundsGates.map((gate) => (
+                    <article key={gate.key} className="adminx-alert-item">
+                      <div className="adminx-row">
+                        <strong>{gate.title}</strong>
+                        <span className={statusClass(gate.gateState)}>{eventLabel(gate.gateState)}</span>
+                      </div>
+                      <div className="adminx-muted">{gate.owner} - {gate.budgetRange}</div>
+                      <div className="adminx-muted">{gate.milestoneTrigger}</div>
+                      <div className="adminx-muted">{gate.stopLossRule}</div>
+                      {gate.blockingDependencies?.length ? (
+                        <div className="adminx-pill-row">
+                          {gate.blockingDependencies.slice(0, 4).map((dependency) => (
+                            <span key={dependency.key} className={statusClass(dependency.state)}>
+                              {dependency.title}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              <section className="adminx-panel adminx-panel--span-12">
+                <div className="adminx-panel-head">
+                  <h2 className="adminx-panel-title">Claims, Data-room, And Capital Risks</h2>
+                  <span className="adminx-section-meta">
+                    {number(claimRegister.length)} claims - {number(dataRoomPackets.length)} packets - {number(capitalRisks.length)} risks
+                  </span>
+                </div>
+                <div className="adminx-alert-list adminx-alert-list--inline">
+                  {claimRegister.slice(0, 6).map((claim) => (
+                    <article key={claim.key} className="adminx-alert-item">
+                      <div className="adminx-row">
+                        <strong>{claim.title}</strong>
+                        <span className={statusClass(claim.approvalState)}>{eventLabel(claim.approvalState)}</span>
+                      </div>
+                      <div className="adminx-muted">{claim.value}</div>
+                      <div className="adminx-muted">{claim.approvalRule}</div>
+                    </article>
+                  ))}
+                  {dataRoomPackets.slice(0, 4).map((packet) => (
+                    <article key={packet.key} className="adminx-alert-item">
+                      <div className="adminx-row">
+                        <strong>{packet.title}</strong>
+                        <span className={statusClass(packet.shareState)}>{eventLabel(packet.shareState)}</span>
+                      </div>
+                      <div className="adminx-muted">{packet.accessRule}</div>
+                    </article>
+                  ))}
+                  {capitalRisks.slice(0, 6).map((risk) => (
+                    <article key={risk.key} className="adminx-alert-item">
+                      <div className="adminx-row">
+                        <strong>{risk.title}</strong>
+                        <span className={statusClass(risk.severity)}>{eventLabel(risk.severity)}</span>
+                      </div>
+                      <div className="adminx-muted">{risk.owner}</div>
+                      <div className="adminx-muted">{risk.nextAction || risk.mitigation}</div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </>
+          ) : null}
 
           <section className="adminx-panel adminx-panel--span-12">
             <div className="adminx-panel-head">

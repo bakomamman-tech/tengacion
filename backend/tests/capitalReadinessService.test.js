@@ -7,6 +7,8 @@ const CreatorProfile = require("../models/CreatorProfile");
 const Purchase = require("../models/Purchase");
 const User = require("../models/User");
 const {
+  DILIGENCE_PIPELINE_DEFINITIONS,
+  DILIGENCE_QA_DEFINITIONS,
   FINANCING_PATH_DEFINITIONS,
   USE_OF_FUNDS_DEFINITIONS,
   buildCapitalReadiness,
@@ -149,6 +151,33 @@ describe("capitalReadinessService", () => {
         }),
       ])
     );
+    expect(report.diligencePipeline).toHaveLength(DILIGENCE_PIPELINE_DEFINITIONS.length);
+    expect(report.diligencePipeline).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "strategic_partner_capital",
+          controls: expect.arrayContaining(["approved_packet_required", "q_and_a_owner_review"]),
+          conversationState: expect.stringMatching(/hold_for_evidence|blocked_for_remediation|do_not_contact/),
+        }),
+      ])
+    );
+    expect(report.diligenceQaWorkflow).toHaveLength(DILIGENCE_QA_DEFINITIONS.length);
+    expect(report.diligenceQaWorkflow).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "revenue_quality",
+          responseState: "draft_needs_evidence",
+          responseControls: expect.arrayContaining(["cite_source_evidence", "respect_approval_state"]),
+        }),
+      ])
+    );
+    expect(report.summary).toMatchObject({
+      diligenceTargetCount: DILIGENCE_PIPELINE_DEFINITIONS.length,
+      diligenceQaCount: DILIGENCE_QA_DEFINITIONS.length,
+    });
+    expect(report.sourceSystems).toEqual(
+      expect.arrayContaining(["capital_diligence_pipeline", "capital_diligence_qa_workflow"])
+    );
   });
 
   test("withdraws capital claims when finance evidence is blocked", async () => {
@@ -208,6 +237,28 @@ describe("capitalReadinessService", () => {
         expect.objectContaining({
           title: "Trusted GMV",
           severity: "critical",
+        }),
+      ])
+    );
+    expect(report.diligencePipeline).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "angel_seed_outreach",
+          conversationState: "do_not_contact",
+          missingEvidence: expect.arrayContaining([
+            expect.objectContaining({
+              key: "trusted_gmv",
+              state: "not_ready",
+            }),
+          ]),
+        }),
+      ])
+    );
+    expect(report.diligenceQaWorkflow).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "revenue_quality",
+          responseState: "withdrawn_response",
         }),
       ])
     );

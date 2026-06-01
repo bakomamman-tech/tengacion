@@ -330,6 +330,204 @@ const PACKET_DEFINITIONS = [
   },
 ];
 
+const DILIGENCE_PIPELINE_DEFINITIONS = [
+  {
+    key: "targeted_advisor_review",
+    title: "Targeted Advisor Review",
+    audience: "advisor",
+    owner: "Product leadership",
+    fit: "Use qualified advisors to pressure-test the capital thesis before investor or partner outreach.",
+    cadence: "weekly",
+    requiredScorecardKeys: ["data_room_freshness", "compliance_audit_posture"],
+    requiredPacketKeys: ["capital_strategy_brief", "risk_register_packet"],
+    requiredClaimKeys: [],
+    riskKeywords: ["data-room", "scenario", "compliance", "audit"],
+  },
+  {
+    key: "angel_seed_outreach",
+    title: "Angel Or Seed Investor Outreach",
+    audience: "investor",
+    owner: "Product leadership",
+    fit: "Open only when traction, creator economics, runway, claims, and risk evidence can survive basic diligence.",
+    cadence: "weekly",
+    requiredScorecardKeys: [
+      "trusted_gmv",
+      "revenue_quality",
+      "creator_earnings_confidence",
+      "payout_confidence",
+      "data_room_freshness",
+      "akuso_governance",
+    ],
+    requiredPacketKeys: ["capital_strategy_brief", "financial_model", "risk_register_packet", "akuso_governance_packet"],
+    requiredClaimKeys: ["gmv_revenue_claim", "revenue_quality_claim", "creator_economics_claim", "akuso_ai_claim"],
+    riskKeywords: ["gmv", "revenue", "creator", "payout", "scenario", "akuso"],
+  },
+  {
+    key: "strategic_partner_capital",
+    title: "Strategic Partner Capital",
+    audience: "strategic_partner",
+    owner: "Partnerships",
+    fit: "Pursue only when partner value is clear and data, exclusivity, privacy, support, and AI commitments stay inside approved controls.",
+    cadence: "weekly",
+    requiredScorecardKeys: ["partner_pipeline", "market_readiness", "security_privacy_posture", "akuso_governance"],
+    requiredPacketKeys: ["partner_diligence_packet", "risk_register_packet", "akuso_governance_packet"],
+    requiredClaimKeys: ["market_partner_claim", "akuso_ai_claim"],
+    riskKeywords: ["partner", "market", "privacy", "akuso", "security"],
+  },
+  {
+    key: "enterprise_prepayment",
+    title: "Enterprise Prepayment Path",
+    audience: "enterprise",
+    owner: "Partnerships",
+    fit: "Use prepayments only when scope, support capacity, delivery obligations, and refund exposure are controlled.",
+    cadence: "weekly",
+    requiredScorecardKeys: ["partner_pipeline", "team_capacity", "market_readiness", "refund_dispute_handling"],
+    requiredPacketKeys: ["partner_diligence_packet", "financial_model", "risk_register_packet"],
+    requiredClaimKeys: ["market_partner_claim", "payout_refund_claim"],
+    riskKeywords: ["partner", "market", "refund", "team", "support"],
+  },
+  {
+    key: "creator_institution_partnership",
+    title: "Creator Institution Partnership",
+    audience: "creator_institution",
+    owner: "Creator success",
+    fit: "Run institution-led creator cohorts only when creator earnings, retention, rights, privacy, and support evidence are current.",
+    cadence: "weekly",
+    requiredScorecardKeys: [
+      "creator_earnings_confidence",
+      "creator_retention",
+      "security_privacy_posture",
+      "team_capacity",
+    ],
+    requiredPacketKeys: ["unit_economics_packet", "risk_register_packet"],
+    requiredClaimKeys: ["creator_economics_claim"],
+    riskKeywords: ["creator", "privacy", "retention", "team"],
+  },
+  {
+    key: "payment_provider_diligence",
+    title: "Payment Provider Diligence",
+    audience: "payment_provider",
+    owner: "Finance and operations",
+    fit: "Use provider conversations to harden money movement, reserve, dispute, and payout evidence before scaling commerce.",
+    cadence: "weekly",
+    requiredScorecardKeys: ["trusted_gmv", "revenue_quality", "payout_confidence", "refund_dispute_handling"],
+    requiredPacketKeys: ["financial_model", "risk_register_packet"],
+    requiredClaimKeys: ["payout_refund_claim", "revenue_quality_claim"],
+    riskKeywords: ["payout", "refund", "dispute", "revenue", "gmv"],
+  },
+  {
+    key: "grant_ecosystem_program",
+    title: "Grant Or Ecosystem Program",
+    audience: "grant_or_ecosystem_program",
+    owner: "Compliance, legal, and advisors",
+    fit: "Pursue non-dilutive capital when reporting obligations, public claims, AI claims, and data sharing remain narrow.",
+    cadence: "biweekly",
+    requiredScorecardKeys: ["data_room_freshness", "compliance_audit_posture", "akuso_governance"],
+    requiredPacketKeys: ["capital_strategy_brief", "risk_register_packet", "akuso_governance_packet"],
+    requiredClaimKeys: ["akuso_ai_claim"],
+    riskKeywords: ["data-room", "compliance", "akuso", "scenario"],
+  },
+];
+
+const DILIGENCE_QA_DEFINITIONS = [
+  {
+    key: "marketplace_thesis",
+    question: "What is the core marketplace thesis and wedge?",
+    audience: "investor",
+    owner: "Product leadership",
+    reviewer: "Data and analytics",
+    requiredScorecardKeys: ["market_readiness", "creator_retention", "fan_retention"],
+    requiredPacketKeys: ["capital_strategy_brief", "unit_economics_packet"],
+    requiredClaimKeys: ["market_partner_claim"],
+    answerRule: "Use only current market, creator cohort, fan retention, and product evidence; label missing retention as pending.",
+    escalationTrigger: "Escalate if the answer needs unsupported market size, retention, or growth claims.",
+  },
+  {
+    key: "revenue_quality",
+    question: "What is revenue quality and how reliable is GMV?",
+    audience: "investor",
+    owner: "Finance and operations",
+    reviewer: "Data and analytics",
+    requiredScorecardKeys: ["trusted_gmv", "revenue_quality"],
+    requiredPacketKeys: ["financial_model"],
+    requiredClaimKeys: ["gmv_revenue_claim", "revenue_quality_claim"],
+    answerRule: "Use close-window numbers only when metric contracts allow external use; keep disputed values internal.",
+    escalationTrigger: "Escalate if wallet, entitlement, refund, webhook, or metric-contract evidence is blocked.",
+  },
+  {
+    key: "creator_economics",
+    question: "How reliable are creator earnings, payouts, and cohort economics?",
+    audience: "investor_or_creator_institution",
+    owner: "Finance and operations",
+    reviewer: "Creator success",
+    requiredScorecardKeys: ["creator_earnings_confidence", "payout_confidence", "creator_retention"],
+    requiredPacketKeys: ["financial_model", "unit_economics_packet"],
+    requiredClaimKeys: ["creator_economics_claim", "payout_refund_claim"],
+    answerRule: "Separate verified wallet and payout evidence from cohort assumptions and keep weak creator claims narrowed.",
+    escalationTrigger: "Escalate if creator balances, payouts, cohort retention, or refunds are disputed.",
+  },
+  {
+    key: "runway_and_use_of_funds",
+    question: "What runway and use-of-funds plan governs the capital request?",
+    audience: "advisor_or_investor",
+    owner: "Finance and operations",
+    reviewer: "Product leadership",
+    requiredScorecardKeys: ["data_room_freshness", "team_capacity", "revenue_quality"],
+    requiredPacketKeys: ["financial_model", "capital_strategy_brief"],
+    requiredClaimKeys: ["revenue_quality_claim"],
+    answerRule: "Share runway scenarios only with cash inputs, assumption labels, owners, and review states attached.",
+    escalationTrigger: "Escalate if projections depend on unreviewed assumptions or missing cash balance inputs.",
+  },
+  {
+    key: "strategic_partner_terms",
+    question: "What partner terms, data sharing, exclusivity, and support commitments are acceptable?",
+    audience: "strategic_partner",
+    owner: "Partnerships",
+    reviewer: "Security and compliance",
+    requiredScorecardKeys: ["partner_pipeline", "security_privacy_posture", "market_readiness"],
+    requiredPacketKeys: ["partner_diligence_packet", "risk_register_packet"],
+    requiredClaimKeys: ["market_partner_claim"],
+    answerRule: "Reject or narrow asks that bypass privacy, revocation, data minimization, support capacity, or market readiness controls.",
+    escalationTrigger: "Escalate any exclusivity, sensitive-data, API access, reporting, or support commitment outside approved controls.",
+  },
+  {
+    key: "refund_dispute_exposure",
+    question: "What are refund, dispute, reserve, and payout exposure controls?",
+    audience: "payment_provider_or_investor",
+    owner: "Finance and operations",
+    reviewer: "Compliance, legal, and advisors",
+    requiredScorecardKeys: ["refund_dispute_handling", "payout_confidence", "revenue_quality"],
+    requiredPacketKeys: ["financial_model", "risk_register_packet"],
+    requiredClaimKeys: ["payout_refund_claim", "revenue_quality_claim"],
+    answerRule: "Show exposure and reserves only with source status; keep provider dispute gaps explicit.",
+    escalationTrigger: "Escalate if provider dispute feeds, refund ledger entries, or payout reconciliation are missing.",
+  },
+  {
+    key: "akuso_governance",
+    question: "What does Akuso do, how is it governed, and what AI claims are approved?",
+    audience: "investor_or_partner",
+    owner: "AI and assistant",
+    reviewer: "Trust, policy, and legal",
+    requiredScorecardKeys: ["akuso_governance", "security_privacy_posture"],
+    requiredPacketKeys: ["akuso_governance_packet", "risk_register_packet"],
+    requiredClaimKeys: ["akuso_ai_claim"],
+    answerRule: "Keep Akuso claims tied to current eval, source coverage, refusal quality, privacy, incident, and cost evidence.",
+    escalationTrigger: "Escalate if the question asks for autonomous authority, unsupported AI advantage, private memory, or unapproved workflow claims.",
+  },
+  {
+    key: "capital_risks",
+    question: "What risks would delay or narrow the capital path?",
+    audience: "advisor_or_leadership",
+    owner: "Product leadership",
+    reviewer: "Compliance, legal, and advisors",
+    requiredScorecardKeys: ["compliance_audit_posture", "data_room_freshness", "security_privacy_posture"],
+    requiredPacketKeys: ["risk_register_packet"],
+    requiredClaimKeys: [],
+    answerRule: "Lead with unresolved blockers, accepted risks, mitigation owners, and next review dates.",
+    escalationTrigger: "Escalate if any blocked risk is being hidden, softened, or reframed as investor-ready.",
+  },
+];
+
 const SCENARIOS = [
   {
     key: "downside",
@@ -1139,6 +1337,275 @@ const buildDataRoomPackets = (scorecard = [], claimRegister = []) => {
   });
 };
 
+const capitalStateFromPacketShareState = (shareState = "") => {
+  const normalized = String(shareState || "").trim().toLowerCase();
+  if (
+    [
+      "approved_for_advisor_review",
+      "approved_for_investor_review",
+      "approved_for_strategic_partner_review",
+    ].includes(normalized)
+  ) {
+    return "ready";
+  }
+  if (["internal_with_conditions", "advisor_review_only"].includes(normalized)) {
+    return "near_ready";
+  }
+  if (["restricted", "blocked"].includes(normalized)) {
+    return "remediation_needed";
+  }
+  if (["withdrawn", "revoked"].includes(normalized)) {
+    return "not_ready";
+  }
+  return "evidence_needed";
+};
+
+const capitalStateFromClaimApprovalState = (approvalState = "") => {
+  const normalized = String(approvalState || "").trim().toLowerCase();
+  if (
+    [
+      "approved_for_advisor_review",
+      "approved_for_investor_review",
+      "approved_for_strategic_partner_review",
+    ].includes(normalized)
+  ) {
+    return "ready";
+  }
+  if (["internal_with_conditions", "conditional"].includes(normalized)) {
+    return "near_ready";
+  }
+  if (["restricted", "blocked"].includes(normalized)) {
+    return "remediation_needed";
+  }
+  if (["withdrawn", "revoked"].includes(normalized)) {
+    return "not_ready";
+  }
+  return "evidence_needed";
+};
+
+const conversationStateFromCapitalState = (state = "", audience = "") => {
+  if (state === "ready") {
+    return audience === "advisor" ? "ready_for_advisor_review" : "ready_for_controlled_outreach";
+  }
+  if (state === "near_ready") {
+    return "advisor_review_only";
+  }
+  if (state === "evidence_needed") {
+    return "hold_for_evidence";
+  }
+  if (state === "remediation_needed") {
+    return "blocked_for_remediation";
+  }
+  return "do_not_contact";
+};
+
+const qaResponseStateFromCapitalState = (state = "") => {
+  if (state === "ready") {
+    return "approved_response";
+  }
+  if (state === "near_ready") {
+    return "conditional_response";
+  }
+  if (state === "evidence_needed") {
+    return "draft_needs_evidence";
+  }
+  if (state === "remediation_needed") {
+    return "restricted_response";
+  }
+  return "withdrawn_response";
+};
+
+const diligenceNextStep = (state = "", audience = "") => {
+  if (state === "ready") {
+    return audience === "advisor"
+      ? "Schedule targeted advisor review with the approved packet and claim boundaries."
+      : "Open controlled outreach only with approved packet, claim, Q&A, and escalation routing.";
+  }
+  if (state === "near_ready") {
+    return "Run advisor review, narrow weak claims, and attach conditions before external outreach.";
+  }
+  if (state === "evidence_needed") {
+    return "Hold outreach until owners attach evidence, packet states, and approved response boundaries.";
+  }
+  if (state === "remediation_needed") {
+    return "Block outreach until remediation closes and the affected claims or packets are re-approved.";
+  }
+  return "Do not contact or share materials until withdrawn evidence is replaced and reviewed.";
+};
+
+const makeMissingDependency = (dependency = {}) => ({
+  kind: dependency.kind,
+  key: dependency.key,
+  title: dependency.title,
+  state: dependency.state,
+  status: dependency.status,
+  owner: dependency.owner,
+});
+
+const buildDiligenceDependencies = ({ definition = {}, scorecardMap, claimMap, packetMap }) => {
+  const scorecardDependencies = (definition.requiredScorecardKeys || []).map((key) => {
+    const entry = scorecardMap.get(key);
+    return {
+      kind: "scorecard",
+      key,
+      title: entry?.title || titleize(key),
+      state: entry?.state || "evidence_needed",
+      status: entry?.approvalState || entry?.state || "missing",
+      owner: entry?.owner || "Unassigned",
+    };
+  });
+
+  const packetDependencies = (definition.requiredPacketKeys || []).map((key) => {
+    const entry = packetMap.get(key);
+    const shareState = entry?.shareState || "missing";
+    return {
+      kind: "packet",
+      key,
+      title: entry?.title || titleize(key),
+      state: capitalStateFromPacketShareState(shareState),
+      status: shareState,
+      owner: entry?.owner || "Unassigned",
+    };
+  });
+
+  const claimDependencies = (definition.requiredClaimKeys || []).map((key) => {
+    const entry = claimMap.get(key);
+    const approvalState = entry?.approvalState || "missing";
+    return {
+      kind: "claim",
+      key,
+      title: entry?.title || titleize(key),
+      state: capitalStateFromClaimApprovalState(approvalState),
+      status: approvalState,
+      owner: entry?.owner || "Unassigned",
+    };
+  });
+
+  return [...scorecardDependencies, ...packetDependencies, ...claimDependencies];
+};
+
+const findDiligenceRiskMatches = (definition = {}, riskRegister = []) => {
+  const keywords = (definition.riskKeywords || []).map((keyword) => String(keyword || "").toLowerCase());
+  if (!keywords.length) {
+    return [];
+  }
+  return riskRegister
+    .filter((risk) => {
+      const haystack = [
+        risk.key,
+        risk.title,
+        risk.owner,
+        risk.severity,
+        risk.sourceSystem,
+        risk.mitigation,
+        risk.nextAction,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return keywords.some((keyword) => haystack.includes(keyword));
+    })
+    .slice(0, 5);
+};
+
+const riskStateFromMatches = (riskMatches = []) => {
+  if (riskMatches.some((risk) => ["critical", "high"].includes(String(risk.severity || "").toLowerCase()))) {
+    return "remediation_needed";
+  }
+  return riskMatches.length ? "evidence_needed" : "ready";
+};
+
+const buildDiligencePipeline = ({ scorecard = [], claimRegister = [], dataRoomPackets = [], riskRegister = [] }) => {
+  const scorecardMap = new Map(scorecard.map((entry) => [entry.key, entry]));
+  const claimMap = new Map(claimRegister.map((entry) => [entry.key, entry]));
+  const packetMap = new Map(dataRoomPackets.map((entry) => [entry.key, entry]));
+
+  return DILIGENCE_PIPELINE_DEFINITIONS.map((definition) => {
+    const dependencies = buildDiligenceDependencies({ definition, scorecardMap, claimMap, packetMap });
+    const riskMatches = findDiligenceRiskMatches(definition, riskRegister);
+    const readinessState = worstCapitalState([
+      ...dependencies.map((dependency) => dependency.state),
+      riskStateFromMatches(riskMatches),
+    ]);
+    const conversationState = conversationStateFromCapitalState(readinessState, definition.audience);
+    const missingEvidence = dependencies
+      .filter((dependency) => !["ready", "near_ready"].includes(dependency.state))
+      .map(makeMissingDependency);
+    const riskEvidence = riskMatches.map((risk) => ({
+      kind: "risk",
+      key: risk.key,
+      title: risk.title,
+      state: risk.capitalReadinessState || "evidence_needed",
+      status: risk.severity || "medium",
+      owner: risk.owner,
+    }));
+
+    return {
+      ...definition,
+      readinessState,
+      conversationState,
+      approvedPacketCount: dependencies.filter((dependency) => dependency.kind === "packet" && dependency.state === "ready").length,
+      requiredPacketCount: (definition.requiredPacketKeys || []).length,
+      approvedClaimCount: dependencies.filter((dependency) => dependency.kind === "claim" && dependency.state === "ready").length,
+      requiredClaimCount: (definition.requiredClaimKeys || []).length,
+      missingEvidence: [...missingEvidence, ...riskEvidence].slice(0, 8),
+      riskFlags: riskMatches.map((risk) => ({
+        key: risk.key,
+        title: risk.title,
+        severity: risk.severity,
+        owner: risk.owner,
+        nextAction: risk.nextAction,
+      })),
+      controls: [
+        "approved_packet_required",
+        "approved_claims_only",
+        "q_and_a_owner_review",
+        "sensitive_topic_escalation",
+        "stale_document_hold",
+      ],
+      nextStep: diligenceNextStep(readinessState, definition.audience),
+    };
+  });
+};
+
+const buildDiligenceQaWorkflow = ({ scorecard = [], claimRegister = [], dataRoomPackets = [] }) => {
+  const scorecardMap = new Map(scorecard.map((entry) => [entry.key, entry]));
+  const claimMap = new Map(claimRegister.map((entry) => [entry.key, entry]));
+  const packetMap = new Map(dataRoomPackets.map((entry) => [entry.key, entry]));
+
+  return DILIGENCE_QA_DEFINITIONS.map((definition) => {
+    const dependencies = buildDiligenceDependencies({ definition, scorecardMap, claimMap, packetMap });
+    const readinessState = worstCapitalState(dependencies.map((dependency) => dependency.state));
+    const responseState = qaResponseStateFromCapitalState(readinessState);
+    const blockingEvidence = dependencies
+      .filter((dependency) => !["ready", "near_ready"].includes(dependency.state))
+      .map(makeMissingDependency);
+
+    return {
+      ...definition,
+      readinessState,
+      responseState,
+      blockingEvidence: blockingEvidence.slice(0, 8),
+      requiredEvidence: dependencies.map(makeMissingDependency),
+      responseControls: [
+        "cite_source_evidence",
+        "separate_actuals_from_assumptions",
+        "respect_approval_state",
+        "route_sensitive_terms",
+        "log_follow_up_owner",
+      ],
+      nextStep:
+        responseState === "approved_response"
+          ? "Answer from approved packet and claim register."
+          : responseState === "conditional_response"
+            ? "Answer only with conditions and route follow-up to the reviewer."
+            : responseState === "draft_needs_evidence"
+              ? "Keep response in draft until missing evidence is attached."
+              : "Do not answer externally until remediation or withdrawal review closes.",
+    };
+  });
+};
+
 const dedupeRisks = (risks = []) => {
   const seen = new Set();
   return risks.filter((risk) => {
@@ -1214,10 +1681,19 @@ const buildCapitalRiskRegister = ({ scorecard = [], assuranceDashboard = {}, fin
   return dedupeRisks([...scorecardRisks, ...alertRisks, ...financeGapRisks, ...scenarioRisk]);
 };
 
-const buildSummary = ({ scorecard = [], useOfFundsGates = [], claimRegister = [], riskRegister = [] }) => {
+const buildSummary = ({
+  scorecard = [],
+  useOfFundsGates = [],
+  claimRegister = [],
+  riskRegister = [],
+  diligencePipeline = [],
+  diligenceQaWorkflow = [],
+}) => {
   const countsByState = countBy(scorecard, (entry) => entry.state);
   const gateCounts = countBy(useOfFundsGates, (entry) => entry.gateState);
   const claimCounts = countBy(claimRegister, (entry) => entry.approvalState);
+  const diligenceCounts = countBy(diligencePipeline, (entry) => entry.conversationState);
+  const diligenceQaCounts = countBy(diligenceQaWorkflow, (entry) => entry.responseState);
   const readinessScore = scorecard.length
     ? Math.round(scorecard.reduce((sum, entry) => sum + Number(entry.score || 0), 0) / scorecard.length)
     : 0;
@@ -1265,11 +1741,23 @@ const buildSummary = ({ scorecard = [], useOfFundsGates = [], claimRegister = []
     claimCount: claimRegister.length,
     advisorApprovedClaimCount: Number(claimCounts.approved_for_advisor_review || 0),
     withdrawnClaimCount: Number(claimCounts.withdrawn || 0),
+    diligenceTargetCount: diligencePipeline.length,
+    controlledOutreachTargetCount: Number(diligenceCounts.ready_for_controlled_outreach || 0),
+    advisorReviewTargetCount:
+      Number(diligenceCounts.ready_for_advisor_review || 0) + Number(diligenceCounts.advisor_review_only || 0),
+    blockedDiligenceTargetCount:
+      Number(diligenceCounts.blocked_for_remediation || 0) + Number(diligenceCounts.do_not_contact || 0),
+    diligenceQaCount: diligenceQaWorkflow.length,
+    approvedDiligenceResponseCount: Number(diligenceQaCounts.approved_response || 0),
+    restrictedDiligenceResponseCount:
+      Number(diligenceQaCounts.restricted_response || 0) + Number(diligenceQaCounts.withdrawn_response || 0),
     riskCount: riskRegister.length,
     highRiskCount,
     countsByState,
     gateCounts,
     claimCounts,
+    diligenceCounts,
+    diligenceQaCounts,
     recommendedPath,
   };
 };
@@ -1297,7 +1785,25 @@ const buildCapitalReadiness = async ({
     financeClose,
     scenarios,
   });
-  const summary = buildSummary({ scorecard, useOfFundsGates, claimRegister, riskRegister });
+  const diligencePipeline = buildDiligencePipeline({
+    scorecard,
+    claimRegister,
+    dataRoomPackets,
+    riskRegister,
+  });
+  const diligenceQaWorkflow = buildDiligenceQaWorkflow({
+    scorecard,
+    claimRegister,
+    dataRoomPackets,
+  });
+  const summary = buildSummary({
+    scorecard,
+    useOfFundsGates,
+    claimRegister,
+    riskRegister,
+    diligencePipeline,
+    diligenceQaWorkflow,
+  });
 
   return {
     filters: financeClose.filters,
@@ -1317,11 +1823,14 @@ const buildCapitalReadiness = async ({
     capitalPathOptions,
     claimRegister,
     dataRoomPackets,
+    diligencePipeline,
+    diligenceQaWorkflow,
     riskRegister,
     decisionRules: [
       "Do not use delayed, disputed, blocked, withdrawn, or not-approved metrics in investor or partner materials.",
       "Do not publish projections until assumptions, owners, source evidence, cash inputs, and approval states are attached.",
       "Delay capital outreach when money movement, creator earnings, privacy, data-room, partner, or Akuso governance evidence is weak.",
+      "Do not answer diligence questions externally until the packet, claims, owner, reviewer, and escalation route are approved.",
       "Treat no-go, advisor review, revenue-backed growth, strategic capital, and delayed fundraising as valid capital decisions.",
     ],
     sourceSystems: [
@@ -1331,12 +1840,16 @@ const buildCapitalReadiness = async ({
       "capital_runway_scenario_inputs",
       "capital_claim_register",
       "capital_risk_register",
+      "capital_diligence_pipeline",
+      "capital_diligence_qa_workflow",
     ],
   };
 };
 
 module.exports = {
   CLAIM_DEFINITIONS,
+  DILIGENCE_PIPELINE_DEFINITIONS,
+  DILIGENCE_QA_DEFINITIONS,
   FINANCING_PATH_DEFINITIONS,
   USE_OF_FUNDS_DEFINITIONS,
   buildCapitalReadiness,

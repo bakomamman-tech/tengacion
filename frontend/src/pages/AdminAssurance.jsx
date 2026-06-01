@@ -29,7 +29,21 @@ const eventLabel = (value = "") =>
 
 const statusClass = (value = "") => {
   const normalized = String(value || "").trim().toLowerCase();
-  if (["blocked", "critical", "high", "needs_review", "withdrawn", "not_ready", "restricted"].includes(normalized)) {
+  if (
+    [
+      "blocked",
+      "critical",
+      "high",
+      "needs_review",
+      "withdrawn",
+      "not_ready",
+      "restricted",
+      "blocked_for_remediation",
+      "do_not_contact",
+      "restricted_response",
+      "withdrawn_response",
+    ].includes(normalized)
+  ) {
     return "adminx-badge adminx-badge--danger";
   }
   if (
@@ -52,6 +66,10 @@ const statusClass = (value = "") => {
       "coverage_gap",
       "not_configured",
       "not_approved_for_external_use",
+      "advisor_review_only",
+      "hold_for_evidence",
+      "draft_needs_evidence",
+      "conditional_response",
     ].includes(normalized)
   ) {
     return "adminx-badge adminx-badge--warn";
@@ -111,6 +129,8 @@ export default function AdminAssurancePage({ user }) {
   const claimRegister = capitalPayload?.claimRegister || [];
   const capitalRisks = capitalPayload?.riskRegister || [];
   const dataRoomPackets = capitalPayload?.dataRoomPackets || [];
+  const diligencePipeline = capitalPayload?.diligencePipeline || [];
+  const diligenceQaWorkflow = capitalPayload?.diligenceQaWorkflow || [];
 
   const headlineCards = [
     ["Readiness", eventLabel(summary.readinessState || "unknown")],
@@ -136,6 +156,8 @@ export default function AdminAssurancePage({ user }) {
     ["Capital Blockers", number(capitalSummary.blockerCount)],
     ["Advisor Claims", `${number(capitalSummary.advisorApprovedClaimCount)} / ${number(capitalSummary.claimCount)}`],
     ["Ready Spend Gates", `${number(capitalSummary.readyUseOfFundsGateCount)} / ${number(capitalSummary.useOfFundsGateCount)}`],
+    ["Outreach Targets", `${number(capitalSummary.controlledOutreachTargetCount)} / ${number(capitalSummary.diligenceTargetCount)}`],
+    ["Q&A Responses", `${number(capitalSummary.approvedDiligenceResponseCount)} / ${number(capitalSummary.diligenceQaCount)}`],
     ["High Capital Risks", number(capitalSummary.highRiskCount)],
   ];
 
@@ -355,6 +377,68 @@ export default function AdminAssurancePage({ user }) {
                       <div className="adminx-muted">{risk.nextAction || risk.mitigation}</div>
                     </article>
                   ))}
+                </div>
+              </section>
+
+              <section className="adminx-panel adminx-panel--span-12">
+                <div className="adminx-panel-head">
+                  <h2 className="adminx-panel-title">Diligence Pipeline And Q&A</h2>
+                  <span className="adminx-section-meta">
+                    {number(diligencePipeline.length)} targets - {number(diligenceQaWorkflow.length)} answer controls
+                  </span>
+                </div>
+                <div className="adminx-alert-list adminx-alert-list--inline">
+                  {diligencePipeline.map((target) => (
+                    <article key={`target-${target.key}`} className="adminx-alert-item">
+                      <div className="adminx-row">
+                        <strong>{target.title}</strong>
+                        <span className={statusClass(target.conversationState)}>
+                          {eventLabel(target.conversationState)}
+                        </span>
+                      </div>
+                      <div className="adminx-muted">{eventLabel(target.audience)} - {target.fit}</div>
+                      <div className="adminx-muted">{target.nextStep}</div>
+                      <div className="adminx-pill-row">
+                        <span className="adminx-badge">
+                          Packets {number(target.approvedPacketCount)} / {number(target.requiredPacketCount)}
+                        </span>
+                        <span className="adminx-badge">
+                          Claims {number(target.approvedClaimCount)} / {number(target.requiredClaimCount)}
+                        </span>
+                        {(target.missingEvidence || []).slice(0, 3).map((entry) => (
+                          <span key={`${target.key}-${entry.kind}-${entry.key}`} className={statusClass(entry.state)}>
+                            {entry.title}
+                          </span>
+                        ))}
+                      </div>
+                    </article>
+                  ))}
+
+                  {diligenceQaWorkflow.map((entry) => (
+                    <article key={`qa-${entry.key}`} className="adminx-alert-item">
+                      <div className="adminx-row">
+                        <strong>{entry.question}</strong>
+                        <span className={statusClass(entry.responseState)}>
+                          {eventLabel(entry.responseState)}
+                        </span>
+                      </div>
+                      <div className="adminx-muted">{entry.owner} - reviewer: {entry.reviewer}</div>
+                      <div className="adminx-muted">{entry.answerRule}</div>
+                      <div className="adminx-muted">{entry.nextStep}</div>
+                      {entry.blockingEvidence?.length ? (
+                        <div className="adminx-pill-row">
+                          {entry.blockingEvidence.slice(0, 4).map((blocker) => (
+                            <span key={`${entry.key}-${blocker.kind}-${blocker.key}`} className={statusClass(blocker.state)}>
+                              {blocker.title}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </article>
+                  ))}
+                  {!diligencePipeline.length && !diligenceQaWorkflow.length ? (
+                    <div className="adminx-empty">No diligence workflow data available.</div>
+                  ) : null}
                 </div>
               </section>
             </>

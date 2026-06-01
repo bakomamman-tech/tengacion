@@ -14,11 +14,21 @@ import {
 
 const BOOK_VERSION_ACCEPT = ".pdf,.epub,.mobi,.txt";
 const BOOK_VERSION_EXTENSIONS = new Set(["pdf", "epub", "mobi", "txt"]);
+const COVER_IMAGE_ACCEPT = "image/png,image/jpeg,image/webp,image/gif,image/avif";
+const COVER_IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "gif", "avif"]);
 
 const inferBookVersionFormat = (file = {}) => {
   const name = String(file?.name || "");
   const dotIndex = name.lastIndexOf(".");
   return dotIndex >= 0 ? name.slice(dotIndex + 1).toLowerCase() : "";
+};
+
+const isSupportedCoverImage = (file = {}) => {
+  const fileType = String(file?.type || "").trim().toLowerCase();
+  if (fileType.startsWith("image/")) {
+    return true;
+  }
+  return COVER_IMAGE_EXTENSIONS.has(inferBookVersionFormat(file));
 };
 
 const resolveBookPublishMode = (item = {}) => {
@@ -66,8 +76,11 @@ function CreatorBookWorkspacePanel({
   onEditedVersionUploaded,
 }) {
   const fileInputRef = useRef(null);
+  const coverInputRef = useRef(null);
   const [isVersionUploading, setIsVersionUploading] = useState(false);
   const [versionProgress, setVersionProgress] = useState(0);
+  const [isCoverUploading, setIsCoverUploading] = useState(false);
+  const [coverProgress, setCoverProgress] = useState(0);
   const title = item?.title || "Untitled book";
   const author = item?.subtitle || creatorName || "Creator";
   const status = item?.statusLabel || "Workspace preview";
@@ -75,18 +88,26 @@ function CreatorBookWorkspacePanel({
   const priceLabel = Number(item?.price || 0) > 0 ? formatCurrency(item.price) : "Free";
   const disableBookNavigation = queueLength <= 1;
   const canUploadEditedVersion = Boolean(item?.id);
+  const bookUploadBusy = isVersionUploading || isCoverUploading;
 
-  const resetFileInput = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const resetFileInput = (inputRef = fileInputRef) => {
+    if (inputRef.current) {
+      inputRef.current.value = "";
     }
   };
 
   const chooseEditedVersionFile = () => {
-    if (!canUploadEditedVersion || isVersionUploading) {
+    if (!canUploadEditedVersion || bookUploadBusy) {
       return;
     }
     fileInputRef.current?.click();
+  };
+
+  const chooseCoverImageFile = () => {
+    if (!canUploadEditedVersion || bookUploadBusy) {
+      return;
+    }
+    coverInputRef.current?.click();
   };
 
   const uploadEditedVersion = async (event) => {
@@ -126,6 +147,44 @@ function CreatorBookWorkspacePanel({
       setIsVersionUploading(false);
       setVersionProgress(0);
       resetFileInput();
+    }
+  };
+
+  const uploadCoverImage = async (event) => {
+    const file = event.target.files?.[0] || null;
+    if (!file) {
+      return;
+    }
+
+    if (!isSupportedCoverImage(file)) {
+      toast.error("Upload a PNG, JPG, WEBP, GIF, or AVIF cover image");
+      resetFileInput(coverInputRef);
+      return;
+    }
+
+    try {
+      setIsCoverUploading(true);
+      setCoverProgress(0);
+
+      const formData = new FormData();
+      formData.append("cover", file);
+      formData.append("publishedStatus", resolveBookPublishMode(item));
+
+      const updated = await updateBookWithUploadProgress(item.id, formData, {
+        onProgress: setCoverProgress,
+      });
+      await Promise.resolve(onEditedVersionUploaded?.(updated)).catch(() => null);
+      toast.success(
+        updated?.publishedStatus === "under_review"
+          ? "Cover image uploaded for review"
+          : "Cover image updated"
+      );
+    } catch (err) {
+      toast.error(err?.message || "Could not update the cover image");
+    } finally {
+      setIsCoverUploading(false);
+      setCoverProgress(0);
+      resetFileInput(coverInputRef);
     }
   };
 
@@ -193,9 +252,17 @@ function CreatorBookWorkspacePanel({
               type="button"
               className="creator-fan-preview__secondary-action"
               onClick={chooseEditedVersionFile}
-              disabled={isVersionUploading}
+              disabled={bookUploadBusy}
             >
               {isVersionUploading ? `Uploading ${versionProgress}%` : "Upload Edited Version"}
+            </button>
+            <button
+              type="button"
+              className="creator-fan-preview__secondary-action"
+              onClick={chooseCoverImageFile}
+              disabled={bookUploadBusy}
+            >
+              {isCoverUploading ? `Uploading ${coverProgress}%` : "Update Cover Image"}
             </button>
             <input
               ref={fileInputRef}
@@ -206,14 +273,25 @@ function CreatorBookWorkspacePanel({
               aria-hidden="true"
               tabIndex={-1}
             />
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept={COVER_IMAGE_ACCEPT}
+              onChange={uploadCoverImage}
+              style={{ display: "none" }}
+              aria-hidden="true"
+              tabIndex={-1}
+            />
           </>
         ) : null}
       </div>
 
-      {isVersionUploading ? (
+      {isVersionUploading || isCoverUploading ? (
         <div className="creator-fan-preview__book-version-status" role="status" aria-live="polite">
-          <span style={{ width: `${versionProgress}%` }} />
-          <small>Replacing the uploaded book file...</small>
+          <span style={{ width: `${isCoverUploading ? coverProgress : versionProgress}%` }} />
+          <small>
+            {isCoverUploading ? "Updating the book cover image..." : "Replacing the uploaded book file..."}
+          </small>
         </div>
       ) : null}
 

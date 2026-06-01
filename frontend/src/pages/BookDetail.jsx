@@ -52,6 +52,11 @@ export default function BookDetail() {
   const readerRef = useRef(null);
 
   const isLoggedIn = Boolean(user?._id);
+  const isChapterOnePreview = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const mode = String(params.get("preview") || "").trim().toLowerCase();
+    return ["1", "true", "chapter-one", "chapter1"].includes(mode);
+  }, [location.search]);
 
   const loadBook = useCallback(async () => {
     setLoading(true);
@@ -217,9 +222,15 @@ export default function BookDetail() {
     }
   };
 
-  const openReader = () => {
+  const openReader = useCallback(() => {
     readerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!loading && isChapterOnePreview && selectedChapterId) {
+      window.setTimeout(openReader, 0);
+    }
+  }, [isChapterOnePreview, loading, openReader, selectedChapterId]);
 
   const downloadFullBook = async () => {
     if (!book?._id) {
@@ -440,7 +451,7 @@ export default function BookDetail() {
               >
                 <span className="font-medium">Chapter {chapter.order}: {chapter.title}</span>
                 <span className="mt-1 block text-xs">
-                  {chapter.locked ? "Locked" : chapter.isFree ? "Free preview" : "Unlocked"}
+                  {chapter.locked ? "Locked" : chapter.previewOnly ? "First-page preview" : chapter.isFree ? "Preview" : "Unlocked"}
                 </span>
               </button>
             ))}
@@ -448,8 +459,17 @@ export default function BookDetail() {
 
           <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <h3 className="text-sm font-semibold text-slate-900">
-              {selectedChapter ? `Reading: Chapter ${selectedChapter.order}` : "Reader"}
+              {selectedChapter?.previewOnly
+                ? `Preview: Chapter ${selectedChapter.order}`
+                : selectedChapter
+                  ? `Reading: Chapter ${selectedChapter.order}`
+                  : "Reader"}
             </h3>
+            {selectedChapter?.previewOnly ? (
+              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                You are reading the first page of chapter one. Unlock the book to continue past this preview.
+              </div>
+            ) : null}
             {chapterLoading ? (
               <p className="mt-2 text-sm text-slate-600">Loading chapter...</p>
             ) : (
@@ -486,7 +506,7 @@ export default function BookDetail() {
         onClose={() => setPaywallOpen(false)}
         onBuy={buyNow}
         title={book.title}
-        subtitle="Read 1-2 free chapters, then unlock the full book."
+        subtitle="Read the first page of chapter one, then unlock the full book."
         price={book.price}
         loading={paying}
         error={payError}

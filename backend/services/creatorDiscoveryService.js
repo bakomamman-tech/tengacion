@@ -5,6 +5,10 @@ const Book = require("../models/Book");
 const CreatorProfile = require("../models/CreatorProfile");
 const Track = require("../models/Track");
 const User = require("../models/User");
+const {
+  buildBookPreviewEndpointUrl,
+  canServeBookPreviewDocument,
+} = require("./bookPreviewService");
 const { buildSignedMediaUrl } = require("./mediaSigner");
 const {
   buildCreatorPublicPath,
@@ -517,13 +521,13 @@ const normalizeSummaryBook = ({ book, viewerState, viewerId, req }) => {
   const meta = getCreatorProfileMeta(creatorProfile);
   const itemId = String(book._id || "");
   const price = Number(book.price || 0);
-  const previewSource =
-    toCleanString(book.previewUrl) ||
-    (book.isFreePreview ? toCleanString(book.contentUrl || book.fileUrl) : "");
   const canAccessFull =
     price <= 0 ||
     viewerState.entitlementKeys.has(`book:${itemId}`) ||
     viewerState.subscribedCreatorIds.has(meta.creatorId);
+  const previewUrl = canServeBookPreviewDocument(book)
+    ? buildBookPreviewEndpointUrl({ req, bookId: itemId })
+    : `/books/${itemId}?preview=chapter-one`;
 
   return {
     id: itemId,
@@ -546,15 +550,7 @@ const normalizeSummaryBook = ({ book, viewerState, viewerId, req }) => {
       toCleanString(book.subtitle) ||
       "A premium book release on Tengacion.",
     coverImage: toCleanString(book.coverImageUrl || book.coverUrl) || meta.creatorBanner || meta.creatorAvatar,
-    previewUrl: previewSource
-      ? buildSignedPreviewUrl({
-          req,
-          sourceUrl: previewSource,
-          itemType: "book",
-          itemId,
-          viewerId,
-        })
-      : "",
+    previewUrl,
     previewAudioUrl: "",
     audioUrl: canAccessFull
       ? buildSignedPreviewUrl({
@@ -581,7 +577,7 @@ const normalizeSummaryBook = ({ book, viewerState, viewerId, req }) => {
     subscribeRoute: buildSubscribeRoute(meta.creatorId),
     purchaseItemType: "book",
     purchaseItemId: itemId,
-    canPreview: Boolean(previewSource || book.previewExcerptText),
+    canPreview: Boolean(previewUrl || book.previewExcerptText),
     canBuy:
       price > 0 &&
       !viewerState.entitlementKeys.has(`book:${itemId}`) &&

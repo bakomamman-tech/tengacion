@@ -12,6 +12,10 @@ const { buildAlbumArchiveUrl } = require("../services/albumArchiveService");
 const { hasEntitlement } = require("../services/entitlementService");
 const { recordCreatorFollow } = require("../services/fanReturnPathService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
+const {
+  buildBookPreviewEndpointUrl,
+  canServeBookPreviewDocument,
+} = require("../services/bookPreviewService");
 const { resolveBookDownloadMetadata } = require("../utils/bookDownloadMetadata");
 const { buildCreatorPublicPayload } = require("../services/publicCreatorProfileService");
 const {
@@ -140,12 +144,23 @@ const mapBookForHub = async ({ book, req, userId }) => {
     priceNGN: Number(book.price) || 0,
     priceUSD: Number(book.priceGlobal || 0),
     isFreePreview: Boolean(book.isFreePreview),
-    previewPdfUrl: entitled
-      ? (book.contentUrl || book.fileUrl || "")
-      : (book.previewUrl || (book.isFreePreview ? (book.contentUrl || book.fileUrl || "") : "")),
+    previewPdfUrl: entitled && (book.contentUrl || book.fileUrl)
+      ? buildSignedMediaUrl({
+          sourceUrl: book.contentUrl || book.fileUrl,
+          itemType: "book",
+          itemId: book._id.toString(),
+          userId: userId || "",
+          req,
+          expiresInSec: 10 * 60,
+        })
+      : canServeBookPreviewDocument(book)
+        ? buildBookPreviewEndpointUrl({ req, bookId: book._id.toString() })
+        : `/books/${book._id.toString()}?preview=chapter-one`,
     purchaseRequired: Number(book.price) > 0,
     canAccessFull: entitled,
-    previewUrl: book.previewUrl || "",
+    previewUrl: canServeBookPreviewDocument(book)
+      ? buildBookPreviewEndpointUrl({ req, bookId: book._id.toString() })
+      : `/books/${book._id.toString()}?preview=chapter-one`,
     downloadUrl: entitled && (book.contentUrl || book.fileUrl)
       ? buildSignedMediaUrl({
           sourceUrl: book.contentUrl || book.fileUrl,

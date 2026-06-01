@@ -132,6 +132,24 @@ const normalizePreviewPayload = ({
 const shouldRenderCoverPreview = (preview = {}) =>
   normalizePurchaseType(preview?.itemType || preview?.kind || "") === "book";
 
+const buildBookPreviewTarget = (item = {}) => {
+  const itemType = normalizePurchaseType(item.itemType || item.productType || item.mediaType);
+  if (itemType !== "book") {
+    return "";
+  }
+
+  if (item.previewUrl) {
+    return item.previewUrl;
+  }
+
+  const route = item.route || (item.id ? `/books/${encodeURIComponent(item.id)}` : "");
+  if (!route) {
+    return "";
+  }
+
+  return `${route}${route.includes("?") ? "&" : "?"}preview=chapter-one`;
+};
+
 const resolvePreviewStatusLabel = (preview = {}) => {
   const itemType = normalizePurchaseType(preview?.itemType || preview?.kind || "");
   const kind = String(preview?.kind || "").trim().toLowerCase();
@@ -696,7 +714,7 @@ export default function CreatorHubPage() {
     trackRecommendedContentAction({ item, action: "preview" });
 
     if (item.mediaType === "document") {
-      const previewUrl = item.previewUrl || item.streamUrl || item.route;
+      const previewUrl = buildBookPreviewTarget(item);
       if (previewUrl) {
         setActivePreview(
           normalizePreviewPayload({ item, src: previewUrl, mode: "preview" })
@@ -825,8 +843,9 @@ export default function CreatorHubPage() {
     }
 
     const sourceUrl =
-      targetItem.streamUrl ||
+      buildBookPreviewTarget(targetItem) ||
       targetItem.previewUrl ||
+      targetItem.streamUrl ||
       targetItem.downloadUrl ||
       targetItem.route ||
       "";

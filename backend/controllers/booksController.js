@@ -10,9 +10,11 @@ const { evaluateVerification } = require("../services/contentVerificationService
 const { creatorHasCategory } = require("../services/creatorProfileService");
 const { notifySavedContentUpdated } = require("../services/fanReturnPathService");
 const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
+const { streamBookPreviewDocument } = require("../services/bookPreviewService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 
 // Non-goal for the current book flow: audiobook media is handled through music/podcast uploads.
+const BOOK_CHAPTER_PREVIEW_CHAR_LIMIT = 1800;
 
 const collectBookMediaAssets = (book = {}) => [
   book?.coverMedia || book?.coverImageUrl,
@@ -75,6 +77,39 @@ const parseOptionalNonNegativeInteger = (value, fallback = null) => {
     return fallback;
   }
   return Math.floor(parsed);
+};
+
+const resolveChapterPreviewPage = (content = "") => {
+  const normalized = String(content || "").replace(/\r\n/g, "\n").trim();
+  if (!normalized) {
+    return "";
+  }
+
+  const [explicitFirstPage] = normalized.split(/\f|\n\s*\[page break\]\s*\n/i);
+  const pageText = String(explicitFirstPage || normalized).trim();
+  if (pageText.length <= BOOK_CHAPTER_PREVIEW_CHAR_LIMIT) {
+    return pageText;
+  }
+
+  const hardCut = pageText.slice(0, BOOK_CHAPTER_PREVIEW_CHAR_LIMIT);
+  const paragraphCut = hardCut.lastIndexOf("\n\n");
+  const sentenceCut = Math.max(
+    hardCut.lastIndexOf(". "),
+    hardCut.lastIndexOf("! "),
+    hardCut.lastIndexOf("? ")
+  );
+  const wordCut = hardCut.lastIndexOf(" ");
+  const minCut = Math.floor(BOOK_CHAPTER_PREVIEW_CHAR_LIMIT * 0.62);
+  const cutAt =
+    paragraphCut >= minCut
+      ? paragraphCut
+      : sentenceCut >= minCut
+        ? sentenceCut + 1
+        : wordCut >= minCut
+          ? wordCut
+          : BOOK_CHAPTER_PREVIEW_CHAR_LIMIT;
+
+  return `${pageText.slice(0, cutAt).trim()}...`;
 };
 
 const resolveRequestedStatus = (body = {}) => {
@@ -507,8 +542,32 @@ exports.getBookById = asyncHandler(async (req, res) => {
     ...toBookPayload(book),
     chapterCount: uploadedChapterCount || savedChapterCount,
     canReadFull: hasFullAccess,
-    freeChaptersRecommended: 2,
+    freeChaptersRecommended: 0,
+    previewPagesRecommended: 1,
   });
+});
+
+exports.getBookPreviewDocument = asyncHandler(async (req, res) => {
+  const { bookId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    return res.status(400).json({ error: "Invalid book id" });
+  }
+
+  const book = await Book.findOne({ _id: bookId, isPublished: { $ne: false }, archivedAt: null }).lean();
+  if (!book) {
+    return res.status(404).json({ error: "Book not found" });
+  }
+
+  const streamed = await streamBookPreviewDocument({
+    req,
+    res,
+    book,
+    headOnly: req.method === "HEAD",
+  });
+
+  if (!streamed && !res.headersSent) {
+    return res.status(404).json({ error: "Book preview unavailable" });
+  }
 });
 
 exports.getBookChapters = asyncHandler(async (req, res) => {
@@ -530,17 +589,24 @@ exports.getBookChapters = asyncHandler(async (req, res) => {
   });
 
   const chapters = await Chapter.find({ bookId }).sort({ order: 1 }).lean();
+  const previewChapterId = !hasFullAccess && chapters[0]?._id
+    ? String(chapters[0]._id)
+    : "";
   return res.json(
     chapters.map((chapter) => {
-      const locked = !hasFullAccess && !chapter.isFree;
+      const previewOnly = Boolean(previewChapterId && String(chapter._id) === previewChapterId);
+      const locked = !hasFullAccess && !previewOnly;
       return {
         _id: chapter._id.toString(),
         title: chapter.title || "",
         order: Number(chapter.order) || 0,
-        isFree: Boolean(chapter.isFree),
+        isFree: Boolean(hasFullAccess || previewOnly),
         locked,
+        previewOnly,
         previewText: locked
           ? `${String(chapter.content || "").slice(0, 160)}...`
+          : previewOnly
+            ? resolveChapterPreviewPage(chapter.content)
           : undefined,
       };
     })
@@ -569,8 +635,16 @@ exports.getBookChapterById = asyncHandler(async (req, res) => {
     book,
     userId: req.user?.id,
   });
+  const firstChapter = !hasFullAccess
+    ? await Chapter.findOne({ bookId }).sort({ order: 1 }).select("_id").lean()
+    : null;
+  const previewOnly = Boolean(
+    !hasFullAccess &&
+    firstChapter?._id &&
+    String(firstChapter._id) === String(chapter._id)
+  );
 
-  if (!hasFullAccess && !chapter.isFree) {
+  if (!hasFullAccess && !previewOnly) {
     return res.status(402).json({
       error: "Chapter is locked",
       paywall: true,
@@ -585,8 +659,9 @@ exports.getBookChapterById = asyncHandler(async (req, res) => {
     bookId: chapter.bookId.toString(),
     title: chapter.title || "",
     order: Number(chapter.order) || 0,
-    content: chapter.content || "",
-    isFree: Boolean(chapter.isFree),
+    content: previewOnly ? resolveChapterPreviewPage(chapter.content) : chapter.content || "",
+    isFree: Boolean(hasFullAccess || previewOnly),
+    previewOnly,
     locked: false,
   });
 });

@@ -6,6 +6,10 @@ const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const Video = require("../models/Video");
 const { buildAlbumArchiveUrl } = require("./albumArchiveService");
+const {
+  buildBookPreviewEndpointUrl,
+  canServeBookPreviewDocument,
+} = require("./bookPreviewService");
 const { findCreatorProfileByReference } = require("./creatorLookupService");
 const {
   getLatestCreatorSubscriptionPurchase,
@@ -201,10 +205,7 @@ const buildBookPreviewSource = (book, canAccessFull) => {
   if (canAccessFull) {
     return toCleanString(book.contentUrl || book.fileUrl);
   }
-  return (
-    toCleanString(book.previewUrl) ||
-    (book.isFreePreview ? toCleanString(book.contentUrl || book.fileUrl) : "")
-  );
+  return toCleanString(book.previewUrl);
 };
 
 const buildAlbumPreviewSource = (album, canAccessFull) => {
@@ -433,6 +434,29 @@ const mapBookItem = ({ book, req, viewerId, ownerAccess, entitlements, creatorSu
   const previewSource = buildBookPreviewSource(book, false);
   const streamSource = buildBookPreviewSource(book, canAccessFull);
   const bookFile = toCleanString(book.contentUrl || book.fileUrl);
+  const previewRoute = canServeBookPreviewDocument(book)
+    ? buildBookPreviewEndpointUrl({ req, bookId: String(book._id) })
+    : `/books/${String(book._id)}?preview=chapter-one`;
+  const previewUrl = previewRoute || (
+    previewSource
+      ? buildSignedUrl({
+          req,
+          sourceUrl: previewSource,
+          itemType: "book",
+          itemId: String(book._id),
+          userId: viewerId,
+        })
+      : ""
+  );
+  const fullStreamUrl = canAccessFull
+    ? buildSignedUrl({
+        req,
+        sourceUrl: streamSource,
+        itemType: "book",
+        itemId: String(book._id),
+        userId: viewerId,
+      })
+    : "";
 
   return {
     id: String(book._id),
@@ -447,20 +471,8 @@ const mapBookItem = ({ book, req, viewerId, ownerAccess, entitlements, creatorSu
         ? book.blurPreviewUrl || book.coverImageUrl || book.coverUrl
         : book.coverImageUrl || book.coverUrl
     ),
-    previewUrl: buildSignedUrl({
-      req,
-      sourceUrl: previewSource,
-      itemType: "book",
-      itemId: String(book._id),
-      userId: viewerId,
-    }),
-    streamUrl: buildSignedUrl({
-      req,
-      sourceUrl: streamSource,
-      itemType: "book",
-      itemId: String(book._id),
-      userId: viewerId,
-    }),
+    previewUrl,
+    streamUrl: canAccessFull ? fullStreamUrl : previewUrl,
     downloadUrl: canAccessFull
       ? buildSignedUrl({
           req,
@@ -476,8 +488,8 @@ const mapBookItem = ({ book, req, viewerId, ownerAccess, entitlements, creatorSu
     price: numberOrZero(book.price),
     isFree: numberOrZero(book.price) <= 0,
     canAccessFull,
-    canPreview: Boolean(previewSource || streamSource),
-    canStream: Boolean(streamSource),
+    canPreview: Boolean(previewUrl || previewSource),
+    canStream: Boolean(canAccessFull ? fullStreamUrl : previewUrl),
     canDownload: Boolean(canAccessFull && bookFile),
     canBuy: numberOrZero(book.price) > 0 && !canAccessFull,
     authorName: toCleanString(book.authorName),

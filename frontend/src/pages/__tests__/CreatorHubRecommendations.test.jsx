@@ -233,8 +233,8 @@ describe("CreatorHubPage recommendations", () => {
       subtitle: "Tragedy / PDF",
       description: "A gripping African cultural tragedy.",
       coverUrl: "https://cdn.test/books/rustle-cover.jpg",
-      previewUrl: "/books/book-1",
-      streamUrl: "/books/book-1",
+      previewUrl: "/api/books/book-1/preview",
+      streamUrl: "/api/media/delivery/full-book-token",
       route: "/books/book-1",
       price: 0,
       canPreview: true,
@@ -273,6 +273,52 @@ describe("CreatorHubPage recommendations", () => {
     expect(screen.getByAltText("The Rustle of Death cover")).toHaveAttribute(
       "src",
       "https://cdn.test/books/rustle-cover.jpg"
+    );
+  });
+
+  it("opens the one-page book preview endpoint from the preview button", async () => {
+    const user = userEvent.setup();
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    const payload = buildCreatorPayload();
+    const book = {
+      id: "book-1",
+      itemType: "book",
+      mediaType: "document",
+      title: "The Rustle of Death",
+      coverUrl: "https://cdn.test/books/rustle-cover.jpg",
+      previewUrl: "/api/books/book-1/preview",
+      streamUrl: "/api/media/delivery/full-book-token",
+      route: "/books/book-1",
+      price: 1800,
+      canPreview: true,
+      canStream: true,
+      canDownload: false,
+      canBuy: true,
+    };
+
+    getPublicCreatorProfileMock.mockResolvedValue({
+      ...payload,
+      featured: {
+        headline: "New reading release",
+        item: book,
+      },
+      music: {
+        tracks: [],
+        albums: [],
+        videos: [],
+      },
+      books: [book],
+    });
+
+    renderCreatorHub(`/creators/${creatorId}/books`);
+
+    const previewButtons = await screen.findAllByRole("button", { name: /^preview$/i });
+    await user.click(previewButtons[0]);
+
+    expect(openSpy).toHaveBeenCalledWith(
+      "/api/books/book-1/preview",
+      "_blank",
+      "noopener,noreferrer"
     );
   });
 });

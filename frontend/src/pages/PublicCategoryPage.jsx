@@ -10,6 +10,7 @@ import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
 } from "../lib/seo";
+import { normalizePurchaseType } from "../utils/purchaseUx";
 
 import "../components/creatorDiscovery/creatorDiscovery.css";
 
@@ -128,6 +129,20 @@ const CATEGORY_CONFIG = {
       },
     ],
   },
+};
+
+const buildBookPreviewTarget = (item = {}) => {
+  const itemType = normalizePurchaseType(item.itemType || item.feedItemType || item.mediaType);
+  if (itemType !== "book") {
+    return "";
+  }
+
+  if (item.previewUrl) {
+    return item.previewUrl;
+  }
+
+  const route = item.route || (item.id ? `/books/${encodeURIComponent(item.id)}` : "");
+  return route ? `${route}${route.includes("?") ? "&" : "?"}preview=chapter-one` : "";
 };
 
 const SECONDARY_LINKS = [
@@ -317,6 +332,12 @@ export default function PublicCategoryPage({ category = "music" }) {
   const handlePreview = (item = {}) => {
     if (!item.canPreview) {
       navigate(getDetailRoute(item));
+      return;
+    }
+
+    const bookPreviewTarget = buildBookPreviewTarget(item);
+    if (bookPreviewTarget) {
+      window.open(bookPreviewTarget, "_blank", "noopener,noreferrer");
       return;
     }
 

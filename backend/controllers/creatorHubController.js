@@ -13,6 +13,10 @@ const { hasEntitlement } = require("../services/entitlementService");
 const { resolvePurchasableItem } = require("../services/catalogService");
 const { buildSignedMediaUrl } = require("../services/mediaSigner");
 const {
+  buildBookPreviewEndpointUrl,
+  canServeBookPreviewDocument,
+} = require("../services/bookPreviewService");
+const {
   initializePaystackCheckout,
   toLegacyCheckoutPayload,
 } = require("../services/paymentOpsService");
@@ -58,7 +62,7 @@ const resolvePreviewSourceUrl = (item) => {
     return String(firstTrack?.previewUrl || (Number(item.payload.price || 0) <= 0 ? firstTrack?.trackUrl || "" : ""));
   }
   if (item.itemType === "book") {
-    return String(item.payload.previewUrl || (item.payload.isFreePreview ? item.payload.contentUrl || item.payload.fileUrl || "" : ""));
+    return String(item.payload.previewUrl || "");
   }
   if (item.itemType === "video") {
     return String(item.payload.previewClipUrl || (Number(item.payload.price || 0) <= 0 ? item.payload.videoUrl || "" : ""));
@@ -454,8 +458,12 @@ exports.getProtectedStream = asyncHandler(async (req, res) => {
     : false;
   const canAccessFull = freeAccess || ownerAccess || paidAccess;
   const sourceUrl = canAccessFull ? fullSourceUrl : previewSourceUrl;
+  const bookPreviewUrl =
+    item.itemType === "book" && !canAccessFull && canServeBookPreviewDocument(item.payload)
+      ? buildBookPreviewEndpointUrl({ req, bookId: item.itemId.toString() })
+      : "";
 
-  if (!sourceUrl) {
+  if (!sourceUrl && !bookPreviewUrl) {
     return res.status(canAccessFull ? 404 : 402).json({
       error: canAccessFull ? "Stream source not available" : "Preview unavailable, purchase required",
       paywall: !canAccessFull,
@@ -483,7 +491,7 @@ exports.getProtectedStream = asyncHandler(async (req, res) => {
     },
   }).catch(() => null);
 
-  const streamUrl = buildSignedMediaUrl({
+  const streamUrl = bookPreviewUrl || buildSignedMediaUrl({
     sourceUrl,
     itemType: item.itemType,
     itemId: item.itemId.toString(),

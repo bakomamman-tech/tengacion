@@ -8,10 +8,25 @@ import ShareActions from "../creator/media/ShareActions";
 import { formatCurrency } from "../creator/creatorConfig";
 import { formatRelativeTime } from "../../features/news/utils/newsUi";
 import { buildCreatorPublicPath } from "../../lib/publicRoutes";
+import { normalizePurchaseType } from "../../utils/purchaseUx";
 
 import "./creatorDiscovery.css";
 
 const getCreatorInitial = (value = "") => String(value || "T").trim().slice(0, 1).toUpperCase();
+
+const buildBookPreviewTarget = (item = {}, detailRoute = "") => {
+  const itemType = normalizePurchaseType(item.itemType || item.feedItemType || item.mediaType);
+  if (itemType !== "book") {
+    return "";
+  }
+
+  if (item.previewUrl) {
+    return item.previewUrl;
+  }
+
+  const route = detailRoute || item.route || (item.id ? `/books/${encodeURIComponent(item.id)}` : "");
+  return route ? `${route}${route.includes("?") ? "&" : "?"}preview=chapter-one` : "";
+};
 
 export default function CreatorSummaryCard({ item }) {
   const navigate = useNavigate();
@@ -42,6 +57,11 @@ export default function CreatorSummaryCard({ item }) {
   const handlePreview = () => {
     if (!item?.canPreview) {
       toast.error("Preview unavailable for this release.");
+      return;
+    }
+    const bookPreviewTarget = buildBookPreviewTarget(item, detailRoute);
+    if (bookPreviewTarget) {
+      window.open(bookPreviewTarget, "_blank", "noopener,noreferrer");
       return;
     }
     openPreview({

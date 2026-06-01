@@ -8,6 +8,7 @@ const {
   createChapter,
   deleteBook,
   getBookById,
+  getBookPreviewDocument,
   getBookChapters,
   getBookChapterById,
   updateBook,
@@ -40,6 +41,8 @@ router.put(
 router.post("/:bookId/chapters", auth, creatorAuth, createChapter);
 
 router.get("/:bookId", optionalAuth, getBookById);
+router.get("/:bookId/preview", optionalAuth, getBookPreviewDocument);
+router.head("/:bookId/preview", optionalAuth, getBookPreviewDocument);
 router.get("/:bookId/chapters", optionalAuth, getBookChapters);
 router.get("/:bookId/chapters/:chapterId", optionalAuth, getBookChapterById);
 router.delete("/:bookId", auth, creatorAuth, deleteBook);

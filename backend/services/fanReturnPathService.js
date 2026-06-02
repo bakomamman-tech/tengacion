@@ -440,8 +440,8 @@ const notifyPurchaseUnlocked = async ({ req = null, purchase } = {}) => {
     recipient: purchase.userId,
     sender: creatorUserId || purchase.userId,
     text: isSubscription
-      ? `${title} membership is active.`
-      : `Payment succeeded. ${title} is unlocked.`,
+      ? `${title} membership is active. Your receipt is ready.`
+      : `Payment succeeded. ${title} is unlocked and your receipt is ready.`,
     entity: {
       id: isSubscription ? purchase._id : purchase.itemId,
       model: isSubscription ? "Purchase" : entityModel,
@@ -453,6 +453,7 @@ const notifyPurchaseUnlocked = async ({ req = null, purchase } = {}) => {
       itemType: purchase.itemType,
       itemId: toIdString(purchase.itemId),
       link: route,
+      receiptPath: `/purchases/${toIdString(purchase._id)}`,
       dedupeKey: `purchase_unlocked:${toIdString(purchase._id)}`,
     },
     req,

@@ -1108,6 +1108,11 @@ export const getMyPurchases = () =>
     headers: getAuthHeaders(),
   });
 
+export const getPurchaseReceipt = (purchaseId) =>
+  request(`${API_BASE}/purchases/${encodeURIComponent(purchaseId || "")}`, {
+    headers: getAuthHeaders(),
+  });
+
 export const cancelSubscriptionPurchase = (purchaseId) =>
   request(`${API_BASE}/purchases/${encodeURIComponent(purchaseId || "")}/cancel-subscription`, {
     method: "POST",

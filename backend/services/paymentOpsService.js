@@ -30,6 +30,7 @@ const {
   recordPurchaseAuthorized,
   recordRefundInitiated,
 } = require("./revenueLedgerService");
+const { sendPurchaseConfirmationEmail } = require("./purchaseConfirmationService");
 const {
   buildPaystackEventId,
   buildStripeEventId,
@@ -73,6 +74,7 @@ const TIMELINE_EVENT_META = {
   purchase_wallet_settled: { label: "Wallet settlement recorded", tone: "success" },
   purchase_creator_alert_sent: { label: "Creator sales alert processed", tone: "info" },
   purchase_fan_return_notified: { label: "Fan return notification processed", tone: "info" },
+  purchase_confirmation_sent: { label: "Purchase confirmation sent", tone: "info" },
   purchase_reconciliation_requested: { label: "Admin reconciliation requested", tone: "info" },
   purchase_reconciliation_completed: { label: "Admin reconciliation completed", tone: "success" },
   purchase_reconciliation_failed: { label: "Admin reconciliation failed", tone: "danger" },
@@ -132,6 +134,7 @@ const toPurchasePayload = (purchase) => ({
   status: purchase?.status || "pending",
   provider: purchase?.provider || "paystack",
   providerRef: purchase?.providerRef || "",
+  reference: purchase?.providerRef || "",
   providerSessionId: purchase?.providerSessionId || "",
   billingInterval: purchase?.billingInterval || "one_time",
   accessExpiresAt: purchase?.accessExpiresAt || null,
@@ -1488,6 +1491,30 @@ const reconcileVerifiedPurchase = async ({
     actorRole,
     source,
   });
+
+  if (settled.purchaseUpdated) {
+    const confirmationResult = await sendPurchaseConfirmationEmail({
+      purchase: settled.purchase,
+    }).catch((error) => ({
+      sent: false,
+      skipped: false,
+      failed: true,
+      reason: error?.message || "Purchase confirmation email failed",
+    }));
+
+    await logPurchaseLifecycleEvent({
+      type: "purchase_confirmation_sent",
+      purchase: settled.purchase,
+      actorRole,
+      metadata: {
+        source,
+        sent: Boolean(confirmationResult?.sent),
+        skipped: Boolean(confirmationResult?.skipped),
+        failed: Boolean(confirmationResult?.failed),
+        reason: confirmationResult?.reason || "",
+      },
+    }).catch(() => null);
+  }
 
   return {
     purchase: settled.purchase,

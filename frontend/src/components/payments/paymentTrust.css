@@ -88,6 +88,168 @@
   background: #fff;
 }
 
+.paystack-secure-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(31, 75, 52, 0.18);
+  background: rgba(236, 248, 241, 0.92);
+  color: #1f4b34;
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+}
+
+.paystack-secure-badge--compact {
+  min-height: 26px;
+  padding: 0 9px;
+  font-size: 0.72rem;
+}
+
+.paystack-secure-badge span {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #1f4b34;
+  box-shadow: 0 0 0 3px rgba(31, 75, 52, 0.12);
+}
+
+.payment-summary {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 64, 39, 0.14);
+  background: rgba(255, 255, 255, 0.88);
+  color: #263425;
+}
+
+.payment-summary--compact {
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.payment-summary__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.payment-summary__head span {
+  color: #60705e;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.payment-summary__head strong {
+  color: #142417;
+  font-size: 1.1rem;
+}
+
+.payment-summary__rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.payment-summary__rows div {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.48fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.payment-summary__rows dt,
+.payment-summary__rows dd {
+  margin: 0;
+}
+
+.payment-summary__rows dt {
+  color: #60705e;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.payment-summary__rows dd {
+  min-width: 0;
+  color: #263425;
+  font-size: 0.9rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.payment-summary__note {
+  margin: 0;
+  color: #60705e;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.payment-recovery {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(190, 18, 60, 0.16);
+  background: rgba(255, 241, 242, 0.9);
+  color: #8a1d32;
+}
+
+.payment-recovery strong {
+  color: #7f1d1d;
+}
+
+.payment-recovery p {
+  margin: 0;
+  color: #9f3248;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.payment-recovery span {
+  color: #7f1d1d;
+  font-size: 0.82rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.payment-recovery__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.payment-recovery__actions button,
+.payment-recovery__actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(127, 29, 29, 0.16);
+  background: rgba(255, 255, 255, 0.86);
+  color: #7f1d1d;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.payment-recovery__actions button:hover,
+.payment-recovery__actions a:hover {
+  background: #fff;
+}
+
 .creator-audio-preview-player .payment-trust {
   border-color: rgba(255, 247, 233, 0.14);
   background: rgba(255, 247, 233, 0.08);
@@ -108,4 +270,22 @@
 .creator-audio-preview-player .payment-trust__list li::before {
   background: #d6ad61;
   box-shadow: 0 0 0 3px rgba(214, 173, 97, 0.14);
+}
+
+.creator-audio-preview-player .paystack-secure-badge,
+.creator-audio-preview-player .payment-summary {
+  border-color: rgba(255, 247, 233, 0.14);
+  background: rgba(255, 247, 233, 0.08);
+  color: var(--creator-audio-player-text);
+}
+
+.creator-audio-preview-player .payment-summary__head span,
+.creator-audio-preview-player .payment-summary__rows dt,
+.creator-audio-preview-player .payment-summary__note {
+  color: var(--creator-audio-player-muted);
+}
+
+.creator-audio-preview-player .payment-summary__head strong,
+.creator-audio-preview-player .payment-summary__rows dd {
+  color: var(--creator-audio-player-text);
 }

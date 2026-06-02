@@ -72,6 +72,7 @@ const AlbumDetail = lazy(() => import("./pages/AlbumDetail"));
 const PublicCategoryPage = lazy(() => import("./pages/PublicCategoryPage"));
 const PaymentCallbackPage = lazy(() => import("./pages/payments/PaymentCallbackPage"));
 const MyPurchasesPage = lazy(() => import("./pages/purchases/MyPurchasesPage"));
+const PurchaseReceiptPage = lazy(() => import("./pages/purchases/PurchaseReceiptPage"));
 const Trending = lazy(() => import("./pages/Trending"));
 const Rooms = lazy(() => import("./pages/Rooms"));
 const LiveDirectory = lazy(() => import("./pages/LiveDirectory"));
@@ -291,6 +292,14 @@ export default function App() {
             element={
               <ProtectedRoute user={user}>
                 <MyPurchasesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/purchases/:purchaseId"
+            element={
+              <ProtectedRoute user={user}>
+                <PurchaseReceiptPage />
               </ProtectedRoute>
             }
           />

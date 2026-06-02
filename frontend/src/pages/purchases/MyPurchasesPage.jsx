@@ -31,6 +31,9 @@ const formatDate = (value) => {
 
 const pick = (...values) => values.find((entry) => entry !== undefined && entry !== null && String(entry).trim() !== "");
 
+const isPaidStatus = (value = "") =>
+  ["paid", "verified", "success"].includes(String(value || "").trim().toLowerCase());
+
 const normalizePurchases = (response) => {
   if (Array.isArray(response)) {
     return response;
@@ -62,6 +65,9 @@ const getTypeLabel = (purchase) => {
   }
   if (type === "album") {
     return "Albums";
+  }
+  if (type === "subscription") {
+    return "Subscriptions";
   }
   return "Other";
 };
@@ -167,6 +173,9 @@ function PurchaseSection({ title, items, emptyMessage, navigate }) {
             );
             const amount = Number(pick(purchase?.amount, purchase?.grossAmount, purchase?.price) || 0);
             const currency = String(pick(purchase?.currency, "NGN") || "NGN").toUpperCase();
+            const statusValue = String(pick(purchase?.status, purchase?.paymentStatus, "verified") || "verified").toLowerCase();
+            const canOpenContent = isPaidStatus(statusValue);
+            const receiptPath = purchase?.receiptPath || (purchase?._id ? `/purchases/${purchase._id}` : "/purchases");
 
             return (
               <article
@@ -189,7 +198,7 @@ function PurchaseSection({ title, items, emptyMessage, navigate }) {
                       {typeLabel}
                     </span>
                     <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                      {pick(purchase?.status, purchase?.paymentStatus, "Verified")}
+                      {statusValue}
                     </span>
                   </div>
                   <h3 className="mt-2 truncate text-lg font-semibold text-slate-900">{titleText}</h3>
@@ -202,15 +211,31 @@ function PurchaseSection({ title, items, emptyMessage, navigate }) {
                 </div>
 
                 <div className="flex flex-col justify-between gap-3 sm:items-end">
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center rounded-2xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(15,64,39,0.2)] transition hover:bg-brand-700"
-                    onClick={action.onClick}
+                  {canOpenContent ? (
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center rounded-2xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(15,64,39,0.2)] transition hover:bg-brand-700"
+                      onClick={action.onClick}
+                    >
+                      {action.label}
+                    </button>
+                  ) : (
+                    <span className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900">
+                      Check status
+                    </span>
+                  )}
+                  <Link
+                    to={receiptPath}
+                    className="text-xs font-semibold text-brand-700 underline"
                   >
-                    {action.label}
-                  </button>
-                  {purchase?.reference ? (
-                    <span className="text-xs text-slate-500">Verified payment</span>
+                    View receipt
+                  </Link>
+                  {purchase?.reference && canOpenContent ? (
+                    <span className="text-xs text-slate-500">Payment confirmed</span>
+                  ) : !canOpenContent ? (
+                    <span className="max-w-[220px] text-xs leading-5 text-slate-500 sm:text-right">
+                      Retry verification before paying again if money left your account.
+                    </span>
                   ) : null}
                 </div>
               </article>
@@ -273,7 +298,13 @@ export default function MyPurchasesPage() {
   const totalSpent = useMemo(
     () =>
       purchases.reduce(
-        (sum, purchase) => sum + Number(pick(purchase?.amount, purchase?.grossAmount, purchase?.price) || 0),
+        (sum, purchase) => {
+          const statusValue = pick(purchase?.status, purchase?.paymentStatus, "verified");
+          if (!isPaidStatus(statusValue)) {
+            return sum;
+          }
+          return sum + Number(pick(purchase?.amount, purchase?.grossAmount, purchase?.price) || 0);
+        },
         0
       ),
     [purchases]
@@ -283,9 +314,9 @@ export default function MyPurchasesPage() {
     ["Total purchases", purchases.length],
     ["Music", groups.get("Music")?.length || 0],
     ["Books", groups.get("Books")?.length || 0],
-    ["Podcasts", groups.get("Podcasts")?.length || 0],
+    ["Subscriptions", groups.get("Subscriptions")?.length || 0],
   ];
-  const sectionOrder = ["Music", "Books", "Podcasts", "Albums", "Other"];
+  const sectionOrder = ["Music", "Books", "Podcasts", "Albums", "Subscriptions", "Other"];
 
   if (loading) {
     return (

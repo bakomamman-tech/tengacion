@@ -122,6 +122,8 @@
 }
 
 .creator-audio-preview-player__trust {
+  display: grid;
+  gap: 10px;
   width: 100%;
 }
 

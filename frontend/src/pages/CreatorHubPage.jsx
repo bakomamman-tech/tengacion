@@ -13,6 +13,7 @@ import {
   toggleFollowCreator,
   trackDiscoveryEvents,
 } from "../api";
+import PaywallModal from "../components/PaywallModal";
 import CreatorHero from "../components/creator/media/CreatorHero";
 import CreatorContentShelf from "../components/creator/media/CreatorContentShelf";
 import SeoHead from "../components/seo/SeoHead";
@@ -300,6 +301,7 @@ export default function CreatorHubPage() {
   const [followBusy, setFollowBusy] = useState(false);
   const [buyingItemKey, setBuyingItemKey] = useState("");
   const [purchaseError, setPurchaseError] = useState("");
+  const [checkoutItem, setCheckoutItem] = useState(null);
   const [creatorHubDiscovery, setCreatorHubDiscovery] = useState(null);
 
   const activeTab = useMemo(() => resolveTab(location.pathname), [location.pathname]);
@@ -660,7 +662,14 @@ export default function CreatorHubPage() {
       return;
     }
     trackRecommendedContentAction({ item, action: "buy" });
+    setPurchaseError("");
+    setCheckoutItem(item);
+  };
 
+  const startCheckout = async (item = checkoutItem) => {
+    if (!item?.id || !requireViewer()) {
+      return;
+    }
     const itemType = normalizePurchaseType(item.itemType || item.productType || "");
     const itemKey = `${itemType || "item"}:${item.id}`;
     const returnUrl = buildPaystackCallbackUrl({
@@ -683,6 +692,7 @@ export default function CreatorHubPage() {
           throw new Error("Payment link is missing");
         }
         toast.success("Secure checkout opened. We'll verify the payment before unlocking this content.");
+        setCheckoutItem(null);
         window.location.assign(payment.authorization_url);
         return;
       }
@@ -695,6 +705,7 @@ export default function CreatorHubPage() {
       if (checkout?.checkoutUrl) {
         window.open(checkout.checkoutUrl, "_blank", "noopener,noreferrer");
         toast.success("Checkout opened. This page will unlock automatically once payment confirms.");
+        setCheckoutItem(null);
       } else {
         throw new Error("Checkout unavailable");
       }
@@ -865,6 +876,16 @@ export default function CreatorHubPage() {
 
   const activePreviewStatusLabel = resolvePreviewStatusLabel(activePreview);
   const activePreviewShowsCover = shouldRenderCoverPreview(activePreview);
+  const checkoutItemType = normalizePurchaseType(checkoutItem?.itemType || checkoutItem?.productType || "");
+  const checkoutItemKey = checkoutItem?.id ? `${checkoutItemType || "item"}:${checkoutItem.id}` : "";
+  const checkoutSubtitle =
+    checkoutItemType === "book"
+      ? "Review the book price before continuing to Paystack."
+      : checkoutItemType === "album"
+        ? "Review the album price before continuing to Paystack."
+        : checkoutItemType === "video"
+          ? "Review the video unlock price before continuing to Paystack."
+          : "Review the release price before continuing to Paystack.";
 
   if (loading) {
     return (
@@ -1353,6 +1374,23 @@ export default function CreatorHubPage() {
           </section>
         </aside>
       </div>
+
+      <PaywallModal
+        open={Boolean(checkoutItem)}
+        onClose={() => {
+          if (!buyingItemKey) {
+            setCheckoutItem(null);
+            setPurchaseError("");
+          }
+        }}
+        onBuy={() => startCheckout(checkoutItem)}
+        title={checkoutItem?.title || "Unlock content"}
+        subtitle={checkoutSubtitle}
+        price={checkoutItem?.price || 0}
+        itemType={checkoutItemType || "track"}
+        loading={Boolean(checkoutItemKey && buyingItemKey === checkoutItemKey)}
+        error={purchaseError}
+      />
     </div>
   );
 }

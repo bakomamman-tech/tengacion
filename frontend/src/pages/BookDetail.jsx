@@ -508,6 +508,7 @@ export default function BookDetail() {
         title={book.title}
         subtitle="Read the first page of chapter one, then unlock the full book."
         price={book.price}
+        itemType="book"
         loading={paying}
         error={payError}
       />

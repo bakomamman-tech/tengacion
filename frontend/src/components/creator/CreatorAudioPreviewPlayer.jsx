@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { checkEntitlement, getDownloadUrl, initPayment } from "../../api";
 import PaymentTrustPanel from "../payments/PaymentTrustPanel";
+import PaymentSummaryPanel from "../payments/PaymentSummaryPanel";
+import PaystackSecureBadge from "../payments/PaystackSecureBadge";
 import { useAuth } from "../../context/AuthContext";
 import {
   buildPaystackCallbackUrl,
@@ -517,6 +519,7 @@ export default function CreatorAudioPreviewPlayer({
             >
               {checkoutBusy ? "Opening secure checkout..." : "Buy Full Track"}
             </button>
+            <PaystackSecureBadge compact />
             <small className="creator-audio-preview-player__top-copy">
               Unlock uninterrupted playback and downloads.
             </small>
@@ -525,11 +528,20 @@ export default function CreatorAudioPreviewPlayer({
       </div>
 
       {purchaseLocked ? (
-        <PaymentTrustPanel
-          compact
-          className="creator-audio-preview-player__trust"
-          purchasesPath="/purchases"
-        />
+        <div className="creator-audio-preview-player__trust">
+          <PaymentSummaryPanel
+            amount={item?.price || 0}
+            currency="NGN"
+            itemLabel={title}
+            itemType={purchaseItemType}
+            platformFeeExplanation="Tengacion platform fees are included in this price. Paystack charges only the total shown before checkout."
+            compact
+          />
+          <PaymentTrustPanel
+            compact
+            purchasesPath="/purchases"
+          />
+        </div>
       ) : null}
 
       {showSourceRow ? (

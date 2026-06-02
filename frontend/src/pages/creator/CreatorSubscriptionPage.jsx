@@ -10,6 +10,8 @@ import {
   resumeSubscriptionPurchase,
 } from "../../api";
 import PaymentTrustPanel from "../../components/payments/PaymentTrustPanel";
+import PaymentSummaryPanel from "../../components/payments/PaymentSummaryPanel";
+import PaystackSecureBadge from "../../components/payments/PaystackSecureBadge";
 import { useAuth } from "../../context/AuthContext";
 
 import "./creator-subscription.css";
@@ -376,6 +378,16 @@ export default function CreatorSubscriptionPage() {
               </span>
             </div>
 
+            <PaymentSummaryPanel
+              amount={price}
+              currency="NGN"
+              itemLabel={`${creator.displayName || "Creator"} membership`}
+              itemType="subscription"
+              totalLabel="Monthly total"
+              platformFeeExplanation="Tengacion platform fees are included in this membership price. Paystack shows the monthly total before you approve payment."
+              compact
+            />
+
             <PaymentTrustPanel
               context="subscription"
               compact
@@ -424,6 +436,8 @@ export default function CreatorSubscriptionPage() {
                       : `Continue with ${formatMoney(price)}/month`}
                 </button>
               )}
+
+              {!isSubscribed ? <PaystackSecureBadge compact /> : null}
 
               {subscription?.canCancel ? (
                 <button

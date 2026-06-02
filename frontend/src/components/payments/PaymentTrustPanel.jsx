@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import "./paymentTrust.css";
 
 const DEFAULT_POINTS = [
-  "Secure payment powered by Paystack",
+  "Secured by Paystack",
   "Access unlocks only after backend verification",
   "Refund and dispute review is available",
 ];
@@ -11,12 +11,12 @@ const DEFAULT_POINTS = [
 const CONTEXT_POINTS = {
   digital: DEFAULT_POINTS,
   marketplace: [
-    "Secure payment powered by Paystack",
+    "Secured by Paystack",
     "Seller fulfillment and buyer issues can be reviewed",
     "Order status stays visible after checkout",
   ],
   subscription: [
-    "Secure monthly payment powered by Paystack",
+    "Secured by Paystack for monthly payments",
     "Creator access unlocks after backend verification",
     "Renewal, cancellation, and refund review paths stay visible",
   ],
@@ -42,7 +42,7 @@ export default function PaymentTrustPanel({
   return (
     <aside className={classes} aria-label="Payment trust and buyer protection">
       <div className="payment-trust__head">
-        <span>Payment trust</span>
+        <span>Secured by Paystack</span>
         <strong>Paystack-secured checkout</strong>
       </div>
 

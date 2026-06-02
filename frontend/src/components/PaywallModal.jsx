@@ -1,4 +1,7 @@
 import PaymentTrustPanel from "./payments/PaymentTrustPanel";
+import PaymentRecoveryNotice from "./payments/PaymentRecoveryNotice";
+import PaymentSummaryPanel from "./payments/PaymentSummaryPanel";
+import PaystackSecureBadge from "./payments/PaystackSecureBadge";
 
 export default function PaywallModal({
   open,
@@ -6,6 +9,7 @@ export default function PaywallModal({
   subtitle = "",
   price = 0,
   currency = "NGN",
+  itemType = "track",
   loading = false,
   error = "",
   onClose,
@@ -59,10 +63,22 @@ export default function PaywallModal({
 
         <div className="p-6">
           {error ? (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-              {error}
-            </div>
+            <PaymentRecoveryNotice
+              title="Checkout could not start"
+              message={error}
+              supportPath="/contact"
+            />
           ) : null}
+
+          <PaymentSummaryPanel
+            className="mt-4"
+            amount={price}
+            currency={currency}
+            itemLabel={title}
+            itemType={itemType}
+            platformFeeExplanation="Tengacion platform fees are included in this price. Paystack will show the same checkout total before you approve payment."
+            compact
+          />
 
           <button
             type="button"
@@ -79,6 +95,10 @@ export default function PaywallModal({
               "Continue to Paystack"
             )}
           </button>
+
+          <div className="mt-3 flex justify-center">
+            <PaystackSecureBadge compact />
+          </div>
 
           <p className="mt-3 text-center text-xs text-slate-500">
             Card, bank account, USSD, and bank transfer are collected securely inside Paystack.

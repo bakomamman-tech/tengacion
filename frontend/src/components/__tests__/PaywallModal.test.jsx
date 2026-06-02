@@ -19,7 +19,9 @@ describe("PaywallModal", () => {
     );
 
     expect(screen.getByText(/paystack-secured checkout/i)).toBeInTheDocument();
-    expect(screen.getByText(/secure payment powered by paystack/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/secured by paystack/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/payment summary/i)).toBeInTheDocument();
+    expect(screen.getByText(/tengacion platform fees are included/i)).toBeInTheDocument();
     expect(screen.getByText(/access unlocks only after backend verification/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /refund policy/i })).toHaveAttribute(
       "href",

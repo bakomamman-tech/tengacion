@@ -10,6 +10,7 @@ const { createPayoutForPaidOrder } = require("./marketplacePayoutService");
 const {
   recordMarketplaceOrderLedgerEntries,
 } = require("./revenueLedgerService");
+const { createNotification } = require("./notificationService");
 const {
   initializeMarketplaceTransaction,
   verifyMarketplaceTransaction,
@@ -19,6 +20,7 @@ const {
   toIdString,
 } = require("./marketplaceSellerService");
 const { validateCheckoutPayload } = require("../validators/marketplaceValidators");
+const sendSecurityEmail = require("../utils/sendSecurityEmail");
 
 const VALID_FULFILLMENT_STATUSES = new Set([
   "processing",
@@ -27,6 +29,24 @@ const VALID_FULFILLMENT_STATUSES = new Set([
   "completed",
   "cancelled",
 ]);
+
+const escapeHtml = (value = "") =>
+  String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const formatMoney = (amount = 0, currency = "NGN") =>
+  `${String(currency || "NGN").toUpperCase()} ${Number(amount || 0).toLocaleString()}`;
+
+const isEmailConfigured = () => Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+
+const getSocketContext = (req = null) => ({
+  io: req?.app?.get?.("io") || null,
+  onlineUsers: req?.app?.get?.("onlineUsers") || null,
+});
 
 const mapGatewayFailureStatus = (status = "") => {
   const normalized = String(status || "").trim().toLowerCase();
@@ -235,21 +255,21 @@ const validateVerifiedOrderPayment = ({ order, verified } = {}) => {
 };
 
 const markOrderPaid = async ({ order, verified } = {}) => {
-  const updatedOrder =
-    (await MarketplaceOrder.findOneAndUpdate(
-      {
-        _id: order._id,
-        paymentStatus: { $ne: "paid" },
+  const newlyPaidOrder = await MarketplaceOrder.findOneAndUpdate(
+    {
+      _id: order._id,
+      paymentStatus: { $ne: "paid" },
+    },
+    {
+      $set: {
+        paymentStatus: "paid",
+        orderStatus: "paid",
+        paymentReference: verified?.reference || order.paymentReference || "",
       },
-      {
-        $set: {
-          paymentStatus: "paid",
-          orderStatus: "paid",
-          paymentReference: verified?.reference || order.paymentReference || "",
-        },
-      },
-      { returnDocument: "after" }
-    )) || (await MarketplaceOrder.findById(order._id));
+    },
+    { returnDocument: "after" }
+  );
+  const updatedOrder = newlyPaidOrder || (await MarketplaceOrder.findById(order._id));
 
   if (!updatedOrder) {
     throw createServiceError("Marketplace order not found", 404);
@@ -262,12 +282,90 @@ const markOrderPaid = async ({ order, verified } = {}) => {
   });
   const payout = await createPayoutForPaidOrder({ order: updatedOrder });
   await recordMarketplaceOrderLedgerEntries({ order: updatedOrder }).catch(() => null);
+  if (newlyPaidOrder) {
+    await sendMarketplaceOrderConfirmations({ order: updatedOrder }).catch(() => null);
+  }
 
   return {
     order: updatedOrder,
     transaction,
     payout,
   };
+};
+
+const sendMarketplaceOrderConfirmations = async ({ req = null, order } = {}) => {
+  if (!order?._id) {
+    return { sent: false, skipped: true, reason: "missing_order" };
+  }
+
+  const [buyer, seller] = await Promise.all([
+    User.findById(order.buyer).select("_id email name username").lean(),
+    MarketplaceSeller.findById(order.seller).select("_id user storeName slug").lean(),
+  ]);
+  const sellerUser = seller?.user
+    ? await User.findById(seller.user).select("_id email name username").lean()
+    : null;
+  const socketContext = getSocketContext(req);
+  const link = "/marketplace/orders";
+  const orderId = toIdString(order._id);
+  const title = order.productTitle || "Marketplace order";
+
+  if (buyer?._id && sellerUser?._id && String(buyer._id) !== String(sellerUser._id)) {
+    await createNotification({
+      recipient: buyer._id,
+      sender: sellerUser._id,
+      type: "system",
+      text: `Payment confirmed for ${title}. Track order status from your marketplace orders.`,
+      entity: { id: sellerUser._id, model: "User" },
+      metadata: {
+        eventType: "marketplace_order_paid",
+        orderId,
+        paymentReference: order.paymentReference || "",
+        link,
+        dedupeKey: `marketplace_order_paid_buyer:${orderId}`,
+      },
+      ...socketContext,
+    }).catch(() => null);
+  }
+
+  if (buyer?._id && sellerUser?._id && String(buyer._id) !== String(sellerUser._id)) {
+    await createNotification({
+      recipient: sellerUser._id,
+      sender: buyer._id,
+      type: "system",
+      text: `${title} has been paid. Prepare fulfillment from seller orders.`,
+      entity: { id: buyer._id, model: "User" },
+      metadata: {
+        eventType: "marketplace_order_paid_seller",
+        orderId,
+        paymentReference: order.paymentReference || "",
+        link,
+        dedupeKey: `marketplace_order_paid_seller:${orderId}`,
+      },
+      ...socketContext,
+    }).catch(() => null);
+  }
+
+  if (buyer?.email && isEmailConfigured()) {
+    await sendSecurityEmail({
+      to: buyer.email,
+      subject: "Your Tengacion marketplace order is confirmed",
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#1f2937;padding:16px;">
+          <h2 style="margin:0 0 12px;">Marketplace payment confirmed</h2>
+          <p>Your payment for <strong>${escapeHtml(title)}</strong> has been verified.</p>
+          <table style="border-collapse:collapse;margin:16px 0;width:100%;max-width:520px;">
+            <tr><td style="padding:8px;border:1px solid #e5e7eb;">Buyer paid</td><td style="padding:8px;border:1px solid #e5e7eb;"><strong>${escapeHtml(formatMoney(order.totalPrice, order.currency))}</strong></td></tr>
+            <tr><td style="padding:8px;border:1px solid #e5e7eb;">Platform fee included</td><td style="padding:8px;border:1px solid #e5e7eb;">${escapeHtml(formatMoney(order.platformFee, order.currency))}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e5e7eb;">Reference</td><td style="padding:8px;border:1px solid #e5e7eb;">${escapeHtml(order.paymentReference || "")}</td></tr>
+          </table>
+          <p>The Tengacion marketplace fee is included in the item price. Paystack charged only the verified order total.</p>
+        </div>
+      `,
+    }).catch(() => null);
+  }
+
+  return { sent: true };
 };
 
 const initializeMarketplaceOrder = async ({

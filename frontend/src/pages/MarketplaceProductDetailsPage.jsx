@@ -6,6 +6,9 @@ import QuickAccessLayout from "../components/QuickAccessLayout";
 import ProductGrid from "../components/marketplace/ProductGrid";
 import OrderStatusBadge from "../components/marketplace/OrderStatusBadge";
 import PaymentTrustPanel from "../components/payments/PaymentTrustPanel";
+import PaymentRecoveryNotice from "../components/payments/PaymentRecoveryNotice";
+import PaymentSummaryPanel from "../components/payments/PaymentSummaryPanel";
+import PaystackSecureBadge from "../components/payments/PaystackSecureBadge";
 import SeoHead from "../components/seo/SeoHead";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -21,6 +24,8 @@ import { fetchMarketplaceProductDetail } from "../services/marketplaceService";
 
 import "../components/marketplace/marketplace.css";
 
+const MARKETPLACE_PLATFORM_FEE_NGN = 300;
+
 export default function MarketplaceProductDetailsPage() {
   const { user } = useAuth();
   const { idOrSlug } = useParams();
@@ -32,6 +37,7 @@ export default function MarketplaceProductDetailsPage() {
   const [deliveryPhone, setDeliveryPhone] = useState("");
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
 
   const loadProduct = useCallback(async () => {
     setLoading(true);
@@ -120,6 +126,7 @@ export default function MarketplaceProductDetailsPage() {
     }
 
     setProcessing(true);
+    setPaymentError("");
     try {
       const response = await initializeMarketplacePayment({
         productId: product._id,
@@ -140,7 +147,9 @@ export default function MarketplaceProductDetailsPage() {
 
       throw new Error("Paystack checkout URL was not returned.");
     } catch (err) {
-      toast.error(err?.message || "Could not initialize marketplace payment.");
+      const message = err?.message || "Could not initialize marketplace payment.";
+      setPaymentError(message);
+      toast.error(message);
     } finally {
       setProcessing(false);
     }
@@ -149,6 +158,10 @@ export default function MarketplaceProductDetailsPage() {
   const priceLabel = useMemo(
     () => `₦${Number(product?.price || 0).toLocaleString()}`,
     [product?.price]
+  );
+  const checkoutTotal = useMemo(
+    () => Number(product?.price || 0) * Math.max(1, Number(quantity || 1)),
+    [product?.price, quantity]
   );
 
   return (
@@ -257,15 +270,37 @@ export default function MarketplaceProductDetailsPage() {
                     </>
                   ) : null}
 
+                  <PaymentSummaryPanel
+                    amount={checkoutTotal}
+                    currency={product.currency || "NGN"}
+                    itemLabel={product.title}
+                    itemType="marketplace"
+                    quantity={quantity}
+                    platformFeeAmount={MARKETPLACE_PLATFORM_FEE_NGN}
+                    platformFeeExplanation="The Tengacion marketplace fee is included in the item price. No surprise platform fee is added inside Paystack."
+                    compact
+                  />
+
+                  {paymentError ? (
+                    <PaymentRecoveryNotice
+                      title="Checkout could not start"
+                      message={paymentError}
+                      supportPath="/contact"
+                    />
+                  ) : null}
+
                   {user ? (
-                    <button
-                      type="button"
-                      className="marketplace-primary-btn"
-                      disabled={processing || Number(product.stock || 0) < 1}
-                      onClick={handleBuyNow}
-                    >
-                      {processing ? "Opening Paystack..." : "Buy now"}
-                    </button>
+                    <div className="marketplace-secure-action">
+                      <button
+                        type="button"
+                        className="marketplace-primary-btn"
+                        disabled={processing || Number(product.stock || 0) < 1}
+                        onClick={handleBuyNow}
+                      >
+                        {processing ? "Opening Paystack..." : "Buy now"}
+                      </button>
+                      <PaystackSecureBadge compact />
+                    </div>
                   ) : (
                     <Link className="marketplace-primary-btn" to="/login">
                       Log in to buy

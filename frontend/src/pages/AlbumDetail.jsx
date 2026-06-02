@@ -4,6 +4,8 @@ import { Link, useParams } from "react-router-dom";
 import { createCheckout, getAlbum, getPublicCreatorProfile, resolveImage } from "../api";
 import { useAuth } from "../context/AuthContext";
 import SeoHead from "../components/seo/SeoHead";
+import PaymentSummaryPanel from "../components/payments/PaymentSummaryPanel";
+import PaystackSecureBadge from "../components/payments/PaystackSecureBadge";
 import useEntitlementSocket from "../hooks/useEntitlementSocket";
 import {
   buildAlbumSeoDescription,
@@ -199,14 +201,27 @@ export default function AlbumDetail() {
             </div>
             <div className="flex flex-wrap items-center gap-3 pt-2">
               {!album.canPlayFull && Number(album.price || 0) > 0 ? (
-                <button
-                  type="button"
-                  className="rounded-2xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
-                  disabled={buying}
-                  onClick={handleBuyAlbum}
-                >
-                  {buying ? "Preparing..." : "Buy album"}
-                </button>
+                <div className="grid w-full max-w-xl gap-3">
+                  <PaymentSummaryPanel
+                    amount={album.price}
+                    currency="NGN"
+                    itemLabel={album.title}
+                    itemType="album"
+                    platformFeeExplanation="Tengacion platform fees are included in the album price. Paystack charges only the total shown before checkout."
+                    compact
+                  />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      className="rounded-2xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+                      disabled={buying}
+                      onClick={handleBuyAlbum}
+                    >
+                      {buying ? "Preparing..." : "Buy album"}
+                    </button>
+                    <PaystackSecureBadge compact />
+                  </div>
+                </div>
               ) : null}
               {album.canPlayFull && album.downloadUrl ? (
                 <a

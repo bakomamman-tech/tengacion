@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { checkEntitlement, getPublicCreatorProfile, getTrack, getTrackStream, initPayment } from "../api";
 import PaywallModal from "../components/PaywallModal";
 import PaymentTrustPanel from "../components/payments/PaymentTrustPanel";
+import PaystackSecureBadge from "../components/payments/PaystackSecureBadge";
 import SeoHead from "../components/seo/SeoHead";
 import { useAuth } from "../context/AuthContext";
 import useEntitlementSocket from "../hooks/useEntitlementSocket";
@@ -457,6 +458,9 @@ export default function TrackDetail() {
               <p className="mt-2 text-xs text-slate-500">
                 Pay securely with Paystack using card, bank account, USSD, or bank transfer.
               </p>
+              <div className="mt-2">
+                <PaystackSecureBadge compact />
+              </div>
               <PaymentTrustPanel className="mt-3 max-w-xl" compact />
             </>
           ) : (
@@ -529,6 +533,7 @@ export default function TrackDetail() {
         title={track.title}
         subtitle={subtitle}
         price={track.price}
+        itemType="track"
         loading={paying}
         error={payError}
       />

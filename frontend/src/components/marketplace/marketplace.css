@@ -399,6 +399,13 @@
   line-height: 1.45;
 }
 
+.marketplace-secure-action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 .marketplace-card-meta {
   display: flex;
   justify-content: space-between;
@@ -644,6 +651,47 @@
   border-radius: 22px;
   border: 1px solid rgba(16, 48, 70, 0.08);
   background: rgba(255, 255, 255, 0.9);
+}
+
+.marketplace-order-card__summary,
+.marketplace-payment-notice {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(16, 48, 70, 0.1);
+  background: rgba(244, 248, 250, 0.82);
+  color: #40576a;
+  font-size: 0.86rem;
+}
+
+.marketplace-payment-notice {
+  border-color: rgba(18, 78, 111, 0.14);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.marketplace-payment-notice strong {
+  color: #10253a;
+}
+
+.marketplace-payment-notice span,
+.marketplace-payment-notice small {
+  color: #5b7283;
+}
+
+.marketplace-payment-notice--success {
+  border-color: rgba(33, 132, 92, 0.2);
+  background: rgba(232, 247, 240, 0.92);
+}
+
+.marketplace-payment-notice--warn {
+  border-color: rgba(196, 137, 24, 0.22);
+  background: rgba(255, 248, 226, 0.92);
+}
+
+.marketplace-payment-notice--error {
+  border-color: rgba(190, 43, 43, 0.2);
+  background: rgba(255, 241, 241, 0.92);
 }
 
 .marketplace-order-card__top,

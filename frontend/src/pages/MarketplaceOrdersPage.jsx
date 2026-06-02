@@ -26,6 +26,7 @@ export default function MarketplaceOrdersPage() {
   const [activeTab, setActiveTab] = useState("buyer");
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState("");
+  const [checkoutNotice, setCheckoutNotice] = useState(null);
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -66,17 +67,33 @@ export default function MarketplaceOrdersPage() {
     let active = true;
     const verify = async () => {
       try {
-        await verifyMarketplacePayment(reference);
+        const result = await verifyMarketplacePayment(reference);
         if (!active) {
           return;
         }
-        toast.success("Marketplace payment verified.");
+        setCheckoutNotice({
+          tone: result?.success ? "success" : "warn",
+          title: result?.success ? "Marketplace payment verified" : "Payment still pending",
+          message: result?.message || "Order status has been refreshed.",
+          reference,
+        });
+        if (result?.success) {
+          toast.success("Marketplace payment verified.");
+        } else {
+          toast("Payment is not complete yet. Order status has been refreshed.");
+        }
         await loadOrders();
         navigate("/marketplace/orders", { replace: true });
       } catch (err) {
         if (!active) {
           return;
         }
+        setCheckoutNotice({
+          tone: "error",
+          title: "Could not verify marketplace payment",
+          message: err?.message || "Retry verification before starting another checkout.",
+          reference,
+        });
         toast.error(err?.message || "Could not verify marketplace payment yet.");
       }
     };
@@ -93,6 +110,29 @@ export default function MarketplaceOrdersPage() {
       ...(sellerReady ? [{ id: "seller", label: "Seller orders" }] : []),
     ],
     [sellerReady]
+  );
+
+  const retryMarketplaceReference = useCallback(
+    async (reference) => {
+      try {
+        const result = await verifyMarketplacePayment(reference);
+        setCheckoutNotice({
+          tone: result?.success ? "success" : "warn",
+          title: result?.success ? "Payment verified" : "Payment still pending",
+          message: result?.message || "Order status refreshed.",
+          reference,
+        });
+        await loadOrders();
+      } catch (err) {
+        setCheckoutNotice({
+          tone: "error",
+          title: "Could not verify payment",
+          message: err?.message || "Retry verification later or contact support.",
+          reference,
+        });
+      }
+    },
+    [loadOrders]
   );
 
   return (
@@ -125,8 +165,20 @@ export default function MarketplaceOrdersPage() {
           </div>
         </section>
 
+        {checkoutNotice ? (
+          <section className={`marketplace-payment-notice marketplace-payment-notice--${checkoutNotice.tone}`}>
+            <strong>{checkoutNotice.title}</strong>
+            <span>{checkoutNotice.message}</span>
+            {checkoutNotice.reference ? <small>Reference: {checkoutNotice.reference}</small> : null}
+          </section>
+        ) : null}
+
         {activeTab === "buyer" ? (
-          <MarketplaceBuyerOrdersPage orders={buyerOrders} loading={loading} />
+          <MarketplaceBuyerOrdersPage
+            orders={buyerOrders}
+            loading={loading}
+            onRetryVerify={retryMarketplaceReference}
+          />
         ) : (
           <MarketplaceSellerOrdersPage
             orders={sellerOrders}

@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { checkEntitlement, verifyPaystackPayment } from "../../api";
+import PaymentRecoveryNotice from "../../components/payments/PaymentRecoveryNotice";
+import PaymentSummaryPanel from "../../components/payments/PaymentSummaryPanel";
+import PaystackSecureBadge from "../../components/payments/PaystackSecureBadge";
 import { normalizePurchaseType, safeReturnTo } from "../../utils/purchaseUx";
 
 const MAX_ATTEMPTS = 8;
@@ -23,7 +26,6 @@ const normalizeLabel = (value = "") => {
 
 export default function PaymentCallbackPage() {
   const location = useLocation();
-  const navigate = useNavigate();
   const retryTimerRef = useRef(null);
   const attemptsRef = useRef(0);
 
@@ -36,6 +38,7 @@ export default function PaymentCallbackPage() {
   const [status, setStatus] = useState("verifying");
   const [message, setMessage] = useState("Verifying your payment with Paystack...");
   const [detail, setDetail] = useState("");
+  const [payment, setPayment] = useState(null);
   const [retryNonce, setRetryNonce] = useState(0);
 
   useEffect(() => {
@@ -48,24 +51,12 @@ export default function PaymentCallbackPage() {
       }
     };
 
-    const completeRedirect = () => {
-      clearRetry();
-      window.setTimeout(() => {
-        if (!cancelled) {
-          if (typeof window !== "undefined" && window.location) {
-            window.location.replace(returnTo);
-            return;
-          }
-          navigate(returnTo, { replace: true });
-        }
-      }, 1200);
-    };
-
     const verify = async () => {
       if (!reference) {
         setStatus("failed");
         setMessage("Payment reference is missing.");
         setDetail("Please return to the content page and try again.");
+        setPayment(null);
         return;
       }
 
@@ -79,6 +70,8 @@ export default function PaymentCallbackPage() {
           return;
         }
 
+        const resultPayment = result?.payment || result?.purchase || null;
+        setPayment(resultPayment);
         const paymentStatus = String(result?.status || result?.payment?.status || "").toLowerCase();
         const accessGranted = Boolean(
           result?.accessGranted
@@ -107,8 +100,8 @@ export default function PaymentCallbackPage() {
 
           setStatus("success");
           setMessage("Payment verified. Your access is now active.");
-          setDetail(`You will be returned to ${normalizeLabel(itemType)} in a moment.`);
-          completeRedirect();
+          setDetail(`Your receipt is ready. You can open ${normalizeLabel(itemType)} now or keep this page as confirmation.`);
+          clearRetry();
           return;
         }
 
@@ -125,7 +118,7 @@ export default function PaymentCallbackPage() {
 
         setStatus("failed");
         setMessage("We could not confirm this payment yet.");
-        setDetail("Please try again or open your purchases page to check the latest status.");
+        setDetail("Please retry verification before paying again. If money left your account, contact support with the reference.");
       } catch (error) {
         if (cancelled) {
           return;
@@ -142,7 +135,7 @@ export default function PaymentCallbackPage() {
 
         setStatus("failed");
         setMessage(error?.message || "Payment verification failed.");
-        setDetail("Please retry verification or check your purchases page.");
+        setDetail("Please retry verification before paying again. If money left your account, contact support with the reference.");
       }
     };
 
@@ -152,21 +145,34 @@ export default function PaymentCallbackPage() {
       cancelled = true;
       clearRetry();
     };
-  }, [itemId, itemType, navigate, reference, retryNonce, returnTo]);
+  }, [itemId, itemType, reference, retryNonce, returnTo]);
 
   const statusTone = status === "success" ? "success" : status === "failed" ? "error" : "pending";
+  const receiptPath = payment?._id ? `/purchases/${encodeURIComponent(payment._id)}` : "/purchases";
+  const retryVerification = () => {
+    attemptsRef.current = 0;
+    setRetryNonce((value) => value + 1);
+    setStatus("verifying");
+    setMessage("Verifying your payment with Paystack...");
+    setDetail("We're checking the backend again now.");
+  };
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-96px)] w-full max-w-3xl items-center px-4 py-10">
       <section className="w-full overflow-hidden rounded-[2rem] border border-stone-200 bg-[linear-gradient(180deg,#fffdf7_0%,#f6efe2_100%)] shadow-[0_24px_80px_rgba(58,42,18,0.14)]">
         <div className="border-b border-brand-200/60 bg-[radial-gradient(circle_at_top_right,rgba(24,86,53,0.12),transparent_42%)] p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand-700">
-            Paystack payment callback
+            Paystack payment status
           </p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-900">Confirming your purchase</h1>
+          <h1 className="mt-2 text-3xl font-bold text-slate-900">
+            {status === "success" ? "Payment successful" : "Confirming your purchase"}
+          </h1>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
             We verify the payment with Tengacion's backend before unlocking access. Nothing is granted locally until the server confirms the transaction.
           </p>
+          <div className="mt-4">
+            <PaystackSecureBadge />
+          </div>
         </div>
 
         <div className="grid gap-4 p-8">
@@ -189,6 +195,26 @@ export default function PaymentCallbackPage() {
             {detail ? <p className="mt-2 text-sm leading-6 text-slate-600">{detail}</p> : null}
           </div>
 
+          {status === "success" && payment ? (
+            <PaymentSummaryPanel
+              amount={payment.amount || 0}
+              currency={payment.currency || "NGN"}
+              itemLabel={payment.itemTitle || normalizeLabel(payment.itemType || itemType)}
+              itemType={payment.itemType || itemType}
+              platformFeeExplanation="Tengacion platform fees were included in the displayed price. Paystack charged only the verified total."
+              compact
+            />
+          ) : null}
+
+          {status === "failed" ? (
+            <PaymentRecoveryNotice
+              title="Payment recovery"
+              message={detail || "Retry verification before paying again. If money left your account, contact support with the reference."}
+              reference={reference}
+              onRetry={retryVerification}
+            />
+          ) : null}
+
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-stone-200 bg-white/80 px-4 py-4">
               <p className="text-xs uppercase tracking-wide text-slate-500">Reference</p>
@@ -204,22 +230,24 @@ export default function PaymentCallbackPage() {
             <button
               type="button"
               className="inline-flex items-center justify-center rounded-2xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(15,64,39,0.2)] transition hover:bg-brand-700"
-              onClick={() => {
-                attemptsRef.current = 0;
-                setRetryNonce((value) => value + 1);
-                setStatus("verifying");
-                setMessage("Verifying your payment with Paystack...");
-                setDetail("We're checking the backend again now.");
-              }}
+              onClick={retryVerification}
               disabled={status === "success"}
             >
               {status === "verifying" || status === "pending" ? "Checking again..." : "Retry verification"}
             </button>
+            {status === "success" ? (
+              <Link
+                className="inline-flex items-center justify-center rounded-2xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-800"
+                to={receiptPath}
+              >
+                View receipt
+              </Link>
+            ) : null}
             <Link
               className="inline-flex items-center justify-center rounded-2xl border border-brand-200 bg-white/90 px-5 py-2.5 text-sm font-semibold text-brand-900 transition hover:bg-white"
               to="/purchases"
             >
-              Open my purchases
+              Order status
             </Link>
             <Link
               className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white/80 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-white"

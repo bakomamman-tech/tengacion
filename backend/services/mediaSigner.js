@@ -11,6 +11,23 @@ const toTokenText = (value = "", maxLength = 180) =>
     .trim()
     .slice(0, maxLength);
 
+const getRequestBindingParts = (req = {}) => {
+  const forwardedFor = String(req.headers?.["x-forwarded-for"] || "")
+    .split(",")[0]
+    .trim();
+  const ip = forwardedFor || String(req.ip || req.socket?.remoteAddress || "").trim();
+  const userAgent = String(req.headers?.["user-agent"] || "").trim();
+  return [ip, userAgent].filter(Boolean).join("|");
+};
+
+const buildRequestBindingHash = (req = {}) => {
+  const value = getRequestBindingParts(req);
+  if (!value) {
+    return "";
+  }
+  return crypto.createHash("sha256").update(value).digest("base64url");
+};
+
 const getSecret = () => {
   const secret = config.MEDIA_SIGNING_SECRET || config.JWT_SECRET;
   if (!secret && config.NODE_ENV === "production") {
@@ -44,6 +61,8 @@ const buildSignedMediaUrl = ({
   allowDownload = false,
   filename = "",
   contentType = "",
+  disposition = "",
+  bindToRequest = false,
   req,
 }) => {
   if (!sourceUrl || !req) {
@@ -66,12 +85,22 @@ const buildSignedMediaUrl = ({
   if (resolvedContentType) {
     payload.contentType = resolvedContentType;
   }
+  const resolvedDisposition = toTokenText(disposition, 24).toLowerCase();
+  if (["inline", "attachment"].includes(resolvedDisposition)) {
+    payload.disposition = resolvedDisposition;
+  }
+  if (bindToRequest && req) {
+    const binding = buildRequestBindingHash(req);
+    if (binding) {
+      payload.device = binding;
+    }
+  }
 
   const token = buildDeliveryToken(payload);
   return `${req.protocol}://${req.get("host")}/api/media/delivery/${encodeURIComponent(token)}`;
 };
 
-const verifySignedMediaToken = (token) => {
+const verifySignedMediaToken = (token, { req } = {}) => {
   const rawToken = String(token || "").trim();
   if (!rawToken) {
     throw new Error("Missing media token");
@@ -97,6 +126,14 @@ const verifySignedMediaToken = (token) => {
     }
     if (Number(payload.exp) <= Math.floor(Date.now() / 1000)) {
       throw new Error("Media token expired");
+    }
+    if (payload.device && req) {
+      const expectedBinding = buildRequestBindingHash(req);
+      if (!expectedBinding || expectedBinding !== payload.device) {
+        const error = new Error("Media token is bound to another device");
+        error.status = 403;
+        throw error;
+      }
     }
     return payload;
   }

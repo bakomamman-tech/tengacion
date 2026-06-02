@@ -971,7 +971,7 @@ describe("creator profile routes", () => {
     expect(archiveResponse.body.length).toBeGreaterThan(0);
   });
 
-  test("GET /api/download/book/:itemId streams the paid PDF with the manuscript filename", async () => {
+  test("GET /api/download/book/:itemId opens the paid PDF inline with the manuscript filename", async () => {
     const { profile } = await createUserAndProfile({
       creatorTypes: ["bookPublishing"],
     });
@@ -1023,7 +1023,7 @@ describe("creator profile routes", () => {
       .expect(200);
 
     expect(pdfResponse.headers["content-type"]).toContain("application/pdf");
-    expect(pdfResponse.headers["content-disposition"]).toContain("attachment;");
+    expect(pdfResponse.headers["content-disposition"]).toContain("inline;");
     expect(pdfResponse.headers["content-disposition"]).toContain("The Rustle of Death.pdf");
     expect(pdfResponse.body.toString("utf8")).toContain("%PDF-1.4 original manuscript");
   });

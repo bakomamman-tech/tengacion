@@ -10,6 +10,7 @@ const {
 } = require("../utils/bookDownloadMetadata");
 
 const toText = (value = "") => String(value || "").trim();
+const GENERATED_CHAPTER_ONE_PREVIEW_PAGE_LIMIT = 24;
 
 const mediaUrl = (media = {}) => {
   const value = media || {};
@@ -79,7 +80,25 @@ const resolvePreviewFilename = (book = {}) => {
   );
 };
 
-const loadFirstPdfPage = async (sourceUrl = "") => {
+const resolveGeneratedPreviewPageLimit = (book = {}) => {
+  const candidates = [
+    book.previewPageCount,
+    book.previewPages,
+    process.env.BOOK_PREVIEW_PAGE_LIMIT,
+    GENERATED_CHAPTER_ONE_PREVIEW_PAGE_LIMIT,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = Number(candidate);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return Math.max(1, Math.min(80, Math.floor(parsed)));
+    }
+  }
+
+  return GENERATED_CHAPTER_ONE_PREVIEW_PAGE_LIMIT;
+};
+
+const loadPdfPreviewPages = async (sourceUrl = "", pageLimit = GENERATED_CHAPTER_ONE_PREVIEW_PAGE_LIMIT) => {
   const source = await openMediaSourceStream(sourceUrl);
   const input = await streamToBuffer(source.stream);
   const sourcePdf = await PDFDocument.load(input, { ignoreEncryption: true });
@@ -88,8 +107,10 @@ const loadFirstPdfPage = async (sourceUrl = "") => {
   }
 
   const previewPdf = await PDFDocument.create();
-  const [firstPage] = await previewPdf.copyPages(sourcePdf, [0]);
-  previewPdf.addPage(firstPage);
+  const pageCount = Math.min(sourcePdf.getPageCount(), Math.max(1, Number(pageLimit) || 1));
+  const pageIndexes = Array.from({ length: pageCount }, (_, index) => index);
+  const copiedPages = await previewPdf.copyPages(sourcePdf, pageIndexes);
+  copiedPages.forEach((page) => previewPdf.addPage(page));
   return Buffer.from(await previewPdf.save());
 };
 
@@ -125,18 +146,28 @@ const streamBookPreviewDocument = async ({
   }
 
   const explicitPreviewSource = getBookExplicitPreviewSource(book);
-  const explicitPreviewIsPdf = sourceLooksPdf(explicitPreviewSource);
   const generatedPreviewSource = getBookContentSource(book);
   const generatedPreviewIsPdf = isPdfBook(book) && generatedPreviewSource;
-  const onePagePreviewSource = explicitPreviewIsPdf
-    ? explicitPreviewSource
-    : generatedPreviewIsPdf
-      ? generatedPreviewSource
-      : "";
 
-  if (onePagePreviewSource) {
+  if (explicitPreviewSource) {
+    return streamSourceMedia({
+      req,
+      res,
+      sourceUrl: explicitPreviewSource,
+      disposition: "inline",
+      filename: ensureFilenameExtension(`${sanitizeFilename(book.title || "book", "book")}-preview`, ".pdf"),
+      contentType: sourceLooksPdf(explicitPreviewSource) ? "application/pdf" : "",
+      cacheControl: "private, max-age=300, stale-while-revalidate=86400",
+      headOnly,
+    });
+  }
+
+  if (generatedPreviewIsPdf) {
     try {
-      const previewBuffer = await loadFirstPdfPage(onePagePreviewSource);
+      const previewBuffer = await loadPdfPreviewPages(
+        generatedPreviewSource,
+        resolveGeneratedPreviewPageLimit(book)
+      );
       const filename = resolvePreviewFilename(book);
       if (setPreviewHeaders({
         res,
@@ -149,24 +180,11 @@ const streamBookPreviewDocument = async ({
       res.end(previewBuffer);
       return true;
     } catch {
-      // Fall through to an explicit preview upload when PDF splitting fails.
+      // Fall through to unavailable when PDF splitting fails.
     }
   }
 
-  if (!explicitPreviewSource) {
-    return false;
-  }
-
-  return streamSourceMedia({
-    req,
-    res,
-    sourceUrl: explicitPreviewSource,
-    disposition: "inline",
-    filename: ensureFilenameExtension(`${sanitizeFilename(book.title || "book", "book")}-preview`, ".pdf"),
-    contentType: sourceLooksPdf(explicitPreviewSource) ? "application/pdf" : "",
-    cacheControl: "private, max-age=300, stale-while-revalidate=86400",
-    headOnly,
-  });
+  return false;
 };
 
 module.exports = {

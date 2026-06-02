@@ -58,11 +58,12 @@ const resolvePublicMediaAccess = async ({ mediaId, req }) => {
 };
 
 const serveSignedMedia = async (req, res, { token, headOnly = false }) => {
-  const payload = verifySignedMediaToken(token);
+  const payload = verifySignedMediaToken(token, { req });
   const sourceUrl = String(payload?.src || "").trim();
-  const disposition = payload?.dl ? "attachment" : "inline";
+  const disposition = String(payload?.disposition || "").trim() || (payload?.dl ? "attachment" : "inline");
   const filename = String(payload?.filename || "").trim();
   const contentType = String(payload?.contentType || "").trim();
+  const cacheControl = payload?.device ? "private, no-store, max-age=0" : SIGNED_CACHE_CONTROL;
 
   if (!sourceUrl) {
     return res.status(400).json({ error: "Invalid media token" });
@@ -88,7 +89,7 @@ const serveSignedMedia = async (req, res, { token, headOnly = false }) => {
     disposition,
     filename,
     contentType,
-    cacheControl: SIGNED_CACHE_CONTROL,
+    cacheControl,
     headOnly,
   });
   if (!streamed) {
@@ -103,7 +104,7 @@ router.get("/signed", async (req, res) => {
       return res.status(400).json({ error: "Missing token" });
     }
 
-    verifySignedMediaToken(token);
+    verifySignedMediaToken(token, { req });
     res.setHeader("Cache-Control", "no-store");
     return res.redirect(307, `/api/media/delivery/${encodeURIComponent(token)}`);
   } catch {

@@ -10,11 +10,15 @@ const { evaluateVerification } = require("../services/contentVerificationService
 const { creatorHasCategory } = require("../services/creatorProfileService");
 const { notifySavedContentUpdated } = require("../services/fanReturnPathService");
 const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
-const { streamBookPreviewDocument } = require("../services/bookPreviewService");
+const {
+  buildBookPreviewEndpointUrl,
+  canServeBookPreviewDocument,
+  streamBookPreviewDocument,
+} = require("../services/bookPreviewService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 
 // Non-goal for the current book flow: audiobook media is handled through music/podcast uploads.
-const BOOK_CHAPTER_PREVIEW_CHAR_LIMIT = 1800;
+const BOOK_CHAPTER_ONE_PREVIEW_CHAR_LIMIT = 60000;
 
 const collectBookMediaAssets = (book = {}) => [
   book?.coverMedia || book?.coverImageUrl,
@@ -85,13 +89,12 @@ const resolveChapterPreviewPage = (content = "") => {
     return "";
   }
 
-  const [explicitFirstPage] = normalized.split(/\f|\n\s*\[page break\]\s*\n/i);
-  const pageText = String(explicitFirstPage || normalized).trim();
-  if (pageText.length <= BOOK_CHAPTER_PREVIEW_CHAR_LIMIT) {
+  const pageText = normalized;
+  if (pageText.length <= BOOK_CHAPTER_ONE_PREVIEW_CHAR_LIMIT) {
     return pageText;
   }
 
-  const hardCut = pageText.slice(0, BOOK_CHAPTER_PREVIEW_CHAR_LIMIT);
+  const hardCut = pageText.slice(0, BOOK_CHAPTER_ONE_PREVIEW_CHAR_LIMIT);
   const paragraphCut = hardCut.lastIndexOf("\n\n");
   const sentenceCut = Math.max(
     hardCut.lastIndexOf(". "),
@@ -99,7 +102,7 @@ const resolveChapterPreviewPage = (content = "") => {
     hardCut.lastIndexOf("? ")
   );
   const wordCut = hardCut.lastIndexOf(" ");
-  const minCut = Math.floor(BOOK_CHAPTER_PREVIEW_CHAR_LIMIT * 0.62);
+  const minCut = Math.floor(BOOK_CHAPTER_ONE_PREVIEW_CHAR_LIMIT * 0.62);
   const cutAt =
     paragraphCut >= minCut
       ? paragraphCut
@@ -107,7 +110,7 @@ const resolveChapterPreviewPage = (content = "") => {
         ? sentenceCut + 1
         : wordCut >= minCut
           ? wordCut
-          : BOOK_CHAPTER_PREVIEW_CHAR_LIMIT;
+          : BOOK_CHAPTER_ONE_PREVIEW_CHAR_LIMIT;
 
   return `${pageText.slice(0, cutAt).trim()}...`;
 };
@@ -538,12 +541,21 @@ exports.getBookById = asyncHandler(async (req, res) => {
     userId: req.user?.id,
   });
 
+  const payload = toBookPayload(book);
+  if (!hasFullAccess) {
+    payload.contentUrl = "";
+    payload.fileUrl = "";
+  }
+  if (canServeBookPreviewDocument(book)) {
+    payload.previewUrl = buildBookPreviewEndpointUrl({ req, bookId: book._id.toString() });
+  }
+
   return res.json({
-    ...toBookPayload(book),
+    ...payload,
     chapterCount: uploadedChapterCount || savedChapterCount,
     canReadFull: hasFullAccess,
     freeChaptersRecommended: 0,
-    previewPagesRecommended: 1,
+    previewPagesRecommended: 24,
   });
 });
 

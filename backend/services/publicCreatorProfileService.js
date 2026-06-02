@@ -71,6 +71,8 @@ const buildSignedUrl = ({
   allowDownload = false,
   filename = "",
   contentType = "",
+  disposition = "",
+  bindToRequest = false,
 }) =>
   sourceUrl
     ? buildSignedMediaUrl({
@@ -81,6 +83,8 @@ const buildSignedUrl = ({
         allowDownload,
         filename,
         contentType,
+        disposition,
+        bindToRequest,
         req,
         expiresInSec: 10 * 60,
       })
@@ -472,7 +476,7 @@ const mapBookItem = ({ book, req, viewerId, ownerAccess, entitlements, creatorSu
         : book.coverImageUrl || book.coverUrl
     ),
     previewUrl,
-    streamUrl: canAccessFull ? fullStreamUrl : previewUrl,
+    streamUrl: canAccessFull ? fullStreamUrl : "",
     downloadUrl: canAccessFull
       ? buildSignedUrl({
           req,
@@ -481,6 +485,8 @@ const mapBookItem = ({ book, req, viewerId, ownerAccess, entitlements, creatorSu
           itemId: String(book._id),
           userId: viewerId,
           allowDownload: true,
+          disposition: "inline",
+          bindToRequest: true,
           ...resolveBookDownloadMetadata(book),
         })
       : "",
@@ -489,7 +495,7 @@ const mapBookItem = ({ book, req, viewerId, ownerAccess, entitlements, creatorSu
     isFree: numberOrZero(book.price) <= 0,
     canAccessFull,
     canPreview: Boolean(previewUrl || previewSource),
-    canStream: Boolean(canAccessFull ? fullStreamUrl : previewUrl),
+    canStream: Boolean(canAccessFull && fullStreamUrl),
     canDownload: Boolean(canAccessFull && bookFile),
     canBuy: numberOrZero(book.price) > 0 && !canAccessFull,
     authorName: toCleanString(book.authorName),

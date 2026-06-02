@@ -568,7 +568,13 @@ exports.getProtectedDownload = asyncHandler(async (req, res) => {
         allowDownload: true,
         req,
         expiresInSec: 10 * 60,
-        ...(item.itemType === "book" ? resolveBookDownloadMetadata(item.payload) : {}),
+        ...(item.itemType === "book"
+          ? {
+              ...resolveBookDownloadMetadata(item.payload),
+              disposition: "inline",
+              bindToRequest: true,
+            }
+          : {}),
       });
 
   await touchUserActivity({ userId, seenAt: new Date() }).catch(() => null);

@@ -170,6 +170,8 @@ const mapBookForHub = async ({ book, req, userId }) => {
           req,
           allowDownload: true,
           expiresInSec: 10 * 60,
+          disposition: "inline",
+          bindToRequest: true,
           ...resolveBookDownloadMetadata(book),
         })
       : "",

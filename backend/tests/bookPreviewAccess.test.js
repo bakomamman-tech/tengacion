@@ -96,7 +96,7 @@ describe("book preview access", () => {
     }
   });
 
-  test("GET /api/books/:bookId/preview serves only the first PDF page", async () => {
+  test("GET /api/books/:bookId/preview serves the opening PDF preview section", async () => {
     const { profile } = await createCreatorProfile();
     const pdfDataUrl = await createPdfDataUrl();
     const book = await Book.create({
@@ -123,7 +123,7 @@ describe("book preview access", () => {
     expect(response.headers["content-disposition"]).toContain("inline;");
 
     const previewPdf = await PDFDocument.load(response.body);
-    expect(previewPdf.getPageCount()).toBe(1);
+    expect(previewPdf.getPageCount()).toBe(2);
 
     const streamResponse = await request(app)
       .get(`/api/stream/book/${book._id}`)
@@ -134,7 +134,7 @@ describe("book preview access", () => {
     expect(streamResponse.body.streamUrl).not.toContain("/api/media/delivery/");
   });
 
-  test("unpaid chapter reading exposes only the first page of chapter one", async () => {
+  test("unpaid chapter reading exposes chapter one only", async () => {
     const { profile } = await createCreatorProfile();
     const book = await Book.create({
       creatorId: profile._id,
@@ -172,7 +172,7 @@ describe("book preview access", () => {
         _id: firstChapter._id.toString(),
         locked: false,
         previewOnly: true,
-        previewText: "This is the first preview page.\n\nIt is readable before payment.",
+        previewText: "This is the first preview page.\n\nIt is readable before payment.\fPaid-only continuation starts here.",
       }),
       expect.objectContaining({
         _id: secondChapter._id.toString(),
@@ -186,8 +186,9 @@ describe("book preview access", () => {
       .expect(200);
 
     expect(firstResponse.body.previewOnly).toBe(true);
-    expect(firstResponse.body.content).toBe("This is the first preview page.\n\nIt is readable before payment.");
-    expect(firstResponse.body.content).not.toContain("Paid-only continuation");
+    expect(firstResponse.body.content).toBe(
+      "This is the first preview page.\n\nIt is readable before payment.\fPaid-only continuation starts here."
+    );
 
     await request(app)
       .get(`/api/books/${book._id}/chapters/${secondChapter._id}`)

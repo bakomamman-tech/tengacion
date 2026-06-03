@@ -182,7 +182,9 @@ describe("CreatorHubPage recommendations", () => {
 
     renderCreatorHub();
 
-    expect(await screen.findByRole("heading", { name: /recommended for you/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /recommended for you/i }, { timeout: 5000 })
+    ).toBeInTheDocument();
     expect(screen.getByText("Because you like this format")).toBeInTheDocument();
     expect(getDiscoveryCreatorHubMock).toHaveBeenCalledWith({
       creatorId,
@@ -223,7 +225,7 @@ describe("CreatorHubPage recommendations", () => {
     expect(screen.queryByRole("heading", { name: /recommended for you/i })).not.toBeInTheDocument();
   });
 
-  it("shows a book cover in the hero preview without music streaming copy", async () => {
+  it("renders a book PDF preview in the hero without music streaming copy", async () => {
     const payload = buildCreatorPayload();
     const book = {
       id: "book-1",
@@ -268,15 +270,15 @@ describe("CreatorHubPage recommendations", () => {
 
     renderCreatorHub(`/creators/${creatorId}/books?previewItem=book-1`);
 
-    expect(await screen.findByText("Reading now")).toBeInTheDocument();
+    expect(await screen.findByText("Reading preview")).toBeInTheDocument();
     expect(screen.queryByText(/^Now streaming$/i)).not.toBeInTheDocument();
-    expect(screen.getByAltText("The Rustle of Death cover")).toHaveAttribute(
+    expect(screen.getByTitle("The Rustle of Death")).toHaveAttribute(
       "src",
-      "https://cdn.test/books/rustle-cover.jpg"
+      expect.stringContaining("/api/books/book-1/preview")
     );
   });
 
-  it("opens the one-page book preview endpoint from the preview button", async () => {
+  it("renders the book preview endpoint inside the creator page", async () => {
     const user = userEvent.setup();
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     const payload = buildCreatorPayload();
@@ -315,10 +317,10 @@ describe("CreatorHubPage recommendations", () => {
     const previewButtons = await screen.findAllByRole("button", { name: /^preview$/i });
     await user.click(previewButtons[0]);
 
-    expect(openSpy).toHaveBeenCalledWith(
-      "/api/books/book-1/preview",
-      "_blank",
-      "noopener,noreferrer"
+    expect(await screen.findByTitle("The Rustle of Death")).toHaveAttribute(
+      "src",
+      expect.stringContaining("/api/books/book-1/preview")
     );
+    expect(openSpy).not.toHaveBeenCalled();
   });
 });

@@ -28,13 +28,28 @@ export default function MediaPreviewCard({
   }
 
   const normalizedType = normalizePurchaseType(item.itemType || item.productType || item.mediaType);
+  const isBook = normalizedType === "book";
+  const hasFullBookAccess = Boolean(
+    !isBook ||
+    item.canAccessFull ||
+    item.owned ||
+    item.entitled ||
+    item.isFree ||
+    Number(item.price || 0) <= 0
+  );
   const itemKey = `${normalizedType || "item"}:${item.id || ""}`;
   const isBuyBusy = purchaseBusyKey === itemKey;
   const streamActionLabel = resolvePrimaryAccessLabel(item);
   const downloadActionLabel = resolveDownloadActionLabel(item);
   const buyLabel = resolvePurchaseCtaLabel(item, { busy: isBuyBusy });
   const detailRoute = item.route || creatorRoute || `/creators/${creatorId}`;
-  const showDownloadAction = Boolean(item.canDownload && downloadActionLabel !== streamActionLabel);
+  const showStreamAction = Boolean(item.canStream && hasFullBookAccess);
+  const showDownloadAction = Boolean(
+    item.canDownload &&
+    hasFullBookAccess &&
+    downloadActionLabel !== streamActionLabel
+  );
+  const showLockedBookActions = Boolean(isBook && !hasFullBookAccess);
 
   return (
     <article
@@ -80,8 +95,18 @@ export default function MediaPreviewCard({
             Preview
           </button>
         ) : null}
-        {item.canStream ? (
+        {showStreamAction ? (
           <button type="button" className="creator-secondary-btn" onClick={() => onStream(item)}>
+            {streamActionLabel}
+          </button>
+        ) : null}
+        {showLockedBookActions ? (
+          <button
+            type="button"
+            className="creator-secondary-btn"
+            disabled
+            title="Purchase this book to read the full PDF inside Tengacion."
+          >
             {streamActionLabel}
           </button>
         ) : null}
@@ -89,7 +114,17 @@ export default function MediaPreviewCard({
           <button type="button" className="creator-ghost-btn" onClick={() => onDownload(item)}>
             {downloadActionLabel}
           </button>
-        ) : item.canBuy ? (
+        ) : showLockedBookActions ? (
+          <button
+            type="button"
+            className="creator-ghost-btn"
+            disabled
+            title="Purchase this book to activate device-bound PDF download access."
+          >
+            {downloadActionLabel}
+          </button>
+        ) : null}
+        {item.canBuy ? (
           <button type="button" className="creator-primary-btn" onClick={() => onBuy(item)} disabled={isBuyBusy}>
             {buyLabel}
           </button>

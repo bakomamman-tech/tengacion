@@ -1049,6 +1049,9 @@ export const getBookChapter = (bookId, chapterId) =>
     }
   );
 
+export const getBookPreviewUrl = (bookId) =>
+  `${API_BASE}/books/${encodeURIComponent(bookId || "")}/preview`;
+
 // ======================================================
 // PAYMENTS + PURCHASES
 // ======================================================

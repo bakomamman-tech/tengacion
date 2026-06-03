@@ -14,6 +14,7 @@ import {
   trackDiscoveryEvents,
 } from "../api";
 import PaywallModal from "../components/PaywallModal";
+import BookPdfSurface from "../components/creator/BookPdfSurface";
 import CreatorHero from "../components/creator/media/CreatorHero";
 import CreatorContentShelf from "../components/creator/media/CreatorContentShelf";
 import SeoHead from "../components/seo/SeoHead";
@@ -41,6 +42,7 @@ import {
   resolvePrimaryAccessLabel,
   resolvePurchaseCtaLabel,
 } from "../utils/purchaseUx";
+import { buildPdfViewerSrc } from "../utils/pdfViewer";
 import "./creator-public.css";
 
 const PUBLIC_TABS = [
@@ -130,8 +132,12 @@ const normalizePreviewPayload = ({
   };
 };
 
+const shouldRenderBookPdfPreview = (preview = {}) =>
+  normalizePurchaseType(preview?.itemType || preview?.kind || "") === "book"
+  || String(preview?.kind || "").trim().toLowerCase() === "document";
+
 const shouldRenderCoverPreview = (preview = {}) =>
-  normalizePurchaseType(preview?.itemType || preview?.kind || "") === "book";
+  Boolean(preview?.artwork) && !shouldRenderBookPdfPreview(preview);
 
 const buildBookPreviewTarget = (item = {}) => {
   const itemType = normalizePurchaseType(item.itemType || item.productType || item.mediaType);
@@ -730,7 +736,6 @@ export default function CreatorHubPage() {
         setActivePreview(
           normalizePreviewPayload({ item, src: previewUrl, mode: "preview" })
         );
-        window.open(previewUrl, "_blank", "noopener,noreferrer");
       } else {
         toast.error("Preview unavailable for this book.");
       }
@@ -754,20 +759,25 @@ export default function CreatorHubPage() {
     }
     trackRecommendedContentAction({ item, action: "stream" });
 
-    if (item.mediaType === "document") {
-      const targetUrl = item.streamUrl;
-      if (targetUrl) {
-        setActivePreview(
-          normalizePreviewPayload({ item, src: targetUrl, mode: "stream" })
-        );
-        window.open(targetUrl, "_blank", "noopener,noreferrer");
+    if (item.mediaType === "document" && !item.canAccessFull && Number(item.price || 0) > 0) {
+      if (item.canBuy) {
+        await handleBuy(item);
         return;
       }
+      toast.error("Purchase required before reading this book.");
+      return;
     }
 
     try {
       const streamPayload = await getStreamUrl(item.itemType, item.id);
       const streamUrl = streamPayload?.streamUrl || item.streamUrl || item.previewUrl || "";
+      if (item.mediaType === "document" && !streamPayload?.canAccessFull && Number(item.price || 0) > 0) {
+        if (item.canBuy) {
+          await handleBuy(item);
+          return;
+        }
+        throw new Error("Purchase required before reading this book.");
+      }
       if (!streamUrl) {
         if (item.canBuy) {
           await handleBuy(item);
@@ -794,8 +804,21 @@ export default function CreatorHubPage() {
     }
     trackRecommendedContentAction({ item, action: "download" });
 
+    if (item.mediaType === "document" && !item.canAccessFull && Number(item.price || 0) > 0) {
+      if (item.canBuy) {
+        await handleBuy(item);
+        return;
+      }
+      toast.error("Purchase required before downloading this book.");
+      return;
+    }
+
     if (item.downloadUrl) {
-      window.open(item.downloadUrl, "_blank", "noopener,noreferrer");
+      window.open(
+        item.mediaType === "document" ? buildPdfViewerSrc(item.downloadUrl) : item.downloadUrl,
+        "_blank",
+        "noopener,noreferrer"
+      );
       return;
     }
 
@@ -818,7 +841,11 @@ export default function CreatorHubPage() {
       if (!downloadPayload?.downloadUrl) {
         throw new Error("Download unavailable");
       }
-      window.open(downloadPayload.downloadUrl, "_blank", "noopener,noreferrer");
+      window.open(
+        item.mediaType === "document" ? buildPdfViewerSrc(downloadPayload.downloadUrl) : downloadPayload.downloadUrl,
+        "_blank",
+        "noopener,noreferrer"
+      );
       await refreshPublicProfile().catch(() => null);
     } catch (err) {
       toast.error(err?.message || "Could not prepare download.");
@@ -832,8 +859,14 @@ export default function CreatorHubPage() {
   const featuredPurchaseKey = featuredItem ? `${featuredItemType || "item"}:${featuredItem.id}` : "";
   const featuredStreamLabel = featuredItem ? resolvePrimaryAccessLabel(featuredItem) : "";
   const featuredDownloadLabel = featuredItem ? resolveDownloadActionLabel(featuredItem) : "";
+  const showFeaturedStreamAction = Boolean(
+    featuredItem?.canStream
+    && !(featuredItemType === "book" && !featuredItem?.canAccessFull && Number(featuredItem?.price || 0) > 0)
+  );
   const showFeaturedDownloadAction = Boolean(
-    featuredItem?.canDownload && featuredDownloadLabel !== featuredStreamLabel
+    featuredItem?.canDownload
+    && featuredDownloadLabel !== featuredStreamLabel
+    && !(featuredItemType === "book" && !featuredItem?.canAccessFull && Number(featuredItem?.price || 0) > 0)
   );
 
   useEffect(() => {
@@ -853,13 +886,16 @@ export default function CreatorHubPage() {
       return;
     }
 
+    const targetItemType = normalizePurchaseType(targetItem.itemType || targetItem.productType || targetItem.mediaType);
+    const isBookPreviewRequest = targetItemType === "book";
     const sourceUrl =
-      buildBookPreviewTarget(targetItem) ||
-      targetItem.previewUrl ||
-      targetItem.streamUrl ||
-      targetItem.downloadUrl ||
-      targetItem.route ||
-      "";
+      isBookPreviewRequest
+        ? buildBookPreviewTarget(targetItem)
+        : targetItem.previewUrl ||
+          targetItem.streamUrl ||
+          targetItem.downloadUrl ||
+          targetItem.route ||
+          "";
 
     if (!sourceUrl) {
       return;
@@ -869,12 +905,13 @@ export default function CreatorHubPage() {
       normalizePreviewPayload({
         item: targetItem,
         src: sourceUrl,
-        mode: targetItem.canStream ? "stream" : "preview",
+        mode: isBookPreviewRequest ? "preview" : targetItem.canStream ? "stream" : "preview",
       })
     );
   }, [books, music.albums, music.tracks, music.videos, podcasts.episodes, requestedPreviewId]);
 
   const activePreviewStatusLabel = resolvePreviewStatusLabel(activePreview);
+  const activePreviewShowsPdf = shouldRenderBookPdfPreview(activePreview);
   const activePreviewShowsCover = shouldRenderCoverPreview(activePreview);
   const checkoutItemType = normalizePurchaseType(checkoutItem?.itemType || checkoutItem?.productType || "");
   const checkoutItemKey = checkoutItem?.id ? `${checkoutItemType || "item"}:${checkoutItem.id}` : "";
@@ -1191,7 +1228,7 @@ export default function CreatorHubPage() {
                         Preview
                       </button>
                     ) : null}
-                    {featuredItem.canStream ? (
+                    {showFeaturedStreamAction ? (
                       <button type="button" className="creator-primary-btn" onClick={() => handleStream(featuredItem)}>
                         {featuredStreamLabel}
                       </button>
@@ -1235,6 +1272,17 @@ export default function CreatorHubPage() {
                     <video className="creator-public-preview__player" controls src={activePreview.src} poster={activePreview.artwork} />
                   ) : activePreview.kind === "audio" ? (
                     <CreatorPublicAudioPreview preview={activePreview} />
+                  ) : activePreviewShowsPdf ? (
+                    <BookPdfSurface
+                      src={activePreview.src}
+                      title={activePreview.title}
+                      mode={activePreview.mode === "stream" ? "full" : "preview"}
+                      caption={
+                        activePreview.mode === "stream"
+                          ? "Full PDF reading stays inside Tengacion."
+                          : "Preview is limited to preliminary pages through chapter one."
+                      }
+                    />
                   ) : activePreviewShowsCover ? (
                     <div className="creator-public-preview__cover">
                       {activePreview.artwork ? (

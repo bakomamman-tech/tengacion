@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import { createCheckout, resolveImage, toggleFollowCreator } from "../../api";
+import BookPdfSurface from "../creator/BookPdfSurface";
 import CreatorAudioPreviewPlayer from "../creator/CreatorAudioPreviewPlayer";
 import { formatCurrency } from "../creator/creatorConfig";
 import ShareActions from "../creator/media/ShareActions";
@@ -170,16 +171,15 @@ export default function CreatorPreviewModal({ open = false, item = null, onClose
       <div className="creator-preview-modal__excerpt">
         {item?.previewExcerptText || item?.summary || "This book preview opens a reader-friendly excerpt here."}
       </div>
+      {previewSrc ? (
+        <BookPdfSurface
+          src={previewSrc}
+          title={item?.title || "Book preview"}
+          mode="preview"
+          caption="Preview is limited to preliminary pages through chapter one."
+        />
+      ) : null}
       <div className="creator-preview-modal__book-actions">
-        {previewSrc ? (
-          <button
-            type="button"
-            className="creator-preview-modal__action creator-preview-modal__action--accent"
-            onClick={() => window.open(previewSrc, "_blank", "noopener,noreferrer")}
-          >
-            Open preview
-          </button>
-        ) : null}
         {item?.canBuy ? (
           <button
             type="button"

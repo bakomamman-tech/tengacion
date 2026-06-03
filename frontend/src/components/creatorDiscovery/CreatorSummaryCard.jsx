@@ -61,7 +61,13 @@ export default function CreatorSummaryCard({ item }) {
     }
     const bookPreviewTarget = buildBookPreviewTarget(item, detailRoute);
     if (bookPreviewTarget) {
-      window.open(bookPreviewTarget, "_blank", "noopener,noreferrer");
+      openPreview({
+        ...item,
+        previewUrl: bookPreviewTarget,
+        initialSourceMode: "preview",
+        mediaType: "document",
+        itemType: "book",
+      });
       return;
     }
     openPreview({

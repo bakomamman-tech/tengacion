@@ -337,7 +337,17 @@ export default function PublicCategoryPage({ category = "music" }) {
 
     const bookPreviewTarget = buildBookPreviewTarget(item);
     if (bookPreviewTarget) {
-      window.open(bookPreviewTarget, "_blank", "noopener,noreferrer");
+      if (creatorPlayer?.openPreview) {
+        creatorPlayer.openPreview({
+          ...item,
+          previewUrl: bookPreviewTarget,
+          initialSourceMode: "preview",
+          mediaType: "document",
+          itemType: "book",
+        });
+        return;
+      }
+      navigate(getDetailRoute(item));
       return;
     }
 

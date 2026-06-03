@@ -370,6 +370,16 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.68);
 }
 
+.creator-primary-btn:disabled,
+.creator-secondary-btn:disabled,
+.creator-ghost-btn:disabled,
+.creator-share-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.54;
+  transform: none;
+  box-shadow: none;
+}
+
 .creator-public-hero .creator-primary-btn,
 .creator-public-hero .creator-secondary-btn,
 .creator-public-hero .creator-share-btn {

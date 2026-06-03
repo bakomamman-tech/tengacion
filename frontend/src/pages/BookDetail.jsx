@@ -6,11 +6,14 @@ import {
   getBook,
   getBookChapter,
   getBookChapters,
+  getBookPreviewUrl,
   getDownloadUrl,
   getPublicCreatorProfile,
+  getStreamUrl,
   initPayment,
   resolveImage,
 } from "../api";
+import BookPdfSurface from "../components/creator/BookPdfSurface";
 import PaywallModal from "../components/PaywallModal";
 import SeoHead from "../components/seo/SeoHead";
 import { useAuth } from "../context/AuthContext";
@@ -29,6 +32,17 @@ import {
   resolveOwnedPurchaseLabel,
   resolvePurchaseCtaLabel,
 } from "../utils/purchaseUx";
+import { buildPdfViewerSrc } from "../utils/pdfViewer";
+
+const isPdfLikeBook = (book = {}) => {
+  const format = String(book?.fileFormat || "").trim().toLowerCase();
+  const contentType = String(book?.contentType || "").trim().toLowerCase();
+  return (
+    format === "pdf" ||
+    contentType === "pdf_book" ||
+    /\.pdf(?:$|[?#])/i.test(String(book?.contentUrl || book?.fileUrl || book?.previewUrl || ""))
+  );
+};
 
 export default function BookDetail() {
   const { bookId } = useParams();
@@ -48,6 +62,8 @@ export default function BookDetail() {
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [paying, setPaying] = useState(false);
   const [downloadingBook, setDownloadingBook] = useState(false);
+  const [readerLoading, setReaderLoading] = useState(false);
+  const [readerDocument, setReaderDocument] = useState(null);
   const [payError, setPayError] = useState("");
   const readerRef = useRef(null);
 
@@ -222,15 +238,63 @@ export default function BookDetail() {
     }
   };
 
-  const openReader = useCallback(() => {
+  const openReader = useCallback(async () => {
     readerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+
+    if (!book?.canReadFull) {
+      setPaywallOpen(true);
+      return;
+    }
+
+    if (!isPdfLikeBook(book) || readerDocument?.mode === "full") {
+      return;
+    }
+
+    try {
+      setReaderLoading(true);
+      setPayError("");
+      const payload = await getStreamUrl("book", book._id);
+      if (!payload?.canAccessFull || !payload?.streamUrl) {
+        throw new Error("Purchase required before reading the full PDF.");
+      }
+      setReaderDocument({
+        src: payload.streamUrl,
+        mode: "full",
+        title: book.title || "Book PDF",
+      });
+    } catch (err) {
+      setPayError(err?.message || "Could not open the book reader.");
+      setPaywallOpen(true);
+    } finally {
+      setReaderLoading(false);
+    }
+  }, [book, readerDocument?.mode]);
 
   useEffect(() => {
     if (!loading && isChapterOnePreview && selectedChapterId) {
-      window.setTimeout(openReader, 0);
+      window.setTimeout(() => {
+        readerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
     }
-  }, [isChapterOnePreview, loading, openReader, selectedChapterId]);
+  }, [isChapterOnePreview, loading, selectedChapterId]);
+
+  useEffect(() => {
+    if (!book?._id || !isPdfLikeBook(book)) {
+      setReaderDocument(null);
+      return;
+    }
+
+    setReaderDocument((current) => {
+      if (current?.mode === "full") {
+        return current;
+      }
+      return {
+        src: getBookPreviewUrl(book._id),
+        mode: "preview",
+        title: book.title || "Book preview",
+      };
+    });
+  }, [book]);
 
   const downloadFullBook = async () => {
     if (!book?._id) {
@@ -250,7 +314,7 @@ export default function BookDetail() {
       if (!payload?.downloadUrl) {
         throw new Error("Book download is not available yet.");
       }
-      window.open(payload.downloadUrl, "_blank", "noopener,noreferrer");
+      window.open(buildPdfViewerSrc(payload.downloadUrl), "_blank", "noopener,noreferrer");
     } catch (err) {
       setPayError(err.message || "Could not prepare book download.");
     } finally {
@@ -404,10 +468,11 @@ export default function BookDetail() {
               <div className="grid gap-2">
                 <button
                   type="button"
-                  className="inline-flex w-full items-center justify-center rounded-2xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(15,64,39,0.24)] transition hover:bg-brand-700"
+                  className="inline-flex w-full items-center justify-center rounded-2xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(15,64,39,0.24)] transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
                   onClick={openReader}
+                  disabled={readerLoading}
                 >
-                  {resolveOwnedPurchaseLabel(book)}
+                  {readerLoading ? "Opening reader..." : resolveOwnedPurchaseLabel(book)}
                 </button>
                 <button
                   type="button"
@@ -436,6 +501,26 @@ export default function BookDetail() {
             </p>
           </section>
 
+          {isPdfLikeBook(book) ? (
+            <section className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <BookPdfSurface
+                src={readerDocument?.src || getBookPreviewUrl(book._id)}
+                title={readerDocument?.title || book.title}
+                mode={readerDocument?.mode === "full" ? "full" : "preview"}
+                caption={
+                  readerDocument?.mode === "full"
+                    ? "Full PDF reading stays inside Tengacion."
+                    : "Preview is limited to preliminary pages through chapter one."
+                }
+              />
+              {!book.canReadFull ? (
+                <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  You are reading the book preview. Unlock the book to continue past chapter one.
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
           <h2 className="text-lg font-semibold text-slate-900">Chapters</h2>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {chapters.map((chapter) => (
@@ -451,7 +536,7 @@ export default function BookDetail() {
               >
                 <span className="font-medium">Chapter {chapter.order}: {chapter.title}</span>
                 <span className="mt-1 block text-xs">
-                  {chapter.locked ? "Locked" : chapter.previewOnly ? "First-page preview" : chapter.isFree ? "Preview" : "Unlocked"}
+                  {chapter.locked ? "Locked" : chapter.previewOnly ? "Chapter-one preview" : chapter.isFree ? "Preview" : "Unlocked"}
                 </span>
               </button>
             ))}
@@ -467,7 +552,7 @@ export default function BookDetail() {
             </h3>
             {selectedChapter?.previewOnly ? (
               <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                You are reading the first page of chapter one. Unlock the book to continue past this preview.
+                You are reading chapter one. Unlock the book to continue past this preview.
               </div>
             ) : null}
             {chapterLoading ? (
@@ -506,7 +591,7 @@ export default function BookDetail() {
         onClose={() => setPaywallOpen(false)}
         onBuy={buyNow}
         title={book.title}
-        subtitle="Read the first page of chapter one, then unlock the full book."
+        subtitle="Read the preliminary pages through chapter one, then unlock the full book."
         price={book.price}
         itemType="book"
         loading={paying}

@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -59,6 +60,8 @@ const DEFAULT_VALUES = {
   acceptedTerms: false,
   acceptedCopyrightDeclaration: false,
 };
+
+const MotionDiv = motion.div;
 
 export default function CreatorRegistrationForm({
   initialValues = {},
@@ -192,7 +195,7 @@ export default function CreatorRegistrationForm({
         ))}
       </div>
 
-      <motion.div
+      <MotionDiv
         key={step}
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -359,7 +362,7 @@ export default function CreatorRegistrationForm({
             </div>
           </section>
         ) : null}
-      </motion.div>
+      </MotionDiv>
 
       <div className="creator-form-actions">
         <button type="button" className="creator-ghost-btn" onClick={goBack} disabled={step === 0 || loading}>

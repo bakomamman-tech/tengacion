@@ -1,10 +1,11 @@
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import CreatorFanPagePreview from "../CreatorFanPagePreview";
+import { buildCreatorFanPageDataFromPublicPayload } from "../creatorFanPageData";
 
 const mockedUseAuth = vi.hoisted(() => vi.fn());
 
@@ -192,6 +193,122 @@ describe("CreatorFanPagePreview", () => {
     );
 
     expect(screen.getByRole("button", { name: /buy full track/i })).toBeInTheDocument();
+  }, 10000);
+
+  it("keeps public browsing open while protected fan actions ask visitors to sign in", async () => {
+    const user = userEvent.setup();
+    mockedUseAuth.mockReturnValue({
+      user: null,
+      loading: false,
+    });
+
+    const previewData = buildCreatorFanPageDataFromPublicPayload({
+      creator: {
+        id: "507f1f77bcf86cd799439011",
+        userId: "creator-user-1",
+        displayName: "Creator Example",
+        username: "creator-example",
+        bio: "A public creator page for music, books, podcasts, posts, and products.",
+        creatorTypes: ["music", "bookPublishing", "podcast"],
+        canonicalPath: "/creator/creator-example",
+        tabPaths: {
+          home: "/creator/creator-example",
+          music: "/creator/creator-example/music",
+          books: "/creator/creator-example/books",
+          podcasts: "/creator/creator-example/podcasts",
+        },
+      },
+      viewer: {
+        isAuthenticated: false,
+        isFollowing: false,
+      },
+      subscription: {
+        price: 2000,
+        description: "Members unlock premium downloads and direct support access.",
+        benefits: ["Premium downloads"],
+      },
+      stats: {
+        followersCount: 12,
+        totalTracks: 1,
+        totalPosts: 1,
+        totalProducts: 1,
+      },
+      music: {
+        tracks: [
+          {
+            id: "track-1",
+            itemType: "track",
+            title: "Golden Echoes",
+            price: 500,
+            previewUrl: "https://cdn.example.com/golden-preview.mp3",
+            route: "/tracks/track-1",
+            canBuy: true,
+            canPreview: true,
+          },
+        ],
+        albums: [],
+        videos: [],
+      },
+      books: [],
+      podcasts: { episodes: [] },
+      posts: [
+        {
+          id: "post-1",
+          title: "Studio Note",
+          text: "A public studio note for fans.",
+          publicPath: "/posts/post-1",
+          commentsCount: 3,
+          reactionsCount: 8,
+        },
+      ],
+      marketplace: {
+        storePath: "/creator/creator-example/store",
+        products: [
+          {
+            _id: "product-1",
+            title: "Creator Merch Pack",
+            description: "A signed premium merch drop.",
+            category: "Merch",
+            price: 3000,
+            stock: 5,
+            route: "/marketplace/product/creator-merch-pack",
+          },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/creator/creator-example"]}>
+        <CreatorFanPagePreview previewData={previewData} mode="public" />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getAllByRole("button", { name: /^follow$/i })[0]);
+
+    const followDialog = screen.getByRole("dialog", { name: /sign in to follow this creator/i });
+    expect(followDialog).toBeInTheDocument();
+    expect(within(followDialog).getByRole("link", { name: /sign in/i })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/login?returnTo=")
+    );
+
+    await user.click(screen.getByRole("button", { name: /keep browsing/i }));
+    await user.click(screen.getByRole("tab", { name: /posts/i }));
+
+    expect(screen.getByText(/a public studio note for fans/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /comment/i }));
+
+    expect(screen.getByRole("dialog", { name: /sign in to comment/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /keep browsing/i }));
+    await user.click(screen.getByRole("tab", { name: /store/i }));
+
+    expect(screen.getByText(/creator merch pack/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^purchase$/i }));
+
+    expect(screen.getByRole("dialog", { name: /sign in to purchase/i })).toBeInTheDocument();
   }, 10000);
 
   it("keeps the books tab out of the audio player experience", async () => {

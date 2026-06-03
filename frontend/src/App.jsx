@@ -62,7 +62,6 @@ const AdminCampaignsPage = lazy(() => import("./pages/AdminCampaigns"));
 const AdminRaffleCardsPage = lazy(() => import("./pages/AdminRaffleCards"));
 const AdminSettingsPage = lazy(() => import("./pages/AdminSettings"));
 const AdminStoragePage = lazy(() => import("./pages/AdminStorage"));
-const CreatorPage = lazy(() => import("./pages/CreatorPage"));
 const CreatorSongs = lazy(() => import("./pages/CreatorSongs"));
 const CreatorHubPage = lazy(() => import("./pages/CreatorHubPage"));
 const ArtistProfileRoute = lazy(() => import("@web/features/creator/ArtistPage"));
@@ -247,14 +246,15 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/creators/:creatorId" element={<CreatorPage />} />
+          <Route path="/creators/:creatorId" element={<CreatorFanPageViewPage />} />
           <Route path="/creators/:creatorId/songs" element={<CreatorSongs />} />
-          <Route path="/creators/:creatorId/music" element={<CreatorHubPage />} />
-          <Route path="/creators/:creatorId/albums" element={<CreatorHubPage />} />
-          <Route path="/creators/:creatorId/podcasts" element={<CreatorHubPage />} />
-          <Route path="/creators/:creatorId/books" element={<CreatorHubPage />} />
+          <Route path="/creators/:creatorId/music" element={<CreatorFanPageViewPage />} />
+          <Route path="/creators/:creatorId/albums" element={<CreatorFanPageViewPage />} />
+          <Route path="/creators/:creatorId/podcasts" element={<CreatorFanPageViewPage />} />
+          <Route path="/creators/:creatorId/books" element={<CreatorFanPageViewPage />} />
+          <Route path="/creators/:creatorId/posts" element={<CreatorFanPageViewPage />} />
           <Route path="/creators/:creatorId/comedy" element={<CreatorHubPage />} />
-          <Route path="/creators/:creatorId/store" element={<CreatorHubPage />} />
+          <Route path="/creators/:creatorId/store" element={<CreatorFanPageViewPage />} />
           <Route
             path="/creators/:creatorId/subscribe"
             element={
@@ -263,11 +263,13 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/creator/:creatorId" element={<CreatorHubPage />} />
-          <Route path="/creator/:creatorId/music" element={<CreatorHubPage />} />
-          <Route path="/creator/:creatorId/albums" element={<CreatorHubPage />} />
-          <Route path="/creator/:creatorId/podcasts" element={<CreatorHubPage />} />
-          <Route path="/creator/:creatorId/books" element={<CreatorHubPage />} />
+          <Route path="/creator/:creatorId" element={<CreatorFanPageViewPage />} />
+          <Route path="/creator/:creatorId/music" element={<CreatorFanPageViewPage />} />
+          <Route path="/creator/:creatorId/albums" element={<CreatorFanPageViewPage />} />
+          <Route path="/creator/:creatorId/podcasts" element={<CreatorFanPageViewPage />} />
+          <Route path="/creator/:creatorId/books" element={<CreatorFanPageViewPage />} />
+          <Route path="/creator/:creatorId/posts" element={<CreatorFanPageViewPage />} />
+          <Route path="/creator/:creatorId/store" element={<CreatorFanPageViewPage />} />
           <Route path="/tracks/:trackId" element={<TrackDetail />} />
           <Route path="/books/:bookId" element={<BookDetail />} />
           <Route path="/albums/:albumId" element={<AlbumDetail />} />

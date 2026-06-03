@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
+import { useAuth } from "../../context/AuthContext";
 import CreatorAudioPreviewPlayer from "./CreatorAudioPreviewPlayer";
 import CreatorVideoPreviewPlayer from "./CreatorVideoPreviewPlayer";
 import { formatCurrency } from "./creatorConfig";
@@ -21,14 +22,32 @@ const getSectionActionLabel = (sectionKey = "") => {
   if (sectionKey === "videos") {
     return "Watch";
   }
+  if (sectionKey === "posts") {
+    return "Read updates";
+  }
+  if (sectionKey === "store") {
+    return "Shop";
+  }
   return "Stream all";
 };
 
 const isBookItem = (item = {}) =>
   String(item?.itemType || "").trim().toLowerCase() === "book";
 
+const getItemType = (item = {}) =>
+  String(item?.itemType || item?.productType || item?.mediaType || "").trim().toLowerCase();
+
+const isPostItem = (item = {}) => getItemType(item) === "post";
+
+const isProductItem = (item = {}) => getItemType(item) === "product";
+
+const isAudioItem = (item = {}) =>
+  ["track", "album", "podcast"].includes(getItemType(item)) && Boolean(item?.isPlayableAudio);
+
 const getPreviewActionLabel = (item = {}) =>
-  isBookItem(item) ? item?.primaryActionLabel || "Read preview" : "Preview";
+  isBookItem(item) || isPostItem(item) || isProductItem(item)
+    ? item?.primaryActionLabel || "Open"
+    : "Preview";
 
 const getDetailsActionLabel = (item = {}) =>
   isBookItem(item) ? item?.detailActionLabel || "Open book" : "Open details";
@@ -36,6 +55,12 @@ const getDetailsActionLabel = (item = {}) =>
 const getReleaseQueueActionLabel = ({ item, isActive, isPlaying }) => {
   if (isBookItem(item)) {
     return "Read";
+  }
+  if (isPostItem(item)) {
+    return "Open";
+  }
+  if (isProductItem(item)) {
+    return "Shop";
   }
 
   return isActive && isPlaying ? "Playing" : "Play";
@@ -61,22 +86,39 @@ export default function CreatorFanPagePreview({
   dashboard,
   previewData,
   dashboardPath = "/creator/dashboard",
+  mode = "workspace",
+  initialTab = "music",
+  followBusy = false,
+  purchaseBusyKey = "",
+  onFollow,
+  onSupport,
+  onSubscribe,
+  onMessage,
+  onComment,
+  onPurchase,
+  onDownload,
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const auth = useAuth();
+  const user = auth?.user || null;
   const data = useMemo(
     () => previewData || buildCreatorFanPageData({ creatorProfile, dashboard }),
     [creatorProfile, dashboard, previewData]
   );
+  const isPublicMode = mode === "public";
+  const isLoggedIn = Boolean(user?._id || user?.id);
   const [activeTab, setActiveTab] = useState(
-    resolveCreatorFanPageTabKey("music")
+    resolveCreatorFanPageTabKey(initialTab)
   );
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [autoplayRequest, setAutoplayRequest] = useState(0);
+  const [authPrompt, setAuthPrompt] = useState(null);
 
   useEffect(() => {
-    setActiveTab(resolveCreatorFanPageTabKey("music"));
-  }, [data.creatorName]);
+    setActiveTab(resolveCreatorFanPageTabKey(initialTab));
+  }, [data.creatorName, initialTab]);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -98,6 +140,16 @@ export default function CreatorFanPagePreview({
   const currentItem = queue[activeIndex] || activeSection?.featured;
   const isVideoTab = activeTab === "videos";
   const isBookTab = activeTab === "books" || isBookItem(currentItem);
+  const currentItemType = getItemType(currentItem);
+  const isAudioSurface =
+    ["track", "album", "podcast"].includes(currentItemType) ||
+    (
+      ["overview", "music", "podcasts"].includes(activeTab) &&
+      !isVideoTab &&
+      !isBookItem(currentItem) &&
+      !isPostItem(currentItem) &&
+      !isProductItem(currentItem)
+    );
 
   const openPath = (path = "", options = undefined) => {
     if (!path) {
@@ -108,6 +160,27 @@ export default function CreatorFanPagePreview({
       return;
     }
     navigate(path, options);
+  };
+
+  const returnTo = `${location.pathname}${location.search}`;
+  const loginPath = `/login?returnTo=${encodeURIComponent(returnTo || "/")}`;
+  const registerPath = `/register?returnTo=${encodeURIComponent(returnTo || "/")}`;
+
+  const requestSignIn = (action = "continue") => {
+    setAuthPrompt({
+      action,
+      title: `Sign in to ${action}`,
+      message:
+        "You can explore this creator page without an account. Sign in when you want to interact, buy, subscribe, message, or comment.",
+    });
+  };
+
+  const runProtectedAction = (action, callback) => {
+    if (isPublicMode && !isLoggedIn) {
+      requestSignIn(action);
+      return;
+    }
+    callback?.();
   };
 
   const openPreview = (item = currentItem) => {
@@ -126,7 +199,65 @@ export default function CreatorFanPagePreview({
     if (!data.creatorId) {
       return;
     }
-    openPath(`/creators/${data.creatorId}/subscribe`);
+    openPath(data.creator?.subscribePath || `/creators/${data.creatorId}/subscribe`);
+  };
+
+  const handleFollow = () => {
+    if (isPublicMode) {
+      runProtectedAction("follow this creator", () => onFollow?.());
+      return;
+    }
+    openPublic(activeSection?.featured);
+  };
+
+  const handleSupport = () => {
+    if (isPublicMode) {
+      runProtectedAction("support this creator", () => onSupport?.() || onSubscribe?.() || openSubscribe());
+      return;
+    }
+    openPublic(activeSection?.featured);
+  };
+
+  const handleSubscribe = () => {
+    if (isPublicMode) {
+      runProtectedAction("subscribe", () => onSubscribe?.() || openSubscribe());
+      return;
+    }
+    openSubscribe();
+  };
+
+  const handleMessage = () => {
+    runProtectedAction("message this creator", () => onMessage?.() || openPath("/messages"));
+  };
+
+  const handleComment = (item = currentItem) => {
+    runProtectedAction("comment on this creator page", () => onComment?.(item) || openDetails(item));
+  };
+
+  const handlePurchase = (item = currentItem) => {
+    if (!item) {
+      return;
+    }
+    runProtectedAction("purchase this creator drop", () => onPurchase?.(item) || openDetails(item));
+  };
+
+  const handleDownload = (item = currentItem) => {
+    if (!item) {
+      return;
+    }
+    runProtectedAction("download this creator drop", () => onDownload?.(item) || openDetails(item));
+  };
+
+  const handlePrimaryItemAction = (item = currentItem) => {
+    if (isProductItem(item) || (Number(item?.price || 0) > 0 && item?.canBuy)) {
+      handlePurchase(item);
+      return;
+    }
+    if (isPostItem(item)) {
+      handleComment(item);
+      return;
+    }
+    openDetails(item);
   };
 
   const selectQueueItem = (index, autoplay = true) => {
@@ -210,17 +341,29 @@ export default function CreatorFanPagePreview({
             <button
               type="button"
               className="creator-fan-page__button creator-fan-page__button--accent"
-              onClick={() => openDetails()}
+              onClick={() => handlePrimaryItemAction()}
             >
               {getDetailsActionLabel(currentItem)}
             </button>
-            <button
-              type="button"
-              className="creator-fan-page__button creator-fan-page__button--ghost"
-              onClick={() => openPath(activeSection?.uploadPath)}
-            >
-              Open studio
-            </button>
+            {isPublicMode ? (
+              currentItem?.canDownload ? (
+                <button
+                  type="button"
+                  className="creator-fan-page__button creator-fan-page__button--ghost"
+                  onClick={() => handleDownload(currentItem)}
+                >
+                  Download
+                </button>
+              ) : null
+            ) : (
+              <button
+                type="button"
+                className="creator-fan-page__button creator-fan-page__button--ghost"
+                onClick={() => openPath(activeSection?.uploadPath)}
+              >
+                Open studio
+              </button>
+            )}
           </div>
         </article>
 
@@ -258,7 +401,17 @@ export default function CreatorFanPagePreview({
                   type="button"
                   className="creator-fan-page__button creator-fan-page__button--icon"
                   aria-label={releaseIsBook ? `${actionLabel} ${release.title}` : undefined}
-                  onClick={() => selectQueueItem(index, !releaseIsBook)}
+                  onClick={() => {
+                    if (isPostItem(release)) {
+                      handleComment(release);
+                      return;
+                    }
+                    if (isProductItem(release)) {
+                      handlePurchase(release);
+                      return;
+                    }
+                    selectQueueItem(index, isAudioItem(release));
+                  }}
                 >
                   {actionLabel}
                 </button>
@@ -348,13 +501,15 @@ export default function CreatorFanPagePreview({
             >
               Watch on public page
             </button>
-            <button
-              type="button"
-              className="creator-fan-page__button creator-fan-page__button--light"
-              onClick={() => openPath(activeSection?.uploadPath)}
-            >
-              Open studio
-            </button>
+            {isPublicMode ? null : (
+              <button
+                type="button"
+                className="creator-fan-page__button creator-fan-page__button--light"
+                onClick={() => openPath(activeSection?.uploadPath)}
+              >
+                Open studio
+              </button>
+            )}
           </div>
         </div>
 
@@ -393,9 +548,9 @@ export default function CreatorFanPagePreview({
             <button
               type="button"
               className="creator-fan-page__button creator-fan-page__button--light"
-              onClick={() => openDetails()}
+              onClick={() => handlePrimaryItemAction()}
             >
-              Open details
+              {currentItem?.canBuy ? "Purchase" : "Open details"}
             </button>
             <button
               type="button"
@@ -448,6 +603,147 @@ export default function CreatorFanPagePreview({
     </div>
   );
 
+  const renderPostsContent = () => (
+    <div className="creator-fan-page__content-grid creator-fan-page__content-grid--video">
+      <section className="creator-fan-page__panel creator-fan-page__panel--video-library">
+        <div className="creator-fan-page__panel-head">
+          <div>
+            <span>Public Posts</span>
+            <h3>Creator Updates</h3>
+          </div>
+          <button
+            type="button"
+            className="creator-fan-page__button creator-fan-page__button--ghost"
+            onClick={() => openPublic()}
+          >
+            Read all
+          </button>
+        </div>
+
+        <div className="creator-fan-page__post-list">
+          {queue.map((post, index) => (
+            <article
+              key={post.id || `${post.title}-${index}`}
+              className="creator-fan-page__post-card"
+            >
+              {post.imageUrl ? (
+                <FanPageImage
+                  src={post.imageUrl}
+                  alt={post.title}
+                  initials={initials}
+                  className="creator-fan-page__image--post"
+                />
+              ) : null}
+              <div className="creator-fan-page__post-copy">
+                <span className="creator-fan-page__pill">PUBLIC POST</span>
+                <h4>{post.title}</h4>
+                <p>{post.description}</p>
+                <div className="creator-fan-page__meta-row">
+                  <span>{post.commentsCount || 0} comments</span>
+                  <span>{post.reactionsCount || 0} reactions</span>
+                  <span>{post.shareCount || 0} shares</span>
+                </div>
+              </div>
+              <div className="creator-fan-page__feature-actions">
+                <button
+                  type="button"
+                  className="creator-fan-page__button creator-fan-page__button--light"
+                  onClick={() => openDetails(post)}
+                >
+                  Open post
+                </button>
+                <button
+                  type="button"
+                  className="creator-fan-page__button creator-fan-page__button--accent"
+                  onClick={() => handleComment(post)}
+                >
+                  Comment
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+
+  const renderStoreContent = () => (
+    <div className="creator-fan-page__content-grid creator-fan-page__content-grid--video">
+      <section className="creator-fan-page__panel creator-fan-page__panel--video-library">
+        <div className="creator-fan-page__panel-head">
+          <div>
+            <span>Marketplace</span>
+            <h3>Products by {data.creatorName}</h3>
+          </div>
+          <button
+            type="button"
+            className="creator-fan-page__button creator-fan-page__button--ghost"
+            onClick={() => openPath(data.marketplaceStorePath || "/marketplace")}
+          >
+            Visit store
+          </button>
+        </div>
+
+        <div className="creator-fan-page__product-grid">
+          {queue.map((product, index) => {
+            const productKey = `${getItemType(product) || "product"}:${product.id || ""}`;
+            const isBusy = purchaseBusyKey === productKey;
+            return (
+              <article
+                key={product.id || `${product.title}-${index}`}
+                className="creator-fan-page__product-card"
+              >
+                <FanPageImage
+                  src={product.imageUrl}
+                  alt={product.title}
+                  initials={initials}
+                  className="creator-fan-page__image--product"
+                />
+                <div className="creator-fan-page__book-copy">
+                  <span className="creator-fan-page__pill">PRODUCT</span>
+                  <h4>{product.title}</h4>
+                  <p>{product.description}</p>
+                  <small>{product.secondaryLine}</small>
+                  <strong>{formatCurrency(product.price)}</strong>
+                </div>
+                <div className="creator-fan-page__feature-actions">
+                  <button
+                    type="button"
+                    className="creator-fan-page__button creator-fan-page__button--light"
+                    onClick={() => openDetails(product)}
+                  >
+                    View product
+                  </button>
+                  <button
+                    type="button"
+                    className="creator-fan-page__button creator-fan-page__button--accent"
+                    onClick={() => handlePurchase(product)}
+                    disabled={isBusy}
+                  >
+                    {isBusy ? "Opening..." : "Purchase"}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+
+  const renderActiveContent = () => {
+    if (isVideoTab) {
+      return renderVideoContent();
+    }
+    if (activeTab === "posts") {
+      return renderPostsContent();
+    }
+    if (activeTab === "store") {
+      return renderStoreContent();
+    }
+    return renderStandardContent();
+  };
+
   const renderStandardRail = () => (
     <>
       <section className="creator-fan-page__support-card">
@@ -464,9 +760,11 @@ export default function CreatorFanPagePreview({
         <button
           type="button"
           className="creator-fan-page__button creator-fan-page__button--accent"
-          onClick={openSubscribe}
+          onClick={handleSubscribe}
         >
-          Subscribe for {formatCurrency(data.supportPrice)}/month
+          {data.subscription?.isSubscribed
+            ? "Membership active"
+            : `Subscribe for ${formatCurrency(data.supportPrice)}/month`}
         </button>
       </section>
 
@@ -518,9 +816,9 @@ export default function CreatorFanPagePreview({
           <button
             type="button"
             className="creator-fan-page__button creator-fan-page__button--accent"
-            onClick={() => openPublic(data.book)}
+            onClick={() => handlePurchase(data.book)}
           >
-            Buy Now
+            {data.book?.canAccessFull ? "Open Book" : "Buy Now"}
           </button>
           <button
             type="button"
@@ -555,33 +853,61 @@ export default function CreatorFanPagePreview({
           </div>
         </div>
 
-        <div className="creator-fan-page__search">Search Fan Page View</div>
+        <div className="creator-fan-page__search">
+          {isPublicMode ? "Search this creator page" : "Search Fan Page View"}
+        </div>
 
         <div className="creator-fan-page__top-actions">
-          <Link className="creator-fan-page__workspace-link" to={dashboardPath}>
-            Back to dashboard
-          </Link>
-          <button
-            type="button"
-            className="creator-fan-page__top-pill"
-            onClick={() => openPath("/home", { state: { openMessenger: true } })}
-          >
-            Inbox
-          </button>
-          <button
-            type="button"
-            className="creator-fan-page__top-pill"
-            onClick={() => openPath("/notifications")}
-          >
-            Alerts
-          </button>
-          <button
-            type="button"
-            className="creator-fan-page__top-pill"
-            onClick={() => openPath("/settings/security")}
-          >
-            Settings
-          </button>
+          {isPublicMode ? (
+            <>
+              <Link className="creator-fan-page__workspace-link" to="/creators">
+                Explore creators
+              </Link>
+              {isLoggedIn ? (
+                <Link className="creator-fan-page__top-pill" to="/home">
+                  Home
+                </Link>
+              ) : (
+                <Link className="creator-fan-page__top-pill" to={loginPath}>
+                  Sign in
+                </Link>
+              )}
+              <button
+                type="button"
+                className="creator-fan-page__top-pill"
+                onClick={handleMessage}
+              >
+                Message
+              </button>
+            </>
+          ) : (
+            <>
+              <Link className="creator-fan-page__workspace-link" to={dashboardPath}>
+                Back to dashboard
+              </Link>
+              <button
+                type="button"
+                className="creator-fan-page__top-pill"
+                onClick={() => openPath("/home", { state: { openMessenger: true } })}
+              >
+                Inbox
+              </button>
+              <button
+                type="button"
+                className="creator-fan-page__top-pill"
+                onClick={() => openPath("/notifications")}
+              >
+                Alerts
+              </button>
+              <button
+                type="button"
+                className="creator-fan-page__top-pill"
+                onClick={() => openPath("/settings/security")}
+              >
+                Settings
+              </button>
+            </>
+          )}
           <FanPageImage
             src={data.avatarUrl}
             alt={data.creatorName}
@@ -609,14 +935,15 @@ export default function CreatorFanPagePreview({
             <button
               type="button"
               className="creator-fan-page__button creator-fan-page__button--light"
-              onClick={() => openPublic(activeSection?.featured)}
+              onClick={handleFollow}
+              disabled={followBusy}
             >
-              Follow
+              {data.viewer?.isFollowing ? "Following" : followBusy ? "Following..." : "Follow"}
             </button>
             <button
               type="button"
               className="creator-fan-page__button creator-fan-page__button--accent"
-              onClick={() => openPublic(activeSection?.featured)}
+              onClick={handleSupport}
             >
               Donate
             </button>
@@ -661,24 +988,34 @@ export default function CreatorFanPagePreview({
               <button
                 type="button"
                 className="creator-fan-page__button creator-fan-page__button--accent"
-                onClick={() => openPublic(activeSection?.featured)}
+                onClick={handleFollow}
+                disabled={followBusy}
               >
-                Follow
+                {data.viewer?.isFollowing ? "Following" : followBusy ? "Following..." : "Follow"}
               </button>
               <button
                 type="button"
                 className="creator-fan-page__button creator-fan-page__button--light"
-                onClick={() => openPublic(activeSection?.featured)}
+                onClick={handleSupport}
               >
                 Donate
               </button>
               <button
                 type="button"
                 className="creator-fan-page__button creator-fan-page__button--light"
-                onClick={openSubscribe}
+                onClick={handleSubscribe}
               >
-                Subscribe
+                {data.subscription?.isSubscribed ? "Subscribed" : "Subscribe"}
               </button>
+              {isPublicMode ? (
+                <button
+                  type="button"
+                  className="creator-fan-page__button creator-fan-page__button--light"
+                  onClick={handleMessage}
+                >
+                  Message
+                </button>
+              ) : null}
             </div>
 
             <div className="creator-fan-page__tabs" role="tablist" aria-label="Fan page tabs">
@@ -700,7 +1037,7 @@ export default function CreatorFanPagePreview({
             </div>
           </section>
 
-          {isVideoTab ? renderVideoContent() : renderStandardContent()}
+          {renderActiveContent()}
         </main>
 
         <aside className={`creator-fan-page__rail${isVideoTab ? " creator-fan-page__rail--video" : ""}`}>
@@ -721,7 +1058,7 @@ export default function CreatorFanPagePreview({
         </aside>
       </div>
 
-      {isVideoTab || isBookTab ? null : (
+      {isVideoTab || isBookTab || !isAudioSurface ? null : (
         <footer className="creator-fan-page__player">
           <CreatorAudioPreviewPlayer
             item={currentItem || data.music}
@@ -736,9 +1073,47 @@ export default function CreatorFanPagePreview({
             onPlayingChange={setIsPlaying}
             autoplayRequest={autoplayRequest}
             variant="public"
+            onBuyFullTrack={handlePurchase}
+            onDownload={handleDownload}
           />
         </footer>
       )}
+
+      {authPrompt ? (
+        <div className="creator-fan-page__auth-backdrop" role="presentation">
+          <section
+            className="creator-fan-page__auth-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="creator-fan-page-auth-title"
+          >
+            <span>Sign in required</span>
+            <h3 id="creator-fan-page-auth-title">{authPrompt.title}</h3>
+            <p>{authPrompt.message}</p>
+            <div className="creator-fan-page__button-row">
+              <Link
+                className="creator-fan-page__button creator-fan-page__button--accent"
+                to={loginPath}
+              >
+                Sign in
+              </Link>
+              <Link
+                className="creator-fan-page__button creator-fan-page__button--light"
+                to={registerPath}
+              >
+                Create account
+              </Link>
+              <button
+                type="button"
+                className="creator-fan-page__button creator-fan-page__button--ghost"
+                onClick={() => setAuthPrompt(null)}
+              >
+                Keep browsing
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

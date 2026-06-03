@@ -12,6 +12,9 @@ const Album = require("../models/Album");
 const Book = require("../models/Book");
 const CreatorProfile = require("../models/CreatorProfile");
 const AnalyticsEvent = require("../models/AnalyticsEvent");
+const MarketplaceProduct = require("../models/MarketplaceProduct");
+const MarketplaceSeller = require("../models/MarketplaceSeller");
+const Post = require("../models/Post");
 const Purchase = require("../models/Purchase");
 const RecommendationLog = require("../models/RecommendationLog");
 const Track = require("../models/Track");
@@ -866,6 +869,41 @@ describe("creator profile routes", () => {
       isPublished: true,
     });
 
+    await Post.create({
+      author: profile.userId,
+      text: "Public studio note for fans",
+      type: "text",
+      privacy: "public",
+      visibility: "public",
+      audience: "public",
+      moderationStatus: "approved",
+      commentsCount: 2,
+      reactionsCount: 5,
+    });
+
+    const seller = await MarketplaceSeller.create({
+      user: profile.userId,
+      fullName: "Creator Example",
+      storeName: "Creator Example Store",
+      slug: "creator-example-store",
+      phoneNumber: "08000000000",
+      status: "approved",
+      isActive: true,
+    });
+
+    await MarketplaceProduct.create({
+      seller: seller._id,
+      title: "Creator Merch Pack",
+      slug: "creator-merch-pack",
+      description: "A public marketplace product from the creator.",
+      category: "Merch",
+      price: 3000,
+      stock: 8,
+      isPublished: true,
+      isHidden: false,
+      moderationStatus: "approved",
+    });
+
     const response = await request(app)
       .get(`/api/creator/${profile._id}/public-profile`)
       .expect(200);
@@ -882,6 +920,22 @@ describe("creator profile routes", () => {
     expect(response.body.books).toHaveLength(1);
     expect(response.body.books[0].language).toBe("English");
     expect(response.body.books[0].tags).toEqual(["insight", "creative"]);
+    expect(response.body.posts).toHaveLength(1);
+    expect(response.body.posts[0]).toMatchObject({
+      text: "Public studio note for fans",
+      commentsCount: 2,
+      reactionsCount: 5,
+    });
+    expect(response.body.marketplace.products).toHaveLength(1);
+    expect(response.body.marketplace.products[0]).toMatchObject({
+      title: "Creator Merch Pack",
+      price: 3000,
+      route: "/marketplace/product/creator-merch-pack",
+    });
+    expect(response.body.stats).toMatchObject({
+      totalPosts: 1,
+      totalProducts: 1,
+    });
     expect(response.body.featured.item.title).toBeTruthy();
   });
 

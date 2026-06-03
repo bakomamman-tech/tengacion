@@ -11,6 +11,8 @@ export const CREATOR_FAN_PAGE_TABS = [
   { key: "books", label: "Books" },
   { key: "podcasts", label: "Podcasts" },
   { key: "videos", label: "Videos" },
+  { key: "posts", label: "Posts" },
+  { key: "store", label: "Store" },
 ];
 
 const UPLOAD_PATHS = {
@@ -44,6 +46,16 @@ const SECTION_DEFAULTS = {
     title: "Your next visual",
     description:
       "Upload a video release so your fan page can showcase premiere-ready visuals.",
+  },
+  posts: {
+    title: "Your next public update",
+    description:
+      "Public creator posts help fans follow your journey between releases.",
+  },
+  store: {
+    title: "Your next marketplace drop",
+    description:
+      "Marketplace products appear here when your approved seller store publishes them.",
   },
 };
 
@@ -126,6 +138,12 @@ export const resolveCreatorFanPageTabKey = (value = "") => {
   if (compact === "video" || compact === "videos") {
     return "videos";
   }
+  if (compact === "post" || compact === "posts" || compact === "updates") {
+    return "posts";
+  }
+  if (compact === "store" || compact === "marketplace" || compact === "products") {
+    return "store";
+  }
   if (compact === "overview") {
     return "overview";
   }
@@ -172,7 +190,11 @@ const buildFallbackItem = ({
         ? "podcast"
         : tabKey === "videos"
           ? "video"
-          : "track";
+          : tabKey === "posts"
+            ? "post"
+            : tabKey === "store"
+              ? "product"
+              : "track";
 
   return {
     id: "",
@@ -192,7 +214,11 @@ const buildFallbackItem = ({
           ? "Episode"
           : tabKey === "videos"
             ? "Video"
-            : "Release",
+            : tabKey === "posts"
+              ? "Public Post"
+              : tabKey === "store"
+                ? "Product"
+                : "Release",
     genre: "",
     status: "draft",
     statusLabel: "No live release yet",
@@ -206,7 +232,11 @@ const buildFallbackItem = ({
         ? "downloads"
         : tabKey === "videos"
           ? "views"
-          : "plays",
+          : tabKey === "posts"
+            ? "comments"
+            : tabKey === "store"
+              ? "products"
+              : "plays",
     secondaryLine:
       tabKey === "books"
         ? "Upload a manuscript"
@@ -214,7 +244,11 @@ const buildFallbackItem = ({
           ? "Upload an episode"
           : tabKey === "videos"
             ? "Upload a video"
-            : "Upload a release",
+            : tabKey === "posts"
+              ? "Publish a public post"
+              : tabKey === "store"
+                ? "Publish a marketplace product"
+                : "Upload a release",
     primaryActionLabel: "Open studio",
     detailActionLabel: "Open studio",
     durationSec: 0,
@@ -421,6 +455,215 @@ const normalizePreviewItem = ({
   };
 };
 
+const normalizePublicPath = (value = "", fallback = "") =>
+  String(value || fallback || "").trim();
+
+const getPublicItemMetric = (entry = {}, itemType = "") => {
+  if (itemType === "book") {
+    return Number(entry.purchaseCount || entry.downloadCount || 0);
+  }
+  if (itemType === "video") {
+    return Number(entry.viewsCount || entry.metricValue || 0);
+  }
+  if (itemType === "post") {
+    return Number(entry.commentsCount || entry.reactionsCount || 0);
+  }
+  if (itemType === "product") {
+    return Number(entry.stock || 0);
+  }
+  return Number(entry.playsCount || entry.playCount || entry.metricValue || 0);
+};
+
+const normalizePublicFanPageItem = ({
+  entry,
+  creatorName,
+  tabKey,
+  itemType,
+  fallbackImage,
+  fallbackPath,
+}) => {
+  const id = String(entry?.id || entry?._id || "").trim();
+  const mediaType = String(entry?.mediaType || "").trim().toLowerCase();
+  const isVideo = itemType === "video" || mediaType === "video";
+  const isAudio = ["track", "album", "podcast"].includes(itemType) && !isVideo;
+  const isBook = itemType === "book" || mediaType === "document";
+  const isProduct = itemType === "product";
+  const isPost = itemType === "post";
+  const imageUrl = resolveFallbackImage(
+    entry?.coverUrl ||
+      entry?.coverImageUrl ||
+      entry?.thumbnailUrl ||
+      entry?.imageUrl ||
+      entry?.primaryImage?.secureUrl ||
+      entry?.primaryImage?.url
+  ) || fallbackImage;
+  const publicPath = normalizePublicPath(
+    entry?.publicPath || entry?.route || entry?.detailPath,
+    fallbackPath
+  );
+  const title =
+    entry?.title ||
+    (isPost ? "Public creator update" : isProduct ? "Marketplace product" : "Creator release");
+  const price = Number(entry?.price || 0);
+  const duration =
+    Number(entry?.durationSec || 0) > 0
+      ? formatCreatorFanPageDuration(entry.durationSec)
+      : "";
+  const secondaryLine =
+    entry?.secondaryLine ||
+    (isBook
+      ? [
+          entry?.genre || "",
+          Number(entry?.pageCount || 0) > 0 ? `${Number(entry.pageCount)} pages` : "",
+          entry?.language || "",
+        ]
+          .filter(Boolean)
+          .join(" / ")
+      : isPost
+        ? [
+            Number(entry?.commentsCount || 0) ? `${Number(entry.commentsCount)} comments` : "",
+            Number(entry?.reactionsCount || 0) ? `${Number(entry.reactionsCount)} reactions` : "",
+          ]
+            .filter(Boolean)
+            .join(" / ")
+        : isProduct
+          ? [
+              entry?.category || "Marketplace",
+              Number(entry?.stock || 0) > 0 ? `${Number(entry.stock)} in stock` : "Limited stock",
+            ]
+              .filter(Boolean)
+              .join(" / ")
+          : [
+              entry?.genre || entry?.releaseType || entry?.contentLabel || "",
+              duration,
+            ]
+              .filter(Boolean)
+              .join(" / "));
+
+  return {
+    id,
+    title,
+    subtitle:
+      entry?.subtitle ||
+      entry?.authorName ||
+      entry?.podcastSeries ||
+      entry?.seller?.storeName ||
+      creatorName,
+    description:
+      entry?.description ||
+      entry?.text ||
+      SECTION_DEFAULTS[tabKey]?.description ||
+      "Published creator content appears here.",
+    imageUrl,
+    price,
+    currency: entry?.currency || "NGN",
+    duration,
+    itemType,
+    tabKey,
+    categoryKey: resolveSectionCategoryKey(tabKey),
+    releaseType:
+      entry?.releaseType ||
+      entry?.contentLabel ||
+      (isBook
+        ? "Book"
+        : itemType === "podcast"
+          ? "Episode"
+          : isVideo
+            ? "Video"
+            : isPost
+              ? "Public Post"
+              : isProduct
+                ? "Product"
+                : itemType === "album"
+                  ? "Album"
+                  : "Single"),
+    genre: entry?.genre || entry?.category || "",
+    status: "published",
+    statusLabel:
+      entry?.statusLabel ||
+      (entry?.canAccessFull ? "Unlocked" : price > 0 ? "Premium" : "Public"),
+    detailPath: publicPath,
+    publicPath,
+    previewPath: normalizePublicPath(entry?.previewUrl || entry?.previewPath, publicPath),
+    uploadPath: fallbackPath,
+    metricValue: getPublicItemMetric(entry, itemType),
+    metricLabel:
+      isBook
+        ? "downloads"
+        : isVideo
+          ? "views"
+          : isPost
+            ? "comments"
+            : isProduct
+              ? "stock"
+              : "plays",
+    secondaryLine,
+    primaryActionLabel:
+      isBook
+        ? "Read preview"
+        : itemType === "podcast"
+          ? "Listen now"
+          : isVideo
+            ? "Watch now"
+            : isPost
+              ? "Open post"
+              : isProduct
+                ? "View product"
+                : "Play preview",
+    detailActionLabel:
+      price > 0 && !entry?.canAccessFull
+        ? isProduct
+          ? "Purchase"
+          : "Purchase"
+        : isBook
+          ? "Open book"
+          : itemType === "podcast"
+            ? "Open episode"
+            : isVideo
+              ? "Open video"
+              : isPost
+                ? "Comment"
+                : isProduct
+                  ? "Purchase"
+                  : "Open release",
+    durationSec: Number(entry?.durationSec || 0),
+    audioUrl:
+      isAudio && (entry?.canAccessFull || Number(entry?.price || 0) <= 0)
+        ? resolveFallbackImage(entry?.streamUrl || entry?.audioUrl)
+        : "",
+    previewAudioUrl:
+      isAudio
+        ? resolveFallbackImage(entry?.previewUrl || entry?.streamUrl || entry?.previewAudioUrl)
+        : "",
+    videoUrl:
+      isVideo && (entry?.canAccessFull || Number(entry?.price || 0) <= 0)
+        ? resolveFallbackImage(entry?.streamUrl || entry?.videoUrl)
+        : "",
+    previewVideoUrl:
+      isVideo
+        ? resolveFallbackImage(entry?.previewUrl || entry?.previewClipUrl || entry?.streamUrl)
+        : "",
+    previewStartSec: Math.max(0, Number(entry?.previewStartSec || 0)),
+    previewLimitSec: Math.max(0, Number(entry?.previewLimitSec || 30)),
+    canAccessFull: Boolean(entry?.canAccessFull),
+    canBuy: Boolean(entry?.canBuy || (price > 0 && !entry?.canAccessFull)),
+    canDownload: Boolean(entry?.canDownload),
+    downloadUrl: entry?.downloadUrl || "",
+    route: publicPath,
+    isPlayableAudio: Boolean(
+      isAudio && (entry?.previewUrl || entry?.streamUrl || entry?.audioUrl)
+    ),
+    isPlayableVideo: Boolean(
+      isVideo && (entry?.previewUrl || entry?.previewClipUrl || entry?.streamUrl || entry?.videoUrl)
+    ),
+    commentsCount: Number(entry?.commentsCount || 0),
+    reactionsCount: Number(entry?.reactionsCount || 0),
+    shareCount: Number(entry?.shareCount || 0),
+    stock: Number(entry?.stock || 0),
+    seller: entry?.seller || null,
+  };
+};
+
 const buildSection = ({
   key,
   label,
@@ -462,6 +705,372 @@ const buildPopularReleaseRows = ({
     statusLabel: item.statusLabel,
   }));
 };
+
+export function buildCreatorFanPageDataFromPublicPayload(payload = {}) {
+  const creator = payload?.creator || {};
+  const subscription = payload?.subscription || {};
+  const creatorName = creator?.displayName || "Creator";
+  const creatorId = String(creator?.id || "").trim();
+  const creatorUserId = String(creator?.userId || "").trim();
+  const publicPaths = creator?.tabPaths || {};
+  const creatorHomePath =
+    creator?.canonicalPath ||
+    publicPaths.home ||
+    (creatorId ? `/creators/${encodeURIComponent(creatorId)}` : "/creators");
+  const avatarUrl = resolveFallbackImage(creator?.avatarUrl) || "";
+  const heroUrl = resolveFallbackImage(creator?.bannerUrl) || avatarUrl;
+  const fallbackImage = heroUrl || avatarUrl;
+  const lanes = normalizeCreatorLaneKeys(creator?.creatorTypes)
+    .map((entry) => formatCreatorLaneLabel(entry))
+    .filter(Boolean);
+  const musicPath = publicPaths.music || creatorHomePath;
+  const booksPath = publicPaths.books || creatorHomePath;
+  const podcastsPath = publicPaths.podcasts || creatorHomePath;
+  const videosPath = publicPaths.music || creatorHomePath;
+  const postsPath = creatorHomePath;
+  const storePath = payload?.marketplace?.storePath || publicPaths.store || `${creatorHomePath}/store`;
+
+  const trackItems = safeArray(payload?.music?.tracks).map((entry) =>
+    normalizePublicFanPageItem({
+      entry,
+      creatorName,
+      tabKey: "music",
+      itemType: "track",
+      fallbackImage,
+      fallbackPath: musicPath,
+    })
+  );
+  const albumItems = safeArray(payload?.music?.albums).map((entry) =>
+    normalizePublicFanPageItem({
+      entry,
+      creatorName,
+      tabKey: "music",
+      itemType: "album",
+      fallbackImage,
+      fallbackPath: publicPaths.albums || musicPath,
+    })
+  );
+  const videoItems = safeArray(payload?.music?.videos).map((entry) =>
+    normalizePublicFanPageItem({
+      entry,
+      creatorName,
+      tabKey: "videos",
+      itemType: "video",
+      fallbackImage,
+      fallbackPath: videosPath,
+    })
+  );
+  const bookItems = safeArray(payload?.books).map((entry) =>
+    normalizePublicFanPageItem({
+      entry,
+      creatorName,
+      tabKey: "books",
+      itemType: "book",
+      fallbackImage,
+      fallbackPath: booksPath,
+    })
+  );
+  const podcastItems = safeArray(payload?.podcasts?.episodes).map((entry) =>
+    normalizePublicFanPageItem({
+      entry,
+      creatorName,
+      tabKey: "podcasts",
+      itemType: "podcast",
+      fallbackImage,
+      fallbackPath: podcastsPath,
+    })
+  );
+  const postItems = safeArray(payload?.posts).map((entry) =>
+    normalizePublicFanPageItem({
+      entry,
+      creatorName,
+      tabKey: "posts",
+      itemType: "post",
+      fallbackImage,
+      fallbackPath: postsPath,
+    })
+  );
+  const productItems = safeArray(payload?.marketplace?.products).map((entry) =>
+    normalizePublicFanPageItem({
+      entry,
+      creatorName,
+      tabKey: "store",
+      itemType: "product",
+      fallbackImage,
+      fallbackPath: storePath || "/marketplace",
+    })
+  );
+
+  const fallbackMusic = buildFallbackItem({
+    tabKey: "music",
+    creatorName,
+    avatarUrl,
+    heroUrl,
+    publicPath: musicPath,
+    uploadPath: musicPath,
+  });
+  const fallbackBooks = buildFallbackItem({
+    tabKey: "books",
+    creatorName,
+    avatarUrl,
+    heroUrl,
+    publicPath: booksPath,
+    uploadPath: booksPath,
+  });
+  const fallbackPodcasts = buildFallbackItem({
+    tabKey: "podcasts",
+    creatorName,
+    avatarUrl,
+    heroUrl,
+    publicPath: podcastsPath,
+    uploadPath: podcastsPath,
+  });
+  const fallbackVideos = buildFallbackItem({
+    tabKey: "videos",
+    creatorName,
+    avatarUrl,
+    heroUrl,
+    publicPath: videosPath,
+    uploadPath: videosPath,
+  });
+  const fallbackPosts = buildFallbackItem({
+    tabKey: "posts",
+    creatorName,
+    avatarUrl,
+    heroUrl,
+    publicPath: postsPath,
+    uploadPath: postsPath,
+  });
+  const fallbackStore = buildFallbackItem({
+    tabKey: "store",
+    creatorName,
+    avatarUrl,
+    heroUrl,
+    publicPath: storePath || "/marketplace",
+    uploadPath: storePath || "/marketplace",
+  });
+
+  const musicItems = [...trackItems, ...albumItems];
+  const overviewItems = [
+    ...musicItems,
+    ...bookItems,
+    ...podcastItems,
+    ...videoItems,
+    ...postItems,
+    ...productItems,
+  ];
+  const overviewFallback =
+    overviewItems[0] ||
+    fallbackMusic ||
+    fallbackBooks ||
+    fallbackPodcasts ||
+    fallbackVideos;
+  const primaryMusic = musicItems[0] || fallbackMusic;
+  const primaryBook = bookItems[0] || fallbackBooks;
+  const primaryPodcast = podcastItems[0] || fallbackPodcasts;
+  const primaryVideo = videoItems[0] || fallbackVideos;
+  const primaryPost = postItems[0] || fallbackPosts;
+  const primaryProduct = productItems[0] || fallbackStore;
+  const stats = payload?.stats || {};
+
+  const sections = {
+    overview: buildSection({
+      key: "overview",
+      label: "Overview",
+      title: "Premium Fan Overview",
+      description:
+        "A live snapshot of this creator's public releases, updates, products, and supporter access.",
+      items: overviewItems,
+      publicPath: creatorHomePath,
+      uploadPath: creatorHomePath,
+      fallbackItem: overviewFallback,
+    }),
+    music: buildSection({
+      key: "music",
+      label: "Music",
+      title: "Music Releases",
+      description: "Tracks, albums, and audio drops published for fans.",
+      items: musicItems,
+      publicPath: musicPath,
+      uploadPath: musicPath,
+      fallbackItem: fallbackMusic,
+    }),
+    books: buildSection({
+      key: "books",
+      label: "Books",
+      title: "Books by the creator",
+      description: "Published books, previews, and premium reader unlocks.",
+      items: bookItems,
+      publicPath: booksPath,
+      uploadPath: booksPath,
+      fallbackItem: fallbackBooks,
+    }),
+    podcasts: buildSection({
+      key: "podcasts",
+      label: "Podcasts",
+      title: "Podcast Episodes",
+      description: "Podcast episodes and spoken-word releases.",
+      items: podcastItems,
+      publicPath: podcastsPath,
+      uploadPath: podcastsPath,
+      fallbackItem: fallbackPodcasts,
+    }),
+    videos: buildSection({
+      key: "videos",
+      label: "Videos",
+      title: "Video Library",
+      description: "Music videos and visual drops published for fans.",
+      items: videoItems,
+      publicPath: videosPath,
+      uploadPath: videosPath,
+      fallbackItem: fallbackVideos,
+    }),
+    posts: buildSection({
+      key: "posts",
+      label: "Posts",
+      title: "Public Posts",
+      description: "Creator updates fans can read without logging in.",
+      items: postItems,
+      publicPath: postsPath,
+      uploadPath: postsPath,
+      fallbackItem: fallbackPosts,
+    }),
+    store: buildSection({
+      key: "store",
+      label: "Store",
+      title: "Marketplace Products",
+      description: "Approved marketplace drops from this creator.",
+      items: productItems,
+      publicPath: storePath || "/marketplace",
+      uploadPath: storePath || "/marketplace",
+      fallbackItem: fallbackStore,
+    }),
+  };
+
+  const creatorLinks = Array.isArray(creator?.links) ? creator.links : [];
+  const spotifyUrl =
+    normalizeExternalUrl(findLinkUrl(creatorLinks, "spotify"), "https://open.spotify.com/artist/") ||
+    musicPath;
+  const youtubeUrl =
+    normalizeExternalUrl(findLinkUrl(creatorLinks, "youtube"), "https://www.youtube.com/@") ||
+    videosPath;
+
+  return {
+    creatorId,
+    creatorUserId,
+    creatorName,
+    avatarUrl,
+    heroUrl,
+    followers: Number(stats.followersCount || creator.followersCount || 0),
+    tagline:
+      creator?.bio ||
+      creator?.tagline ||
+      "A premium fan page where supporters can stream, read, buy, follow, and unlock every creator drop in one place.",
+    lanes: lanes.length ? lanes : ["Music", "Podcasts", "Book Publishing"],
+    supportPrice: Number(subscription?.price ?? creator?.subscriptionPrice ?? 2000) || 2000,
+    subscriptionBenefits: Array.isArray(subscription?.benefits)
+      ? subscription.benefits.map((entry) => String(entry || "").trim()).filter(Boolean)
+      : [],
+    tabs: CREATOR_FAN_PAGE_TABS,
+    sidebarLinks: CREATOR_FAN_PAGE_TABS,
+    sections,
+    publicPaths: {
+      home: creatorHomePath,
+      music: musicPath,
+      books: booksPath,
+      podcasts: podcastsPath,
+      videos: videosPath,
+      posts: postsPath,
+      store: storePath,
+    },
+    uploadPaths: {},
+    stats: [
+      {
+        label: "Followers",
+        value: formatCreatorFanPageFollowerCount(stats.followersCount || creator.followersCount || 0),
+      },
+      {
+        label: "Plays",
+        value: formatCreatorFanPageFollowerCount(stats.totalPlays || 0),
+      },
+      {
+        label: "Music",
+        value: Number(stats.totalTracks || 0) + Number(stats.totalAlbums || 0) + Number(stats.totalVideos || 0),
+      },
+      {
+        label: "Books",
+        value: Number(stats.totalBooks || bookItems.length || 0),
+      },
+      {
+        label: "Posts",
+        value: Number(stats.totalPosts || postItems.length || 0),
+      },
+      {
+        label: "Products",
+        value: Number(stats.totalProducts || productItems.length || 0),
+      },
+    ],
+    music: {
+      ...primaryMusic,
+      coverUrl: primaryMusic.imageUrl,
+      queueCount: String(Math.max(1, musicItems.length)).padStart(2, "0"),
+      listeners: Number(primaryMusic.metricValue || 0),
+    },
+    popularReleases: buildPopularReleaseRows({
+      items: musicItems,
+      creatorName,
+      fallbackItem: fallbackMusic,
+    }),
+    book: {
+      ...primaryBook,
+      author: primaryBook.subtitle,
+      imprint: primaryBook.secondaryLine || primaryBook.genre || "Book publishing",
+      coverUrl: primaryBook.imageUrl,
+    },
+    podcast: {
+      ...primaryPodcast,
+      series: primaryPodcast.subtitle,
+      summary: primaryPodcast.description,
+      coverUrl: primaryPodcast.imageUrl,
+    },
+    video: {
+      ...primaryVideo,
+      channel: creatorName,
+      summary: primaryVideo.description,
+      thumbnailUrl: primaryVideo.imageUrl,
+    },
+    post: primaryPost,
+    product: primaryProduct,
+    publicPosts: postItems,
+    marketplaceProducts: productItems,
+    marketplaceStorePath: storePath,
+    marketplaceSeller: payload?.marketplace?.seller || null,
+    platforms: [
+      {
+        label: "Stream on Spotify",
+        tone: "dark",
+        path: spotifyUrl,
+        url: spotifyUrl,
+      },
+      {
+        label: "Stream on Youtube",
+        tone: "green",
+        path: youtubeUrl,
+        url: youtubeUrl,
+      },
+    ],
+    supporterCopy:
+      subscription?.description ||
+      "Supporters unlock endless streams, premium downloads, and direct support access from the public page.",
+    rewardsCopy:
+      subscription?.isSubscribed
+        ? "Membership is active. Premium streams and downloads are unlocked for this account."
+        : "Support this creator to unlock premium streams, downloads, and member rewards.",
+    viewer: payload?.viewer || {},
+    subscription,
+    creator,
+  };
+}
 
 export function buildCreatorFanPageData({ creatorProfile, dashboard } = {}) {
   const creatorName =
@@ -549,6 +1158,22 @@ export function buildCreatorFanPageData({ creatorProfile, dashboard } = {}) {
     heroUrl,
     publicPath: publicPaths.videos,
     uploadPath: UPLOAD_PATHS.music,
+  });
+  const fallbackPosts = buildFallbackItem({
+    tabKey: "posts",
+    creatorName,
+    avatarUrl,
+    heroUrl,
+    publicPath: "/home",
+    uploadPath: "/home",
+  });
+  const fallbackStore = buildFallbackItem({
+    tabKey: "store",
+    creatorName,
+    avatarUrl,
+    heroUrl,
+    publicPath: "/marketplace",
+    uploadPath: "/marketplace/dashboard",
   });
 
   const trackItems = sortedTracks.map((entry) =>
@@ -678,6 +1303,26 @@ export function buildCreatorFanPageData({ creatorProfile, dashboard } = {}) {
       uploadPath: UPLOAD_PATHS.music,
       fallbackItem: fallbackVideos,
     }),
+    posts: buildSection({
+      key: "posts",
+      label: "Posts",
+      title: "Public Posts",
+      description: "Public posts that keep fans close between major releases.",
+      items: [],
+      publicPath: "/home",
+      uploadPath: "/home",
+      fallbackItem: fallbackPosts,
+    }),
+    store: buildSection({
+      key: "store",
+      label: "Store",
+      title: "Marketplace Products",
+      description: "Approved store products that fans can purchase from the public page.",
+      items: [],
+      publicPath: "/marketplace",
+      uploadPath: "/marketplace/dashboard",
+      fallbackItem: fallbackStore,
+    }),
   };
 
   return {
@@ -733,6 +1378,14 @@ export function buildCreatorFanPageData({ creatorProfile, dashboard } = {}) {
       {
         label: "Videos",
         value: videoItems.length || 0,
+      },
+      {
+        label: "Posts",
+        value: 0,
+      },
+      {
+        label: "Products",
+        value: 0,
       },
     ],
     music: {

@@ -2,6 +2,9 @@ const mongoose = require("mongoose");
 
 const Album = require("../models/Album");
 const Book = require("../models/Book");
+const MarketplaceProduct = require("../models/MarketplaceProduct");
+const MarketplaceSeller = require("../models/MarketplaceSeller");
+const Post = require("../models/Post");
 const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const Video = require("../models/Video");
@@ -28,11 +31,32 @@ const {
   normalizeCreatorTypes,
   normalizeSubscriptionBenefits,
 } = require("./creatorProfileService");
+const {
+  serializeProduct,
+  serializeSellerSnippet,
+} = require("./marketplaceProductService");
 
 const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null };
+const ACTIVE_PUBLIC_POST_FILTER = {
+  privacy: "public",
+  visibility: "public",
+  audience: { $in: ["public", null] },
+  moderationStatus: { $in: ["approved", "ALLOW"] },
+  sensitiveContent: { $ne: true },
+  reviewRequired: { $ne: true },
+};
+const ACTIVE_MARKETPLACE_SELLER_FILTER = {
+  status: "approved",
+  isActive: true,
+};
+const ACTIVE_MARKETPLACE_PRODUCT_FILTER = {
+  isPublished: true,
+  isHidden: false,
+  moderationStatus: "approved",
+};
 
 const toCleanString = (value = "") => String(value || "").trim();
 
@@ -553,13 +577,25 @@ const buildFeaturedRelease = ({ tracks = [], albums = [], videos = [], books = [
   };
 };
 
-const buildStats = ({ creator, tracks = [], albums = [], videos = [], books = [], podcasts = [], purchases = [] }) => ({
+const buildStats = ({
+  creator,
+  tracks = [],
+  albums = [],
+  videos = [],
+  books = [],
+  podcasts = [],
+  posts = [],
+  products = [],
+  purchases = [],
+}) => ({
   followersCount: numberOrZero(creator.followersCount),
   totalTracks: tracks.length,
   totalAlbums: albums.length,
   totalVideos: videos.length,
   totalEpisodes: podcasts.length,
   totalBooks: books.length,
+  totalPosts: posts.length,
+  totalProducts: products.length,
   totalPlays:
     tracks.reduce((sum, item) => sum + numberOrZero(item.playsCount), 0) +
     podcasts.reduce((sum, item) => sum + numberOrZero(item.playsCount), 0) +
@@ -579,6 +615,99 @@ const buildLatestReleases = ({ tracks = [], albums = [], videos = [], books = []
   ]
     .sort((left, right) => new Date(right.publishedAt || 0) - new Date(left.publishedAt || 0))
     .slice(0, 6);
+
+const resolvePostImageUrl = (post = {}) => {
+  const firstMedia = Array.isArray(post.media) ? post.media[0] : null;
+  return toCleanString(
+    firstMedia?.secureUrl ||
+      firstMedia?.secure_url ||
+      firstMedia?.url ||
+      post?.video?.thumbnailUrl ||
+      post?.audio?.coverImageUrl ||
+      post?.sharedPost?.previewImage ||
+      ""
+  );
+};
+
+const resolvePostVideoUrl = (post = {}) =>
+  toCleanString(
+    post?.video?.playbackUrl ||
+      post?.video?.secureUrl ||
+      post?.video?.secure_url ||
+      post?.video?.url ||
+      ""
+  );
+
+const mapPublicPost = (post = {}, creator = {}) => {
+  const reactionsCount = numberOrZero(
+    post.reactionsCount ||
+      (Array.isArray(post.reactions) ? post.reactions.length : 0) ||
+      (Array.isArray(post.likes) ? post.likes.length : 0)
+  );
+  const commentsCount = numberOrZero(
+    post.commentsCount ||
+      (Array.isArray(post.comments) ? post.comments.length : 0)
+  );
+  const id = String(post._id || "");
+
+  return {
+    id,
+    text: toCleanString(post.text),
+    type: toCleanString(post.type || "text"),
+    imageUrl: resolvePostImageUrl(post),
+    videoUrl: resolvePostVideoUrl(post),
+    audioTitle: toCleanString(post?.audio?.title),
+    createdAt: post.createdAt || null,
+    updatedAt: post.updatedAt || null,
+    reactionsCount,
+    commentsCount,
+    shareCount: numberOrZero(post.shareCount),
+    publicPath: id ? `/posts/${id}` : "",
+    author: {
+      id: toCleanString(creator.userId),
+      name: toCleanString(creator.displayName),
+      username: toCleanString(creator.username),
+      avatarUrl: toCleanString(creator.avatarUrl),
+    },
+  };
+};
+
+const buildMarketplacePayload = async ({ creatorUserId = "" } = {}) => {
+  const seller = mongoose.Types.ObjectId.isValid(creatorUserId)
+    ? await MarketplaceSeller.findOne({
+        user: creatorUserId,
+        ...ACTIVE_MARKETPLACE_SELLER_FILTER,
+      }).lean()
+    : null;
+
+  if (!seller) {
+    return {
+      seller: null,
+      products: [],
+      storePath: "",
+    };
+  }
+
+  const products = await MarketplaceProduct.find({
+    seller: seller._id,
+    ...ACTIVE_MARKETPLACE_PRODUCT_FILTER,
+  })
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .limit(6)
+    .lean();
+
+  const sellerSnippet = serializeSellerSnippet(seller);
+  return {
+    seller: sellerSnippet,
+    products: products.map((row) => ({
+      ...serializeProduct(row, { seller }),
+      route: `/marketplace/product/${encodeURIComponent(row.slug || String(row._id || ""))}`,
+    })),
+    storePath: sellerSnippet?.slug || sellerSnippet?._id
+      ? `/marketplace/store/${encodeURIComponent(sellerSnippet.slug || sellerSnippet._id)}`
+      : "",
+  };
+};
 
 const buildCreatorIdentity = ({ profile, creatorTypes = [], indexable = true }) => {
   const creatorUser = profile?.userId || {};
@@ -629,8 +758,9 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
   }
 
   const objectId = profile._id;
+  const creatorUserId = String(profile?.userId?._id || profile?.userId || "");
 
-  const ownerAccess = String(profile?.userId?._id || profile?.userId || "") === String(viewerId || "");
+  const ownerAccess = creatorUserId === String(viewerId || "");
   const viewerPurchaseState = ownerAccess
     ? { entitlements: new Set(), subscriptionsByCreatorId: new Map() }
     : await buildViewerPurchaseState(viewerId);
@@ -649,7 +779,7 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
   });
   const creatorSubscriptionActive = ownerAccess || Boolean(subscriptionPayload.isSubscribed);
 
-  const [tracksRaw, podcastsRaw, albumsRaw, booksRaw, videosRaw, purchases] = await Promise.all([
+  const [tracksRaw, podcastsRaw, albumsRaw, booksRaw, videosRaw, postsRaw, purchases] = await Promise.all([
     Track.find({ creatorId: objectId, kind: { $in: ["music", null] }, ...ACTIVE_TRACK_FILTER })
       .sort({ updatedAt: -1, createdAt: -1 })
       .lean(),
@@ -663,11 +793,20 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
       .sort({ updatedAt: -1, createdAt: -1 })
       .lean(),
     Video.find({
-      $or: [{ creatorProfileId: objectId }, { userId: String(profile?.userId?._id || "") }],
+      $or: [{ creatorProfileId: objectId }, { userId: creatorUserId }],
       ...ACTIVE_VIDEO_FILTER,
     })
       .sort({ updatedAt: -1, createdAt: -1, time: -1 })
       .lean(),
+    mongoose.Types.ObjectId.isValid(creatorUserId)
+      ? Post.find({
+          author: creatorUserId,
+          ...ACTIVE_PUBLIC_POST_FILTER,
+        })
+          .sort({ createdAt: -1 })
+          .limit(6)
+          .lean()
+      : Promise.resolve([]),
     Purchase.find({
       creatorId: objectId,
       status: "paid",
@@ -736,6 +875,8 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
   const creator = buildCreatorIdentity({ profile, creatorTypes, indexable: isIndexable });
   const featured = buildFeaturedRelease({ tracks, albums, videos, books, podcasts });
   const latestReleases = buildLatestReleases({ tracks, albums, videos, books, podcasts });
+  const posts = postsRaw.map((post) => mapPublicPost(post, creator));
+  const marketplace = await buildMarketplacePayload({ creatorUserId });
   const viewerFollows = Array.isArray(profile?.userId?.followers)
     ? profile.userId.followers.some((entry) => String(entry) === String(viewerId || ""))
     : false;
@@ -767,6 +908,8 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
       episodes: podcasts,
     },
     books,
+    posts,
+    marketplace,
     stats: buildStats({
       creator,
       tracks,
@@ -774,6 +917,8 @@ const buildCreatorPublicPayload = async ({ creatorId, viewerId = "", req }) => {
       videos,
       books,
       podcasts,
+      posts,
+      products: marketplace.products,
       purchases,
     }),
     seo: {

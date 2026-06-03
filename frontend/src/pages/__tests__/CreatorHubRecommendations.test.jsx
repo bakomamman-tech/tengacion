@@ -229,7 +229,7 @@ describe("CreatorHubPage recommendations", () => {
     expect(screen.queryByRole("heading", { name: /recommended for you/i })).not.toBeInTheDocument();
   });
 
-  it("renders a book PDF preview in the hero without music streaming copy", async () => {
+  it("renders a book PDF preview in the full-width reader without music streaming copy", async () => {
     const payload = buildCreatorPayload();
     const book = {
       id: "book-1",
@@ -276,10 +276,12 @@ describe("CreatorHubPage recommendations", () => {
 
     expect(await screen.findByText("Reading preview")).toBeInTheDocument();
     expect(screen.queryByText(/^Now streaming$/i)).not.toBeInTheDocument();
-    expect(screen.getByTitle("The Rustle of Death")).toHaveAttribute(
+    const readerFrame = screen.getByTitle("The Rustle of Death");
+    expect(readerFrame).toHaveAttribute(
       "src",
       expect.stringContaining("/api/books/book-1/preview")
     );
+    expect(readerFrame.closest(".creator-public-reader")).toBeTruthy();
   });
 
   it("renders the book preview endpoint inside the creator page", async () => {
@@ -321,10 +323,12 @@ describe("CreatorHubPage recommendations", () => {
     const previewButtons = await screen.findAllByRole("button", { name: /^preview$/i });
     await user.click(previewButtons[0]);
 
-    expect(await screen.findByTitle("The Rustle of Death")).toHaveAttribute(
+    const readerFrame = await screen.findByTitle("The Rustle of Death");
+    expect(readerFrame).toHaveAttribute(
       "src",
       expect.stringContaining("/api/books/book-1/preview")
     );
+    expect(readerFrame.closest(".creator-public-reader")).toBeTruthy();
     expect(openSpy).not.toHaveBeenCalled();
   });
 
@@ -377,10 +381,12 @@ describe("CreatorHubPage recommendations", () => {
 
     expect(getStreamUrlMock).toHaveBeenCalledWith("book", "book-1");
     expect(await screen.findByText("Reading now")).toBeInTheDocument();
-    expect(screen.getByTitle("The Rustle of Death")).toHaveAttribute(
+    const readerFrame = screen.getByTitle("The Rustle of Death");
+    expect(readerFrame).toHaveAttribute(
       "src",
       expect.stringContaining("/api/media/delivery/full-book-reader-token")
     );
+    expect(readerFrame.closest(".creator-public-reader")).toBeTruthy();
     expect(openSpy).not.toHaveBeenCalled();
   });
 

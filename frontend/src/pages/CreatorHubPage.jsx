@@ -309,6 +309,7 @@ export default function CreatorHubPage() {
   const [purchaseError, setPurchaseError] = useState("");
   const [checkoutItem, setCheckoutItem] = useState(null);
   const [creatorHubDiscovery, setCreatorHubDiscovery] = useState(null);
+  const readerRef = useRef(null);
 
   const activeTab = useMemo(() => resolveTab(location.pathname), [location.pathname]);
   const requestedPreviewId = useMemo(() => new URLSearchParams(location.search).get("previewItem") || "", [location.search]);
@@ -929,6 +930,18 @@ export default function CreatorHubPage() {
           ? "Review the video unlock price before continuing to Paystack."
           : "Review the release price before continuing to Paystack.";
 
+  useEffect(() => {
+    if (!activePreview?.src || !activePreviewShowsPdf) {
+      return undefined;
+    }
+
+    const scrollTimer = window.setTimeout(() => {
+      readerRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    }, 80);
+
+    return () => window.clearTimeout(scrollTimer);
+  }, [activePreview?.id, activePreview?.mode, activePreview?.src, activePreviewShowsPdf]);
+
   if (loading) {
     return (
       <div className="creator-public-page">
@@ -1278,16 +1291,15 @@ export default function CreatorHubPage() {
                   ) : activePreview.kind === "audio" ? (
                     <CreatorPublicAudioPreview preview={activePreview} />
                   ) : activePreviewShowsPdf ? (
-                    <BookPdfSurface
-                      src={activePreview.src}
-                      title={activePreview.title}
-                      mode={activePreview.mode === "stream" ? "full" : "preview"}
-                      caption={
-                        activePreview.mode === "stream"
-                          ? "Full PDF reading stays inside Tengacion."
-                          : "Preview is limited to preliminary pages through chapter one."
-                      }
-                    />
+                    <div className="creator-public-preview__cover creator-public-preview__cover--reader">
+                      {activePreview.artwork ? (
+                        <img src={resolveImage(activePreview.artwork)} alt={`${activePreview.title} cover`} />
+                      ) : (
+                        <div className="creator-public-preview__empty">
+                          Book reader
+                        </div>
+                      )}
+                    </div>
                   ) : activePreviewShowsCover ? (
                     <div className="creator-public-preview__cover">
                       {activePreview.artwork ? (
@@ -1313,6 +1325,25 @@ export default function CreatorHubPage() {
               )}
             </div>
           </section>
+
+          {activePreview?.src && activePreviewShowsPdf ? (
+            <section ref={readerRef} className="creator-public-reader" aria-labelledby="creator-public-reader-title">
+              <div className="creator-public-reader__head">
+                <h2 id="creator-public-reader-title">{activePreview.title}</h2>
+              </div>
+              <BookPdfSurface
+                className="book-pdf-surface--immersive"
+                src={activePreview.src}
+                title={activePreview.title}
+                mode={activePreview.mode === "stream" ? "full" : "preview"}
+                caption={
+                  activePreview.mode === "stream"
+                    ? "Full PDF reading stays inside Tengacion."
+                    : "Preview is limited to preliminary pages through chapter one."
+                }
+              />
+            </section>
+          ) : null}
 
           {renderTabContent()}
         </main>

@@ -28,11 +28,18 @@
 
 .book-pdf-surface__frame {
   width: 100%;
-  min-height: min(70vh, 760px);
+  height: clamp(560px, 78vh, 900px);
+  min-height: 560px;
   border: 0;
   border-radius: 18px;
   background: #f8f7f2;
   box-shadow: inset 0 0 0 1px rgba(18, 44, 30, 0.08);
+}
+
+.book-pdf-surface--immersive .book-pdf-surface__frame {
+  height: clamp(760px, 86vh, 1100px);
+  min-height: 760px;
+  border-radius: 22px;
 }
 
 .book-pdf-surface__empty {
@@ -56,6 +63,13 @@
   }
 
   .book-pdf-surface__frame {
-    min-height: 62vh;
+    height: 76vh;
+    min-height: 520px;
+  }
+
+  .book-pdf-surface--immersive .book-pdf-surface__frame {
+    height: 78vh;
+    min-height: 560px;
+    border-radius: 18px;
   }
 }

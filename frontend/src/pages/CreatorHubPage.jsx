@@ -859,14 +859,19 @@ export default function CreatorHubPage() {
   const featuredPurchaseKey = featuredItem ? `${featuredItemType || "item"}:${featuredItem.id}` : "";
   const featuredStreamLabel = featuredItem ? resolvePrimaryAccessLabel(featuredItem) : "";
   const featuredDownloadLabel = featuredItem ? resolveDownloadActionLabel(featuredItem) : "";
+  const featuredLockedPaidBook = Boolean(
+    featuredItemType === "book"
+    && !featuredItem?.canAccessFull
+    && Number(featuredItem?.price || 0) > 0
+  );
   const showFeaturedStreamAction = Boolean(
-    featuredItem?.canStream
-    && !(featuredItemType === "book" && !featuredItem?.canAccessFull && Number(featuredItem?.price || 0) > 0)
+    (featuredItem?.canStream && !featuredLockedPaidBook)
+    || (featuredLockedPaidBook && featuredItem?.canBuy)
   );
   const showFeaturedDownloadAction = Boolean(
     featuredItem?.canDownload
     && featuredDownloadLabel !== featuredStreamLabel
-    && !(featuredItemType === "book" && !featuredItem?.canAccessFull && Number(featuredItem?.price || 0) > 0)
+    && !featuredLockedPaidBook
   );
 
   useEffect(() => {

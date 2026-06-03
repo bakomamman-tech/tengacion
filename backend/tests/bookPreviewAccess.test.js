@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 const { PDFDocument, StandardFonts } = require("pdf-lib");
 const request = require("supertest");
+const jwt = require("jsonwebtoken");
 
 process.env.NODE_ENV = "test";
 process.env.MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/tengacion-book-preview-test";
@@ -11,6 +12,7 @@ const app = require("../app");
 const Book = require("../models/Book");
 const Chapter = require("../models/Chapter");
 const CreatorProfile = require("../models/CreatorProfile");
+const Entitlement = require("../models/Entitlement");
 const User = require("../models/User");
 
 let mongod;
@@ -65,6 +67,46 @@ const createCreatorProfile = async () => {
   });
 
   return { user, profile };
+};
+
+const issueSessionToken = async (userId) => {
+  const sessionId = new mongoose.Types.ObjectId().toString();
+  await User.updateOne(
+    { _id: userId },
+    {
+      $push: {
+        sessions: {
+          sessionId,
+          createdAt: new Date(),
+          lastSeenAt: new Date(),
+        },
+      },
+    }
+  );
+
+  return jwt.sign(
+    {
+      id: userId.toString(),
+      tv: 0,
+      sid: sessionId,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "2h" }
+  );
+};
+
+const createViewer = async () => {
+  const user = await User.create({
+    name: "Paid Reader",
+    username: "paid_reader",
+    email: "paid-reader@test.com",
+    password: "Password123!",
+    role: "user",
+    isVerified: true,
+    emailVerified: true,
+  });
+
+  return { user, token: await issueSessionToken(user._id) };
 };
 
 describe("book preview access", () => {
@@ -132,6 +174,58 @@ describe("book preview access", () => {
     expect(streamResponse.body.previewOnly).toBe(true);
     expect(streamResponse.body.streamUrl).toContain(`/api/books/${book._id}/preview`);
     expect(streamResponse.body.streamUrl).not.toContain("/api/media/delivery/");
+  });
+
+  test("GET /api/stream/book/:bookId serves paid full PDFs inline for the app reader", async () => {
+    const { profile } = await createCreatorProfile();
+    const { user, token } = await createViewer();
+    const pdfDataUrl = await createPdfDataUrl();
+    const book = await Book.create({
+      creatorId: profile._id,
+      title: "Paid Full PDF",
+      description: "Premium book release",
+      price: 1800,
+      priceNGN: 1800,
+      contentUrl: pdfDataUrl,
+      fileUrl: pdfDataUrl,
+      contentMedia: {
+        originalFilename: "Paid Full PDF.pdf",
+        format: "pdf",
+      },
+      fileFormat: "pdf",
+      contentType: "pdf_book",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+
+    await Entitlement.create({
+      buyerId: user._id,
+      itemType: "book",
+      itemId: book._id,
+    });
+
+    const streamResponse = await request(app)
+      .get(`/api/stream/book/${book._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(streamResponse.body.canAccessFull).toBe(true);
+    expect(streamResponse.body.previewOnly).toBe(false);
+    expect(streamResponse.body.streamUrl).toContain("/api/media/delivery/");
+
+    const streamPath = new URL(streamResponse.body.streamUrl).pathname;
+    const pdfResponse = await request(app)
+      .get(streamPath)
+      .buffer(true)
+      .parse(parseBinary)
+      .expect(200);
+
+    expect(pdfResponse.headers["content-type"]).toContain("application/pdf");
+    expect(pdfResponse.headers["content-disposition"]).toContain("inline;");
+    expect(pdfResponse.headers["content-disposition"]).toContain("Paid Full PDF.pdf");
+
+    const fullPdf = await PDFDocument.load(pdfResponse.body);
+    expect(fullPdf.getPageCount()).toBe(2);
   });
 
   test("unpaid chapter reading exposes chapter one only", async () => {

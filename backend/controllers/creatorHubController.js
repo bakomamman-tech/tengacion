@@ -498,6 +498,13 @@ exports.getProtectedStream = asyncHandler(async (req, res) => {
     userId: userId || "",
     req,
     expiresInSec: 10 * 60,
+    ...(item.itemType === "book"
+      ? {
+          ...resolveBookDownloadMetadata(item.payload),
+          disposition: "inline",
+          bindToRequest: true,
+        }
+      : {}),
   });
 
   return res.json({

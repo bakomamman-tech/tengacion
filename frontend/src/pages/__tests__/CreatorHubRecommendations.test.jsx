@@ -7,10 +7,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const {
   getDiscoveryCreatorHubMock,
   getPublicCreatorProfileMock,
+  getStreamUrlMock,
   trackDiscoveryEventsMock,
 } = vi.hoisted(() => ({
   getDiscoveryCreatorHubMock: vi.fn(),
   getPublicCreatorProfileMock: vi.fn(),
+  getStreamUrlMock: vi.fn(),
   trackDiscoveryEventsMock: vi.fn(),
 }));
 
@@ -52,7 +54,7 @@ vi.mock("../../api", () => ({
   getDiscoveryCreatorHub: getDiscoveryCreatorHubMock,
   getDownloadUrl: vi.fn(),
   getPublicCreatorProfile: getPublicCreatorProfileMock,
-  getStreamUrl: vi.fn(),
+  getStreamUrl: getStreamUrlMock,
   initPayment: vi.fn(),
   resolveImage: (value) => value,
   toggleFollowCreator: vi.fn(),
@@ -150,6 +152,7 @@ describe("CreatorHubPage recommendations", () => {
   beforeEach(() => {
     getPublicCreatorProfileMock.mockReset();
     getDiscoveryCreatorHubMock.mockReset();
+    getStreamUrlMock.mockReset();
     trackDiscoveryEventsMock.mockReset();
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
     vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
@@ -171,6 +174,7 @@ describe("CreatorHubPage recommendations", () => {
       ],
     });
     trackDiscoveryEventsMock.mockResolvedValue({ accepted: 1 });
+    getStreamUrlMock.mockResolvedValue({ streamUrl: "" });
   });
 
   afterEach(() => {
@@ -322,5 +326,106 @@ describe("CreatorHubPage recommendations", () => {
       expect.stringContaining("/api/books/book-1/preview")
     );
     expect(openSpy).not.toHaveBeenCalled();
+  });
+
+  it("opens paid book reads inside the embedded Tengacion PDF reader", async () => {
+    const user = userEvent.setup();
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    const payload = buildCreatorPayload();
+    const book = {
+      id: "book-1",
+      itemType: "book",
+      mediaType: "document",
+      title: "The Rustle of Death",
+      coverUrl: "https://cdn.test/books/rustle-cover.jpg",
+      previewUrl: "/api/books/book-1/preview",
+      streamUrl: "/api/media/delivery/profile-full-book-token",
+      route: "/books/book-1",
+      price: 2000,
+      canAccessFull: true,
+      canPreview: true,
+      canStream: true,
+      canDownload: true,
+      canBuy: false,
+    };
+
+    getStreamUrlMock.mockResolvedValue({
+      itemType: "book",
+      itemId: "book-1",
+      canAccessFull: true,
+      previewOnly: false,
+      streamUrl: "/api/media/delivery/full-book-reader-token",
+    });
+    getPublicCreatorProfileMock.mockResolvedValue({
+      ...payload,
+      featured: {
+        headline: "New reading release",
+        item: book,
+      },
+      music: {
+        tracks: [],
+        albums: [],
+        videos: [],
+      },
+      books: [book],
+    });
+
+    renderCreatorHub(`/creators/${creatorId}/books`);
+
+    const readButtons = await screen.findAllByRole("button", { name: /^read now$/i });
+    await user.click(readButtons[0]);
+
+    expect(getStreamUrlMock).toHaveBeenCalledWith("book", "book-1");
+    expect(await screen.findByText("Reading now")).toBeInTheDocument();
+    expect(screen.getByTitle("The Rustle of Death")).toHaveAttribute(
+      "src",
+      expect.stringContaining("/api/media/delivery/full-book-reader-token")
+    );
+    expect(openSpy).not.toHaveBeenCalled();
+  });
+
+  it("directs unpaid book reads to the Paystack checkout modal", async () => {
+    const user = userEvent.setup();
+    const payload = buildCreatorPayload();
+    const book = {
+      id: "book-1",
+      itemType: "book",
+      mediaType: "document",
+      title: "The Rustle of Death",
+      coverUrl: "https://cdn.test/books/rustle-cover.jpg",
+      previewUrl: "/api/books/book-1/preview",
+      streamUrl: "",
+      route: "/books/book-1",
+      price: 2000,
+      canAccessFull: false,
+      canPreview: true,
+      canStream: false,
+      canDownload: false,
+      canBuy: true,
+    };
+
+    getPublicCreatorProfileMock.mockResolvedValue({
+      ...payload,
+      featured: {
+        headline: "New reading release",
+        item: book,
+      },
+      music: {
+        tracks: [],
+        albums: [],
+        videos: [],
+      },
+      books: [book],
+    });
+
+    renderCreatorHub(`/creators/${creatorId}/books`);
+
+    const readButtons = await screen.findAllByRole("button", { name: /^read now$/i });
+    await user.click(readButtons[0]);
+
+    expect(getStreamUrlMock).not.toHaveBeenCalled();
+    expect(await screen.findByText("Paystack checkout")).toBeInTheDocument();
+    expect(screen.getByText("Review the book price before continuing to Paystack.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue to Paystack" })).toBeInTheDocument();
   });
 });

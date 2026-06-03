@@ -73,10 +73,45 @@ describe("MediaPreviewCard", () => {
         mediaType: "document",
         title: "The Rustle of Death",
         route: "/books/book-1",
+        canAccessFull: true,
       },
     });
 
     expect(screen.getByRole("button", { name: /^read now$/i })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /^download pdf$/i })).toHaveLength(1);
+  });
+
+  it("routes locked book read and download actions through purchase-aware handlers", async () => {
+    const user = userEvent.setup();
+    const handlers = renderCard({
+      item: {
+        id: "book-1",
+        itemType: "book",
+        mediaType: "document",
+        title: "The Rustle of Death",
+        route: "/books/book-1",
+        price: 2000,
+        canAccessFull: false,
+        canBuy: true,
+        canDownload: false,
+        canStream: false,
+      },
+    });
+
+    const readButton = screen.getByRole("button", { name: /^read now$/i });
+    const downloadButton = screen.getByRole("button", { name: /^download pdf$/i });
+
+    expect(readButton).toBeEnabled();
+    expect(downloadButton).toBeEnabled();
+
+    await user.click(readButton);
+    await user.click(downloadButton);
+
+    expect(handlers.onStream).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "book-1", itemType: "book" })
+    );
+    expect(handlers.onDownload).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "book-1", itemType: "book" })
+    );
   });
 });

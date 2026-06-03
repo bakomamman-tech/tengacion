@@ -459,6 +459,9 @@ const mapBookItem = ({ book, req, viewerId, ownerAccess, entitlements, creatorSu
         itemType: "book",
         itemId: String(book._id),
         userId: viewerId,
+        disposition: "inline",
+        bindToRequest: true,
+        ...resolveBookDownloadMetadata(book),
       })
     : "";
 

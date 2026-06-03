@@ -39,17 +39,18 @@ export default function MediaPreviewCard({
   );
   const itemKey = `${normalizedType || "item"}:${item.id || ""}`;
   const isBuyBusy = purchaseBusyKey === itemKey;
+  const lockedPaidBook = Boolean(isBook && !hasFullBookAccess && item.canBuy);
   const streamActionLabel = resolvePrimaryAccessLabel(item);
   const downloadActionLabel = resolveDownloadActionLabel(item);
   const buyLabel = resolvePurchaseCtaLabel(item, { busy: isBuyBusy });
   const detailRoute = item.route || creatorRoute || `/creators/${creatorId}`;
-  const showStreamAction = Boolean(item.canStream && hasFullBookAccess);
+  const showStreamAction = Boolean((item.canStream && hasFullBookAccess) || lockedPaidBook);
   const showDownloadAction = Boolean(
     item.canDownload &&
     hasFullBookAccess &&
     downloadActionLabel !== streamActionLabel
   );
-  const showLockedBookActions = Boolean(isBook && !hasFullBookAccess);
+  const showLockedBookDownloadAction = lockedPaidBook;
 
   return (
     <article
@@ -100,25 +101,15 @@ export default function MediaPreviewCard({
             {streamActionLabel}
           </button>
         ) : null}
-        {showLockedBookActions ? (
-          <button
-            type="button"
-            className="creator-secondary-btn"
-            disabled
-            title="Purchase this book to read the full PDF inside Tengacion."
-          >
-            {streamActionLabel}
-          </button>
-        ) : null}
         {showDownloadAction ? (
           <button type="button" className="creator-ghost-btn" onClick={() => onDownload(item)}>
             {downloadActionLabel}
           </button>
-        ) : showLockedBookActions ? (
+        ) : showLockedBookDownloadAction ? (
           <button
             type="button"
             className="creator-ghost-btn"
-            disabled
+            onClick={() => onDownload(item)}
             title="Purchase this book to activate device-bound PDF download access."
           >
             {downloadActionLabel}

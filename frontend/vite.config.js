@@ -79,6 +79,10 @@ const vendorChunkName = (id) => {
     return "vendor-ui"
   }
 
+  if (pkg === "pdfjs-dist") {
+    return "vendor-pdf"
+  }
+
   return "vendor-misc"
 }
 

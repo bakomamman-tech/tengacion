@@ -31,6 +31,14 @@ vi.mock("../../components/creator/media/CreatorHero", () => ({
   default: () => <section data-testid="creator-hero" />,
 }));
 
+vi.mock("../../components/creator/BookPdfSurface", () => ({
+  default: ({ className = "", src = "", title = "" }) => (
+    <div className={`book-pdf-surface ${className}`} data-testid="book-pdf-surface">
+      <iframe title={title} src={src} />
+    </div>
+  ),
+}));
+
 vi.mock("../../components/creator/media/ShareActions", () => ({
   default: () => null,
 }));

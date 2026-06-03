@@ -32,6 +32,7 @@ const statusClass = (value = "") => {
   if (
     [
       "blocked",
+      "rollback_required",
       "critical",
       "high",
       "needs_review",
@@ -54,6 +55,7 @@ const statusClass = (value = "") => {
       "stale",
       "disputed",
       "pending",
+      "missing",
       "needs_contract",
       "near_ready",
       "evidence_needed",
@@ -121,6 +123,11 @@ export default function AdminAssurancePage({ user }) {
   const metricContracts = payload?.metricContracts || [];
   const alerts = payload?.alerts || [];
   const readinessGates = payload?.readinessGates || [];
+  const launchCommandCenter = payload?.launchCommandCenter || {};
+  const launchSummary = launchCommandCenter.summary || {};
+  const launchGates = launchCommandCenter.gates || [];
+  const launchRollbackPlans = launchCommandCenter.rollbackPlans || [];
+  const launchSupportMacros = launchCommandCenter.supportMacros || [];
   const standard = payload?.evidencePackStandard || {};
   const capitalSummary = capitalPayload?.summary || {};
   const capitalScorecard = capitalPayload?.scorecard || [];
@@ -161,6 +168,17 @@ export default function AdminAssurancePage({ user }) {
     ["High Capital Risks", number(capitalSummary.highRiskCount)],
   ];
 
+  const launchCards = [
+    ["Launch State", eventLabel(launchSummary.overallState || "unknown")],
+    ["Expansion Paused", launchSummary.expansionPaused ? "Yes" : "No"],
+    ["Ready Gates", `${number(launchSummary.readyCount)} / ${number(launchSummary.totalGates)}`],
+    ["Watch Gates", number(launchSummary.watchCount)],
+    ["Blocked Gates", number(launchSummary.blockedCount)],
+    ["Rollback Required", number(launchSummary.rollbackRequiredCount)],
+    ["Reliability", eventLabel(launchSummary.reliabilityOverallStatus || "unknown")],
+    ["Active Incidents", number(launchSummary.activeIncidentCount)],
+  ];
+
   return (
     <AdminShell
       title="Assurance"
@@ -196,6 +214,104 @@ export default function AdminAssurancePage({ user }) {
               </article>
             ))}
           </div>
+
+          {launchGates.length ? (
+            <>
+              <section className="adminx-panel adminx-panel--span-12">
+                <div className="adminx-panel-head">
+                  <div>
+                    <h2 className="adminx-panel-title">Launch Command Center</h2>
+                    <span className="adminx-section-meta">
+                      Controlled launch gates, rollback coverage, and support macros from the scale roadmap.
+                    </span>
+                  </div>
+                  <span className={statusClass(launchSummary.overallState)}>
+                    {eventLabel(launchSummary.overallState || "unknown")}
+                  </span>
+                </div>
+                <div className="adminx-ops-grid">
+                  {launchCards.map(([label, value]) => (
+                    <div key={label} className="adminx-ops-metric">
+                      <span>{label}</span>
+                      <strong>{value}</strong>
+                    </div>
+                  ))}
+                </div>
+                {launchSummary.pauseReason ? (
+                  <div className="adminx-muted">{launchSummary.pauseReason}</div>
+                ) : null}
+              </section>
+
+              <section className="adminx-panel adminx-panel--span-12">
+                <div className="adminx-panel-head">
+                  <h2 className="adminx-panel-title">Launch Gates</h2>
+                  <span className="adminx-section-meta">{number(launchGates.length)} gates</span>
+                </div>
+                <div className="adminx-alert-list adminx-alert-list--inline">
+                  {launchGates.map((gate) => (
+                    <article key={gate.key} className="adminx-alert-item">
+                      <div className="adminx-row">
+                        <strong>{gate.title}</strong>
+                        <span className={statusClass(gate.gateState)}>
+                          {eventLabel(gate.gateState)}
+                        </span>
+                      </div>
+                      <div className="adminx-muted">{gate.owner} - reviewer: {gate.reviewer}</div>
+                      <div className="adminx-muted">{gate.stateReason}</div>
+                      <div className="adminx-pill-row">
+                        <span className={statusClass(gate.openIssueCount ? gate.gateState : "ready")}>
+                          Issues {number(gate.openIssueCount)}
+                        </span>
+                        {gate.rollbackPlanTitle ? (
+                          <span className="adminx-badge">{gate.rollbackPlanTitle}</span>
+                        ) : null}
+                      </div>
+                      <div className="adminx-muted">{gate.latestEvidenceSummary}</div>
+                      <div className="adminx-muted">{gate.nextAction}</div>
+                      <button
+                        type="button"
+                        className="adminx-link-btn adminx-link-btn--inline"
+                        onClick={() => navigate(gate.actionPath || "/admin/assurance")}
+                      >
+                        Open surface
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              <section className="adminx-panel adminx-panel--span-12">
+                <div className="adminx-panel-head">
+                  <h2 className="adminx-panel-title">Rollback Plans And Support Macros</h2>
+                  <span className="adminx-section-meta">
+                    {number(launchRollbackPlans.length)} rollback plans - {number(launchSupportMacros.length)} macros
+                  </span>
+                </div>
+                <div className="adminx-alert-list adminx-alert-list--inline">
+                  {launchRollbackPlans.map((plan) => (
+                    <article key={plan.key} className="adminx-alert-item">
+                      <div className="adminx-row">
+                        <strong>{plan.title}</strong>
+                        <span className="adminx-badge">{plan.owner}</span>
+                      </div>
+                      <div className="adminx-muted">{plan.trigger}</div>
+                      <div className="adminx-muted">{plan.immediateAction}</div>
+                    </article>
+                  ))}
+                  {launchSupportMacros.map((macro) => (
+                    <article key={macro.key} className="adminx-alert-item">
+                      <div className="adminx-row">
+                        <strong>{macro.title}</strong>
+                        <span className="adminx-badge">{macro.owner}</span>
+                      </div>
+                      <div className="adminx-muted">Escalation: {macro.escalationOwner}</div>
+                      <div className="adminx-muted">{macro.responseGoal}</div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </>
+          ) : null}
 
           {capitalPayload ? (
             <>

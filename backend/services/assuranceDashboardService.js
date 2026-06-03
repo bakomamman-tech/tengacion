@@ -42,6 +42,313 @@ const RELIABILITY_TO_READINESS = {
   blocked: "blocked",
 };
 
+const LAUNCH_GATE_STATES = ["ready", "watch", "blocked", "rollback_required"];
+const LAUNCH_GATE_RANK = {
+  ready: 0,
+  watch: 1,
+  blocked: 2,
+  rollback_required: 3,
+};
+const RELIABILITY_TO_LAUNCH_STATE = {
+  healthy: "ready",
+  watch: "watch",
+  degraded: "watch",
+  incident: "rollback_required",
+  blocked: "rollback_required",
+};
+const CONTROL_TO_LAUNCH_STATE = {
+  ready: "ready",
+  watch: "watch",
+  needs_review: "watch",
+  blocked: "blocked",
+};
+
+const LAUNCH_ROLLBACK_PLANS = [
+  {
+    key: "checkout_failures",
+    title: "Checkout Failures",
+    owner: "Backend and infrastructure",
+    trigger: "Checkout initialization, payment verification, or provider callback health reaches incident or blocked state.",
+    immediateAction: "Pause paid launch traffic, inspect provider credentials and callback URLs, reconcile pending purchases, and notify support of affected payment references.",
+    affectedSystems: ["checkout", "payment_callbacks", "purchase_records"],
+    actionPath: "/admin/transactions",
+    runbookKey: "checkout_failure",
+  },
+  {
+    key: "entitlement_delays",
+    title: "Entitlement Delays",
+    owner: "Backend and infrastructure",
+    trigger: "Paid purchases are missing access records or entitlement continuity moves beyond watch.",
+    immediateAction: "Pause new paid unlock promotion, run entitlement reconciliation, verify affected users, and publish a support macro for payment-succeeded access issues.",
+    affectedSystems: ["entitlements", "purchases", "content_access"],
+    actionPath: "/admin/transactions?attention=stuck",
+    runbookKey: "entitlement_mismatch",
+  },
+  {
+    key: "payout_queue_errors",
+    title: "Payout Queue Errors",
+    owner: "Finance and operations",
+    trigger: "Failed, stuck, or unreconciled payout records reach degraded, incident, blocked, or critical finance state.",
+    immediateAction: "Freeze payout batch expansion, review failed and stale payout requests, message impacted creators, and reconcile wallet or ledger variances before approving more traffic.",
+    affectedSystems: ["creator_payouts", "wallet_entries", "revenue_ledger"],
+    actionPath: "/admin/creator-earnings",
+    runbookKey: "payout_blocker",
+  },
+  {
+    key: "media_upload_failures",
+    title: "Media Upload Failures",
+    owner: "Backend and infrastructure",
+    trigger: "Upload failures or repeated creator upload failures reach incident or blocked state.",
+    immediateAction: "Pause creator upload pushes, inspect storage provider errors and validators, verify playback/download paths, and prioritize impacted launch creators.",
+    affectedSystems: ["creator_uploads", "media_storage", "playback"],
+    actionPath: "/admin/content",
+    runbookKey: "media_upload_failure",
+  },
+  {
+    key: "live_access_errors",
+    title: "Live Access Errors",
+    owner: "Backend and infrastructure",
+    trigger: "Live session creation or token issuance reaches incident or blocked state.",
+    immediateAction: "Pause promoted live sessions, validate LiveKit configuration and quota state, and redirect users to creator update messaging until joins recover.",
+    affectedSystems: ["live_sessions", "live_tokens", "fan_access"],
+    actionPath: "/admin/analytics",
+    runbookKey: "live_creation_failure",
+  },
+  {
+    key: "notification_misfires",
+    title: "Notification Misfires",
+    owner: "Fan growth",
+    trigger: "Notification consent evidence is missing or launch messaging produces opt-out, complaint, or delivery issues.",
+    immediateAction: "Stop launch sends, keep suppression reasons visible, audit consent and audience rules, and restart only with owner approval.",
+    affectedSystems: ["notifications", "consent", "fan_lifecycle"],
+    actionPath: "/admin/campaigns",
+    runbookKey: "",
+  },
+  {
+    key: "recommendation_complaint_spikes",
+    title: "Recommendation Complaint Spikes",
+    owner: "Discovery and analytics",
+    trigger: "Discovery fallback, hide, report, or complaint evidence moves beyond watch during a launch cohort.",
+    immediateAction: "Pause campaign ranking boosts, inspect fallback surfaces and complaint examples, and restore conservative discovery rules until review completes.",
+    affectedSystems: ["discovery", "recommendations", "campaign_ranking"],
+    actionPath: "/admin/analytics",
+    runbookKey: "discovery_fallback_spike",
+  },
+  {
+    key: "akuso_safety_regressions",
+    title: "Akuso Safety Regressions",
+    owner: "AI and safety",
+    trigger: "Akuso latency, fallback, policy, eval, or high-risk boundary evidence regresses during launch support.",
+    immediateAction: "Pause launch-copilot behavior, route sensitive flows back to app controls, run evals, and attach review evidence before re-enabling public-facing drafts.",
+    affectedSystems: ["akuso", "support_copilot", "assistant_reviews"],
+    actionPath: "/admin/assistant/metrics",
+    runbookKey: "akuso_eval_regression",
+  },
+];
+
+const LAUNCH_SUPPORT_MACROS = [
+  {
+    key: "payment_succeeded_content_locked",
+    title: "Payment Succeeded But Content Did Not Unlock",
+    owner: "Support",
+    escalationOwner: "Finance and operations",
+    responseGoal: "Confirm the purchase reference, check entitlement evidence, and escalate reconciliation when access is still missing.",
+    actionPath: "/admin/transactions?attention=stuck",
+  },
+  {
+    key: "payout_pending_review",
+    title: "Payout Request Pending Review",
+    owner: "Creator support",
+    escalationOwner: "Finance and operations",
+    responseGoal: "Explain payout status, review window, missing readiness items, and the next finance action without promising manual override.",
+    actionPath: "/admin/creator-earnings",
+  },
+  {
+    key: "creator_verification_or_payout_blocker",
+    title: "Creator Verification Or Payout Blocker",
+    owner: "Creator support",
+    escalationOwner: "Trust, policy, and legal",
+    responseGoal: "Point the creator to missing verification or payout readiness evidence and route identity or risk issues to the right reviewer.",
+    actionPath: "/admin/creator-earnings",
+  },
+  {
+    key: "upload_failed",
+    title: "Upload Failed",
+    owner: "Creator support",
+    escalationOwner: "Backend and infrastructure",
+    responseGoal: "Capture file type, size, creator device, and error timing, then escalate repeated failures with storage evidence.",
+    actionPath: "/admin/content",
+  },
+  {
+    key: "subscription_renewal_failed",
+    title: "Subscription Renewal Failed",
+    owner: "Support",
+    escalationOwner: "Finance and operations",
+    responseGoal: "Explain renewal state, retry options, access impact, and refund/dispute boundaries.",
+    actionPath: "/admin/transactions",
+  },
+  {
+    key: "live_event_access_issue",
+    title: "Live Event Access Issue",
+    owner: "Support",
+    escalationOwner: "Backend and infrastructure",
+    responseGoal: "Check reminder, ticket or entitlement state, live token health, and current session availability.",
+    actionPath: "/admin/analytics",
+  },
+  {
+    key: "recommendation_complaint",
+    title: "Recommendation Complaint",
+    owner: "Trust and safety",
+    escalationOwner: "Discovery and analytics",
+    responseGoal: "Acknowledge the complaint, preserve the reported surface, and route hide/report evidence into recommendation review.",
+    actionPath: "/admin/reports",
+  },
+  {
+    key: "akuso_unsafe_or_incorrect_answer",
+    title: "Akuso Unsafe Or Incorrect Answer",
+    owner: "AI and safety",
+    escalationOwner: "Trust, policy, and legal",
+    responseGoal: "Capture the assistant response, user intent, safety concern, and whether the failure should become an eval fixture.",
+    actionPath: "/admin/assistant/reviews",
+  },
+];
+
+const LAUNCH_GATE_DEFINITIONS = [
+  {
+    key: "checkout_callbacks",
+    title: "Checkout And Payment Callbacks",
+    workstream: "Launch and market activation",
+    owner: "Backend and infrastructure",
+    reviewer: "Finance and operations",
+    controlKeys: ["payment_webhook_processing"],
+    reliabilityKeys: ["payment_initialization", "paystack_verification", "stripe_webhook_processing"],
+    pauseOnDegradedReliability: true,
+    rollbackPlanKey: "checkout_failures",
+    actionPath: "/admin/transactions",
+    readyCondition: "Checkout initialization, verification, and provider callback evidence are current enough for launch traffic.",
+    watchCondition: "Payment evidence has issues that need owner review before cohort size grows.",
+  },
+  {
+    key: "entitlement_unlocks",
+    title: "Entitlement Unlocks",
+    workstream: "Launch and market activation",
+    owner: "Backend and infrastructure",
+    reviewer: "Finance and operations",
+    controlKeys: ["purchase_entitlement_continuity"],
+    reliabilityKeys: ["entitlement_reconciliation"],
+    pauseOnDegradedReliability: true,
+    rollbackPlanKey: "entitlement_delays",
+    actionPath: "/admin/transactions?attention=stuck",
+    readyCondition: "Paid purchase access evidence reconciles for launch traffic.",
+    watchCondition: "Entitlement reconciliation needs review before additional paid promotion.",
+  },
+  {
+    key: "payout_review",
+    title: "Payout Request Review",
+    workstream: "Creator growth engine",
+    owner: "Finance and operations",
+    reviewer: "Creator support",
+    controlKeys: ["payout_outcome_control", "wallet_settlement_accuracy"],
+    reliabilityKeys: ["payout_blockers"],
+    pauseOnDegradedReliability: true,
+    rollbackPlanKey: "payout_queue_errors",
+    actionPath: "/admin/creator-earnings",
+    readyCondition: "Payout outcomes and wallet settlement are current enough for creator launch promises.",
+    watchCondition: "Payout or wallet evidence needs review before creator cohort expansion.",
+  },
+  {
+    key: "creator_upload_publish_flows",
+    title: "Creator Upload And Publish Flows",
+    workstream: "Creator growth engine",
+    owner: "Creator growth",
+    reviewer: "Trust, policy, and legal",
+    controlKeys: ["moderation_appeal_assurance", "privacy_consent_rights_control"],
+    reliabilityKeys: ["media_upload_failures"],
+    rollbackPlanKey: "media_upload_failures",
+    actionPath: "/admin/content",
+    readyCondition: "Upload health, moderation coverage, and rights/privacy review are current for launch creators.",
+    watchCondition: "Creator upload, moderation, or rights evidence needs owner review before promotion.",
+  },
+  {
+    key: "media_playback_downloads",
+    title: "Media Playback And Download Paths",
+    workstream: "Launch and market activation",
+    owner: "Backend and infrastructure",
+    reviewer: "Creator support",
+    controlKeys: [],
+    reliabilityKeys: ["media_upload_failures"],
+    rollbackPlanKey: "media_upload_failures",
+    actionPath: "/admin/content",
+    readyCondition: "Media upload evidence is healthy enough to support playback and download checks.",
+    watchCondition: "Media failure evidence needs review before broader launch.",
+  },
+  {
+    key: "live_creation_joining",
+    title: "Live Session Creation And Joining",
+    workstream: "Fan retention and community",
+    owner: "Backend and infrastructure",
+    reviewer: "Creator success",
+    controlKeys: [],
+    reliabilityKeys: ["live_session_creation"],
+    rollbackPlanKey: "live_access_errors",
+    actionPath: "/admin/analytics",
+    readyCondition: "Live creation and token health are healthy enough for promoted sessions.",
+    watchCondition: "Live session evidence needs review before live launch programming expands.",
+  },
+  {
+    key: "discovery_fallback_behavior",
+    title: "Discovery Fallback Behavior",
+    workstream: "Fan retention and community",
+    owner: "Discovery and analytics",
+    reviewer: "Trust, policy, and legal",
+    controlKeys: ["recommendation_measurement_trust"],
+    reliabilityKeys: ["discovery_fallback_rate"],
+    rollbackPlanKey: "recommendation_complaint_spikes",
+    actionPath: "/admin/analytics",
+    readyCondition: "Discovery fallback and recommendation trust evidence are current enough for launch discovery.",
+    watchCondition: "Discovery or recommendation evidence needs review before ranking boosts expand.",
+  },
+  {
+    key: "notification_delivery",
+    title: "Notification Delivery",
+    workstream: "Fan retention and community",
+    owner: "Fan growth",
+    reviewer: "Trust, policy, and legal",
+    controlKeys: ["notification_consent_control"],
+    reliabilityKeys: [],
+    rollbackPlanKey: "notification_misfires",
+    actionPath: "/admin/campaigns",
+    readyCondition: "Notification consent and suppression evidence are current enough for lifecycle sends.",
+    watchCondition: "Notification consent evidence needs review before launch messaging expands.",
+  },
+  {
+    key: "akuso_eval_gates",
+    title: "Akuso Eval Gates",
+    workstream: "Trust, governance, and scale",
+    owner: "AI and safety",
+    reviewer: "Trust, policy, and legal",
+    controlKeys: ["akuso_source_eval_governance", "akuso_high_risk_boundaries"],
+    reliabilityKeys: ["akuso_latency_fallback"],
+    rollbackPlanKey: "akuso_safety_regressions",
+    actionPath: "/admin/assistant/metrics",
+    readyCondition: "Akuso source, fallback, latency, and high-risk boundary evidence support launch-copilot use.",
+    watchCondition: "Akuso evidence needs review before public-facing launch support expands.",
+  },
+  {
+    key: "support_moderation_coverage",
+    title: "Support And Moderation Queue Coverage",
+    workstream: "Trust, governance, and scale",
+    owner: "Support and moderation",
+    reviewer: "Product leadership",
+    controlKeys: ["moderation_appeal_assurance", "privacy_consent_rights_control", "akuso_high_risk_boundaries"],
+    reliabilityKeys: [],
+    rollbackPlanKey: "akuso_safety_regressions",
+    actionPath: "/admin/reports",
+    readyCondition: "Support, moderation, rights, privacy, and assistant escalation evidence are current enough for public traffic.",
+    watchCondition: "Support or moderation coverage evidence needs owner review before cohort size grows.",
+  },
+];
+
 const CONTROL_DEFINITIONS = [
   {
     key: "finance_revenue_close",
@@ -1018,6 +1325,193 @@ const buildMonitoringAlerts = (controls = []) =>
           : `${control.surface} evidence is ${control.evidenceFreshness}; attach a current evidence pack before dependent decisions.`,
     }));
 
+const worstLaunchGateState = (states = []) =>
+  states.reduce((worst, state) => {
+    const currentRank = LAUNCH_GATE_RANK[state] ?? 0;
+    const worstRank = LAUNCH_GATE_RANK[worst] ?? 0;
+    return currentRank > worstRank ? state : worst;
+  }, "ready");
+
+const buildLaunchEvidenceLine = (entry = {}) => {
+  if (entry.kind === "reliability") {
+    const metric = entry.snapshot?.metric || {};
+    const total = metric.total == null ? "" : `/${metric.total}`;
+    const rate = metric.rate == null ? "" : `, ${Math.round(Number(metric.rate || 0) * 100)}%`;
+    const unit = metric.unit ? ` ${metric.unit}` : "";
+    return `${entry.title}: ${Number(metric.value || 0)}${total}${rate}${unit}`;
+  }
+
+  if (entry.kind === "control") {
+    return `${entry.title}: ${entry.control?.latestMetric || "Evidence pending"}`;
+  }
+
+  return entry.title || "Evidence pending";
+};
+
+const buildLaunchGate = ({ definition, controlMap, reliabilityMap }) => {
+  const safeReliabilityMap = reliabilityMap || new Map();
+  const rollbackPlan =
+    LAUNCH_ROLLBACK_PLANS.find((plan) => plan.key === definition.rollbackPlanKey) || null;
+  const reliabilityEvidence = definition.reliabilityKeys.map((key) => {
+    const snapshot = safeReliabilityMap.get(key);
+    const baseGateState = RELIABILITY_TO_LAUNCH_STATE[snapshot?.status] || "watch";
+    const gateState =
+      definition.pauseOnDegradedReliability && snapshot?.status === "degraded"
+        ? "blocked"
+        : baseGateState;
+    return {
+      kind: "reliability",
+      key,
+      title: snapshot?.title || key,
+      owner: snapshot?.owner || definition.owner,
+      gateState,
+      status: snapshot?.status || "missing",
+      snapshot,
+      actionPath: snapshot?.actionPath || definition.actionPath,
+      runbookPath: snapshot?.runbookPath || "",
+      nextAction: snapshot?.nextAction || "Attach current reliability evidence before expanding launch traffic.",
+    };
+  });
+  const controlEvidence = definition.controlKeys.map((key) => {
+    const control = controlMap.get(key);
+    const gateState = CONTROL_TO_LAUNCH_STATE[control?.readinessState] || "watch";
+    return {
+      kind: "control",
+      key,
+      title: control?.surface || key,
+      owner: control?.owner || definition.owner,
+      gateState,
+      status: control?.readinessState || "missing",
+      evidenceFreshness: control?.evidenceFreshness || "missing",
+      control,
+      actionPath: control?.actionPath || definition.actionPath,
+      runbookPath: "",
+      nextAction:
+        control?.readinessState === "ready" && control?.evidenceFreshness === "current"
+          ? "Keep evidence attached to the weekly launch review."
+          : control?.auditNotes || "Attach current control evidence before expanding launch traffic.",
+    };
+  });
+  const evidence = [...reliabilityEvidence, ...controlEvidence];
+  const gateState = worstLaunchGateState(evidence.map((entry) => entry.gateState));
+  const openIssues = evidence.filter(
+    (entry) =>
+      entry.gateState !== "ready" ||
+      entry.status === "missing" ||
+      entry.evidenceFreshness === "missing" ||
+      (entry.evidenceFreshness && entry.evidenceFreshness !== "current")
+  );
+  const primaryIssue = openIssues[0] || null;
+  const nextAction =
+    gateState === "ready"
+      ? definition.readyCondition
+      : primaryIssue?.nextAction || definition.watchCondition;
+  const stateReason =
+    gateState === "ready"
+      ? definition.readyCondition
+      : gateState === "rollback_required"
+        ? `${definition.title} has an incident-grade signal. Use the rollback plan before launch expansion.`
+        : gateState === "blocked"
+          ? primaryIssue?.kind === "reliability"
+            ? `${definition.title} has degraded launch-critical reliability evidence.`
+            : `${definition.title} has blocked launch-critical control evidence.`
+          : definition.watchCondition;
+
+  return {
+    key: definition.key,
+    title: definition.title,
+    workstream: definition.workstream,
+    owner: definition.owner,
+    reviewer: definition.reviewer,
+    gateState,
+    rollbackRequired: gateState === "rollback_required",
+    controlKeys: definition.controlKeys,
+    reliabilityKeys: definition.reliabilityKeys,
+    latestEvidenceSummary: evidence.length
+      ? evidence.map(buildLaunchEvidenceLine).join(" | ")
+      : "Manual launch evidence pending",
+    evidence: evidence.map((entry) => ({
+      kind: entry.kind,
+      key: entry.key,
+      title: entry.title,
+      gateState: entry.gateState,
+      status: entry.status,
+      evidenceFreshness: entry.evidenceFreshness || undefined,
+      owner: entry.owner,
+      latestMetric: buildLaunchEvidenceLine(entry),
+      actionPath: entry.actionPath,
+      runbookPath: entry.runbookPath,
+      nextAction: entry.nextAction,
+    })),
+    openIssues: openIssues.map((entry) => ({
+      kind: entry.kind,
+      key: entry.key,
+      title: entry.title,
+      gateState: entry.gateState,
+      status: entry.status,
+      evidenceFreshness: entry.evidenceFreshness || undefined,
+      owner: entry.owner,
+      actionPath: entry.actionPath,
+      nextAction: entry.nextAction,
+    })),
+    openIssueCount: openIssues.length,
+    stateReason,
+    nextAction,
+    actionPath: primaryIssue?.actionPath || definition.actionPath,
+    rollbackPlanKey: definition.rollbackPlanKey,
+    rollbackPlanTitle: rollbackPlan?.title || "",
+    rollbackCriteria: rollbackPlan?.trigger || "",
+    affectedSystems: rollbackPlan?.affectedSystems || [],
+  };
+};
+
+const buildLaunchCommandCenter = ({ controls = [], reliabilityHealth = {}, reliabilityMap } = {}) => {
+  const controlMap = new Map(controls.map((control) => [control.controlKey, control]));
+  const gates = LAUNCH_GATE_DEFINITIONS.map((definition) =>
+    buildLaunchGate({ definition, controlMap, reliabilityMap })
+  );
+  const counts = gates.reduce((acc, gate) => {
+    acc[gate.gateState] = Number(acc[gate.gateState] || 0) + 1;
+    return acc;
+  }, {});
+  const overallState = worstLaunchGateState(gates.map((gate) => gate.gateState));
+  const expansionPaused = ["blocked", "rollback_required"].includes(overallState);
+
+  return {
+    key: "launch_command_center",
+    title: "Launch Readiness Command Center",
+    owner: "Product and launch",
+    reviewer: "Launch readiness review",
+    gateStates: LAUNCH_GATE_STATES,
+    summary: {
+      overallState,
+      expansionPaused,
+      pauseReason: expansionPaused
+        ? "Do not expand launch cohorts until blocked gates are resolved or rollback-required gates recover."
+        : overallState === "watch"
+          ? "Launch can continue only with owner review on watch gates."
+          : "Launch gates are ready for the current cohort window.",
+      totalGates: gates.length,
+      readyCount: Number(counts.ready || 0),
+      watchCount: Number(counts.watch || 0),
+      blockedCount: Number(counts.blocked || 0),
+      rollbackRequiredCount: Number(counts.rollback_required || 0),
+      reliabilityOverallStatus: reliabilityHealth?.summary?.overallStatus || "unknown",
+      activeIncidentCount: Number(reliabilityHealth?.summary?.activeIncidentCount || 0),
+    },
+    gates,
+    rollbackPlans: LAUNCH_ROLLBACK_PLANS,
+    supportMacros: LAUNCH_SUPPORT_MACROS,
+    decisionRules: [
+      "If checkout, entitlement, or payout reliability is degraded, launch expansion pauses.",
+      "If support or moderation coverage is not current, cohort size does not grow.",
+      "If notification opt-outs or complaints rise, lifecycle messaging slows before adding messages.",
+      "If recommendation report rate rises, campaign ranking boosts pause.",
+      "If Akuso route-quality gates regress, launch-copilot behavior pauses.",
+    ],
+  };
+};
+
 const buildReadinessGates = (controls = []) => [
   {
     key: "finance_close_readiness",
@@ -1105,6 +1599,11 @@ const buildAssuranceDashboard = async ({
   const evidencePacks = buildEvidencePacks(controls);
   const metricContracts = buildMetricContracts(controls);
   const summary = buildSummary(controls, evidencePacks, metricContracts);
+  const launchCommandCenter = buildLaunchCommandCenter({
+    controls,
+    reliabilityHealth,
+    reliabilityMap,
+  });
 
   return {
     filters: financeClose.filters,
@@ -1124,6 +1623,7 @@ const buildAssuranceDashboard = async ({
     metricContracts,
     alerts: buildMonitoringAlerts(controls),
     readinessGates: buildReadinessGates(controls),
+    launchCommandCenter,
     evidencePackStandard: EVIDENCE_PACK_STANDARD,
     sourceSystems: [
       "finance_assurance_close",
@@ -1147,6 +1647,10 @@ module.exports = {
   CONTROL_DEFINITIONS,
   DATA_PRODUCT_EVIDENCE_PACKS,
   EVIDENCE_PACK_STANDARD,
+  LAUNCH_GATE_DEFINITIONS,
+  LAUNCH_GATE_STATES,
+  LAUNCH_ROLLBACK_PLANS,
+  LAUNCH_SUPPORT_MACROS,
   METRIC_CONTRACT_DEFINITIONS,
   PARTNER_API_MARKET_EVIDENCE_PACKS,
   buildAssuranceDashboard,

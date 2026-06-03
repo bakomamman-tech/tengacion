@@ -11,6 +11,10 @@ const {
   CONTROL_DEFINITIONS,
   DATA_PRODUCT_EVIDENCE_PACKS,
   EVIDENCE_PACK_STANDARD,
+  LAUNCH_GATE_DEFINITIONS,
+  LAUNCH_GATE_STATES,
+  LAUNCH_ROLLBACK_PLANS,
+  LAUNCH_SUPPORT_MACROS,
   METRIC_CONTRACT_DEFINITIONS,
   PARTNER_API_MARKET_EVIDENCE_PACKS,
   buildAssuranceDashboard,
@@ -185,6 +189,44 @@ describe("assuranceDashboardService", () => {
         expect.objectContaining({ key: "akuso_readiness" }),
       ])
     );
+    expect(dashboard.launchCommandCenter).toMatchObject({
+      key: "launch_command_center",
+      owner: "Product and launch",
+      gateStates: LAUNCH_GATE_STATES,
+      summary: expect.objectContaining({
+        totalGates: LAUNCH_GATE_DEFINITIONS.length,
+        readyCount: expect.any(Number),
+        watchCount: expect.any(Number),
+        blockedCount: expect.any(Number),
+        rollbackRequiredCount: expect.any(Number),
+      }),
+    });
+    expect(dashboard.launchCommandCenter.gates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "checkout_callbacks",
+          gateState: "ready",
+          rollbackPlanKey: "checkout_failures",
+        }),
+        expect.objectContaining({
+          key: "notification_delivery",
+          owner: "Fan growth",
+          rollbackPlanKey: "notification_misfires",
+        }),
+        expect.objectContaining({
+          key: "support_moderation_coverage",
+          controlKeys: expect.arrayContaining(["moderation_appeal_assurance"]),
+        }),
+      ])
+    );
+    expect(dashboard.launchCommandCenter.rollbackPlans).toHaveLength(LAUNCH_ROLLBACK_PLANS.length);
+    expect(dashboard.launchCommandCenter.supportMacros).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "payment_succeeded_content_locked" }),
+        expect.objectContaining({ key: "akuso_unsafe_or_incorrect_answer" }),
+      ])
+    );
+    expect(LAUNCH_SUPPORT_MACROS.length).toBeGreaterThanOrEqual(8);
   });
 
   test("surfaces finance blockers as control registry alerts", async () => {
@@ -265,6 +307,27 @@ describe("assuranceDashboardService", () => {
           key: "recommendation_conversions",
           trustState: "blocked",
           blockingControls: expect.arrayContaining(["purchase_entitlement_continuity"]),
+        }),
+      ])
+    );
+    expect(dashboard.launchCommandCenter.summary).toMatchObject({
+      overallState: "rollback_required",
+      expansionPaused: true,
+      rollbackRequiredCount: expect.any(Number),
+    });
+    expect(dashboard.launchCommandCenter.gates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "entitlement_unlocks",
+          gateState: "rollback_required",
+          rollbackPlanKey: "entitlement_delays",
+          openIssues: expect.arrayContaining([
+            expect.objectContaining({
+              kind: "reliability",
+              key: "entitlement_reconciliation",
+              gateState: "rollback_required",
+            }),
+          ]),
         }),
       ])
     );

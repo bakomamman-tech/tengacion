@@ -1,0 +1,769 @@
+.pyrexx-site {
+  min-height: 100vh;
+  padding-bottom: 0;
+  background: #0b0808;
+  color: #ffffff;
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+  scroll-behavior: smooth;
+}
+
+.pyrexx-site *,
+.pyrexx-site *::before,
+.pyrexx-site *::after {
+  box-sizing: border-box;
+}
+
+.pyrexx-hero {
+  position: relative;
+  min-height: calc(100svh - 112px);
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(5, 4, 4, 0.98) 0%, rgba(8, 5, 5, 0.98) 46%, rgba(18, 4, 3, 0.82) 100%),
+    #0b0808;
+}
+
+.pyrexx-nav {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 5;
+  min-height: 118px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 clamp(18px, 4vw, 74px);
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.pyrexx-logo,
+.pyrexx-nav__links,
+.pyrexx-hero__actions,
+.pyrexx-booking,
+.pyrexx-player,
+.pyrexx-player__language,
+.pyrexx-player__track,
+.pyrexx-player__controls,
+.pyrexx-player__meta {
+  display: flex;
+  align-items: center;
+}
+
+.pyrexx-logo {
+  gap: 12px;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.pyrexx-logo__mark {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  color: #ff1212;
+  font-size: 28px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.pyrexx-logo strong,
+.pyrexx-logo small {
+  display: block;
+  line-height: 0.95;
+}
+
+.pyrexx-logo strong {
+  font-size: 19px;
+  font-weight: 1000;
+  letter-spacing: 0;
+}
+
+.pyrexx-logo small {
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.pyrexx-nav__links {
+  justify-content: flex-end;
+  gap: clamp(14px, 2.1vw, 32px);
+  flex-wrap: wrap;
+}
+
+.pyrexx-nav__links a {
+  color: #ffffff;
+  font-size: clamp(16px, 1.4vw, 24px);
+  font-weight: 800;
+  text-decoration: none;
+  letter-spacing: 0;
+}
+
+.pyrexx-nav__links a::after {
+  content: ".";
+  color: #ff1212;
+}
+
+.pyrexx-nav__links a.is-active,
+.pyrexx-nav__links a:hover,
+.pyrexx-nav__links a:focus-visible {
+  color: #ff1212;
+  outline: 0;
+}
+
+.pyrexx-hero__stage {
+  display: grid;
+  grid-template-columns: minmax(0, 52%) minmax(0, 48%);
+  min-height: calc(100svh - 112px);
+  padding-top: 118px;
+}
+
+.pyrexx-hero__copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 50px clamp(24px, 7vw, 118px);
+  background:
+    radial-gradient(circle at 62% 26%, rgba(177, 0, 0, 0.38), rgba(177, 0, 0, 0) 28%),
+    repeating-linear-gradient(98deg, rgba(160, 0, 0, 0.28) 0 28px, rgba(20, 0, 0, 0.2) 28px 64px),
+    linear-gradient(90deg, #050505 0%, #170303 100%);
+}
+
+.pyrexx-kicker {
+  margin: 0 0 14px;
+  color: #ff2020;
+  font-size: 12px;
+  font-weight: 1000;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.pyrexx-hero h1 {
+  margin: 0;
+  max-width: 780px;
+  color: #ffffff;
+  font-size: clamp(44px, 6.2vw, 92px);
+  line-height: 0.97;
+  font-weight: 1000;
+  letter-spacing: 0;
+}
+
+.pyrexx-hero__genre {
+  margin: 16px 0 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: clamp(22px, 2.6vw, 42px);
+  font-weight: 300;
+  letter-spacing: 0;
+}
+
+.pyrexx-hero__actions {
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.pyrexx-hero__actions a,
+.pyrexx-booking a,
+.pyrexx-section--app a {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 900;
+  text-decoration: none;
+  letter-spacing: 0;
+}
+
+.pyrexx-hero__actions a:first-child,
+.pyrexx-booking a:first-child,
+.pyrexx-section--app a {
+  border-color: #ff1212;
+  background: #ff1212;
+}
+
+.pyrexx-hero__actions a:hover,
+.pyrexx-hero__actions a:focus-visible,
+.pyrexx-booking a:hover,
+.pyrexx-booking a:focus-visible,
+.pyrexx-section--app a:hover,
+.pyrexx-section--app a:focus-visible {
+  transform: translateY(-1px);
+  outline: 0;
+}
+
+.pyrexx-hero__media {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  background: #160604;
+}
+
+.pyrexx-hero__media::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(5, 5, 5, 0.48) 0%, rgba(5, 5, 5, 0) 32%),
+    radial-gradient(circle at 76% 30%, rgba(255, 121, 24, 0.18), rgba(255, 121, 24, 0) 32%);
+  pointer-events: none;
+}
+
+.pyrexx-hero__media img {
+  width: 100%;
+  height: 100%;
+  min-height: calc(100svh - 112px);
+  display: block;
+  object-fit: cover;
+  object-position: center 28%;
+}
+
+.pyrexx-player {
+  position: sticky;
+  bottom: 0;
+  z-index: 9;
+  min-height: 112px;
+  padding: 14px clamp(18px, 4vw, 72px);
+  gap: clamp(14px, 2.8vw, 34px);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: #141416;
+  box-shadow: 0 -18px 38px rgba(0, 0, 0, 0.34);
+}
+
+.pyrexx-player__language {
+  min-width: 150px;
+  height: 56px;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #212121;
+}
+
+.pyrexx-player__language span {
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.pyrexx-player__language strong {
+  font-size: 24px;
+  font-weight: 1000;
+}
+
+.pyrexx-player__track {
+  width: min(320px, 27vw);
+  min-width: 220px;
+  gap: 14px;
+  padding-right: 24px;
+  border-right: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.pyrexx-player__track img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  object-position: center 30%;
+}
+
+.pyrexx-player__track strong,
+.pyrexx-player__track span {
+  display: block;
+}
+
+.pyrexx-player__track strong {
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 1.15;
+}
+
+.pyrexx-player__track span {
+  margin-top: 5px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13px;
+}
+
+.pyrexx-player__controls {
+  gap: 16px;
+}
+
+.pyrexx-player__skip {
+  position: relative;
+  width: 28px;
+  height: 22px;
+  display: inline-block;
+}
+
+.pyrexx-player__skip::before,
+.pyrexx-player__skip::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+}
+
+.pyrexx-player__skip--back::before,
+.pyrexx-player__skip--back::after {
+  border-right: 11px solid #ffffff;
+}
+
+.pyrexx-player__skip--back::before {
+  left: 3px;
+}
+
+.pyrexx-player__skip--back::after {
+  left: 14px;
+}
+
+.pyrexx-player__skip--next::before,
+.pyrexx-player__skip--next::after {
+  border-left: 11px solid #ffffff;
+}
+
+.pyrexx-player__skip--next::before {
+  left: 3px;
+}
+
+.pyrexx-player__skip--next::after {
+  left: 14px;
+}
+
+.pyrexx-player__play {
+  width: 80px;
+  height: 80px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #ff1212;
+  cursor: pointer;
+}
+
+.pyrexx-player__play span {
+  width: 0;
+  height: 0;
+  margin-left: 6px;
+  border-top: 15px solid transparent;
+  border-bottom: 15px solid transparent;
+  border-left: 23px solid #ffffff;
+}
+
+.pyrexx-player__timeline {
+  flex: 1;
+  min-width: 200px;
+}
+
+.pyrexx-player__meta {
+  justify-content: space-between;
+  gap: 14px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.pyrexx-player__bar {
+  height: 5px;
+  margin-top: 13px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.pyrexx-player__bar span {
+  display: block;
+  width: 39%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff1212, #f3b14e);
+}
+
+.pyrexx-player__cta {
+  min-width: 76px;
+  color: #ffffff;
+  font-weight: 900;
+  text-align: center;
+  text-decoration: none;
+}
+
+.pyrexx-section {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 70px 0;
+}
+
+.pyrexx-section h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(32px, 4vw, 58px);
+  line-height: 1.02;
+  font-weight: 1000;
+  letter-spacing: 0;
+}
+
+.pyrexx-section p {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 17px;
+  line-height: 1.7;
+  letter-spacing: 0;
+}
+
+.pyrexx-section--bio {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.64fr);
+  gap: 34px;
+  align-items: center;
+}
+
+.pyrexx-section__copy {
+  max-width: 720px;
+}
+
+.pyrexx-section__portrait,
+.pyrexx-section--press img {
+  width: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.38);
+}
+
+.pyrexx-section__portrait {
+  aspect-ratio: 4 / 5;
+  object-position: center 20%;
+}
+
+.pyrexx-section--split,
+.pyrexx-section--app,
+.pyrexx-section--press {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 28px;
+  align-items: center;
+}
+
+.pyrexx-booking {
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pyrexx-section__head {
+  max-width: 780px;
+  margin-bottom: 26px;
+}
+
+.pyrexx-music,
+.pyrexx-events {
+  display: grid;
+  gap: 14px;
+}
+
+.pyrexx-music article {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  min-height: 86px;
+  padding: 18px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.pyrexx-music article.is-featured {
+  border-color: rgba(255, 18, 18, 0.72);
+  background: linear-gradient(90deg, rgba(255, 18, 18, 0.18), rgba(255, 255, 255, 0.045));
+}
+
+.pyrexx-music span,
+.pyrexx-music em,
+.pyrexx-events span {
+  color: #f3b14e;
+  font-style: normal;
+  font-weight: 1000;
+}
+
+.pyrexx-music strong {
+  display: block;
+  color: #ffffff;
+  font-size: 20px;
+}
+
+.pyrexx-music small {
+  display: block;
+  margin-top: 5px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.pyrexx-events {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pyrexx-events article {
+  min-height: 210px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035)),
+    #131313;
+}
+
+.pyrexx-events strong {
+  display: block;
+  margin-top: 42px;
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.pyrexx-events p {
+  margin-bottom: 0;
+  font-size: 15px;
+}
+
+.pyrexx-gallery {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pyrexx-gallery figure {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #181818;
+}
+
+.pyrexx-gallery figure:nth-child(1),
+.pyrexx-gallery figure:nth-child(4) {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.pyrexx-gallery figure:nth-child(2),
+.pyrexx-gallery figure:nth-child(3),
+.pyrexx-gallery figure:nth-child(5),
+.pyrexx-gallery figure:nth-child(6) {
+  grid-column: span 2;
+}
+
+.pyrexx-gallery img {
+  width: 100%;
+  height: 100%;
+  min-height: 290px;
+  display: block;
+  object-fit: cover;
+  object-position: center 22%;
+  transition: transform 0.24s ease;
+}
+
+.pyrexx-gallery figure:hover img {
+  transform: scale(1.035);
+}
+
+.pyrexx-section--app {
+  width: 100%;
+  margin-top: 38px;
+  padding: 58px clamp(18px, 6vw, 92px);
+  background:
+    linear-gradient(90deg, rgba(255, 18, 18, 0.8), rgba(15, 15, 16, 0.86)),
+    url("/assets/pyrexx-singz-portrait-yellow.jpg");
+  background-position: center;
+  background-size: cover;
+}
+
+.pyrexx-section--app > div {
+  max-width: 760px;
+}
+
+.pyrexx-section--press {
+  padding-bottom: 86px;
+}
+
+.pyrexx-section--press > div {
+  max-width: 680px;
+}
+
+.pyrexx-section--press img {
+  width: min(320px, 34vw);
+  aspect-ratio: 4 / 5;
+  object-position: center 20%;
+}
+
+@media (max-width: 1060px) {
+  .pyrexx-nav {
+    position: relative;
+    min-height: auto;
+    padding: 18px;
+  }
+
+  .pyrexx-hero,
+  .pyrexx-hero__stage {
+    min-height: auto;
+  }
+
+  .pyrexx-hero__stage {
+    grid-template-columns: 1fr;
+    padding-top: 0;
+  }
+
+  .pyrexx-hero__copy {
+    min-height: 58svh;
+  }
+
+  .pyrexx-hero__media img {
+    min-height: 56svh;
+    max-height: 760px;
+  }
+
+  .pyrexx-player {
+    flex-wrap: wrap;
+  }
+
+  .pyrexx-player__language {
+    min-width: 112px;
+  }
+
+  .pyrexx-player__timeline {
+    order: 5;
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 760px) {
+  .pyrexx-nav {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .pyrexx-nav__links {
+    justify-content: flex-start;
+    gap: 12px 18px;
+  }
+
+  .pyrexx-nav__links a {
+    font-size: 15px;
+  }
+
+  .pyrexx-hero__copy {
+    min-height: auto;
+    padding: 46px 18px 38px;
+  }
+
+  .pyrexx-hero__genre {
+    font-size: 22px;
+  }
+
+  .pyrexx-hero__media img {
+    min-height: 62svh;
+  }
+
+  .pyrexx-player {
+    position: relative;
+    align-items: stretch;
+    padding: 14px 16px;
+  }
+
+  .pyrexx-player__language,
+  .pyrexx-player__track,
+  .pyrexx-player__controls,
+  .pyrexx-player__cta {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pyrexx-player__track {
+    border-right: 0;
+    padding-right: 0;
+  }
+
+  .pyrexx-player__controls {
+    justify-content: center;
+  }
+
+  .pyrexx-player__cta {
+    display: none;
+  }
+
+  .pyrexx-section,
+  .pyrexx-section--bio,
+  .pyrexx-section--split,
+  .pyrexx-section--app,
+  .pyrexx-section--press {
+    grid-template-columns: 1fr;
+  }
+
+  .pyrexx-section {
+    padding: 48px 0;
+  }
+
+  .pyrexx-booking {
+    justify-content: flex-start;
+  }
+
+  .pyrexx-booking a,
+  .pyrexx-section--app a,
+  .pyrexx-hero__actions a {
+    width: 100%;
+  }
+
+  .pyrexx-events,
+  .pyrexx-gallery {
+    grid-template-columns: 1fr;
+  }
+
+  .pyrexx-gallery figure:nth-child(n) {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .pyrexx-gallery img {
+    min-height: 360px;
+  }
+
+  .pyrexx-section--app {
+    width: min(100%, calc(100% - 32px));
+    padding: 42px 18px;
+    border-radius: 8px;
+  }
+
+  .pyrexx-section--press img {
+    width: 100%;
+  }
+}
+
+@media (max-width: 460px) {
+  .pyrexx-hero h1 {
+    font-size: 38px;
+  }
+
+  .pyrexx-player__meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .pyrexx-music article {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .pyrexx-music em {
+    grid-column: 2;
+  }
+}

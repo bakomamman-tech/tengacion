@@ -22,6 +22,7 @@ const Login = lazy(() => import("./pages/Login"));
 const PublicActivityPage = lazy(() => import("./pages/PublicActivityPage"));
 const PublicHomePage = lazy(() => import("./pages/PublicHomePage"));
 const PublicInfoPage = lazy(() => import("./pages/PublicInfoPage"));
+const PyrexxSingzPage = lazy(() => import("./pages/PyrexxSingzPage"));
 const Register = lazy(() => import("./pages/Register"));
 const KadunaGotTalentRegisterPage = lazy(() => import("./pages/KadunaGotTalentRegisterPage"));
 const Search = lazy(() => import("./pages/Search"));
@@ -162,6 +163,10 @@ export default function App() {
           <Route path="/for-music-artists" element={<PublicInfoPage pageKey="for-music-artists" />} />
           <Route path="/for-authors" element={<PublicInfoPage pageKey="for-authors" />} />
           <Route path="/for-podcasters" element={<PublicInfoPage pageKey="for-podcasters" />} />
+          <Route path="/pyrexx-singz" element={<PyrexxSingzPage />} />
+          <Route path="/pyrexx_singz" element={<PyrexxSingzPage />} />
+          <Route path="/artist/pyrexx-singz" element={<PyrexxSingzPage />} />
+          <Route path="/artist/pyrexx_singz" element={<PyrexxSingzPage />} />
           <Route path="/safety" element={<PublicInfoPage pageKey="safety" />} />
           <Route path="/child-safety" element={<PublicInfoPage pageKey="child-safety" />} />
           <Route path="/moderation-policy" element={<PublicInfoPage pageKey="moderation-policy" />} />

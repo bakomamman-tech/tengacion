@@ -6,9 +6,9 @@ let pdfjsLoader = null;
 
 const loadPdfjs = () => {
   if (!pdfjsLoader) {
-    pdfjsLoader = import("pdfjs-dist").then((module) => {
+    pdfjsLoader = import("pdfjs-dist/legacy/build/pdf.mjs").then((module) => {
       module.GlobalWorkerOptions.workerSrc = new URL(
-        "pdfjs-dist/build/pdf.worker.mjs",
+        "pdfjs-dist/legacy/build/pdf.worker.mjs",
         import.meta.url
       ).toString();
       return module;

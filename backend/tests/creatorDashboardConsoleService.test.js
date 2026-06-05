@@ -80,7 +80,7 @@ describe("creatorDashboardConsoleService", () => {
             username: "member_example",
           },
           paidAt: "2026-05-03T00:00:00.000Z",
-          accessExpiresAt: "2026-06-03T00:00:00.000Z",
+          accessExpiresAt: "2099-06-03T00:00:00.000Z",
         },
       ],
     });

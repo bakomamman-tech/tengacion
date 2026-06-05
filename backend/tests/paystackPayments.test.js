@@ -925,13 +925,25 @@ describe("Paystack payments", () => {
     expect(await Entitlement.countDocuments({ buyerId: viewer._id, itemType: "track", itemId: track._id })).toBe(1);
 
     const stored = await Purchase.findOne({ providerRef: initResponse.body.reference }).lean();
-    expect(stored.status).toBe("paid");
+    expect(stored).toMatchObject({
+      status: "paid",
+      revenueCategory: "music",
+      revenueSharePolicy: "creator_content_platform_40_v1",
+      creatorShareRate: 0.6,
+      platformShareRate: 0.4,
+    });
 
     const walletEntries = await WalletEntry.find({ sourceId: stored._id })
       .sort({ entryType: 1 })
       .lean();
     expect(walletEntries).toHaveLength(2);
     expect(walletEntries.map((entry) => entry.entryType)).toEqual(["platform_fee", "sale_credit"]);
+    expect(walletEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ entryType: "platform_fee", amount: 1000 }),
+        expect.objectContaining({ entryType: "sale_credit", amount: 1500 }),
+      ])
+    );
 
     const salesAlert = await Message.findOne({
       receiverId: creator.user._id,
@@ -949,20 +961,20 @@ describe("Paystack payments", () => {
 
     expect(dashboardResponse.body.summary).toMatchObject({
       grossRevenue: 2500,
-      totalEarnings: 1000,
-      availableBalance: 1000,
+      totalEarnings: 1500,
+      availableBalance: 1500,
       pendingBalance: 0,
       withdrawn: 0,
     });
     expect(dashboardResponse.body.summary.walletBacked).toBe(true);
-    expect(dashboardResponse.body.categories.music.earnings).toBe(1000);
+    expect(dashboardResponse.body.categories.music.earnings).toBe(1500);
     expect(dashboardResponse.body.wallet).toMatchObject({
       walletBacked: true,
       settlementSource: "wallet",
       summary: {
         grossRevenue: 2500,
-        totalEarnings: 1000,
-        availableBalance: 1000,
+        totalEarnings: 1500,
+        availableBalance: 1500,
         pendingBalance: 0,
         withdrawn: 0,
         walletBacked: true,
@@ -973,7 +985,7 @@ describe("Paystack payments", () => {
         expect.objectContaining({
           key: "track",
           grossRevenue: 2500,
-          creatorEarnings: 1000,
+          creatorEarnings: 1500,
           transactions: 1,
         }),
       ])
@@ -982,7 +994,7 @@ describe("Paystack payments", () => {
       expect.arrayContaining([
         expect.objectContaining({
           entryType: "sale_credit",
-          amount: 1000,
+          amount: 1500,
           grossAmount: 2500,
           itemType: "track",
           providerRef: initResponse.body.reference,
@@ -998,8 +1010,8 @@ describe("Paystack payments", () => {
     expect(creatorSalesResponse.body).toMatchObject({
       totalSalesCount: 1,
       totalRevenue: 2500,
-      totalCreatorEarnings: 1000,
-      availableBalance: 1000,
+      totalCreatorEarnings: 1500,
+      availableBalance: 1500,
       pendingBalance: 0,
       withdrawn: 0,
       walletBacked: true,
@@ -1008,13 +1020,13 @@ describe("Paystack payments", () => {
     expect(creatorSalesResponse.body.breakdown.track).toMatchObject({
       count: 1,
       revenue: 2500,
-      creatorAmount: 1000,
+      creatorAmount: 1500,
     });
     expect(creatorSalesResponse.body.recentSales).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           entryType: "sale_credit",
-          amount: 1000,
+          amount: 1500,
           grossAmount: 2500,
           itemType: "track",
           providerRef: initResponse.body.reference,

@@ -324,7 +324,7 @@ export default function AdminCreatorEarningsPage({ user }) {
   return (
     <AdminShell
       title="Earnings From Creators"
-      subtitle="Admin-side finance repository for Tengacion's 60% share of paid creator earnings across music, podcast, book, video, album, and related creator sales."
+      subtitle="Admin-side finance repository for creator commerce. New music, book, and podcast sales reserve 40% for Tengacion; historical transactions retain their original split."
       user={user}
       actions={<button type="button" className="adminx-btn" onClick={load}>Refresh</button>}
     >
@@ -724,10 +724,10 @@ export default function AdminCreatorEarningsPage({ user }) {
               </div>
               <div className="adminx-pill-row">
                 <span className="adminx-badge adminx-badge--good">
-                  {number(repository.platformSharePercent)}% Tengacion repository
+                  Current: {number(repository.platformSharePercent)}% Tengacion
                 </span>
                 <span className="adminx-badge">
-                  {number(repository.creatorSharePercent)}% creator share
+                  Current: {number(repository.creatorSharePercent)}% creator
                 </span>
                 <span className="adminx-badge">
                   {dateTime(payload.filters?.startDate)} to {dateTime(payload.filters?.endDate)}

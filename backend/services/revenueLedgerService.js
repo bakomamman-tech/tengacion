@@ -1,9 +1,10 @@
 const mongoose = require("mongoose");
 const RevenueLedgerEntry = require("../models/RevenueLedgerEntry");
 const { buildDateRange } = require("./analyticsService");
+const {
+  computePurchaseRevenueShare,
+} = require("./creatorRevenueSharePolicy");
 
-const CREATOR_SHARE_RATE = 0.4;
-const PLATFORM_SHARE_RATE = 0.6;
 const DEFAULT_RECENT_LIMIT = 25;
 
 const roundMoney = (value) =>
@@ -30,12 +31,6 @@ const toObjectIdOrNull = (value) => {
     ? new mongoose.Types.ObjectId(normalized)
     : null;
 };
-
-const computeCreatorShare = (grossAmount) =>
-  clampMoney(Number(grossAmount || 0) * CREATOR_SHARE_RATE);
-
-const computePlatformShare = (grossAmount) =>
-  clampMoney(Number(grossAmount || 0) * PLATFORM_SHARE_RATE);
 
 const calculateResultingBalance = ({ previousBalance = 0, amount = 0, direction = "none" } = {}) => {
   const previous = roundMoney(previousBalance);
@@ -210,6 +205,10 @@ const buildPurchaseLedgerBase = ({ purchase, actorUserId = "", actorRole = "", a
       provider,
       providerReference,
       billingInterval: purchase?.billingInterval || "one_time",
+      revenueCategory: purchase?.revenueCategory || "",
+      revenueSharePolicy: purchase?.revenueSharePolicy || "",
+      creatorShareRate: purchase?.creatorShareRate,
+      platformShareRate: purchase?.platformShareRate,
     },
   };
 };
@@ -253,9 +252,25 @@ const recordPurchaseSettlementLedgerEntries = async ({
   }
 
   const base = buildPurchaseLedgerBase({ purchase, actorUserId, actorRole, actorType });
-  const creatorAmount = computeCreatorShare(base.amount);
-  const platformAmount = computePlatformShare(base.amount);
+  const {
+    creatorAmount,
+    platformAmount,
+    creatorShareRate,
+    platformShareRate,
+    revenueCategory,
+    revenueSharePolicy,
+  } = computePurchaseRevenueShare(purchase);
   const occurredAt = purchase.paidAt || purchase.updatedAt || new Date();
+  const settlementMetadata = {
+    ...base.auditMetadata,
+    grossAmount: base.amount,
+    creatorAmount,
+    platformAmount,
+    creatorShareRate,
+    platformShareRate,
+    revenueCategory,
+    revenueSharePolicy,
+  };
 
   return recordMany([
     {
@@ -278,12 +293,7 @@ const recordPurchaseSettlementLedgerEntries = async ({
       balanceScope: "commission",
       dedupeKey: `platform_commission_reserved:${base.purchaseId}`,
       occurredAt,
-      auditMetadata: {
-        ...base.auditMetadata,
-        grossAmount: base.amount,
-        creatorAmount,
-        platformAmount,
-      },
+      auditMetadata: settlementMetadata,
     },
     {
       ...base,
@@ -295,12 +305,7 @@ const recordPurchaseSettlementLedgerEntries = async ({
       balanceScope: "available",
       dedupeKey: `creator_earning_credited:${base.purchaseId}`,
       occurredAt,
-      auditMetadata: {
-        ...base.auditMetadata,
-        grossAmount: base.amount,
-        creatorAmount,
-        platformAmount,
-      },
+      auditMetadata: settlementMetadata,
     },
   ]);
 };
@@ -359,14 +364,24 @@ const recordRefundSettledLedgerEntries = async ({
     actorRole,
     actorType: actorUserId ? "admin" : "system",
   });
-  const creatorAmount = computeCreatorShare(base.amount);
-  const platformAmount = computePlatformShare(base.amount);
+  const {
+    creatorAmount,
+    platformAmount,
+    creatorShareRate,
+    platformShareRate,
+    revenueCategory,
+    revenueSharePolicy,
+  } = computePurchaseRevenueShare(purchase);
   const occurredAt = purchase.refundedAt || purchase.updatedAt || new Date();
   const auditMetadata = {
     ...base.auditMetadata,
     grossAmount: base.amount,
     creatorAmount,
     platformAmount,
+    creatorShareRate,
+    platformShareRate,
+    revenueCategory,
+    revenueSharePolicy,
     reason: normalizeText(reason || purchase.refundReason || "", 240),
   };
 
@@ -724,8 +739,6 @@ const buildRevenueLedgerSummary = async ({
 };
 
 module.exports = {
-  CREATOR_SHARE_RATE,
-  PLATFORM_SHARE_RATE,
   recordRevenueLedgerEntry,
   recordPurchaseAuthorized,
   recordPurchaseSettlementLedgerEntries,

@@ -44,6 +44,7 @@ const {
   isSubscriptionPurchase,
   resolveSubscriptionLifecycle,
 } = require("./purchaseLifecycleService");
+const { buildRevenueShareSnapshot } = require("./creatorRevenueSharePolicy");
 const { notifyPurchaseUnlocked } = require("./fanReturnPathService");
 const { config } = require("../config/env");
 const logger = require("../utils/logger");
@@ -411,8 +412,9 @@ const createPendingPurchase = async ({
   provider = "paystack",
   amount = null,
   providerSessionId = "",
-} = {}) =>
-  Purchase.create({
+} = {}) => {
+  const revenueShareSnapshot = buildRevenueShareSnapshot(item);
+  return Purchase.create({
     userId,
     creatorId: item.creatorId || undefined,
     itemType: item.itemType,
@@ -425,7 +427,9 @@ const createPendingPurchase = async ({
     providerRef,
     providerSessionId,
     billingInterval: item.itemType === "subscription" ? "monthly" : "one_time",
+    ...revenueShareSnapshot,
   });
+};
 
 const initializePaystackCheckout = async ({
   req = null,

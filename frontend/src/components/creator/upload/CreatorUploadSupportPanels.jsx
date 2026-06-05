@@ -145,14 +145,15 @@ export default function CreatorUploadSupportPanels({
         </div>
         <div className="creator-stack-list">
           <div className="creator-stack-row">
-            <span>40% Creator</span>
+            <span>Creator earnings</span>
             <strong>{formatCurrency(totalEarnings)}</strong>
           </div>
           <div className="creator-stack-row">
-            <span>60% Tengacion</span>
+            <span>Tengacion share</span>
             <strong>{formatCurrency(platformShare)}</strong>
           </div>
         </div>
+        <p>New music, book, and podcast sales use a 60% creator / 40% Tengacion split.</p>
         <div className="creator-category-actions">
           <Link className="creator-primary-btn" to="/creator/payouts">
             Manage accounts

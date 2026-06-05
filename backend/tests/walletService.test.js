@@ -47,7 +47,13 @@ const createCreatorProfile = async () => {
   return { user, profile };
 };
 
-const createPurchase = async ({ creatorId, amount, status = "paid", providerRef }) =>
+const createPurchase = async ({
+  creatorId,
+  amount,
+  status = "paid",
+  providerRef,
+  ...shareSnapshot
+}) =>
   Purchase.create({
     userId: new mongoose.Types.ObjectId(),
     creatorId,
@@ -60,6 +66,7 @@ const createPurchase = async ({ creatorId, amount, status = "paid", providerRef 
     provider: "paystack",
     providerRef,
     paidAt: status === "paid" ? new Date() : null,
+    ...shareSnapshot,
   });
 
 describe("walletService", () => {
@@ -213,5 +220,68 @@ describe("walletService", () => {
     });
     expect(secondRefund.createdCount).toBe(0);
     expect(secondRefund.revenueLedgerCreatedCount).toBe(0);
+  });
+
+  test("uses the new split only when a purchase stores the prospective policy", async () => {
+    const legacyPurchase = await createPurchase({
+      creatorId: creator.profile._id,
+      amount: 2500,
+      providerRef: "wallet_ref_legacy",
+    });
+    const newPurchase = await createPurchase({
+      creatorId: creator.profile._id,
+      amount: 2500,
+      providerRef: "wallet_ref_new_policy",
+      revenueCategory: "music",
+      revenueSharePolicy: "creator_content_platform_40_v1",
+      creatorShareRate: 0.6,
+      platformShareRate: 0.4,
+    });
+
+    await reconcilePaidPurchaseWalletEntries({ logger: null, reason: "test" });
+
+    const legacyEntries = await WalletEntry.find({ sourceId: legacyPurchase._id }).lean();
+    const newEntries = await WalletEntry.find({ sourceId: newPurchase._id }).lean();
+
+    expect(legacyEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ entryType: "sale_credit", amount: 1000 }),
+        expect.objectContaining({ entryType: "platform_fee", amount: 1500 }),
+      ])
+    );
+    expect(newEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ entryType: "sale_credit", amount: 1500 }),
+        expect.objectContaining({ entryType: "platform_fee", amount: 1000 }),
+      ])
+    );
+
+    newPurchase.status = "refunded";
+    newPurchase.refundedAt = new Date();
+    await newPurchase.save();
+    await recordPurchaseRefundEntries({
+      purchase: newPurchase,
+      logger: null,
+      reason: "new_policy_refund",
+    });
+
+    const refundEntries = await WalletEntry.find({
+      sourceId: newPurchase._id,
+      sourceType: "refund",
+    }).lean();
+    expect(refundEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ownerType: "creator",
+          entryType: "refund_debit",
+          amount: 1500,
+        }),
+        expect.objectContaining({
+          ownerType: "platform",
+          entryType: "refund_debit",
+          amount: 1000,
+        }),
+      ])
+    );
   });
 });

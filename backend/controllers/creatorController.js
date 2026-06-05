@@ -29,6 +29,9 @@ const {
 const { buildPayoutReadiness } = require("../services/payoutReadinessService");
 const { buildCreatorWalletSnapshot } = require("../services/walletService");
 const {
+  computePurchaseRevenueShare,
+} = require("../services/creatorRevenueSharePolicy");
+const {
   normalizeBooksProfile,
   calculateCreatorProfileCompletionScore,
   isCreatorRegistrationCompleted,
@@ -430,7 +433,7 @@ const getDashboardPayload = async ({ profile, user }) => {
     itemType: { $in: ["track", "book", "album", "video", "subscription"] },
   })
     .select(
-      "userId itemType itemId amount currency status provider providerRef accessExpiresAt cancelAtPeriodEnd canceledAt refundedAt paidAt createdAt updatedAt"
+      "userId itemType itemId amount currency status provider providerRef accessExpiresAt cancelAtPeriodEnd canceledAt refundedAt paidAt createdAt updatedAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate"
     )
     .populate("userId", "name username avatar")
     .sort({ paidAt: -1, createdAt: -1, _id: -1 })
@@ -473,7 +476,11 @@ const getDashboardPayload = async ({ profile, user }) => {
   );
   const subscriptionEarnings = subscriptionWalletBucket
     ? clampMoney(subscriptionWalletBucket.creatorEarnings)
-    : subscriptionPurchases.reduce((sum, entry) => sum + clampMoney(Number(entry.amount || 0) * 0.4), 0);
+    : subscriptionPurchases.reduce(
+        (sum, entry) =>
+          sum + clampMoney(computePurchaseRevenueShare(entry).creatorAmount),
+        0
+      );
   const laneCounts = {
     music: {
       uploads: musicTracks.filter((entry) => entry.publishedStatus !== "draft").length

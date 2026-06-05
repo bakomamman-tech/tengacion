@@ -44,8 +44,6 @@ const PODCAST_DEFAULT = {
   price: "",
 };
 
-const CREATOR_SHARE_RATE = 0.4;
-const PLATFORM_SHARE_RATE = 0.6;
 const fmtMoney = (value) => `NGN ${Number(value || 0).toLocaleString()}`;
 
 function DropZone({ icon, label, description, accept, multiple = false, files = [], onChange }) {
@@ -133,7 +131,12 @@ export default function CreatorDashboardMVP() {
   const [books, setBooks] = useState([]);
   const [albums, setAlbums] = useState([]);
   const [videos, setVideos] = useState([]);
-  const [sales, setSales] = useState({ totalSalesCount: 0, totalRevenue: 0, currency: "NGN" });
+  const [sales, setSales] = useState({
+    totalSalesCount: 0,
+    totalRevenue: 0,
+    totalCreatorEarnings: null,
+    currency: "NGN",
+  });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [archiving, setArchiving] = useState(false);
@@ -186,6 +189,11 @@ export default function CreatorDashboardMVP() {
         setSales({
           totalSalesCount: Number(dashRes?.totalSales ?? salesRes?.totalSalesCount ?? 0),
           totalRevenue: Number(dashRes?.revenueNGN ?? salesRes?.totalRevenue ?? 0),
+          totalCreatorEarnings:
+            salesRes?.totalCreatorEarnings === null ||
+            salesRes?.totalCreatorEarnings === undefined
+              ? null
+              : Number(salesRes.totalCreatorEarnings),
           currency: "NGN",
         });
 
@@ -246,13 +254,15 @@ export default function CreatorDashboardMVP() {
 
   const stats = useMemo(() => {
     const totalRevenue = Number(sales.totalRevenue || 0);
-    const creatorTotal = totalRevenue * CREATOR_SHARE_RATE;
-    const platformTotal = totalRevenue * PLATFORM_SHARE_RATE;
+    const creatorTotal = Number(
+      sales.totalCreatorEarnings ?? totalRevenue * 0.6
+    );
+    const platformTotal = Math.max(0, totalRevenue - creatorTotal);
     const withdrawn = Math.round(creatorTotal * 0.35);
     const pending = Math.round(creatorTotal * 0.25);
     const available = Math.max(0, creatorTotal - withdrawn - pending);
     return { available, pending, withdrawn, total: creatorTotal, platformTotal };
-  }, [sales.totalRevenue]);
+  }, [sales.totalCreatorEarnings, sales.totalRevenue]);
 
   const creatorAvatar = resolveImage(creator?.user?.avatar || "") || "/avatar.png";
   const creatorName = creator?.displayName || creator?.user?.name || "Creator";
@@ -290,6 +300,11 @@ export default function CreatorDashboardMVP() {
       setSales({
         totalSalesCount: Number(dashRes?.totalSales ?? salesRes?.totalSalesCount ?? 0),
         totalRevenue: Number(dashRes?.revenueNGN ?? salesRes?.totalRevenue ?? 0),
+        totalCreatorEarnings:
+          salesRes?.totalCreatorEarnings === null ||
+          salesRes?.totalCreatorEarnings === undefined
+            ? null
+            : Number(salesRes.totalCreatorEarnings),
         currency: "NGN",
       });
     } catch (err) {
@@ -1129,11 +1144,11 @@ export default function CreatorDashboardMVP() {
                 </div>
               </div>
               <div className="crd-split-row">
-                <span>40% Creator</span>
+                <span>Creator earnings</span>
                 <b>{fmtMoney(stats.total)}</b>
               </div>
               <div className="crd-split-row">
-                <span>60% Tengacion</span>
+                <span>Tengacion share</span>
                 <b>{fmtMoney(stats.platformTotal)}</b>
               </div>
               <button type="button" className="crd-submit-btn">Manage Accounts</button>

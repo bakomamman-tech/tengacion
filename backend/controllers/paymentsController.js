@@ -16,6 +16,7 @@ const {
 } = require("../services/paymentProviders/paystack");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { config } = require("../config/env");
+const { buildRevenueShareSnapshot } = require("../services/creatorRevenueSharePolicy");
 
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -144,6 +145,7 @@ exports.initializePayment = asyncHandler(async (req, res) => {
     provider: "paystack",
     providerRef,
     billingInterval: item.itemType === "subscription" ? "monthly" : "one_time",
+    ...buildRevenueShareSnapshot(item),
   });
 
   try {

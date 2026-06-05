@@ -1058,10 +1058,10 @@ const buildScenarioInputs = ({ financeClose, scorecard = [], startingCashBalance
 
   const baseGrossPaid = clampMoney(asNumber(summary.grossPaidAmount) * monthlyFactor);
   const basePlatformRevenue = clampMoney(
-    asNumber(reconciliation.wallet?.expectedPlatformFees, asNumber(summary.grossPaidAmount) * 0.6) * monthlyFactor
+    asNumber(reconciliation.wallet?.expectedPlatformFees, asNumber(summary.grossPaidAmount) * 0.4) * monthlyFactor
   );
   const baseCreatorEarnings = clampMoney(
-    asNumber(reconciliation.wallet?.expectedCreatorCredits, asNumber(summary.grossPaidAmount) * 0.4) * monthlyFactor
+    asNumber(reconciliation.wallet?.expectedCreatorCredits, asNumber(summary.grossPaidAmount) * 0.6) * monthlyFactor
   );
   const baseRefunds = clampMoney(asNumber(summary.refundedAmount) * monthlyFactor);
   const basePayoutExposure = clampMoney(asNumber(summary.payoutOpenAmount));

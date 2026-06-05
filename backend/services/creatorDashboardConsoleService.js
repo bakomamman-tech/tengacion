@@ -1,6 +1,7 @@
 const { buildPurchaseLifecyclePayload } = require("./purchaseLifecycleService");
-
-const CREATOR_SHARE_RATE = 0.4;
+const {
+  computePurchaseRevenueShare,
+} = require("./creatorRevenueSharePolicy");
 const DEFAULT_LIMITS = {
   actionPrompts: 5,
   akusoTemplates: 4,
@@ -673,7 +674,8 @@ const buildRecentSales = ({
       const itemType = String(purchase?.itemType || "").trim().toLowerCase();
       const itemId = toIdString(purchase?.itemId);
       const item = contentLookup.get(`${itemType}:${itemId}`);
-      const grossAmount = toMoney(purchase?.amount);
+      const { grossAmount, creatorAmount } =
+        computePurchaseRevenueShare(purchase);
 
       return {
         id: toIdString(purchase?._id),
@@ -684,7 +686,7 @@ const buildRecentSales = ({
         itemLabel: getPurchaseItemLabel(itemType),
         buyer: buildBuyerPayload(purchase?.userId),
         amount: grossAmount,
-        creatorAmount: toMoney(grossAmount * CREATOR_SHARE_RATE),
+        creatorAmount: toMoney(creatorAmount),
         currency: purchase?.currency || "NGN",
         provider: purchase?.provider || "",
         providerRef: purchase?.providerRef || "",
@@ -703,14 +705,15 @@ const buildRecentSubscribers = ({
     .slice(0, limit)
     .map((purchase) => {
       const lifecycle = buildPurchaseLifecyclePayload(purchase);
-      const grossAmount = toMoney(purchase?.amount);
+      const { grossAmount, creatorAmount } =
+        computePurchaseRevenueShare(purchase);
 
       return {
         id: toIdString(purchase?._id),
         purchaseId: toIdString(purchase?._id),
         buyer: buildBuyerPayload(purchase?.userId),
         amount: grossAmount,
-        creatorAmount: toMoney(grossAmount * CREATOR_SHARE_RATE),
+        creatorAmount: toMoney(creatorAmount),
         currency: purchase?.currency || "NGN",
         lifecycleStatus: lifecycle.lifecycleStatus,
         label: lifecycle.label,

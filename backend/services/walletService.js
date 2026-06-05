@@ -8,9 +8,10 @@ const {
   recordPurchaseSettlementLedgerEntries,
   recordRefundSettledLedgerEntries,
 } = require("./revenueLedgerService");
+const {
+  computePurchaseRevenueShare,
+} = require("./creatorRevenueSharePolicy");
 
-const CREATOR_SHARE_RATE = 0.4;
-const PLATFORM_SHARE_RATE = 0.6;
 const DEFAULT_WALLET_RECONCILIATION_INTERVAL_MS = 60 * 60 * 1000;
 const PLATFORM_WALLET_OWNER_KEY = "tengacion";
 const DEFAULT_CREATOR_WALLET_RECENT_LIMIT = 10;
@@ -181,18 +182,20 @@ const ensureCreatorWalletAccount = async (creatorId, currency = "NGN") =>
 const ensurePlatformWalletAccount = async (currency = "NGN") =>
   ensureWalletAccount({ ownerType: "platform", currency });
 
-const computeCreatorShare = (grossAmount) => clampMoney(Number(grossAmount || 0) * CREATOR_SHARE_RATE);
-const computePlatformShare = (grossAmount) => clampMoney(Number(grossAmount || 0) * PLATFORM_SHARE_RATE);
-
-const buildAvailableOnlySummary = ({ grossRevenue = 0, currency = "NGN", walletBacked = false } = {}) => {
+const buildAvailableOnlySummary = ({
+  grossRevenue = 0,
+  totalEarnings = 0,
+  currency = "NGN",
+  walletBacked = false,
+} = {}) => {
   const normalizedGrossRevenue = clampMoney(grossRevenue);
-  const totalEarnings = computeCreatorShare(normalizedGrossRevenue);
+  const normalizedTotalEarnings = clampMoney(totalEarnings);
 
   return {
     currency: normalizeCurrency(currency),
     grossRevenue: normalizedGrossRevenue,
-    totalEarnings,
-    availableBalance: totalEarnings,
+    totalEarnings: normalizedTotalEarnings,
+    availableBalance: normalizedTotalEarnings,
     pendingBalance: 0,
     withdrawn: 0,
     walletBacked,
@@ -204,14 +207,20 @@ const buildPurchaseSettlementEntryPayloads = async (purchase) => {
     return [];
   }
 
-  const grossAmount = clampMoney(purchase.amount);
+  const {
+    grossAmount,
+    creatorAmount,
+    platformAmount,
+    creatorShareRate,
+    platformShareRate,
+    revenueCategory,
+    revenueSharePolicy,
+  } = computePurchaseRevenueShare(purchase);
   if (grossAmount <= 0) {
     return [];
   }
 
   const currency = normalizeCurrency(purchase.currency);
-  const creatorAmount = computeCreatorShare(grossAmount);
-  const platformAmount = computePlatformShare(grossAmount);
   const [creatorWallet, platformWallet] = await Promise.all([
     ensureCreatorWalletAccount(purchase.creatorId, currency),
     ensurePlatformWalletAccount(currency),
@@ -231,6 +240,10 @@ const buildPurchaseSettlementEntryPayloads = async (purchase) => {
     billingInterval: purchase.billingInterval || "one_time",
     creatorAmount,
     platformAmount,
+    creatorShareRate,
+    platformShareRate,
+    revenueCategory,
+    revenueSharePolicy,
   };
 
   return [
@@ -276,14 +289,20 @@ const buildPurchaseRefundEntryPayloads = async (purchase) => {
     return [];
   }
 
-  const grossAmount = clampMoney(purchase.amount);
+  const {
+    grossAmount,
+    creatorAmount,
+    platformAmount,
+    creatorShareRate,
+    platformShareRate,
+    revenueCategory,
+    revenueSharePolicy,
+  } = computePurchaseRevenueShare(purchase);
   if (grossAmount <= 0) {
     return [];
   }
 
   const currency = normalizeCurrency(purchase.currency);
-  const creatorAmount = computeCreatorShare(grossAmount);
-  const platformAmount = computePlatformShare(grossAmount);
   const [creatorWallet, platformWallet] = await Promise.all([
     ensureCreatorWalletAccount(purchase.creatorId, currency),
     ensurePlatformWalletAccount(currency),
@@ -303,6 +322,10 @@ const buildPurchaseRefundEntryPayloads = async (purchase) => {
     billingInterval: purchase.billingInterval || "one_time",
     creatorAmount,
     platformAmount,
+    creatorShareRate,
+    platformShareRate,
+    revenueCategory,
+    revenueSharePolicy,
     refundReason: String(purchase.refundReason || "").trim(),
   };
 
@@ -666,9 +689,11 @@ const buildWalletRecentEntryFromLedger = (entry = {}) => {
 };
 
 const buildWalletRecentEntryFromPurchase = (purchase = {}) => {
-  const grossAmount = clampMoney(purchase?.amount);
-  const creatorAmount = computeCreatorShare(grossAmount);
-  const platformAmount = computePlatformShare(grossAmount);
+  const {
+    grossAmount,
+    creatorAmount,
+    platformAmount,
+  } = computePurchaseRevenueShare(purchase);
   const itemType = normalizeItemType(purchase?.itemType || "");
 
   return {
@@ -802,13 +827,20 @@ const buildCreatorWalletSnapshot = async ({
         currency: normalizedCurrency,
       })
         .sort({ paidAt: -1, createdAt: -1, _id: -1 })
-        .select("_id itemType itemId amount currency provider providerRef paidAt createdAt updatedAt")
+        .select(
+          "_id itemType itemId amount currency provider providerRef paidAt createdAt updatedAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate"
+        )
         .lean()
     : [];
 
   const grossRevenue = purchases.reduce((sum, row) => sum + clampMoney(row?.amount), 0);
+  const totalEarnings = purchases.reduce(
+    (sum, row) => sum + computePurchaseRevenueShare(row).creatorAmount,
+    0
+  );
   const summary = buildAvailableOnlySummary({
     grossRevenue,
+    totalEarnings,
     currency: normalizedCurrency,
     walletBacked: false,
   });
@@ -819,8 +851,7 @@ const buildCreatorWalletSnapshot = async ({
   purchases.forEach((purchase) => {
     const itemType = normalizeItemType(purchase?.itemType || "");
     const itemId = toIdString(purchase?.itemId);
-    const creatorAmount = computeCreatorShare(purchase?.amount);
-    const grossAmount = clampMoney(purchase?.amount);
+    const { creatorAmount, grossAmount } = computePurchaseRevenueShare(purchase);
 
     if (itemId) {
       const itemKey = `${itemType}:${itemId}`;
@@ -873,7 +904,7 @@ const reconcilePaidPurchaseWalletEntries = async ({ logger = console, reason = "
   })
     .sort({ paidAt: 1, createdAt: 1, _id: 1 })
     .select(
-      "_id creatorId itemType itemId amount currency provider providerRef billingInterval paidAt createdAt updatedAt"
+      "_id creatorId itemType itemId amount currency provider providerRef billingInterval paidAt createdAt updatedAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate"
     )
     .cursor();
 
@@ -958,8 +989,6 @@ const startWalletMaintenance = async ({ logger = console } = {}) => {
 };
 
 module.exports = {
-  CREATOR_SHARE_RATE,
-  PLATFORM_SHARE_RATE,
   DEFAULT_WALLET_RECONCILIATION_INTERVAL_MS,
   getPlatformSettlementAccount,
   getPlatformWalletSlug,

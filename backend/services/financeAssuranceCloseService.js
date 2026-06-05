@@ -6,9 +6,10 @@ const PaymentWebhookEvent = require("../models/PaymentWebhookEvent");
 const Purchase = require("../models/Purchase");
 const WalletEntry = require("../models/WalletEntry");
 const { buildDateRange } = require("./analyticsService");
+const {
+  computePurchaseRevenueShare,
+} = require("./creatorRevenueSharePolicy");
 
-const CREATOR_SHARE_RATE = 0.4;
-const PLATFORM_SHARE_RATE = 0.6;
 const ENTITLEMENT_ITEM_TYPES = ["track", "book", "album", "video"];
 const OPEN_PAYOUT_STATUSES = [
   "pending_review",
@@ -42,9 +43,6 @@ const toObjectId = (value) => {
   const id = toIdString(value);
   return mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : null;
 };
-
-const computeCreatorShare = (grossAmount) => clampMoney(Number(grossAmount || 0) * CREATOR_SHARE_RATE);
-const computePlatformShare = (grossAmount) => clampMoney(Number(grossAmount || 0) * PLATFORM_SHARE_RATE);
 
 const createDateMatch = (field, dates) => ({
   [field]: { $gte: dates.start, $lte: dates.end },
@@ -280,7 +278,11 @@ const buildCreatorBalanceConfidence = ({
   const actualPayoutDebitsByCreator = new Map();
 
   paidPurchases.forEach((purchase) => {
-    addMapAmount(expectedSaleCreditsByCreator, toIdString(purchase.creatorId), computeCreatorShare(purchase.amount));
+    addMapAmount(
+      expectedSaleCreditsByCreator,
+      toIdString(purchase.creatorId),
+      computePurchaseRevenueShare(purchase).creatorAmount
+    );
   });
   walletEntries
     .filter((entry) => entry.entryType === "sale_credit" && entry.ownerType === "creator")
@@ -289,7 +291,11 @@ const buildCreatorBalanceConfidence = ({
     });
 
   refundedPurchases.forEach((purchase) => {
-    addMapAmount(expectedRefundDebitsByCreator, toIdString(purchase.creatorId), computeCreatorShare(purchase.amount));
+    addMapAmount(
+      expectedRefundDebitsByCreator,
+      toIdString(purchase.creatorId),
+      computePurchaseRevenueShare(purchase).creatorAmount
+    );
   });
   refundEntries
     .filter((entry) => entry.entryType === "refund_debit" && entry.ownerType === "creator")
@@ -376,13 +382,17 @@ const buildFinanceAssuranceClose = async ({
       status: { $in: ["paid", "refunded"] },
       paidAt: { $gte: dates.start, $lte: dates.end },
     })
-      .select("_id userId creatorId itemType itemId amount currency provider providerRef status paidAt createdAt")
+      .select(
+        "_id userId creatorId itemType itemId amount currency provider providerRef status paidAt createdAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate"
+      )
       .lean(),
     Purchase.find({
       status: "refunded",
       refundedAt: { $gte: dates.start, $lte: dates.end },
     })
-      .select("_id userId creatorId itemType itemId amount currency provider providerRef status refundedAt refundReason")
+      .select(
+        "_id userId creatorId itemType itemId amount currency provider providerRef status refundedAt refundReason revenueCategory revenueSharePolicy creatorShareRate platformShareRate"
+      )
       .lean(),
     loadPayoutRows(dates),
     loadWebhookSummary(dates),
@@ -434,13 +444,25 @@ const buildFinanceAssuranceClose = async ({
   const expectedRefundEntries = refundSettlementPurchases.length * 2;
   const actualRefundEntries = creatorRefundEntries.length + platformRefundEntries.length;
 
-  const expectedCreatorCredits = sumBy(settlementPurchases, (purchase) => computeCreatorShare(purchase.amount));
+  const expectedCreatorCredits = sumBy(
+    settlementPurchases,
+    (purchase) => computePurchaseRevenueShare(purchase).creatorAmount
+  );
   const actualCreatorCredits = sumBy(saleCreditEntries, (entry) => entry.amount);
-  const expectedPlatformFees = sumBy(settlementPurchases, (purchase) => computePlatformShare(purchase.amount));
+  const expectedPlatformFees = sumBy(
+    settlementPurchases,
+    (purchase) => computePurchaseRevenueShare(purchase).platformAmount
+  );
   const actualPlatformFees = sumBy(platformFeeEntries, (entry) => entry.amount);
-  const expectedCreatorRefunds = sumBy(refundSettlementPurchases, (purchase) => computeCreatorShare(purchase.amount));
+  const expectedCreatorRefunds = sumBy(
+    refundSettlementPurchases,
+    (purchase) => computePurchaseRevenueShare(purchase).creatorAmount
+  );
   const actualCreatorRefunds = sumBy(creatorRefundEntries, (entry) => entry.amount);
-  const expectedPlatformRefunds = sumBy(refundSettlementPurchases, (purchase) => computePlatformShare(purchase.amount));
+  const expectedPlatformRefunds = sumBy(
+    refundSettlementPurchases,
+    (purchase) => computePurchaseRevenueShare(purchase).platformAmount
+  );
   const actualPlatformRefunds = sumBy(platformRefundEntries, (entry) => entry.amount);
 
   const requestedPayouts = payoutRows.filter(

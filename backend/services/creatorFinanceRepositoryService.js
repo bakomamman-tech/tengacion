@@ -7,9 +7,14 @@ const Album = require("../models/Album");
 const Video = require("../models/Video");
 const { buildDateRange } = require("./analyticsService");
 const { getPlatformSettlementAccount } = require("./walletService");
+const {
+  CREATOR_CONTENT_CREATOR_SHARE_RATE,
+  CREATOR_CONTENT_PLATFORM_SHARE_RATE,
+  computePurchaseRevenueShare,
+} = require("./creatorRevenueSharePolicy");
 
-const PLATFORM_SHARE_PERCENT = 60;
-const CREATOR_SHARE_PERCENT = 40;
+const PLATFORM_SHARE_PERCENT = CREATOR_CONTENT_PLATFORM_SHARE_RATE * 100;
+const CREATOR_SHARE_PERCENT = CREATOR_CONTENT_CREATOR_SHARE_RATE * 100;
 const MAX_RECENT_ENTRIES = 20;
 const MAX_TOP_CREATORS = 8;
 
@@ -58,9 +63,6 @@ const toId = (value) => {
 };
 
 const roundMoney = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
-
-const computePlatformShare = (amount) =>
-  roundMoney((Number(amount || 0) * PLATFORM_SHARE_PERCENT) / 100);
 
 const createCategoryBucket = (meta) => ({
   key: meta.key,
@@ -241,9 +243,9 @@ const createEmptyResponse = (dates) => ({
     creatorSharePercent: CREATOR_SHARE_PERCENT,
     settlementAccount: getPlatformSettlementAccount(),
     purpose:
-      "This repository holds Tengacion's 60% share of paid creator earnings for platform operations and worldwide office expansion.",
+      "New music, book, and podcast purchases reserve 40% for Tengacion and credit 60% to creators.",
     accountingNote:
-      "Only paid creator transactions are included. Free streams and downloads remain outside the repository until monetized.",
+      "Historical purchases retain their original stored split. Only paid creator transactions are included.",
   },
   breakdown: {
     items: [],
@@ -288,18 +290,21 @@ const loadPurchaseRepositoryRows = async (dates) => {
   })
     .sort({ paidAt: -1, createdAt: -1 })
     .select(
-      "_id creatorId itemType itemId amount currency provider providerRef paidAt createdAt"
+      "_id creatorId itemType itemId amount currency provider providerRef paidAt createdAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate"
     )
     .lean();
 
   return purchases.map((purchase) => {
-    const grossAmount = roundMoney(purchase?.amount);
-    const repositoryAmount = computePlatformShare(grossAmount);
+    const {
+      grossAmount,
+      platformAmount: repositoryAmount,
+      creatorAmount,
+    } = computePurchaseRevenueShare(purchase);
     return {
       ...purchase,
       grossAmount,
       repositoryAmount,
-      creatorAmount: roundMoney(grossAmount - repositoryAmount),
+      creatorAmount,
     };
   });
 };
@@ -355,8 +360,16 @@ const buildCreatorFinanceRepository = async ({
       albumsById,
       videosById,
     });
-    const platformAllocation = roundMoney(purchase?.repositoryAmount || computePlatformShare(amount));
-    const creatorAllocation = roundMoney(purchase?.creatorAmount || (amount - platformAllocation));
+    const purchaseShare = computePurchaseRevenueShare({
+      ...purchase,
+      amount,
+    });
+    const platformAllocation = roundMoney(
+      purchase?.repositoryAmount ?? purchaseShare.platformAmount
+    );
+    const creatorAllocation = roundMoney(
+      purchase?.creatorAmount ?? purchaseShare.creatorAmount
+    );
 
     paidTransactions += 1;
     grossRevenue += amount;
@@ -445,9 +458,9 @@ const buildCreatorFinanceRepository = async ({
       creatorSharePercent: CREATOR_SHARE_PERCENT,
       settlementAccount: getPlatformSettlementAccount(),
       purpose:
-        "This repository holds Tengacion's 60% share of paid creator earnings for platform operations and worldwide office expansion.",
+        "New music, book, and podcast purchases reserve 40% for Tengacion and credit 60% to creators.",
       accountingNote:
-        "Only paid creator transactions are included. Free streams and downloads remain outside the repository until monetized.",
+        "Historical purchases retain their original stored split. Only paid creator transactions are included.",
     },
     breakdown: {
       items: breakdownItems,

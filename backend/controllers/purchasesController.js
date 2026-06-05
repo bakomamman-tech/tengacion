@@ -6,9 +6,10 @@ const { resolvePurchasableItem } = require("../services/catalogService");
 const { hasEntitlement } = require("../services/entitlementService");
 const {
   buildCreatorWalletSnapshot,
-  CREATOR_SHARE_RATE,
-  PLATFORM_SHARE_RATE,
 } = require("../services/walletService");
+const {
+  computePurchaseRevenueShare,
+} = require("../services/creatorRevenueSharePolicy");
 const {
   buildTimelineEntryFromEvent,
   cancelSubscriptionPurchase,
@@ -48,14 +49,20 @@ const buildItemRoute = ({ itemType = "", itemId = "", creatorId = "" } = {}) => 
 };
 
 const buildFeeSummary = (purchase = {}) => {
-  const grossAmount = roundMoney(purchase.amount);
-  const platformAmount = roundMoney(grossAmount * PLATFORM_SHARE_RATE);
-  const creatorAmount = roundMoney(grossAmount * CREATOR_SHARE_RATE);
+  const {
+    grossAmount,
+    platformAmount,
+    creatorAmount,
+    platformShareRate,
+    creatorShareRate,
+  } = computePurchaseRevenueShare(purchase);
 
   return {
     buyerTotal: grossAmount,
     platformFeeIncluded: platformAmount,
     creatorReceives: creatorAmount,
+    platformSharePercent: roundMoney(platformShareRate * 100),
+    creatorSharePercent: roundMoney(creatorShareRate * 100),
     currency: purchase.currency || "NGN",
     explanation:
       "Tengacion platform fees are included in the displayed price. Paystack charges only the verified total shown on this receipt.",

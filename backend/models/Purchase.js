@@ -101,6 +101,30 @@ const PurchaseSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    revenueCategory: {
+      type: String,
+      enum: ["music", "books", "podcasts", "subscriptions", "other"],
+      default: null,
+      index: true,
+    },
+    revenueSharePolicy: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 80,
+    },
+    creatorShareRate: {
+      type: Number,
+      default: null,
+      min: 0,
+      max: 1,
+    },
+    platformShareRate: {
+      type: Number,
+      default: null,
+      min: 0,
+      max: 1,
+    },
   },
   {
     timestamps: true,

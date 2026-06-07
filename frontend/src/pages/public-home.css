@@ -115,6 +115,16 @@
   line-height: 1.6;
 }
 
+.public-home__action-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 20px 0 0;
+  color: #f0c56b;
+  font-size: 17px;
+  font-weight: 900;
+}
+
 .public-home__actions {
   margin-top: 28px;
 }
@@ -182,6 +192,10 @@
 
 .public-home__section--live {
   padding-top: 38px;
+}
+
+.public-home__section--commerce {
+  padding-top: 56px;
 }
 
 .public-home__section-head {
@@ -320,7 +334,8 @@
 }
 
 .public-home__creator-grid,
-.public-home__benefit-grid {
+.public-home__benefit-grid,
+.public-home__commerce-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
@@ -338,6 +353,43 @@
   color: inherit;
   text-decoration: none;
   box-shadow: 0 10px 22px rgba(13, 33, 25, 0.06);
+}
+
+.public-home-commerce {
+  min-height: 210px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #c9d8cb;
+  border-radius: 8px;
+  background: #173f2c;
+  color: #f6fbf7;
+}
+
+.public-home-commerce > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(240, 197, 107, 0.54);
+  border-radius: 50%;
+  color: #f0c56b;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.public-home-commerce strong {
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.public-home-commerce p {
+  margin: 0;
+  color: #dbe8de;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .public-home-release {
@@ -705,7 +757,8 @@
   .public-home__path-grid,
   .public-home__grid,
   .public-home__creator-grid,
-  .public-home__benefit-grid {
+  .public-home__benefit-grid,
+  .public-home__commerce-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -758,6 +811,7 @@
   .public-home__grid,
   .public-home__creator-grid,
   .public-home__benefit-grid,
+  .public-home__commerce-grid,
   .public-home__trust-links {
     display: grid;
     grid-template-columns: 1fr;

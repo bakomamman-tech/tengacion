@@ -220,14 +220,14 @@ describe("SEO routes", () => {
     const response = await request(server).get("/").expect(200);
 
     expect(response.text).toContain(
-      '<title data-seo-key="title">Tengacion | Discover African Creators, Music, Books &amp; Podcasts</title>'
+      '<title data-seo-key="title">Tengacion | Africa\'s Social Commerce &amp; Creator Monetization Platform</title>'
     );
     expect(response.text).toContain(
-      'content="Tengacion helps fans discover African creators, stream music, read books, listen to podcasts, and follow public creator profiles."'
+      'content="Create, connect, sell, stream, and earn on Tengacion, Africa&#39;s social commerce and creator monetization platform."'
     );
     expect(response.text).toContain('href="https://tengacion.com/"');
     expect(response.text).toContain('content="index,follow"');
-    expect(response.text).toContain("Discover African creators, music, books, and podcasts on Tengacion");
+    expect(response.text).toContain("Africa's social commerce and creator monetization platform");
     expect(response.text).toContain('href="/creators"');
     expect(response.text).toContain('href="/music"');
     expect(response.headers["x-robots-tag"]).toBeUndefined();
@@ -317,10 +317,10 @@ describe("SEO routes", () => {
     const response = await request(server).get("/creators").expect(200);
 
     expect(response.text).toContain(
-      '<title data-seo-key="title">Find Creators | Tengacion</title>'
+      '<title data-seo-key="title">Find African Musicians, Authors, Podcasters &amp; Digital Creators | Tengacion</title>'
     );
     expect(response.text).toContain(
-      'content="Discover music artists, authors, and creators on Tengacion. Explore African talent and support creators."'
+      'content="Find African musicians, authors, podcasters, educators, performers, and digital creators. Explore public profiles and support their work on Tengacion."'
     );
     expect(response.text).toContain('href="https://tengacion.com/creators"');
     expect(response.text).toContain('content="index,follow"');
@@ -430,6 +430,15 @@ describe("SEO routes", () => {
       audience: "friends",
       moderationStatus: "approved",
     });
+    await Post.create({
+      author: user._id,
+      text: "African startup funding reached .653bn in the latest report.",
+      type: "text",
+      privacy: "public",
+      visibility: "public",
+      audience: "public",
+      moderationStatus: "approved",
+    });
 
     const response = await request(server).get("/activity").expect(200);
 
@@ -439,6 +448,7 @@ describe("SEO routes", () => {
     expect(response.text).toContain('href="https://tengacion.com/activity"');
     expect(response.text).toContain('content="index,follow"');
     expect(response.text).toContain("Approved public creator update with comments and reactions.");
+    expect(response.text).toContain("African startup funding reached $0.653bn in the latest report.");
     expect(response.text).toContain("SEO Creator shared a text");
     expect(response.text).toContain('"@type":"ItemList"');
     expect(response.text).not.toContain("Private update should not appear in public activity.");
@@ -452,7 +462,7 @@ describe("SEO routes", () => {
     const storeResponse = await request(server).get(`/marketplace/store/${seller.slug}`).expect(200);
 
     expect(marketplaceResponse.text).toContain(
-      '<title data-seo-key="title">Tengacion Marketplace | Shop Approved Creator Stores</title>'
+      '<title data-seo-key="title">Shop Products from Verified African Creators &amp; Sellers | Tengacion</title>'
     );
     expect(marketplaceResponse.text).toContain('href="https://tengacion.com/marketplace"');
     expect(marketplaceResponse.text).toContain('content="index,follow"');

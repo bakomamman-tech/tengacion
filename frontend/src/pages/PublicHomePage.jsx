@@ -8,12 +8,13 @@ import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
 } from "../lib/seo";
+import { normalizePublicText, uniquePublicActivity } from "../utils/publicText";
 
 import "./public-home.css";
 
-const PAGE_TITLE = "Tengacion | African Creator Discovery Network";
+const PAGE_TITLE = "Tengacion | Africa's Social Commerce & Creator Monetization Platform";
 const PAGE_DESCRIPTION =
-  "Discover African creators, stream songs, read books, listen to podcasts, follow public profiles, and support creator work on Tengacion.";
+  "Create, connect, sell, stream, and earn on Tengacion, Africa's social commerce and creator monetization platform for creators, fans, buyers, and sellers.";
 const HOME_RELEASE_LIMIT = 6;
 const HOME_ACTIVITY_LIMIT = 6;
 const HOME_CREATOR_LIMIT = 4;
@@ -88,23 +89,42 @@ const TRUST_LINKS = [
 const PATHWAYS = [
   {
     path: "/music",
-    label: "Start listening",
+    label: "Discover Music",
     description: "Jump into public releases, albums, videos, and creator catalogs.",
   },
   {
     path: "/creators",
-    label: "Find creators",
+    label: "Find Creators",
     description: "Browse public profiles and follow the people building on Tengacion.",
   },
   {
     path: "/creator/register",
-    label: "Join as a creator",
+    label: "Join as Creator",
     description: "Set up your creator page and start preparing your first public release.",
   },
   {
     path: "/marketplace",
-    label: "Open marketplace",
+    label: "Explore Marketplace",
     description: "Discover seller storefronts, products, pickup, and delivery options.",
+  },
+];
+
+const COMMERCE_PROOF = [
+  {
+    label: "Create and sell",
+    description: "Creators can publish and sell music, books, podcasts, subscriptions, and digital releases.",
+  },
+  {
+    label: "Pay securely",
+    description: "Buyers use provider-backed checkout and receive access after a successful payment is verified.",
+  },
+  {
+    label: "Earn and request payouts",
+    description: "Successful creator purchases credit earnings, with eligible balances available for payout requests.",
+  },
+  {
+    label: "List and fulfill orders",
+    description: "Approved marketplace sellers can publish products, receive orders, and track settlement activity.",
   },
 ];
 
@@ -291,7 +311,7 @@ export default function PublicHomePage() {
         setReleaseItems(feedItems);
         setReleaseTotal(Number(feedPayload?.total || feedItems.length || 0));
         setFeaturedCreators(Array.isArray(creatorPayload?.items) ? creatorPayload.items : []);
-        setActivityItems(Array.isArray(activityPayload) ? activityPayload : []);
+        setActivityItems(uniquePublicActivity(activityPayload));
         if (failedLoads.length) {
           setProofError("Some public content could not load right now.");
         }
@@ -349,14 +369,14 @@ export default function PublicHomePage() {
 
     return [
       {
-        label: "Public releases loaded",
+        label: "Public releases",
         value: formatCount(Math.max(releaseTotal, releaseItems.length)),
-        detail: releaseItems.length ? "Music, books, podcasts, and creator media" : "Ready for creator uploads",
+        detail: releaseItems.length ? "Music, books, podcasts, and creator media" : "New releases publish here",
       },
       {
-        label: "Creator signals",
+        label: "Creators featured",
         value: formatCount(creatorKeys.size),
-        detail: creatorKeys.size ? "Creators visible in the public surface" : "Profiles appear as creators publish",
+        detail: creatorKeys.size ? "Public profiles across the platform" : "Profiles appear as creators publish",
       },
       {
         label: "Recent public posts",
@@ -404,29 +424,39 @@ export default function PublicHomePage() {
         </nav>
 
         <div className="public-home__hero-inner">
-          <p className="public-home__eyebrow">African creator discovery network</p>
-          <h1>Discover African creators before the world does.</h1>
+          <p className="public-home__eyebrow">Tengacion</p>
+          <h1>Africa&apos;s social commerce and creator monetization platform.</h1>
           <p className="public-home__lede">
-            Discover African creators, stream music, read books, listen to podcasts, shop trusted
-            sellers, and connect with people on Tengacion.
+            One connected platform where African creators build audiences, sell their work,
+            stream content, and turn community into sustainable earnings.
+          </p>
+          <p className="public-home__action-line" aria-label="Create, connect, sell, stream, and earn">
+            <span>Create.</span>
+            <span>Connect.</span>
+            <span>Sell.</span>
+            <span>Stream.</span>
+            <span>Earn.</span>
           </p>
           <div className="public-home__actions">
-            <Link className="public-home__button public-home__button--primary" to="/creators">
-              Explore Creators
+            <Link className="public-home__button public-home__button--primary" to="/creator/register">
+              Join as Creator
             </Link>
-            <Link className="public-home__button" to="/register">
-              Join Tengacion
+            <Link className="public-home__button" to="/marketplace">
+              Explore Marketplace
             </Link>
-            <Link className="public-home__button" to="/creator/register">
-              Upload as Creator
+            <Link className="public-home__button" to="/music">
+              Discover Music
+            </Link>
+            <Link className="public-home__button" to="/marketplace/register">
+              Sell on Tengacion
             </Link>
           </div>
 
           <div className="public-home__hero-proof" aria-label="Tengacion public proof points">
             <span>Verified creator profiles</span>
-            <span>Music and books</span>
+            <span>Creator earnings and payouts</span>
             <span>Approved seller marketplace</span>
-            <span>Safety routes</span>
+            <span>Secure checkout</span>
           </div>
         </div>
       </section>
@@ -441,14 +471,40 @@ export default function PublicHomePage() {
         ))}
       </section>
 
+      <section className="public-home__section public-home__section--commerce" aria-labelledby="public-home-commerce-title">
+        <div className="public-home__section-head public-home__section-head--split">
+          <div>
+            <p className="public-home__eyebrow">Monetization in plain sight</p>
+            <h2 id="public-home-commerce-title">From discovery to payment, earnings, and fulfillment</h2>
+            <p>
+              Tengacion connects the public experience to real commerce flows for creators,
+              buyers, and marketplace sellers.
+            </p>
+          </div>
+          <Link className="public-home__section-link" to="/how-it-works">
+            See how it works
+          </Link>
+        </div>
+
+        <div className="public-home__commerce-grid">
+          {COMMERCE_PROOF.map((entry, index) => (
+            <article key={entry.label} className="public-home-commerce">
+              <span aria-hidden="true">{index + 1}</span>
+              <strong>{entry.label}</strong>
+              <p>{entry.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="public-home__section" aria-labelledby="public-home-creators-title">
         <div className="public-home__section-head public-home__section-head--split">
           <div>
             <p className="public-home__eyebrow">Featured creators</p>
-            <h2 id="public-home-creators-title">Start with people, not empty shelves</h2>
+            <h2 id="public-home-creators-title">Meet creators building across formats</h2>
             <p>
-              Public creator cards give visitors names, categories, latest activity, trust signals,
-              and a clear path into each profile.
+              Discover musicians, authors, podcasters, educators, performers, and independent
+              businesses through public profiles and active catalogs.
             </p>
           </div>
           <Link className="public-home__section-link" to="/creators">
@@ -504,10 +560,10 @@ export default function PublicHomePage() {
           </div>
         ) : (
           <div className="public-home__empty">
-            <strong>Featured creators will appear as profiles are verified</strong>
+            <strong>Be among the first creators featured</strong>
             <p>
-              Seed the directory with high-quality creator profiles so new visitors can explore
-              music, books, podcasts, and public updates immediately.
+              Build a public profile, choose your creator categories, and publish work that fans
+              can discover and support.
             </p>
             <Link className="public-home__inline-button" to="/creator/register">
               Set up a creator profile
@@ -620,7 +676,7 @@ export default function PublicHomePage() {
                     <strong>{getActivityAuthorName(post)}</strong>
                     <p>
                       {truncateText(
-                        post.text ||
+                        normalizePublicText(post.text) ||
                           `${getActivityAuthorName(post)} shared a ${getActivityKind(post).toLowerCase()}.`
                       )}
                     </p>

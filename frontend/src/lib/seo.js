@@ -1,8 +1,8 @@
 export const SITE_NAME = "Tengacion";
 export const SITE_URL = "https://tengacion.com";
-export const DEFAULT_TITLE = "Tengacion | Discover African Creators, Music, Books & Podcasts";
+export const DEFAULT_TITLE = "Tengacion | Africa's Social Commerce & Creator Monetization Platform";
 export const DEFAULT_DESCRIPTION =
-  "Tengacion is a creator and social platform where users discover, stream, share, and support music, books, podcasts, and creators.";
+  "Create, connect, sell, stream, and earn on Tengacion, Africa's social commerce and creator monetization platform.";
 export const DEFAULT_IMAGE_PATH = "/tengacion_logo_1024.png";
 export const DEFAULT_IMAGE_ALT = "Tengacion preview image";
 export const DEFAULT_OG_TYPE = "website";

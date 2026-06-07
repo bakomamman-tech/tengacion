@@ -29,9 +29,9 @@ const defaultFilters = {
   sort: "latest",
 };
 
-const MARKETPLACE_TITLE = "Tengacion Marketplace | Shop Approved Creator Stores";
+const MARKETPLACE_TITLE = "Shop Products from Verified African Creators & Sellers | Tengacion";
 const MARKETPLACE_DESCRIPTION =
-  "Browse approved Tengacion marketplace sellers, products, local pickup options, and delivery-ready listings.";
+  "Shop products from verified African creators and approved sellers, with visible prices, product photos, local pickup, and delivery-ready listings on Tengacion.";
 
 const sidebarNav = [
   { id: "browse", label: "Browse all", description: "Reset filters and explore everything.", action: "reset" },

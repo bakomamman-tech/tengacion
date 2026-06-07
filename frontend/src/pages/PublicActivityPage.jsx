@@ -8,6 +8,7 @@ import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
 } from "../lib/seo";
+import { normalizePublicText, uniquePublicActivity } from "../utils/publicText";
 
 import "./public-activity.css";
 
@@ -109,7 +110,7 @@ export default function PublicActivityPage() {
         if (!isMounted) {
           return;
         }
-        setItems(Array.isArray(payload) ? payload : []);
+        setItems(uniquePublicActivity(payload));
       } catch (err) {
         if (!isMounted) {
           return;
@@ -262,7 +263,12 @@ export default function PublicActivityPage() {
                     />
                   ) : null}
 
-                  <p>{truncateText(post.text || `${getAuthorName(post)} shared a ${getPostKind(post).toLowerCase()}.`)}</p>
+                  <p>
+                    {truncateText(
+                      normalizePublicText(post.text) ||
+                        `${getAuthorName(post)} shared a ${getPostKind(post).toLowerCase()}.`
+                    )}
+                  </p>
 
                   <div className="public-activity-card__meta">
                     <span>{getPostKind(post)}</span>

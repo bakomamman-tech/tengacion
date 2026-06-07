@@ -88,14 +88,20 @@ describe("PublicHomePage", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getAllByRole("link", { name: /explore creators/i })[0]).toHaveAttribute(
-      "href",
-      "/creators"
-    );
-    expect(screen.getAllByRole("link", { name: /upload as creator/i })[0]).toHaveAttribute(
+    expect(screen.getByRole("heading", { name: /africa's social commerce/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /join as creator/i })[0]).toHaveAttribute(
       "href",
       "/creator/register"
     );
+    expect(screen.getAllByRole("link", { name: /explore marketplace/i })[0]).toHaveAttribute(
+      "href",
+      "/marketplace"
+    );
+    expect(screen.getAllByRole("link", { name: /sell on tengacion/i })[0]).toHaveAttribute(
+      "href",
+      "/marketplace/register"
+    );
+    expect(screen.getByText("Earn and request payouts")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(getCreatorSummaryFeed).toHaveBeenCalledWith({
@@ -120,7 +126,7 @@ describe("PublicHomePage", () => {
     expect(screen.getByText("Market Days")).toBeInTheDocument();
     expect(screen.getByText("Ada Beats")).toBeInTheDocument();
     expect(screen.getByText("Studio update from the rehearsal room.")).toBeInTheDocument();
-    expect(screen.getByText("Public releases loaded")).toBeInTheDocument();
+    expect(screen.getByText("Public releases")).toBeInTheDocument();
     expect(screen.getByText("20")).toBeInTheDocument();
   });
 });

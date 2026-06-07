@@ -2,9 +2,9 @@ const SITE_NAME = "Tengacion";
 const SITE_URL =
   String(process.env.SEO_SITE_URL || "https://tengacion.com").replace(/\/+$/, "")
   || "https://tengacion.com";
-const DEFAULT_TITLE = "Tengacion | Discover African Creators, Music, Books & Podcasts";
+const DEFAULT_TITLE = "Tengacion | Africa's Social Commerce & Creator Monetization Platform";
 const DEFAULT_DESCRIPTION =
-  "Tengacion is a creator and social platform where users discover, stream, share, and support music, books, podcasts, and creators.";
+  "Create, connect, sell, stream, and earn on Tengacion, Africa's social commerce and creator monetization platform.";
 const DEFAULT_IMAGE_PATH = "/tengacion_logo_1024.png";
 const DEFAULT_IMAGE_ALT = "Tengacion preview image";
 const DEFAULT_OG_TYPE = "website";

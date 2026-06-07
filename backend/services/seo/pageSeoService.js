@@ -8,6 +8,10 @@ const MarketplaceSeller = require("../../models/MarketplaceSeller");
 const Post = require("../../models/Post");
 const Track = require("../../models/Track");
 const Video = require("../../models/Video");
+const {
+  normalizePublicText,
+  uniquePublicActivity,
+} = require("../../utils/publicText");
 const { findCreatorProfileByReference } = require("../creatorLookupService");
 const {
   PRIVATE_CREATOR_ALIAS_SEGMENTS,
@@ -51,24 +55,24 @@ const ACTIVE_PUBLIC_POST_FILTER = {
   reviewRequired: { $ne: true },
 };
 const CATEGORY_PREVIEW_LIMIT = 8;
-const HOME_TITLE = "Tengacion | Discover African Creators, Music, Books & Podcasts";
+const HOME_TITLE = "Tengacion | Africa's Social Commerce & Creator Monetization Platform";
 const HOME_DESCRIPTION =
-  "Tengacion helps fans discover African creators, stream music, read books, listen to podcasts, and follow public creator profiles.";
+  "Create, connect, sell, stream, and earn on Tengacion, Africa's social commerce and creator monetization platform.";
 
 const PUBLIC_INFO_PAGES = {
   "/creators": {
-    title: "Find Creators | Tengacion",
+    title: "Find African Musicians, Authors, Podcasters & Digital Creators | Tengacion",
     description:
-      "Discover music artists, authors, and creators on Tengacion. Explore African talent and support creators.",
+      "Find African musicians, authors, podcasters, educators, performers, and digital creators. Explore public profiles and support their work on Tengacion.",
     canonicalPath: "/creators",
     previewTitle: "Find creators on Tengacion",
     previewDescription:
       "Discover music artists, authors, and creators across Tengacion.",
   },
   "/music": {
-    title: "African Music Releases & Creator Drops | Tengacion",
+    title: "Discover African Gospel, Afrobeat & Independent Music Creators | Tengacion",
     description:
-      "Discover new songs, albums, and creator releases on Tengacion. Explore public African music from independent artists and creator studios.",
+      "Discover African gospel, Afrobeat, and independent music creators. Stream public songs, albums, previews, and new releases on Tengacion.",
     canonicalPath: "/music",
     previewTitle: "Discover music on Tengacion",
     previewDescription:
@@ -93,9 +97,9 @@ const PUBLIC_INFO_PAGES = {
       "Browse podcasts and spoken-word releases from Tengacion creators.",
   },
   "/marketplace": {
-    title: "Tengacion Marketplace | Shop Approved Creator Stores",
+    title: "Shop Products from Verified African Creators & Sellers | Tengacion",
     description:
-      "Browse approved Tengacion marketplace sellers, products, local pickup options, and delivery-ready listings.",
+      "Shop products from verified African creators and approved sellers, with visible prices, product photos, local pickup, and delivery-ready listings on Tengacion.",
     canonicalPath: "/marketplace",
     previewTitle: "Tengacion Marketplace",
     previewDescription:
@@ -539,7 +543,7 @@ const buildHomePreviewMarkup = () => {
 
   return [
     '<section class="seo-home-preview">',
-    `  <h1>${escapeHtml("Discover African creators, music, books, and podcasts on Tengacion")}</h1>`,
+    `  <h1>${escapeHtml("Africa's social commerce and creator monetization platform")}</h1>`,
     `  <p>${escapeHtml(HOME_DESCRIPTION)}</p>`,
     '  <nav aria-label="Public Tengacion sections">',
     ...links.map(
@@ -551,6 +555,7 @@ const buildHomePreviewMarkup = () => {
     `    <li>${escapeHtml("Explore public creator profiles and catalog pages.")}</li>`,
     `    <li>${escapeHtml("See public posts, reactions, comments, and creator activity signals.")}</li>`,
     `    <li>${escapeHtml("Discover songs, albums, books, and podcast episodes from African creators.")}</li>`,
+    `    <li>${escapeHtml("Creators and approved sellers can receive earnings from successful purchases and request eligible payouts.")}</li>`,
     `    <li>${escapeHtml("Review Tengacion terms, privacy, copyright, and community standards.")}</li>`,
     "  </ul>",
     "</section>",
@@ -827,31 +832,33 @@ const getPublicActivityDescription = (post = {}) => {
   ].join(", ");
 
   return pickText(
-    post.text,
+    normalizePublicText(post.text),
     post?.audio?.title ? `Shared ${post.audio.title} with the community.` : "",
     engagement
   );
 };
 
 const fetchActivityDirectoryItems = async (limit = CATEGORY_PREVIEW_LIMIT) =>
-  (
+  uniquePublicActivity(
     await Post.find(ACTIVE_PUBLIC_POST_FILTER)
       .select("_id author text type reactionsCount commentsCount shareCount audio updatedAt createdAt")
       .populate("author", "name username")
       .sort({ createdAt: -1 })
-      .limit(limit)
+      .limit(limit * 2)
       .lean()
-  ).map((post) => {
-    const authorName = getPublicActivityAuthorName(post);
-    const postType = String(post?.type || "post").replace(/_/g, " ");
-    return {
-      href: `/activity#post-${post._id}`,
-      label: `${authorName} shared a ${postType}`,
-      description: getPublicActivityDescription(post),
-      updatedAt: post.updatedAt,
-      createdAt: post.createdAt,
-    };
-  });
+  )
+    .slice(0, limit)
+    .map((post) => {
+      const authorName = getPublicActivityAuthorName(post);
+      const postType = String(post?.type || "post").replace(/_/g, " ");
+      return {
+        href: `/activity#post-${post._id}`,
+        label: `${authorName} shared a ${postType}`,
+        description: getPublicActivityDescription(post),
+        updatedAt: post.updatedAt,
+        createdAt: post.createdAt,
+      };
+    });
 
 const DIRECTORY_PAGE_CONFIG = {
   "/creators": {

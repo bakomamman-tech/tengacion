@@ -17,9 +17,9 @@ import "../components/creatorDiscovery/creatorDiscovery.css";
 const CATEGORY_CONFIG = {
   music: {
     path: "/music",
-    title: "African Music Releases & Creator Drops | Tengacion",
+    title: "Discover African Gospel, Afrobeat & Independent Music Creators | Tengacion",
     description:
-      "Discover new songs, albums, and creator releases on Tengacion. Explore public African music from independent artists and creator studios.",
+      "Discover African gospel, Afrobeat, and independent music creators. Stream public songs, albums, previews, and new releases on Tengacion.",
     heading: "Discover Music on Tengacion",
     intro:
       "Browse public songs, albums, and creator drops from Tengacion artists. Follow the creators you love and explore full creator pages for deeper catalogs.",

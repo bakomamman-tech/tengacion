@@ -102,6 +102,13 @@ describe("PublicHomePage", () => {
       "/marketplace/register"
     );
     expect(screen.getByText("Earn and request payouts")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Meet our leadership" })).toBeInTheDocument();
+    expect(screen.getByText("Founder, Chairman & CEO")).toBeInTheDocument();
+    expect(screen.getAllByText("Stephen Daniel Kurah")[0]).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /get to know our leadership/i })).toHaveAttribute(
+      "href",
+      "/leadership"
+    );
 
     await waitFor(() => {
       expect(getCreatorSummaryFeed).toHaveBeenCalledWith({

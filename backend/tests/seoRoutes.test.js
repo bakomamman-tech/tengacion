@@ -235,6 +235,7 @@ describe("SEO routes", () => {
 
   test("public explainer pages render indexable metadata for content depth", async () => {
     const aboutResponse = await request(server).get("/about").expect(200);
+    const leadershipResponse = await request(server).get("/leadership").expect(200);
     const creatorsResponse = await request(server).get("/for-creators").expect(200);
     const contactResponse = await request(server).get("/contact").expect(200);
     const childSafetyResponse = await request(server).get("/child-safety").expect(200);
@@ -252,6 +253,13 @@ describe("SEO routes", () => {
     expect(aboutResponse.text).toContain('href="https://tengacion.com/about"');
     expect(aboutResponse.text).toContain('content="index,follow"');
     expect(aboutResponse.text).toContain("About Tengacion");
+
+    expect(leadershipResponse.text).toContain(
+      '<title data-seo-key="title">Tengacion Leadership | Founder and Executive Offices</title>'
+    );
+    expect(leadershipResponse.text).toContain('href="https://tengacion.com/leadership"');
+    expect(leadershipResponse.text).toContain("Stephen Daniel Kurah");
+    expect(leadershipResponse.text).toContain("Founder, Chairman and Chief Executive Officer");
 
     expect(creatorsResponse.text).toContain(
       '<title data-seo-key="title">For Creators | Publish Music, Books &amp; Podcasts on Tengacion</title>'
@@ -549,6 +557,7 @@ describe("SEO routes", () => {
 
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/about</loc>");
+    expect(staticResponse.text).toContain("<loc>https://tengacion.com/leadership</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/how-it-works</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/for-creators</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/safety</loc>");

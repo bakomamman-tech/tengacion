@@ -128,6 +128,26 @@ const PUBLIC_INFO_PAGES = {
       { label: "Public safety routes", description: "Terms, privacy, child safety, copyright, refunds, and reports are available outside the logged-in app." },
     ],
   },
+  "/leadership": {
+    title: "Tengacion Leadership | Founder and Executive Offices",
+    description:
+      "Meet Stephen Daniel Kurah, Founder, Chairman and Chief Executive Officer of Tengacion, and explore the executive offices guiding the platform's growth.",
+    canonicalPath: "/leadership",
+    previewTitle: "Meet Tengacion's leadership",
+    previewDescription:
+      "Founder-led leadership guiding Tengacion's product, technology, operations, finance, trust, and commercial growth.",
+    previewItems: [
+      {
+        label: "Stephen Daniel Kurah",
+        description: "Founder, Chairman and Chief Executive Officer of Tengacion.",
+      },
+      {
+        label: "Executive offices",
+        description:
+          "Operations, technology, finance, product, trust and safety, and commercial leadership profiles.",
+      },
+    ],
+  },
   "/how-it-works": {
     title: "How Tengacion Works | Creator Discovery, Profiles & Releases",
     description:
@@ -527,6 +547,7 @@ const buildSeoPayload = ({
 const buildHomePreviewMarkup = () => {
   const links = [
     { href: "/about", label: "About Tengacion" },
+    { href: "/leadership", label: "Leadership" },
     { href: "/how-it-works", label: "How Tengacion works" },
     { href: "/creators", label: "Find creators" },
     { href: "/music", label: "Music releases" },

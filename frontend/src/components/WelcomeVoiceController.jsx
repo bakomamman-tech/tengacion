@@ -64,6 +64,7 @@ const PUBLIC_ROUTE_PATTERNS = [
   "/login",
   "/register",
   "/about",
+  "/leadership",
   "/how-it-works",
   "/for-creators",
   "/for-music-artists",

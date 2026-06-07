@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { getCreatorDiscovery, getCreatorSummaryFeed, getPublicActivity, resolveImage } from "../api";
 import SeoHead from "../components/seo/SeoHead";
+import { HOME_LEADERSHIP } from "../data/leadership";
 import {
   buildBreadcrumbJsonLd,
   buildOrganizationJsonLd,
@@ -414,6 +415,7 @@ export default function PublicHomePage() {
           </Link>
           <div className="public-home__nav-actions">
             <Link to="/about">About</Link>
+            <Link to="/leadership">Leadership</Link>
             <Link to="/creators">Creators</Link>
             <Link to="/music">Music</Link>
             <Link to="/activity">Activity</Link>
@@ -493,6 +495,45 @@ export default function PublicHomePage() {
               <strong>{entry.label}</strong>
               <p>{entry.description}</p>
             </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="public-home__section public-home__section--leadership" aria-labelledby="public-home-leadership-title">
+        <div className="public-home__section-head public-home__section-head--split">
+          <div>
+            <p className="public-home__eyebrow">Company leadership</p>
+            <h2 id="public-home-leadership-title">Meet our leadership</h2>
+            <p>
+              Founder-led leadership is guiding Tengacion as social connection, creator commerce,
+              media, trust, and technology come together across Africa.
+            </p>
+          </div>
+          <Link className="public-home__section-link" to="/leadership">
+            Get to know our leadership
+          </Link>
+        </div>
+
+        <div className="public-home__leadership-grid">
+          {HOME_LEADERSHIP.map((leader) => (
+            <Link
+              key={leader.id}
+              className={`public-home-leader${leader.isPlaceholder ? " is-placeholder" : " is-founder"}`}
+              to={`/leadership#${leader.id}`}
+            >
+              <div className="public-home-leader__portrait">
+                <img
+                  src={leader.image}
+                  alt={leader.imageAlt}
+                  loading={leader.isPlaceholder ? "lazy" : "eager"}
+                />
+                {leader.isPlaceholder ? <span>Illustrative placeholder</span> : <span>Founder</span>}
+              </div>
+              <div className="public-home-leader__body">
+                <p>{leader.shortRole}</p>
+                <strong>{leader.name}</strong>
+              </div>
+            </Link>
           ))}
         </div>
       </section>

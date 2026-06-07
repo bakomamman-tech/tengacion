@@ -198,6 +198,10 @@
   padding-top: 56px;
 }
 
+.public-home__section--leadership {
+  padding-top: 58px;
+}
+
 .public-home__section-head {
   max-width: 760px;
 }
@@ -335,11 +339,91 @@
 
 .public-home__creator-grid,
 .public-home__benefit-grid,
-.public-home__commerce-grid {
+.public-home__commerce-grid,
+.public-home__leadership-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
   margin-top: 24px;
+}
+
+.public-home-leader {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #c9d8cb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 10px 22px rgba(13, 33, 25, 0.06);
+}
+
+.public-home-leader:hover,
+.public-home-leader:focus-visible {
+  border-color: #2a6f4f;
+  outline: 0;
+  transform: translateY(-2px);
+}
+
+.public-home-leader__portrait {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: #d9e0dc;
+}
+
+.public-home-leader__portrait img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.public-home-leader.is-founder .public-home-leader__portrait img {
+  object-position: center 28%;
+}
+
+.public-home-leader__portrait span {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 6px;
+  background: rgba(18, 44, 33, 0.88);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.public-home-leader.is-founder .public-home-leader__portrait span {
+  background: #d7b46a;
+  color: #14251b;
+}
+
+.public-home-leader__body {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.public-home-leader__body p {
+  min-height: 38px;
+  margin: 0;
+  color: #2a6f4f;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 900;
+}
+
+.public-home-leader__body strong {
+  color: #183326;
+  font-size: 17px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .public-home-release,
@@ -758,7 +842,8 @@
   .public-home__grid,
   .public-home__creator-grid,
   .public-home__benefit-grid,
-  .public-home__commerce-grid {
+  .public-home__commerce-grid,
+  .public-home__leadership-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -812,6 +897,7 @@
   .public-home__creator-grid,
   .public-home__benefit-grid,
   .public-home__commerce-grid,
+  .public-home__leadership-grid,
   .public-home__trust-links {
     display: grid;
     grid-template-columns: 1fr;

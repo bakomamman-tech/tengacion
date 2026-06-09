@@ -79,5 +79,26 @@ export const LEADERSHIP = [
   },
 ];
 
+export const TEAM_LEADS = [
+  {
+    id: "diana-comfort-danjuma",
+    name: "Diana Comfort Danjuma",
+    role: "Social Media Lead",
+    image: "/assets/leadership/diana-comfort-danjuma.png",
+    imageAlt: "Diana Comfort Danjuma, Social Media Lead at Tengacion",
+    bio:
+      "Diana Comfort Danjuma leads Tengacion's social media publishing, audience engagement, and campaign coordination across the company's social channels.",
+  },
+  {
+    id: "vincent-bilat-danjuma",
+    name: "Vincent Bilat Danjuma",
+    role: "Customer Support Team Lead",
+    image: "/assets/leadership/vincent-bilat-danjuma.png",
+    imageAlt: "Vincent Bilat Danjuma, Customer Support Team Lead at Tengacion",
+    bio:
+      "Vincent Bilat Danjuma leads Tengacion's customer support team, helping customers and creators receive timely assistance and dependable issue resolution.",
+  },
+];
+
 export const FOUNDER = LEADERSHIP[0];
 export const HOME_LEADERSHIP = LEADERSHIP.slice(0, 4);

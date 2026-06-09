@@ -11,6 +11,7 @@
 
 .leadership-nav,
 .leadership-directory,
+.leadership-team,
 .leadership-founder {
   width: min(1180px, calc(100% - 40px));
   margin: 0 auto;
@@ -116,6 +117,10 @@
   padding: 72px 0 60px;
 }
 
+.leadership-team {
+  padding: 8px 0 72px;
+}
+
 .leadership-directory__intro {
   display: grid;
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
@@ -145,6 +150,11 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 28px 20px;
+}
+
+.leadership-grid--team {
+  max-width: 580px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .leadership-card {
@@ -386,12 +396,17 @@
 @media (max-width: 520px) {
   .leadership-nav,
   .leadership-directory,
+  .leadership-team,
   .leadership-founder {
     width: min(100% - 28px, 1180px);
   }
 
   .leadership-grid {
     grid-template-columns: 1fr;
+  }
+
+  .leadership-grid--team {
+    max-width: none;
   }
 
   .leadership-card__body > p:first-child {

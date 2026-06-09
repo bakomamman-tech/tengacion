@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
 import SeoHead from "../components/seo/SeoHead";
-import { FOUNDER, LEADERSHIP } from "../data/leadership";
+import { FOUNDER, LEADERSHIP, TEAM_LEADS } from "../data/leadership";
 import {
   buildBreadcrumbJsonLd,
   buildOrganizationJsonLd,
@@ -123,6 +123,35 @@ export default function LeadershipPage() {
           not identify appointed Tengacion officials and will be replaced after formal
           appointments.
         </p>
+      </section>
+
+      <section className="leadership-team" aria-labelledby="leadership-team-title">
+        <div className="leadership-directory__intro">
+          <div>
+            <p className="leadership-eyebrow">Junior leadership</p>
+            <h2 id="leadership-team-title">Team leads</h2>
+          </div>
+          <p>
+            Tengacion&apos;s team leads coordinate important day-to-day work across community
+            engagement and customer support.
+          </p>
+        </div>
+
+        <div className="leadership-grid leadership-grid--team">
+          {TEAM_LEADS.map((leader) => (
+            <article key={leader.id} id={leader.id} className="leadership-card">
+              <div className="leadership-card__portrait">
+                <img src={leader.image} alt={leader.imageAlt} loading="lazy" />
+              </div>
+              <div className="leadership-card__body">
+                <p>{leader.role}</p>
+                <h2>{leader.name}</h2>
+                <div className="leadership-card__rule" aria-hidden="true" />
+                <p className="leadership-card__bio">{leader.bio}</p>
+              </div>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="leadership-founder" aria-labelledby="leadership-founder-title">

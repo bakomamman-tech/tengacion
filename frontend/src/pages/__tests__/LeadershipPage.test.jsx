@@ -9,7 +9,7 @@ vi.mock("../../components/seo/SeoHead", () => ({
 }));
 
 describe("LeadershipPage", () => {
-  it("presents the founder and clearly labels unfilled executive offices", () => {
+  it("presents the founder, junior team leads, and unfilled executive offices", () => {
     render(
       <MemoryRouter>
         <LeadershipPage />
@@ -27,6 +27,16 @@ describe("LeadershipPage", () => {
         "/assets/leadership/stephen-daniel-kurah.jpg"
       );
     });
+    expect(screen.getByText("Social Media Lead")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Diana Comfort Danjuma" })).toBeInTheDocument();
+    expect(
+      screen.getByAltText("Diana Comfort Danjuma, Social Media Lead at Tengacion")
+    ).toHaveAttribute("src", "/assets/leadership/diana-comfort-danjuma.png");
+    expect(screen.getByText("Customer Support Team Lead")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Vincent Bilat Danjuma" })).toBeInTheDocument();
+    expect(
+      screen.getByAltText("Vincent Bilat Danjuma, Customer Support Team Lead at Tengacion")
+    ).toHaveAttribute("src", "/assets/leadership/vincent-bilat-danjuma.png");
     expect(screen.getAllByText("Illustrative placeholder")).toHaveLength(6);
     expect(screen.getAllByText("Appointment to be announced")).toHaveLength(6);
   });

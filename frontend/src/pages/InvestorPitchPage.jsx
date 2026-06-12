@@ -9,7 +9,7 @@ import {
 
 import "./investor-pitch.css";
 
-const PDF_PATH = "/assets/investors/Tengacion-Investor-Pitch-June-2026.pdf";
+const PDF_PATH = "/assets/investors/Tengacion-Investor-Pitch-June-2026.pdf?v=2";
 const PAGE_TITLE = "Investor Pitch | Tengacion";
 const PAGE_DESCRIPTION =
   "Download the Tengacion investor pitch and explore the market opportunity, creator-commerce model, revenue strategy, financial outlook, and seed investment ask.";

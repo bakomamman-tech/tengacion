@@ -16,6 +16,11 @@
         box-sizing: border-box;
       }
 
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+
       body {
         margin: 0;
         background: #dfe7e1;
@@ -619,8 +624,216 @@
       }
 
       @media print {
+        html,
+        body {
+          width: 297mm;
+          height: auto;
+          margin: 0;
+        }
+
         body {
           background: transparent;
+        }
+
+        .page {
+          break-after: page;
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+        }
+
+        .page:last-child {
+          break-after: auto;
+        }
+
+        .page:not(.cover) .page-inner {
+          padding: 10mm 13mm 8mm;
+        }
+
+        .page:not(.cover) .topline {
+          padding-bottom: 3mm;
+        }
+
+        .page:not(.cover) .section-label {
+          margin: 4mm 0 1.5mm;
+        }
+
+        .page:not(.cover) h2 {
+          font-size: 10.5mm;
+          line-height: 1;
+        }
+
+        .page:not(.cover) .lede {
+          margin-top: 2mm;
+          font-size: 3.8mm;
+          line-height: 1.4;
+        }
+
+        .page:not(.cover) .mt {
+          margin-top: 5mm;
+        }
+
+        .page:not(.cover) .grid-2,
+        .page:not(.cover) .grid-3,
+        .page:not(.cover) .grid-5 {
+          gap: 3.5mm;
+        }
+
+        .page:not(.cover) .panel {
+          padding: 5mm;
+        }
+
+        .page:not(.cover) .panel p,
+        .page:not(.cover) .panel li {
+          font-size: 3.35mm;
+          line-height: 1.35;
+        }
+
+        .page:not(.cover) .quote {
+          min-height: 32mm;
+          padding: 5mm;
+        }
+
+        .page:not(.cover) .quote strong {
+          font-size: 5.2mm;
+          line-height: 1.2;
+        }
+
+        .page:not(.cover) .quote span {
+          margin-top: 3mm;
+          font-size: 3mm;
+        }
+
+        .page:not(.cover) .pillar {
+          min-height: 34mm;
+          padding-top: 10mm;
+        }
+
+        .page:not(.cover) .pillar > span {
+          top: 3.5mm;
+          right: 4.5mm;
+          font-size: 5.5mm;
+        }
+
+        .page:not(.cover) .flywheel {
+          gap: 2mm;
+          margin-top: 5mm;
+          padding: 4mm;
+        }
+
+        .page:not(.cover) .flywheel div {
+          padding: 2.5mm;
+          font-size: 3.2mm;
+        }
+
+        .page:not(.cover) .metric {
+          min-height: 32mm;
+          padding: 4.5mm;
+        }
+
+        .page:not(.cover) .metric strong {
+          font-size: 7.5mm;
+        }
+
+        .page:not(.cover) th,
+        .page:not(.cover) td {
+          padding: 2.2mm 2.8mm;
+        }
+
+        .page:not(.cover) .revenue-card {
+          min-height: 42mm;
+          padding: 4.5mm;
+        }
+
+        .page:not(.cover) .revenue-card strong {
+          margin-top: 3mm;
+          font-size: 4.8mm;
+        }
+
+        .page:not(.cover) .revenue-card p {
+          margin-top: 2.5mm;
+          font-size: 3.05mm;
+          line-height: 1.35;
+        }
+
+        .page:not(.cover) .projection-table {
+          margin-top: 4.5mm;
+        }
+
+        .page:not(.cover) .projection-table th,
+        .page:not(.cover) .projection-table td {
+          padding: 1.7mm 2.2mm;
+        }
+
+        .page:not(.cover) .projection-notes {
+          gap: 3mm;
+          margin-top: 4mm;
+        }
+
+        .page:not(.cover) .projection-notes div {
+          padding: 3mm;
+        }
+
+        .page:not(.cover) .allocation-row {
+          margin-top: 3mm;
+        }
+
+        .page:not(.cover) .milestone {
+          min-height: 20mm;
+          gap: 3mm;
+          padding: 3.5mm;
+        }
+
+        .page:not(.cover) .milestone b {
+          width: 8mm;
+          height: 8mm;
+          font-size: 3.4mm;
+        }
+
+        .page:not(.cover) .sources {
+          margin-top: 3mm;
+        }
+
+        .page:not(.cover) .sources li {
+          margin-top: 1.7mm;
+          font-size: 2.8mm;
+          line-height: 1.32;
+        }
+
+        .page:not(.cover) .closing {
+          height: auto;
+          min-height: 48mm;
+          padding: 8mm 10mm;
+        }
+
+        .page:not(.cover) .closing img {
+          width: 11mm;
+          height: 11mm;
+        }
+
+        .page:not(.cover) .closing h2 {
+          max-width: 240mm;
+          margin-top: 3mm;
+          font-size: 8mm;
+          line-height: 1.05;
+        }
+
+        .page:not(.cover) .closing p {
+          max-width: 235mm;
+          margin-top: 2mm;
+          font-size: 3.5mm;
+          line-height: 1.35;
+        }
+
+        .page:not(.cover) .closing strong {
+          margin-top: 3mm;
+          font-size: 3.6mm;
+        }
+
+        .page:not(.cover) .footer-note {
+          right: 13mm;
+          bottom: 3mm;
+          left: 13mm;
+          font-size: 2.4mm;
         }
       }
     </style>

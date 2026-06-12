@@ -28,6 +28,7 @@ const STATIC_PUBLIC_ROUTES = [
   { path: "/" },
   { path: "/about" },
   { path: "/leadership" },
+  { path: "/investors" },
   { path: "/how-it-works" },
   { path: "/for-creators" },
   { path: "/for-music-artists" },

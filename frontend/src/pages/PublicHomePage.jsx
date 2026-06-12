@@ -78,6 +78,7 @@ const CONTENT_LINKS = [
 
 const TRUST_LINKS = [
   { path: "/about", label: "About" },
+  { path: "/investors", label: "Investor Pitch" },
   { path: "/terms", label: "Terms" },
   { path: "/privacy", label: "Privacy" },
   { path: "/community-guidelines", label: "Guidelines" },

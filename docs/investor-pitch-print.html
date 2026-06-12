@@ -1,0 +1,1126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tengacion Investor Pitch - June 2026</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Segoe UI", Arial, sans-serif;
+        background: #dfe7e1;
+        color: #14251b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #dfe7e1;
+      }
+
+      .page {
+        position: relative;
+        width: 297mm;
+        height: 210mm;
+        overflow: hidden;
+        page-break-after: always;
+        background: #f7faf6;
+      }
+
+      .page:last-child {
+        page-break-after: auto;
+      }
+
+      .page-inner {
+        position: relative;
+        z-index: 1;
+        height: 100%;
+        padding: 15mm 17mm 13mm;
+      }
+
+      .cover {
+        color: #ffffff;
+        background: #153e2b;
+      }
+
+      .cover::before {
+        content: "";
+        position: absolute;
+        inset: 0 0 0 61%;
+        background: #d7b46a;
+      }
+
+      .cover::after {
+        content: "";
+        position: absolute;
+        right: 18mm;
+        bottom: -24mm;
+        width: 104mm;
+        height: 104mm;
+        border: 1.8mm solid rgba(255, 255, 255, 0.22);
+        border-radius: 50%;
+      }
+
+      .cover-grid {
+        display: grid;
+        grid-template-columns: 1.55fr 0.75fr;
+        gap: 20mm;
+        align-items: center;
+        height: 100%;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 4mm;
+        font-size: 6mm;
+        font-weight: 800;
+      }
+
+      .brand img {
+        width: 15mm;
+        height: 15mm;
+        border-radius: 3mm;
+      }
+
+      .cover h1 {
+        max-width: 160mm;
+        margin: 20mm 0 7mm;
+        font-size: 23mm;
+        line-height: 0.94;
+        letter-spacing: -0.7mm;
+      }
+
+      .cover-copy {
+        max-width: 150mm;
+        margin: 0;
+        color: #dce9df;
+        font-size: 6mm;
+        line-height: 1.45;
+      }
+
+      .cover-meta {
+        display: flex;
+        gap: 8mm;
+        margin-top: 18mm;
+        color: #f4dca4;
+        font-size: 3.8mm;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .ask-card {
+        position: relative;
+        z-index: 2;
+        padding: 12mm 10mm;
+        border: 0.4mm solid rgba(20, 37, 27, 0.18);
+        border-radius: 4mm;
+        background: #ffffff;
+        color: #14251b;
+      }
+
+      .ask-card span {
+        display: block;
+        color: #2a6f4f;
+        font-size: 3.6mm;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .ask-card strong {
+        display: block;
+        margin-top: 4mm;
+        font-size: 10mm;
+        line-height: 1.05;
+      }
+
+      .ask-card p {
+        margin: 5mm 0 0;
+        color: #52645a;
+        font-size: 4mm;
+        line-height: 1.5;
+      }
+
+      .topline {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 5mm;
+        border-bottom: 0.5mm solid #d5dfd7;
+      }
+
+      .topline .brand {
+        gap: 2.5mm;
+        color: #183326;
+        font-size: 4mm;
+      }
+
+      .topline .brand img {
+        width: 9mm;
+        height: 9mm;
+        border-radius: 2mm;
+      }
+
+      .page-number,
+      .section-label {
+        color: #2a6f4f;
+        font-size: 3.2mm;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .section-label {
+        margin: 8mm 0 2mm;
+      }
+
+      h2 {
+        max-width: 235mm;
+        margin: 0;
+        color: #14251b;
+        font-size: 13mm;
+        line-height: 1.02;
+        letter-spacing: -0.2mm;
+      }
+
+      h3 {
+        margin: 0;
+        color: #173f2c;
+        font-size: 5.2mm;
+        line-height: 1.2;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      .lede {
+        max-width: 245mm;
+        margin-top: 4mm;
+        color: #55675c;
+        font-size: 4.4mm;
+        line-height: 1.5;
+      }
+
+      .grid-2,
+      .grid-3,
+      .grid-5 {
+        display: grid;
+        gap: 5mm;
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .grid-5 {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+
+      .mt {
+        margin-top: 8mm;
+      }
+
+      .panel {
+        padding: 7mm;
+        border: 0.35mm solid #cedbd1;
+        border-radius: 3mm;
+        background: #ffffff;
+      }
+
+      .panel p,
+      .panel li {
+        color: #55675c;
+        font-size: 3.7mm;
+        line-height: 1.48;
+      }
+
+      .panel p {
+        margin-top: 3mm;
+      }
+
+      .problem-list {
+        display: grid;
+        gap: 3mm;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .problem-list li {
+        position: relative;
+        padding: 3.2mm 4mm 3.2mm 11mm;
+        border-left: 1.2mm solid #bc5d4f;
+        background: #fff6f3;
+        color: #4b514e;
+      }
+
+      .problem-list li::before {
+        content: attr(data-index);
+        position: absolute;
+        left: 3.5mm;
+        top: 3.2mm;
+        color: #a34d41;
+        font-weight: 800;
+      }
+
+      .thesis {
+        display: grid;
+        grid-template-columns: 1fr 1.1fr;
+        gap: 8mm;
+        margin-top: 8mm;
+      }
+
+      .quote {
+        display: grid;
+        align-content: center;
+        min-height: 45mm;
+        padding: 8mm;
+        border-radius: 3mm;
+        background: #173f2c;
+        color: #ffffff;
+      }
+
+      .quote strong {
+        font-size: 6.5mm;
+        line-height: 1.25;
+      }
+
+      .quote span {
+        margin-top: 5mm;
+        color: #f0c56b;
+        font-size: 3.4mm;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .pillar {
+        min-height: 42mm;
+        position: relative;
+        padding-top: 13mm;
+      }
+
+      .pillar > span {
+        position: absolute;
+        top: 5mm;
+        right: 6mm;
+        color: #d7b46a;
+        font-size: 7mm;
+        font-weight: 900;
+      }
+
+      .flywheel {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        align-items: center;
+        gap: 3mm;
+        margin-top: 8mm;
+        padding: 6mm;
+        border-radius: 3mm;
+        background: #e9f0eb;
+      }
+
+      .flywheel div {
+        position: relative;
+        padding: 4mm;
+        text-align: center;
+        color: #173f2c;
+        font-size: 3.6mm;
+        font-weight: 800;
+      }
+
+      .flywheel div:not(:last-child)::after {
+        content: ">";
+        position: absolute;
+        right: -3.5mm;
+        color: #b1863e;
+      }
+
+      .metric {
+        min-height: 39mm;
+        padding: 6mm;
+        border-top: 1.5mm solid #2a6f4f;
+        background: #ffffff;
+      }
+
+      .metric strong {
+        display: block;
+        color: #173f2c;
+        font-size: 9mm;
+        line-height: 1;
+      }
+
+      .metric span {
+        display: block;
+        margin-top: 3mm;
+        color: #6a776f;
+        font-size: 3.4mm;
+        line-height: 1.35;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow: hidden;
+        border-radius: 2.5mm;
+        background: #ffffff;
+        font-size: 3.3mm;
+      }
+
+      th,
+      td {
+        padding: 3mm 3.5mm;
+        border-bottom: 0.25mm solid #dce5de;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: #173f2c;
+        color: #ffffff;
+        font-size: 3.1mm;
+        text-transform: uppercase;
+      }
+
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+
+      td strong {
+        color: #173f2c;
+      }
+
+      .revenue-card {
+        min-height: 51mm;
+        padding: 6mm;
+        border: 0.35mm solid #cedbd1;
+        border-radius: 3mm;
+        background: #ffffff;
+      }
+
+      .revenue-card:nth-child(2) {
+        border-top: 1.5mm solid #d7b46a;
+      }
+
+      .revenue-card:nth-child(3) {
+        border-top: 1.5mm solid #4c7fa5;
+      }
+
+      .revenue-card:nth-child(4) {
+        border-top: 1.5mm solid #bc5d4f;
+      }
+
+      .revenue-card:nth-child(5) {
+        border-top: 1.5mm solid #2a6f4f;
+      }
+
+      .revenue-card strong {
+        display: block;
+        margin-top: 5mm;
+        color: #173f2c;
+        font-size: 5.5mm;
+      }
+
+      .revenue-card span {
+        color: #2a6f4f;
+        font-size: 3.1mm;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .revenue-card p {
+        margin-top: 4mm;
+        color: #647269;
+        font-size: 3.4mm;
+        line-height: 1.45;
+      }
+
+      .projection-table {
+        margin-top: 7mm;
+        font-size: 2.95mm;
+      }
+
+      .projection-table th,
+      .projection-table td {
+        padding: 2.1mm 2.5mm;
+      }
+
+      .projection-table td:not(:first-child),
+      .projection-table th:not(:first-child) {
+        text-align: right;
+      }
+
+      .highlight-row td {
+        background: #edf5ef;
+        color: #173f2c;
+        font-weight: 800;
+      }
+
+      .projection-notes {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1.2fr;
+        gap: 4mm;
+        margin-top: 6mm;
+      }
+
+      .projection-notes div {
+        padding: 4mm;
+        border-left: 1mm solid #d7b46a;
+        background: #ffffff;
+      }
+
+      .projection-notes strong {
+        display: block;
+        color: #173f2c;
+        font-size: 4.3mm;
+      }
+
+      .projection-notes span {
+        display: block;
+        margin-top: 1.5mm;
+        color: #647269;
+        font-size: 3.2mm;
+        line-height: 1.4;
+      }
+
+      .allocation-row {
+        display: grid;
+        grid-template-columns: 52mm 1fr 18mm;
+        gap: 4mm;
+        align-items: center;
+        margin-top: 4mm;
+      }
+
+      .allocation-row strong,
+      .allocation-row span {
+        font-size: 3.5mm;
+      }
+
+      .allocation-row strong {
+        color: #173f2c;
+      }
+
+      .allocation-row span {
+        color: #55675c;
+        text-align: right;
+      }
+
+      .bar {
+        height: 4mm;
+        overflow: hidden;
+        border-radius: 2mm;
+        background: #dfe8e1;
+      }
+
+      .bar i {
+        display: block;
+        height: 100%;
+        background: #2a6f4f;
+      }
+
+      .milestone {
+        display: grid;
+        grid-template-columns: 12mm 1fr;
+        gap: 4mm;
+        align-items: start;
+        min-height: 25mm;
+        padding: 5mm;
+        border-bottom: 0.35mm solid #d5dfd7;
+      }
+
+      .milestone:last-child {
+        border-bottom: 0;
+      }
+
+      .milestone b {
+        display: grid;
+        place-items: center;
+        width: 10mm;
+        height: 10mm;
+        border-radius: 50%;
+        background: #d7b46a;
+        color: #14251b;
+        font-size: 4mm;
+      }
+
+      .milestone strong {
+        color: #173f2c;
+        font-size: 4mm;
+      }
+
+      .milestone p {
+        margin-top: 1.5mm;
+        color: #647269;
+        font-size: 3.3mm;
+        line-height: 1.4;
+      }
+
+      .sources {
+        margin: 5mm 0 0;
+        padding-left: 5mm;
+      }
+
+      .sources li {
+        margin-top: 2.4mm;
+        color: #5b6961;
+        font-size: 3mm;
+        line-height: 1.4;
+      }
+
+      .closing {
+        display: grid;
+        align-content: center;
+        height: 100%;
+        padding: 18mm;
+        color: #ffffff;
+        background: #173f2c;
+      }
+
+      .closing img {
+        width: 18mm;
+        height: 18mm;
+        border-radius: 3mm;
+      }
+
+      .closing h2 {
+        max-width: 205mm;
+        margin-top: 12mm;
+        color: #ffffff;
+        font-size: 18mm;
+      }
+
+      .closing p {
+        max-width: 190mm;
+        margin-top: 6mm;
+        color: #dce9df;
+        font-size: 5mm;
+        line-height: 1.5;
+      }
+
+      .closing strong {
+        margin-top: 15mm;
+        color: #f0c56b;
+        font-size: 5mm;
+      }
+
+      .footer-note {
+        position: absolute;
+        right: 17mm;
+        bottom: 7mm;
+        left: 17mm;
+        color: #829087;
+        font-size: 2.7mm;
+      }
+
+      @media print {
+        body {
+          background: transparent;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="page cover">
+      <div class="page-inner cover-grid">
+        <div>
+          <div class="brand">
+            <img src="../frontend/public/tengacion_logo_1024.png" alt="" />
+            <span>Tengacion</span>
+          </div>
+          <h1>Social activity, transformed into creator income.</h1>
+          <p class="cover-copy">
+            An Africa-first social creator-commerce platform where people connect, creators
+            publish and sell digital work, and businesses reach engaged communities.
+          </p>
+          <div class="cover-meta">
+            <span>Investor pitch</span>
+            <span>June 2026</span>
+            <span>tengacion.com</span>
+          </div>
+        </div>
+        <aside class="ask-card">
+          <span>Suggested seed ask</span>
+          <strong>₦100m–₦250m</strong>
+          <p>
+            18 months of focused execution across product polish, creator acquisition,
+            trust and safety, payments, infrastructure, and mobile performance.
+          </p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="page-inner">
+        <div class="topline">
+          <div class="brand">
+            <img src="../frontend/public/tengacion_logo_128.png" alt="" />
+            <span>Tengacion</span>
+          </div>
+          <span class="page-number">01 / Investment thesis</span>
+        </div>
+        <p class="section-label">The opportunity</p>
+        <h2>A transaction-enabled community platform, not only a social feed.</h2>
+        <p class="lede">
+          Tengacion combines social networking, creator discovery, digital content
+          monetization, marketplace transactions, and AI-assisted engagement in one
+          Nigerian-built platform.
+        </p>
+
+        <div class="thesis">
+          <ul class="problem-list">
+            <li data-index="1">Foreign platforms prioritize global advertising more than local creator payments and direct fan monetization.</li>
+            <li data-index="2">Social selling is fragmented across chats, informal DMs, multiple networks, and disconnected payment flows.</li>
+            <li data-index="3">Emerging creators struggle to earn consistently because discovery, engagement, and payments live in separate products.</li>
+            <li data-index="4">Few credible local platforms combine community, entertainment, creator monetization, and commerce.</li>
+          </ul>
+          <div class="quote">
+            <strong>
+              Users create attention. Creators convert attention into paid work and fan
+              support. Sellers turn trusted discovery into transactions.
+            </strong>
+            <span>One connected economic loop</span>
+          </div>
+        </div>
+
+        <div class="grid-3 mt">
+          <article class="panel">
+            <h3>Creator-led growth</h3>
+            <p>Public fan pages, releases, subscriptions, and shareable catalogs pull audiences into the network.</p>
+          </article>
+          <article class="panel">
+            <h3>Multiple revenue paths</h3>
+            <p>Creator commissions, marketplace fees, premium tools, promoted posts, sponsorships, and future advertising.</p>
+          </article>
+          <article class="panel">
+            <h3>Africa-first execution</h3>
+            <p>Local payment behavior, mobile performance, trust workflows, and culturally relevant discovery shape the product.</p>
+          </article>
+        </div>
+        <p class="footer-note">Confidential investor brief • Prepared June 2026</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="page-inner">
+        <div class="topline">
+          <div class="brand">
+            <img src="../frontend/public/tengacion_logo_128.png" alt="" />
+            <span>Tengacion</span>
+          </div>
+          <span class="page-number">02 / Product ecosystem</span>
+        </div>
+        <p class="section-label">The Tengacion solution</p>
+        <h2>Discovery, identity, publishing, payments, and commerce in one product.</h2>
+
+        <div class="grid-5 mt">
+          <article class="panel pillar">
+            <span>01</span>
+            <h3>Social network core</h3>
+            <p>Profiles, feeds, posts, comments, stories, chat, and discovery keep users active.</p>
+          </article>
+          <article class="panel pillar">
+            <span>02</span>
+            <h3>Creator monetization</h3>
+            <p>Creators upload music, books, and podcasts, sell access, receive support, and build subscriptions.</p>
+          </article>
+          <article class="panel pillar">
+            <span>03</span>
+            <h3>Creator fan pages</h3>
+            <p>Public pages operate as premium portfolios, storefronts, and social identities.</p>
+          </article>
+          <article class="panel pillar">
+            <span>04</span>
+            <h3>Marketplace commerce</h3>
+            <p>Approved sellers list products, reach social audiences, accept payments, and manage orders.</p>
+          </article>
+          <article class="panel pillar">
+            <span>05</span>
+            <h3>AI-assisted engagement</h3>
+            <p>AI can improve onboarding, content discovery, post creation, and creator summaries.</p>
+          </article>
+        </div>
+
+        <div class="flywheel" aria-label="Tengacion growth flywheel">
+          <div>Create</div>
+          <div>Discover</div>
+          <div>Connect</div>
+          <div>Transact</div>
+          <div>Earn & return</div>
+        </div>
+
+        <div class="grid-2 mt">
+          <article class="panel">
+            <h3>For creators</h3>
+            <p>
+              Publish multiple formats, consolidate audiences, offer free previews, sell
+              releases, grow fan relationships, and track earnings from one identity.
+            </p>
+          </article>
+          <article class="panel">
+            <h3>For fans and buyers</h3>
+            <p>
+              Discover local talent, follow public activity, preview work, purchase securely,
+              and return to a trusted creator or seller page.
+            </p>
+          </article>
+        </div>
+        <p class="footer-note">Tengacion Investor Pitch • Product ecosystem</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="page-inner">
+        <div class="topline">
+          <div class="brand">
+            <img src="../frontend/public/tengacion_logo_128.png" alt="" />
+            <span>Tengacion</span>
+          </div>
+          <span class="page-number">03 / Market opportunity</span>
+        </div>
+        <p class="section-label">A large, under-monetized audience</p>
+        <h2>Africa’s creator economy is scaling while local monetization gaps remain.</h2>
+
+        <div class="grid-3 mt">
+          <article class="metric">
+            <strong>47.8m</strong>
+            <span>Active social media user identities in Nigeria in October 2025.</span>
+          </article>
+          <article class="metric">
+            <strong>$5.10bn</strong>
+            <span>Estimated African creator economy market in 2025.</span>
+          </article>
+          <article class="metric">
+            <strong>$29.84bn</strong>
+            <span>Projected African creator economy market by 2032.</span>
+          </article>
+        </div>
+
+        <table class="mt">
+          <thead>
+            <tr>
+              <th>Market layer</th>
+              <th>Definition</th>
+              <th>Estimated size</th>
+              <th>Tengacion year-3 goal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>TAM</strong></td>
+              <td>Global social and creator economy</td>
+              <td>US$180bn+ creator economy estimates</td>
+              <td>Long-term context, not the direct initial target</td>
+            </tr>
+            <tr>
+              <td><strong>SAM</strong></td>
+              <td>African creator economy</td>
+              <td>US$5.10bn in 2025; US$29.84bn projected by 2032</td>
+              <td>0.02%–0.05% of African creator GMV</td>
+            </tr>
+            <tr>
+              <td><strong>SOM</strong></td>
+              <td>Nigeria social and creator-commerce early adopters</td>
+              <td>47.8m social user identities</td>
+              <td>300k–500k MAU; about 0.6%–1.0% of Nigeria social identities</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="quote mt">
+          <strong>
+            The wedge is creator commerce inside a social app: community activity creates
+            discovery, and discovery can lead directly to paid creator and seller transactions.
+          </strong>
+          <span>Why Tengacion can win</span>
+        </div>
+        <p class="footer-note">Sources: DataReportal Digital 2026; Coherent Market Insights; The Guardian, March 2026</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="page-inner">
+        <div class="topline">
+          <div class="brand">
+            <img src="../frontend/public/tengacion_logo_128.png" alt="" />
+            <span>Tengacion</span>
+          </div>
+          <span class="page-number">04 / Revenue model</span>
+        </div>
+        <p class="section-label">Diversified by design</p>
+        <h2>Near-term transaction revenue, with recurring and advertising upside.</h2>
+        <p class="lede">
+          The strongest early revenue comes from creator purchases, subscriptions, and
+          marketplace transactions. Promotion and advertising scale after user activity grows.
+        </p>
+
+        <div class="grid-5 mt">
+          <article class="revenue-card">
+            <span>Creator digital sales</span>
+            <strong>40%</strong>
+            <p>Platform commission on music, books, podcasts, and subscriptions. High-margin digital products with direct fan demand.</p>
+          </article>
+          <article class="revenue-card">
+            <span>Marketplace fee</span>
+            <strong>₦300</strong>
+            <p>Per successful purchase. Simple social-commerce monetization as approved seller activity grows.</p>
+          </article>
+          <article class="revenue-card">
+            <span>Promoted posts</span>
+            <strong>₦2k–₦25k</strong>
+            <p>Per campaign. Creators and SMEs pay for targeted visibility inside active communities.</p>
+          </article>
+          <article class="revenue-card">
+            <span>Premium creator tools</span>
+            <strong>₦2,500</strong>
+            <p>Per active creator each month. Recurring SaaS-like revenue for serious creators.</p>
+          </article>
+          <article class="revenue-card">
+            <span>Ads & sponsorships</span>
+            <strong>CPM / CPC</strong>
+            <p>Traffic-scale upside that can be introduced without weakening the core creator-commerce model.</p>
+          </article>
+        </div>
+
+        <div class="grid-3 mt">
+          <article class="panel">
+            <h3>High-margin inventory</h3>
+            <p>The marginal cost of selling an additional digital release is low relative to physical commerce.</p>
+          </article>
+          <article class="panel">
+            <h3>Revenue follows activity</h3>
+            <p>Creators, fans, buyers, and sellers create multiple transaction moments across one network.</p>
+          </article>
+          <article class="panel">
+            <h3>Reduced ad dependence</h3>
+            <p>Tengacion can build meaningful revenue before a large-scale advertising business is required.</p>
+          </article>
+        </div>
+        <p class="footer-note">Tengacion Investor Pitch • Revenue model</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="page-inner">
+        <div class="topline">
+          <div class="brand">
+            <img src="../frontend/public/tengacion_logo_128.png" alt="" />
+            <span>Tengacion</span>
+          </div>
+          <span class="page-number">05 / Base-case projection</span>
+        </div>
+        <p class="section-label">Five-year directional model</p>
+        <h2>Break-even targeted in year 2, with operating leverage from digital commerce.</h2>
+
+        <table class="projection-table">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Year 1</th>
+              <th>Year 2</th>
+              <th>Year 3</th>
+              <th>Year 4</th>
+              <th>Year 5</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Registered users</td><td>100,000</td><td>350,000</td><td>1,000,000</td><td>2,500,000</td><td>5,000,000</td></tr>
+            <tr><td>Monthly active users</td><td>30,000</td><td>120,000</td><td>400,000</td><td>1,000,000</td><td>2,000,000</td></tr>
+            <tr><td>Active creators</td><td>3,000</td><td>12,000</td><td>40,000</td><td>100,000</td><td>200,000</td></tr>
+            <tr><td>Gross merchandise/content value</td><td>₦120m</td><td>₦600m</td><td>₦2.4bn</td><td>₦5.5bn</td><td>₦9.0bn</td></tr>
+            <tr class="highlight-row"><td>Net revenue</td><td>₦42m</td><td>₦195m</td><td>₦720m</td><td>₦1.65bn</td><td>₦2.70bn</td></tr>
+            <tr><td>Operating cost</td><td>₦60m</td><td>₦140m</td><td>₦400m</td><td>₦850m</td><td>₦1.35bn</td></tr>
+            <tr class="highlight-row"><td>EBITDA</td><td>-₦18m</td><td>₦55m</td><td>₦320m</td><td>₦800m</td><td>₦1.35bn</td></tr>
+            <tr><td>EBITDA margin</td><td>-43%</td><td>28%</td><td>44%</td><td>48%</td><td>50%</td></tr>
+            <tr><td>Net revenue in USD</td><td>~$31k</td><td>~$143k</td><td>~$529k</td><td>~$1.21m</td><td>~$1.98m</td></tr>
+          </tbody>
+        </table>
+
+        <div class="projection-notes">
+          <div>
+            <strong>Year 2</strong>
+            <span>Base-case break-even target as creator and transaction volume compounds.</span>
+          </div>
+          <div>
+            <strong>₦720m</strong>
+            <span>Projected annual net revenue by year 3.</span>
+          </div>
+          <div>
+            <strong>₦320m EBITDA</strong>
+            <span>Year-3 potential if Tengacion captures roughly 0.6%–1.0% of Nigeria’s social identity base as MAU and converts a portion into paid activity.</span>
+          </div>
+        </div>
+        <p class="footer-note">
+          Directional management estimates, not audited results. USD conversion uses approximately ₦1,362/US$1 based on references around 3–4 June 2026.
+        </p>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="page-inner">
+        <div class="topline">
+          <div class="brand">
+            <img src="../frontend/public/tengacion_logo_128.png" alt="" />
+            <span>Tengacion</span>
+          </div>
+          <span class="page-number">06 / The raise</span>
+        </div>
+        <p class="section-label">Investment ask and use of funds</p>
+        <h2>Fund 18 months of focused execution toward repeat creator-commerce transactions.</h2>
+
+        <div class="grid-2 mt">
+          <article class="panel">
+            <h3>Suggested seed ask</h3>
+            <p style="font-size: 10mm; color: #173f2c; font-weight: 900; line-height: 1.1;">₦100m–₦250m</p>
+            <p>
+              Final raise size depends on investor appetite and valuation discussion. Capital
+              is intended to improve product quality, strengthen trust and payments, and prove
+              an efficient creator acquisition and transaction loop.
+            </p>
+          </article>
+          <article class="panel">
+            <h3>Why now</h3>
+            <p>
+              Nigerian social usage is large, creator monetization remains underdeveloped,
+              and digital payments are increasingly normal in everyday transactions.
+            </p>
+            <p>
+              Tengacion’s differentiated wedge is creator commerce inside a social app,
+              creating several monetization paths from one engaged network.
+            </p>
+          </article>
+        </div>
+
+        <div class="grid-2 mt">
+          <div class="panel">
+            <div class="allocation-row"><strong>Product & engineering</strong><div class="bar"><i style="width: 35%"></i></div><span>35%</span></div>
+            <div class="allocation-row"><strong>Marketing & acquisition</strong><div class="bar"><i style="width: 30%"></i></div><span>30%</span></div>
+            <div class="allocation-row"><strong>Cloud & infrastructure</strong><div class="bar"><i style="width: 15%"></i></div><span>15%</span></div>
+            <div class="allocation-row"><strong>Trust, safety & ops</strong><div class="bar"><i style="width: 10%"></i></div><span>10%</span></div>
+            <div class="allocation-row"><strong>Working capital & legal</strong><div class="bar"><i style="width: 10%"></i></div><span>10%</span></div>
+          </div>
+          <div class="panel">
+            <h3>Capital priorities</h3>
+            <p><strong>Product:</strong> mobile polish, fan pages, feed ranking, payments, and AI tools.</p>
+            <p><strong>Growth:</strong> creator onboarding, campuses, communities, and influencer partnerships.</p>
+            <p><strong>Reliability:</strong> storage, API scaling, monitoring, security, and payment reconciliation.</p>
+            <p><strong>Operations:</strong> moderation, support, disputes, compliance, contracts, IP, and financial controls.</p>
+          </div>
+        </div>
+        <p class="footer-note">Tengacion Investor Pitch • Investment ask and use of funds</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="page-inner">
+        <div class="topline">
+          <div class="brand">
+            <img src="../frontend/public/tengacion_logo_128.png" alt="" />
+            <span>Tengacion</span>
+          </div>
+          <span class="page-number">07 / Execution plan</span>
+        </div>
+        <p class="section-label">Next 18 months</p>
+        <h2>Prove that social engagement converts into repeat commerce at attractive margins.</h2>
+
+        <div class="grid-2 mt">
+          <div class="panel" style="padding: 0;">
+            <div class="milestone">
+              <b>1</b>
+              <div><strong>Reach scale</strong><p>100,000 registered users and 30,000 monthly active users.</p></div>
+            </div>
+            <div class="milestone">
+              <b>2</b>
+              <div><strong>Activate creators</strong><p>Onboard 3,000 active creators, including at least 500 monetizing creators.</p></div>
+            </div>
+            <div class="milestone">
+              <b>3</b>
+              <div><strong>Strengthen public discovery</strong><p>Expand SEO pages, creator fan-page sharing, and category discovery.</p></div>
+            </div>
+          </div>
+          <div class="panel" style="padding: 0;">
+            <div class="milestone">
+              <b>4</b>
+              <div><strong>Improve payment reliability</strong><p>Raise payment success rates and strengthen transaction reconciliation.</p></div>
+            </div>
+            <div class="milestone">
+              <b>5</b>
+              <div><strong>Build trust infrastructure</strong><p>Deploy moderation, reporting, blocking, and verified creator tools.</p></div>
+            </div>
+            <div class="milestone">
+              <b>6</b>
+              <div><strong>Secure partnerships</strong><p>Win the first strategic creator, content, and community partnerships.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-3 mt">
+          <article class="panel">
+            <h3>Acquisition proof</h3>
+            <p>Measure creator onboarding cost, fan activation, retention, and content supply growth.</p>
+          </article>
+          <article class="panel">
+            <h3>Commerce proof</h3>
+            <p>Track conversion, payment success, purchase frequency, GMV, refunds, and contribution margin.</p>
+          </article>
+          <article class="panel">
+            <h3>Trust proof</h3>
+            <p>Monitor moderation response, disputes, creator verification, seller quality, and support resolution.</p>
+          </article>
+        </div>
+        <p class="footer-note">Tengacion Investor Pitch • 18-month milestones</p>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="page-inner">
+        <div class="topline">
+          <div class="brand">
+            <img src="../frontend/public/tengacion_logo_128.png" alt="" />
+            <span>Tengacion</span>
+          </div>
+          <span class="page-number">08 / Sources and notes</span>
+        </div>
+        <p class="section-label">Reference framework</p>
+        <h2>Market context and planning assumptions.</h2>
+
+        <div class="grid-2 mt">
+          <article class="panel">
+            <h3>Sources</h3>
+            <ol class="sources">
+              <li>DataReportal, Digital 2026: Nigeria — 47.8 million active social media user identities in Nigeria in October 2025.</li>
+              <li>DataReportal, Digital 2026 Global Overview — 5.66 billion global social media user identities in 2025.</li>
+              <li>Coherent Market Insights — African creator economy estimated at US$5.10bn in 2025 and projected at US$29.84bn by 2032.</li>
+              <li>The Guardian, March 2026 — Nigerian creator economy reported as a multi-billion-dollar opportunity while monetization gaps persist.</li>
+              <li>Wise, XE, and TwelveData references around 3–4 June 2026 used only to frame approximate USD equivalents.</li>
+            </ol>
+          </article>
+          <article class="panel">
+            <h3>Important notes</h3>
+            <ol class="sources">
+              <li>Financial projections are directional management estimates and have not been audited.</li>
+              <li>Market estimates should be independently verified during investor due diligence.</li>
+              <li>Actual growth, conversion, costs, pricing, and margins will depend on product execution and market conditions.</li>
+              <li>Future planning should be updated with live Tengacion analytics, cohort behavior, payment performance, and creator economics.</li>
+            </ol>
+          </article>
+        </div>
+
+        <div class="closing mt">
+          <img src="../frontend/public/tengacion_logo_1024.png" alt="" />
+          <h2>Build the platform where African attention becomes sustainable income.</h2>
+          <p>
+            Tengacion brings social connection, creator identity, digital publishing,
+            marketplace discovery, and trusted payments into one Africa-first ecosystem.
+          </p>
+          <strong>www.tengacion.com</strong>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

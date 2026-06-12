@@ -148,6 +148,32 @@ const PUBLIC_INFO_PAGES = {
       },
     ],
   },
+  "/investors": {
+    title: "Investor Pitch | Tengacion",
+    description:
+      "Download the Tengacion investor pitch and explore the market opportunity, creator-commerce model, revenue strategy, financial outlook, and seed investment ask.",
+    canonicalPath: "/investors",
+    previewTitle: "Tengacion investor pitch",
+    previewDescription:
+      "Explore Tengacion's Africa-first social creator-commerce opportunity, revenue model, five-year base case, seed ask, and execution plan.",
+    previewItems: [
+      {
+        label: "Creator-commerce opportunity",
+        description:
+          "See how Tengacion connects social discovery, digital publishing, fan support, marketplace activity, and payments.",
+      },
+      {
+        label: "Business model",
+        description:
+          "Review creator commissions, marketplace fees, promoted posts, premium tools, and advertising upside.",
+      },
+      {
+        label: "Seed execution plan",
+        description:
+          "Explore the suggested raise, use of funds, and milestones for the next 18 months.",
+      },
+    ],
+  },
   "/how-it-works": {
     title: "How Tengacion Works | Creator Discovery, Profiles & Releases",
     description:

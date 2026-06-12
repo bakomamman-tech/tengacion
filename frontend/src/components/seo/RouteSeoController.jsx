@@ -17,6 +17,7 @@ const PUBLIC_STATIC_PATHS = new Set([
   "/",
   "/about",
   "/leadership",
+  "/investors",
   "/how-it-works",
   "/for-creators",
   "/for-music-artists",

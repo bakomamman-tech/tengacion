@@ -23,6 +23,7 @@ const PublicActivityPage = lazy(() => import("./pages/PublicActivityPage"));
 const PublicHomePage = lazy(() => import("./pages/PublicHomePage"));
 const PublicInfoPage = lazy(() => import("./pages/PublicInfoPage"));
 const LeadershipPage = lazy(() => import("./pages/LeadershipPage"));
+const InvestorPitchPage = lazy(() => import("./pages/InvestorPitchPage"));
 const PyrexxSingzPage = lazy(() => import("./pages/PyrexxSingzPage"));
 const Register = lazy(() => import("./pages/Register"));
 const KadunaGotTalentRegisterPage = lazy(() => import("./pages/KadunaGotTalentRegisterPage"));
@@ -160,6 +161,7 @@ export default function App() {
           <Route path="/" element={user ? <Navigate to="/home" replace /> : <PublicHomePage />} />
           <Route path="/about" element={<PublicInfoPage pageKey="about" />} />
           <Route path="/leadership" element={<LeadershipPage />} />
+          <Route path="/investors" element={<InvestorPitchPage />} />
           <Route path="/how-it-works" element={<PublicInfoPage pageKey="how-it-works" />} />
           <Route path="/for-creators" element={<PublicInfoPage pageKey="for-creators" />} />
           <Route path="/for-music-artists" element={<PublicInfoPage pageKey="for-music-artists" />} />

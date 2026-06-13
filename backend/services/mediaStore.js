@@ -9,8 +9,15 @@ const {
   deleteCloudinaryAsset,
   deleteCloudinaryAssets,
   inferResourceTypeFromMime,
+  isCloudinaryUrl,
   uploadFileToCloudinary,
 } = require("./cloudinaryMediaService");
+const {
+  deleteS3Asset,
+  deleteS3Assets,
+  isS3MediaValue,
+  uploadFileToS3,
+} = require("./s3MediaService");
 
 const bucketName = "uploads";
 
@@ -35,6 +42,11 @@ const resolveContentType = (file) => {
   return "application/octet-stream";
 };
 
+const getMediaStorageProvider = () => {
+  const provider = String(process.env.MEDIA_STORAGE_PROVIDER || "cloudinary").trim().toLowerCase();
+  return ["s3", "aws", "aws-s3"].includes(provider) ? "s3" : "cloudinary";
+};
+
 const logUploadFailure = async (file, err) => {
   await incrementDailyMetric("uploadFailuresCount", 1).catch(() => null);
   await logAnalyticsEvent({
@@ -49,6 +61,14 @@ const saveUploadedMedia = async (file, options = {}) => {
   }
 
   try {
+    if (getMediaStorageProvider() === "s3") {
+      return await uploadFileToS3(file, {
+        source: options.source,
+        folder: options.folder,
+        resourceType: options.resourceType || inferResourceTypeFromMime(file.mimetype),
+      });
+    }
+
     return await uploadFileToCloudinary(file, {
       source: options.source,
       folder: options.folder,
@@ -124,6 +144,10 @@ const saveUploadedMediaToGridFs = async (file, options = {}) => {
 
 const deleteUploadedMedia = async (media = {}, options = {}) => {
   try {
+    if (isS3MediaValue(media)) {
+      return await deleteS3Asset(media);
+    }
+
     return await deleteCloudinaryAsset(media, options);
   } catch {
     return false;
@@ -132,7 +156,29 @@ const deleteUploadedMedia = async (media = {}, options = {}) => {
 
 const deleteUploadedMediaBatch = async (mediaList = [], options = {}) => {
   try {
-    return await deleteCloudinaryAssets(mediaList, options);
+    const list = Array.isArray(mediaList) ? mediaList : [mediaList];
+    const s3Media = list.filter((entry) => isS3MediaValue(entry));
+    const cloudinaryMedia = list.filter((entry) => {
+      if (isS3MediaValue(entry)) {
+        return false;
+      }
+      const value = typeof entry === "string" ? entry : entry?.secureUrl || entry?.secure_url || entry?.url || "";
+      return entry?.provider === "cloudinary" || isCloudinaryUrl(value) || entry?.publicId || entry?.public_id;
+    });
+
+    const [s3Result, cloudinaryResult] = await Promise.all([
+      s3Media.length ? deleteS3Assets(s3Media) : Promise.resolve({ attempted: 0, deleted: 0, failed: 0, results: [] }),
+      cloudinaryMedia.length
+        ? deleteCloudinaryAssets(cloudinaryMedia, options)
+        : Promise.resolve({ attempted: 0, deleted: 0, failed: 0, results: [] }),
+    ]);
+
+    return {
+      attempted: s3Result.attempted + cloudinaryResult.attempted,
+      deleted: s3Result.deleted + cloudinaryResult.deleted,
+      failed: s3Result.failed + cloudinaryResult.failed,
+      results: [...s3Result.results, ...cloudinaryResult.results],
+    };
   } catch {
     return {
       attempted: 0,
@@ -148,6 +194,7 @@ module.exports = {
   deleteUploadedMedia,
   deleteUploadedMediaBatch,
   getBucket,
+  getMediaStorageProvider,
   saveUploadedFile,
   saveUploadedMedia,
   saveUploadedMediaToGridFs,

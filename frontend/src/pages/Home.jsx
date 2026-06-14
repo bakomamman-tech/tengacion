@@ -30,6 +30,7 @@ import {
   toggleFollowCreator,
   trackDiscoveryEvents,
 } from "../api";
+import { UPLOAD_LIMITS } from "../config/uploadLimits";
 
 const FEELING_OPTIONS = [
   "Blessed",
@@ -247,8 +248,8 @@ function ComposerIcon({ name }) {
 }
 
 const POST_COMPOSER_MAX_MEDIA_FILES = 10;
-const POST_COMPOSER_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const POST_COMPOSER_MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+const POST_COMPOSER_MAX_IMAGE_BYTES = UPLOAD_LIMITS.IMAGE_BYTES;
+const POST_COMPOSER_MAX_VIDEO_BYTES = UPLOAD_LIMITS.FEED_VIDEO_BYTES;
 const POST_COMPOSER_ALLOWED_VIDEO_TYPES = new Set([
   "video/mp4",
   "video/quicktime",
@@ -553,7 +554,7 @@ export function PostComposerModal({
           return "Only MP4, MOV, and WebM videos are supported.";
         }
         if ((Number(file.size) || 0) > POST_COMPOSER_MAX_VIDEO_BYTES) {
-          return "Video exceeds maximum allowed size (100MB).";
+          return "Feed videos must be 50MB or smaller.";
         }
       }
 

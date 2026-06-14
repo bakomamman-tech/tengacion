@@ -11,24 +11,40 @@ const {
   updateMarketplaceListing,
 } = require("../services/marketplaceProductService");
 
-const getProductFiles = (req) => (Array.isArray(req.files) ? req.files : []);
+const getProductUploads = (req) => {
+  if (Array.isArray(req.files)) {
+    return {
+      images: req.files,
+      video: null,
+    };
+  }
+
+  return {
+    images: Array.isArray(req.files?.images) ? req.files.images : [],
+    video: Array.isArray(req.files?.video) ? req.files.video[0] || null : null,
+  };
+};
 
 exports.createListing = asyncHandler(async (req, res) => {
+  const uploads = getProductUploads(req);
   const product = await createMarketplaceListing({
     seller: req.marketplaceSeller,
     payload: req.body || {},
-    files: getProductFiles(req),
+    files: uploads.images,
+    videoFile: uploads.video,
   });
 
   return res.status(201).json({ product });
 });
 
 exports.updateListing = asyncHandler(async (req, res) => {
+  const uploads = getProductUploads(req);
   const product = await updateMarketplaceListing({
     seller: req.marketplaceSeller,
     productId: req.params.id,
     payload: req.body || {},
-    files: getProductFiles(req),
+    files: uploads.images,
+    videoFile: uploads.video,
   });
 
   return res.json({ product });

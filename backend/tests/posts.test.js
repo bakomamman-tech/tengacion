@@ -401,6 +401,25 @@ describe("Posts feed", () => {
     expect(stored.video.url).toBe(videoPayload.video.url);
   });
 
+  test("POST /api/posts rejects video metadata above the 50MB feed limit", async () => {
+    const response = await request(app)
+      .post("/api/posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({
+        type: "video",
+        video: {
+          url: "https://cdn.test/oversized-video.mp4",
+          playbackUrl: "https://cdn.test/oversized-video.mp4",
+          sizeBytes: 50 * 1024 * 1024 + 1,
+          mimeType: "video/mp4",
+        },
+      })
+      .expect(400);
+
+    expect(response.body.message).toMatch(/50MB or smaller/i);
+    expect(await Post.countDocuments()).toBe(0);
+  });
+
   test("POST /api/posts/:id/like persists emoji reactions and returns viewerReaction", async () => {
     const post = await Post.create({
       author: artist._id,

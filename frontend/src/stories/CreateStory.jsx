@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createStoryWithUploadProgress, resolveImage } from "../api";
 import Button from "../components/ui/Button";
+import { UPLOAD_LIMITS } from "../config/uploadLimits";
 import StoryMusicPicker from "./StoryMusicPicker";
 
 const ACCEPTED_TYPES = ["image/", "video/"];
@@ -61,6 +62,14 @@ export default function CreateStory({ user, onCreated, openSignal = 0 }) {
     }
     if (!isAcceptedType(picked)) {
       setError("Only image or video stories are supported");
+      return;
+    }
+    const isVideo = String(picked.type || "").toLowerCase().startsWith("video/");
+    const maxBytes = isVideo
+      ? UPLOAD_LIMITS.PROFILE_STORY_VIDEO_BYTES
+      : UPLOAD_LIMITS.IMAGE_BYTES;
+    if ((Number(picked.size) || 0) > maxBytes) {
+      setError(isVideo ? "Story videos must be 25MB or smaller." : "Story images must be 10MB or smaller.");
       return;
     }
     setError("");

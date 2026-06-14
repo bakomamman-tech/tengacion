@@ -19,9 +19,9 @@ const {
 } = require("../../../backend/services/uploadModerationService");
 const ApiError = require("../utils/ApiError");
 const {
-  MAX_VIDEO_BYTES,
   ALLOWED_MIME_TYPES,
 } = require("../../../backend/services/videoStorage");
+const { UPLOAD_LIMITS } = require("../../../backend/config/uploadLimits");
 const userRepository = require("../repositories/userRepository");
 const postRepository = require("../repositories/postRepository");
 const { resolveMentionUserIds } = require("../../../backend/utils/mentions");
@@ -412,8 +412,8 @@ const validateVideoMeta = (video) => {
     throw ApiError.badRequest("Only MP4 and WebM videos are supported");
   }
 
-  if (video.sizeBytes > MAX_VIDEO_BYTES) {
-    throw ApiError.badRequest("Video exceeds maximum allowed size (100MB)");
+  if (video.sizeBytes > UPLOAD_LIMITS.FEED_VIDEO_BYTES) {
+    throw ApiError.badRequest("Feed videos must be 50MB or smaller");
   }
 };
 

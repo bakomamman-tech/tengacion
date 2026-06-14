@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { UPLOAD_LIMITS, formatUploadLimit } from "../../../config/uploadLimits";
+
 export const AUDIO_ACCEPT = ".mp3,.wav,.flac,.m4a,.aac,.ogg,audio/*";
 export const VIDEO_ACCEPT = ".mp4,.mov,.m4v,.webm,video/*";
 export const IMAGE_ACCEPT = ".png,.jpg,.jpeg,.webp,.gif,.avif,image/*";
@@ -23,7 +25,11 @@ const hasValidExtension = (file, extensions) => {
   return extensions.includes(extension);
 };
 
-const fileField = (label, extensions, { required = false } = {}) =>
+const fileField = (
+  label,
+  extensions,
+  { required = false, maxBytes = UPLOAD_LIMITS.CREATOR_MEDIA_BYTES } = {}
+) =>
   z.any().superRefine((value, ctx) => {
     if (!value) {
       if (required) {
@@ -39,6 +45,12 @@ const fileField = (label, extensions, { required = false } = {}) =>
       ctx.addIssue({
         code: "custom",
         message: `${label} must match ${extensions.map((entry) => entry.replace(".", "").toUpperCase()).join(", ")}`,
+      });
+    }
+    if ((Number(value.size) || 0) > maxBytes) {
+      ctx.addIssue({
+        code: "custom",
+        message: `${label} must be ${formatUploadLimit(maxBytes)} or smaller`,
       });
     }
   });
@@ -87,7 +99,9 @@ export const musicUploadSchema = z.object({
   releaseDate: z.string().optional().default(""),
   lyrics: z.string().trim().max(12000).optional().default(""),
   previewStartSec: nonNegativeNumberField.default(0),
-  coverImageFile: fileField("Cover image", IMAGE_EXTENSIONS),
+  coverImageFile: fileField("Cover image", IMAGE_EXTENSIONS, {
+    maxBytes: UPLOAD_LIMITS.IMAGE_BYTES,
+  }),
   releaseMediaFile: fileField("Release media", [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS], { required: true }),
   previewSampleFile: fileField("Preview media", [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS]),
 }).superRefine((value, ctx) => {
@@ -140,7 +154,9 @@ export const podcastUploadSchema = z
     guestNames: z.string().trim().max(320).optional().default(""),
     showNotes: z.string().trim().max(12000).optional().default(""),
     episodeTags: z.string().trim().max(320).optional().default(""),
-    coverImageFile: fileField("Cover image", IMAGE_EXTENSIONS),
+    coverImageFile: fileField("Cover image", IMAGE_EXTENSIONS, {
+      maxBytes: UPLOAD_LIMITS.IMAGE_BYTES,
+    }),
     episodeMediaFile: fileField("Episode media", [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS], { required: true }),
     previewSampleFile: fileField("Preview sample", [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS]),
     transcriptFile: fileField("Transcript upload", TRANSCRIPT_EXTENSIONS),
@@ -196,6 +212,8 @@ export const bookUploadSchema = z.object({
   readingAge: z.string().trim().max(80).optional().default(""),
   tableOfContents: z.string().trim().max(4000).optional().default(""),
   copyrightDeclaration: z.boolean(),
-  coverImageFile: fileField("Cover image", IMAGE_EXTENSIONS),
+  coverImageFile: fileField("Cover image", IMAGE_EXTENSIONS, {
+    maxBytes: UPLOAD_LIMITS.IMAGE_BYTES,
+  }),
   manuscriptFile: fileField("Manuscript upload", BOOK_EXTENSIONS, { required: true }),
 });

@@ -8,6 +8,7 @@ const {
   notifyCreatorWentLive,
   setLiveReminder,
 } = require("../../../backend/services/fanReturnPathService");
+const { LIVE_STREAM_RECORDING } = require("../../../backend/config/uploadLimits");
 
 const emitEvent = (req, event, payload) => {
   const io = req.app.get("io");
@@ -147,7 +148,10 @@ exports.requestToken = catchAsync(async (req, res) => {
 
 exports.getLiveConfig = catchAsync(async (req, res) => {
   const livekit = ensureValidLivekitConfig();
-  const payload = { ...livekit };
+  const payload = {
+    ...livekit,
+    recording: LIVE_STREAM_RECORDING,
+  };
 
   if (req.user?.id) {
     const [quota, activeSession] = await Promise.all([

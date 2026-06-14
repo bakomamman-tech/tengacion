@@ -5,6 +5,7 @@ import {
   MARKETPLACE_CONDITIONS,
   MARKETPLACE_DELIVERY_OPTIONS,
 } from "../../services/marketplaceService";
+import { UPLOAD_LIMITS } from "../../config/uploadLimits";
 
 const emptyState = {
   title: "",
@@ -18,6 +19,7 @@ const emptyState = {
   deliveryOptions: ["pickup"],
   deliveryNotes: "",
   images: [],
+  video: null,
 };
 
 export default function ProductForm({
@@ -28,11 +30,15 @@ export default function ProductForm({
 }) {
   const [form, setForm] = useState(emptyState);
   const [existingImages, setExistingImages] = useState([]);
+  const [existingVideo, setExistingVideo] = useState(null);
+  const [mediaError, setMediaError] = useState("");
 
   useEffect(() => {
     if (!initialProduct) {
       setForm(emptyState);
       setExistingImages([]);
+      setExistingVideo(null);
+      setMediaError("");
       return;
     }
 
@@ -50,8 +56,11 @@ export default function ProductForm({
         : ["pickup"],
       deliveryNotes: initialProduct.deliveryNotes || "",
       images: [],
+      video: null,
     });
     setExistingImages(Array.isArray(initialProduct.images) ? initialProduct.images : []);
+    setExistingVideo(initialProduct.video || null);
+    setMediaError("");
   }, [initialProduct]);
 
   const previewFiles = useMemo(
@@ -71,6 +80,20 @@ export default function ProductForm({
     [previewFiles]
   );
 
+  const videoPreviewUrl = useMemo(
+    () => (form.video ? URL.createObjectURL(form.video) : ""),
+    [form.video]
+  );
+
+  useEffect(
+    () => () => {
+      if (videoPreviewUrl) {
+        URL.revokeObjectURL(videoPreviewUrl);
+      }
+    },
+    [videoPreviewUrl]
+  );
+
   const updateField = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
@@ -88,6 +111,30 @@ export default function ProductForm({
         deliveryOptions: Array.from(set),
       };
     });
+  };
+
+  const selectProductVideo = (file) => {
+    if (!file) {
+      updateField("video", null);
+      setMediaError("");
+      return;
+    }
+
+    const mimeType = String(file.type || "").toLowerCase();
+    if (!["video/mp4", "video/quicktime", "video/webm"].includes(mimeType)) {
+      updateField("video", null);
+      setMediaError("Product videos must be MP4, MOV, or WebM.");
+      return;
+    }
+    if ((Number(file.size) || 0) > UPLOAD_LIMITS.MARKETPLACE_PRODUCT_VIDEO_BYTES) {
+      updateField("video", null);
+      setMediaError("Marketplace product videos must be 30MB or smaller.");
+      return;
+    }
+
+    updateField("video", file);
+    setExistingVideo(null);
+    setMediaError("");
   };
 
   return (
@@ -231,7 +278,20 @@ export default function ProductForm({
             type="file"
             accept="image/*"
             multiple
-            onChange={(event) => updateField("images", Array.from(event.target.files || []))}
+            onChange={(event) => {
+              const files = Array.from(event.target.files || []);
+              const oversized = files.find(
+                (file) => (Number(file.size) || 0) > UPLOAD_LIMITS.IMAGE_BYTES
+              );
+              if (oversized) {
+                updateField("images", []);
+                setMediaError("Marketplace product images must be 10MB or smaller.");
+                event.target.value = "";
+                return;
+              }
+              updateField("images", files);
+              setMediaError("");
+            }}
           />
           {existingImages.length ? (
             <div className="marketplace-image-chip-row">
@@ -262,17 +322,53 @@ export default function ProductForm({
             </div>
           ) : null}
         </div>
+
+        <div className="marketplace-form-field marketplace-form-field--full">
+          <label htmlFor="marketplace-product-video">Product video (optional)</label>
+          <input
+            id="marketplace-product-video"
+            type="file"
+            accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm"
+            onChange={(event) => {
+              selectProductVideo(event.target.files?.[0] || null);
+              event.target.value = "";
+            }}
+          />
+          <p className="marketplace-field-hint">MP4, MOV, or WebM. Maximum size: 30MB.</p>
+          {mediaError ? <p className="marketplace-field-error">{mediaError}</p> : null}
+          {videoPreviewUrl || existingVideo ? (
+            <div className="marketplace-video-preview">
+              <video
+                controls
+                src={videoPreviewUrl || existingVideo?.url || existingVideo?.secureUrl}
+              />
+              <button
+                type="button"
+                className="marketplace-ghost-btn"
+                onClick={() => {
+                  updateField("video", null);
+                  setExistingVideo(null);
+                  setMediaError("");
+                }}
+              >
+                Remove video
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="marketplace-form-actions">
         <button
           type="button"
           className="marketplace-primary-btn"
-          disabled={submitting}
+          disabled={submitting || Boolean(mediaError)}
           onClick={() =>
             onSubmit?.({
               ...form,
               existingImages,
+              existingVideo,
+              removeVideo: Boolean(initialProduct?.video && !existingVideo && !form.video),
             })
           }
         >

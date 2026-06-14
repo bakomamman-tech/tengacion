@@ -3,8 +3,10 @@ const multer = require("multer");
 const os = require("os");
 const path = require("path");
 
-const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
-const MEDIA_MAX_BYTES = 100 * 1024 * 1024;
+const { MEBIBYTE, UPLOAD_LIMITS } = require("../config/uploadLimits");
+
+const IMAGE_MAX_BYTES = UPLOAD_LIMITS.IMAGE_BYTES;
+const MEDIA_MAX_BYTES = UPLOAD_LIMITS.CREATOR_MEDIA_BYTES;
 const MAX_UPLOAD_BYTES = MEDIA_MAX_BYTES;
 
 const IMAGE_MIME_TYPES = new Set([
@@ -96,8 +98,10 @@ const isFileLike = (value) =>
     )
   );
 
-const describeSizeLimit = (maxBytes = 0) =>
-  maxBytes === IMAGE_MAX_BYTES ? "10MB" : "100MB";
+const describeSizeLimit = (maxBytes = 0) => {
+  const sizeInMb = Number(maxBytes || 0) / MEBIBYTE;
+  return Number.isInteger(sizeInMb) ? `${sizeInMb}MB` : `${sizeInMb.toFixed(1)}MB`;
+};
 
 const buildUploadError = (message, statusCode = 400) => {
   const error = new Error(message);
@@ -140,7 +144,12 @@ const flattenFiles = (files) => {
   return [];
 };
 
-const validateFilePayload = (file = {}) => {
+const resolveCategoryLimit = (classification, { maxBytesByCategory = {} } = {}) => {
+  const configuredLimit = Number(maxBytesByCategory?.[classification.category] || 0);
+  return configuredLimit > 0 ? configuredLimit : classification.maxBytes;
+};
+
+const validateFilePayload = (file = {}, options = {}) => {
   const classification = classifyFile(file);
   if (!classification) {
     throw buildUploadError(
@@ -149,7 +158,8 @@ const validateFilePayload = (file = {}) => {
   }
 
   const size = Number(file.size || 0);
-  if (size > classification.maxBytes) {
+  const maxBytes = resolveCategoryLimit(classification, options);
+  if (size > maxBytes) {
     const label =
       classification.category === "image"
         ? "Image uploads"
@@ -157,44 +167,61 @@ const validateFilePayload = (file = {}) => {
           ? "Video and audio uploads"
           : "Document uploads";
     throw buildUploadError(
-      `${label} must be ${describeSizeLimit(classification.maxBytes)} or smaller.`,
+      `${label} must be ${describeSizeLimit(maxBytes)} or smaller.`,
       413
     );
   }
 
-  return classification;
+  return {
+    ...classification,
+    maxBytes,
+  };
 };
 
-const validateUploadedFiles = (req, _res, next) => {
+const createUploadedFilesValidator = (options = {}) => (req, _res, next) => {
   try {
     const files = flattenFiles(req.files || req.file);
-    files.forEach((file) => validateFilePayload(file));
+    files.forEach((file) => validateFilePayload(file, options));
     next();
   } catch (error) {
     next(error);
   }
 };
 
-const wrapMulterMiddleware = (middleware) => [
+const validateUploadedFiles = createUploadedFilesValidator();
+
+const wrapMulterMiddleware = (middleware, options = {}) => [
   (req, res, next) => {
     middleware(req, res, (error) => {
       if (error?.name === "MulterError" && error.code === "LIMIT_FILE_SIZE") {
         return next(
-          buildUploadError("Upload exceeds the maximum allowed size of 100MB.", 413)
+          buildUploadError(
+            `Upload exceeds the maximum allowed size of ${describeSizeLimit(options.maxFileBytes)}.`,
+            413
+          )
         );
       }
       return next(error);
     });
   },
-  validateUploadedFiles,
+  createUploadedFilesValidator(options),
 ];
 
-const createConfiguredUpload = ({ candidates = [], fallbackDirName = "tengacion-uploads" } = {}) => {
+const createConfiguredUpload = ({
+  candidates = [],
+  fallbackDirName = "tengacion-uploads",
+  maxFileBytes = MAX_UPLOAD_BYTES,
+  maxBytesByCategory = {},
+} = {}) => {
   const uploadDir = buildUploadDir(candidates, fallbackDirName);
+  const validationOptions = {
+    maxFileBytes,
+    maxBytesByCategory,
+  };
   const instance = multer({
     storage: multer.memoryStorage(),
     limits: {
-      fileSize: MAX_UPLOAD_BYTES,
+      fileSize: maxFileBytes,
       files: 60,
     },
     fileFilter: (_req, file, cb) => {
@@ -203,7 +230,7 @@ const createConfiguredUpload = ({ candidates = [], fallbackDirName = "tengacion-
           originalname: file?.originalname,
           mimetype: file?.mimetype,
           size: 0,
-        });
+        }, validationOptions);
         cb(null, true);
       } catch (error) {
         cb(error);
@@ -213,20 +240,22 @@ const createConfiguredUpload = ({ candidates = [], fallbackDirName = "tengacion-
 
   const upload = {
     single(fieldName) {
-      return wrapMulterMiddleware(instance.single(fieldName));
+      return wrapMulterMiddleware(instance.single(fieldName), validationOptions);
     },
     array(fieldName, maxCount) {
-      return wrapMulterMiddleware(instance.array(fieldName, maxCount));
+      return wrapMulterMiddleware(instance.array(fieldName, maxCount), validationOptions);
     },
     fields(fieldList) {
-      return wrapMulterMiddleware(instance.fields(fieldList));
+      return wrapMulterMiddleware(instance.fields(fieldList), validationOptions);
     },
     any() {
-      return wrapMulterMiddleware(instance.any());
+      return wrapMulterMiddleware(instance.any(), validationOptions);
     },
     none() {
-      return wrapMulterMiddleware(instance.none());
+      return wrapMulterMiddleware(instance.none(), validationOptions);
     },
+    maxBytesByCategory: { ...maxBytesByCategory },
+    maxFileBytes,
     memoryStorage: instance.storage,
     uploadDir,
   };
@@ -245,6 +274,8 @@ module.exports = {
   VIDEO_MIME_TYPES,
   classifyFile,
   createConfiguredUpload,
+  createUploadedFilesValidator,
+  describeSizeLimit,
   validateFilePayload,
   validateUploadedFiles,
 };

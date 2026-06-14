@@ -3,7 +3,7 @@ const express = require("express");
 const Story = require("../models/Story");
 const User = require("../models/User");
 const Message = require("../models/Message");
-const upload = require("../middleware/privateUpload");
+const upload = require("../middleware/storyUpload");
 const moderateUpload = require("../middleware/moderateUpload");
 const { saveUploadedMedia } = require("../services/mediaStore");
 const { createNotification } = require("../services/notificationService");
@@ -65,6 +65,23 @@ const inferStoryMediaType = (file = null) => {
     return "video";
   }
   return "image";
+};
+
+const validateStoryUploads = (req, res, next) => {
+  const files = Array.isArray(req.files) ? req.files : [];
+  const unsupportedFile = files.find((file) => {
+    const mimeType = String(file?.mimetype || "").toLowerCase();
+    return !mimeType.startsWith("image/") && !mimeType.startsWith("video/");
+  });
+
+  if (unsupportedFile) {
+    return res.status(400).json({ error: "Stories support image and video uploads only" });
+  }
+  if (files.length > 1) {
+    return res.status(400).json({ error: "Stories support one image or video at a time" });
+  }
+
+  return next();
 };
 
 const VIDEO_URL_PATTERN = /\.(mp4|webm|ogg|mov|m4v|avi|mkv)(?:$|[?#])/i;
@@ -219,6 +236,7 @@ router.post(
   "/",
   auth,
   upload.any(),
+  validateStoryUploads,
   moderateUpload({
     sourceType: "story",
     titleFields: ["caption", "text"],

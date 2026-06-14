@@ -347,8 +347,10 @@
 
 .marketplace-product-card__image img,
 .marketplace-gallery img,
+.marketplace-gallery video,
 .marketplace-thumb-strip button img,
-.marketplace-image-chip img {
+.marketplace-image-chip img,
+.marketplace-video-preview video {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -612,6 +614,25 @@
   position: relative;
 }
 
+.marketplace-video-preview {
+  max-width: 520px;
+  display: grid;
+  gap: 10px;
+}
+
+.marketplace-video-preview video {
+  max-height: 320px;
+  border-radius: 16px;
+  background: #10253a;
+}
+
+.marketplace-field-error {
+  margin: 0;
+  color: #a32929;
+  font-size: 13px;
+  font-weight: 750;
+}
+
 .marketplace-image-chip button {
   position: absolute;
   right: 6px;
@@ -635,6 +656,21 @@
   border-radius: 28px;
   aspect-ratio: 1 / 0.88;
   background: linear-gradient(160deg, #e8f3fb, #f8ede1);
+}
+
+.marketplace-gallery video {
+  background: #08131d;
+}
+
+.marketplace-video-thumb {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: #10253a;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .marketplace-product-main {

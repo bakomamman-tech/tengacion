@@ -59,8 +59,18 @@ export default function MarketplaceProductDetailsPage() {
   }, [loadProduct]);
 
   const product = payload.product;
-  const images = product?.images || [];
-  const selectedImage = images[selectedIndex] || images[0] || null;
+  const images = useMemo(
+    () => (Array.isArray(product?.images) ? product.images : []),
+    [product?.images]
+  );
+  const galleryMedia = useMemo(
+    () => [
+      ...(product?.video ? [{ ...product.video, type: "video" }] : []),
+      ...images.map((image) => ({ ...image, type: "image" })),
+    ],
+    [images, product?.video]
+  );
+  const selectedMedia = galleryMedia[selectedIndex] || galleryMedia[0] || null;
   const productPath = product ? `/marketplace/product/${product.slug || product._id || idOrSlug}` : `/marketplace/product/${idOrSlug}`;
   const seoDescription = truncateDescription(
     product
@@ -69,7 +79,7 @@ export default function MarketplaceProductDetailsPage() {
       : "Review a Tengacion marketplace product from an approved seller.",
     180
   );
-  const seoImage = selectedImage?.secureUrl || selectedImage?.url || product?.primaryImage?.secureUrl || product?.primaryImage?.url || "";
+  const seoImage = images[0]?.secureUrl || images[0]?.url || product?.primaryImage?.secureUrl || product?.primaryImage?.url || "";
   const seoStructuredData = useMemo(() => {
     if (!product) {
       return [buildWebSiteJsonLd(), buildOrganizationJsonLd()];
@@ -191,17 +201,25 @@ export default function MarketplaceProductDetailsPage() {
             <section className="marketplace-product-layout">
               <div className="marketplace-product-main">
                 <div className="marketplace-gallery">
-                  {selectedImage ? <img src={selectedImage.url || selectedImage.secureUrl} alt={product.title} /> : null}
+                  {selectedMedia?.type === "video" ? (
+                    <video controls src={selectedMedia.url || selectedMedia.secureUrl} />
+                  ) : selectedMedia ? (
+                    <img src={selectedMedia.url || selectedMedia.secureUrl} alt={product.title} />
+                  ) : null}
                 </div>
-                {images.length > 1 ? (
+                {galleryMedia.length > 1 ? (
                   <div className="marketplace-thumb-strip">
-                    {images.map((image, index) => (
+                    {galleryMedia.map((media, index) => (
                       <button
-                        key={image.publicId || image.url || index}
+                        key={media.publicId || media.url || index}
                         type="button"
                         onClick={() => setSelectedIndex(index)}
                       >
-                        <img src={image.url || image.secureUrl} alt="" />
+                        {media.type === "video" ? (
+                          <span className="marketplace-video-thumb">Video</span>
+                        ) : (
+                          <img src={media.url || media.secureUrl} alt="" />
+                        )}
                       </button>
                     ))}
                   </div>

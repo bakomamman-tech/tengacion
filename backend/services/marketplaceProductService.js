@@ -65,6 +65,17 @@ const serializeProductImage = (image = {}) => {
   };
 };
 
+const serializeProductVideo = (video = null) => {
+  if (!video) {
+    return null;
+  }
+
+  const source =
+    typeof video.toObject === "function" ? video.toObject() : video;
+  const serialized = serializeProductImage(source);
+  return serialized.url ? { ...serialized, type: "video" } : null;
+};
+
 const serializeSellerSnippet = (seller = {}) =>
   seller
     ? {
@@ -104,6 +115,7 @@ const serializeProduct = (product = {}, { seller = null, manageView = false } = 
     deliveryNotes: product.deliveryNotes || "",
     images,
     primaryImage: images[0] || null,
+    video: serializeProductVideo(product.video),
     serviceChargeIncluded: true,
     isPublished: Boolean(product.isPublished),
     isHidden: Boolean(product.isHidden),
@@ -130,6 +142,33 @@ const parseExistingImages = (value) =>
       type: "image",
     }));
 
+const parseExistingVideo = (value) => {
+  const entry =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : parseList(value)[0];
+  if (!entry) {
+    return null;
+  }
+
+  const normalized = normalizeMediaValue(entry);
+  if (!normalized.url && !normalized.publicId && !normalized.public_id) {
+    return null;
+  }
+
+  return {
+    ...normalized,
+    type: "video",
+  };
+};
+
+const isTruthy = (value) =>
+  value === true
+  || value === "true"
+  || value === "1"
+  || value === 1
+  || value === "on";
+
 const uploadProductImages = async (files = []) => {
   const uploads = Array.isArray(files) ? files.filter(Boolean) : [];
   if (!uploads.length) {
@@ -150,6 +189,23 @@ const uploadProductImages = async (files = []) => {
     ...normalizeMediaValue(entry),
     type: "image",
   }));
+};
+
+const uploadProductVideo = async (file = null) => {
+  if (!file) {
+    return null;
+  }
+
+  const uploaded = await saveUploadedMedia(file, {
+    source: "marketplace_product_video",
+    folder: "tengacion/marketplace/products",
+    resourceType: "video",
+  });
+
+  return {
+    ...normalizeMediaValue(uploaded),
+    type: "video",
+  };
 };
 
 const buildSellerEligibilityQuery = ({ onlyApproved = true } = {}) =>
@@ -258,7 +314,12 @@ const getSellerProductOrThrow = async ({ sellerId, productId } = {}) => {
   return product;
 };
 
-const createMarketplaceListing = async ({ seller, payload = {}, files = [] } = {}) => {
+const createMarketplaceListing = async ({
+  seller,
+  payload = {},
+  files = [],
+  videoFile = null,
+} = {}) => {
   const { errors, value } = validateProductPayload({
     payload,
     files,
@@ -271,6 +332,7 @@ const createMarketplaceListing = async ({ seller, payload = {}, files = [] } = {
   }
 
   const uploadedImages = await uploadProductImages(files);
+  const uploadedVideo = await uploadProductVideo(videoFile);
   const slug = await generateUniqueSlug(MarketplaceProduct, value.title, {
     fallback: `marketplace-product-${Date.now()}`,
   });
@@ -281,6 +343,7 @@ const createMarketplaceListing = async ({ seller, payload = {}, files = [] } = {
     slug,
     description: value.description,
     images: uploadedImages,
+    video: uploadedVideo,
     category: value.category,
     price: value.price,
     currency: "NGN",
@@ -307,6 +370,7 @@ const updateMarketplaceListing = async ({
   productId,
   payload = {},
   files = [],
+  videoFile = null,
 } = {}) => {
   const product = await getSellerProductOrThrow({
     sellerId: seller._id,
@@ -314,6 +378,8 @@ const updateMarketplaceListing = async ({
   });
 
   const existingImages = parseExistingImages(payload.existingImages);
+  const existingVideo = parseExistingVideo(payload.existingVideo);
+  const removeVideo = isTruthy(payload.removeVideo);
   const { errors, value } = validateProductPayload({
     payload,
     files,
@@ -326,10 +392,13 @@ const updateMarketplaceListing = async ({
   }
 
   const uploadedImages = await uploadProductImages(files);
+  const uploadedVideo = await uploadProductVideo(videoFile);
   const nextImages =
     existingImages.length || uploadedImages.length
       ? [...existingImages, ...uploadedImages]
       : product.images;
+  const previousVideo = product.video ? normalizeMediaValue(product.video) : null;
+  const nextVideo = uploadedVideo || (removeVideo ? null : existingVideo || product.video || null);
 
   product.title = value.title;
   product.description = value.description;
@@ -342,12 +411,20 @@ const updateMarketplaceListing = async ({
   product.deliveryOptions = value.deliveryOptions;
   product.deliveryNotes = value.deliveryNotes;
   product.images = nextImages;
+  product.video = nextVideo;
   product.slug = await generateUniqueSlug(MarketplaceProduct, value.title, {
     ignoreId: product._id,
     fallback: product.slug || `marketplace-product-${Date.now()}`,
   });
 
   await product.save();
+
+  if (
+    previousVideo?.url
+    && previousVideo.url !== normalizeMediaValue(nextVideo).url
+  ) {
+    await deleteUploadedMediaBatch([previousVideo]).catch(() => null);
+  }
 
   return serializeProduct(product, {
     seller,
@@ -423,7 +500,10 @@ const deleteMarketplaceListing = async ({ seller, productId } = {}) => {
     };
   }
 
-  await deleteUploadedMediaBatch(product.images || []);
+  await deleteUploadedMediaBatch([
+    ...(product.images || []),
+    ...(product.video ? [product.video] : []),
+  ]);
   await MarketplaceProduct.deleteOne({ _id: product._id });
 
   return {
@@ -783,7 +863,10 @@ const removeMarketplaceProductByAdmin = async ({ productId } = {}) => {
     };
   }
 
-  await deleteUploadedMediaBatch(product.images || []);
+  await deleteUploadedMediaBatch([
+    ...(product.images || []),
+    ...(product.video ? [product.video] : []),
+  ]);
   await MarketplaceProduct.deleteOne({ _id: product._id });
 
   return {

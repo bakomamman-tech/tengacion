@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../../../backend/middleware/auth");
-const upload = require("../../../backend/middleware/privateUpload");
+const upload = require("../../../backend/middleware/postUpload");
 const moderateUpload = require("../../../backend/middleware/moderateUpload");
 const {
   IMAGE_MIME_TYPES,

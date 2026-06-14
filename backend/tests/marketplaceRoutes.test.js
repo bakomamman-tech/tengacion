@@ -258,6 +258,51 @@ describe("Marketplace routes", () => {
     expect(response.body.error).toMatch(/approved sellers/i);
   });
 
+  test("approved sellers can attach an optional marketplace product video", async () => {
+    const { user: sellerUser, token } = await createUser({
+      name: "Video Seller",
+      username: "video_seller",
+      email: "video-seller@example.com",
+    });
+
+    await createSellerProfile({
+      userId: sellerUser._id,
+      storeName: "Video Showcase",
+    });
+
+    const response = await request(app)
+      .post("/api/marketplace/products")
+      .set("Authorization", `Bearer ${token}`)
+      .field("title", "Demonstration Product")
+      .field("description", "A product listing with a short demonstration video.")
+      .field("category", "Electronics")
+      .field("price", "5000")
+      .field("stock", "4")
+      .field("condition", "new")
+      .field("state", "Lagos")
+      .field("city", "Ikeja")
+      .field("deliveryOptions", JSON.stringify(["pickup"]))
+      .attach("images", Buffer.from("image"), {
+        filename: "product.jpg",
+        contentType: "image/jpeg",
+      })
+      .attach("video", Buffer.from("video"), {
+        filename: "demonstration.mp4",
+        contentType: "video/mp4",
+      })
+      .expect(201);
+
+    expect(response.body.product.video).toMatchObject({
+      type: "video",
+      resourceType: "video",
+    });
+    expect(response.body.product.video.url).toContain("/video/upload/");
+
+    const stored = await MarketplaceProduct.findById(response.body.product._id).lean();
+    expect(stored.video.type).toBe("video");
+    expect(stored.video.url).toContain("/video/upload/");
+  });
+
   test("product validation enforces the minimum NGN 300 listing price", () => {
     const result = validateProductPayload({
       payload: {

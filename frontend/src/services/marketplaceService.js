@@ -67,10 +67,19 @@ const buildProductFormData = (payload = {}) => {
   if (Array.isArray(payload.existingImages)) {
     form.append("existingImages", JSON.stringify(payload.existingImages));
   }
+  if (payload.existingVideo) {
+    form.append("existingVideo", JSON.stringify(payload.existingVideo));
+  }
+  if (payload.removeVideo !== undefined) {
+    form.append("removeVideo", String(Boolean(payload.removeVideo)));
+  }
   if (payload.isPublished !== undefined) {
     form.append("isPublished", String(Boolean(payload.isPublished)));
   }
   appendFiles(form, "images", payload.images);
+  if (payload.video instanceof File) {
+    form.append("video", payload.video);
+  }
   return form;
 };
 

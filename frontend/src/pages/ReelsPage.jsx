@@ -10,8 +10,9 @@ import {
   likePost,
   resolveImage,
 } from "../api";
+import { UPLOAD_LIMITS } from "../config/uploadLimits";
 
-const MAX_REEL_BYTES = 100 * 1024 * 1024;
+const MAX_REEL_BYTES = UPLOAD_LIMITS.FEED_VIDEO_BYTES;
 const VIDEO_EXT_RE = /\.(mp4|webm|ogg|mov|m4v)(?:\?.*)?$/i;
 const compactFormatter = new Intl.NumberFormat("en", {
   notation: "compact",
@@ -185,7 +186,7 @@ function ReelComposerModal({ user, onClose, onCreated }) {
       return false;
     }
     if (nextFile.size > MAX_REEL_BYTES) {
-      setError("Reels must be 100MB or less.");
+      setError("Reels must be 50MB or smaller.");
       return false;
     }
     setError("");

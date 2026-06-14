@@ -34,6 +34,10 @@ const MarketplaceProductSchema = new mongoose.Schema(
       type: [createMediaAssetSchema({ includeType: true, defaultType: "image" })],
       default: [],
     },
+    video: {
+      type: createMediaAssetSchema({ includeType: true, defaultType: "video" }),
+      default: null,
+    },
     category: {
       type: String,
       default: "",

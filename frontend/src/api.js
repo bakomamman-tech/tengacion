@@ -11,6 +11,7 @@ import {
   getSessionAccessToken,
   setSessionAccessToken,
 } from "./authSession";
+import { UPLOAD_LIMITS } from "./config/uploadLimits";
 
 const normalizeApiBase = (value) => {
   const raw = String(value || "").trim();
@@ -1406,8 +1407,24 @@ const toPostUploadFiles = (payload = {}) => {
   return payload?.file ? [payload.file] : [];
 };
 
-const optimizePostUploadFiles = async (files = []) =>
-  Promise.all((Array.isArray(files) ? files : []).map((file) => compressImageFile(file)));
+const validatePostUploadSizes = (files = []) => {
+  (Array.isArray(files) ? files : []).forEach((file) => {
+    const isVideo = String(file?.type || "").toLowerCase().startsWith("video/");
+    const maxBytes = isVideo ? UPLOAD_LIMITS.FEED_VIDEO_BYTES : UPLOAD_LIMITS.IMAGE_BYTES;
+    if ((Number(file?.size) || 0) > maxBytes) {
+      throw new Error(
+        isVideo
+          ? "Feed videos must be 50MB or smaller."
+          : "Post images must be 10MB or smaller."
+      );
+    }
+  });
+};
+
+const optimizePostUploadFiles = async (files = []) => {
+  validatePostUploadSizes(files);
+  return Promise.all((Array.isArray(files) ? files : []).map((file) => compressImageFile(file)));
+};
 
 const appendPostComposerFields = (form, payload = {}, files = []) => {
   const {
@@ -1740,12 +1757,33 @@ const appendStoryMusicAttachment = (formData, musicAttachment = null) => {
   return formData;
 };
 
-export const createStory = (formData, { musicAttachment = null } = {}) =>
-  request(`${API_BASE}/stories`, {
+const validateStoryFileSize = (file) => {
+  if (!file) {
+    return;
+  }
+  const isVideo = String(file.type || "").toLowerCase().startsWith("video/");
+  const maxBytes = isVideo
+    ? UPLOAD_LIMITS.PROFILE_STORY_VIDEO_BYTES
+    : UPLOAD_LIMITS.IMAGE_BYTES;
+  if ((Number(file.size) || 0) > maxBytes) {
+    throw new Error(
+      isVideo
+        ? "Story videos must be 25MB or smaller."
+        : "Story images must be 10MB or smaller."
+    );
+  }
+};
+
+export const createStory = (formData, { musicAttachment = null } = {}) => {
+  validateStoryFileSize(
+    formData?.get?.("media") || formData?.get?.("video") || formData?.get?.("image")
+  );
+  return request(`${API_BASE}/stories`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: appendStoryMusicAttachment(formData, musicAttachment),
   });
+};
 
 export const createStoryWithUploadProgress = ({
   file,
@@ -1758,6 +1796,12 @@ export const createStoryWithUploadProgress = ({
   new Promise((resolve, reject) => {
     if (!file) {
       reject(new Error("Choose a story file"));
+      return;
+    }
+    try {
+      validateStoryFileSize(file);
+    } catch (error) {
+      reject(error);
       return;
     }
 

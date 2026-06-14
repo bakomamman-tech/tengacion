@@ -410,13 +410,14 @@
   padding: 16px;
 }
 
-.public-home-leader__body p {
+.public-home-leader__role {
   min-height: 38px;
   margin: 0;
-  color: #2a6f4f;
-  font-size: 13px;
-  line-height: 1.45;
+  color: #1d6648;
+  font-size: 15px;
+  line-height: 1.35;
   font-weight: 900;
+  letter-spacing: 0.01em;
 }
 
 .public-home-leader__body strong {

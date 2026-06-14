@@ -210,13 +210,14 @@
   padding: 20px 18px 22px;
 }
 
-.leadership-card__body > p:first-child {
+.leadership-card__role {
   min-height: 40px;
   margin: 0;
-  color: #2a6f4f;
-  font-size: 13px;
-  line-height: 1.45;
-  font-weight: 850;
+  color: #1d6648;
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 900;
+  letter-spacing: 0.01em;
 }
 
 .leadership-card__body h2 {
@@ -409,7 +410,7 @@
     max-width: none;
   }
 
-  .leadership-card__body > p:first-child {
+  .leadership-card__role {
     min-height: 0;
   }
 

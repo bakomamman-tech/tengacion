@@ -108,7 +108,7 @@ export default function LeadershipPage() {
                 )}
               </div>
               <div className="leadership-card__body">
-                <p>{leader.role}</p>
+                <p className="leadership-card__role">{leader.role}</p>
                 <h2>{leader.name}</h2>
                 {leader.location ? <span className="leadership-card__location">{leader.location}</span> : null}
                 <div className="leadership-card__rule" aria-hidden="true" />
@@ -144,7 +144,7 @@ export default function LeadershipPage() {
                 <img src={leader.image} alt={leader.imageAlt} loading="lazy" />
               </div>
               <div className="leadership-card__body">
-                <p>{leader.role}</p>
+                <p className="leadership-card__role">{leader.role}</p>
                 <h2>{leader.name}</h2>
                 <div className="leadership-card__rule" aria-hidden="true" />
                 <p className="leadership-card__bio">{leader.bio}</p>

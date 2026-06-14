@@ -531,7 +531,7 @@ export default function PublicHomePage() {
                 {leader.isPlaceholder ? <span>Illustrative placeholder</span> : <span>Founder</span>}
               </div>
               <div className="public-home-leader__body">
-                <p>{leader.shortRole}</p>
+                <p className="public-home-leader__role">{leader.shortRole}</p>
                 <strong>{leader.name}</strong>
               </div>
             </Link>

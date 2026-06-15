@@ -2599,8 +2599,8 @@ html:is(:not(.dark-mode), .dark-mode) .tg-assistant-confirm-card__badge {
   border-color: rgba(189, 132, 48, 0.52);
   color: #111b3b;
   background:
-    radial-gradient(circle at 100% 0%, rgba(111, 53, 181, 0.12), transparent 7rem),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 238, 231, 0.94) 100%);
+    radial-gradient(circle at 100% 0%, rgba(111, 53, 181, 0.22), transparent 7rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(235, 221, 244, 0.95) 100%);
   box-shadow:
     0 18px 38px rgba(42, 49, 78, 0.18),
     0 0 22px rgba(189, 132, 48, 0.1),
@@ -2630,8 +2630,8 @@ html:is(:not(.dark-mode), .dark-mode) .tg-assistant-confirm-card__badge {
   border-color: rgba(189, 132, 48, 0.4);
   color: #111b3b;
   background:
-    radial-gradient(circle at 100% 0%, rgba(111, 53, 181, 0.1), transparent 7rem),
-    rgba(255, 253, 249, 0.98);
+    radial-gradient(circle at 100% 0%, rgba(111, 53, 181, 0.2), transparent 7rem),
+    rgba(247, 238, 251, 0.98);
   box-shadow:
     0 16px 36px rgba(42, 49, 78, 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.96);
@@ -2654,9 +2654,9 @@ html:is(:not(.dark-mode), .dark-mode) .tg-assistant-confirm-card__badge {
 :is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-confirm-card {
   border-color: rgba(232, 194, 116, 0.5);
   background:
-    radial-gradient(circle at 100% 0%, rgba(111, 53, 181, 0.2), transparent 18rem),
-    radial-gradient(circle at 0% 100%, rgba(52, 94, 216, 0.14), transparent 20rem),
-    linear-gradient(180deg, #102349 0%, #061229 100%);
+    radial-gradient(circle at 100% 0%, rgba(132, 64, 198, 0.34), transparent 19rem),
+    radial-gradient(circle at 0% 100%, rgba(91, 57, 181, 0.22), transparent 21rem),
+    linear-gradient(180deg, #17234f 0%, #120d31 58%, #061229 100%);
   box-shadow:
     0 34px 76px rgba(31, 37, 67, 0.34),
     0 0 34px rgba(189, 132, 48, 0.1),
@@ -2666,5 +2666,5 @@ html:is(:not(.dark-mode), .dark-mode) .tg-assistant-confirm-card__badge {
 :is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-panel__header,
 :is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-panel--expanded .tg-assistant-panel__header {
   border-bottom-color: rgba(232, 194, 116, 0.22);
-  background: linear-gradient(180deg, rgba(20, 43, 84, 0.98), rgba(8, 22, 48, 0.97));
+  background: linear-gradient(180deg, rgba(34, 39, 91, 0.98), rgba(19, 15, 57, 0.97));
 }

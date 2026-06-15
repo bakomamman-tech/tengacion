@@ -18739,6 +18739,144 @@ html.dark-mode .password-toggle-btn:hover {
   padding: 10px;
 }
 
+/* Reference palette for the landing/login pair. */
+.login-container--luxury {
+  --auth-bg: #f7f1e9;
+  --auth-bg-deep: #ece7f0;
+  --auth-glow: #7540b8;
+  --auth-cream: #f5d991;
+  --auth-cream-soft: #0d1d3d;
+  --auth-cream-deep: #07142d;
+  --auth-ink: #f8f3e9;
+  --auth-muted: #b5c0d6;
+  --auth-border: rgba(232, 194, 116, 0.34);
+  --auth-border-strong: rgba(232, 194, 116, 0.58);
+  --auth-accent: #d39739;
+  --auth-accent-strong: #f0cb79;
+  --auth-accent-soft: rgba(111, 53, 181, 0.18);
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.5), transparent 42%),
+    radial-gradient(circle at 12% 12%, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0) 30%),
+    radial-gradient(circle at 90% 13%, rgba(232, 194, 116, 0.3) 0%, rgba(232, 194, 116, 0) 25%),
+    radial-gradient(circle at 10% 88%, rgba(111, 53, 181, 0.2) 0%, rgba(111, 53, 181, 0) 32%),
+    radial-gradient(circle at 88% 82%, rgba(50, 133, 194, 0.2) 0%, rgba(50, 133, 194, 0) 31%),
+    linear-gradient(180deg, #fffdf9 0%, #f7f1e9 48%, #eceaf3 100%);
+}
+
+.login-container--luxury::before {
+  background: radial-gradient(circle, rgba(232, 194, 116, 0.38) 0%, rgba(232, 194, 116, 0) 72%);
+}
+
+.login-container--luxury::after {
+  background: radial-gradient(circle, rgba(111, 53, 181, 0.24) 0%, rgba(111, 53, 181, 0) 70%);
+}
+
+.login-container--luxury .login-left {
+  color: #111b3b;
+  border-color: rgba(189, 132, 48, 0.42);
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.88), transparent 36%),
+    radial-gradient(circle at 88% 84%, rgba(111, 53, 181, 0.12), transparent 34%),
+    linear-gradient(145deg, rgba(255, 253, 249, 0.9), rgba(239, 234, 241, 0.92));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 28px 70px rgba(43, 50, 82, 0.16),
+    0 0 38px rgba(189, 132, 48, 0.08);
+}
+
+.login-container--luxury .login-left::before {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58) 0%, rgba(255, 255, 255, 0) 34%),
+    radial-gradient(circle at top right, rgba(232, 194, 116, 0.18) 0%, rgba(232, 194, 116, 0) 36%);
+}
+
+.login-container--luxury .login-logo {
+  border-color: rgba(189, 132, 48, 0.5);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(235, 222, 246, 0.7));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 0 24px rgba(189, 132, 48, 0.14);
+}
+
+.login-container--luxury .login-title {
+  color: #111b3b;
+  text-shadow: 0 0 22px rgba(189, 132, 48, 0.12);
+}
+
+.login-container--luxury .login-subtitle {
+  color: #515b73;
+}
+
+.login-container--luxury .feature-item {
+  border-color: rgba(189, 132, 48, 0.24);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(235, 225, 247, 0.5)),
+    rgba(255, 253, 249, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 10px 24px rgba(42, 49, 78, 0.08);
+}
+
+.login-container--luxury .feature-item p {
+  color: #26304f;
+}
+
+.login-container--luxury .login-box {
+  border-color: rgba(232, 194, 116, 0.52);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(111, 53, 181, 0.22), transparent 15rem),
+    radial-gradient(circle at 0% 100%, rgba(50, 94, 216, 0.16), transparent 16rem),
+    linear-gradient(180deg, #102349 0%, #07142d 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 215, 0.12),
+    0 24px 48px rgba(32, 38, 68, 0.28),
+    0 0 32px rgba(189, 132, 48, 0.1);
+}
+
+.login-container--luxury input.login-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]) {
+  border-color: rgba(232, 194, 116, 0.32);
+  color: #f8f4ea;
+  background: linear-gradient(180deg, rgba(19, 39, 78, 0.96) 0%, rgba(9, 24, 52, 0.98) 100%);
+}
+
+.login-container--luxury .signup-btn {
+  border: 1px solid rgba(232, 194, 116, 0.34);
+  color: #f5ead1;
+  background: linear-gradient(180deg, rgba(24, 46, 87, 0.96) 0%, rgba(10, 25, 53, 0.98) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.login-container--luxury .signup-btn:hover {
+  border-color: rgba(232, 194, 116, 0.62);
+  color: #ffffff;
+  background: linear-gradient(180deg, rgba(42, 57, 100, 0.98) 0%, rgba(18, 31, 65, 0.98) 100%);
+  box-shadow: 0 0 22px rgba(111, 53, 181, 0.16);
+}
+
+.login-container--luxury .developer-contact-cta {
+  border-color: rgba(189, 132, 48, 0.42);
+  color: #111b3b;
+  background:
+    radial-gradient(circle at top right, rgba(111, 53, 181, 0.12) 0%, rgba(111, 53, 181, 0) 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(242, 235, 228, 0.9) 100%);
+  box-shadow:
+    0 16px 32px rgba(42, 49, 78, 0.14),
+    0 0 0 1px rgba(255, 255, 255, 0.68) inset;
+}
+
+.login-container--luxury .developer-contact-cta::before {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.login-container--luxury .developer-contact-cta:hover {
+  box-shadow:
+    0 20px 38px rgba(42, 49, 78, 0.18),
+    0 0 24px rgba(111, 53, 181, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.78) inset;
+}
+
 .auth-qr-placeholder {
   display: grid;
   place-items: center;

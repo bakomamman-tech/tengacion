@@ -2593,3 +2593,78 @@ html:is(:not(.dark-mode), .dark-mode) .tg-assistant-confirm-card__badge {
   color: #1a1004;
   background: linear-gradient(135deg, #fff1bc 0%, #d99939 52%, #f5cd79 100%);
 }
+
+/* Match Akuso to the reference palette on the redesigned public entry pages. */
+:is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-launcher {
+  border-color: rgba(189, 132, 48, 0.52);
+  color: #111b3b;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(111, 53, 181, 0.12), transparent 7rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 238, 231, 0.94) 100%);
+  box-shadow:
+    0 18px 38px rgba(42, 49, 78, 0.18),
+    0 0 22px rgba(189, 132, 48, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+:is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-launcher:hover,
+:is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-launcher.is-open {
+  border-color: rgba(111, 53, 181, 0.5);
+  color: #101936;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(111, 53, 181, 0.18), transparent 7rem),
+    linear-gradient(180deg, #ffffff 0%, #eee5f5 100%);
+  box-shadow:
+    0 22px 44px rgba(42, 49, 78, 0.22),
+    0 0 28px rgba(111, 53, 181, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.98);
+}
+
+:is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-launcher:focus-visible {
+  box-shadow:
+    0 0 0 3px rgba(111, 53, 181, 0.18),
+    0 22px 44px rgba(42, 49, 78, 0.2);
+}
+
+:is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-launcher__hint {
+  border-color: rgba(189, 132, 48, 0.4);
+  color: #111b3b;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(111, 53, 181, 0.1), transparent 7rem),
+    rgba(255, 253, 249, 0.98);
+  box-shadow:
+    0 16px 36px rgba(42, 49, 78, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+:is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-launcher__hint span {
+  color: #9b6721;
+}
+
+:is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-launcher__hint strong,
+:is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-launcher__copy strong {
+  color: #111b3b;
+}
+
+:is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-launcher__copy small {
+  color: #626a80;
+}
+
+:is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-panel,
+:is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-confirm-card {
+  border-color: rgba(232, 194, 116, 0.5);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(111, 53, 181, 0.2), transparent 18rem),
+    radial-gradient(circle at 0% 100%, rgba(52, 94, 216, 0.14), transparent 20rem),
+    linear-gradient(180deg, #102349 0%, #061229 100%);
+  box-shadow:
+    0 34px 76px rgba(31, 37, 67, 0.34),
+    0 0 34px rgba(189, 132, 48, 0.1),
+    inset 0 1px 0 rgba(255, 242, 202, 0.1);
+}
+
+:is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-panel__header,
+:is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-panel--expanded .tg-assistant-panel__header {
+  border-bottom-color: rgba(232, 194, 116, 0.22);
+  background: linear-gradient(180deg, rgba(20, 43, 84, 0.98), rgba(8, 22, 48, 0.97));
+}

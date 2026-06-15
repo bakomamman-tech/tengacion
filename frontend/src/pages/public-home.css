@@ -1661,7 +1661,8 @@
   }
 }
 
-/* Reference palette: luminous ivory, midnight navy, metallic gold, and jewel violet. */
+/* Retained for reference only; the dark navy/gold palette above is the active design. */
+@media (max-width: 0px) {
 .public-home {
   --home-night: #07142d;
   --home-night-soft: #0b1d3d;
@@ -2072,4 +2073,5 @@
 .public-home__band .public-home__trust-links a {
   color: #eef2f9;
   background: rgba(16, 35, 73, 0.74);
+}
 }

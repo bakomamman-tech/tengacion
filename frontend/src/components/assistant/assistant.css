@@ -2218,3 +2218,378 @@ html.dark-mode .tg-assistant-panel--expanded .tg-assistant-message--user .tg-ass
     max-width: min(88%, 19rem);
   }
 }
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-launcher-wrap,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-confirm-backdrop {
+  --akuso-night: #030817;
+  --akuso-night-soft: #07142d;
+  --akuso-gold: #edbd61;
+  --akuso-gold-light: #fff0bd;
+  --akuso-violet: #8b45ff;
+  --akuso-violet-light: #c198ff;
+  --akuso-text: #f8f4e9;
+  --akuso-muted: #aeb9d0;
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-launcher {
+  border-color: rgba(237, 189, 97, 0.48);
+  color: var(--akuso-text);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(139, 69, 255, 0.2), transparent 7rem),
+    linear-gradient(180deg, rgba(16, 31, 62, 0.98) 0%, rgba(4, 11, 27, 0.98) 100%);
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.38),
+    0 0 22px rgba(237, 189, 97, 0.08),
+    inset 0 1px 0 rgba(255, 241, 195, 0.1);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-launcher:hover,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-launcher.is-open {
+  border-color: rgba(255, 224, 155, 0.78);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(139, 69, 255, 0.3), transparent 7rem),
+    linear-gradient(180deg, rgba(24, 40, 76, 0.99) 0%, rgba(7, 15, 34, 0.99) 100%);
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, 0.44),
+    0 0 28px rgba(139, 69, 255, 0.16),
+    inset 0 1px 0 rgba(255, 241, 195, 0.14);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-launcher:focus-visible {
+  box-shadow:
+    0 0 0 3px rgba(237, 189, 97, 0.22),
+    0 22px 44px rgba(0, 0, 0, 0.44);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-launcher__hint {
+  border-color: rgba(237, 189, 97, 0.4);
+  color: var(--akuso-text);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(139, 69, 255, 0.18), transparent 7rem),
+    rgba(6, 15, 34, 0.98);
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 241, 195, 0.08);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-launcher__hint span {
+  color: var(--akuso-gold);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-launcher__hint strong,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-launcher__copy strong {
+  color: var(--akuso-gold-light);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-launcher__copy small {
+  color: var(--akuso-muted);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-launcher__icon,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel__icon {
+  color: #1a1004;
+  background: linear-gradient(135deg, #fff1bc 0%, #d99a39 50%, #f5ce7b 100%);
+  box-shadow:
+    0 12px 28px rgba(218, 153, 57, 0.24),
+    0 0 20px rgba(139, 69, 255, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.66);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock.tg-assistant-dock--expanded {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(41, 84, 255, 0.18), transparent 26rem),
+    radial-gradient(circle at 90% 16%, rgba(139, 69, 255, 0.16), transparent 24rem),
+    var(--akuso-night);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-confirm-card {
+  border-color: rgba(237, 189, 97, 0.4);
+  color: var(--akuso-text);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(139, 69, 255, 0.14), transparent 18rem),
+    linear-gradient(180deg, rgba(12, 27, 55, 0.99) 0%, rgba(3, 9, 23, 0.99) 100%);
+  box-shadow:
+    0 34px 76px rgba(0, 0, 0, 0.48),
+    0 0 34px rgba(237, 189, 97, 0.07),
+    inset 0 1px 0 rgba(255, 242, 202, 0.09);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock--expanded .tg-assistant-panel--expanded,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock--expanded .tg-assistant-workspace,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel--expanded .tg-assistant-stage {
+  background:
+    radial-gradient(circle at 82% 8%, rgba(139, 69, 255, 0.1), transparent 28rem),
+    linear-gradient(180deg, #07142d 0%, #030817 100%);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel__header,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel--expanded .tg-assistant-panel__header {
+  border-bottom-color: rgba(237, 189, 97, 0.2);
+  background: linear-gradient(180deg, rgba(17, 33, 65, 0.98), rgba(7, 16, 36, 0.96));
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel__identity h2,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-stage__copy h3 {
+  color: var(--akuso-gold-light);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel__identity p,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-sidebar__thread-card p,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-stage__copy p,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-stage__composer-note,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-error p,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-card__subtitle,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-card__description,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-typing__text,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__hint,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__textarea::placeholder {
+  color: var(--akuso-muted);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel__header-actions {
+  border-color: rgba(237, 189, 97, 0.2);
+  background: rgba(139, 69, 255, 0.09);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel__window-control {
+  color: #e8d5a7;
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel__window-control:hover,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel__window-control:focus-visible {
+  background: rgba(139, 69, 255, 0.2);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel__window-control:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(237, 189, 97, 0.24);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel__window-control--close:hover,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel__window-control--close:focus-visible {
+  color: #fff7f6;
+  background: #9c3346;
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-sidebar,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock--expanded .tg-assistant-sidebar {
+  border-right-color: rgba(237, 189, 97, 0.18);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(139, 69, 255, 0.13), transparent 14rem),
+    linear-gradient(180deg, rgba(10, 23, 48, 0.99), rgba(3, 10, 24, 0.98));
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-sidebar__label,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__meta,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-card__kicker {
+  color: var(--akuso-gold);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-sidebar__thread-card,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-sidebar__starter,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-writing-controls,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-writing-controls select,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-stage__composer-shell,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-card,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-evidence,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-detail,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-safety,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-feedback,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-source-chip,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-error,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__textarea,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__attachment,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__attachment {
+  border-color: rgba(237, 189, 97, 0.22);
+  color: var(--akuso-text);
+  background: linear-gradient(145deg, rgba(18, 33, 64, 0.94), rgba(6, 14, 31, 0.96));
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-mode-pill,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-chip,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-sidebar__new-chat,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__tool,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__attachment-remove,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__action,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-feedback__button {
+  border-color: rgba(237, 189, 97, 0.26);
+  color: #eee7d7;
+  background: linear-gradient(180deg, rgba(23, 39, 74, 0.98), rgba(8, 17, 37, 0.98));
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-mode-pill.is-active,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-mode-pill:hover,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-mode-pill:focus-visible,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-chip:hover,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-chip:focus-visible,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-sidebar__starter:hover,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-sidebar__starter:focus-visible,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-sidebar__new-chat:hover,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-sidebar__new-chat:focus-visible,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__tool:hover,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__tool:focus-visible,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__attachment-remove:hover,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__attachment-remove:focus-visible,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__action:hover,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__action:focus-visible,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__action.is-copied,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__action.is-active {
+  border-color: rgba(255, 224, 155, 0.62);
+  color: var(--akuso-gold-light);
+  background: linear-gradient(180deg, rgba(59, 43, 101, 0.98), rgba(17, 23, 51, 0.98));
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-writing-controls select {
+  color-scheme: dark;
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-stage__composer {
+  background:
+    linear-gradient(180deg, rgba(3, 8, 23, 0) 0%, rgba(3, 8, 23, 0.93) 22%, rgba(3, 8, 23, 0.99) 100%);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel--expanded .tg-assistant-stage__composer {
+  background:
+    linear-gradient(180deg, rgba(3, 8, 23, 0) 0%, rgba(3, 8, 23, 0.96) 28%, #030817 100%);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-stage__composer-dot,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-typing i {
+  background: var(--akuso-gold);
+  box-shadow: 0 0 0 0.3rem rgba(139, 69, 255, 0.14);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__textarea:focus-visible {
+  border-color: rgba(255, 224, 155, 0.6);
+  background: rgba(10, 21, 45, 0.98);
+  box-shadow: 0 0 0 3px rgba(139, 69, 255, 0.18);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel--expanded .tg-assistant-composer__textarea,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel--expanded .tg-assistant-composer__textarea:focus-visible {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__send {
+  color: #1a1004;
+  background: linear-gradient(135deg, #fff1bc 0%, #d99939 50%, #f5cd79 100%);
+  box-shadow:
+    0 14px 28px rgba(218, 153, 57, 0.26),
+    0 0 18px rgba(139, 69, 255, 0.15);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__send:hover,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__send:focus-visible {
+  box-shadow:
+    0 18px 34px rgba(237, 189, 97, 0.34),
+    0 0 24px rgba(139, 69, 255, 0.2);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__avatar,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__attachment-icon,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__attachment-icon {
+  color: var(--akuso-violet-light);
+  background: rgba(139, 69, 255, 0.16);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__meta-tag {
+  color: #e8d5a7;
+  background: rgba(237, 189, 97, 0.1);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__bubble,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message--user .tg-assistant-message__bubble,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel--expanded .tg-assistant-message--user .tg-assistant-message__bubble {
+  border-color: rgba(237, 189, 97, 0.18);
+  color: var(--akuso-text);
+  background: linear-gradient(135deg, rgba(54, 37, 95, 0.92), rgba(13, 23, 49, 0.96));
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__reply {
+  border-color: rgba(237, 189, 97, 0.18);
+  background:
+    linear-gradient(90deg, rgba(237, 189, 97, 0.48), rgba(139, 69, 255, 0.36) 0.3rem, rgba(8, 18, 39, 0.94) 0.3rem);
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 239, 194, 0.05);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-panel--expanded .tg-assistant-message__reply,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__bubble--assistant {
+  background: transparent;
+  box-shadow: none;
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__formatted,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__formatted h3,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__formatted h4,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__formatted h5,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__formatted h6,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__attachment-name {
+  color: var(--akuso-text);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__formatted pre {
+  border-color: rgba(237, 189, 97, 0.24);
+  background: #01040d;
+  color: #f8f4e9;
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__formula {
+  border-color: rgba(237, 189, 97, 0.28);
+  color: var(--akuso-gold-light);
+  background: rgba(15, 27, 55, 0.96);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-card__action,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-confirm-card__hint {
+  color: var(--akuso-gold) !important;
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-source-chip {
+  color: #d8deeb;
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-safety--caution {
+  border-color: rgba(237, 189, 97, 0.3);
+  background: rgba(102, 71, 24, 0.24);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-safety--refusal {
+  border-color: rgba(224, 102, 82, 0.28);
+  background: rgba(104, 38, 31, 0.22);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-safety--emergency {
+  border-color: rgba(225, 82, 82, 0.3);
+  background: rgba(116, 29, 35, 0.24);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-error {
+  border-color: rgba(224, 102, 82, 0.32);
+  background: rgba(89, 31, 35, 0.26);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-error strong {
+  color: #ffb7a9;
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__action--report:hover,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__action--report:focus-visible,
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__action--report.is-reported {
+  border-color: rgba(248, 113, 113, 0.34);
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.3);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-confirm-backdrop {
+  background: rgba(1, 4, 13, 0.72);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-confirm-card__badge {
+  color: #1a1004;
+  background: linear-gradient(135deg, #fff1bc 0%, #d99939 52%, #f5cd79 100%);
+}

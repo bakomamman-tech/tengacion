@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import SeoHead from "../components/seo/SeoHead";
@@ -56,9 +57,34 @@ const GALLERY = [
 ];
 
 const TRACKS = [
-  { title: "Raw Vocals Playback Level", duration: "03:27", tag: "Featured" },
-  { title: "After Hours Melody", duration: "02:58", tag: "Afro-fusion" },
-  { title: "Gold Chain Rhythm", duration: "03:14", tag: "Street soul" },
+  {
+    id: "tashi-mu-je",
+    title: "Tashi Mu Je",
+    duration: 179,
+    tag: "Featured",
+    src: "/assets/audio/pyrexx-singz/pyrex-tashi-mu-je.mp3",
+  },
+  {
+    id: "yarinya",
+    title: "Yarinya",
+    duration: 137,
+    tag: "Afro-fusion",
+    src: "/assets/audio/pyrexx-singz/pyrexx-sing-yarinya.mp3",
+  },
+  {
+    id: "hold-me-pray",
+    title: "Hold Me & Pray",
+    duration: 158,
+    tag: "Prayer anthem",
+    src: "/assets/audio/pyrexx-singz/pyrexx-singz-hold-me-pray.mp3",
+  },
+  {
+    id: "mamas-love",
+    title: "Mama's Love",
+    duration: 166,
+    tag: "Soul dedication",
+    src: "/assets/audio/pyrexx-singz/pyrexx-singz-mamas-love.mp3",
+  },
 ];
 
 const SHOWS = [
@@ -66,6 +92,14 @@ const SHOWS = [
   { label: "Private events", detail: "Premium performances for curated rooms and celebrations" },
   { label: "Listening sessions", detail: "Intimate playback nights, media drops, and fan moments" },
 ];
+
+function formatDuration(seconds) {
+  const safeSeconds = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+}
 
 function ArtistLogo() {
   return (
@@ -79,37 +113,57 @@ function ArtistLogo() {
   );
 }
 
-function PlayerBar() {
+function PlayerBar({
+  activeTrackIndex,
+  currentTime,
+  duration,
+  isPlaying,
+  onNext,
+  onPrevious,
+  onTogglePlayback,
+  track,
+}) {
+  const playbackDuration = duration || track.duration;
+  const progress = playbackDuration > 0 ? Math.min(100, (currentTime / playbackDuration) * 100) : 0;
+  const playbackAction = isPlaying ? "Pause" : "Play";
+
   return (
     <aside className="pyrexx-player" aria-label="Featured Pyrexx_Singz playback">
       <div className="pyrexx-player__language">
-        <span aria-hidden="true">US</span>
-        <strong>EN</strong>
+        <span>Track</span>
+        <strong>{String(activeTrackIndex + 1).padStart(2, "0")}</strong>
       </div>
 
       <div className="pyrexx-player__track">
         <img src={COVER_IMAGE} alt="" />
         <div>
-          <strong>Raw Vocals Playback Level</strong>
+          <strong>{track.title}</strong>
           <span>{ARTIST_NAME}</span>
         </div>
       </div>
 
-      <div className="pyrexx-player__controls" aria-hidden="true">
-        <span className="pyrexx-player__skip pyrexx-player__skip--back" />
-        <button type="button" className="pyrexx-player__play" aria-label="Play Raw Vocals Playback Level">
+      <div className="pyrexx-player__controls">
+        <button type="button" className="pyrexx-player__skip pyrexx-player__skip--back" onClick={onPrevious} aria-label="Previous track" />
+        <button
+          type="button"
+          className={`pyrexx-player__play${isPlaying ? " is-playing" : ""}`}
+          onClick={onTogglePlayback}
+          aria-label={`${playbackAction} ${track.title}`}
+        >
           <span />
         </button>
-        <span className="pyrexx-player__skip pyrexx-player__skip--next" />
+        <button type="button" className="pyrexx-player__skip pyrexx-player__skip--next" onClick={onNext} aria-label="Next track" />
       </div>
 
       <div className="pyrexx-player__timeline">
         <div className="pyrexx-player__meta">
-          <span>RAW VOCALS PLAYBACK LEVEL</span>
-          <strong>00:00 / 03:27</strong>
+          <span>{track.title}</span>
+          <strong>
+            {formatDuration(currentTime)} / {formatDuration(playbackDuration)}
+          </strong>
         </div>
         <div className="pyrexx-player__bar">
-          <span />
+          <span style={{ width: `${progress}%` }} />
         </div>
       </div>
 
@@ -121,8 +175,14 @@ function PlayerBar() {
 }
 
 export default function PyrexxSingzPage() {
+  const audioRef = useRef(null);
+  const [activeTrackIndex, setActiveTrackIndex] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(TRACKS[0].duration);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const activeTrack = TRACKS[activeTrackIndex];
   const pageDescription =
-    "Official public website for Pyrexx_Singz on Tengacion. Discover music, booking details, media photos, press information, and artist updates.";
+    "Official public website for Pyrexx_Singz on Tengacion. Listen to Tashi Mu Je, Yarinya, Hold Me & Pray, Mama's Love, and discover booking details, media photos, and artist updates.";
   const structuredData = [
     buildWebSiteJsonLd(),
     buildOrganizationJsonLd(),
@@ -146,6 +206,64 @@ export default function PyrexxSingzPage() {
       },
     },
   ];
+
+  useEffect(() => {
+    setCurrentTime(0);
+    setDuration(activeTrack.duration);
+  }, [activeTrack]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    if (!audio) {
+      return;
+    }
+
+    if (!isPlaying) {
+      audio.pause();
+      return;
+    }
+
+    const playPromise = audio.play();
+
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => setIsPlaying(false));
+    }
+  }, [activeTrackIndex, isPlaying]);
+
+  const handleLoadedMetadata = () => {
+    const audio = audioRef.current;
+
+    if (audio && Number.isFinite(audio.duration) && audio.duration > 0) {
+      setDuration(audio.duration);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    const audio = audioRef.current;
+
+    setCurrentTime(audio?.currentTime || 0);
+  };
+
+  const handleNextTrack = () => {
+    setActiveTrackIndex((currentIndex) => (currentIndex + 1) % TRACKS.length);
+    setIsPlaying(true);
+  };
+
+  const handlePreviousTrack = () => {
+    setActiveTrackIndex((currentIndex) => (currentIndex - 1 + TRACKS.length) % TRACKS.length);
+    setIsPlaying(true);
+  };
+
+  const handleTrackSelect = (trackIndex) => {
+    if (trackIndex === activeTrackIndex) {
+      setIsPlaying((currentValue) => !currentValue);
+      return;
+    }
+
+    setActiveTrackIndex(trackIndex);
+    setIsPlaying(true);
+  };
 
   return (
     <main className="pyrexx-site" id="home">
@@ -196,7 +314,25 @@ export default function PyrexxSingzPage() {
         </div>
       </section>
 
-      <PlayerBar />
+      <PlayerBar
+        activeTrackIndex={activeTrackIndex}
+        currentTime={currentTime}
+        duration={duration}
+        isPlaying={isPlaying}
+        onNext={handleNextTrack}
+        onPrevious={handlePreviousTrack}
+        onTogglePlayback={() => setIsPlaying((currentValue) => !currentValue)}
+        track={activeTrack}
+      />
+
+      <audio
+        ref={audioRef}
+        src={activeTrack.src}
+        preload="metadata"
+        onEnded={handleNextTrack}
+        onLoadedMetadata={handleLoadedMetadata}
+        onTimeUpdate={handleTimeUpdate}
+      />
 
       <section className="pyrexx-section pyrexx-section--bio" id="bio">
         <div className="pyrexx-section__copy">
@@ -236,13 +372,24 @@ export default function PyrexxSingzPage() {
         </div>
         <div className="pyrexx-music">
           {TRACKS.map((track, index) => (
-            <article key={track.title} className={index === 0 ? "is-featured" : ""}>
-              <span>{String(index + 1).padStart(2, "0")}</span>
+            <article
+              key={track.id}
+              className={`${index === activeTrackIndex ? "is-featured" : ""}${index === activeTrackIndex && isPlaying ? " is-playing" : ""}`}
+            >
+              <button
+                type="button"
+                className={`pyrexx-music__play${index === activeTrackIndex && isPlaying ? " is-playing" : ""}`}
+                onClick={() => handleTrackSelect(index)}
+                aria-label={`${index === activeTrackIndex && isPlaying ? "Pause" : "Play"} ${track.title}`}
+              >
+                <span />
+              </button>
+              <span className="pyrexx-music__index">{String(index + 1).padStart(2, "0")}</span>
               <div>
                 <strong>{track.title}</strong>
                 <small>{track.tag}</small>
               </div>
-              <em>{track.duration}</em>
+              <em>{formatDuration(track.duration)}</em>
             </article>
           ))}
         </div>

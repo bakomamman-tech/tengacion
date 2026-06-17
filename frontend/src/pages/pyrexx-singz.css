@@ -303,6 +303,9 @@
   width: 28px;
   height: 22px;
   display: inline-block;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
 }
 
 .pyrexx-player__skip::before,
@@ -360,6 +363,26 @@
   border-top: 15px solid transparent;
   border-bottom: 15px solid transparent;
   border-left: 23px solid #ffffff;
+}
+
+.pyrexx-player__play.is-playing span {
+  width: 22px;
+  height: 28px;
+  margin-left: 0;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 8px solid #ffffff;
+  border-right: 8px solid #ffffff;
+}
+
+.pyrexx-player__skip:hover,
+.pyrexx-player__skip:focus-visible,
+.pyrexx-player__play:hover,
+.pyrexx-player__play:focus-visible,
+.pyrexx-music__play:hover,
+.pyrexx-music__play:focus-visible {
+  transform: translateY(-1px);
+  outline: 0;
 }
 
 .pyrexx-player__timeline {
@@ -473,8 +496,8 @@
 
 .pyrexx-music article {
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr) auto;
-  gap: 18px;
+  grid-template-columns: 48px 44px minmax(0, 1fr) auto;
+  gap: 16px;
   align-items: center;
   min-height: 86px;
   padding: 18px 22px;
@@ -488,7 +511,46 @@
   background: linear-gradient(90deg, rgba(255, 18, 18, 0.18), rgba(255, 255, 255, 0.045));
 }
 
-.pyrexx-music span,
+.pyrexx-music article.is-playing {
+  box-shadow: inset 4px 0 0 #ff1212;
+}
+
+.pyrexx-music__play {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+.pyrexx-music__play span {
+  width: 0;
+  height: 0;
+  margin-left: 4px;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 13px solid #ffffff;
+}
+
+.pyrexx-music__play.is-playing {
+  border-color: #ff1212;
+  background: #ff1212;
+}
+
+.pyrexx-music__play.is-playing span {
+  width: 14px;
+  height: 18px;
+  margin-left: 0;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 5px solid #ffffff;
+  border-right: 5px solid #ffffff;
+}
+
+.pyrexx-music__index,
 .pyrexx-music em,
 .pyrexx-events span {
   color: #f3b14e;
@@ -760,7 +822,11 @@
   }
 
   .pyrexx-music article {
-    grid-template-columns: 38px minmax(0, 1fr);
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .pyrexx-music__index {
+    display: none;
   }
 
   .pyrexx-music em {

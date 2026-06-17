@@ -22,6 +22,8 @@ const ARTIST_PROFILE = {
   label: "Pyrexx Recordz / Pyrexx Studios",
   legalName: "Stephen Daniel Kurah",
   officialCreatorLink: "https://tengacion.com/creator/pyrexx_singz",
+  email: "bakomamman@gmail.com",
+  phone: "+2348061201090",
 };
 
 const SHORT_BIO = [
@@ -264,6 +266,8 @@ export default function PyrexxSingzPage() {
         jobTitle: "Music artist",
         homeLocation: ARTIST_PROFILE.location,
         brand: ARTIST_PROFILE.label,
+        email: ARTIST_PROFILE.email,
+        telephone: ARTIST_PROFILE.phone,
         sameAs: ARTIST_LINKS.map((link) => link.href),
         description:
           "Nigerian inspirational artist, songwriter, music producer, and creative entrepreneur whose music blends heartfelt gospel expression, Afrobeat rhythm, conscious songwriting, and emotional storytelling.",
@@ -438,6 +442,18 @@ export default function PyrexxSingzPage() {
             </dd>
           </div>
           <div>
+            <dt>Email</dt>
+            <dd>
+              <a href={`mailto:${ARTIST_PROFILE.email}`}>{ARTIST_PROFILE.email}</a>
+            </dd>
+          </div>
+          <div>
+            <dt>Phone</dt>
+            <dd>
+              <a href={`tel:${ARTIST_PROFILE.phone}`}>{ARTIST_PROFILE.phone}</a>
+            </dd>
+          </div>
+          <div>
             <dt>Label / Brand</dt>
             <dd>{ARTIST_PROFILE.label}</dd>
           </div>
@@ -457,8 +473,11 @@ export default function PyrexxSingzPage() {
           <h2>Available for live sets, private events, collaborations, and media appearances.</h2>
         </div>
         <div className="pyrexx-booking">
-          <a href="mailto:bookings@tengacion.com?subject=Pyrexx_Singz%20booking%20request">
-            Send Booking Request
+          <a href={`mailto:${ARTIST_PROFILE.email}?subject=Pyrexx_Singz%20booking%20request`}>
+            Email Pyrexx
+          </a>
+          <a href={`tel:${ARTIST_PROFILE.phone}`}>
+            Call Pyrexx
           </a>
           <Link to="/contact">Contact Tengacion</Link>
         </div>

@@ -469,12 +469,69 @@
 }
 
 .pyrexx-section--split,
+.pyrexx-section--profile,
 .pyrexx-section--app,
 .pyrexx-section--press {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 28px;
   align-items: center;
+}
+
+.pyrexx-section--profile {
+  grid-template-columns: minmax(280px, 0.48fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.pyrexx-profile-facts {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.pyrexx-profile-facts div {
+  min-height: 104px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.pyrexx-profile-facts dt {
+  margin: 0 0 10px;
+  color: #f3b14e;
+  font-size: 12px;
+  font-weight: 1000;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.pyrexx-profile-facts dd {
+  margin: 0;
+  color: #ffffff;
+  font-size: 19px;
+  line-height: 1.24;
+  font-weight: 900;
+}
+
+.pyrexx-profile-facts a {
+  color: inherit;
+  overflow-wrap: anywhere;
+  text-decoration-color: rgba(243, 177, 78, 0.72);
+  text-underline-offset: 4px;
+}
+
+.pyrexx-profile-story {
+  padding: clamp(24px, 4vw, 42px);
+  border: 1px solid rgba(255, 18, 18, 0.34);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 18, 18, 0.13), rgba(255, 255, 255, 0.045)),
+    #111111;
+}
+
+.pyrexx-profile-story p:last-child {
+  margin-bottom: 0;
 }
 
 .pyrexx-booking {
@@ -489,6 +546,7 @@
 }
 
 .pyrexx-music,
+.pyrexx-links,
 .pyrexx-events {
   display: grid;
   gap: 14px;
@@ -570,6 +628,58 @@
   color: rgba(255, 255, 255, 0.62);
   font-size: 13px;
   font-weight: 800;
+}
+
+.pyrexx-links {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pyrexx-links a {
+  min-height: 188px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035)),
+    #131313;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.pyrexx-links a:hover,
+.pyrexx-links a:focus-visible {
+  border-color: rgba(255, 18, 18, 0.72);
+  transform: translateY(-2px);
+  outline: 0;
+}
+
+.pyrexx-links span {
+  color: #f3b14e;
+  font-size: 12px;
+  font-weight: 1000;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.pyrexx-links strong,
+.pyrexx-links small {
+  display: block;
+}
+
+.pyrexx-links strong {
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.pyrexx-links small {
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 700;
 }
 
 .pyrexx-events {
@@ -767,6 +877,7 @@
   .pyrexx-section,
   .pyrexx-section--bio,
   .pyrexx-section--split,
+  .pyrexx-section--profile,
   .pyrexx-section--app,
   .pyrexx-section--press {
     grid-template-columns: 1fr;
@@ -786,6 +897,7 @@
     width: 100%;
   }
 
+  .pyrexx-links,
   .pyrexx-events,
   .pyrexx-gallery {
     grid-template-columns: 1fr;

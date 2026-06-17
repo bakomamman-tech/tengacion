@@ -16,12 +16,33 @@ const ARTIST_NAME = "Pyrexx_Singz";
 const CANONICAL_PATH = "/pyrexx-singz";
 const HERO_IMAGE = "/assets/pyrexx-singz-stage-hero.png";
 const COVER_IMAGE = "/assets/pyrexx-singz-portrait-denim.jpg";
+const ARTIST_PROFILE = {
+  genre: "Afro-Gospel / Inspirational Afrobeat / Conscious Music",
+  location: "Nigeria",
+  label: "Pyrexx Recordz / Pyrexx Studios",
+  legalName: "Stephen Daniel Kurah",
+  officialCreatorLink: "https://tengacion.com/creator/pyrexx_singz",
+};
+
+const SHORT_BIO = [
+  "Pyrexx_Singz is a Nigerian inspirational artist, songwriter, music producer, and creative entrepreneur whose music blends heartfelt gospel expression, Afrobeat rhythm, and socially conscious storytelling. Known for songs such as \"Send Some Water\" and \"Every Drop Has A Sound,\" Pyrexx_Singz creates music that speaks to hope, faith, humanity, struggle, gratitude, and transformation.",
+  "His sound is emotional, message-driven, and deeply connected to real-life experiences. Through his music, Pyrexx_Singz aims to inspire listeners, encourage positive change, and use art as a voice for healing, reflection, and spiritual strength.",
+];
+
+const PROFESSIONAL_BIO = [
+  `Pyrexx_Singz is the stage name of Nigerian artist, songwriter, producer, and creative visionary ${ARTIST_PROFILE.legalName}. His music carries a strong blend of Afro-Gospel, inspirational Afrobeat, conscious songwriting, and emotional storytelling, creating a sound that is both spiritual and socially aware.`,
+  "As an artist, Pyrexx_Singz focuses on songs that speak beyond entertainment. His music explores themes of faith, perseverance, gratitude, compassion, social reality, and hope. With records like \"Send Some Water\" and \"Every Drop Has A Sound,\" he positions himself as a voice for people who are searching for meaning, encouragement, and strength in everyday life.",
+  "His creative journey is deeply rooted in purpose. Beyond singing, Pyrexx_Singz is involved in music production, storytelling, education, technology, and creative development. This gives his artistry a wider vision: to build music that not only sounds good, but also carries a message that can touch communities, inspire young people, and promote positive values.",
+  "Operating under the creative identity of Pyrexx Recordz and Pyrexx Studios, Pyrexx_Singz continues to develop a catalog of music that reflects his passion for humanity, faith, and African creativity. His work is also connected to Tengacion, a growing creator platform where fans can discover his music, books, podcasts, updates, and creative projects.",
+  "With a voice driven by sincerity and a message rooted in purpose, Pyrexx_Singz is building a brand that stands for inspiration, faith, creativity, and impact.",
+];
 
 const NAV_ITEMS = [
   { href: "#home", label: "home" },
   { href: "#bio", label: "bio" },
   { href: "#booking", label: "booking" },
   { href: "#music", label: "music" },
+  { href: "#links", label: "links" },
   { href: "#tour", label: "tour" },
   { href: "#events", label: "events" },
   { href: "#media", label: "media" },
@@ -84,6 +105,45 @@ const TRACKS = [
     duration: 166,
     tag: "Soul dedication",
     src: "/assets/audio/pyrexx-singz/pyrexx-singz-mamas-love.mp3",
+  },
+];
+
+const ARTIST_LINKS = [
+  {
+    label: "Apple Music",
+    detail: "Stream the official Pyrexx_Singz artist catalog on Apple Music.",
+    href: "https://music.apple.com/us/artist/pyrexx-singz/1837473632",
+    type: "streaming",
+  },
+  {
+    label: "Official Artist Website",
+    detail: "Visit the official Tengacion artist website for music, media, and booking.",
+    href: "https://tengacion.com/pyrexx_singz",
+    type: "website",
+  },
+  {
+    label: "Tengacion Creator Profile",
+    detail: "Follow the official Tengacion creator profile for music, books, podcasts, and updates.",
+    href: ARTIST_PROFILE.officialCreatorLink,
+    type: "tengacion",
+  },
+  {
+    label: "Facebook Artist Page",
+    detail: "Follow the Pyrexx Symphony artist page for updates and fan moments.",
+    href: "https://web.facebook.com/pyrexxsymphony/?_rdc=1&_rdr#",
+    type: "social",
+  },
+  {
+    label: "Spotify Account",
+    detail: "Open the Spotify artist account connected to Pyrexx_Singz.",
+    href: "https://artists.spotify.com/c/artist/0oPAGns3NQSZO0gTTVoYdM/profile/overview",
+    type: "streaming",
+  },
+  {
+    label: "Amazon.com",
+    detail: "Listen to Pyrexx_Singz releases on Amazon Music.",
+    href: "https://music.amazon.com/artists/B0FPFN1HH7/pyrexx_singz",
+    type: "streaming",
   },
 ];
 
@@ -182,7 +242,7 @@ export default function PyrexxSingzPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const activeTrack = TRACKS[activeTrackIndex];
   const pageDescription =
-    "Official public website for Pyrexx_Singz on Tengacion. Listen to Tashi Mu Je, Yarinya, Hold Me & Pray, Mama's Love, and discover booking details, media photos, and artist updates.";
+    "Official public website for Pyrexx_Singz, a Nigerian Afro-Gospel, inspirational Afrobeat, and conscious music artist creating songs of faith, hope, humanity, healing, and positive change.";
   const structuredData = [
     buildWebSiteJsonLd(),
     buildOrganizationJsonLd(),
@@ -199,10 +259,14 @@ export default function PyrexxSingzPage() {
       mainEntity: {
         "@type": "Person",
         name: ARTIST_NAME,
+        alternateName: ARTIST_PROFILE.legalName,
         image: resolveSeoImage(HERO_IMAGE),
         jobTitle: "Music artist",
+        homeLocation: ARTIST_PROFILE.location,
+        brand: ARTIST_PROFILE.label,
+        sameAs: ARTIST_LINKS.map((link) => link.href),
         description:
-          "Afro-fusion and R&B artist presenting vocals, live appearances, media, and booking updates.",
+          "Nigerian inspirational artist, songwriter, music producer, and creative entrepreneur whose music blends heartfelt gospel expression, Afrobeat rhythm, conscious songwriting, and emotional storytelling.",
       },
     },
   ];
@@ -295,15 +359,16 @@ export default function PyrexxSingzPage() {
           <div className="pyrexx-hero__copy">
             <p className="pyrexx-kicker">Official Tengacion artist page</p>
             <h1>
-              RAW VOCALS.
+              FAITH.
               <br />
-              STREET SOUL.
+              AFROBEAT.
               <br />
-              UNFORGETTABLE.
+              IMPACT.
             </h1>
-            <p className="pyrexx-hero__genre">Afrobeats | Afro-fusion | R&B</p>
+            <p className="pyrexx-hero__genre">{ARTIST_PROFILE.genre}</p>
             <div className="pyrexx-hero__actions">
               <a href="#music">Listen Now</a>
+              <a href="#links">Official Links</a>
               <a href="#booking">Book Pyrexx</a>
             </div>
           </div>
@@ -337,12 +402,10 @@ export default function PyrexxSingzPage() {
       <section className="pyrexx-section pyrexx-section--bio" id="bio">
         <div className="pyrexx-section__copy">
           <p className="pyrexx-kicker">bio</p>
-          <h2>Pyrexx_Singz moves between polish and pressure.</h2>
-          <p>
-            A sharp vocal presence with a clean visual identity, Pyrexx_Singz blends Afrobeats,
-            Afro-fusion, R&B feeling, and a streetwise performance style built for stages, videos,
-            and close-up fan moments.
-          </p>
+          <h2>Pyrexx_Singz turns faith, humanity, and struggle into conscious Afrobeat.</h2>
+          {SHORT_BIO.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
         </div>
         <img
           className="pyrexx-section__portrait"
@@ -350,6 +413,42 @@ export default function PyrexxSingzPage() {
           alt="Pyrexx_Singz smiling in a blue suit"
           loading="lazy"
         />
+      </section>
+
+      <section className="pyrexx-section pyrexx-section--profile" aria-label="Pyrexx_Singz artist details">
+        <dl className="pyrexx-profile-facts">
+          <div>
+            <dt>Artist name</dt>
+            <dd>{ARTIST_NAME}</dd>
+          </div>
+          <div>
+            <dt>Genre</dt>
+            <dd>{ARTIST_PROFILE.genre}</dd>
+          </div>
+          <div>
+            <dt>Location</dt>
+            <dd>{ARTIST_PROFILE.location}</dd>
+          </div>
+          <div>
+            <dt>Official Tengacion Artist Link</dt>
+            <dd>
+              <a href={ARTIST_PROFILE.officialCreatorLink} target="_blank" rel="noreferrer">
+                {ARTIST_PROFILE.officialCreatorLink}
+              </a>
+            </dd>
+          </div>
+          <div>
+            <dt>Label / Brand</dt>
+            <dd>{ARTIST_PROFILE.label}</dd>
+          </div>
+        </dl>
+        <div className="pyrexx-profile-story">
+          <p className="pyrexx-kicker">professional bio</p>
+          <h2>A message-driven sound rooted in purpose.</h2>
+          {PROFESSIONAL_BIO.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+        </div>
       </section>
 
       <section className="pyrexx-section pyrexx-section--split" id="booking">
@@ -391,6 +490,22 @@ export default function PyrexxSingzPage() {
               </div>
               <em>{formatDuration(track.duration)}</em>
             </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="pyrexx-section pyrexx-section--links" id="links">
+        <div className="pyrexx-section__head">
+          <p className="pyrexx-kicker">official links</p>
+          <h2>Find Pyrexx_Singz across music platforms and social channels.</h2>
+        </div>
+        <div className="pyrexx-links">
+          {ARTIST_LINKS.map((link) => (
+            <a key={link.href} href={link.href} target="_blank" rel="noreferrer">
+              <span>{link.type}</span>
+              <strong>{link.label}</strong>
+              <small>{link.detail}</small>
+            </a>
           ))}
         </div>
       </section>

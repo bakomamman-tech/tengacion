@@ -36,9 +36,9 @@
     "jsonwebtoken": "^9.0.3",
     "livekit-server-sdk": "^2.15.0",
     "mongoose": "^9.6.1",
-    "multer": "^2.1.1",
+    "multer": "^2.2.0",
     "multer-storage-cloudinary": "^2.2.1",
-    "nodemailer": "^8.0.5",
+    "nodemailer": "^9.0.1",
     "openai": "^6.6.0",
     "pdf-lib": "^1.17.1",
     "socket.io": "^4.8.3",
@@ -58,24 +58,27 @@
     "node": ">=20 <23"
   },
   "overrides": {
+    "form-data": "4.0.6",
+    "js-yaml": "4.2.0",
     "lodash": "4.18.1",
     "@aws-sdk/xml-builder": {
       "fast-xml-parser": "5.7.0"
     },
+    "ws": "8.21.0",
     "express": {
       "path-to-regexp": "0.1.13"
     },
     "socket.io": {
       "socket.io-parser": "4.2.6",
       "engine.io": {
-        "ws": "8.20.1"
+        "ws": "8.21.0"
       },
       "socket.io-adapter": {
-        "ws": "8.20.1"
+        "ws": "8.21.0"
       }
     },
     "openai": {
-      "ws": "8.20.1"
+      "ws": "8.21.0"
     },
     "jest-util": {
       "picomatch": "4.0.4"

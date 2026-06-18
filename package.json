@@ -22,14 +22,16 @@
     "express-validator": "^7.3.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.0.0",
-    "multer": "^2.1.1",
+    "multer": "^2.2.0",
     "multer-storage-cloudinary": "^2.2.1",
-    "nodemailer": "^8.0.5",
+    "nodemailer": "^9.0.1",
     "streamifier": "^0.1.1",
     "zod": "^4.3.6"
   },
   "overrides": {
+    "form-data": "4.0.6",
     "lodash": "4.18.1",
+    "ws": "8.21.0",
     "express": {
       "path-to-regexp": "0.1.13"
     }

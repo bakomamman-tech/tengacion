@@ -766,34 +766,57 @@ if (process.env.NODE_ENV !== "test") {
 
   server.on("error", handleServerError);
   const listenNow = server.listen.bind(server);
+  let startupMaintenanceStarted = false;
+
+  const runStartupMaintenance = async () => {
+    console.log("[startup] Running maintenance jobs in the background.");
+
+    try {
+      await cleanupUploadDir({ logger: console });
+      await cleanupUploadDir({ uploadDir: privateUpload.uploadDir, logger: console });
+      await repairUserProfileIndexes({ logger: console });
+      await repairUserMediaFields({ logger: console });
+      await repairUserSecurityFields({ logger: console });
+      await runBirthdayRecognition({ logger: console });
+      await startPaymentMaintenance({ logger: console });
+      await startEntitlementMaintenance({ logger: console });
+      await startWalletMaintenance({ logger: console });
+      await startNewsSchedulers({ logger: console });
+    } catch (err) {
+      console.error("Startup maintenance failed:", err?.message || err);
+    }
+
+    const birthdayRecognitionTimer = setInterval(() => {
+      runBirthdayRecognition({ logger: console }).catch((err) => {
+        console.error("Birthday recognition task failed:", err?.message || err);
+      });
+    }, 60 * 60 * 1000);
+    birthdayRecognitionTimer.unref?.();
+  };
+
+  const startStartupMaintenance = () => {
+    if (startupMaintenanceStarted) {
+      return;
+    }
+
+    startupMaintenanceStarted = true;
+    runStartupMaintenance().catch((err) => {
+      console.error("Startup maintenance failed:", err?.message || err);
+    });
+  };
+
   server.listen = (...args) => {
     const callback = typeof args[args.length - 1] === "function" ? args.pop() : () => {};
 
     (async () => {
       await connectDB();
-
-      try {
-        await cleanupUploadDir({ logger: console });
-        await cleanupUploadDir({ uploadDir: privateUpload.uploadDir, logger: console });
-        await repairUserProfileIndexes({ logger: console });
-        await repairUserMediaFields({ logger: console });
-        await repairUserSecurityFields({ logger: console });
-        await runBirthdayRecognition({ logger: console });
-        await startPaymentMaintenance({ logger: console });
-        await startEntitlementMaintenance({ logger: console });
-        await startWalletMaintenance({ logger: console });
-        await startNewsSchedulers({ logger: console });
-      } catch (err) {
-        console.error("Startup repair failed:", err?.message || err);
-      }
-
-      setInterval(() => {
-        runBirthdayRecognition({ logger: console }).catch((err) => {
-          console.error("Birthday recognition task failed:", err?.message || err);
-        });
-      }, 60 * 60 * 1000);
-
-      listenNow(...args, callback);
+      listenNow(...args, function onListening(...callbackArgs) {
+        try {
+          callback.apply(this, callbackArgs);
+        } finally {
+          setImmediate(startStartupMaintenance);
+        }
+      });
     })().catch((err) => {
       console.error("Server bootstrap failed:", err?.message || err);
       process.exit(1);

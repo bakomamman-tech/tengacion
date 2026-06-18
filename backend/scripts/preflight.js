@@ -74,6 +74,7 @@ const defaultedBusinessEmailKeys = new Set([
 
 const statusIcons = {
   ok: "OK",
+  skipped: "SKIP",
   missing: "ERR",
   weak: "WARN",
 };
@@ -130,9 +131,12 @@ const runPreflight = () => {
     if (!value) {
       if (defaultedAkusoKeys.has(check.key)) {
         note = "using config default";
-      } else {
+      } else if (check.type === "hard") {
         status = "missing";
         note = "not set";
+      } else {
+        status = "skipped";
+        note = "optional/not set";
       }
     } else if (check.minLength && value.length < check.minLength) {
       status = "weak";

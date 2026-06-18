@@ -53,7 +53,7 @@ The server now runs a preflight check (`backend/scripts/preflight.js`) before co
 | `STRIPE_SECRET_KEY` | Stripe secret key | Warning if missing |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret | Warning if missing |
 
-The preflight prints pass/warn/fail markers per key and aborts startup when any hard required value is missing or too short.
+The preflight prints `OK`/`SKIP`/`WARN`/`ERR` markers per key. Optional variables that are unset print `SKIP`, optional variables with invalid configured values print `WARN`, and startup aborts only when a hard required value is missing or invalid.
 
 Because these `VITE_*` values are compiled into the frontend bundle, changing them requires a fresh frontend build/deploy.
 

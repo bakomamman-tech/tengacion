@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import QuickAccessLayout from "../components/QuickAccessLayout";
+import { SUPPORT_EMAIL, buildMailto } from "../config/businessContact";
 import { useTheme } from "../context/ThemeContext";
 import { normalizeWelcomeVoicePrefs } from "../services/welcomeVoice";
 import { getThemeLabel } from "../themeConfig";
@@ -252,6 +253,13 @@ export function HelpSupportPage({ user }) {
 
       <SectionCard title="Need to contact the team?">
         <div className="quick-list-grid">
+          <article className="quick-list-item">
+            <strong>Email support</strong>
+            <span>{SUPPORT_EMAIL}</span>
+            <a href={buildMailto(SUPPORT_EMAIL, "Tengacion support request")}>
+              Email
+            </a>
+          </article>
           {supportActions.map((item) => (
             <article key={item.label} className="quick-list-item">
               <strong>{item.label}</strong>

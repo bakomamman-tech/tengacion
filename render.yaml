@@ -29,6 +29,27 @@ services:
         value: Opay
       - key: PLATFORM_SETTLEMENT_ACCOUNT_NUMBER
         value: "8061201090"
+      - key: CONTACT_EMAIL
+        value: stephen@tengacion.com
+      - key: SUPPORT_EMAIL
+        value: stephen@tengacion.com
+      - key: ADMIN_NOTIFICATION_EMAIL
+        value: stephen@tengacion.com
+      - key: EMAIL_FROM
+        value: stephen@tengacion.com
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
       - key: VITE_API_URL
         value: /api
-
+      - key: VITE_CONTACT_EMAIL
+        value: stephen@tengacion.com
+      - key: VITE_SUPPORT_EMAIL
+        value: stephen@tengacion.com
+      - key: VITE_ADMIN_NOTIFICATION_EMAIL
+        value: stephen@tengacion.com

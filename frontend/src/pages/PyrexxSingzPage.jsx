@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import SeoHead from "../components/seo/SeoHead";
+import { buildMailto } from "../config/businessContact";
 import {
   buildBreadcrumbJsonLd,
   buildCanonicalUrl,
@@ -444,7 +445,7 @@ export default function PyrexxSingzPage() {
           <div>
             <dt>Email</dt>
             <dd>
-              <a href={`mailto:${ARTIST_PROFILE.email}`}>{ARTIST_PROFILE.email}</a>
+              <a href={buildMailto(ARTIST_PROFILE.email)}>{ARTIST_PROFILE.email}</a>
             </dd>
           </div>
           <div>
@@ -473,7 +474,7 @@ export default function PyrexxSingzPage() {
           <h2>Available for live sets, private events, collaborations, and media appearances.</h2>
         </div>
         <div className="pyrexx-booking">
-          <a href={`mailto:${ARTIST_PROFILE.email}?subject=Pyrexx_Singz%20booking%20request`}>
+          <a href={buildMailto(ARTIST_PROFILE.email, "Pyrexx_Singz booking request")}>
             Email Pyrexx
           </a>
           <a href={`tel:${ARTIST_PROFILE.phone}`}>

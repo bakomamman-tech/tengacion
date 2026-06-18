@@ -2,6 +2,7 @@ const User = require("../models/User");
 const { resolvePurchasableItem } = require("./catalogService");
 const { config } = require("../config/env");
 const sendSecurityEmail = require("../utils/sendSecurityEmail");
+const { isEmailConfigured } = require("../utils/emailSettings");
 
 const toIdString = (value) => {
   if (!value) {
@@ -29,8 +30,6 @@ const formatMoney = (amount = 0, currency = "NGN") =>
 
 const resolveAppUrl = () =>
   String(config.APP_URL || config.appUrl || process.env.APP_URL || "https://tengacion.com").replace(/\/+$/, "");
-
-const isEmailConfigured = () => Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
 
 const sendPurchaseConfirmationEmail = async ({ purchase } = {}) => {
   if (!purchase?._id || String(purchase.status || "").toLowerCase() !== "paid") {

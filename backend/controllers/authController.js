@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Otp = require("../models/Otp");
 const sendOtpEmail = require("../utils/sendOtpEmail");
+const { isEmailConfigured } = require("../utils/emailSettings");
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
 const { isValidPhoneNumber, normalizePhoneNumber } = require("../utils/phone");
 
@@ -213,7 +214,7 @@ exports.requestOtp = async (req, res) => {
       return res.status(400).json({ message: "Email required" });
     }
 
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    if (!isEmailConfigured()) {
       return res.status(503).json({
         message: "Email verification is not configured",
       });

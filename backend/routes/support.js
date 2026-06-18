@@ -13,6 +13,8 @@ const User = require("../models/User");
 const { createNotification } = require("../services/notificationService");
 const { logAnalyticsEvent } = require("../services/analyticsService");
 const { findPrimaryModerationAdmin } = require("../services/moderationAdminService");
+const sendSecurityEmail = require("../utils/sendSecurityEmail");
+const { getEmailSettings, isEmailConfigured } = require("../utils/emailSettings");
 
 const router = express.Router();
 
@@ -46,6 +48,14 @@ const COMPLAINT_CATEGORIES = new Set([
 
 const normalizeText = (value = "", maxLength = 2000) =>
   String(value || "").trim().replace(/\s+/g, " ").slice(0, maxLength);
+
+const escapeHtml = (value = "") =>
+  String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 const normalizeCategory = (value = "") => {
   const next = String(value || "").trim().toLowerCase();
@@ -127,6 +137,44 @@ const notifyInboxAdmin = async ({ complaint, senderId, subject, details }) => {
   }
 };
 
+const notifyBusinessSupportEmail = async ({
+  complaint,
+  reporterName = "",
+  reporterEmail = "",
+  subject = "",
+  category = "",
+  priority = "",
+  details = "",
+  sourcePath = "",
+  sourceLabel = "",
+} = {}) => {
+  if (!isEmailConfigured()) {
+    return;
+  }
+
+  const settings = getEmailSettings();
+  const to = settings.adminNotificationEmail || settings.supportEmail;
+  if (!to) {
+    return;
+  }
+
+  await sendSecurityEmail({
+    to,
+    subject: `Tengacion support report: ${subject || "New report"}`,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#1f2937;padding:16px;">
+        <h2 style="margin:0 0 12px;">New Tengacion support report</h2>
+        <p><strong>Reference:</strong> ${escapeHtml(complaint?._id || "")}</p>
+        <p><strong>Category:</strong> ${escapeHtml(category)} / <strong>Priority:</strong> ${escapeHtml(priority)}</p>
+        <p><strong>Reporter:</strong> ${escapeHtml(reporterName || "Logged-in user")} ${reporterEmail ? `&lt;${escapeHtml(reporterEmail)}&gt;` : ""}</p>
+        <p><strong>Source:</strong> ${escapeHtml(sourceLabel || sourcePath || "Not provided")}</p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;" />
+        <p>${escapeHtml(details)}</p>
+      </div>
+    `,
+  }).catch(() => null);
+};
+
 router.post("/complaints", auth, complaintLimiter, async (req, res) => {
   try {
     const subject = normalizeText(req.body?.subject || "", 160);
@@ -161,6 +209,15 @@ router.post("/complaints", auth, complaintLimiter, async (req, res) => {
     });
 
     await notifyInboxAdmin({ complaint, senderId: req.user.id, subject, details });
+    await notifyBusinessSupportEmail({
+      complaint,
+      subject,
+      category,
+      priority,
+      details,
+      sourcePath,
+      sourceLabel,
+    });
 
     await logAnalyticsEvent({
       type: "support_complaint_submitted",
@@ -232,6 +289,18 @@ router.post("/public-reports", publicReportLimiter, async (req, res) => {
         workTitle,
         userAgent: String(req.headers["user-agent"] || "").slice(0, 220),
       },
+    });
+
+    await notifyBusinessSupportEmail({
+      complaint,
+      reporterName,
+      reporterEmail,
+      subject,
+      category,
+      priority,
+      details,
+      sourcePath: sourceUrl,
+      sourceLabel: "Public report form",
     });
 
     await logAnalyticsEvent({

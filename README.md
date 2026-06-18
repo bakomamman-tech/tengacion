@@ -104,6 +104,10 @@ cp .env.example .env
 4. Optional frontend analytics:
 - `VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX`
 - `VITE_GA_DEBUG_MODE=false`
+5. Business email:
+- Public Tengacion contact/support email defaults to `stephen@tengacion.com`.
+- Set `CONTACT_EMAIL`, `SUPPORT_EMAIL`, `ADMIN_NOTIFICATION_EMAIL`, and `EMAIL_FROM` for backend mail, plus `VITE_CONTACT_EMAIL`, `VITE_SUPPORT_EMAIL`, and `VITE_ADMIN_NOTIFICATION_EMAIL` for frontend display.
+- Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASS` in Render environment variables only. Never commit SMTP passwords, app passwords, API keys, or private mail credentials to GitHub.
 
 ## 2) Running Apps Locally
 1. Start the API (serves `apps/api` layered routes via the existing backend entrypoint):

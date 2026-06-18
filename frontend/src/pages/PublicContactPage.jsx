@@ -8,6 +8,7 @@ import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
 } from "../lib/seo";
+import { SUPPORT_EMAIL, buildMailto } from "../config/businessContact";
 
 import "./public-contact.css";
 
@@ -154,6 +155,9 @@ export default function PublicContactPage() {
               <li>Privacy requests should include the account email and the action requested.</li>
             </ul>
             <div className="public-contact-panel__links">
+              <a href={buildMailto(SUPPORT_EMAIL, "Tengacion support request")}>
+                {SUPPORT_EMAIL}
+              </a>
               <Link to="/community-guidelines">Community Guidelines</Link>
               <Link to="/child-safety">Child Safety Policy</Link>
               <Link to="/moderation-policy">Moderation Policy</Link>

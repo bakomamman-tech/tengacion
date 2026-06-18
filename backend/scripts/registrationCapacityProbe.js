@@ -58,6 +58,10 @@ const main = async () => {
   process.env.MONGO_URI = mongod.getUri();
   delete process.env.EMAIL_USER;
   delete process.env.EMAIL_PASS;
+  delete process.env.SMTP_USER;
+  delete process.env.SMTP_PASS;
+  delete process.env.SMTP_HOST;
+  delete process.env.SMTP_PORT;
 
   const AuthService = require("../../apps/api/services/authService");
   const User = require("../models/User");

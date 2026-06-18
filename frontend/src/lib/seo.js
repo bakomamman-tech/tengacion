@@ -1,3 +1,5 @@
+import { CONTACT_EMAIL } from "../config/businessContact";
+
 export const SITE_NAME = "Tengacion";
 export const SITE_URL = "https://tengacion.com";
 export const DEFAULT_TITLE = "Tengacion | Africa's Social Commerce & Creator Monetization Platform";
@@ -196,6 +198,7 @@ export const buildOrganizationJsonLd = () => ({
   name: SITE_NAME,
   url: buildCanonicalUrl("/"),
   logo: resolveSeoImage(DEFAULT_IMAGE_PATH),
+  email: CONTACT_EMAIL,
 });
 
 export const buildBreadcrumbJsonLd = (items = []) => ({

@@ -8,6 +8,7 @@ const Otp = require("../../../backend/models/Otp");
 const AuthChallenge = require("../../../backend/models/AuthChallenge");
 const sendOtpEmail = require("../../../backend/utils/sendOtpEmail");
 const sendSecurityEmail = require("../../../backend/utils/sendSecurityEmail");
+const { isEmailConfigured } = require("../../../backend/utils/emailSettings");
 const { ensureOnboardingReminderMessage } = require("../../../backend/services/onboardingReminderService");
 const { normalizeMediaValue } = require("../../../backend/utils/userMedia");
 const { normalizeAudioPrefs } = require("../../../backend/utils/audioPrefs");
@@ -401,7 +402,7 @@ const sendChallengeEmail = async ({ user, challenge, purpose, code }) => {
     intro: "Use the code below to continue.",
   };
 
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+  if (!isEmailConfigured()) {
     throw ApiError.serviceUnavailable(EMAIL_CHALLENGE_UNAVAILABLE_MESSAGE);
   }
 
@@ -647,7 +648,7 @@ class AuthService {
       throw ApiError.badRequest("Email required");
     }
 
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    if (!isEmailConfigured()) {
       throw ApiError.serviceUnavailable("Email verification is not configured");
     }
 

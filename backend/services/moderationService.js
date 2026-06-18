@@ -27,6 +27,7 @@ const {
   RESTRICTED_PUBLIC_STATUSES,
   MODERATION_REPEAT_VIOLATOR_STRIKE_THRESHOLD,
 } = require("../config/moderation");
+const { config } = require("../config/env");
 const { writeAuditLog } = require("./auditLogService");
 const { sendModerationMessengerWarning } = require("./moderationMessengerService");
 const { buildSignedMediaUrl } = require("./mediaSigner");
@@ -1442,7 +1443,7 @@ const maybeNotifyPrimaryAdmin = async ({ moderationCase, req }) => {
   }).catch(() => null);
 
   if (String(process.env.MODERATION_ALERT_EMAIL_ENABLED || "").toLowerCase() === "true") {
-    const toEmail = primaryAdmin.moderationProfile?.escalationEmail || primaryAdmin.email;
+    const toEmail = config.ADMIN_NOTIFICATION_EMAIL || primaryAdmin.moderationProfile?.escalationEmail || primaryAdmin.email;
     if (toEmail) {
       await sendSecurityEmail({
         to: toEmail,

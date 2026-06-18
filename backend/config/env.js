@@ -94,6 +94,10 @@ const secretLogKeyLabels = new Map([
   ["awsAccessKeyId", "awsAccessKeyConfigured"],
   ["AWS_SECRET_ACCESS_KEY", "awsSecretAccessKeyConfigured"],
   ["awsSecretAccessKey", "awsSecretAccessKeyConfigured"],
+  ["SMTP_PASS", "smtpPassConfigured"],
+  ["smtpPass", "smtpPassConfigured"],
+  ["EMAIL_PASS", "emailPassConfigured"],
+  ["emailPass", "emailPassConfigured"],
 ]);
 
 const sensitiveLogKeyPattern =
@@ -330,6 +334,21 @@ const platformSettlementAccount = {
 const stripeSecretKey = toText(process.env.STRIPE_SECRET_KEY);
 const stripePublishableKey = toText(process.env.STRIPE_PUBLISHABLE_KEY);
 const stripeWebhookSecret = toText(process.env.STRIPE_WEBHOOK_SECRET);
+const defaultBusinessEmail = "stephen@tengacion.com";
+const contactEmail = toText(process.env.CONTACT_EMAIL) || defaultBusinessEmail;
+const supportEmail = toText(process.env.SUPPORT_EMAIL) || contactEmail;
+const adminNotificationEmail = toText(process.env.ADMIN_NOTIFICATION_EMAIL) || supportEmail;
+const emailFrom = toText(process.env.EMAIL_FROM) || supportEmail;
+const smtpUser = toText(process.env.SMTP_USER) || toText(process.env.EMAIL_USER);
+const smtpPass = toText(process.env.SMTP_PASS) || toText(process.env.EMAIL_PASS);
+const smtpHost =
+  toText(process.env.SMTP_HOST) ||
+  toText(process.env.EMAIL_HOST) ||
+  (smtpUser || smtpPass ? "smtp.gmail.com" : "");
+const smtpPort = parsePort(process.env.SMTP_PORT || process.env.EMAIL_PORT, smtpHost ? 465 : NaN);
+const smtpSecureInput = toText(process.env.SMTP_SECURE || process.env.EMAIL_SECURE);
+const smtpSecure = smtpSecureInput ? toBool(smtpSecureInput) : smtpPort === 465;
+const emailConfigured = Boolean(smtpHost && smtpPort && smtpUser && smtpPass);
 const requireEmailOtp = toText(process.env.REQUIRE_EMAIL_OTP) || "false";
 const assistantEnabledInput = toText(process.env.ASSISTANT_ENABLED);
 const openAiApiKey = toText(process.env.OPENAI_API_KEY);
@@ -477,6 +496,29 @@ const config = {
   stripeSecretKey,
   stripePublishableKey,
   stripeWebhookSecret,
+  contactEmail,
+  supportEmail,
+  adminNotificationEmail,
+  emailFrom,
+  smtpHost,
+  smtpPort,
+  smtpSecure,
+  smtpUser,
+  smtpPass,
+  email: {
+    contactEmail,
+    supportEmail,
+    adminNotificationEmail,
+    from: emailFrom,
+    configured: emailConfigured,
+    smtp: {
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      user: smtpUser,
+      pass: smtpPass,
+    },
+  },
   openAiApiKey,
   openAiModel,
   openAiModelPrimary,
@@ -545,6 +587,15 @@ const config = {
   STRIPE_SECRET_KEY: stripeSecretKey,
   STRIPE_PUBLISHABLE_KEY: stripePublishableKey,
   STRIPE_WEBHOOK_SECRET: stripeWebhookSecret,
+  CONTACT_EMAIL: contactEmail,
+  SUPPORT_EMAIL: supportEmail,
+  ADMIN_NOTIFICATION_EMAIL: adminNotificationEmail,
+  EMAIL_FROM: emailFrom,
+  SMTP_HOST: smtpHost,
+  SMTP_PORT: smtpPort,
+  SMTP_SECURE: smtpSecure,
+  SMTP_USER: smtpUser,
+  SMTP_PASS: smtpPass,
   OPENAI_API_KEY: openAiApiKey,
   OPENAI_MODEL: openAiModel,
   OPENAI_MODEL_PRIMARY: openAiModelPrimary,

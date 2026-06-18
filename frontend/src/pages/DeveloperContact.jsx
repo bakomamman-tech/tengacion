@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import developerPortrait from "../assets/developer-contact-photo.jpg";
 import SeoHead from "../components/seo/SeoHead";
+import { CONTACT_EMAIL, buildMailto } from "../config/businessContact";
 
 const developerDetails = [
   {
@@ -15,6 +16,11 @@ const developerDetails = [
     label: "Phone Number",
     value: "+2348061201090",
     href: "tel:+2348061201090",
+  },
+  {
+    label: "Email",
+    value: CONTACT_EMAIL,
+    href: buildMailto(CONTACT_EMAIL, "Tengacion developer contact"),
   },
 ];
 

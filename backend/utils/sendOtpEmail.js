@@ -1,16 +1,22 @@
 const nodemailer = require("nodemailer");
+const { getEmailSettings } = require("./emailSettings");
 
 const sendOtpEmail = async ({ email, otp }) => {
+  const settings = getEmailSettings();
+  if (!settings.configured) {
+    throw new Error("Email service is not configured");
+  }
+
   const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
+    host: settings.smtpHost,
+    port: settings.smtpPort,
+    secure: settings.smtpSecure,
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000,
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      user: settings.smtpUser,
+      pass: settings.smtpPass,
     },
     tls: {
       rejectUnauthorized: false,
@@ -18,7 +24,7 @@ const sendOtpEmail = async ({ email, otp }) => {
   });
 
   await transporter.sendMail({
-    from: `"Tengacion" <${process.env.EMAIL_USER}>`,
+    from: `"Tengacion" <${settings.emailFrom}>`,
     to: email,
     subject: "Your Tengacion OTP Code",
     html: `

@@ -35,6 +35,14 @@ const baseChecks = [
   { key: "PLATFORM_SETTLEMENT_ACCOUNT_NUMBER", label: "Platform settlement account number", type: "warn" },
   { key: "STRIPE_SECRET_KEY", label: "Stripe secret", type: "warn" },
   { key: "STRIPE_WEBHOOK_SECRET", label: "Stripe webhook secret", type: "warn" },
+  { key: "CONTACT_EMAIL", label: "Business contact email", type: "warn" },
+  { key: "SUPPORT_EMAIL", label: "Support email", type: "warn" },
+  { key: "ADMIN_NOTIFICATION_EMAIL", label: "Admin notification email", type: "warn" },
+  { key: "EMAIL_FROM", label: "Transactional email sender", type: "warn" },
+  { key: "SMTP_HOST", label: "SMTP host", type: "warn" },
+  { key: "SMTP_PORT", label: "SMTP port", type: "warn" },
+  { key: "SMTP_USER", label: "SMTP user", type: "warn" },
+  { key: "SMTP_PASS", label: "SMTP password", type: "warn" },
 ];
 
 const defaultedAkusoKeys = new Set([
@@ -55,6 +63,13 @@ const defaultedPlatformSettlementKeys = new Set([
   "PLATFORM_SETTLEMENT_ACCOUNT_NAME",
   "PLATFORM_SETTLEMENT_BANK_NAME",
   "PLATFORM_SETTLEMENT_ACCOUNT_NUMBER",
+]);
+
+const defaultedBusinessEmailKeys = new Set([
+  "CONTACT_EMAIL",
+  "SUPPORT_EMAIL",
+  "ADMIN_NOTIFICATION_EMAIL",
+  "EMAIL_FROM",
 ]);
 
 const statusIcons = {
@@ -91,6 +106,9 @@ const buildChecks = () => {
 
 const readCheckValue = (check) => {
   if (defaultedAkusoKeys.has(check.key) || defaultedPlatformSettlementKeys.has(check.key)) {
+    return process.env[check.key] || config[check.key];
+  }
+  if (defaultedBusinessEmailKeys.has(check.key)) {
     return process.env[check.key] || config[check.key];
   }
 

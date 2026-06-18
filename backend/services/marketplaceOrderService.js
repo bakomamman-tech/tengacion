@@ -21,6 +21,7 @@ const {
 } = require("./marketplaceSellerService");
 const { validateCheckoutPayload } = require("../validators/marketplaceValidators");
 const sendSecurityEmail = require("../utils/sendSecurityEmail");
+const { isEmailConfigured } = require("../utils/emailSettings");
 
 const VALID_FULFILLMENT_STATUSES = new Set([
   "processing",
@@ -40,8 +41,6 @@ const escapeHtml = (value = "") =>
 
 const formatMoney = (amount = 0, currency = "NGN") =>
   `${String(currency || "NGN").toUpperCase()} ${Number(amount || 0).toLocaleString()}`;
-
-const isEmailConfigured = () => Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
 
 const getSocketContext = (req = null) => ({
   io: req?.app?.get?.("io") || null,

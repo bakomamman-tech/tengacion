@@ -9,6 +9,7 @@ import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
 } from "../lib/seo";
+import { SUPPORT_EMAIL, buildMailto } from "../config/businessContact";
 import { normalizePublicText, uniquePublicActivity } from "../utils/publicText";
 
 import "./public-home.css";
@@ -834,6 +835,7 @@ export default function PublicHomePage() {
               {entry.label}
             </Link>
           ))}
+          <a href={buildMailto(SUPPORT_EMAIL, "Tengacion support request")}>Email support</a>
         </div>
       </section>
     </main>

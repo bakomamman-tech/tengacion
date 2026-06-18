@@ -23400,4 +23400,233 @@ html.dark-mode.neon-purple-mode .messenger-reaction-chip {
   }
 }
 
+/* Restored green auth palette for the current welcome/login surface. */
+.login-container--luxury {
+  --auth-bg: #0c261a;
+  --auth-bg-deep: #09150f;
+  --auth-glow: #6fa56d;
+  --auth-cream: #f5efe3;
+  --auth-cream-soft: #fbf7f0;
+  --auth-cream-deep: #e8dfd0;
+  --auth-ink: #173126;
+  --auth-muted: #607667;
+  --auth-border: rgba(25, 69, 47, 0.16);
+  --auth-border-strong: rgba(61, 126, 83, 0.28);
+  --auth-accent: #3e8055;
+  --auth-accent-strong: #6aa772;
+  --auth-accent-soft: rgba(106, 167, 114, 0.16);
+  --tg-btn-primary-bg: linear-gradient(135deg, #4f9267 0%, #326c4a 100%);
+  --tg-btn-primary-bg-hover: linear-gradient(135deg, #5aa778 0%, #3a7b55 100%);
+  --tg-btn-primary-bg-active: linear-gradient(135deg, #39764f 0%, #24563a 100%);
+  --tg-btn-primary-border: rgba(20, 58, 39, 0.24);
+  --tg-btn-primary-text: #f7fbf8;
+  --tg-btn-secondary-bg: linear-gradient(180deg, rgba(250, 246, 238, 0.98) 0%, rgba(238, 232, 220, 0.94) 100%);
+  --tg-btn-secondary-bg-hover: linear-gradient(180deg, rgba(255, 251, 244, 0.98) 0%, rgba(241, 235, 224, 0.96) 100%);
+  --tg-btn-secondary-bg-active: linear-gradient(180deg, rgba(236, 231, 221, 0.98) 0%, rgba(224, 217, 204, 0.96) 100%);
+  --tg-btn-secondary-border: rgba(25, 69, 47, 0.16);
+  --tg-btn-secondary-border-hover: rgba(61, 126, 83, 0.3);
+  --tg-btn-secondary-text: #173126;
+  --tg-btn-shadow-primary: 0 14px 30px rgba(23, 65, 44, 0.22);
+  --tg-btn-shadow-primary-hover: 0 18px 36px rgba(23, 65, 44, 0.28);
+  background:
+    radial-gradient(circle at 14% 14%, rgba(111, 165, 109, 0.22) 0%, rgba(111, 165, 109, 0) 26%),
+    radial-gradient(circle at 87% 12%, rgba(255, 247, 230, 0.1) 0%, rgba(255, 247, 230, 0) 24%),
+    radial-gradient(circle at 78% 82%, rgba(215, 180, 106, 0.1) 0%, rgba(215, 180, 106, 0) 30%),
+    linear-gradient(180deg, #143624 0%, #10281d 44%, var(--auth-bg-deep) 100%);
+}
+
+.login-container--luxury::before {
+  background: radial-gradient(circle, rgba(117, 171, 114, 0.3) 0%, rgba(117, 171, 114, 0) 72%);
+}
+
+.login-container--luxury::after {
+  background: radial-gradient(circle, rgba(255, 245, 222, 0.12) 0%, rgba(255, 245, 222, 0) 70%);
+}
+
+.login-container--luxury .login-left {
+  color: var(--auth-cream);
+  border-color: rgba(220, 237, 209, 0.12);
+  background:
+    radial-gradient(circle at 18% 16%, rgba(129, 181, 124, 0.18), transparent 36%),
+    radial-gradient(circle at 88% 84%, rgba(215, 180, 106, 0.12), transparent 34%),
+    linear-gradient(145deg, rgba(17, 50, 34, 0.96), rgba(9, 30, 21, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 28px 70px rgba(3, 16, 10, 0.32);
+}
+
+.login-container--luxury .login-left::before {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 34%),
+    radial-gradient(circle at top right, rgba(111, 165, 109, 0.16) 0%, rgba(111, 165, 109, 0) 34%);
+}
+
+.login-container--luxury .login-logo {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: linear-gradient(135deg, rgba(255, 249, 238, 0.16), rgba(255, 255, 255, 0.04));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 24px rgba(111, 165, 109, 0.08);
+}
+
+.login-container--luxury .login-logo img {
+  filter:
+    drop-shadow(0 0 10px rgba(215, 180, 106, 0.26))
+    drop-shadow(0 0 20px rgba(111, 165, 109, 0.14));
+}
+
+.login-container--luxury .login-title {
+  color: var(--auth-cream);
+  text-shadow: 0 0 22px rgba(215, 180, 106, 0.12);
+}
+
+.login-container--luxury .login-subtitle {
+  color: color-mix(in srgb, var(--auth-cream) 74%, var(--auth-glow) 26%);
+}
+
+.login-container--luxury .feature-item {
+  border-color: rgba(223, 239, 212, 0.1);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(106, 167, 114, 0.08));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.login-container--luxury .feature-item p {
+  color: var(--auth-cream);
+}
+
+.login-container--luxury .login-box {
+  color: var(--auth-ink);
+  border-color: rgba(255, 255, 255, 0.4);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(106, 167, 114, 0.12), transparent 15rem),
+    linear-gradient(180deg, rgba(250, 246, 238, 0.98) 0%, rgba(238, 232, 220, 0.94) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 24px 48px rgba(4, 22, 14, 0.22);
+}
+
+.login-container--luxury .login-box h2 {
+  color: var(--auth-ink);
+  text-shadow: none;
+}
+
+.login-container--luxury input.login-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]) {
+  border-color: rgba(25, 69, 47, 0.18);
+  color: var(--auth-ink);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(251, 248, 241, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.login-container--luxury input.login-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"])::placeholder {
+  color: rgba(96, 118, 103, 0.78);
+}
+
+.login-container--luxury input.login-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus {
+  border-color: rgba(62, 128, 85, 0.54);
+  color: var(--auth-ink);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow:
+    0 0 0 4px rgba(106, 167, 114, 0.16),
+    0 0 24px rgba(23, 65, 44, 0.08);
+}
+
+.login-container--luxury .login-box .password-toggle-btn {
+  color: #3e8055;
+  background: rgba(106, 167, 114, 0.12);
+}
+
+.login-container--luxury .login-box .password-toggle-btn:hover {
+  color: #24563f;
+  background: rgba(106, 167, 114, 0.2);
+}
+
+.login-container--luxury .login-box .password-toggle-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(106, 167, 114, 0.18);
+}
+
+.login-container--luxury .login-divider {
+  color: var(--auth-muted);
+}
+
+.login-container--luxury .login-divider::before {
+  border-top-color: rgba(25, 69, 47, 0.14);
+}
+
+.login-container--luxury .login-divider span {
+  background: #f2eee1;
+}
+
+.login-container--luxury .forgot-password,
+.login-container--luxury .login-footer-links a {
+  color: #3e8055;
+}
+
+.login-container--luxury .forgot-password:hover,
+.login-container--luxury .login-footer-links a:hover {
+  color: #24563f;
+}
+
+.login-container--luxury .developer-contact-cta {
+  border-color: rgba(255, 247, 230, 0.18);
+  color: #173126;
+  background:
+    radial-gradient(circle at top right, rgba(106, 167, 114, 0.12) 0%, rgba(106, 167, 114, 0) 44%),
+    linear-gradient(180deg, rgba(248, 241, 228, 0.86) 0%, rgba(231, 221, 202, 0.76) 100%);
+  box-shadow:
+    0 16px 32px rgba(5, 18, 11, 0.22),
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+}
+
+.login-container--luxury .developer-contact-cta::before {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.login-container--luxury .developer-contact-cta:hover {
+  box-shadow:
+    0 20px 38px rgba(5, 18, 11, 0.26),
+    0 0 0 1px rgba(255, 255, 255, 0.16) inset;
+}
+
+.login-container--luxury .developer-contact-cta:focus-visible {
+  outline-color: rgba(255, 246, 220, 0.24);
+}
+
+.login-container--luxury .developer-contact-cta__arrow {
+  border-color: rgba(255, 255, 255, 0.34);
+  color: #173126;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.14) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 10px 22px rgba(23, 49, 38, 0.12);
+}
+
+.login-container--luxury .login-status-message,
+.login-container--luxury .login-box .account-note-card {
+  border-color: rgba(62, 128, 85, 0.18);
+  color: var(--auth-ink);
+  background: linear-gradient(135deg, rgba(106, 167, 114, 0.12), rgba(255, 255, 255, 0.68));
+}
+
+.login-container--luxury .login-box .account-note-card p,
+.login-container--luxury .login-box .account-inline-message {
+  color: var(--auth-muted);
+}
+
+.login-container--luxury .login-box .account-inline-message strong {
+  color: var(--auth-ink);
+}
+
+.login-container--luxury .auth-qr-image,
+.login-container--luxury .auth-qr-placeholder {
+  border-color: rgba(23, 69, 47, 0.12);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.login-container--luxury .auth-qr-placeholder {
+  color: var(--auth-muted);
+}
+
 

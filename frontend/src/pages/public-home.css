@@ -2075,3 +2075,382 @@
   background: rgba(16, 35, 73, 0.74);
 }
 }
+
+/* Restored Tengacion green palette to match the developer contact surface. */
+.public-home {
+  --home-night: #09150f;
+  --home-night-soft: #10281d;
+  --home-panel: rgba(14, 34, 24, 0.92);
+  --home-panel-soft: rgba(22, 58, 40, 0.78);
+  --home-gold: #d7b46a;
+  --home-gold-light: #fff7e6;
+  --home-gold-deep: #8b6428;
+  --home-violet: #6aa772;
+  --home-violet-bright: #a7d19d;
+  --home-blue: #2a6f4f;
+  --home-text: #f8f3e7;
+  --home-muted: rgba(248, 243, 231, 0.74);
+  --home-line: rgba(215, 180, 106, 0.38);
+  color: var(--home-text);
+  background:
+    radial-gradient(circle at 10% 14%, rgba(111, 165, 109, 0.22), transparent 25rem),
+    radial-gradient(circle at 92% 26%, rgba(255, 247, 230, 0.1), transparent 28rem),
+    radial-gradient(circle at 50% 84%, rgba(215, 180, 106, 0.1), transparent 34rem),
+    linear-gradient(180deg, #143624 0%, #10281d 44%, #09150f 100%);
+}
+
+.public-home::before {
+  background:
+    linear-gradient(90deg, transparent 0 6%, rgba(215, 180, 106, 0.06) 6.1%, transparent 6.2% 93.8%, rgba(215, 180, 106, 0.06) 93.9%, transparent 94%),
+    repeating-linear-gradient(90deg, transparent 0 86px, rgba(223, 239, 212, 0.028) 87px, transparent 88px),
+    repeating-linear-gradient(0deg, transparent 0 86px, rgba(223, 239, 212, 0.028) 87px, transparent 88px);
+}
+
+.public-home::after {
+  border-color: rgba(215, 180, 106, 0.18);
+  box-shadow:
+    0 0 0 44px rgba(106, 167, 114, 0.04),
+    0 0 0 88px rgba(215, 180, 106, 0.025),
+    0 0 120px rgba(38, 98, 60, 0.2);
+}
+
+.public-home__hero {
+  color: var(--home-text);
+  background:
+    radial-gradient(circle at 50% 2%, rgba(255, 247, 230, 0.13), transparent 22rem),
+    radial-gradient(circle at 78% 58%, rgba(106, 167, 114, 0.18), transparent 22rem),
+    radial-gradient(circle at 12% 72%, rgba(42, 111, 79, 0.28), transparent 26rem),
+    linear-gradient(116deg, rgba(9, 21, 15, 0.99) 0%, rgba(14, 45, 28, 0.95) 54%, rgba(8, 31, 20, 0.97) 100%);
+  border-bottom-color: rgba(215, 180, 106, 0.34);
+  box-shadow:
+    inset 0 -1px rgba(255, 247, 230, 0.07),
+    0 26px 70px rgba(3, 16, 10, 0.46);
+}
+
+.public-home__hero::before {
+  filter:
+    drop-shadow(0 0 18px rgba(255, 247, 230, 0.34))
+    drop-shadow(0 0 54px rgba(106, 167, 114, 0.24));
+}
+
+.public-home__hero::after {
+  background:
+    radial-gradient(ellipse at 50% -8%, transparent 0 31%, rgba(215, 180, 106, 0.13) 31.2%, transparent 31.55%),
+    radial-gradient(ellipse at 50% -9%, transparent 0 37%, rgba(255, 251, 239, 0.06) 37.2%, transparent 37.5%),
+    linear-gradient(90deg, rgba(215, 180, 106, 0.07), transparent 7%, transparent 93%, rgba(215, 180, 106, 0.07));
+}
+
+.public-home__nav {
+  border-color: rgba(255, 251, 239, 0.18);
+  background:
+    linear-gradient(180deg, rgba(23, 58, 40, 0.78), rgba(9, 30, 21, 0.88)),
+    rgba(9, 21, 15, 0.76);
+  box-shadow:
+    inset 0 1px rgba(255, 251, 239, 0.1),
+    inset 0 -1px rgba(106, 167, 114, 0.16),
+    0 18px 50px rgba(3, 16, 10, 0.34),
+    0 0 28px rgba(215, 180, 106, 0.06);
+}
+
+.public-home__brand img {
+  filter: drop-shadow(0 0 11px rgba(215, 180, 106, 0.42));
+}
+
+.public-home__brand span,
+.public-home h1,
+.public-home__section-head h2,
+.public-home__band h2,
+.public-home__subhead h3,
+.public-home__tile span,
+.public-home-commerce strong,
+.public-home-leader__body strong,
+.public-home-release__body strong,
+.public-home-activity strong,
+.public-home-path strong,
+.public-home__empty strong,
+.public-home-creator__body strong,
+.public-home-benefit strong {
+  color: var(--home-gold-light);
+}
+
+.public-home h1 {
+  background: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  filter: drop-shadow(0 8px 18px rgba(3, 16, 10, 0.34));
+}
+
+.public-home__lede,
+.public-home__section-head p,
+.public-home__tile p,
+.public-home-path p,
+.public-home-release__body p,
+.public-home-activity p,
+.public-home__empty p,
+.public-home-creator__body p,
+.public-home-benefit p {
+  color: var(--home-muted);
+}
+
+.public-home__nav-actions a,
+.public-home__trust-links a {
+  border-color: rgba(255, 251, 239, 0.18);
+  color: #f6fbf7;
+  background: rgba(255, 251, 239, 0.08);
+}
+
+.public-home__nav-actions a:last-child,
+.public-home__button--primary,
+.public-home-commerce > span,
+.public-home-leader.is-founder .public-home-leader__portrait span {
+  border-color: rgba(255, 251, 239, 0.22);
+  color: #f7fbf8;
+  background: linear-gradient(135deg, #4f9267 0%, #326c4a 100%);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.18),
+    0 14px 30px rgba(23, 65, 44, 0.22);
+}
+
+.public-home__nav-actions a:hover,
+.public-home__nav-actions a:focus-visible,
+.public-home__trust-links a:hover,
+.public-home__trust-links a:focus-visible {
+  border-color: rgba(215, 180, 106, 0.62);
+  color: #ffffff;
+  background: rgba(255, 251, 239, 0.14);
+  box-shadow: 0 0 20px rgba(106, 167, 114, 0.16);
+}
+
+.public-home__nav-actions a:last-child:hover,
+.public-home__nav-actions a:last-child:focus-visible,
+.public-home__button--primary:hover,
+.public-home__button--primary:focus-visible {
+  color: #ffffff;
+  background: linear-gradient(135deg, #5aa778 0%, #3a7b55 100%);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.22),
+    0 16px 34px rgba(23, 65, 44, 0.28);
+}
+
+.public-home__hero-inner::before,
+.public-home__section,
+.public-home__proof-card,
+.public-home-leader,
+.public-home-release,
+.public-home-activity,
+.public-home-path,
+.public-home-creator,
+.public-home-benefit,
+.public-home__tile,
+.public-home-commerce,
+.public-home__activity-panel,
+.public-home__empty,
+.public-home__band {
+  border-color: rgba(255, 247, 230, 0.16);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(215, 180, 106, 0.12), transparent 12rem),
+    linear-gradient(145deg, rgba(14, 34, 24, 0.92), rgba(9, 21, 15, 0.96));
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.06),
+    0 22px 52px rgba(3, 16, 10, 0.3);
+}
+
+.public-home__section--commerce,
+.public-home__section--leadership,
+.public-home__section--live {
+  background:
+    radial-gradient(circle at 88% 15%, rgba(215, 180, 106, 0.11), transparent 21rem),
+    radial-gradient(circle at 8% 92%, rgba(106, 167, 114, 0.14), transparent 19rem),
+    linear-gradient(145deg, rgba(14, 34, 24, 0.92), rgba(9, 21, 15, 0.97));
+}
+
+.public-home__section::before,
+.public-home-leader::after,
+.public-home-release::after,
+.public-home-path::after,
+.public-home-creator::after,
+.public-home-benefit::after,
+.public-home__tile::after,
+.public-home-commerce::after {
+  background: linear-gradient(90deg, transparent, var(--home-gold), transparent);
+  box-shadow: 0 0 12px rgba(215, 180, 106, 0.42);
+}
+
+.public-home__button,
+.public-home__section-link,
+.public-home__inline-button,
+.public-home__hero-proof span,
+.public-home__trust-signals span,
+.public-home-creator__meta small,
+.public-home-creator__badges em {
+  border-color: rgba(255, 247, 230, 0.16);
+  color: #f8f3e7;
+  background: rgba(255, 251, 239, 0.08);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.06),
+    0 8px 20px rgba(3, 16, 10, 0.18);
+}
+
+.public-home__button:hover,
+.public-home__button:focus-visible,
+.public-home__section-link:hover,
+.public-home__section-link:focus-visible,
+.public-home__inline-button:hover,
+.public-home__inline-button:focus-visible {
+  border-color: rgba(215, 180, 106, 0.66);
+  color: #fffdf7;
+  background: rgba(255, 251, 239, 0.14);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.09),
+    0 0 24px rgba(106, 167, 114, 0.2),
+    0 14px 30px rgba(3, 16, 10, 0.3);
+}
+
+.public-home__eyebrow,
+.public-home__subhead a,
+.public-home-release__body span,
+.public-home-activity span,
+.public-home-creator__body > span,
+.public-home-creator__badges em,
+.public-home-leader__role,
+.public-home__band .public-home__eyebrow {
+  color: var(--home-gold);
+  text-shadow: 0 0 14px rgba(215, 180, 106, 0.2);
+}
+
+.public-home__eyebrow::before,
+.public-home__tile::before,
+.public-home-activity::before {
+  background: linear-gradient(90deg, var(--home-gold), var(--home-violet));
+  box-shadow: 0 0 12px rgba(106, 167, 114, 0.28);
+}
+
+.public-home__action-line {
+  color: #f8f3e7;
+}
+
+.public-home__action-line span:not(:last-child)::after {
+  color: var(--home-violet-bright);
+  text-shadow: 0 0 9px rgba(106, 167, 114, 0.68);
+}
+
+.public-home__hero-proof span::before {
+  border-color: var(--home-gold-light);
+  background: var(--home-violet);
+  box-shadow: 0 0 9px rgba(106, 167, 114, 0.68);
+}
+
+.public-home__proof-card::after,
+.public-home-path::before,
+.public-home-benefit::before {
+  border-color: rgba(215, 180, 106, 0.32);
+  background:
+    radial-gradient(circle, rgba(255, 247, 230, 0.58) 0 8%, transparent 10%),
+    linear-gradient(135deg, rgba(215, 180, 106, 0.22), rgba(106, 167, 114, 0.24));
+  box-shadow: 0 0 18px rgba(106, 167, 114, 0.14);
+}
+
+.public-home-leader:hover,
+.public-home-leader:focus-visible,
+.public-home-release:hover,
+.public-home-release:focus-visible,
+.public-home-activity:hover,
+.public-home-activity:focus-visible,
+.public-home-path:hover,
+.public-home-path:focus-visible,
+.public-home-creator:hover,
+.public-home-creator:focus-visible,
+.public-home__tile:hover,
+.public-home__tile:focus-visible,
+.public-home__proof-card:hover {
+  border-color: rgba(215, 180, 106, 0.62);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.08),
+    0 22px 42px rgba(3, 16, 10, 0.34),
+    0 0 26px rgba(106, 167, 114, 0.14);
+}
+
+.public-home-leader__portrait,
+.public-home-release__art,
+.public-home-creator__avatar {
+  background:
+    radial-gradient(circle at 50% 36%, rgba(106, 167, 114, 0.28), transparent 48%),
+    linear-gradient(145deg, #173a28, #09150f);
+}
+
+.public-home-leader__portrait::after,
+.public-home-release__art::after,
+.public-home-creator__avatar::after {
+  background:
+    linear-gradient(180deg, transparent 52%, rgba(7, 19, 13, 0.86) 100%),
+    linear-gradient(135deg, rgba(215, 180, 106, 0.08), transparent 38%);
+}
+
+.public-home-leader__portrait span {
+  border-color: rgba(215, 180, 106, 0.32);
+  color: #f8f3e7;
+  background: rgba(9, 21, 15, 0.82);
+}
+
+.public-home-release__body small,
+.public-home-activity small {
+  color: #a7d19d;
+}
+
+.public-home-creator__meta small {
+  color: #d7efe0;
+}
+
+.public-home__section--live .public-home__section-head h2,
+.public-home__section--live .public-home__subhead h3,
+.public-home__section--live .public-home-release__body strong,
+.public-home__section--live .public-home-activity strong,
+.public-home__section--live .public-home__empty strong,
+.public-home__band h2 {
+  color: var(--home-gold-light);
+}
+
+.public-home__section--live .public-home__section-head p,
+.public-home__section--live .public-home-release__body p,
+.public-home__section--live .public-home-activity p,
+.public-home__section--live .public-home__empty p {
+  color: var(--home-muted);
+}
+
+.public-home__section--live .public-home__section-link,
+.public-home__section--live .public-home__subhead a,
+.public-home__section--live .public-home-release__body span,
+.public-home__section--live .public-home-activity span {
+  color: var(--home-gold);
+}
+
+.public-home__section--live .public-home-release,
+.public-home__section--live .public-home-activity,
+.public-home__section--live .public-home__activity-panel,
+.public-home__section--live .public-home__empty {
+  color: var(--home-text);
+  border-color: rgba(255, 247, 230, 0.16);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(215, 180, 106, 0.12), transparent 11rem),
+    linear-gradient(145deg, rgba(14, 34, 24, 0.92), rgba(9, 21, 15, 0.96));
+}
+
+.public-home__section--live .public-home-release__body small,
+.public-home__section--live .public-home-activity small {
+  color: #a7d19d;
+}
+
+.public-home-release--loading .public-home-release__art,
+.public-home-release--loading .public-home-release__body span,
+.public-home-release--loading .public-home-release__body strong,
+.public-home-release--loading .public-home-release__body p,
+.public-home-activity--loading span,
+.public-home-activity--loading strong,
+.public-home-activity--loading p,
+.public-home-creator--loading span,
+.public-home-creator--loading strong,
+.public-home-creator--loading p {
+  background: linear-gradient(90deg, #10281d 0%, #244832 48%, #d7b46a 58%, #10281d 100%);
+  background-size: 230% 100%;
+}

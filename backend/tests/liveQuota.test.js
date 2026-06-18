@@ -18,12 +18,14 @@ const {
 
 let mongod;
 
-const makeUser = async () =>
+const makeUser = async (overrides = {}) =>
   User.create({
     name: "Live Host",
     username: "live_host",
     email: `live-${Date.now()}-${Math.random()}@test.com`,
     password: "Password123!",
+    role: "admin",
+    ...overrides,
   });
 
 beforeAll(async () => {
@@ -126,6 +128,22 @@ describe("live quota enforcement", () => {
       statusCode: 429,
       message: "You have used your 30 seconds of live time for today",
     });
+  });
+
+  test("blocks non-admin users before creating a live session", async () => {
+    const user = await makeUser({ role: "user" });
+
+    await expect(
+      LiveService.createSession({
+        userId: user._id,
+        title: "Blocked live",
+      })
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      message: "You Need Permission from the Admin",
+    });
+
+    await expect(LiveSession.countDocuments({ hostUserId: user._id })).resolves.toBe(0);
   });
 
   test("expires an active session once its quota window has passed", async () => {

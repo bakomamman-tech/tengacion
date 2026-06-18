@@ -1689,8 +1689,8 @@ export const getLiveSessions = () =>
     headers: getAuthHeaders(),
   });
 
-export const getLiveConfig = () =>
-  request(`${API_BASE}/live/config`, {
+export const getLiveConfig = ({ publish = false } = {}) =>
+  request(`${API_BASE}/live/config${publish ? "?publish=true" : ""}`, {
     headers: getAuthHeaders(),
   });
 

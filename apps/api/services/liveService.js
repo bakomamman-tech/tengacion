@@ -10,6 +10,8 @@ const {
 const MAX_TITLE_LENGTH = 120;
 const MAX_LIVE_SECONDS_PER_DAY = 30;
 const MAX_LIVE_MS_PER_DAY = MAX_LIVE_SECONDS_PER_DAY * 1000;
+const LIVE_ADMIN_PERMISSION_MESSAGE = "You Need Permission from the Admin";
+const LIVE_PUBLISHER_ROLES = new Set(["admin", "super_admin"]);
 const quotaTimers = new Map();
 let quotaSweepInterval = null;
 
@@ -25,6 +27,11 @@ const makeRoomName = (userId) => {
   const random = crypto.randomBytes(4).toString("hex");
   return `live-${userId}-${Date.now()}-${random}`;
 };
+
+const normalizeRole = (value) => String(value || "").trim().toLowerCase();
+
+const canPublishLive = (user = {}) =>
+  LIVE_PUBLISHER_ROLES.has(normalizeRole(user?.role));
 
 const toDate = (value) => {
   if (!value) {
@@ -157,6 +164,22 @@ const toPublicSession = (session, { now = new Date(), usedMsToday = null } = {})
 });
 
 class LiveService {
+  static getLiveAccess(user = {}) {
+    const canPublish = canPublishLive(user);
+    return {
+      canPublish,
+      message: canPublish ? "" : LIVE_ADMIN_PERMISSION_MESSAGE,
+    };
+  }
+
+  static assertCanPublishLive(user = {}) {
+    const access = LiveService.getLiveAccess(user);
+    if (!access.canPublish) {
+      throw ApiError.forbidden(LIVE_ADMIN_PERMISSION_MESSAGE);
+    }
+    return access;
+  }
+
   static async calculateUsedLiveMs(userId, now = new Date()) {
     const current = toDate(now) || new Date();
     const { start, end } = getUtcDayBounds(current);
@@ -296,6 +319,7 @@ class LiveService {
     if (!host) {
       throw ApiError.notFound("Host profile not found");
     }
+    LiveService.assertCanPublishLive(host);
 
     const activeSession = await LiveService.getHostActiveSession(host._id);
     if (activeSession) {

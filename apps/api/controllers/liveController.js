@@ -31,6 +31,7 @@ exports.createLiveSession = catchAsync(async (req, res) => {
   const { title } = req.body || {};
   let session = null;
   try {
+    LiveService.assertCanPublishLive(req.user);
     const livekit = ensureValidLivekitConfig();
     session = await LiveService.createSession({
       userId: req.user.id,
@@ -104,6 +105,9 @@ exports.requestToken = catchAsync(async (req, res) => {
     if (!roomName) {
       throw ApiError.badRequest("Room name is required");
     }
+    if (publish) {
+      LiveService.assertCanPublishLive(req.user);
+    }
     const livekit = ensureValidLivekitConfig();
 
     const user = await User.findById(req.user.id);
@@ -147,6 +151,30 @@ exports.requestToken = catchAsync(async (req, res) => {
 });
 
 exports.getLiveConfig = catchAsync(async (req, res) => {
+  const wantsPublishAccess = ["1", "true", "yes"].includes(
+    String(req.query?.publish || "").trim().toLowerCase()
+  );
+  const liveAccess = req.user?.id ? LiveService.getLiveAccess(req.user) : null;
+  if (wantsPublishAccess && liveAccess && !liveAccess.canPublish) {
+    const quota = await LiveService.getUserQuota(req.user.id).catch(() => null);
+    res.json({
+      recording: LIVE_STREAM_RECORDING,
+      liveAccess,
+      quota: quota
+        ? {
+            ...quota,
+            canGoLive: false,
+            blockedReason: liveAccess.message,
+          }
+        : {
+            canGoLive: false,
+            blockedReason: liveAccess.message,
+          },
+      activeSession: null,
+    });
+    return;
+  }
+
   const livekit = ensureValidLivekitConfig();
   const payload = {
     ...livekit,
@@ -158,8 +186,21 @@ exports.getLiveConfig = catchAsync(async (req, res) => {
       LiveService.getUserQuota(req.user.id),
       LiveService.getHostActiveSession(req.user.id),
     ]);
-    payload.quota = quota;
-    payload.activeSession = activeSession ? LiveService.toPublic(activeSession) : null;
+    payload.liveAccess = liveAccess;
+    payload.quota =
+      liveAccess && !liveAccess.canPublish
+        ? {
+            ...quota,
+            canGoLive: false,
+            blockedReason: liveAccess.message,
+          }
+        : quota;
+    payload.activeSession =
+      liveAccess && !liveAccess.canPublish
+        ? null
+        : activeSession
+          ? LiveService.toPublic(activeSession)
+          : null;
   }
 
   res.json(payload);

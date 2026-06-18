@@ -27,6 +27,18 @@ const formatElapsedTime = (value) => {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 };
 
+const LIVE_ADMIN_PERMISSION_MESSAGE = "You Need Permission from the Admin";
+
+const getLivePermissionBlockMessage = (config, quota) => {
+  if (config?.liveAccess?.canPublish === false) {
+    return config.liveAccess.message || LIVE_ADMIN_PERMISSION_MESSAGE;
+  }
+  if (quota?.blockedReason) {
+    return quota.blockedReason;
+  }
+  return "";
+};
+
 export default function GoLive() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -64,11 +76,14 @@ export default function GoLive() {
   }, [liveSession]);
 
   const refreshLiveConfig = useCallback(async () => {
-    const config = await getLiveConfig();
+    const config = await getLiveConfig({ publish: true });
     setLiveConfig(config || null);
     setLiveQuota(config?.quota || null);
     return config || null;
   }, []);
+
+  const livePermissionMessage = getLivePermissionBlockMessage(liveConfig, liveQuota);
+  const livePermissionBlocked = Boolean(livePermissionMessage);
 
   useEffect(() => {
     let alive = true;
@@ -99,6 +114,10 @@ export default function GoLive() {
     if (loading) {
       return;
     }
+    if (livePermissionBlocked) {
+      setError(livePermissionMessage);
+      return;
+    }
     setError("");
     setLoading(true);
 
@@ -107,6 +126,10 @@ export default function GoLive() {
 
     try {
       const config = liveConfig || (await refreshLiveConfig());
+      const publishBlockMessage = getLivePermissionBlockMessage(config, config?.quota);
+      if (publishBlockMessage) {
+        throw new Error(publishBlockMessage);
+      }
       const activeSession = config?.activeSession;
 
       if (activeSession?.roomName) {
@@ -527,7 +550,12 @@ export default function GoLive() {
               You already have an active live session. Resume it instead of starting a new one.
             </span>
           )}
-          {!liveSession && liveQuota && !liveQuota.canGoLive && (
+          {!liveSession && livePermissionBlocked && (
+            <span className="go-live-limit-warning">
+              {livePermissionMessage}
+            </span>
+          )}
+          {!liveSession && !livePermissionBlocked && liveQuota && !liveQuota.canGoLive && (
             <span className="go-live-limit-warning">
               You have used today's 30-second live allowance.
             </span>
@@ -538,7 +566,12 @@ export default function GoLive() {
           <button
             type="button"
             className="primary go-live-start-btn"
-            disabled={loading || configLoading || (!liveConfig?.activeSession && liveQuota && !liveQuota.canGoLive)}
+            disabled={
+              loading ||
+              configLoading ||
+              livePermissionBlocked ||
+              (!liveConfig?.activeSession && liveQuota && !liveQuota.canGoLive)
+            }
             onClick={handleStart}
           >
             {loading

@@ -1,9 +1,16 @@
 const { AccessToken, RoomServiceClient } = require("livekit-server-sdk");
 const { config } = require("../config/env");
 
+const serviceUnavailable = (message) => {
+  const error = new Error(message);
+  error.statusCode = 503;
+  error.isOperational = true;
+  return error;
+};
+
 const ensureLiveKitConfig = () => {
   if (!config.LIVEKIT_API_KEY || !config.LIVEKIT_API_SECRET) {
-    throw new Error("LiveKit credentials are not configured");
+    throw serviceUnavailable("LiveKit credentials are not configured");
   }
 };
 
@@ -42,7 +49,7 @@ const getRoomServiceClient = () => {
 
   const host = normalizeLivekitHost(config.LIVEKIT_HOST || config.LIVEKIT_WS_URL);
   if (!host) {
-    throw new Error("LiveKit host is not configured");
+    throw serviceUnavailable("LiveKit host is not configured");
   }
 
   return new RoomServiceClient(host, config.LIVEKIT_API_KEY, config.LIVEKIT_API_SECRET);

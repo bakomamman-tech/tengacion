@@ -234,6 +234,7 @@ app.use("/api/checkin", require("./routes/checkin"));
 app.use("/api/discovery", require("./routes/discovery"));
 app.use("/api/news", require("./routes/news.routes"));
 app.use("/api/marketplace", require("./routes/marketplaceRoutes"));
+app.use("/api/schools", require("./routes/schools"));
 
 app.use((req, res, next) => {
   if (req.path.startsWith("/api")) {

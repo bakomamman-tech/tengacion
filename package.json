@@ -9,6 +9,7 @@
     "audit:frontend": "npm audit --prefix frontend",
     "audit:all": "npm audit --prefix backend && npm audit --prefix frontend",
     "seed:admin": "node backend/scripts/seedAdmin.js",
+    "seed:school-kurah": "node backend/scripts/seedKurahSchoolPage.js",
     "reset:admin-password": "node backend/scripts/resetAdminPassword.js",
     "backfill:analytics": "node backend/scripts/backfillAnalytics.js"
   },

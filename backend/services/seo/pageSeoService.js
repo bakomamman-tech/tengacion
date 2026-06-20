@@ -6,6 +6,7 @@ const CreatorProfile = require("../../models/CreatorProfile");
 const MarketplaceProduct = require("../../models/MarketplaceProduct");
 const MarketplaceSeller = require("../../models/MarketplaceSeller");
 const Post = require("../../models/Post");
+const SchoolPage = require("../../models/SchoolPage");
 const Track = require("../../models/Track");
 const Video = require("../../models/Video");
 const {
@@ -45,6 +46,9 @@ const ACTIVE_MARKETPLACE_PRODUCT_FILTER = {
 const ACTIVE_MARKETPLACE_SELLER_FILTER = {
   status: "approved",
   isActive: true,
+};
+const ACTIVE_SCHOOL_FILTER = {
+  isPublished: true,
 };
 const ACTIVE_PUBLIC_POST_FILTER = {
   privacy: "public",
@@ -1746,7 +1750,93 @@ const buildMarketplaceStoreSeo = async (idOrSlug) => {
   });
 };
 
+const getSchoolPath = (school = {}) => `/schools/${encodeURIComponent(school.slug || school._id || "")}`;
+
+const getSchoolImage = (school = {}) =>
+  pickText(school.ogImageUrl, school.coverImageUrl, school.logoUrl, DEFAULT_IMAGE_PATH);
+
+const buildSchoolDescription = (school = {}) =>
+  truncateText(
+    pickText(
+      school.about,
+      school.motto,
+      school.schoolCategory
+        ? `${school.schoolName} is a ${school.schoolCategory} school profile powered by Tengacion.`
+        : "",
+      `${school.schoolName || "This school"} shares admission information, announcements, facilities, gallery images, and contact details on Tengacion.`
+    ),
+    180
+  );
+
+const buildSchoolSeo = async (slug = "") => {
+  const normalizedSlug = String(slug || "").trim().toLowerCase();
+  const fallbackPath = `/schools/${encodeURIComponent(normalizedSlug)}`;
+  const school = await SchoolPage.findOne({
+    slug: normalizedSlug,
+    ...ACTIVE_SCHOOL_FILTER,
+  }).lean();
+
+  if (!school) {
+    return buildSeoPayload({
+      title: "School Page Not Found | Tengacion",
+      description: DEFAULT_DESCRIPTION,
+      canonicalPath: fallbackPath,
+      robots: "noindex,nofollow",
+      statusCode: 404,
+    });
+  }
+
+  const canonicalPath = getSchoolPath(school);
+  const description = buildSchoolDescription(school);
+  const image = getSchoolImage(school);
+
+  return buildSeoPayload({
+    title: `${school.schoolName || "School"} | Tengacion School Profile`,
+    description,
+    canonicalPath,
+    ogType: "website",
+    image,
+    imageAlt: `${school.schoolName || "School"} school preview`,
+    structuredData: [
+      {
+        "@context": "https://schema.org",
+        "@type": "EducationalOrganization",
+        name: school.schoolName || "School",
+        description,
+        url: toCanonicalUrl(canonicalPath),
+        image: toAbsoluteUrl(image),
+        logo: school.logoUrl ? toAbsoluteUrl(school.logoUrl) : undefined,
+        email: school.contactEmail || undefined,
+        telephone: school.contactPhone || undefined,
+        address: school.address
+          ? {
+              "@type": "PostalAddress",
+              streetAddress: school.address,
+              addressCountry: "NG",
+            }
+          : undefined,
+      },
+      buildBreadcrumbJsonLd([
+        { name: "Tengacion", url: "/" },
+        { name: "Schools", url: "/schools" },
+        { name: school.schoolName || "School", url: canonicalPath },
+      ]),
+    ],
+    previewTitle: `${school.schoolName || "School"} on Tengacion`,
+    previewDescription: description,
+  });
+};
+
 const resolveDynamicSeo = async (pathname) => {
+  const schoolMatch = pathname.match(/^\/schools\/([^/]+)$/i);
+  if (schoolMatch) {
+    return buildSchoolSeo(schoolMatch[1]);
+  }
+
+  if (pathname === "/kurahtechandartsacademy") {
+    return buildSchoolSeo("kurahtechandartsacademy");
+  }
+
   const creatorMatch = pathname.match(/^\/creators\/([^/]+)(?:\/(music|albums|podcasts|books))?$/i);
   if (creatorMatch) {
     return buildCreatorSeo({

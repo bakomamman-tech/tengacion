@@ -3,6 +3,7 @@ const Book = require("../../models/Book");
 const CreatorProfile = require("../../models/CreatorProfile");
 const MarketplaceProduct = require("../../models/MarketplaceProduct");
 const MarketplaceSeller = require("../../models/MarketplaceSeller");
+const SchoolPage = require("../../models/SchoolPage");
 const Track = require("../../models/Track");
 const Video = require("../../models/Video");
 const { buildCreatorPublicPath } = require("../publicRouteService");
@@ -20,6 +21,9 @@ const ACTIVE_MARKETPLACE_PRODUCT_FILTER = {
 const ACTIVE_MARKETPLACE_SELLER_FILTER = {
   status: "approved",
   isActive: true,
+};
+const ACTIVE_SCHOOL_FILTER = {
+  isPublished: true,
 };
 const SITEMAP_CACHE_TTL_MS = 15 * 60 * 1000;
 const MAX_URLS_PER_SITEMAP = 1000;
@@ -362,6 +366,9 @@ const marketplaceProductPath = (product = {}) =>
 const marketplaceStorePath = (seller = {}) =>
   `/marketplace/store/${encodeURIComponent(seller.slug || seller._id || "")}`;
 
+const schoolPath = (school = {}) =>
+  `/schools/${encodeURIComponent(school.slug || school._id || "")}`;
+
 const buildMarketplaceEntries = async () => {
   const products = await MarketplaceProduct.find(ACTIVE_MARKETPLACE_PRODUCT_FILTER)
     .select("_id slug seller updatedAt createdAt")
@@ -394,6 +401,20 @@ const buildMarketplaceEntries = async () => {
   return dedupeEntries([...productEntries, ...sellerEntries, ...storeEntries]);
 };
 
+const buildSchoolEntries = async () =>
+  dedupeEntries(
+    (
+      await SchoolPage.find(ACTIVE_SCHOOL_FILTER)
+        .select("_id slug updatedAt createdAt")
+        .sort({ updatedAt: -1 })
+        .limit(1000)
+        .lean()
+    ).map((school) => ({
+      path: schoolPath(school),
+      lastModified: school.updatedAt || school.createdAt,
+    }))
+  );
+
 const buildSectionFiles = (baseName, entries = []) =>
   chunkEntries(entries).map((chunk, index) => ({
     name: `${baseName}-${index + 1}`,
@@ -403,13 +424,14 @@ const buildSectionFiles = (baseName, entries = []) =>
   }));
 
 const buildSitemapManifest = async () => {
-  const [staticEntries, creatorEntries, musicEntries, bookEntries, podcastEntries, marketplaceEntries] = await Promise.all([
+  const [staticEntries, creatorEntries, musicEntries, bookEntries, podcastEntries, marketplaceEntries, schoolEntries] = await Promise.all([
     Promise.resolve(buildStaticEntries()),
     buildCreatorEntries(),
     buildMusicEntries(),
     buildBookEntries(),
     buildPodcastEntries(),
     buildMarketplaceEntries(),
+    buildSchoolEntries(),
   ]);
 
   const sections = [
@@ -424,6 +446,7 @@ const buildSitemapManifest = async () => {
     ...buildSectionFiles("books", bookEntries),
     ...buildSectionFiles("podcasts", podcastEntries),
     ...buildSectionFiles("marketplace", marketplaceEntries),
+    ...buildSectionFiles("schools", schoolEntries),
   ].filter((section) => Array.isArray(section.entries) && section.entries.length > 0);
 
   return {

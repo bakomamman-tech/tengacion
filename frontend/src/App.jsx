@@ -25,6 +25,7 @@ const PublicInfoPage = lazy(() => import("./pages/PublicInfoPage"));
 const LeadershipPage = lazy(() => import("./pages/LeadershipPage"));
 const InvestorPitchPage = lazy(() => import("./pages/InvestorPitchPage"));
 const PyrexxSingzPage = lazy(() => import("./pages/PyrexxSingzPage"));
+const SchoolProfilePage = lazy(() => import("./pages/SchoolProfilePage"));
 const Register = lazy(() => import("./pages/Register"));
 const KadunaGotTalentRegisterPage = lazy(() => import("./pages/KadunaGotTalentRegisterPage"));
 const Search = lazy(() => import("./pages/Search"));
@@ -171,6 +172,15 @@ export default function App() {
           <Route path="/pyrexx_singz" element={<PyrexxSingzPage />} />
           <Route path="/artist/pyrexx-singz" element={<PyrexxSingzPage />} />
           <Route path="/artist/pyrexx_singz" element={<PyrexxSingzPage />} />
+          <Route path="/schools/:slug" element={<SchoolProfilePage />} />
+          <Route
+            path="/kurahtechandartsacademy"
+            element={<SchoolProfilePage slugOverride="kurahtechandartsacademy" />}
+          />
+          <Route
+            path="/kurahtechandartsacacemy"
+            element={<Navigate to="/kurahtechandartsacademy" replace />}
+          />
           <Route path="/safety" element={<PublicInfoPage pageKey="safety" />} />
           <Route path="/child-safety" element={<PublicInfoPage pageKey="child-safety" />} />
           <Route path="/moderation-policy" element={<PublicInfoPage pageKey="moderation-policy" />} />

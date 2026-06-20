@@ -240,10 +240,6 @@ const findSchoolPageForManagement = async (idOrSlug = "") => {
 
 const assertCanManageSchoolPage = (school, user = {}) => {
   if (!school) {
-    const fallbackSchool = getFallbackSchoolPageBySlug(normalizedSlug);
-    if (fallbackSchool) {
-      return serializePublicSchoolPage(fallbackSchool);
-    }
     throw createServiceError("School page not found", 404);
   }
   if (isAdminUser(user)) {
@@ -435,6 +431,10 @@ const getPublicSchoolPage = async (slug = "") => {
   }).lean();
 
   if (!school) {
+    const fallbackSchool = getFallbackSchoolPageBySlug(normalizedSlug);
+    if (fallbackSchool) {
+      return serializePublicSchoolPage(fallbackSchool);
+    }
     throw createServiceError("School page not found", 404);
   }
 

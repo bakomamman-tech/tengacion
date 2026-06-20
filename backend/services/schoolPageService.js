@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const SchoolInquiry = require("../models/SchoolInquiry");
 const SchoolPage = require("../models/SchoolPage");
+const { getFallbackSchoolPageBySlug } = require("../data/schoolPageFallbacks");
 const sendSecurityEmail = require("../utils/sendSecurityEmail");
 const { getEmailSettings, isEmailConfigured } = require("../utils/emailSettings");
 const { generateUniqueSlug, slugifyValue } = require("../utils/slug");
@@ -239,6 +240,10 @@ const findSchoolPageForManagement = async (idOrSlug = "") => {
 
 const assertCanManageSchoolPage = (school, user = {}) => {
   if (!school) {
+    const fallbackSchool = getFallbackSchoolPageBySlug(normalizedSlug);
+    if (fallbackSchool) {
+      return serializePublicSchoolPage(fallbackSchool);
+    }
     throw createServiceError("School page not found", 404);
   }
   if (isAdminUser(user)) {

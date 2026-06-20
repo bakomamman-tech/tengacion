@@ -5,6 +5,7 @@ const MarketplaceProduct = require("../../models/MarketplaceProduct");
 const MarketplaceSeller = require("../../models/MarketplaceSeller");
 const SchoolPage = require("../../models/SchoolPage");
 const Track = require("../../models/Track");
+const { listFallbackSchoolPages } = require("../../data/schoolPageFallbacks");
 const Video = require("../../models/Video");
 const { buildCreatorPublicPath } = require("../publicRouteService");
 const { normalizePathname, toCanonicalUrl } = require("./siteSeo");
@@ -403,13 +404,14 @@ const buildMarketplaceEntries = async () => {
 
 const buildSchoolEntries = async () =>
   dedupeEntries(
-    (
-      await SchoolPage.find(ACTIVE_SCHOOL_FILTER)
+    [
+      ...(await SchoolPage.find(ACTIVE_SCHOOL_FILTER)
         .select("_id slug updatedAt createdAt")
         .sort({ updatedAt: -1 })
         .limit(1000)
-        .lean()
-    ).map((school) => ({
+        .lean()),
+      ...listFallbackSchoolPages(),
+    ].map((school) => ({
       path: schoolPath(school),
       lastModified: school.updatedAt || school.createdAt,
     }))

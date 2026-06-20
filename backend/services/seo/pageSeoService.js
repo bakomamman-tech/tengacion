@@ -9,6 +9,7 @@ const Post = require("../../models/Post");
 const SchoolPage = require("../../models/SchoolPage");
 const Track = require("../../models/Track");
 const Video = require("../../models/Video");
+const { getFallbackSchoolPageBySlug } = require("../../data/schoolPageFallbacks");
 const {
   normalizePublicText,
   uniquePublicActivity,
@@ -1771,10 +1772,11 @@ const buildSchoolDescription = (school = {}) =>
 const buildSchoolSeo = async (slug = "") => {
   const normalizedSlug = String(slug || "").trim().toLowerCase();
   const fallbackPath = `/schools/${encodeURIComponent(normalizedSlug)}`;
-  const school = await SchoolPage.findOne({
-    slug: normalizedSlug,
-    ...ACTIVE_SCHOOL_FILTER,
-  }).lean();
+  const school =
+    (await SchoolPage.findOne({
+      slug: normalizedSlug,
+      ...ACTIVE_SCHOOL_FILTER,
+    }).lean()) || getFallbackSchoolPageBySlug(normalizedSlug);
 
   if (!school) {
     return buildSeoPayload({

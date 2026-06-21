@@ -311,6 +311,26 @@ describe("SEO routes", () => {
     expect(sellerTermsResponse.text).toContain('content="index,follow"');
   });
 
+  test("Kurah academy renders crawlable school content on its canonical route", async () => {
+    const response = await request(server).get("/kurahtechandartsacademy").expect(200);
+    const aliasResponse = await request(server)
+      .get("/schools/kurahtechandartsacademy")
+      .expect(200);
+
+    expect(response.text).toContain(
+      '<title data-seo-key="title">Kurah Tech and Arts Academy | Inclusive School in Kaduna</title>'
+    );
+    expect(response.text).toContain('href="https://tengacion.com/kurahtechandartsacademy"');
+    expect(response.text).toContain('content="index,follow"');
+    expect(response.text).toContain("Narayi, Chikun Local Government Area");
+    expect(response.text).toContain("bakomamman@gmail.com");
+    expect(response.text).toContain("08061201090");
+    expect(response.text).toContain("Class photographs");
+    expect(response.text).toContain("Amazing Grace Abumere");
+    expect(response.text).toContain("student-primary-6-amazing-grace-abumere.jpg");
+    expect(aliasResponse.text).toContain('href="https://tengacion.com/kurahtechandartsacademy"');
+  });
+
   test("baseline browser security headers are served", async () => {
     const response = await request(server).get("/api/health").expect(200);
 
@@ -546,6 +566,7 @@ describe("SEO routes", () => {
     const musicResponse = await request(server).get("/sitemaps/music-1.xml").expect(200);
     const booksResponse = await request(server).get("/sitemaps/books-1.xml").expect(200);
     const marketplaceResponse = await request(server).get("/sitemaps/marketplace-1.xml").expect(200);
+    const schoolsResponse = await request(server).get("/sitemaps/schools-1.xml").expect(200);
 
     expect(indexResponse.headers["content-type"]).toContain("application/xml");
     expect(indexResponse.text).toContain("<sitemapindex");
@@ -554,6 +575,7 @@ describe("SEO routes", () => {
     expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/music-1.xml</loc>");
     expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/books-1.xml</loc>");
     expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/marketplace-1.xml</loc>");
+    expect(indexResponse.text).toContain("<loc>https://tengacion.com/sitemaps/schools-1.xml</loc>");
 
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/</loc>");
     expect(staticResponse.text).toContain("<loc>https://tengacion.com/about</loc>");
@@ -578,6 +600,7 @@ describe("SEO routes", () => {
     expect(booksResponse.text).toContain(`<loc>https://tengacion.com/books/${book._id}</loc>`);
     expect(marketplaceResponse.text).toContain(`<loc>https://tengacion.com/marketplace/product/${marketplaceProduct.slug}</loc>`);
     expect(marketplaceResponse.text).toContain(`<loc>https://tengacion.com/marketplace/store/${seller.slug}</loc>`);
+    expect(schoolsResponse.text).toContain("<loc>https://tengacion.com/kurahtechandartsacademy</loc>");
   });
 
   test("canonical creator route renders indexable metadata and legacy creator route canonicalizes to username path", async () => {

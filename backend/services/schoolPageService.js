@@ -16,6 +16,8 @@ const FACILITY_LIMIT = 12;
 const TESTIMONIAL_LIMIT = 8;
 const HIGHLIGHT_LIMIT = 8;
 const VALUE_LIMIT = 8;
+const CLASS_PHOTO_GROUP_LIMIT = 20;
+const CLASS_STUDENT_LIMIT = 80;
 
 const DEFAULT_THEME_COLORS = {
   primary: "#050505",
@@ -92,6 +94,21 @@ const normalizeHighlights = (value = [], limit = HIGHLIGHT_LIMIT) =>
     }))
     .filter((entry) => entry.label)
     .slice(0, limit);
+
+const normalizeClassPhotos = (value = []) =>
+  (Array.isArray(value) ? value : [])
+    .map((group) => ({
+      className: toText(group?.className || group?.class || group?.label, 120),
+      students: (Array.isArray(group?.students) ? group.students : [])
+        .map((entry) => ({
+          name: toText(entry?.name, 160),
+          photoUrl: normalizeUrl(entry?.photoUrl || entry?.imageUrl || entry?.photo),
+        }))
+        .filter((entry) => entry.name && entry.photoUrl)
+        .slice(0, CLASS_STUDENT_LIMIT),
+    }))
+    .filter((group) => group.className && group.students.length)
+    .slice(0, CLASS_PHOTO_GROUP_LIMIT);
 
 const normalizeAnnouncement = (entry = {}) => ({
   title: toText(entry.title, 160),
@@ -206,6 +223,9 @@ const buildSchoolPayload = (payload = {}) => ({
   galleryImages: normalizeGalleryImages(payload.galleryImages),
   staffDepartments: normalizeStaffDepartments(payload.staffDepartments),
   facilities: normalizeFacilities(payload.facilities),
+  curriculumHighlights: normalizeHighlights(payload.curriculumHighlights),
+  extracurricularActivities: normalizeHighlights(payload.extracurricularActivities),
+  classPhotos: normalizeClassPhotos(payload.classPhotos),
   testimonials: normalizeTestimonials(payload.testimonials),
   whyChooseUs: normalizeHighlights(payload.whyChooseUs),
   statistics: normalizeStatistics(payload.statistics),
@@ -285,6 +305,9 @@ const serializeSchoolPage = (school = {}) => {
     galleryImages: Array.isArray(doc.galleryImages) ? doc.galleryImages : [],
     staffDepartments: Array.isArray(doc.staffDepartments) ? doc.staffDepartments : [],
     facilities: Array.isArray(doc.facilities) ? doc.facilities : [],
+    curriculumHighlights: Array.isArray(doc.curriculumHighlights) ? doc.curriculumHighlights : [],
+    extracurricularActivities: Array.isArray(doc.extracurricularActivities) ? doc.extracurricularActivities : [],
+    classPhotos: Array.isArray(doc.classPhotos) ? doc.classPhotos : [],
     testimonials: Array.isArray(doc.testimonials) ? doc.testimonials : [],
     whyChooseUs: Array.isArray(doc.whyChooseUs) ? doc.whyChooseUs : [],
     statistics: doc.statistics || {},
@@ -430,11 +453,20 @@ const getPublicSchoolPage = async (slug = "") => {
     isPublished: true,
   }).lean();
 
+  const fallbackSchool = getFallbackSchoolPageBySlug(normalizedSlug);
+  if (fallbackSchool) {
+    const persisted = school || {};
+    return serializePublicSchoolPage({
+      ...persisted,
+      ...fallbackSchool,
+      _id: persisted._id || fallbackSchool._id,
+      owner: persisted.owner || fallbackSchool.owner,
+      createdAt: persisted.createdAt || fallbackSchool.createdAt,
+      updatedAt: fallbackSchool.updatedAt || persisted.updatedAt,
+    });
+  }
+
   if (!school) {
-    const fallbackSchool = getFallbackSchoolPageBySlug(normalizedSlug);
-    if (fallbackSchool) {
-      return serializePublicSchoolPage(fallbackSchool);
-    }
     throw createServiceError("School page not found", 404);
   }
 

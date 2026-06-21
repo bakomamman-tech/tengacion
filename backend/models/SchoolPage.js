@@ -65,6 +65,22 @@ const highlightSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const studentPhotoSchema = new mongoose.Schema(
+  {
+    name: boundedText(160, { required: true }),
+    photoUrl: boundedText(500, { required: true }),
+  },
+  { _id: false }
+);
+
+const classPhotoSchema = new mongoose.Schema(
+  {
+    className: boundedText(120, { required: true }),
+    students: [studentPhotoSchema],
+  },
+  { _id: false }
+);
+
 const admissionInfoSchema = new mongoose.Schema(
   {
     status: boundedText(120),
@@ -151,6 +167,9 @@ const SchoolPageSchema = new mongoose.Schema(
     galleryImages: [imageEntrySchema],
     staffDepartments: [staffDepartmentSchema],
     facilities: [facilitySchema],
+    curriculumHighlights: [highlightSchema],
+    extracurricularActivities: [highlightSchema],
+    classPhotos: [classPhotoSchema],
     testimonials: [testimonialSchema],
     whyChooseUs: [highlightSchema],
     statistics: {

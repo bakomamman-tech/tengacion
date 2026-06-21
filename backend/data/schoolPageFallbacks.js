@@ -1,5 +1,6 @@
 const KURAH_SCHOOL_ID = "665f00000000000000000001";
 const KURAH_SCHOOL_SLUG = "kurahtechandartsacademy";
+const KURAH_ASSET_ROOT = "/assets/kurah-academy";
 
 const normalizeSlug = (value = "") =>
   String(value || "")
@@ -10,188 +11,333 @@ const normalizeSlug = (value = "") =>
     .replace(/^-+|-+$/g, "")
     .replace(/-{2,}/g, "-");
 
+const student = (name, fileName) => ({
+  name,
+  photoUrl: `${KURAH_ASSET_ROOT}/${fileName}`,
+});
+
 const buildKurahSchoolFallback = () => ({
   _id: KURAH_SCHOOL_ID,
   owner: null,
   schoolName: "Kurah Tech and Arts Academy",
   slug: KURAH_SCHOOL_SLUG,
-  logoUrl: "",
-  coverImageUrl: "/assets/school-profile-hero-fallback.png",
-  ogImageUrl: "/assets/school-profile-hero-fallback.png",
-  motto: "Where discipline, technology, arts, and character grow together.",
+  logoUrl: `${KURAH_ASSET_ROOT}/logo.jpg`,
+  coverImageUrl: `${KURAH_ASSET_ROOT}/hero.jpg`,
+  ogImageUrl: `${KURAH_ASSET_ROOT}/hero.jpg`,
+  motto: "Quality, inclusive education through technology, arts, and practical skills.",
   about:
-    "Kurah Tech and Arts Academy is a modern learning community focused on strong academics, digital confidence, creativity, character formation, and parent partnership.",
+    "Kurah Tech and Arts Academy is an inclusive learning community founded on 7 January 2021 in Narayi, Chikun Local Government Area, Kaduna State. Established by Mr. Stephen Daniel Kurah, the academy combines strong basic education with technology, creative arts, vocational skills, character formation, and support for learners with mild special educational needs.",
   mission:
-    "To help learners build academic excellence, moral discipline, technology skills, creativity, and confidence through careful teaching and meaningful school life.",
+    "To provide qualitative and equitable education to boys, girls, and learners with special needs, working with families and relevant stakeholders so every learner can develop their potential, moral uprightness, practical skills, and respect for diversity.",
   vision:
-    "To raise thoughtful, creative, future-ready learners who can lead with knowledge, character, and service.",
-  values: ["Discipline", "Creativity", "Excellence", "Growth", "Service"],
-  foundingYear: 2024,
-  schoolCategory: "Nursery, Primary and Secondary",
+    "To provide accessible, quality, and inclusive education irrespective of financial status or physical ability.",
+  values: ["Professionalism", "Integrity", "Accountability", "Teamwork", "Equity"],
+  foundingYear: 2021,
+  schoolCategory: "Inclusive Nursery, Primary and Junior Secondary School",
   highlights: [
     {
-      label: "Tech-enabled learning",
-      description: "ICT exposure and digital literacy are part of the school identity.",
+      label: "Inclusive education",
+      description: "Mainstream learning is supported by thoughtful inclusion for pupils with mild physical, sensory, speech, learning, or other educational support needs.",
     },
     {
-      label: "Creative arts focus",
-      description: "Learners are encouraged to explore visual arts, music, and performance.",
+      label: "Technology skills",
+      description: "Computer appreciation, Java programming, electronics, graphics, photography, and video editing build practical digital confidence.",
     },
     {
-      label: "Academic structure",
-      description: "Clear routines, class progression, and assessment support steady growth.",
+      label: "Creative arts",
+      description: "Music, theatre, dance, painting, paper art, fashion, and design give learners room to create and perform.",
     },
     {
-      label: "Character formation",
-      description: "Discipline, confidence, respect, and service shape the school culture.",
+      label: "Vocational learning",
+      description: "Hands-on activities introduce carpentry, shoe design, tie-dye, first aid, and other useful life and career skills.",
     },
   ],
   principalMessage:
-    "Every child deserves a school environment where learning is serious, creativity is respected, and character is formed daily. We welcome families who want a balanced academic and creative foundation for their children.",
-  principalName: "School Proprietor",
-  principalTitle: "Principal / Proprietor",
-  principalPhotoUrl: "",
-  contactEmail: "admissions@kurahtechandartsacademy.edu.ng",
-  contactPhone: "+234 800 000 0000",
-  whatsappNumber: "+234 800 000 0000",
-  address: "Kaduna, Nigeria",
+    "Education opens opportunities. Our purpose is to help every learner grow in knowledge, character, creativity, and practical ability, so they can participate confidently in society and build productive futures.",
+  principalName: "Stephen Daniel Kurah",
+  principalTitle: "Founder and Proprietor",
+  principalPhotoUrl: `${KURAH_ASSET_ROOT}/stephen-daniel-kurah.jpg`,
+  contactEmail: "bakomamman@gmail.com",
+  contactPhone: "08061201090",
+  whatsappNumber: "08061201090",
+  address: "Narayi, Chikun Local Government Area, Kaduna State, Nigeria",
   officeHours: "Monday to Friday, 8:00 AM - 4:00 PM",
   mapUrl: "",
-  directionsUrl: "",
+  directionsUrl:
+    "https://www.google.com/maps/search/?api=1&query=Narayi%2C%20Kaduna%2C%20Nigeria",
   admissionInfo: {
-    status: "Admission inquiry open",
+    status: "Admission inquiries are open",
     requirements: [
       "Birth certificate or age record",
       "Previous school records where applicable",
       "Recent passport photograph",
       "Parent or guardian contact details",
     ],
-    availableClasses: ["Nursery", "Primary", "Junior Secondary", "Senior Secondary"],
-    feesNote: "Fee details are shared directly with parents after inquiry.",
+    availableClasses: ["Nursery 1-3", "Primary 1-6", "Junior Secondary 1-3"],
+    feesNote: "Class availability, fees, and learner-support arrangements are confirmed directly by the school.",
     procedure: [
-      "Submit admission inquiry",
-      "School admission office contacts parent or guardian",
-      "Visit, interview, or assessment where required",
-      "Admission decision and onboarding",
+      "Submit an admission inquiry",
+      "The admission office contacts the parent or guardian",
+      "Visit the school and complete any required learner assessment",
+      "Receive the admission decision and onboarding information",
     ],
   },
   announcements: [
     {
-      title: "Admission inquiries are open",
-      date: new Date("2026-06-20T00:00:00.000Z"),
+      title: "2025 Speech and Prize Day celebration",
+      date: new Date("2025-07-26T00:00:00.000Z"),
       description:
-        "Parents can now begin admission conversations through the Tengacion-powered school page.",
-      imageUrl: "",
+        "Learners, staff, and families gathered to recognize academic effort, creativity, growth, and achievement.",
+      imageUrl: `${KURAH_ASSET_ROOT}/speech-prize-day-graduates.jpg`,
     },
     {
-      title: "ICT and creative arts focus",
-      date: new Date("2026-06-20T00:00:00.000Z"),
+      title: "Cultural Day celebration",
+      date: new Date("2025-07-26T00:00:00.000Z"),
       description:
-        "The school profile highlights technology, arts, music, discipline, and academic growth.",
-      imageUrl: "",
+        "The academy celebrated Nigerian culture through traditional dress, shared learning, and community participation.",
+      imageUrl: `${KURAH_ASSET_ROOT}/cultural-day-celebration.jpg`,
+    },
+    {
+      title: "Community learning visit",
+      date: new Date("2022-07-04T00:00:00.000Z"),
+      description:
+        "An Indomie visitation gave pupils another memorable opportunity to learn, participate, and connect beyond daily lessons.",
+      imageUrl: `${KURAH_ASSET_ROOT}/community-visitation.jpg`,
     },
   ],
   galleryImages: [
     {
-      url: "/assets/school-profile-hero-fallback.png",
-      alt: "Modern school campus",
-      caption: "Learning environment",
+      url: `${KURAH_ASSET_ROOT}/speech-prize-day-graduates.jpg`,
+      alt: "Kurah Tech and Arts Academy learners at Speech and Prize Day",
+      caption: "Speech and Prize Day graduates",
+    },
+    {
+      url: `${KURAH_ASSET_ROOT}/speech-prize-day-stage.jpg`,
+      alt: "Learners assembled for the academy Speech and Prize Day",
+      caption: "Celebrating learner achievement",
+    },
+    {
+      url: `${KURAH_ASSET_ROOT}/hero.jpg`,
+      alt: "Kurah Tech and Arts Academy school community",
+      caption: "Our school community",
+    },
+    {
+      url: `${KURAH_ASSET_ROOT}/cultural-day-celebration.jpg`,
+      alt: "Kurah Tech and Arts Academy Cultural Day celebration",
+      caption: "Cultural Day celebration",
+    },
+    {
+      url: `${KURAH_ASSET_ROOT}/teachers-cultural-day.jpg`,
+      alt: "Teachers dressed for Cultural Day",
+      caption: "Teachers on Cultural Day",
+    },
+    {
+      url: `${KURAH_ASSET_ROOT}/cultural-day-01.jpg`,
+      alt: "Learners and staff in traditional dress",
+      caption: "Culture, confidence, and community",
+    },
+    {
+      url: `${KURAH_ASSET_ROOT}/cultural-day-02.jpg`,
+      alt: "Pupils wearing traditional Nigerian attire",
+      caption: "Celebrating Nigerian heritage",
+    },
+    {
+      url: `${KURAH_ASSET_ROOT}/cultural-day-03.jpg`,
+      alt: "Pupils participating in Cultural Day",
+      caption: "Learning through culture",
+    },
+    {
+      url: `${KURAH_ASSET_ROOT}/cultural-day-04.jpg`,
+      alt: "Young learners in cultural attire",
+      caption: "Cultural expression",
+    },
+    {
+      url: `${KURAH_ASSET_ROOT}/cultural-day-05.jpg`,
+      alt: "A learner and teacher during Cultural Day",
+      caption: "Shared school experiences",
+    },
+    {
+      url: `${KURAH_ASSET_ROOT}/cultural-day-06.jpg`,
+      alt: "Learners dressed for the academy Cultural Day",
+      caption: "Proud of our heritage",
+    },
+    {
+      url: `${KURAH_ASSET_ROOT}/staff-and-students.jpg`,
+      alt: "Kurah Tech and Arts Academy staff and pupils",
+      caption: "Staff and pupils",
     },
   ],
   staffDepartments: [
     {
-      department: "Nursery",
-      description: "Early learning, language, numeracy, and guided play.",
+      name: "Stephen Daniel Kurah",
+      role: "Founder and Proprietor",
+      photoUrl: `${KURAH_ASSET_ROOT}/stephen-daniel-kurah.jpg`,
+      department: "School Leadership",
+      description: "B.Sc. and PGDE qualified educator leading the academy's inclusive, practical, and creative learning vision.",
     },
     {
-      department: "Primary",
-      description: "Strong literacy, numeracy, science, culture, and character foundation.",
+      name: "Diana Comfort Danjuma",
+      role: "Teacher",
+      photoUrl: `${KURAH_ASSET_ROOT}/diana-comfort-danjuma.jpg`,
+      department: "Teaching Staff",
+      description: "Supporting learners through attentive classroom teaching and school activities.",
     },
     {
-      department: "Junior Secondary",
-      description: "Structured academic growth with practical ICT and arts exposure.",
-    },
-    {
-      department: "Senior Secondary",
-      description: "Exam readiness, leadership, projects, and career direction.",
-    },
-    {
-      department: "ICT",
-      description: "Digital confidence, computer literacy, and creative problem solving.",
-    },
-    {
-      department: "Arts and Music",
-      description: "Creative expression, performance, design, and cultural confidence.",
+      name: "Vincent Bilat Danjuma",
+      role: "Teacher",
+      photoUrl: `${KURAH_ASSET_ROOT}/vincent-bilat-danjuma.jpg`,
+      department: "Teaching Staff",
+      description: "Supporting academic learning, practical development, and student participation.",
     },
   ],
   facilities: [
     {
-      title: "ICT Lab",
-      description: "Technology-enabled learning for digital skills and research.",
+      title: "Inclusive classrooms",
+      description: "Structured basic education with attention to different learning and support needs.",
+      imageUrl: `${KURAH_ASSET_ROOT}/staff-and-students.jpg`,
     },
     {
-      title: "Library",
-      description: "Reading culture, quiet study, and supervised academic resources.",
+      title: "Technology learning",
+      description: "Computer appreciation, programming, electronics, graphics, photography, and video skills.",
+      imageUrl: `${KURAH_ASSET_ROOT}/speech-prize-day-stage.jpg`,
     },
     {
-      title: "Creative Arts Studio",
-      description: "Visual arts, performance, music, and hands-on creativity.",
-    },
-    {
-      title: "Music Room",
-      description: "A dedicated space for rhythm, voice, confidence, and performance.",
-    },
-    {
-      title: "Safe Classrooms",
-      description: "Organized learning spaces built for focus and supervision.",
-    },
-    {
-      title: "Playground",
-      description: "Structured play, movement, and social development.",
+      title: "Arts and performance",
+      description: "Music, theatre, dance, drawing, painting, craft, and cultural expression.",
+      imageUrl: `${KURAH_ASSET_ROOT}/teachers-cultural-day.jpg`,
     },
   ],
-  testimonials: [
+  curriculumHighlights: [
     {
-      name: "Parent testimonial",
-      role: "Parent",
-      quote:
-        "The school vision gives families confidence: academics, discipline, creativity, and technology are presented as one balanced experience.",
-      photoUrl: "",
+      label: "Early years foundation",
+      description: "Number and reading readiness, phonics, writing, elementary science, health, social habits, rhymes, drawing, and computer learning.",
+    },
+    {
+      label: "Primary academics",
+      description: "Mathematics, English, basic science and technology, social studies, civic education, agriculture, health, home economics, and religious knowledge.",
+    },
+    {
+      label: "Reasoning and communication",
+      description: "Verbal and quantitative reasoning, writing, reading, and classroom projects strengthen confident thinking and expression.",
+    },
+    {
+      label: "Creative and digital learning",
+      description: "Computer studies, cultural and creative arts, drawing, design, and practical projects connect classroom knowledge to real skills.",
     },
   ],
+  extracurricularActivities: [
+    {
+      label: "Computing and programming",
+      description: "Computer appreciation, Java programming, graphics design, and practical digital projects.",
+    },
+    {
+      label: "Electrical and media technology",
+      description: "Electrical and electronics engineering, cinematography, video editing, and photography.",
+    },
+    {
+      label: "Music and performing arts",
+      description: "Music production, theatre, performing arts, and dance develop creative confidence.",
+    },
+    {
+      label: "Fine art and craft",
+      description: "Papier-mache, paper art, freehand drawing, painting, printing, and tie-dye.",
+    },
+    {
+      label: "Design and production",
+      description: "Fashion design, shoe design and production, and hands-on creative making.",
+    },
+    {
+      label: "Practical vocational skills",
+      description: "Carpentry and other guided vocational projects introduce useful tools and productive skills.",
+    },
+    {
+      label: "Health and first aid",
+      description: "Age-appropriate biomedical awareness and first-aid learning support responsible action.",
+    },
+  ],
+  classPhotos: [
+    {
+      className: "Primary 6",
+      students: [
+        student("Amazing Grace Abumere", "student-primary-6-amazing-grace-abumere.jpg"),
+        student("Blessed Shogo", "student-primary-6-blessed-shogo.jpg"),
+        student("Chrystabel Marshal", "student-primary-6-chrystabel-marshal.jpg"),
+        student("Chrystabel W. Gwan", "student-primary-6-chrystabel-w-gwan.jpg"),
+        student("Esther Titus", "student-primary-6-esther-titus.jpg"),
+        student("Isaac Ajayi", "student-primary-6-isaac-ajayi.jpg"),
+        student("Japhet Bage", "student-primary-6-japhet-bage.jpg"),
+        student("Jesse O. Benjamin", "student-primary-6-jesse-o-benjamin.jpg"),
+        student("Victor Kazah", "student-primary-6-victor-kazah.jpg"),
+        student("Victor Okachie", "student-primary-6-victor-okachie.jpg"),
+      ],
+    },
+    {
+      className: "JSS 1",
+      students: [
+        student("Stephen Agama David", "student-jss-1-stephen-agama-david.jpg"),
+      ],
+    },
+    {
+      className: "JSS 2",
+      students: [
+        student("Chinedu John", "student-jss-2-chinedu-john.jpg"),
+        student("Dominion Thomas", "student-jss-2-dominion-thomas.jpg"),
+        student("Edison George", "student-jss-2-edison-george.jpg"),
+        student("Elijah O. Ajayi", "student-jss-2-elijah-o-ajayi.jpg"),
+        student("Grace James", "student-jss-2-grace-james.jpg"),
+        student("Joshua G. Renner", "student-jss-2-joshua-g-renner.jpg"),
+        student("Nelson Marshal", "student-jss-2-nelson-marshal.jpg"),
+        student("Nene Aliyu Eleb", "student-jss-2-nene-aliyu-eleb.jpg"),
+        student("Salim Musa", "student-jss-2-salim-musa.jpg"),
+        student("Veronica D. Adah", "student-jss-2-veronica-d-adah.jpg"),
+      ],
+    },
+    {
+      className: "JSS 3",
+      students: [
+        student("Daniel G. Renner", "student-jss-3-daniel-g-renner.jpg"),
+        student("Emmanuel David", "student-jss-3-emmanuel-david.jpg"),
+        student("Ezekiel Raphael", "student-jss-3-ezekiel-raphael.jpg"),
+        student("Kuyet F. Didam", "student-jss-3-kuyet-f-didam.jpg"),
+        student("Naomi O. Benjamin", "student-jss-3-naomi-o-benjamin.jpg"),
+        student("Onyinye Eneh", "student-jss-3-onyinye-eneh.jpg"),
+      ],
+    },
+  ],
+  testimonials: [],
   whyChooseUs: [
     {
-      label: "Academic discipline",
-      description: "A structured learning culture that values preparation, focus, and measurable growth.",
+      label: "Inclusive access",
+      description: "The academy was founded to make quality education more accessible across financial circumstances and physical ability.",
     },
     {
-      label: "Creative confidence",
-      description: "Students are encouraged to think, make, perform, and communicate with purpose.",
+      label: "Qualified educators",
+      description: "Teaching staff bring NCE, B.Ed, B.Sc, and PGDE backgrounds to classroom and learner support.",
+    },
+    {
+      label: "Whole-child development",
+      description: "Academics, moral formation, social growth, technology, arts, and practical skills are developed together.",
     },
     {
       label: "Future-ready skills",
-      description: "ICT, leadership, and practical learning prepare learners for the world ahead.",
-    },
-    {
-      label: "Parent partnership",
-      description: "Clear communication helps families stay connected to progress and school life.",
+      description: "Digital, vocational, creative, and communication experiences help learners see productive possibilities for their future.",
     },
   ],
   statistics: {
-    students: 0,
-    teachers: 0,
-    yearsOfExcellence: 1,
+    students: 100,
+    teachers: 12,
+    yearsOfExcellence: 5,
     departments: 6,
   },
   themeColors: {
-    primary: "#050505",
-    accent: "#f2c94c",
-    emphasis: "#c9302c",
-    growth: "#1f8f4d",
+    primary: "#071d12",
+    accent: "#f4ca3a",
+    emphasis: "#d92966",
+    growth: "#258a45",
   },
   isPublished: true,
-  createdAt: new Date("2026-06-20T00:00:00.000Z"),
-  updatedAt: new Date("2026-06-20T00:00:00.000Z"),
+  createdAt: new Date("2021-01-07T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-21T00:00:00.000Z"),
 });
 
 const getFallbackSchoolPageBySlug = (slug = "") => {

@@ -108,7 +108,10 @@ const buildPhoneHref = (phone = "") => {
 };
 
 const buildWhatsAppHref = (number = "") => {
-  const digits = String(number || "").replace(/\D/g, "");
+  let digits = String(number || "").replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("0")) {
+    digits = `234${digits.slice(1)}`;
+  }
   return digits ? `https://wa.me/${digits}` : "";
 };
 
@@ -230,7 +233,10 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
   };
   const coverImage = getImage(school?.coverImageUrl, FALLBACK_COVER);
   const ogImage = getImage(school?.ogImageUrl, school?.coverImageUrl, FALLBACK_COVER);
-  const canonicalPath = `/schools/${school?.slug || slug}`;
+  const isKurahAcademy = (school?.slug || slug) === "kurahtechandartsacademy";
+  const canonicalPath = isKurahAcademy
+    ? "/kurahtechandartsacademy"
+    : `/schools/${school?.slug || slug}`;
   const phoneHref = buildPhoneHref(school?.contactPhone);
   const whatsAppHref = buildWhatsAppHref(school?.whatsappNumber || school?.contactPhone);
   const emailHref = school?.contactEmail ? `mailto:${school.contactEmail}` : "";
@@ -246,6 +252,14 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
   const facilities = normalizeList(school?.facilities).length
     ? normalizeList(school.facilities)
     : DEFAULT_FACILITIES;
+  const curriculumHighlights = normalizeList(school?.curriculumHighlights);
+  const extracurricularActivities = normalizeList(school?.extracurricularActivities);
+  const classPhotos = normalizeList(school?.classPhotos)
+    .map((group) => ({
+      ...group,
+      students: normalizeList(group?.students),
+    }))
+    .filter((group) => group.className && group.students.length);
   const whyChooseUs = normalizeList(school?.whyChooseUs).length
     ? normalizeList(school.whyChooseUs)
     : DEFAULT_WHY_CHOOSE_US;
@@ -264,6 +278,9 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
       `${school?.schoolName || "This school"} is a Tengacion-powered school profile with admission, announcements, gallery, and contact details.`,
     180
   );
+  const seoTitle = isKurahAcademy
+    ? "Kurah Tech and Arts Academy | Inclusive School in Kaduna"
+    : `${school?.schoolName || "School"} | Tengacion School Profile`;
   const structuredData = useMemo(() => {
     if (!school) {
       return [];
@@ -284,6 +301,7 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
         description: seoDescription,
         image: resolveSeoImage(ogImage),
         logo: school.logoUrl ? resolveSeoImage(school.logoUrl) : undefined,
+        foundingDate: school.foundingYear ? String(school.foundingYear) : undefined,
         email: school.contactEmail || undefined,
         telephone: school.contactPhone || undefined,
         address: school.address
@@ -357,7 +375,7 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
   return (
     <main className="school-profile-page" style={theme}>
       <SeoHead
-        title={`${school.schoolName} | Tengacion School Profile`}
+        title={seoTitle}
         description={seoDescription}
         canonical={canonicalPath}
         robots="index,follow"
@@ -369,7 +387,12 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
       />
 
       <section className="school-profile-hero">
-        <img className="school-profile-hero__image" src={coverImage} alt="" loading="eager" />
+        <img
+          className="school-profile-hero__image"
+          src={coverImage}
+          alt={`${school.schoolName} learners and school community`}
+          loading="eager"
+        />
         <div className="school-profile-hero__shade" />
         <nav className="school-profile-nav" aria-label="School profile navigation">
           <Link className="school-profile-brand" to="/">
@@ -380,6 +403,7 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
             <a href="#about-school">About</a>
             <a href="#admission">Admission</a>
             <a href="#announcements">Updates</a>
+            <a href="#class-photographs">Class Photos</a>
             <a href="#contact">Contact</a>
           </div>
         </nav>
@@ -471,7 +495,11 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
         <div className="school-profile-principal">
           <div className="school-profile-principal__photo">
             {school.principalPhotoUrl ? (
-              <img src={resolveImage(school.principalPhotoUrl)} alt="" loading="lazy" />
+              <img
+                src={resolveImage(school.principalPhotoUrl)}
+                alt={school.principalName || "School principal"}
+                loading="lazy"
+              />
             ) : (
               <span>{getInitials(school.principalName || school.schoolName)}</span>
             )}
@@ -539,7 +567,11 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
             {announcements.map((announcement) => (
               <article key={`${announcement.title}-${announcement.date}`} className="school-profile-announcement">
                 {announcement.imageUrl ? (
-                  <img src={resolveImage(announcement.imageUrl)} alt="" loading="lazy" />
+                  <img
+                    src={resolveImage(announcement.imageUrl)}
+                    alt={`${announcement.title} at ${school.schoolName}`}
+                    loading="lazy"
+                  />
                 ) : null}
                 <div>
                   <span>{formatDate(announcement.date)}</span>
@@ -563,7 +595,11 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
             <article key={`${member.name || member.department}-${member.role || member.description}`} className="school-profile-staff-card">
               <div className="school-profile-staff-card__photo">
                 {member.photoUrl ? (
-                  <img src={resolveImage(member.photoUrl)} alt="" loading="lazy" />
+                  <img
+                    src={resolveImage(member.photoUrl)}
+                    alt={member.name || member.department || "School staff member"}
+                    loading="lazy"
+                  />
                 ) : (
                   <span>{getInitials(member.name || member.department)}</span>
                 )}
@@ -579,11 +615,43 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
         </div>
       </Section>
 
-      <Section eyebrow="Facilities" title="Spaces that support practical learning">
+      {curriculumHighlights.length ? (
+        <Section id="curriculum" eyebrow="Curriculum" title="Strong foundations with creative and digital learning">
+          <div className="school-profile-card-grid school-profile-card-grid--four">
+            {curriculumHighlights.map((entry) => (
+              <article key={entry.label} className="school-profile-card school-profile-card--curriculum">
+                <strong>{entry.label}</strong>
+                <p>{entry.description}</p>
+              </article>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      {extracurricularActivities.length ? (
+        <Section eyebrow="Skills and activities" title="Practical experiences beyond the classroom">
+          <div className="school-profile-card-grid school-profile-card-grid--three">
+            {extracurricularActivities.map((entry) => (
+              <article key={entry.label} className="school-profile-card school-profile-card--activity">
+                <strong>{entry.label}</strong>
+                <p>{entry.description}</p>
+              </article>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      <Section eyebrow="Facilities and programmes" title="Spaces and experiences that support practical learning">
         <div className="school-profile-card-grid school-profile-card-grid--three">
           {facilities.map((facility) => (
             <article key={facility.title} className="school-profile-facility-card">
-              {facility.imageUrl ? <img src={resolveImage(facility.imageUrl)} alt="" loading="lazy" /> : null}
+              {facility.imageUrl ? (
+                <img
+                  src={resolveImage(facility.imageUrl)}
+                  alt={`${facility.title} at ${school.schoolName}`}
+                  loading="lazy"
+                />
+              ) : null}
               <div>
                 <h3>{facility.title}</h3>
                 <p>{facility.description}</p>
@@ -618,6 +686,39 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
           ))}
         </div>
       </Section>
+
+      {classPhotos.length ? (
+        <Section
+          id="class-photographs"
+          eyebrow="Class photographs"
+          title="Meet learners from across our classes"
+          className="school-profile-section--class-photos"
+        >
+          <div className="school-profile-class-groups">
+            {classPhotos.map((group) => (
+              <section className="school-profile-class-group" key={group.className}>
+                <div className="school-profile-class-group__head">
+                  <h3>{group.className}</h3>
+                  <span>{group.students.length} {group.students.length === 1 ? "student" : "students"}</span>
+                </div>
+                <div className="school-profile-class-grid">
+                  {group.students.map((entry) => (
+                    <figure key={`${group.className}-${entry.name}`} className="school-profile-student-card">
+                      <img
+                        src={resolveImage(entry.photoUrl)}
+                        alt={`${entry.name}, ${group.className} student at ${school.schoolName}`}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                      <figcaption>{entry.name}</figcaption>
+                    </figure>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </Section>
+      ) : null}
 
       {testimonials.length ? (
         <Section eyebrow="Testimonials" title="What families say">

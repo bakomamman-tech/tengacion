@@ -423,6 +423,14 @@
   border-top: 4px solid var(--school-accent);
 }
 
+.school-profile-card--curriculum {
+  border-top-color: var(--school-growth);
+}
+
+.school-profile-card--activity {
+  border-top-color: var(--school-emphasis);
+}
+
 .school-profile-card strong,
 .school-profile-empty strong {
   display: block;
@@ -637,6 +645,75 @@
   background: rgba(0, 0, 0, 0.62);
   font-size: 0.82rem;
   overflow-wrap: anywhere;
+}
+
+.school-profile-section--class-photos {
+  scroll-margin-top: 24px;
+}
+
+.school-profile-class-groups {
+  display: grid;
+  gap: 34px;
+}
+
+.school-profile-class-group {
+  display: grid;
+  gap: 16px;
+}
+
+.school-profile-class-group__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.school-profile-class-group__head h3 {
+  margin: 0;
+  color: var(--school-primary);
+  font-size: 1.45rem;
+}
+
+.school-profile-class-group__head span {
+  color: var(--school-muted);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.school-profile-class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 12px;
+}
+
+.school-profile-student-card {
+  margin: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(18, 18, 18, 0.09);
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.07);
+}
+
+.school-profile-student-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  object-position: center top;
+  background: #ece9df;
+}
+
+.school-profile-student-card figcaption {
+  min-height: 58px;
+  display: grid;
+  align-items: center;
+  padding: 11px 12px;
+  color: var(--school-primary);
+  font-weight: 850;
+  line-height: 1.35;
 }
 
 .school-profile-testimonial {
@@ -894,6 +971,16 @@
 
   .school-profile-btn {
     width: 100%;
+  }
+
+  .school-profile-class-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .school-profile-student-card figcaption {
+    min-height: 64px;
+    padding: 9px;
+    font-size: 0.9rem;
   }
 
   .school-profile-stats {

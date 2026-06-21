@@ -172,6 +172,10 @@ export default function App() {
           <Route path="/pyrexx_singz" element={<PyrexxSingzPage />} />
           <Route path="/artist/pyrexx-singz" element={<PyrexxSingzPage />} />
           <Route path="/artist/pyrexx_singz" element={<PyrexxSingzPage />} />
+          <Route
+            path="/schools/kurahtechandartsacademy"
+            element={<Navigate to="/kurahtechandartsacademy" replace />}
+          />
           <Route path="/schools/:slug" element={<SchoolProfilePage />} />
           <Route
             path="/kurahtechandartsacademy"

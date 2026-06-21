@@ -5,7 +5,10 @@ const MarketplaceProduct = require("../../models/MarketplaceProduct");
 const MarketplaceSeller = require("../../models/MarketplaceSeller");
 const SchoolPage = require("../../models/SchoolPage");
 const Track = require("../../models/Track");
-const { listFallbackSchoolPages } = require("../../data/schoolPageFallbacks");
+const {
+  KURAH_SCHOOL_SLUG,
+  listFallbackSchoolPages,
+} = require("../../data/schoolPageFallbacks");
 const Video = require("../../models/Video");
 const { buildCreatorPublicPath } = require("../publicRouteService");
 const { normalizePathname, toCanonicalUrl } = require("./siteSeo");
@@ -367,8 +370,12 @@ const marketplaceProductPath = (product = {}) =>
 const marketplaceStorePath = (seller = {}) =>
   `/marketplace/store/${encodeURIComponent(seller.slug || seller._id || "")}`;
 
-const schoolPath = (school = {}) =>
-  `/schools/${encodeURIComponent(school.slug || school._id || "")}`;
+const schoolPath = (school = {}) => {
+  const slug = String(school.slug || school._id || "");
+  return slug === KURAH_SCHOOL_SLUG
+    ? `/${KURAH_SCHOOL_SLUG}`
+    : `/schools/${encodeURIComponent(slug)}`;
+};
 
 const buildMarketplaceEntries = async () => {
   const products = await MarketplaceProduct.find(ACTIVE_MARKETPLACE_PRODUCT_FILTER)

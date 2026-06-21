@@ -9,7 +9,10 @@ const Post = require("../../models/Post");
 const SchoolPage = require("../../models/SchoolPage");
 const Track = require("../../models/Track");
 const Video = require("../../models/Video");
-const { getFallbackSchoolPageBySlug } = require("../../data/schoolPageFallbacks");
+const {
+  KURAH_SCHOOL_SLUG,
+  getFallbackSchoolPageBySlug,
+} = require("../../data/schoolPageFallbacks");
 const {
   normalizePublicText,
   uniquePublicActivity,
@@ -1751,7 +1754,12 @@ const buildMarketplaceStoreSeo = async (idOrSlug) => {
   });
 };
 
-const getSchoolPath = (school = {}) => `/schools/${encodeURIComponent(school.slug || school._id || "")}`;
+const getSchoolPath = (school = {}) => {
+  const slug = String(school.slug || school._id || "");
+  return slug === KURAH_SCHOOL_SLUG
+    ? `/${KURAH_SCHOOL_SLUG}`
+    : `/schools/${encodeURIComponent(slug)}`;
+};
 
 const getSchoolImage = (school = {}) =>
   pickText(school.ogImageUrl, school.coverImageUrl, school.logoUrl, DEFAULT_IMAGE_PATH);
@@ -1769,14 +1777,95 @@ const buildSchoolDescription = (school = {}) =>
     180
   );
 
+const buildSchoolPreviewMarkup = ({ school = {}, description = "", canonicalPath = "/" } = {}) => {
+  const curriculum = Array.isArray(school.curriculumHighlights)
+    ? school.curriculumHighlights.filter((entry) => entry?.label)
+    : [];
+  const activities = Array.isArray(school.extracurricularActivities)
+    ? school.extracurricularActivities.filter((entry) => entry?.label)
+    : [];
+  const classPhotos = Array.isArray(school.classPhotos)
+    ? school.classPhotos.filter((group) => group?.className && Array.isArray(group?.students))
+    : [];
+  const image = getSchoolImage(school);
+  const parts = [
+    '<section class="seo-school-preview">',
+    `  <h1>${escapeHtml(school.schoolName || "School")}</h1>`,
+    `  <p>${escapeHtml(description)}</p>`,
+    image
+      ? `  <img src="${escapeHtmlAttribute(image)}" alt="${escapeHtmlAttribute(`${school.schoolName || "School"} learners and school community`)}" />`
+      : "",
+    school.about ? `  <h2>${escapeHtml("About the academy")}</h2>` : "",
+    school.about ? `  <p>${escapeHtml(school.about)}</p>` : "",
+    school.mission ? `  <h2>${escapeHtml("Mission")}</h2><p>${escapeHtml(school.mission)}</p>` : "",
+  ];
+
+  if (curriculum.length) {
+    parts.push(`  <h2>${escapeHtml("Curriculum")}</h2>`, "  <ul>");
+    curriculum.forEach((entry) => {
+      parts.push(`    <li><strong>${escapeHtml(entry.label)}</strong> ${escapeHtml(entry.description || "")}</li>`);
+    });
+    parts.push("  </ul>");
+  }
+
+  if (activities.length) {
+    parts.push(`  <h2>${escapeHtml("Technology, arts, and vocational activities")}</h2>`, "  <ul>");
+    activities.forEach((entry) => {
+      parts.push(`    <li><strong>${escapeHtml(entry.label)}</strong> ${escapeHtml(entry.description || "")}</li>`);
+    });
+    parts.push("  </ul>");
+  }
+
+  if (classPhotos.length) {
+    parts.push(`  <h2>${escapeHtml("Class photographs")}</h2>`);
+    classPhotos.forEach((group) => {
+      parts.push(`  <h3>${escapeHtml(group.className)}</h3>`, "  <ul>");
+      group.students.forEach((entry) => {
+        if (!entry?.name || !entry?.photoUrl) {
+          return;
+        }
+        const alt = `${entry.name}, ${group.className} student at ${school.schoolName || "the academy"}`;
+        parts.push(
+          `    <li><img src="${escapeHtmlAttribute(entry.photoUrl)}" alt="${escapeHtmlAttribute(alt)}" /><span>${escapeHtml(entry.name)}</span></li>`
+        );
+      });
+      parts.push("  </ul>");
+    });
+  }
+
+  parts.push(
+    `  <h2>${escapeHtml("Contact and admission")}</h2>`,
+    school.contactPhone
+      ? `  <p><a href="tel:${escapeHtmlAttribute(school.contactPhone)}">${escapeHtml(school.contactPhone)}</a></p>`
+      : "",
+    school.contactEmail
+      ? `  <p><a href="mailto:${escapeHtmlAttribute(school.contactEmail)}">${escapeHtml(school.contactEmail)}</a></p>`
+      : "",
+    school.address ? `  <p>${escapeHtml(school.address)}</p>` : "",
+    `  <p><a href="${escapeHtmlAttribute(canonicalPath)}">${escapeHtml("View the full school website")}</a></p>`,
+    "</section>"
+  );
+
+  return parts.filter(Boolean).join("\n");
+};
+
 const buildSchoolSeo = async (slug = "") => {
   const normalizedSlug = String(slug || "").trim().toLowerCase();
   const fallbackPath = `/schools/${encodeURIComponent(normalizedSlug)}`;
-  const school =
-    (await SchoolPage.findOne({
+  const persistedSchool = await SchoolPage.findOne({
       slug: normalizedSlug,
       ...ACTIVE_SCHOOL_FILTER,
-    }).lean()) || getFallbackSchoolPageBySlug(normalizedSlug);
+    }).lean();
+  const fallbackSchool = getFallbackSchoolPageBySlug(normalizedSlug);
+  const school = fallbackSchool
+    ? {
+        ...(persistedSchool || {}),
+        ...fallbackSchool,
+        _id: persistedSchool?._id || fallbackSchool._id,
+        createdAt: persistedSchool?.createdAt || fallbackSchool.createdAt,
+        updatedAt: fallbackSchool.updatedAt || persistedSchool?.updatedAt,
+      }
+    : persistedSchool;
 
   if (!school) {
     return buildSeoPayload({
@@ -1791,11 +1880,15 @@ const buildSchoolSeo = async (slug = "") => {
   const canonicalPath = getSchoolPath(school);
   const description = buildSchoolDescription(school);
   const image = getSchoolImage(school);
+  const title = normalizedSlug === KURAH_SCHOOL_SLUG
+    ? "Kurah Tech and Arts Academy | Inclusive School in Kaduna"
+    : `${school.schoolName || "School"} | Tengacion School Profile`;
 
   return buildSeoPayload({
-    title: `${school.schoolName || "School"} | Tengacion School Profile`,
+    title,
     description,
     canonicalPath,
+    robots: "index,follow",
     ogType: "website",
     image,
     imageAlt: `${school.schoolName || "School"} school preview`,
@@ -1808,6 +1901,7 @@ const buildSchoolSeo = async (slug = "") => {
         url: toCanonicalUrl(canonicalPath),
         image: toAbsoluteUrl(image),
         logo: school.logoUrl ? toAbsoluteUrl(school.logoUrl) : undefined,
+        foundingDate: school.foundingYear ? String(school.foundingYear) : undefined,
         email: school.contactEmail || undefined,
         telephone: school.contactPhone || undefined,
         address: school.address
@@ -1824,6 +1918,7 @@ const buildSchoolSeo = async (slug = "") => {
         { name: school.schoolName || "School", url: canonicalPath },
       ]),
     ],
+    previewHtml: buildSchoolPreviewMarkup({ school, description, canonicalPath }),
     previewTitle: `${school.schoolName || "School"} on Tengacion`,
     previewDescription: description,
   });

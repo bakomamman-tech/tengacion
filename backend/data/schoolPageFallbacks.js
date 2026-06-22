@@ -189,6 +189,13 @@ const buildKurahSchoolFallback = () => ({
       department: "Teaching Staff",
       description: "Supporting academic learning, practical development, and student participation.",
     },
+    {
+      name: "Mrs. Gift James",
+      role: "Teacher",
+      photoUrl: `${KURAH_ASSET_ROOT}/teacher-gift-james.jpg`,
+      department: "Teaching Staff",
+      description: "Supporting learners through attentive classroom teaching and school activities.",
+    },
   ],
   facilities: [
     {
@@ -257,6 +264,40 @@ const buildKurahSchoolFallback = () => ({
   ],
   classPhotos: [
     {
+      className: "Primary 4",
+      students: [
+        student("Blessing Jude", "student-primary-4-blessing-jude.jpg"),
+        student("Divine Michael", "student-primary-4-divine-michael.jpg"),
+        student("Joan Friday", "student-primary-4-joan-friday.jpg"),
+        student("Joseph Musa", "student-primary-4-joseph-musa.jpg"),
+        student("Joshua Bage", "student-primary-4-joshua-bage.jpg"),
+        student("Laraba Iliya", "student-primary-4-laraba-iliya.jpg"),
+        student("Lordswill Kurah", "student-primary-4-lordswill-kurah.jpg"),
+        student("Miracle Okachie", "student-primary-4-miracle-okachie.jpg"),
+        student("Mitchel M. Agee", "student-primary-4-mitchel-m-agee.jpg"),
+        student("Precious Micah", "student-primary-4-precious-micah.jpg"),
+        student("Winner Arinze", "student-primary-4-winner-arinze.jpg"),
+        student("Zanang Augustine", "student-primary-4-zanang-augustine.jpg"),
+      ],
+    },
+    {
+      className: "Primary 5",
+      students: [
+        student("Benedicta Benjamin", "student-primary-5-benedicta-benjamin.jpg"),
+        student("Daniel Jonathan", "student-primary-5-daniel-jonathan.jpg"),
+        student("Dorcas Z. Sunday", "student-primary-5-dorcas-z-sunday.jpg"),
+        student("Emmanuella Chris", "student-primary-5-emmanuella-chris.jpg"),
+        student("Evelyn Emmanuel", "student-primary-5-evelyn-emmanuel.jpg"),
+        student("Faith G. Renner", "student-primary-5-faith-g-renner.jpg"),
+        student("Joshua G. Shimfo", "student-primary-5-joshua-g-shimfo.jpg"),
+        student("Lucky Bello", "student-primary-5-lucky-bello.jpg"),
+        student("Sapphire Bulus", "student-primary-5-sapphire-bulus.jpg"),
+        student("Stephenie Lawrence", "student-primary-5-stephenie-lawrence.jpg"),
+        student("Success S. Samuel", "student-primary-5-success-s-samuel.jpg"),
+        student("Victory Sunday", "student-primary-5-victory-sunday.jpg"),
+      ],
+    },
+    {
       className: "Primary 6",
       students: [
         student("Amazing Grace Abumere", "student-primary-6-amazing-grace-abumere.jpg"),
@@ -274,6 +315,7 @@ const buildKurahSchoolFallback = () => ({
     {
       className: "JSS 1",
       students: [
+        student("Joseph Adewale", "student-jss-1-joseph-adewale.jpg"),
         student("Stephen Agama David", "student-jss-1-stephen-agama-david.jpg"),
       ],
     },
@@ -301,6 +343,7 @@ const buildKurahSchoolFallback = () => ({
         student("Kuyet F. Didam", "student-jss-3-kuyet-f-didam.jpg"),
         student("Naomi O. Benjamin", "student-jss-3-naomi-o-benjamin.jpg"),
         student("Onyinye Eneh", "student-jss-3-onyinye-eneh.jpg"),
+        student("Peter A. Onoja", "student-jss-3-peter-a-onoja.jpg"),
       ],
     },
   ],
@@ -337,7 +380,7 @@ const buildKurahSchoolFallback = () => ({
   },
   isPublished: true,
   createdAt: new Date("2021-01-07T00:00:00.000Z"),
-  updatedAt: new Date("2026-06-21T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-22T00:00:00.000Z"),
 });
 
 const getFallbackSchoolPageBySlug = (slug = "") => {

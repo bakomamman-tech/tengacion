@@ -452,14 +452,14 @@
   margin: 0 auto;
   padding: 28px 0 80px;
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 32px;
   color: #fff;
 }
 
 .school-profile-principal__photo {
-  width: 150px;
-  height: 150px;
+  width: 220px;
+  aspect-ratio: 4 / 5;
   border-radius: 8px;
   overflow: hidden;
   display: grid;
@@ -573,13 +573,13 @@
 .school-profile-staff-card {
   padding: 18px;
   display: grid;
-  grid-template-columns: 68px minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 18px;
 }
 
 .school-profile-staff-card__photo {
-  width: 68px;
-  height: 68px;
+  width: 116px;
+  aspect-ratio: 4 / 5;
   display: grid;
   place-items: center;
   border-radius: 8px;

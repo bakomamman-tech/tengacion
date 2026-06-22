@@ -571,6 +571,7 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
                     src={resolveImage(announcement.imageUrl)}
                     alt={`${announcement.title} at ${school.schoolName}`}
                     loading="lazy"
+                    style={announcement.imagePosition ? { objectPosition: announcement.imagePosition } : undefined}
                   />
                 ) : null}
                 <div>

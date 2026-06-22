@@ -121,6 +121,7 @@ const normalizeAnnouncement = (entry = {}) => ({
   })(),
   description: toText(entry.description, 700),
   imageUrl: normalizeUrl(entry.imageUrl || entry.image),
+  imagePosition: toText(entry.imagePosition, 40),
 });
 
 const normalizeAnnouncements = (value = []) =>

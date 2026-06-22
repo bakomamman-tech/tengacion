@@ -23,6 +23,7 @@ const announcementSchema = new mongoose.Schema(
     date: { type: Date, default: null },
     description: boundedText(700),
     imageUrl: boundedText(500),
+    imagePosition: boundedText(40),
   },
   { _id: false }
 );

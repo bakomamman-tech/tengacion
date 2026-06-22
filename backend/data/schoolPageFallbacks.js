@@ -103,6 +103,7 @@ const buildKurahSchoolFallback = () => ({
       description:
         "An Indomie visitation gave pupils another memorable opportunity to learn, participate, and connect beyond daily lessons.",
       imageUrl: `${KURAH_ASSET_ROOT}/community-visitation.jpg`,
+      imagePosition: "center 10%",
     },
   ],
   galleryImages: [

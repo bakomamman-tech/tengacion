@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
 import SeoHead from "../components/seo/SeoHead";
-import { FOUNDER, LEADERSHIP, TEAM_LEADS } from "../data/leadership";
+import { FOUNDER, INTERNS, LEADERSHIP, TEAM_LEADS } from "../data/leadership";
 import {
   buildBreadcrumbJsonLd,
   buildOrganizationJsonLd,
@@ -148,6 +148,35 @@ export default function LeadershipPage() {
                 <h2>{leader.name}</h2>
                 <div className="leadership-card__rule" aria-hidden="true" />
                 <p className="leadership-card__bio">{leader.bio}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="leadership-interns" aria-labelledby="leadership-interns-title">
+        <div className="leadership-directory__intro">
+          <div>
+            <p className="leadership-eyebrow">Emerging talent</p>
+            <h2 id="leadership-interns-title">Interns</h2>
+          </div>
+          <p>
+            Tengacion&apos;s internship programme gives emerging professionals practical
+            experience contributing to the company&apos;s work.
+          </p>
+        </div>
+
+        <div className="leadership-grid leadership-grid--team">
+          {INTERNS.map((intern) => (
+            <article key={intern.id} id={intern.id} className="leadership-card">
+              <div className="leadership-card__portrait">
+                <img src={intern.image} alt={intern.imageAlt} loading="lazy" />
+              </div>
+              <div className="leadership-card__body">
+                <p className="leadership-card__role">{intern.role}</p>
+                <h2>{intern.name}</h2>
+                <div className="leadership-card__rule" aria-hidden="true" />
+                <p className="leadership-card__bio">{intern.bio}</p>
               </div>
             </article>
           ))}

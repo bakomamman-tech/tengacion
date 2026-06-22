@@ -37,6 +37,13 @@ describe("LeadershipPage", () => {
     expect(
       screen.getByAltText("Vincent Bilat Danjuma, Customer Support Team Lead at Tengacion")
     ).toHaveAttribute("src", "/assets/leadership/vincent-bilat-danjuma.png");
+    expect(screen.getByRole("heading", { name: "Interns" })).toBeInTheDocument();
+    expect(screen.getByText("Intern (Software Development)")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tengacion Intern" })).toBeInTheDocument();
+    expect(screen.getByAltText("Tengacion intern")).toHaveAttribute(
+      "src",
+      "/assets/leadership/tengacion-intern.png"
+    );
     expect(screen.getAllByText("Illustrative placeholder")).toHaveLength(6);
     expect(screen.getAllByText("Appointment to be announced")).toHaveLength(6);
   });

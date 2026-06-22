@@ -12,6 +12,7 @@
 .leadership-nav,
 .leadership-directory,
 .leadership-team,
+.leadership-interns,
 .leadership-founder {
   width: min(1180px, calc(100% - 40px));
   margin: 0 auto;
@@ -118,6 +119,10 @@
 }
 
 .leadership-team {
+  padding: 8px 0 64px;
+}
+
+.leadership-interns {
   padding: 8px 0 72px;
 }
 
@@ -398,6 +403,7 @@
   .leadership-nav,
   .leadership-directory,
   .leadership-team,
+  .leadership-interns,
   .leadership-founder {
     width: min(100% - 28px, 1180px);
   }

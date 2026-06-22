@@ -100,5 +100,17 @@ export const TEAM_LEADS = [
   },
 ];
 
+export const INTERNS = [
+  {
+    id: "tengacion-intern",
+    name: "Tengacion Intern",
+    role: "Intern (Software Development)",
+    image: "/assets/leadership/tengacion-intern.png",
+    imageAlt: "Tengacion intern",
+    bio:
+      "Supporting Tengacion's software development work while gaining practical experience building and improving the platform.",
+  },
+];
+
 export const FOUNDER = LEADERSHIP[0];
 export const HOME_LEADERSHIP = LEADERSHIP.slice(0, 4);

@@ -168,4 +168,28 @@ describe("Sidebar", () => {
     });
     expect(screen.queryByText(/recharge raffle/i)).not.toBeInTheDocument();
   });
+
+  it("keeps the raffle visible for the pyrexx_singz demo account", async () => {
+    setMatchMedia(false);
+    getRechargeRaffleStatus.mockRejectedValueOnce(new Error("offline"));
+
+    render(
+      <Sidebar
+        user={{
+          _id: "pyrexx-user",
+          name: "Stephen Daniel Kurah",
+          username: "pyrexx_singz",
+          email: "pyrexx@example.com",
+          phone: "+2348012345678",
+          country: "Nigeria",
+          dob: "1990-01-01T00:00:00.000Z",
+          gender: "male",
+          onboarding: { completed: true },
+          avatar: { url: "/uploads/pyrexx.jpg" },
+        }}
+      />
+    );
+
+    expect(await screen.findByText(/recharge raffle/i)).toBeInTheDocument();
+  });
 });

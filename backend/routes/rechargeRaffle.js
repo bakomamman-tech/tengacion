@@ -11,6 +11,7 @@ const auth = require("../middleware/auth");
 const {
   RechargeRaffleError,
   buildRaffleStatus,
+  isRaffleDemoUser,
   spinRaffle,
 } = require("../services/rechargeRaffleService");
 
@@ -21,6 +22,7 @@ const spinLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => isRaffleDemoUser(req.user),
   keyGenerator: (req) =>
     req.user?.id ? `user:${req.user.id}` : rateLimit.ipKeyGenerator(req.ip || ""),
   message: { error: "Too many raffle spins. Please slow down and try again shortly." },

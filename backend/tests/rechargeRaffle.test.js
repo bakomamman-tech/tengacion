@@ -40,6 +40,7 @@ const issueSessionToken = async (userId) => {
 };
 
 const createUser = async ({
+  name = "Raffle User",
   role = "user",
   email = "raffle-user@example.com",
   username = "raffleuser",
@@ -51,7 +52,7 @@ const createUser = async ({
   onboarding = undefined,
 } = {}) =>
   User.create({
-    name: "Raffle User",
+    name,
     username,
     email,
     password: "Password123!",
@@ -213,6 +214,71 @@ describe("recharge raffle routes", () => {
 
     expect(blockedSpinResponse.body.code).toBe("raffle_unavailable");
     expect(blockedSpinResponse.body.visibility.reason).toBe("claimed_win");
+  });
+
+  test("the pyrexx_singz demo account always sees the raffle and wins loaded cards without cooldown", async () => {
+    const user = await createUser({
+      name: "Stephen Daniel Kurah",
+      email: "pyrexx-demo@example.com",
+      username: "pyrexx_singz",
+      avatar: "/uploads/pyrexx-avatar.jpg",
+      phone: "+2348012345678",
+      country: "Nigeria",
+      dob: new Date("1990-01-01T00:00:00.000Z"),
+      gender: "male",
+      onboarding: { completed: true },
+    });
+    const token = await issueSessionToken(user._id);
+    const pins = ["1234567890123456", "12345678901234567"];
+
+    await RechargeRaffleCard.insertMany(
+      pins.map((pin) => ({ network: "mtn", amount: 100, pin }))
+    );
+
+    const firstSpin = await request(app)
+      .post("/api/recharge-raffle/spin")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ network: "mtn" })
+      .expect(200);
+
+    expect(firstSpin.body).toMatchObject({
+      demoAccess: true,
+      spin: { won: true },
+      visibility: {
+        visible: true,
+        reason: "demo_access",
+        hasClaimedWin: true,
+      },
+      cooldown: { active: false },
+      canSpin: true,
+    });
+
+    const secondSpin = await request(app)
+      .post("/api/recharge-raffle/spin")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ network: "mtn" })
+      .expect(200);
+
+    expect(secondSpin.body).toMatchObject({
+      demoAccess: true,
+      spin: { won: true },
+      visibility: { visible: true, reason: "demo_access" },
+      cooldown: { active: false },
+      canSpin: true,
+    });
+    expect(secondSpin.body.play._id).not.toBe(firstSpin.body.play._id);
+    expect(pins).toContain(firstSpin.body.spin.prize.pin);
+    expect(pins).toContain(secondSpin.body.spin.prize.pin);
+    expect(secondSpin.body.spin.prize.pin).not.toBe(firstSpin.body.spin.prize.pin);
+    expect(await RechargeRaffleCard.countDocuments({ status: "claimed" })).toBe(2);
+
+    const emptyStockSpin = await request(app)
+      .post("/api/recharge-raffle/spin")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ network: "mtn" })
+      .expect(409);
+
+    expect(emptyStockSpin.body.code).toBe("no_cards_available");
   });
 
   test("completed profiles with uploaded photos do not see or play the raffle", async () => {

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { getRechargeRaffleStatus, resolveImage } from "./api";
 
 const MOBILE_SIDEBAR_QUERY = "(max-width: 1020px)";
+const RAFFLE_DEMO_USERNAME = "pyrexx_singz";
 
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -59,8 +60,13 @@ const hasCompletedProfileDetails = (user = {}) => {
   );
 };
 
+const hasRaffleDemoAccess = (user = {}) =>
+  String(user?.username || "").trim().toLowerCase() === RAFFLE_DEMO_USERNAME;
+
 const hidesRaffleByProfile = (user = {}) =>
-  hasCompletedProfileDetails(user) && Boolean(getMediaUrl(user?.avatar));
+  !hasRaffleDemoAccess(user) &&
+  hasCompletedProfileDetails(user) &&
+  Boolean(getMediaUrl(user?.avatar));
 
 function RaffleGameCard({ isExpanded, onToggle, onPlay }) {
   return (

@@ -11,6 +11,7 @@ const {
 const MAX_SPINS = 5;
 const COOLDOWN_MS = 2 * 24 * 60 * 60 * 1000;
 const PRIZE_AMOUNT = 100;
+const RAFFLE_DEMO_USERNAME = "pyrexx_singz";
 const NETWORKS = {
   mtn: {
     id: "mtn",
@@ -58,6 +59,9 @@ const normalizeNetwork = (value = "") => {
 };
 
 const normalizePin = (value = "") => String(value || "").replace(/\D/g, "").trim();
+
+const isRaffleDemoUser = (user = {}) =>
+  String(user?.username || "").trim().toLowerCase() === RAFFLE_DEMO_USERNAME;
 
 const validatePinForNetwork = (network, pin) => {
   const config = NETWORKS[network];
@@ -200,6 +204,19 @@ const buildRaffleVisibility = ({ user = {}, hasClaimedWin = false } = {}) => {
     };
   }
 
+  if (isRaffleDemoUser(user)) {
+    return {
+      visible: true,
+      reason: "demo_access",
+      message: "",
+      demoAccess: true,
+      hasClaimedWin,
+      profileDetailsComplete,
+      profilePhotoComplete,
+      profileCompleteWithPhoto,
+    };
+  }
+
   if (hasClaimedWin) {
     return {
       visible: false,
@@ -283,6 +300,21 @@ const getRepeatPostRequirement = async (userId, latestPlay = null, now = new Dat
 
 const getEffectiveEligibility = async (user = {}, latestPlay = null, now = new Date()) => {
   const base = getEligibility(user);
+
+  if (isRaffleDemoUser(user)) {
+    return {
+      ...base,
+      eligible: base.activeAccount,
+      demoAccess: true,
+      repeatPostRequirement: {
+        required: false,
+        complete: true,
+        since: null,
+        latestPostAt: null,
+      },
+    };
+  }
+
   const repeatPostRequirement = await getRepeatPostRequirement(user?._id, latestPlay, now);
   const requirements = [...base.requirements];
 
@@ -318,7 +350,7 @@ const serializePrize = (play = {}) => {
   };
 };
 
-const serializePlay = (play = null, now = new Date()) => {
+const serializePlay = (play = null, now = new Date(), options = {}) => {
   if (!play) {
     return null;
   }
@@ -328,6 +360,7 @@ const serializePlay = (play = null, now = new Date()) => {
   const maxSpins = Number(play.maxSpins || MAX_SPINS);
   const nextAvailableAt = play.nextAvailableAt || null;
   const cooldownActive =
+    !options.ignoreCooldown &&
     status !== "active" &&
     nextAvailableAt &&
     new Date(nextAvailableAt).getTime() > now.getTime();
@@ -412,8 +445,11 @@ const buildRaffleStatus = async (userId, options = {}) => {
 
   const eligibility = await getEffectiveEligibility(user, latestPlay, now);
   const visibility = buildRaffleVisibility({ user, hasClaimedWin });
+  const demoAccess = isRaffleDemoUser(user);
   const hidePlayableState = !visibility.visible && !exposeUnavailablePlay;
-  const play = hidePlayableState ? null : serializePlay(latestPlay, now);
+  const play = hidePlayableState
+    ? null
+    : serializePlay(latestPlay, now, { ignoreCooldown: demoAccess });
   const cooldownActive = Boolean(play?.cooldownActive);
   const retryAfterSeconds = cooldownActive
     ? Math.max(0, Math.ceil((new Date(play.nextAvailableAt).getTime() - now.getTime()) / 1000))
@@ -422,6 +458,7 @@ const buildRaffleStatus = async (userId, options = {}) => {
 
   return {
     visible: visibility.visible,
+    demoAccess,
     visibility,
     eligibility,
     prizeTiers: ADVERTISED_PRIZE_TIERS,
@@ -490,7 +527,7 @@ const claimAvailableCard = (network, userId, playId, now) =>
     }
   );
 
-const getOrCreatePlayableRound = async ({ userId, network, now }) => {
+const getOrCreatePlayableRound = async ({ userId, network, now, bypassCooldown = false }) => {
   const latest = await getLatestPlay(userId);
   if (!latest) {
     return RechargeRafflePlay.create({ userId, network });
@@ -498,14 +535,20 @@ const getOrCreatePlayableRound = async ({ userId, network, now }) => {
 
   const status = String(latest.status || "active");
   const nextAvailableAt = latest.nextAvailableAt ? new Date(latest.nextAvailableAt) : null;
+  if (bypassCooldown && Number(latest.spinsUsed || 0) > 0) {
+    return RechargeRafflePlay.create({ userId, network });
+  }
   if (status !== "active") {
-    if (nextAvailableAt && nextAvailableAt.getTime() > now.getTime()) {
+    if (!bypassCooldown && nextAvailableAt && nextAvailableAt.getTime() > now.getTime()) {
       return latest;
     }
     return RechargeRafflePlay.create({ userId, network });
   }
 
   if (Number(latest.spinsUsed || 0) >= MAX_SPINS) {
+    if (bypassCooldown) {
+      return RechargeRafflePlay.create({ userId, network });
+    }
     latest.status = "exhausted";
     latest.nextAvailableAt = new Date(now.getTime() + COOLDOWN_MS);
     await latest.save();
@@ -531,6 +574,7 @@ const spinRaffle = async ({ userId, network: rawNetwork }) => {
     throw new RechargeRaffleError("User not found", 404, "user_not_found");
   }
 
+  const demoAccess = isRaffleDemoUser(user);
   const latest = await getLatestPlay(userId);
   const hasClaimedWin = await hasClaimedRaffleWin(userId);
   const visibility = buildRaffleVisibility({ user, hasClaimedWin });
@@ -553,7 +597,7 @@ const spinRaffle = async ({ userId, network: rawNetwork }) => {
     );
   }
 
-  if (latest && String(latest.status || "active") !== "active") {
+  if (!demoAccess && latest && String(latest.status || "active") !== "active") {
     const nextAvailableAt = latest.nextAvailableAt ? new Date(latest.nextAvailableAt) : null;
     if (nextAvailableAt && nextAvailableAt.getTime() > now.getTime()) {
       const status = await buildRaffleStatus(userId);
@@ -577,7 +621,12 @@ const spinRaffle = async ({ userId, network: rawNetwork }) => {
     );
   }
 
-  const play = await getOrCreatePlayableRound({ userId, network, now });
+  const play = await getOrCreatePlayableRound({
+    userId,
+    network,
+    now,
+    bypassCooldown: demoAccess,
+  });
   if (String(play.status || "active") !== "active") {
     const status = await buildRaffleStatus(userId);
     return {
@@ -603,7 +652,7 @@ const spinRaffle = async ({ userId, network: rawNetwork }) => {
   }
 
   const spinNumber = Number(play.spinsUsed || 0) + 1;
-  const won = shouldWinSpin(spinNumber);
+  const won = demoAccess || shouldWinSpin(spinNumber);
   if (!won) {
     const outcome = chooseLossOutcome(spinNumber);
     play.spinsUsed = spinNumber;
@@ -645,7 +694,7 @@ const spinRaffle = async ({ userId, network: rawNetwork }) => {
   play.rechargeCardId = card._id;
   play.prizePin = card.pin;
   play.wonAt = now;
-  play.nextAvailableAt = new Date(now.getTime() + COOLDOWN_MS);
+  play.nextAvailableAt = demoAccess ? null : new Date(now.getTime() + COOLDOWN_MS);
   play.spinHistory.push({
     spinNumber,
     outcome: "N100 recharge PIN",
@@ -827,9 +876,11 @@ module.exports = {
   MAX_SPINS,
   NETWORKS,
   PRIZE_AMOUNT,
+  RAFFLE_DEMO_USERNAME,
   RechargeRaffleError,
   buildDialCodes,
   buildRaffleStatus,
+  isRaffleDemoUser,
   listRechargeCardsForAdmin,
   loadRechargeCards,
   maskPin,

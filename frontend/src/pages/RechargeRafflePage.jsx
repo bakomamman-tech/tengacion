@@ -28,6 +28,8 @@ const WHEEL_SEGMENTS = [
   "Mystery",
 ];
 
+const WHEEL_LIGHTS = Array.from({ length: 12 });
+
 const SPIN_FEEDBACK_DURATION_MS = 2800;
 const RATE_LIMIT_MESSAGE = "Try Again After 2 days";
 const CONFETTI_COLORS = ["#ffe08b", "#34d399", "#60a5fa", "#fb7185", "#ffffff"];
@@ -126,28 +128,39 @@ function RaffleWheel({ rotation, spinning, disabled, onSpin }) {
   return (
     <div className={`raffle-wheel-wrap${spinning ? " is-spinning" : ""}`}>
       <div className="raffle-wheel-pointer" aria-hidden="true" />
-      <button
-        type="button"
-        className="raffle-wheel"
-        style={{ transform: `rotate(${rotation}deg)` }}
-        disabled={disabled}
-        onClick={onSpin}
-        aria-label="Spin recharge raffle wheel"
-      >
-        <span className="raffle-wheel-core">
-          <span>SPIN</span>
-          <small>WIN</small>
+      <div className="raffle-wheel-frame">
+        <span className="raffle-wheel-lights" aria-hidden="true">
+          {WHEEL_LIGHTS.map((_, index) => (
+            <i key={index} style={{ "--light-index": index }} />
+          ))}
         </span>
-        {WHEEL_SEGMENTS.map((label, index) => (
-          <span
-            key={`${label}-${index}`}
-            className="raffle-wheel-label"
-            style={{ transform: `rotate(${index * 45}deg) translateY(-118px) rotate(-${index * 45}deg)` }}
-          >
-            {label}
+        <button
+          type="button"
+          className="raffle-wheel"
+          style={{
+            transform: `rotate(${rotation}deg)`,
+            "--wheel-rotation": `${rotation}deg`,
+          }}
+          disabled={disabled}
+          onClick={onSpin}
+          aria-label="Spin recharge raffle wheel"
+        >
+          <span className="raffle-wheel-core">
+            <span>SPIN</span>
+            <small>WIN</small>
           </span>
-        ))}
-      </button>
+          {WHEEL_SEGMENTS.map((label, index) => (
+            <span
+              key={`${label}-${index}`}
+              className={`raffle-wheel-label raffle-wheel-label--${index}`}
+              style={{ "--segment-index": index }}
+            >
+              {label}
+            </span>
+          ))}
+        </button>
+        <span className="raffle-wheel-inner-ring" aria-hidden="true" />
+      </div>
     </div>
   );
 }

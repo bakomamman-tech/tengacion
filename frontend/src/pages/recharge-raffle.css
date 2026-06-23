@@ -164,89 +164,213 @@
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  filter: drop-shadow(0 24px 30px rgba(0, 0, 0, 0.32));
+  filter:
+    drop-shadow(0 26px 28px rgba(0, 0, 0, 0.42))
+    drop-shadow(0 0 15px rgba(245, 174, 36, 0.16));
 }
 
 .raffle-wheel-pointer {
   position: absolute;
-  z-index: 3;
-  top: -4px;
+  z-index: 6;
+  top: -8px;
   left: 50%;
-  width: 34px;
-  height: 42px;
+  width: 42px;
+  height: 54px;
   transform: translateX(-50%);
-  background: linear-gradient(180deg, #fff6d7, var(--raffle-gold));
+  background: linear-gradient(105deg, #ffd85e 0%, #fff3ad 43%, #f5a518 58%, #c86a00 100%);
   clip-path: polygon(50% 100%, 0 0, 100% 0);
-  border-radius: 3px;
+  border-radius: 7px;
+  filter:
+    drop-shadow(0 2px 0 #7c3c00)
+    drop-shadow(0 0 7px rgba(255, 190, 43, 0.72));
+}
+
+.raffle-wheel-pointer::after {
+  content: "";
+  position: absolute;
+  inset: 4px 5px 7px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.72), transparent 48%);
+  clip-path: inherit;
+}
+
+.raffle-wheel-frame {
+  position: relative;
+  container-type: inline-size;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    linear-gradient(#251203, #251203) padding-box,
+    conic-gradient(
+      from -15deg,
+      #8a4500,
+      #ffe171,
+      #b55d00,
+      #fff2a6,
+      #8b4200,
+      #f7b72d,
+      #7e3900,
+      #ffd75c,
+      #8a4500
+    ) border-box;
+  border: 7px solid transparent;
+  box-shadow:
+    inset 0 0 0 2px #4f2500,
+    inset 0 0 0 4px #fbc454,
+    inset 0 0 15px rgba(0, 0, 0, 0.9),
+    0 0 0 1px #2e1500,
+    0 0 16px rgba(245, 165, 24, 0.28);
+}
+
+.raffle-wheel-lights {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.raffle-wheel-lights i {
+  --light-angle: calc(var(--light-index) * 30deg);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px;
+  border-radius: 50%;
+  background: #fff8c8;
+  box-shadow:
+    0 0 2px #fff,
+    0 0 6px 2px #ffc226,
+    0 0 12px 3px rgba(255, 151, 0, 0.78);
+  transform: rotate(var(--light-angle)) translateY(calc(-50cqi + 9px));
 }
 
 .raffle-wheel {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border: 10px solid #fff5cf;
+  --wheel-label-radius: 110px;
+  --wheel-label-radius: 31cqi;
+  position: absolute;
+  inset: 18px;
+  width: calc(100% - 36px);
+  height: calc(100% - 36px);
+  padding: 0;
+  border: 0;
   border-radius: 50%;
   background:
-    radial-gradient(circle, #17130b 0 17%, transparent 18%),
+    radial-gradient(circle, transparent 0 18%, rgba(0, 0, 0, 0.22) 18.5%, transparent 21%),
     conic-gradient(
-      #f5b83f 0 45deg,
-      #148552 45deg 90deg,
-      #d6463b 90deg 135deg,
-      #285fd4 135deg 180deg,
-      #f7efe1 180deg 225deg,
-      #17130b 225deg 270deg,
-      #eeb34b 270deg 315deg,
-      #ffffff 315deg 360deg
+      from -22.5deg,
+      #f7f5ef 0 45deg,
+      #ffbd1f 45deg 90deg,
+      #07844d 90deg 135deg,
+      #dd3428 135deg 180deg,
+      #1752ad 180deg 225deg,
+      #f2e9d8 225deg 270deg,
+      #101311 270deg 315deg,
+      #e79d1e 315deg 360deg
     );
   box-shadow:
-    inset 0 0 0 8px rgba(17, 19, 11, 0.24),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.65);
+    inset 0 0 0 2px rgba(255, 247, 208, 0.8),
+    inset 0 0 20px rgba(0, 0, 0, 0.3),
+    0 0 0 1px #8c4c05;
   transition: transform 1200ms cubic-bezier(0.18, 0.82, 0.18, 1);
+  cursor: pointer;
+  isolation: isolate;
 }
 
 .raffle-wheel:disabled {
   cursor: not-allowed;
 }
 
+.raffle-wheel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.2), transparent 23% 70%, rgba(0, 0, 0, 0.14)),
+    radial-gradient(circle at 50% 42%, transparent 45%, rgba(0, 0, 0, 0.14) 100%);
+  pointer-events: none;
+}
+
+.raffle-wheel-inner-ring {
+  position: absolute;
+  z-index: 3;
+  inset: 13px;
+  border: 2px solid rgba(255, 216, 105, 0.78);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 0 1px rgba(76, 32, 0, 0.78),
+    0 0 0 1px rgba(87, 39, 0, 0.72);
+  pointer-events: none;
+}
+
 .raffle-wheel-core {
   position: absolute;
   inset: 50%;
-  width: 96px;
-  height: 96px;
-  transform: translate(-50%, -50%);
+  width: 31%;
+  height: 31%;
+  min-width: 78px;
+  min-height: 78px;
+  transform: translate(-50%, -50%) rotate(calc(0deg - var(--wheel-rotation)));
   display: grid;
   place-items: center;
   align-content: center;
   border-radius: 50%;
-  background: linear-gradient(180deg, #fffdf4, #ffd56f);
-  border: 6px solid rgba(23, 19, 11, 0.22);
-  color: #17130b;
+  background:
+    radial-gradient(circle at 36% 27%, #fff7c7 0, #f6cf70 25%, #d89725 64%, #a85b09 100%);
+  border: 5px solid #f9cf65;
+  color: #241703;
   font-weight: 900;
   z-index: 2;
+  box-shadow:
+    inset 0 0 0 2px #7d4107,
+    inset 0 0 0 5px rgba(255, 240, 164, 0.45),
+    0 0 0 3px #8b4908,
+    0 5px 12px rgba(0, 0, 0, 0.46);
+  transition: transform 1200ms cubic-bezier(0.18, 0.82, 0.18, 1);
 }
 
 .raffle-wheel-core span {
   line-height: 1;
+  font-size: clamp(1rem, 5vw, 1.42rem);
 }
 
 .raffle-wheel-core small {
-  font-size: 0.74rem;
-  letter-spacing: 0.12em;
+  margin-top: 3px;
+  font-size: clamp(0.64rem, 2.7vw, 0.88rem);
+  letter-spacing: 0.04em;
 }
 
 .raffle-wheel-label {
+  --segment-angle: calc(var(--segment-index) * 45deg);
   position: absolute;
+  z-index: 1;
   top: 50%;
   left: 50%;
-  width: 78px;
-  margin-left: -39px;
-  margin-top: -12px;
+  width: 27%;
+  margin-left: -13.5%;
+  margin-top: -0.7em;
   color: #15130e;
-  font-size: 0.75rem;
+  font-size: clamp(0.68rem, 2.7vw, 0.88rem);
   font-weight: 900;
   text-align: center;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.42);
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
   pointer-events: none;
+  transform: rotate(var(--segment-angle)) translateY(calc(0px - var(--wheel-label-radius))) rotate(calc(0deg - var(--segment-angle)));
+}
+
+.raffle-wheel-label--2,
+.raffle-wheel-label--3,
+.raffle-wheel-label--4,
+.raffle-wheel-label--6 {
+  color: #fffef7;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
 }
 
 .raffle-console-actions {

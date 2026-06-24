@@ -914,6 +914,15 @@ export default function Navbar({
           onClick: () => setTheme("light"),
         },
         {
+          id: "display-peaceful",
+          label: "Peaceful Mode",
+          description: "Use luminous ivory, soft gold, and calm violet accents for serene browsing.",
+          glyph: "PM",
+          badge: theme === "peaceful" ? "On" : "Off",
+          active: theme === "peaceful",
+          onClick: () => setTheme("peaceful"),
+        },
+        {
           id: "display-neon-purple",
           label: "Neon Purple Mode",
           description: "Use a calculator-inspired neon purple glow with deep midnight surfaces.",

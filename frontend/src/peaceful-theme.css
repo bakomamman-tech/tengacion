@@ -1,0 +1,334 @@
+/*
+ * Peaceful Mode
+ * A luminous ivory, champagne-gold, navy, and violet display system inspired
+ * by Tengacion's serene creator-universe concept art.
+ */
+
+html.peaceful-mode {
+  --bg: #f6f1f0;
+  --bg-layer:
+    radial-gradient(circle at 50% -8%, rgba(255, 255, 255, 0.98), transparent 32%),
+    radial-gradient(circle at 8% 30%, rgba(119, 105, 218, 0.13), transparent 31%),
+    radial-gradient(circle at 92% 26%, rgba(110, 188, 230, 0.16), transparent 29%),
+    radial-gradient(circle at 50% 108%, rgba(238, 186, 86, 0.14), transparent 34%),
+    linear-gradient(145deg, #f5edef 0%, #fffdf9 46%, #eef4fb 100%);
+  --surface: #fffaf7;
+  --surface-soft: #f8f2f2;
+  --surface-strong: #ece7f1;
+  --bg-dark: #111d42;
+  --text: #151d40;
+  --muted: #6d6d7f;
+  --border: #d9c7b4;
+  --border-strong: #c49a56;
+  --brand: #b78332;
+  --brand-strong: #7550b7;
+  --brand-soft: #eee1cf;
+  --danger: #cc526b;
+  --success: #298f68;
+  --shadow-xs:
+    0 1px 0 rgba(255, 255, 255, 0.9),
+    0 10px 22px rgba(42, 33, 65, 0.07);
+  --shadow-sm:
+    0 0 0 1px rgba(255, 255, 255, 0.56),
+    0 18px 38px rgba(44, 35, 70, 0.1),
+    0 0 28px rgba(210, 160, 67, 0.06);
+  --shadow-md:
+    0 0 0 1px rgba(255, 255, 255, 0.72),
+    0 28px 62px rgba(38, 30, 65, 0.15),
+    0 0 38px rgba(103, 73, 180, 0.07);
+  --btn-bg: linear-gradient(135deg, #f8dfa5 0%, #c99542 52%, #e5bb6c 100%);
+  --btn-bg-hover: linear-gradient(135deg, #ffedc5 0%, #d9aa59 52%, #f0ca80 100%);
+  --btn-bg-active: linear-gradient(135deg, #c7913d 0%, #a76f24 100%);
+  --btn-bg-soft: #eadfef;
+  --btn-text: #17203f;
+  --btn-focus: rgba(112, 76, 183, 0.2);
+  --glass-action-fill: linear-gradient(180deg, rgba(255, 253, 251, 0.94), rgba(244, 237, 239, 0.88));
+  --glass-action-fill-hover: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 242, 245, 0.94));
+  --glass-action-fill-active: linear-gradient(180deg, rgba(242, 235, 240, 0.98), rgba(231, 223, 234, 0.94));
+  --glass-action-fill-selected: linear-gradient(135deg, rgba(236, 224, 248, 0.98), rgba(249, 242, 239, 0.96));
+  --glass-action-border: rgba(177, 126, 49, 0.18);
+  --glass-action-border-strong: rgba(112, 76, 183, 0.32);
+  --glass-action-highlight: rgba(255, 255, 255, 0.86);
+  --glass-action-shadow: 0 12px 26px rgba(44, 35, 70, 0.08);
+  --glass-action-shadow-hover: 0 17px 34px rgba(44, 35, 70, 0.12);
+  --glass-action-ring: rgba(112, 76, 183, 0.18);
+  --glass-reaction-fill: linear-gradient(180deg, rgba(255, 254, 252, 0.96), rgba(244, 237, 240, 0.92));
+  --glass-reaction-btn-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(242, 235, 240, 0.9));
+  --home-soft-btn-bg: linear-gradient(180deg, rgba(255, 253, 251, 0.98), rgba(243, 237, 239, 0.95));
+  --home-soft-btn-bg-hover: linear-gradient(180deg, #ffffff, rgba(248, 242, 246, 0.98));
+  --home-soft-btn-border: rgba(180, 130, 53, 0.2);
+  --home-soft-btn-border-strong: rgba(115, 78, 183, 0.34);
+  --home-soft-btn-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 11px 24px rgba(48, 37, 74, 0.07);
+  --home-soft-btn-shadow-hover:
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    0 16px 30px rgba(48, 37, 74, 0.12);
+  --home-soft-btn-text: #222746;
+  --tg-btn-shadow-soft: 0 12px 28px rgba(49, 38, 75, 0.09);
+  --tg-btn-shadow-hover: 0 18px 36px rgba(49, 38, 75, 0.13);
+  --tg-btn-shadow-press: 0 8px 18px rgba(49, 38, 75, 0.1);
+  --tg-btn-shadow-primary:
+    0 14px 30px rgba(178, 123, 43, 0.18),
+    inset 0 1px 0 rgba(255, 253, 239, 0.78);
+  --tg-btn-shadow-primary-hover:
+    0 19px 38px rgba(178, 123, 43, 0.24),
+    inset 0 1px 0 rgba(255, 255, 246, 0.9);
+  --tg-btn-ring: 0 0 0 3px rgba(112, 76, 183, 0.16);
+  --tg-btn-ring-strong: 0 0 0 5px rgba(223, 174, 80, 0.12);
+  --tg-btn-primary-bg: linear-gradient(135deg, #f9e2ab 0%, #c89440 54%, #e6bb68 100%);
+  --tg-btn-primary-bg-hover: linear-gradient(135deg, #fff0cb 0%, #dbaa59 54%, #f1cd83 100%);
+  --tg-btn-primary-bg-active: linear-gradient(135deg, #ca923c 0%, #a97025 100%);
+  --tg-btn-primary-border: rgba(164, 108, 31, 0.28);
+  --tg-btn-primary-text: #18203f;
+  --tg-btn-secondary-bg: linear-gradient(180deg, rgba(255, 253, 251, 0.98), rgba(243, 237, 241, 0.95));
+  --tg-btn-secondary-bg-hover: linear-gradient(180deg, #ffffff, rgba(248, 242, 247, 0.98));
+  --tg-btn-secondary-bg-active: linear-gradient(180deg, rgba(239, 231, 239, 0.98), rgba(228, 219, 231, 0.96));
+  --tg-btn-secondary-border: rgba(181, 130, 51, 0.2);
+  --tg-btn-secondary-border-hover: rgba(112, 76, 183, 0.32);
+  --tg-btn-secondary-text: #232746;
+  --tg-btn-ghost-bg-hover: rgba(112, 76, 183, 0.09);
+  --tg-btn-ghost-bg-active: rgba(112, 76, 183, 0.15);
+  --tg-btn-ghost-text: #41345d;
+  --tg-btn-outline-bg: rgba(255, 251, 248, 0.72);
+  --tg-btn-outline-bg-hover: rgba(250, 244, 247, 0.9);
+  --tg-btn-outline-bg-active: rgba(236, 226, 239, 0.94);
+  --tg-btn-outline-border: rgba(181, 130, 51, 0.24);
+  --tg-btn-outline-border-active: rgba(112, 76, 183, 0.38);
+  --tg-btn-outline-text: #332c50;
+  --tg-btn-tab-bg: rgba(255, 251, 248, 0.68);
+  --tg-btn-tab-bg-hover: rgba(247, 239, 245, 0.92);
+  --tg-btn-tab-bg-active: linear-gradient(135deg, #8b67d0 0%, #5d3bad 100%);
+  --tg-btn-tab-border: rgba(181, 130, 51, 0.18);
+  --tg-btn-tab-border-active: rgba(212, 165, 75, 0.5);
+  --tg-btn-tab-text: #56536a;
+  --tg-btn-tab-text-active: #ffffff;
+  --tg-btn-icon-bg: linear-gradient(180deg, rgba(255, 253, 251, 0.98), rgba(241, 234, 240, 0.94));
+  --tg-btn-icon-bg-hover: linear-gradient(180deg, #ffffff, rgba(247, 240, 246, 0.98));
+  --tg-btn-icon-bg-active: linear-gradient(180deg, rgba(237, 228, 238, 0.98), rgba(225, 215, 229, 0.96));
+  --tg-btn-icon-border: rgba(181, 130, 51, 0.2);
+  --tg-btn-icon-text: #6845aa;
+  --tg-btn-toolbar-bg: linear-gradient(180deg, rgba(255, 253, 251, 0.94), rgba(242, 235, 239, 0.9));
+  --tg-toast-bg: linear-gradient(160deg, rgba(255, 254, 252, 0.99), rgba(245, 238, 242, 0.98));
+  --tg-toast-border: rgba(187, 135, 52, 0.26);
+  --tg-toast-text: #1d2343;
+  --tg-toast-shadow: 0 22px 50px rgba(44, 34, 71, 0.16);
+}
+
+html.peaceful-mode body {
+  background-color: #f7f2f1;
+  background-image: var(--bg-layer);
+  background-attachment: fixed;
+}
+
+html.peaceful-mode body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.58;
+  background:
+    linear-gradient(116deg, transparent 0 22%, rgba(212, 164, 76, 0.08) 22.2%, transparent 22.55%),
+    linear-gradient(246deg, transparent 0 75%, rgba(107, 86, 191, 0.08) 75.2%, transparent 75.55%);
+}
+
+html.peaceful-mode .navbar,
+html.peaceful-mode .topNavRow {
+  border-color: rgba(192, 145, 65, 0.28);
+  background: linear-gradient(180deg, rgba(255, 253, 251, 0.95), rgba(244, 238, 241, 0.9));
+  box-shadow:
+    inset 0 -1px 0 rgba(255, 255, 255, 0.7),
+    0 16px 38px rgba(46, 35, 73, 0.1),
+    0 0 30px rgba(202, 151, 57, 0.05);
+  backdrop-filter: blur(24px) saturate(132%);
+  -webkit-backdrop-filter: blur(24px) saturate(132%);
+}
+
+html.peaceful-mode .brand-text {
+  color: #18203f;
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 0 #ffffff, 0 0 18px rgba(190, 138, 48, 0.13);
+}
+
+html.peaceful-mode .nav-logo {
+  filter: drop-shadow(0 3px 7px rgba(183, 124, 38, 0.22));
+}
+
+html.peaceful-mode .nav-pill-group,
+html.peaceful-mode .pillGroup,
+html.peaceful-mode .nav-actions-shell {
+  border-color: rgba(188, 139, 57, 0.2);
+  background: linear-gradient(180deg, rgba(255, 254, 252, 0.94), rgba(242, 235, 240, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 11px 26px rgba(49, 37, 75, 0.08);
+}
+
+html.peaceful-mode .nav-tab.active,
+html.peaceful-mode .pillLink.active,
+html.peaceful-mode .sidebar-btn.active {
+  border-color: rgba(217, 172, 86, 0.58) !important;
+  background: linear-gradient(135deg, #9270d5 0%, #5e3caf 100%) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 13px 27px rgba(91, 56, 162, 0.2),
+    0 0 18px rgba(115, 75, 194, 0.12) !important;
+}
+
+html.peaceful-mode .nav-avatar,
+html.peaceful-mode .create-post-avatar,
+html.peaceful-mode .post-avatar {
+  border: 2px solid #d8a951;
+  box-shadow:
+    0 0 0 2px rgba(108, 71, 183, 0.56),
+    0 0 15px rgba(109, 73, 184, 0.18);
+}
+
+html.peaceful-mode .card,
+html.peaceful-mode .post-card,
+html.peaceful-mode .sidebar-nav,
+html.peaceful-mode .quick-nav-panel,
+html.peaceful-mode .friend-requests-card,
+html.peaceful-mode .checkin-card,
+html.peaceful-mode .quick-access-hero,
+html.peaceful-mode .account-choice-card,
+html.peaceful-mode .account-shortcut-card {
+  border-color: rgba(187, 137, 54, 0.22);
+  background:
+    radial-gradient(circle at 100% 0, rgba(126, 92, 193, 0.055), transparent 34%),
+    linear-gradient(150deg, rgba(255, 253, 251, 0.97), rgba(244, 237, 241, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 18px 38px rgba(47, 36, 73, 0.09);
+}
+
+html.peaceful-mode .post-card:hover,
+html.peaceful-mode .account-choice-card:hover,
+html.peaceful-mode .account-shortcut-card:hover {
+  border-color: rgba(116, 79, 185, 0.34);
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 22px 46px rgba(47, 36, 73, 0.13),
+    0 0 24px rgba(193, 143, 53, 0.06);
+}
+
+html.peaceful-mode .search-dropdown,
+html.peaceful-mode .create-menu-dropdown,
+html.peaceful-mode .profile-menu {
+  border-color: rgba(188, 137, 51, 0.3);
+  background:
+    radial-gradient(circle at 100% 0, rgba(116, 79, 189, 0.1), transparent 30%),
+    linear-gradient(155deg, rgba(255, 254, 252, 0.99), rgba(243, 236, 241, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 28px 62px rgba(44, 33, 70, 0.17),
+    0 0 36px rgba(193, 142, 49, 0.06);
+}
+
+html.peaceful-mode .pm-panel-back,
+html.peaceful-mode .pm-nav-item-icon {
+  border: 1px solid rgba(187, 136, 52, 0.22);
+  background: linear-gradient(145deg, rgba(255, 254, 252, 0.98), rgba(238, 230, 239, 0.96));
+  color: #6543a9;
+  box-shadow: inset 0 1px 0 #ffffff;
+}
+
+html.peaceful-mode .pm-nav-item:hover,
+html.peaceful-mode .pm-user:hover,
+html.peaceful-mode .pm-item:hover {
+  background: linear-gradient(135deg, rgba(230, 219, 244, 0.72), rgba(248, 241, 240, 0.88));
+}
+
+html.peaceful-mode .pm-nav-item.is-active {
+  border: 1px solid rgba(111, 74, 181, 0.24);
+  background:
+    radial-gradient(circle at 0 50%, rgba(220, 168, 66, 0.12), transparent 34%),
+    linear-gradient(135deg, rgba(225, 213, 243, 0.9), rgba(249, 241, 239, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 11px 26px rgba(59, 42, 91, 0.09);
+}
+
+html.peaceful-mode .pm-nav-item.is-active .pm-nav-item-icon {
+  border-color: rgba(203, 151, 59, 0.44);
+  background: linear-gradient(135deg, #916ed3, #5d3bad);
+  color: #ffffff;
+}
+
+html.peaceful-mode .pm-nav-item-badge {
+  border: 1px solid rgba(183, 130, 48, 0.16);
+  background: rgba(239, 232, 237, 0.9);
+  color: #686275;
+}
+
+html.peaceful-mode .pm-nav-item.is-active .pm-nav-item-badge {
+  border-color: rgba(201, 149, 56, 0.42);
+  background: linear-gradient(135deg, #f5d895, #c69340);
+  color: #1d2441;
+}
+
+html.peaceful-mode .pm-divider {
+  border-color: rgba(186, 135, 52, 0.18);
+}
+
+html.peaceful-mode input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+html.peaceful-mode select,
+html.peaceful-mode textarea,
+html.peaceful-mode .nav-search,
+html.peaceful-mode .quick-nav-search,
+html.peaceful-mode .create-post-row input {
+  border-color: rgba(185, 134, 51, 0.2);
+  background: linear-gradient(180deg, rgba(255, 254, 252, 0.96), rgba(244, 238, 242, 0.92));
+  color: #1a2141;
+  box-shadow: inset 0 1px 0 #ffffff;
+}
+
+html.peaceful-mode input::placeholder,
+html.peaceful-mode textarea::placeholder {
+  color: #8b8998;
+}
+
+html.peaceful-mode .account-choice-card.active {
+  border-color: rgba(111, 74, 181, 0.34);
+  background:
+    radial-gradient(circle at 100% 0, rgba(111, 74, 187, 0.16), transparent 42%),
+    linear-gradient(145deg, rgba(230, 219, 244, 0.96), rgba(255, 248, 243, 0.98));
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 17px 36px rgba(52, 39, 80, 0.12),
+    0 0 22px rgba(195, 145, 54, 0.05);
+}
+
+html.peaceful-mode .quick-nav-item,
+html.peaceful-mode .create-post-quick-actions {
+  border-color: rgba(183, 132, 49, 0.18);
+  background: linear-gradient(180deg, rgba(255, 253, 251, 0.96), rgba(241, 234, 240, 0.92));
+}
+
+html.peaceful-mode .quick-nav-item:hover,
+html.peaceful-mode .quick-nav-item.active {
+  border-color: rgba(112, 76, 183, 0.32);
+  background: linear-gradient(135deg, rgba(229, 217, 244, 0.94), rgba(249, 241, 240, 0.98));
+}
+
+html.peaceful-mode .quick-nav-item-icon {
+  border-color: rgba(185, 134, 51, 0.22);
+  background: linear-gradient(145deg, rgba(244, 235, 247, 0.98), rgba(255, 248, 241, 0.96));
+  color: #6744aa;
+}
+
+html.peaceful-mode ::selection {
+  background: rgba(116, 77, 187, 0.22);
+  color: #161c3a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.peaceful-mode *,
+  html.peaceful-mode *::before,
+  html.peaceful-mode *::after {
+    scroll-behavior: auto !important;
+  }
+}

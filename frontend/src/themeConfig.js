@@ -1,10 +1,11 @@
 export const THEME_KEY = "tengacion_theme";
 export const LEGACY_THEME_KEY = "tengacion-theme";
 export const DEFAULT_THEME = "light";
-export const SUPPORTED_THEMES = ["light", "dark", "neon-purple", "royalty"];
+export const SUPPORTED_THEMES = ["light", "peaceful", "dark", "neon-purple", "royalty"];
 
 const THEME_LABELS = {
   light: "Light Mode",
+  peaceful: "Peaceful Mode",
   dark: "Dark Mode",
   "neon-purple": "Neon Purple Mode",
   royalty: "Royalty Mode",
@@ -65,6 +66,7 @@ export function applyThemeToDocument(theme, root = document.documentElement) {
   const isDarkLikeTheme = ["dark", "neon-purple", "royalty"].includes(nextTheme);
   root.dataset.theme = nextTheme;
   root.classList.toggle("dark-mode", isDarkLikeTheme);
+  root.classList.toggle("peaceful-mode", nextTheme === "peaceful");
   root.classList.toggle("neon-purple-mode", nextTheme === "neon-purple");
   root.classList.toggle("royalty-mode", nextTheme === "royalty");
   root.classList.remove("turquoise-mode");

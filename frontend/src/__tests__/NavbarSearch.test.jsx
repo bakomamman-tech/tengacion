@@ -169,6 +169,34 @@ describe("Navbar search", () => {
     expect(setThemeMock).toHaveBeenCalledWith("royalty");
   });
 
+  it("offers Peaceful Mode in Display & accessibility", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/home"]}>
+        <Navbar
+          user={{
+            _id: "viewer-1",
+            name: "Viewer User",
+            username: "viewer_user",
+            avatar: "",
+            role: "user",
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("button", { name: /account menu/i }));
+    await user.click(screen.getByRole("button", { name: /display & accessibility/i }));
+
+    const peacefulMode = screen.getByRole("button", { name: /peaceful mode/i });
+    expect(peacefulMode).toHaveTextContent(/luminous ivory, soft gold, and calm violet accents/i);
+
+    await user.click(peacefulMode);
+
+    expect(setThemeMock).toHaveBeenCalledWith("peaceful");
+  });
+
   it("shows desktop navigation toggles when the top tabs overflow", async () => {
     const user = userEvent.setup();
 

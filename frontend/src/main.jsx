@@ -24,6 +24,7 @@ import "./button-system.css";
 import "./dialog-system.css";
 import "./features/news/news.css";
 import "./royalty-theme.css";
+import "./peaceful-theme.css";
 
 const initializeThemeEarly = () => {
   if (typeof window === "undefined") {

@@ -285,6 +285,11 @@ export function DisplayAccessibilityPage({ user }) {
       description: "Brighter surfaces with warm contrast for daytime browsing.",
     },
     {
+      value: "peaceful",
+      title: "Peaceful Mode",
+      description: "Luminous ivory surfaces with soft gold framing and calm violet accents.",
+    },
+    {
       value: "dark",
       title: "Dark mode",
       description: "Deeper surfaces with softer glare for low-light browsing.",

@@ -739,17 +739,6 @@ export default function TengacionTetris({ onSessionChange }) {
           <p>{status}</p>
         </div>
 
-        <div className="game-tetris-head-actions">
-          <button type="button" className="btn-secondary" onClick={holdCurrentPiece} disabled={!canHold || gameOver}>
-            Hold
-          </button>
-          <button type="button" className="btn-secondary" onClick={togglePause} disabled={gameOver}>
-            {paused ? "Resume" : "Pause"}
-          </button>
-          <button type="button" className="btn-secondary" onClick={startNewRun}>
-            New run
-          </button>
-        </div>
       </div>
 
       <div className="game-tetris-stats">
@@ -772,30 +761,57 @@ export default function TengacionTetris({ onSessionChange }) {
       </div>
 
       <div className="game-tetris-stage">
-        <div className="game-tetris-board-shell">
-          <div className="game-tetris-board" aria-label="Tetris board">
-            {displayBoard.flat().map((cell, index) => {
-              const typeClass = cell?.type ? `piece-${cell.type.toLowerCase()}` : "empty";
-              const modeClass = cell?.mode ? `is-${cell.mode}` : "";
-              return (
-                <div
-                  key={`tetris-cell-${index}`}
-                  className={`game-tetris-cell ${typeClass} ${modeClass}`.trim()}
-                />
-              );
-            })}
+        <div className="game-live-play-column">
+          <div className="game-live-control-dock" role="region" aria-label="Tetris play controls">
+            <div className="game-live-control-dock__head">
+              <strong>Play controls</strong>
+              <span>Keep every move available while the stack falls.</span>
+            </div>
+            <div className="game-live-control-dock__body">
+              <div className="game-tetris-controls" aria-label="Tetris controls">
+                <button type="button" onClick={() => moveHorizontally(-1)}>Left</button>
+                <button type="button" onClick={rotatePiece}>Rotate</button>
+                <button type="button" onClick={() => moveHorizontally(1)}>Right</button>
+                <button type="button" onClick={() => stepDown(true)}>Soft drop</button>
+                <button type="button" onClick={hardDrop}>Hard drop</button>
+                <button type="button" onClick={holdCurrentPiece} disabled={!canHold || gameOver}>Hold</button>
+              </div>
+              <div className="game-live-session-actions">
+                <button type="button" className="btn-secondary" onClick={togglePause} disabled={gameOver}>
+                  {paused ? "Resume" : "Pause"}
+                </button>
+                <button type="button" className="btn-secondary" onClick={startNewRun}>
+                  New run
+                </button>
+              </div>
+            </div>
           </div>
 
-          {overlayVisible ? (
-            <div className="game-tetris-overlay">
-              <strong>{gameOver ? "Run over" : "Run paused"}</strong>
-              <p>
-                {gameOver
-                  ? "The stack hit the top. Start a new run and chase a cleaner board."
-                  : "Resume when you are ready to keep the stack flowing."}
-              </p>
+          <div className="game-tetris-board-shell">
+            <div className="game-tetris-board" aria-label="Tetris board">
+              {displayBoard.flat().map((cell, index) => {
+                const typeClass = cell?.type ? `piece-${cell.type.toLowerCase()}` : "empty";
+                const modeClass = cell?.mode ? `is-${cell.mode}` : "";
+                return (
+                  <div
+                    key={`tetris-cell-${index}`}
+                    className={`game-tetris-cell ${typeClass} ${modeClass}`.trim()}
+                  />
+                );
+              })}
             </div>
-          ) : null}
+
+            {overlayVisible ? (
+              <div className="game-tetris-overlay">
+                <strong>{gameOver ? "Run over" : "Run paused"}</strong>
+                <p>
+                  {gameOver
+                    ? "The stack hit the top. Start a new run and chase a cleaner board."
+                    : "Resume when you are ready to keep the stack flowing."}
+                </p>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <div className="game-tetris-aside">
@@ -832,26 +848,6 @@ export default function TengacionTetris({ onSessionChange }) {
             </p>
           </div>
 
-          <div className="game-tetris-controls" aria-label="Tetris controls">
-            <button type="button" onClick={() => moveHorizontally(-1)}>
-              Left
-            </button>
-            <button type="button" onClick={rotatePiece}>
-              Rotate
-            </button>
-            <button type="button" onClick={() => moveHorizontally(1)}>
-              Right
-            </button>
-            <button type="button" onClick={() => stepDown(true)}>
-              Soft drop
-            </button>
-            <button type="button" onClick={hardDrop}>
-              Hard drop
-            </button>
-            <button type="button" onClick={holdCurrentPiece} disabled={!canHold || gameOver}>
-              Hold
-            </button>
-          </div>
         </div>
       </div>
     </section>

@@ -776,14 +776,6 @@ export default function MushroomRun({ onSessionChange }) {
           <p>{status}</p>
         </div>
 
-        <div className="game-mushroom-head-actions">
-          <button type="button" className="btn-secondary" onClick={togglePause} disabled={gameOver || cleared}>
-            {paused ? "Resume" : "Pause"}
-          </button>
-          <button type="button" className="btn-secondary" onClick={restartRun}>
-            New run
-          </button>
-        </div>
       </div>
 
       <div className="game-mushroom-stats">
@@ -806,31 +798,78 @@ export default function MushroomRun({ onSessionChange }) {
       </div>
 
       <div className="game-mushroom-stage">
-        <div className="game-mushroom-canvas-shell">
-          <canvas ref={canvasRef} className="game-mushroom-canvas" aria-label="Mushroom Run game stage" />
-
-          {overlayVisible ? (
-            <div className="game-mushroom-overlay">
-              <strong>{cleared ? "Course cleared" : gameOver ? "Run over" : "Run paused"}</strong>
-              <p>
-                {cleared
-                  ? "You reached the finale banner. Start another run and chase a cleaner score."
-                  : gameOver
-                    ? "The course pushed back this time. A fresh run is ready whenever you are."
-                    : "Take a breath, then jump back in when you want the lane moving again."}
-              </p>
-              <div className="game-mushroom-overlay-actions">
-                {paused ? (
-                  <button type="button" className="btn-secondary" onClick={togglePause}>
-                    Resume run
-                  </button>
-                ) : null}
+        <div className="game-live-play-column">
+          <div className="game-live-control-dock" role="region" aria-label="Mushroom Run play controls">
+            <div className="game-live-control-dock__head">
+              <strong>Play controls</strong>
+              <span>Run and jump without losing sight of the course.</span>
+            </div>
+            <div className="game-live-control-dock__body">
+              <div className="game-mushroom-controls" aria-label="Mushroom Run touch controls">
+                <button
+                  type="button"
+                  onPointerDown={() => setHeldDirection("left", true)}
+                  onPointerUp={() => setHeldDirection("left", false)}
+                  onPointerLeave={() => setHeldDirection("left", false)}
+                  onPointerCancel={() => setHeldDirection("left", false)}
+                >
+                  Left
+                </button>
+                <button
+                  type="button"
+                  onPointerDown={() => {
+                    jumpQueuedRef.current = true;
+                  }}
+                >
+                  Jump
+                </button>
+                <button
+                  type="button"
+                  onPointerDown={() => setHeldDirection("right", true)}
+                  onPointerUp={() => setHeldDirection("right", false)}
+                  onPointerLeave={() => setHeldDirection("right", false)}
+                  onPointerCancel={() => setHeldDirection("right", false)}
+                >
+                  Right
+                </button>
+              </div>
+              <div className="game-live-session-actions">
+                <button type="button" className="btn-secondary" onClick={togglePause} disabled={gameOver || cleared}>
+                  {paused ? "Resume" : "Pause"}
+                </button>
                 <button type="button" className="btn-secondary" onClick={restartRun}>
                   New run
                 </button>
               </div>
             </div>
-          ) : null}
+          </div>
+
+          <div className="game-mushroom-canvas-shell">
+            <canvas ref={canvasRef} className="game-mushroom-canvas" aria-label="Mushroom Run game stage" />
+
+            {overlayVisible ? (
+              <div className="game-mushroom-overlay">
+                <strong>{cleared ? "Course cleared" : gameOver ? "Run over" : "Run paused"}</strong>
+                <p>
+                  {cleared
+                    ? "You reached the finale banner. Start another run and chase a cleaner score."
+                    : gameOver
+                      ? "The course pushed back this time. A fresh run is ready whenever you are."
+                      : "Take a breath, then jump back in when you want the lane moving again."}
+                </p>
+                <div className="game-mushroom-overlay-actions">
+                  {paused ? (
+                    <button type="button" className="btn-secondary" onClick={togglePause}>
+                      Resume run
+                    </button>
+                  ) : null}
+                  <button type="button" className="btn-secondary" onClick={restartRun}>
+                    New run
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <div className="game-mushroom-aside">
@@ -861,34 +900,6 @@ export default function MushroomRun({ onSessionChange }) {
             <p>Use Arrow keys or A and D to move, Up or Space to jump, and P to pause.</p>
           </div>
 
-          <div className="game-mushroom-controls" aria-label="Mushroom Run touch controls">
-            <button
-              type="button"
-              onPointerDown={() => setHeldDirection("left", true)}
-              onPointerUp={() => setHeldDirection("left", false)}
-              onPointerLeave={() => setHeldDirection("left", false)}
-              onPointerCancel={() => setHeldDirection("left", false)}
-            >
-              Left
-            </button>
-            <button
-              type="button"
-              onPointerDown={() => {
-                jumpQueuedRef.current = true;
-              }}
-            >
-              Jump
-            </button>
-            <button
-              type="button"
-              onPointerDown={() => setHeldDirection("right", true)}
-              onPointerUp={() => setHeldDirection("right", false)}
-              onPointerLeave={() => setHeldDirection("right", false)}
-              onPointerCancel={() => setHeldDirection("right", false)}
-            >
-              Right
-            </button>
-          </div>
         </div>
       </div>
     </section>

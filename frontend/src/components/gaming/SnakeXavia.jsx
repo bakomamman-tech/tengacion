@@ -413,37 +413,62 @@ export default function SnakeXavia({ onSessionChange }) {
       </div>
 
       <div className="game-snake-stage">
-        <div className="game-snake-board-shell">
-          <div
-            className={`game-snake-board ${gameOver ? "game-over" : ""} ${paused ? "paused" : ""}`}
-            style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)` }}
-            aria-label="Snake Xavia board"
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={() => {
-              touchStartRef.current = null;
-            }}
-          >
-            {Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, index) => {
-              const x = index % BOARD_SIZE;
-              const y = Math.floor(index / BOARD_SIZE);
-              const key = `${x}:${y}`;
-              const cellType =
-                occupiedMap.get(key) || (food.x === x && food.y === y ? "food" : "empty");
-              return <div key={key} className={`game-snake-cell ${cellType}`} />;
-            })}
+        <div className="game-live-play-column">
+          <div className="game-live-control-dock" role="region" aria-label="Snake Xavia play controls">
+            <div className="game-live-control-dock__head">
+              <strong>Play controls</strong>
+              <span>Steer and pause beside the live board.</span>
+            </div>
+            <div className="game-live-control-dock__body">
+              <div className="game-snake-controls" aria-label="Snake movement controls">
+                <button type="button" onClick={() => queueDirection("up")}>Up</button>
+                <button type="button" onClick={() => queueDirection("left")}>Left</button>
+                <button type="button" onClick={() => queueDirection("down")}>Down</button>
+                <button type="button" onClick={() => queueDirection("right")}>Right</button>
+              </div>
+              <div className="game-live-session-actions">
+                <button type="button" className="btn-secondary" onClick={togglePause} disabled={gameOver}>
+                  {paused ? "Resume" : "Pause"}
+                </button>
+                <button type="button" className="btn-secondary" onClick={startNewGame}>
+                  New game
+                </button>
+              </div>
+            </div>
           </div>
 
-          {(gameOver || paused) && (
-            <div className="game-snake-overlay">
-              <strong>{gameOver ? "Run ended" : "Run paused"}</strong>
-              <p>
-                {gameOver
-                  ? "Tap New game to restart or switch speed levels for a different pace."
-                  : "Tap Resume, press Space, or choose a direction to jump back in."}
-              </p>
+          <div className="game-snake-board-shell">
+            <div
+              className={`game-snake-board ${gameOver ? "game-over" : ""} ${paused ? "paused" : ""}`}
+              style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)` }}
+              aria-label="Snake Xavia board"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={() => {
+                touchStartRef.current = null;
+              }}
+            >
+              {Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, index) => {
+                const x = index % BOARD_SIZE;
+                const y = Math.floor(index / BOARD_SIZE);
+                const key = `${x}:${y}`;
+                const cellType =
+                  occupiedMap.get(key) || (food.x === x && food.y === y ? "food" : "empty");
+                return <div key={key} className={`game-snake-cell ${cellType}`} />;
+              })}
             </div>
-          )}
+
+            {(gameOver || paused) && (
+              <div className="game-snake-overlay">
+                <strong>{gameOver ? "Run ended" : "Run paused"}</strong>
+                <p>
+                  {gameOver
+                    ? "Tap New game to restart or switch speed levels for a different pace."
+                    : "Tap Resume, press Space, or choose a direction to jump back in."}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="game-snake-aside">
@@ -454,29 +479,6 @@ export default function SnakeXavia({ onSessionChange }) {
           <div className="game-snake-aside-card">
             <span>Control flow</span>
             <p>Mobile swipes work on the board. Desktop players can use arrows or WASD.</p>
-          </div>
-          <div className="game-snake-controls" aria-label="Snake movement controls">
-            <button type="button" onClick={() => queueDirection("up")}>
-              Up
-            </button>
-            <button type="button" onClick={() => queueDirection("left")}>
-              Left
-            </button>
-            <button type="button" onClick={() => queueDirection("down")}>
-              Down
-            </button>
-            <button type="button" onClick={() => queueDirection("right")}>
-              Right
-            </button>
-          </div>
-
-          <div className="game-snake-bottom-actions">
-            <button type="button" className="btn-secondary" onClick={togglePause} disabled={gameOver}>
-              {paused ? "Resume" : "Pause"}
-            </button>
-            <button type="button" className="btn-secondary" onClick={startNewGame}>
-              New game
-            </button>
           </div>
         </div>
       </div>

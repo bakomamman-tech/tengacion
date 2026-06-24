@@ -233,21 +233,6 @@ export default function ChessRoom({ onSessionChange }) {
           <p>{statusLine}</p>
         </div>
 
-        <div className="game-chess-head-actions">
-          <span className={`game-chess-turn-pill ${gameState.status.inCheck ? "is-alert" : ""}`}>
-            {gameState.status.checkmate
-              ? "Checkmate"
-              : gameState.status.stalemate
-                ? "Stalemate"
-                : `${turnLabel} to move`}
-          </span>
-          <button type="button" className="btn-secondary" onClick={undoMove} disabled={!gameState.history.length}>
-            Undo
-          </button>
-          <button type="button" className="btn-secondary" onClick={resetRoom}>
-            New game
-          </button>
-        </div>
       </div>
 
       <div className="game-chess-toolbar">
@@ -257,26 +242,6 @@ export default function ChessRoom({ onSessionChange }) {
           <p>Play a full pass-and-play chess game with legal moves, castling, promotion, and saved local progress.</p>
         </div>
 
-        <div className="game-chess-toolbar-actions">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() =>
-              setRoomState((current) => ({ ...current, flipped: !current.flipped }))
-            }
-          >
-            {flipped ? "White side view" : "Black side view"}
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() =>
-              setRoomState((current) => ({ ...current, showHints: !current.showHints }))
-            }
-          >
-            {showHints ? "Hide move hints" : "Show move hints"}
-          </button>
-        </div>
       </div>
 
       <div className="game-chess-stats">
@@ -299,7 +264,50 @@ export default function ChessRoom({ onSessionChange }) {
       </div>
 
       <div className="game-chess-stage">
-        <div className="game-chess-board-shell">
+        <div className="game-live-play-column">
+          <div className="game-live-control-dock" role="region" aria-label="Chess Room match controls">
+            <div className="game-live-control-dock__head">
+              <strong>Match controls</strong>
+              <span>Manage the room without leaving the board.</span>
+            </div>
+            <div className="game-live-control-dock__body">
+              <span className={`game-chess-turn-pill ${gameState.status.inCheck ? "is-alert" : ""}`}>
+                {gameState.status.checkmate
+                  ? "Checkmate"
+                  : gameState.status.stalemate
+                    ? "Stalemate"
+                    : `${turnLabel} to move`}
+              </span>
+              <div className="game-live-session-actions game-live-session-actions--chess">
+                <button type="button" className="btn-secondary" onClick={undoMove} disabled={!gameState.history.length}>
+                  Undo
+                </button>
+                <button type="button" className="btn-secondary" onClick={resetRoom}>
+                  New game
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() =>
+                    setRoomState((current) => ({ ...current, flipped: !current.flipped }))
+                  }
+                >
+                  {flipped ? "White view" : "Black view"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() =>
+                    setRoomState((current) => ({ ...current, showHints: !current.showHints }))
+                  }
+                >
+                  {showHints ? "Hide hints" : "Show hints"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="game-chess-board-shell">
           <div
             className={`game-chess-board ${gameState.status.inCheck ? "is-tense" : ""}`}
             style={{ gridTemplateColumns: `repeat(${boardSize}, minmax(0, 1fr))` }}
@@ -401,6 +409,7 @@ export default function ChessRoom({ onSessionChange }) {
               )}
             </div>
           ) : null}
+          </div>
         </div>
 
         <div className="game-chess-aside">

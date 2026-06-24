@@ -392,14 +392,6 @@ export default function MemoryAtlas({ onSessionChange }) {
           <p>{status}</p>
         </div>
 
-        <div className="game-memory-head-actions">
-          <button type="button" className="btn-secondary" onClick={restartChapter}>
-            Replay chapter
-          </button>
-          <button type="button" className="btn-secondary" onClick={startFreshRun}>
-            New atlas
-          </button>
-        </div>
       </div>
 
       <div className="game-memory-stats">
@@ -422,7 +414,25 @@ export default function MemoryAtlas({ onSessionChange }) {
       </div>
 
       <div className="game-memory-stage">
-        <div className="game-memory-board-shell">
+        <div className="game-live-play-column">
+          <div className="game-live-control-dock" role="region" aria-label="Memory Atlas controls">
+            <div className="game-live-control-dock__head">
+              <strong>Atlas controls</strong>
+              <span>Replay or restart beside the active cards.</span>
+            </div>
+            <div className="game-live-control-dock__body">
+              <div className="game-live-session-actions">
+                <button type="button" className="btn-secondary" onClick={restartChapter}>
+                  Replay chapter
+                </button>
+                <button type="button" className="btn-secondary" onClick={startFreshRun}>
+                  New atlas
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="game-memory-board-shell">
           <div className="game-memory-board" aria-label="Memory Atlas board">
             {cards.map((card) => (
               <button
@@ -477,6 +487,7 @@ export default function MemoryAtlas({ onSessionChange }) {
               </div>
             </div>
           ) : null}
+          </div>
         </div>
 
         <div className="game-memory-aside">

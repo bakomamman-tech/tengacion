@@ -361,14 +361,6 @@ export default function Tengacion2048({ onSessionChange }) {
           <p>{statusText}</p>
         </div>
 
-        <div className="game-2048-head-actions">
-          <button type="button" className="btn-secondary" onClick={undoMove} disabled={!history.length}>
-            Undo
-          </button>
-          <button type="button" className="btn-secondary" onClick={startNewGame}>
-            New game
-          </button>
-        </div>
       </div>
 
       <div className="game-2048-stats">
@@ -409,32 +401,65 @@ export default function Tengacion2048({ onSessionChange }) {
       </div>
 
       <div className="game-2048-stage">
-        <div className="game-2048-board-shell">
-          <div
-            className="game-2048-board"
-            aria-label="2048 board"
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={() => {
-              touchStartRef.current = null;
-            }}
-          >
-            {board.flat().map((value, index) => {
-              const meta = TILE_META[value] || { label: String(value), className: "v2048" };
-              return (
-                <div key={`${index}-${value}`} className={`game-2048-tile ${meta.className}`}>
-                  {meta.label}
-                </div>
-              );
-            })}
+        <div className="game-live-play-column">
+          <div className="game-live-control-dock" role="region" aria-label="2048 play controls">
+            <div className="game-live-control-dock__head">
+              <strong>Play controls</strong>
+              <span>Move tiles without leaving the board.</span>
+            </div>
+            <div className="game-live-control-dock__body">
+              <div className="game-2048-controls" aria-label="2048 movement controls">
+                <button type="button" onClick={() => handleMove(DIRECTIONS.up)}>
+                  Up
+                </button>
+                <button type="button" onClick={() => handleMove(DIRECTIONS.left)}>
+                  Left
+                </button>
+                <button type="button" onClick={() => handleMove(DIRECTIONS.down)}>
+                  Down
+                </button>
+                <button type="button" onClick={() => handleMove(DIRECTIONS.right)}>
+                  Right
+                </button>
+              </div>
+              <div className="game-live-session-actions">
+                <button type="button" className="btn-secondary" onClick={undoMove} disabled={!history.length}>
+                  Undo
+                </button>
+                <button type="button" className="btn-secondary" onClick={startNewGame}>
+                  New game
+                </button>
+              </div>
+            </div>
           </div>
 
-          {gameOver && (
-            <div className="game-2048-overlay">
-              <strong>Run over</strong>
-              <p>Undo to recover the board or launch a fresh climb.</p>
+          <div className="game-2048-board-shell">
+            <div
+              className="game-2048-board"
+              aria-label="2048 board"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={() => {
+                touchStartRef.current = null;
+              }}
+            >
+              {board.flat().map((value, index) => {
+                const meta = TILE_META[value] || { label: String(value), className: "v2048" };
+                return (
+                  <div key={`${index}-${value}`} className={`game-2048-tile ${meta.className}`}>
+                    {meta.label}
+                  </div>
+                );
+              })}
             </div>
-          )}
+
+            {gameOver && (
+              <div className="game-2048-overlay">
+                <strong>Run over</strong>
+                <p>Undo to recover the board or launch a fresh climb.</p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="game-2048-aside">
@@ -451,20 +476,6 @@ export default function Tengacion2048({ onSessionChange }) {
                 ? "2048 is already cleared, so this run is now about elegant board management."
                 : "Keep your largest tile anchored and avoid scattering medium-value stacks."}
             </p>
-          </div>
-          <div className="game-2048-controls" aria-label="2048 movement controls">
-            <button type="button" onClick={() => handleMove(DIRECTIONS.up)}>
-              Up
-            </button>
-            <button type="button" onClick={() => handleMove(DIRECTIONS.left)}>
-              Left
-            </button>
-            <button type="button" onClick={() => handleMove(DIRECTIONS.down)}>
-              Down
-            </button>
-            <button type="button" onClick={() => handleMove(DIRECTIONS.right)}>
-              Right
-            </button>
           </div>
         </div>
       </div>

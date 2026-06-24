@@ -5148,6 +5148,170 @@ html.dark-mode .game-snake-cell.food {
   }
 }
 
+/* Live game controls stay attached to the active play surface on every viewport. */
+.game-live-play-column {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.game-live-control-dock {
+  position: sticky;
+  top: 86px;
+  z-index: 12;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--border));
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow:
+    0 16px 34px color-mix(in srgb, var(--bg-dark) 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #ffffff 18%, transparent);
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+}
+
+.game-live-control-dock__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.game-live-control-dock__head strong {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.game-live-control-dock__head span {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.game-live-control-dock__body {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.game-live-session-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.game-live-session-actions .btn-secondary {
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--brand) 18%, var(--border));
+  white-space: nowrap;
+}
+
+.game-live-session-actions--chess {
+  grid-column: 1 / -1;
+  justify-content: flex-start;
+}
+
+.game-live-control-dock .game-chess-turn-pill {
+  white-space: nowrap;
+}
+
+html.dark-mode .game-live-control-dock {
+  border-color: color-mix(in srgb, var(--brand) 22%, var(--border));
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+@media (max-width: 760px) {
+  .game-live-play-column {
+    gap: 10px;
+  }
+
+  .game-live-control-dock {
+    top: 78px;
+    gap: 0;
+    max-width: calc(100vw - 64px);
+    padding: 9px;
+    border-radius: 18px;
+    box-shadow:
+      0 14px 30px color-mix(in srgb, var(--bg-dark) 22%, transparent),
+      inset 0 1px 0 color-mix(in srgb, #ffffff 16%, transparent);
+  }
+
+  .game-live-control-dock__head {
+    display: none;
+  }
+
+  .game-live-control-dock__body {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .game-live-control-dock__body::-webkit-scrollbar {
+    display: none;
+  }
+
+  .game-live-control-dock .game-2048-controls,
+  .game-live-control-dock .game-snake-controls,
+  .game-live-control-dock .game-tetris-controls,
+  .game-live-control-dock .game-mushroom-controls,
+  .game-live-session-actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .game-live-control-dock .game-2048-controls button,
+  .game-live-control-dock .game-snake-controls button,
+  .game-live-control-dock .game-tetris-controls button,
+  .game-live-control-dock .game-mushroom-controls button,
+  .game-live-session-actions .btn-secondary {
+    min-width: 72px;
+    min-height: 46px;
+    padding: 0 12px;
+    border-radius: 14px;
+    white-space: nowrap;
+    touch-action: manipulation;
+  }
+
+  .game-live-control-dock .game-chess-turn-pill {
+    flex: 0 0 auto;
+    min-height: 46px;
+  }
+}
+
+@media (max-width: 420px) {
+  .game-live-control-dock {
+    max-width: calc(100vw - 52px);
+  }
+
+  .game-live-control-dock .game-2048-controls button,
+  .game-live-control-dock .game-snake-controls button,
+  .game-live-control-dock .game-tetris-controls button,
+  .game-live-control-dock .game-mushroom-controls button,
+  .game-live-session-actions .btn-secondary {
+    min-width: 64px;
+    padding-inline: 10px;
+    font-size: 0.82rem;
+  }
+}
+
 .reels-page-shell {
   display: grid;
   grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) minmax(250px, 300px);

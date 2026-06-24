@@ -13,7 +13,7 @@ const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => readStoredTheme());
-  const isDark = theme === "dark" || theme === "neon-purple";
+  const isDark = ["dark", "neon-purple", "royalty"].includes(theme);
 
   useEffect(() => {
     try {

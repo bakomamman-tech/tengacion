@@ -96,7 +96,7 @@ function AccountMenuRow({ item, onClick }) {
   return (
     <button
       type="button"
-      className={`pm-nav-item ${item.danger ? "logout" : ""}`}
+      className={`pm-nav-item ${item.active ? "is-active" : ""} ${item.danger ? "logout" : ""}`.trim()}
       onClick={onClick}
     >
       <span className="pm-nav-item-icon" aria-hidden="true">
@@ -901,6 +901,7 @@ export default function Navbar({
           description: "Use darker surfaces and softer glare for low-light browsing.",
           glyph: "DM",
           badge: theme === "dark" ? "On" : "Off",
+          active: theme === "dark",
           onClick: () => setTheme("dark"),
         },
         {
@@ -909,6 +910,7 @@ export default function Navbar({
           description: "Use brighter surfaces for a lighter daytime experience.",
           glyph: "LM",
           badge: theme === "light" ? "On" : "Off",
+          active: theme === "light",
           onClick: () => setTheme("light"),
         },
         {
@@ -917,7 +919,17 @@ export default function Navbar({
           description: "Use a calculator-inspired neon purple glow with deep midnight surfaces.",
           glyph: "NP",
           badge: theme === "neon-purple" ? "On" : "Off",
+          active: theme === "neon-purple",
           onClick: () => setTheme("neon-purple"),
+        },
+        {
+          id: "display-royalty",
+          label: "Royalty Mode",
+          description: "Use midnight navy, luminous gold, and violet accents for a regal experience.",
+          glyph: "RM",
+          badge: theme === "royalty" ? "On" : "Off",
+          active: theme === "royalty",
+          onClick: () => setTheme("royalty"),
         },
         {
           id: "display-center",

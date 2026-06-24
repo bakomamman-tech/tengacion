@@ -23,6 +23,7 @@ import "./index.css";
 import "./button-system.css";
 import "./dialog-system.css";
 import "./features/news/news.css";
+import "./royalty-theme.css";
 
 const initializeThemeEarly = () => {
   if (typeof window === "undefined") {

@@ -1,12 +1,13 @@
 export const THEME_KEY = "tengacion_theme";
 export const LEGACY_THEME_KEY = "tengacion-theme";
 export const DEFAULT_THEME = "light";
-export const SUPPORTED_THEMES = ["light", "dark", "neon-purple"];
+export const SUPPORTED_THEMES = ["light", "dark", "neon-purple", "royalty"];
 
 const THEME_LABELS = {
   light: "Light Mode",
   dark: "Dark Mode",
   "neon-purple": "Neon Purple Mode",
+  royalty: "Royalty Mode",
 };
 
 export function normalizeThemeValue(value) {
@@ -26,7 +27,7 @@ export function getThemeLabel(value) {
 }
 
 export function getThemeColorScheme(value) {
-  return ["dark", "neon-purple"].includes(normalizeThemeValue(value))
+  return ["dark", "neon-purple", "royalty"].includes(normalizeThemeValue(value))
     ? "dark"
     : "light";
 }
@@ -61,11 +62,11 @@ export function applyThemeToDocument(theme, root = document.documentElement) {
   const nextTheme = isSupportedTheme(theme)
     ? normalizeThemeValue(theme)
     : DEFAULT_THEME;
-  const isDarkLikeTheme =
-    nextTheme === "dark" || nextTheme === "neon-purple";
+  const isDarkLikeTheme = ["dark", "neon-purple", "royalty"].includes(nextTheme);
   root.dataset.theme = nextTheme;
   root.classList.toggle("dark-mode", isDarkLikeTheme);
   root.classList.toggle("neon-purple-mode", nextTheme === "neon-purple");
+  root.classList.toggle("royalty-mode", nextTheme === "royalty");
   root.classList.remove("turquoise-mode");
   root.style.colorScheme = getThemeColorScheme(nextTheme);
 }

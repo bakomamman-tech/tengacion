@@ -294,6 +294,11 @@ export function DisplayAccessibilityPage({ user }) {
       title: "Neon Purple Mode",
       description: "Deep midnight surfaces with calculator-style neon purple glow in the background.",
     },
+    {
+      value: "royalty",
+      title: "Royalty Mode",
+      description: "Midnight navy surfaces framed with luminous gold and refined violet accents.",
+    },
   ];
 
   const supportNotes = [
@@ -307,7 +312,7 @@ export function DisplayAccessibilityPage({ user }) {
     },
     {
       title: "Readable layout",
-      description: "Use browser zoom together with light, dark, or Neon Purple Mode to improve readability on your device.",
+      description: "Use browser zoom together with any Tengacion display mode to improve readability on your device.",
     },
   ];
 

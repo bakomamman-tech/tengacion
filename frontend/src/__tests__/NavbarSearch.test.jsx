@@ -8,6 +8,7 @@ import Navbar from "../Navbar";
 import { searchGlobal } from "../api";
 
 const navigateMock = vi.fn();
+const { setThemeMock } = vi.hoisted(() => ({ setThemeMock: vi.fn() }));
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
@@ -56,7 +57,7 @@ vi.mock("../context/NotificationsContext", () => ({
 vi.mock("../context/ThemeContext", () => ({
   useTheme: () => ({
     theme: "light",
-    setTheme: vi.fn(),
+    setTheme: setThemeMock,
   }),
 }));
 
@@ -138,6 +139,34 @@ describe("Navbar search", () => {
       "href",
       "/marketplace"
     );
+  });
+
+  it("offers Royalty Mode in Display & accessibility", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/home"]}>
+        <Navbar
+          user={{
+            _id: "viewer-1",
+            name: "Viewer User",
+            username: "viewer_user",
+            avatar: "",
+            role: "user",
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("button", { name: /account menu/i }));
+    await user.click(screen.getByRole("button", { name: /display & accessibility/i }));
+
+    const royaltyMode = screen.getByRole("button", { name: /royalty mode/i });
+    expect(royaltyMode).toHaveTextContent(/midnight navy, luminous gold, and violet accents/i);
+
+    await user.click(royaltyMode);
+
+    expect(setThemeMock).toHaveBeenCalledWith("royalty");
   });
 
   it("shows desktop navigation toggles when the top tabs overflow", async () => {

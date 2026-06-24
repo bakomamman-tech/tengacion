@@ -664,7 +664,50 @@ const solveMathExpression = (expression = "") => {
   };
 };
 
+const looksLikeWeakImageMathExtraction = ({ message = "", expression = "" } = {}) => {
+  const originalMessage = String(message || "");
+  const extractedExpression = normalizeMathProblemText(expression || "").trim();
+
+  const userMentionsImage = /\b(image|picture|photo|screenshot|attached|uploaded|visible|spoken)\b/i.test(
+    originalMessage
+  );
+  const userExpectedFraction = /\b(fraction|numerator|denominator|simplify|calculate|solve|expression)\b/i.test(
+    originalMessage
+  );
+  const extractedIsOnlyDigits = /^\d{3,}$/.test(extractedExpression);
+  const messageAlreadyContainsFraction = /-?\d+\s*\/\s*-?\d+/.test(originalMessage);
+
+  return (
+    userMentionsImage &&
+    userExpectedFraction &&
+    extractedIsOnlyDigits &&
+    !messageAlreadyContainsFraction
+  );
+};
+
+const buildUnclearImageMathResponse = () => ({
+  message:
+    "I cannot clearly read the full fraction from the image. Please type the fraction or upload a clearer image, and I will solve it step by step.",
+  details: [
+    "The image appears to contain a fraction problem, but the extracted text is incomplete.",
+    "I should not guess the numerator, denominator, or operators from unclear image text.",
+  ],
+  followUps: [
+    { label: "Type the fraction", prompt: "The fraction is " },
+    {
+      label: "Upload clearer image",
+      prompt: "I will upload a clearer image of the fraction problem.",
+    },
+  ],
+  mode: "math",
+  confidence: 0.72,
+});
+
 const buildMathResponse = ({ message = "", expression = "" } = {}) => {
+  if (looksLikeWeakImageMathExtraction({ message, expression })) {
+    return buildUnclearImageMathResponse();
+  }
+
   const fractionTerms = parseFractionAdditionExpression(expression || message);
   if (fractionTerms) {
     return buildFractionAdditionResponse(fractionTerms);

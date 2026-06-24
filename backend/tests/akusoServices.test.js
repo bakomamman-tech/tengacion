@@ -445,6 +445,20 @@ describe("Akuso services", () => {
     expect(response.solutionText).toContain("\\boxed{36}");
   });
 
+  it("does not solve weak image fraction extraction as a plain number", () => {
+    const response = buildMathResponse({
+      message:
+        "I received the attached image. Akuso will assess the visible content directly. Solve the fraction problem in the image.",
+      expression: "13201",
+    });
+
+    const text = JSON.stringify(response);
+
+    expect(text).toMatch(/cannot clearly read|type the fraction|clearer image/i);
+    expect(text).not.toMatch(/Final answer is 13201/i);
+    expect(text).not.toMatch(/\\boxed\{13201\}/i);
+  });
+
   it("formats fraction problems as clear classroom-style solutions", () => {
     const message = "2/3 + 5/6 - 1/4";
     const response = buildMathResponse({ message });

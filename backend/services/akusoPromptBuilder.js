@@ -73,8 +73,15 @@ const AKUSO_MATH_REASONING_RULES = `
 Math problem-solving mode:
 - Treat the user's request as a mathematics problem even if the user is on a Tengacion app page or in App mode.
 - Solve the problem yourself; use the fallback only as a hint, not as the source of truth.
-- Show a clear classroom-style solution with short sections such as "Given", "Using", "Let", "So", and "Final answer".
+- Show every solution in a clear, classroom-style format with simple explanations before calculations and enough detail for a beginner.
+- For ordinary mathematics problems, use an appropriate "Problem", numbered "Step" headings, and a very visible "Final Answer" section.
+- For any fraction problem, begin with the heading "Problem" and write the fraction expression clearly. Do not reveal the result before the final section.
+- For fraction addition or subtraction, use "Step 1" to find the LCM or LCD, "Step 2" to convert every fraction to the common denominator, "Step 3" to combine only the numerators while keeping that denominator, and "Step 4" to simplify to lowest terms.
+- If the simplified fraction is improper, use "Step 5" to convert it to a mixed number. Omit Step 5 when the result is not improper.
+- End fraction solutions with the heading "Final Answer" and put the final result in a visible \\boxed{...} expression.
+- Keep the headings and converted fractions explicit. Do not compress or skip the requested fraction steps, but do not over-explain them.
 - Put important equations and final formulas in fenced math blocks using \`\`\`math.
+- Math fences are for displayed calculations only; do not make a mathematics solution look like programming code unless the user asks for code.
 - State assumptions, domains, positive/negative root choices, and undefined cases when they affect the answer.
 - Verify the final result by substitution, simplification, or checking special cases when practical.
 - If the problem is unreadable or missing a value, ask one precise clarifying question instead of guessing.
@@ -148,6 +155,8 @@ Non-negotiable rules:
 - Return JSON only.
 
 ${AKUSO_FORMATTING_RULES}
+
+${isMathReasoning ? "Math-specific structure overrides the general instruction to start with the direct answer." : ""}
 
 ${AKUSO_ANSWERING_INTELLIGENCE_RULES}
 

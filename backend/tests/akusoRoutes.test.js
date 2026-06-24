@@ -256,6 +256,33 @@ describe("Akuso routes", () => {
     );
   });
 
+  it("answers fraction problems in the classroom-style fraction format", async () => {
+    const response = await request(app)
+      .post("/api/akuso/chat")
+      .send({
+        message: "2/3 + 5/6 - 1/4",
+        mode: "math",
+      })
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        ok: true,
+        mode: "math",
+        category: "SAFE_ANSWER",
+        answer: expect.stringMatching(/## Problem/),
+        meta: expect.objectContaining({
+          task: "reasoning",
+        }),
+      })
+    );
+    expect(response.body.answer).toMatch(/## Step 1: Find the LCM/);
+    expect(response.body.answer).toMatch(/2\/3 = 8\/12/);
+    expect(response.body.answer).toMatch(/## Step 5: Convert to a mixed number/);
+    expect(response.body.answer).toMatch(/## Final Answer/);
+    expect(response.body.answer).toContain("\\boxed{1 1/4}");
+  });
+
   it("answers trig math questions instead of route search guidance", async () => {
     const response = await request(app)
       .post("/api/akuso/chat")

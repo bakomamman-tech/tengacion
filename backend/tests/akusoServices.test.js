@@ -440,6 +440,43 @@ describe("Akuso services", () => {
     expect(response.steps.join("\n")).toMatch(/240 \* 0.15 = 36|15 \/ 100 = 0.15/i);
   });
 
+  it("formats fraction problems as clear classroom-style solutions", () => {
+    const message = "2/3 + 5/6 - 1/4";
+    const response = buildMathResponse({ message });
+    const policy = evaluateAkusoPolicy({
+      input: { message, mode: "math" },
+      user: { id: userId },
+    });
+    const promptBundle = buildAkusoPromptBundle({
+      input: { message },
+      context: {
+        page: {},
+        auth: { isAuthenticated: true, role: "user" },
+        relevantFeatures: [],
+      },
+      policyResult: policy,
+      fallback: { answer: response.message, warnings: [], suggestions: [] },
+    });
+
+    expect(response).toEqual(
+      expect.objectContaining({
+        expression: "2/3 + 5/6 - 1/4",
+        answerText: "1 1/4",
+      })
+    );
+    expect(response.solutionText).toMatch(/## Problem/);
+    expect(response.solutionText).toMatch(/## Step 1: Find the LCM/);
+    expect(response.solutionText).toMatch(/2\/3 = 8\/12/);
+    expect(response.solutionText).toMatch(/15\/12 = 5\/4/);
+    expect(response.solutionText).toMatch(/## Step 5: Convert to a mixed number/);
+    expect(response.solutionText).toMatch(/## Final Answer/);
+    expect(response.solutionText).toContain("\\boxed{1 1/4}");
+    expect(promptBundle.systemPrompt).toMatch(/For any fraction problem/i);
+    expect(promptBundle.systemPrompt).toMatch(/Step 2.*common denominator/i);
+    expect(promptBundle.systemPrompt).toMatch(/\\boxed/);
+    expect(promptBundle.systemPrompt).toMatch(/overrides the general instruction/i);
+  });
+
   it("solves symbolic sine-to-tangent trig questions for math mode", () => {
     const message = "If sin\u03b8 = K find tan\u03b8, 0\u00b0 \u2264 \u03b8 \u2264 90\u00b0.";
     const response = buildMathResponse({ message });

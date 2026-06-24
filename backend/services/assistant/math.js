@@ -202,6 +202,161 @@ const extractSinToTanIdentity = (message = "") => {
 const buildFormulaBlock = (lines = []) =>
   ["```math", ...lines.filter(Boolean), "```"].join("\n");
 
+const greatestCommonDivisor = (left, right) => {
+  let a = Math.abs(Number(left));
+  let b = Math.abs(Number(right));
+  while (b) {
+    [a, b] = [b, a % b];
+  }
+  return a || 1;
+};
+
+const leastCommonMultiple = (left, right) =>
+  Math.abs(Number(left) * Number(right)) / greatestCommonDivisor(left, right);
+
+const formatFractionTerms = (terms = [], numeratorKey = "numerator") =>
+  terms
+    .map((term, index) => {
+      const numerator = Math.abs(term[numeratorKey]);
+      const fraction = `${numerator}/${term.denominator}`;
+      if (index === 0) {
+        return term[numeratorKey] < 0 ? `-${fraction}` : fraction;
+      }
+      return `${term[numeratorKey] < 0 ? "-" : "+"} ${fraction}`;
+    })
+    .join(" ");
+
+const parseFractionAdditionExpression = (value = "") => {
+  const compact = stripLeadingPromptWords(value)
+    .replace(/\s+/g, "")
+    .replace(/[?.]+$/, "");
+
+  if (!/^[+-]?\d+\/[1-9]\d*(?:[+-]\d+\/[1-9]\d*)*$/.test(compact)) {
+    return null;
+  }
+
+  const terms = Array.from(compact.matchAll(/([+-]?)(\d+)\/([1-9]\d*)/g)).map(
+    (match) => ({
+      numerator: (match[1] === "-" ? -1 : 1) * Number(match[2]),
+      denominator: Number(match[3]),
+    })
+  );
+
+  return terms.length > 0 ? terms : null;
+};
+
+const formatMixedNumber = (numerator, denominator) => {
+  const sign = numerator < 0 ? "-" : "";
+  const absoluteNumerator = Math.abs(numerator);
+  const whole = Math.floor(absoluteNumerator / denominator);
+  const remainder = absoluteNumerator % denominator;
+  return remainder ? `${sign}${whole} ${remainder}/${denominator}` : `${sign}${whole}`;
+};
+
+const buildFractionAdditionResponse = (terms = []) => {
+  const commonDenominator = terms.reduce(
+    (current, term) => leastCommonMultiple(current, term.denominator),
+    1
+  );
+  const convertedTerms = terms.map((term) => ({
+    ...term,
+    convertedNumerator: term.numerator * (commonDenominator / term.denominator),
+    denominator: commonDenominator,
+  }));
+  const combinedNumerator = convertedTerms.reduce(
+    (total, term) => total + term.convertedNumerator,
+    0
+  );
+  const divisor = greatestCommonDivisor(combinedNumerator, commonDenominator);
+  const simplifiedNumerator = combinedNumerator / divisor;
+  const simplifiedDenominator = commonDenominator / divisor;
+  const isImproper = Math.abs(simplifiedNumerator) > simplifiedDenominator;
+  const simplifiedText =
+    simplifiedDenominator === 1
+      ? String(simplifiedNumerator)
+      : `${simplifiedNumerator}/${simplifiedDenominator}`;
+  const finalAnswer = isImproper
+    ? formatMixedNumber(simplifiedNumerator, simplifiedDenominator)
+    : simplifiedText;
+  const expression = formatFractionTerms(terms);
+  const convertedExpression = formatFractionTerms(
+    convertedTerms,
+    "convertedNumerator"
+  );
+  const numeratorCalculation = convertedTerms
+    .map((term, index) => {
+      const value = Math.abs(term.convertedNumerator);
+      if (index === 0) return term.convertedNumerator < 0 ? `-${value}` : String(value);
+      return `${term.convertedNumerator < 0 ? "-" : "+"} ${value}`;
+    })
+    .join(" ");
+  const conversionBlocks = terms.flatMap((term, index) => {
+    const converted = convertedTerms[index];
+    const original = `${term.numerator < 0 ? "-" : ""}${Math.abs(term.numerator)}/${term.denominator}`;
+    const replacement = `${converted.convertedNumerator < 0 ? "-" : ""}${Math.abs(converted.convertedNumerator)}/${commonDenominator}`;
+    return [buildFormulaBlock([`${original} = ${replacement}`]), ""];
+  });
+  const steps = [
+    `The denominators are ${terms.map((term) => term.denominator).join(", ")}, so the LCM is ${commonDenominator}.`,
+    `Convert each fraction to denominator ${commonDenominator}: ${convertedExpression}.`,
+    `Combine the numerators: ${numeratorCalculation} = ${combinedNumerator}.`,
+    `Simplify ${combinedNumerator}/${commonDenominator} to ${simplifiedText}.`,
+    ...(isImproper ? [`Convert ${simplifiedText} to the mixed number ${finalAnswer}.`] : []),
+  ];
+  const solutionText = [
+    "## Problem",
+    buildFormulaBlock([expression]),
+    "",
+    "## Step 1: Find the LCM of the denominators",
+    `The denominators are ${terms.map((term) => term.denominator).join(", ")}. Their least common multiple is ${commonDenominator}.`,
+    buildFormulaBlock([`LCM = ${commonDenominator}`]),
+    "",
+    `## Step 2: Convert each fraction to denominator ${commonDenominator}`,
+    "Change each fraction into an equivalent fraction with the common denominator.",
+    ...conversionBlocks,
+    "## Step 3: Add and subtract the numerators",
+    "Now combine only the numerators and keep the common denominator.",
+    buildFormulaBlock([
+      convertedExpression,
+      `(${numeratorCalculation})/${commonDenominator} = ${combinedNumerator}/${commonDenominator}`,
+    ]),
+    "",
+    "## Step 4: Simplify",
+    "Reduce the fraction to its lowest terms.",
+    buildFormulaBlock([`${combinedNumerator}/${commonDenominator} = ${simplifiedText}`]),
+    ...(isImproper
+      ? [
+          "",
+          "## Step 5: Convert to a mixed number",
+          "Divide the numerator by the denominator to write the improper fraction as a mixed number.",
+          buildFormulaBlock([`${simplifiedText} = ${finalAnswer}`]),
+        ]
+      : []),
+    "",
+    "## Final Answer",
+    buildFormulaBlock([`\\boxed{${finalAnswer}}`]),
+  ].join("\n");
+
+  return {
+    mode: "math",
+    safety: { level: "safe", notice: "", escalation: "" },
+    message: solutionText,
+    details: [
+      { title: "Expression", body: expression },
+      { title: "Steps", body: steps.join("\n") },
+    ],
+    followUps: [
+      { label: "Check my answer", prompt: `Check this fraction answer again: ${expression}` },
+      { label: "Another fraction", prompt: "Solve another fraction problem step by step" },
+    ],
+    answer: combinedNumerator / commonDenominator,
+    expression,
+    answerText: finalAnswer,
+    solutionText,
+    steps,
+  };
+};
+
 const buildTrigIdentityResponse = ({ givenRatio, targetRatio, value, firstQuadrant }) => {
   const sides = getTrigTriangleSides({ ratio: givenRatio, value });
   const answerText = getTrigRatioFromSides({ ratio: targetRatio, sides });
@@ -503,6 +658,11 @@ const solveMathExpression = (expression = "") => {
 };
 
 const buildMathResponse = ({ message = "", expression = "" } = {}) => {
+  const fractionTerms = parseFractionAdditionExpression(expression || message);
+  if (fractionTerms) {
+    return buildFractionAdditionResponse(fractionTerms);
+  }
+
   const trigIdentity = expression ? null : extractTrigIdentityProblem(message);
   if (trigIdentity) {
     return buildTrigIdentityResponse(trigIdentity);
@@ -565,11 +725,13 @@ const buildMathResponse = ({ message = "", expression = "" } = {}) => {
 
 module.exports = {
   buildMathResponse,
+  buildFractionAdditionResponse,
   extractTrigIdentityProblem,
   extractSinToTanIdentity,
   extractPercentOfExpression,
   formatNumber,
   extractMathExpression,
   isValidMathExpression,
+  parseFractionAdditionExpression,
   solveMathExpression,
 };

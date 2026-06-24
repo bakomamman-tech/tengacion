@@ -138,6 +138,7 @@ const SUPERSCRIPT_DIGITS = {
 
 const formatClassroomMath = (value = "") =>
   String(value || "")
+    .replace(/(-?\d+)\s*\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "$1 $2⁄$3")
     .replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "$1⁄$2")
     .replace(/\bsqrt\s*\(/gi, "√(")
     .replace(/\btheta\b/gi, "θ")
@@ -151,6 +152,43 @@ const formatClassroomMath = (value = "") =>
         .map((digit) => SUPERSCRIPT_DIGITS[digit] || digit)
         .join("")
     );
+
+const renderClassroomMath = (value = "") => {
+  const text = String(value || "");
+  const mixedNumberPattern = /(-?\d+)\s+(\d+)[/\u2044](\d+)/g;
+  const parts = [];
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(mixedNumberPattern)) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+
+    const [matchedText, whole, numerator, denominator] = match;
+    parts.push(
+      <span
+        key={`${matchedText}-${match.index}`}
+        className="tg-assistant-message__mixed-number"
+        aria-label={`Mixed number ${whole} and ${numerator} over ${denominator}`}
+      >
+        <span className="tg-assistant-message__mixed-whole" aria-hidden="true">
+          {whole}
+        </span>
+        <span className="tg-assistant-message__mixed-fraction" aria-hidden="true">
+          <span className="tg-assistant-message__mixed-numerator">{numerator}</span>
+          <span className="tg-assistant-message__mixed-denominator">{denominator}</span>
+        </span>
+      </span>
+    );
+    lastIndex = match.index + matchedText.length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : text;
+};
 
 const parseClassroomMathLines = (value = "") =>
   String(value || "")
@@ -339,7 +377,7 @@ function AssistantFormattedContent({ content = "" }) {
                     className={`tg-assistant-message__formula-line${line.isFinalAnswer ? " is-final-answer" : ""}`}
                     aria-label={line.isFinalAnswer ? "Final answer" : undefined}
                   >
-                    {line.text}
+                    {renderClassroomMath(line.text)}
                   </span>
                 ))}
               </div>

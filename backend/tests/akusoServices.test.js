@@ -485,6 +485,7 @@ describe("Akuso services", () => {
     expect(promptBundle.systemPrompt).toMatch(/familiar classroom symbols/i);
     expect(promptBundle.systemPrompt).toMatch(/concise worksheet layout/i);
     expect(promptBundle.systemPrompt).toMatch(/Do not box both/i);
+    expect(promptBundle.systemPrompt).toMatch(/mixed numbers in conventional form/i);
   });
 
   it("solves symbolic sine-to-tangent trig questions for math mode", () => {

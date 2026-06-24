@@ -1078,6 +1078,40 @@
   font-weight: 800;
 }
 
+.tg-assistant-message__mixed-number {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.16em;
+  margin: 0 0.08em;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.tg-assistant-message__mixed-whole {
+  font-size: 1.3em;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.tg-assistant-message__mixed-fraction {
+  display: inline-grid;
+  grid-template-rows: 1fr 1fr;
+  min-width: 1.2em;
+  font-size: 0.72em;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.tg-assistant-message__mixed-numerator {
+  padding: 0 0.16em 0.08em;
+  border-bottom: 1.5px solid currentColor;
+}
+
+.tg-assistant-message__mixed-denominator {
+  padding: 0.08em 0.16em 0;
+}
+
 .tg-assistant-message__formatted code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }

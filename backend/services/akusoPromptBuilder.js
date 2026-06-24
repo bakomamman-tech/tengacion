@@ -86,6 +86,7 @@ Math problem-solving mode:
 - Under Step 1, identify the denominators in one short sentence and emphasize their values. Under Step 2, show each equivalent-fraction conversion in its own math block.
 - Under Step 3, first display the converted expression, then display the numerator calculation and result in a separate math block. Do not crowd every transformation into one block.
 - If the simplified result is improper, write "As a mixed number:" under Step 4 and show the conversion there. Do not create a separate Step 5 heading.
+- Write mixed numbers in conventional form, with the whole number immediately followed by a proper stacked fraction, for example "1\\frac{1}{4}". Never write the whole number and fractional part as though they are separate answers or joined by a plus sign.
 - End with "### Final Answer" and box only the preferred final result, normally the mixed number. Do not box both the improper fraction and mixed number.
 - Keep the worksheet concise: no repeated conclusion, no unnecessary verification section, and no extra explanation when the displayed working is already clear.
 - Put important equations and final formulas in fenced math blocks using \`\`\`math.

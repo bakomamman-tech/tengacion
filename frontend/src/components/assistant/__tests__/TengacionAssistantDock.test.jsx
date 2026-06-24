@@ -261,6 +261,8 @@ describe("TengacionAssistantDock", () => {
       "",
       "```math",
       "tan(theta) = K / sqrt(1 - K^2)",
+      "5/4 = 1 1/4",
+      "1\\frac{1}{4}",
       "\\boxed{tan(theta) = K / sqrt(1 - K^2)}",
       "```",
     ].join("\n");
@@ -316,6 +318,17 @@ describe("TengacionAssistantDock", () => {
       "tan(θ) = K / √(1 − K²)"
     );
     expect(screen.getByLabelText("Final answer")).toHaveClass("is-final-answer");
+    const mixedNumbers = screen.getAllByLabelText("Mixed number 1 and 1 over 4");
+    expect(mixedNumbers).toHaveLength(2);
+    expect(mixedNumbers[0].querySelector(".tg-assistant-message__mixed-whole")).toHaveTextContent(
+      "1"
+    );
+    expect(
+      mixedNumbers[0].querySelector(".tg-assistant-message__mixed-numerator")
+    ).toHaveTextContent("1");
+    expect(
+      mixedNumbers[0].querySelector(".tg-assistant-message__mixed-denominator")
+    ).toHaveTextContent("4");
 
     await user.click(await screen.findByRole("button", { name: /copy akuso response/i }));
 

@@ -248,6 +248,8 @@ describe("TengacionAssistantDock", () => {
     const user = userEvent.setup();
     const structuredAnswer = [
       "Requirements:",
+      "",
+      "The denominators are **3, 6, and 4**.",
       "1. Create a modern, responsive calculator UI.",
       "2. The calculator should support:",
       "- Addition",
@@ -300,6 +302,7 @@ describe("TengacionAssistantDock", () => {
     await user.click(screen.getByRole("button", { name: /send/i }));
 
     expect(await screen.findByText("Requirements:")).toBeInTheDocument();
+    expect(screen.getByText("3, 6, and 4").tagName).toBe("STRONG");
     expect(screen.getByText("Create a modern, responsive calculator UI.")).toBeInTheDocument();
     expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual(
       expect.arrayContaining(["Addition", "Subtraction"])

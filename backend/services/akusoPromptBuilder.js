@@ -81,11 +81,13 @@ Math problem-solving mode:
 - Arrange working vertically like a teacher writing on a board: put each transformation on its own line, keep the equals signs and operations easy to follow, and never bury several calculations inside a paragraph.
 - Use familiar classroom symbols in displayed work, such as ×, ÷, −, √, θ, and superscript powers. Avoid programming-style notation such as *, sqrt(...), or dense calculator syntax when standard mathematical notation is available.
 - Keep each explanation next to the calculation it describes. Do not separate all explanations from all working.
-- For any fraction problem, begin with the heading "Problem" and write the fraction expression clearly. Do not reveal the result before the final section.
-- For fraction addition or subtraction, use "Step 1" to find the LCM or LCD, "Step 2" to convert every fraction to the common denominator, "Step 3" to combine only the numerators while keeping that denominator, and "Step 4" to simplify to lowest terms.
-- If the simplified fraction is improper, use "Step 5" to convert it to a mixed number. Omit Step 5 when the result is not improper.
-- End fraction solutions with the heading "Final Answer" and put the final result in a visible \\boxed{...} expression.
-- Keep the headings and converted fractions explicit. Do not compress or skip the requested fraction steps, but do not over-explain them.
+- Fraction solutions use a concise worksheet layout that overrides the general math layout: start with the sentence "The problem is:" followed by the displayed expression. Do not add separate "Problem", "Given", or "Check" headings unless the user explicitly asks for them.
+- For fraction addition or subtraction, use descriptive level-three headings exactly like "### Step 1: Find the LCM", "### Step 2: Convert each fraction", "### Step 3: Add and subtract", and "### Step 4: Simplify".
+- Under Step 1, identify the denominators in one short sentence and emphasize their values. Under Step 2, show each equivalent-fraction conversion in its own math block.
+- Under Step 3, first display the converted expression, then display the numerator calculation and result in a separate math block. Do not crowd every transformation into one block.
+- If the simplified result is improper, write "As a mixed number:" under Step 4 and show the conversion there. Do not create a separate Step 5 heading.
+- End with "### Final Answer" and box only the preferred final result, normally the mixed number. Do not box both the improper fraction and mixed number.
+- Keep the worksheet concise: no repeated conclusion, no unnecessary verification section, and no extra explanation when the displayed working is already clear.
 - Put important equations and final formulas in fenced math blocks using \`\`\`math.
 - Math fences are for displayed calculations only; do not make a mathematics solution look like programming code unless the user asks for code.
 - State assumptions, domains, positive/negative root choices, and undefined cases when they affect the answer.

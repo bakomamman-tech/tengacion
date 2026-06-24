@@ -304,36 +304,33 @@ const buildFractionAdditionResponse = (terms = []) => {
     ...(isImproper ? [`Convert ${simplifiedText} to the mixed number ${finalAnswer}.`] : []),
   ];
   const solutionText = [
-    "## Problem",
+    "The problem is:",
     buildFormulaBlock([expression]),
     "",
-    "## Step 1: Find the LCM of the denominators",
-    `The denominators are ${terms.map((term) => term.denominator).join(", ")}. Their least common multiple is ${commonDenominator}.`,
+    "### Step 1: Find the LCM",
+    `The denominators are **${terms.map((term) => term.denominator).join(", ")}**.`,
     buildFormulaBlock([`LCM = ${commonDenominator}`]),
     "",
-    `## Step 2: Convert each fraction to denominator ${commonDenominator}`,
-    "Change each fraction into an equivalent fraction with the common denominator.",
+    "### Step 2: Convert each fraction",
     ...conversionBlocks,
-    "## Step 3: Add and subtract the numerators",
-    "Now combine only the numerators and keep the common denominator.",
+    "### Step 3: Add and subtract",
+    buildFormulaBlock([convertedExpression]),
+    "",
     buildFormulaBlock([
-      convertedExpression,
       `(${numeratorCalculation})/${commonDenominator} = ${combinedNumerator}/${commonDenominator}`,
     ]),
     "",
-    "## Step 4: Simplify",
-    "Reduce the fraction to its lowest terms.",
+    "### Step 4: Simplify",
     buildFormulaBlock([`${combinedNumerator}/${commonDenominator} = ${simplifiedText}`]),
     ...(isImproper
       ? [
           "",
-          "## Step 5: Convert to a mixed number",
-          "Divide the numerator by the denominator to write the improper fraction as a mixed number.",
+          "As a mixed number:",
           buildFormulaBlock([`${simplifiedText} = ${finalAnswer}`]),
         ]
       : []),
     "",
-    "## Final Answer",
+    "### Final Answer",
     buildFormulaBlock([`\\boxed{${finalAnswer}}`]),
   ].join("\n");
 

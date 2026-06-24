@@ -165,6 +165,18 @@ const parseClassroomMathLines = (value = "") =>
     })
     .filter((line) => line.text);
 
+const renderInlineFormatting = (value = "") =>
+  String(value || "")
+    .split(/(\*\*[^*]+\*\*)/g)
+    .filter(Boolean)
+    .map((part, index) =>
+      part.startsWith("**") && part.endsWith("**") ? (
+        <strong key={`${part}-${index}`}>{part.slice(2, -2)}</strong>
+      ) : (
+        part
+      )
+    );
+
 const flushParagraph = (blocks, paragraph) => {
   if (paragraph.length === 0) {
     return;
@@ -291,14 +303,16 @@ function AssistantFormattedContent({ content = "" }) {
       {blocks.map((block, index) => {
         if (block.type === "heading") {
           const Heading = `h${block.level}`;
-          return <Heading key={`heading-${index}`}>{block.text}</Heading>;
+          return (
+            <Heading key={`heading-${index}`}>{renderInlineFormatting(block.text)}</Heading>
+          );
         }
 
         if (block.type === "ordered") {
           return (
             <ol key={`ordered-${index}`}>
               {block.items.map((item, itemIndex) => (
-                <li key={`${item}-${itemIndex}`}>{item}</li>
+                <li key={`${item}-${itemIndex}`}>{renderInlineFormatting(item)}</li>
               ))}
             </ol>
           );
@@ -308,7 +322,7 @@ function AssistantFormattedContent({ content = "" }) {
           return (
             <ul key={`unordered-${index}`}>
               {block.items.map((item, itemIndex) => (
-                <li key={`${item}-${itemIndex}`}>{item}</li>
+                <li key={`${item}-${itemIndex}`}>{renderInlineFormatting(item)}</li>
               ))}
             </ul>
           );
@@ -339,7 +353,7 @@ function AssistantFormattedContent({ content = "" }) {
           );
         }
 
-        return <p key={`paragraph-${index}`}>{block.text}</p>;
+        return <p key={`paragraph-${index}`}>{renderInlineFormatting(block.text)}</p>;
       })}
     </div>
   );

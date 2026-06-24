@@ -272,16 +272,17 @@ describe("Akuso routes", () => {
         ok: true,
         mode: "math",
         category: "SAFE_ANSWER",
-        answer: expect.stringMatching(/## Problem/),
+        answer: expect.stringMatching(/^The problem is:/),
         meta: expect.objectContaining({
           task: "reasoning",
         }),
       })
     );
-    expect(response.body.answer).toMatch(/## Step 1: Find the LCM/);
+    expect(response.body.answer).toMatch(/### Step 1: Find the LCM/);
     expect(response.body.answer).toMatch(/2\/3 = 8\/12/);
-    expect(response.body.answer).toMatch(/## Step 5: Convert to a mixed number/);
-    expect(response.body.answer).toMatch(/## Final Answer/);
+    expect(response.body.answer).toMatch(/As a mixed number:/);
+    expect(response.body.answer).not.toMatch(/Step 5|## Given|## Check/);
+    expect(response.body.answer).toMatch(/### Final Answer/);
     expect(response.body.answer).toContain("\\boxed{1 1/4}");
   });
 

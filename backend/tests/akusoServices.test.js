@@ -469,19 +469,22 @@ describe("Akuso services", () => {
         answerText: "1 1/4",
       })
     );
-    expect(response.solutionText).toMatch(/## Problem/);
-    expect(response.solutionText).toMatch(/## Step 1: Find the LCM/);
+    expect(response.solutionText).toMatch(/^The problem is:/);
+    expect(response.solutionText).toMatch(/### Step 1: Find the LCM/);
     expect(response.solutionText).toMatch(/2\/3 = 8\/12/);
     expect(response.solutionText).toMatch(/15\/12 = 5\/4/);
-    expect(response.solutionText).toMatch(/## Step 5: Convert to a mixed number/);
-    expect(response.solutionText).toMatch(/## Final Answer/);
+    expect(response.solutionText).toMatch(/As a mixed number:/);
+    expect(response.solutionText).not.toMatch(/Step 5|## Given|## Check/);
+    expect(response.solutionText).toMatch(/### Final Answer/);
     expect(response.solutionText).toContain("\\boxed{1 1/4}");
-    expect(promptBundle.systemPrompt).toMatch(/For any fraction problem/i);
-    expect(promptBundle.systemPrompt).toMatch(/Step 2.*common denominator/i);
+    expect(promptBundle.systemPrompt).toMatch(/Fraction solutions use a concise worksheet layout/i);
+    expect(promptBundle.systemPrompt).toMatch(/Step 2: Convert each fraction/i);
     expect(promptBundle.systemPrompt).toMatch(/\\boxed/);
     expect(promptBundle.systemPrompt).toMatch(/overrides the general instruction/i);
     expect(promptBundle.systemPrompt).toMatch(/working vertically like a teacher/i);
     expect(promptBundle.systemPrompt).toMatch(/familiar classroom symbols/i);
+    expect(promptBundle.systemPrompt).toMatch(/concise worksheet layout/i);
+    expect(promptBundle.systemPrompt).toMatch(/Do not box both/i);
   });
 
   it("solves symbolic sine-to-tangent trig questions for math mode", () => {

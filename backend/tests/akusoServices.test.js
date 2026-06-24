@@ -480,6 +480,8 @@ describe("Akuso services", () => {
     expect(promptBundle.systemPrompt).toMatch(/Step 2.*common denominator/i);
     expect(promptBundle.systemPrompt).toMatch(/\\boxed/);
     expect(promptBundle.systemPrompt).toMatch(/overrides the general instruction/i);
+    expect(promptBundle.systemPrompt).toMatch(/working vertically like a teacher/i);
+    expect(promptBundle.systemPrompt).toMatch(/familiar classroom symbols/i);
   });
 
   it("solves symbolic sine-to-tangent trig questions for math mode", () => {

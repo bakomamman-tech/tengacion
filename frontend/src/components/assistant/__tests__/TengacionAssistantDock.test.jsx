@@ -259,6 +259,7 @@ describe("TengacionAssistantDock", () => {
       "",
       "```math",
       "tan(theta) = K / sqrt(1 - K^2)",
+      "\\boxed{tan(theta) = K / sqrt(1 - K^2)}",
       "```",
     ].join("\n");
 
@@ -304,8 +305,14 @@ describe("TengacionAssistantDock", () => {
       expect.arrayContaining(["Addition", "Subtraction"])
     );
     expect(
-      screen.getByText("tan(theta) = K / sqrt(1 - K^2)").closest(".tg-assistant-message__formula")
+      screen.getAllByText("tan(θ) = K / √(1 − K²)")[0].closest(
+        ".tg-assistant-message__formula"
+      )
     ).not.toBeNull();
+    expect(screen.getByLabelText("Final answer")).toHaveTextContent(
+      "tan(θ) = K / √(1 − K²)"
+    );
+    expect(screen.getByLabelText("Final answer")).toHaveClass("is-final-answer");
 
     await user.click(await screen.findByRole("button", { name: /copy akuso response/i }));
 

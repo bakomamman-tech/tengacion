@@ -1058,7 +1058,7 @@
   color: color-mix(in srgb, var(--text) 90%, var(--brand-strong) 10%);
 }
 
-.tg-assistant-message__formula code {
+.tg-assistant-message__formula-line {
   display: block;
   min-width: max-content;
   font-family: "Times New Roman", Georgia, ui-serif, serif;
@@ -1067,6 +1067,15 @@
   line-height: 1.65;
   text-align: center;
   white-space: pre;
+}
+
+.tg-assistant-message__formula-line.is-final-answer {
+  margin: 0.12rem 0;
+  padding: 0.22rem 0.72rem;
+  border: 2px solid currentColor;
+  border-radius: 8px;
+  font-size: 1.12rem;
+  font-weight: 800;
 }
 
 .tg-assistant-message__formatted code {

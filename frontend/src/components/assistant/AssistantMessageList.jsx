@@ -123,6 +123,47 @@ const CODE_FENCE_PATTERN = /^```([a-zA-Z0-9_-]+)?\s*$/;
 const HEADING_PATTERN = /^(#{1,4})\s+(.+)$/;
 const NUMBERED_LIST_PATTERN = /^\s*\d+[.)]\s+(.+)$/;
 const BULLET_LIST_PATTERN = /^\s*[-*]\s+(.+)$/;
+const SUPERSCRIPT_DIGITS = {
+  0: "⁰",
+  1: "¹",
+  2: "²",
+  3: "³",
+  4: "⁴",
+  5: "⁵",
+  6: "⁶",
+  7: "⁷",
+  8: "⁸",
+  9: "⁹",
+};
+
+const formatClassroomMath = (value = "") =>
+  String(value || "")
+    .replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "$1⁄$2")
+    .replace(/\bsqrt\s*\(/gi, "√(")
+    .replace(/\btheta\b/gi, "θ")
+    .replace(/<=/g, "≤")
+    .replace(/>=/g, "≥")
+    .replace(/\s+\*\s+/g, " × ")
+    .replace(/\s+-\s+/g, " − ")
+    .replace(/\^(\d+)/g, (_, digits) =>
+      String(digits)
+        .split("")
+        .map((digit) => SUPERSCRIPT_DIGITS[digit] || digit)
+        .join("")
+    );
+
+const parseClassroomMathLines = (value = "") =>
+  String(value || "")
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+      const boxed = trimmed.match(/^\\boxed\{(.+)\}$/);
+      return {
+        isFinalAnswer: Boolean(boxed),
+        text: formatClassroomMath(boxed?.[1] || trimmed),
+      };
+    })
+    .filter((line) => line.text);
 
 const flushParagraph = (blocks, paragraph) => {
   if (paragraph.length === 0) {
@@ -275,9 +316,18 @@ function AssistantFormattedContent({ content = "" }) {
 
         if (block.type === "code") {
           if (String(block.language || "").toLowerCase() === "math") {
+            const mathLines = parseClassroomMathLines(block.text);
             return (
               <div key={`math-${index}`} className="tg-assistant-message__formula">
-                <code>{block.text}</code>
+                {mathLines.map((line, lineIndex) => (
+                  <span
+                    key={`${line.text}-${lineIndex}`}
+                    className={`tg-assistant-message__formula-line${line.isFinalAnswer ? " is-final-answer" : ""}`}
+                    aria-label={line.isFinalAnswer ? "Final answer" : undefined}
+                  >
+                    {line.text}
+                  </span>
+                ))}
               </div>
             );
           }

@@ -438,6 +438,11 @@ describe("Akuso services", () => {
       })
     );
     expect(response.steps.join("\n")).toMatch(/240 \* 0.15 = 36|15 \/ 100 = 0.15/i);
+    expect(response.solutionText).toMatch(/## Problem/);
+    expect(response.solutionText).toMatch(/## Given/);
+    expect(response.solutionText).toMatch(/## Step 1/);
+    expect(response.solutionText).toMatch(/## Final Answer/);
+    expect(response.solutionText).toContain("\\boxed{36}");
   });
 
   it("formats fraction problems as clear classroom-style solutions", () => {
@@ -497,8 +502,11 @@ describe("Akuso services", () => {
       })
     );
     expect(response.solutionText).toMatch(/## Given/);
+    expect(response.solutionText).toMatch(/## Step 1/);
     expect(response.solutionText).toMatch(/```math/);
-    expect(response.solutionText).toMatch(/## Final answer/);
+    expect(response.solutionText).toMatch(/## Final Answer/);
+    expect(response.solutionText).toMatch(/## Check/);
+    expect(response.solutionText).toContain("\\boxed{tan(theta) = K / sqrt(1 - K^2)}");
     expect(response.steps.join("\n")).toMatch(/first quadrant/i);
     expect(response.steps.join("\n")).toMatch(/tan\(theta\) = opposite \/ adjacent/i);
     expect(policy).toEqual(

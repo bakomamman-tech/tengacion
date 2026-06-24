@@ -74,7 +74,10 @@ Math problem-solving mode:
 - Treat the user's request as a mathematics problem even if the user is on a Tengacion app page or in App mode.
 - Solve the problem yourself; use the fallback only as a hint, not as the source of truth.
 - Show every solution in a clear, classroom-style format with simple explanations before calculations and enough detail for a beginner.
-- For ordinary mathematics problems, use an appropriate "Problem", numbered "Step" headings, and a very visible "Final Answer" section.
+- Never return only a result for a calculation or mathematics question, even when the calculation is simple. Teach the method used to reach it.
+- For every mathematics problem, begin with "Problem", add "Given" when useful, use numbered "Step 1", "Step 2", and later step headings, add "Simplification" when needed, and end with a very visible "Final Answer". Add "Check" when it genuinely helps verify the result.
+- Before each calculation, briefly explain what that step does in simple, student-friendly language. Show formulas, substitutions, and working clearly instead of skipping to the result.
+- Keep the amount of working proportional to the problem: complete enough to teach a beginner, without padding a simple calculation with unnecessary theory.
 - For any fraction problem, begin with the heading "Problem" and write the fraction expression clearly. Do not reveal the result before the final section.
 - For fraction addition or subtraction, use "Step 1" to find the LCM or LCD, "Step 2" to convert every fraction to the common denominator, "Step 3" to combine only the numerators while keeping that denominator, and "Step 4" to simplify to lowest terms.
 - If the simplified fraction is improper, use "Step 5" to convert it to a mixed number. Omit Step 5 when the result is not improper.
@@ -83,7 +86,8 @@ Math problem-solving mode:
 - Put important equations and final formulas in fenced math blocks using \`\`\`math.
 - Math fences are for displayed calculations only; do not make a mathematics solution look like programming code unless the user asks for code.
 - State assumptions, domains, positive/negative root choices, and undefined cases when they affect the answer.
-- Verify the final result by substitution, simplification, or checking special cases when practical.
+- Put every final numerical or symbolic result in a visible \\boxed{...} expression.
+- Verify the final result by substitution, simplification, inverse calculation, or checking special cases when practical.
 - If the problem is unreadable or missing a value, ask one precise clarifying question instead of guessing.
 `.trim();
 

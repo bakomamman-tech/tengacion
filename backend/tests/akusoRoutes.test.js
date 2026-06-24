@@ -244,8 +244,10 @@ describe("Akuso routes", () => {
         }),
       })
     );
-    expect(response.body.answer).toMatch(/## Steps/);
-    expect(response.body.answer).toMatch(/## Final answer/);
+    expect(response.body.answer).toMatch(/## Problem/);
+    expect(response.body.answer).toMatch(/## Step 1/);
+    expect(response.body.answer).toMatch(/## Final Answer/);
+    expect(response.body.answer).toContain("\\boxed{36}");
     expect(response.body.details).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -306,8 +308,11 @@ describe("Akuso routes", () => {
       })
     );
     expect(response.body.answer).toMatch(/first quadrant/i);
+    expect(response.body.answer).toMatch(/## Problem/);
     expect(response.body.answer).toMatch(/## Given/);
-    expect(response.body.answer).toMatch(/## Final answer/);
+    expect(response.body.answer).toMatch(/## Step 1/);
+    expect(response.body.answer).toMatch(/## Final Answer/);
+    expect(response.body.answer).toMatch(/## Check/);
     expect(response.body.answer).toMatch(/```math/);
     expect(response.body.details).toEqual(
       expect.arrayContaining([

@@ -381,36 +381,46 @@ const buildTrigIdentityResponse = ({ givenRatio, targetRatio, value, firstQuadra
     domainNote,
   ];
   const solutionText = [
+    "## Problem",
+    "Use the given trigonometric ratio to find the requested ratio.",
+    buildFormulaBlock([expression]),
+    "",
     "## Given",
     buildFormulaBlock([
       `${givenRatio}(theta) = ${value}`,
       firstQuadrant ? "0 degrees <= theta <= 90 degrees" : "",
     ]),
     firstQuadrant
-      ? "For 0 degrees <= theta <= 90 degrees, theta is in the first quadrant, so all trigonometric values are positive."
-      : "Use the positive adjacent side for an acute first-quadrant angle.",
+      ? "The angle is in the first quadrant, so the side lengths and requested ratio are non-negative where they are defined."
+      : "Treat the angle as an acute first-quadrant angle, so use the positive side length.",
     "",
-    "## Using",
+    "## Step 1: Write the known ratio",
+    "Start with the definition of the ratio given in the problem.",
     buildFormulaBlock([`${givenRatio}(theta) = ${givenDefinition}`]),
     "",
-    "## Let",
+    "Choose convenient side lengths that represent this ratio.",
     buildFormulaBlock([
       `opposite = ${sides.opposite}`,
       `adjacent = ${sides.adjacent}`,
       `hypotenuse = ${sides.hypotenuse}`,
     ]),
     "",
-    "The missing side comes from Pythagoras:",
+    "## Step 2: Find the missing side",
+    "Use the Pythagorean theorem to calculate the side that is still unknown.",
     buildFormulaBlock([sides.missingSideStep]),
     "",
-    "## So",
+    "## Step 3: Calculate the requested ratio",
+    `Now use ${targetRatio}(theta) = ${targetDefinition} and substitute the side lengths.`,
     buildFormulaBlock([
       `${targetRatio}(theta) = ${targetDefinition}`,
       `${targetRatio}(theta) = ${answerText}`,
     ]),
     "",
-    "## Final answer",
-    buildFormulaBlock([`${targetRatio}(theta) = ${answerText}`]),
+    "## Final Answer",
+    buildFormulaBlock([`\\boxed{${targetRatio}(theta) = ${answerText}}`]),
+    "",
+    "## Check",
+    "The side lengths satisfy the Pythagorean relationship used in Step 2.",
     domainNote,
   ].join("\n");
 
@@ -678,19 +688,35 @@ const buildMathResponse = ({ message = "", expression = "" } = {}) => {
     return null;
   }
   const displayExpression = percentExpression?.display || solved.expression;
+  const calculationSteps =
+    solved.steps.length > 0
+      ? solved.steps
+      : [`${displayExpression} = ${solved.answerText}`];
   const arithmeticSolutionText = [
-    `The answer is ${solved.answerText}.`,
-    "",
-    "## Expression",
+    "## Problem",
+    "Calculate the following expression.",
     buildFormulaBlock([displayExpression]),
     "",
-    "## Steps",
-    ...(solved.steps.length > 0
-      ? solved.steps.map((step, index) => `${index + 1}. ${step}`)
-      : ["1. I used the standard order of operations."]),
+    ...(percentExpression
+      ? [
+          "## Given",
+          "To find a percentage of a number, change the percentage to a fraction over 100 and multiply.",
+          buildFormulaBlock([percentExpression.expression]),
+          "",
+        ]
+      : []),
+    ...calculationSteps.flatMap((step, index) => [
+      `## Step ${index + 1}${index === 0 ? ": Begin the calculation" : ": Continue the calculation"}`,
+      index === 0
+        ? "Use the standard order of operations and evaluate the first part that can be simplified."
+        : "Substitute the previous result and simplify the next part.",
+      buildFormulaBlock([step]),
+      "",
+    ]),
     "",
-    "## Final answer",
-    buildFormulaBlock([solved.answerText]),
+    "## Final Answer",
+    `The final answer is ${solved.answerText}.`,
+    buildFormulaBlock([`\\boxed{${solved.answerText}}`]),
   ].join("\n");
 
   return {

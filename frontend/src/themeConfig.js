@@ -1,15 +1,35 @@
 export const THEME_KEY = "tengacion_theme";
 export const LEGACY_THEME_KEY = "tengacion-theme";
 export const DEFAULT_THEME = "light";
-export const SUPPORTED_THEMES = ["light", "peaceful", "dark", "neon-purple", "royalty"];
+export const SUPPORTED_THEMES = [
+  "light",
+  "nature-green",
+  "peaceful",
+  "dark",
+  "neon-purple",
+  "royalty",
+  "afro-gold",
+];
 
 const THEME_LABELS = {
   light: "Light Mode",
+  "nature-green": "Nature Green",
   peaceful: "Peaceful Mode",
   dark: "Dark Mode",
   "neon-purple": "Neon Purple Mode",
   royalty: "Royalty Mode",
+  "afro-gold": "Afro Gold",
 };
+
+const DARK_LIKE_THEMES = ["dark", "neon-purple", "royalty", "afro-gold"];
+const THEME_MODE_CLASSES = [
+  "peaceful-mode",
+  "neon-purple-mode",
+  "royalty-mode",
+  "nature-green-mode",
+  "afro-gold-mode",
+  "turquoise-mode",
+];
 
 export function normalizeThemeValue(value) {
   const normalized = String(value || "").trim().toLowerCase();
@@ -28,7 +48,7 @@ export function getThemeLabel(value) {
 }
 
 export function getThemeColorScheme(value) {
-  return ["dark", "neon-purple", "royalty"].includes(normalizeThemeValue(value))
+  return DARK_LIKE_THEMES.includes(normalizeThemeValue(value))
     ? "dark"
     : "light";
 }
@@ -63,12 +83,14 @@ export function applyThemeToDocument(theme, root = document.documentElement) {
   const nextTheme = isSupportedTheme(theme)
     ? normalizeThemeValue(theme)
     : DEFAULT_THEME;
-  const isDarkLikeTheme = ["dark", "neon-purple", "royalty"].includes(nextTheme);
+  const isDarkLikeTheme = DARK_LIKE_THEMES.includes(nextTheme);
   root.dataset.theme = nextTheme;
   root.classList.toggle("dark-mode", isDarkLikeTheme);
+  THEME_MODE_CLASSES.forEach((className) => root.classList.remove(className));
   root.classList.toggle("peaceful-mode", nextTheme === "peaceful");
   root.classList.toggle("neon-purple-mode", nextTheme === "neon-purple");
   root.classList.toggle("royalty-mode", nextTheme === "royalty");
-  root.classList.remove("turquoise-mode");
+  root.classList.toggle("nature-green-mode", nextTheme === "nature-green");
+  root.classList.toggle("afro-gold-mode", nextTheme === "afro-gold");
   root.style.colorScheme = getThemeColorScheme(nextTheme);
 }

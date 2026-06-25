@@ -285,6 +285,11 @@ export function DisplayAccessibilityPage({ user }) {
       description: "Brighter surfaces with warm contrast for daytime browsing.",
     },
     {
+      value: "nature-green",
+      title: "Nature Green",
+      description: "Fresh organic greens, cream surfaces, and leafy calm across Tengacion.",
+    },
+    {
       value: "peaceful",
       title: "Peaceful Mode",
       description: "Luminous ivory surfaces with soft gold framing and calm violet accents.",
@@ -303,6 +308,11 @@ export function DisplayAccessibilityPage({ user }) {
       value: "royalty",
       title: "Royalty Mode",
       description: "Midnight navy surfaces framed with luminous gold and refined violet accents.",
+    },
+    {
+      value: "afro-gold",
+      title: "Afro Gold",
+      description: "Deep black surfaces, luminous gold, and culture-rich premium accents.",
     },
   ];
 

@@ -376,6 +376,96 @@ html.dark-mode .trackRow {
   border-bottom-color: #6a4d33;
 }
 
+:global(html.nature-green-mode) .hubShell {
+  border-color: rgba(47, 127, 42, 0.2);
+  background: #fffdf4;
+  box-shadow: 0 18px 38px rgba(33, 75, 31, 0.1);
+}
+
+:global(html.nature-green-mode) .banner {
+  background:
+    linear-gradient(135deg, rgba(47, 127, 42, 0.84), rgba(31, 95, 29, 0.96)),
+    linear-gradient(132deg, #5ca840 0%, #2f7f2a 52%, #173d20 100%);
+}
+
+:global(html.nature-green-mode) .tabsRow {
+  border-top-color: rgba(255, 255, 255, 0.18);
+  background: rgba(31, 95, 29, 0.22);
+}
+
+:global(html.nature-green-mode) .sectionCard,
+:global(html.nature-green-mode) .itemCard {
+  border-color: rgba(47, 127, 42, 0.2);
+  background: #f5faee;
+}
+
+:global(html.nature-green-mode) .searchInput {
+  border-color: rgba(47, 127, 42, 0.22);
+  background: #fffdf4;
+}
+
+:global(html.nature-green-mode) .playerDock,
+:global(html.nature-green-mode) .queueDrawer {
+  border-color: rgba(47, 127, 42, 0.24);
+  background: #173d20;
+  color: rgba(255, 255, 255, 0.94);
+}
+
+:global(html.afro-gold-mode) .hubShell {
+  border-color: rgba(224, 163, 58, 0.24);
+  background: #12100d;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.36);
+}
+
+:global(html.afro-gold-mode) .banner {
+  background:
+    repeating-linear-gradient(135deg, rgba(247, 200, 100, 0.08) 0 2px, transparent 2px 24px),
+    linear-gradient(132deg, #2a1a0a 0%, #120d07 52%, #050403 100%);
+}
+
+:global(html.afro-gold-mode) .tabsRow {
+  border-top-color: rgba(247, 200, 100, 0.16);
+  background: rgba(224, 163, 58, 0.08);
+}
+
+:global(html.afro-gold-mode) .sectionCard,
+:global(html.afro-gold-mode) .itemCard {
+  border-color: rgba(224, 163, 58, 0.24);
+  background:
+    repeating-linear-gradient(135deg, rgba(224, 163, 58, 0.04) 0 2px, transparent 2px 22px),
+    #1a1510;
+}
+
+:global(html.afro-gold-mode) .searchInput {
+  border-color: rgba(224, 163, 58, 0.26);
+  background: #0f0b07;
+  color: #fff3d7;
+}
+
+:global(html.afro-gold-mode) .playerDock,
+:global(html.afro-gold-mode) .queueDrawer {
+  border-color: rgba(224, 163, 58, 0.28);
+  background: #050403;
+  color: #fff3d7;
+}
+
+:global(html.afro-gold-mode) .mutedText,
+:global(html.afro-gold-mode) .itemMeta,
+:global(html.afro-gold-mode) .trackCreator {
+  color: rgba(255, 243, 215, 0.68);
+}
+
+:global(html.afro-gold-mode) .trackName,
+:global(html.afro-gold-mode) .itemTitle,
+:global(html.afro-gold-mode) .sectionHead h3,
+:global(html.afro-gold-mode) .sectionHead h4 {
+  color: rgba(255, 243, 215, 0.94);
+}
+
+:global(html.afro-gold-mode) .trackRow {
+  border-bottom-color: rgba(224, 163, 58, 0.2);
+}
+
 @media (max-width: 980px) {
   .mainGrid,
   .tracksGrid,

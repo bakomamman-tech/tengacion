@@ -126,6 +126,56 @@
   background: color-mix(in srgb, var(--surface) 92%, #160e09);
 }
 
+:global(html.nature-green-mode) .creatorPage {
+  --creator-brown-1: #4f9838;
+  --creator-brown-2: #173d20;
+  --creator-text-strong: #ffffff;
+  --creator-text-soft: rgba(244, 255, 236, 0.94);
+}
+
+:global(html.nature-green-mode) .creatorShell,
+:global(html.nature-green-mode) .creatorItemCard {
+  border-color: rgba(47, 127, 42, 0.22);
+  background: #fffdf4;
+  box-shadow: 0 14px 30px rgba(33, 75, 31, 0.12);
+}
+
+:global(html.nature-green-mode) .creatorHeroFallback {
+  background:
+    linear-gradient(180deg, rgba(47, 127, 42, 0.16) 0%, rgba(23, 61, 32, 0.78) 100%),
+    linear-gradient(180deg, #4f9838 0%, #173d20 100%);
+}
+
+:global(html.afro-gold-mode) .creatorPage {
+  --creator-brown-1: #d89425;
+  --creator-brown-2: #050403;
+  --creator-text-strong: #fff3d7;
+  --creator-text-soft: rgba(255, 243, 215, 0.86);
+}
+
+:global(html.afro-gold-mode) .creatorShell,
+:global(html.afro-gold-mode) .creatorItemCard {
+  border-color: rgba(224, 163, 58, 0.24);
+  background:
+    repeating-linear-gradient(135deg, rgba(224, 163, 58, 0.04) 0 2px, transparent 2px 22px),
+    #12100d;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.38);
+}
+
+:global(html.afro-gold-mode) .creatorHeroFallback {
+  background:
+    repeating-linear-gradient(135deg, rgba(247, 200, 100, 0.08) 0 2px, transparent 2px 24px),
+    linear-gradient(180deg, #2a1a0a 0%, #050403 100%);
+}
+
+:global(html.afro-gold-mode) .creatorTabsWrap {
+  border-top-color: rgba(224, 163, 58, 0.22);
+}
+
+:global(html.afro-gold-mode) .creatorItemCard:hover {
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.44);
+}
+
 @media (max-width: 820px) {
   .creatorHeroContent {
     left: 16px;

@@ -197,6 +197,41 @@ describe("Navbar search", () => {
     expect(setThemeMock).toHaveBeenCalledWith("peaceful");
   });
 
+  it("offers Nature Green and Afro Gold in Display & accessibility", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/home"]}>
+        <Navbar
+          user={{
+            _id: "viewer-1",
+            name: "Viewer User",
+            username: "viewer_user",
+            avatar: "",
+            role: "user",
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("button", { name: /account menu/i }));
+    await user.click(screen.getByRole("button", { name: /display & accessibility/i }));
+
+    const natureGreen = screen.getByRole("button", { name: /nature green/i });
+    expect(natureGreen).toHaveTextContent(/fresh organic greens, cream surfaces/i);
+
+    await user.click(natureGreen);
+
+    expect(setThemeMock).toHaveBeenCalledWith("nature-green");
+
+    const afroGold = screen.getByRole("button", { name: /afro gold/i });
+    expect(afroGold).toHaveTextContent(/deep black surfaces, luminous gold/i);
+
+    await user.click(afroGold);
+
+    expect(setThemeMock).toHaveBeenCalledWith("afro-gold");
+  });
+
   it("shows desktop navigation toggles when the top tabs overflow", async () => {
     const user = userEvent.setup();
 

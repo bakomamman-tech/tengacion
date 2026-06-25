@@ -914,6 +914,15 @@ export default function Navbar({
           onClick: () => setTheme("light"),
         },
         {
+          id: "display-nature-green",
+          label: "Nature Green",
+          description: "Use fresh organic greens, cream surfaces, and leafy calm across Tengacion.",
+          glyph: "NG",
+          badge: theme === "nature-green" ? "On" : "Off",
+          active: theme === "nature-green",
+          onClick: () => setTheme("nature-green"),
+        },
+        {
           id: "display-peaceful",
           label: "Peaceful Mode",
           description: "Use luminous ivory, soft gold, and calm violet accents for serene browsing.",
@@ -939,6 +948,15 @@ export default function Navbar({
           badge: theme === "royalty" ? "On" : "Off",
           active: theme === "royalty",
           onClick: () => setTheme("royalty"),
+        },
+        {
+          id: "display-afro-gold",
+          label: "Afro Gold",
+          description: "Use deep black surfaces, luminous gold, and culture-rich premium accents.",
+          glyph: "AG",
+          badge: theme === "afro-gold" ? "On" : "Off",
+          active: theme === "afro-gold",
+          onClick: () => setTheme("afro-gold"),
         },
         {
           id: "display-center",

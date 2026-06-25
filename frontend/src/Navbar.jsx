@@ -932,15 +932,6 @@ export default function Navbar({
           onClick: () => setTheme("peaceful"),
         },
         {
-          id: "display-neon-purple",
-          label: "Neon Purple Mode",
-          description: "Use a calculator-inspired neon purple glow with deep midnight surfaces.",
-          glyph: "NP",
-          badge: theme === "neon-purple" ? "On" : "Off",
-          active: theme === "neon-purple",
-          onClick: () => setTheme("neon-purple"),
-        },
-        {
           id: "display-royalty",
           label: "Royalty Mode",
           description: "Use midnight navy, luminous gold, and violet accents for a regal experience.",

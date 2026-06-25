@@ -6,7 +6,6 @@ export const SUPPORTED_THEMES = [
   "nature-green",
   "peaceful",
   "dark",
-  "neon-purple",
   "royalty",
   "afro-gold",
 ];
@@ -16,27 +15,20 @@ const THEME_LABELS = {
   "nature-green": "Nature Green",
   peaceful: "Peaceful Mode",
   dark: "Dark Mode",
-  "neon-purple": "Neon Purple Mode",
   royalty: "Royalty Mode",
   "afro-gold": "Afro Gold",
 };
 
-const DARK_LIKE_THEMES = ["dark", "neon-purple", "royalty", "afro-gold"];
+const DARK_LIKE_THEMES = ["dark", "royalty", "afro-gold"];
 const THEME_MODE_CLASSES = [
   "peaceful-mode",
-  "neon-purple-mode",
   "royalty-mode",
   "nature-green-mode",
   "afro-gold-mode",
-  "turquoise-mode",
 ];
 
 export function normalizeThemeValue(value) {
-  const normalized = String(value || "").trim().toLowerCase();
-  if (normalized === "turquoise") {
-    return "neon-purple";
-  }
-  return normalized;
+  return String(value || "").trim().toLowerCase();
 }
 
 export function isSupportedTheme(value) {
@@ -88,7 +80,6 @@ export function applyThemeToDocument(theme, root = document.documentElement) {
   root.classList.toggle("dark-mode", isDarkLikeTheme);
   THEME_MODE_CLASSES.forEach((className) => root.classList.remove(className));
   root.classList.toggle("peaceful-mode", nextTheme === "peaceful");
-  root.classList.toggle("neon-purple-mode", nextTheme === "neon-purple");
   root.classList.toggle("royalty-mode", nextTheme === "royalty");
   root.classList.toggle("nature-green-mode", nextTheme === "nature-green");
   root.classList.toggle("afro-gold-mode", nextTheme === "afro-gold");

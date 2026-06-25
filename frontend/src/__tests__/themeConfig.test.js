@@ -58,7 +58,7 @@ describe("themeConfig", () => {
 
     expect(root.dataset.theme).toBe("royalty");
     expect(root).toHaveClass("dark-mode", "royalty-mode");
-    expect(root).not.toHaveClass("neon-purple-mode", "nature-green-mode", "afro-gold-mode");
+    expect(root).not.toHaveClass("nature-green-mode", "afro-gold-mode");
     expect(root.style.colorScheme).toBe("dark");
   });
 
@@ -72,7 +72,6 @@ describe("themeConfig", () => {
     expect(root).not.toHaveClass(
       "dark-mode",
       "royalty-mode",
-      "neon-purple-mode",
       "nature-green-mode",
       "afro-gold-mode"
     );
@@ -102,7 +101,7 @@ describe("themeConfig", () => {
   });
 
   it("includes Royalty Mode in the theme cycle", () => {
-    expect(getNextTheme("neon-purple")).toBe("royalty");
+    expect(getNextTheme("dark")).toBe("royalty");
     expect(getNextTheme("royalty")).toBe("afro-gold");
     expect(getNextTheme("afro-gold")).toBe("light");
   });
@@ -111,5 +110,13 @@ describe("themeConfig", () => {
     expect(getNextTheme("light")).toBe("nature-green");
     expect(getNextTheme("nature-green")).toBe("peaceful");
     expect(getNextTheme("peaceful")).toBe("dark");
+  });
+
+  it("falls back to Light Mode for unknown stored themes", () => {
+    localStorage.setItem(THEME_KEY, "removed-theme");
+
+    expect(readStoredTheme()).toBe("light");
+    expect(getThemeLabel("removed-theme")).toBe("Light Mode");
+    expect(getThemeColorScheme("removed-theme")).toBe("light");
   });
 });

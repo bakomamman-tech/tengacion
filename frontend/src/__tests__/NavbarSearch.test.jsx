@@ -232,6 +232,34 @@ describe("Navbar search", () => {
     expect(setThemeMock).toHaveBeenCalledWith("afro-gold");
   });
 
+  it("offers Afro Gold from the account menu for every account role", async () => {
+    const roles = ["user", "creator", "admin"];
+
+    for (const role of roles) {
+      const user = userEvent.setup();
+      const { unmount } = render(
+        <MemoryRouter initialEntries={["/home"]}>
+          <Navbar
+            user={{
+              _id: `viewer-${role}`,
+              name: `${role} account`,
+              username: `${role}_account`,
+              avatar: "",
+              role,
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      await user.click(screen.getByRole("button", { name: /account menu/i }));
+      await user.click(screen.getByRole("button", { name: /display & accessibility/i }));
+
+      expect(screen.getByRole("button", { name: /afro gold/i })).toBeInTheDocument();
+
+      unmount();
+    }
+  });
+
   it("shows desktop navigation toggles when the top tabs overflow", async () => {
     const user = userEvent.setup();
 

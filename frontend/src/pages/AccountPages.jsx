@@ -300,11 +300,6 @@ export function DisplayAccessibilityPage({ user }) {
       description: "Deeper surfaces with softer glare for low-light browsing.",
     },
     {
-      value: "neon-purple",
-      title: "Neon Purple Mode",
-      description: "Deep midnight surfaces with calculator-style neon purple glow in the background.",
-    },
-    {
       value: "royalty",
       title: "Royalty Mode",
       description: "Midnight navy surfaces framed with luminous gold and refined violet accents.",

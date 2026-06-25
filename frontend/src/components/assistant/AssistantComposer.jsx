@@ -35,6 +35,16 @@ function StopIcon() {
   );
 }
 
+function SpeakerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4.75 9.25h3.15l4.1-3.35v12.2l-4.1-3.35H4.75z" />
+      <path className="tg-assistant-speaker-wave" d="M15.5 8.35a5 5 0 0 1 0 7.3" />
+      <path className="tg-assistant-speaker-wave" d="M17.95 6.25a8.1 8.1 0 0 1 0 11.5" />
+    </svg>
+  );
+}
+
 function XIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -64,6 +74,10 @@ const AssistantComposer = forwardRef(function AssistantComposer(
     recordingSupported = true,
     onToggleRecording,
     onCancelRecording,
+    speakerEnabled = false,
+    speakerSupported = true,
+    speakerSpeaking = false,
+    onToggleSpeaker,
     disabled = false,
     compact = false,
     placeholder = "Ask Akuso to open a page, find something, or draft a caption.",
@@ -196,6 +210,25 @@ const AssistantComposer = forwardRef(function AssistantComposer(
               <XIcon />
             </button>
           ) : null}
+          <button
+            type="button"
+            className={`tg-assistant-composer__tool tg-assistant-composer__tool--speaker${speakerEnabled ? " is-speaker-on" : ""}${speakerSpeaking ? " is-speaking" : ""}`}
+            onClick={onToggleSpeaker}
+            disabled={!speakerSupported}
+            aria-pressed={speakerEnabled}
+            aria-label={speakerEnabled ? "Turn Akuso speaker off" : "Turn Akuso speaker on"}
+            title={
+              speakerSupported
+                ? speakerEnabled
+                  ? speakerSpeaking
+                    ? "Akuso is speaking"
+                    : "Akuso speaker on"
+                  : "Turn on Akuso speaker"
+                : "Akuso speaker unavailable"
+            }
+          >
+            <SpeakerIcon />
+          </button>
           <button
             type="submit"
             className={`tg-assistant-composer__send${compact ? " tg-assistant-composer__send--compact" : ""}`}

@@ -1645,6 +1645,17 @@
   color: #c12842;
 }
 
+.tg-assistant-composer__tool.is-speaker-on {
+  border-color: rgba(15, 23, 42, 0.18);
+  background: linear-gradient(180deg, #101827 0%, #050912 100%);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.24);
+}
+
+.tg-assistant-composer__tool.is-speaking .tg-assistant-speaker-wave {
+  animation: tg-assistant-speaker-pulse 900ms ease-in-out infinite;
+}
+
 .tg-assistant-composer__attachment-remove:disabled,
 .tg-assistant-composer__tool:disabled {
   opacity: 0.45;
@@ -1741,6 +1752,19 @@
 .tg-assistant-composer__tool svg rect {
   fill: currentColor;
   stroke: none;
+}
+
+@keyframes tg-assistant-speaker-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: translateX(-0.5px);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateX(0.7px);
+  }
 }
 
 .tg-assistant-confirm-backdrop {
@@ -2481,6 +2505,13 @@ html:is(:not(.dark-mode), .dark-mode) .tg-assistant-message__action.is-active {
   border-color: rgba(255, 224, 155, 0.62);
   color: var(--akuso-gold-light);
   background: linear-gradient(180deg, rgba(59, 43, 101, 0.98), rgba(17, 23, 51, 0.98));
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-composer__tool.is-speaker-on {
+  border-color: rgba(255, 224, 155, 0.7);
+  color: #ffffff;
+  background: linear-gradient(180deg, #111827 0%, #030712 100%);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.32);
 }
 
 html:is(:not(.dark-mode), .dark-mode) .tg-assistant-writing-controls select {

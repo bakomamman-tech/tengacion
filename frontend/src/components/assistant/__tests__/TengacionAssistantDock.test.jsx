@@ -10,6 +10,19 @@ const sendAssistantFeedbackMock = vi.hoisted(() => vi.fn());
 const clipboardWriteTextMock = vi.hoisted(() => vi.fn());
 const createObjectUrlMock = vi.hoisted(() => vi.fn());
 const revokeObjectUrlMock = vi.hoisted(() => vi.fn());
+const speechSynthesisSpeakMock = vi.hoisted(() => vi.fn());
+const speechSynthesisCancelMock = vi.hoisted(() => vi.fn());
+const SpeechSynthesisUtteranceMock = vi.hoisted(() =>
+  vi.fn(function SpeechSynthesisUtterance(text) {
+    this.text = text;
+    this.lang = "";
+    this.rate = 1;
+    this.pitch = 1;
+    this.volume = 1;
+    this.onend = null;
+    this.onerror = null;
+  })
+);
 const authState = vi.hoisted(() => ({
   user: {
     id: "user-1",
@@ -56,6 +69,13 @@ describe("TengacionAssistantDock", () => {
     createObjectUrlMock.mockReset();
     createObjectUrlMock.mockReturnValue("blob:akuso-media");
     revokeObjectUrlMock.mockReset();
+    speechSynthesisSpeakMock.mockReset();
+    speechSynthesisSpeakMock.mockImplementation((utterance) => {
+      utterance?.onend?.();
+    });
+    speechSynthesisCancelMock.mockReset();
+    SpeechSynthesisUtteranceMock.mockClear();
+    window.localStorage.clear();
     Object.defineProperty(URL, "createObjectURL", {
       configurable: true,
       value: createObjectUrlMock,
@@ -69,6 +89,17 @@ describe("TengacionAssistantDock", () => {
       value: {
         writeText: clipboardWriteTextMock,
       },
+    });
+    Object.defineProperty(window, "speechSynthesis", {
+      configurable: true,
+      value: {
+        cancel: speechSynthesisCancelMock,
+        speak: speechSynthesisSpeakMock,
+      },
+    });
+    Object.defineProperty(window, "SpeechSynthesisUtterance", {
+      configurable: true,
+      value: SpeechSynthesisUtteranceMock,
     });
   });
 
@@ -242,6 +273,61 @@ describe("TengacionAssistantDock", () => {
       );
     });
     expect(await screen.findByText("I can assess the poster image.")).toBeInTheDocument();
+  });
+
+  it("reads Akuso search answers aloud when the speaker is enabled", async () => {
+    const user = userEvent.setup();
+    streamAssistantMessageMock.mockResolvedValue({
+      message: "I found three public results about Tengacion and summarized the strongest match.",
+      actions: [],
+      cards: [],
+      followUps: [],
+      sources: [],
+      details: [],
+      requiresConfirmation: false,
+      pendingAction: null,
+      conversationId: "conversation-speech-1",
+      responseId: "trace-speech-1",
+      feedbackToken: "token-speech-1",
+      category: "SAFE_ANSWER",
+      mode: "knowledge",
+      safety: { level: "safe", notice: "", escalation: "" },
+      trust: {
+        provider: "local-fallback",
+        mode: "public-knowledge",
+        grounded: true,
+        usedModel: false,
+        confidenceLabel: "medium",
+        note: "",
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <TengacionAssistantDock />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("button", { name: /open akuso assistant/i }));
+    await user.click(await screen.findByRole("button", { name: /turn akuso speaker on/i }));
+    const composer = await screen.findByRole("textbox", { name: /message akuso/i });
+    await user.type(composer, "Search for Tengacion");
+    await user.click(screen.getByRole("button", { name: /send/i }));
+
+    expect(
+      await screen.findByText(/summarized the strongest match/i)
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(speechSynthesisSpeakMock).toHaveBeenCalledTimes(1);
+    });
+    expect(SpeechSynthesisUtteranceMock).toHaveBeenCalledWith(
+      "I found three public results about Tengacion and summarized the strongest match."
+    );
+    expect(speechSynthesisCancelMock).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /turn akuso speaker off/i })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
   });
 
   it("formats structured Akuso replies and copies the answer text", async () => {

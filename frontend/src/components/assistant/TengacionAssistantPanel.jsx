@@ -126,6 +126,10 @@ export default function TengacionAssistantPanel({
   composerRecordingSupported = true,
   onComposerToggleRecording,
   onComposerCancelRecording,
+  speakerEnabled = false,
+  speakerSupported = true,
+  speakerSpeaking = false,
+  onToggleSpeaker,
   onFollowUpClick,
   composerDisabled = false,
   composerRef,
@@ -465,6 +469,10 @@ export default function TengacionAssistantPanel({
                     recordingSupported={composerRecordingSupported}
                     onToggleRecording={onComposerToggleRecording}
                     onCancelRecording={onComposerCancelRecording}
+                    speakerEnabled={speakerEnabled}
+                    speakerSupported={speakerSupported}
+                    speakerSpeaking={speakerSpeaking}
+                    onToggleSpeaker={onToggleSpeaker}
                     disabled={composerDisabled}
                     compact={compactConversation}
                     placeholder={

@@ -61,9 +61,11 @@ const FLOATING_MARGIN = 12;
 const DRAG_CLICK_THRESHOLD = 6;
 const LAUNCHER_POSITION_KEY = "tg_akuso_launcher_position_v1";
 const PANEL_POSITION_KEY = "tg_akuso_panel_position_v1";
+const SPEAKER_ENABLED_KEY = "tg_akuso_speaker_enabled_v1";
 const AKUSO_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const AKUSO_AUDIO_MAX_BYTES = 25 * 1024 * 1024;
 const AKUSO_MAX_IMAGES = 3;
+const AKUSO_SPEECH_MAX_CHARS = 4000;
 
 const clampNumber = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -98,6 +100,24 @@ const getAttachmentType = (file) => {
 
 const stripAudioMimeParameters = (mimeType = "") =>
   String(mimeType || "audio/webm").split(";")[0] || "audio/webm";
+
+const canUseSpeechSynthesis = () =>
+  typeof window !== "undefined" &&
+  Boolean(window.speechSynthesis) &&
+  typeof window.SpeechSynthesisUtterance === "function";
+
+const normalizeTextForSpeech = (value = "") =>
+  String(value || "")
+    .replace(/```[\s\S]*?```/g, " code block omitted. ")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*[-*]\s+/gm, "")
+    .replace(/^\s*\d+[.)]\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, AKUSO_SPEECH_MAX_CHARS);
 
 const positionsMatch = (a, b) =>
   Boolean(a && b && Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5);
@@ -135,6 +155,26 @@ const readStoredPosition = (key) => {
   }
 };
 
+const readStoredBoolean = (key, fallback = false) => {
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+
+  try {
+    const stored = window.localStorage.getItem(key);
+    if (stored === "true") {
+      return true;
+    }
+    if (stored === "false") {
+      return false;
+    }
+  } catch {
+    // Ignore storage failures; the in-memory preference still works.
+  }
+
+  return fallback;
+};
+
 const persistPosition = (key, position) => {
   if (typeof window === "undefined" || !position) {
     return;
@@ -150,6 +190,18 @@ const persistPosition = (key, position) => {
     );
   } catch {
     // Ignore storage failures; dragging should still work for this session.
+  }
+};
+
+const persistBoolean = (key, value) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(key, value ? "true" : "false");
+  } catch {
+    // Ignore storage failures; the toggle should still work for this session.
   }
 };
 
@@ -174,6 +226,7 @@ export default function TengacionAssistantDock() {
   const recordingIntervalRef = useRef(null);
   const recordingMimeRef = useRef("audio/webm");
   const recordingCancelledRef = useRef(false);
+  const lastSpokenMessageRef = useRef("");
 
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -192,6 +245,10 @@ export default function TengacionAssistantDock() {
   const [feedbackStatusByMessageId, setFeedbackStatusByMessageId] = useState({});
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [speakerEnabled, setSpeakerEnabled] = useState(() =>
+    readStoredBoolean(SPEAKER_ENABLED_KEY, false)
+  );
+  const [speakingMessageId, setSpeakingMessageId] = useState("");
   const [launcherPosition, setLauncherPosition] = useState(() =>
     readStoredPosition(LAUNCHER_POSITION_KEY)
   );
@@ -205,6 +262,13 @@ export default function TengacionAssistantDock() {
     window.setTimeout(() => {
       composerRef.current?.focus?.();
     }, 0);
+  }, []);
+
+  const stopAkusoSpeech = useCallback(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis?.cancel) {
+      window.speechSynthesis.cancel();
+    }
+    setSpeakingMessageId("");
   }, []);
 
   const registerPreviewUrl = useCallback((file) => {
@@ -330,6 +394,61 @@ export default function TengacionAssistantDock() {
       setRecordingSeconds(0);
     }
   }, []);
+
+  const speakAssistantMessage = useCallback(
+    (message) => {
+      if (!speakerEnabled || !canUseSpeechSynthesis()) {
+        return;
+      }
+
+      const text = normalizeTextForSpeech(message?.content);
+      if (!text) {
+        return;
+      }
+
+      const messageId =
+        message?.responseId || message?.id || `${message?.role || "assistant"}-${text.slice(0, 48)}`;
+      const utterance = new window.SpeechSynthesisUtterance(text);
+      utterance.lang = window.navigator?.language || "en-US";
+      utterance.rate = 0.96;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      utterance.onend = () => {
+        setSpeakingMessageId((current) => (current === messageId ? "" : current));
+      };
+      utterance.onerror = () => {
+        setSpeakingMessageId((current) => (current === messageId ? "" : current));
+      };
+
+      stopAkusoSpeech();
+      setSpeakingMessageId(messageId);
+      try {
+        window.speechSynthesis.resume?.();
+        window.speechSynthesis.speak(utterance);
+      } catch {
+        setSpeakingMessageId("");
+        toast.error("Akuso could not start the speaker.");
+      }
+    },
+    [speakerEnabled, stopAkusoSpeech]
+  );
+
+  const toggleSpeaker = useCallback(() => {
+    if (!speakerEnabled && !canUseSpeechSynthesis()) {
+      toast.error("Akuso speaker is not available in this browser.");
+      return;
+    }
+
+    setSpeakerEnabled((current) => {
+      const next = !current;
+      if (next) {
+        lastSpokenMessageRef.current = "";
+      } else {
+        stopAkusoSpeech();
+      }
+      return next;
+    });
+  }, [speakerEnabled, stopAkusoSpeech]);
 
   const toggleRecording = useCallback(async () => {
     if (recording) {
@@ -472,6 +591,9 @@ export default function TengacionAssistantDock() {
         }
       });
       attachmentUrlsRef.current.clear();
+      if (typeof window !== "undefined" && window.speechSynthesis?.cancel) {
+        window.speechSynthesis.cancel();
+      }
     },
     [releaseRecordingResources]
   );
@@ -483,6 +605,41 @@ export default function TengacionAssistantDock() {
   useEffect(() => {
     persistPosition(PANEL_POSITION_KEY, panelPosition);
   }, [panelPosition]);
+
+  useEffect(() => {
+    persistBoolean(SPEAKER_ENABLED_KEY, speakerEnabled);
+  }, [speakerEnabled]);
+
+  useEffect(() => {
+    if (speakerEnabled && !canUseSpeechSynthesis()) {
+      setSpeakerEnabled(false);
+      setSpeakingMessageId("");
+    }
+  }, [speakerEnabled]);
+
+  useEffect(() => {
+    if (!speakerEnabled || loading || streamingResponseId) {
+      return;
+    }
+
+    const latestAssistantMessage = [...messages]
+      .reverse()
+      .find((message) => message?.role === "assistant" && String(message?.content || "").trim());
+    if (!latestAssistantMessage) {
+      return;
+    }
+
+    const speechKey =
+      latestAssistantMessage.responseId ||
+      latestAssistantMessage.id ||
+      normalizeTextForSpeech(latestAssistantMessage.content).slice(0, 80);
+    if (!speechKey || speechKey === lastSpokenMessageRef.current) {
+      return;
+    }
+
+    lastSpokenMessageRef.current = speechKey;
+    speakAssistantMessage(latestAssistantMessage);
+  }, [loading, messages, speakAssistantMessage, speakerEnabled, streamingResponseId]);
 
   useEffect(() => {
     const clampStoredPositions = () => {
@@ -667,7 +824,8 @@ export default function TengacionAssistantDock() {
     setError("");
     setStreamingLabel("");
     setStreamingResponseId("");
-  }, []);
+    stopAkusoSpeech();
+  }, [stopAkusoSpeech]);
 
   const minimizePanel = useCallback(() => {
     setOpen(false);
@@ -689,7 +847,9 @@ export default function TengacionAssistantDock() {
     setStreamingLabel("");
     setStreamingResponseId("");
     lastRequestRef.current = { text: "", attachments: [] };
-  }, [pendingAttachments, revokeAttachmentPreviews]);
+    lastSpokenMessageRef.current = "";
+    stopAkusoSpeech();
+  }, [pendingAttachments, revokeAttachmentPreviews, stopAkusoSpeech]);
 
   const upsertStreamingAssistantReply = useCallback((responseId, updater) => {
     if (!responseId || typeof updater !== "function") {
@@ -759,6 +919,7 @@ export default function TengacionAssistantDock() {
         setOpen(true);
         setExpanded(false);
       }
+      stopAkusoSpeech();
 
       const attachmentSummary = hasAttachments
         ? activeAttachments.some((attachment) => attachment.type === "image") &&
@@ -909,6 +1070,7 @@ export default function TengacionAssistantDock() {
       loading,
       open,
       pendingAttachments,
+      stopAkusoSpeech,
       upsertStreamingAssistantReply,
       writingPreferences,
     ]
@@ -1191,6 +1353,10 @@ export default function TengacionAssistantDock() {
         composerRecordingSupported={recordingSupported}
         onComposerToggleRecording={toggleRecording}
         onComposerCancelRecording={cancelRecording}
+        speakerEnabled={speakerEnabled}
+        speakerSupported={canUseSpeechSynthesis()}
+        speakerSpeaking={Boolean(speakingMessageId)}
+        onToggleSpeaker={toggleSpeaker}
         onFollowUpClick={handleFollowUpClick}
         composerDisabled={loading}
         composerRef={composerRef}

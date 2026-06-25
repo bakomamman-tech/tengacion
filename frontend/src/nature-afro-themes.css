@@ -639,13 +639,129 @@ html.nature-green-mode .login-container :is(.login-left, .login-box, .feature-it
   color: #182315;
 }
 
-html.afro-gold-mode .login-container--luxury :is(.login-left, .login-box, .feature-item, .developer-contact-cta, .account-note-card),
-html.afro-gold-mode .login-container :is(.login-left, .login-box, .feature-item, .developer-contact-cta, .account-note-card) {
+html.nature-green-mode .login-container--luxury .login-left,
+html.nature-green-mode .login-container .login-left {
+  border-color: rgba(47, 127, 42, 0.24);
+  background:
+    linear-gradient(140deg, rgba(47, 127, 42, 0.08) 0 18%, transparent 18.2%),
+    linear-gradient(150deg, rgba(255, 253, 244, 0.98), rgba(232, 243, 220, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 24px 58px rgba(33, 75, 31, 0.14);
+}
+
+html.nature-green-mode .login-container--luxury .login-logo,
+html.nature-green-mode .login-container .login-logo {
+  border-color: rgba(47, 127, 42, 0.26);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(226, 242, 211, 0.72));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 12px 28px rgba(47, 127, 42, 0.12);
+}
+
+html.nature-green-mode .login-container--luxury .login-title,
+html.nature-green-mode .login-container .login-title {
+  color: #173d20;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.84);
+}
+
+html.nature-green-mode .login-container--luxury .login-subtitle,
+html.nature-green-mode .login-container .login-subtitle {
+  color: #405f36;
+}
+
+html.nature-green-mode .login-container--luxury .feature-item,
+html.nature-green-mode .login-container .feature-item {
+  border-color: rgba(47, 127, 42, 0.2);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+html.nature-green-mode .login-container--luxury .feature-item p,
+html.nature-green-mode .login-container .feature-item p {
+  color: #173d20;
+  font-weight: 800;
+}
+
+html.afro-gold-mode .login-container--luxury .login-left,
+html.afro-gold-mode .login-container .login-left {
+  border-color: rgba(247, 200, 100, 0.34);
+  background:
+    linear-gradient(180deg, rgba(5, 4, 3, 0.18), rgba(5, 4, 3, 0.44)),
+    repeating-linear-gradient(135deg, rgba(247, 200, 100, 0.045) 0 2px, transparent 2px 22px),
+    linear-gradient(145deg, rgba(28, 22, 13, 0.98), rgba(9, 7, 5, 0.98));
+  color: #fff3d7;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 224, 159, 0.12),
+    0 28px 70px rgba(0, 0, 0, 0.42);
+}
+
+html.afro-gold-mode .login-container--luxury .login-left::before,
+html.afro-gold-mode .login-container .login-left::before {
+  background:
+    linear-gradient(180deg, rgba(255, 224, 159, 0.1) 0%, rgba(255, 224, 159, 0) 34%),
+    linear-gradient(135deg, rgba(247, 200, 100, 0.1) 0 12%, transparent 12.2%),
+    radial-gradient(circle at top right, rgba(224, 163, 58, 0.18) 0%, rgba(224, 163, 58, 0) 36%);
+}
+
+html.afro-gold-mode .login-container--luxury :is(.login-box, .developer-contact-cta, .account-note-card),
+html.afro-gold-mode .login-container :is(.login-box, .developer-contact-cta, .account-note-card) {
   border-color: rgba(224, 163, 58, 0.24);
   background:
     repeating-linear-gradient(135deg, rgba(224, 163, 58, 0.04) 0 2px, transparent 2px 22px),
     linear-gradient(150deg, rgba(20, 16, 11, 0.94), rgba(10, 8, 6, 0.88));
   color: #fff3d7;
+}
+
+html.afro-gold-mode .login-container--luxury .login-logo,
+html.afro-gold-mode .login-container .login-logo {
+  border-color: rgba(247, 200, 100, 0.36);
+  background:
+    linear-gradient(135deg, rgba(255, 224, 159, 0.2), rgba(224, 163, 58, 0.08)),
+    rgba(5, 4, 3, 0.62);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 224, 159, 0.18),
+    0 0 28px rgba(224, 163, 58, 0.18);
+}
+
+html.afro-gold-mode .login-container--luxury .login-title,
+html.afro-gold-mode .login-container .login-title {
+  color: #fff4d6;
+  text-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.72),
+    0 0 20px rgba(224, 163, 58, 0.28);
+}
+
+html.afro-gold-mode .login-container--luxury .login-subtitle,
+html.afro-gold-mode .login-container .login-subtitle {
+  color: #f4dfad;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.68);
+}
+
+html.afro-gold-mode .login-container--luxury .feature-item,
+html.afro-gold-mode .login-container .feature-item {
+  border-color: rgba(247, 200, 100, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 224, 159, 0.1), rgba(224, 163, 58, 0.05)),
+    rgba(5, 4, 3, 0.58);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 224, 159, 0.12),
+    0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+html.afro-gold-mode .login-container--luxury .feature-item p,
+html.afro-gold-mode .login-container .feature-item p {
+  color: #fff3d7;
+  font-weight: 800;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
+html.nature-green-mode .login-container--luxury :is(.login-btn, .signup-btn),
+html.nature-green-mode .login-container :is(.login-btn, .signup-btn),
+html.afro-gold-mode .login-container--luxury :is(.login-btn, .signup-btn),
+html.afro-gold-mode .login-container :is(.login-btn, .signup-btn) {
+  font-weight: 900;
+  text-shadow: none;
 }
 
 html.nature-green-mode .login-container--luxury .signup-btn,
@@ -661,6 +777,37 @@ html.nature-green-mode .login-container--luxury .signup-btn {
 html.afro-gold-mode .login-container--luxury .signup-btn {
   background: linear-gradient(135deg, #f7c864, #c47a1e);
   color: #120d07;
+}
+
+html.afro-gold-mode .login-container--luxury .login-btn,
+html.afro-gold-mode .login-container .login-btn {
+  border-color: rgba(255, 224, 159, 0.42);
+  background: linear-gradient(135deg, #f9d477 0%, #e0a33a 52%, #b8751d 100%);
+  color: #120d07;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 218, 0.58),
+    0 16px 34px rgba(224, 163, 58, 0.2);
+}
+
+html.afro-gold-mode .login-container--luxury .developer-contact-cta,
+html.afro-gold-mode .login-container .developer-contact-cta {
+  background:
+    linear-gradient(180deg, rgba(255, 224, 159, 0.14), rgba(224, 163, 58, 0.08)),
+    linear-gradient(150deg, rgba(40, 31, 19, 0.96), rgba(15, 11, 7, 0.92));
+}
+
+html.afro-gold-mode .login-container--luxury .developer-contact-cta__title,
+html.afro-gold-mode .login-container .developer-contact-cta__title {
+  color: #fff3d7;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.7);
+}
+
+html.afro-gold-mode .login-container--luxury .developer-contact-cta__arrow,
+html.afro-gold-mode .login-container .developer-contact-cta__arrow {
+  border-color: rgba(247, 200, 100, 0.42);
+  background: rgba(255, 243, 215, 0.14);
+  color: #f7c864;
+  font-weight: 800;
 }
 
 html.nature-green-mode :is(.creator-gate-screen, .creator-register-shell, .creator-shell, .creator-policy-shell, .creator-public-page, .crd-shell),

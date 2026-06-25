@@ -309,6 +309,11 @@ export function DisplayAccessibilityPage({ user }) {
       title: "Afro Gold",
       description: "Deep black surfaces, luminous gold, and culture-rich premium accents.",
     },
+    {
+      value: "terra-minimal",
+      title: "Terra Minimal",
+      description: "Warm ivory glass, terracotta accents, and earthy creator-studio calm.",
+    },
   ];
 
   const supportNotes = [

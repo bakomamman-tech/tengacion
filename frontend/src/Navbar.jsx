@@ -950,6 +950,15 @@ export default function Navbar({
           onClick: () => setTheme("afro-gold"),
         },
         {
+          id: "display-terra-minimal",
+          label: "Terra Minimal",
+          description: "Use warm ivory glass, terracotta accents, and earthy creator-studio calm.",
+          glyph: "TM",
+          badge: theme === "terra-minimal" ? "On" : "Off",
+          active: theme === "terra-minimal",
+          onClick: () => setTheme("terra-minimal"),
+        },
+        {
           id: "display-center",
           label: "Display center",
           description: "Open the full page for appearance and accessibility information.",

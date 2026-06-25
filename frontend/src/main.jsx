@@ -26,6 +26,7 @@ import "./features/news/news.css";
 import "./royalty-theme.css";
 import "./peaceful-theme.css";
 import "./nature-afro-themes.css";
+import "./terra-minimal-theme.css";
 
 const initializeThemeEarly = () => {
   if (typeof window === "undefined") {

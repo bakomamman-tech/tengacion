@@ -8,6 +8,7 @@ export const SUPPORTED_THEMES = [
   "dark",
   "royalty",
   "afro-gold",
+  "terra-minimal",
 ];
 
 const THEME_LABELS = {
@@ -17,6 +18,7 @@ const THEME_LABELS = {
   dark: "Dark Mode",
   royalty: "Royalty Mode",
   "afro-gold": "Afro Gold",
+  "terra-minimal": "Terra Minimal",
 };
 
 const DARK_LIKE_THEMES = ["dark", "royalty", "afro-gold"];
@@ -25,6 +27,7 @@ const THEME_MODE_CLASSES = [
   "royalty-mode",
   "nature-green-mode",
   "afro-gold-mode",
+  "terra-minimal-mode",
 ];
 
 export function normalizeThemeValue(value) {
@@ -83,5 +86,6 @@ export function applyThemeToDocument(theme, root = document.documentElement) {
   root.classList.toggle("royalty-mode", nextTheme === "royalty");
   root.classList.toggle("nature-green-mode", nextTheme === "nature-green");
   root.classList.toggle("afro-gold-mode", nextTheme === "afro-gold");
+  root.classList.toggle("terra-minimal-mode", nextTheme === "terra-minimal");
   root.style.colorScheme = getThemeColorScheme(nextTheme);
 }

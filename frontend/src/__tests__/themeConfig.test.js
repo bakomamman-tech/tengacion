@@ -51,6 +51,15 @@ describe("themeConfig", () => {
     expect(getThemeColorScheme("afro-gold")).toBe("dark");
   });
 
+  it("supports and persists Terra Minimal as a light theme", () => {
+    localStorage.setItem(THEME_KEY, "terra-minimal");
+
+    expect(SUPPORTED_THEMES).toContain("terra-minimal");
+    expect(readStoredTheme()).toBe("terra-minimal");
+    expect(getThemeLabel("terra-minimal")).toBe("Terra Minimal");
+    expect(getThemeColorScheme("terra-minimal")).toBe("light");
+  });
+
   it("applies the dark-like royalty document classes", () => {
     const root = document.createElement("div");
 
@@ -58,7 +67,7 @@ describe("themeConfig", () => {
 
     expect(root.dataset.theme).toBe("royalty");
     expect(root).toHaveClass("dark-mode", "royalty-mode");
-    expect(root).not.toHaveClass("nature-green-mode", "afro-gold-mode");
+    expect(root).not.toHaveClass("nature-green-mode", "afro-gold-mode", "terra-minimal-mode");
     expect(root.style.colorScheme).toBe("dark");
   });
 
@@ -73,7 +82,8 @@ describe("themeConfig", () => {
       "dark-mode",
       "royalty-mode",
       "nature-green-mode",
-      "afro-gold-mode"
+      "afro-gold-mode",
+      "terra-minimal-mode"
     );
     expect(root.style.colorScheme).toBe("light");
   });
@@ -85,7 +95,13 @@ describe("themeConfig", () => {
 
     expect(root.dataset.theme).toBe("nature-green");
     expect(root).toHaveClass("nature-green-mode");
-    expect(root).not.toHaveClass("dark-mode", "peaceful-mode", "royalty-mode", "afro-gold-mode");
+    expect(root).not.toHaveClass(
+      "dark-mode",
+      "peaceful-mode",
+      "royalty-mode",
+      "afro-gold-mode",
+      "terra-minimal-mode"
+    );
     expect(root.style.colorScheme).toBe("light");
   });
 
@@ -96,14 +112,37 @@ describe("themeConfig", () => {
 
     expect(root.dataset.theme).toBe("afro-gold");
     expect(root).toHaveClass("dark-mode", "afro-gold-mode");
-    expect(root).not.toHaveClass("peaceful-mode", "royalty-mode", "nature-green-mode");
+    expect(root).not.toHaveClass(
+      "peaceful-mode",
+      "royalty-mode",
+      "nature-green-mode",
+      "terra-minimal-mode"
+    );
     expect(root.style.colorScheme).toBe("dark");
+  });
+
+  it("applies the light-like Terra Minimal document classes", () => {
+    const root = document.createElement("div");
+
+    applyThemeToDocument("terra-minimal", root);
+
+    expect(root.dataset.theme).toBe("terra-minimal");
+    expect(root).toHaveClass("terra-minimal-mode");
+    expect(root).not.toHaveClass(
+      "dark-mode",
+      "peaceful-mode",
+      "royalty-mode",
+      "nature-green-mode",
+      "afro-gold-mode"
+    );
+    expect(root.style.colorScheme).toBe("light");
   });
 
   it("includes Royalty Mode in the theme cycle", () => {
     expect(getNextTheme("dark")).toBe("royalty");
     expect(getNextTheme("royalty")).toBe("afro-gold");
-    expect(getNextTheme("afro-gold")).toBe("light");
+    expect(getNextTheme("afro-gold")).toBe("terra-minimal");
+    expect(getNextTheme("terra-minimal")).toBe("light");
   });
 
   it("includes Nature Green and Peaceful Mode after Light Mode in the theme cycle", () => {

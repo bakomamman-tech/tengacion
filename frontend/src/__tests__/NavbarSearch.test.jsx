@@ -197,7 +197,7 @@ describe("Navbar search", () => {
     expect(setThemeMock).toHaveBeenCalledWith("peaceful");
   });
 
-  it("offers Nature Green and Afro Gold in Display & accessibility", async () => {
+  it("offers Nature Green, Afro Gold, and Terra Minimal in Display & accessibility", async () => {
     const user = userEvent.setup();
 
     render(
@@ -230,6 +230,13 @@ describe("Navbar search", () => {
     await user.click(afroGold);
 
     expect(setThemeMock).toHaveBeenCalledWith("afro-gold");
+
+    const terraMinimal = screen.getByRole("button", { name: /terra minimal/i });
+    expect(terraMinimal).toHaveTextContent(/warm ivory glass, terracotta accents/i);
+
+    await user.click(terraMinimal);
+
+    expect(setThemeMock).toHaveBeenCalledWith("terra-minimal");
   });
 
   it("offers Afro Gold from the account menu for every account role", async () => {

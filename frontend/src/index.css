@@ -21210,6 +21210,27 @@ html.dark-mode .password-toggle-btn:hover {
     gap: 6px;
   }
 
+  .profile-menu {
+    position: fixed;
+    top: auto;
+    right: 8px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    left: 8px;
+    width: auto;
+    max-height: 78vh;
+    max-height: min(78vh, calc(100dvh - 20px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 22px;
+    padding: 10px;
+    z-index: 180;
+  }
+
+  .profile-menu .pm-nav-item {
+    padding: 9px 10px;
+  }
+
   .create-menu-dropdown {
     position: fixed;
     top: 50vh;

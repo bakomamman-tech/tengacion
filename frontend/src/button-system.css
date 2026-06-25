@@ -176,6 +176,43 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+:is(
+  button,
+  [role="button"],
+  .tg-btn,
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-outline,
+  .btn-danger,
+  .login-btn,
+  .signup-btn,
+  .nav-tab,
+  .pillLink,
+  .sidebar-btn,
+  .filter-tab,
+  .category-pill,
+  .account-chip,
+  .composer-chip,
+  .calculator-chip,
+  .creator-primary-btn,
+  .creator-secondary-btn,
+  .creator-ghost-btn,
+  .creator-share-btn,
+  .creator-discovery-chip,
+  .creator-discovery-tab,
+  .creator-discovery-btn,
+  .public-home__button,
+  .public-home__section-link,
+  .public-home__inline-button,
+  .adminx-button,
+  .adminx-button--primary,
+  .tdash-button,
+  .tdash-button--primary
+) :is(span, strong, small, em, b) {
+  color: inherit;
+}
+
 .tg-btn,
 :where(button:not([class]), button[class=""]) {
   --tg-btn-current-height: var(--tg-btn-height-md);

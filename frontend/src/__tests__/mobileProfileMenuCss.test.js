@@ -8,9 +8,10 @@ const cssPath = resolve(dirname(fileURLToPath(import.meta.url)), "../index.css")
 
 function getMobileProfileMenuRule() {
   const css = readFileSync(cssPath, "utf8").replace(/\r\n/g, "\n");
-  const ruleStart = css.indexOf("  .profile-menu {\n    position: fixed;");
+  const anchor = css.indexOf("  .nav-actions-shell {\n    padding: 5px 8px;");
+  const ruleStart = css.indexOf("  .profile-menu {", anchor);
 
-  if (ruleStart === -1) {
+  if (anchor === -1 || ruleStart === -1) {
     return "";
   }
 
@@ -20,12 +21,16 @@ function getMobileProfileMenuRule() {
 }
 
 describe("mobile profile menu CSS", () => {
-  it("keeps the account menu scrollable so all display themes are reachable", () => {
+  it("keeps the mobile account menu anchored and scrollable so all display themes are reachable", () => {
     const rule = getMobileProfileMenuRule();
 
-    expect(rule).toContain("position: fixed;");
+    expect(rule).toContain("position: absolute;");
+    expect(rule).toContain("top: calc(100% + 8px);");
+    expect(rule).toContain("right: 0;");
+    expect(rule).toContain("left: auto;");
     expect(rule).toContain("max-height:");
     expect(rule).toContain("overflow-y: auto;");
     expect(rule).toContain("-webkit-overflow-scrolling: touch;");
+    expect(rule).not.toContain("position: fixed;");
   });
 });

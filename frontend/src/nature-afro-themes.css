@@ -861,6 +861,9 @@ html.nature-green-mode .creator-discovery-theme {
   --creator-discovery-control-active-bg: linear-gradient(135deg, #62aa43, #2f7f2a);
   --creator-discovery-control-active-text: #ffffff;
   --creator-discovery-control-active-border: rgba(47, 127, 42, 0.32);
+  --creator-discovery-meta-bg: rgba(255, 253, 244, 0.96);
+  --creator-discovery-meta-border: rgba(47, 127, 42, 0.22);
+  --creator-discovery-meta-text: #173d20;
 }
 
 html.afro-gold-mode .creator-discovery-theme {
@@ -886,10 +889,14 @@ html.afro-gold-mode .creator-discovery-theme {
   --creator-discovery-control-active-bg: linear-gradient(135deg, #f9d477 0%, #e0a33a 52%, #b8751d 100%);
   --creator-discovery-control-active-text: #120d07;
   --creator-discovery-control-active-border: rgba(255, 224, 159, 0.46);
+  --creator-discovery-meta-bg:
+    linear-gradient(180deg, rgba(36, 28, 17, 0.98), rgba(17, 13, 9, 0.96));
+  --creator-discovery-meta-border: rgba(247, 200, 100, 0.28);
+  --creator-discovery-meta-text: #f7c864;
 }
 
-html.nature-green-mode .creator-discovery-theme :is(.creator-primary-btn, .creator-secondary-btn, .creator-ghost-btn, .creator-share-btn, .creator-discovery-chip, .creator-discovery-tab, .creator-discovery-btn, .creator-preview-modal__action),
-html.afro-gold-mode .creator-discovery-theme :is(.creator-primary-btn, .creator-secondary-btn, .creator-ghost-btn, .creator-share-btn, .creator-discovery-chip, .creator-discovery-tab, .creator-discovery-btn, .creator-preview-modal__action) {
+html.nature-green-mode .creator-discovery-theme :is(.creator-primary-btn, .creator-secondary-btn, .creator-ghost-btn, .creator-share-btn, .creator-discovery-chip, .creator-discovery-tab, .creator-discovery-btn, .creator-preview-modal__action, .creator-summary-card__action, .creator-discovery-card__action),
+html.afro-gold-mode .creator-discovery-theme :is(.creator-primary-btn, .creator-secondary-btn, .creator-ghost-btn, .creator-share-btn, .creator-discovery-chip, .creator-discovery-tab, .creator-discovery-btn, .creator-preview-modal__action, .creator-summary-card__action, .creator-discovery-card__action) {
   font-weight: 900;
   text-shadow: none;
 }

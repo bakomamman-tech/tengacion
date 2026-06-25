@@ -7509,12 +7509,17 @@ html.dark-mode .create-menu-empty {
   top: calc(100% + 8px);
   right: 0;
   width: min(360px, calc(100vw - 24px));
+  max-height: 80vh;
+  max-height: min(80vh, calc(100dvh - 96px));
   border: 1px solid var(--border);
   background: var(--surface);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   padding: 12px;
   z-index: 14;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   animation: dropdownIn 0.18s ease both;
 }
 

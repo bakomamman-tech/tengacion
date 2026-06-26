@@ -4,6 +4,7 @@
  */
 
 html.terra-minimal-mode {
+  --terra-minimal-studio-bg: url("/assets/terra-minimal-studio-background.jpg");
   --bg: #f1e8dd;
   --bg-layer:
     radial-gradient(circle at 11% 8%, rgba(255, 253, 246, 0.96), transparent 34%),
@@ -113,7 +114,19 @@ html.terra-minimal-mode {
 
 html.terra-minimal-mode body {
   background-color: #f1e8dd;
-  background-image: var(--bg-layer);
+  background-image:
+    linear-gradient(180deg, rgba(255, 250, 242, 0.42), rgba(241, 225, 208, 0.32) 48%, rgba(234, 216, 198, 0.44)),
+    var(--terra-minimal-studio-bg),
+    var(--bg-layer);
+  background-position:
+    center,
+    center top,
+    center;
+  background-size:
+    cover,
+    cover,
+    cover;
+  background-repeat: no-repeat;
   background-attachment: fixed;
 }
 
@@ -123,10 +136,10 @@ html.terra-minimal-mode body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: 0.56;
+  opacity: 0.36;
   background:
-    linear-gradient(118deg, transparent 0 18%, rgba(190, 92, 49, 0.07) 18.2%, transparent 18.5%),
-    linear-gradient(246deg, transparent 0 78%, rgba(98, 91, 51, 0.07) 78.2%, transparent 78.55%);
+    linear-gradient(118deg, transparent 0 18%, rgba(190, 92, 49, 0.06) 18.2%, transparent 18.5%),
+    linear-gradient(246deg, transparent 0 78%, rgba(98, 91, 51, 0.06) 78.2%, transparent 78.55%);
 }
 
 html.terra-minimal-mode .navbar,

@@ -5,6 +5,7 @@
 :root {
   --bg: #dfe9e1;
   --bg-layer: radial-gradient(circle at 12% 14%, #f4faf3 0%, #e4ede5 34%, #cfdcd2 100%);
+  --light-mode-studio-bg: url("/assets/light-mode-leaf-studio-background.jpg");
   --surface: #f2eee1;
   --surface-soft: #f8f5eb;
   --surface-strong: #d7e3d7;
@@ -2132,6 +2133,24 @@ body {
   font-family: "Nunito Sans", "Trebuchet MS", "Segoe UI", sans-serif;
   color: var(--text);
   background: var(--bg-layer);
+  background-attachment: fixed;
+}
+
+html:not(.dark-mode):not(.peaceful-mode):not(.nature-green-mode):not(.terra-minimal-mode) body {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(180deg, rgba(246, 250, 243, 0.36), rgba(228, 237, 229, 0.28) 48%, rgba(207, 220, 210, 0.42)),
+    var(--light-mode-studio-bg),
+    var(--bg-layer);
+  background-position:
+    center,
+    center top,
+    center;
+  background-size:
+    cover,
+    cover,
+    cover;
+  background-repeat: no-repeat;
   background-attachment: fixed;
 }
 

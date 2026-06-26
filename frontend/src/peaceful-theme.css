@@ -12,6 +12,7 @@ html.peaceful-mode {
     radial-gradient(circle at 92% 26%, rgba(110, 188, 230, 0.16), transparent 29%),
     radial-gradient(circle at 50% 108%, rgba(238, 186, 86, 0.14), transparent 34%),
     linear-gradient(145deg, #f5edef 0%, #fffdf9 46%, #eef4fb 100%);
+  --peaceful-leaf-studio-bg: url("/assets/peaceful-mode-leaf-studio-background.jpg");
   --surface: #fffaf7;
   --surface-soft: #f8f2f2;
   --surface-strong: #ece7f1;
@@ -117,7 +118,19 @@ html.peaceful-mode {
 
 html.peaceful-mode body {
   background-color: #f7f2f1;
-  background-image: var(--bg-layer);
+  background-image:
+    linear-gradient(180deg, rgba(255, 253, 251, 0.42), rgba(246, 240, 244, 0.3) 46%, rgba(238, 244, 251, 0.36)),
+    var(--peaceful-leaf-studio-bg),
+    var(--bg-layer);
+  background-position:
+    center,
+    center top,
+    center;
+  background-size:
+    cover,
+    cover,
+    cover;
+  background-repeat: no-repeat;
   background-attachment: fixed;
 }
 
@@ -127,7 +140,7 @@ html.peaceful-mode body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: 0.58;
+  opacity: 0.34;
   background:
     linear-gradient(116deg, transparent 0 22%, rgba(212, 164, 76, 0.08) 22.2%, transparent 22.55%),
     linear-gradient(246deg, transparent 0 75%, rgba(107, 86, 191, 0.08) 75.2%, transparent 75.55%);

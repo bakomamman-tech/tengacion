@@ -22223,11 +22223,17 @@ html.dark-mode .password-toggle-btn:hover {
   --ms-peer-bg: #f0f2f5;
   --ms-input-bg: #f0f2f5;
   --ms-text: #050505;
+  --ms-out-text: #ffffff;
   --ms-muted: #65676b;
   --ms-border: #e4e6eb;
   --ms-accent: var(--brand);
   --ms-accent-strong: var(--brand-strong);
   --ms-accent-gradient: linear-gradient(135deg, var(--ms-accent), var(--ms-accent-strong));
+  --ms-out-bg: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--ms-accent) 88%, #000000 12%),
+    color-mix(in srgb, var(--ms-accent-strong) 84%, #000000 16%)
+  );
   --ms-header-shadow: 0 2px 8px rgba(15, 23, 42, 0.14);
   --ms-panel-shadow: 0 18px 44px rgba(15, 23, 42, 0.16);
   border: 1px solid var(--ms-border) !important;
@@ -22251,6 +22257,11 @@ html.dark-mode .messenger {
   --ms-border: color-mix(in srgb, var(--border) 74%, transparent);
   --ms-accent: var(--brand);
   --ms-accent-strong: var(--brand-strong);
+  --ms-out-bg: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--ms-accent) 45%, #03140d 55%),
+    color-mix(in srgb, var(--ms-accent-strong) 42%, #020806 58%)
+  );
   --ms-header-shadow: 0 2px 10px rgba(0, 0, 0, 0.34);
   --ms-panel-shadow: 0 22px 56px rgba(0, 0, 0, 0.42);
 }
@@ -22508,6 +22519,12 @@ html.dark-mode .msg-bubble {
   box-shadow: none !important;
 }
 
+.message-row.me .msg-bubble,
+html.dark-mode .message-row.me .msg-bubble {
+  background: var(--ms-out-bg) !important;
+  color: var(--ms-out-text) !important;
+}
+
 .msg-bubble--text,
 .msg-bubble--reminder {
   min-width: 0 !important;
@@ -22541,7 +22558,25 @@ html.dark-mode .msg-bubble {
 
 .message-row.me .msg-text,
 html.dark-mode .message-row.me .msg-text {
-  color: #ffffff !important;
+  color: var(--ms-out-text) !important;
+}
+
+.msg-text,
+.message-row.them .msg-text,
+html.dark-mode .msg-text,
+html.dark-mode .message-row.them .msg-text {
+  color: var(--ms-text) !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  line-height: 1.42 !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+  text-rendering: optimizeLegibility;
+}
+
+.message-row.me .msg-text,
+html.dark-mode .message-row.me .msg-text {
+  color: var(--ms-out-text) !important;
 }
 
 .msg-reply-preview {

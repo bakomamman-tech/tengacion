@@ -353,14 +353,28 @@ html.terra-minimal-mode :is(.thread-item, .messenger-mobile-chip, .messenger-mob
   background: linear-gradient(180deg, rgba(255, 250, 242, 0.74), rgba(241, 225, 208, 0.56));
 }
 
-html.terra-minimal-mode .message-row.me .msg-text {
+html.terra-minimal-mode .message-row.me .msg-bubble {
   background: linear-gradient(135deg, #9a3f21, #5f2b1b);
-  color: #fff8ef;
+  color: #fff8ef !important;
+}
+
+html.terra-minimal-mode .message-row.them .msg-bubble {
+  background: linear-gradient(180deg, rgba(255, 250, 242, 0.88), rgba(239, 221, 203, 0.78));
+  color: #321d13 !important;
+}
+
+html.terra-minimal-mode .message-row.me .msg-text,
+html.terra-minimal-mode .message-row.them .msg-text {
+  background: transparent;
+  text-shadow: none;
+}
+
+html.terra-minimal-mode .message-row.me .msg-text {
+  color: #fff8ef !important;
 }
 
 html.terra-minimal-mode .message-row.them .msg-text {
-  background: linear-gradient(180deg, rgba(255, 250, 242, 0.88), rgba(239, 221, 203, 0.78));
-  color: #321d13;
+  color: #321d13 !important;
 }
 
 html.terra-minimal-mode .sidebar-raffle-card {

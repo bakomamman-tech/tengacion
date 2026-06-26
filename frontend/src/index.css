@@ -4625,6 +4625,253 @@ html.dark-mode .game-mushroom-controls button:hover {
   }
 }
 
+.game-racer-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.game-racer-kicker {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--brand-strong) 74%, var(--muted) 26%);
+}
+
+.game-racer-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.game-racer-head h3 {
+  margin: 0;
+}
+
+.game-racer-head p {
+  margin: 8px 0 0;
+  max-width: 640px;
+  color: var(--muted);
+}
+
+.game-racer-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.game-racer-stats > div,
+.game-racer-side-card,
+.game-racer-controls button {
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+}
+
+.game-racer-stats span,
+.game-racer-side-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.game-racer-stats strong,
+.game-racer-side-card strong {
+  display: block;
+  margin-top: 6px;
+}
+
+.game-racer-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.42fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.game-racer-canvas-shell {
+  position: relative;
+  overflow: hidden;
+  border-radius: 34px;
+  border: 1px solid transparent;
+}
+
+.game-racer-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 960 / 520;
+  border-radius: inherit;
+}
+
+.game-racer-overlay {
+  position: absolute;
+  inset: 18px;
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 28px;
+  text-align: center;
+  backdrop-filter: blur(14px);
+}
+
+.game-racer-overlay strong {
+  font-size: clamp(22px, 2.2vw, 30px);
+  letter-spacing: -0.04em;
+}
+
+.game-racer-overlay p,
+.game-racer-side-card p {
+  margin: 0;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.game-racer-overlay-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.game-racer-aside {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.game-racer-progress {
+  height: 10px;
+  margin-top: 14px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.game-racer-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.game-racer-controls {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.game-racer-controls button {
+  min-height: 50px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.game-racer-controls button:hover {
+  transform: translateY(-2px);
+}
+
+html:not(.dark-mode) .game-racer-stats > div,
+html:not(.dark-mode) .game-racer-side-card,
+html:not(.dark-mode) .game-racer-controls button {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(71, 126, 89, 0.14);
+}
+
+html:not(.dark-mode) .game-racer-canvas-shell {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.28), transparent 32%),
+    linear-gradient(180deg, rgba(255, 227, 111, 0.14), rgba(31, 143, 209, 0.16));
+  border-color: rgba(71, 126, 89, 0.14);
+  box-shadow: 0 22px 48px rgba(35, 84, 55, 0.14);
+}
+
+html:not(.dark-mode) .game-racer-overlay {
+  background: rgba(247, 252, 247, 0.88);
+  border: 1px solid rgba(71, 126, 89, 0.16);
+}
+
+html:not(.dark-mode) .game-racer-progress {
+  background: rgba(27, 83, 61, 0.12);
+}
+
+html:not(.dark-mode) .game-racer-progress span {
+  background: linear-gradient(90deg, #ffe36f, #f05f42 52%, #1f8fd1 100%);
+}
+
+html:not(.dark-mode) .game-racer-controls button:hover {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(54, 113, 74, 0.24);
+  box-shadow: 0 16px 30px rgba(49, 106, 68, 0.1);
+}
+
+html.dark-mode .game-racer-stats > div,
+html.dark-mode .game-racer-side-card,
+html.dark-mode .game-racer-controls button {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(102, 166, 125, 0.14);
+}
+
+html.dark-mode .game-racer-canvas-shell {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.1), transparent 32%),
+    linear-gradient(180deg, rgba(83, 47, 24, 0.42), rgba(18, 48, 72, 0.46));
+  border-color: rgba(102, 166, 125, 0.16);
+  box-shadow: 0 26px 54px rgba(0, 0, 0, 0.32);
+}
+
+html.dark-mode .game-racer-overlay {
+  background: rgba(6, 18, 26, 0.86);
+  border: 1px solid rgba(102, 166, 125, 0.16);
+}
+
+html.dark-mode .game-racer-progress {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html.dark-mode .game-racer-progress span {
+  background: linear-gradient(90deg, #ffe36f, #ff735b 52%, #43b8ff 100%);
+}
+
+html.dark-mode .game-racer-controls button:hover {
+  background: rgba(101, 180, 132, 0.14);
+  border-color: rgba(139, 208, 167, 0.24);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.22);
+}
+
+@media (max-width: 1280px) {
+  .game-racer-stage {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .game-racer-head,
+  .game-racer-overlay-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .game-racer-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .game-racer-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .game-racer-canvas-shell {
+    border-radius: 26px;
+  }
+}
+
 html:not(.dark-mode) .gaming-page-shell {
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), transparent 30%),

@@ -5,6 +5,7 @@ import Navbar from "../Navbar";
 import ChessRoom from "../components/gaming/ChessRoom";
 import MemoryAtlas from "../components/gaming/MemoryAtlas";
 import MushroomRun from "../components/gaming/MushroomRun";
+import TengacionRacer from "../components/gaming/TengacionRacer";
 import Tengacion2048 from "../components/gaming/Tengacion2048";
 import SnakeXavia from "../components/gaming/SnakeXavia";
 import TengacionTetris from "../components/gaming/TengacionTetris";
@@ -50,6 +51,26 @@ const GAME_LIBRARY = [
       "Three pace modes change how each run feels.",
       "The board now supports touch steering for phone-first play.",
       "Pause, resume, and restart flow feels cleaner mid-session.",
+    ],
+    builtInLabel: "Built inside Tengacion",
+  },
+  {
+    id: "tengacion-racer",
+    title: "Tengacion Racer",
+    genre: "Racing",
+    status: "Playable now",
+    playable: true,
+    accent: "linear-gradient(145deg, #ffe36f 0%, #f05f42 44%, #1f8fd1 100%)",
+    summary: "A live top-down racing lane with traffic dodges, boost tokens, and score-chasing overtakes.",
+    description:
+      "Thread a fast car through four road lanes, collect boost tokens, avoid traffic, and keep your vehicle intact while distance and speed keep climbing.",
+    difficulty: "Reflex-based",
+    session: "2-8 min",
+    controls: "Arrow keys, WASD, Space, or touch",
+    highlights: [
+      "Traffic spawns across four lanes so every run asks for quick reads.",
+      "Boost tokens and clean overtakes refill your tank for faster straightaways.",
+      "Best score, best distance, tokens, and overtakes stay saved locally on this device.",
     ],
     builtInLabel: "Built inside Tengacion",
   },
@@ -210,7 +231,7 @@ const GAMING_VIEWS = [
   },
 ];
 
-const GAME_CATEGORIES = ["All", "Puzzle", "Arcade", "Word", "Strategy", "Board"];
+const GAME_CATEGORIES = ["All", "Puzzle", "Arcade", "Racing", "Word", "Strategy", "Board"];
 
 const readSavedGames = () => {
   if (typeof window === "undefined") {
@@ -231,7 +252,7 @@ export default function GamingPage({ user }) {
   const [activeView, setActiveView] = useState("play");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
-  const [selectedGameId, setSelectedGameId] = useState("2048-classic");
+  const [selectedGameId, setSelectedGameId] = useState("tengacion-racer");
   const [savedGameIds, setSavedGameIds] = useState(() => readSavedGames());
   const [lastSession, setLastSession] = useState({
     score: 0,
@@ -248,6 +269,11 @@ export default function GamingPage({ user }) {
     distance: 0,
     hearts: 3,
     wins: 0,
+    speed: 0,
+    overtakes: 0,
+    boost: 72,
+    damage: 0,
+    integrity: 100,
     lastPlaced: "T",
     gameOver: false,
     game: "2048-classic",
@@ -300,9 +326,12 @@ export default function GamingPage({ user }) {
   const isTetrisSession = lastSession.game === "tengacion-tetris";
   const isMemorySession = lastSession.game === "memory-atlas";
   const isMushroomSession = lastSession.game === "mushroom-run";
+  const isRacerSession = lastSession.game === "tengacion-racer";
   const lastPlayedTitle =
     lastSession.game === "snake-xavia"
       ? "Snake Xavia"
+      : lastSession.game === "tengacion-racer"
+        ? "Tengacion Racer"
       : lastSession.game === "mushroom-run"
         ? "Mushroom Run"
       : lastSession.game === "chess-room"
@@ -345,6 +374,39 @@ export default function GamingPage({ user }) {
           meta: "Shortlisted titles ready to reopen from this page.",
         },
       ]
+    : isRacerSession
+      ? [
+          {
+            title: "Last lane touched",
+            value: lastPlayedTitle,
+            meta: "The most recent racing lane you opened on this device.",
+          },
+          {
+            title: "Best score",
+            value: lastSession.bestScore || 0,
+            meta: "Highest Tengacion Racer score stored locally in this browser.",
+          },
+          {
+            title: "Top distance",
+            value: lastSession.bestDistance || lastSession.distance || 0,
+            meta: "Furthest racing distance saved from the current or best run.",
+          },
+          {
+            title: "Clean overtakes",
+            value: lastSession.overtakes || 0,
+            meta: "Traffic cars passed without contact during the latest race.",
+          },
+          {
+            title: "Boost and integrity",
+            value: `${lastSession.boost || 0}% / ${lastSession.integrity ?? 100}%`,
+            meta: "Remaining boost tank and vehicle integrity from the live road.",
+          },
+          {
+            title: "Saved games",
+            value: savedGames.length,
+            meta: "Shortlisted titles ready to reopen from this page.",
+          },
+        ]
     : isMushroomSession
       ? [
           {
@@ -545,6 +607,10 @@ export default function GamingPage({ user }) {
 
     if (featuredGame.id === "mushroom-run") {
       return <MushroomRun onSessionChange={setLastSession} />;
+    }
+
+    if (featuredGame.id === "tengacion-racer") {
+      return <TengacionRacer onSessionChange={setLastSession} />;
     }
 
     if (featuredGame.id === "memory-atlas") {
@@ -772,6 +838,8 @@ export default function GamingPage({ user }) {
               <small>
                 {isChessSession
                   ? lastSession.status || "White to move"
+                  : isRacerSession
+                    ? lastSession.status || "Race in motion"
                   : isMushroomSession
                     ? lastSession.status || "Course in motion"
                   : isMemorySession
@@ -786,9 +854,15 @@ export default function GamingPage({ user }) {
 
             <div className="gaming-stat-list">
               <div>
-                <span>{isChessSession ? "Turn" : "Current score"}</span>
+                <span>{isChessSession ? "Turn" : isRacerSession ? "Speed" : "Current score"}</span>
                 <strong>
-                  {isChessSession ? (lastSession.turn === "b" ? "Black" : "White") : lastSession.score || 0}
+                  {isChessSession
+                    ? lastSession.turn === "b"
+                      ? "Black"
+                      : "White"
+                    : isRacerSession
+                      ? `${lastSession.speed || 0} km/h`
+                      : lastSession.score || 0}
                 </strong>
               </div>
               <div>
@@ -799,6 +873,8 @@ export default function GamingPage({ user }) {
                 <span>
                   {isChessSession
                     ? "White capture"
+                    : isRacerSession
+                      ? "Overtakes"
                     : isMushroomSession
                       ? "Coins"
                     : isMemorySession
@@ -812,6 +888,8 @@ export default function GamingPage({ user }) {
                 <strong>
                   {isChessSession
                     ? lastSession.capturedWhiteValue || 0
+                    : isRacerSession
+                      ? lastSession.overtakes || 0
                     : isMushroomSession
                       ? lastSession.coins || 0
                     : isMemorySession
@@ -825,6 +903,8 @@ export default function GamingPage({ user }) {
                 <span>
                   {isChessSession
                     ? "Black capture"
+                    : isRacerSession
+                      ? "Distance"
                     : isMushroomSession
                       ? "Distance"
                     : isMemorySession
@@ -836,6 +916,8 @@ export default function GamingPage({ user }) {
                 <strong>
                   {isChessSession
                     ? lastSession.capturedBlackValue || 0
+                    : isRacerSession
+                      ? lastSession.distance || 0
                     : isMushroomSession
                       ? lastSession.distance || 0
                     : isMemorySession

@@ -6,6 +6,7 @@ import ChessRoom from "../ChessRoom";
 import MemoryAtlas from "../MemoryAtlas";
 import MushroomRun from "../MushroomRun";
 import SnakeXavia from "../SnakeXavia";
+import TengacionRacer from "../TengacionRacer";
 import Tengacion2048 from "../Tengacion2048";
 import TengacionTetris from "../TengacionTetris";
 
@@ -27,6 +28,12 @@ const LIVE_GAMES = [
     Component: MushroomRun,
     controlsName: /mushroom run play controls/i,
     surfaceSelector: ".game-mushroom-canvas-shell",
+  },
+  {
+    name: "Tengacion Racer",
+    Component: TengacionRacer,
+    controlsName: /tengacion racer play controls/i,
+    surfaceSelector: ".game-racer-canvas-shell",
   },
   {
     name: "Tetris",

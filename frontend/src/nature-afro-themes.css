@@ -620,6 +620,133 @@ html.nature-green-mode .public-home__inline-button {
   color: #ffffff;
 }
 
+html.nature-green-mode .public-home :is(
+  .public-home__section-head h2,
+  .public-home__subhead h3,
+  .public-home__band h2,
+  .public-home__proof-card strong,
+  .public-home-leader__body strong,
+  .public-home-release__body strong,
+  .public-home-activity strong,
+  .public-home-path strong,
+  .public-home__empty strong,
+  .public-home-creator__body strong,
+  .public-home-benefit strong,
+  .public-home__tile span,
+  .public-home-commerce strong
+) {
+  color: #173d20;
+  text-shadow: none;
+}
+
+html.nature-green-mode .public-home :is(
+  .public-home__section-head p:not(.public-home__eyebrow),
+  .public-home__tile p,
+  .public-home-path p,
+  .public-home-release__body p,
+  .public-home-activity p,
+  .public-home__empty p,
+  .public-home-creator__body p,
+  .public-home-benefit p,
+  .public-home__proof-card p
+) {
+  color: #405f36;
+  text-shadow: none;
+}
+
+html.nature-green-mode .public-home :is(
+  .public-home__section .public-home__eyebrow,
+  .public-home__band .public-home__eyebrow,
+  .public-home__subhead a,
+  .public-home-release__body span,
+  .public-home-activity span,
+  .public-home-creator__body > span,
+  .public-home-creator__badges em,
+  .public-home-leader__role,
+  .public-home-release__body small,
+  .public-home-activity small,
+  .public-home-creator__meta small
+) {
+  color: #1f5f1d;
+  text-shadow: none;
+}
+
+html.nature-green-mode .public-home__hero {
+  --home-gold: #d5f08f;
+  --home-gold-light: #f2ffd7;
+  --home-text: #f8fff2;
+  --home-muted: #dbe8cf;
+  color: #f8fff2;
+  background:
+    linear-gradient(90deg, rgba(4, 18, 10, 0.78), rgba(9, 42, 25, 0.66) 52%, rgba(7, 30, 18, 0.7)),
+    radial-gradient(circle at 50% 2%, rgba(255, 247, 230, 0.13), transparent 22rem),
+    radial-gradient(circle at 78% 58%, rgba(106, 167, 114, 0.2), transparent 22rem),
+    radial-gradient(circle at 12% 72%, rgba(42, 111, 79, 0.3), transparent 26rem),
+    linear-gradient(116deg, #09150f 0%, #0e2d1c 54%, #081f14 100%);
+}
+
+html.nature-green-mode .public-home__hero-inner::before {
+  border-color: rgba(242, 255, 215, 0.2);
+  background:
+    linear-gradient(135deg, rgba(7, 28, 16, 0.82), rgba(5, 18, 11, 0.64)),
+    rgba(5, 18, 11, 0.62);
+}
+
+html.nature-green-mode .public-home__hero h1 {
+  color: #f2ffd7;
+  background: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  filter: none;
+  text-shadow:
+    0 3px 18px rgba(0, 0, 0, 0.68),
+    0 0 26px rgba(11, 40, 22, 0.42);
+}
+
+html.nature-green-mode .public-home__hero :is(
+  .public-home__lede,
+  .public-home__action-line,
+  .public-home__hero-proof span
+) {
+  color: #f8fff2;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.56);
+}
+
+html.nature-green-mode .public-home__hero .public-home__eyebrow {
+  color: #d5f08f;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.48);
+}
+
+html.nature-green-mode .public-home__nav {
+  color: #173d20;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 244, 0.97), rgba(241, 248, 231, 0.94)),
+    rgba(255, 253, 244, 0.92);
+}
+
+html.nature-green-mode .public-home__brand span {
+  color: #173d20;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+html.nature-green-mode .public-home__nav-actions a:not(:last-child),
+html.nature-green-mode .public-home__trust-links a {
+  border-color: rgba(47, 127, 42, 0.2);
+  color: #173d20;
+  background: rgba(255, 253, 244, 0.78);
+  text-shadow: none;
+}
+
+html.nature-green-mode .public-home__nav-actions a:not(:last-child):hover,
+html.nature-green-mode .public-home__nav-actions a:not(:last-child):focus-visible,
+html.nature-green-mode .public-home__trust-links a:hover,
+html.nature-green-mode .public-home__trust-links a:focus-visible {
+  border-color: rgba(47, 127, 42, 0.42);
+  color: #0f2d14;
+  background: rgba(255, 255, 255, 0.94);
+}
+
 html.afro-gold-mode .public-home__button--primary,
 html.afro-gold-mode .public-home__nav-actions a:last-child,
 html.afro-gold-mode .public-home__section-link,
@@ -717,6 +844,83 @@ html.nature-green-mode .login-container--luxury .feature-item p,
 html.nature-green-mode .login-container .feature-item p {
   color: #173d20;
   font-weight: 800;
+}
+
+html.nature-green-mode .login-container--luxury,
+html.nature-green-mode .login-container {
+  color: #182315;
+}
+
+html.nature-green-mode .login-container--luxury :is(
+  .login-box h2,
+  .login-title,
+  .feature-item p,
+  .developer-contact-cta__title,
+  .developer-contact-cta__arrow,
+  .login-box strong,
+  .account-note-card strong
+),
+html.nature-green-mode .login-container :is(
+  .login-box h2,
+  .login-title,
+  .feature-item p,
+  .developer-contact-cta__title,
+  .developer-contact-cta__arrow,
+  .login-box strong,
+  .account-note-card strong
+) {
+  color: #173d20;
+  text-shadow: none;
+}
+
+html.nature-green-mode .login-container--luxury :is(
+  .login-subtitle,
+  .login-divider,
+  .login-box .account-note-card p,
+  .login-box .account-inline-message,
+  .auth-qr-placeholder
+),
+html.nature-green-mode .login-container :is(
+  .login-subtitle,
+  .login-divider,
+  .login-box .account-note-card p,
+  .login-box .account-inline-message,
+  .auth-qr-placeholder
+) {
+  color: #405f36;
+  text-shadow: none;
+}
+
+html.nature-green-mode .login-container--luxury :is(
+  .forgot-password,
+  .login-footer-links a,
+  .login-box .password-toggle-btn
+),
+html.nature-green-mode .login-container :is(
+  .forgot-password,
+  .login-footer-links a,
+  .login-box .password-toggle-btn
+) {
+  color: #1f5f1d;
+}
+
+html.nature-green-mode .login-container--luxury input.login-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+html.nature-green-mode .login-container input.login-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]) {
+  color: #182315;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbf0 100%);
+}
+
+html.nature-green-mode .login-container--luxury input.login-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"])::placeholder,
+html.nature-green-mode .login-container input.login-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"])::placeholder {
+  color: #4f6848;
+  opacity: 1;
+}
+
+html.nature-green-mode .login-container--luxury .login-btn,
+html.nature-green-mode .login-container .login-btn {
+  color: #ffffff;
+  background: linear-gradient(135deg, #3f9135, #1f681f);
+  text-shadow: none;
 }
 
 html.afro-gold-mode .login-container--luxury .login-left,

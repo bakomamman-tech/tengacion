@@ -33,4 +33,17 @@ describe("Nature Green theme CSS", () => {
     expect(natureBodyRule).toContain("background-attachment: fixed;");
     expect(afroBodyRule).not.toContain("nature-green-leaf-background.png");
   });
+
+  it("keeps public landing and login text readable in Nature Green", () => {
+    const css = readFileSync(cssPath, "utf8").replace(/\r\n/g, "\n");
+
+    expect(css).toContain("html.nature-green-mode .public-home__hero h1");
+    expect(css).toContain("color: #f2ffd7;");
+    expect(css).toContain("html.nature-green-mode .public-home__nav-actions a:not(:last-child)");
+    expect(css).toContain("color: #173d20;");
+    expect(css).toContain("html.nature-green-mode .login-container--luxury input.login-input");
+    expect(css).toContain("color: #182315;");
+    expect(css).toContain("html.nature-green-mode .login-container--luxury :is(");
+    expect(css).toContain(".forgot-password,");
+  });
 });

@@ -5,12 +5,12 @@
  */
 
 html.nature-green-mode {
-  --nature-green-leaf-bg: url("/assets/nature-green-leaf-background.png");
-  --bg: #f1f7ec;
+  --nature-green-leaf-bg: url("/assets/nature-green-leaf-background-v2.jpg");
+  --bg: #edf8e6;
   --bg-layer:
-    radial-gradient(circle at 13% 18%, rgba(119, 166, 64, 0.14) 0 8%, transparent 26%),
-    radial-gradient(circle at 88% 16%, rgba(47, 127, 42, 0.12) 0 9%, transparent 27%),
-    linear-gradient(180deg, #fbfaf1 0%, #f1f7ec 45%, #e6f1df 100%);
+    radial-gradient(circle at 13% 18%, rgba(88, 157, 42, 0.2) 0 8%, transparent 26%),
+    radial-gradient(circle at 88% 16%, rgba(29, 132, 37, 0.16) 0 9%, transparent 27%),
+    linear-gradient(180deg, #f7fff0 0%, #eaf7df 45%, #d8edc9 100%);
   --surface: #fffdf4;
   --surface-soft: #f5faee;
   --surface-strong: #e6f0d9;
@@ -317,20 +317,16 @@ html.afro-gold-mode {
 }
 
 html.nature-green-mode body {
-  background-color: #f1f7ec;
+  background-color: #edf8e6;
   background-image:
-    linear-gradient(180deg, rgba(255, 253, 244, 0.54), rgba(241, 247, 236, 0.44) 42%, rgba(230, 241, 223, 0.62)),
+    linear-gradient(180deg, rgba(247, 255, 238, 0.28), rgba(234, 248, 224, 0.2) 42%, rgba(213, 239, 201, 0.34)),
     var(--nature-green-leaf-bg),
     var(--bg-layer);
   background-position:
     center,
     center top,
-    center,
-    center,
     center;
   background-size:
-    cover,
-    cover,
     cover,
     cover,
     cover;
@@ -355,11 +351,11 @@ html.afro-gold-mode body::before {
 }
 
 html.nature-green-mode body::before {
-  opacity: 0.58;
+  opacity: 0.34;
   background:
-    radial-gradient(circle at 10% 26%, rgba(119, 166, 64, 0.18), transparent 24%),
-    radial-gradient(circle at 92% 20%, rgba(47, 127, 42, 0.14), transparent 26%),
-    linear-gradient(90deg, rgba(255, 253, 244, 0.58), transparent 22%, transparent 78%, rgba(255, 253, 244, 0.5));
+    radial-gradient(circle at 10% 26%, rgba(88, 157, 42, 0.22), transparent 24%),
+    radial-gradient(circle at 92% 20%, rgba(29, 132, 37, 0.18), transparent 26%),
+    linear-gradient(90deg, rgba(247, 255, 236, 0.32), transparent 24%, transparent 76%, rgba(235, 249, 224, 0.28));
   mix-blend-mode: soft-light;
 }
 
@@ -368,14 +364,10 @@ html.nature-green-mode body::before {
     background-position:
       center,
       center top,
-      center,
-      center,
       center;
     background-size:
       cover,
       auto 100dvh,
-      cover,
-      cover,
       cover;
   }
 }

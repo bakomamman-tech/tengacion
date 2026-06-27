@@ -130,6 +130,13 @@ export function SettingsHubPage({ user }) {
       note: "Shape the spoken Tengacion welcome",
       path: "/settings/sound",
     },
+    {
+      id: "account-deletion",
+      label: "Delete account",
+      description: "Permanently delete your account and associated personal content.",
+      note: "Open account deletion controls",
+      path: "/account-deletion",
+    },
   ];
 
   const recommendedSteps = [

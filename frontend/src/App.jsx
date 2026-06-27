@@ -51,6 +51,7 @@ const TermsPage = lazy(() => import("./pages/Terms"));
 const CopyrightPolicyPage = lazy(() => import("./pages/CopyrightPolicy"));
 const PublicContactPage = lazy(() => import("./pages/PublicContactPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicy"));
+const AccountDeletionPage = lazy(() => import("./pages/AccountDeletion"));
 const CommunityGuidelinesPage = lazy(() => import("./pages/CommunityGuidelines"));
 const AdminReportsPage = lazy(() => import("./pages/AdminReports"));
 const AdminContentPage = lazy(() => import("./pages/AdminContent"));
@@ -202,6 +203,7 @@ export default function App() {
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/copyright-policy" element={<CopyrightPolicyPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/account-deletion" element={<AccountDeletionPage />} />
           <Route path="/community-guidelines" element={<CommunityGuidelinesPage />} />
           <Route path="/find-creators" element={<FindCreatorsPage />} />
           <Route path="/music" element={<PublicCategoryPage category="music" />} />

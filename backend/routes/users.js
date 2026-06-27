@@ -21,6 +21,8 @@ const {
   sanitizePhoneValue,
 } = require("../utils/profileFields");
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
+const { deleteAccount } = require("../services/accountDeletionService");
+const { disconnectUserSockets } = require("../utils/realtimeSessions");
 
 const router = express.Router();
 
@@ -289,6 +291,48 @@ router.get("/me", auth, async (req, res) => {
     return res.json(user);
   } catch {
     return res.status(500).json({ error: "Failed to load profile" });
+  }
+});
+
+/* ================= DELETE MY ACCOUNT ================= */
+router.delete("/me", auth, async (req, res) => {
+  try {
+    if (String(req.body?.confirmation || "").trim() !== "DELETE") {
+      return res.status(400).json({ error: "Type DELETE to confirm account deletion" });
+    }
+
+    const user = await User.findById(req.user.id).select("+password");
+    if (!user || user.isDeleted) {
+      return res.status(404).json({ error: "Account not found" });
+    }
+    if (["admin", "moderator", "super_admin", "trust_safety_admin"].includes(user.role)) {
+      return res.status(403).json({
+        error: "Administrative accounts must transfer their responsibilities before deletion",
+      });
+    }
+
+    const password = String(req.body?.password || "");
+    if (!password || !(await user.comparePassword(password))) {
+      return res.status(401).json({ error: "Your current password is incorrect" });
+    }
+
+    const result = await deleteAccount(user);
+    disconnectUserSockets(req.app, user._id, {
+      code: "ACCOUNT_DELETED",
+      message: "Your Tengacion account was deleted.",
+    });
+
+    return res.json({
+      success: true,
+      ...result,
+      message: "Your account and associated personal content were deleted.",
+    });
+  } catch (err) {
+    console.error("Self-service account deletion failed:", req.requestId, err);
+    return res.status(500).json({
+      error: "Account deletion could not be completed. Please try again or contact support.",
+      requestId: req.requestId,
+    });
   }
 });
 

@@ -12,6 +12,7 @@ import {
   setSessionAccessToken,
 } from "./authSession";
 import { UPLOAD_LIMITS } from "./config/uploadLimits";
+import { assertExternalDigitalCheckoutAllowed } from "./runtimePlatform";
 
 const normalizeApiBase = (value) => {
   const raw = String(value || "").trim();
@@ -157,7 +158,7 @@ const refreshSession = async () => {
   refreshPromise = withTimeout(
     fetch(`${API_BASE}/auth/refresh`, {
       method: "POST",
-      credentials: "same-origin",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
     }),
@@ -201,7 +202,7 @@ const request = async (url, options = {}) => {
   const doFetch = () =>
     withTimeout(
       fetch(url, {
-        credentials: "same-origin",
+        credentials: "include",
         ...fetchOptions,
         headers: buildRequestHeaders(fetchOptions.headers),
       }),
@@ -718,6 +719,17 @@ export const submitAdminComplaint = (payload = {}) =>
     body: JSON.stringify(payload || {}),
   });
 
+export const deleteMyAccount = ({ password, confirmation }) =>
+  request(`${API_BASE}/users/me`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ password, confirmation }),
+    skipAuthRefresh: true,
+  });
+
 export const submitPublicSupportReport = (payload = {}) =>
   request(`${API_BASE}/support/public-reports`, {
     method: "POST",
@@ -1057,8 +1069,9 @@ export const getBookPreviewUrl = (bookId) =>
 // PAYMENTS + PURCHASES
 // ======================================================
 
-export const initPayment = ({ itemType, itemId, returnUrl }) =>
-  request(`${API_BASE}/payments/init`, {
+export const initPayment = ({ itemType, itemId, returnUrl }) => {
+  assertExternalDigitalCheckoutAllowed();
+  return request(`${API_BASE}/payments/init`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -1066,14 +1079,16 @@ export const initPayment = ({ itemType, itemId, returnUrl }) =>
     },
     body: JSON.stringify({ itemType, itemId, returnUrl }),
   });
+};
 
 export const verifyPaystackPayment = (reference) =>
   request(`${API_BASE}/payments/paystack/verify/${encodeURIComponent(reference || "")}`, {
     headers: getAuthHeaders(),
   });
 
-export const initiatePayment = ({ itemType, itemId, provider = "paystack", returnUrl = "" }) =>
-  request(`${API_BASE}/payments/initiate`, {
+export const initiatePayment = ({ itemType, itemId, provider = "paystack", returnUrl = "" }) => {
+  assertExternalDigitalCheckoutAllowed();
+  return request(`${API_BASE}/payments/initiate`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -1081,9 +1096,11 @@ export const initiatePayment = ({ itemType, itemId, provider = "paystack", retur
     },
     body: JSON.stringify({ itemType, itemId, provider, returnUrl }),
   });
+};
 
-export const createCheckout = ({ itemType, itemId, currencyMode = "NG" }) =>
-  request(`${API_BASE}/payments/initiate`, {
+export const createCheckout = ({ itemType, itemId, currencyMode = "NG" }) => {
+  assertExternalDigitalCheckoutAllowed();
+  return request(`${API_BASE}/payments/initiate`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -1106,6 +1123,7 @@ export const createCheckout = ({ itemType, itemId, currencyMode = "NG" }) =>
       GLOBAL: ["Card", "Apple Pay", "Google Pay", "Stripe", "PayPal"],
     },
   }));
+};
 
 export const getMyPurchases = () =>
   request(`${API_BASE}/purchases/my`, {
@@ -2815,6 +2833,15 @@ export const resolveImage = (path) => {
 
   if (path.startsWith("data:")) {
     return path;
+  }
+
+  if (path.startsWith("/api/") || path.startsWith("/uploads/")) {
+    try {
+      const apiOrigin = new URL(API_BASE).origin;
+      return `${apiOrigin}${path}`;
+    } catch {
+      return path;
+    }
   }
 
   return path.startsWith("/") ? path : `/${path}`;

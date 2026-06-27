@@ -13,6 +13,7 @@ import PaymentTrustPanel from "../../components/payments/PaymentTrustPanel";
 import PaymentSummaryPanel from "../../components/payments/PaymentSummaryPanel";
 import PaystackSecureBadge from "../../components/payments/PaystackSecureBadge";
 import { useAuth } from "../../context/AuthContext";
+import { isMobileStoreBuild } from "../../runtimePlatform";
 
 import "./creator-subscription.css";
 
@@ -355,8 +356,16 @@ export default function CreatorSubscriptionPage() {
                 <input type="text" value={`${formatMoney(price)} monthly`} readOnly />
               </label>
               <label>
-                <span>Secure card entry</span>
-                <input type="text" value="Complete card details in Paystack checkout" readOnly />
+                <span>{isMobileStoreBuild() ? "Availability" : "Secure card entry"}</span>
+                <input
+                  type="text"
+                  value={
+                    isMobileStoreBuild()
+                      ? "New subscriptions are unavailable in this app-store edition"
+                      : "Complete card details in Paystack checkout"
+                  }
+                  readOnly
+                />
               </label>
             </div>
           </section>
@@ -372,9 +381,9 @@ export default function CreatorSubscriptionPage() {
             <div className="creator-subscription-checkout-card">
               <strong>{formatMoney(price)}/month</strong>
               <span>
-                The charge only succeeds when the selected card can authorize the
-                {` ${formatMoney(price)} `}
-                deduction.
+                {isMobileStoreBuild()
+                  ? "New subscriptions are unavailable in this app-store edition."
+                  : `The charge only succeeds when the selected card can authorize the ${formatMoney(price)} deduction.`}
               </span>
             </div>
 
@@ -384,15 +393,21 @@ export default function CreatorSubscriptionPage() {
               itemLabel={`${creator.displayName || "Creator"} membership`}
               itemType="subscription"
               totalLabel="Monthly total"
-              platformFeeExplanation="Tengacion platform fees are included in this membership price. Paystack shows the monthly total before you approve payment."
+              platformFeeExplanation={
+                isMobileStoreBuild()
+                  ? "This summary describes the membership associated with your Tengacion account."
+                  : "Tengacion platform fees are included in this membership price. Paystack shows the monthly total before you approve payment."
+              }
               compact
             />
 
-            <PaymentTrustPanel
-              context="subscription"
-              compact
-              purchasesPath="/purchases"
-            />
+            {!isMobileStoreBuild() ? (
+              <PaymentTrustPanel
+                context="subscription"
+                compact
+                purchasesPath="/purchases"
+              />
+            ) : null}
 
             {statusCopy ? (
               <div className="creator-subscription-active">
@@ -422,6 +437,10 @@ export default function CreatorSubscriptionPage() {
                 >
                   Open creator page
                 </button>
+              ) : isMobileStoreBuild() ? (
+                <button type="button" className="creator-subscription__primary" disabled>
+                  New subscriptions unavailable in this edition
+                </button>
               ) : (
                 <button
                   type="button"
@@ -437,7 +456,7 @@ export default function CreatorSubscriptionPage() {
                 </button>
               )}
 
-              {!isSubscribed ? <PaystackSecureBadge compact /> : null}
+              {!isSubscribed && !isMobileStoreBuild() ? <PaystackSecureBadge compact /> : null}
 
               {subscription?.canCancel ? (
                 <button
@@ -450,7 +469,7 @@ export default function CreatorSubscriptionPage() {
                 </button>
               ) : null}
 
-              {subscription?.canResume ? (
+              {subscription?.canResume && !isMobileStoreBuild() ? (
                 <button
                   type="button"
                   className="creator-subscription__secondary creator-subscription__secondary--positive"

@@ -160,6 +160,9 @@ const normalizeOrigin = (value) => {
     if (!parsed.hostname) {
       return "";
     }
+    if (parsed.origin === "null" && hasProtocol) {
+      return `${parsed.protocol}//${parsed.host}`;
+    }
     parsed.pathname = "";
     parsed.search = "";
     parsed.hash = "";
@@ -259,6 +262,8 @@ const defaultDevOrigins = [
   "http://127.0.0.1:3000",
 ];
 
+const nativeAppOrigins = ["capacitor://localhost", "https://localhost"];
+
 const configuredOrigins = parseOriginList(
   process.env.CORS_ORIGIN,
   process.env.ALLOWED_FRONTEND_ORIGINS,
@@ -277,6 +282,7 @@ const allowedOrigins = Array.from(
       appUrl,
       clientUrl,
       ...(wwwAppUrl ? [wwwAppUrl] : []),
+      ...nativeAppOrigins,
       ...(isProduction ? [] : defaultDevOrigins),
     ].filter(Boolean)
   )

@@ -17,6 +17,7 @@ import { createReportDialogConfig } from "../constants/reportReasons";
 import VideoPlayer from "./media/VideoPlayer";
 import { useDialog } from "./ui/useDialog";
 import { normalizePostMedia } from "../utils/postMedia";
+import { isMobileStoreBuild } from "../runtimePlatform";
 
 /* ======================================================
    SYSTEM / STARTER POST HANDLING
@@ -1438,7 +1439,7 @@ export default function PostCard({
                 className="post-audio-player"
                 preload="metadata"
               />
-              {audioTrack?.trackId && (
+              {audioTrack?.trackId && !isMobileStoreBuild() && (
                 <button
                   type="button"
                   className="post-audio-cta"

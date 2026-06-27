@@ -7,6 +7,7 @@ import {
   resolvePrimaryAccessLabel,
   normalizePurchaseType,
 } from "../../../utils/purchaseUx";
+import { isMobileStoreBuild } from "../../../runtimePlatform";
 
 const formatPrice = (value = 0) =>
   Number(value || 0) <= 0 ? "Free" : `NGN ${Number(value || 0).toLocaleString()}`;
@@ -116,8 +117,13 @@ export default function MediaPreviewCard({
           </button>
         ) : null}
         {item.canBuy ? (
-          <button type="button" className="creator-primary-btn" onClick={() => onBuy(item)} disabled={isBuyBusy}>
-            {buyLabel}
+          <button
+            type="button"
+            className="creator-primary-btn"
+            onClick={() => onBuy(item)}
+            disabled={isBuyBusy || isMobileStoreBuild()}
+          >
+            {isMobileStoreBuild() ? "Purchase unavailable" : buyLabel}
           </button>
         ) : null}
         <ShareActions

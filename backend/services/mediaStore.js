@@ -28,6 +28,32 @@ const getBucket = () => {
   return new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName });
 };
 
+const resolveGridFsId = (media = {}) => {
+  const value = typeof media === "string" ? media : media?.url || media?.secureUrl || "";
+  const match = String(value || "").match(/\/api\/media\/([a-f\d]{24})(?:$|[/?#])/i);
+  if (match?.[1] && mongoose.Types.ObjectId.isValid(match[1])) {
+    return match[1];
+  }
+  if (media?.provider === "gridfs") {
+    const candidate = media.publicId || media.public_id || "";
+    return mongoose.Types.ObjectId.isValid(candidate) ? String(candidate) : "";
+  }
+  return "";
+};
+
+const deleteGridFsAsset = async (media = {}) => {
+  const id = resolveGridFsId(media);
+  if (!id) {
+    return false;
+  }
+  try {
+    await getBucket().delete(new mongoose.Types.ObjectId(id));
+    return true;
+  } catch (error) {
+    return error?.code === 26 || error?.message?.includes("FileNotFound");
+  }
+};
+
 const toSafeFilename = (value = "") => {
   const base = String(value || "upload").trim();
   const safe = base.replace(/[^\w.\-]+/g, "_");
@@ -144,6 +170,9 @@ const saveUploadedMediaToGridFs = async (file, options = {}) => {
 
 const deleteUploadedMedia = async (media = {}, options = {}) => {
   try {
+    if (resolveGridFsId(media)) {
+      return await deleteGridFsAsset(media);
+    }
     if (isS3MediaValue(media)) {
       return await deleteS3Asset(media);
     }
@@ -157,27 +186,36 @@ const deleteUploadedMedia = async (media = {}, options = {}) => {
 const deleteUploadedMediaBatch = async (mediaList = [], options = {}) => {
   try {
     const list = Array.isArray(mediaList) ? mediaList : [mediaList];
-    const s3Media = list.filter((entry) => isS3MediaValue(entry));
+    const gridFsMedia = list.filter((entry) => Boolean(resolveGridFsId(entry)));
+    const s3Media = list.filter(
+      (entry) => !resolveGridFsId(entry) && isS3MediaValue(entry)
+    );
     const cloudinaryMedia = list.filter((entry) => {
-      if (isS3MediaValue(entry)) {
+      if (resolveGridFsId(entry) || isS3MediaValue(entry)) {
         return false;
       }
       const value = typeof entry === "string" ? entry : entry?.secureUrl || entry?.secure_url || entry?.url || "";
       return entry?.provider === "cloudinary" || isCloudinaryUrl(value) || entry?.publicId || entry?.public_id;
     });
 
-    const [s3Result, cloudinaryResult] = await Promise.all([
+    const [gridFsResults, s3Result, cloudinaryResult] = await Promise.all([
+      Promise.all(gridFsMedia.map(async (entry) => ({
+        id: resolveGridFsId(entry),
+        deleted: await deleteGridFsAsset(entry),
+        provider: "gridfs",
+      }))),
       s3Media.length ? deleteS3Assets(s3Media) : Promise.resolve({ attempted: 0, deleted: 0, failed: 0, results: [] }),
       cloudinaryMedia.length
         ? deleteCloudinaryAssets(cloudinaryMedia, options)
         : Promise.resolve({ attempted: 0, deleted: 0, failed: 0, results: [] }),
     ]);
 
+    const gridFsDeleted = gridFsResults.filter((entry) => entry.deleted).length;
     return {
-      attempted: s3Result.attempted + cloudinaryResult.attempted,
-      deleted: s3Result.deleted + cloudinaryResult.deleted,
-      failed: s3Result.failed + cloudinaryResult.failed,
-      results: [...s3Result.results, ...cloudinaryResult.results],
+      attempted: gridFsResults.length + s3Result.attempted + cloudinaryResult.attempted,
+      deleted: gridFsDeleted + s3Result.deleted + cloudinaryResult.deleted,
+      failed: gridFsResults.length - gridFsDeleted + s3Result.failed + cloudinaryResult.failed,
+      results: [...gridFsResults, ...s3Result.results, ...cloudinaryResult.results],
     };
   } catch {
     return {

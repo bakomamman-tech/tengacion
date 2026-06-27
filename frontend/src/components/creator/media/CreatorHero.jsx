@@ -1,4 +1,5 @@
 import ShareActions from "./ShareActions";
+import { isMobileStoreBuild } from "../../../runtimePlatform";
 import { buildCreatorPublicPath } from "../../../lib/publicRoutes";
 
 const normalizeExternalUrl = (value = "") => {
@@ -135,8 +136,13 @@ export default function CreatorHero({
                 <button type="button" className="creator-primary-btn" onClick={onFollow}>
                   {isFollowing ? "Following" : "Follow creator"}
                 </button>
-                <button type="button" className="creator-secondary-btn" onClick={onSubscribe}>
-                  {subscriptionLabel}
+                <button
+                  type="button"
+                  className="creator-secondary-btn"
+                  onClick={onSubscribe}
+                  disabled={isMobileStoreBuild()}
+                >
+                  {isMobileStoreBuild() ? "Subscription unavailable" : subscriptionLabel}
                 </button>
               </>
             )}

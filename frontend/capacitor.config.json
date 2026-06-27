@@ -1,0 +1,29 @@
+{
+  "appId": "com.tengacion.app",
+  "appName": "Tengacion",
+  "webDir": "dist",
+  "backgroundColor": "#0a0a0a",
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "https",
+    "iosScheme": "capacitor",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "preferredContentMode": "mobile",
+    "limitsNavigationsToAppBoundDomains": true
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "CapacitorCookies": {
+      "enabled": true
+    }
+  }
+}

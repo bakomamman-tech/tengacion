@@ -1,4 +1,5 @@
 import { io } from "socket.io-client";
+import { API_BASE } from "./api";
 
 import {
   emitAuthLogout,
@@ -47,9 +48,9 @@ const refreshSocketSession = async () => {
     return sessionRecoveryPromise;
   }
 
-  sessionRecoveryPromise = fetch("/api/auth/refresh", {
+  sessionRecoveryPromise = fetch(`${API_BASE}/auth/refresh`, {
     method: "POST",
-    credentials: "same-origin",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),
   })

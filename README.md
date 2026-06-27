@@ -207,6 +207,9 @@ For safety, `resetAdminPassword` is blocked in production unless `ALLOW_ADMIN_PA
 - `/artist/:username` (new artist profile builder powered by `apps/web`)
 
 ## Notes
+- Native App Store and Google Play projects live in `frontend/ios` and `frontend/android`.
+  See [`docs/mobile-store-release.md`](docs/mobile-store-release.md) for builds, signing,
+  store declarations, billing constraints, and the release-owner checklist.
 - Creator-facing media now targets AWS S3 audio storage (`AWS_S3_BUCKET` + `AWS_S3_MEDIA_URL`).
 - Artist links must be HTTPS and sanitized at the backend.
 - Paystack- and Stripe-backed purchase settlement now feeds creator wallet and finance surfaces after successful verification or webhook confirmation.

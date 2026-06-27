@@ -1,5 +1,11 @@
 # Google Play TWA Readiness
 
+> Legacy alternative: Tengacion now has a Capacitor Android project at `frontend/android`,
+> shared with the iOS packaging strategy. Use the Capacitor project for the primary Play Store
+> release. Do not publish both a TWA and Capacitor app with the same package name. The Digital
+> Asset Links endpoint below remains useful if a future TWA or verified Android web-link flow is
+> intentionally introduced.
+
 Tengacion can be packaged for Google Play as a Trusted Web Activity (TWA) once the production web origin and Android package are linked with Digital Asset Links.
 
 ## What is implemented

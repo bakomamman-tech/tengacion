@@ -33,6 +33,7 @@ import {
   resolvePurchaseCtaLabel,
 } from "../utils/purchaseUx";
 import { buildPdfViewerSrc } from "../utils/pdfViewer";
+import { isMobileStoreBuild } from "../runtimePlatform";
 
 const isPdfLikeBook = (book = {}) => {
   const format = String(book?.fileFormat || "").trim().toLowerCase();
@@ -451,7 +452,11 @@ export default function BookDetail() {
           </div>
 
           <div className="mt-3">
-            {!book.canReadFull ? (
+            {!book.canReadFull ? isMobileStoreBuild() ? (
+              <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Preview mode. New digital purchases are unavailable in this app-store edition.
+              </p>
+            ) : (
               <>
                 <button
                   type="button"

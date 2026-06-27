@@ -6,27 +6,55 @@
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
-  "description": "Tengacion — The future of social networking",
+  "description": "Tengacion — Africa's social commerce and creator platform",
+  "orientation": "portrait-primary",
+  "categories": [
+    "social",
+    "entertainment",
+    "shopping"
+  ],
   "icons": [
     {
-      "src": "/tengacion_logo_128.png",
+      "src": "/assets/icons/icon-48.webp",
+      "type": "image/webp",
+      "sizes": "48x48",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icons/icon-72.webp",
+      "type": "image/webp",
+      "sizes": "72x72",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icons/icon-96.webp",
+      "type": "image/webp",
+      "sizes": "96x96",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icons/icon-128.webp",
+      "type": "image/webp",
       "sizes": "128x128",
-      "type": "image/png"
+      "purpose": "any maskable"
     },
     {
-      "src": "/tengacion_logo_256.png",
+      "src": "/assets/icons/icon-192.webp",
+      "type": "image/webp",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icons/icon-256.webp",
+      "type": "image/webp",
       "sizes": "256x256",
-      "type": "image/png"
+      "purpose": "any maskable"
     },
     {
-      "src": "/tengacion_logo_512.png",
+      "src": "/assets/icons/icon-512.webp",
+      "type": "image/webp",
       "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
-      "src": "/tengacion_logo_1024.png",
-      "sizes": "1024x1024",
-      "type": "image/png"
+      "purpose": "any maskable"
     }
   ]
 }

@@ -2,6 +2,7 @@ import PaymentTrustPanel from "./payments/PaymentTrustPanel";
 import PaymentRecoveryNotice from "./payments/PaymentRecoveryNotice";
 import PaymentSummaryPanel from "./payments/PaymentSummaryPanel";
 import PaystackSecureBadge from "./payments/PaystackSecureBadge";
+import { isMobileStoreBuild } from "../runtimePlatform";
 
 export default function PaywallModal({
   open,
@@ -17,6 +18,28 @@ export default function PaywallModal({
 }) {
   if (!open) {
     return null;
+  }
+
+  if (isMobileStoreBuild()) {
+    return (
+      <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
+        <div className="w-full max-w-lg rounded-[2rem] border border-white/30 bg-white p-6 shadow-[0_28px_90px_rgba(12,32,19,0.35)]">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700">
+                App-store edition
+              </p>
+              <h3 className="mt-1 text-2xl font-semibold text-slate-900">Purchases unavailable</h3>
+            </div>
+            <button type="button" onClick={onClose}>Close</button>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-slate-600">
+            New digital purchases are not available in this edition yet. You can continue to
+            preview releases and access content already owned by your account.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

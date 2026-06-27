@@ -23,6 +23,7 @@ import {
   resolveOwnedPurchaseLabel,
   resolvePurchaseCtaLabel,
 } from "../utils/purchaseUx";
+import { isMobileStoreBuild } from "../runtimePlatform";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -446,7 +447,11 @@ export default function TrackDetail() {
         </div>
 
         <div className="mt-4">
-          {!stream?.allowedFullAccess ? (
+          {!stream?.allowedFullAccess ? isMobileStoreBuild() ? (
+            <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Preview mode. New digital purchases are unavailable in this app-store edition.
+            </p>
+          ) : (
             <>
               <button
                 type="button"
@@ -472,7 +477,7 @@ export default function TrackDetail() {
               >
                 {resolveOwnedPurchaseLabel(track)}
               </button>
-              {Number(track.price || 0) > 0 ? (
+              {Number(track.price || 0) > 0 && !isMobileStoreBuild() ? (
                 <button
                   type="button"
                   className="inline-flex items-center justify-center rounded-2xl border border-brand-200 bg-white px-5 py-2.5 text-sm font-semibold text-brand-900 shadow-[0_12px_24px_rgba(18,44,30,0.08)] transition hover:-translate-y-0.5 hover:bg-brand-50"

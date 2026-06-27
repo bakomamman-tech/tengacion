@@ -9,6 +9,7 @@ import {
   normalizePurchaseType,
 } from "../../utils/purchaseUx";
 import { formatCurrency } from "./creatorConfig";
+import { isMobileStoreBuild } from "../../runtimePlatform";
 import "./CreatorAudioPreviewPlayer.css";
 
 const AUDIO_PLAYER_ITEM_TYPES = new Set(["track", "podcast"]);
@@ -498,7 +499,9 @@ export default function CreatorAudioPreviewPlayer({
                   {activeSourceMode === "preview"
                     ? "Preview Sample"
                     : purchaseLocked
-                      ? "Buy Full Track"
+                      ? isMobileStoreBuild()
+                        ? "Preview only"
+                        : "Buy Full Track"
                       : "Full Track"}
                 </span>
               ) : null}
@@ -509,7 +512,7 @@ export default function CreatorAudioPreviewPlayer({
           </div>
         </div>
 
-        {purchaseLocked ? (
+        {purchaseLocked && !isMobileStoreBuild() ? (
           <div className="creator-audio-preview-player__top-actions">
             <button
               type="button"
@@ -524,10 +527,14 @@ export default function CreatorAudioPreviewPlayer({
               Unlock uninterrupted playback and downloads.
             </small>
           </div>
+        ) : purchaseLocked ? (
+          <small className="creator-audio-preview-player__top-copy">
+            New digital purchases are unavailable in this app-store edition.
+          </small>
         ) : null}
       </div>
 
-      {purchaseLocked ? (
+      {purchaseLocked && !isMobileStoreBuild() ? (
         <div className="creator-audio-preview-player__trust">
           <PaymentSummaryPanel
             amount={item?.price || 0}
@@ -570,7 +577,7 @@ export default function CreatorAudioPreviewPlayer({
               {downloadBusy ? "Preparing..." : "Download"}
             </button>
           ) : null}
-          {canRepeatPurchase ? (
+          {canRepeatPurchase && !isMobileStoreBuild() ? (
             <button
               type="button"
               className="creator-audio-preview-player__mode-btn creator-audio-preview-player__mode-btn--purchase"

@@ -9,6 +9,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:mobile": "vite build --mode mobile",
+    "mobile:sync": "npm run build:mobile && cap sync",
+    "mobile:android": "npm run mobile:sync && cap open android",
+    "mobile:ios": "npm run mobile:sync && cap open ios",
     "preview": "vite preview",
     "lint": "eslint \"src/**/*.{js,jsx}\"",
     "lint:fix": "eslint \"src/**/*.{js,jsx}\" --fix",
@@ -17,6 +21,9 @@
     "repro:chat-friend": "node scripts/repro-chat-friend.js"
   },
   "dependencies": {
+    "@capacitor/android": "7.6.7",
+    "@capacitor/core": "7.6.7",
+    "@capacitor/ios": "7.6.7",
     "@hookform/resolvers": "^5.2.2",
     "axios": "^1.16.0",
     "country-list": "^2.4.1",
@@ -36,6 +43,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@capacitor/cli": "7.6.7",
     "@eslint/js": "^9.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

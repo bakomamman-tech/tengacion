@@ -18,3 +18,7 @@ backend/uploads
 .DS_Store
 Thumbs.db
 desktop.ini
+
+frontend/android/keystore.properties
+*.jks
+*.keystore

@@ -3,12 +3,15 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import ChessRoom from "../ChessRoom";
+import BlockDrop from "../BlockDrop";
 import MemoryAtlas from "../MemoryAtlas";
 import MushroomRun from "../MushroomRun";
+import NightRaid from "../NightRaid";
 import SnakeXavia from "../SnakeXavia";
 import TengacionRacer from "../TengacionRacer";
 import Tengacion2048 from "../Tengacion2048";
 import TengacionTetris from "../TengacionTetris";
+import WordSprint from "../WordSprint";
 
 const LIVE_GAMES = [
   {
@@ -52,6 +55,24 @@ const LIVE_GAMES = [
     Component: MemoryAtlas,
     controlsName: /memory atlas controls/i,
     surfaceSelector: ".game-memory-board-shell",
+  },
+  {
+    name: "Night Raid",
+    Component: NightRaid,
+    controlsName: /night raid play controls/i,
+    surfaceSelector: ".game-night-board-shell",
+  },
+  {
+    name: "Word Sprint",
+    Component: WordSprint,
+    controlsName: /word sprint play controls/i,
+    surfaceSelector: ".game-word-surface",
+  },
+  {
+    name: "Block Drop",
+    Component: BlockDrop,
+    controlsName: /block drop play controls/i,
+    surfaceSelector: ".game-block-board-shell",
   },
 ];
 

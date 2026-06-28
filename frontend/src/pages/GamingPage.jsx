@@ -1,14 +1,17 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Navbar from "../Navbar";
 import ChessRoom from "../components/gaming/ChessRoom";
+import BlockDrop from "../components/gaming/BlockDrop";
 import MemoryAtlas from "../components/gaming/MemoryAtlas";
 import MushroomRun from "../components/gaming/MushroomRun";
+import NightRaid from "../components/gaming/NightRaid";
 import TengacionRacer from "../components/gaming/TengacionRacer";
 import Tengacion2048 from "../components/gaming/Tengacion2048";
 import SnakeXavia from "../components/gaming/SnakeXavia";
 import TengacionTetris from "../components/gaming/TengacionTetris";
+import WordSprint from "../components/gaming/WordSprint";
 
 const SAVED_GAMES_KEY = "tengacion.gaming.saved";
 
@@ -98,58 +101,61 @@ const GAME_LIBRARY = [
     id: "night-raid",
     title: "Night Raid",
     genre: "Arcade",
-    status: "Prototype queue",
-    playable: false,
-    accent: "linear-gradient(145deg, #2b4b6e 0%, #101a2d 100%)",
-    summary: "Reflex lanes, neon enemies, and score-chasing night runs.",
+    status: "Playable now",
+    playable: true,
+    accent: "linear-gradient(145deg, #4359a8 0%, #15182f 54%, #ff4f9a 100%)",
+    summary: "A live neon survival run with lane dodges, pulse fire, and escalating signal waves.",
     description:
-      "This concept is positioned as a stylish combat lane with short rounds, escalating danger, and creator-grade visual polish.",
+      "Shift across five skyline lanes, erase incoming signals, protect your shield, and build a lock chain as each wave accelerates.",
     difficulty: "Medium-high",
     session: "3-7 min",
-    controls: "Tap, dodge, boost",
+    controls: "A/D, arrows, Space, or touch",
     highlights: [
-      "Designed for fast replays and compact rounds.",
-      "Visual direction leans cinematic instead of retro.",
-      "A strong candidate for the next playable arcade drop.",
+      "Five reactive lanes turn every wave into a fast read-and-respond challenge.",
+      "Accurate pulse chains stack score while missed threats damage your shield.",
+      "Keyboard and touch controls sit directly against the live battlefield.",
     ],
+    builtInLabel: "Built inside Tengacion",
   },
   {
     id: "word-sprint",
     title: "Word Sprint",
     genre: "Word",
-    status: "Prototype queue",
-    playable: false,
-    accent: "linear-gradient(145deg, #4e9f79 0%, #193c2c 100%)",
-    summary: "A timed vocabulary lane built for quick creative competition.",
+    status: "Playable now",
+    playable: true,
+    accent: "linear-gradient(145deg, #67d59b 0%, #23765d 52%, #173d37 100%)",
+    summary: "A live sixty-second vocabulary sprint with clues, scrambles, streaks, and time pressure.",
     description:
-      "Word Sprint is being shaped as a social, replayable challenge that fits creators, classrooms, and casual communities equally well.",
+      "Decode each clue, rebuild its scrambled answer, and protect your scoring streak before the one-minute clock expires.",
     difficulty: "Adaptive",
-    session: "2-5 min",
-    controls: "Type and submit",
+    session: "1-5 min",
+    controls: "Type, Enter, or touch",
     highlights: [
-      "Timed prompts keep rounds tense but readable.",
-      "Great fit for community tournaments and streaks.",
-      "Would give the page a lighter, social lane.",
+      "Curated clue categories make every round readable without feeling repetitive.",
+      "Correct-answer streaks compound while skips and misses trade away precious time.",
+      "Personal best score and best word chain stay saved on this device.",
     ],
+    builtInLabel: "Built inside Tengacion",
   },
   {
     id: "block-drop",
     title: "Block Drop",
     genre: "Strategy",
-    status: "Prototype queue",
-    playable: false,
-    accent: "linear-gradient(145deg, #6f6be8 0%, #241b5e 100%)",
-    summary: "A stack-and-clear concept with cleaner visual rhythm.",
+    status: "Playable now",
+    playable: true,
+    accent: "linear-gradient(145deg, #7e7bf5 0%, #4431a5 52%, #201648 100%)",
+    summary: "A live 8×8 spatial strategy board with rotatable shapes, line clears, and combo scoring.",
     description:
-      "This lane is being framed as a calmer strategy game with smooth combo feedback, satisfying clears, and a strong mobile silhouette.",
+      "Choose a shape, rotate it, and place it deliberately to complete rows and columns while preserving room for the next tray.",
     difficulty: "Climbs over time",
     session: "4-10 min",
-    controls: "Tap, drag, rotate",
+    controls: "Tap, place, and rotate",
     highlights: [
-      "Best suited to players who like compounding decision-making.",
-      "Would bring a more meditative lane to the hub.",
-      "The visual language is already a strong fit for Tengacion.",
+      "Three-shape trays make every placement a compact planning problem.",
+      "Rows and columns clear together, with multi-line and chain bonuses.",
+      "The full board, score, tray, and personal best restore locally.",
     ],
+    builtInLabel: "Built inside Tengacion",
   },
   {
     id: "chess-room",
@@ -249,6 +255,7 @@ const readSavedGames = () => {
 
 export default function GamingPage({ user }) {
   const navigate = useNavigate();
+  const gameDeckRef = useRef(null);
   const [activeView, setActiveView] = useState("play");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
@@ -321,26 +328,13 @@ export default function GamingPage({ user }) {
     () => GAME_LIBRARY.filter((game) => game.playable).length,
     []
   );
-  const conceptCount = GAME_LIBRARY.length - playableCount;
   const isChessSession = lastSession.game === "chess-room";
   const isTetrisSession = lastSession.game === "tengacion-tetris";
   const isMemorySession = lastSession.game === "memory-atlas";
   const isMushroomSession = lastSession.game === "mushroom-run";
   const isRacerSession = lastSession.game === "tengacion-racer";
   const lastPlayedTitle =
-    lastSession.game === "snake-xavia"
-      ? "Snake Xavia"
-      : lastSession.game === "tengacion-racer"
-        ? "Tengacion Racer"
-      : lastSession.game === "mushroom-run"
-        ? "Mushroom Run"
-      : lastSession.game === "chess-room"
-        ? "Chess Room"
-        : lastSession.game === "tengacion-tetris"
-          ? "Tetris"
-          : lastSession.game === "memory-atlas"
-            ? "Memory Atlas"
-          : "2048 Classic";
+    GAME_LIBRARY.find((game) => game.id === lastSession.game)?.title || "2048 Classic";
   const activityCards = isChessSession
     ? [
         {
@@ -525,16 +519,22 @@ export default function GamingPage({ user }) {
             : "The current run is still active.",
         },
         {
-          title: lastSession.game === "snake-xavia" ? "Longest snake" : "Top tile",
-          value: lastSession.highestTile || (lastSession.game === "snake-xavia" ? 3 : 4),
+          title:
+            lastSession.metricLabel ||
+            (lastSession.game === "snake-xavia" ? "Longest snake" : "Top tile"),
+          value:
+            lastSession.metricValue ??
+            (lastSession.highestTile || (lastSession.game === "snake-xavia" ? 3 : 4)),
           meta:
-            lastSession.game === "snake-xavia"
+            lastSession.metricLabel
+              ? `Live ${lastSession.metricLabel.toLowerCase()} from the latest session.`
+              : lastSession.game === "snake-xavia"
               ? "Length reached on the current or latest run."
               : "Highest tile reached so far in the active browser save.",
         },
         {
-          title: "Session steps",
-          value: lastSession.moves || 0,
+          title: lastSession.progressLabel || "Session steps",
+          value: lastSession.progressValue ?? lastSession.moves ?? 0,
           meta: "Movement count from the current or most recent session.",
         },
         {
@@ -547,9 +547,7 @@ export default function GamingPage({ user }) {
   const spotlightCards = [
     {
       title: `${featuredGame.title} is the current focus`,
-      copy: featuredGame.playable
-        ? `It is live right now with a cleaner stage, richer controls, and a more polished play loop.`
-        : `It is still a concept lane, but it now reads like a stronger part of the catalog instead of filler.`,
+      copy: "It is live right now with a close command deck, persistent progress, and a polished play loop.",
     },
     {
       title: savedGames.length ? `${savedGames.length} saved lane${savedGames.length === 1 ? "" : "s"} ready` : "Start building a shortlist",
@@ -558,8 +556,8 @@ export default function GamingPage({ user }) {
         : "Save any lane that feels promising and it will stay close for your next session.",
     },
     {
-      title: `${playableCount} live games, ${conceptCount} future lanes`,
-      copy: "The hub now feels like a real destination, not a waiting room, while the broader catalog keeps taking shape.",
+      title: `Every one of the ${playableCount} games is live`,
+      copy: "The full catalog launches immediately, with touch-friendly controls and local progress across every lane.",
     },
   ];
 
@@ -570,9 +568,9 @@ export default function GamingPage({ user }) {
       meta: "Launch instantly",
     },
     {
-      label: "Concept lanes",
-      value: conceptCount,
-      meta: "Saved for future build",
+      label: "New releases",
+      value: 3,
+      meta: "Freshly playable",
     },
     {
       label: "Saved by you",
@@ -589,11 +587,17 @@ export default function GamingPage({ user }) {
     );
   };
 
-  const openGame = (gameId) => {
+  const openGame = (gameId, focusDeck = false) => {
     startTransition(() => {
       setSelectedGameId(gameId);
       setActiveView("play");
     });
+
+    if (focusDeck) {
+      window.requestAnimationFrame(() => {
+        gameDeckRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
   };
 
   const handleLogout = () => {
@@ -601,6 +605,18 @@ export default function GamingPage({ user }) {
   };
 
   const renderPlayableGame = () => {
+    if (featuredGame.id === "night-raid") {
+      return <NightRaid onSessionChange={setLastSession} />;
+    }
+
+    if (featuredGame.id === "word-sprint") {
+      return <WordSprint onSessionChange={setLastSession} />;
+    }
+
+    if (featuredGame.id === "block-drop") {
+      return <BlockDrop onSessionChange={setLastSession} />;
+    }
+
     if (featuredGame.id === "chess-room") {
       return <ChessRoom onSessionChange={setLastSession} />;
     }
@@ -633,9 +649,9 @@ export default function GamingPage({ user }) {
       <section className="gaming-hero">
         <div className="gaming-hero-copy">
           <p className="gaming-kicker">Gaming hub</p>
-          <h1>Play faster. Save favorites. Keep the fun going.</h1>
+          <h1>Ten games. Zero waiting. Your next run starts here.</h1>
           <p className="gaming-hero-lede">
-            Jump into a game, save the ones you like, and pick up your score chase anytime.
+            Every lane is live, touch-ready, and built to remember your progress on this device.
           </p>
 
           <div className="gaming-hero-metrics">
@@ -662,7 +678,7 @@ export default function GamingPage({ user }) {
             </div>
 
             <div className="gaming-hero-actions">
-              <button type="button" className="btn-primary" onClick={() => openGame(featuredGame.id)}>
+              <button type="button" className="btn-primary" onClick={() => openGame(featuredGame.id, true)}>
                 {featuredGame.playable ? "Play now" : "Open preview"}
               </button>
               <button
@@ -713,7 +729,7 @@ export default function GamingPage({ user }) {
               key={game.id}
               type="button"
               className={`gaming-game-card ${selectedGameId === game.id ? "active" : ""}`}
-              onClick={() => openGame(game.id)}
+              onClick={() => openGame(game.id, true)}
             >
               <div className="gaming-game-card-art" style={{ background: game.accent }}>
                 <span>{game.genre}</span>
@@ -743,7 +759,7 @@ export default function GamingPage({ user }) {
         )}
       </section>
 
-      <section className="gaming-play-grid">
+      <section ref={gameDeckRef} className="gaming-play-grid">
         <div className="gaming-play-panel">
           <div className="gaming-section-head compact">
             <div>
@@ -846,9 +862,7 @@ export default function GamingPage({ user }) {
                     ? lastSession.status || "Route in motion"
                   : isTetrisSession
                     ? lastSession.status || "Stack in motion"
-                  : lastSession.gameOver
-                    ? "Last run ended"
-                    : "Run in progress"}
+                  : lastSession.status || (lastSession.gameOver ? "Last run ended" : "Run in progress")}
               </small>
             </div>
 
@@ -881,6 +895,8 @@ export default function GamingPage({ user }) {
                       ? "Pairs banked"
                     : isTetrisSession
                       ? "Lines cleared"
+                    : lastSession.metricLabel
+                      ? lastSession.metricLabel
                     : lastSession.game === "snake-xavia"
                       ? "Snake length"
                       : "Top tile"}
@@ -896,7 +912,8 @@ export default function GamingPage({ user }) {
                       ? lastSession.matches || 0
                     : isTetrisSession
                       ? lastSession.lines || 0
-                    : lastSession.highestTile || (lastSession.game === "snake-xavia" ? 3 : 4)}
+                    : lastSession.metricValue ??
+                      (lastSession.highestTile || (lastSession.game === "snake-xavia" ? 3 : 4))}
                 </strong>
               </div>
               <div>
@@ -911,7 +928,7 @@ export default function GamingPage({ user }) {
                       ? "Chapter"
                       : isTetrisSession
                         ? "Level"
-                        : "Steps"}
+                        : lastSession.progressLabel || "Steps"}
                 </span>
                 <strong>
                   {isChessSession
@@ -924,7 +941,7 @@ export default function GamingPage({ user }) {
                       ? lastSession.chapter || 1
                     : isTetrisSession
                       ? lastSession.level || 1
-                      : lastSession.moves || 0}
+                      : lastSession.progressValue ?? lastSession.moves ?? 0}
                 </strong>
               </div>
             </div>
@@ -983,7 +1000,7 @@ export default function GamingPage({ user }) {
               key={game.id}
               type="button"
               className="gaming-game-card active"
-              onClick={() => openGame(game.id)}
+              onClick={() => openGame(game.id, true)}
             >
               <div className="gaming-game-card-art" style={{ background: game.accent }}>
                 <span>{game.genre}</span>
@@ -1091,7 +1108,7 @@ export default function GamingPage({ user }) {
             {savedGames.length ? (
               <div className="gaming-mini-list">
                 {savedGames.slice(0, 4).map((game) => (
-                  <button key={game.id} type="button" onClick={() => openGame(game.id)}>
+                  <button key={game.id} type="button" onClick={() => openGame(game.id, true)}>
                     <span className="swatch" style={{ background: game.accent }} />
                     <div>
                       <strong>{game.title}</strong>

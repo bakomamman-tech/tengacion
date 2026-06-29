@@ -199,10 +199,12 @@ export default function CreatorSummaryFeed({
           </Link>
           <button
             type="button"
-            className="creator-secondary-btn"
+            className="creator-secondary-btn creator-summary-feed__refresh-btn"
             onClick={() => loadFeed({ silent: false, forceApply: true })}
+            disabled={loading || refreshing}
+            aria-busy={loading || refreshing}
           >
-            {refreshing ? "Refreshing..." : "Refresh"}
+            {loading || refreshing ? "Refreshing..." : "Refresh"}
           </button>
         </div>
       </div>

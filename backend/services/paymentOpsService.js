@@ -7,6 +7,7 @@ const User = require("../models/User");
 const CreatorProfile = require("../models/CreatorProfile");
 const AnalyticsEvent = require("../models/AnalyticsEvent");
 const WalletEntry = require("../models/WalletEntry");
+const SchoolTuitionPayment = require("../models/SchoolTuitionPayment");
 const { resolvePurchasableItem } = require("./catalogService");
 const { hasCreatorSubscriptionAccess } = require("./entitlementService");
 const {
@@ -31,6 +32,7 @@ const {
   recordRefundInitiated,
 } = require("./revenueLedgerService");
 const { sendPurchaseConfirmationEmail } = require("./purchaseConfirmationService");
+const { reconcileSchoolTuitionPayment } = require("./schoolTuitionPaymentService");
 const {
   buildPaystackEventId,
   buildStripeEventId,
@@ -1640,7 +1642,10 @@ const handlePaystackWebhookEvent = async ({
   }
 
   const purchase = await Purchase.findOne({ providerRef: reference });
-  if (!purchase) {
+  const tuitionPayment = purchase
+    ? null
+    : await SchoolTuitionPayment.findOne({ reference });
+  if (!purchase && !tuitionPayment) {
     await markPaymentWebhookEvent({
       event: reservation.event,
       status: "skipped",
@@ -1650,6 +1655,16 @@ const handlePaystackWebhookEvent = async ({
   }
 
   try {
+    if (tuitionPayment) {
+      const result = await reconcileSchoolTuitionPayment({ payment: tuitionPayment });
+      await markPaymentWebhookEvent({
+        event: reservation.event,
+        status: "processed",
+        providerRef: reference,
+      });
+      return { received: true, tuitionPayment: true, ...result };
+    }
+
     const result = await reconcilePurchase({
       req,
       purchase,
@@ -1671,7 +1686,7 @@ const handlePaystackWebhookEvent = async ({
     await markPaymentWebhookEvent({
       event: reservation.event,
       status: "failed",
-      purchaseId: purchase._id,
+      purchaseId: purchase?._id || null,
       providerRef: reference,
       errorMessage: error.message || "Paystack webhook processing failed",
     });

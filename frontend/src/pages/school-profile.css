@@ -824,6 +824,183 @@
   line-height: 1.5;
 }
 
+.school-profile-section--tuition {
+  scroll-margin-top: 24px;
+}
+
+.school-profile-tuition-card {
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.78fr) minmax(0, 1.22fr);
+  border: 1px solid rgba(18, 18, 18, 0.1);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.1);
+}
+
+.school-profile-tuition-card__intro,
+.school-profile-tuition-card__body {
+  padding: clamp(22px, 4vw, 38px);
+}
+
+.school-profile-tuition-card__intro {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  color: #fff;
+  background:
+    radial-gradient(circle at top right, rgba(242, 201, 76, 0.2), transparent 42%),
+    var(--school-primary);
+}
+
+.school-profile-tuition-card__eyebrow {
+  color: var(--school-accent);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.school-profile-tuition-card__intro h3,
+.school-profile-tuition-card__intro p,
+.school-profile-tuition-card__intro ul {
+  margin: 0;
+}
+
+.school-profile-tuition-card__intro h3 {
+  font-size: clamp(1.75rem, 3vw, 2.4rem);
+  line-height: 1.08;
+}
+
+.school-profile-tuition-card__intro p,
+.school-profile-tuition-card__intro li {
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.65;
+}
+
+.school-profile-tuition-card__intro ul {
+  display: grid;
+  gap: 10px;
+  padding-left: 20px;
+}
+
+.school-profile-tuition-card__intro .paystack-secure-badge {
+  width: fit-content;
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.school-profile-tuition-card__body {
+  display: grid;
+  align-content: start;
+  gap: 22px;
+}
+
+.school-profile-tuition-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.school-profile-tuition-form label {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  color: var(--school-primary);
+  font-weight: 800;
+}
+
+.school-profile-tuition-form label > span {
+  font-size: 0.85rem;
+}
+
+.school-profile-tuition-form input,
+.school-profile-tuition-form select,
+.school-profile-tuition-form textarea {
+  width: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 8px;
+  background: #fff;
+  color: #111;
+  font: inherit;
+}
+
+.school-profile-tuition-form input,
+.school-profile-tuition-form select {
+  min-height: 46px;
+  padding: 0 12px;
+}
+
+.school-profile-tuition-form textarea {
+  padding: 11px 12px;
+  resize: vertical;
+}
+
+.school-profile-tuition-form input:focus,
+.school-profile-tuition-form select:focus,
+.school-profile-tuition-form textarea:focus {
+  outline: 3px solid rgba(242, 201, 76, 0.28);
+  border-color: var(--school-accent);
+}
+
+.school-profile-tuition-form__full {
+  grid-column: 1 / -1;
+}
+
+.school-profile-tuition-form__privacy {
+  margin: 0;
+  color: var(--school-muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.school-profile-tuition-status {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  background: #f8f6ef;
+}
+
+.school-profile-tuition-status.is-success {
+  border-color: rgba(31, 143, 77, 0.35);
+  background: rgba(31, 143, 77, 0.09);
+}
+
+.school-profile-tuition-status.is-error {
+  border-color: rgba(201, 48, 44, 0.36);
+  background: rgba(201, 48, 44, 0.08);
+}
+
+.school-profile-tuition-status p,
+.school-profile-tuition-status code {
+  margin: 0;
+}
+
+.school-profile-tuition-status code {
+  overflow-wrap: anywhere;
+  color: var(--school-muted);
+}
+
+.school-profile-tuition-status__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.school-profile-tuition-status__summary span {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.school-profile-tuition-card .school-profile-btn--primary {
+  color: #111;
+}
+
 .school-profile-empty {
   padding: 22px;
   border-style: dashed;
@@ -902,7 +1079,8 @@
   .school-profile-admission,
   .school-profile-list-columns,
   .school-profile-about-grid,
-  .school-profile-contact-grid {
+  .school-profile-contact-grid,
+  .school-profile-tuition-card {
     grid-template-columns: 1fr;
   }
 }
@@ -934,6 +1112,14 @@
 
   .school-profile-hero h1 {
     font-size: 2.55rem;
+  }
+
+  .school-profile-tuition-form {
+    grid-template-columns: 1fr;
+  }
+
+  .school-profile-tuition-form__full {
+    grid-column: auto;
   }
 
   .school-profile-section {

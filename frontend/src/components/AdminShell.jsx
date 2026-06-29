@@ -13,6 +13,7 @@ const ADMIN_ITEMS = [
   { key: "raffle", label: "Raffle Cards", path: "/admin/recharge-raffle" },
   { key: "marketplace", label: "Marketplace", path: "/admin/marketplace" },
   { key: "transactions", label: "Transactions", path: "/admin/transactions" },
+  { key: "tuition-payments", label: "Online Tuition Payments", path: "/admin/tuition-payments" },
   { key: "reports", label: "Moderation", path: "/admin/reports" },
   { key: "analytics", label: "Analytics", path: "/admin/analytics" },
   { key: "assistant", label: "Assistant Ops", path: "/admin/assistant" },

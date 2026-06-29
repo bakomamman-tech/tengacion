@@ -2721,6 +2721,16 @@ export const adminGetCreatorEarningsRepository = (params = {}) => {
   });
 };
 
+export const adminListTuitionPayments = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/tuition-payments?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
 export const adminGetFinanceAssuranceClose = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {

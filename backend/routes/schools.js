@@ -20,6 +20,10 @@ const {
   updateSchoolInquiryStatus,
   updateSchoolPage,
 } = require("../services/schoolPageService");
+const {
+  initializeSchoolTuitionPayment,
+  verifySchoolTuitionPayment,
+} = require("../services/schoolTuitionPaymentService");
 
 const router = express.Router();
 
@@ -29,6 +33,22 @@ const inquiryLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many school inquiries submitted. Please try again later." },
+});
+
+const tuitionPaymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many tuition payment attempts. Please try again later." },
+});
+
+const tuitionVerificationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many payment verification attempts. Please try again later." },
 });
 
 router.get(
@@ -49,6 +69,31 @@ router.post(
       req,
     });
     return res.status(201).json(payload);
+  })
+);
+
+router.post(
+  "/public/:slug/tuition-payments/initialize",
+  tuitionPaymentLimiter,
+  asyncHandler(async (req, res) => {
+    const payload = await initializeSchoolTuitionPayment({
+      slug: req.params.slug,
+      payload: req.body || {},
+      req,
+    });
+    return res.status(201).json(payload);
+  })
+);
+
+router.get(
+  "/public/:slug/tuition-payments/verify/:reference",
+  tuitionVerificationLimiter,
+  asyncHandler(async (req, res) => {
+    const payload = await verifySchoolTuitionPayment({
+      slug: req.params.slug,
+      reference: req.params.reference,
+    });
+    return res.json(payload);
   })
 );
 

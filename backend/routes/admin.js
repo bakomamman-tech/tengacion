@@ -19,6 +19,9 @@ const Album = require("../models/Album");
 const Book = require("../models/Book");
 const Video = require("../models/Video");
 const Purchase = require("../models/Purchase");
+const {
+  listAdminSchoolTuitionPayments,
+} = require("../services/schoolTuitionPaymentService");
 const { writeAuditLog } = require("../services/auditLogService");
 const { createNotification } = require("../services/notificationService");
 const { disconnectUserSockets } = require("../utils/realtimeSessions");
@@ -1565,6 +1568,26 @@ router.get("/transactions", async (req, res) => {
   } catch (err) {
     console.error("Admin transactions list error:", req.requestId, err);
     return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
+router.get("/tuition-payments", async (req, res) => {
+  try {
+    const payload = await listAdminSchoolTuitionPayments({
+      page: req.query.page,
+      limit: req.query.limit,
+      status: req.query.status,
+      schoolSlug: req.query.schoolSlug,
+      childClass: req.query.childClass,
+      search: req.query.search,
+    });
+    return res.json(payload);
+  } catch (err) {
+    console.error("Admin tuition payments list error:", req.requestId, err);
+    return res.status(err?.status || 500).json({
+      error: err?.status ? err.message : "Internal Server Error",
+      requestId: req.requestId,
+    });
   }
 });
 

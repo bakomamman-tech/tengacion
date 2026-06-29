@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import { resolveImage } from "../api";
+import SchoolTuitionPaymentCard from "../components/school/SchoolTuitionPaymentCard";
 import SeoHead from "../components/seo/SeoHead";
 import {
   buildBreadcrumbJsonLd,
@@ -402,6 +403,7 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
           <div className="school-profile-nav__links">
             <a href="#about-school">About</a>
             <a href="#admission">Admission</a>
+            {isKurahAcademy ? <a href="#tuition-payment">Pay Fees</a> : null}
             <a href="#announcements">Updates</a>
             <a href="#class-photographs">Class Photos</a>
             <a href="#contact">Contact</a>
@@ -417,6 +419,7 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
           </p>
           <div className="school-profile-hero__actions">
             <ActionLink href="#admission" variant="primary">Apply for Admission</ActionLink>
+            {isKurahAcademy ? <ActionLink href="#tuition-payment">Pay School Fees</ActionLink> : null}
             <ActionLink onClick={scrollToInquiry}>Send Inquiry</ActionLink>
             <ActionLink href={phoneHref || emailHref}>Contact School</ActionLink>
             <ActionLink onClick={shareSchool} variant="ghost">Share</ActionLink>
@@ -560,6 +563,20 @@ export default function SchoolProfilePage({ slugOverride = "" }) {
           </div>
         </div>
       </Section>
+
+      {isKurahAcademy ? (
+        <Section
+          id="tuition-payment"
+          eyebrow="School fees and tuition"
+          title="A clear, secure path from parent details to Paystack"
+          className="school-profile-section--tuition"
+        >
+          <SchoolTuitionPaymentCard
+            slug={school.slug || slug}
+            canonicalPath={canonicalPath}
+          />
+        </Section>
+      ) : null}
 
       <Section id="announcements" eyebrow="Announcements" title="School updates and important notices">
         {announcements.length ? (

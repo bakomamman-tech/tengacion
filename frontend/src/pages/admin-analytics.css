@@ -626,6 +626,37 @@
   flex-wrap: wrap;
 }
 
+.adminx-tuition-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.adminx-tuition-detail-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.adminx-tuition-detail-grid span {
+  color: var(--adminx-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.adminx-tuition-detail-grid strong,
+.adminx-tuition-detail-grid code {
+  overflow-wrap: anywhere;
+}
+
+.adminx-tuition-detail-grid__wide {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 1280px) {
   .adminx-stat-card { grid-column: span 4; }
   .adminx-panel--span-4,
@@ -664,6 +695,10 @@
   .adminx-finance-meta {
     flex-direction: column;
     gap: 6px;
+  }
+
+  .adminx-tuition-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -707,5 +742,13 @@
 
   .adminx-modal__actions .adminx-btn {
     width: 100%;
+  }
+
+  .adminx-tuition-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminx-tuition-detail-grid__wide {
+    grid-column: auto;
   }
 }

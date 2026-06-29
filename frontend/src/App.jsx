@@ -56,6 +56,7 @@ const CommunityGuidelinesPage = lazy(() => import("./pages/CommunityGuidelines")
 const AdminReportsPage = lazy(() => import("./pages/AdminReports"));
 const AdminContentPage = lazy(() => import("./pages/AdminContent"));
 const AdminTransactionsPage = lazy(() => import("./pages/AdminTransactions"));
+const AdminTuitionPaymentsPage = lazy(() => import("./pages/AdminTuitionPayments"));
 const AdminCreatorEarningsPage = lazy(() => import("./pages/AdminCreatorEarnings"));
 const AdminAssurancePage = lazy(() => import("./pages/AdminAssurance"));
 const AdminCreatorDetailPage = lazy(() => import("./pages/AdminCreatorDetail"));
@@ -787,6 +788,14 @@ export default function App() {
             element={
               <AdminRoute user={user}>
                 <AdminTransactionsPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/tuition-payments"
+            element={
+              <AdminRoute user={user}>
+                <AdminTuitionPaymentsPage user={user} />
               </AdminRoute>
             }
           />

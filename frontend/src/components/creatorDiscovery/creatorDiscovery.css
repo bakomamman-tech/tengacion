@@ -232,8 +232,8 @@
 }
 
 html[data-theme="nature-green"] .creator-discovery-theme {
-  --creator-summary-refresh-bg: linear-gradient(135deg, #3d8038 0%, #286a2b 56%, #1c4e21 100%);
-  --creator-summary-refresh-bg-hover: linear-gradient(135deg, #4b9343 0%, #327a33 56%, #225c27 100%);
+  --creator-summary-refresh-bg: var(--nature-leaf-button-gradient);
+  --creator-summary-refresh-bg-hover: var(--nature-leaf-button-gradient-hover);
   --creator-summary-refresh-border: rgba(128, 191, 105, 0.46);
   --creator-summary-refresh-text: #ffffff;
   --creator-summary-refresh-shadow:

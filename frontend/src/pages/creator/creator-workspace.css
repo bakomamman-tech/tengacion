@@ -3562,8 +3562,8 @@ html[data-theme="nature-green"] .creator-shell {
   --creator-shadow: 0 24px 60px rgba(33, 75, 31, 0.13);
   --creator-text: #182315;
   --creator-muted: #53634e;
-  --creator-accent: #2f7f2a;
-  --creator-accent-strong: #1f5f1d;
+  --creator-accent: var(--nature-leaf-main);
+  --creator-accent-strong: var(--nature-leaf-deep);
   --creator-gold: #7d6c1f;
   --creator-warning: #735f16;
   --creator-neutral: #53634e;

@@ -41,8 +41,13 @@ describe("creator discovery theme controls", () => {
     const css = readFileSync(cssPath, "utf8").replace(/\r\n/g, "\n");
     const rule = getRule(css, `html[data-theme="${theme}"] .creator-discovery-theme`);
 
-    expect(rule).toContain("--creator-summary-refresh-bg: linear-gradient");
-    expect(rule).toContain("--creator-summary-refresh-bg-hover: linear-gradient");
+    if (theme === "nature-green") {
+      expect(rule).toContain("--creator-summary-refresh-bg: var(--nature-leaf-button-gradient);");
+      expect(rule).toContain("--creator-summary-refresh-bg-hover: var(--nature-leaf-button-gradient-hover);");
+    } else {
+      expect(rule).toContain("--creator-summary-refresh-bg: linear-gradient");
+      expect(rule).toContain("--creator-summary-refresh-bg-hover: linear-gradient");
+    }
     expect(rule).toContain("--creator-summary-refresh-border:");
     expect(rule).toContain("--creator-summary-refresh-text:");
     expect(rule).toContain("--creator-summary-refresh-shadow:");

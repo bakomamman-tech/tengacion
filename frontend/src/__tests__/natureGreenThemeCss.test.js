@@ -31,7 +31,22 @@ describe("Nature Green theme CSS", () => {
     expect(natureBodyRule).toContain("var(--nature-green-leaf-bg)");
     expect(natureBodyRule).toContain("background-size:");
     expect(natureBodyRule).toContain("background-attachment: fixed;");
+    expect(natureBodyRule).toContain("background-blend-mode: soft-light, multiply, normal;");
+    expect(natureBodyRule).toContain("rgba(19, 80, 39, 0.2)");
     expect(afroBodyRule).not.toContain("nature-green-leaf-background");
+  });
+
+  it("shares one saturated leaf palette across green buttons", () => {
+    const css = readFileSync(cssPath, "utf8").replace(/\r\n/g, "\n");
+    const natureRule = getRule(css, "html.nature-green-mode");
+
+    expect(natureRule).toContain("--nature-leaf-main: #247436;");
+    expect(natureRule).toContain("--nature-leaf-deep: #135027;");
+    expect(natureRule).toContain("--nature-leaf-button-gradient:");
+    expect(natureRule).toContain("--btn-bg: var(--nature-leaf-button-gradient);");
+    expect(natureRule).toContain("--tg-btn-primary-bg: var(--nature-leaf-button-gradient);");
+    expect(css).toContain("background: var(--nature-leaf-button-gradient) !important;");
+    expect(css).toContain("--creator-discovery-control-active-bg: var(--nature-leaf-button-gradient);");
   });
 
   it("keeps public landing and login text readable in Nature Green", () => {

@@ -98,6 +98,15 @@ export const TEAM_LEADS = [
     bio:
       "Vincent Bilat Danjuma leads Tengacion's customer support team, helping customers and creators receive timely assistance and dependable issue resolution.",
   },
+  {
+    id: "christopher-ebere-chibuzor",
+    name: "Christopher Ebere Chibuzor",
+    role: "Abuja Creators Support Lead",
+    image: "/assets/leadership/christopher-ebere-chibuzor.png",
+    imageAlt: "Christopher Ebere Chibuzor, Abuja Creators Support Lead at Tengacion",
+    bio:
+      "Christopher Ebere Chibuzor leads Tengacion's creator support in Abuja, helping creators receive practical guidance, responsive assistance, and stronger connections to the platform.",
+  },
 ];
 
 export const INTERNS = [

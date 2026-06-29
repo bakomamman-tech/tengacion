@@ -8,6 +8,10 @@ import {
 } from "../../../services/schoolPageService";
 
 vi.mock("../../../services/schoolPageService", () => ({
+  fetchSchoolTuitionReceipt: vi.fn(),
+  getSchoolTuitionReceiptUrl: vi.fn(
+    (_slug, reference) => `/api/schools/public/kurahtechandartsacademy/tuition-payments/receipt/${reference}`
+  ),
   initializeSchoolTuitionPayment: vi.fn(),
   verifySchoolTuitionPayment: vi.fn(),
 }));
@@ -19,6 +23,7 @@ vi.mock("react-hot-toast", () => ({
 describe("SchoolTuitionPaymentCard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.open = vi.fn();
     window.history.replaceState({}, "", "/kurahtechandartsacademy");
   });
 
@@ -70,6 +75,7 @@ describe("SchoolTuitionPaymentCard", () => {
       status: "paid",
       payment: {
         status: "paid",
+        schoolName: "Kurah Tech and Arts Academy",
         childName: "Ada Learner",
         childClass: "Primary 2",
         amount: 25000,
@@ -86,6 +92,14 @@ describe("SchoolTuitionPaymentCard", () => {
 
     expect(await screen.findByText(/payment successful/i)).toBeInTheDocument();
     expect(screen.getByText("Ada Learner")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /download pdf receipt/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /share receipt/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /send with whatsapp/i }));
+    expect(window.open).toHaveBeenCalledWith(
+      expect.stringContaining("https://wa.me/?text="),
+      "_blank",
+      "noopener,noreferrer"
+    );
     expect(verifySchoolTuitionPayment).toHaveBeenCalledWith(
       "kurahtechandartsacademy",
       "TGN_SCHOOL_TUITION_TEST"

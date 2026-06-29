@@ -997,6 +997,18 @@
   font-weight: 800;
 }
 
+.school-profile-tuition-receipt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.school-profile-tuition-receipt-actions p {
+  flex-basis: 100%;
+  color: var(--school-muted);
+  font-size: 0.85rem;
+}
+
 .school-profile-tuition-card .school-profile-btn--primary {
   color: #111;
 }

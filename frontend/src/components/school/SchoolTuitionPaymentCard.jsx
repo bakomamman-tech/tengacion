@@ -3,6 +3,8 @@ import toast from "react-hot-toast";
 
 import PaystackSecureBadge from "../payments/PaystackSecureBadge";
 import {
+  fetchSchoolTuitionReceipt,
+  getSchoolTuitionReceiptUrl,
   initializeSchoolTuitionPayment,
   verifySchoolTuitionPayment,
 } from "../../services/schoolPageService";
@@ -44,6 +46,8 @@ export default function SchoolTuitionPaymentCard({ slug, canonicalPath }) {
   const [form, setForm] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [formMessage, setFormMessage] = useState("");
+  const [receiptAction, setReceiptAction] = useState("");
+  const [receiptMessage, setReceiptMessage] = useState("");
   const [verification, setVerification] = useState({
     state: "idle",
     message: "",
@@ -146,8 +150,94 @@ export default function SchoolTuitionPaymentCard({ slug, canonicalPath }) {
     setVerification({ state: "idle", message: "", payment: null, reference: "" });
     setForm(initialForm);
     setFormMessage("");
+    setReceiptAction("");
+    setReceiptMessage("");
     if (typeof window !== "undefined") {
       window.history.replaceState({}, "", canonicalPath || window.location.pathname);
+    }
+  };
+
+  const receiptFileName = `tuition-receipt-${verification.reference || "payment"}.pdf`;
+
+  const downloadReceipt = async () => {
+    setReceiptAction("download");
+    setReceiptMessage("");
+    try {
+      const blob = await fetchSchoolTuitionReceipt(slug, verification.reference);
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = receiptFileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      setReceiptMessage("Receipt downloaded to this device.");
+      toast.success("Receipt downloaded");
+    } catch (error) {
+      const message = error?.message || "Could not download the receipt.";
+      setReceiptMessage(message);
+      toast.error(message);
+    } finally {
+      setReceiptAction("");
+    }
+  };
+
+  const getAbsoluteReceiptUrl = () => {
+    const path = getSchoolTuitionReceiptUrl(slug, verification.reference);
+    return typeof window === "undefined" ? path : new URL(path, window.location.origin).toString();
+  };
+
+  const buildReceiptShareText = () => {
+    const payment = verification.payment || {};
+    return [
+      `${payment.schoolName || "School"} tuition payment receipt`,
+      `Learner: ${payment.childName || "-"}`,
+      `Class: ${payment.childClass || "-"}`,
+      `Amount: ${formatMoney(payment.amount, payment.currency)}`,
+      `Paystack reference: ${verification.reference}`,
+      `Receipt: ${getAbsoluteReceiptUrl()}`,
+    ].join("\n");
+  };
+
+  const openWhatsAppReceipt = () => {
+    const whatsAppUrl = `https://wa.me/?text=${encodeURIComponent(buildReceiptShareText())}`;
+    window.open(whatsAppUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const shareReceipt = async () => {
+    setReceiptAction("share");
+    setReceiptMessage("");
+    try {
+      const blob = await fetchSchoolTuitionReceipt(slug, verification.reference);
+      const file = typeof File === "undefined"
+        ? null
+        : new File([blob], receiptFileName, { type: "application/pdf" });
+      const sharePayload = file
+        ? { files: [file], title: "Tuition payment receipt", text: buildReceiptShareText() }
+        : null;
+      const canShareFile = Boolean(
+        sharePayload &&
+        navigator.share &&
+        (!navigator.canShare || navigator.canShare({ files: sharePayload.files }))
+      );
+
+      if (canShareFile) {
+        await navigator.share(sharePayload);
+        setReceiptMessage("Receipt shared from this device.");
+      } else {
+        openWhatsAppReceipt();
+        setReceiptMessage("WhatsApp opened with the secure receipt link.");
+      }
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        return;
+      }
+      const message = error?.message || "Could not share the receipt.";
+      setReceiptMessage(message);
+      toast.error(message);
+    } finally {
+      setReceiptAction("");
     }
   };
 
@@ -196,13 +286,39 @@ export default function SchoolTuitionPaymentCard({ slug, canonicalPath }) {
             ) : null}
             <code>{verification.reference}</code>
             {verification.state === "success" ? (
-              <button
-                type="button"
-                className="school-profile-btn school-profile-btn--primary"
-                onClick={startAnotherPayment}
-              >
-                Make another payment
-              </button>
+              <div className="school-profile-tuition-receipt-actions">
+                <button
+                  type="button"
+                  className="school-profile-btn school-profile-btn--primary"
+                  onClick={downloadReceipt}
+                  disabled={Boolean(receiptAction)}
+                >
+                  {receiptAction === "download" ? "Preparing PDF..." : "Download PDF receipt"}
+                </button>
+                <button
+                  type="button"
+                  className="school-profile-btn school-profile-btn--primary"
+                  onClick={shareReceipt}
+                  disabled={Boolean(receiptAction)}
+                >
+                  {receiptAction === "share" ? "Preparing share..." : "Share receipt"}
+                </button>
+                <button
+                  type="button"
+                  className="school-profile-btn"
+                  onClick={openWhatsAppReceipt}
+                >
+                  Send with WhatsApp
+                </button>
+                <button
+                  type="button"
+                  className="school-profile-btn"
+                  onClick={startAnotherPayment}
+                >
+                  Make another payment
+                </button>
+                {receiptMessage ? <p>{receiptMessage}</p> : null}
+              </div>
             ) : (
               <button
                 type="button"

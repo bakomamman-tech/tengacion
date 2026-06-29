@@ -24,6 +24,7 @@ const {
   initializeSchoolTuitionPayment,
   verifySchoolTuitionPayment,
 } = require("../services/schoolTuitionPaymentService");
+const { getSchoolTuitionReceipt } = require("../services/schoolTuitionReceiptService");
 
 const router = express.Router();
 
@@ -94,6 +95,21 @@ router.get(
       reference: req.params.reference,
     });
     return res.json(payload);
+  })
+);
+
+router.get(
+  "/public/:slug/tuition-payments/receipt/:reference",
+  tuitionVerificationLimiter,
+  asyncHandler(async (req, res) => {
+    const receipt = await getSchoolTuitionReceipt({
+      slug: req.params.slug,
+      reference: req.params.reference,
+    });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${receipt.fileName}"`);
+    res.setHeader("Cache-Control", "private, no-store, max-age=0");
+    return res.send(receipt.buffer);
   })
 );
 

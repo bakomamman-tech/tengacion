@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const request = require("supertest");
 const { MongoMemoryServer } = require("mongodb-memory-server");
+const { PDFDocument } = require("pdf-lib");
 
 process.env.NODE_ENV = "test";
 process.env.MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/tengacion-school-tuition-test";
@@ -20,6 +21,13 @@ const User = require("../models/User");
 let mongod;
 let adminToken;
 const originalFetch = global.fetch;
+
+const parseBinary = (res, callback) => {
+  res.setEncoding("binary");
+  let data = "";
+  res.on("data", (chunk) => { data += chunk; });
+  res.on("end", () => callback(null, Buffer.from(data, "binary")));
+};
 
 const issueSessionToken = async (userId) => {
   const sessionId = new mongoose.Types.ObjectId().toString();
@@ -192,6 +200,17 @@ describe("School tuition Paystack payments", () => {
     expect(stored.status).toBe("paid");
     expect(stored.paymentChannel).toBe("bank_transfer");
     expect(stored.verifiedBankName).toBe("OPAY");
+
+    const receiptResponse = await request(app)
+      .get(`/api/schools/public/kurahtechandartsacademy/tuition-payments/receipt/${reference}`)
+      .buffer(true)
+      .parse(parseBinary)
+      .expect(200);
+    expect(receiptResponse.headers["content-type"]).toContain("application/pdf");
+    expect(receiptResponse.headers["content-disposition"]).toContain("tuition-receipt-");
+    expect(receiptResponse.headers["cache-control"]).toContain("no-store");
+    const receiptPdf = await PDFDocument.load(receiptResponse.body);
+    expect(receiptPdf.getPageCount()).toBe(1);
   });
 
   test("rejects a successful Paystack response when the amount does not match", async () => {
@@ -219,6 +238,9 @@ describe("School tuition Paystack payments", () => {
     expect(stored.status).toBe("failed");
     expect(stored.failureReason).toMatch(/amount did not match/i);
     expect(stored.paidAt).toBeNull();
+    await request(app)
+      .get(`/api/schools/public/kurahtechandartsacademy/tuition-payments/receipt/${reference}`)
+      .expect(409);
   });
 
   test("routes signed Paystack webhooks to tuition records idempotently", async () => {

@@ -184,6 +184,10 @@
   object-fit: cover;
 }
 
+#christopher-ebere-chibuzor .leadership-card__portrait img {
+  object-position: center 18%;
+}
+
 .leadership-card.is-founder .leadership-card__portrait img {
   object-position: center 28%;
 }

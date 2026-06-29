@@ -265,6 +265,74 @@ const buildKurahSchoolFallback = () => ({
   ],
   classPhotos: [
     {
+      className: "Nursery 1",
+      students: [
+        student("Anastasia Victor", "student-nursery-1-anastasia-victor.jpg"),
+        student("Chrystabel Ezekiel", "student-nursery-1-chrystabel-ezekiel.jpg"),
+        student("Ellah Sunday", "student-nursery-1-ellah-sunday.jpg"),
+        student("Favour James", "student-nursery-1-favour-james.jpg"),
+        student("Isaac Emmanuel", "student-nursery-1-isaac-emmanuel.jpg"),
+        student("Kelvin Lawrence", "student-nursery-1-kelvin-lawrence.jpg"),
+        student("Mitchell Solomon", "student-nursery-1-mitchell-solomon.jpg"),
+      ],
+    },
+    {
+      className: "Nursery 2",
+      students: [
+        student("Akam Gideon", "student-nursery-2-akam-gideon.jpg"),
+        student("Angel Ephraim", "student-nursery-2-angel-ephraim.jpg"),
+        student("Bethel Fumen", "student-nursery-2-bethel-fumen.jpg"),
+        student("Beyond Kurah", "student-nursery-2-beyond-kurah.jpg"),
+        student("Comfort Levi", "student-nursery-2-comfort-levi.jpg"),
+        student("Dideskenan Lepan", "student-nursery-2-dideskenan-lepan.jpg"),
+        student("Elizabeth Francis", "student-nursery-2-elizabeth-francis.jpg"),
+        student("Israel Maiwa'azi", "student-nursery-2-israel-maiwa-azi.jpg"),
+        student("Michael I. Adigwu", "student-nursery-2-michael-i-adigwu.jpg"),
+        student("Nathan Chris", "student-nursery-2-nathan-chris.jpg"),
+        student("Onyinye Chukwu", "student-nursery-2-onyinye-chukwu.jpg"),
+        student("Samuel Jonathan", "student-nursery-2-samuel-jonathan.jpg"),
+      ],
+    },
+    {
+      className: "Nursery 3",
+      students: [
+        student("Kellah Sunday", "student-nursery-3-kellah-sunday.jpg"),
+        student("Olatunji Ezekiel", "student-nursery-3-olatunji-ezekiel.jpg"),
+        student("Praise Arinze", "student-nursery-3-praise-arinze.jpg"),
+        student("Rachael Samaila", "student-nursery-3-rachael-samaila.jpg"),
+        student("Sarah Sunday", "student-nursery-3-sarah-sunday.jpg"),
+        student("Treasure Michael", "student-nursery-3-treasure-michael.jpg"),
+      ],
+    },
+    {
+      className: "Primary 1",
+      students: [
+        student("Divine Abumere", "student-primary-1-divine-abumere.jpg"),
+        student("Doosey Agee", "student-primary-1-doosey-agee.jpg"),
+        student("Dunamis Edosomwan", "student-primary-1-dunamis-edosomwan.jpg"),
+        student("Genius Marshal", "student-primary-1-genius-marshal.jpg"),
+        student("Glory Kurah", "student-primary-1-glory-kurah.jpg"),
+        student("Israel Ajayi", "student-primary-1-israel-ajayi.jpg"),
+        student("Joseph Adigwu", "student-primary-1-joseph-adigwu.jpg"),
+        student("Miracle Solomon", "student-primary-1-miracle-solomon.jpg"),
+        student("Pascal John", "student-primary-1-pascal-john.jpg"),
+      ],
+    },
+    {
+      className: "Primary 2",
+      students: [
+        student("Ariana Ayuba", "student-primary-2-ariana-ayuba.jpg"),
+        student("Doris Chizaram", "student-primary-2-doris-chizaram.jpg"),
+        student("Emmanuel Francis", "student-primary-2-emmanuel-francis.jpg"),
+        student("Francis Igwe", "student-primary-2-francis-igwe.jpg"),
+        student("Jester Austin", "student-primary-2-jester-austin.jpg"),
+        student("Joel Benjamin", "student-primary-2-joel-benjamin.jpg"),
+        student("Joshua Paul", "student-primary-2-joshua-paul.jpg"),
+        student("Salome Sunday", "student-primary-2-salome-sunday.jpg"),
+        student("Saviour Anthony", "student-primary-2-saviour-anthony.jpg"),
+      ],
+    },
+    {
       className: "Primary 4",
       students: [
         student("Blessing Jude", "student-primary-4-blessing-jude.jpg"),
@@ -296,6 +364,7 @@ const buildKurahSchoolFallback = () => ({
         student("Stephenie Lawrence", "student-primary-5-stephenie-lawrence.jpg"),
         student("Success S. Samuel", "student-primary-5-success-s-samuel.jpg"),
         student("Victory Sunday", "student-primary-5-victory-sunday.jpg"),
+        student("Emmanuella Ajayi", "student-primary-5-emmanuella-ajayi.jpg"),
       ],
     },
     {

@@ -3496,3 +3496,455 @@ textarea {
     justify-items: start;
   }
 }
+
+/*
+ * Creator workspace contrast system
+ *
+ * Dashboard cards used to combine theme-level text colors with fixed ivory
+ * backgrounds. Dark themes therefore rendered cream or gold copy on cream
+ * controls. These tokens keep every dashboard surface and its foreground in
+ * the same theme-aware color system.
+ */
+.creator-shell {
+  --creator-bg:
+    radial-gradient(circle at top left, rgba(194, 155, 74, 0.14), transparent 32%),
+    radial-gradient(circle at top right, rgba(61, 123, 91, 0.18), transparent 24%),
+    linear-gradient(180deg, #f4efe5 0%, #ece6d8 100%);
+  --creator-panel: rgba(255, 251, 244, 0.9);
+  --creator-panel-strong: rgba(255, 248, 238, 0.98);
+  --creator-border: rgba(95, 76, 33, 0.14);
+  --creator-shadow: 0 24px 60px rgba(45, 36, 18, 0.12);
+  --creator-text: #2f2718;
+  --creator-muted: #6c624d;
+  --creator-accent: #315d43;
+  --creator-accent-strong: #1f4b34;
+  --creator-gold: #8a642a;
+  --creator-warning: #7d5815;
+  --creator-neutral: #645a47;
+  --creator-primary-text: #f7f3ea;
+  --creator-sidebar-surface: linear-gradient(180deg, #223129, #17231d);
+  --creator-sidebar-border: rgba(255, 255, 255, 0.09);
+  --creator-surface-raised: rgba(255, 252, 247, 0.96);
+  --creator-surface-soft: rgba(255, 249, 241, 0.78);
+  --creator-surface-success: rgba(49, 93, 67, 0.11);
+  --creator-surface-warning: rgba(156, 112, 29, 0.11);
+  --creator-surface-green:
+    radial-gradient(circle at top left, rgba(131, 181, 96, 0.16), transparent 32%),
+    linear-gradient(180deg, rgba(244, 251, 236, 0.96), rgba(235, 246, 223, 0.92));
+  --creator-surface-blue:
+    radial-gradient(circle at top right, rgba(32, 86, 109, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(240, 246, 247, 0.92));
+  --creator-surface-gold:
+    radial-gradient(circle at top right, rgba(183, 138, 66, 0.13), transparent 28%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(248, 242, 231, 0.92));
+  --creator-control-surface:
+    linear-gradient(180deg, rgba(255, 253, 249, 0.99), rgba(246, 239, 228, 0.97));
+  --creator-control-hover:
+    linear-gradient(180deg, #ffffff, rgba(250, 245, 237, 0.99));
+  --creator-control-active:
+    radial-gradient(circle at top right, rgba(49, 93, 67, 0.17), transparent 42%),
+    linear-gradient(180deg, rgba(241, 248, 241, 0.99), rgba(231, 241, 231, 0.97));
+  --creator-control-border: rgba(95, 76, 33, 0.16);
+  --creator-inner-border: rgba(95, 76, 33, 0.11);
+  --creator-control-shadow:
+    0 12px 28px rgba(75, 58, 27, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  --creator-focus-ring: rgba(49, 93, 67, 0.34);
+}
+
+html[data-theme="nature-green"] .creator-shell {
+  --creator-bg:
+    radial-gradient(circle at top left, rgba(91, 153, 66, 0.18), transparent 32%),
+    linear-gradient(180deg, #f8faef 0%, #e7f3df 100%);
+  --creator-panel: rgba(255, 253, 244, 0.9);
+  --creator-panel-strong: rgba(255, 253, 244, 0.98);
+  --creator-border: rgba(47, 127, 42, 0.2);
+  --creator-shadow: 0 24px 60px rgba(33, 75, 31, 0.13);
+  --creator-text: #182315;
+  --creator-muted: #53634e;
+  --creator-accent: #2f7f2a;
+  --creator-accent-strong: #1f5f1d;
+  --creator-gold: #7d6c1f;
+  --creator-warning: #735f16;
+  --creator-neutral: #53634e;
+  --creator-sidebar-surface: linear-gradient(180deg, #1f3a27, #14291b);
+  --creator-surface-raised: rgba(255, 254, 247, 0.97);
+  --creator-surface-soft: rgba(244, 249, 237, 0.9);
+  --creator-surface-success: rgba(47, 127, 42, 0.12);
+  --creator-surface-warning: rgba(125, 108, 31, 0.12);
+  --creator-surface-green:
+    radial-gradient(circle at top left, rgba(82, 151, 58, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(250, 253, 243, 0.98), rgba(231, 243, 221, 0.95));
+  --creator-surface-blue:
+    radial-gradient(circle at top right, rgba(37, 122, 101, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(252, 254, 246, 0.98), rgba(230, 242, 228, 0.94));
+  --creator-surface-gold:
+    radial-gradient(circle at top right, rgba(159, 138, 45, 0.13), transparent 28%),
+    linear-gradient(180deg, rgba(255, 254, 247, 0.98), rgba(242, 243, 220, 0.94));
+  --creator-control-surface:
+    linear-gradient(180deg, rgba(255, 254, 247, 0.99), rgba(238, 247, 229, 0.98));
+  --creator-control-hover:
+    linear-gradient(180deg, #ffffff, rgba(247, 252, 240, 0.99));
+  --creator-control-active:
+    radial-gradient(circle at top right, rgba(47, 127, 42, 0.18), transparent 42%),
+    linear-gradient(180deg, rgba(239, 249, 233, 0.99), rgba(222, 240, 211, 0.98));
+  --creator-control-border: rgba(47, 127, 42, 0.22);
+  --creator-inner-border: rgba(47, 127, 42, 0.14);
+  --creator-control-shadow:
+    0 12px 28px rgba(33, 75, 31, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  --creator-focus-ring: rgba(47, 127, 42, 0.38);
+}
+
+html[data-theme="peaceful"] .creator-shell {
+  --creator-bg:
+    radial-gradient(circle at top left, rgba(116, 79, 183, 0.13), transparent 34%),
+    radial-gradient(circle at top right, rgba(97, 174, 218, 0.14), transparent 28%),
+    linear-gradient(180deg, #faf7f7 0%, #eef2f8 100%);
+  --creator-panel: rgba(255, 252, 250, 0.9);
+  --creator-panel-strong: rgba(255, 253, 251, 0.98);
+  --creator-border: rgba(112, 76, 183, 0.18);
+  --creator-shadow: 0 24px 60px rgba(43, 36, 74, 0.13);
+  --creator-text: #18203f;
+  --creator-muted: #626379;
+  --creator-accent: #7050b7;
+  --creator-accent-strong: #4e318f;
+  --creator-gold: #9a6c24;
+  --creator-warning: #8a601e;
+  --creator-neutral: #626379;
+  --creator-sidebar-surface: linear-gradient(180deg, #1b2850, #111a37);
+  --creator-surface-raised: rgba(255, 253, 251, 0.97);
+  --creator-surface-soft: rgba(247, 241, 247, 0.92);
+  --creator-surface-success: rgba(41, 143, 104, 0.11);
+  --creator-surface-warning: rgba(183, 131, 50, 0.12);
+  --creator-surface-green:
+    radial-gradient(circle at top left, rgba(72, 151, 122, 0.13), transparent 34%),
+    linear-gradient(180deg, rgba(255, 253, 251, 0.98), rgba(238, 247, 243, 0.95));
+  --creator-surface-blue:
+    radial-gradient(circle at top right, rgba(97, 174, 218, 0.15), transparent 30%),
+    linear-gradient(180deg, rgba(255, 253, 251, 0.98), rgba(236, 243, 250, 0.95));
+  --creator-surface-gold:
+    radial-gradient(circle at top right, rgba(196, 154, 86, 0.14), transparent 28%),
+    linear-gradient(180deg, rgba(255, 253, 251, 0.98), rgba(248, 240, 235, 0.95));
+  --creator-control-surface:
+    linear-gradient(180deg, rgba(255, 254, 252, 0.99), rgba(242, 235, 241, 0.98));
+  --creator-control-hover:
+    linear-gradient(180deg, #ffffff, rgba(249, 244, 248, 0.99));
+  --creator-control-active:
+    radial-gradient(circle at top right, rgba(112, 76, 183, 0.17), transparent 42%),
+    linear-gradient(180deg, rgba(246, 241, 251, 0.99), rgba(234, 224, 246, 0.98));
+  --creator-control-border: rgba(112, 76, 183, 0.21);
+  --creator-inner-border: rgba(112, 76, 183, 0.13);
+  --creator-control-shadow:
+    0 12px 28px rgba(43, 36, 74, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  --creator-focus-ring: rgba(112, 76, 183, 0.36);
+}
+
+html[data-theme="dark"] .creator-shell {
+  --creator-bg:
+    radial-gradient(circle at top right, rgba(70, 132, 101, 0.13), transparent 30%),
+    linear-gradient(180deg, #101411 0%, #090c0a 100%);
+  --creator-panel: rgba(22, 27, 23, 0.94);
+  --creator-panel-strong: rgba(27, 33, 29, 0.98);
+  --creator-border: rgba(166, 205, 178, 0.18);
+  --creator-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+  --creator-text: #f5f2e9;
+  --creator-muted: #bbb8ae;
+  --creator-accent: #7fb991;
+  --creator-accent-strong: #a9d4b6;
+  --creator-gold: #e0b866;
+  --creator-warning: #e0b866;
+  --creator-neutral: #bbb8ae;
+  --creator-primary-text: #102017;
+  --creator-sidebar-surface: linear-gradient(180deg, #18221b, #101712);
+  --creator-sidebar-border: rgba(169, 212, 182, 0.16);
+  --creator-surface-raised: rgba(30, 36, 32, 0.98);
+  --creator-surface-soft: rgba(255, 255, 255, 0.055);
+  --creator-surface-success: rgba(127, 185, 145, 0.13);
+  --creator-surface-warning: rgba(224, 184, 102, 0.13);
+  --creator-surface-green:
+    radial-gradient(circle at top left, rgba(127, 185, 145, 0.13), transparent 34%),
+    linear-gradient(180deg, rgba(28, 36, 30, 0.98), rgba(19, 27, 22, 0.97));
+  --creator-surface-blue:
+    radial-gradient(circle at top right, rgba(89, 139, 166, 0.13), transparent 30%),
+    linear-gradient(180deg, rgba(27, 34, 32, 0.98), rgba(19, 26, 27, 0.97));
+  --creator-surface-gold:
+    radial-gradient(circle at top right, rgba(224, 184, 102, 0.13), transparent 28%),
+    linear-gradient(180deg, rgba(34, 34, 28, 0.98), rgba(25, 25, 21, 0.97));
+  --creator-control-surface:
+    linear-gradient(180deg, rgba(40, 48, 42, 0.99), rgba(25, 31, 27, 0.98));
+  --creator-control-hover:
+    linear-gradient(180deg, rgba(49, 59, 52, 1), rgba(31, 39, 34, 0.99));
+  --creator-control-active:
+    radial-gradient(circle at top right, rgba(127, 185, 145, 0.2), transparent 42%),
+    linear-gradient(180deg, rgba(38, 52, 43, 0.99), rgba(25, 39, 31, 0.98));
+  --creator-control-border: rgba(169, 212, 182, 0.22);
+  --creator-inner-border: rgba(255, 255, 255, 0.1);
+  --creator-control-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --creator-focus-ring: rgba(169, 212, 182, 0.42);
+}
+
+html[data-theme="royalty"] .creator-shell {
+  --creator-bg:
+    radial-gradient(circle at top right, rgba(105, 60, 204, 0.17), transparent 30%),
+    radial-gradient(circle at top left, rgba(230, 174, 76, 0.12), transparent 26%),
+    linear-gradient(180deg, #061127 0%, #020817 100%);
+  --creator-panel: rgba(8, 22, 43, 0.94);
+  --creator-panel-strong: rgba(13, 28, 52, 0.98);
+  --creator-border: rgba(230, 174, 76, 0.24);
+  --creator-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  --creator-text: #fff7e7;
+  --creator-muted: #c1bdc8;
+  --creator-accent: #e6ae4c;
+  --creator-accent-strong: #ffd986;
+  --creator-gold: #ffd986;
+  --creator-warning: #ffd071;
+  --creator-neutral: #c1bdc8;
+  --creator-primary-text: #071020;
+  --creator-sidebar-surface: linear-gradient(180deg, #0c1d38, #061127);
+  --creator-sidebar-border: rgba(255, 217, 134, 0.18);
+  --creator-surface-raised: rgba(15, 32, 58, 0.98);
+  --creator-surface-soft: rgba(255, 255, 255, 0.06);
+  --creator-surface-success: rgba(73, 219, 156, 0.12);
+  --creator-surface-warning: rgba(255, 208, 113, 0.13);
+  --creator-surface-green:
+    radial-gradient(circle at top left, rgba(73, 219, 156, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(13, 34, 51, 0.99), rgba(7, 23, 39, 0.98));
+  --creator-surface-blue:
+    radial-gradient(circle at top right, rgba(105, 60, 204, 0.17), transparent 30%),
+    linear-gradient(180deg, rgba(14, 29, 57, 0.99), rgba(7, 17, 38, 0.98));
+  --creator-surface-gold:
+    radial-gradient(circle at top right, rgba(230, 174, 76, 0.16), transparent 28%),
+    linear-gradient(180deg, rgba(24, 31, 49, 0.99), rgba(13, 20, 37, 0.98));
+  --creator-control-surface:
+    linear-gradient(180deg, rgba(24, 40, 68, 0.99), rgba(7, 19, 39, 0.98));
+  --creator-control-hover:
+    linear-gradient(180deg, rgba(35, 53, 84, 1), rgba(13, 28, 53, 0.99));
+  --creator-control-active:
+    radial-gradient(circle at top right, rgba(255, 217, 134, 0.19), transparent 42%),
+    linear-gradient(180deg, rgba(43, 37, 63, 0.99), rgba(25, 27, 52, 0.98));
+  --creator-control-border: rgba(230, 174, 76, 0.28);
+  --creator-inner-border: rgba(255, 217, 134, 0.12);
+  --creator-control-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 239, 198, 0.08);
+  --creator-focus-ring: rgba(255, 217, 134, 0.44);
+}
+
+html[data-theme="afro-gold"] .creator-shell {
+  --creator-bg:
+    repeating-linear-gradient(135deg, rgba(224, 163, 58, 0.07) 0 2px, transparent 2px 24px),
+    linear-gradient(180deg, #0a0806 0%, #050403 100%);
+  --creator-panel: rgba(18, 16, 13, 0.94);
+  --creator-panel-strong: rgba(27, 22, 15, 0.98);
+  --creator-border: rgba(224, 163, 58, 0.24);
+  --creator-shadow: 0 24px 60px rgba(0, 0, 0, 0.46);
+  --creator-text: #fff3d7;
+  --creator-muted: #c8b58b;
+  --creator-accent: #e0a33a;
+  --creator-accent-strong: #f7c864;
+  --creator-gold: #f7c864;
+  --creator-warning: #f7c864;
+  --creator-neutral: #c8b58b;
+  --creator-primary-text: #120d07;
+  --creator-sidebar-surface: linear-gradient(180deg, #251d12, #17120c);
+  --creator-sidebar-border: rgba(247, 200, 100, 0.18);
+  --creator-surface-raised: rgba(31, 25, 17, 0.98);
+  --creator-surface-soft: rgba(255, 240, 207, 0.06);
+  --creator-surface-success: rgba(118, 200, 147, 0.12);
+  --creator-surface-warning: rgba(247, 200, 100, 0.14);
+  --creator-surface-green:
+    radial-gradient(circle at top left, rgba(118, 200, 147, 0.11), transparent 34%),
+    linear-gradient(180deg, rgba(29, 28, 20, 0.99), rgba(20, 20, 14, 0.98));
+  --creator-surface-blue:
+    radial-gradient(circle at top right, rgba(87, 135, 154, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(29, 25, 19, 0.99), rgba(20, 17, 13, 0.98));
+  --creator-surface-gold:
+    radial-gradient(circle at top right, rgba(247, 200, 100, 0.15), transparent 28%),
+    linear-gradient(180deg, rgba(34, 27, 17, 0.99), rgba(22, 17, 11, 0.98));
+  --creator-control-surface:
+    linear-gradient(180deg, rgba(38, 31, 21, 0.99), rgba(22, 18, 13, 0.98));
+  --creator-control-hover:
+    linear-gradient(180deg, rgba(49, 39, 25, 1), rgba(29, 23, 15, 0.99));
+  --creator-control-active:
+    radial-gradient(circle at top right, rgba(247, 200, 100, 0.2), transparent 42%),
+    linear-gradient(180deg, rgba(52, 39, 21, 0.99), rgba(34, 25, 14, 0.98));
+  --creator-control-border: rgba(247, 200, 100, 0.28);
+  --creator-inner-border: rgba(247, 200, 100, 0.13);
+  --creator-control-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 224, 159, 0.09);
+  --creator-focus-ring: rgba(247, 200, 100, 0.46);
+}
+
+html[data-theme="terra-minimal"] .creator-shell {
+  --creator-bg:
+    radial-gradient(circle at top left, rgba(185, 75, 36, 0.14), transparent 34%),
+    radial-gradient(circle at top right, rgba(109, 101, 58, 0.12), transparent 28%),
+    linear-gradient(180deg, #f4ece2 0%, #eadacb 100%);
+  --creator-panel: rgba(255, 250, 242, 0.9);
+  --creator-panel-strong: rgba(255, 252, 247, 0.98);
+  --creator-border: rgba(145, 88, 54, 0.22);
+  --creator-shadow: 0 24px 60px rgba(76, 45, 25, 0.14);
+  --creator-text: #321d13;
+  --creator-muted: #6b5547;
+  --creator-accent: #a54122;
+  --creator-accent-strong: #71301d;
+  --creator-gold: #80652d;
+  --creator-warning: #745b27;
+  --creator-neutral: #6b5547;
+  --creator-sidebar-surface: linear-gradient(180deg, #513526, #382319);
+  --creator-surface-raised: rgba(255, 251, 245, 0.97);
+  --creator-surface-soft: rgba(246, 232, 217, 0.9);
+  --creator-surface-success: rgba(91, 111, 64, 0.12);
+  --creator-surface-warning: rgba(128, 101, 45, 0.12);
+  --creator-surface-green:
+    radial-gradient(circle at top left, rgba(109, 101, 58, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(255, 251, 245, 0.98), rgba(237, 231, 211, 0.95));
+  --creator-surface-blue:
+    radial-gradient(circle at top right, rgba(76, 120, 130, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(255, 251, 245, 0.98), rgba(232, 237, 232, 0.95));
+  --creator-surface-gold:
+    radial-gradient(circle at top right, rgba(185, 75, 36, 0.14), transparent 28%),
+    linear-gradient(180deg, rgba(255, 251, 245, 0.98), rgba(245, 226, 208, 0.95));
+  --creator-control-surface:
+    linear-gradient(180deg, rgba(255, 251, 245, 0.99), rgba(241, 225, 208, 0.98));
+  --creator-control-hover:
+    linear-gradient(180deg, #fffdf9, rgba(248, 235, 222, 0.99));
+  --creator-control-active:
+    radial-gradient(circle at top right, rgba(185, 75, 36, 0.17), transparent 42%),
+    linear-gradient(180deg, rgba(252, 239, 228, 0.99), rgba(239, 216, 197, 0.98));
+  --creator-control-border: rgba(145, 88, 54, 0.23);
+  --creator-inner-border: rgba(145, 88, 54, 0.15);
+  --creator-control-shadow:
+    0 12px 28px rgba(76, 45, 25, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  --creator-focus-ring: rgba(185, 75, 36, 0.38);
+}
+
+.creator-shell .creator-sidebar {
+  background: var(--creator-sidebar-surface);
+  border-color: var(--creator-sidebar-border);
+}
+
+.creator-shell :is(.creator-header, .creator-panel, .creator-profile-summary) {
+  background: var(--creator-panel-strong);
+  border-color: var(--creator-border);
+  color: var(--creator-text);
+}
+
+.creator-shell .creator-header--featured {
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--creator-gold) 13%, transparent), transparent 24%),
+    radial-gradient(circle at bottom left, color-mix(in srgb, var(--creator-accent) 12%, transparent), transparent 30%),
+    var(--creator-panel-strong);
+}
+
+.creator-shell .creator-top-pill,
+.creator-shell .creator-chip-group {
+  background: var(--creator-surface-soft);
+  border-color: var(--creator-inner-border);
+  color: var(--creator-text);
+}
+
+.creator-shell :is(
+  .creator-secondary-btn,
+  .creator-chip-link,
+  .creator-chip-link--overview,
+  .creator-chip-link--parent,
+  .creator-chip-link--child
+) {
+  background: var(--creator-control-surface);
+  border-color: var(--creator-control-border);
+  color: var(--creator-text);
+  box-shadow: var(--creator-control-shadow);
+}
+
+.creator-shell :is(.creator-secondary-btn, .creator-chip-link):hover {
+  background: var(--creator-control-hover);
+  border-color: var(--creator-focus-ring);
+  box-shadow: var(--creator-control-shadow);
+}
+
+.creator-shell .creator-chip-link.active {
+  background: var(--creator-control-active);
+  border-color: var(--creator-focus-ring);
+  box-shadow: var(--creator-control-shadow);
+}
+
+.creator-shell .creator-chip-link__label,
+.creator-shell .creator-chip-link.active .creator-chip-link__label,
+.creator-shell .creator-btn-stack strong {
+  color: var(--creator-text);
+}
+
+.creator-shell :is(.creator-btn-stack small, .creator-top-pill span) {
+  color: var(--creator-muted);
+}
+
+.creator-shell :is(.creator-primary-btn, .creator-upload-btn) {
+  color: var(--creator-primary-text);
+}
+
+.creator-shell :is(
+  .creator-profile-summary-grid > div,
+  .creator-category-stats > div,
+  .creator-metric-card,
+  .creator-stats-card,
+  .creator-activation-step,
+  .creator-console-funnel > div,
+  .creator-console-prompt,
+  .creator-catalog-score,
+  .creator-catalog-health-detail,
+  .creator-akuso-template,
+  .creator-upload-launch-card,
+  .creator-stack-row,
+  .creator-release-card,
+  .creator-activity-item,
+  .creator-quick-action,
+  .creator-empty-card,
+  .creator-page-loading,
+  .creator-page-error
+) {
+  background: var(--creator-surface-soft);
+  border-color: var(--creator-inner-border);
+  color: var(--creator-text);
+}
+
+.creator-shell :is(.creator-stats-card--success, .creator-activation-step.is-complete) {
+  background: var(--creator-surface-success);
+}
+
+.creator-shell :is(.creator-stats-card--warning, .creator-activation-step.is-current) {
+  background: var(--creator-surface-warning);
+}
+
+.creator-shell :is(.creator-upload-launchpad, .creator-activation-panel) {
+  background: var(--creator-surface-green);
+}
+
+.creator-shell :is(.creator-console-panel, .creator-discovery-insights-panel) {
+  background: var(--creator-surface-blue);
+}
+
+.creator-shell .creator-catalog-quality-panel {
+  background: var(--creator-surface-gold);
+}
+
+.creator-shell :is(.creator-activity-item p, .creator-quick-action small) {
+  color: var(--creator-muted);
+}
+
+.creator-shell :is(
+  .creator-secondary-btn,
+  .creator-primary-btn,
+  .creator-chip-link,
+  .creator-quick-action,
+  .creator-content-category-link
+):focus-visible {
+  outline: 3px solid var(--creator-focus-ring);
+  outline-offset: 3px;
+}

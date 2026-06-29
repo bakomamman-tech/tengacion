@@ -30,7 +30,8 @@ describe("CreatorFanPagePreview", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the fan-facing preview sections and actions", () => {
+  it("renders the fan-facing preview sections and searches songs, podcasts, and books", async () => {
+    const user = userEvent.setup();
     render(
       <MemoryRouter>
         <CreatorFanPagePreview
@@ -100,6 +101,10 @@ describe("CreatorFanPagePreview", () => {
     );
 
     expect(screen.getByLabelText(/fan page view/i)).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /tengacion logo/i })).toHaveAttribute(
+      "src",
+      "/tengacion_logo_64.png"
+    );
     expect(screen.getAllByText(/creator example/i).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: /follow/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: /donate/i }).length).toBeGreaterThan(0);
@@ -125,6 +130,29 @@ describe("CreatorFanPagePreview", () => {
     expect(
       screen.getByRole("slider", { name: /seek within golden echoes/i })
     ).toBeInTheDocument();
+
+    const catalogSearch = screen.getByRole("combobox", {
+      name: /search creator example's songs, podcasts, and books/i,
+    });
+
+    await user.type(catalogSearch, "golden");
+    expect(screen.getByRole("option", { name: /golden echoes, song/i })).toBeInTheDocument();
+
+    await user.clear(catalogSearch);
+    await user.type(catalogSearch, "process");
+    expect(screen.getByRole("option", { name: /the process, podcast/i })).toBeInTheDocument();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("tab", { name: /podcasts/i })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+
+    await user.clear(catalogSearch);
+    await user.type(catalogSearch, "quiet");
+    await user.click(screen.getByRole("option", { name: /the quiet fire, book/i }));
+
+    expect(screen.getByRole("tab", { name: /books/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getAllByRole("heading", { name: /the quiet fire/i }).length).toBeGreaterThan(0);
   }, 10000);
 
   it("shows a buy full track button to public visitors", () => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
@@ -43,6 +43,23 @@ const isProductItem = (item = {}) => getItemType(item) === "product";
 
 const isAudioItem = (item = {}) =>
   ["track", "album", "podcast"].includes(getItemType(item)) && Boolean(item?.isPlayableAudio);
+
+const SEARCHABLE_SECTION_KEYS = ["music", "podcasts", "books"];
+const SEARCHABLE_ITEM_TYPES = new Set(["track", "podcast", "book"]);
+
+const normalizeSearchText = (value = "") =>
+  String(value || "").trim().toLocaleLowerCase();
+
+const getSearchTypeLabel = (item = {}) => {
+  const itemType = getItemType(item);
+  if (itemType === "book") {
+    return "Book";
+  }
+  if (itemType === "podcast") {
+    return "Podcast";
+  }
+  return "Song";
+};
 
 const getPreviewActionLabel = (item = {}) =>
   isBookItem(item) || isPostItem(item) || isProductItem(item)
@@ -115,16 +132,82 @@ export default function CreatorFanPagePreview({
   const [isPlaying, setIsPlaying] = useState(false);
   const [autoplayRequest, setAutoplayRequest] = useState(0);
   const [authPrompt, setAuthPrompt] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [activeSearchIndex, setActiveSearchIndex] = useState(0);
+  const pendingSearchSelectionRef = useRef(null);
+  const contentRef = useRef(null);
 
   useEffect(() => {
     setActiveTab(resolveCreatorFanPageTabKey(initialTab));
   }, [data.creatorName, initialTab]);
 
   useEffect(() => {
-    setActiveIndex(0);
+    const pendingSelection = pendingSearchSelectionRef.current;
+    if (pendingSelection?.sectionKey === activeTab) {
+      setActiveIndex(pendingSelection.itemIndex);
+      pendingSearchSelectionRef.current = null;
+    } else {
+      setActiveIndex(0);
+    }
     setIsPlaying(false);
     setAutoplayRequest(0);
   }, [activeTab]);
+
+  const catalogSearchItems = useMemo(
+    () =>
+      SEARCHABLE_SECTION_KEYS.flatMap((sectionKey) => {
+        const sectionItems = data.sections?.[sectionKey]?.items || [];
+        return sectionItems
+          .map((item, itemIndex) => ({
+            item,
+            itemIndex,
+            sectionKey,
+            typeLabel: getSearchTypeLabel(item),
+          }))
+          .filter(({ item }) =>
+            SEARCHABLE_ITEM_TYPES.has(getItemType(item)) && Boolean(String(item?.title || "").trim())
+          );
+      }),
+    [data.sections]
+  );
+
+  const searchResults = useMemo(() => {
+    const query = normalizeSearchText(searchQuery);
+    if (!query) {
+      return [];
+    }
+
+    return catalogSearchItems
+      .map((result) => {
+        const title = normalizeSearchText(result.item?.title);
+        const haystack = normalizeSearchText(
+          [
+            result.item?.title,
+            result.item?.subtitle,
+            result.item?.description,
+            result.item?.genre,
+            result.item?.releaseType,
+            result.item?.secondaryLine,
+            result.typeLabel,
+          ]
+            .filter(Boolean)
+            .join(" ")
+        );
+        return {
+          ...result,
+          score: title.startsWith(query) ? 0 : title.includes(query) ? 1 : 2,
+          matches: haystack.includes(query),
+        };
+      })
+      .filter((result) => result.matches)
+      .sort((left, right) => left.score - right.score || left.itemIndex - right.itemIndex)
+      .slice(0, 8);
+  }, [catalogSearchItems, searchQuery]);
+
+  useEffect(() => {
+    setActiveSearchIndex(0);
+  }, [searchQuery]);
 
   const initials = getCreatorFanPageInitials(data.creatorName);
   const heroStyle = data.heroUrl
@@ -265,6 +348,53 @@ export default function CreatorFanPagePreview({
     setIsPlaying(false);
     if (autoplay) {
       setAutoplayRequest((current) => current + 1);
+    }
+  };
+
+  const selectSearchResult = (result) => {
+    if (!result) {
+      return;
+    }
+
+    pendingSearchSelectionRef.current = result;
+    if (activeTab === result.sectionKey) {
+      setActiveIndex(result.itemIndex);
+      pendingSearchSelectionRef.current = null;
+    } else {
+      setActiveTab(result.sectionKey);
+    }
+    setIsPlaying(false);
+    setAutoplayRequest(0);
+    setSearchQuery(result.item.title);
+    setSearchOpen(false);
+    contentRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  };
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    selectSearchResult(searchResults[activeSearchIndex] || searchResults[0]);
+  };
+
+  const handleSearchKeyDown = (event) => {
+    if (event.key === "Escape") {
+      setSearchOpen(false);
+      return;
+    }
+
+    if (!searchResults.length) {
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setSearchOpen(true);
+      setActiveSearchIndex((current) => (current + 1) % searchResults.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setSearchOpen(true);
+      setActiveSearchIndex(
+        (current) => (current - 1 + searchResults.length) % searchResults.length
+      );
     }
   };
 
@@ -844,8 +974,14 @@ export default function CreatorFanPagePreview({
     >
       <header className="creator-fan-page__topbar">
         <div className="creator-fan-page__brand">
-          <span className="creator-fan-page__brand-mark" aria-hidden="true">
-            T
+          <span className="creator-fan-page__brand-mark">
+            <img
+              src="/tengacion_logo_64.png"
+              alt="Tengacion logo"
+              width="44"
+              height="44"
+              decoding="async"
+            />
           </span>
           <div>
             <strong>Tengacion</strong>
@@ -853,9 +989,117 @@ export default function CreatorFanPagePreview({
           </div>
         </div>
 
-        <div className="creator-fan-page__search">
-          {isPublicMode ? "Search this creator page" : "Search Fan Page View"}
-        </div>
+        <form
+          className="creator-fan-page__search"
+          role="search"
+          onSubmit={handleSearchSubmit}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setSearchOpen(false);
+            }
+          }}
+        >
+          <span className="creator-fan-page__search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="m16 16 4 4" />
+            </svg>
+          </span>
+          <input
+            type="search"
+            value={searchQuery}
+            placeholder="Search songs, podcasts, and books"
+            aria-label={`Search ${data.creatorName}'s songs, podcasts, and books`}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={searchOpen && Boolean(normalizeSearchText(searchQuery))}
+            aria-controls="creator-catalog-search-results"
+            aria-activedescendant={
+              searchOpen && searchResults.length
+                ? `creator-catalog-search-result-${activeSearchIndex}`
+                : undefined
+            }
+            onFocus={() => setSearchOpen(Boolean(normalizeSearchText(searchQuery)))}
+            onChange={(event) => {
+              const nextQuery = event.target.value;
+              setSearchQuery(nextQuery);
+              setSearchOpen(Boolean(normalizeSearchText(nextQuery)));
+            }}
+            onKeyDown={handleSearchKeyDown}
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              className="creator-fan-page__search-clear"
+              aria-label="Clear creator catalog search"
+              onClick={() => {
+                setSearchQuery("");
+                setSearchOpen(false);
+              }}
+            >
+              ×
+            </button>
+          ) : null}
+
+          {searchOpen && normalizeSearchText(searchQuery) ? (
+            <div
+              id="creator-catalog-search-results"
+              className="creator-fan-page__search-results"
+              role="listbox"
+              aria-label="Creator catalog search results"
+            >
+              <div className="creator-fan-page__search-summary">
+                <span>Creator catalog</span>
+                <strong>
+                  {searchResults.length} {searchResults.length === 1 ? "result" : "results"}
+                </strong>
+              </div>
+
+              {searchResults.length ? (
+                searchResults.map((result, index) => (
+                  <button
+                    key={`${result.sectionKey}-${result.item.id || result.item.title}-${result.itemIndex}`}
+                    id={`creator-catalog-search-result-${index}`}
+                    type="button"
+                    className={`creator-fan-page__search-result${
+                      index === activeSearchIndex ? " is-active" : ""
+                    }`}
+                    role="option"
+                    aria-label={`${result.item.title}, ${result.typeLabel}${
+                      result.item.subtitle ? ` by ${result.item.subtitle}` : ""
+                    }`}
+                    aria-selected={index === activeSearchIndex}
+                    onMouseEnter={() => setActiveSearchIndex(index)}
+                    onClick={() => selectSearchResult(result)}
+                  >
+                    <span className="creator-fan-page__search-thumbnail" aria-hidden="true">
+                      {result.item.imageUrl ? (
+                        <img src={result.item.imageUrl} alt="" />
+                      ) : (
+                        result.typeLabel.slice(0, 1)
+                      )}
+                    </span>
+                    <span className="creator-fan-page__search-result-copy">
+                      <strong>{result.item.title}</strong>
+                      <small>
+                        {result.typeLabel}
+                        {result.item.subtitle ? ` · ${result.item.subtitle}` : ""}
+                      </small>
+                    </span>
+                    <span className="creator-fan-page__search-result-arrow" aria-hidden="true">
+                      →
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <div className="creator-fan-page__search-empty">
+                  <strong>No creator releases found</strong>
+                  <span>Try another song, podcast, or book title.</span>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </form>
 
         <div className="creator-fan-page__top-actions">
           {isPublicMode ? (
@@ -975,7 +1219,7 @@ export default function CreatorFanPagePreview({
           </div>
         </aside>
 
-        <main className="creator-fan-page__main">
+        <main ref={contentRef} className="creator-fan-page__main">
           <section className="creator-fan-page__hero" style={heroStyle}>
             <span className="creator-fan-page__eyebrow">Public Fan Experience</span>
             <h2>{data.creatorName}</h2>

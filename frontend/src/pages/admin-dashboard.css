@@ -1,12 +1,64 @@
 .tdash-page {
+  --tdash-main-text: #0f172e;
+  --tdash-main-muted: #596681;
+  --tdash-sidebar-text: #eaf0ff;
+  --tdash-sidebar-muted: #b8c6e6;
+  --tdash-surface-text: #ecf2ff;
+  --tdash-surface-muted: #aebcda;
+  --tdash-summary-text: #edf4ff;
+  --tdash-summary-muted: #c5d1e8;
+  --tdash-popover-text: #15203a;
+  --tdash-popover-muted: #596681;
+  --tdash-control-text: var(--tg-btn-secondary-text, #101729);
+  --tdash-control-muted: color-mix(in srgb, var(--tdash-control-text) 72%, transparent);
+  --tdash-positive: #5dd6a4;
+  --tdash-negative: #f58d8d;
+  --tdash-chart-axis: #aebcda;
+  --tdash-chart-grid: rgba(174, 188, 218, 0.18);
   min-height: 100vh;
   background:
     radial-gradient(circle at top left, rgba(92, 131, 255, 0.08), transparent 26%),
     radial-gradient(circle at bottom right, rgba(102, 218, 198, 0.08), transparent 24%),
     #f3f5fb;
   padding: 24px;
-  color: #eff4ff;
+  color: var(--tdash-main-text);
   font-family: "Aptos", "Segoe UI Variable Display", "Segoe UI", sans-serif;
+}
+
+/*
+ * Dashboard text tokens are tied to the surface they sit on. Most themes keep
+ * the dashboard's light workspace and dark data cards; Nature Green and Afro
+ * Gold intentionally recolor those surfaces, so they receive matching text
+ * palettes here instead of inheriting a page-wide theme color.
+ */
+html[data-theme="nature-green"] .tdash-page {
+  --tdash-main-text: #182315;
+  --tdash-main-muted: #4f624a;
+  --tdash-sidebar-text: #183f20;
+  --tdash-sidebar-muted: #4f6949;
+  --tdash-surface-text: #182315;
+  --tdash-surface-muted: #4f624a;
+  --tdash-popover-text: #182315;
+  --tdash-popover-muted: #4f624a;
+  --tdash-positive: #247247;
+  --tdash-negative: #ad3849;
+  --tdash-chart-axis: #52664d;
+  --tdash-chart-grid: rgba(47, 127, 42, 0.2);
+}
+
+html[data-theme="afro-gold"] .tdash-page {
+  --tdash-main-text: #fff3d7;
+  --tdash-main-muted: #c6ae76;
+  --tdash-sidebar-text: #fff3d7;
+  --tdash-sidebar-muted: #c6ae76;
+  --tdash-surface-text: #fff3d7;
+  --tdash-surface-muted: #c6ae76;
+  --tdash-popover-text: #fff3d7;
+  --tdash-popover-muted: #c6ae76;
+  --tdash-positive: #70d69f;
+  --tdash-negative: #ff9da8;
+  --tdash-chart-axis: #c6ae76;
+  --tdash-chart-grid: rgba(224, 163, 58, 0.2);
 }
 
 .tdash-shell {
@@ -28,7 +80,7 @@
 .tdash-main {
   min-width: 0;
   padding: 30px;
-  color: #0f172e;
+  color: var(--tdash-main-text);
 }
 
 .tdash-content {
@@ -46,7 +98,7 @@
     radial-gradient(circle at top left, rgba(84, 126, 255, 0.22), transparent 22%),
     radial-gradient(circle at bottom left, rgba(42, 215, 187, 0.16), transparent 28%),
     linear-gradient(180deg, #0c1220 0%, #101b31 56%, #0c1426 100%);
-  color: #eaf0ff;
+  color: var(--tdash-sidebar-text);
 }
 
 .tdash-sidebar__brand {
@@ -71,7 +123,7 @@
   font-size: 0.78rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(204, 217, 255, 0.7);
+  color: var(--tdash-sidebar-muted);
 }
 
 .tdash-sidebar__title {
@@ -95,7 +147,7 @@
   align-items: center;
   gap: 12px;
   background: transparent;
-  color: #dde6ff;
+  color: var(--tdash-sidebar-text);
   text-decoration: none;
   transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
@@ -161,7 +213,7 @@
 .tdash-sidebar__profile-role {
   margin-top: 2px;
   font-size: 0.85rem;
-  color: rgba(204, 217, 255, 0.72);
+  color: var(--tdash-sidebar-muted);
 }
 
 .tdash-avatar {
@@ -221,10 +273,10 @@
   display: none;
   width: 42px;
   height: 42px;
-  border: 1px solid #d7deef;
+  border: 1px solid var(--tg-btn-secondary-border);
   border-radius: 14px;
-  background: #fff;
-  color: #1d2740;
+  background: var(--tg-btn-secondary-bg);
+  color: var(--tdash-control-text);
 }
 
 .tdash-header__actions {
@@ -260,7 +312,7 @@
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #ef4444;
+  background: #c6283d;
   color: #fff;
   font-size: 0.72rem;
   display: inline-flex;
@@ -284,16 +336,16 @@
 
 .tdash-header__profile-name {
   font-weight: 700;
-  color: #101729;
+  color: var(--tdash-control-text);
 }
 
 .tdash-header__profile-sub {
   font-size: 0.85rem;
-  color: #67748f;
+  color: var(--tdash-control-muted);
 }
 
 .tdash-header__chevron {
-  color: #65728d;
+  color: var(--tdash-control-muted);
 }
 
 .tdash-popover {
@@ -318,7 +370,7 @@
 .tdash-popover__title {
   margin-bottom: 10px;
   font-weight: 700;
-  color: #15203a;
+  color: var(--tdash-popover-text);
 }
 
 .tdash-popover__input {
@@ -352,8 +404,12 @@
 
 .tdash-popover__item span,
 .tdash-popover__empty {
-  color: #67748f;
+  color: var(--tdash-control-muted);
   font-size: 0.9rem;
+}
+
+.tdash-popover__empty {
+  color: var(--tdash-popover-muted);
 }
 
 .tdash-notice {
@@ -395,7 +451,7 @@
     radial-gradient(circle at 92% 8%, rgba(104, 222, 198, 0.24), transparent 22%),
     linear-gradient(145deg, #10192e 0%, #192848 52%, #0d1527 100%);
   box-shadow: 0 28px 54px rgba(14, 22, 45, 0.18);
-  color: #edf4ff;
+  color: var(--tdash-summary-text);
 }
 
 .tdash-summary::before {
@@ -438,7 +494,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  color: #abc0e8;
+  color: var(--tdash-summary-muted);
   font-size: 0.78rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -467,7 +523,7 @@
 }
 
 .tdash-summary__scope {
-  color: #d8e2f4;
+  color: var(--tdash-summary-text);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: none;
@@ -478,13 +534,13 @@
   font-size: clamp(2rem, 3vw, 3.1rem);
   line-height: 1.02;
   letter-spacing: -0.05em;
-  color: #f6f9ff;
+  color: var(--tdash-summary-text);
 }
 
 .tdash-summary__copy {
   margin: 0;
   max-width: 62ch;
-  color: #c8d3ea;
+  color: var(--tdash-summary-muted);
   line-height: 1.62;
   font-size: 1rem;
 }
@@ -508,7 +564,7 @@
 
 .tdash-summary__primary {
   background: linear-gradient(135deg, #72d8c7 0%, #5c82ff 100%);
-  color: #fff;
+  color: #0b1930;
 }
 
 .tdash-summary__secondary {
@@ -546,7 +602,7 @@
   font-size: 0.8rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #a8bbdf;
+  color: var(--tdash-summary-muted);
 }
 
 .tdash-summary__metric-value {
@@ -556,7 +612,7 @@
 }
 
 .tdash-summary__metric-note {
-  color: #c5d1ea;
+  color: var(--tdash-summary-muted);
   font-size: 0.92rem;
   line-height: 1.35;
 }
@@ -574,7 +630,7 @@
   border-radius: 20px;
   border: 1px solid rgba(170, 190, 224, 0.14);
   background: rgba(255, 255, 255, 0.08);
-  color: #edf4ff;
+  color: var(--tdash-surface-text);
   box-shadow: var(--tg-btn-shadow-soft);
   display: grid;
   gap: 8px;
@@ -612,7 +668,7 @@
 }
 
 .tdash-summary-card__hint {
-  color: #c2cfeb;
+  color: var(--tdash-surface-muted);
   line-height: 1.45;
   font-size: 0.92rem;
 }
@@ -663,7 +719,7 @@
     radial-gradient(circle at top right, rgba(106, 134, 255, 0.16), transparent 26%),
     linear-gradient(145deg, #0f1628 0%, #121f3b 100%);
   box-shadow: 0 22px 42px rgba(15, 24, 52, 0.18);
-  color: #ecf2ff;
+  color: var(--tdash-surface-text);
 }
 
 .tdash-panel::after,
@@ -696,7 +752,7 @@
 .tdash-recent-post__time,
 .tdash-devices__chart-title {
   margin: 0;
-  color: #90a0c4;
+  color: var(--tdash-surface-muted);
 }
 
 .tdash-stat-card__value {
@@ -712,7 +768,7 @@
   gap: 12px;
   flex-wrap: wrap;
   font-size: 0.92rem;
-  color: #90a0c4;
+  color: var(--tdash-surface-muted);
 }
 
 .tdash-stat-card__change {
@@ -720,11 +776,11 @@
 }
 
 .tdash-stat-card__change.is-positive {
-  color: #5dd6a4;
+  color: var(--tdash-positive);
 }
 
 .tdash-stat-card__change.is-negative {
-  color: #f58d8d;
+  color: var(--tdash-negative);
 }
 
 .tdash-stat-card__sparkline {
@@ -757,7 +813,7 @@
   font-size: 1.4rem;
   line-height: 1;
   letter-spacing: -0.03em;
-  color: #f2f6ff;
+  color: var(--tdash-surface-text);
 }
 
 .tdash-panel__ghost-btn {
@@ -765,8 +821,8 @@
   height: 34px;
   border: 1px solid var(--tg-btn-icon-border);
   border-radius: 12px;
-  background: rgba(255, 251, 246, 0.12);
-  color: #f2e7d8;
+  background: var(--tg-btn-icon-bg);
+  color: var(--tg-btn-icon-text);
   box-shadow: var(--tg-btn-shadow-soft);
 }
 
@@ -780,18 +836,18 @@
 .tdash-select {
   min-height: 38px;
   border-radius: 13px;
-  border: 1px solid rgba(224, 188, 141, 0.18);
-  background: rgba(255, 251, 246, 0.12);
-  color: #f2e7d8;
+  border: 1px solid var(--tg-btn-tab-border);
+  background: var(--tg-btn-tab-bg);
+  color: var(--tg-btn-tab-text);
   padding: 0 14px;
   font-weight: 600;
   box-shadow: var(--tg-btn-shadow-soft);
 }
 
 .tdash-chart-tabs__button.is-active {
-  background: rgba(214, 170, 114, 0.2);
-  color: #fff6ea;
-  border-color: rgba(228, 184, 120, 0.42);
+  background: var(--tg-btn-tab-bg-active);
+  color: var(--tg-btn-tab-text-active);
+  border-color: var(--tg-btn-tab-border-active);
 }
 
 .tdash-select {
@@ -844,7 +900,7 @@
   border-radius: 16px;
   border: 1px dashed rgba(149, 170, 224, 0.24);
   background: rgba(255, 255, 255, 0.04);
-  color: #9faed0;
+  color: var(--tdash-surface-muted);
 }
 
 .tdash-empty--overlay {
@@ -872,7 +928,7 @@
 }
 
 .tdash-devices__chart-center span {
-  color: #90a0c4;
+  color: var(--tdash-surface-muted);
 }
 
 .tdash-devices__legend {
@@ -887,7 +943,7 @@
   align-items: center;
   gap: 8px;
   font-size: 0.88rem;
-  color: #b7c4e6;
+  color: var(--tdash-surface-muted);
 }
 
 .tdash-devices__legend-dot {
@@ -945,7 +1001,7 @@
 
 .tdash-recent-post__excerpt {
   margin: 12px 0 10px;
-  color: #e6edf9;
+  color: var(--tdash-surface-text);
   line-height: 1.48;
 }
 
@@ -953,7 +1009,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  color: #9cadcd;
+  color: var(--tdash-surface-muted);
   font-size: 0.88rem;
 }
 
@@ -972,7 +1028,7 @@
 
 .tdash-top-users__header {
   padding-bottom: 6px;
-  color: #8f9ebf;
+  color: var(--tdash-surface-muted);
   font-size: 0.82rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -995,11 +1051,11 @@
 }
 
 .tdash-top-users__metric {
-  color: #eef3ff;
+  color: var(--tdash-surface-text);
 }
 
 .tdash-top-users__growth {
-  color: #5dd6a4;
+  color: var(--tdash-positive);
   font-weight: 700;
 }
 
@@ -1026,7 +1082,7 @@
   display: grid;
   place-items: center;
   background: rgba(93, 131, 255, 0.16);
-  color: #b6c7ff;
+  color: var(--tg-btn-icon-text);
 }
 
 .tdash-kpi-card__value {

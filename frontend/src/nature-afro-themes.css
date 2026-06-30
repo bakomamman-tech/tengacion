@@ -1173,11 +1173,6 @@ html.afro-gold-mode .tdash-shell {
   color: #fff3d7;
 }
 
-html.nature-green-mode :is(.tdash-sidebar, .tdash-panel, .tdash-card, .tdash-stat-card, .tdash-summary-card, .tdash-popover, .tdash-kpi-card, .tdash-recent-post, .tdash-top-users__row, .tdash-header__profile, .tdash-header__menu),
-html.afro-gold-mode :is(.tdash-sidebar, .tdash-panel, .tdash-card, .tdash-stat-card, .tdash-summary-card, .tdash-popover, .tdash-kpi-card, .tdash-recent-post, .tdash-top-users__row, .tdash-header__profile, .tdash-header__menu) {
-  color: inherit;
-}
-
 html.nature-green-mode :is(.tdash-sidebar, .tdash-panel, .tdash-card, .tdash-stat-card, .tdash-summary-card, .tdash-popover, .tdash-kpi-card, .tdash-recent-post, .tdash-top-users__row, .tdash-header__profile, .tdash-header__menu) {
   border-color: rgba(47, 127, 42, 0.2);
   background: linear-gradient(150deg, rgba(255, 253, 244, 0.94), rgba(241, 248, 231, 0.88));

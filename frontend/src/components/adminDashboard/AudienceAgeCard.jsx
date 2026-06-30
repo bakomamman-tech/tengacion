@@ -29,9 +29,9 @@ export default function AudienceAgeCard({ items = [] }) {
       <div className="tdash-age-chart">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={items}>
-            <CartesianGrid stroke="rgba(129, 153, 204, 0.14)" vertical={false} />
-            <XAxis dataKey="label" tickLine={false} axisLine={false} stroke="#7f8db1" />
-            <YAxis tickLine={false} axisLine={false} stroke="#7f8db1" width={34} />
+            <CartesianGrid stroke="var(--tdash-chart-grid)" vertical={false} />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} stroke="var(--tdash-chart-axis)" />
+            <YAxis tickLine={false} axisLine={false} stroke="var(--tdash-chart-axis)" width={34} />
             <Tooltip content={<AgeTooltip />} />
             <Bar dataKey="value" fill="#7a8dff" radius={[10, 10, 0, 0]} maxBarSize={32} />
           </BarChart>

@@ -123,16 +123,16 @@ export default function AnalyticsChartCard({
         {!hasData ? <div className="tdash-empty tdash-empty--overlay">No chart activity has been recorded in this range yet.</div> : null}
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={series}>
-            <CartesianGrid stroke="rgba(129, 153, 204, 0.14)" vertical={false} />
+            <CartesianGrid stroke="var(--tdash-chart-grid)" vertical={false} />
             <XAxis
               dataKey="date"
               tickLine={false}
               axisLine={false}
               tickFormatter={formatDateLabel}
-              stroke="#7f8db1"
+              stroke="var(--tdash-chart-axis)"
               minTickGap={18}
             />
-            <YAxis tickLine={false} axisLine={false} stroke="#7f8db1" width={56} />
+            <YAxis tickLine={false} axisLine={false} stroke="var(--tdash-chart-axis)" width={56} />
             <Tooltip content={<ChartTooltip />} />
             {lines.map((line) => (
               <Line

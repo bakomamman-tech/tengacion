@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Room } from "livekit-client";
+import { Room, RoomEvent } from "livekit-client";
 
 import { useAuth } from "../context/AuthContext";
 import { requestLiveToken, updateLiveViewerCount, getLiveConfig } from "../api";
@@ -15,8 +15,11 @@ export default function WatchLive() {
   const [error, setError] = useState("");
   const [session, setSession] = useState(null);
   const [viewerCount, setViewerCount] = useState(0);
+  const [connectionStatus, setConnectionStatus] = useState("connecting");
+  const [retryKey, setRetryKey] = useState(0);
   const videoRef = useRef(null);
-  const [room, setRoom] = useState(null);
+  const roomRef = useRef(null);
+  const remoteTracksRef = useRef(new Set());
 
   useEffect(() => {
     if (!roomName) {
@@ -36,7 +39,7 @@ export default function WatchLive() {
 
         setSession(response.session);
         setViewerCount(response.session?.viewerCount || 0);
-        const liveConfig = await getLiveConfig();
+        const liveConfig = await getLiveConfig().catch(() => null);
         await connectToRoom(response.token, {
           livekitConfig: liveConfig,
           fallbackLivekit: response.livekit,
@@ -62,7 +65,7 @@ export default function WatchLive() {
         updateLiveViewerCount({ roomName, delta: -1 }).catch(() => {});
       }
     };
-  }, [roomName]);
+  }, [retryKey, roomName]);
 
   useEffect(() => {
     if (!roomName || !user?._id) {
@@ -93,14 +96,24 @@ export default function WatchLive() {
     };
   }, [roomName, user?._id]);
 
-  useEffect(
-    () => () => {
-      if (room) {
-        room.disconnect();
-      }
-    },
-    [room]
-  );
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement || loading) {
+      return undefined;
+    }
+
+    remoteTracksRef.current.forEach((track) => track.attach(videoElement));
+    return () => {
+      remoteTracksRef.current.forEach((track) => track.detach(videoElement));
+    };
+  }, [loading, session?.roomName]);
+
+  useEffect(() => () => {
+    remoteTracksRef.current.forEach((track) => track.detach());
+    remoteTracksRef.current.clear();
+    roomRef.current?.disconnect();
+    roomRef.current = null;
+  }, []);
 
   const connectToRoom = async (token, { livekitConfig, fallbackLivekit }) => {
     if (!token) {
@@ -113,20 +126,37 @@ export default function WatchLive() {
       context: "WatchLive.connect",
     });
 
-    const nextRoom = new Room();
+    setConnectionStatus("connecting");
+    const nextRoom = new Room({
+      adaptiveStream: true,
+    });
     await nextRoom.connect(targetUrl, token, {
       autoSubscribe: true,
     });
 
-    nextRoom.on("trackSubscribed", (track) => {
+    nextRoom.on(RoomEvent.TrackSubscribed, (track) => {
+      remoteTracksRef.current.add(track);
       if (videoRef.current) {
         track.attach(videoRef.current);
       }
     });
 
-    nextRoom.on("trackUnsubscribed", (track) => track.detach());
+    nextRoom.on(RoomEvent.TrackUnsubscribed, (track) => {
+      remoteTracksRef.current.delete(track);
+      track.detach();
+    });
+    nextRoom.on(RoomEvent.Reconnecting, () => setConnectionStatus("reconnecting"));
+    nextRoom.on(RoomEvent.Reconnected, () => {
+      setConnectionStatus("connected");
+      setError("");
+    });
+    nextRoom.on(RoomEvent.Disconnected, () => {
+      setConnectionStatus("disconnected");
+      setError("The stream connection was interrupted.");
+    });
 
-    setRoom(nextRoom);
+    roomRef.current = nextRoom;
+    setConnectionStatus("connected");
   };
 
   const leave = () => navigate("/live");
@@ -149,13 +179,22 @@ export default function WatchLive() {
       {loading ? (
         <p className="watch-live-empty">Connecting…</p>
       ) : error ? (
-        <p className="watch-live-empty">{error}</p>
+        <div className="watch-live-empty">
+          <p>{error}</p>
+          <button type="button" onClick={() => setRetryKey((value) => value + 1)}>
+            Reconnect
+          </button>
+        </div>
       ) : (
         <section className="watch-live-video">
+          <span className={`watch-live-connection watch-live-connection--${connectionStatus}`}>
+            {connectionStatus === "reconnecting" ? "Reconnecting…" : "Connected"}
+          </span>
           <video
             ref={videoRef}
             controls
             playsInline
+            autoPlay
             className="watch-live-preview"
           />
         </section>

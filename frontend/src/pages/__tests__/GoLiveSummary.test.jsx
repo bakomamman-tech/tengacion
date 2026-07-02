@@ -5,13 +5,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import GoLive from "../GoLive";
 import { getLiveConfig, startLiveSession } from "../../api";
+import { createLocalAudioTrack, createLocalVideoTrack } from "livekit-client";
 
 const { roomInstance, videoTrack, audioTrack } = vi.hoisted(() => ({
   roomInstance: {
     connect: vi.fn().mockResolvedValue(undefined),
     disconnect: vi.fn(),
+    on: vi.fn(),
     localParticipant: {
       publishTrack: vi.fn().mockResolvedValue(undefined),
+      setScreenShareEnabled: vi.fn().mockResolvedValue(undefined),
     },
   },
   videoTrack: {
@@ -58,6 +61,12 @@ vi.mock("../../livekitConfig", () => ({
 }));
 
 vi.mock("livekit-client", () => ({
+  RoomEvent: {
+    Reconnecting: "reconnecting",
+    Reconnected: "reconnected",
+    Disconnected: "disconnected",
+    MediaDevicesError: "mediaDevicesError",
+  },
   Room: class {
     constructor() {
       return roomInstance;
@@ -78,6 +87,9 @@ vi.mock("../../components/live/LiveChatDrawer", () => ({
 describe("GoLive summary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    roomInstance.on.mockReturnValue(roomInstance);
+    vi.mocked(createLocalAudioTrack).mockResolvedValue(audioTrack);
+    vi.mocked(createLocalVideoTrack).mockResolvedValue(videoTrack);
 
     vi.mocked(getLiveConfig).mockResolvedValue({
       livekitUrl: "wss://example.livekit.test",
@@ -134,4 +146,47 @@ describe("GoLive summary", () => {
       expect(startLiveSession).toHaveBeenCalledWith("Morning Live");
     });
   }, 15000);
+
+  it("shows unlimited access for an admin", async () => {
+    vi.mocked(getLiveConfig).mockResolvedValue({
+      livekitUrl: "wss://example.livekit.test",
+      liveAccess: {
+        canPublish: true,
+        quotaExempt: true,
+      },
+      quota: {
+        unlimited: true,
+        canGoLive: true,
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/live/go"]}>
+        <GoLive />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/unlimited · go live at any time/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /start live stream/i })).not.toBeDisabled();
+  });
+
+  it("continues with video when the microphone is unavailable", async () => {
+    vi.mocked(createLocalAudioTrack).mockRejectedValueOnce(new Error("Microphone denied"));
+
+    render(
+      <MemoryRouter initialEntries={["/live/go"]}>
+        <GoLive />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /start live stream/i })).not.toBeDisabled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /start live stream/i }));
+
+    expect(await screen.findByText(/continuing with video only/i)).toBeInTheDocument();
+    expect(roomInstance.localParticipant.publishTrack).toHaveBeenCalledWith(videoTrack);
+    expect(roomInstance.localParticipant.publishTrack).not.toHaveBeenCalledWith(audioTrack);
+    expect(screen.getByText("Connected")).toBeInTheDocument();
+  });
 });

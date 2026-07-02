@@ -390,6 +390,18 @@ html.terra-minimal-mode .message-row.them .msg-text {
   color: #321d13 !important;
 }
 
+/* Keep Terra's palette while allowing the shared Light Mode Messenger skin
+   to own the bubble contrast rules. */
+html.terra-minimal-mode .messenger--whatsapp-light .message-row.me .msg-bubble,
+html.terra-minimal-mode .messenger--whatsapp-light .message-row.me .msg-text {
+  color: var(--wa-outgoing-ink) !important;
+}
+
+html.terra-minimal-mode .messenger--whatsapp-light .message-row.them .msg-bubble,
+html.terra-minimal-mode .messenger--whatsapp-light .message-row.them .msg-text {
+  color: var(--wa-incoming-ink) !important;
+}
+
 html.terra-minimal-mode .sidebar-raffle-card {
   background:
     radial-gradient(circle at top left, rgba(213, 103, 55, 0.24), transparent 34%),

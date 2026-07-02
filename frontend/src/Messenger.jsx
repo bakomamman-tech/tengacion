@@ -19,7 +19,6 @@ import ContentCardMessage from "./components/ContentCardMessage";
 import ShareContentModal from "./components/ShareContentModal";
 import { useDialog } from "./components/ui/useDialog";
 import { createReportDialogConfig } from "./constants/reportReasons";
-import { useTheme } from "./context/ThemeContext";
 
 const MOBILE_SHEET_QUERY = "(max-width: 640px)";
 const QUICK_REACTIONS = [
@@ -714,9 +713,7 @@ export default function Messenger({
   onSelectedConversationChange,
 }) {
   const { confirm, prompt } = useDialog();
-  const { theme } = useTheme();
   const navigate = useNavigate();
-  const isWhatsAppLight = theme === "light";
   const meId = useMemo(() => toIdString(user?._id || user?.id), [user]);
   const preferredSelectedId = useMemo(() => toIdString(initialSelectedId), [initialSelectedId]);
 
@@ -2575,7 +2572,7 @@ export default function Messenger({
 
   return (
     <div
-      className={`messenger ${isWhatsAppLight ? "messenger--whatsapp-light" : ""} ${conversationOnly ? "messenger--conversation-only" : ""} ${
+      className={`messenger messenger--whatsapp-light ${conversationOnly ? "messenger--conversation-only" : ""} ${
         isMobileSheet ? "mobile-sheet" : "desktop-draggable"
       } ${isDraggingSheet || isDraggingDesktop ? "dragging" : ""} ${
         isDraggingDesktop ? "desktop-dragging" : ""
@@ -4180,31 +4177,22 @@ export default function Messenger({
                         return;
                       }
                       if (!composerBusy) {
-                        if (isWhatsAppLight) {
-                          startVoiceNote();
-                        } else {
-                          sendQuickReaction("\u{1F44D}");
-                        }
+                        startVoiceNote();
                       }
                     }}
-                    title={canSendText ? "Send message" : isWhatsAppLight ? "Voice message" : "Send like"}
-                    aria-label={canSendText ? "Send message" : isWhatsAppLight ? "Voice message" : "Send like"}
+                    title={canSendText ? "Send message" : "Voice message"}
+                    aria-label={canSendText ? "Send message" : "Voice message"}
                     disabled={composerBusy && !canSendText}
                   >
                     {canSendText ? (
                       <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M4 20 20 12 4 4l2 6 8 2-8 2z" />
                       </svg>
-                    ) : isWhatsAppLight ? (
+                    ) : (
                       <svg className="messenger-mic-icon" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M12 3.5A3.5 3.5 0 0 0 8.5 7v5a3.5 3.5 0 0 0 7 0V7A3.5 3.5 0 0 0 12 3.5Z" />
                         <path d="M6.5 11.5a5.5 5.5 0 1 0 11 0" />
                         <path d="M12 17v3.5" />
-                      </svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M11 21H7.5A2.5 2.5 0 0 1 5 18.5V11h6z" />
-                        <path d="M11 11 13.6 5.8A2.2 2.2 0 0 1 15.57 4 1.43 1.43 0 0 1 17 5.43V9h1.53A2.47 2.47 0 0 1 21 11.47a2.5 2.5 0 0 1-.12.77l-1.54 5.12A2.5 2.5 0 0 1 16.95 19H11" />
                       </svg>
                     )}
                   </button>

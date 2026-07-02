@@ -2,7 +2,7 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  padding: 22px;
+  padding: 18px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
     radial-gradient(circle at 14% 8%, rgba(91, 122, 255, 0.24), transparent 24%),
@@ -43,8 +43,8 @@
 
 .calculator-neo .calculator-section-head {
   align-items: flex-start;
-  gap: 20px;
-  margin-bottom: 18px;
+  gap: 16px;
+  margin-bottom: 12px;
 }
 
 .calculator-neo .calculator-section-head h2 {
@@ -127,14 +127,14 @@
 .calculator-neo .calculator-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.95fr);
-  gap: 18px;
+  gap: 14px;
   align-items: start;
 }
 
 .calculator-neo .calculator-panel,
 .calculator-neo .calculator-side {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .calculator-neo .calculator-display,
@@ -161,7 +161,11 @@
 }
 
 .calculator-neo .calculator-display {
-  padding: 22px;
+  position: sticky;
+  top: 84px;
+  z-index: 5;
+  align-self: start;
+  padding: 16px 18px;
 }
 
 .calculator-neo .calculator-display__top,
@@ -205,10 +209,12 @@
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
-  min-height: 78px;
-  margin-top: 14px;
+  min-height: 56px;
+  max-height: 104px;
+  margin-top: 8px;
+  overflow: auto;
   color: #f8fbff;
-  font-size: clamp(2.5rem, 4.8vw, 4.9rem);
+  font-size: clamp(2rem, 3.8vw, 3.6rem);
   font-weight: 800;
   letter-spacing: -0.06em;
   line-height: 1;
@@ -219,8 +225,8 @@
 
 .calculator-neo .calculator-result {
   min-height: 1.4em;
-  margin-top: 10px;
-  font-size: clamp(1.1rem, 2vw, 1.65rem);
+  margin-top: 6px;
+  font-size: clamp(1rem, 1.6vw, 1.4rem);
   font-weight: 800;
   line-height: 1.2;
   text-align: right;
@@ -240,7 +246,7 @@
 }
 
 .calculator-neo .calculator-helper {
-  margin: 8px 0 0;
+  margin: 4px 0 0;
   color: rgba(225, 231, 255, 0.58);
   font-size: 0.82rem;
   line-height: 1.5;
@@ -250,15 +256,15 @@
 .calculator-neo .calculator-chip-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .calculator-neo .calculator-chip {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 20px;
-  padding: 13px 14px;
+  padding: 9px 12px;
   background: rgba(255, 255, 255, 0.04);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
@@ -282,21 +288,21 @@
 .calculator-neo .calculator-keypad {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 .calculator-neo .calculator-key {
   position: relative;
   overflow: hidden;
-  min-height: 60px;
+  min-height: 48px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 20px;
+  border-radius: 16px;
   background: linear-gradient(180deg, rgba(59, 64, 79, 0.95) 0%, rgba(23, 27, 38, 0.98) 100%);
   color: #f7f9ff;
   box-shadow:
     0 16px 30px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   cursor: pointer;
@@ -571,7 +577,12 @@
 
 @media (max-width: 860px) {
   .calculator-neo {
-    padding: 18px;
+    padding: 14px;
+  }
+
+  .calculator-neo .calculator-section-copy,
+  .calculator-neo .calculator-chip-row {
+    display: none;
   }
 
   .calculator-neo .calculator-section-head,
@@ -593,23 +604,23 @@
   }
 
   .calculator-neo .calculator-keypad {
-    gap: 10px;
+    gap: 7px;
   }
 
   .calculator-neo .calculator-key {
-    min-height: 54px;
-    border-radius: 18px;
+    min-height: 46px;
+    border-radius: 15px;
   }
 
   .calculator-neo .calculator-expression {
-    min-height: 64px;
-    font-size: clamp(2.2rem, 7vw, 3.5rem);
+    min-height: 50px;
+    font-size: clamp(1.9rem, 6vw, 3rem);
   }
 }
 
 @media (max-width: 640px) {
-  .calculator-neo {
-    padding: 14px;
+.calculator-neo {
+    padding: 10px;
   }
 
   .calculator-neo .calculator-display,
@@ -618,7 +629,8 @@
   }
 
   .calculator-neo .calculator-display {
-    padding: 18px;
+    top: calc(68px + env(safe-area-inset-top, 0px));
+    padding: 12px 14px;
   }
 
   .calculator-neo .calculator-toolbar {
@@ -641,17 +653,24 @@
   }
 
   .calculator-neo .calculator-keypad {
-    gap: 8px;
+    gap: 6px;
   }
 
   .calculator-neo .calculator-key {
-    min-height: 50px;
-    border-radius: 16px;
-    font-size: 0.96rem;
+    min-height: 44px;
+    border-radius: 14px;
+    font-size: 0.9rem;
   }
 
   .calculator-neo .calculator-expression {
-    margin-top: 12px;
+    min-height: 44px;
+    max-height: 70px;
+    margin-top: 6px;
+    font-size: clamp(1.7rem, 8vw, 2.55rem);
+  }
+
+  .calculator-neo .calculator-helper {
+    display: none;
   }
 }
 

@@ -19,6 +19,7 @@ import ContentCardMessage from "./components/ContentCardMessage";
 import ShareContentModal from "./components/ShareContentModal";
 import { useDialog } from "./components/ui/useDialog";
 import { createReportDialogConfig } from "./constants/reportReasons";
+import { useTheme } from "./context/ThemeContext";
 
 const MOBILE_SHEET_QUERY = "(max-width: 640px)";
 const QUICK_REACTIONS = [
@@ -713,7 +714,9 @@ export default function Messenger({
   onSelectedConversationChange,
 }) {
   const { confirm, prompt } = useDialog();
+  const { theme } = useTheme();
   const navigate = useNavigate();
+  const isWhatsAppLight = theme === "light";
   const meId = useMemo(() => toIdString(user?._id || user?.id), [user]);
   const preferredSelectedId = useMemo(() => toIdString(initialSelectedId), [initialSelectedId]);
 
@@ -2572,7 +2575,7 @@ export default function Messenger({
 
   return (
     <div
-      className={`messenger ${conversationOnly ? "messenger--conversation-only" : ""} ${
+      className={`messenger ${isWhatsAppLight ? "messenger--whatsapp-light" : ""} ${conversationOnly ? "messenger--conversation-only" : ""} ${
         isMobileSheet ? "mobile-sheet" : "desktop-draggable"
       } ${isDraggingSheet || isDraggingDesktop ? "dragging" : ""} ${
         isDraggingDesktop ? "desktop-dragging" : ""
@@ -2641,6 +2644,18 @@ export default function Messenger({
             <button
               type="button"
               className="mh-action-btn mh-call-btn"
+              title="Video call"
+              aria-label="Video call"
+              onClick={() => setHeaderNotice("Video calling coming soon")}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h8A2.5 2.5 0 0 1 16 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 3 16.5z" />
+                <path d="M16 10.5l5-2.5v8l-5-2.5z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="mh-action-btn mh-call-btn"
               title="Voice call"
               aria-label="Voice call"
               onClick={() => setHeaderNotice("Voice calling coming soon")}
@@ -2651,14 +2666,17 @@ export default function Messenger({
             </button>
             <button
               type="button"
-              className="mh-action-btn mh-call-btn"
-              title="Video call"
-              aria-label="Video call"
-              onClick={() => setHeaderNotice("Video calling coming soon")}
+              className={`mh-action-btn mh-more-btn${chatMenuOpen ? " active" : ""}`}
+              title="Conversation options"
+              aria-label="Conversation options"
+              aria-haspopup="menu"
+              aria-expanded={chatMenuOpen}
+              onClick={() => setChatMenuOpen((prev) => !prev)}
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h8A2.5 2.5 0 0 1 16 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 3 16.5z" />
-                <path d="M16 10.5l5-2.5v8l-5-2.5z" />
+                <circle cx="12" cy="5" r="1.7" />
+                <circle cx="12" cy="12" r="1.7" />
+                <circle cx="12" cy="19" r="1.7" />
               </svg>
             </button>
               </>
@@ -3217,14 +3235,26 @@ export default function Messenger({
                       }
                       : undefined;
                     const showSenderAvatar = !isMe && !nextSameSender;
-                    const messageTime = (
-                      <div className="msg-time">
+                    const renderMessageTime = (placement) => (
+                      <div className={`msg-time msg-time--${placement}`}>
                         {new Date(m.time).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
                         {m.pending ? " - Sending" : ""}
                         {m.failed ? " - Failed" : ""}
+                        {isMe && !m.failed ? (
+                          <span
+                            className={`msg-delivery-status${m.pending ? " is-pending" : ""}`}
+                            aria-label={m.pending ? "Sending" : "Delivered"}
+                            title={m.pending ? "Sending" : "Delivered"}
+                          >
+                            <svg viewBox="0 0 18 12" aria-hidden="true">
+                              <path d="m1.5 6.3 3 3 6-7" />
+                              {!m.pending ? <path d="m7 8.9.8.8 8-8" /> : null}
+                            </svg>
+                          </span>
+                        ) : null}
                       </div>
                     );
 
@@ -3647,10 +3677,11 @@ export default function Messenger({
                               ))}
                             </div>
                           ) : null}
+                          {renderMessageTime("bubble")}
                           </div>
                           {isMe ? (
                             <>
-                              {messageTime}
+                              {renderMessageTime("outside")}
                               {!m.pending ? renderMessageTools() : null}
                             </>
                           ) : (
@@ -3658,7 +3689,7 @@ export default function Messenger({
                               className={`msg-meta msg-meta--them${toolsVisible ? " is-visible" : ""}`}
                             >
                               {!m.pending ? renderMessageTools() : null}
-                              {messageTime}
+                              {renderMessageTime("outside")}
                             </div>
                           )}
                         </div>
@@ -4107,6 +4138,37 @@ export default function Messenger({
                         <path d="M8.8 14.1c1 .95 2.08 1.4 3.2 1.4 1.12 0 2.2-.45 3.2-1.4" />
                       </svg>
                     </button>
+                    <button
+                      type="button"
+                      className={`messenger-composer-attach-inline${toolsTrayOpen ? " is-active" : ""}`}
+                      onClick={() => {
+                        setToolsTrayOpen((prev) => !prev);
+                        setShowEmojiPicker(false);
+                        setShowReactions(false);
+                        setGifOpen(false);
+                      }}
+                      title="Attach"
+                      aria-label="Attach"
+                      aria-expanded={toolsTrayOpen}
+                      disabled={isRecording || isSendingVoice}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m8.4 12.9 6.9-6.9a3 3 0 1 1 4.2 4.2l-8.3 8.3a5 5 0 0 1-7.1-7.1l8-8" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className="messenger-composer-camera-inline"
+                      onClick={openAttachmentPicker}
+                      title="Camera"
+                      aria-label="Camera"
+                      disabled={isRecording || isSendingVoice}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 7.5 9.5 5h5L16 7.5h2A2.5 2.5 0 0 1 20.5 10v6.5A2.5 2.5 0 0 1 18 19H6a2.5 2.5 0 0 1-2.5-2.5V10A2.5 2.5 0 0 1 6 7.5z" />
+                        <circle cx="12" cy="13" r="3.25" />
+                      </svg>
+                    </button>
                   </div>
 
                   <button
@@ -4118,16 +4180,26 @@ export default function Messenger({
                         return;
                       }
                       if (!composerBusy) {
-                        sendQuickReaction("\u{1F44D}");
+                        if (isWhatsAppLight) {
+                          startVoiceNote();
+                        } else {
+                          sendQuickReaction("\u{1F44D}");
+                        }
                       }
                     }}
-                    title={canSendText ? "Send message" : "Send like"}
-                    aria-label={canSendText ? "Send message" : "Send like"}
+                    title={canSendText ? "Send message" : isWhatsAppLight ? "Voice message" : "Send like"}
+                    aria-label={canSendText ? "Send message" : isWhatsAppLight ? "Voice message" : "Send like"}
                     disabled={composerBusy && !canSendText}
                   >
                     {canSendText ? (
                       <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M4 20 20 12 4 4l2 6 8 2-8 2z" />
+                      </svg>
+                    ) : isWhatsAppLight ? (
+                      <svg className="messenger-mic-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 3.5A3.5 3.5 0 0 0 8.5 7v5a3.5 3.5 0 0 0 7 0V7A3.5 3.5 0 0 0 12 3.5Z" />
+                        <path d="M6.5 11.5a5.5 5.5 0 1 0 11 0" />
+                        <path d="M12 17v3.5" />
                       </svg>
                     ) : (
                       <svg viewBox="0 0 24 24" aria-hidden="true">

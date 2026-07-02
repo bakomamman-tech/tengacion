@@ -24078,7 +24078,7 @@ html.dark-mode .message-row.me .msg-text {
 .messenger--whatsapp-light .message-row.them .msg-text {
   color: var(--wa-ink) !important;
   font-family: inherit !important;
-  font-size: 21.9px !important;
+  font-size: 16.425px !important;
   font-weight: 400 !important;
   line-height: 1.38 !important;
   letter-spacing: 0 !important;
@@ -24230,7 +24230,7 @@ html.dark-mode .message-row.me .msg-text {
   background: transparent !important;
   color: var(--wa-ink) !important;
   font-family: inherit;
-  font-size: 23.25px !important;
+  font-size: 17.4375px !important;
   line-height: 1.4;
   caret-color: var(--wa-green-strong);
   box-shadow: none !important;
@@ -24378,7 +24378,7 @@ html.dark-mode .message-row.me .msg-text {
   .messenger--whatsapp-light .msg-text,
   .messenger--whatsapp-light .message-row.me .msg-text,
   .messenger--whatsapp-light .message-row.them .msg-text {
-    font-size: 23.25px !important;
+    font-size: 17.4375px !important;
     line-height: 1.38 !important;
   }
 
@@ -24393,7 +24393,7 @@ html.dark-mode .message-row.me .msg-text {
 
   .messenger--whatsapp-light .messenger-composer-entry textarea {
     min-height: 58px !important;
-    font-size: 24px !important;
+    font-size: 18px !important;
   }
 
   .messenger--whatsapp-light .messenger-composer-send,

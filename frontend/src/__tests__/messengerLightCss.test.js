@@ -21,7 +21,7 @@ function getRule(selector, startAt = 0) {
 }
 
 describe("Light Mode messenger CSS", () => {
-  it("enlarges message and composer text by half", () => {
+  it("uses the reduced Light Mode message and composer text sizes", () => {
     const messageRule = getRule([
       ".messenger--whatsapp-light .msg-text,",
       ".messenger--whatsapp-light .message-row.me .msg-text,",
@@ -29,8 +29,8 @@ describe("Light Mode messenger CSS", () => {
     ].join("\n"));
     const composerRule = getRule(".messenger--whatsapp-light .messenger-composer-entry textarea");
 
-    expect(messageRule).toContain("font-size: 21.9px !important;");
-    expect(composerRule).toContain("font-size: 23.25px !important;");
+    expect(messageRule).toContain("font-size: 16.425px !important;");
+    expect(composerRule).toContain("font-size: 17.4375px !important;");
   });
 
   it("keeps a long pill-shaped entry with media controls at the voice-button end", () => {

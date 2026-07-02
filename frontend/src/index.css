@@ -24078,9 +24078,9 @@ html.dark-mode .message-row.me .msg-text {
 .messenger--whatsapp-light .message-row.them .msg-text {
   color: var(--wa-ink) !important;
   font-family: inherit !important;
-  font-size: 14.6px !important;
+  font-size: 21.9px !important;
   font-weight: 400 !important;
-  line-height: 1.35 !important;
+  line-height: 1.38 !important;
   letter-spacing: 0 !important;
 }
 
@@ -24172,7 +24172,7 @@ html.dark-mode .message-row.me .msg-text {
 .messenger--whatsapp-light .messenger-composer-row {
   grid-template-columns: minmax(0, 1fr) max-content !important;
   align-items: end !important;
-  gap: 7px !important;
+  gap: 4px !important;
 }
 
 .messenger--whatsapp-light .messenger-composer-plus {
@@ -24181,29 +24181,59 @@ html.dark-mode .message-row.me .msg-text {
 
 .messenger--whatsapp-light .messenger-composer-entry {
   grid-column: 1;
-  min-height: 46px !important;
+  position: relative;
+  min-height: 58px !important;
   gap: 2px !important;
   padding: 0 7px 0 5px !important;
-  border-radius: 24px !important;
-  background: #ffffff !important;
+  overflow: visible;
+  border-radius: 999px !important;
+  background: transparent !important;
   box-shadow: none !important;
 }
 
 .messenger--whatsapp-light .messenger-composer-entry:focus-within {
-  background: #ffffff !important;
+  background: transparent !important;
   box-shadow: none !important;
+}
+
+.messenger--whatsapp-light .messenger-composer-entry::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 40px;
+  z-index: 0;
+  border: 1px solid #dfe3e5;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 1px rgba(11, 20, 26, 0.05);
+  pointer-events: none;
+}
+
+.messenger--whatsapp-light .messenger-composer-entry:focus-within::after {
+  border-color: color-mix(in srgb, var(--wa-green) 45%, #dfe3e5);
+}
+
+.messenger--whatsapp-light .messenger-composer-entry > * {
+  position: relative;
+  z-index: 1;
 }
 
 .messenger--whatsapp-light .messenger-composer-entry textarea {
   order: 2;
-  min-height: 46px !important;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 58px !important;
   max-height: 120px !important;
-  padding: 12px 4px 10px !important;
+  border: 0 !important;
+  outline: 0;
+  padding: 13px 4px 11px !important;
+  background: transparent !important;
   color: var(--wa-ink) !important;
   font-family: inherit;
-  font-size: 15.5px !important;
-  line-height: 1.35;
+  font-size: 23.25px !important;
+  line-height: 1.4;
   caret-color: var(--wa-green-strong);
+  box-shadow: none !important;
 }
 
 .messenger--whatsapp-light .messenger-composer-entry textarea::placeholder {
@@ -24214,9 +24244,9 @@ html.dark-mode .message-row.me .msg-text {
 .messenger--whatsapp-light .messenger-composer-emoji-inline,
 .messenger--whatsapp-light .messenger-composer-attach-inline,
 .messenger--whatsapp-light .messenger-composer-camera-inline {
-  width: 35px !important;
-  height: 40px !important;
-  min-width: 35px !important;
+  width: 34px !important;
+  height: 44px !important;
+  min-width: 34px !important;
   border: 0 !important;
   border-radius: 999px !important;
   align-items: center;
@@ -24235,6 +24265,7 @@ html.dark-mode .message-row.me .msg-text {
 .messenger--whatsapp-light .messenger-composer-attach-inline {
   order: 3;
   display: inline-flex !important;
+  margin-left: auto;
 }
 
 .messenger--whatsapp-light .messenger-composer-camera-inline {
@@ -24347,8 +24378,8 @@ html.dark-mode .message-row.me .msg-text {
   .messenger--whatsapp-light .msg-text,
   .messenger--whatsapp-light .message-row.me .msg-text,
   .messenger--whatsapp-light .message-row.them .msg-text {
-    font-size: 15.5px !important;
-    line-height: 1.35 !important;
+    font-size: 23.25px !important;
+    line-height: 1.38 !important;
   }
 
   .messenger--whatsapp-light .messenger-input,
@@ -24357,12 +24388,12 @@ html.dark-mode .message-row.me .msg-text {
   }
 
   .messenger--whatsapp-light .messenger-composer-entry {
-    min-height: 48px !important;
+    min-height: 58px !important;
   }
 
   .messenger--whatsapp-light .messenger-composer-entry textarea {
-    min-height: 48px !important;
-    font-size: 16px !important;
+    min-height: 58px !important;
+    font-size: 24px !important;
   }
 
   .messenger--whatsapp-light .messenger-composer-send,

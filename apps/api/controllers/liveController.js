@@ -27,6 +27,18 @@ const logLiveReliabilityEvent = (req, type, metadata = {}) =>
     metadata,
   }).catch(() => null);
 
+const getSessionTokenTtl = (sessionPayload) => {
+  if (sessionPayload?.quota?.unlimited) {
+    return "24h";
+  }
+
+  const remainingMilliseconds = Math.max(
+    1,
+    Number(sessionPayload?.quota?.remainingMilliseconds) || 0
+  );
+  return `${Math.max(1, Math.ceil(remainingMilliseconds / 1000))}s`;
+};
+
 exports.createLiveSession = catchAsync(async (req, res) => {
   const { title } = req.body || {};
   let session = null;
@@ -49,7 +61,7 @@ exports.createLiveSession = catchAsync(async (req, res) => {
       name: session.hostName,
       roomName: session.roomName,
       canPublish: true,
-      ttl: `${Math.max(1, sessionPayload?.quota?.remainingMilliseconds || 0)}ms`,
+      ttl: getSessionTokenTtl(sessionPayload),
     });
 
     await logLiveReliabilityEvent(req, "live_token_issued", {
@@ -66,6 +78,11 @@ exports.createLiveSession = catchAsync(async (req, res) => {
 
     emitEvent(req, "live:created", sessionPayload);
   } catch (error) {
+    if (session?.roomName) {
+      await LiveService.expireSessionByRoom(session.roomName, {
+        reason: "token_failure",
+      }).catch(() => null);
+    }
     await logLiveReliabilityEvent(
       req,
       session ? "live_token_failed" : "live_session_create_failed",
@@ -105,9 +122,9 @@ exports.requestToken = catchAsync(async (req, res) => {
     if (!roomName) {
       throw ApiError.badRequest("Room name is required");
     }
-    if (publish) {
-      LiveService.assertCanPublishLive(req.user);
-    }
+    const publishAccess = publish
+      ? LiveService.assertCanPublishLive(req.user)
+      : null;
     const livekit = ensureValidLivekitConfig();
 
     const user = await User.findById(req.user.id);
@@ -115,10 +132,13 @@ exports.requestToken = catchAsync(async (req, res) => {
       throw ApiError.unauthorized("User not found");
     }
 
-    const session = await LiveService.getActiveSessionByRoom(roomName);
-    if (publish && session.hostUserId.toString() !== req.user.id.toString()) {
+    const existingSession = await LiveService.findSessionByRoom(roomName);
+    if (publish && existingSession.hostUserId.toString() !== req.user.id.toString()) {
       throw ApiError.forbidden("Only the host can publish");
     }
+    const session = await LiveService.getActiveSessionByRoom(roomName, {
+      quotaExempt: Boolean(publishAccess?.quotaExempt),
+    });
 
     const sessionPayload = LiveService.toPublic(session);
 
@@ -127,7 +147,7 @@ exports.requestToken = catchAsync(async (req, res) => {
       name: user.name || user.username || "Guest",
       roomName,
       canPublish: Boolean(publish),
-      ttl: `${Math.max(1, sessionPayload?.quota?.remainingMilliseconds || 0)}ms`,
+      ttl: getSessionTokenTtl(sessionPayload),
     });
 
     await logLiveReliabilityEvent(req, "live_token_issued", {
@@ -156,7 +176,9 @@ exports.getLiveConfig = catchAsync(async (req, res) => {
   );
   const liveAccess = req.user?.id ? LiveService.getLiveAccess(req.user) : null;
   if (wantsPublishAccess && liveAccess && !liveAccess.canPublish) {
-    const quota = await LiveService.getUserQuota(req.user.id).catch(() => null);
+    const quota = await LiveService.getUserQuota(req.user.id, new Date(), {
+      quotaExempt: Boolean(liveAccess.quotaExempt),
+    }).catch(() => null);
     res.json({
       recording: LIVE_STREAM_RECORDING,
       liveAccess,
@@ -183,8 +205,12 @@ exports.getLiveConfig = catchAsync(async (req, res) => {
 
   if (req.user?.id) {
     const [quota, activeSession] = await Promise.all([
-      LiveService.getUserQuota(req.user.id),
-      LiveService.getHostActiveSession(req.user.id),
+      LiveService.getUserQuota(req.user.id, new Date(), {
+        quotaExempt: Boolean(liveAccess?.quotaExempt),
+      }),
+      LiveService.getHostActiveSession(req.user.id, {
+        quotaExempt: Boolean(liveAccess?.quotaExempt),
+      }),
     ]);
     payload.liveAccess = liveAccess;
     payload.quota =

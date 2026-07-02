@@ -65,14 +65,18 @@ afterAll(async () => {
 });
 
 describe("live quota enforcement", () => {
-  test("tracks a fresh account with the full 30-second daily allowance", async () => {
+  test("gives an admin unlimited live access", async () => {
     const user = await makeUser();
 
-    const quota = await LiveService.getUserQuota(user._id);
+    const access = LiveService.getLiveAccess(user);
+    const quota = await LiveService.getUserQuota(user._id, new Date(), {
+      quotaExempt: access.quotaExempt,
+    });
     expect(quota).toMatchObject({
-      maxSecondsPerDay: 30,
+      unlimited: true,
+      maxSecondsPerDay: null,
       canGoLive: true,
-      remainingMillisecondsToday: 30000,
+      remainingMillisecondsToday: null,
     });
 
     const session = await LiveService.createSession({
@@ -83,19 +87,21 @@ describe("live quota enforcement", () => {
     expect(session).toMatchObject({
       hostUserId: user._id,
       status: "active",
-      quotaLimitMs: 30000,
+      quotaExempt: true,
+      quotaLimitMs: 0,
     });
-    expect(session.quotaExpiresAt).toBeInstanceOf(Date);
+    expect(session.quotaExpiresAt).toBeUndefined();
 
     const publicSession = LiveService.toPublic(session);
     expect(publicSession.quota).toMatchObject({
-      maxSecondsPerDay: 30,
-      remainingMilliseconds: expect.any(Number),
-      expiresAt: expect.any(String),
+      unlimited: true,
+      maxSecondsPerDay: null,
+      remainingMilliseconds: null,
+      expiresAt: null,
     });
   });
 
-  test("blocks a new live session after the account has used 30 seconds that day", async () => {
+  test("allows an admin to start again after using 30 seconds that day", async () => {
     const user = await makeUser();
     const now = new Date();
 
@@ -113,21 +119,52 @@ describe("live quota enforcement", () => {
       quotaExpiresAt: new Date(now.getTime() - 1000),
     });
 
-    const quota = await LiveService.getUserQuota(user._id, now);
+    const quota = await LiveService.getUserQuota(user._id, now, {
+      quotaExempt: true,
+    });
     expect(quota).toMatchObject({
-      remainingMillisecondsToday: 0,
-      canGoLive: false,
+      unlimited: true,
+      remainingMillisecondsToday: null,
+      canGoLive: true,
     });
 
-    await expect(
-      LiveService.createSession({
-        userId: user._id,
-        title: "Blocked live",
-      })
-    ).rejects.toMatchObject({
-      statusCode: 429,
-      message: "You have used your 30 seconds of live time for today",
+    const session = await LiveService.createSession({
+      userId: user._id,
+      title: "Admin live",
     });
+
+    expect(session).toMatchObject({
+      status: "active",
+      quotaExempt: true,
+      quotaLimitMs: 0,
+    });
+  });
+
+  test("upgrades an existing admin session to unlimited access", async () => {
+    const user = await makeUser();
+    const session = await LiveSession.create({
+      hostUserId: user._id,
+      hostName: user.name,
+      hostUsername: user.username,
+      hostAvatar: "",
+      roomName: "legacy-admin-room",
+      title: "Existing admin live",
+      status: "active",
+      startedAt: new Date(),
+      quotaLimitMs: 30000,
+      quotaExpiresAt: new Date(Date.now() + 30000),
+    });
+
+    expect(session.quotaExempt).toBe(false);
+
+    const upgraded = await LiveService.getHostActiveSession(user._id, {
+      quotaExempt: true,
+    });
+
+    expect(upgraded.quotaExempt).toBe(true);
+    expect(upgraded.quotaLimitMs).toBe(0);
+    expect(upgraded.quotaExpiresAt).toBeUndefined();
+    expect(LiveService.toPublic(upgraded).quota.unlimited).toBe(true);
   });
 
   test("blocks non-admin users before creating a live session", async () => {

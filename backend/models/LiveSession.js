@@ -51,6 +51,11 @@ const LiveSessionSchema = new mongoose.Schema(
       default: 30000,
       min: 0,
     },
+    quotaExempt: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     quotaExpiresAt: {
       type: Date,
       index: true,

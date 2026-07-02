@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Room, createLocalAudioTrack, createLocalVideoTrack } from "livekit-client";
+import {
+  Room,
+  RoomEvent,
+  createLocalAudioTrack,
+  createLocalVideoTrack,
+} from "livekit-client";
 
 import { useAuth } from "../context/AuthContext";
 import {
@@ -13,6 +18,7 @@ import { connectSocket } from "../socket";
 import { resolveLivekitWsUrl } from "../livekitConfig";
 import LiveControlsBar from "../components/live/LiveControlsBar";
 import LiveChatDrawer from "../components/live/LiveChatDrawer";
+import "./GoLive.css";
 
 const formatElapsedTime = (value) => {
   const total = Math.max(0, Number(value) || 0);
@@ -53,6 +59,7 @@ export default function GoLive() {
   const [error, setError] = useState("");
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
+  const [screenShareEnabled, setScreenShareEnabled] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("none");
   const [blurEnabled, setBlurEnabled] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -60,12 +67,14 @@ export default function GoLive() {
   const [chatMessages, setChatMessages] = useState([]);
   const [reactions, setReactions] = useState([]);
   const [elapsedSec, setElapsedSec] = useState(0);
+  const [connectionStatus, setConnectionStatus] = useState("idle");
   const videoRef = useRef(null);
   const roomRef = useRef(null);
   const liveSessionRef = useRef(null);
   const localTracksRef = useRef({ video: null, audio: null });
   const socketRef = useRef(null);
   const reactionTimeoutRef = useRef(new Map());
+  const manualDisconnectRef = useRef(false);
 
   useEffect(() => {
     roomRef.current = room;
@@ -84,6 +93,9 @@ export default function GoLive() {
 
   const livePermissionMessage = getLivePermissionBlockMessage(liveConfig, liveQuota);
   const livePermissionBlocked = Boolean(livePermissionMessage);
+  const hasUnlimitedLiveAccess = Boolean(
+    liveQuota?.unlimited || liveConfig?.liveAccess?.quotaExempt
+  );
 
   useEffect(() => {
     let alive = true;
@@ -166,6 +178,7 @@ export default function GoLive() {
       setError(err.message || "Failed to start live broadcast");
       const currentRoom = roomRef.current;
       if (currentRoom) {
+        manualDisconnectRef.current = true;
         currentRoom.disconnect();
         setRoom(null);
         roomRef.current = null;
@@ -190,33 +203,96 @@ export default function GoLive() {
       context: "GoLive.connect",
     });
 
-    const nextRoom = new Room();
-    await nextRoom.connect(targetUrl, token);
+    setConnectionStatus("connecting");
+    manualDisconnectRef.current = false;
+
+    const [videoResult, audioResult] = await Promise.allSettled([
+      createLocalVideoTrack({
+        facingMode: "user",
+      }),
+      createLocalAudioTrack(),
+    ]);
+    const videoTrack = videoResult.status === "fulfilled" ? videoResult.value : null;
+    const audioTrack = audioResult.status === "fulfilled" ? audioResult.value : null;
+
+    if (!videoTrack && !audioTrack) {
+      setConnectionStatus("disconnected");
+      throw new Error(
+        "Camera and microphone are unavailable. Allow media access, then try again."
+      );
+    }
+
+    const nextRoom = new Room({
+      adaptiveStream: true,
+      dynacast: true,
+    });
+
+    if (typeof nextRoom.on === "function") {
+      nextRoom.on(RoomEvent.Reconnecting, () => {
+        setConnectionStatus("reconnecting");
+      });
+      nextRoom.on(RoomEvent.Reconnected, () => {
+        setConnectionStatus("connected");
+        setError("");
+      });
+      nextRoom.on(RoomEvent.Disconnected, () => {
+        if (manualDisconnectRef.current) {
+          return;
+        }
+        setConnectionStatus("disconnected");
+        setError("The live connection was interrupted. Use Reconnect to continue.");
+      });
+      nextRoom.on(RoomEvent.MediaDevicesError, (mediaError) => {
+        setError(mediaError?.message || "A camera or microphone device became unavailable.");
+      });
+    }
+
+    localTracksRef.current = { video: videoTrack, audio: audioTrack };
     try {
-      const [videoTrack, audioTrack] = await Promise.all([
-        createLocalVideoTrack({
-          facingMode: "user",
-        }),
-        createLocalAudioTrack(),
-      ]);
+      await nextRoom.connect(targetUrl, token, {
+        autoSubscribe: true,
+      });
+      if (videoTrack) {
+        await nextRoom.localParticipant.publishTrack(videoTrack);
+      }
+      if (audioTrack) {
+        await nextRoom.localParticipant.publishTrack(audioTrack);
+      }
+      setMicEnabled(Boolean(audioTrack));
+      setCameraEnabled(Boolean(videoTrack));
+      setConnectionStatus("connected");
 
-      await nextRoom.localParticipant.publishTrack(videoTrack);
-      await nextRoom.localParticipant.publishTrack(audioTrack);
-      localTracksRef.current = { video: videoTrack, audio: audioTrack };
-      setMicEnabled(true);
-      setCameraEnabled(true);
-
-      if (videoRef.current) {
-        videoTrack.attach(videoRef.current);
+      if (!videoTrack || !audioTrack) {
+        setError(
+          videoTrack
+            ? "Microphone unavailable. The stream is continuing with video only."
+            : "Camera unavailable. The stream is continuing with audio only."
+        );
       }
     } catch (err) {
+      manualDisconnectRef.current = true;
       nextRoom.disconnect();
+      releaseLocalTracks();
+      setConnectionStatus("disconnected");
       throw err;
     }
 
     setRoom(nextRoom);
     roomRef.current = nextRoom;
   };
+
+  useEffect(() => {
+    const videoTrack = localTracksRef.current.video;
+    const videoElement = videoRef.current;
+    if (!videoTrack || !videoElement || !liveSession?.roomName) {
+      return undefined;
+    }
+
+    videoTrack.attach(videoElement);
+    return () => {
+      videoTrack.detach(videoElement);
+    };
+  }, [cameraEnabled, connectionStatus, liveSession?.roomName]);
 
   const releaseLocalTracks = () => {
     const { video, audio } = localTracksRef.current;
@@ -238,6 +314,7 @@ export default function GoLive() {
     releaseLocalTracks();
 
     if (currentRoom) {
+      manualDisconnectRef.current = true;
       currentRoom.disconnect();
       setRoom(null);
       roomRef.current = null;
@@ -254,6 +331,8 @@ export default function GoLive() {
     setChatMessages([]);
     setReactions([]);
     setElapsedSec(0);
+    setScreenShareEnabled(false);
+    setConnectionStatus("idle");
 
     try {
       await refreshLiveConfig();
@@ -261,6 +340,39 @@ export default function GoLive() {
       // Ignore refresh failures after the stream is stopped.
     }
   }, [refreshLiveConfig]);
+
+  const reconnectLiveKit = async () => {
+    const currentSession = liveSessionRef.current;
+    if (!currentSession?.roomName || loading) {
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      releaseLocalTracks();
+      if (roomRef.current) {
+        manualDisconnectRef.current = true;
+        roomRef.current.disconnect();
+        roomRef.current = null;
+        setRoom(null);
+      }
+
+      const tokenResult = await requestLiveToken({
+        roomName: currentSession.roomName,
+        publish: true,
+      });
+      await attachLiveKit(tokenResult.token, {
+        livekitConfig: liveConfig,
+        fallbackLivekit: tokenResult.livekit,
+      });
+    } catch (err) {
+      setConnectionStatus("disconnected");
+      setError(err.message || "Unable to reconnect the live stream");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!liveSession?.roomName) {
@@ -322,10 +434,16 @@ export default function GoLive() {
   useEffect(() => () => {
     reactionTimeoutRef.current.forEach((timer) => clearTimeout(timer));
     reactionTimeoutRef.current.clear();
-    if (room) {
-      room.disconnect();
+    if (roomRef.current) {
+      manualDisconnectRef.current = true;
+      roomRef.current.disconnect();
     }
-  }, [room]);
+    const { video, audio } = localTracksRef.current;
+    video?.detach();
+    video?.stop();
+    audio?.stop();
+    localTracksRef.current = { video: null, audio: null };
+  }, []);
 
   useEffect(() => {
     if (!liveSession?.startedAt) {
@@ -396,6 +514,23 @@ export default function GoLive() {
       }
     } catch (err) {
       setError(err.message || "Failed to toggle camera");
+    }
+  };
+
+  const toggleScreenShare = async () => {
+    const currentRoom = roomRef.current;
+    if (!currentRoom?.localParticipant?.setScreenShareEnabled) {
+      setError("Screen sharing is not available on this device.");
+      return;
+    }
+
+    try {
+      const nextEnabled = !screenShareEnabled;
+      await currentRoom.localParticipant.setScreenShareEnabled(nextEnabled);
+      setScreenShareEnabled(nextEnabled);
+      setError("");
+    } catch (err) {
+      setError(err.message || "Unable to change screen sharing");
     }
   };
 
@@ -495,8 +630,10 @@ export default function GoLive() {
         },
         {
           label: "Time left",
-          value: formatElapsedTime(Math.ceil(quotaRemainingMs / 1000)),
-          note: "Daily allowance",
+          value: liveSession.quota?.unlimited
+            ? "Unlimited"
+            : formatElapsedTime(Math.ceil(quotaRemainingMs / 1000)),
+          note: liveSession.quota?.unlimited ? "Admin access" : "Daily allowance",
         },
         {
           label: "Chat",
@@ -513,56 +650,76 @@ export default function GoLive() {
   }, [chatMessages.length, elapsedSec, liveSession, reactions.length, viewerCount]);
 
   return (
-    <main className="go-live-page">
+    <main className="go-live-page go-live-meet-page">
       <header className="go-live-header">
         <div>
-          <h2>Go live</h2>
-          <p>Broadcast to your followers for free with LiveKit.</p>
+          <span className="go-live-header__eyebrow">Tengacion Live Studio</span>
+          <h2>{liveSession ? liveSession.title || "Live meeting" : "Go live"}</h2>
+          <p>
+            {liveSession
+              ? `${formatElapsedTime(elapsedSec)} · ${viewerCount || 0} watching`
+              : "Set up your camera, microphone, and broadcast details."}
+          </p>
         </div>
-        <button className="secondary" onClick={() => navigate("/live")}>
+        <button className="secondary go-live-directory-btn" onClick={() => navigate("/live")}>
           Back to directory
         </button>
       </header>
 
-      <section className="go-live-panel">
-        <label className="go-live-title-field">
-          <span className="go-live-field-label">Stream title</span>
-          <input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Share what you're about to do"
-          />
-        </label>
+      {!liveSession && (
+        <section className="go-live-panel go-live-lobby">
+          <div className="go-live-lobby__preview" aria-hidden="true">
+            <div className="go-live-lobby__avatar">
+              {(user?.name || user?.username || "H").charAt(0).toUpperCase()}
+            </div>
+            <strong>Ready to join?</strong>
+            <span>Your camera preview begins when the secure room connects.</span>
+          </div>
 
-        <div className="go-live-limit-note">
-          <span>Daily allowance</span>
-          <strong>
-            {configLoading
-              ? "Checking quota..."
-              : liveSession
-                ? "Countdown shown below"
-                : liveQuota
-                  ? `${formatElapsedTime(liveQuota.remainingSecondsToday || 0)} left today`
-                  : "30 seconds per day"}
-          </strong>
-          {!liveSession && liveConfig?.activeSession && (
-            <span className="go-live-limit-warning">
-              You already have an active live session. Resume it instead of starting a new one.
-            </span>
-          )}
-          {!liveSession && livePermissionBlocked && (
-            <span className="go-live-limit-warning">
-              {livePermissionMessage}
-            </span>
-          )}
-          {!liveSession && !livePermissionBlocked && liveQuota && !liveQuota.canGoLive && (
-            <span className="go-live-limit-warning">
-              You have used today's 30-second live allowance.
-            </span>
-          )}
-        </div>
+          <div className="go-live-lobby__setup">
+            <div>
+              <span className="go-live-lobby__kicker">Broadcast setup</span>
+              <h3>Start a live session</h3>
+              <p>Followers can join from the Live directory as soon as you connect.</p>
+            </div>
 
-        {!liveSession ? (
+            <label className="go-live-title-field">
+              <span className="go-live-field-label">Stream title</span>
+              <input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Share what you're about to do"
+              />
+            </label>
+
+            <div className="go-live-limit-note">
+              <span>{hasUnlimitedLiveAccess ? "Admin access" : "Daily allowance"}</span>
+              <strong>
+                {configLoading
+                  ? "Checking access..."
+                  : hasUnlimitedLiveAccess
+                    ? "Unlimited · Go live at any time"
+                    : liveQuota
+                      ? `${formatElapsedTime(liveQuota.remainingSecondsToday || 0)} left today`
+                      : "30 seconds per day"}
+              </strong>
+              {liveConfig?.activeSession && (
+                <span className="go-live-limit-warning">
+                  You already have an active live session. Resume it instead of starting a new one.
+                </span>
+              )}
+              {livePermissionBlocked && (
+                <span className="go-live-limit-warning">
+                  {livePermissionMessage}
+                </span>
+              )}
+              {!livePermissionBlocked && liveQuota && !liveQuota.canGoLive && (
+                <span className="go-live-limit-warning">
+                  You have used today's 30-second live allowance.
+                </span>
+              )}
+            </div>
+
           <button
             type="button"
             className="primary go-live-start-btn"
@@ -580,63 +737,85 @@ export default function GoLive() {
                 ? "Resume live stream"
                 : "Start live stream"}
           </button>
-        ) : (
-          <div className="go-live-controls">
-            <span>Live session is active.</span>
-            <span>{viewerCount || 0} viewers now</span>
+            {error && <p className="field-error go-live-error">{error}</p>}
           </div>
-        )}
-
-        {error && <p className="field-error">{error}</p>}
-      </section>
+        </section>
+      )}
 
       {liveSession && (
-        <section className="go-live-preview">
-          {liveReportSummary && (
-            <div className="go-live-report">
-              <div className="go-live-report__head">
-                <div>
-                  <p className="go-live-label">Live report summary</p>
-                  <h3>{liveReportSummary.title}</h3>
-                  <p>
-                    {liveReportSummary.startedAt
-                      ? `Started at ${liveReportSummary.startedAt} - hosting as ${liveReportSummary.host}`
-                      : `Hosting as ${liveReportSummary.host}`}
-                  </p>
-                </div>
-                <span className="go-live-report__status">Live</span>
-              </div>
-              <div className="go-live-report__grid">
-                {liveReportSummary.metrics.map((metric) => (
-                  <article key={metric.label} className="go-live-report__metric">
-                    <span className="go-live-report__metric-label">{metric.label}</span>
-                    <strong className="go-live-report__metric-value">{metric.value}</strong>
-                    <span className="go-live-report__metric-note">{metric.note}</span>
-                  </article>
-                ))}
-              </div>
+        <section className="go-live-preview go-live-meeting">
+          <div className="go-live-meeting__topbar">
+            <div className="go-live-meeting__identity">
+              <span className="go-live-meeting__live-dot" aria-hidden="true" />
+              <strong>Live</strong>
+              <span>{liveSession.roomName}</span>
+            </div>
+            <div className={`go-live-connection go-live-connection--${connectionStatus}`}>
+              {connectionStatus === "connected"
+                ? "Connected"
+                : connectionStatus === "reconnecting"
+                  ? "Reconnecting…"
+                  : connectionStatus === "connecting"
+                    ? "Connecting…"
+                    : "Connection interrupted"}
+            </div>
+          </div>
+
+          {error && (
+            <div className="go-live-connection-alert" role="alert">
+              <span>{error}</span>
+              {connectionStatus === "disconnected" && (
+                <button type="button" onClick={reconnectLiveKit} disabled={loading}>
+                  {loading ? "Reconnecting…" : "Reconnect"}
+                </button>
+              )}
             </div>
           )}
-          <p className="go-live-label">You're live now</p>
-          <div className="go-live-video-wrap">
-            <video
-              ref={videoRef}
-              controls
-              muted
-              playsInline
-              className="go-live-video"
-              style={{ filter: previewFilter }}
-            />
-            {reactions.length > 0 && (
-              <div className="live-reaction-overlay" aria-hidden="true">
-                {reactions.map((entry) => (
-                  <span key={entry.id} className="live-reaction-burst">
-                    {entry.emoji}
-                  </span>
-                ))}
+
+          <div className={`go-live-meeting__layout${isChatOpen ? " has-chat" : ""}`}>
+            <div className="go-live-stage">
+              <div className="go-live-video-wrap">
+                <video
+                  ref={videoRef}
+                  muted
+                  playsInline
+                  autoPlay
+                  className="go-live-video"
+                  style={{ filter: previewFilter }}
+                />
+                {!cameraEnabled && (
+                  <div className="go-live-camera-off">
+                    <div className="go-live-camera-off__avatar">
+                      {(user?.name || user?.username || "H").charAt(0).toUpperCase()}
+                    </div>
+                    <span>Camera is off</span>
+                  </div>
+                )}
+                <div className="go-live-stage__name">
+                  {liveSession.host?.name || liveSession.host?.username || "Host"}
+                </div>
+                {reactions.length > 0 && (
+                  <div className="live-reaction-overlay" aria-hidden="true">
+                    {reactions.map((entry) => (
+                      <span key={entry.id} className="live-reaction-burst">
+                        {entry.emoji}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+
+            <LiveChatDrawer
+              open={isChatOpen}
+              messages={chatMessages}
+              draft={chatDraft}
+              onDraftChange={setChatDraft}
+              onSend={sendChatMessage}
+              onClose={() => setIsChatOpen(false)}
+            />
           </div>
+
           <LiveControlsBar
             session={liveSession}
             viewerCount={viewerCount}
@@ -657,6 +836,8 @@ export default function GoLive() {
             cameraEnabled={cameraEnabled}
             onToggleMic={toggleMic}
             onToggleCamera={toggleCamera}
+            screenShareEnabled={screenShareEnabled}
+            onToggleScreenShare={toggleScreenShare}
             filter={selectedFilter}
             blurEnabled={blurEnabled}
             onChangeFilter={setSelectedFilter}
@@ -667,14 +848,32 @@ export default function GoLive() {
             onEndLive={stopLive}
             participants={[liveSession.host?.name || liveSession.host?.username || "Host"]}
           />
-          <LiveChatDrawer
-            open={isChatOpen}
-            messages={chatMessages}
-            draft={chatDraft}
-            onDraftChange={setChatDraft}
-            onSend={sendChatMessage}
-            onClose={() => setIsChatOpen(false)}
-          />
+
+          {liveReportSummary && (
+            <details className="go-live-report">
+              <summary>Live report summary</summary>
+              <div className="go-live-report__head">
+                <div>
+                  <h3>{liveReportSummary.title}</h3>
+                  <p>
+                    {liveReportSummary.startedAt
+                      ? `Started at ${liveReportSummary.startedAt} · hosting as ${liveReportSummary.host}`
+                      : `Hosting as ${liveReportSummary.host}`}
+                  </p>
+                </div>
+                <span className="go-live-report__status">Live</span>
+              </div>
+              <div className="go-live-report__grid">
+                {liveReportSummary.metrics.map((metric) => (
+                  <article key={metric.label} className="go-live-report__metric">
+                    <span className="go-live-report__metric-label">{metric.label}</span>
+                    <strong className="go-live-report__metric-value">{metric.value}</strong>
+                    <span className="go-live-report__metric-note">{metric.note}</span>
+                  </article>
+                ))}
+              </div>
+            </details>
+          )}
         </section>
       )}
     </main>

@@ -33,6 +33,9 @@ const normalizeRole = (value) => String(value || "").trim().toLowerCase();
 const canPublishLive = (user = {}) =>
   LIVE_PUBLISHER_ROLES.has(normalizeRole(user?.role));
 
+const canBypassLiveQuota = (user = {}) =>
+  LIVE_PUBLISHER_ROLES.has(normalizeRole(user?.role));
+
 const toDate = (value) => {
   if (!value) {
     return null;
@@ -62,6 +65,10 @@ const getUtcDayBounds = (date = new Date()) => {
 };
 
 const getSessionQuotaExpiresAt = (session) => {
+  if (session?.quotaExempt) {
+    return null;
+  }
+
   const explicitExpiry = toDate(session?.quotaExpiresAt);
   if (explicitExpiry) {
     return explicitExpiry;
@@ -76,6 +83,10 @@ const getSessionQuotaExpiresAt = (session) => {
 };
 
 const isSessionQuotaExpired = (session, now = new Date()) => {
+  if (session?.quotaExempt) {
+    return false;
+  }
+
   const expiresAt = getSessionQuotaExpiresAt(session);
   if (!expiresAt) {
     return false;
@@ -84,6 +95,20 @@ const isSessionQuotaExpired = (session, now = new Date()) => {
 };
 
 const buildQuotaSnapshot = (session, { now = new Date(), usedMsToday = null } = {}) => {
+  if (session?.quotaExempt) {
+    return {
+      unlimited: true,
+      maxSecondsPerDay: null,
+      maxMillisecondsPerDay: null,
+      usedMillisecondsToday: usedMsToday,
+      usedSecondsToday:
+        usedMsToday == null ? null : Math.floor(Number(usedMsToday) / 1000),
+      remainingMilliseconds: null,
+      remainingSeconds: null,
+      expiresAt: null,
+    };
+  }
+
   const expiresAt = getSessionQuotaExpiresAt(session);
   const currentNow = toDate(now) || new Date();
   const remainingMilliseconds =
@@ -92,6 +117,7 @@ const buildQuotaSnapshot = (session, { now = new Date(), usedMsToday = null } = 
       : 0;
 
   return {
+    unlimited: false,
     maxSecondsPerDay: MAX_LIVE_SECONDS_PER_DAY,
     maxMillisecondsPerDay: MAX_LIVE_MS_PER_DAY,
     usedMillisecondsToday: usedMsToday,
@@ -168,6 +194,7 @@ class LiveService {
     const canPublish = canPublishLive(user);
     return {
       canPublish,
+      quotaExempt: canPublish && canBypassLiveQuota(user),
       message: canPublish ? "" : LIVE_ADMIN_PERMISSION_MESSAGE,
     };
   }
@@ -211,15 +238,31 @@ class LiveService {
     }, 0);
   }
 
-  static async getUserQuota(userId, now = new Date()) {
+  static async getUserQuota(userId, now = new Date(), { quotaExempt = false } = {}) {
     const usedMillisecondsToday = await LiveService.calculateUsedLiveMs(userId, now);
+    const { end: resetAt } = getUtcDayBounds(now);
+
+    if (quotaExempt) {
+      return {
+        unlimited: true,
+        maxSecondsPerDay: null,
+        maxMillisecondsPerDay: null,
+        usedMillisecondsToday,
+        usedSecondsToday: Math.floor(usedMillisecondsToday / 1000),
+        remainingMillisecondsToday: null,
+        remainingSecondsToday: null,
+        canGoLive: true,
+        resetAt: resetAt.toISOString(),
+      };
+    }
+
     const remainingMillisecondsToday = Math.max(
       0,
       MAX_LIVE_MS_PER_DAY - usedMillisecondsToday
     );
-    const { end: resetAt } = getUtcDayBounds(now);
 
     return {
+      unlimited: false,
       maxSecondsPerDay: MAX_LIVE_SECONDS_PER_DAY,
       maxMillisecondsPerDay: MAX_LIVE_MS_PER_DAY,
       usedMillisecondsToday,
@@ -234,7 +277,20 @@ class LiveService {
     };
   }
 
-  static async getHostActiveSession(userId) {
+  static async exemptSessionFromQuota(session) {
+    if (!session || session.quotaExempt) {
+      return session;
+    }
+
+    session.quotaExempt = true;
+    session.quotaLimitMs = 0;
+    session.quotaExpiresAt = undefined;
+    await session.save();
+    clearQuotaTimer(session.roomName);
+    return session;
+  }
+
+  static async getHostActiveSession(userId, { quotaExempt = false } = {}) {
     const session = await LiveSession.findOne({
       hostUserId: userId,
       status: "active",
@@ -242,6 +298,10 @@ class LiveService {
 
     if (!session) {
       return null;
+    }
+
+    if (quotaExempt) {
+      return LiveService.exemptSessionFromQuota(session);
     }
 
     if (isSessionQuotaExpired(session)) {
@@ -269,7 +329,7 @@ class LiveService {
 
     session.status = "ended";
     session.endedAt = currentEndedAt;
-    if (!session.quotaExpiresAt && session.startedAt) {
+    if (!session.quotaExempt && !session.quotaExpiresAt && session.startedAt) {
       const startedAt = toDate(session.startedAt);
       if (startedAt) {
         session.quotaExpiresAt = new Date(startedAt.getTime() + MAX_LIVE_MS_PER_DAY);
@@ -295,6 +355,7 @@ class LiveService {
     const now = new Date();
     const expiredSessions = await LiveSession.find({
       status: "active",
+      quotaExempt: { $ne: true },
       $or: [
         { quotaExpiresAt: { $lte: now } },
         {
@@ -320,8 +381,11 @@ class LiveService {
       throw ApiError.notFound("Host profile not found");
     }
     LiveService.assertCanPublishLive(host);
+    const quotaExempt = canBypassLiveQuota(host);
 
-    const activeSession = await LiveService.getHostActiveSession(host._id);
+    const activeSession = await LiveService.getHostActiveSession(host._id, {
+      quotaExempt,
+    });
     if (activeSession) {
       if (isSessionQuotaExpired(activeSession)) {
         await LiveService.expireSessionByRoom(activeSession.roomName, {
@@ -332,12 +396,13 @@ class LiveService {
       }
     }
 
-    const usedMillisecondsToday = await LiveService.calculateUsedLiveMs(host._id);
-    const remainingMillisecondsToday = Math.max(
-      0,
-      MAX_LIVE_MS_PER_DAY - usedMillisecondsToday
-    );
-    if (remainingMillisecondsToday <= 0) {
+    const usedMillisecondsToday = quotaExempt
+      ? 0
+      : await LiveService.calculateUsedLiveMs(host._id);
+    const remainingMillisecondsToday = quotaExempt
+      ? null
+      : Math.max(0, MAX_LIVE_MS_PER_DAY - usedMillisecondsToday);
+    if (!quotaExempt && remainingMillisecondsToday <= 0) {
       throw ApiError.tooManyRequests(
         "You have used your 30 seconds of live time for today"
       );
@@ -352,8 +417,11 @@ class LiveService {
       roomName: makeRoomName(userId),
       title: slugifyTitle(title || `${host.username}'s Live`),
       status: "active",
-      quotaExpiresAt: new Date(startedAt.getTime() + remainingMillisecondsToday),
-      quotaLimitMs: remainingMillisecondsToday,
+      quotaExempt,
+      quotaExpiresAt: quotaExempt
+        ? undefined
+        : new Date(startedAt.getTime() + remainingMillisecondsToday),
+      quotaLimitMs: quotaExempt ? 0 : remainingMillisecondsToday,
       startedAt,
     });
 
@@ -391,11 +459,15 @@ class LiveService {
     return session;
   }
 
-  static async getActiveSessionByRoom(roomName) {
-    const session = await LiveService.findSessionByRoom(roomName);
+  static async getActiveSessionByRoom(roomName, { quotaExempt = false } = {}) {
+    let session = await LiveService.findSessionByRoom(roomName);
     if (session.status !== "active") {
       clearQuotaTimer(session.roomName);
       throw ApiError.badRequest("Live session is no longer active");
+    }
+
+    if (quotaExempt) {
+      session = await LiveService.exemptSessionFromQuota(session);
     }
 
     if (isSessionQuotaExpired(session)) {

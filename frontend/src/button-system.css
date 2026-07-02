@@ -854,6 +854,25 @@ html.dark-mode .pillGroup {
   color: color-mix(in srgb, var(--muted) 80%, var(--brand-strong) 20%);
 }
 
+html.dark-mode:not(.royalty-mode):not(.afro-gold-mode) .nav-avatar-caret {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(151, 224, 184, 0.34);
+  border-radius: 50%;
+  background: #245b43;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+html.dark-mode:not(.royalty-mode):not(.afro-gold-mode) .nav-avatar-chip:hover .nav-avatar-caret {
+  background: #184632;
+}
+
 .search-dropdown,
 .create-menu-dropdown,
 .profile-menu {

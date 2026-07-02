@@ -73,15 +73,4 @@ describe("themed Messenger CSS", () => {
     expect(palette).toContain("--wa-wallpaper-wash:");
   });
 
-  it("gives Terra Minimal outgoing messages stronger contrast", () => {
-    const palette = getRule('html[data-theme="terra-minimal"] .messenger--whatsapp-light');
-    const outgoingTime = getRule(
-      'html[data-theme="terra-minimal"] .messenger--whatsapp-light .message-row.me .msg-time--bubble'
-    );
-
-    expect(palette).toContain("--wa-outgoing: #a94b2b;");
-    expect(palette).toContain("--wa-outgoing-ink: #fff8ef;");
-    expect(palette).toContain("--wa-delivery: #fff0e3;");
-    expect(outgoingTime).toContain("color: #fff0e3 !important;");
-  });
 });

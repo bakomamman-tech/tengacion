@@ -23999,8 +23999,8 @@ html[data-theme="terra-minimal"] .messenger--whatsapp-light {
   --wa-green: #b94b24;
   --wa-green-strong: #65301d;
   --wa-accent-text: #fff8ef;
-  --wa-outgoing: #a94b2b;
-  --wa-outgoing-ink: #fff8ef;
+  --wa-outgoing: #ead7c3;
+  --wa-outgoing-ink: #321d13;
   --wa-incoming: #fff8ee;
   --wa-incoming-ink: #321d13;
   --wa-chat-paper: #ead8c6;
@@ -24015,7 +24015,7 @@ html[data-theme="terra-minimal"] .messenger--whatsapp-light {
   --wa-composer-bg: #e4ceb8;
   --wa-wallpaper-wash: rgba(241, 225, 208, 0.7);
   --wa-online: #668349;
-  --wa-delivery: #fff0e3;
+  --wa-delivery: #b94b24;
   --wa-bubble-shadow: 0 1px 1px rgba(76, 45, 25, 0.18);
   --wa-header-shadow: 0 1px 5px rgba(76, 45, 25, 0.16);
   --wa-menu-shadow: 0 8px 24px rgba(76, 45, 25, 0.22);
@@ -24261,10 +24261,6 @@ html[data-theme="terra-minimal"] .messenger--whatsapp-light {
 
 .messenger--whatsapp-light .message-row.me .msg-text {
   color: var(--wa-outgoing-ink) !important;
-}
-
-html[data-theme="terra-minimal"] .messenger--whatsapp-light .message-row.me .msg-time--bubble {
-  color: #fff0e3 !important;
 }
 
 .messenger--whatsapp-light .msg-text::after {

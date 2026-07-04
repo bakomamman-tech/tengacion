@@ -1,27 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { getCreatorSummaryFeed, resolveImage } from "../api";
+import { getStoryMusicCatalog, resolveImage } from "../api";
 import Button from "../components/ui/Button";
-import { formatCurrency } from "../components/creator/creatorConfig";
 import {
   getStoryMusicSubtitle,
   isStoryMusicCandidate,
   normalizeStoryMusicSelection,
 } from "./storyMusicUtils";
 
-const FEED_LIMIT = 24;
-
-const getSearchValue = (item = {}) =>
-  [item?.title, item?.creatorName, item?.creatorUsername, item?.summary, item?.creatorCategory]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
+const FEED_LIMIT = 30;
 
 export default function StoryMusicPicker({ value = null, onSelect, onClear, onClose }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [activePreviewId, setActivePreviewId] = useState("");
   const [previewNonce, setPreviewNonce] = useState(0);
   const [previewPlaying, setPreviewPlaying] = useState(false);
@@ -36,11 +32,10 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
       try {
         setLoading(true);
         setError("");
-        const payload = await getCreatorSummaryFeed({
-          category: "music",
+        const payload = await getStoryMusicCatalog({
           page: 1,
           limit: FEED_LIMIT,
-          mode: "mixed",
+          search: query.trim(),
         });
         if (!alive) {
           return;
@@ -49,6 +44,8 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
           ? payload.items.filter((item) => isStoryMusicCandidate(item))
           : [];
         setItems(nextItems);
+        setPage(1);
+        setHasMore(Boolean(payload?.hasMore));
       } catch (loadError) {
         if (!alive) {
           return;
@@ -61,21 +58,21 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
       }
     };
 
-    loadFeed();
+    const timer = window.setTimeout(loadFeed, query ? 250 : 0);
     return () => {
       alive = false;
+      window.clearTimeout(timer);
       if (audio) {
         audio.pause();
         audio.removeAttribute("src");
         audio.load();
       }
     };
-  }, []);
+  }, [query]);
 
   const selectedId = String(value?.itemId || value?.id || "").trim();
 
   const filteredItems = useMemo(() => {
-    const normalized = String(query || "").trim().toLowerCase();
     const pool = Array.isArray(items) ? items : [];
 
     const sorted = [...pool].sort((left, right) => {
@@ -91,12 +88,8 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
       );
     });
 
-    if (!normalized) {
-      return sorted;
-    }
-
-    return sorted.filter((item) => getSearchValue(item).includes(normalized));
-  }, [items, query, selectedId]);
+    return sorted;
+  }, [items, selectedId]);
 
   const activePreviewItem = useMemo(() => {
     if (!activePreviewId) {
@@ -180,6 +173,36 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
     onSelect?.(normalizeStoryMusicSelection(item));
   };
 
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore) {
+      return;
+    }
+    try {
+      setLoadingMore(true);
+      const nextPage = page + 1;
+      const payload = await getStoryMusicCatalog({
+        page: nextPage,
+        limit: FEED_LIMIT,
+        search: query.trim(),
+      });
+      const nextItems = Array.isArray(payload?.items)
+        ? payload.items.filter((item) => isStoryMusicCandidate(item))
+        : [];
+      setItems((current) => {
+        const merged = new Map(
+          [...current, ...nextItems].map((item) => [String(item?.id || item?.contentId || ""), item])
+        );
+        return Array.from(merged.values());
+      });
+      setPage(nextPage);
+      setHasMore(Boolean(payload?.hasMore));
+    } catch (loadError) {
+      setError(loadError?.message || "Could not load more Tengacion music.");
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const selectedItem = selectedId
     ? items.find((item) => String(item?.id || item?.contentId || "") === selectedId) || null
     : null;
@@ -192,15 +215,25 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
         onEnded={() => setPreviewPlaying(false)}
         onPause={() => setPreviewPlaying(false)}
         onPlay={() => setPreviewPlaying(true)}
+        onTimeUpdate={(event) => {
+          const limit = Math.max(
+            1,
+            Math.min(30, Number(activePreviewItem?.previewLimitSec || 30))
+          );
+          if (event.currentTarget.currentTime >= limit) {
+            event.currentTarget.pause();
+            event.currentTarget.currentTime = 0;
+            setPreviewPlaying(false);
+          }
+        }}
       />
 
       <div className="story-music-picker__head">
         <div>
-          <span className="story-music-picker__eyebrow">Tengacion Soundtrack Shelf</span>
-          <h4>Attach a 30-second creator preview to this story</h4>
+          <span className="story-music-picker__eyebrow">Promote a Tengacion creator</span>
+          <h4>Add music</h4>
           <p>
-            Pick from music uploaded by Tengacion creators. Your story keeps the beat, and the
-            clip stays short enough to feel like a sticker, not a takeover.
+            Choose a 30-second preview from songs published by fully registered Tengacion artists.
           </p>
         </div>
         <Button variant="icon" size="sm" iconOnly onClick={onClose} aria-label="Close soundtrack shelf">
@@ -235,7 +268,7 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search creator songs, albums, or artist names"
+          placeholder="Search songs or Tengacion artists"
         />
       </label>
 
@@ -265,7 +298,7 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
                     src={resolveImage(item.coverImage) || item.coverImage}
                     alt={item.title || "Soundtrack"}
                   />
-                  <span>{item.summaryLabel || "Music"}</span>
+                  <span>30s</span>
                 </div>
 
                 <div className="story-music-picker__card-copy">
@@ -276,7 +309,7 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
 
                 <div className="story-music-picker__card-meta">
                   <span>30 sec preview</span>
-                  <strong>{item.priceLabel || formatCurrency(item.price)}</strong>
+                  <strong>Registered creator</strong>
                 </div>
 
                 <div className="story-music-picker__card-actions">
@@ -299,11 +332,21 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
               </article>
             );
           })}
+          {hasMore ? (
+            <button
+              type="button"
+              className="story-music-picker__load-more"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+            >
+              {loadingMore ? "Loading songs..." : "Load more songs"}
+            </button>
+          ) : null}
         </div>
       ) : (
         <div className="story-music-picker__state">
           <strong>No matching soundtrack found</strong>
-          <p>Try a creator name or release title from Tengacion&apos;s music directory.</p>
+          <p>Try a song title or the name of a registered Tengacion artist.</p>
         </div>
       )}
     </section>

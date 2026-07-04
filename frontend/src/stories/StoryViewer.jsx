@@ -4,6 +4,8 @@ import Button from "../components/ui/Button";
 import { getStoryMedia } from "./storyMedia";
 
 const IMAGE_DURATION_MS = 5000;
+const getSoundtrackPreviewSeconds = (soundtrack = null) =>
+  Math.max(1, Math.min(30, Number(soundtrack?.previewLimitSec || 30)));
 
 const QUICK_REACTIONS = [
   "\u2764\uFE0F",
@@ -91,6 +93,9 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
     : "";
   const { mediaType, mediaUrl } = getStoryMedia(activeStory);
   const soundtrack = activeStory?.musicAttachment || null;
+  const storyDurationMs = soundtrack?.previewUrl
+    ? getSoundtrackPreviewSeconds(soundtrack) * 1000
+    : IMAGE_DURATION_MS;
   const holdStoryAdvance = replyFocused || Boolean(replyText.trim()) || replyBusy;
   const avatarSrc = activeStory?.avatar
     ? resolveImage(activeStory.avatar)
@@ -208,7 +213,7 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
       }
 
       elapsed += delta;
-      const ratio = Math.min(1, elapsed / IMAGE_DURATION_MS);
+      const ratio = Math.min(1, elapsed / storyDurationMs);
       setProgress(ratio);
       if (ratio >= 1) {
         clearInterval(timerRef.current);
@@ -223,7 +228,7 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
         timerRef.current = null;
       }
     };
-  }, [activeStoryKey, goToNext, mediaType]);
+  }, [activeStoryKey, goToNext, mediaType, storyDurationMs]);
 
   useEffect(() => {
     if (mediaType !== "video") {
@@ -470,9 +475,16 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
               onPause={() => setSoundtrackPlaying(false)}
               onPlay={() => setSoundtrackPlaying(true)}
               onTimeUpdate={(event) => {
-                const duration = event.currentTarget.duration || 0;
+                const previewLimit = getSoundtrackPreviewSeconds(soundtrack);
+                const duration = Math.min(event.currentTarget.duration || previewLimit, previewLimit);
                 const now = event.currentTarget.currentTime || 0;
                 setSoundtrackProgress(duration > 0 ? Math.min(1, now / duration) : 0);
+                if (now >= previewLimit) {
+                  event.currentTarget.pause();
+                  event.currentTarget.currentTime = 0;
+                  setSoundtrackPlaying(false);
+                  setSoundtrackProgress(1);
+                }
               }}
             />
           </div>

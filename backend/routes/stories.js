@@ -8,6 +8,7 @@ const moderateUpload = require("../middleware/moderateUpload");
 const { saveUploadedMedia } = require("../services/mediaStore");
 const { createNotification } = require("../services/notificationService");
 const {
+  buildStoryMusicCatalog,
   hydrateStoryMusicAttachment,
   resolveStoryMusicSelection,
 } = require("../services/storyMusicService");
@@ -231,6 +232,22 @@ const loadVisibleStories = async (viewerId, req = null) => {
 };
 
 /* ================= CREATE STORY (TEXT/IMAGE/VIDEO) ================= */
+
+router.get("/music-catalog", auth, async (req, res) => {
+  try {
+    const payload = await buildStoryMusicCatalog({
+      req,
+      viewerId: req.userId,
+      page: req.query?.page,
+      limit: req.query?.limit,
+      search: req.query?.search,
+    });
+    return res.json(payload);
+  } catch (err) {
+    console.error("Story music catalog error:", err);
+    return res.status(500).json({ error: "Failed to load story music" });
+  }
+});
 
 router.post(
   "/",

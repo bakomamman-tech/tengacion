@@ -195,6 +195,61 @@ describe("story music attachment", () => {
     expect(feedStory.musicAttachment.previewUrl).toContain("/api/media/delivery/");
   });
 
+  test("lists only published songs from fully registered active music creators", async () => {
+    const creator = await createCreator();
+    const incompleteUser = await User.create({
+      name: "Incomplete Artist",
+      username: "incomplete_artist",
+      email: "incomplete@example.com",
+      password: "Password123!",
+      role: "artist",
+    });
+    const incompleteProfile = await CreatorProfile.create({
+      userId: incompleteUser._id,
+      displayName: "Incomplete Artist",
+      creatorTypes: ["music"],
+      onboardingComplete: false,
+      onboardingCompleted: false,
+      status: "active",
+    });
+
+    await Track.create([
+      {
+        creatorId: creator.profile._id,
+        title: "Promote This Song",
+        audioUrl: "https://cdn.tengacion.test/tracks/promote-full.mp3",
+        previewUrl: "https://cdn.tengacion.test/tracks/promote-preview.mp3",
+        previewLimitSec: 45,
+        isPublished: true,
+        publishedStatus: "published",
+        archivedAt: null,
+      },
+      {
+        creatorId: incompleteProfile._id,
+        title: "Not Yet Eligible",
+        audioUrl: "https://cdn.tengacion.test/tracks/incomplete-full.mp3",
+        previewUrl: "https://cdn.tengacion.test/tracks/incomplete-preview.mp3",
+        isPublished: true,
+        publishedStatus: "published",
+        archivedAt: null,
+      },
+    ]);
+
+    const response = await request(app)
+      .get("/api/stories/music-catalog")
+      .set("Authorization", `Bearer ${creator.token}`)
+      .expect(200);
+
+    expect(response.body.items).toHaveLength(1);
+    expect(response.body.items[0]).toMatchObject({
+      title: "Promote This Song",
+      creatorName: "Sound Creator",
+      itemType: "track",
+      previewLimitSec: 30,
+    });
+    expect(response.body.items[0].previewUrl).toContain("/api/media/delivery/");
+  });
+
   test("rejects a soundtrack selection that no longer resolves", async () => {
     const creator = await createCreator();
 

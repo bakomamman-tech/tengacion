@@ -12,6 +12,7 @@ const isAcceptedType = (file) =>
 
 export default function CreateStory({ user, onCreated, openSignal = 0 }) {
   const fileRef = useRef(null);
+  const captionRef = useRef(null);
   const lastOpenSignalRef = useRef(0);
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState(null);
@@ -152,109 +153,158 @@ export default function CreateStory({ user, onCreated, openSignal = 0 }) {
             aria-modal="true"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="story-create-modal-header">
-              <h3>Create story</h3>
-              <Button
-                className="story-create-modal-close"
-                aria-label="Close story creation"
-                onClick={closeModal}
-                variant="icon"
-                size="sm"
-                iconOnly
-              >
-                <span className="icon-glyph-center">X</span>
-              </Button>
-            </div>
-
-            <div
-              className={`story-create-modal-body${
-                musicPanelOpen ? " story-create-modal-body--with-music" : ""
-              }`}
-            >
-              <div className="story-create-modal-main">
-                {file ? (
-                  <div className="story-create-preview">
-                    {String(file.type).startsWith("video/") ? (
-                      <video controls src={previewUrl} />
-                    ) : (
-                      <img src={previewUrl} alt="Story preview" />
-                    )}
-                  </div>
-                ) : (
-                  <p className="story-create-empty">Choose an image or video</p>
-                )}
-
-                {selectedMusic ? (
-                  <div className="story-create-soundtrack">
-                    <img
-                      src={resolveImage(selectedMusic.coverImage) || selectedMusic.coverImage}
-                      alt={selectedMusic.title || "Selected soundtrack"}
-                    />
-                    <div>
-                      <span>Soundtrack attached</span>
-                      <strong>{selectedMusic.title}</strong>
-                      <small>{selectedMusic.creatorName || "Tengacion creator"} - 30-second clip</small>
-                    </div>
-                    <button
-                      type="button"
-                      className="story-create-soundtrack__remove"
-                      onClick={() => setSelectedMusic(null)}
-                      disabled={submitting}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ) : null}
-
-                <textarea
-                  value={caption}
-                  onChange={(event) => setCaption(event.target.value)}
-                  placeholder="Say something about this story..."
-                  maxLength={220}
-                />
-
-                <select value={visibility} onChange={(event) => setVisibility(event.target.value)}>
-                  <option value="public">Public</option>
-                  <option value="friends">Friends</option>
-                  <option value="close_friends">Close Friends</option>
-                </select>
-
-                {progress > 0 && submitting && (
-                  <div className="story-create-progress">
-                    <span style={{ width: `${Math.min(progress, 100)}%` }} />
-                  </div>
-                )}
-
-                {error ? <p className="story-create-error">{error}</p> : null}
+            <aside className="story-create-sidebar">
+              <div className="story-create-modal-header">
+                <h3>Your story</h3>
+                <Button
+                  className="story-create-modal-close"
+                  aria-label="Close story creation"
+                  onClick={closeModal}
+                  variant="icon"
+                  size="sm"
+                  iconOnly
+                >
+                  <span className="icon-glyph-center">X</span>
+                </Button>
               </div>
 
-              {musicPanelOpen ? (
-                <div className="story-create-modal-music">
-                  <StoryMusicPicker
-                    value={selectedMusic}
-                    onSelect={setSelectedMusic}
-                    onClear={() => setSelectedMusic(null)}
-                    onClose={() => setMusicPanelOpen(false)}
+              <div className="story-create-profile">
+                <img src={avatar} alt="" />
+                <div>
+                  <strong>{user?.name || user?.username || "Your story"}</strong>
+                  <span>Build a story your friends will remember</span>
+                </div>
+              </div>
+
+              <div className="story-create-tools" aria-label="Story tools">
+                <button type="button" onClick={openFileDialog} disabled={submitting}>
+                  <span className="story-create-tool-icon" aria-hidden="true">▣</span>
+                  <span>{file ? "Change media" : "Choose media"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => captionRef.current?.focus()}
+                  disabled={submitting}
+                >
+                  <span className="story-create-tool-icon story-create-tool-icon--text" aria-hidden="true">Aa</span>
+                  <span>Add text</span>
+                </button>
+                <button
+                  type="button"
+                  className={musicPanelOpen ? "is-active" : ""}
+                  onClick={() => setMusicPanelOpen((current) => !current)}
+                  disabled={submitting}
+                  aria-expanded={musicPanelOpen}
+                >
+                  <span className="story-create-tool-icon" aria-hidden="true">♫</span>
+                  <span>{selectedMusic ? "Edit music" : "Add music"}</span>
+                </button>
+              </div>
+
+              <div className="story-create-sidebar-fields">
+                <label>
+                  <span>Story text</span>
+                  <textarea
+                    ref={captionRef}
+                    value={caption}
+                    onChange={(event) => setCaption(event.target.value)}
+                    placeholder="Say something about this story..."
+                    maxLength={220}
                   />
+                </label>
+                <label>
+                  <span>Audience</span>
+                  <select value={visibility} onChange={(event) => setVisibility(event.target.value)}>
+                    <option value="public">Public</option>
+                    <option value="friends">Friends</option>
+                    <option value="close_friends">Close Friends</option>
+                  </select>
+                </label>
+              </div>
+
+              {selectedMusic ? (
+                <div className="story-create-soundtrack">
+                  <img
+                    src={resolveImage(selectedMusic.coverImage) || selectedMusic.coverImage}
+                    alt={selectedMusic.title || "Selected soundtrack"}
+                  />
+                  <div>
+                    <span>30-second soundtrack</span>
+                    <strong>{selectedMusic.title}</strong>
+                    <small>{selectedMusic.creatorName || "Tengacion creator"}</small>
+                  </div>
+                  <button
+                    type="button"
+                    className="story-create-soundtrack__remove"
+                    onClick={() => setSelectedMusic(null)}
+                    disabled={submitting}
+                  >
+                    Remove
+                  </button>
                 </div>
               ) : null}
-            </div>
 
-            <div className="story-create-modal-actions">
-              <Button variant="secondary" onClick={openFileDialog} disabled={submitting}>
-                {file ? "Change media" : "Choose media"}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => setMusicPanelOpen((current) => !current)}
-                disabled={submitting}
-              >
-                {musicPanelOpen ? "Hide soundtrack shelf" : selectedMusic ? "Edit soundtrack" : "Add soundtrack"}
-              </Button>
-              <Button variant="primary" loading={submitting} onClick={submit} disabled={!file}>
-                Share to story
-              </Button>
-            </div>
+              {progress > 0 && submitting && (
+                <div className="story-create-progress">
+                  <span style={{ width: `${Math.min(progress, 100)}%` }} />
+                </div>
+              )}
+              {error ? <p className="story-create-error">{error}</p> : null}
+
+              <div className="story-create-modal-actions">
+                <Button variant="secondary" onClick={closeModal} disabled={submitting}>
+                  Discard
+                </Button>
+                <Button variant="primary" loading={submitting} onClick={submit} disabled={!file}>
+                  Share to story
+                </Button>
+              </div>
+            </aside>
+
+            <main className="story-create-workspace">
+              <div className="story-create-workspace__header">
+                <span>Preview</span>
+                <small>{selectedMusic ? "Music attached · 30 seconds" : "Story preview"}</small>
+              </div>
+              <div className={`story-create-workspace__stage${musicPanelOpen ? " is-music-open" : ""}`}>
+                <div className="story-create-canvas">
+                  {file ? (
+                    <div className="story-create-preview">
+                      {String(file.type).startsWith("video/") ? (
+                        <video controls src={previewUrl} />
+                      ) : (
+                        <img src={previewUrl} alt="Story preview" />
+                      )}
+                    </div>
+                  ) : (
+                    <button type="button" className="story-create-empty" onClick={openFileDialog}>
+                      Choose an image or video
+                    </button>
+                  )}
+                  {caption ? <p className="story-create-preview-text">{caption}</p> : null}
+                  {selectedMusic ? (
+                    <div className="story-create-preview-music">
+                      <span aria-hidden="true">♫</span>
+                      <div>
+                        <strong>{selectedMusic.title}</strong>
+                        <small>{selectedMusic.creatorName || "Tengacion creator"} · 30 sec</small>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                {musicPanelOpen ? (
+                  <div className="story-create-modal-music">
+                    <StoryMusicPicker
+                      value={selectedMusic}
+                      onSelect={setSelectedMusic}
+                      onClear={() => setSelectedMusic(null)}
+                      onClose={() => setMusicPanelOpen(false)}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </main>
           </div>
         </div>
       )}

@@ -1761,6 +1761,12 @@ export const getStories = () =>
     headers: getAuthHeaders(),
   });
 
+export const getStoryMusicCatalog = ({ page = 1, limit = 30, search = "" } = {}) =>
+  request(`${API_BASE}/stories/music-catalog${buildQueryString({ page, limit, search })}`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
 const appendStoryMusicAttachment = (formData, musicAttachment = null) => {
   if (!formData || !musicAttachment) {
     return formData;

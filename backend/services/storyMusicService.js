@@ -1,12 +1,19 @@
 const Album = require("../models/Album");
+const CreatorProfile = require("../models/CreatorProfile");
 const Track = require("../models/Track");
 const { buildSignedMediaUrl } = require("./mediaSigner");
-const { sanitizeLegacyMediaFieldsForNewWrite } = require("../utils/userMedia");
+const { normalizeMediaValue, sanitizeLegacyMediaFieldsForNewWrite } = require("../utils/userMedia");
 
 const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
 const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
 const MUSIC_ITEM_TYPES = new Set(["track", "album"]);
 const DEFAULT_PREVIEW_LIMIT = 30;
+const REGISTERED_MUSIC_CREATOR_FILTER = {
+  isCreator: true,
+  status: "active",
+  creatorTypes: "music",
+  $or: [{ onboardingComplete: true }, { onboardingCompleted: true }],
+};
 
 const toCleanString = (value = "") => String(value || "").trim();
 
@@ -61,9 +68,25 @@ const normalizeSelection = (value) => {
 
 const normalizeStoryMusicSelection = normalizeSelection;
 
+const isRegisteredMusicCreator = async (creatorId) => {
+  if (!creatorId) {
+    return false;
+  }
+  return Boolean(
+    await CreatorProfile.exists({
+      _id: creatorId,
+      ...REGISTERED_MUSIC_CREATOR_FILTER,
+    })
+  );
+};
+
 const resolveTrackAttachment = async (selection, { sanitizeForWrite = true } = {}) => {
   const track = await Track.findOne({ _id: selection.itemId, ...ACTIVE_TRACK_FILTER }).lean();
   if (!track) {
+    return null;
+  }
+
+  if (!(await isRegisteredMusicCreator(track.creatorId))) {
     return null;
   }
 
@@ -102,6 +125,120 @@ const resolveTrackAttachment = async (selection, { sanitizeForWrite = true } = {
   }
 
   return attachment;
+};
+
+const escapeRegExp = (value = "") =>
+  String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const buildStoryMusicCatalog = async ({ req, viewerId = "", page = 1, limit = 30, search = "" } = {}) => {
+  const pageNumber = Math.max(1, Number.parseInt(page, 10) || 1);
+  const pageSize = Math.max(1, Math.min(50, Number.parseInt(limit, 10) || 30));
+  const query = toCleanString(search).slice(0, 80);
+
+  const creators = await CreatorProfile.find(REGISTERED_MUSIC_CREATOR_FILTER)
+    .select("displayName fullName coverImageUrl heroBannerUrl userId")
+    .populate("userId", "name username avatar")
+    .lean();
+  const creatorIds = creators.map((creator) => creator._id);
+  const creatorById = new Map(creators.map((creator) => [String(creator._id), creator]));
+
+  if (!creatorIds.length) {
+    return { page: pageNumber, limit: pageSize, total: 0, hasMore: false, items: [] };
+  }
+
+  const trackMatch = {
+    ...ACTIVE_TRACK_FILTER,
+    kind: "music",
+    creatorId: { $in: creatorIds },
+    $or: [
+      { previewUrl: { $exists: true, $type: "string", $ne: "" } },
+      { previewSampleUrl: { $exists: true, $type: "string", $ne: "" } },
+      { previewClipUrl: { $exists: true, $type: "string", $ne: "" } },
+    ],
+  };
+
+  if (query) {
+    const pattern = new RegExp(escapeRegExp(query), "i");
+    const matchingCreatorIds = creators
+      .filter((creator) =>
+        [
+          creator.displayName,
+          creator.fullName,
+          creator.userId?.name,
+          creator.userId?.username,
+        ].some((value) => pattern.test(String(value || "")))
+      )
+      .map((creator) => creator._id);
+
+    trackMatch.$and = [{
+      $or: [
+        { title: pattern },
+        { artistName: pattern },
+        { genre: pattern },
+        { description: pattern },
+        ...(matchingCreatorIds.length ? [{ creatorId: { $in: matchingCreatorIds } }] : []),
+      ],
+    }];
+  }
+
+  const [total, tracks] = await Promise.all([
+    Track.countDocuments(trackMatch),
+    Track.find(trackMatch)
+      .sort({ createdAt: -1, updatedAt: -1 })
+      .skip((pageNumber - 1) * pageSize)
+      .limit(pageSize)
+      .lean(),
+  ]);
+
+  const items = tracks.map((track) => {
+    const creator = creatorById.get(String(track.creatorId)) || {};
+    const creatorUser = creator.userId || {};
+    const itemId = String(track._id || "");
+    const previewSource = toCleanString(
+      track.previewUrl || track.previewSampleUrl || track.previewClipUrl
+    );
+    const previewUrl = buildSignedMediaUrl({
+      sourceUrl: previewSource,
+      itemType: "track",
+      itemId,
+      userId: viewerId,
+      req,
+      expiresInSec: 10 * 60,
+    });
+
+    return {
+      id: itemId,
+      contentId: itemId,
+      itemType: "track",
+      feedItemType: "track",
+      creatorId: String(creator._id || track.creatorId || ""),
+      creatorUserId: String(creatorUser._id || ""),
+      creatorName: toCleanString(
+        creator.displayName || creator.fullName || creatorUser.name || track.artistName || "Tengacion creator"
+      ),
+      creatorUsername: toCleanString(creatorUser.username),
+      creatorAvatar: toCleanString(
+        creator.coverImageUrl || creator.heroBannerUrl || normalizeMediaValue(creatorUser.avatar).url
+      ),
+      title: toCleanString(track.title || "Untitled song"),
+      coverImage: toCleanString(track.coverImageUrl || track.coverUrl || creator.coverImageUrl),
+      previewUrl,
+      previewAudioUrl: previewUrl,
+      previewStartSec: Math.max(0, Number(track.previewStartSec || 0)),
+      previewLimitSec: clampPreviewLimit(track.previewLimitSec || DEFAULT_PREVIEW_LIMIT),
+      durationSec: Math.max(0, Number(track.durationSec || 0)),
+      summaryLabel: "Song",
+      createdAt: track.createdAt || track.updatedAt || null,
+    };
+  });
+
+  return {
+    page: pageNumber,
+    limit: pageSize,
+    total,
+    hasMore: pageNumber * pageSize < total,
+    items,
+  };
 };
 
 const resolveAlbumAttachment = async (selection, { sanitizeForWrite = true } = {}) => {
@@ -210,6 +347,7 @@ const hydrateStoryMusicAttachment = async (attachment = {}, { req, viewerId = ""
 };
 
 module.exports = {
+  buildStoryMusicCatalog,
   hydrateStoryMusicAttachment,
   normalizeStoryMusicSelection,
   resolveStoryMusicSelection,

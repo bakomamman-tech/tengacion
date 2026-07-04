@@ -24420,6 +24420,12 @@ html[data-theme="terra-minimal"] .messenger--whatsapp-light {
   opacity: 1;
 }
 
+@media (min-width: 641px) {
+  .messenger--whatsapp-light .messenger-composer-entry textarea {
+    padding-left: 16px !important;
+  }
+}
+
 .messenger--whatsapp-light .messenger-composer-emoji-inline,
 .messenger--whatsapp-light .messenger-composer-attach-inline,
 .messenger--whatsapp-light .messenger-composer-camera-inline {

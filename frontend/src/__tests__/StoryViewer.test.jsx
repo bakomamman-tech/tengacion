@@ -23,8 +23,13 @@ const story = {
 };
 
 describe("StoryViewer", () => {
+  let playMock;
+
   beforeEach(() => {
     vi.useFakeTimers();
+    playMock = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});
     markStorySeenMock.mockResolvedValue({ seen: true });
     reactToStoryMock.mockResolvedValue({ success: true });
     replyToStoryMock.mockResolvedValue({ success: true });
@@ -36,6 +41,7 @@ describe("StoryViewer", () => {
     markStorySeenMock.mockReset();
     reactToStoryMock.mockReset();
     replyToStoryMock.mockReset();
+    vi.restoreAllMocks();
   });
 
   it("keeps the story open while a reply is being written", async () => {
@@ -76,5 +82,30 @@ describe("StoryViewer", () => {
 
     expect(reactToStoryMock).toHaveBeenCalledWith("story-1", expect.any(String));
     expect(container.querySelector(".story-viewer-reaction-burst")).toBeInTheDocument();
+  });
+
+  it("automatically plays an attached creator soundtrack when the story opens", async () => {
+    render(
+      <StoryViewer
+        story={{
+          ...story,
+          musicAttachment: {
+            itemId: "track-mama",
+            title: "Mama",
+            creatorName: "Tengacion Artist",
+            previewUrl: "https://cdn.test/mama-preview.mp3",
+            previewLimitSec: 30,
+          },
+        }}
+        onClose={vi.fn()}
+      />
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(playMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: /pause/i })).toBeInTheDocument();
   });
 });

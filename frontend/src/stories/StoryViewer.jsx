@@ -259,8 +259,30 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
 
     audio.src = soundtrack.previewUrl;
     audio.load();
+    let cancelled = false;
+
+    const startSoundtrack = async () => {
+      try {
+        audio.currentTime = 0;
+        await audio.play();
+        if (!cancelled) {
+          setSoundtrackPlaying(true);
+          setSoundtrackError("");
+        }
+      } catch {
+        if (!cancelled) {
+          setSoundtrackPlaying(false);
+          setSoundtrackError("Autoplay was blocked. Tap Play to hear this soundtrack.");
+        }
+      }
+    };
+
+    void startSoundtrack();
     return () => {
+      cancelled = true;
       audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
     };
   }, [activeStory?._id, soundtrack?.itemId, soundtrack?.previewUrl]);
 
@@ -468,6 +490,7 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
             <audio
               ref={soundtrackRef}
               hidden
+              preload="auto"
               onEnded={() => {
                 setSoundtrackPlaying(false);
                 setSoundtrackProgress(1);

@@ -49,22 +49,12 @@ describe("themed Messenger CSS", () => {
     expect(attachRule).toContain("margin-left: auto;");
   });
 
-  it("keeps multiline text inside the rounded composer edge on desktop only", () => {
-    const desktopMediaStart = css.indexOf("@media (min-width: 641px)");
-    const mobileMediaStart = css.indexOf("@media (max-width: 640px)", desktopMediaStart);
-    const desktopComposerRule = getRule(
-      ".messenger--whatsapp-light .messenger-composer-entry textarea",
-      desktopMediaStart
+  it("keeps multiline text inside the rounded composer edge at every viewport size", () => {
+    const composerRule = getRule(
+      ".messenger--whatsapp-light .messenger-composer-entry textarea"
     );
 
-    expect(desktopMediaStart).toBeGreaterThan(-1);
-    expect(desktopComposerRule).toContain("padding-left: 16px !important;");
-    expect(desktopComposerRule.indexOf("padding-left: 16px !important;")).toBeLessThan(
-      mobileMediaStart - css.indexOf(
-        ".messenger--whatsapp-light .messenger-composer-entry textarea {",
-        desktopMediaStart
-      )
-    );
+    expect(composerRule).toContain("padding: 13px 4px 11px 16px !important;");
   });
 
   it("uses the current Light Mode Messenger structure in every theme", () => {

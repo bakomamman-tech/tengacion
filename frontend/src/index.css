@@ -24405,7 +24405,7 @@ html[data-theme="terra-minimal"] .messenger--whatsapp-light {
   max-height: 120px !important;
   border: 0 !important;
   outline: 0;
-  padding: 13px 4px 11px !important;
+  padding: 13px 4px 11px 16px !important;
   background: transparent !important;
   color: var(--wa-ink) !important;
   font-family: inherit;
@@ -24418,12 +24418,6 @@ html[data-theme="terra-minimal"] .messenger--whatsapp-light {
 .messenger--whatsapp-light .messenger-composer-entry textarea::placeholder {
   color: var(--wa-muted) !important;
   opacity: 1;
-}
-
-@media (min-width: 641px) {
-  .messenger--whatsapp-light .messenger-composer-entry textarea {
-    padding-left: 16px !important;
-  }
 }
 
 .messenger--whatsapp-light .messenger-composer-emoji-inline,

@@ -89,6 +89,10 @@ describe("PublicHomePage", () => {
     );
 
     expect(screen.getByRole("heading", { name: /africa's social commerce/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Log In/Create Account" })).toHaveAttribute(
+      "href",
+      "/login"
+    );
     expect(screen.getAllByRole("link", { name: /join as creator/i })[0]).toHaveAttribute(
       "href",
       "/creator/register"

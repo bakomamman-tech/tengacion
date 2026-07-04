@@ -121,7 +121,7 @@
 }
 
 .public-home__nav {
-  width: min(1280px, 100%);
+  width: min(1600px, 100%);
   min-height: 74px;
   margin: 0 auto;
   padding: 10px 12px 10px 18px;
@@ -169,7 +169,7 @@
 .public-home__brand span {
   color: var(--home-gold-light);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 21px;
+  font-size: 42px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -202,6 +202,12 @@
   text-decoration: none;
   font-size: 13px;
   font-weight: 800;
+}
+
+.public-home__nav-actions a {
+  min-height: 58px;
+  font-size: 26px;
+  white-space: nowrap;
 }
 
 .public-home__nav-actions a:last-child {
@@ -1441,6 +1447,15 @@
   .public-home__nav-actions {
     max-width: none;
     justify-content: flex-start;
+  }
+
+  .public-home__brand span {
+    font-size: 21px;
+  }
+
+  .public-home__nav-actions a {
+    min-height: 38px;
+    font-size: 13px;
   }
 
   .public-home__hero::before {

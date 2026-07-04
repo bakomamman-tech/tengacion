@@ -423,7 +423,7 @@ export default function PublicHomePage() {
             <Link to="/activity">Activity</Link>
             <Link to="/marketplace">Marketplace</Link>
             <Link to="/contact">Contact</Link>
-            <Link to="/login">Log in</Link>
+            <Link to="/login">Log In/Create Account</Link>
           </div>
         </nav>
 

@@ -2,29 +2,6 @@ import { resolveImage } from "../../api";
 
 export const GROUP_SHARE_STORAGE_KEY = "tengacion:group-shares";
 
-export const DEFAULT_SHARE_GROUPS = [
-  {
-    id: "artists-hub",
-    name: "Tengacion Artists Hub",
-    note: "Active this week",
-  },
-  {
-    id: "afrobeat-producers",
-    name: "Afrobeat Producers",
-    note: "Beat swaps and sessions",
-  },
-  {
-    id: "live-session-organizers",
-    name: "Live Session Organizers",
-    note: "Planning the next stage run",
-  },
-  {
-    id: "songwriters-community",
-    name: "Songwriters Community",
-    note: "Lyrics, hooks, and drafts",
-  },
-];
-
 export const SHARE_DESTINATION_OPTIONS = [
   { id: "feed", label: "Feed" },
   { id: "story", label: "Story" },

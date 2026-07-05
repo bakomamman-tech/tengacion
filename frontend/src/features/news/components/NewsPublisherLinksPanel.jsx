@@ -1,7 +1,7 @@
 const EXTERNAL_NEWS_LINK_GROUPS = [
   {
     id: "nigeria",
-    title: "Nigeria",
+    title: "NIGERIAN NEWS",
     description: "Established Nigerian publisher sites you can open directly for daily coverage.",
     links: [
       {
@@ -43,7 +43,7 @@ const EXTERNAL_NEWS_LINK_GROUPS = [
   },
   {
     id: "nigeria-sports",
-    title: "Nigeria Sports",
+    title: "NIGERIAN SPORTS NEWS",
     description: "Free-to-read Nigerian sports reporting, from local leagues to Nigerians competing abroad.",
     links: [
       {
@@ -75,7 +75,7 @@ const EXTERNAL_NEWS_LINK_GROUPS = [
   },
   {
     id: "international",
-    title: "International",
+    title: "INTERNATIONAL NEWS",
     description: "Free global publisher homepages for world, business, and breaking news.",
     links: [
       {
@@ -102,7 +102,7 @@ const EXTERNAL_NEWS_LINK_GROUPS = [
   },
   {
     id: "international-sports",
-    title: "International Sports",
+    title: "INTERNATIONAL SPORTS NEWS",
     description: "Free sports news pages covering major leagues, competitions, scores, and analysis worldwide.",
     links: [
       {

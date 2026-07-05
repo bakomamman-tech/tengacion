@@ -1,6 +1,7 @@
 import { resolveImage } from "../../api";
 
 export const GROUP_SHARE_STORAGE_KEY = "tengacion:group-shares";
+export const DEFAULT_SHARE_GROUPS = [];
 
 export const SHARE_DESTINATION_OPTIONS = [
   { id: "feed", label: "Feed" },

@@ -13,12 +13,15 @@ import {
   sendChatMessage,
 } from "../../api";
 import { useAuth } from "../../context/AuthContext";
+import {
+  GROUPS_CHANGED_EVENT,
+  readStoredGroups,
+} from "../../features/groups/groupStore";
 import QuickShareActions from "./QuickShareActions";
 import ShareComposerHeader from "./ShareComposerHeader";
 import SharePreviewCard from "./SharePreviewCard";
 import SuggestedShareTargets from "./SuggestedShareTargets";
 import {
-  DEFAULT_SHARE_GROUPS,
   buildPostShareUrl,
   buildShareBody,
   buildShareState,
@@ -127,6 +130,7 @@ export default function PostShareModal({
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [selectedProfileId, setSelectedProfileId] = useState("");
   const [groupShares, setGroupShares] = useState({});
+  const [storedGroups, setStoredGroups] = useState(() => readStoredGroups(user));
 
   const shareUrl = useMemo(() => buildPostShareUrl(resolvedPostId), [resolvedPostId]);
   const shareState = useMemo(
@@ -162,13 +166,13 @@ export default function PostShareModal({
     [profileTargets, selectedProfileId]
   );
   const orderedGroups = useMemo(() => {
-    const rows = [...DEFAULT_SHARE_GROUPS];
+    const rows = [...storedGroups];
     return rows.sort((left, right) => {
       const rightTime = Date.parse(groupShares?.[right.id]?.sharedAt || "") || 0;
       const leftTime = Date.parse(groupShares?.[left.id]?.sharedAt || "") || 0;
       return rightTime - leftTime;
     });
-  }, [groupShares]);
+  }, [groupShares, storedGroups]);
   const selectedGroup = useMemo(
     () => orderedGroups.find((entry) => entry.id === selectedGroupId) || null,
     [orderedGroups, selectedGroupId]
@@ -280,8 +284,22 @@ export default function PostShareModal({
     setError("");
     setInlineError("");
     setGroupShares(readStoredGroupShares());
+    setStoredGroups(readStoredGroups(user));
     resetState();
-  }, [open, resolvedPostId, resetState, seededPost]);
+  }, [open, resolvedPostId, resetState, seededPost, user]);
+
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+    const refreshGroups = () => setStoredGroups(readStoredGroups(user));
+    window.addEventListener(GROUPS_CHANGED_EVENT, refreshGroups);
+    window.addEventListener("storage", refreshGroups);
+    return () => {
+      window.removeEventListener(GROUPS_CHANGED_EVENT, refreshGroups);
+      window.removeEventListener("storage", refreshGroups);
+    };
+  }, [open, user]);
 
   useEffect(() => {
     if (!open || !resolvedPostId) {
@@ -896,12 +914,13 @@ export default function PostShareModal({
                     </div>
                   </div>
 
-                  <div className="tg-share-target-grid">
-                    {orderedGroups.map((group) => (
+                  {orderedGroups.length ? (
+                    <div className="tg-share-target-grid">
+                      {orderedGroups.map((group) => (
                       <TargetCard
                         key={group.id}
                         title={group.name}
-                        subtitle={group.note}
+                        subtitle={`${group.privacy === "private" ? "Private" : "Public"} group`}
                         badge={groupShares?.[group.id]?.postId === resolvedPostId ? "Recent" : ""}
                         active={group.id === selectedGroupId}
                         disabled={Boolean(busyAction)}
@@ -910,8 +929,16 @@ export default function PostShareModal({
                           setInlineError("");
                         }}
                       />
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="tg-share-empty">
+                      <p>You have not created any groups yet.</p>
+                      <button type="button" onClick={() => { requestClose(); navigate("/groups"); }}>
+                        Create a group
+                      </button>
+                    </div>
+                  )}
                 </section>
               ) : null}
 

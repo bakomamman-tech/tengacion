@@ -2,7 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getChatContacts, resolveImage } from "../api";
-import { DEFAULT_SHARE_GROUPS } from "./share/postShareUtils";
+import { useAuth } from "../context/AuthContext";
+import {
+  GROUPS_CHANGED_EVENT,
+  readStoredGroups,
+} from "../features/groups/groupStore";
 
 const COMMUNITY_ENTRIES = [
   {
@@ -158,6 +162,7 @@ export default function MessengerInboxDropdown({
   onSelectContact,
   onOpenInbox,
 }) {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const searchInputRef = useRef(null);
   const [contacts, setContacts] = useState([]);
@@ -168,6 +173,7 @@ export default function MessengerInboxDropdown({
   const [composeMode, setComposeMode] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [activeOptionsId, setActiveOptionsId] = useState("");
+  const [userGroups, setUserGroups] = useState(() => readStoredGroups(user));
 
   const loadContacts = useCallback(async () => {
     try {
@@ -185,6 +191,17 @@ export default function MessengerInboxDropdown({
   useEffect(() => {
     void loadContacts();
   }, [loadContacts]);
+
+  useEffect(() => {
+    const refreshGroups = () => setUserGroups(readStoredGroups(user));
+    refreshGroups();
+    window.addEventListener(GROUPS_CHANGED_EVENT, refreshGroups);
+    window.addEventListener("storage", refreshGroups);
+    return () => {
+      window.removeEventListener(GROUPS_CHANGED_EVENT, refreshGroups);
+      window.removeEventListener("storage", refreshGroups);
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!composeMode) {
@@ -234,13 +251,13 @@ export default function MessengerInboxDropdown({
 
   const directoryRows = useMemo(() => {
     if (activeTab === "groups") {
-      return searchDirectoryRows(normalizeDirectoryRows(DEFAULT_SHARE_GROUPS, "Group"), search);
+      return searchDirectoryRows(normalizeDirectoryRows(userGroups, "Group"), search);
     }
     if (activeTab === "communities") {
       return searchDirectoryRows(COMMUNITY_ENTRIES, search);
     }
     return [];
-  }, [activeTab, search]);
+  }, [activeTab, search, userGroups]);
 
   const filteredContacts = useMemo(() => {
     const query = search.trim().toLowerCase();

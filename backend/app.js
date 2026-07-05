@@ -230,6 +230,7 @@ app.use("/api/artist", require("./routes/artist"));
 app.use("/api/music", require("./routes/music"));
 app.use("/api/billing", require("./routes/billing"));
 app.use("/api/rooms", require("./routes/rooms"));
+app.use("/api/groups", require("./routes/groups"));
 app.use("/api/checkin", require("./routes/checkin"));
 app.use("/api/discovery", require("./routes/discovery"));
 app.use("/api/news", require("./routes/news.routes"));

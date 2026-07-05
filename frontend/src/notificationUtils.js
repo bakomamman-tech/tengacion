@@ -116,6 +116,7 @@ export const normalizeNotificationEntry = (entry) => {
     messageText: ensureSentence(rawMessage || DEFAULT_NOTIFICATION_COPY[type] || DEFAULT_NOTIFICATION_COPY.system),
     previewText: String(metadata?.previewText || "").trim(),
     previewImage: resolveImage(metadata?.previewImage) || "",
+    birthdayPersonId: String(metadata?.birthdayPersonId || ""),
     createdAt: entry?.createdAt || null,
     timeLabel: getRelativeNotificationTime(entry?.createdAt),
     link: String(metadata?.link || ""),
@@ -130,6 +131,13 @@ export const getNotificationTarget = (entry) => {
   const item = entry?.messageText ? entry : normalizeNotificationEntry(entry);
   const entityModel = String(item?.entity?.model || "").toLowerCase();
   const entityId = String(item?.entity?.id || "");
+
+  if (item.type === "birthday") {
+    const birthdayPersonId = String(item?.birthdayPersonId || entityId || "");
+    return {
+      path: item.link || `/birthdays${birthdayPersonId ? `?focus=${birthdayPersonId}` : ""}`,
+    };
+  }
 
   if (item.type === "message" || entityModel === "message") {
     const path = item.link || "/home";

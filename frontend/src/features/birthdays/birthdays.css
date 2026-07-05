@@ -1,0 +1,477 @@
+.birthdays-shell {
+  width: 100%;
+  max-width: none;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  padding: 0;
+}
+
+.birthdays-main {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  gap: 0;
+}
+
+.birthdays-workspace {
+  min-height: calc(100vh - var(--navbar-height, 72px));
+  display: grid;
+  grid-template-columns: 450px minmax(0, 1fr);
+  background: #f0f2f5;
+}
+
+.birthdays-sidebar {
+  position: sticky;
+  top: var(--navbar-height, 72px);
+  align-self: start;
+  height: calc(100vh - var(--navbar-height, 72px));
+  overflow-y: auto;
+  padding: 18px 20px 30px;
+  border-right: 1px solid #dddfe2;
+  background: #fff;
+  color: #050505;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
+}
+
+.birthdays-sidebar h1 {
+  margin: 0 0 16px;
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.birthdays-sidebar__search {
+  min-height: 45px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #f0f2f5;
+  color: #65676b;
+}
+
+.birthdays-sidebar__search svg,
+.birthdays-sidebar nav svg,
+.birthdays-sidebar section svg,
+.birthday-send-button svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.birthdays-sidebar__search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #050505;
+  font: inherit;
+  font-size: 16px;
+}
+
+.birthdays-sidebar nav {
+  display: grid;
+  gap: 3px;
+  margin: 20px 0 14px;
+}
+
+.birthdays-sidebar nav button,
+.birthdays-sidebar section > button {
+  width: 100%;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 0;
+  border-radius: 10px;
+  padding: 6px 0;
+  background: transparent;
+  color: #050505;
+  text-align: left;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.birthdays-sidebar nav button:hover,
+.birthdays-sidebar section > button:hover,
+.birthdays-sidebar section > button.active {
+  background: #f0f2f5;
+}
+
+.birthdays-sidebar nav button span,
+.birthdays-sidebar section > button span {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #e4e6eb;
+  color: #050505;
+}
+
+.birthdays-sidebar section > button.active span {
+  background: color-mix(in srgb, var(--brand) 16%, #e4e6eb);
+  color: var(--brand-strong);
+}
+
+.birthdays-create-event {
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.birthdays-create-event:hover {
+  filter: brightness(0.94);
+}
+
+.birthdays-sidebar__divider {
+  height: 1px;
+  margin: 28px 0 20px;
+  background: #ced0d4;
+}
+
+.birthdays-sidebar section h2 {
+  margin: 0 0 8px;
+  font-size: 21px;
+}
+
+.birthdays-sidebar section p {
+  margin: 10px 8px;
+  color: #65676b;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.birthdays-content {
+  width: min(850px, calc(100% - 48px));
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 20px;
+  margin: 30px auto 60px;
+}
+
+.birthday-fb-section,
+.birthday-fb-error {
+  border: 1px solid #dddfe2;
+  border-radius: 14px;
+  background: #fff;
+  color: #050505;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.birthday-fb-section {
+  padding: 18px 20px 10px;
+}
+
+.birthday-fb-section h2 {
+  margin: 0 0 14px;
+  font-size: 25px;
+  line-height: 1.2;
+}
+
+.birthday-fb-person {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 16px;
+  padding: 12px 0 20px;
+}
+
+.birthday-fb-person + .birthday-fb-person {
+  border-top: 1px solid #ced0d4;
+  padding-top: 20px;
+}
+
+.birthday-fb-person__avatar {
+  width: 74px;
+  height: 74px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: #e4e6eb;
+}
+
+.birthday-fb-person__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.birthday-fb-person__body {
+  min-width: 0;
+}
+
+.birthday-fb-person__heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1px 16px;
+  margin-bottom: 6px;
+}
+
+.birthday-fb-person__heading > button {
+  justify-self: start;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #050505;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.birthday-fb-person__heading > button:hover {
+  text-decoration: underline;
+}
+
+.birthday-fb-person__heading > span {
+  grid-column: 1;
+  color: #65676b;
+  font-size: 13px;
+}
+
+.birthday-fb-person__heading > small {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: center;
+  color: #65676b;
+  font-size: 13px;
+}
+
+.birthday-fb-composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 8px;
+}
+
+.birthday-fb-composer__input {
+  min-height: 45px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #f0f2f5;
+}
+
+.birthday-fb-composer__input input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  padding: 0 15px;
+  background: transparent;
+  color: #050505;
+  font: inherit;
+  font-size: 16px;
+}
+
+.birthday-fb-composer__input span {
+  padding: 0 13px 0 4px;
+  color: #8a8d91;
+  font-size: 22px;
+}
+
+.birthday-send-button {
+  width: 42px;
+  height: 42px;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--brand);
+}
+
+.birthday-send-button:hover {
+  background: #e4e6eb;
+}
+
+.birthday-send-button svg {
+  width: 30px;
+  height: 30px;
+}
+
+.birthday-fb-presets {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.birthday-fb-presets button {
+  min-height: 37px;
+  border: 1px solid #ced0d4;
+  border-radius: 999px;
+  padding: 0 13px;
+  background: #fff;
+  color: #65676b;
+  font: inherit;
+  font-size: 16px;
+  text-align: left;
+}
+
+.birthday-fb-presets button:hover {
+  background: #f0f2f5;
+}
+
+.birthday-fb-empty {
+  margin: 0;
+  padding: 22px 0 28px;
+  color: #65676b;
+  text-align: center;
+}
+
+.birthday-fb-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  color: #b42318;
+}
+
+.birthday-fb-error button {
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 14px;
+  background: #e4e6eb;
+  color: #050505;
+  font-weight: 800;
+}
+
+html.dark-mode .birthdays-workspace {
+  background: #18191a;
+}
+
+html.dark-mode .birthdays-sidebar,
+html.dark-mode .birthday-fb-section,
+html.dark-mode .birthday-fb-error {
+  border-color: #3e4042;
+  background: #242526;
+  color: #e4e6eb;
+}
+
+html.dark-mode .birthdays-sidebar h1,
+html.dark-mode .birthdays-sidebar nav button,
+html.dark-mode .birthdays-sidebar section > button,
+html.dark-mode .birthday-fb-section,
+html.dark-mode .birthday-fb-person__heading > button,
+html.dark-mode .birthday-fb-composer__input input {
+  color: #e4e6eb;
+}
+
+html.dark-mode .birthdays-sidebar__search,
+html.dark-mode .birthdays-sidebar nav button span,
+html.dark-mode .birthdays-sidebar section > button span,
+html.dark-mode .birthday-fb-composer__input {
+  background: #3a3b3c;
+}
+
+html.dark-mode .birthday-fb-presets button {
+  border-color: #4e4f50;
+  background: #242526;
+  color: #b0b3b8;
+}
+
+@media (max-width: 1180px) {
+  .birthdays-workspace {
+    grid-template-columns: 330px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 850px) {
+  .birthdays-workspace {
+    display: block;
+  }
+
+  .birthdays-sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid #dddfe2;
+  }
+
+  .birthdays-sidebar nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .birthdays-sidebar nav button {
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  .birthdays-sidebar nav button span {
+    display: none;
+  }
+
+  .birthdays-sidebar__divider,
+  .birthdays-sidebar section {
+    display: none;
+  }
+
+  .birthdays-content {
+    width: min(850px, calc(100% - 24px));
+    margin-top: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .birthdays-sidebar {
+    padding: 14px;
+  }
+
+  .birthdays-sidebar h1 {
+    font-size: 25px;
+  }
+
+  .birthdays-sidebar nav button {
+    min-height: 45px;
+    padding: 4px;
+    font-size: 12px;
+  }
+
+  .birthday-fb-section {
+    padding: 16px 13px 8px;
+  }
+
+  .birthday-fb-section h2 {
+    font-size: 21px;
+  }
+
+  .birthday-fb-person {
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .birthday-fb-person__avatar {
+    width: 54px;
+    height: 54px;
+  }
+
+  .birthday-fb-person__heading > small {
+    display: none;
+  }
+
+  .birthday-fb-composer {
+    grid-template-columns: minmax(0, 1fr) 36px;
+  }
+
+  .birthday-fb-composer__input input,
+  .birthday-fb-presets button {
+    font-size: 14px;
+  }
+}

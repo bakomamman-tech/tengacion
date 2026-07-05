@@ -373,6 +373,8 @@ describe("chat + friend request flow", () => {
       _id: userB._id.toString(),
       birthdayLabel: "Today",
       birthdayIsToday: true,
+      birthdayDaysAgo: 0,
+      birthdayAge: today.getFullYear() - 1998,
     });
 
     expect(Array.isArray(response.body.suggestions)).toBe(true);

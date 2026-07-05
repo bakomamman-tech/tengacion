@@ -201,6 +201,11 @@
   align-content: start;
 }
 
+.news-link-directory-group .news-highlight-label-row h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
 .news-link-directory-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

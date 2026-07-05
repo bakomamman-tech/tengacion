@@ -42,6 +42,38 @@ const EXTERNAL_NEWS_LINK_GROUPS = [
     ],
   },
   {
+    id: "nigeria-sports",
+    title: "Nigeria Sports",
+    description: "Free-to-read Nigerian sports reporting, from local leagues to Nigerians competing abroad.",
+    links: [
+      {
+        label: "Complete Sports",
+        href: "https://www.completesports.com/",
+        note: "Super Eagles, NPFL, Nigerian athletes, and world sport",
+      },
+      {
+        label: "Brila",
+        href: "https://brila.net/",
+        note: "Nigerian sports news, analysis, interviews, and radio",
+      },
+      {
+        label: "Soccernet Nigeria",
+        href: "https://soccernet.ng/",
+        note: "Super Eagles, NPFL, transfers, and Nigerians abroad",
+      },
+      {
+        label: "Sports247",
+        href: "https://www.sports247.ng/",
+        note: "Football, athletics, basketball, and grassroots sport",
+      },
+      {
+        label: "ACLSports",
+        href: "https://www.aclsports.com/",
+        note: "Nigerian and African football, leagues, and tournaments",
+      },
+    ],
+  },
+  {
     id: "international",
     title: "International",
     description: "Free global publisher homepages for world, business, and breaking news.",
@@ -68,15 +100,47 @@ const EXTERNAL_NEWS_LINK_GROUPS = [
       },
     ],
   },
+  {
+    id: "international-sports",
+    title: "International Sports",
+    description: "Free sports news pages covering major leagues, competitions, scores, and analysis worldwide.",
+    links: [
+      {
+        label: "BBC Sport",
+        href: "https://www.bbc.com/sport",
+        note: "Global sports news, live scores, fixtures, and results",
+      },
+      {
+        label: "Sky Sports",
+        href: "https://www.skysports.com/",
+        note: "Football, Formula 1, cricket, tennis, rugby, and more",
+      },
+      {
+        label: "ESPN",
+        href: "https://www.espn.com/",
+        note: "International scores, headlines, leagues, and analysis",
+      },
+      {
+        label: "Yahoo Sports",
+        href: "https://sports.yahoo.com/news/",
+        note: "Breaking sports news, scores, schedules, and features",
+      },
+      {
+        label: "Goal",
+        href: "https://www.goal.com/",
+        note: "International football news, transfers, scores, and teams",
+      },
+    ],
+  },
 ];
 
 export default function NewsPublisherLinksPanel() {
   return (
-    <section className="news-link-directory-panel card" aria-label="External news publisher links">
+    <section className="news-link-directory-panel card" aria-label="External news and sports publisher links">
       <div className="news-highlights-header">
         <div>
           <span className="news-highlights-kicker">Open publisher sites</span>
-          <h2>Daily news links</h2>
+          <h2>Daily news and sports links</h2>
         </div>
         <span className="news-location-pill">External sites open in a new tab</span>
       </div>

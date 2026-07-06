@@ -151,7 +151,7 @@ export default function Login() {
   };
 
   return (
-    <div className="login-container login-container--luxury">
+    <div className="login-container login-container--luxury login-container--nature-green">
       <div className="login-left">
         <div className="login-logo-section">
           <div className="login-logo">

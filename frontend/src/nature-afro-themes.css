@@ -1074,6 +1074,233 @@ html.afro-gold-mode .login-container .developer-contact-cta__arrow {
   font-weight: 800;
 }
 
+/* The login route shares the landing page's Nature Green and tea-studio treatment. */
+html .login-container.login-container--luxury.login-container--nature-green {
+  --auth-bg: #173d20;
+  --auth-bg-deep: #0d2818;
+  --auth-glow: rgba(58, 140, 65, 0.24);
+  --auth-cream: #fffdf4;
+  --auth-cream-soft: #f5faee;
+  --auth-cream-deep: #e6f0d9;
+  --auth-ink: #182315;
+  --auth-muted: #52674b;
+  --auth-border: rgba(47, 127, 42, 0.22);
+  --auth-border-strong: rgba(47, 127, 42, 0.42);
+  --auth-accent: #247436;
+  --auth-accent-strong: #135027;
+  --auth-accent-soft: rgba(47, 127, 42, 0.14);
+  --tg-btn-primary-bg: linear-gradient(135deg, #3a8c41 0%, #247436 56%, #135027 100%);
+  --tg-btn-primary-bg-hover: linear-gradient(135deg, #469a4c 0%, #2d823e 56%, #195e2e 100%);
+  --tg-btn-primary-bg-active: linear-gradient(135deg, #206a31 0%, #0d3c20 100%);
+  --tg-btn-primary-border: rgba(32, 94, 27, 0.32);
+  --tg-btn-primary-text: #ffffff;
+  color: #182315;
+  background-color: #cfe4c5;
+  background-image:
+    linear-gradient(180deg, rgba(15, 52, 29, 0.54), rgba(7, 31, 18, 0.7)),
+    url("/assets/light-mode-leaf-studio-background.jpg"),
+    linear-gradient(180deg, #dcefd2 0%, #9dc793 100%);
+  background-position: center, center top, center;
+  background-size: cover, cover, cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+html .login-container.login-container--luxury.login-container--nature-green::before {
+  background: radial-gradient(circle, rgba(213, 240, 143, 0.28) 0%, rgba(58, 140, 65, 0) 72%);
+}
+
+html .login-container.login-container--luxury.login-container--nature-green::after {
+  background: radial-gradient(circle, rgba(255, 253, 244, 0.2) 0%, rgba(255, 253, 244, 0) 70%);
+}
+
+html .login-container.login-container--luxury.login-container--nature-green .login-left {
+  border-color: rgba(213, 240, 143, 0.2);
+  color: #f8fff2;
+  background-image:
+    linear-gradient(145deg, rgba(7, 28, 16, 0.9), rgba(5, 18, 11, 0.86)),
+    url("/assets/light-mode-leaf-studio-background.jpg"),
+    linear-gradient(145deg, #173d20, #0d2818);
+  background-position: center, left center, center;
+  background-size: cover, cover, cover;
+  background-repeat: no-repeat;
+  box-shadow:
+    inset 0 1px rgba(242, 255, 215, 0.08),
+    0 28px 70px rgba(3, 28, 14, 0.32);
+}
+
+html .login-container.login-container--luxury.login-container--nature-green .login-left::before {
+  background:
+    linear-gradient(180deg, rgba(242, 255, 215, 0.06), transparent 34%),
+    radial-gradient(circle at top right, rgba(120, 166, 64, 0.2), transparent 36%);
+}
+
+html .login-container.login-container--luxury.login-container--nature-green .login-left::after {
+  content: "";
+  width: 86px;
+  height: 86px;
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 1;
+  border: 1px solid rgba(213, 240, 143, 0.28);
+  border-radius: 50%;
+  background-color: #f7faef;
+  background-image: url("/assets/light-mode-leaf-studio-background.jpg");
+  background-position: -23px -65px;
+  background-size: 468px 263px;
+  background-repeat: no-repeat;
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.9),
+    0 12px 26px rgba(3, 28, 14, 0.28);
+  pointer-events: none;
+}
+
+html .login-container.login-container--luxury.login-container--nature-green :is(
+  .login-logo-section,
+  .login-features
+) {
+  position: relative;
+  z-index: 2;
+}
+
+html .login-container.login-container--luxury.login-container--nature-green .login-logo {
+  border-color: rgba(213, 240, 143, 0.24);
+  background: linear-gradient(135deg, rgba(255, 253, 244, 0.2), rgba(213, 240, 143, 0.08));
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.12),
+    0 0 26px rgba(213, 240, 143, 0.12);
+}
+
+html .login-container.login-container--luxury.login-container--nature-green :is(
+  .login-title,
+  .feature-item p
+) {
+  color: #f8fff2;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.34);
+}
+
+html .login-container.login-container--luxury.login-container--nature-green .login-subtitle {
+  color: #dbe8cf;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+html .login-container.login-container--luxury.login-container--nature-green .feature-item {
+  border-color: rgba(213, 240, 143, 0.16);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(58, 140, 65, 0.11));
+  box-shadow: inset 0 1px rgba(242, 255, 215, 0.06);
+}
+
+html .login-container.login-container--luxury.login-container--nature-green :is(
+  .login-box,
+  .developer-contact-cta,
+  .account-note-card
+) {
+  border-color: rgba(47, 127, 42, 0.2);
+  color: #182315;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(58, 140, 65, 0.1), transparent 15rem),
+    linear-gradient(150deg, rgba(255, 253, 244, 0.98), rgba(241, 248, 231, 0.95));
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.9),
+    0 22px 48px rgba(13, 60, 32, 0.18);
+}
+
+html .login-container.login-container--luxury.login-container--nature-green :is(
+  .login-box h2,
+  .login-box strong,
+  .account-note-card strong,
+  .developer-contact-cta__title,
+  .developer-contact-cta__arrow
+) {
+  color: #173d20;
+  text-shadow: none;
+}
+
+html .login-container.login-container--luxury.login-container--nature-green :is(
+  .login-divider,
+  .login-box .account-note-card p,
+  .login-box .account-inline-message,
+  .auth-qr-placeholder
+) {
+  color: #405f36;
+  text-shadow: none;
+}
+
+html .login-container.login-container--luxury.login-container--nature-green input.login-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]) {
+  border-color: rgba(47, 127, 42, 0.22);
+  color: #182315;
+  background: linear-gradient(180deg, #ffffff, #f7fbf0);
+}
+
+html .login-container.login-container--luxury.login-container--nature-green input.login-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"])::placeholder {
+  color: #4f6848;
+  opacity: 1;
+}
+
+html .login-container.login-container--luxury.login-container--nature-green input.login-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus {
+  border-color: rgba(47, 127, 42, 0.56);
+  box-shadow:
+    0 0 0 4px rgba(47, 127, 42, 0.14),
+    0 0 24px rgba(36, 116, 54, 0.1);
+}
+
+html .login-container.login-container--luxury.login-container--nature-green :is(
+  .forgot-password,
+  .login-footer-links a,
+  .login-box .password-toggle-btn
+) {
+  color: #135027;
+}
+
+html .login-container.login-container--luxury.login-container--nature-green :is(
+  .login-btn,
+  .signup-btn
+) {
+  border-color: rgba(47, 127, 42, 0.36);
+  color: #ffffff;
+  background: linear-gradient(135deg, #3a8c41 0%, #247436 56%, #135027 100%);
+  text-shadow: none;
+  box-shadow:
+    inset 0 1px rgba(232, 255, 217, 0.48),
+    0 12px 28px rgba(36, 116, 54, 0.2);
+}
+
+html .login-container.login-container--luxury.login-container--nature-green :is(
+  .login-btn,
+  .signup-btn
+):hover:not(:disabled) {
+  color: #ffffff;
+  background: linear-gradient(135deg, #469a4c 0%, #2d823e 56%, #195e2e 100%);
+}
+
+html .login-container.login-container--luxury.login-container--nature-green .developer-contact-cta__arrow {
+  border-color: rgba(47, 127, 42, 0.24);
+  background: rgba(226, 242, 211, 0.82);
+}
+
+@media (max-width: 720px) {
+  html .login-container.login-container--luxury.login-container--nature-green {
+    background-position: center, left top, center;
+    background-size: cover, auto 100dvh, cover;
+    background-attachment: scroll;
+  }
+
+  html .login-container.login-container--luxury.login-container--nature-green .login-left {
+    background-position: center, left top, center;
+    background-size: cover, auto 100%, cover;
+  }
+
+  html .login-container.login-container--luxury.login-container--nature-green .login-left::after {
+    width: 64px;
+    height: 64px;
+    top: 16px;
+    right: 16px;
+    background-position: -22px -57px;
+    background-size: 390px 219px;
+  }
+}
+
 html.nature-green-mode :is(.creator-gate-screen, .creator-register-shell, .creator-shell, .creator-policy-shell, .creator-public-page, .crd-shell),
 html.nature-green-mode .creator-discovery-theme {
   color: var(--creator-text);

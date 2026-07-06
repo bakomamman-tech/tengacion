@@ -1538,6 +1538,14 @@
     font-size: 12px;
   }
 
+  .public-home__nav-actions a:first-child {
+    order: -2;
+  }
+
+  .public-home__nav-actions a:last-child {
+    order: -1;
+  }
+
   .public-home__hero-inner {
     min-height: 560px;
     padding: 88px 2px 28px;

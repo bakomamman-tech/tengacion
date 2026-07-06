@@ -22,6 +22,8 @@ const runBirthdayRecognition = async ({ logger = console } = {}) => {
   }).select("_id name username birthday");
 
   let created = 0;
+  let friendRemindersCreated = 0;
+
   for (const user of users) {
     const userId = user._id.toString();
     const existing = await Message.findOne({
@@ -33,52 +35,83 @@ const runBirthdayRecognition = async ({ logger = console } = {}) => {
       .select("_id")
       .lean();
 
-    if (existing) {
-      continue;
+    if (!existing) {
+      const conversationId = [userId, userId].sort().join("_");
+      const message = await Message.create({
+        conversationId,
+        senderId: user._id,
+        receiverId: user._id,
+        text: `Happy Birthday, ${user.name || user.username || "Friend"}!`,
+        type: "text",
+        isSystem: true,
+        metadata: {
+          type: "birthday",
+          payload: { dayKey, cakeImage: BIRTHDAY_CAKE_IMAGE },
+        },
+      });
+
+      await Notification.create({
+        recipient: user._id,
+        sender: user._id,
+        type: "system",
+        text: `Happy Birthday, ${user.name || user.username || "Friend"}!`,
+        entity: { id: message._id, model: "Message" },
+        metadata: {
+          type: "birthday",
+          birthdayPersonId: userId,
+          previewImage: BIRTHDAY_CAKE_IMAGE,
+          previewText: "Wishing you a joyful day from Tengacion.",
+          link: `/birthdays?focus=${userId}`,
+        },
+      });
+      created += 1;
     }
 
-    const conversationId = [userId, userId].sort().join("_");
-    const message = await Message.create({
-      conversationId,
-      senderId: user._id,
-      receiverId: user._id,
-      text: `Happy Birthday, ${user.name || user.username || "Friend"} 🎉`,
-      type: "text",
-      isSystem: true,
-      metadata: {
-        type: "birthday",
-        payload: {
-          dayKey,
-          cakeImage: BIRTHDAY_CAKE_IMAGE,
-        },
-      },
-    });
+    if (["friends", "public"].includes(String(user?.birthday?.visibility || ""))) {
+      const friends = await User.find({
+        friends: user._id,
+        _id: { $ne: user._id },
+        isDeleted: { $ne: true },
+        isBanned: { $ne: true },
+      })
+        .select("_id")
+        .lean();
 
-    await Notification.create({
-      recipient: user._id,
-      sender: user._id,
-      type: "system",
-      text: `Happy Birthday, ${user.name || user.username || "Friend"} 🎉`,
-      entity: {
-        id: message._id,
-        model: "Message",
-      },
-      metadata: {
-        previewImage: BIRTHDAY_CAKE_IMAGE,
-        previewText: "Wishing you a joyful day from Tengacion.",
-        link: "/home",
-      },
-    });
-
-    created += 1;
+      for (const friend of friends) {
+        const dedupeKey = `birthday:${dayKey}:${userId}`;
+        const result = await Notification.updateOne(
+          { recipient: friend._id, dedupeKey },
+          {
+            $setOnInsert: {
+              recipient: friend._id,
+              sender: user._id,
+              type: "system",
+              text: "has a birthday today. Send them a wish!",
+              dedupeKey,
+              entity: { id: user._id, model: "User" },
+              metadata: {
+                type: "birthday",
+                birthdayPersonId: userId,
+                previewImage: BIRTHDAY_CAKE_IMAGE,
+                previewText: "Celebrate their birthday on Tengacion.",
+                link: `/birthdays?focus=${userId}`,
+              },
+            },
+          },
+          { upsert: true }
+        );
+        friendRemindersCreated += Number(result.upsertedCount || 0);
+      }
+    }
   }
 
   logger.info("[birthday] recognition complete", {
     date: dayKey,
     matchedUsers: users.length,
     created,
+    friendRemindersCreated,
   });
-  return { matchedUsers: users.length, created };
+  return { matchedUsers: users.length, created, friendRemindersCreated };
 };
 
 module.exports = {

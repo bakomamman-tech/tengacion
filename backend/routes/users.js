@@ -206,13 +206,21 @@ const buildBirthdayInfo = (birthday = {}) => {
 
   const today = new Date();
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  let nextBirthday = new Date(today.getFullYear(), month - 1, day);
-  if (nextBirthday.getMonth() !== month - 1 || nextBirthday.getDate() !== day) {
+  const thisYearsBirthday = new Date(today.getFullYear(), month - 1, day);
+  if (thisYearsBirthday.getMonth() !== month - 1 || thisYearsBirthday.getDate() !== day) {
     return null;
   }
+  let nextBirthday = new Date(thisYearsBirthday);
   if (nextBirthday < todayStart) {
     nextBirthday = new Date(today.getFullYear() + 1, month - 1, day);
   }
+
+  const lastBirthday =
+    thisYearsBirthday <= todayStart
+      ? thisYearsBirthday
+      : new Date(today.getFullYear() - 1, month - 1, day);
+  const daysAgo = Math.round((todayStart.getTime() - lastBirthday.getTime()) / 86400000);
+  const age = year > 0 ? Math.max(0, lastBirthday.getFullYear() - year) : 0;
 
   const daysUntil = Math.round((nextBirthday.getTime() - todayStart.getTime()) / 86400000);
   let label = `${MONTH_NAMES[month - 1]} ${day}`;
@@ -232,6 +240,9 @@ const buildBirthdayInfo = (birthday = {}) => {
     birthdayLabel: label,
     birthdayIsToday: daysUntil === 0,
     birthdayDaysUntil: daysUntil,
+    birthdayDaysAgo: daysAgo,
+    birthdayAge: age,
+    lastBirthdayAt: lastBirthday.toISOString(),
     nextBirthdayAt: nextBirthday.toISOString(),
   };
 };

@@ -1673,6 +1673,382 @@
   }
 }
 
+/* The public landing page uses Tengacion's Nature Green visual language by default. */
+.public-home.public-home--nature-green {
+  --home-night: #0d2818;
+  --home-night-soft: #173d20;
+  --home-panel: rgba(255, 253, 244, 0.92);
+  --home-panel-soft: rgba(242, 249, 232, 0.88);
+  --home-gold: #78a640;
+  --home-gold-light: #dff3ad;
+  --home-gold-deep: #247436;
+  --home-violet: #247436;
+  --home-violet-bright: #3a8c41;
+  --home-blue: #2d7f67;
+  --home-text: #182315;
+  --home-muted: #52674b;
+  --home-line: rgba(47, 127, 42, 0.24);
+  color: var(--home-text);
+  background-color: #d9ebcf;
+  background-image:
+    linear-gradient(180deg, rgba(232, 245, 224, 0.56), rgba(192, 223, 181, 0.66)),
+    url("/assets/light-mode-leaf-studio-background.jpg"),
+    linear-gradient(180deg, #edf7e7 0%, #c9e4bd 100%);
+  background-position: center, center top, center;
+  background-size: cover, cover, cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+.public-home.public-home--nature-green::before {
+  background:
+    linear-gradient(90deg, transparent 0 6%, rgba(36, 116, 54, 0.08) 6.1%, transparent 6.2% 93.8%, rgba(36, 116, 54, 0.08) 93.9%, transparent 94%),
+    repeating-linear-gradient(90deg, transparent 0 86px, rgba(36, 116, 54, 0.025) 87px, transparent 88px),
+    repeating-linear-gradient(0deg, transparent 0 86px, rgba(36, 116, 54, 0.025) 87px, transparent 88px);
+}
+
+.public-home.public-home--nature-green::after {
+  border-color: rgba(36, 116, 54, 0.2);
+  box-shadow:
+    0 0 0 44px rgba(58, 140, 65, 0.05),
+    0 0 0 88px rgba(120, 166, 64, 0.04),
+    0 0 120px rgba(36, 116, 54, 0.18);
+}
+
+.public-home.public-home--nature-green .public-home__hero {
+  --home-text: #f8fff2;
+  --home-muted: #dbe8cf;
+  color: #f8fff2;
+  border-bottom-color: rgba(213, 240, 143, 0.34);
+  background-image:
+    linear-gradient(90deg, rgba(4, 18, 10, 0.9), rgba(9, 42, 25, 0.79) 52%, rgba(7, 30, 18, 0.84)),
+    radial-gradient(circle at 50% 2%, rgba(255, 247, 230, 0.16), transparent 22rem),
+    url("/assets/light-mode-leaf-studio-background.jpg"),
+    linear-gradient(116deg, #09150f 0%, #0e2d1c 54%, #081f14 100%);
+  background-position: center, center, center top, center;
+  background-size: cover, cover, cover, cover;
+  background-repeat: no-repeat;
+  box-shadow:
+    inset 0 -1px rgba(242, 255, 215, 0.1),
+    0 26px 70px rgba(13, 60, 32, 0.28);
+}
+
+.public-home.public-home--nature-green .public-home__hero::before {
+  filter:
+    drop-shadow(0 0 18px rgba(213, 240, 143, 0.5))
+    drop-shadow(0 0 54px rgba(36, 116, 54, 0.44));
+}
+
+.public-home.public-home--nature-green .public-home__hero::after {
+  background:
+    radial-gradient(ellipse at 50% -8%, transparent 0 31%, rgba(213, 240, 143, 0.15) 31.2%, transparent 31.55%),
+    radial-gradient(ellipse at 50% -9%, transparent 0 37%, rgba(242, 255, 215, 0.08) 37.2%, transparent 37.5%),
+    linear-gradient(90deg, rgba(213, 240, 143, 0.07), transparent 7%, transparent 93%, rgba(213, 240, 143, 0.07));
+}
+
+.public-home.public-home--nature-green .public-home__nav {
+  border-color: rgba(47, 127, 42, 0.28);
+  color: #173d20;
+  background:
+    linear-gradient(180deg, rgba(255, 253, 244, 0.97), rgba(241, 248, 231, 0.94)),
+    rgba(255, 253, 244, 0.92);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.9),
+    0 18px 50px rgba(13, 60, 32, 0.18);
+}
+
+.public-home.public-home--nature-green .public-home__brand span {
+  color: #173d20;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.public-home.public-home--nature-green .public-home__nav-actions a:not(:last-child),
+.public-home.public-home--nature-green .public-home__trust-links a {
+  border-color: rgba(47, 127, 42, 0.2);
+  color: #173d20;
+  background: rgba(255, 253, 244, 0.82);
+  text-shadow: none;
+}
+
+.public-home.public-home--nature-green .public-home__nav-actions a:last-child,
+.public-home.public-home--nature-green .public-home__button--primary,
+.public-home.public-home--nature-green .public-home__section-link,
+.public-home.public-home--nature-green .public-home__inline-button {
+  border-color: rgba(47, 127, 42, 0.36);
+  color: #ffffff;
+  background: linear-gradient(135deg, #3a8c41 0%, #247436 56%, #135027 100%);
+  box-shadow:
+    inset 0 1px rgba(232, 255, 217, 0.48),
+    0 10px 24px rgba(36, 116, 54, 0.18);
+}
+
+.public-home.public-home--nature-green .public-home__nav-actions a:hover,
+.public-home.public-home--nature-green .public-home__nav-actions a:focus-visible,
+.public-home.public-home--nature-green .public-home__trust-links a:hover,
+.public-home.public-home--nature-green .public-home__trust-links a:focus-visible {
+  border-color: rgba(47, 127, 42, 0.44);
+  color: #0f2d14;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 0 20px rgba(36, 116, 54, 0.14);
+}
+
+.public-home.public-home--nature-green .public-home__nav-actions a:last-child:hover,
+.public-home.public-home--nature-green .public-home__nav-actions a:last-child:focus-visible,
+.public-home.public-home--nature-green .public-home__button--primary:hover,
+.public-home.public-home--nature-green .public-home__button--primary:focus-visible,
+.public-home.public-home--nature-green .public-home__section-link:hover,
+.public-home.public-home--nature-green .public-home__section-link:focus-visible,
+.public-home.public-home--nature-green .public-home__inline-button:hover,
+.public-home.public-home--nature-green .public-home__inline-button:focus-visible {
+  color: #ffffff;
+  background: linear-gradient(135deg, #469a4c 0%, #2d823e 56%, #195e2e 100%);
+  box-shadow: 0 0 24px rgba(36, 116, 54, 0.25);
+}
+
+.public-home.public-home--nature-green .public-home__hero-inner::before {
+  border-color: rgba(242, 255, 215, 0.2);
+  background:
+    linear-gradient(135deg, rgba(7, 28, 16, 0.84), rgba(5, 18, 11, 0.68)),
+    rgba(5, 18, 11, 0.64);
+  box-shadow:
+    inset 0 1px rgba(242, 255, 215, 0.08),
+    0 28px 72px rgba(0, 0, 0, 0.32);
+}
+
+.public-home.public-home--nature-green .public-home__hero h1 {
+  color: #f2ffd7;
+  background: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  filter: none;
+  text-shadow:
+    0 3px 18px rgba(0, 0, 0, 0.68),
+    0 0 26px rgba(11, 40, 22, 0.42);
+}
+
+.public-home.public-home--nature-green .public-home__hero :is(
+  .public-home__lede,
+  .public-home__action-line,
+  .public-home__hero-proof span
+) {
+  color: #f8fff2;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.56);
+}
+
+.public-home.public-home--nature-green .public-home__hero .public-home__eyebrow {
+  color: #d5f08f;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.48);
+}
+
+.public-home.public-home--nature-green .public-home__button:not(.public-home__button--primary) {
+  border-color: rgba(213, 240, 143, 0.42);
+  color: #173d20;
+  background: linear-gradient(180deg, rgba(255, 253, 244, 0.96), rgba(226, 242, 211, 0.94));
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.92),
+    0 10px 22px rgba(3, 18, 10, 0.24);
+}
+
+.public-home.public-home--nature-green .public-home__button:not(.public-home__button--primary):hover,
+.public-home.public-home--nature-green .public-home__button:not(.public-home__button--primary):focus-visible {
+  border-color: rgba(213, 240, 143, 0.74);
+  color: #0d3c20;
+  background: linear-gradient(180deg, #ffffff, #e2f2d3);
+}
+
+.public-home.public-home--nature-green .public-home__hero-proof span {
+  border-color: rgba(213, 240, 143, 0.24);
+  background: rgba(7, 28, 16, 0.68);
+}
+
+.public-home.public-home--nature-green .public-home__hero-proof span::before {
+  border-color: #d5f08f;
+  background: #3a8c41;
+  box-shadow: 0 0 9px rgba(213, 240, 143, 0.58);
+}
+
+.public-home.public-home--nature-green .public-home__section {
+  border-color: rgba(47, 127, 42, 0.22);
+  background:
+    radial-gradient(circle at 95% 4%, rgba(58, 140, 65, 0.12), transparent 20rem),
+    linear-gradient(145deg, rgba(255, 253, 244, 0.94), rgba(239, 248, 229, 0.94));
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.92),
+    0 22px 55px rgba(33, 75, 31, 0.13);
+}
+
+.public-home.public-home--nature-green .public-home__section--commerce,
+.public-home.public-home--nature-green .public-home__section--leadership,
+.public-home.public-home--nature-green .public-home__section--live {
+  background:
+    radial-gradient(circle at 90% 8%, rgba(120, 166, 64, 0.14), transparent 22rem),
+    radial-gradient(circle at 8% 92%, rgba(45, 127, 103, 0.09), transparent 20rem),
+    linear-gradient(145deg, rgba(255, 253, 244, 0.95), rgba(235, 246, 224, 0.96));
+}
+
+.public-home.public-home--nature-green :is(
+  .public-home__proof-card,
+  .public-home-leader,
+  .public-home-release,
+  .public-home-activity,
+  .public-home-path,
+  .public-home-creator,
+  .public-home-benefit,
+  .public-home__tile,
+  .public-home-commerce,
+  .public-home__activity-panel,
+  .public-home__empty,
+  .public-home__band
+) {
+  border-color: rgba(47, 127, 42, 0.2);
+  color: #182315;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(58, 140, 65, 0.09), transparent 12rem),
+    linear-gradient(150deg, rgba(255, 253, 244, 0.96), rgba(242, 249, 232, 0.92));
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.9),
+    0 16px 38px rgba(33, 75, 31, 0.11);
+}
+
+.public-home.public-home--nature-green :is(
+  .public-home__section-head h2,
+  .public-home__subhead h3,
+  .public-home__band h2,
+  .public-home__proof-card strong,
+  .public-home-leader__body strong,
+  .public-home-release__body strong,
+  .public-home-activity strong,
+  .public-home-path strong,
+  .public-home__empty strong,
+  .public-home-creator__body strong,
+  .public-home-benefit strong,
+  .public-home__tile span,
+  .public-home-commerce strong
+) {
+  color: #173d20;
+  text-shadow: none;
+}
+
+.public-home.public-home--nature-green :is(
+  .public-home__section-head p:not(.public-home__eyebrow),
+  .public-home__tile p,
+  .public-home-path p,
+  .public-home-release__body p,
+  .public-home-activity p,
+  .public-home__empty p,
+  .public-home-creator__body p,
+  .public-home-benefit p,
+  .public-home__proof-card p,
+  .public-home-commerce p
+) {
+  color: #405f36;
+  text-shadow: none;
+}
+
+.public-home.public-home--nature-green :is(
+  .public-home__section .public-home__eyebrow,
+  .public-home__band .public-home__eyebrow,
+  .public-home__subhead a,
+  .public-home-release__body span,
+  .public-home-activity span,
+  .public-home-creator__body > span,
+  .public-home-creator__badges em,
+  .public-home-leader__role,
+  .public-home-release__body small,
+  .public-home-activity small,
+  .public-home-creator__meta small
+) {
+  color: #135027;
+  text-shadow: none;
+}
+
+.public-home.public-home--nature-green .public-home__section--live :is(
+  .public-home__section-head h2,
+  .public-home__subhead h3,
+  .public-home-release__body strong,
+  .public-home-activity strong,
+  .public-home__empty strong
+) {
+  color: #173d20;
+  text-shadow: none;
+}
+
+.public-home.public-home--nature-green .public-home__section--live :is(
+  .public-home__section-head p,
+  .public-home-release__body p,
+  .public-home-activity p,
+  .public-home__empty p
+) {
+  color: #405f36;
+}
+
+.public-home.public-home--nature-green .public-home__section--live :is(
+  .public-home__section-link,
+  .public-home__subhead a,
+  .public-home-release__body span,
+  .public-home-activity span,
+  .public-home-release__body small,
+  .public-home-activity small
+) {
+  color: #135027;
+}
+
+.public-home.public-home--nature-green .public-home__section--live .public-home__section-link {
+  color: #ffffff;
+}
+
+.public-home.public-home--nature-green .public-home-leader__portrait span {
+  color: #ffffff;
+  background: rgba(13, 60, 32, 0.84);
+}
+
+.public-home.public-home--nature-green .public-home-creator__meta small,
+.public-home.public-home--nature-green .public-home__trust-signals span {
+  border-color: rgba(47, 127, 42, 0.2);
+  color: #31572c;
+  background: rgba(226, 242, 211, 0.82);
+}
+
+.public-home.public-home--nature-green .public-home-creator__badges em {
+  border-color: rgba(47, 127, 42, 0.28);
+  color: #135027;
+  background: rgba(47, 127, 42, 0.11);
+}
+
+@media (max-width: 620px) {
+  .public-home.public-home--nature-green {
+    background-position: center, left top, center;
+    background-size: cover, auto 100dvh, cover;
+    background-attachment: scroll;
+  }
+
+  .public-home.public-home--nature-green .public-home__hero {
+    background-position: center, center, left top, center;
+    background-size: cover, cover, auto 100%, cover;
+  }
+
+  .public-home.public-home--nature-green .public-home__nav::after {
+    content: "";
+    width: 52px;
+    height: 52px;
+    position: absolute;
+    top: 4px;
+    right: 10px;
+    border: 1px solid rgba(47, 127, 42, 0.2);
+    border-radius: 50%;
+    background-color: #f7faef;
+    background-image: url("/assets/light-mode-leaf-studio-background.jpg");
+    background-position: -21px -51px;
+    background-size: 334px 188px;
+    background-repeat: no-repeat;
+    box-shadow:
+      inset 0 1px rgba(255, 255, 255, 0.9),
+      0 8px 18px rgba(33, 75, 31, 0.14);
+    pointer-events: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .public-home *,
   .public-home *::before,

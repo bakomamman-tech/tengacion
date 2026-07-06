@@ -395,7 +395,7 @@ export default function PublicHomePage() {
   }, [activityItems, featuredCreators, releaseItems, releaseTotal]);
 
   return (
-    <main className="public-home">
+    <main className="public-home public-home--nature-green">
       <SeoHead
         title={PAGE_TITLE}
         description={PAGE_DESCRIPTION}

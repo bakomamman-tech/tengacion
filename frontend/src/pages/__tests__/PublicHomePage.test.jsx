@@ -88,6 +88,7 @@ describe("PublicHomePage", () => {
       </MemoryRouter>
     );
 
+    expect(document.querySelector("main.public-home")).toHaveClass("public-home--nature-green");
     expect(screen.getByRole("heading", { name: /africa's social commerce/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Log In/Create Account" })).toHaveAttribute(
       "href",

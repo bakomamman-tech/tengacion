@@ -272,6 +272,7 @@ const buildKurahSchoolFallback = () => ({
         student("Ellah Sunday", "student-nursery-1-ellah-sunday.jpg"),
         student("Favour James", "student-nursery-1-favour-james.jpg"),
         student("Isaac Emmanuel", "student-nursery-1-isaac-emmanuel.jpg"),
+        student("Jaydee Musa", "student-nursery-1-jaydee-musa.jpg"),
         student("Kelvin Lawrence", "student-nursery-1-kelvin-lawrence.jpg"),
         student("Mitchell Solomon", "student-nursery-1-mitchell-solomon.jpg"),
       ],
@@ -288,6 +289,7 @@ const buildKurahSchoolFallback = () => ({
         student("Elizabeth Francis", "student-nursery-2-elizabeth-francis.jpg"),
         student("Israel Maiwa'azi", "student-nursery-2-israel-maiwa-azi.jpg"),
         student("Michael I. Adigwu", "student-nursery-2-michael-i-adigwu.jpg"),
+        student("Miracle Ikenna", "student-nursery-2-miracle-ikenna.jpg"),
         student("Nathan Chris", "student-nursery-2-nathan-chris.jpg"),
         student("Onyinye Chukwu", "student-nursery-2-onyinye-chukwu.jpg"),
         student("Samuel Jonathan", "student-nursery-2-samuel-jonathan.jpg"),
@@ -301,6 +303,8 @@ const buildKurahSchoolFallback = () => ({
         student("Praise Arinze", "student-nursery-3-praise-arinze.jpg"),
         student("Rachael Samaila", "student-nursery-3-rachael-samaila.jpg"),
         student("Sarah Sunday", "student-nursery-3-sarah-sunday.jpg"),
+        student("Shepherd Sunday", "student-nursery-3-shepherd-sunday.jpg"),
+        student("Success K. Noah", "student-nursery-3-success-k-noah.jpg"),
         student("Treasure Michael", "student-nursery-3-treasure-michael.jpg"),
       ],
     },
@@ -437,7 +441,7 @@ const buildKurahSchoolFallback = () => ({
     },
   ],
   statistics: {
-    students: 100,
+    students: 104,
     teachers: 12,
     yearsOfExcellence: 5,
     departments: 6,
@@ -450,7 +454,7 @@ const buildKurahSchoolFallback = () => ({
   },
   isPublished: true,
   createdAt: new Date("2021-01-07T00:00:00.000Z"),
-  updatedAt: new Date("2026-06-22T00:00:00.000Z"),
+  updatedAt: new Date("2026-07-07T00:00:00.000Z"),
 });
 
 const getFallbackSchoolPageBySlug = (slug = "") => {

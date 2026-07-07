@@ -328,6 +328,14 @@ describe("SEO routes", () => {
     expect(response.text).toContain("Class photographs");
     expect(response.text).toContain("Amazing Grace Abumere");
     expect(response.text).toContain("student-primary-6-amazing-grace-abumere.jpg");
+    expect(response.text).toContain("Jaydee Musa");
+    expect(response.text).toContain("student-nursery-1-jaydee-musa.jpg");
+    expect(response.text).toContain("Miracle Ikenna");
+    expect(response.text).toContain("student-nursery-2-miracle-ikenna.jpg");
+    expect(response.text).toContain("Shepherd Sunday");
+    expect(response.text).toContain("student-nursery-3-shepherd-sunday.jpg");
+    expect(response.text).toContain("Success K. Noah");
+    expect(response.text).toContain("student-nursery-3-success-k-noah.jpg");
     expect(aliasResponse.text).toContain('href="https://tengacion.com/kurahtechandartsacademy"');
   });
 

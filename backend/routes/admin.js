@@ -424,10 +424,63 @@ const resolveBookPreviewUrl = (book = {}) =>
 const resolveBookCoverUrl = (book = {}) =>
   mediaDocumentToUrl(book.coverMedia, book.coverImageUrl || book.coverUrl || "");
 
+const resolveTrackAudioUrl = (track = {}) =>
+  mediaDocumentToUrl(track.audioMedia, track.audioUrl || track.fullAudioUrl || track.videoUrl || "");
+
+const resolveTrackPreviewUrl = (track = {}) =>
+  mediaDocumentToUrl(
+    track.previewMedia,
+    track.previewUrl || track.previewSampleUrl || track.previewClipUrl || ""
+  );
+
+const resolveTrackCoverUrl = (track = {}) =>
+  mediaDocumentToUrl(track.coverMedia, track.coverImageUrl || track.coverUrl || "");
+
 const resolveContentStatus = (row = {}) => {
   const status = String(row.publishedStatus || row.status || "").trim().toLowerCase();
   if (status) return status;
   return row.isPublished === false ? "draft" : "published";
+};
+
+const toAdminTrackReviewDTO = (track = {}) => {
+  const creator = track.creatorId && typeof track.creatorId === "object" ? track.creatorId : null;
+  const creatorUser = creator?.userId && typeof creator.userId === "object" ? creator.userId : null;
+  const isPodcast = String(track.kind || "").toLowerCase() === "podcast";
+  const audioUrl = resolveTrackAudioUrl(track);
+  const previewUrl = resolveTrackPreviewUrl(track);
+
+  return {
+    id: toId(track._id),
+    type: isPodcast ? "podcast" : "track",
+    title: String(track.title || (isPodcast ? "Untitled Podcast" : "Untitled Track")),
+    artistName: String(track.artistName || ""),
+    description: String(track.description || ""),
+    status: resolveContentStatus(track),
+    publishedStatus: resolveContentStatus(track),
+    copyrightScanStatus: String(track.copyrightScanStatus || "pending_scan"),
+    verificationNotes: String(track.verificationNotes || ""),
+    reviewRequired: Boolean(track.reviewRequired),
+    moderationStatus: String(track.moderationStatus || "ALLOW"),
+    price: Number(track.price || track.priceNGN || 0),
+    currency: String(track.currency || "NGN"),
+    genre: String(track.genre || ""),
+    audioAvailable: Boolean(audioUrl),
+    previewAvailable: Boolean(previewUrl),
+    audioUrl,
+    previewUrl,
+    coverImageUrl: resolveTrackCoverUrl(track),
+    createdAt: track.createdAt || null,
+    updatedAt: track.updatedAt || null,
+    creator: creator
+      ? {
+          id: toId(creator._id),
+          displayName: String(creator.displayName || creator.fullName || ""),
+          username: String(creatorUser?.username || ""),
+          userId: toId(creatorUser?._id || creator.userId),
+          email: String(creatorUser?.email || ""),
+        }
+      : null,
+  };
 };
 
 const toAdminBookReviewDTO = (book = {}) => {
@@ -1418,6 +1471,155 @@ router.post("/books/:bookId/approve", adminMutationLimiter, async (req, res) => 
   }
 });
 
+router.post("/tracks/:trackId/publish", adminMutationLimiter, async (req, res) => {
+  try {
+    const { trackId } = req.params;
+    if (!isValidId(trackId)) {
+      return res.status(400).json({ error: "Invalid track id" });
+    }
+
+    const track = await Track.findById(trackId);
+    if (!track || track.archivedAt) {
+      return res.status(404).json({ error: "Track not found" });
+    }
+
+    const audioUrl = resolveTrackAudioUrl(track);
+    const previewUrl = resolveTrackPreviewUrl(track);
+    if (!audioUrl) {
+      return res.status(400).json({ error: "Track audio is missing" });
+    }
+    if (track.publishedStatus === "blocked" || track.copyrightScanStatus === "blocked") {
+      return res.status(409).json({ error: "Blocked tracks must be cleared before publishing" });
+    }
+
+    const previousStatus = resolveContentStatus(track);
+    const previousScanStatus = String(track.copyrightScanStatus || "pending_scan");
+    const reason = String(req.body?.reason || req.body?.note || "Admin approved track").trim();
+    const adminLine = `Admin approved track${reason ? `: ${reason}` : ""}`;
+    const existingNotes = String(track.verificationNotes || "").trim();
+
+    track.publishedStatus = "published";
+    track.isPublished = true;
+    track.reviewRequired = false;
+    track.copyrightScanStatus = "passed";
+    track.moderationStatus = "ALLOW";
+    track.verificationNotes = existingNotes
+      ? `${existingNotes} ${adminLine}`.slice(0, 2000)
+      : adminLine.slice(0, 2000);
+
+    await track.save();
+
+    const creatorProfile = await CreatorProfile.findById(track.creatorId)
+      .select("displayName fullName userId")
+      .lean();
+    const creatorUserId = toId(creatorProfile?.userId);
+    const isPodcast = String(track.kind || "").toLowerCase() === "podcast";
+
+    await Promise.all([
+      writeAuditLog({
+        req,
+        actorId: req.user.id,
+        action: "admin.track.publish",
+        targetType: "Track",
+        targetId: toId(track._id),
+        reason,
+        metadata: {
+          title: track.title || "",
+          previousStatus,
+          nextStatus: "published",
+          previousScanStatus,
+          nextScanStatus: "passed",
+          creatorId: toId(track.creatorId),
+          kind: track.kind || "music",
+        },
+      }),
+      logAnalyticsEvent({
+        type: isPodcast ? "podcast_approved" : "track_approved",
+        userId: req.user.id,
+        actorRole: req.user.role || "admin",
+        targetId: track._id,
+        targetType: "track",
+        contentType: isPodcast ? "podcast" : "music",
+        metadata: {
+          creatorId: toId(track.creatorId),
+          title: track.title || "",
+          previousStatus,
+          price: Number(track.price || 0),
+        },
+      }).catch(() => null),
+      creatorUserId
+        ? createNotification({
+            recipient: creatorUserId,
+            sender: req.user.id,
+            type: "system",
+            text: `${track.title || "Your track"} has been approved and is now published.`,
+            entity: {
+              id: track._id,
+              model: "Track",
+            },
+            metadata: {
+              eventType: "track_published_by_admin",
+              creatorId: toId(track.creatorId),
+              itemType: "track",
+              itemId: toId(track._id),
+              link: `/tracks/${toId(track._id)}`,
+              dedupeKey: `track_published_by_admin:${toId(track._id)}`,
+            },
+          }).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    if (creatorUserId) {
+      const existingPost = await Post.exists({ "audio.trackId": track._id }).catch(() => null);
+      if (!existingPost) {
+        await Post.create({
+          author: creatorUserId,
+          text: `${track.title || "New audio"} is now available.`,
+          tags: isPodcast ? ["podcast"] : ["track", "music"],
+          audio: {
+            trackId: track._id,
+            url: audioUrl,
+            previewUrl,
+            title: track.title,
+            durationSec: Number.isFinite(track.durationSec) ? track.durationSec : 0,
+            coverImageUrl: resolveTrackCoverUrl(track),
+          },
+          privacy: "public",
+        }).catch((err) => {
+          console.error("Failed to create feed post for admin-published track:", err);
+        });
+      }
+    }
+
+    if (creatorProfile && Number(track.price || 0) > 0) {
+      await notifyCreatorPublishedPaidContent({
+        req,
+        creatorProfile,
+        itemType: "track",
+        itemId: track._id,
+        title: track.title,
+        price: Number(track.price || 0),
+      }).catch(() => null);
+    }
+
+    const hydrated = await Track.findById(track._id)
+      .populate({
+        path: "creatorId",
+        select: "displayName fullName userId",
+        populate: { path: "userId", select: "_id name username email" },
+      })
+      .lean();
+
+    return res.json({
+      success: true,
+      track: toAdminTrackReviewDTO(hydrated),
+    });
+  } catch (err) {
+    console.error("Admin track publish error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
 router.get("/content", async (req, res) => {
   try {
     const page = clamp(req.query.page, 1, 500, 1);
@@ -1453,7 +1655,15 @@ router.get("/content", async (req, res) => {
         "track",
         (row) => row.title || "Untitled Track",
         (row) => row.createdAt,
-        (row) => Number(row.playsCount || row.playCount || 0)
+        (row) => Number(row.playsCount || row.playCount || 0),
+        (row) => ({
+          artistName: row.artistName || "",
+          copyrightScanStatus: row.copyrightScanStatus || "pending_scan",
+          audioAvailable: Boolean(resolveTrackAudioUrl(row)),
+          previewAvailable: Boolean(resolveTrackPreviewUrl(row)),
+          price: Number(row.price || row.priceNGN || 0),
+          currency: row.currency || "NGN",
+        })
       );
     }
     if (["all", "albums"].includes(category)) {
@@ -1487,7 +1697,14 @@ router.get("/content", async (req, res) => {
         "podcast",
         (row) => row.title || "Untitled Podcast",
         (row) => row.createdAt,
-        (row) => Number(row.playsCount || row.playCount || 0)
+        (row) => Number(row.playsCount || row.playCount || 0),
+        (row) => ({
+          copyrightScanStatus: row.copyrightScanStatus || "pending_scan",
+          audioAvailable: Boolean(resolveTrackAudioUrl(row)),
+          previewAvailable: Boolean(resolveTrackPreviewUrl(row)),
+          price: Number(row.price || row.priceNGN || 0),
+          currency: row.currency || "NGN",
+        })
       );
     }
     if (["all", "videos"].includes(category)) {

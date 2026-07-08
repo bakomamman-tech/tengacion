@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import AdminShell from "../components/AdminShell";
-import { adminApproveBook, adminGetBookReview, adminListContent, resolveImage } from "../api";
+import { adminApproveBook, adminGetBookReview, adminListContent, adminPublishTrack, resolveImage } from "../api";
 
 const CATEGORY_OPTIONS = [
   ["all", "All Content"],
@@ -56,6 +56,30 @@ const isReviewableBook = (entry = {}) =>
   entry.type === "book" &&
   (entry.status === "under_review" || entry.reviewRequired);
 
+const isTrackLike = (entry = {}) => entry.type === "track" || entry.type === "podcast";
+
+const isPublishableTrack = (entry = {}) => {
+  const status = String(entry.status || "").toLowerCase();
+  return isTrackLike(entry) && !["published", "blocked"].includes(status);
+};
+
+const getTrackPublishBlock = (entry = {}) => {
+  if (!isPublishableTrack(entry)) {
+    return "";
+  }
+  if (entry.audioAvailable === false) {
+    return "Missing audio";
+  }
+  return "";
+};
+
+const getTrackPublishLabel = (entry = {}) => {
+  if (entry.type === "podcast") {
+    return String(entry.status || "").toLowerCase() === "under_review" ? "Approve episode" : "Publish episode";
+  }
+  return String(entry.status || "").toLowerCase() === "under_review" ? "Approve track" : "Publish track";
+};
+
 export default function AdminContentPage({ user }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [category, setCategory] = useState(() => searchParams.get("category") || "all");
@@ -70,6 +94,7 @@ export default function AdminContentPage({ user }) {
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewError, setReviewError] = useState("");
   const [reviewNote, setReviewNote] = useState("Rights and manuscript reviewed by Admin.");
+  const [publishBusyKey, setPublishBusyKey] = useState("");
 
   useEffect(() => {
     const nextCategory = searchParams.get("category") || "all";
@@ -165,6 +190,28 @@ export default function AdminContentPage({ user }) {
     }
   };
 
+  const publishTrack = async (entry) => {
+    if (!entry?.id) {
+      return;
+    }
+    const busyKey = `${entry.type}-${entry.id}`;
+    setPublishBusyKey(busyKey);
+    setError("");
+    setStatusMessage("");
+    try {
+      const note = entry.type === "podcast"
+        ? "Audio rights and episode metadata reviewed by Admin."
+        : "Audio rights and release metadata reviewed by Admin.";
+      await adminPublishTrack(entry.id, { reason: note });
+      setStatusMessage(`${entry.title || "Track"} is now published.`);
+      await load();
+    } catch (err) {
+      setError(err?.message || "Failed to publish track");
+    } finally {
+      setPublishBusyKey("");
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil((payload.total || 0) / (payload.limit || 20)));
   const canApproveReviewBook = reviewBook && !["published", "blocked"].includes(String(reviewBook.status || "").toLowerCase());
   const modalOpen = reviewLoading || reviewBook;
@@ -227,6 +274,19 @@ export default function AdminContentPage({ user }) {
                       <button type="button" className="adminx-btn adminx-btn--primary" onClick={() => openBookReview(entry)}>
                         Review manuscript
                       </button>
+                    ) : isPublishableTrack(entry) ? (
+                      getTrackPublishBlock(entry) ? (
+                        <span className="adminx-muted">{getTrackPublishBlock(entry)}</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="adminx-btn adminx-btn--primary"
+                          onClick={() => publishTrack(entry)}
+                          disabled={publishBusyKey === `${entry.type}-${entry.id}`}
+                        >
+                          {publishBusyKey === `${entry.type}-${entry.id}` ? "Publishing..." : getTrackPublishLabel(entry)}
+                        </button>
+                      )
                     ) : (
                       <span className="adminx-muted">-</span>
                     )}

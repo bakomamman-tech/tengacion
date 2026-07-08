@@ -12,7 +12,28 @@ import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
 import { formatCurrency, formatShortDate } from "../../components/creator/creatorConfig";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 
-function ReleaseCard({ item, type, onEdit }) {
+const getPublishingMode = (entry = {}) =>
+  String(entry.publishedStatus || "").toLowerCase() === "draft" ? "draft" : "published";
+
+const buildEditValues = (entry = {}, publishedStatus = getPublishingMode(entry)) => ({
+  title: entry.title || "",
+  description: entry.description || "",
+  price: String(entry.price ?? ""),
+  genre: entry.genre || "",
+  releaseType: entry.releaseType || entry.contentType || "album",
+  publishedStatus,
+  cover: null,
+  audio: null,
+  preview: null,
+  video: null,
+  thumbnail: null,
+  previewClip: null,
+});
+
+function ReleaseCard({ item, type, onEdit, onPublish, busy }) {
+  const status = String(item.publishedStatus || "").toLowerCase();
+  const isDraft = status === "draft";
+
   return (
     <article className="creator-release-card">
       <div>
@@ -27,28 +48,22 @@ function ReleaseCard({ item, type, onEdit }) {
         <span>{formatShortDate(item.updatedAt || item.createdAt)}</span>
         <CopyrightStatusBadge status={item.copyrightScanStatus} />
       </div>
-      <button type="button" className="creator-ghost-btn" onClick={onEdit}>
-        Edit metadata
-      </button>
+      <div className="creator-release-actions">
+        {isDraft ? (
+          <button type="button" className="creator-primary-btn" onClick={onPublish} disabled={busy}>
+            {busy ? "Publishing..." : "Publish"}
+          </button>
+        ) : null}
+        <button type="button" className="creator-ghost-btn" onClick={onEdit} disabled={busy}>
+          {isDraft ? "Edit draft" : "Edit metadata"}
+        </button>
+      </div>
     </article>
   );
 }
 
 function MusicEditPanel({ entry, onCancel, onSave }) {
-  const [values, setValues] = useState({
-    title: entry.title || "",
-    description: entry.description || "",
-    price: String(entry.price ?? ""),
-    genre: entry.genre || "",
-    releaseType: entry.releaseType || entry.contentType || "album",
-    publishedStatus: entry.publishedStatus === "draft" ? "draft" : "published",
-    cover: null,
-    audio: null,
-    preview: null,
-    video: null,
-    thumbnail: null,
-    previewClip: null,
-  });
+  const [values, setValues] = useState(() => buildEditValues(entry));
 
   const update = (key, value) => setValues((current) => ({ ...current, [key]: value }));
 
@@ -166,20 +181,21 @@ export default function CreatorMusicPage() {
     [musicContent.albums, musicContent.tracks, musicContent.videos]
   );
 
-  const saveEdit = async (values) => {
-    if (!editingEntry) {
+  const saveEntry = async (entry, values, { successMessage = "Release updated", closeEditor = true } = {}) => {
+    if (!entry) {
       return;
     }
 
     try {
-      setBusyKey(`edit-${editingEntry._id}`);
+      const action = values.publishedStatus === "published" ? "publish" : "edit";
+      setBusyKey(`${action}-${entry._id}`);
       const formData = new FormData();
       formData.append("title", values.title.trim());
       formData.append("description", values.description.trim());
       formData.append("price", values.price || "0");
       formData.append("publishedStatus", values.publishedStatus);
 
-      if (editingEntry.contentType === "track") {
+      if (entry.contentType === "track") {
         formData.append("kind", "music");
         formData.append("genre", values.genre || "");
         if (values.cover) {
@@ -191,13 +207,13 @@ export default function CreatorMusicPage() {
         if (values.preview) {
           formData.append("preview", values.preview);
         }
-        await updateTrackWithUploadProgress(editingEntry._id, formData, { onProgress: setProgress });
-      } else if (editingEntry.contentType === "album" || editingEntry.contentType === "ep") {
+        await updateTrackWithUploadProgress(entry._id, formData, { onProgress: setProgress });
+      } else if (entry.contentType === "album" || entry.contentType === "ep") {
         formData.append("releaseType", values.releaseType || "album");
         if (values.cover) {
           formData.append("coverImage", values.cover);
         }
-        await updateAlbumWithUploadProgress(editingEntry._id, formData, { onProgress: setProgress });
+        await updateAlbumWithUploadProgress(entry._id, formData, { onProgress: setProgress });
       } else {
         if (values.thumbnail) {
           formData.append("thumbnail", values.thumbnail);
@@ -208,18 +224,31 @@ export default function CreatorMusicPage() {
         if (values.previewClip) {
           formData.append("previewClip", values.previewClip);
         }
-        await updateCreatorVideoWithUploadProgress(editingEntry._id, formData, { onProgress: setProgress });
+        await updateCreatorVideoWithUploadProgress(entry._id, formData, { onProgress: setProgress });
       }
 
       await refreshWorkspace();
-      toast.success("Release updated");
-      setEditingEntry(null);
+      toast.success(successMessage);
+      if (closeEditor) {
+        setEditingEntry(null);
+      }
     } catch (err) {
       toast.error(err?.message || "Could not update this release");
     } finally {
       setBusyKey("");
       setProgress(0);
     }
+  };
+
+  const saveEdit = async (values) => {
+    await saveEntry(editingEntry, values);
+  };
+
+  const publishRelease = async (entry) => {
+    await saveEntry(entry, buildEditValues(entry, "published"), {
+      successMessage: `${entry.title || "Release"} published`,
+      closeEditor: false,
+    });
   };
 
   return (
@@ -270,6 +299,8 @@ export default function CreatorMusicPage() {
                 item={entry}
                 type={entry.listType}
                 onEdit={() => setEditingEntry(entry)}
+                onPublish={() => publishRelease(entry)}
+                busy={busyKey === `publish-${entry._id}` || busyKey === `edit-${entry._id}`}
               />
             ))
           ) : (

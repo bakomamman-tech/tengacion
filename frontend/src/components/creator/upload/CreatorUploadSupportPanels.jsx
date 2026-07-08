@@ -8,7 +8,7 @@ const CATEGORY_META = {
     label: "Music",
     formats: "MP3, WAV, FLAC, M4A, AAC, OGG",
     tips: [
-      "Paid music releases should include a preview sample before publishing.",
+      "Paid music releases can publish without a preview, but adding a sample gives listeners a public teaser.",
       "Use crisp square cover art for the strongest storefront presentation.",
       "Double-check titles, credits, and release type before going live.",
     ],

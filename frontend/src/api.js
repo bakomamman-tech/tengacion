@@ -2673,6 +2673,16 @@ export const adminApproveBook = (bookId, body = {}) =>
     body: JSON.stringify(body || {}),
   });
 
+export const adminPublishTrack = (trackId, body = {}) =>
+  request(`${API_BASE}/admin/tracks/${encodeURIComponent(trackId || "")}/publish`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(body || {}),
+  });
+
 export const adminListTransactions = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {

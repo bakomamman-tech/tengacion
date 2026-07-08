@@ -163,15 +163,14 @@ export default function MusicUploadStudio({ showNotice = true }) {
     const isVideoUpload = values.releaseMediaType === "video";
 
     if (
-      publishMode === "published"
-      && Number(values.price || 0) > 0
-      && !values.previewSampleFile
+      isVideoUpload &&
+      publishMode === "published" &&
+      Number(values.price || 0) > 0 &&
+      !values.previewSampleFile
     ) {
       setError("previewSampleFile", {
         type: "manual",
-        message: isVideoUpload
-          ? "Add a preview clip before publishing a paid music video"
-          : "Add a preview sample before publishing a paid music release",
+        message: "Add a preview clip before publishing a paid music video",
       });
       return;
     }
@@ -630,7 +629,7 @@ export default function MusicUploadStudio({ showNotice = true }) {
                     ? `${previewStartSummary} start / 0:30 public sample`
                     : price <= 0
                       ? "Optional for free releases"
-                      : "Upload a preview and pick the chorus start"}
+                      : "Optional; listeners will see the release locked until a sample is added"}
                 </strong>
               </div>
             ) : null}
@@ -643,7 +642,7 @@ export default function MusicUploadStudio({ showNotice = true }) {
                     ? "30-second sample ready"
                     : isVideoRelease
                       ? "Needs preview clip"
-                      : "Needs preview sample"}
+                      : "No public sample yet"}
               </strong>
             </div>
           </div>
@@ -683,7 +682,7 @@ export default function MusicUploadStudio({ showNotice = true }) {
             </div>
             <div
               className={`creator-upload-checklist-item${
-                price <= 0 || previewSampleFile ? " is-complete" : ""
+                price <= 0 || previewSampleFile || !isVideoRelease ? " is-complete" : ""
               }`}
             >
               <span />
@@ -692,7 +691,7 @@ export default function MusicUploadStudio({ showNotice = true }) {
                   ? "Preview requirement satisfied"
                   : isVideoRelease
                     ? "Paid music videos need a preview clip before publishing"
-                    : "Paid releases need a preview sample before publishing. Public playback stops after 30 seconds from the selected chorus start."}
+                    : "Paid audio can publish without a sample; add one later to unlock public previews."}
               </small>
             </div>
           </div>

@@ -201,12 +201,6 @@ exports.createTrack = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "audioUrl or audio upload is required" });
   }
 
-  if (requestedStatus === "published" && price > 0 && !previewUrl) {
-    return res.status(400).json({
-      error: "previewUrl or preview upload is required for paid tracks",
-    });
-  }
-
   const verification = await evaluateVerification({
     creatorProfileId: req.creatorProfile._id,
     creatorCategory,
@@ -415,15 +409,6 @@ exports.updateTrack = asyncHandler(async (req, res) => {
       error: mediaType === "video" ? "videoUrl or video upload is required" : "audioUrl or audio upload is required",
     });
   }
-  if (requestedStatus === "published" && price > 0 && !previewUrl) {
-    return res.status(400).json({
-      error:
-        mediaType === "video"
-          ? "previewClipUrl or preview clip upload is required for paid video podcasts"
-          : "previewUrl or preview upload is required for paid tracks",
-    });
-  }
-
   const verification = await evaluateVerification({
     creatorProfileId: req.creatorProfile._id,
     creatorCategory,
@@ -566,9 +551,15 @@ exports.getTrackStream = asyncHandler(async (req, res) => {
     userId: req.user?.id,
   });
 
-  const sourceUrl = hasFullAccess
-    ? track.audioUrl
-    : track.previewUrl || track.audioUrl;
+  const fullSourceUrl = mediaDocumentToUrl(track.audioMedia, track.audioUrl || track.fullAudioUrl || "");
+  const previewSourceUrl =
+    mediaDocumentToUrl(track.previewMedia, track.previewUrl || track.previewSampleUrl || "") ||
+    mediaDocumentToUrl(track.previewClipMedia, track.previewClipUrl || "");
+  const sourceUrl = hasFullAccess ? fullSourceUrl : previewSourceUrl;
+
+  if (!sourceUrl) {
+    return res.status(404).json({ error: "Track preview is not available" });
+  }
 
   const streamUrl = buildSignedMediaUrl({
     sourceUrl,

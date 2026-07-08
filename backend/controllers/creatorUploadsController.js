@@ -229,10 +229,6 @@ exports.createMusicUpload = asyncHandler(async (req, res) => {
     return sendBadRequest(res, coverError);
   }
 
-  if (parsed.data.publishedStatus === "published" && parsed.data.price > 0 && !previewFile) {
-    return sendBadRequest(res, "A preview sample is required before publishing a paid music release");
-  }
-
   const creatorName = req.creatorProfile.displayName || req.creatorProfile.fullName || "";
   const audioMedia = await saveUploadedMedia(audioFile, {
     source: "creator_music_audio",

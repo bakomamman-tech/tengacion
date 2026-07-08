@@ -93,7 +93,7 @@ const mapTrackForHub = async ({ track, req, userId }) => {
         creatorId: track.creatorId,
       })
     : false);
-  const streamSource = canPlayFull ? track.audioUrl : track.previewUrl || track.audioUrl;
+  const streamSource = canPlayFull ? track.audioUrl : track.previewUrl;
   return {
     id: track._id.toString(),
     title: track.title || "",

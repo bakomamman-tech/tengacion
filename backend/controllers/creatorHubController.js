@@ -233,7 +233,7 @@ exports.getContinueListening = asyncHandler(async (req, res) => {
         itemId: track._id,
         creatorId: track.creatorId,
       }));
-      const sourceUrl = entitled ? track.audioUrl : track.previewUrl || track.audioUrl;
+      const sourceUrl = entitled ? track.audioUrl : track.previewUrl;
       return {
         type: row.itemType,
         itemId: row.itemId.toString(),

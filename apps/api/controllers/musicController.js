@@ -22,7 +22,7 @@ const toIdString = (value) => {
 const resolvePreviewSourceUrl = (track = {}) =>
   mediaDocumentToUrl(track.previewMedia, track.previewUrl || "") ||
   mediaDocumentToUrl(track.previewClipMedia, track.previewClipUrl || "") ||
-  mediaDocumentToUrl(track.audioMedia, track.audioUrl || "");
+  (Number(track.price || 0) <= 0 ? mediaDocumentToUrl(track.audioMedia, track.audioUrl || "") : "");
 
 exports.previewTrack = async (req, res) => {
   const trackId = String(req.params.trackId || req.params.id || "").trim();
@@ -68,7 +68,7 @@ exports.previewTrack = async (req, res) => {
     previewLimitSec: Number(track.previewLimitSec || 30),
     streamUrl,
     previewUrl: streamUrl,
-    source: hasDedicatedPreview ? "preview" : "full_fallback",
+    source: hasDedicatedPreview ? "preview" : "free_full",
   });
 };
 

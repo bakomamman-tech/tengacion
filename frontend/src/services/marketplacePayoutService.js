@@ -16,3 +16,13 @@ export const fetchMarketplacePayoutHistory = (params = {}) =>
 
 export const fetchMarketplacePayoutSummary = () =>
   apiRequest(`${API_BASE}/marketplace/payouts/summary`);
+
+export const fetchMarketplaceWithdrawals = (params = {}) =>
+  apiRequest(withQuery(`${API_BASE}/marketplace/payouts/withdrawals`, params));
+
+export const withdrawMarketplacePayout = (payload = {}) =>
+  apiRequest(`${API_BASE}/marketplace/payouts/withdraw`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });

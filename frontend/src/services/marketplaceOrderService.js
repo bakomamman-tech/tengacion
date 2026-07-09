@@ -37,3 +37,10 @@ export const updateMarketplaceOrderStatus = (orderId, payload = {}) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload || {}),
   });
+
+export const confirmMarketplaceOrderDelivery = (orderId, payload = {}) =>
+  apiRequest(`${API_BASE}/marketplace/orders/${encodeURIComponent(orderId || "")}/confirm-delivery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });

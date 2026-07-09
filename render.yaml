@@ -37,6 +37,8 @@ services:
         value: stephen@tengacion.com
       - key: EMAIL_FROM
         value: stephen@tengacion.com
+      - key: EMAIL_LOGO_URL
+        value: https://tengacion.com/tengacion_logo_512.png
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

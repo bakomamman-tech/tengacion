@@ -1,34 +1,12 @@
-const nodemailer = require("nodemailer");
-const { getEmailSettings } = require("./emailSettings");
+const { sendBrandedEmail } = require("./sendBrandedEmail");
 
 const sendOtpEmail = async ({ email, otp }) => {
-  const settings = getEmailSettings();
-  if (!settings.configured) {
-    throw new Error("Email service is not configured");
-  }
-
-  const transporter = nodemailer.createTransport({
-    host: settings.smtpHost,
-    port: settings.smtpPort,
-    secure: settings.smtpSecure,
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-    auth: {
-      user: settings.smtpUser,
-      pass: settings.smtpPass,
-    },
-    tls: {
-      rejectUnauthorized: false,
-    },
-  });
-
-  await transporter.sendMail({
-    from: `"Tengacion" <${settings.emailFrom}>`,
+  await sendBrandedEmail({
     to: email,
     subject: "Your Tengacion OTP Code",
+    previewText: "Use this code to verify your Tengacion email.",
     html: `
-      <div style="font-family: Arial; padding: 12px;">
+      <div>
         <h2>Verify your email</h2>
         <p>Your OTP code is:</p>
         <h1 style="letter-spacing: 4px;">${otp}</h1>

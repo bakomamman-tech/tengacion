@@ -6,6 +6,12 @@ import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
 } from "../lib/seo";
+import {
+  COMPANY_LEGAL_NAME,
+  COMPANY_REGISTRATION_AUTHORITY,
+  COMPANY_REGISTRATION_JURISDICTION,
+  COMPANY_WEBSITE_LABEL,
+} from "../config/businessContact";
 
 import "./public-info.css";
 
@@ -14,7 +20,7 @@ const PAGE_CONFIG = {
     path: "/about",
     title: "About Tengacion | African Creator Discovery Platform",
     description:
-      "Learn about Tengacion, a creator and social platform for discovering African music, books, podcasts, and public creator profiles.",
+      "Learn about Tengacion, the creator discovery platform owned by Tengacion Technologies Limited, a CAC-registered Nigerian parent company.",
     eyebrow: "About Tengacion",
     heading: "A public home for African creator discovery",
     lead:
@@ -37,6 +43,15 @@ const PAGE_CONFIG = {
           "Fans can explore and follow.",
           "Creators can publish and monetize eligible work.",
           "Approved sellers can build commerce around trusted storefronts.",
+        ],
+      },
+      {
+        title: "Company ownership and registration",
+        body:
+          `${COMPANY_WEBSITE_LABEL} is owned and operated by ${COMPANY_LEGAL_NAME}, the parent company behind the Tengacion platform.`,
+        items: [
+          `Tengacion is the public-facing platform and brand; ${COMPANY_LEGAL_NAME} is the parent company responsible for the technology and web presence.`,
+          `${COMPANY_LEGAL_NAME} is registered with the ${COMPANY_REGISTRATION_AUTHORITY} in ${COMPANY_REGISTRATION_JURISDICTION}.`,
         ],
       },
       {

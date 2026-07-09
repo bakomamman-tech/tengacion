@@ -107,6 +107,8 @@ describe("PublicHomePage", () => {
       "/marketplace/register"
     );
     expect(screen.getByText("Earn and request payouts")).toBeInTheDocument();
+    expect(screen.getByText("Tengacion Technologies Limited parent company")).toBeInTheDocument();
+    expect(screen.getByText("CAC-registered company")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Meet our leadership" })).toBeInTheDocument();
     expect(screen.getByText("Founder, Chairman & CEO")).toBeInTheDocument();
     expect(screen.getAllByText("Stephen Daniel Kurah")[0]).toBeInTheDocument();

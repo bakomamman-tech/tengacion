@@ -1,4 +1,4 @@
-import { CONTACT_EMAIL } from "../config/businessContact";
+import { COMPANY_LEGAL_NAME, CONTACT_EMAIL } from "../config/businessContact";
 
 export const SITE_NAME = "Tengacion";
 export const SITE_URL = "https://tengacion.com";
@@ -195,10 +195,17 @@ export const buildWebSiteJsonLd = () => ({
 export const buildOrganizationJsonLd = () => ({
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: SITE_NAME,
+  name: COMPANY_LEGAL_NAME,
+  alternateName: SITE_NAME,
+  legalName: COMPANY_LEGAL_NAME,
   url: buildCanonicalUrl("/"),
   logo: resolveSeoImage(DEFAULT_IMAGE_PATH),
   email: CONTACT_EMAIL,
+  brand: {
+    "@type": "Brand",
+    name: SITE_NAME,
+    url: buildCanonicalUrl("/"),
+  },
 });
 
 export const buildBreadcrumbJsonLd = (items = []) => ({

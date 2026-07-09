@@ -9,7 +9,7 @@ import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
 } from "../lib/seo";
-import { SUPPORT_EMAIL, buildMailto } from "../config/businessContact";
+import { COMPANY_LEGAL_NAME, SUPPORT_EMAIL, buildMailto } from "../config/businessContact";
 import { normalizePublicText, uniquePublicActivity } from "../utils/publicText";
 
 import "./public-home.css";
@@ -132,6 +132,8 @@ const COMMERCE_PROOF = [
 ];
 
 const TRUST_SIGNALS = [
+  `${COMPANY_LEGAL_NAME} parent company`,
+  "CAC-registered company",
   "Verified creator badges",
   "Approved seller checks",
   "Secured payment flow",

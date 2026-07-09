@@ -102,9 +102,10 @@ export default function WatchLive() {
       return undefined;
     }
 
-    remoteTracksRef.current.forEach((track) => track.attach(videoElement));
+    const remoteTracks = remoteTracksRef.current;
+    remoteTracks.forEach((track) => track.attach(videoElement));
     return () => {
-      remoteTracksRef.current.forEach((track) => track.detach(videoElement));
+      remoteTracks.forEach((track) => track.detach(videoElement));
     };
   }, [loading, session?.roomName]);
 
@@ -167,7 +168,7 @@ export default function WatchLive() {
         <div>
           <h2>{session?.title || "Watching live"}</h2>
           <p>
-            {session?.host?.name || session?.host?.username || "Creator"} ·{" "}
+            {session?.host?.name || session?.host?.username || "Creator"} -{" "}
             {viewerCount || 0} viewers
           </p>
         </div>
@@ -177,7 +178,7 @@ export default function WatchLive() {
       </header>
 
       {loading ? (
-        <p className="watch-live-empty">Connecting…</p>
+        <p className="watch-live-empty">Connecting...</p>
       ) : error ? (
         <div className="watch-live-empty">
           <p>{error}</p>
@@ -188,7 +189,7 @@ export default function WatchLive() {
       ) : (
         <section className="watch-live-video">
           <span className={`watch-live-connection watch-live-connection--${connectionStatus}`}>
-            {connectionStatus === "reconnecting" ? "Reconnecting…" : "Connected"}
+            {connectionStatus === "reconnecting" ? "Reconnecting..." : "Connected"}
           </span>
           <video
             ref={videoRef}

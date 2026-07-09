@@ -158,6 +158,240 @@ const normalizePaystackResponse = (payload = {}) => {
   };
 };
 
+const paystackRequest = async ({
+  path,
+  method = "GET",
+  body = null,
+  query = {},
+  errorMessage = "Paystack request failed",
+} = {}) => {
+  const secret = assertPaystackSecretUsable();
+  const params = new URLSearchParams();
+  Object.entries(query || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
+  });
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+
+  let response;
+  try {
+    response = await fetch(`${PAYSTACK_BASE_URL}${path}${suffix}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (error) {
+    throw createPaystackError({
+      message: error.message || errorMessage,
+      providerStatus: "network_error",
+    });
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.status !== true) {
+    throw createPaystackError({
+      message: payload?.message || errorMessage,
+      providerHttpStatus: response.status,
+      providerStatus: payload?.status === false ? "false" : String(payload?.status || ""),
+    });
+  }
+
+  return payload;
+};
+
+const normalizeBank = (bank = {}) => ({
+  id: bank.id || "",
+  name: String(bank.name || "").trim(),
+  slug: String(bank.slug || "").trim(),
+  code: String(bank.code || "").trim(),
+  longcode: String(bank.longcode || "").trim(),
+  country: String(bank.country || "").trim(),
+  currency: String(bank.currency || "").trim().toUpperCase(),
+  type: String(bank.type || "").trim(),
+  active: bank.active !== false,
+});
+
+const listBanks = async ({
+  country = "nigeria",
+  currency = "NGN",
+  type = "nuban",
+  perPage = 100,
+} = {}) => {
+  const payload = await paystackRequest({
+    path: "/bank",
+    query: {
+      country,
+      currency,
+      type,
+      perPage,
+    },
+    errorMessage: "Failed to list Paystack banks",
+  });
+
+  return Array.isArray(payload?.data) ? payload.data.map(normalizeBank) : [];
+};
+
+const resolveBankAccount = async ({ accountNumber, bankCode } = {}) => {
+  const normalizedAccountNumber = String(accountNumber || "").replace(/\D/g, "").slice(0, 20);
+  const normalizedBankCode = String(bankCode || "").trim();
+  if (!normalizedAccountNumber || !normalizedBankCode) {
+    throw createValidationError("Bank code and account number are required.");
+  }
+
+  const payload = await paystackRequest({
+    path: "/bank/resolve",
+    query: {
+      account_number: normalizedAccountNumber,
+      bank_code: normalizedBankCode,
+    },
+    errorMessage: "Failed to resolve bank account",
+  });
+
+  return {
+    accountNumber: String(payload?.data?.account_number || normalizedAccountNumber),
+    accountName: String(payload?.data?.account_name || "").trim(),
+    bankId: payload?.data?.bank_id || "",
+    raw: payload?.data || {},
+  };
+};
+
+const normalizeTransferRecipient = (recipient = {}) => ({
+  id: recipient.id || "",
+  recipientCode: String(recipient.recipient_code || recipient.recipientCode || "").trim(),
+  type: String(recipient.type || "").trim(),
+  name: String(recipient.name || "").trim(),
+  accountNumber: String(recipient.details?.account_number || recipient.account_number || "").trim(),
+  accountName: String(recipient.details?.account_name || recipient.account_name || "").trim(),
+  bankCode: String(recipient.details?.bank_code || recipient.bank_code || "").trim(),
+  bankName: String(recipient.details?.bank_name || recipient.bank_name || "").trim(),
+  currency: String(recipient.currency || getCurrency()).trim().toUpperCase() || getCurrency(),
+  active: recipient.active !== false,
+  raw: recipient,
+});
+
+const createTransferRecipient = async ({
+  name,
+  accountNumber,
+  bankCode,
+  currency = getCurrency(),
+  metadata = {},
+} = {}) => {
+  const normalizedName = String(name || "").trim();
+  const normalizedAccountNumber = String(accountNumber || "").replace(/\D/g, "").slice(0, 20);
+  const normalizedBankCode = String(bankCode || "").trim();
+  const normalizedCurrency = String(currency || getCurrency()).trim().toUpperCase() || getCurrency();
+
+  if (!normalizedName || !normalizedAccountNumber || !normalizedBankCode) {
+    throw createValidationError("Recipient name, bank code, and account number are required.");
+  }
+
+  const payload = await paystackRequest({
+    path: "/transferrecipient",
+    method: "POST",
+    body: {
+      type: "nuban",
+      name: normalizedName,
+      account_number: normalizedAccountNumber,
+      bank_code: normalizedBankCode,
+      currency: normalizedCurrency,
+      metadata,
+    },
+    errorMessage: "Failed to create Paystack transfer recipient",
+  });
+
+  return normalizeTransferRecipient(payload?.data || {});
+};
+
+const mapTransferStatus = (status = "") => {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (["success", "successful"].includes(normalized)) return "success";
+  if (["failed", "failure"].includes(normalized)) return "failed";
+  if (normalized === "reversed") return "reversed";
+  if (normalized === "otp") return "otp";
+  if (["pending", "queued", "processing", "received"].includes(normalized)) return "pending";
+  return normalized || "pending";
+};
+
+const normalizeTransferResponse = (payload = {}) => {
+  const data = payload?.data || payload || {};
+  const amountKobo = Number(data.amount || 0);
+
+  return {
+    id: data.id || "",
+    amount: Number.isFinite(amountKobo) ? amountKobo / 100 : 0,
+    amountKobo: Number.isFinite(amountKobo) ? amountKobo : 0,
+    currency: String(data.currency || getCurrency()).trim().toUpperCase() || getCurrency(),
+    reference: String(data.reference || "").trim().toLowerCase(),
+    status: mapTransferStatus(data.status || payload?.status || ""),
+    providerStatus: String(data.status || "").trim(),
+    transferCode: String(data.transfer_code || data.transferCode || "").trim(),
+    recipientCode: String(data.recipient || data.recipient_code || "").trim(),
+    reason: String(data.reason || "").trim(),
+    transferredAt: data.transferred_at || null,
+    raw: data,
+  };
+};
+
+const initiateTransfer = async ({
+  amountNgn,
+  recipient,
+  reference,
+  reason = "",
+  currency = getCurrency(),
+} = {}) => {
+  const amount = Number(amountNgn);
+  const amountKobo = Math.round(amount * 100);
+  const normalizedRecipient = String(recipient || "").trim();
+  const normalizedReference = String(reference || "").trim().toLowerCase();
+  const normalizedCurrency = String(currency || getCurrency()).trim().toUpperCase() || getCurrency();
+
+  if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(amountKobo) || amountKobo <= 0) {
+    throw createValidationError("A valid transfer amount is required.");
+  }
+  if (!normalizedRecipient) {
+    throw createValidationError("A Paystack transfer recipient is required.");
+  }
+  if (!/^[a-z0-9_-]{16,50}$/.test(normalizedReference)) {
+    throw createValidationError(
+      "A transfer reference must be 16 to 50 lowercase letters, numbers, dashes, or underscores."
+    );
+  }
+
+  const payload = await paystackRequest({
+    path: "/transfer",
+    method: "POST",
+    body: {
+      source: "balance",
+      amount: amountKobo,
+      recipient: normalizedRecipient,
+      reference: normalizedReference,
+      reason: reason || "Tengacion withdrawal",
+      currency: normalizedCurrency,
+    },
+    errorMessage: "Failed to initiate Paystack transfer",
+  });
+
+  return normalizeTransferResponse(payload);
+};
+
+const verifyTransfer = async (reference) => {
+  const normalizedReference = String(reference || "").trim();
+  if (!normalizedReference) {
+    throw createValidationError("Transfer reference is required.");
+  }
+
+  const payload = await paystackRequest({
+    path: `/transfer/verify/${encodeURIComponent(normalizedReference)}`,
+    errorMessage: "Failed to verify Paystack transfer",
+  });
+
+  return normalizeTransferResponse(payload);
+};
+
 const initializeTransaction = async ({
   email,
   amountNgn,
@@ -275,13 +509,21 @@ const validateWebhookSignature = ({ rawBody = "", signature = "" }) => {
 module.exports = {
   PAYSTACK_CHECKOUT_CHANNELS,
   assertPaystackSecretUsable,
+  createTransferRecipient,
   generatePaymentReference,
+  getCurrency,
   getPaystackKeyMode,
   initializeTransaction,
+  initiateTransfer,
   isPaystackLiveKeyRequired,
+  listBanks,
   mapGatewayStatus,
+  mapTransferStatus,
   normalizePaystackErrorMessage,
   normalizePaystackResponse,
+  normalizeTransferResponse,
+  resolveBankAccount,
   validateWebhookSignature,
+  verifyTransfer,
   verifyTransaction,
 };

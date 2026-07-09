@@ -88,6 +88,7 @@ const createSellerProfile = async ({
     slug: storeName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     phoneNumber: "08012345678",
     bankName: "Access Bank",
+    bankCode: "044",
     accountNumber: "0123456789",
     accountName: `${storeName} Ventures`,
     residentialAddress: "12 Admiralty Way, Lekki",

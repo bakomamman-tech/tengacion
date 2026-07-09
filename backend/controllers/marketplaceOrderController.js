@@ -2,6 +2,7 @@ const asyncHandler = require("../middleware/asyncHandler");
 const MarketplaceOrder = require("../models/MarketplaceOrder");
 const {
   initializeMarketplaceOrder,
+  confirmBuyerDelivery,
   listBuyerOrders,
   listSellerOrders,
   reconcileMarketplaceOrder,
@@ -79,6 +80,17 @@ exports.getBuyerOrders = asyncHandler(async (req, res) => {
   });
 
   return res.json(payload);
+});
+
+exports.confirmBuyerDelivery = asyncHandler(async (req, res) => {
+  const order = await confirmBuyerDelivery({
+    buyerId: req.user.id,
+    orderId: req.params.id,
+    receivedHealthy: req.body?.receivedHealthy === true,
+    note: req.body?.note || req.body?.buyerDeliveryNote || "",
+  });
+
+  return res.json({ order });
 });
 
 exports.getSellerOrders = asyncHandler(async (req, res) => {

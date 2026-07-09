@@ -21,6 +21,9 @@ const EXPORT_COLUMNS = [
   "creator_email",
   "amount",
   "currency",
+  "bank_name",
+  "bank_code",
+  "account_name",
   "account_number",
   "country",
   "payout_reference",
@@ -142,6 +145,9 @@ const serializePayoutBatch = (batch = {}) => ({
 });
 
 const buildPayoutMethodSnapshot = ({ profile, readiness } = {}) => ({
+  bankName: readiness?.bankName || profile?.bankName || "",
+  bankCode: readiness?.bankCode || profile?.bankCode || "",
+  accountName: readiness?.accountName || profile?.accountName || "",
   accountNumberMasked: readiness?.accountNumberMasked || "",
   country: readiness?.country || profile?.country || "",
   countryOfResidence: readiness?.countryOfResidence || profile?.countryOfResidence || "",
@@ -198,7 +204,7 @@ const loadRequestsForBatch = async (requestIds = []) => {
   const rows = await CreatorPayoutRequest.find({ _id: { $in: ids } })
     .populate({
       path: "creatorProfile",
-      select: "displayName fullName accountNumber country countryOfResidence userId status onboardingCompleted onboardingComplete acceptedTerms acceptedCopyrightDeclaration updatedAt",
+      select: "displayName fullName accountNumber bankName bankCode accountName country countryOfResidence userId status onboardingCompleted onboardingComplete acceptedTerms acceptedCopyrightDeclaration updatedAt",
       populate: {
         path: "userId",
         select: "name username email",
@@ -459,7 +465,7 @@ const buildProviderRows = async (batch) => {
   const requests = await CreatorPayoutRequest.find({ _id: { $in: batch.requestIds } })
     .populate({
       path: "creatorProfile",
-      select: "displayName fullName accountNumber country countryOfResidence userId",
+      select: "displayName fullName accountNumber bankName bankCode accountName country countryOfResidence userId",
       populate: {
         path: "userId",
         select: "name username email",
@@ -482,6 +488,9 @@ const buildProviderRows = async (batch) => {
       creatorEmail: creatorUser.email || "",
       amount: clampMoney(request.amount),
       currency: normalizeCurrency(request.currency || batch.currency),
+      bankName: profile.bankName || "",
+      bankCode: profile.bankCode || "",
+      accountName: profile.accountName || "",
       accountNumber: profile.accountNumber || "",
       accountNumberMasked: readiness.accountNumberMasked || "",
       country: profile.countryOfResidence || profile.country || "",

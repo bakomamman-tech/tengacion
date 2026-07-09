@@ -23,6 +23,9 @@ const registrationSchema = z.object({
   fullName: z.string().trim().min(2, "Full Name is required"),
   phoneNumber: z.string().trim().min(5, "Phone Number is required"),
   accountNumber: z.string().trim().min(5, "Bank Account Number is required"),
+  bankName: z.string().trim().min(2, "Bank Name is required"),
+  bankCode: z.string().trim().min(2, "Bank Code is required"),
+  accountName: z.string().trim().min(2, "Bank Account Name is required"),
   country: z.string().trim().min(2, "Country is required"),
   countryOfResidence: z.string().trim().min(2, "Country of Residence is required"),
   socialHandles: socialHandleSchema,
@@ -36,7 +39,7 @@ const registrationSchema = z.object({
 });
 
 const STEP_FIELDS = [
-  ["fullName", "phoneNumber", "accountNumber", "country", "countryOfResidence"],
+  ["fullName", "phoneNumber", "bankName", "bankCode", "accountNumber", "accountName", "country", "countryOfResidence"],
   ["creatorTypes"],
   ["acceptedTerms", "acceptedCopyrightDeclaration"],
 ];
@@ -45,6 +48,9 @@ const DEFAULT_VALUES = {
   fullName: "",
   phoneNumber: "",
   accountNumber: "",
+  bankName: "",
+  bankCode: "",
+  accountName: "",
   country: "",
   countryOfResidence: "",
   socialHandles: {
@@ -60,6 +66,33 @@ const DEFAULT_VALUES = {
   acceptedTerms: false,
   acceptedCopyrightDeclaration: false,
 };
+
+const NIGERIAN_BANKS = [
+  { name: "Access Bank", code: "044" },
+  { name: "Citibank Nigeria", code: "023" },
+  { name: "Ecobank Nigeria", code: "050" },
+  { name: "Fidelity Bank", code: "070" },
+  { name: "First Bank of Nigeria", code: "011" },
+  { name: "First City Monument Bank", code: "214" },
+  { name: "Globus Bank", code: "00103" },
+  { name: "Guaranty Trust Bank", code: "058" },
+  { name: "Keystone Bank", code: "082" },
+  { name: "Kuda Microfinance Bank", code: "50211" },
+  { name: "Moniepoint Microfinance Bank", code: "50515" },
+  { name: "Opay Digital Services", code: "999992" },
+  { name: "PalmPay", code: "999991" },
+  { name: "Polaris Bank", code: "076" },
+  { name: "Providus Bank", code: "101" },
+  { name: "Stanbic IBTC Bank", code: "221" },
+  { name: "Standard Chartered Bank Nigeria", code: "068" },
+  { name: "Sterling Bank", code: "232" },
+  { name: "Titan Trust Bank", code: "102" },
+  { name: "Union Bank of Nigeria", code: "032" },
+  { name: "United Bank for Africa", code: "033" },
+  { name: "Unity Bank", code: "215" },
+  { name: "Wema Bank", code: "035" },
+  { name: "Zenith Bank", code: "057" },
+];
 
 const MotionDiv = motion.div;
 
@@ -98,6 +131,22 @@ export default function CreatorRegistrationForm({
   } = form;
 
   const values = watch();
+  const bankOptions = useMemo(() => {
+    const options = [...NIGERIAN_BANKS];
+    if (values.bankName && !options.some((bank) => bank.name === values.bankName)) {
+      options.unshift({ name: values.bankName, code: values.bankCode || "" });
+    }
+    return options;
+  }, [values.bankCode, values.bankName]);
+
+  const updateBank = (bankCode) => {
+    const selected = NIGERIAN_BANKS.find((bank) => bank.code === bankCode);
+    setValue("bankCode", bankCode, { shouldValidate: true, shouldDirty: true });
+    setValue("bankName", selected?.name || values.bankName || "", {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
 
   useEffect(() => {
     setProfileImagePreview(initialValues?.profileImageUrl || "");
@@ -223,9 +272,31 @@ export default function CreatorRegistrationForm({
                   {errors.phoneNumber ? <em className="creator-field-error">{errors.phoneNumber.message}</em> : null}
                 </label>
                 <label>
+                  <span>Bank Name</span>
+                  <select value={values.bankCode || ""} onChange={(event) => updateBank(event.target.value)}>
+                    <option value="">Select payout bank</option>
+                    {bankOptions.map((bank) => (
+                      <option key={`${bank.code}-${bank.name}`} value={bank.code}>
+                        {bank.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.bankName ? <em className="creator-field-error">{errors.bankName.message}</em> : null}
+                </label>
+                <label>
+                  <span>Bank Code</span>
+                  <input {...register("bankCode")} placeholder="Paystack bank code" />
+                  {errors.bankCode ? <em className="creator-field-error">{errors.bankCode.message}</em> : null}
+                </label>
+                <label>
                   <span>Bank Account Number</span>
                   <input {...register("accountNumber")} placeholder="Enter your payout account number" />
                   {errors.accountNumber ? <em className="creator-field-error">{errors.accountNumber.message}</em> : null}
+                </label>
+                <label>
+                  <span>Bank Account Name</span>
+                  <input {...register("accountName")} placeholder="Enter the exact bank account name" />
+                  {errors.accountName ? <em className="creator-field-error">{errors.accountName.message}</em> : null}
                 </label>
                 <label>
                   <span>Country</span>

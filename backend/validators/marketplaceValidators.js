@@ -82,6 +82,7 @@ const normalizeSellerPayload = (payload = {}) => ({
   storeName: sanitizePlainText(payload.storeName, 160),
   phoneNumber: normalizePhoneNumber(payload.phoneNumber),
   bankName: sanitizePlainText(payload.bankName, 120),
+  bankCode: sanitizePlainText(payload.bankCode, 30),
   accountNumber: toText(payload.accountNumber).replace(/\D/g, "").slice(0, 30),
   accountName: sanitizePlainText(payload.accountName, 140),
   residentialAddress: sanitizeMultilineText(payload.residentialAddress, 300),
@@ -128,6 +129,9 @@ const validateSellerSubmissionPayload = ({
   }
   if (!value.bankName) {
     errors.push("Bank name is required");
+  }
+  if (!value.bankCode) {
+    errors.push("Bank code is required");
   }
   if (!/^\d{10,20}$/.test(value.accountNumber)) {
     errors.push("A valid account number is required");

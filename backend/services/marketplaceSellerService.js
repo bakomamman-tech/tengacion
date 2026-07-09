@@ -120,8 +120,10 @@ const serializeSellerForSelf = (seller = {}, { req, summary } = {}) => ({
   slug: seller.slug || "",
   phoneNumber: seller.phoneNumber || "",
   bankName: seller.bankName || "",
+  bankCode: seller.bankCode || "",
   accountNumber: seller.accountNumber || "",
   accountName: seller.accountName || "",
+  payoutRecipientVerifiedAt: seller.payoutRecipientVerifiedAt || null,
   residentialAddress: seller.residentialAddress || "",
   businessAddress: seller.businessAddress || "",
   state: seller.state || "",
@@ -158,8 +160,10 @@ const serializeSellerForAdmin = (seller = {}, { req, summary } = {}) => ({
   slug: seller.slug || "",
   phoneNumber: seller.phoneNumber || "",
   bankName: seller.bankName || "",
+  bankCode: seller.bankCode || "",
   accountNumber: seller.accountNumber || "",
   accountName: seller.accountName || "",
+  payoutRecipientVerifiedAt: seller.payoutRecipientVerifiedAt || null,
   residentialAddress: seller.residentialAddress || "",
   businessAddress: seller.businessAddress || "",
   state: seller.state || "",
@@ -269,6 +273,7 @@ const applySellerPayloadToDocument = async ({
   seller.storeName = payload.storeName;
   seller.phoneNumber = payload.phoneNumber;
   seller.bankName = payload.bankName;
+  seller.bankCode = payload.bankCode;
   seller.accountNumber = payload.accountNumber;
   seller.accountName = payload.accountName;
   seller.residentialAddress = payload.residentialAddress;

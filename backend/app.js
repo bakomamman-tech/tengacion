@@ -111,6 +111,7 @@ app.use("/api", (req, res, next) => {
   if (
     req.path.startsWith("/media") ||
     req.path.startsWith("/payments/webhook") ||
+    req.path.startsWith("/payments/paystack/transfers/webhook") ||
     req.path.startsWith("/marketplace/orders/webhook") ||
     req.path.startsWith("/assistant") ||
     req.path.startsWith("/akuso")
@@ -143,6 +144,7 @@ app.use(
       if (
         normalizedUrl.startsWith("/api/payments/webhook/") ||
         normalizedUrl === "/api/payments/paystack/webhook" ||
+        normalizedUrl === "/api/payments/paystack/transfers/webhook" ||
         normalizedUrl === "/api/payments/stripe/webhook" ||
         normalizedUrl === "/api/marketplace/orders/webhook/paystack"
       ) {

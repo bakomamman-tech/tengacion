@@ -13,12 +13,14 @@ const {
   getCreatorDashboard,
   getCreatorDiscoveryContentInsights,
   getCreatorDiscoveryInsights,
+  getCreatorWithdrawals,
   getCreatorPayoutRequests,
   getCreatorPrivateContent,
   getCreatorProfile,
   getCreatorSubscriptionAnalytics,
   registerCreator,
   createCreatorPayoutRequest,
+  createCreatorWithdrawal,
   updatePodcastSeries,
   updateCreatorProfile,
 } = require("../controllers/creatorController");
@@ -37,6 +39,8 @@ router.get("/discovery/content/:itemType/:itemId", auth, getCreatorDiscoveryCont
 router.get("/subscriptions/analytics", auth, getCreatorSubscriptionAnalytics);
 router.get("/payout-requests", auth, getCreatorPayoutRequests);
 router.post("/payout-requests", auth, creatorAuth, createCreatorPayoutRequest);
+router.get("/withdrawals", auth, creatorAuth, getCreatorWithdrawals);
+router.post("/withdrawals", auth, creatorAuth, createCreatorWithdrawal);
 router.get("/me/content-summary", auth, getCreatorContentSummary);
 router.get("/me/content", auth, getCreatorPrivateContent);
 router.put("/podcasts/series", auth, creatorAuth, updatePodcastSeries);

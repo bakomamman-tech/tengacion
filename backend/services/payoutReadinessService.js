@@ -120,6 +120,9 @@ const buildBlockingReasons = (checks) => checks
 
 const buildPayoutReadiness = (profile = null) => {
   const accountNumber = toText(profile?.accountNumber);
+  const bankName = toText(profile?.bankName);
+  const bankCode = toText(profile?.bankCode);
+  const accountName = toText(profile?.accountName);
   const country = toText(profile?.country);
   const countryOfResidence = toText(profile?.countryOfResidence);
   const active = toText(profile?.status || "active").toLowerCase() === "active";
@@ -158,6 +161,30 @@ const buildPayoutReadiness = (profile = null) => {
       complete: Boolean(accountNumber),
       statusWhenMissing: "payout_method_missing",
       nextStep: "Add the account number where creator payouts should land.",
+      group: "payout_method",
+    }),
+    buildCheck({
+      key: "bank_name",
+      label: "Payout bank name",
+      complete: Boolean(bankName),
+      statusWhenMissing: "payout_method_missing",
+      nextStep: "Choose the bank where creator payouts should land.",
+      group: "payout_method",
+    }),
+    buildCheck({
+      key: "bank_code",
+      label: "Payout bank code",
+      complete: Boolean(bankCode),
+      statusWhenMissing: "payout_method_missing",
+      nextStep: "Choose a supported Nigerian bank for automatic payouts.",
+      group: "payout_method",
+    }),
+    buildCheck({
+      key: "account_name",
+      label: "Payout account name",
+      complete: Boolean(accountName),
+      statusWhenMissing: "payout_method_missing",
+      nextStep: "Add or verify the account name for automatic payouts.",
       group: "payout_method",
     }),
     buildCheck({
@@ -204,6 +231,9 @@ const buildPayoutReadiness = (profile = null) => {
     missingChecks: blockingReasons.map((entry) => entry.key),
     missingCheckCount: blockingReasons.length,
     accountNumberMasked: maskAccountNumber(accountNumber),
+    bankName,
+    bankCode,
+    accountName,
     country,
     countryOfResidence,
   };

@@ -43,6 +43,9 @@ const settingsSchema = z.object({
   displayName: z.string().trim().min(2, "Artist stage name is required"),
   phoneNumber: z.string().trim().min(5, "Phone Number is required"),
   accountNumber: z.string().trim().min(5, "Bank Account Number is required"),
+  bankName: z.string().trim().min(2, "Bank Name is required"),
+  bankCode: z.string().trim().min(2, "Bank Code is required"),
+  accountName: z.string().trim().min(2, "Bank Account Name is required"),
   country: z.string().trim().min(2, "Country is required"),
   countryOfResidence: z.string().trim().min(2, "Country of Residence is required"),
   tagline: z.string().max(200, "Tagline cannot exceed 200 characters").optional(),
@@ -64,6 +67,9 @@ const DEFAULT_VALUES = {
   displayName: "",
   phoneNumber: "",
   accountNumber: "",
+  bankName: "",
+  bankCode: "",
+  accountName: "",
   country: "",
   countryOfResidence: "",
   tagline: "",
@@ -237,9 +243,24 @@ export default function CreatorAccountSettingsForm({
             {errors.phoneNumber ? <em className="creator-field-error">{errors.phoneNumber.message}</em> : null}
           </label>
           <label>
+            <span>Bank Name</span>
+            <input {...register("bankName")} placeholder="Payout bank name" />
+            {errors.bankName ? <em className="creator-field-error">{errors.bankName.message}</em> : null}
+          </label>
+          <label>
+            <span>Bank Code</span>
+            <input {...register("bankCode")} placeholder="Paystack bank code" />
+            {errors.bankCode ? <em className="creator-field-error">{errors.bankCode.message}</em> : null}
+          </label>
+          <label>
             <span>Bank Account Number</span>
             <input {...register("accountNumber")} placeholder="Payout account number" />
             {errors.accountNumber ? <em className="creator-field-error">{errors.accountNumber.message}</em> : null}
+          </label>
+          <label>
+            <span>Bank Account Name</span>
+            <input {...register("accountName")} placeholder="Exact account name" />
+            {errors.accountName ? <em className="creator-field-error">{errors.accountName.message}</em> : null}
           </label>
           <label>
             <span>Country</span>

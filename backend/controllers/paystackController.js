@@ -9,6 +9,14 @@ const {
   toLegacyCheckoutPayload,
   toPurchasePayload,
 } = require("../services/paymentOpsService");
+const {
+  handlePaystackTransferWebhookEvent,
+} = require("../services/withdrawalService");
+const {
+  listBanks,
+  resolveBankAccount,
+  validateWebhookSignature,
+} = require("../services/paystackService");
 
 const buildCheckoutPayload = (checkout, currencyMode = "") => {
   const fallbackCurrencyMode =
@@ -141,6 +149,26 @@ exports.verifyPaystackPayment = asyncHandler(async (req, res) => {
 exports.handlePaystackWebhook = asyncHandler(async (req, res) => {
   const signature = String(req.headers["x-paystack-signature"] || "");
   const rawBody = String(req.rawBody || "");
+  const eventName = String(req.body?.event || "").trim().toLowerCase();
+
+  if (eventName.startsWith("transfer.")) {
+    if (!validateWebhookSignature({ rawBody, signature })) {
+      return res.status(401).json({ error: "Invalid Paystack signature" });
+    }
+
+    const result = await handlePaystackTransferWebhookEvent({
+      event: req.body || {},
+    });
+
+    return res.status(200).json({
+      received: true,
+      transfer: true,
+      handled: Boolean(result.handled),
+      skipped: Boolean(result.skipped),
+      reason: result.reason || "",
+    });
+  }
+
   const result = await handlePaystackWebhookEvent({
     req,
     rawBody,
@@ -149,6 +177,45 @@ exports.handlePaystackWebhook = asyncHandler(async (req, res) => {
   });
 
   return res.status(200).json({ received: true, duplicate: Boolean(result.duplicate) });
+});
+
+exports.handlePaystackTransferWebhook = asyncHandler(async (req, res) => {
+  const signature = String(req.headers["x-paystack-signature"] || "");
+  const rawBody = String(req.rawBody || "");
+
+  if (!validateWebhookSignature({ rawBody, signature })) {
+    return res.status(401).json({ error: "Invalid Paystack signature" });
+  }
+
+  const result = await handlePaystackTransferWebhookEvent({
+    event: req.body || {},
+  });
+
+  return res.status(200).json({
+    received: true,
+    handled: Boolean(result.handled),
+    skipped: Boolean(result.skipped),
+    reason: result.reason || "",
+  });
+});
+
+exports.listPaystackBanks = asyncHandler(async (req, res) => {
+  const banks = await listBanks({
+    country: req.query?.country || "nigeria",
+    currency: req.query?.currency || "NGN",
+    type: req.query?.type || "nuban",
+  });
+
+  return res.json({ banks });
+});
+
+exports.resolvePaystackAccount = asyncHandler(async (req, res) => {
+  const account = await resolveBankAccount({
+    accountNumber: req.body?.accountNumber || req.query?.accountNumber,
+    bankCode: req.body?.bankCode || req.query?.bankCode,
+  });
+
+  return res.json({ account });
 });
 
 exports.handleStripeWebhook = asyncHandler(async (req, res) => {

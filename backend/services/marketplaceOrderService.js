@@ -27,7 +27,6 @@ const VALID_FULFILLMENT_STATUSES = new Set([
   "processing",
   "shipped_or_ready",
   "delivered",
-  "completed",
   "cancelled",
 ]);
 
@@ -120,6 +119,14 @@ const serializeOrder = (
   deliveryAddress: includeDelivery ? order.deliveryAddress || "" : "",
   deliveryContactPhone: includeDelivery ? order.deliveryContactPhone || "" : "",
   fulfillmentNotes: order.fulfillmentNotes || "",
+  buyerDeliveryConfirmedAt: order.buyerDeliveryConfirmedAt || null,
+  buyerDeliveryCondition: order.buyerDeliveryCondition || "",
+  buyerDeliveryNote: order.buyerDeliveryNote || "",
+  payoutEligible: Boolean(
+    order.orderStatus === "completed" &&
+      order.buyerDeliveryConfirmedAt &&
+      order.buyerDeliveryCondition === "healthy"
+  ),
   productSnapshot: {
     title: order.productTitle || product?.title || "",
     slug: order.productSlug || product?.slug || "",
@@ -694,6 +701,69 @@ const updateSellerOrderStatus = async ({
   });
 };
 
+const confirmBuyerDelivery = async ({
+  buyerId,
+  orderId,
+  receivedHealthy,
+  note = "",
+} = {}) => {
+  const order = await MarketplaceOrder.findOne({
+    _id: orderId,
+    buyer: buyerId,
+  })
+    .populate("seller")
+    .populate("buyer", "_id name username email");
+
+  if (!order) {
+    throw createServiceError("Marketplace order not found", 404);
+  }
+
+  if (String(order.paymentStatus || "").trim().toLowerCase() !== "paid") {
+    throw createServiceError("Only paid marketplace orders can be confirmed", 400);
+  }
+
+  if (!["delivered", "completed"].includes(String(order.orderStatus || "").trim().toLowerCase())) {
+    throw createServiceError("Confirm delivery only after the seller marks the order delivered", 400);
+  }
+
+  if (receivedHealthy !== true) {
+    order.buyerDeliveryCondition = "damaged";
+    order.buyerDeliveryNote = sanitizeMultilineText(note, 600);
+    await order.save();
+    throw createServiceError("Damaged delivery cannot be released for seller payout", 400);
+  }
+
+  order.orderStatus = "completed";
+  order.buyerDeliveryConfirmedAt = order.buyerDeliveryConfirmedAt || new Date();
+  order.buyerDeliveryCondition = "healthy";
+  order.buyerDeliveryNote = sanitizeMultilineText(note, 600);
+  await order.save();
+
+  const sellerUserId = order.seller?.user;
+  if (sellerUserId && String(sellerUserId) !== String(buyerId)) {
+    await createNotification({
+      recipient: sellerUserId,
+      sender: buyerId,
+      type: "system",
+      text: `${order.productTitle || "Marketplace order"} was confirmed delivered healthy by the buyer. The payout is now eligible for withdrawal.`,
+      entity: { id: buyerId, model: "User" },
+      metadata: {
+        eventType: "marketplace_order_delivery_confirmed",
+        orderId: toIdString(order._id),
+        paymentReference: order.paymentReference || "",
+        dedupeKey: `marketplace_order_delivery_confirmed:${toIdString(order._id)}`,
+      },
+    }).catch(() => null);
+  }
+
+  return serializeOrder(order, {
+    buyer: order.buyer,
+    seller: order.seller,
+    includeBuyer: false,
+    includeDelivery: true,
+  });
+};
+
 const listMarketplaceOrdersForAdmin = async ({
   page = 1,
   limit = 20,
@@ -771,6 +841,7 @@ const listMarketplaceOrdersForAdmin = async ({
 
 module.exports = {
   initializeMarketplaceOrder,
+  confirmBuyerDelivery,
   listBuyerOrders,
   listMarketplaceOrdersForAdmin,
   listSellerOrders,

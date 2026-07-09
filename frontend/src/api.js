@@ -874,6 +874,27 @@ export const createCreatorPayoutRequest = (payload = {}) =>
     body: JSON.stringify(payload || {}),
   });
 
+export const getCreatorWithdrawals = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(withCacheBust(`${API_BASE}/creator/withdrawals${query.toString() ? `?${query.toString()}` : ""}`), {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+};
+
+export const createCreatorWithdrawal = (payload = {}) =>
+  request(`${API_BASE}/creator/withdrawals`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
 export const getCreatorPrivateContent = () =>
   request(withCacheBust(`${API_BASE}/creator/me/content`), {
     headers: getAuthHeaders(),
@@ -1084,6 +1105,27 @@ export const initPayment = ({ itemType, itemId, returnUrl }) => {
 export const verifyPaystackPayment = (reference) =>
   request(`${API_BASE}/payments/paystack/verify/${encodeURIComponent(reference || "")}`, {
     headers: getAuthHeaders(),
+  });
+
+export const getPaystackBanks = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(withCacheBust(`${API_BASE}/payments/paystack/banks${query.toString() ? `?${query.toString()}` : ""}`), {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+};
+
+export const resolvePaystackAccount = (payload = {}) =>
+  request(`${API_BASE}/payments/paystack/resolve-account`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
   });
 
 export const initiatePayment = ({ itemType, itemId, provider = "paystack", returnUrl = "" }) => {

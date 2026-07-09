@@ -26,6 +26,10 @@ const {
   createCreatorPayoutRequest,
   listCreatorPayoutRequests,
 } = require("../services/creatorPayoutRequestService");
+const {
+  createCreatorWithdrawal,
+  listCreatorWithdrawals,
+} = require("../services/withdrawalService");
 const { buildPayoutReadiness } = require("../services/payoutReadinessService");
 const { buildCreatorWalletSnapshot } = require("../services/walletService");
 const {
@@ -116,6 +120,10 @@ const serializeCreatorProfile = ({
     displayName: profile?.displayName || profile?.fullName || user?.name || "",
     phoneNumber: profile?.phoneNumber || user?.phone || "",
     accountNumber: profile?.accountNumber || "",
+    bankName: profile?.bankName || "",
+    bankCode: profile?.bankCode || "",
+    accountName: profile?.accountName || "",
+    payoutRecipientVerifiedAt: profile?.payoutRecipientVerifiedAt || null,
     country: profile?.country || user?.country || "",
     countryOfResidence: profile?.countryOfResidence || profile?.country || user?.country || "",
     socialHandles: normalizeSocialHandles(profile?.socialHandles),
@@ -396,6 +404,9 @@ const validateRegistrationPayload = (body = {}) => {
   const fullName = String(body?.fullName || "").trim();
   const phoneNumber = String(body?.phoneNumber || "").trim();
   const accountNumber = String(body?.accountNumber || "").trim();
+  const bankName = String(body?.bankName || "").trim();
+  const bankCode = String(body?.bankCode || "").trim();
+  const accountName = String(body?.accountName || "").trim();
   const country = String(body?.country || "").trim();
   const countryOfResidence = String(body?.countryOfResidence || "").trim();
   const creatorTypes = normalizeCreatorTypes(body?.creatorTypes);
@@ -405,6 +416,9 @@ const validateRegistrationPayload = (body = {}) => {
   if (!fullName) errors.push("Full Name is required");
   if (!phoneNumber) errors.push("Phone Number is required");
   if (!accountNumber) errors.push("Bank Account Number is required");
+  if (!bankName) errors.push("Bank Name is required");
+  if (!bankCode) errors.push("Bank Code is required");
+  if (!accountName) errors.push("Bank Account Name is required");
   if (!country) errors.push("Country is required");
   if (!countryOfResidence) errors.push("Country of Residence is required");
   if (!creatorTypes.length) errors.push("Select at least one creator category");
@@ -413,7 +427,18 @@ const validateRegistrationPayload = (body = {}) => {
     errors.push("You must confirm that you have the rights to publish your content");
   }
 
-  return { errors, fullName, phoneNumber, accountNumber, country, countryOfResidence, creatorTypes };
+  return {
+    errors,
+    fullName,
+    phoneNumber,
+    accountNumber,
+    bankName,
+    bankCode,
+    accountName,
+    country,
+    countryOfResidence,
+    creatorTypes,
+  };
 };
 
 const getProfileBundle = async (userId) => {
@@ -693,7 +718,18 @@ exports.getCreatorProfile = asyncHandler(async (req, res) => {
 
 exports.registerCreator = asyncHandler(async (req, res) => {
   applyNoStore(res);
-  const { errors, fullName, phoneNumber, accountNumber, country, countryOfResidence, creatorTypes } =
+  const {
+    errors,
+    fullName,
+    phoneNumber,
+    accountNumber,
+    bankName,
+    bankCode,
+    accountName,
+    country,
+    countryOfResidence,
+    creatorTypes,
+  } =
     validateRegistrationPayload(req.body);
 
   if (errors.length) {
@@ -727,6 +763,9 @@ exports.registerCreator = asyncHandler(async (req, res) => {
         fullName,
         phoneNumber,
         accountNumber,
+        bankName,
+        bankCode,
+        accountName,
         country,
         countryOfResidence,
         socialHandles,
@@ -840,6 +879,9 @@ exports.updateCreatorProfile = asyncHandler(async (req, res) => {
         fullName: String(req.body?.fullName || existing.fullName || existing.displayName || "").trim(),
         phoneNumber: String(req.body?.phoneNumber || existing.phoneNumber || "").trim(),
         accountNumber: String(req.body?.accountNumber || existing.accountNumber || "").trim(),
+        bankName: String(req.body?.bankName || existing.bankName || "").trim(),
+        bankCode: String(req.body?.bankCode || existing.bankCode || "").trim(),
+        accountName: String(req.body?.accountName || existing.accountName || "").trim(),
         country: String(req.body?.country || existing.country || "").trim(),
         countryOfResidence: String(
           req.body?.countryOfResidence || existing.countryOfResidence || existing.country || ""
@@ -970,6 +1012,31 @@ exports.createCreatorPayoutRequest = asyncHandler(async (req, res) => {
     amount: req.body?.amount,
     currency: req.body?.currency || "NGN",
     creatorNote: req.body?.creatorNote || req.body?.note || "",
+  });
+
+  return res.status(201).json({
+    success: true,
+    ...payload,
+  });
+});
+
+exports.getCreatorWithdrawals = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const payload = await listCreatorWithdrawals({
+    userId: req.user.id,
+    page: req.query?.page || 1,
+    limit: req.query?.limit || 20,
+  });
+
+  return res.json(payload);
+});
+
+exports.createCreatorWithdrawal = asyncHandler(async (req, res) => {
+  applyNoStore(res);
+  const payload = await createCreatorWithdrawal({
+    userId: req.user.id,
+    amount: req.body?.amount,
+    currency: req.body?.currency || "NGN",
   });
 
   return res.status(201).json({

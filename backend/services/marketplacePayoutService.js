@@ -24,6 +24,14 @@ const serializePayout = (payout = {}, order = null) => ({
   sellerId: toIdString(payout.seller),
   orderId: toIdString(payout.order),
   orderReference: order?.paymentReference || "",
+  orderStatus: order?.orderStatus || "",
+  buyerDeliveryConfirmedAt: order?.buyerDeliveryConfirmedAt || null,
+  buyerDeliveryCondition: order?.buyerDeliveryCondition || "",
+  payoutEligible: Boolean(
+    order?.orderStatus === "completed" &&
+      order?.buyerDeliveryConfirmedAt &&
+      order?.buyerDeliveryCondition === "healthy"
+  ),
   grossAmount: Number(payout.grossAmount || 0),
   platformFee: Number(payout.platformFee || 0),
   netAmount: Number(payout.netAmount || 0),
@@ -68,21 +76,69 @@ const getSellerPayoutSummary = async (sellerId) => {
   const [summary] = await MarketplacePayout.aggregate([
     { $match: { seller: objectId } },
     {
+      $lookup: {
+        from: "marketplaceorders",
+        localField: "order",
+        foreignField: "_id",
+        as: "order",
+      },
+    },
+    { $unwind: { path: "$order", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        buyerConfirmedHealthy: {
+          $and: [
+            { $eq: ["$order.paymentStatus", "paid"] },
+            { $eq: ["$order.orderStatus", "completed"] },
+            { $eq: ["$order.buyerDeliveryCondition", "healthy"] },
+            { $ne: ["$order.buyerDeliveryConfirmedAt", null] },
+          ],
+        },
+      },
+    },
+    {
       $group: {
         _id: null,
         totalSales: { $sum: "$grossAmount" },
         totalPlatformFees: { $sum: "$platformFee" },
         totalNetReceivable: { $sum: "$netAmount" },
         totalCompletedOrders: { $sum: 1 },
+        confirmedSales: {
+          $sum: {
+            $cond: ["$buyerConfirmedHealthy", "$grossAmount", 0],
+          },
+        },
+        confirmedPlatformFees: {
+          $sum: {
+            $cond: ["$buyerConfirmedHealthy", "$platformFee", 0],
+          },
+        },
+        confirmedNetReceivable: {
+          $sum: {
+            $cond: ["$buyerConfirmedHealthy", "$netAmount", 0],
+          },
+        },
+        confirmedOrderCount: {
+          $sum: {
+            $cond: ["$buyerConfirmedHealthy", 1, 0],
+          },
+        },
       },
     },
   ]);
 
+  const totalNetReceivable = Number(summary?.totalNetReceivable || 0);
+  const confirmedNetReceivable = Number(summary?.confirmedNetReceivable || 0);
   return {
     totalSales: Number(summary?.totalSales || 0),
     totalPlatformFees: Number(summary?.totalPlatformFees || 0),
-    totalNetReceivable: Number(summary?.totalNetReceivable || 0),
+    totalNetReceivable,
     totalCompletedOrders: Number(summary?.totalCompletedOrders || 0),
+    confirmedSales: Number(summary?.confirmedSales || 0),
+    confirmedPlatformFees: Number(summary?.confirmedPlatformFees || 0),
+    confirmedNetReceivable,
+    confirmedOrderCount: Number(summary?.confirmedOrderCount || 0),
+    heldNetReceivable: Math.max(0, totalNetReceivable - confirmedNetReceivable),
   };
 };
 
@@ -96,7 +152,7 @@ const listSellerPayouts = async (sellerId, { page = 1, limit = 20 } = {}) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(safeLimit)
-      .populate("order", "paymentReference")
+      .populate("order", "paymentReference paymentStatus orderStatus buyerDeliveryConfirmedAt buyerDeliveryCondition")
       .lean(),
     MarketplacePayout.countDocuments({ seller: sellerId }),
   ]);

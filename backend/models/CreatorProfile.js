@@ -86,6 +86,40 @@ const CreatorProfileSchema = new mongoose.Schema(
       trim: true,
       maxlength: 40,
     },
+    bankName: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
+    bankCode: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 30,
+    },
+    accountName: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 140,
+    },
+    payoutRecipientCode: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
+    payoutRecipientId: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
+    payoutRecipientVerifiedAt: {
+      type: Date,
+      default: null,
+    },
     country: {
       type: String,
       default: "",
@@ -255,6 +289,11 @@ CreatorProfileSchema.pre("validate", function syncCreatorProfile(next) {
   this.displayName = String(this.displayName || this.fullName || "").trim().slice(0, 120);
   this.phoneNumber = String(this.phoneNumber || "").trim().slice(0, 40);
   this.accountNumber = String(this.accountNumber || "").trim().slice(0, 40);
+  this.bankName = String(this.bankName || "").trim().slice(0, 120);
+  this.bankCode = String(this.bankCode || "").trim().slice(0, 30);
+  this.accountName = String(this.accountName || "").trim().slice(0, 140);
+  this.payoutRecipientCode = String(this.payoutRecipientCode || "").trim().slice(0, 120);
+  this.payoutRecipientId = String(this.payoutRecipientId || "").trim().slice(0, 120);
   this.country = String(this.country || "").trim().slice(0, 120);
   this.countryOfResidence = String(this.countryOfResidence || this.country || "").trim().slice(0, 120);
   this.socialHandles = normalizeSocialHandles(this.socialHandles);

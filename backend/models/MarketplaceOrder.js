@@ -111,6 +111,24 @@ const MarketplaceOrderSchema = new mongoose.Schema(
       trim: true,
       maxlength: 600,
     },
+    buyerDeliveryConfirmedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    buyerDeliveryCondition: {
+      type: String,
+      enum: ["", "healthy", "damaged"],
+      default: "",
+      trim: true,
+      index: true,
+    },
+    buyerDeliveryNote: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 600,
+    },
     productTitle: {
       type: String,
       default: "",

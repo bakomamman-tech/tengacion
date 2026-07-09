@@ -53,6 +53,12 @@ const MarketplaceSellerSchema = new mongoose.Schema(
       trim: true,
       maxlength: 120,
     },
+    bankCode: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 30,
+    },
     accountNumber: {
       type: String,
       default: "",
@@ -64,6 +70,22 @@ const MarketplaceSellerSchema = new mongoose.Schema(
       default: "",
       trim: true,
       maxlength: 140,
+    },
+    payoutRecipientCode: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
+    payoutRecipientId: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
+    payoutRecipientVerifiedAt: {
+      type: Date,
+      default: null,
     },
     residentialAddress: {
       type: String,

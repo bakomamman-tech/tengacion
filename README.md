@@ -106,8 +106,9 @@ cp .env.example .env
 - `VITE_GA_DEBUG_MODE=false`
 5. Business email:
 - Public Tengacion contact/support email defaults to `stephen@tengacion.com`.
-- Set `CONTACT_EMAIL`, `SUPPORT_EMAIL`, `ADMIN_NOTIFICATION_EMAIL`, and `EMAIL_FROM` for backend mail, plus `VITE_CONTACT_EMAIL`, `VITE_SUPPORT_EMAIL`, and `VITE_ADMIN_NOTIFICATION_EMAIL` for frontend display.
+- Set `CONTACT_EMAIL`, `SUPPORT_EMAIL`, `ADMIN_NOTIFICATION_EMAIL`, `EMAIL_FROM`, and optionally `EMAIL_LOGO_URL` for backend mail, plus `VITE_CONTACT_EMAIL`, `VITE_SUPPORT_EMAIL`, and `VITE_ADMIN_NOTIFICATION_EMAIL` for frontend display.
 - Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASS` in Render environment variables only. Never commit SMTP passwords, app passwords, API keys, or private mail credentials to GitHub.
+- Tengacion emails are wrapped in a branded template with the configured logo. Gmail inbox sender avatars require domain-level BIMI/DMARC setup; see [`docs/email-branding.md`](docs/email-branding.md).
 
 ## 2) Running Apps Locally
 1. Start the API (serves `apps/api` layered routes via the existing backend entrypoint):

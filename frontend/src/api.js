@@ -2843,6 +2843,28 @@ export const adminListCreatorPayoutBatches = (params = {}) => {
   });
 };
 
+export const adminListWithdrawals = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {query.set(key, String(value));}
+  });
+  return request(`${API_BASE}/admin/finance/withdrawals?${query.toString()}`, {
+    headers: getAuthHeaders(),
+    timeoutMs: 45000,
+  });
+};
+
+export const adminRetryWithdrawal = (withdrawalId, body = {}) =>
+  request(`${API_BASE}/admin/finance/withdrawals/${encodeURIComponent(withdrawalId || "")}/retry`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(body || {}),
+    timeoutMs: 45000,
+  });
+
 export const adminCreateCreatorPayoutBatch = (body = {}) =>
   request(`${API_BASE}/admin/finance/payout-batches`, {
     method: "POST",

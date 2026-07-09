@@ -9,7 +9,9 @@ import {
   adminGetRevenueLedger,
   adminListCreatorPayoutBatches,
   adminListCreatorPayoutRequests,
+  adminListWithdrawals,
   adminReconcileCreatorPayoutBatch,
+  adminRetryWithdrawal,
   adminUpdateCreatorPayoutRequestStatus,
 } from "../api";
 
@@ -81,28 +83,32 @@ export default function AdminCreatorEarningsPage({ user }) {
   const [ledger, setLedger] = useState(null);
   const [payoutRequests, setPayoutRequests] = useState(null);
   const [payoutBatches, setPayoutBatches] = useState(null);
+  const [withdrawals, setWithdrawals] = useState(null);
   const [selectedPayoutRequestIds, setSelectedPayoutRequestIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [payoutActionBusy, setPayoutActionBusy] = useState("");
   const [batchActionBusy, setBatchActionBusy] = useState("");
+  const [withdrawalActionBusy, setWithdrawalActionBusy] = useState("");
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const [next, closePayload, ledgerPayload, payoutPayload, batchPayload] = await Promise.all([
+      const [next, closePayload, ledgerPayload, payoutPayload, batchPayload, withdrawalPayload] = await Promise.all([
         adminGetCreatorEarningsRepository({ range }),
         adminGetFinanceAssuranceClose({ range }),
         adminGetRevenueLedger({ range, limit: 12 }),
         adminListCreatorPayoutRequests({ status: payoutStatus, limit: 8 }),
         adminListCreatorPayoutBatches({ limit: 8 }),
+        adminListWithdrawals({ limit: 8 }),
       ]);
       setPayload(next || null);
       setAssuranceClose(closePayload || null);
       setLedger(ledgerPayload || null);
       setPayoutRequests(payoutPayload || null);
       setPayoutBatches(batchPayload || null);
+      setWithdrawals(withdrawalPayload || null);
     } catch (err) {
       setError(err?.message || "Failed to load creator earnings repository");
     } finally {
@@ -130,6 +136,8 @@ export default function AdminCreatorEarningsPage({ user }) {
   const payoutRequestSummary = payoutRequests?.summary || {};
   const payoutBatchRows = payoutBatches?.batches || [];
   const payoutBatchSummary = payoutBatches?.summary || {};
+  const withdrawalRows = withdrawals?.withdrawals || [];
+  const withdrawalSummary = withdrawals?.summary || {};
   const selectedApprovedRequests = payoutRequestRows.filter((entry) =>
     selectedPayoutRequestIds.includes(entry.id)
       && entry.status === "approved"
@@ -302,6 +310,27 @@ export default function AdminCreatorEarningsPage({ user }) {
       setError(err?.message || "Failed to update payout request");
     } finally {
       setPayoutActionBusy("");
+    }
+  };
+
+  const retryWithdrawal = async (entry) => {
+    const note = window.prompt(
+      "Retry note:",
+      "Paystack business transfer activation reviewed; retry queued withdrawal."
+    );
+    if (note === null) {
+      return;
+    }
+
+    setWithdrawalActionBusy(`${entry.id}:retry`);
+    setError("");
+    try {
+      await adminRetryWithdrawal(entry.id, { note });
+      await load();
+    } catch (err) {
+      setError(err?.message || "Failed to retry withdrawal");
+    } finally {
+      setWithdrawalActionBusy("");
     }
   };
 
@@ -592,6 +621,87 @@ export default function AdminCreatorEarningsPage({ user }) {
                     <tr>
                       <td colSpan={9} className="adminx-table-empty">
                         No creator payout requests found.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="adminx-panel adminx-panel--span-12">
+            <div className="adminx-panel-head">
+              <div>
+                <h2 className="adminx-panel-title">Automatic Withdrawal Queue</h2>
+                <span className="adminx-section-meta">Paystack transfer attempts, setup blockers, and retry controls</span>
+              </div>
+              <span className="adminx-badge">
+                {number(withdrawals?.total)} withdrawal{Number(withdrawals?.total || 0) === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            <div className="adminx-ops-grid">
+              {[
+                ["Open", currency(withdrawalSummary.openAmount)],
+                ["Provider setup", currency(withdrawalSummary.providerSetupRequiredAmount)],
+                ["Queued", number(withdrawalSummary.statusCounts?.provider_setup_required)],
+                ["Succeeded", currency(withdrawalSummary.statusAmounts?.succeeded)],
+              ].map(([label, value]) => (
+                <div key={label} className="adminx-ops-metric">
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+
+            <div className="adminx-table-wrap adminx-table-wrap--flush">
+              <table className="adminx-table">
+                <thead>
+                  <tr>
+                    <th>Requested</th>
+                    <th>Owner</th>
+                    <th>User</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Reference</th>
+                    <th>Provider</th>
+                    <th>Message</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {withdrawalRows.map((entry) => (
+                    <tr key={entry.id}>
+                      <td>{dateTime(entry.requestedAt)}</td>
+                      <td>{eventLabel(entry.ownerType)}</td>
+                      <td>{entry.user?.email || entry.user?.username || entry.userId || "-"}</td>
+                      <td>{currency(entry.amount, entry.currency)}</td>
+                      <td>{eventLabel(entry.status)}</td>
+                      <td>{entry.reference || "-"}</td>
+                      <td>{entry.providerTransferCode || entry.providerStatus || entry.provider || "-"}</td>
+                      <td>{entry.failureReason || entry.providerIssue?.message || "-"}</td>
+                      <td>
+                        <div className="adminx-action-row">
+                          {entry.status === "provider_setup_required" ? (
+                            <button
+                              type="button"
+                              className="adminx-btn adminx-btn--primary"
+                              disabled={Boolean(withdrawalActionBusy)}
+                              onClick={() => retryWithdrawal(entry)}
+                            >
+                              Retry Paystack
+                            </button>
+                          ) : (
+                            <span className="adminx-muted">-</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {!withdrawalRows.length ? (
+                    <tr>
+                      <td colSpan={9} className="adminx-table-empty">
+                        No automatic withdrawal records found.
                       </td>
                     </tr>
                   ) : null}

@@ -46,6 +46,7 @@ The server now runs a preflight check (`backend/scripts/preflight.js`) before co
 | `SUPPORT_EMAIL` | Support/help/contact form email. Use `stephen@tengacion.com`. | Warning if missing |
 | `ADMIN_NOTIFICATION_EMAIL` | Recipient for admin/support notification emails. Use `stephen@tengacion.com`. | Warning if missing |
 | `EMAIL_FROM` | Visible sender address for transactional emails. Use `stephen@tengacion.com`. | Warning if missing |
+| `EMAIL_LOGO_URL` | Public logo URL used in branded transactional email templates. Use `https://tengacion.com/tengacion_logo_512.png`. | Warning if missing |
 | `SMTP_HOST` | SMTP provider host for outgoing mail. Configure in Render, not in GitHub. | Warning if missing |
 | `SMTP_PORT` | SMTP provider port for outgoing mail. Configure in Render, not in GitHub. | Warning if missing |
 | `SMTP_USER` | SMTP username for outgoing mail. Configure in Render, not in GitHub. | Warning if missing |
@@ -59,7 +60,9 @@ Because these `VITE_*` values are compiled into the frontend bundle, changing th
 
 Paystack card fields stay inside Paystack's hosted checkout. To debit real cards, set the Render `PAYSTACK_SECRET_KEY` secret to the live Paystack key from the Paystack dashboard and ensure the business settlement bank in Paystack is the Opay account above.
 
-Email delivery is configured through Render environment variables. Keep `CONTACT_EMAIL`, `SUPPORT_EMAIL`, `ADMIN_NOTIFICATION_EMAIL`, `EMAIL_FROM`, `VITE_CONTACT_EMAIL`, `VITE_SUPPORT_EMAIL`, and `VITE_ADMIN_NOTIFICATION_EMAIL` set to `stephen@tengacion.com`. Keep SMTP credentials such as `SMTP_USER` and especially `SMTP_PASS` in Render only; do not commit SMTP passwords, app passwords, API keys, or private mail-provider credentials to GitHub.
+Creator and marketplace withdrawals use Paystack Transfers. The Paystack business must be activated for third-party transfers/payouts before automatic withdrawals can leave Tengacion's Paystack balance. If Paystack returns the starter-business transfer restriction, Tengacion queues the withdrawal as `provider_setup_required`, reserves the amount, notifies finance, and exposes an admin retry action under the creator earnings finance screen.
+
+Email delivery is configured through Render environment variables. Keep `CONTACT_EMAIL`, `SUPPORT_EMAIL`, `ADMIN_NOTIFICATION_EMAIL`, `EMAIL_FROM`, `VITE_CONTACT_EMAIL`, `VITE_SUPPORT_EMAIL`, and `VITE_ADMIN_NOTIFICATION_EMAIL` set to `stephen@tengacion.com`, and keep `EMAIL_LOGO_URL` pointed at the public Tengacion logo. Keep SMTP credentials such as `SMTP_USER` and especially `SMTP_PASS` in Render only; do not commit SMTP passwords, app passwords, API keys, or private mail-provider credentials to GitHub.
 
 To verify the secret Render is actually using, open a Render Shell for the service and run:
 

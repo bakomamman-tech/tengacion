@@ -39,6 +39,7 @@ const baseChecks = [
   { key: "SUPPORT_EMAIL", label: "Support email", type: "warn" },
   { key: "ADMIN_NOTIFICATION_EMAIL", label: "Admin notification email", type: "warn" },
   { key: "EMAIL_FROM", label: "Transactional email sender", type: "warn" },
+  { key: "EMAIL_LOGO_URL", label: "Transactional email logo", type: "warn" },
   { key: "SMTP_HOST", label: "SMTP host", type: "warn" },
   { key: "SMTP_PORT", label: "SMTP port", type: "warn" },
   { key: "SMTP_USER", label: "SMTP user", type: "warn" },
@@ -70,6 +71,7 @@ const defaultedBusinessEmailKeys = new Set([
   "SUPPORT_EMAIL",
   "ADMIN_NOTIFICATION_EMAIL",
   "EMAIL_FROM",
+  "EMAIL_LOGO_URL",
 ]);
 
 const statusIcons = {

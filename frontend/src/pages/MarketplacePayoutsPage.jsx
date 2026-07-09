@@ -67,8 +67,15 @@ export default function MarketplacePayoutsPage() {
         currency: "NGN",
       });
       setAmount("");
-      setProviderIssue(null);
-      toast.success(response?.withdrawal?.status === "succeeded" ? "Withdrawal sent." : "Withdrawal started.");
+      const issue = getWithdrawalProviderIssue(response);
+      setProviderIssue(issue);
+      toast.success(
+        response?.withdrawal?.status === "succeeded"
+          ? "Withdrawal sent."
+          : response?.withdrawal?.status === "provider_setup_required"
+            ? "Withdrawal queued for finance retry."
+            : "Withdrawal started."
+      );
       await loadPayouts();
     } catch (err) {
       const issue = getWithdrawalProviderIssue(err);

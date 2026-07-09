@@ -13,7 +13,7 @@ const PAYSTACK_INVALID_KEY_MESSAGE =
 const PAYSTACK_STARTER_BUSINESS_PAYOUT_PATTERN =
   /(?:third\s+party\s+payouts?.*starter\s+business|starter\s+business.*third\s+party\s+payouts?)/i;
 const PAYSTACK_BUSINESS_RESTRICTION_MESSAGE =
-  "Tengacion payouts need Paystack business activation before automatic creator and seller withdrawals can run. The withdrawal was not sent and the balance remains available.";
+  "Tengacion payouts are waiting for Paystack business transfer activation. The withdrawal has not been sent yet, and the requested amount is reserved until finance retries or resolves it.";
 
 const parseBooleanFlag = (value, fallback = false) => {
   if (value == null || value === "") {
@@ -63,7 +63,7 @@ const classifyPaystackError = (message = "") => {
       code: "paystack_business_restriction",
       message: PAYSTACK_BUSINESS_RESTRICTION_MESSAGE,
       action:
-        "Upgrade or activate Tengacion's Paystack business for third-party transfers/payouts, then retry the withdrawal.",
+        "Upgrade or activate Tengacion's Paystack business for third-party transfers/payouts, then retry the queued withdrawal.",
     };
   }
   return null;

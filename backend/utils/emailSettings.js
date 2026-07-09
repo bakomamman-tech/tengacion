@@ -15,6 +15,20 @@ const parsePort = (value, fallback = NaN) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+const resolvePublicUrl = (value, baseUrl) => {
+  const raw = toText(value);
+  if (!raw) {
+    return "";
+  }
+  if (/^https?:\/\//i.test(raw)) {
+    return raw;
+  }
+  if (raw.startsWith("/") && baseUrl) {
+    return `${String(baseUrl).replace(/\/+$/, "")}${raw}`;
+  }
+  return "";
+};
+
 const getEmailSettings = () => {
   const smtpUser = toText(process.env.SMTP_USER) || toText(process.env.EMAIL_USER) || config.SMTP_USER;
   const smtpPass = toText(process.env.SMTP_PASS) || toText(process.env.EMAIL_PASS) || config.SMTP_PASS;
@@ -34,12 +48,19 @@ const getEmailSettings = () => {
   const adminNotificationEmail =
     toText(process.env.ADMIN_NOTIFICATION_EMAIL) || config.ADMIN_NOTIFICATION_EMAIL || supportEmail;
   const emailFrom = toText(process.env.EMAIL_FROM) || config.EMAIL_FROM || supportEmail;
+  const appUrl = config.APP_URL || config.appUrl || "https://tengacion.com";
+  const emailLogoUrl =
+    resolvePublicUrl(process.env.EMAIL_LOGO_URL, appUrl) ||
+    config.EMAIL_LOGO_URL ||
+    config.emailLogoUrl ||
+    `${String(appUrl).replace(/\/+$/, "")}/tengacion_logo_512.png`;
 
   return {
     contactEmail,
     supportEmail,
     adminNotificationEmail,
     emailFrom,
+    emailLogoUrl,
     smtpHost,
     smtpPort,
     smtpSecure,

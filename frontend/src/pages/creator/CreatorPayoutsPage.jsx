@@ -96,9 +96,16 @@ export default function CreatorPayoutsPage() {
         currency: summary.currency || wallet.currency || "NGN",
       });
       setAmount("");
-      setProviderIssue(null);
+      const issue = getWithdrawalProviderIssue(response);
+      setProviderIssue(issue);
       const status = response?.withdrawal?.status;
-      toast.success(status === "succeeded" ? "Withdrawal sent." : "Withdrawal started.");
+      toast.success(
+        status === "succeeded"
+          ? "Withdrawal sent."
+          : status === "provider_setup_required"
+            ? "Withdrawal queued for finance retry."
+            : "Withdrawal started."
+      );
       await loadPayoutRequests();
     } catch (err) {
       const issue = getWithdrawalProviderIssue(err);
@@ -284,7 +291,10 @@ export default function CreatorPayoutsPage() {
                       entry.status === "paid"
                       || entry.status === "succeeded"
                         ? "success"
-                        : entry.status === "failed" || entry.status === "rejected" || entry.status === "reversed"
+                        : entry.status === "failed"
+                          || entry.status === "rejected"
+                          || entry.status === "reversed"
+                          || entry.status === "provider_setup_required"
                           ? "warning"
                           : "neutral"
                     }`}

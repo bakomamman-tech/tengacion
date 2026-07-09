@@ -345,6 +345,8 @@ const contactEmail = toText(process.env.CONTACT_EMAIL) || defaultBusinessEmail;
 const supportEmail = toText(process.env.SUPPORT_EMAIL) || contactEmail;
 const adminNotificationEmail = toText(process.env.ADMIN_NOTIFICATION_EMAIL) || supportEmail;
 const emailFrom = toText(process.env.EMAIL_FROM) || supportEmail;
+const emailLogoUrl =
+  resolveCallbackUrl(process.env.EMAIL_LOGO_URL, appUrl) || `${appUrl}/tengacion_logo_512.png`;
 const smtpUser = toText(process.env.SMTP_USER) || toText(process.env.EMAIL_USER);
 const smtpPass = toText(process.env.SMTP_PASS) || toText(process.env.EMAIL_PASS);
 const smtpHost =
@@ -506,6 +508,7 @@ const config = {
   supportEmail,
   adminNotificationEmail,
   emailFrom,
+  emailLogoUrl,
   smtpHost,
   smtpPort,
   smtpSecure,
@@ -516,6 +519,7 @@ const config = {
     supportEmail,
     adminNotificationEmail,
     from: emailFrom,
+    logoUrl: emailLogoUrl,
     configured: emailConfigured,
     smtp: {
       host: smtpHost,
@@ -597,6 +601,7 @@ const config = {
   SUPPORT_EMAIL: supportEmail,
   ADMIN_NOTIFICATION_EMAIL: adminNotificationEmail,
   EMAIL_FROM: emailFrom,
+  EMAIL_LOGO_URL: emailLogoUrl,
   SMTP_HOST: smtpHost,
   SMTP_PORT: smtpPort,
   SMTP_SECURE: smtpSecure,

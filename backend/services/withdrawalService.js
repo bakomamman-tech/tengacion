@@ -41,6 +41,12 @@ const OPEN_WITHDRAWAL_STATUSES = Withdrawal.OPEN_WITHDRAWAL_STATUSES || [
 const FINAL_WITHDRAWAL_STATUSES = ["succeeded", "failed", "reversed"];
 const MIN_WITHDRAWAL_RESERVE_NGN = 1000;
 const DEFAULT_PAGE_LIMIT = 20;
+const PAYSTACK_BUSINESS_RESTRICTION_CODE = "paystack_business_restriction";
+const PROVIDER_SETUP_WITHDRAWAL_STATUS = "provider_setup_required";
+const PROVIDER_SETUP_WITHDRAWAL_MESSAGE =
+  "Tengacion payouts are waiting for Paystack business transfer activation. The withdrawal has not been sent yet, and the requested amount is reserved until finance retries or resolves it.";
+const PROVIDER_SETUP_WITHDRAWAL_ACTION =
+  "Upgrade or activate Tengacion's Paystack business for third-party transfers/payouts, then retry the queued withdrawal.";
 
 const roundMoney = (value) =>
   Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
@@ -93,6 +99,14 @@ const serializeWithdrawal = (withdrawal = {}) => ({
   ownerType: withdrawal.ownerType || "",
   ownerId: toIdString(withdrawal.ownerId),
   userId: toIdString(withdrawal.userId),
+  user: withdrawal.userId && typeof withdrawal.userId === "object"
+    ? {
+        id: toIdString(withdrawal.userId._id || withdrawal.userId),
+        name: withdrawal.userId.name || "",
+        username: withdrawal.userId.username || "",
+        email: withdrawal.userId.email || "",
+      }
+    : null,
   amount: clampMoney(withdrawal.amount),
   currency: normalizeCurrency(withdrawal.currency),
   status: withdrawal.status || "requested",
@@ -132,6 +146,51 @@ const appendWithdrawalStatusHistory = ({
     note: normalizeText(note, 300),
     providerStatus: normalizeText(providerStatus, 80),
   });
+};
+
+const isPaystackBusinessRestrictionError = (error = {}) => {
+  const code = String(error?.code || error?.details?.code || "").trim();
+  const message = String(
+    error?.rawProviderMessage ||
+    error?.providerMessage ||
+    error?.message ||
+    error?.details?.providerMessage ||
+    ""
+  );
+
+  return (
+    code === PAYSTACK_BUSINESS_RESTRICTION_CODE ||
+    /third\s+party\s+payouts?.*starter\s+business/i.test(message) ||
+    /paystack business transfer activation/i.test(message) ||
+    /paystack business activation/i.test(message)
+  );
+};
+
+const buildWithdrawalProviderIssue = (withdrawal = {}) => {
+  if (withdrawal?.status !== PROVIDER_SETUP_WITHDRAWAL_STATUS) {
+    return null;
+  }
+
+  return {
+    code: PAYSTACK_BUSINESS_RESTRICTION_CODE,
+    title: "Paystack business transfer activation required",
+    message: withdrawal.failureReason || PROVIDER_SETUP_WITHDRAWAL_MESSAGE,
+    action: PROVIDER_SETUP_WITHDRAWAL_ACTION,
+  };
+};
+
+const markProviderSetupResolved = (withdrawal) => {
+  if (!withdrawal?.metadata || typeof withdrawal.metadata !== "object") {
+    return;
+  }
+  if (!withdrawal.metadata.providerSetupRequired) {
+    return;
+  }
+  withdrawal.metadata = {
+    ...withdrawal.metadata,
+    providerSetupRequired: false,
+    providerSetupResolvedAt: new Date(),
+  };
 };
 
 const getOpenWithdrawalAmount = async ({
@@ -661,6 +720,8 @@ const markWithdrawalProcessing = async ({ withdrawal, transfer }) => {
   updateWithdrawalFromTransfer({ withdrawal, transfer });
   withdrawal.status = transfer.status === "otp" ? "otp_required" : "processing";
   withdrawal.initiatedAt = withdrawal.initiatedAt || new Date();
+  withdrawal.failureReason = "";
+  markProviderSetupResolved(withdrawal);
   appendWithdrawalStatusHistory({
     withdrawal,
     status: withdrawal.status,
@@ -694,6 +755,7 @@ const markWithdrawalFailed = async ({
   withdrawal.status = "failed";
   withdrawal.failedAt = withdrawal.failedAt || new Date();
   withdrawal.failureReason = normalizeText(reason || transfer?.reason || "Withdrawal failed", 500);
+  markProviderSetupResolved(withdrawal);
   appendWithdrawalStatusHistory({
     withdrawal,
     status: "failed",
@@ -716,6 +778,47 @@ const markWithdrawalFailed = async ({
   return withdrawal;
 };
 
+const markWithdrawalProviderSetupRequired = async ({
+  withdrawal,
+  reason = PROVIDER_SETUP_WITHDRAWAL_MESSAGE,
+  error = null,
+} = {}) => {
+  if (!withdrawal?._id) {
+    return withdrawal;
+  }
+
+  withdrawal.status = PROVIDER_SETUP_WITHDRAWAL_STATUS;
+  withdrawal.providerStatus = PAYSTACK_BUSINESS_RESTRICTION_CODE;
+  withdrawal.failureReason = normalizeText(reason || PROVIDER_SETUP_WITHDRAWAL_MESSAGE, 500);
+  withdrawal.metadata = {
+    ...(withdrawal.metadata && typeof withdrawal.metadata === "object" ? withdrawal.metadata : {}),
+    providerSetupRequired: true,
+    providerSetupCode: PAYSTACK_BUSINESS_RESTRICTION_CODE,
+    providerSetupBlockedAt: new Date(),
+  };
+  withdrawal.providerResponse = {
+    ...(withdrawal.providerResponse && typeof withdrawal.providerResponse === "object"
+      ? withdrawal.providerResponse
+      : {}),
+    provider: "paystack",
+    code: PAYSTACK_BUSINESS_RESTRICTION_CODE,
+    message: withdrawal.failureReason,
+    rawProviderMessage: normalizeText(error?.rawProviderMessage || error?.message || "", 500),
+  };
+  appendWithdrawalStatusHistory({
+    withdrawal,
+    status: PROVIDER_SETUP_WITHDRAWAL_STATUS,
+    note: withdrawal.failureReason,
+    providerStatus: PAYSTACK_BUSINESS_RESTRICTION_CODE,
+  });
+  await withdrawal.save();
+  await notifyAdminsAboutWithdrawal({
+    withdrawal,
+    eventLabel: "Withdrawal queued for Paystack activation",
+  });
+  return withdrawal;
+};
+
 const markWithdrawalSucceeded = async ({ withdrawal, transfer = null } = {}) => {
   if (!withdrawal?._id) {
     return withdrawal;
@@ -726,6 +829,8 @@ const markWithdrawalSucceeded = async ({ withdrawal, transfer = null } = {}) => 
   const alreadySucceeded = withdrawal.status === "succeeded";
   withdrawal.status = "succeeded";
   withdrawal.completedAt = withdrawal.completedAt || transfer?.transferredAt || new Date();
+  withdrawal.failureReason = "";
+  markProviderSetupResolved(withdrawal);
   if (!alreadySucceeded) {
     appendWithdrawalStatusHistory({
       withdrawal,
@@ -765,6 +870,7 @@ const markWithdrawalReversed = async ({ withdrawal, transfer = null, reason = ""
   withdrawal.status = "reversed";
   withdrawal.reversedAt = withdrawal.reversedAt || new Date();
   withdrawal.failureReason = normalizeText(reason || transfer?.reason || "Withdrawal reversed", 500);
+  markProviderSetupResolved(withdrawal);
   if (!alreadyReversed) {
     appendWithdrawalStatusHistory({
       withdrawal,
@@ -841,6 +947,14 @@ const initiateWithdrawalTransfer = async ({
 
     return applyTransferStatusToWithdrawal({ withdrawal, transfer });
   } catch (error) {
+    if (isPaystackBusinessRestrictionError(error)) {
+      return markWithdrawalProviderSetupRequired({
+        withdrawal,
+        reason: error?.message || PROVIDER_SETUP_WITHDRAWAL_MESSAGE,
+        error,
+      });
+    }
+
     await markWithdrawalFailed({
       withdrawal,
       reason: error?.message || "Unable to initiate withdrawal",
@@ -905,9 +1019,11 @@ const createCreatorWithdrawal = async ({
     ownerType: "creator",
     reason: "Tengacion creator withdrawal",
   });
+  const serializedWithdrawal = serializeWithdrawal(updatedWithdrawal.toObject?.() || updatedWithdrawal);
 
   return {
-    withdrawal: serializeWithdrawal(updatedWithdrawal.toObject?.() || updatedWithdrawal),
+    withdrawal: serializedWithdrawal,
+    providerIssue: buildWithdrawalProviderIssue(serializedWithdrawal),
     summary: await buildCreatorWithdrawalAvailability({
       profile,
       currency: normalizedCurrency,
@@ -974,9 +1090,11 @@ const createSellerWithdrawal = async ({
     ownerType: "seller",
     reason: "Tengacion marketplace seller withdrawal",
   });
+  const serializedWithdrawal = serializeWithdrawal(updatedWithdrawal.toObject?.() || updatedWithdrawal);
 
   return {
-    withdrawal: serializeWithdrawal(updatedWithdrawal.toObject?.() || updatedWithdrawal),
+    withdrawal: serializedWithdrawal,
+    providerIssue: buildWithdrawalProviderIssue(serializedWithdrawal),
     summary: await buildSellerWithdrawalAvailability({
       sellerId: marketplaceSeller._id,
       currency: normalizedCurrency,
@@ -1058,6 +1176,162 @@ const listSellerWithdrawals = async ({
   };
 };
 
+const buildWithdrawalAdminQuery = ({ status = "", ownerType = "" } = {}) => {
+  const query = {};
+  const normalizedStatus = normalizeText(status, 80).toLowerCase();
+  const normalizedOwnerType = normalizeText(ownerType, 30).toLowerCase();
+  if (normalizedStatus) {
+    query.status = normalizedStatus;
+  }
+  if (["creator", "seller"].includes(normalizedOwnerType)) {
+    query.ownerType = normalizedOwnerType;
+  }
+  return query;
+};
+
+const summarizeWithdrawals = async (query = {}) => {
+  const rows = await Withdrawal.aggregate([
+    { $match: query },
+    {
+      $group: {
+        _id: "$status",
+        count: { $sum: 1 },
+        amount: { $sum: "$amount" },
+      },
+    },
+  ]);
+
+  const statusCounts = {};
+  const statusAmounts = {};
+  rows.forEach((row) => {
+    const status = row?._id || "unknown";
+    statusCounts[status] = Number(row?.count || 0);
+    statusAmounts[status] = clampMoney(row?.amount || 0);
+  });
+
+  return {
+    statusCounts,
+    statusAmounts,
+    openAmount: clampMoney(
+      OPEN_WITHDRAWAL_STATUSES.reduce((sum, status) => sum + Number(statusAmounts[status] || 0), 0)
+    ),
+    providerSetupRequiredAmount: clampMoney(statusAmounts[PROVIDER_SETUP_WITHDRAWAL_STATUS] || 0),
+  };
+};
+
+const listAdminWithdrawals = async ({
+  status = "",
+  ownerType = "",
+  page = 1,
+  limit = DEFAULT_PAGE_LIMIT,
+} = {}) => {
+  const pagination = buildPagination({ page, limit });
+  const query = buildWithdrawalAdminQuery({ status, ownerType });
+  const [rows, total, summary] = await Promise.all([
+    Withdrawal.find(query)
+      .populate("userId", "name username email")
+      .sort({ requestedAt: -1, createdAt: -1, _id: -1 })
+      .skip(pagination.skip)
+      .limit(pagination.limit)
+      .lean(),
+    Withdrawal.countDocuments(query),
+    summarizeWithdrawals(query),
+  ]);
+
+  return {
+    page: pagination.page,
+    limit: pagination.limit,
+    total,
+    summary,
+    withdrawals: rows.map((row) => {
+      const serialized = serializeWithdrawal(row);
+      return {
+        ...serialized,
+        providerIssue: buildWithdrawalProviderIssue(serialized),
+      };
+    }),
+  };
+};
+
+const loadWithdrawalOwnerForRetry = async (withdrawal) => {
+  if (withdrawal.ownerType === "creator") {
+    const profile = await CreatorProfile.findById(withdrawal.ownerId);
+    if (!profile) {
+      throw buildHttpError("Creator profile for this withdrawal was not found", 404);
+    }
+    return profile;
+  }
+
+  if (withdrawal.ownerType === "seller") {
+    const seller = await MarketplaceSeller.findById(withdrawal.ownerId);
+    if (!seller) {
+      throw buildHttpError("Marketplace seller for this withdrawal was not found", 404);
+    }
+    return seller;
+  }
+
+  throw buildHttpError("Unsupported withdrawal owner type", 400);
+};
+
+const retryWithdrawalTransfer = async ({ withdrawalId, adminUserId = null } = {}) => {
+  const normalizedId = toIdString(withdrawalId);
+  const query = isValidObjectId(normalizedId)
+    ? { _id: normalizedId }
+    : { reference: normalizeText(normalizedId, 80).toLowerCase() };
+  const existingWithdrawal = await Withdrawal.findOne(query);
+  if (!existingWithdrawal) {
+    throw buildHttpError("Withdrawal not found", 404);
+  }
+  if (existingWithdrawal.status !== PROVIDER_SETUP_WITHDRAWAL_STATUS) {
+    throw buildHttpError("Only Paystack activation-queued withdrawals can be retried", 400, {
+      status: existingWithdrawal.status,
+    });
+  }
+
+  const owner = await loadWithdrawalOwnerForRetry(existingWithdrawal);
+  const retryAt = new Date();
+  const withdrawal = await Withdrawal.findOneAndUpdate(
+    { _id: existingWithdrawal._id, status: PROVIDER_SETUP_WITHDRAWAL_STATUS },
+    {
+      $set: {
+        status: "requested",
+        providerStatus: "admin_retry",
+        "metadata.providerSetupRetryAt": retryAt,
+        "metadata.providerSetupRetryBy": adminUserId ? toIdString(adminUserId) : "",
+      },
+      $push: {
+        statusHistory: {
+          status: "requested",
+          at: retryAt,
+          note: "Finance retried the queued Paystack transfer after provider setup review.",
+          providerStatus: "admin_retry",
+        },
+      },
+    },
+    { new: true }
+  );
+  if (!withdrawal) {
+    const latestWithdrawal = await Withdrawal.findById(existingWithdrawal._id).select("status").lean();
+    throw buildHttpError("This withdrawal has already moved out of the Paystack activation queue", 409, {
+      status: latestWithdrawal?.status || "",
+    });
+  }
+
+  const updatedWithdrawal = await initiateWithdrawalTransfer({
+    withdrawal,
+    owner,
+    ownerType: withdrawal.ownerType,
+    reason: withdrawal.ownerType === "seller"
+      ? "Tengacion marketplace seller withdrawal retry"
+      : "Tengacion creator withdrawal retry",
+  });
+  const serializedWithdrawal = serializeWithdrawal(updatedWithdrawal.toObject?.() || updatedWithdrawal);
+  return {
+    withdrawal: serializedWithdrawal,
+    providerIssue: buildWithdrawalProviderIssue(serializedWithdrawal),
+  };
+};
+
 const findWithdrawalForTransfer = async (transferData = {}) => {
   const reference = String(transferData.reference || "").trim().toLowerCase();
   const transferCode = String(transferData.transfer_code || transferData.transferCode || "").trim();
@@ -1125,6 +1399,16 @@ const verifyAndSyncWithdrawal = async (reference) => {
   if (!withdrawal) {
     throw buildHttpError("Withdrawal not found", 404);
   }
+  if (withdrawal.status === PROVIDER_SETUP_WITHDRAWAL_STATUS) {
+    const serializedWithdrawal = serializeWithdrawal(withdrawal.toObject());
+    return {
+      withdrawal: serializedWithdrawal,
+      providerIssue: buildWithdrawalProviderIssue(serializedWithdrawal),
+      verified: false,
+      skipped: true,
+      reason: "provider_setup_required",
+    };
+  }
   if (FINAL_WITHDRAWAL_STATUSES.includes(withdrawal.status)) {
     return {
       withdrawal: serializeWithdrawal(withdrawal.toObject()),
@@ -1152,8 +1436,10 @@ module.exports = {
   createCreatorWithdrawal,
   createSellerWithdrawal,
   handlePaystackTransferWebhookEvent,
+  listAdminWithdrawals,
   listCreatorWithdrawals,
   listSellerWithdrawals,
+  retryWithdrawalTransfer,
   serializeWithdrawal,
   verifyAndSyncWithdrawal,
 };

@@ -14,6 +14,7 @@ const Withdrawal = require("../models/Withdrawal");
 const {
   buildSellerWithdrawalAvailability,
   createSellerWithdrawal,
+  retryWithdrawalTransfer,
 } = require("../services/withdrawalService");
 
 let mongod;
@@ -262,7 +263,7 @@ describe("withdrawalService", () => {
     });
   });
 
-  test("maps Paystack starter business transfer restrictions to a payout setup error", async () => {
+  test("queues Paystack starter business transfer restrictions for admin retry", async () => {
     const { user, seller, product } = await createSeller();
     const buyer = await User.create({
       name: "Marketplace Buyer",
@@ -317,28 +318,65 @@ describe("withdrawalService", () => {
       throw new Error(`Unexpected Paystack URL ${text}`);
     });
 
-    await expect(
-      createSellerWithdrawal({
-        seller,
-        userId: user._id,
-        amount: 4000,
-      })
-    ).rejects.toMatchObject({
-      status: 503,
-      code: "paystack_business_restriction",
-      message:
-        "Tengacion payouts need Paystack business activation before automatic creator and seller withdrawals can run. The withdrawal was not sent and the balance remains available.",
-      details: {
-        code: "paystack_business_restriction",
-        provider: "paystack",
-      },
+    const queuedResult = await createSellerWithdrawal({
+      seller,
+      userId: user._id,
+      amount: 4000,
     });
 
-    const failedWithdrawal = await Withdrawal.findOne({ ownerType: "seller" }).lean();
-    expect(failedWithdrawal).toMatchObject({
-      status: "failed",
+    expect(queuedResult.withdrawal).toMatchObject({
+      ownerType: "seller",
+      amount: 4000,
+      status: "provider_setup_required",
+      providerStatus: "paystack_business_restriction",
       failureReason:
-        "Tengacion payouts need Paystack business activation before automatic creator and seller withdrawals can run. The withdrawal was not sent and the balance remains available.",
+        "Tengacion payouts are waiting for Paystack business transfer activation. The withdrawal has not been sent yet, and the requested amount is reserved until finance retries or resolves it.",
     });
+    expect(queuedResult.providerIssue).toMatchObject({
+      code: "paystack_business_restriction",
+    });
+    expect(queuedResult.summary).toMatchObject({
+      openWithdrawalAmount: 4000,
+      withdrawableAmount: 0,
+    });
+    expect(await RevenueLedgerEntry.countDocuments({ ledgerEventType: "payout_failed" })).toBe(0);
+
+    const queuedWithdrawal = await Withdrawal.findOne({ ownerType: "seller" });
+    expect(queuedWithdrawal).toBeTruthy();
+
+    global.fetch = jest.fn(async (url) => {
+      const text = String(url || "");
+      if (text.includes("/transfer")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            status: true,
+            data: {
+              id: 303,
+              amount: 400000,
+              currency: "NGN",
+              reference: queuedWithdrawal.reference,
+              status: "success",
+              transfer_code: "TRF_retry_transfer",
+              recipient: "RCP_test_recipient",
+            },
+          }),
+        };
+      }
+      throw new Error(`Unexpected Paystack URL ${text}`);
+    });
+
+    const retried = await retryWithdrawalTransfer({
+      withdrawalId: queuedWithdrawal._id,
+      adminUserId: user._id,
+    });
+
+    expect(retried.withdrawal).toMatchObject({
+      status: "succeeded",
+      providerTransferCode: "TRF_retry_transfer",
+      failureReason: "",
+    });
+    expect(await RevenueLedgerEntry.countDocuments({ ledgerEventType: "payout_sent" })).toBe(1);
   });
 });

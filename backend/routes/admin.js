@@ -61,6 +61,10 @@ const {
   reconcileCreatorPayoutBatch,
 } = require("../services/creatorPayoutBatchService");
 const {
+  listAdminWithdrawals,
+  retryWithdrawalTransfer,
+} = require("../services/withdrawalService");
+const {
   buildRevenueLedgerSummary,
 } = require("../services/revenueLedgerService");
 const {
@@ -2000,6 +2004,66 @@ router.get("/finance/payout-batches", async (req, res) => {
       .json({ error: err.message || "Failed to load creator payout batches" });
   }
 });
+
+router.get("/finance/withdrawals", async (req, res) => {
+  try {
+    return res.json(await listAdminWithdrawals({
+      status: req.query.status || "",
+      ownerType: req.query.ownerType || "",
+      page: req.query.page || 1,
+      limit: req.query.limit || 20,
+    }));
+  } catch (err) {
+    const code = err?.status || 500;
+    return res
+      .status(code)
+      .json({ error: err.message || "Failed to load withdrawals", details: err?.details || undefined });
+  }
+});
+
+router.post(
+  "/finance/withdrawals/:id/retry",
+  requireStepUp({ adminOnly: true }),
+  async (req, res) => {
+    try {
+      const result = await retryWithdrawalTransfer({
+        withdrawalId: req.params.id,
+        adminUserId: req.user.id,
+      });
+
+      await writeAuditLog({
+        actorId: req.user.id,
+        action: "withdrawal_paystack_retry",
+        targetType: "withdrawal",
+        targetId: result.withdrawal.id,
+        reason: req.body?.note || "Retry Paystack withdrawal after business activation review",
+        ip: req.ip,
+        userAgent: req.get("user-agent") || "",
+        metadata: {
+          ownerType: result.withdrawal.ownerType || "",
+          ownerId: result.withdrawal.ownerId || "",
+          userId: result.withdrawal.userId || "",
+          amount: Number(result.withdrawal.amount || 0),
+          currency: result.withdrawal.currency || "NGN",
+          reference: result.withdrawal.reference || "",
+          status: result.withdrawal.status || "",
+          providerTransferCode: result.withdrawal.providerTransferCode || "",
+        },
+      }).catch(() => null);
+
+      return res.json({
+        success: true,
+        ...result,
+      });
+    } catch (err) {
+      const code = err?.status || 500;
+      return res.status(code).json({
+        error: err.message || "Failed to retry withdrawal",
+        details: err?.details || undefined,
+      });
+    }
+  }
+);
 
 router.post(
   "/finance/payout-batches",

@@ -5,11 +5,17 @@ const WITHDRAWAL_STATUSES = [
   "requested",
   "processing",
   "otp_required",
+  "provider_setup_required",
   "succeeded",
   "failed",
   "reversed",
 ];
-const OPEN_WITHDRAWAL_STATUSES = ["requested", "processing", "otp_required"];
+const OPEN_WITHDRAWAL_STATUSES = [
+  "requested",
+  "processing",
+  "otp_required",
+  "provider_setup_required",
+];
 
 const statusHistorySchema = new mongoose.Schema(
   {

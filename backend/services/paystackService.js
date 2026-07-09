@@ -10,6 +10,10 @@ const PAYSTACK_PLACEHOLDER_PATTERN =
 const PAYSTACK_INVALID_KEY_PATTERN = /\binvalid\s+key\b/i;
 const PAYSTACK_INVALID_KEY_MESSAGE =
   "Paystack rejected the configured secret key. Set PAYSTACK_SECRET_KEY to the active sk_live_ key from the Paystack dashboard and restart the backend.";
+const PAYSTACK_STARTER_BUSINESS_PAYOUT_PATTERN =
+  /(?:third\s+party\s+payouts?.*starter\s+business|starter\s+business.*third\s+party\s+payouts?)/i;
+const PAYSTACK_BUSINESS_RESTRICTION_MESSAGE =
+  "Tengacion payouts need Paystack business activation before automatic creator and seller withdrawals can run. The withdrawal was not sent and the balance remains available.";
 
 const parseBooleanFlag = (value, fallback = false) => {
   if (value == null || value === "") {
@@ -45,12 +49,30 @@ const getPaystackKeyMode = (secret = getSecretKey()) => {
   return normalized ? "unknown" : "missing";
 };
 
-const normalizePaystackErrorMessage = (message = "") => {
+const classifyPaystackError = (message = "") => {
   const normalized = String(message || "").trim();
   if (PAYSTACK_INVALID_KEY_PATTERN.test(normalized)) {
-    return PAYSTACK_INVALID_KEY_MESSAGE;
+    return {
+      code: "paystack_invalid_secret",
+      message: PAYSTACK_INVALID_KEY_MESSAGE,
+      action: "Configure PAYSTACK_SECRET_KEY with the active Paystack live secret key.",
+    };
   }
-  return normalized || "Failed to initialize Paystack transaction";
+  if (PAYSTACK_STARTER_BUSINESS_PAYOUT_PATTERN.test(normalized)) {
+    return {
+      code: "paystack_business_restriction",
+      message: PAYSTACK_BUSINESS_RESTRICTION_MESSAGE,
+      action:
+        "Upgrade or activate Tengacion's Paystack business for third-party transfers/payouts, then retry the withdrawal.",
+    };
+  }
+  return null;
+};
+
+const normalizePaystackErrorMessage = (message = "") => {
+  const normalized = String(message || "").trim();
+  const classification = classifyPaystackError(normalized);
+  return classification?.message || normalized || "Failed to initialize Paystack transaction";
 };
 
 const isPaystackLiveKeyRequired = () =>
@@ -101,11 +123,13 @@ const createPaystackError = ({
   providerStatus = "",
 } = {}) => {
   const providerMessage = String(message || "").trim();
-  const safeMessage = normalizePaystackErrorMessage(providerMessage);
+  const classification = classifyPaystackError(providerMessage);
+  const safeMessage = classification?.message || normalizePaystackErrorMessage(providerMessage);
   const error = new Error(safeMessage);
   error.status = status;
   error.statusCode = status;
   error.isOperational = true;
+  error.code = classification?.code || "paystack_request_failed";
   error.provider = "paystack";
   error.providerHttpStatus = providerHttpStatus;
   error.providerStatus = providerStatus;
@@ -113,6 +137,15 @@ const createPaystackError = ({
   error.rawProviderMessage = providerMessage;
   error.paystackStatus = providerStatus || providerHttpStatus || "";
   error.paystackMessage = safeMessage;
+  error.details = {
+    code: error.code,
+    provider: "paystack",
+    providerHttpStatus,
+    providerStatus,
+    providerMessage: safeMessage,
+    rawProviderMessage: providerMessage,
+    action: classification?.action || "",
+  };
   return error;
 };
 

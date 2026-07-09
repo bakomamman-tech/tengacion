@@ -261,4 +261,84 @@ describe("withdrawalService", () => {
       providerReference: "TRF_test_transfer",
     });
   });
+
+  test("maps Paystack starter business transfer restrictions to a payout setup error", async () => {
+    const { user, seller, product } = await createSeller();
+    const buyer = await User.create({
+      name: "Marketplace Buyer",
+      username: "marketplace_buyer_two",
+      email: "marketplace-buyer-two@example.com",
+      password: "Password123!",
+      isVerified: true,
+    });
+
+    await createOrderAndPayout({
+      buyerId: buyer._id,
+      sellerId: seller._id,
+      productId: product._id,
+      reference: "confirmed_delivery_restricted_ref",
+      sellerReceivable: 5000,
+      buyerConfirmedHealthy: true,
+    });
+
+    global.fetch = jest.fn(async (url) => {
+      const text = String(url || "");
+      if (text.includes("/transferrecipient")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            status: true,
+            data: {
+              id: 101,
+              recipient_code: "RCP_test_recipient",
+              type: "nuban",
+              name: "Withdrawal Store",
+              details: {
+                account_number: "0123456789",
+                account_name: "Withdrawal Store",
+                bank_code: "044",
+                bank_name: "Access Bank",
+              },
+            },
+          }),
+        };
+      }
+      if (text.includes("/transfer")) {
+        return {
+          ok: false,
+          status: 400,
+          json: async () => ({
+            status: false,
+            message: "You cannot initiate third party payouts as a starter business",
+          }),
+        };
+      }
+      throw new Error(`Unexpected Paystack URL ${text}`);
+    });
+
+    await expect(
+      createSellerWithdrawal({
+        seller,
+        userId: user._id,
+        amount: 4000,
+      })
+    ).rejects.toMatchObject({
+      status: 503,
+      code: "paystack_business_restriction",
+      message:
+        "Tengacion payouts need Paystack business activation before automatic creator and seller withdrawals can run. The withdrawal was not sent and the balance remains available.",
+      details: {
+        code: "paystack_business_restriction",
+        provider: "paystack",
+      },
+    });
+
+    const failedWithdrawal = await Withdrawal.findOne({ ownerType: "seller" }).lean();
+    expect(failedWithdrawal).toMatchObject({
+      status: "failed",
+      failureReason:
+        "Tengacion payouts need Paystack business activation before automatic creator and seller withdrawals can run. The withdrawal was not sent and the balance remains available.",
+    });
+  });
 });

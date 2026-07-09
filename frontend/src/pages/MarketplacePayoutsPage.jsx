@@ -9,6 +9,7 @@ import {
   fetchMarketplacePayoutHistory,
   withdrawMarketplacePayout,
 } from "../services/marketplacePayoutService";
+import { getWithdrawalProviderIssue } from "../utils/withdrawalErrors";
 
 import "../components/marketplace/marketplace.css";
 
@@ -25,6 +26,7 @@ export default function MarketplacePayoutsPage() {
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState("");
   const [withdrawing, setWithdrawing] = useState(false);
+  const [providerIssue, setProviderIssue] = useState(null);
 
   const withdrawalSummary = payload.withdrawalSummary || {};
   const summary = {
@@ -65,10 +67,14 @@ export default function MarketplacePayoutsPage() {
         currency: "NGN",
       });
       setAmount("");
+      setProviderIssue(null);
       toast.success(response?.withdrawal?.status === "succeeded" ? "Withdrawal sent." : "Withdrawal started.");
       await loadPayouts();
     } catch (err) {
-      toast.error(err?.message || "Could not start withdrawal.");
+      const issue = getWithdrawalProviderIssue(err);
+      setProviderIssue(issue);
+      toast.error(issue?.message || err?.message || "Could not start withdrawal.");
+      await loadPayouts();
     } finally {
       setWithdrawing(false);
     }
@@ -101,6 +107,14 @@ export default function MarketplacePayoutsPage() {
                 Refresh
               </button>
             </div>
+
+            {providerIssue ? (
+              <section className="marketplace-payment-notice marketplace-payment-notice--warn" role="alert">
+                <strong>{providerIssue.title}</strong>
+                <span>{providerIssue.message}</span>
+                {providerIssue.action ? <small>{providerIssue.action}</small> : null}
+              </section>
+            ) : null}
 
             <form className="marketplace-seller-form" onSubmit={handleWithdraw}>
               <div className="marketplace-form-grid">

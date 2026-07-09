@@ -11,6 +11,7 @@ import {
   createCreatorWithdrawal,
   getCreatorWithdrawals,
 } from "../../api";
+import { getWithdrawalProviderIssue } from "../../utils/withdrawalErrors";
 
 const payoutStatusLabel = (value = "") =>
   String(value || "")
@@ -25,6 +26,7 @@ export default function CreatorPayoutsPage() {
   const [payoutsLoading, setPayoutsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [amount, setAmount] = useState("");
+  const [providerIssue, setProviderIssue] = useState(null);
   const wallet = dashboard.wallet || {};
   const summary = wallet.summary || dashboard.summary || {};
   const payoutReadiness = wallet.payoutReadiness || { ready: false, checks: [] };
@@ -94,11 +96,15 @@ export default function CreatorPayoutsPage() {
         currency: summary.currency || wallet.currency || "NGN",
       });
       setAmount("");
+      setProviderIssue(null);
       const status = response?.withdrawal?.status;
       toast.success(status === "succeeded" ? "Withdrawal sent." : "Withdrawal started.");
       await loadPayoutRequests();
     } catch (err) {
-      toast.error(err?.message || "Could not start withdrawal.");
+      const issue = getWithdrawalProviderIssue(err);
+      setProviderIssue(issue);
+      toast.error(issue?.message || err?.message || "Could not start withdrawal.");
+      await loadPayoutRequests();
     } finally {
       setSubmitting(false);
     }
@@ -202,6 +208,16 @@ export default function CreatorPayoutsPage() {
             Refresh
           </button>
         </div>
+
+        {providerIssue ? (
+          <div className="creator-inline-notice warning" role="alert">
+            <div>
+              <strong>{providerIssue.title}</strong>
+              <span>{providerIssue.message}</span>
+            </div>
+            {providerIssue.action ? <span>{providerIssue.action}</span> : null}
+          </div>
+        ) : null}
 
         <div className="creator-stack-list">
           <div className="creator-stack-row">

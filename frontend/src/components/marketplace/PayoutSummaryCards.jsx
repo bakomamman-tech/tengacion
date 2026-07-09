@@ -1,20 +1,22 @@
+const formatNaira = (value = 0) => `NGN ${Number(value || 0).toLocaleString()}`;
+
 export default function PayoutSummaryCards({ summary = {} }) {
   const cards = [
     {
       label: "Total sales",
-      value: `₦${Number(summary.totalSales || 0).toLocaleString()}`,
+      value: formatNaira(summary.totalSales || 0),
     },
     {
-      label: "Platform fees",
-      value: `₦${Number(summary.totalPlatformFees || 0).toLocaleString()}`,
+      label: "Buyer-confirmed",
+      value: formatNaira(summary.confirmedNetReceivable || 0),
     },
     {
-      label: "Net receivable",
-      value: `₦${Number(summary.totalNetReceivable || 0).toLocaleString()}`,
+      label: "Held until delivery",
+      value: formatNaira(summary.heldNetReceivable || 0),
     },
     {
-      label: "Completed orders",
-      value: Number(summary.totalCompletedOrders || 0).toLocaleString(),
+      label: "Available to withdraw",
+      value: formatNaira(summary.withdrawableAmount || summary.availableBalance || 0),
     },
   ];
 

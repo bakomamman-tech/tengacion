@@ -8,6 +8,8 @@ export default function MarketplaceBuyerOrdersPage({
   orders = [],
   loading = false,
   onRetryVerify,
+  onConfirmDelivery,
+  confirmingId = "",
 }) {
   if (loading) {
     return <div className="marketplace-loading-state">Loading buyer orders...</div>;
@@ -26,7 +28,12 @@ export default function MarketplaceBuyerOrdersPage({
     <div className="marketplace-order-grid">
       {orders.map((order) => {
         const paymentStatus = String(order.paymentStatus || "").toLowerCase();
+        const orderStatus = String(order.orderStatus || "").toLowerCase();
         const canRetry = Boolean(order.paymentReference && typeof onRetryVerify === "function");
+        const canConfirmDelivery = paymentStatus === "paid" &&
+          orderStatus === "delivered" &&
+          !order.buyerDeliveryConfirmedAt &&
+          typeof onConfirmDelivery === "function";
 
         return (
           <article key={order._id} className="marketplace-order-card">
@@ -49,6 +56,23 @@ export default function MarketplaceBuyerOrdersPage({
             <div className="marketplace-muted">
               Reference: {order.paymentReference || "Pending"} - {new Date(order.createdAt || "").toLocaleString()}
             </div>
+            {order.buyerDeliveryConfirmedAt ? (
+              <div className="marketplace-muted">
+                Delivery confirmed healthy on {new Date(order.buyerDeliveryConfirmedAt).toLocaleString()}
+              </div>
+            ) : null}
+            {canConfirmDelivery ? (
+              <div className="marketplace-inline-actions">
+                <button
+                  type="button"
+                  className="marketplace-primary-btn"
+                  disabled={confirmingId === order._id}
+                  onClick={() => onConfirmDelivery(order)}
+                >
+                  {confirmingId === order._id ? "Confirming..." : "Confirm delivered healthy"}
+                </button>
+              </div>
+            ) : null}
             {["pending", "initiated", "failed"].includes(paymentStatus) ? (
               <PaymentRecoveryNotice
                 title={paymentStatus === "failed" ? "Payment failed" : "Payment pending"}

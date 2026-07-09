@@ -5,20 +5,40 @@ import QuickAccessLayout from "../components/QuickAccessLayout";
 import PayoutSummaryCards from "../components/marketplace/PayoutSummaryCards";
 import OrderStatusBadge from "../components/marketplace/OrderStatusBadge";
 import { useAuth } from "../context/AuthContext";
-import { fetchMarketplacePayoutHistory } from "../services/marketplacePayoutService";
+import {
+  fetchMarketplacePayoutHistory,
+  withdrawMarketplacePayout,
+} from "../services/marketplacePayoutService";
 
 import "../components/marketplace/marketplace.css";
 
+const formatNaira = (value = 0) => `NGN ${Number(value || 0).toLocaleString()}`;
+
 export default function MarketplacePayoutsPage() {
   const { user } = useAuth();
-  const [payload, setPayload] = useState({ payouts: [], summary: {} });
+  const [payload, setPayload] = useState({
+    payouts: [],
+    withdrawals: [],
+    summary: {},
+    withdrawalSummary: {},
+  });
   const [loading, setLoading] = useState(true);
+  const [amount, setAmount] = useState("");
+  const [withdrawing, setWithdrawing] = useState(false);
+
+  const withdrawalSummary = payload.withdrawalSummary || {};
+  const summary = {
+    ...(payload.summary || {}),
+    ...withdrawalSummary,
+  };
+  const withdrawableAmount = Number(withdrawalSummary.withdrawableAmount || 0);
+  const reserveAmount = Number(withdrawalSummary.reserveAmount || 1000);
 
   const loadPayouts = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetchMarketplacePayoutHistory();
-      setPayload(response || { payouts: [], summary: {} });
+      setPayload(response || { payouts: [], withdrawals: [], summary: {}, withdrawalSummary: {} });
     } catch (err) {
       toast.error(err?.message || "Could not load payout history.");
     } finally {
@@ -30,11 +50,35 @@ export default function MarketplacePayoutsPage() {
     loadPayouts();
   }, [loadPayouts]);
 
+  const handleWithdraw = async (event) => {
+    event.preventDefault();
+    const requestedAmount = Number(amount);
+    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
+      toast.error("Enter a withdrawal amount.");
+      return;
+    }
+
+    setWithdrawing(true);
+    try {
+      const response = await withdrawMarketplacePayout({
+        amount: requestedAmount,
+        currency: "NGN",
+      });
+      setAmount("");
+      toast.success(response?.withdrawal?.status === "succeeded" ? "Withdrawal sent." : "Withdrawal started.");
+      await loadPayouts();
+    } catch (err) {
+      toast.error(err?.message || "Could not start withdrawal.");
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
   return (
     <QuickAccessLayout
       user={user}
       title="Marketplace Payouts"
-      subtitle="Review marketplace sales totals, fees retained by Tengacion, and every payout record tied to a paid order."
+      subtitle="Withdraw buyer-confirmed marketplace earnings while undelivered or damaged orders stay held."
       showAppSidebar={false}
       showRightRail={false}
       showHero={false}
@@ -42,7 +86,7 @@ export default function MarketplacePayoutsPage() {
       mainClassName="quick-access-main--marketplace"
     >
       <div className="marketplace-page">
-        <PayoutSummaryCards summary={payload.summary || {}} />
+        <PayoutSummaryCards summary={summary} />
 
         {loading ? <div className="marketplace-loading-state">Loading payout history...</div> : null}
 
@@ -50,12 +94,77 @@ export default function MarketplacePayoutsPage() {
           <section className="marketplace-panel">
             <div className="marketplace-section__head">
               <div>
-                <span className="marketplace-section__eyebrow">Payout history</span>
-                <h2 className="marketplace-section__title">Every seller settlement record</h2>
+                <span className="marketplace-section__eyebrow">Withdrawals</span>
+                <h2 className="marketplace-section__title">Seller payout wallet</h2>
               </div>
               <button type="button" className="marketplace-secondary-btn" onClick={loadPayouts}>
                 Refresh
               </button>
+            </div>
+
+            <form className="marketplace-seller-form" onSubmit={handleWithdraw}>
+              <div className="marketplace-form-grid">
+                <label>
+                  <span>Withdrawal amount</span>
+                  <input
+                    type="number"
+                    min="100"
+                    step="100"
+                    value={amount}
+                    onChange={(event) => setAmount(event.target.value)}
+                    placeholder="1000"
+                    disabled={withdrawing || withdrawableAmount <= 0}
+                  />
+                </label>
+                <div className="marketplace-summary-card">
+                  <strong>{formatNaira(withdrawableAmount)}</strong>
+                  <span>Available after reserve</span>
+                </div>
+                <div className="marketplace-summary-card">
+                  <strong>{formatNaira(reserveAmount)}</strong>
+                  <span>Required balance left behind</span>
+                </div>
+              </div>
+              <div className="marketplace-form-actions">
+                <small className="marketplace-muted">
+                  Only buyer-confirmed, healthy delivered orders are available for withdrawal.
+                </small>
+                <button
+                  type="submit"
+                  className="marketplace-primary-btn"
+                  disabled={withdrawing || withdrawableAmount <= 0}
+                >
+                  {withdrawing ? "Withdrawing..." : "Withdraw now"}
+                </button>
+              </div>
+            </form>
+
+            {(payload.withdrawals || []).length ? (
+              <div className="marketplace-order-grid">
+                {(payload.withdrawals || []).map((entry) => (
+                  <article key={entry.id} className="marketplace-payout-row">
+                    <div className="marketplace-payout-row__top">
+                      <strong>{formatNaira(entry.amount || 0)}</strong>
+                      <OrderStatusBadge value={entry.status} />
+                    </div>
+                    <div className="marketplace-muted">
+                      {entry.reference || "Withdrawal"} {entry.providerTransferCode ? `- ${entry.providerTransferCode}` : ""} - {new Date(entry.requestedAt || "").toLocaleString()}
+                    </div>
+                    {entry.failureReason ? <div className="marketplace-muted">{entry.failureReason}</div> : null}
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {!loading ? (
+          <section className="marketplace-panel">
+            <div className="marketplace-section__head">
+              <div>
+                <span className="marketplace-section__eyebrow">Payout history</span>
+                <h2 className="marketplace-section__title">Buyer-confirmation eligibility</h2>
+              </div>
             </div>
 
             {(payload.payouts || []).length ? (
@@ -64,24 +173,26 @@ export default function MarketplacePayoutsPage() {
                   <article key={entry._id} className="marketplace-payout-row">
                     <div className="marketplace-payout-row__top">
                       <strong>{entry.orderReference || "Marketplace order"}</strong>
-                      <OrderStatusBadge value={entry.payoutStatus} />
+                      <OrderStatusBadge value={entry.payoutEligible ? "completed" : entry.orderStatus || entry.payoutStatus} />
                     </div>
                     <div className="marketplace-summary-grid">
                       <div className="marketplace-summary-card">
-                        <strong>₦{Number(entry.grossAmount || 0).toLocaleString()}</strong>
+                        <strong>{formatNaira(entry.grossAmount || 0)}</strong>
                         <span>Gross amount</span>
                       </div>
                       <div className="marketplace-summary-card">
-                        <strong>₦{Number(entry.platformFee || 0).toLocaleString()}</strong>
+                        <strong>{formatNaira(entry.platformFee || 0)}</strong>
                         <span>Platform fee</span>
                       </div>
                       <div className="marketplace-summary-card">
-                        <strong>₦{Number(entry.netAmount || 0).toLocaleString()}</strong>
+                        <strong>{formatNaira(entry.netAmount || 0)}</strong>
                         <span>Net receivable</span>
                       </div>
                     </div>
                     <div className="marketplace-muted">
-                      {entry.payoutReference ? `Payout reference: ${entry.payoutReference}` : "Awaiting payout reference"} • {new Date(entry.createdAt || "").toLocaleString()}
+                      {entry.payoutEligible
+                        ? "Buyer confirmed healthy delivery"
+                        : "Held until buyer confirms healthy delivery"} - {new Date(entry.createdAt || "").toLocaleString()}
                     </div>
                   </article>
                 ))}

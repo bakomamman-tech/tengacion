@@ -1,6 +1,7 @@
 import OrderStatusBadge from "../components/marketplace/OrderStatusBadge";
 
-const sellerStatusSteps = ["processing", "shipped_or_ready", "delivered", "completed"];
+const sellerStatusSteps = ["processing", "shipped_or_ready", "delivered"];
+const formatNaira = (value = 0) => `NGN ${Number(value || 0).toLocaleString()}`;
 
 export default function MarketplaceSellerOrdersPage({
   orders = [],
@@ -27,18 +28,23 @@ export default function MarketplaceSellerOrdersPage({
         <article key={order._id} className="marketplace-order-card">
           <div className="marketplace-order-card__top">
             <strong>{order.productSnapshot?.title || "Marketplace order"}</strong>
-            <span>₦{Number(order.totalPrice || 0).toLocaleString()}</span>
+            <span>{formatNaira(order.totalPrice || 0)}</span>
           </div>
           <div className="marketplace-pill-row">
             <OrderStatusBadge value={order.paymentStatus} />
             <OrderStatusBadge value={order.orderStatus} />
           </div>
           <div className="marketplace-muted">
-            Buyer: {order.buyer?.name || order.buyer?.username || "Buyer"} • {order.deliveryMethod?.replace(/_/g, " ")}
+            Buyer: {order.buyer?.name || order.buyer?.username || "Buyer"} - {order.deliveryMethod?.replace(/_/g, " ")}
           </div>
           <div className="marketplace-muted">
-            Reference: {order.paymentReference || "Pending"} • {new Date(order.createdAt || "").toLocaleString()}
+            Reference: {order.paymentReference || "Pending"} - {new Date(order.createdAt || "").toLocaleString()}
           </div>
+          {order.buyerDeliveryConfirmedAt ? (
+            <div className="marketplace-muted">
+              Buyer confirmed healthy delivery on {new Date(order.buyerDeliveryConfirmedAt).toLocaleString()}
+            </div>
+          ) : null}
           <div className="marketplace-inline-actions">
             {sellerStatusSteps.map((status) => (
               <button

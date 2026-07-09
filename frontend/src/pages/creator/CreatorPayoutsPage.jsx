@@ -8,8 +8,8 @@ import {
   formatShortDate,
 } from "../../components/creator/creatorConfig";
 import {
-  createCreatorPayoutRequest,
-  getCreatorPayoutRequests,
+  createCreatorWithdrawal,
+  getCreatorWithdrawals,
 } from "../../api";
 
 const payoutStatusLabel = (value = "") =>
@@ -21,11 +21,10 @@ const payoutStatusLabel = (value = "") =>
 
 export default function CreatorPayoutsPage() {
   const { creatorProfile, dashboard } = useCreatorWorkspace();
-  const [payoutPayload, setPayoutPayload] = useState({ requests: [], summary: {} });
+  const [payoutPayload, setPayoutPayload] = useState({ withdrawals: [], summary: {} });
   const [payoutsLoading, setPayoutsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [amount, setAmount] = useState("");
-  const [creatorNote, setCreatorNote] = useState("");
   const wallet = dashboard.wallet || {};
   const summary = wallet.summary || dashboard.summary || {};
   const payoutReadiness = wallet.payoutReadiness || { ready: false, checks: [] };
@@ -43,34 +42,34 @@ export default function CreatorPayoutsPage() {
   const recentEntries = Array.isArray(wallet.recentEntries)
     ? wallet.recentEntries.slice(0, 8)
     : [];
-  const payoutRequests = Array.isArray(payoutPayload.requests)
-    ? payoutPayload.requests.slice(0, 8)
+  const withdrawals = Array.isArray(payoutPayload.withdrawals)
+    ? payoutPayload.withdrawals.slice(0, 8)
     : [];
   const payoutSummary = payoutPayload.summary || {};
-  const availableForRequest = Number.isFinite(Number(payoutSummary.availableForRequest))
-    ? Number(payoutSummary.availableForRequest)
+  const withdrawableAmount = Number.isFinite(Number(payoutSummary.withdrawableAmount))
+    ? Number(payoutSummary.withdrawableAmount)
     : Number(summary.availableBalance || 0);
-  const openRequestAmount = Number(payoutSummary.openRequestAmount || 0);
-  const minimumPayoutAmount = 1000;
+  const openWithdrawalAmount = Number(payoutSummary.openWithdrawalAmount || 0);
+  const reserveAmount = Number(payoutSummary.reserveAmount || 1000);
   const canSubmitPayoutRequest =
-    canRequestPayout && availableForRequest >= minimumPayoutAmount && !submitting;
+    canRequestPayout && withdrawableAmount > 0 && !submitting;
   const requestHelpText = useMemo(() => {
     if (!canRequestPayout) {
-      return payoutReadiness.nextStep || "Complete payout readiness before requesting review.";
+      return payoutReadiness.nextStep || "Complete payout readiness before withdrawing.";
     }
-    if (availableForRequest < minimumPayoutAmount) {
-      return `Minimum payout request is ${formatCurrency(minimumPayoutAmount)}.`;
+    if (withdrawableAmount <= 0) {
+      return `A reserve of ${formatCurrency(reserveAmount)} must remain in your account.`;
     }
-    return `${formatCurrency(openRequestAmount)} is already reserved in open payout requests.`;
-  }, [availableForRequest, canRequestPayout, openRequestAmount, payoutReadiness.nextStep]);
+    return `${formatCurrency(openWithdrawalAmount)} is already reserved in open withdrawals.`;
+  }, [canRequestPayout, openWithdrawalAmount, payoutReadiness.nextStep, reserveAmount, withdrawableAmount]);
 
   const loadPayoutRequests = useCallback(async () => {
     setPayoutsLoading(true);
     try {
-      const next = await getCreatorPayoutRequests({ limit: 8 });
-      setPayoutPayload(next || { requests: [], summary: {} });
+      const next = await getCreatorWithdrawals({ limit: 8 });
+      setPayoutPayload(next || { withdrawals: [], summary: {} });
     } catch (err) {
-      toast.error(err?.message || "Could not load payout requests.");
+      toast.error(err?.message || "Could not load withdrawals.");
     } finally {
       setPayoutsLoading(false);
     }
@@ -90,17 +89,16 @@ export default function CreatorPayoutsPage() {
 
     setSubmitting(true);
     try {
-      await createCreatorPayoutRequest({
+      const response = await createCreatorWithdrawal({
         amount: requestedAmount,
         currency: summary.currency || wallet.currency || "NGN",
-        creatorNote,
       });
       setAmount("");
-      setCreatorNote("");
-      toast.success("Payout request submitted for review.");
+      const status = response?.withdrawal?.status;
+      toast.success(status === "succeeded" ? "Withdrawal sent." : "Withdrawal started.");
       await loadPayoutRequests();
     } catch (err) {
-      toast.error(err?.message || "Could not submit payout request.");
+      toast.error(err?.message || "Could not start withdrawal.");
     } finally {
       setSubmitting(false);
     }
@@ -117,6 +115,10 @@ export default function CreatorPayoutsPage() {
         </div>
 
         <div className="creator-stack-list">
+          <div className="creator-stack-row">
+            <span>Bank</span>
+            <strong>{payoutReadiness.bankName || creatorProfile.bankName || "Not set"}</strong>
+          </div>
           <div className="creator-stack-row">
             <span>Account number</span>
             <strong>{payoutReadiness.accountNumberMasked || "Not set"}</strong>
@@ -138,7 +140,7 @@ export default function CreatorPayoutsPage() {
             <strong>{readinessStatusLabel}</strong>
           </div>
           <div className="creator-stack-row">
-            <span>Payout request</span>
+            <span>Withdrawals</span>
             <strong>{canRequestPayout ? "Available" : "Blocked"}</strong>
           </div>
           {payoutReadiness.nextStep ? (
@@ -193,8 +195,8 @@ export default function CreatorPayoutsPage() {
       <section className="creator-panel card">
         <div className="creator-panel-head">
           <div>
-            <h2>Request payout review</h2>
-            <p>Submit an eligible available balance for admin review and settlement tracking.</p>
+            <h2>Withdraw now</h2>
+            <p>Withdraw eligible creator earnings directly to your verified Nigerian bank account.</p>
           </div>
           <button type="button" className="creator-secondary-btn" onClick={loadPayoutRequests}>
             Refresh
@@ -203,12 +205,16 @@ export default function CreatorPayoutsPage() {
 
         <div className="creator-stack-list">
           <div className="creator-stack-row">
-            <span>Available for request</span>
-            <strong>{formatCurrency(availableForRequest)}</strong>
+            <span>Available to withdraw</span>
+            <strong>{formatCurrency(withdrawableAmount)}</strong>
           </div>
           <div className="creator-stack-row">
-            <span>Open requests</span>
-            <strong>{formatCurrency(openRequestAmount)}</strong>
+            <span>Required reserve</span>
+            <strong>{formatCurrency(reserveAmount)}</strong>
+          </div>
+          <div className="creator-stack-row">
+            <span>Open withdrawals</span>
+            <strong>{formatCurrency(openWithdrawalAmount)}</strong>
           </div>
         </div>
 
@@ -217,7 +223,7 @@ export default function CreatorPayoutsPage() {
             <span>Amount</span>
             <input
               type="number"
-              min={minimumPayoutAmount}
+              min="100"
               step="100"
               value={amount}
               onChange={(event) => setAmount(event.target.value)}
@@ -225,19 +231,10 @@ export default function CreatorPayoutsPage() {
               disabled={!canSubmitPayoutRequest}
             />
           </label>
-          <label className="creator-form-full">
-            <span>Note for finance review</span>
-            <textarea
-              value={creatorNote}
-              onChange={(event) => setCreatorNote(event.target.value)}
-              placeholder="Optional payout context"
-              disabled={!canSubmitPayoutRequest}
-            />
-          </label>
           <div className="creator-form-actions creator-form-full">
             <small className="creator-field-hint">{requestHelpText}</small>
             <button type="submit" className="creator-primary-btn" disabled={!canSubmitPayoutRequest}>
-              {submitting ? "Submitting..." : "Submit request"}
+              {submitting ? "Withdrawing..." : "Withdraw now"}
             </button>
           </div>
         </form>
@@ -246,31 +243,32 @@ export default function CreatorPayoutsPage() {
       <section className="creator-panel card">
         <div className="creator-panel-head">
           <div>
-            <h2>Payout requests</h2>
-            <p>Admin review state, support messages, and payout references for each request.</p>
+            <h2>Withdrawals</h2>
+            <p>Automatic payout attempts, provider state, and bank transfer references.</p>
           </div>
         </div>
 
         <div className="creator-activity-list">
-          {payoutsLoading ? <div className="creator-empty-card">Loading payout requests...</div> : null}
-          {!payoutsLoading && payoutRequests.length ? (
-            payoutRequests.map((entry) => (
+          {payoutsLoading ? <div className="creator-empty-card">Loading withdrawals...</div> : null}
+          {!payoutsLoading && withdrawals.length ? (
+            withdrawals.map((entry) => (
               <article key={entry.id} className="creator-activity-item">
                 <div>
                   <strong>{formatCurrency(entry.amount || 0)}</strong>
                   <p>
-                    {entry.requestReference || "Payout request"}
-                    {entry.payoutReference ? ` - Ref ${entry.payoutReference}` : ""}
+                    {entry.reference || "Withdrawal"}
+                    {entry.providerTransferCode ? ` - Ref ${entry.providerTransferCode}` : ""}
                   </p>
-                  {entry.creatorVisibleMessage ? <p>{entry.creatorVisibleMessage}</p> : null}
+                  {entry.failureReason ? <p>{entry.failureReason}</p> : null}
                 </div>
 
                 <div className="creator-activity-meta">
                   <span
                     className={`creator-status-badge ${
                       entry.status === "paid"
+                      || entry.status === "succeeded"
                         ? "success"
-                        : entry.status === "failed" || entry.status === "rejected"
+                        : entry.status === "failed" || entry.status === "rejected" || entry.status === "reversed"
                           ? "warning"
                           : "neutral"
                     }`}
@@ -282,9 +280,9 @@ export default function CreatorPayoutsPage() {
               </article>
             ))
           ) : null}
-          {!payoutsLoading && !payoutRequests.length ? (
+          {!payoutsLoading && !withdrawals.length ? (
             <div className="creator-empty-card">
-              No payout requests yet. Eligible requests will appear here after submission.
+              No withdrawals yet. Eligible withdrawals will appear here after submission.
             </div>
           ) : null}
         </div>

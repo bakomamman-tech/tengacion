@@ -19,6 +19,7 @@ const buildEmptyForm = (user = null) => ({
   storeName: "",
   phoneNumber: user?.phone || "",
   bankName: "",
+  bankCode: "",
   accountNumber: "",
   accountName: "",
   residentialAddress: "",
@@ -36,6 +37,7 @@ const toFormState = (seller = null, user = null) =>
         storeName: seller.storeName || "",
         phoneNumber: seller.phoneNumber || user?.phone || "",
         bankName: seller.bankName || "",
+        bankCode: seller.bankCode || "",
         accountNumber: seller.accountNumber || "",
         accountName: seller.accountName || "",
         residentialAddress: seller.residentialAddress || "",
@@ -124,31 +126,31 @@ const NIGERIAN_STATES = [
 ];
 
 const NIGERIAN_BANKS = [
-  "Access Bank",
-  "Citibank Nigeria",
-  "Ecobank Nigeria",
-  "Fidelity Bank",
-  "First Bank of Nigeria",
-  "First City Monument Bank",
-  "Globus Bank",
-  "Guaranty Trust Bank",
-  "Keystone Bank",
-  "Kuda Microfinance Bank",
-  "Moniepoint Microfinance Bank",
-  "Opay Digital Services",
-  "PalmPay",
-  "Polaris Bank",
-  "Providus Bank",
-  "Stanbic IBTC Bank",
-  "Standard Chartered Bank Nigeria",
-  "Sterling Bank",
-  "SunTrust Bank",
-  "Titan Trust Bank",
-  "Union Bank of Nigeria",
-  "United Bank for Africa",
-  "Unity Bank",
-  "Wema Bank",
-  "Zenith Bank",
+  { name: "Access Bank", code: "044" },
+  { name: "Citibank Nigeria", code: "023" },
+  { name: "Ecobank Nigeria", code: "050" },
+  { name: "Fidelity Bank", code: "070" },
+  { name: "First Bank of Nigeria", code: "011" },
+  { name: "First City Monument Bank", code: "214" },
+  { name: "Globus Bank", code: "00103" },
+  { name: "Guaranty Trust Bank", code: "058" },
+  { name: "Keystone Bank", code: "082" },
+  { name: "Kuda Microfinance Bank", code: "50211" },
+  { name: "Moniepoint Microfinance Bank", code: "50515" },
+  { name: "Opay Digital Services", code: "999992" },
+  { name: "PalmPay", code: "999991" },
+  { name: "Polaris Bank", code: "076" },
+  { name: "Providus Bank", code: "101" },
+  { name: "Stanbic IBTC Bank", code: "221" },
+  { name: "Standard Chartered Bank Nigeria", code: "068" },
+  { name: "Sterling Bank", code: "232" },
+  { name: "SunTrust Bank", code: "100" },
+  { name: "Titan Trust Bank", code: "102" },
+  { name: "Union Bank of Nigeria", code: "032" },
+  { name: "United Bank for Africa", code: "033" },
+  { name: "Unity Bank", code: "215" },
+  { name: "Wema Bank", code: "035" },
+  { name: "Zenith Bank", code: "057" },
 ];
 
 const CITY_SUGGESTIONS = [
@@ -199,6 +201,15 @@ export default function MarketplaceSellerOnboardingPage() {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
+  const updateBank = (bankCode) => {
+    const selected = NIGERIAN_BANKS.find((bank) => bank.code === bankCode);
+    setForm((current) => ({
+      ...current,
+      bankCode,
+      bankName: selected?.name || current.bankName,
+    }));
+  };
+
   const submitForm = async (mode) => {
     setSaving(true);
     try {
@@ -233,8 +244,14 @@ export default function MarketplaceSellerOnboardingPage() {
       seller?.cacCertificate?.url
   );
   const bankOptions = useMemo(
-    () => [...new Set([form.bankName, ...NIGERIAN_BANKS].filter(Boolean))],
-    [form.bankName]
+    () => {
+      const options = [...NIGERIAN_BANKS];
+      if (form.bankName && !options.some((bank) => bank.name === form.bankName)) {
+        options.unshift({ name: form.bankName, code: form.bankCode || "" });
+      }
+      return options;
+    },
+    [form.bankCode, form.bankName]
   );
   const completion = useMemo(() => {
     const requiredChecks = [
@@ -242,6 +259,7 @@ export default function MarketplaceSellerOnboardingPage() {
       form.storeName,
       form.phoneNumber,
       form.bankName,
+      form.bankCode,
       form.accountNumber,
       form.accountName,
       form.residentialAddress,
@@ -510,19 +528,35 @@ export default function MarketplaceSellerOnboardingPage() {
                     <select
                       id="seller-bankName"
                       name="bankName"
-                      value={form.bankName}
+                      value={form.bankCode}
                       autoComplete="organization"
                       required
-                      onChange={(event) => updateField("bankName", event.target.value)}
+                      onChange={(event) => updateBank(event.target.value)}
                     >
                       <option value="">Select payout bank</option>
                       {bankOptions.map((bank) => (
-                        <option key={bank} value={bank}>
-                          {bank}
+                        <option key={`${bank.code}-${bank.name}`} value={bank.code}>
+                          {bank.name}
                         </option>
                       ))}
                     </select>
-                    <p className="marketplace-field-hint">Select the bank that will receive marketplace settlements.</p>
+                    <p className="marketplace-field-hint">Select the bank that will receive automatic marketplace withdrawals.</p>
+                  </div>
+
+                  <div className="marketplace-form-field">
+                    <div className="marketplace-form-field__top">
+                      <label htmlFor="seller-bankCode">Bank code</label>
+                      <span>Required</span>
+                    </div>
+                    <input
+                      id="seller-bankCode"
+                      name="bankCode"
+                      value={form.bankCode}
+                      autoComplete="off"
+                      required
+                      onChange={(event) => updateField("bankCode", event.target.value.trim())}
+                    />
+                    <p className="marketplace-field-hint">This Paystack bank code is used for automatic Nigerian bank transfers.</p>
                   </div>
 
                   <div className="marketplace-form-field">

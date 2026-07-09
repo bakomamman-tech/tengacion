@@ -9,6 +9,7 @@ import MarketplaceSellerOrdersPage from "./MarketplaceSellerOrdersPage";
 import {
   fetchBuyerMarketplaceOrders,
   fetchSellerMarketplaceOrders,
+  confirmMarketplaceOrderDelivery,
   updateMarketplaceOrderStatus,
   verifyMarketplacePayment,
 } from "../services/marketplaceOrderService";
@@ -178,6 +179,21 @@ export default function MarketplaceOrdersPage() {
             orders={buyerOrders}
             loading={loading}
             onRetryVerify={retryMarketplaceReference}
+            onConfirmDelivery={async (order) => {
+              setUpdatingId(order._id);
+              try {
+                await confirmMarketplaceOrderDelivery(order._id, {
+                  receivedHealthy: true,
+                });
+                toast.success("Delivery confirmed. Seller payout is now eligible.");
+                await loadOrders();
+              } catch (err) {
+                toast.error(err?.message || "Could not confirm delivery.");
+              } finally {
+                setUpdatingId("");
+              }
+            }}
+            confirmingId={updatingId}
           />
         ) : (
           <MarketplaceSellerOrdersPage

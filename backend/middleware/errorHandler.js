@@ -28,19 +28,29 @@ const errorHandler = (err, req, res, next) => {
       process.env.NODE_ENV === "production" ? undefined : err.stack,
   });
 
-  const statusCode =
-    res.statusCode && res.statusCode !== 200
+  const explicitStatus = Number(err.statusCode || err.status || 0);
+  const statusCode = explicitStatus >= 400 && explicitStatus < 600
+    ? explicitStatus
+    : res.statusCode && res.statusCode !== 200
       ? res.statusCode
       : 500;
-
-  res.status(statusCode).json({
+  const body = {
     success: false,
     error: err.message || "Server Error",
     message: err.message || "Server Error",
     requestId: req.requestId || res.locals?.requestId || "",
     stack:
       process.env.NODE_ENV === "production" ? undefined : err.stack,
-  });
+  };
+
+  if (err.code) {
+    body.code = err.code;
+  }
+  if (err.details && (err.isOperational || statusCode < 500 || process.env.NODE_ENV !== "production")) {
+    body.details = err.details;
+  }
+
+  res.status(statusCode).json(body);
 };
 
 module.exports = errorHandler;

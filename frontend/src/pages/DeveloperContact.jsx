@@ -5,7 +5,7 @@ import { CONTACT_EMAIL, buildMailto } from "../config/businessContact";
 
 const developerDetails = [
   {
-    label: "Developer",
+    label: "Support lead",
     value: "Stephen Daniel Kurah",
   },
   {
@@ -20,7 +20,7 @@ const developerDetails = [
   {
     label: "Email",
     value: CONTACT_EMAIL,
-    href: buildMailto(CONTACT_EMAIL, "Tengacion developer contact"),
+    href: buildMailto(CONTACT_EMAIL, "Tengacion support request"),
   },
 ];
 
@@ -28,8 +28,8 @@ export default function DeveloperContactPage() {
   return (
     <div className="login-container developer-contact-page">
       <SeoHead
-        title="Developer Contact | Tengacion"
-        description="Find Tengacion developer contact information and support details."
+        title="Tengacion Support Contact | Tengacion"
+        description="Find Tengacion support contact information and assistance details."
         canonical="/developer-contact"
         ogImage={developerPortrait}
         ogImageAlt="Stephen Daniel Kurah portrait"
@@ -42,24 +42,24 @@ export default function DeveloperContactPage() {
               <div className="developer-contact-portrait-frame">
                 <img
                   src={developerPortrait}
-                  alt="Stephen Daniel Kurah portrait"
-                  className="developer-contact-portrait"
+                alt="Stephen Daniel Kurah portrait"
+                className="developer-contact-portrait"
                 />
               </div>
               <div className="developer-contact-portrait-copy">
-                <span className="developer-contact-portrait-label">Creator hero spotlight</span>
+                <span className="developer-contact-portrait-label">Tengacion support</span>
                 <strong>Stephen Daniel Kurah</strong>
-                <p>Developer support lead for Tengacion.</p>
+                <p>Support contact for Tengacion.</p>
               </div>
             </div>
           </div>
 
           <div className="developer-contact-hero-copy">
             <span className="developer-contact-badge">Tengacion Support</span>
-            <h1>Developer contact details</h1>
+            <h1>Contact Tengacion Support</h1>
             <p>
-              Reach the developer directly using the details below. This page is designed to be
-              quick to read and easy to access from the welcome screen.
+              Use the details below for Tengacion support, account help, public reports, and
+              platform questions.
             </p>
           </div>
         </div>

@@ -144,9 +144,7 @@
 .creator-subscription-panel__body {
   color: #675d4c;
   line-height: 1.75;
-  text-align: justify;
-  text-align-last: left;
-  text-justify: inter-word;
+  text-align: left;
 }
 
 .creator-subscription-benefits {

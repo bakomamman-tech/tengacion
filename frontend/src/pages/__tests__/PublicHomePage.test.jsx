@@ -90,7 +90,7 @@ describe("PublicHomePage", () => {
 
     expect(document.querySelector("main.public-home")).toHaveClass("public-home--nature-green");
     expect(screen.getByRole("heading", { name: /africa's social commerce/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Log In/Create Account" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Log in / Create account" })).toHaveAttribute(
       "href",
       "/login"
     );
@@ -106,13 +106,14 @@ describe("PublicHomePage", () => {
       "href",
       "/marketplace/register"
     );
-    expect(screen.getByText("Earn and request payouts")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /choose a clear path/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /safety & reporting/i })).toHaveAttribute(
+      "href",
+      "/safety"
+    );
     expect(screen.getByText("Tengacion Technologies Limited parent company")).toBeInTheDocument();
     expect(screen.getByText("CAC-registered company")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Meet our leadership" })).toBeInTheDocument();
-    expect(screen.getByText("Founder, Chairman & CEO")).toBeInTheDocument();
-    expect(screen.getAllByText("Stephen Daniel Kurah")[0]).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /get to know our leadership/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Leadership" })).toHaveAttribute(
       "href",
       "/leadership"
     );

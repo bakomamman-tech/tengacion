@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
+import PublicNav from "../components/PublicNav";
 import QuickAccessLayout from "../components/QuickAccessLayout";
 import ProductGrid from "../components/marketplace/ProductGrid";
 import SeoHead from "../components/seo/SeoHead";
@@ -41,6 +42,21 @@ const sidebarNav = [
   { id: "payouts", label: "Payouts", description: "Review settlement history.", path: "/marketplace/payouts" },
 ];
 
+const getProductKey = (product = {}) =>
+  String(product._id || product.id || product.slug || `${product.title || ""}:${product.seller?._id || product.sellerId || ""}`).trim();
+
+const uniqueProducts = (products = []) => {
+  const seen = new Map();
+  for (const product of Array.isArray(products) ? products : []) {
+    const key = getProductKey(product);
+    if (!key || seen.has(key)) {
+      continue;
+    }
+    seen.set(key, product);
+  }
+  return Array.from(seen.values());
+};
+
 export default function MarketplacePage() {
   const { user } = useAuth();
   const [filters, setFilters] = useState(defaultFilters);
@@ -76,15 +92,20 @@ export default function MarketplacePage() {
 
   const totals = useMemo(() => {
     const stateSet = new Set();
-    [...(payload.products || []), ...(payload.featuredProducts || []), ...(payload.latestProducts || [])]
-      .forEach((product) => {
+    const products = uniqueProducts([
+      ...(payload.products || []),
+      ...(payload.featuredProducts || []),
+      ...(payload.latestProducts || []),
+    ]);
+
+    products.forEach((product) => {
         if (product?.state) {
           stateSet.add(product.state);
         }
       });
 
     return {
-      totalProducts: Number(payload.total || payload.products?.length || 0),
+      totalProducts: Number(payload.total || products.length || 0),
       totalSellers: Number(payload.trendingSellers?.length || 0),
       totalStates: stateSet.size,
     };
@@ -101,11 +122,46 @@ export default function MarketplacePage() {
     return [...new Set(merged)].slice(0, 10);
   }, [payload.categories]);
 
+  const allProducts = useMemo(
+    () =>
+      uniqueProducts([
+        ...(payload.products || []),
+        ...(payload.featuredProducts || []),
+        ...(payload.latestProducts || []),
+      ]),
+    [payload.featuredProducts, payload.latestProducts, payload.products]
+  );
+
   const highlightedProducts = useMemo(() => {
-    const primary = Array.isArray(payload.products) ? payload.products : [];
-    const fallback = Array.isArray(payload.latestProducts) ? payload.latestProducts : [];
-    return (primary.length ? primary : fallback).slice(0, 12);
-  }, [payload.latestProducts, payload.products]);
+    const primary = uniqueProducts(payload.products || []);
+    return (primary.length ? primary : allProducts).slice(0, 12);
+  }, [allProducts, payload.products]);
+
+  const highlightedProductKeys = useMemo(
+    () => new Set(highlightedProducts.map((product) => getProductKey(product)).filter(Boolean)),
+    [highlightedProducts]
+  );
+
+  const featuredProducts = useMemo(
+    () =>
+      uniqueProducts(payload.featuredProducts || [])
+        .filter((product) => !highlightedProductKeys.has(getProductKey(product)))
+        .slice(0, 8),
+    [highlightedProductKeys, payload.featuredProducts]
+  );
+
+  const secondaryProductKeys = useMemo(
+    () => new Set([...highlightedProductKeys, ...featuredProducts.map((product) => getProductKey(product))]),
+    [featuredProducts, highlightedProductKeys]
+  );
+
+  const latestProducts = useMemo(
+    () =>
+      uniqueProducts(payload.latestProducts || [])
+        .filter((product) => !secondaryProductKeys.has(getProductKey(product)))
+        .slice(0, 8),
+    [payload.latestProducts, secondaryProductKeys]
+  );
 
   const seoStructuredData = useMemo(() => {
     const items = highlightedProducts.slice(0, 8).map((product, index) => ({
@@ -139,12 +195,13 @@ export default function MarketplacePage() {
 
     const firstProduct =
       highlightedProducts[0] ||
-      payload.featuredProducts?.[0] ||
-      payload.latestProducts?.[0] ||
+      featuredProducts[0] ||
+      latestProducts[0] ||
+      allProducts[0] ||
       null;
 
     return firstProduct?.location?.label || "Nigeria";
-  }, [filters.city, filters.state, highlightedProducts, payload.featuredProducts, payload.latestProducts]);
+  }, [allProducts, featuredProducts, filters.city, filters.state, highlightedProducts, latestProducts]);
 
   const hasActiveFilters = useMemo(
     () => Object.entries(filters).some(([key, value]) => key !== "sort" && Boolean(value)),
@@ -178,6 +235,7 @@ export default function MarketplacePage() {
       showAppSidebar={false}
       showRightRail={false}
       showHero={false}
+      showNavbar={Boolean(user)}
       shellClassName="quick-access-shell--marketplace"
       mainClassName="quick-access-main--marketplace"
     >
@@ -188,6 +246,7 @@ export default function MarketplacePage() {
         robots="index,follow"
         structuredData={seoStructuredData}
       />
+      {!user ? <PublicNav theme="light" /> : null}
       <div className="marketplace-page marketplace-facebook-shell">
         <aside className="marketplace-facebook-sidebar marketplace-shell-card">
           <div className="marketplace-facebook-sidebar__header">
@@ -196,7 +255,7 @@ export default function MarketplacePage() {
               <h2>Browse like a buyer. Launch like a seller.</h2>
             </div>
             <p className="marketplace-muted">
-              Facebook-inspired browsing with Tengacion&apos;s seller verification layered in.
+              Familiar product browsing with Tengacion&apos;s seller verification layered in.
             </p>
           </div>
 
@@ -207,7 +266,11 @@ export default function MarketplacePage() {
               applyFilters();
             }}
           >
+            <label className="marketplace-search-label" htmlFor="marketplace-search-input">
+              Search marketplace
+            </label>
             <input
+              id="marketplace-search-input"
               value={filters.search}
               onChange={(event) => updateFilter("search", event.target.value)}
               placeholder="Search Marketplace"
@@ -261,7 +324,7 @@ export default function MarketplacePage() {
               <span className="marketplace-btn__icon" aria-hidden="true">
                 +
               </span>
-              Create new listing
+              Seller tools
             </Link>
             <Link className="marketplace-secondary-btn" to="/marketplace/register">
               <span className="marketplace-btn__icon" aria-hidden="true">
@@ -277,7 +340,7 @@ export default function MarketplacePage() {
               <span>{locationLabel}</span>
             </div>
             <p className="marketplace-muted">
-              Switch state and city filters to make the feed feel local, just like the marketplace flow in your reference.
+              Switch state and city filters to focus the feed on products that are easier to collect or deliver.
             </p>
           </section>
 
@@ -525,7 +588,7 @@ export default function MarketplacePage() {
                     <p className="marketplace-section__copy">
                       {hasActiveFilters
                         ? "These listings match your current search, category, and delivery filters."
-                        : "A clean, scrollable grid of listings designed to feel familiar while staying uniquely Tengacion."}
+                        : "A clean, scrollable grid of approved listings from Tengacion sellers."}
                     </p>
                   </div>
                 </div>
@@ -537,7 +600,8 @@ export default function MarketplacePage() {
                 />
               </section>
 
-              <section className="marketplace-panel marketplace-facebook-section">
+              {featuredProducts.length ? (
+                <section className="marketplace-panel marketplace-facebook-section">
                 <div className="marketplace-section__head">
                   <div>
                     <span className="marketplace-section__eyebrow">Featured</span>
@@ -545,13 +609,15 @@ export default function MarketplacePage() {
                   </div>
                 </div>
                 <ProductGrid
-                  products={payload.featuredProducts || []}
+                  products={featuredProducts}
                   emptyTitle="Featured products are coming soon"
                   emptyCopy="Fresh marketplace listings will show up here as sellers publish them."
                 />
-              </section>
+                </section>
+              ) : null}
 
-              <section className="marketplace-panel marketplace-facebook-section">
+              {latestProducts.length ? (
+                <section className="marketplace-panel marketplace-facebook-section">
                 <div className="marketplace-section__head">
                   <div>
                     <span className="marketplace-section__eyebrow">Fresh listings</span>
@@ -559,11 +625,12 @@ export default function MarketplacePage() {
                   </div>
                 </div>
                 <ProductGrid
-                  products={payload.latestProducts || []}
+                  products={latestProducts}
                   emptyTitle="New listings will appear here soon"
                   emptyCopy="Approved sellers can start filling this feed after onboarding."
                 />
-              </section>
+                </section>
+              ) : null}
             </>
           ) : null}
         </div>

@@ -223,12 +223,12 @@
 .creator-public-series h2 {
   margin: 0;
   font-family: var(--creator-public-font-display);
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .creator-public-page :is(h1, h2, h3, h4) {
   font-weight: 900;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .creator-public-page h1 {
@@ -876,15 +876,13 @@
   display: block;
   font-size: 1.5rem;
   font-family: var(--creator-public-font-display);
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   color: var(--creator-public-accent-strong);
 }
 
 .creator-public-panel__justified {
   color: var(--creator-public-muted);
-  text-align: justify;
-  text-align-last: left;
-  text-justify: inter-word;
+  text-align: left;
 }
 
 .creator-public-panel__status {

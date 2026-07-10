@@ -58,7 +58,7 @@
 .marketplace-admin-panel h3 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .marketplace-hero h2 {
@@ -828,6 +828,10 @@
   align-items: start;
 }
 
+.quick-access-main--marketplace > .public-nav {
+  margin-bottom: 22px;
+}
+
 .marketplace-facebook-sidebar {
   position: sticky;
   top: 90px;
@@ -855,6 +859,12 @@
 .marketplace-facebook-search {
   display: grid;
   gap: 10px;
+}
+
+.marketplace-search-label {
+  color: #294357;
+  font-size: 0.82rem;
+  font-weight: 850;
 }
 
 .marketplace-facebook-search input {

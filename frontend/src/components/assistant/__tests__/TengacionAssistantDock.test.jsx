@@ -483,7 +483,7 @@ describe("TengacionAssistantDock", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows proactive page suggestions from Akuso hints", async () => {
+  it("keeps proactive hints inside the compact Akuso launcher flow", async () => {
     const user = userEvent.setup();
     fetchAssistantHintsMock.mockResolvedValue({
       hints: ["Upload a song", "Open creator earnings"],
@@ -495,11 +495,12 @@ describe("TengacionAssistantDock", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText(/try now/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/upload a song/i).length).toBeGreaterThan(0);
+    expect(await screen.findByRole("button", { name: /open akuso assistant/i })).toBeInTheDocument();
+    expect(screen.queryByText(/try now/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /open akuso assistant/i }));
 
+    expect((await screen.findAllByText(/upload a song/i)).length).toBeGreaterThan(0);
     expect(
       (await screen.findAllByRole("button", { name: "Open creator earnings" })).length
     ).toBeGreaterThan(0);

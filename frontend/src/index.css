@@ -12291,8 +12291,7 @@ html.dark-mode .create-post-quick-btn--reel {
 
 .expandable-post-text__content--justified,
 .expandable-post-text__measure--justified {
-  text-align: justify;
-  text-justify: inter-word;
+  text-align: left;
 }
 
 .expandable-post-text__content--collapsed,
@@ -18763,6 +18762,14 @@ html.dark-mode .tg-share-inline-error {
   margin-bottom: 14px;
 }
 
+.login-field-label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--auth-muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -19124,6 +19131,10 @@ html.dark-mode .password-toggle-btn:hover {
 .login-container--luxury .login-box h2 {
   color: #fff0bd;
   text-shadow: 0 0 18px rgba(237, 189, 97, 0.12);
+}
+
+.login-container--luxury .login-field-label {
+  color: #e9f0ff;
 }
 
 .login-container--luxury input.login-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]) {

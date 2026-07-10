@@ -31,13 +31,6 @@ const TengacionAssistantLauncher = forwardRef(function TengacionAssistantLaunche
       className={`tg-assistant-launcher-wrap${dragging ? " is-dragging" : ""}`}
       style={containerStyle}
     >
-      {prompt && !open ? (
-        <div className="tg-assistant-launcher__hint" aria-hidden="true">
-          <span>Try now</span>
-          <strong>{prompt}</strong>
-        </div>
-      ) : null}
-
       <button
         ref={ref}
         type="button"
@@ -49,14 +42,13 @@ const TengacionAssistantLauncher = forwardRef(function TengacionAssistantLaunche
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={open ? "Close Akuso assistant" : "Open Akuso assistant"}
-        title={prompt ? `Ask Akuso. Try: ${prompt}` : "Ask Akuso"}
+        title={prompt ? `Ask Akuso: ${prompt}` : "Ask Akuso"}
       >
         <span className="tg-assistant-launcher__icon" aria-hidden="true">
           <SparkIcon />
         </span>
         <span className="tg-assistant-launcher__copy">
           <strong>Akuso</strong>
-          <small>{prompt ? `Try: ${prompt}` : "Ask Tengacion AI"}</small>
         </span>
       </button>
     </div>

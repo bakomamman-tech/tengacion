@@ -9,14 +9,14 @@ vi.mock("../../components/seo/SeoHead", () => ({
 }));
 
 describe("LeadershipPage", () => {
-  it("presents the founder, junior team leads, and unfilled executive offices", () => {
+  it("presents only verified public team members", () => {
     render(
       <MemoryRouter>
         <LeadershipPage />
       </MemoryRouter>
     );
 
-    expect(screen.getByRole("heading", { name: "Executives" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Verified team members" })).toBeInTheDocument();
     expect(screen.getAllByText("Stephen Daniel Kurah")[0]).toBeInTheDocument();
     expect(screen.getByText("Founder, Chairman and Chief Executive Officer")).toBeInTheDocument();
     const founderPortraits = screen.getAllByAltText(/Stephen Daniel Kurah, Founder/i);
@@ -49,7 +49,7 @@ describe("LeadershipPage", () => {
       "src",
       "/assets/leadership/tengacion-intern.png"
     );
-    expect(screen.getAllByText("Illustrative placeholder")).toHaveLength(6);
-    expect(screen.getAllByText("Appointment to be announced")).toHaveLength(6);
+    expect(screen.queryByText("Illustrative placeholder")).not.toBeInTheDocument();
+    expect(screen.queryByText("Appointment to be announced")).not.toBeInTheDocument();
   });
 });

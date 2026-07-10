@@ -16,6 +16,7 @@ export default function QuickAccessLayout({
   showAppSidebar = true,
   showRightRail = true,
   showHero = true,
+  showNavbar = true,
   shellClassName = "",
   mainClassName = "",
 }) {
@@ -86,34 +87,36 @@ export default function QuickAccessLayout({
 
   return (
     <>
-      <Navbar
-        user={user}
-        onLogout={logout}
-        onOpenMessenger={(payload = {}) => {
-          setSelectedChatId(String(payload?.contactId || ""));
-          if (payload?.contact) {
-            setChatDockMeta({
-              name: payload.contact?.name || payload.contact?.username || "Messenger",
-              avatar: payload.contact?.avatar || "",
-            });
-          }
-          setChatOpen(true);
-          setChatMinimized(false);
-        }}
-        onOpenCreatePost={(target = "post") => {
-          if (target === "story") {
-            navigate("/home", { state: { openStoryCreator: true } });
-            return;
-          }
+      {showNavbar ? (
+        <Navbar
+          user={user}
+          onLogout={logout}
+          onOpenMessenger={(payload = {}) => {
+            setSelectedChatId(String(payload?.contactId || ""));
+            if (payload?.contact) {
+              setChatDockMeta({
+                name: payload.contact?.name || payload.contact?.username || "Messenger",
+                avatar: payload.contact?.avatar || "",
+              });
+            }
+            setChatOpen(true);
+            setChatMinimized(false);
+          }}
+          onOpenCreatePost={(target = "post") => {
+            if (target === "story") {
+              navigate("/home", { state: { openStoryCreator: true } });
+              return;
+            }
 
-          navigate("/home", {
-            state: {
-              openComposer: true,
-              composerMode: target === "reel" ? "reel" : "",
-            },
-          });
-        }}
-      />
+            navigate("/home", {
+              state: {
+                openComposer: true,
+                composerMode: target === "reel" ? "reel" : "",
+              },
+            });
+          }}
+        />
+      ) : null}
 
       <div className={shellClasses}>
         {showAppSidebar ? (

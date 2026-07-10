@@ -5,6 +5,7 @@
 }
 
 .leadership-header {
+  padding: 18px 0;
   border-bottom: 1px solid #e3e8eb;
   background: #ffffff;
 }
@@ -155,6 +156,11 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 28px 20px;
+}
+
+.leadership-grid--executive {
+  max-width: 320px;
+  grid-template-columns: 1fr;
 }
 
 .leadership-grid--team {

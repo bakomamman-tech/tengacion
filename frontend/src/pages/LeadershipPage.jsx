@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import PublicNav from "../components/PublicNav";
 import SeoHead from "../components/seo/SeoHead";
 import { FOUNDER, INTERNS, LEADERSHIP, TEAM_LEADS } from "../data/leadership";
 import {
@@ -53,27 +54,15 @@ export default function LeadershipPage() {
       />
 
       <header className="leadership-header">
-        <nav className="leadership-nav" aria-label="Tengacion leadership navigation">
-          <Link className="leadership-brand" to="/" aria-label="Tengacion home">
-            <img src="/tengacion_logo_128.png" alt="" />
-            <span>Tengacion</span>
-          </Link>
-          <div className="leadership-nav__links">
-            <Link to="/about">About</Link>
-            <Link to="/creators">Creators</Link>
-            <Link to="/marketplace">Marketplace</Link>
-            <Link to="/contact">Contact</Link>
-          </div>
-        </nav>
+        <PublicNav theme="light" />
       </header>
 
       <section className="leadership-hero" aria-labelledby="leadership-title">
         <p>Company leadership</p>
-        <h1 id="leadership-title">Executives</h1>
+        <h1 id="leadership-title">Verified team members</h1>
         <div className="leadership-hero__rule" aria-hidden="true" />
         <span>
-          Meet Tengacion&apos;s founder and explore the executive offices being built to guide
-          Africa&apos;s social commerce and creator monetization platform.
+          Meet the people currently identified as part of Tengacion&apos;s public team.
         </span>
       </section>
 
@@ -84,28 +73,23 @@ export default function LeadershipPage() {
             <h2 id="leadership-directory-title">Founder-led, accountable by design</h2>
           </div>
           <p>
-            Tengacion is building leadership around product, technology, operations, finance,
-            trust, and commercial growth. Open executive roles remain clearly marked until
-            appointments are formally announced.
+            Tengacion displays only team members with verified names and roles on this public
+            page. Additional appointments will be added after they are formally confirmed.
           </p>
         </div>
 
-        <div className="leadership-grid">
+        <div className="leadership-grid leadership-grid--executive">
           {LEADERSHIP.map((leader) => (
             <article
               key={leader.id}
               id={leader.id}
-              className={`leadership-card${leader.isPlaceholder ? " is-placeholder" : " is-founder"}`}
+              className="leadership-card is-founder"
             >
               <div className="leadership-card__portrait">
-                <img src={leader.image} alt={leader.imageAlt} loading={leader.isPlaceholder ? "lazy" : "eager"} />
-                {leader.isPlaceholder ? (
-                  <span className="leadership-card__status">Illustrative placeholder</span>
-                ) : (
-                  <span className="leadership-card__status leadership-card__status--founder">
-                    Founder
-                  </span>
-                )}
+                <img src={leader.image} alt={leader.imageAlt} loading="eager" />
+                <span className="leadership-card__status leadership-card__status--founder">
+                  Founder
+                </span>
               </div>
               <div className="leadership-card__body">
                 <p className="leadership-card__role">{leader.role}</p>
@@ -117,12 +101,6 @@ export default function LeadershipPage() {
             </article>
           ))}
         </div>
-
-        <p className="leadership-placeholder-note">
-          Placeholder portraits are illustrative images for unfilled executive offices. They do
-          not identify appointed Tengacion officials and will be replaced after formal
-          appointments.
-        </p>
       </section>
 
       <section className="leadership-team" aria-labelledby="leadership-team-title">

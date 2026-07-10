@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { getCreatorSummaryFeed, resolveImage } from "../api";
-import CreatorSummaryFeed from "../components/creatorDiscovery/CreatorSummaryFeed";
+import PublicNav from "../components/PublicNav";
 import SeoHead from "../components/seo/SeoHead";
 import { useCreatorPlayer } from "../context/CreatorPlayerContext";
 import {
@@ -188,6 +188,23 @@ const uniqueItems = (items = []) => {
   return Array.from(seen.values());
 };
 
+const dedupeShowcaseShelves = (shelves = []) => {
+  const used = new Set();
+
+  return shelves.map((shelf) => {
+    const items = [];
+    for (const item of uniqueItems(shelf.items || [])) {
+      const key = getItemKey(item);
+      if (!key || used.has(key)) {
+        continue;
+      }
+      used.add(key);
+      items.push(item);
+    }
+    return { ...shelf, items };
+  });
+};
+
 const getReleaseImage = (item = {}) =>
   resolveImage(item.coverImage || item.coverUrl || item.creatorBanner || item.creatorAvatar || "");
 
@@ -265,6 +282,10 @@ export default function PublicCategoryPage({ category = "music" }) {
     () => uniqueItems(showcase.shelves.flatMap((shelf) => shelf.items || [])),
     [showcase.shelves]
   );
+  const visibleShelves = useMemo(
+    () => showcase.shelves.filter((shelf) => Array.isArray(shelf.items) && shelf.items.length),
+    [showcase.shelves]
+  );
   const showcaseStats = useMemo(() => {
     const creatorKeys = new Set();
     allShowcaseItems.forEach((item) => {
@@ -309,7 +330,7 @@ export default function PublicCategoryPage({ category = "music" }) {
         );
 
         if (isMounted) {
-          setShowcase({ loading: false, error: "", shelves });
+          setShowcase({ loading: false, error: "", shelves: dedupeShowcaseShelves(shelves) });
         }
       } catch (err) {
         if (isMounted) {
@@ -373,6 +394,8 @@ export default function PublicCategoryPage({ category = "music" }) {
         structuredData={structuredData}
       />
 
+      <PublicNav theme="light" />
+
       <div className="creator-discovery-page__head">
         <div className="creator-discovery-page__title">
           <h1>{config.heading}</h1>
@@ -432,7 +455,7 @@ export default function PublicCategoryPage({ category = "music" }) {
           </div>
         ) : (
           <div className="public-category-showcase__shelves">
-            {showcase.shelves.map((shelf) => (
+            {visibleShelves.length ? visibleShelves.map((shelf) => (
               <section key={shelf.id} className="public-category-showcase__shelf" aria-labelledby={`${resolvedCategory}-${shelf.id}-title`}>
                 <div className="public-category-showcase__shelf-head">
                   <div>
@@ -459,28 +482,24 @@ export default function PublicCategoryPage({ category = "music" }) {
                       As creators publish public {config.proofLabel}, this shelf will fill with
                       real previews and creator page links.
                     </p>
-                    <Link to="/creator/register" className="creator-primary-btn">
-                      Upload as Creator
+                    <Link to="/creators" className="creator-primary-btn">
+                      Browse creators
                     </Link>
                   </div>
                 )}
               </section>
-            ))}
+            )) : (
+              <div className="creator-summary-feed__empty">
+                <strong>No public {resolvedCategory} releases found</strong>
+                <p>Browse creator pages directly or check back as more public releases are approved.</p>
+                <Link to="/creators" className="creator-primary-btn">
+                  Browse creators
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </section>
-
-      <CreatorSummaryFeed
-        initialCategory={resolvedCategory}
-        lockCategory
-        title={config.feedTitle}
-        description={config.feedDescription}
-        bannerTitle={config.bannerTitle}
-        actionPath="/creators"
-        actionLabel="Browse creators"
-        emptyTitle={`No public ${resolvedCategory} releases found`}
-        emptyDescription={`Try browsing creators directly to discover more public ${resolvedCategory} pages.`}
-      />
     </section>
   );
 }

@@ -30,6 +30,7 @@ export default function AuthPasswordField({
   required = false,
   onChange,
   name,
+  id,
 }) {
   const [visible, setVisible] = useState(false);
   const showToggle = Boolean(value);
@@ -43,6 +44,7 @@ export default function AuthPasswordField({
   return (
     <div className={`password-toggle-field ${containerClassName}`.trim()}>
       <input
+        id={id}
         type={visible ? "text" : "password"}
         className={className}
         value={value}

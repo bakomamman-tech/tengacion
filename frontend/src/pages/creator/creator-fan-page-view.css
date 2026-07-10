@@ -12,6 +12,10 @@
   box-sizing: border-box;
 }
 
+.creator-fan-page-shell > .public-nav {
+  margin-bottom: 18px;
+}
+
 .creator-fan-page-status {
   display: grid;
   place-items: center;
@@ -108,7 +112,7 @@
 .creator-fan-page__brand strong {
   font-family: var(--creator-font-display);
   font-size: 1.65rem;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .creator-fan-page__brand small {
@@ -448,9 +452,7 @@
 .creator-fan-page__sidebar-copy p {
   font-size: 0.92rem;
   line-height: 1.62;
-  text-align: justify;
-  text-align-last: left;
-  text-justify: inter-word;
+  text-align: left;
 }
 
 .creator-fan-page__sidebar-nav {
@@ -541,7 +543,7 @@
 .creator-fan-page__spotlight-card h4 {
   margin: 0;
   font-family: var(--creator-font-display);
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .creator-fan-page__hero h2 {
@@ -784,7 +786,7 @@
 .creator-fan-page__release-title {
   font-size: 1.04rem;
   line-height: 1.16;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .creator-fan-page__release-artist {
@@ -867,9 +869,7 @@
 }
 
 .creator-fan-page__support-card p {
-  text-align: justify;
-  text-align-last: left;
-  text-justify: inter-word;
+  text-align: left;
 }
 
 .creator-fan-page__support-benefits {

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { getCreatorDiscovery, getCreatorSummaryFeed, getPublicActivity, resolveImage } from "../api";
+import PublicNav from "../components/PublicNav";
 import SeoHead from "../components/seo/SeoHead";
-import { HOME_LEADERSHIP } from "../data/leadership";
 import {
   buildBreadcrumbJsonLd,
   buildOrganizationJsonLd,
@@ -20,62 +20,6 @@ const PAGE_DESCRIPTION =
 const HOME_RELEASE_LIMIT = 6;
 const HOME_ACTIVITY_LIMIT = 6;
 const HOME_CREATOR_LIMIT = 4;
-
-const DISCOVERY_LINKS = [
-  {
-    path: "/creators",
-    label: "Creators",
-    description: "Find public profiles from music artists, authors, podcast hosts, and multi-format creators.",
-  },
-  {
-    path: "/music",
-    label: "Music",
-    description: "Browse songs, albums, videos, and new creator releases from public Tengacion catalogs.",
-  },
-  {
-    path: "/books",
-    label: "Books",
-    description: "Explore digital books, reading previews, and author pages from Tengacion creators.",
-  },
-  {
-    path: "/podcasts",
-    label: "Podcasts",
-    description: "Listen to public episodes and spoken-word releases from creators across Africa.",
-  },
-  {
-    path: "/marketplace",
-    label: "Marketplace",
-    description: "Browse approved seller storefronts, products, local pickup, and delivery-ready listings.",
-  },
-  {
-    path: "/activity",
-    label: "Activity",
-    description: "See recent public posts, reactions, comments, and updates from Tengacion members.",
-  },
-];
-
-const CONTENT_LINKS = [
-  {
-    path: "/about",
-    label: "About Tengacion",
-    description: "Understand the platform mission, public discovery model, and creator-first structure.",
-  },
-  {
-    path: "/how-it-works",
-    label: "How it works",
-    description: "See how creator profiles, category pages, and release detail pages connect.",
-  },
-  {
-    path: "/for-creators",
-    label: "For creators",
-    description: "Learn how music artists, authors, podcasters, and multi-format creators can present work.",
-  },
-  {
-    path: "/safety",
-    label: "Safety",
-    description: "Review the trust, moderation, copyright, and reporting principles behind public discovery.",
-  },
-];
 
 const TRUST_LINKS = [
   { path: "/about", label: "About" },
@@ -112,25 +56,6 @@ const PATHWAYS = [
   },
 ];
 
-const COMMERCE_PROOF = [
-  {
-    label: "Create and sell",
-    description: "Creators can publish and sell music, books, podcasts, subscriptions, and digital releases.",
-  },
-  {
-    label: "Pay securely",
-    description: "Buyers use provider-backed checkout and receive access after a successful payment is verified.",
-  },
-  {
-    label: "Earn and request payouts",
-    description: "Successful creator purchases credit earnings, with eligible balances available for payout requests.",
-  },
-  {
-    label: "List and fulfill orders",
-    description: "Approved marketplace sellers can publish products, receive orders, and track settlement activity.",
-  },
-];
-
 const TRUST_SIGNALS = [
   `${COMPANY_LEGAL_NAME} parent company`,
   "CAC-registered company",
@@ -140,25 +65,6 @@ const TRUST_SIGNALS = [
   "Refund and dispute policy",
   "Public reporting routes",
   "Copyright takedown process",
-];
-
-const AUDIENCE_BENEFITS = [
-  {
-    label: "Fans",
-    description: "Follow creators, sample releases, join public activity, and return to one profile for the full catalog.",
-  },
-  {
-    label: "Creators",
-    description: "Publish music, books, podcasts, videos, and public updates with shareable pages and creator-first discovery.",
-  },
-  {
-    label: "Sellers",
-    description: "Open approved storefronts, list products with delivery terms, and build buyer confidence inside the marketplace.",
-  },
-  {
-    label: "Communities",
-    description: "Connect around African talent with safety routes, content rules, and reporting paths visible from the public web.",
-  },
 ];
 
 const formatCount = (value = 0) => Number(value || 0).toLocaleString();
@@ -412,22 +318,7 @@ export default function PublicHomePage() {
       />
 
       <section className="public-home__hero">
-        <nav className="public-home__nav" aria-label="Public Tengacion navigation">
-          <Link className="public-home__brand" to="/" aria-label="Tengacion home">
-            <img src="/tengacion_logo_128.png" alt="" />
-            <span>Tengacion</span>
-          </Link>
-          <div className="public-home__nav-actions">
-            <Link to="/about">About</Link>
-            <Link to="/leadership">Leadership</Link>
-            <Link to="/creators">Creators</Link>
-            <Link to="/music">Music</Link>
-            <Link to="/activity">Activity</Link>
-            <Link to="/marketplace">Marketplace</Link>
-            <Link to="/contact">Contact</Link>
-            <Link to="/login">Log In/Create Account</Link>
-          </div>
-        </nav>
+        <PublicNav theme="dark" />
 
         <div className="public-home__hero-inner">
           <p className="public-home__eyebrow">Tengacion</p>
@@ -475,71 +366,6 @@ export default function PublicHomePage() {
             <p>{stat.detail}</p>
           </div>
         ))}
-      </section>
-
-      <section className="public-home__section public-home__section--commerce" aria-labelledby="public-home-commerce-title">
-        <div className="public-home__section-head public-home__section-head--split">
-          <div>
-            <p className="public-home__eyebrow">Monetization in plain sight</p>
-            <h2 id="public-home-commerce-title">From discovery to payment, earnings, and fulfillment</h2>
-            <p>
-              Tengacion connects the public experience to real commerce flows for creators,
-              buyers, and marketplace sellers.
-            </p>
-          </div>
-          <Link className="public-home__section-link" to="/how-it-works">
-            See how it works
-          </Link>
-        </div>
-
-        <div className="public-home__commerce-grid">
-          {COMMERCE_PROOF.map((entry, index) => (
-            <article key={entry.label} className="public-home-commerce">
-              <span aria-hidden="true">{index + 1}</span>
-              <strong>{entry.label}</strong>
-              <p>{entry.description}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="public-home__section public-home__section--leadership" aria-labelledby="public-home-leadership-title">
-        <div className="public-home__section-head public-home__section-head--split">
-          <div>
-            <p className="public-home__eyebrow">Company leadership</p>
-            <h2 id="public-home-leadership-title">Meet our leadership</h2>
-            <p>
-              Founder-led leadership is guiding Tengacion as social connection, creator commerce,
-              media, trust, and technology come together across Africa.
-            </p>
-          </div>
-          <Link className="public-home__section-link" to="/leadership">
-            Get to know our leadership
-          </Link>
-        </div>
-
-        <div className="public-home__leadership-grid">
-          {HOME_LEADERSHIP.map((leader) => (
-            <Link
-              key={leader.id}
-              className={`public-home-leader${leader.isPlaceholder ? " is-placeholder" : " is-founder"}`}
-              to={`/leadership#${leader.id}`}
-            >
-              <div className="public-home-leader__portrait">
-                <img
-                  src={leader.image}
-                  alt={leader.imageAlt}
-                  loading={leader.isPlaceholder ? "lazy" : "eager"}
-                />
-                {leader.isPlaceholder ? <span>Illustrative placeholder</span> : <span>Founder</span>}
-              </div>
-              <div className="public-home-leader__body">
-                <p className="public-home-leader__role">{leader.shortRole}</p>
-                <strong>{leader.name}</strong>
-              </div>
-            </Link>
-          ))}
-        </div>
       </section>
 
       <section className="public-home__section" aria-labelledby="public-home-creators-title">
@@ -682,15 +508,15 @@ export default function PublicHomePage() {
             ) : (
               <div className="public-home__empty">
                 <strong>Public releases are ready for more content</strong>
-                <p>
-                  Music, books, podcasts, and videos will appear here as creators publish approved
-                  public work.
-                </p>
-                <Link className="public-home__inline-button" to="/creator/register">
-                  Upload your first release
-                </Link>
-              </div>
-            )}
+            <p>
+              Music, books, podcasts, and videos will appear here as creators publish approved
+              public work.
+            </p>
+            <Link className="public-home__inline-button" to="/creators">
+              Browse creator directory
+            </Link>
+          </div>
+        )}
           </div>
 
           <aside className="public-home__activity-panel" aria-labelledby="public-home-activity-title">
@@ -743,78 +569,36 @@ export default function PublicHomePage() {
       </section>
 
       <section className="public-home__section" aria-labelledby="public-home-path-title">
-        <div className="public-home__section-head">
-          <p className="public-home__eyebrow">Choose your path</p>
-          <h2 id="public-home-path-title">Pick up where you are</h2>
-          <p>
-            Start with listening, creator discovery, your creator setup, or marketplace browsing.
-          </p>
+        <div className="public-home__section-head public-home__section-head--split">
+          <div>
+            <p className="public-home__eyebrow">Explore Tengacion</p>
+            <h2 id="public-home-path-title">Choose a clear path into the platform</h2>
+            <p>
+              Start with listening, creator discovery, marketplace browsing, or public trust
+              information.
+            </p>
+          </div>
+          <Link className="public-home__section-link" to="/about">
+            About Tengacion
+          </Link>
         </div>
 
-        <div className="public-home__path-grid">
-          {PATHWAYS.map((entry) => (
+        <div className="public-home__path-grid public-home__path-grid--expanded">
+          {[
+            ...PATHWAYS,
+            {
+              path: "/activity",
+              label: "Public Activity",
+              description: "See recent public posts, reactions, comments, and updates.",
+            },
+            {
+              path: "/safety",
+              label: "Safety & Reporting",
+              description: "Review rules, reporting paths, moderation, and trust policies.",
+            },
+          ].map((entry) => (
             <Link key={entry.path} className="public-home-path" to={entry.path}>
               <strong>{entry.label}</strong>
-              <p>{entry.description}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="public-home__section" aria-labelledby="public-home-join-title">
-        <div className="public-home__section-head">
-          <p className="public-home__eyebrow">Why join Tengacion?</p>
-          <h2 id="public-home-join-title">A platform for fans, creators, sellers, and communities</h2>
-          <p>
-            Tengacion works best when discovery, publishing, commerce, and public trust feel like
-            one connected product.
-          </p>
-        </div>
-
-        <div className="public-home__benefit-grid">
-          {AUDIENCE_BENEFITS.map((entry) => (
-            <article key={entry.label} className="public-home-benefit">
-              <strong>{entry.label}</strong>
-              <p>{entry.description}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="public-home__section" aria-labelledby="public-home-discovery-title">
-        <div className="public-home__section-head">
-          <p className="public-home__eyebrow">Public discovery</p>
-          <h2 id="public-home-discovery-title">Explore the public catalog</h2>
-          <p>
-            Browse indexable creator pages and content categories that can be shared, discovered,
-            and revisited without starting inside a private feed.
-          </p>
-        </div>
-
-        <div className="public-home__grid">
-          {DISCOVERY_LINKS.map((entry) => (
-            <Link key={entry.path} className="public-home__tile" to={entry.path}>
-              <span>{entry.label}</span>
-              <p>{entry.description}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="public-home__section" aria-labelledby="public-home-learn-title">
-        <div className="public-home__section-head">
-          <p className="public-home__eyebrow">Platform guide</p>
-          <h2 id="public-home-learn-title">Learn what Tengacion is built for</h2>
-          <p>
-            Public explainer pages help fans, creators, search engines, and social previews
-            understand the platform beyond the private app experience.
-          </p>
-        </div>
-
-        <div className="public-home__grid">
-          {CONTENT_LINKS.map((entry) => (
-            <Link key={entry.path} className="public-home__tile" to={entry.path}>
-              <span>{entry.label}</span>
               <p>{entry.description}</p>
             </Link>
           ))}
@@ -824,7 +608,7 @@ export default function PublicHomePage() {
       <section className="public-home__band" aria-label="Tengacion trust links">
         <div>
           <p className="public-home__eyebrow">Trust foundation</p>
-          <h2>Payments, reporting, and platform rules are easy to reach</h2>
+          <h2>Payments, reporting, company details, and platform rules are easy to reach</h2>
           <div className="public-home__trust-signals" aria-label="Trust signals">
             {TRUST_SIGNALS.map((signal) => (
               <span key={signal}>{signal}</span>

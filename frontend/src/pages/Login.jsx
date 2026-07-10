@@ -237,7 +237,11 @@ export default function Login() {
             {!challenge ? (
               <>
                 <div className="form-group">
+                  <label className="login-field-label" htmlFor="login-email">
+                    Email
+                  </label>
                   <input
+                    id="login-email"
                     type="email"
                     placeholder="Email"
                     name="email"
@@ -251,7 +255,11 @@ export default function Login() {
                 </div>
 
                 <div className="form-group">
+                  <label className="login-field-label" htmlFor="login-password">
+                    Password
+                  </label>
                   <AuthPasswordField
+                    id="login-password"
                     placeholder="Password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
@@ -265,7 +273,11 @@ export default function Login() {
               </>
             ) : (
               <div className="form-group">
+                <label className="login-field-label" htmlFor="login-verification-code">
+                  Verification code
+                </label>
                 <input
+                  id="login-verification-code"
                   type="text"
                   placeholder="6-digit code"
                   value={verificationCode}
@@ -332,7 +344,7 @@ export default function Login() {
           </form>
 
           <Link to="/developer-contact" className="developer-contact-cta">
-            <span className="developer-contact-cta__title">Contact The Developer:</span>
+            <span className="developer-contact-cta__title">Contact Tengacion Support</span>
             <span className="developer-contact-cta__arrow" aria-hidden="true">
               View details
             </span>

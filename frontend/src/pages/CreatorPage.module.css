@@ -63,7 +63,7 @@
 
 .creatorTitle {
   font-size: clamp(30px, 3vw, 44px);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   line-height: 1.05;
   margin: 0;
   color: var(--creator-text-strong);
@@ -75,8 +75,7 @@
   font-size: clamp(13px, 1.06vw, 15px);
   line-height: 1.74;
   max-width: min(900px, 100%);
-  text-align: justify;
-  text-justify: inter-word;
+  text-align: left;
   text-wrap: pretty;
 }
 

@@ -74,7 +74,7 @@
 }
 
 .public-home__hero {
-  min-height: 820px;
+  min-height: 680px;
   width: 100%;
   max-width: 100%;
   position: relative;
@@ -204,6 +204,11 @@
   font-weight: 800;
 }
 
+.public-home__hero > .public-nav {
+  position: relative;
+  z-index: 2;
+}
+
 .public-home__nav-actions a {
   min-height: 38px;
   font-size: 16.25px;
@@ -239,9 +244,9 @@
 
 .public-home__hero-inner {
   width: min(1280px, 100%);
-  min-height: 610px;
+  min-height: 500px;
   margin: 0 auto;
-  padding: 126px 0 54px;
+  padding: 92px 0 40px;
   position: relative;
   z-index: 1;
   display: flex;
@@ -313,7 +318,7 @@
   font-size: clamp(54px, 6vw, 82px);
   line-height: 0.98;
   font-weight: 700;
-  letter-spacing: -0.045em;
+  letter-spacing: 0;
   text-wrap: balance;
   overflow-wrap: anywhere;
   filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.36));
@@ -359,6 +364,14 @@
 .public-home__actions {
   max-width: 700px;
   margin-top: 32px;
+}
+
+.public-home__action-line span:not(:last-child)::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  box-shadow: 0 0 9px rgba(139, 69, 255, 0.82);
 }
 
 .public-home__button {
@@ -488,7 +501,7 @@
 
 .public-home__section {
   margin-top: 30px;
-  padding: 44px;
+  padding: 36px;
   overflow: hidden;
   border: 1px solid rgba(237, 189, 97, 0.3);
   border-radius: 28px;
@@ -559,7 +572,7 @@
   font-size: 34px;
   line-height: 1.14;
   font-weight: 700;
-  letter-spacing: -0.025em;
+  letter-spacing: 0;
   text-wrap: balance;
   text-shadow: 0 3px 24px rgba(0, 0, 0, 0.45);
 }
@@ -615,7 +628,7 @@
 }
 
 .public-home__proof-card {
-  min-height: 154px;
+  min-height: 136px;
   position: relative;
   overflow: hidden;
   padding: 22px;
@@ -674,7 +687,7 @@
 
 .public-home__proof-card p {
   margin: 8px 0 0;
-  color: #9da9c2;
+  color: #c4cee1;
   font-size: 12px;
   line-height: 1.48;
 }

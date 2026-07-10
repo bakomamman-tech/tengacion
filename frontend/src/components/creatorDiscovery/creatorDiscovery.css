@@ -36,6 +36,11 @@
   font-family: var(--creator-discovery-font-body);
 }
 
+.creator-discovery-page > .public-nav {
+  margin-top: 18px;
+  margin-bottom: 24px;
+}
+
 .creator-primary-btn,
 .creator-secondary-btn,
 .creator-ghost-btn,
@@ -155,7 +160,7 @@
 .creator-summary-card__title {
   margin: 0;
   font-family: var(--creator-discovery-font-display);
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .creator-discovery-card__title a,
@@ -361,7 +366,7 @@ html[data-theme="terra-minimal"] .creator-discovery-theme {
 .public-category-card h3 {
   margin: 0;
   font-family: var(--creator-discovery-font-display);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .public-category-showcase__hero p,
@@ -566,7 +571,7 @@ html[data-theme="terra-minimal"] .creator-discovery-theme {
   font-family: var(--creator-discovery-font-display);
   color: var(--creator-discovery-accent);
   font-weight: 700;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .creator-summary-card__media img,

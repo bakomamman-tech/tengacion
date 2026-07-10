@@ -361,6 +361,16 @@ describe("Akuso services", () => {
     expect(promptBundle.systemPrompt).toMatch(/infer the user's real goal/i);
     expect(promptBundle.systemPrompt).toMatch(/Coding intelligence/i);
     expect(promptBundle.systemPrompt).toMatch(/implementation work/i);
+    expect(promptBundle.systemPrompt).toMatch(
+      /You are Akuso, the intelligent AI assistant built into Tengacion/i
+    );
+    expect(promptBundle.systemPrompt).toMatch(/Do not claim to be ChatGPT/i);
+    expect(promptBundle.systemPrompt).toMatch(/Current date and time:/i);
+    expect(promptBundle.systemPrompt).toMatch(/User profile and permitted preferences:/i);
+    expect(promptBundle.systemPrompt).toMatch(/Available tools and their instructions:/i);
+    expect(promptBundle.systemPrompt).toMatch(/live_retrieval: not exposed inside this model call/i);
+    expect(promptBundle.systemPrompt).toMatch(/Return JSON only/i);
+    expect(promptBundle.systemPrompt).not.toMatch(/\{\{|\}\}/);
     expect(promptBundle.systemPrompt).toMatch(/Recent memory: summary=Previous safe answer/i);
     expect(promptBundle.systemPrompt).toMatch(/Preferences: length=detailed/i);
     expect(promptBundle.systemPrompt).not.toMatch(/sk-test|Password123/i);

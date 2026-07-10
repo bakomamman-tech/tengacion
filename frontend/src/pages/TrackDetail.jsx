@@ -428,6 +428,7 @@ export default function TrackDetail() {
           <audio
             ref={audioRef}
             controls
+            controlsList="nodownload"
             src={stream?.streamUrl || ""}
             className="w-full"
             onLoadedMetadata={handlePreviewLoadedMetadata}

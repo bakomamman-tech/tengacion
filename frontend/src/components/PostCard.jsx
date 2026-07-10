@@ -1435,6 +1435,7 @@ export default function PostCard({
               ) : null}
               <audio
                 controls
+                controlsList="nodownload"
                 src={audioPreviewUrl}
                 className="post-audio-player"
                 preload="metadata"

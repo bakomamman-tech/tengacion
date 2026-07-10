@@ -270,7 +270,12 @@ export default function AlbumDetail() {
                   ) : null}
                 </div>
                 {track.streamUrl ? (
-                  <audio controls src={track.streamUrl} className="mt-2 w-full" />
+                  <audio
+                    controls
+                    controlsList="nodownload"
+                    src={track.streamUrl}
+                    className="mt-2 w-full"
+                  />
                 ) : (
                   <p className="mt-2 text-xs text-slate-500">Preview unavailable for this track.</p>
                 )}

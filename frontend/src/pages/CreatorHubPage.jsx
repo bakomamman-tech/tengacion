@@ -275,6 +275,7 @@ function CreatorPublicAudioPreview({ preview }) {
           ref={audioRef}
           className="creator-public-preview__player"
           controls
+          controlsList="nodownload"
           src={preview?.src}
           onLoadedMetadata={handleLoadedMetadata}
           onPlay={handlePlay}

@@ -491,9 +491,9 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
               ref={soundtrackRef}
               hidden
               preload="auto"
-              onEnded={() => {
-                setSoundtrackPlaying(false);
-                setSoundtrackProgress(1);
+              onEnded={(event) => {
+                event.currentTarget.currentTime = 0;
+                void event.currentTarget.play();
               }}
               onPause={() => setSoundtrackPlaying(false)}
               onPlay={() => setSoundtrackPlaying(true)}
@@ -505,8 +505,8 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
                 if (now >= previewLimit) {
                   event.currentTarget.pause();
                   event.currentTarget.currentTime = 0;
-                  setSoundtrackPlaying(false);
-                  setSoundtrackProgress(1);
+                  setSoundtrackProgress(0);
+                  void event.currentTarget.play();
                 }
               }}
             />

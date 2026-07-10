@@ -173,6 +173,14 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
     onSelect?.(normalizeStoryMusicSelection(item));
   };
 
+  const restartActivePreview = (audio) => {
+    if (!audio || !activePreviewItem?.previewUrl) {
+      return;
+    }
+    audio.currentTime = 0;
+    setPreviewNonce((current) => current + 1);
+  };
+
   const handleLoadMore = async () => {
     if (loadingMore || !hasMore) {
       return;
@@ -212,7 +220,7 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
       <audio
         ref={audioRef}
         hidden
-        onEnded={() => setPreviewPlaying(false)}
+        onEnded={(event) => restartActivePreview(event.currentTarget)}
         onPause={() => setPreviewPlaying(false)}
         onPlay={() => setPreviewPlaying(true)}
         onTimeUpdate={(event) => {
@@ -222,8 +230,7 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
           );
           if (event.currentTarget.currentTime >= limit) {
             event.currentTarget.pause();
-            event.currentTarget.currentTime = 0;
-            setPreviewPlaying(false);
+            restartActivePreview(event.currentTarget);
           }
         }}
       />

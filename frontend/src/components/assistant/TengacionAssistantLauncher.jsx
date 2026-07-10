@@ -42,13 +42,13 @@ const TengacionAssistantLauncher = forwardRef(function TengacionAssistantLaunche
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={open ? "Close Akuso assistant" : "Open Akuso assistant"}
-        title={prompt ? `Ask Akuso: ${prompt}` : "Ask Akuso"}
+        title={prompt ? `Ask Akuso AI Assistant: ${prompt}` : "Ask Akuso AI Assistant"}
       >
         <span className="tg-assistant-launcher__icon" aria-hidden="true">
           <SparkIcon />
         </span>
         <span className="tg-assistant-launcher__copy">
-          <strong>Akuso</strong>
+          <strong>Akuso: AI Assistant</strong>
         </span>
       </button>
     </div>

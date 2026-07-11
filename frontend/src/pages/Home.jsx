@@ -32,6 +32,7 @@ import {
   trackDiscoveryEvents,
 } from "../api";
 import { UPLOAD_LIMITS } from "../config/uploadLimits";
+import { buildAlphabeticalCreatorRotation } from "./homeCreatorRotation";
 
 const FEELING_OPTIONS = [
   "Blessed",
@@ -60,27 +61,6 @@ const HOME_NEWS_INTERVAL = Math.max(
   Number(import.meta.env.VITE_HOME_NEWS_INJECTION_INTERVAL || 8)
 );
 const CREATOR_ROTATION_LIMIT = 120;
-
-const buildAlphabeticalCreatorRotation = (items = []) => {
-  const sorted = [...(Array.isArray(items) ? items : [])].sort((left, right) => {
-    const leftName = String(left?.creatorName || left?.creatorUsername || "").trim();
-    const rightName = String(right?.creatorName || right?.creatorUsername || "").trim();
-    const nameOrder = leftName.localeCompare(rightName, undefined, { sensitivity: "base" });
-    if (nameOrder !== 0) {return nameOrder;}
-    return String(left?.title || "").localeCompare(String(right?.title || ""), undefined, {
-      sensitivity: "base",
-    });
-  });
-  const seenCreators = new Set();
-  return sorted.filter((item) => {
-    const creatorKey = String(item?.creatorId || item?.creatorUsername || item?.creatorName || "")
-      .trim()
-      .toLowerCase();
-    if (!creatorKey || seenCreators.has(creatorKey)) {return false;}
-    seenCreators.add(creatorKey);
-    return true;
-  });
-};
 
 const normalizeHandle = (value = "") =>
   String(value || "").trim().replace(/^@+/, "").replace(/\s+/g, "").toLowerCase().slice(0, 30);

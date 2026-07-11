@@ -109,6 +109,7 @@ vi.mock("../../api", () => ({
 }));
 
 import Home from "../Home";
+import { buildAlphabeticalCreatorRotation } from "../homeCreatorRotation";
 
 const viewer = {
   _id: "viewer-1",
@@ -196,5 +197,23 @@ describe("Home discovery feed", () => {
     await waitFor(() => {
       expect(getFeedMock).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("cycles every creator release alphabetically before repeating", () => {
+    const rotation = buildAlphabeticalCreatorRotation([
+      { id: "y", creatorId: "pyrexx", creatorName: "Pyrexx_Singz", title: "Yarinya (My Girl)" },
+      { id: "z", creatorId: "zara", creatorName: "Zara", title: "Z Song" },
+      { id: "m", creatorId: "pyrexx", creatorName: "Pyrexx_Singz", title: "Mama" },
+      { id: "a", creatorId: "ada", creatorName: "Ada", title: "Ada Song" },
+      { id: "h", creatorId: "pyrexx", creatorName: "Pyrexx_Singz", title: "Hold Me And Pray" },
+    ]);
+
+    expect(rotation.map((item) => item.title)).toEqual([
+      "Ada Song",
+      "Hold Me And Pray",
+      "Z Song",
+      "Mama",
+      "Yarinya (My Girl)",
+    ]);
   });
 });

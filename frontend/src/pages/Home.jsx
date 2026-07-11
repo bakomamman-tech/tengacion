@@ -9,7 +9,7 @@ import NewsDetailDrawer from "../features/news/components/NewsDetailDrawer";
 import NewsStoryCard from "../features/news/components/NewsStoryCard";
 import { useNewsFeed } from "../features/news/hooks/useNewsFeed";
 import { useNewsPreferences } from "../features/news/hooks/useNewsPreferences";
-import CreatorSummaryFeed from "../components/creatorDiscovery/CreatorSummaryFeed";
+import CreatorSummaryCard from "../components/creatorDiscovery/CreatorSummaryCard";
 
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
@@ -22,6 +22,7 @@ import {
   createPost,
   createPostWithUploadProgress,
   getDiscoveryHome,
+  getCreatorSummaryFeed,
   getFeed,
   getProfile,
   getUsers,
@@ -58,6 +59,28 @@ const HOME_NEWS_INTERVAL = Math.max(
   1,
   Number(import.meta.env.VITE_HOME_NEWS_INJECTION_INTERVAL || 8)
 );
+const CREATOR_ROTATION_LIMIT = 120;
+
+const buildAlphabeticalCreatorRotation = (items = []) => {
+  const sorted = [...(Array.isArray(items) ? items : [])].sort((left, right) => {
+    const leftName = String(left?.creatorName || left?.creatorUsername || "").trim();
+    const rightName = String(right?.creatorName || right?.creatorUsername || "").trim();
+    const nameOrder = leftName.localeCompare(rightName, undefined, { sensitivity: "base" });
+    if (nameOrder !== 0) {return nameOrder;}
+    return String(left?.title || "").localeCompare(String(right?.title || ""), undefined, {
+      sensitivity: "base",
+    });
+  });
+  const seenCreators = new Set();
+  return sorted.filter((item) => {
+    const creatorKey = String(item?.creatorId || item?.creatorUsername || item?.creatorName || "")
+      .trim()
+      .toLowerCase();
+    if (!creatorKey || seenCreators.has(creatorKey)) {return false;}
+    seenCreators.add(creatorKey);
+    return true;
+  });
+};
 
 const normalizeHandle = (value = "") =>
   String(value || "").trim().replace(/^@+/, "").replace(/\s+/g, "").toLowerCase().slice(0, 30);
@@ -1131,6 +1154,7 @@ export default function Home({ user }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [feedItems, setFeedItems] = useState([]);
+  const [creatorRotation, setCreatorRotation] = useState([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
@@ -1296,6 +1320,22 @@ export default function Home({ user }) {
   useEffect(() => {
     void loadFeed();
   }, [loadFeed]);
+
+  useEffect(() => {
+    let active = true;
+    getCreatorSummaryFeed({ category: "all", mode: "latest", page: 1, limit: CREATOR_ROTATION_LIMIT })
+      .then((payload) => {
+        if (active) {
+          setCreatorRotation(buildAlphabeticalCreatorRotation(payload?.items));
+        }
+      })
+      .catch(() => {
+        if (active) {setCreatorRotation([]);}
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -1719,8 +1759,6 @@ export default function Home({ user }) {
             />
           </div>
 
-          <CreatorSummaryFeed />
-
           {chatOpen && (
             <section className="messenger-panel">
               <Messenger
@@ -1796,33 +1834,45 @@ export default function Home({ user }) {
                 }
 
                 const entry = item.entry;
+                const postIndex = visibleMixedFeedItems
+                  .slice(0, visibleMixedFeedItems.indexOf(item) + 1)
+                  .filter((feedItem) => feedItem.type === "post").length - 1;
+                const creatorItem = creatorRotation.length
+                  ? creatorRotation[postIndex % creatorRotation.length]
+                  : null;
                 return (
-                  <PostCard
-                    key={entry.key}
-                    post={entry.post}
-                    discoveryMeta={entry.discoveryMeta}
-                    onRecommendationAction={handleRecommendationAction}
-                    onShareCreated={(sharedPost) =>
-                      setFeedItems((prev) => [
-                        createFeedEntry(sharedPost),
-                        ...prev.filter((feedEntry) => feedEntry?.post?._id !== sharedPost?._id),
-                      ])
-                    }
-                    onDelete={(id) =>
-                      setFeedItems((prev) =>
-                        prev.filter((feedEntry) => feedEntry?.post?._id !== id)
-                      )
-                    }
-                    onEdit={(updatedPost) =>
-                      setFeedItems((prev) =>
-                        prev.map((feedEntry) =>
-                          feedEntry?.post?._id === updatedPost._id
-                            ? { ...feedEntry, post: updatedPost }
-                            : feedEntry
+                  <div key={entry.key} className="home-feed-pair">
+                    <PostCard
+                      post={entry.post}
+                      discoveryMeta={entry.discoveryMeta}
+                      onRecommendationAction={handleRecommendationAction}
+                      onShareCreated={(sharedPost) =>
+                        setFeedItems((prev) => [
+                          createFeedEntry(sharedPost),
+                          ...prev.filter((feedEntry) => feedEntry?.post?._id !== sharedPost?._id),
+                        ])
+                      }
+                      onDelete={(id) =>
+                        setFeedItems((prev) =>
+                          prev.filter((feedEntry) => feedEntry?.post?._id !== id)
                         )
-                      )
-                    }
-                  />
+                      }
+                      onEdit={(updatedPost) =>
+                        setFeedItems((prev) =>
+                          prev.map((feedEntry) =>
+                            feedEntry?.post?._id === updatedPost._id
+                              ? { ...feedEntry, post: updatedPost }
+                              : feedEntry
+                          )
+                        )
+                      }
+                    />
+                    {creatorItem ? (
+                      <section className="creator-summary-feed creator-discovery-theme home-creator-rotation">
+                        <CreatorSummaryCard item={creatorItem} />
+                      </section>
+                    ) : null}
+                  </div>
                 );
               })
             )}

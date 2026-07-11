@@ -62,6 +62,10 @@ vi.mock("../../components/creatorDiscovery/CreatorSummaryFeed", () => ({
   default: () => null,
 }));
 
+vi.mock("../../components/creatorDiscovery/CreatorSummaryCard", () => ({
+  default: ({ item }) => <aside data-testid="creator-release">{item?.title}</aside>,
+}));
+
 vi.mock("../../Navbar", () => ({
   default: () => null,
 }));
@@ -94,6 +98,7 @@ vi.mock("../../api", () => ({
   createPost: vi.fn(),
   createPostWithUploadProgress: vi.fn(),
   getDiscoveryHome: getDiscoveryHomeMock,
+  getCreatorSummaryFeed: vi.fn().mockResolvedValue({ items: [] }),
   getFeed: getFeedMock,
   getProfile: getProfileMock,
   getUsers: vi.fn().mockResolvedValue([]),

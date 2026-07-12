@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import PublicNav from "../components/PublicNav";
 import QuickAccessLayout from "../components/QuickAccessLayout";
 import ProductGrid from "../components/marketplace/ProductGrid";
 import SeoHead from "../components/seo/SeoHead";
@@ -246,7 +245,6 @@ export default function MarketplacePage() {
         robots="index,follow"
         structuredData={seoStructuredData}
       />
-      {!user ? <PublicNav theme="light" /> : null}
       <div className="marketplace-page marketplace-facebook-shell">
         <aside className="marketplace-facebook-sidebar marketplace-shell-card">
           <div className="marketplace-facebook-sidebar__header">

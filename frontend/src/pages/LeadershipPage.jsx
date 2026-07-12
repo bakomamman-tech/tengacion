@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 
-import PublicNav from "../components/PublicNav";
 import SeoHead from "../components/seo/SeoHead";
 import { FOUNDER, INTERNS, LEADERSHIP, TEAM_LEADS } from "../data/leadership";
 import {
@@ -54,7 +53,6 @@ export default function LeadershipPage() {
       />
 
       <header className="leadership-header">
-        <PublicNav theme="light" />
       </header>
 
       <section className="leadership-hero" aria-labelledby="leadership-title">

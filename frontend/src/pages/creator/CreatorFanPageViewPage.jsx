@@ -9,7 +9,6 @@ import {
   initPayment,
   toggleFollowCreator,
 } from "../../api";
-import PublicNav from "../../components/PublicNav";
 import CreatorFanPagePreview from "../../components/creator/CreatorFanPagePreview";
 import {
   buildCreatorFanPageDataFromPublicPayload,
@@ -236,7 +235,6 @@ export default function CreatorFanPageViewPage() {
   if (loading) {
     return (
       <div className="creator-fan-page-shell">
-        {isPublicRequest ? <PublicNav theme="dark" /> : null}
         <div className="creator-fan-page-status">
           <div className="creator-fan-page-status__card">
             <h2>{isPublicRequest ? "Loading Creator Fan Page" : "Loading Fan Page View"}</h2>
@@ -254,7 +252,6 @@ export default function CreatorFanPageViewPage() {
   if (error || (isPublicRequest ? !publicPreviewData : (!creatorProfile || !dashboard))) {
     return (
       <div className="creator-fan-page-shell">
-        {isPublicRequest ? <PublicNav theme="dark" /> : null}
         <div className="creator-fan-page-status">
           <div className="creator-fan-page-status__card">
             <h2>{isPublicRequest ? "Creator fan page unavailable" : "Fan Page View unavailable"}</h2>
@@ -274,7 +271,6 @@ export default function CreatorFanPageViewPage() {
 
   return (
     <div className="creator-fan-page-shell">
-      {isPublicRequest ? <PublicNav theme="dark" /> : null}
       <CreatorFanPagePreview
         creatorProfile={creatorProfile}
         dashboard={dashboard}

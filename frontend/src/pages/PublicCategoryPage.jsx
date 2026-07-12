@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { getCreatorSummaryFeed, resolveImage } from "../api";
-import PublicNav from "../components/PublicNav";
 import SeoHead from "../components/seo/SeoHead";
 import { useCreatorPlayer } from "../context/CreatorPlayerContext";
 import {
@@ -394,7 +393,6 @@ export default function PublicCategoryPage({ category = "music" }) {
         structuredData={structuredData}
       />
 
-      <PublicNav theme="light" />
 
       <div className="creator-discovery-page__head">
         <div className="creator-discovery-page__title">

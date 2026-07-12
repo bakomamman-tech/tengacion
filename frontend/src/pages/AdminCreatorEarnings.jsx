@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminShell from "../components/AdminShell";
+import "./admin-creator-earnings.css";
 import {
   adminCreateCreatorPayoutBatch,
   adminExportCreatorPayoutBatch,
@@ -336,55 +337,65 @@ export default function AdminCreatorEarningsPage({ user }) {
 
   const headlineCards = useMemo(
     () => [
-      ["Earnings From Creators", currency(repository.repositoryAmount)],
-      ["Gross Creator Revenue", currency(repository.grossRevenue)],
-      ["Creator Share Liability", currency(repository.creatorAmount)],
-      ["Ledger Entries", number(ledgerSummary.totalEntries || repository.paidTransactions)],
+      { label: "Platform earnings", value: currency(repository.repositoryAmount), icon: "₦", tone: "emerald", note: `${number(repository.platformSharePercent)}% current platform share` },
+      { label: "Gross creator revenue", value: currency(repository.grossRevenue), icon: "↗", tone: "blue", note: `${number(repository.paidTransactions)} paid transactions` },
+      { label: "Creator liability", value: currency(repository.creatorAmount), icon: "◎", tone: "amber", note: `${number(repository.creatorSharePercent)}% owed to creators` },
+      { label: "Ledger entries", value: number(ledgerSummary.totalEntries || repository.paidTransactions), icon: "≡", tone: "violet", note: "Auditable finance events" },
     ],
     [
       ledgerSummary.totalEntries,
       repository.creatorAmount,
+      repository.creatorSharePercent,
       repository.grossRevenue,
       repository.paidTransactions,
+      repository.platformSharePercent,
       repository.repositoryAmount,
     ]
   );
 
   return (
     <AdminShell
-      title="Earnings From Creators"
-      subtitle="Admin-side finance repository for creator commerce. New music, book, and podcast sales reserve 40% for Tengacion; historical transactions retain their original split."
+      title="Creator Earnings"
+      subtitle="Monitor creator revenue, payout health, liabilities, and settlement activity from one finance workspace."
       user={user}
-      actions={<button type="button" className="adminx-btn" onClick={load}>Refresh</button>}
+      actions={<button type="button" className="adminx-btn earnings-refresh" onClick={load} disabled={loading}><span>↻</span>{loading ? "Refreshing…" : "Refresh data"}</button>}
     >
-      <section className="adminx-panel adminx-panel--span-12">
-        <div className="adminx-filter-row">
-          {RANGE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={`adminx-tab ${range === option.value ? "is-active" : ""}`}
-              onClick={() => setRange(option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-          <button type="button" className="adminx-btn" onClick={() => navigate("/admin/transactions")}>
-            Open Transactions
+      <div className="earnings-page">
+        <section className="earnings-command-bar" aria-label="Earnings filters">
+          <div className="earnings-range-group">
+            <span className="earnings-range-label">Reporting period</span>
+            <div className="earnings-range-tabs">
+              {RANGE_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`earnings-range-tab ${range === option.value ? "is-active" : ""}`}
+                  onClick={() => setRange(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button type="button" className="adminx-btn earnings-transactions-btn" onClick={() => navigate("/admin/transactions")}>
+            View all transactions <span aria-hidden="true">→</span>
           </button>
-        </div>
-      </section>
+        </section>
 
       {error ? <div className="adminx-error">{error}</div> : null}
       {loading ? <div className="adminx-loading">Loading creator earnings repository...</div> : null}
 
       {!loading && payload ? (
         <>
-          <div className="adminx-stats-grid">
-            {headlineCards.map(([label, value]) => (
-              <article key={label} className="adminx-stat-card">
-                <div className="adminx-kpi-label">{label}</div>
-                <div className="adminx-kpi-value">{value}</div>
+          <div className="adminx-stats-grid earnings-stats-grid">
+            {headlineCards.map((card) => (
+              <article key={card.label} className={`adminx-stat-card earnings-stat-card earnings-stat-card--${card.tone}`}>
+                <div className="earnings-stat-top">
+                  <div className="adminx-kpi-label">{card.label}</div>
+                  <span className="earnings-stat-icon" aria-hidden="true">{card.icon}</span>
+                </div>
+                <div className="adminx-kpi-value">{card.value}</div>
+                <div className="earnings-stat-note">{card.note}</div>
               </article>
             ))}
           </div>
@@ -1045,6 +1056,7 @@ export default function AdminCreatorEarningsPage({ user }) {
           </section>
         </>
       ) : null}
+      </div>
     </AdminShell>
   );
 }

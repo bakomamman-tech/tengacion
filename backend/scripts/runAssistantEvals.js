@@ -5,6 +5,8 @@ const { buildMathResponse } = require("../services/assistant/math");
 const { buildHealthResponse, buildEmergencyHealthResponse } = require("../services/assistant/healthGuidance");
 const { buildWritingFallbackDraft } = require("../services/assistant/writingProfiles");
 const { buildAssistantSources, buildAssistantTrust } = require("../services/assistant/trustSignals");
+const { buildContextualQuery } = require("../services/assistant/retrieval");
+const { buildAssistantSystemPrompt } = require("../services/assistant/systemPrompt");
 
 const results = [];
 
@@ -103,6 +105,31 @@ run("builds grounded trust metadata", () => {
   expect(sources.length >= 1, "Expected at least one grounded source");
   expect(trust.mode === "app-aware", "Expected app-aware trust mode");
   expect(trust.grounded === true, "Expected grounded trust");
+});
+
+run("resolves short follow-ups with conversation context", () => {
+  const query = buildContextualQuery({
+    query: "Tell me more",
+    context: {
+      currentFeatureTitle: "Creator payouts",
+      memory: { lastTopic: "withdrawing creator earnings", lastFeatureId: "creator_payouts" },
+    },
+  });
+  expect(/withdrawing creator earnings/i.test(query), "Expected previous topic in contextual retrieval query");
+  expect(/creator payouts/i.test(query), "Expected current feature in contextual retrieval query");
+});
+
+run("keeps rich conversation continuity in the guarded model prompt", () => {
+  const prompt = buildAssistantSystemPrompt({
+    memory: {
+      lastUserMessage: "How do I publish a song?",
+      lastTopic: "music publishing",
+      lastSummary: "Explained the creator music upload workflow.",
+      lastRoute: "/creator/music/upload",
+    },
+  });
+  expect(/How do I publish a song/i.test(prompt), "Expected previous user request in model context");
+  expect(/Explained the creator music upload workflow/i.test(prompt), "Expected previous answer summary in model context");
 });
 
 const failed = results.filter((result) => !result.ok);

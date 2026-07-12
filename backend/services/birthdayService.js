@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Notification = require("../models/Notification");
 const Message = require("../models/Message");
+const { birthdayFromDob, hasBirthdayDate } = require("../utils/birthday");
 
 const BIRTHDAY_CAKE_IMAGE = "/assets/birthday-cake.svg";
 
@@ -10,6 +11,25 @@ const toDayKey = (date = new Date()) =>
   ).padStart(2, "0")}`;
 
 const runBirthdayRecognition = async ({ logger = console } = {}) => {
+  // Older accounts stored DOB but never received the derived birthday fields.
+  // Backfill them before matching today's date so every registered user is included.
+  const candidates = await User.find({
+    dob: { $type: "date" },
+    isDeleted: { $ne: true },
+  }).select("_id +dob birthday").lean();
+  const repairs = candidates
+    .filter((user) => !hasBirthdayDate(user?.birthday))
+    .map((user) => {
+      const birthday = birthdayFromDob(user.dob, "friends");
+      return birthday ? {
+        updateOne: { filter: { _id: user._id }, update: { $set: { birthday } } },
+      } : null;
+    })
+    .filter(Boolean);
+  if (repairs.length) {
+    await User.bulkWrite(repairs, { ordered: false });
+  }
+
   const now = new Date();
   const day = now.getDate();
   const month = now.getMonth() + 1;

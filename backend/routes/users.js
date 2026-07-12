@@ -23,6 +23,7 @@ const {
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
 const { deleteAccount } = require("../services/accountDeletionService");
 const { disconnectUserSockets } = require("../utils/realtimeSessions");
+const { birthdayFromDob, hasBirthdayDate, VALID_VISIBILITIES } = require("../utils/birthday");
 
 const router = express.Router();
 
@@ -192,12 +193,15 @@ const countMutualFriends = (viewerFriendIds = [], candidateFriendIds = [], exclu
   return count;
 };
 
-const buildBirthdayInfo = (birthday = {}) => {
-  const day = Number(birthday?.day) || 0;
-  const month = Number(birthday?.month) || 0;
-  const year = Number(birthday?.year) || 0;
-  const visibility = ["private", "friends", "public"].includes(String(birthday?.visibility || ""))
-    ? String(birthday.visibility)
+const buildBirthdayInfo = (birthday = {}, dob = null) => {
+  const source = hasBirthdayDate(birthday)
+    ? birthday
+    : (birthdayFromDob(dob, "friends") || birthday);
+  const day = Number(source?.day) || 0;
+  const month = Number(source?.month) || 0;
+  const year = Number(source?.year) || 0;
+  const visibility = VALID_VISIBILITIES.has(String(source?.visibility || ""))
+    ? String(source.visibility)
     : "private";
 
   if (!day || !month || !["friends", "public"].includes(visibility)) {
@@ -256,7 +260,7 @@ const buildFriendsHubCard = ({
   includeBirthday = false,
 }) => {
   const id = toIdString(entry?._id);
-  const birthdayInfo = includeBirthday ? buildBirthdayInfo(entry?.birthday) : null;
+  const birthdayInfo = includeBirthday ? buildBirthdayInfo(entry?.birthday, entry?.dob) : null;
 
   return {
     ...userListPayload(entry),
@@ -423,7 +427,7 @@ router.get("/profile/:username", auth, async (req, res) => {
     }
 
     const user = await User.findOne(withActiveUsers({ username }))
-      .select("-password")
+      .select("+dob")
       .populate({
         path: "friends",
         select: "_id name username avatar",
@@ -492,7 +496,9 @@ router.get("/profile/:username", auth, async (req, res) => {
       website: user.website || "",
       phone: sanitizePhoneValue(user.phone),
       dob: user.dob || null,
-      birthday: user.birthday || { day: 0, month: 0, year: 0, visibility: "private" },
+      birthday: hasBirthdayDate(user.birthday)
+        ? user.birthday
+        : (birthdayFromDob(user.dob, "friends") || { day: 0, month: 0, year: 0, visibility: "private" }),
       avatar: avatarToUrl(user.avatar),
       cover: avatarToUrl(user.cover),
       followersCount: followers.length,
@@ -505,7 +511,9 @@ router.get("/profile/:username", auth, async (req, res) => {
       status: user.status || { text: "", emoji: "", updatedAt: null },
       badges: Array.isArray(user.badges) ? user.badges : [],
       streaks: user.streaks || { checkIn: { count: 0, lastCheckInAt: null } },
-      birthdayToday: isBirthdayToday(user.birthday),
+      birthdayToday: isBirthdayToday(
+        hasBirthdayDate(user.birthday) ? user.birthday : birthdayFromDob(user.dob, "friends")
+      ),
       privacy: user.privacy || {
         profileVisibility: "public",
         defaultPostAudience: "friends",
@@ -971,7 +979,7 @@ router.get("/me/friends-hub", auth, async (req, res) => {
       .map((entry) => toIdString(entry))
       .filter(Boolean);
 
-    const baseSelect = "_id name username avatar friends birthday";
+    const baseSelect = "_id name username avatar friends +dob birthday";
     const [incomingUsers, outgoingUsersRaw, friendUsers, suggestionCandidates] = await Promise.all([
       incomingRequestIds.length > 0
         ? User.find(withActiveUsers({ _id: { $in: incomingRequestIds } }))

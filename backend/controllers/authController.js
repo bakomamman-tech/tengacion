@@ -6,6 +6,7 @@ const sendOtpEmail = require("../utils/sendOtpEmail");
 const { isEmailConfigured } = require("../utils/emailSettings");
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
 const { isValidPhoneNumber, normalizePhoneNumber } = require("../utils/phone");
+const { birthdayFromDob } = require("../utils/birthday");
 
 const generateToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
@@ -159,6 +160,7 @@ const tryLegacyInsertFallback = async ({
   const modernDoc = {
     ...shared,
     dob: dob ? new Date(dob) : null,
+    birthday: birthdayFromDob(dob, "friends") || { day: 0, month: 0, year: 0, visibility: "private" },
     avatar: { public_id: "", url: "" },
     cover: { public_id: "", url: "" },
   };
@@ -336,6 +338,7 @@ exports.register = async (req, res) => {
       phone: phone || undefined,
       country: country || undefined,
       dob: dob ? new Date(dob) : undefined,
+      birthday: birthdayFromDob(dob, "friends") || undefined,
       gender: gender || undefined,
     };
 

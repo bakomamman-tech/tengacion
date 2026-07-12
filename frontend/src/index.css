@@ -6167,6 +6167,198 @@ html.dark-mode .game-live-control-dock {
   }
 }
 
+/* Gaming 3.0: screen-first play surfaces with an attached universal control deck. */
+.gaming-page-shell {
+  --game-control-height: 48px;
+  --game-stage-radius: 22px;
+  gap: clamp(16px, 2.2vw, 28px);
+  max-width: 1680px;
+  margin-inline: auto;
+}
+
+.gaming-main { min-width: 0; }
+.gaming-play-panel {
+  padding: clamp(16px, 2vw, 26px);
+  border-radius: 24px;
+  box-shadow: 0 18px 50px color-mix(in srgb, var(--bg-dark) 14%, transparent);
+}
+
+.game-live-play-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+/* The surface is first visually even though controls remain first in the DOM
+   for predictable keyboard discovery and existing accessibility contracts. */
+.game-live-play-column > .game-live-control-dock { order: 2; }
+.game-live-play-column > :not(.game-live-control-dock) { order: 1; }
+
+.game-live-control-dock {
+  position: sticky;
+  top: auto;
+  bottom: 12px;
+  z-index: 18;
+  gap: 8px;
+  margin-top: -1px;
+  padding: 10px 12px 12px;
+  border-color: color-mix(in srgb, var(--brand) 28%, var(--border));
+  border-radius: 10px 10px 20px 20px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow:
+    0 18px 38px color-mix(in srgb, var(--bg-dark) 20%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+}
+
+.game-live-control-dock__head { align-items: center; }
+.game-live-control-dock__head strong { color: color-mix(in srgb, var(--brand-strong) 76%, var(--text)); }
+.game-live-control-dock__body {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+
+.game-live-control-dock :is(
+  .game-2048-controls,
+  .game-snake-controls,
+  .game-tetris-controls,
+  .game-mushroom-controls,
+  .game-racer-controls,
+  .game-next-controls,
+  .game-live-session-actions
+) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.game-live-control-dock :is(
+  .game-2048-controls button,
+  .game-snake-controls button,
+  .game-tetris-controls button,
+  .game-mushroom-controls button,
+  .game-racer-controls button,
+  .game-next-controls button,
+  .game-live-session-actions button
+) {
+  min-height: var(--game-control-height);
+  min-width: 64px;
+  border-radius: 13px;
+  font-weight: 800;
+  touch-action: manipulation;
+}
+
+.game-live-play-column :is(
+  .game-2048-board-shell,
+  .game-snake-board-shell,
+  .game-chess-board-shell,
+  .game-tetris-board-shell,
+  .game-memory-board-shell,
+  .game-mushroom-canvas-shell,
+  .game-racer-canvas-shell,
+  .game-night-board-shell,
+  .game-word-surface,
+  .game-block-board-shell
+) {
+  border-radius: var(--game-stage-radius) var(--game-stage-radius) 10px 10px;
+  box-shadow:
+    0 18px 44px color-mix(in srgb, var(--bg-dark) 20%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #fff 10%, transparent);
+}
+
+.game-live-play-column :is(.game-mushroom-canvas, .game-racer-canvas) {
+  display: block;
+  width: 100%;
+  max-height: min(62vh, 650px);
+  object-fit: contain;
+}
+
+.gaming-game-card {
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease, border-color 180ms ease;
+}
+.gaming-game-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--brand) 34%, var(--border));
+  box-shadow: 0 18px 38px color-mix(in srgb, var(--bg-dark) 15%, transparent);
+}
+
+@media (max-width: 760px) {
+  .gaming-page-shell {
+    --game-control-height: 46px;
+    --game-stage-radius: 16px;
+    padding: 10px;
+    gap: 12px;
+  }
+
+  .gaming-play-panel { padding: 10px; border-radius: 18px; }
+  .game-live-play-column { padding-bottom: 4px; }
+
+  .game-live-control-dock {
+    bottom: max(8px, env(safe-area-inset-bottom));
+    max-width: none;
+    width: 100%;
+    padding: 8px;
+    border-radius: 8px 8px 16px 16px;
+    box-shadow: 0 12px 30px rgba(5, 20, 13, 0.26);
+  }
+
+  .game-live-control-dock__body {
+    display: flex;
+    flex-wrap: wrap;
+    overflow: visible;
+    gap: 7px;
+  }
+
+  .game-live-control-dock :is(
+    .game-2048-controls,
+    .game-snake-controls,
+    .game-tetris-controls,
+    .game-mushroom-controls,
+    .game-racer-controls,
+    .game-next-controls,
+    .game-live-session-actions
+  ) {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+    gap: 6px;
+  }
+
+  .game-live-control-dock :is(
+    .game-2048-controls button,
+    .game-snake-controls button,
+    .game-tetris-controls button,
+    .game-mushroom-controls button,
+    .game-racer-controls button,
+    .game-next-controls button,
+    .game-live-session-actions button
+  ) {
+    min-width: 0;
+    min-height: var(--game-control-height);
+    padding-inline: 8px;
+    border-radius: 11px;
+    font-size: 0.78rem;
+  }
+
+  .game-live-play-column :is(.game-mushroom-canvas, .game-racer-canvas) {
+    max-height: 52vh;
+  }
+
+  .game-word-surface { min-height: min(58vh, 440px); }
+  .game-next-stats { gap: 7px; }
+  .game-next-stats > div { padding: 10px 11px; border-radius: 13px; }
+}
+
+@media (max-width: 420px) {
+  .gaming-page-shell { padding-inline: 6px; }
+  .gaming-play-panel { padding: 7px; }
+  .game-live-control-dock { padding: 6px; }
+  .game-live-control-dock .game-chess-turn-pill { width: 100%; justify-content: center; }
+  .game-block-tray { gap: 5px; }
+  .game-block-piece { min-height: 78px; padding: 7px; border-radius: 12px; }
+}
+
 .reels-page-shell {
   display: grid;
   grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) minmax(250px, 300px);

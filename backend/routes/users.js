@@ -23,7 +23,12 @@ const {
 const { logAnalyticsEvent, touchUserActivity } = require("../services/analyticsService");
 const { deleteAccount } = require("../services/accountDeletionService");
 const { disconnectUserSockets } = require("../utils/realtimeSessions");
-const { birthdayFromDob, hasBirthdayDate, VALID_VISIBILITIES } = require("../utils/birthday");
+const {
+  birthdayFromDob,
+  getDatePartsInTimeZone,
+  hasBirthdayDate,
+  VALID_VISIBILITIES,
+} = require("../utils/birthday");
 
 const router = express.Router();
 
@@ -194,9 +199,12 @@ const countMutualFriends = (viewerFriendIds = [], candidateFriendIds = [], exclu
 };
 
 const buildBirthdayInfo = (birthday = {}, dob = null) => {
+  const fallbackVisibility = VALID_VISIBILITIES.has(String(birthday?.visibility || ""))
+    ? String(birthday.visibility)
+    : "friends";
   const source = hasBirthdayDate(birthday)
     ? birthday
-    : (birthdayFromDob(dob, "friends") || birthday);
+    : (birthdayFromDob(dob, fallbackVisibility) || birthday);
   const day = Number(source?.day) || 0;
   const month = Number(source?.month) || 0;
   const year = Number(source?.year) || 0;
@@ -208,23 +216,30 @@ const buildBirthdayInfo = (birthday = {}, dob = null) => {
     return null;
   }
 
-  const today = new Date();
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const thisYearsBirthday = new Date(today.getFullYear(), month - 1, day);
-  if (thisYearsBirthday.getMonth() !== month - 1 || thisYearsBirthday.getDate() !== day) {
-    return null;
-  }
-  let nextBirthday = new Date(thisYearsBirthday);
+  const today = getDatePartsInTimeZone(new Date());
+  const todayStart = new Date(Date.UTC(today.year, today.month - 1, today.day));
+  const birthdayForYear = (targetYear) => {
+    const candidate = new Date(Date.UTC(targetYear, month - 1, day));
+    if (candidate.getUTCMonth() === month - 1 && candidate.getUTCDate() === day) {
+      return candidate;
+    }
+    // Celebrate leap-day birthdays on February 28 in non-leap years.
+    return month === 2 && day === 29
+      ? new Date(Date.UTC(targetYear, 1, 28))
+      : null;
+  };
+  const thisYearsBirthday = birthdayForYear(today.year);
+  if (!thisYearsBirthday) return null;
+  let nextBirthday = thisYearsBirthday;
   if (nextBirthday < todayStart) {
-    nextBirthday = new Date(today.getFullYear() + 1, month - 1, day);
+    nextBirthday = birthdayForYear(today.year + 1);
   }
 
-  const lastBirthday =
-    thisYearsBirthday <= todayStart
-      ? thisYearsBirthday
-      : new Date(today.getFullYear() - 1, month - 1, day);
+  const lastBirthday = thisYearsBirthday <= todayStart
+    ? thisYearsBirthday
+    : birthdayForYear(today.year - 1);
   const daysAgo = Math.round((todayStart.getTime() - lastBirthday.getTime()) / 86400000);
-  const age = year > 0 ? Math.max(0, lastBirthday.getFullYear() - year) : 0;
+  const age = year > 0 ? Math.max(0, lastBirthday.getUTCFullYear() - year) : 0;
 
   const daysUntil = Math.round((nextBirthday.getTime() - todayStart.getTime()) / 86400000);
   let label = `${MONTH_NAMES[month - 1]} ${day}`;
@@ -248,6 +263,28 @@ const buildBirthdayInfo = (birthday = {}, dob = null) => {
     birthdayAge: age,
     lastBirthdayAt: lastBirthday.toISOString(),
     nextBirthdayAt: nextBirthday.toISOString(),
+  };
+};
+
+const buildCommunityBirthdayCard = (entry = {}, canWish = false) => {
+  const birthdayInfo = buildBirthdayInfo(entry?.birthday, entry?.dob);
+  if (!birthdayInfo) {
+    return null;
+  }
+
+  return {
+    ...userListPayload(entry),
+    birthday: {
+      day: birthdayInfo.birthday.day,
+      month: birthdayInfo.birthday.month,
+    },
+    birthdayLabel: birthdayInfo.birthdayLabel,
+    birthdayIsToday: birthdayInfo.birthdayIsToday,
+    birthdayDaysUntil: birthdayInfo.birthdayDaysUntil,
+    birthdayDaysAgo: birthdayInfo.birthdayDaysAgo,
+    lastBirthdayAt: birthdayInfo.lastBirthdayAt,
+    nextBirthdayAt: birthdayInfo.nextBirthdayAt,
+    canWish: Boolean(canWish),
   };
 };
 
@@ -642,6 +679,63 @@ router.get("/directory", auth, async (req, res) => {
   } catch (err) {
     console.error("People directory fetch failed:", err);
     return res.status(500).json({ error: "Failed to load people directory" });
+  }
+});
+
+/* ================= COMMUNITY BIRTHDAYS ================= */
+router.get("/birthdays/community", auth, async (req, res) => {
+  try {
+    const limit = Math.min(10, Math.max(1, Number(req.query.limit) || 10));
+    const [viewer, users] = await Promise.all([
+      User.findById(req.user.id).select("_id friends").lean(),
+      User.find({
+        isDeleted: { $ne: true },
+        isActive: { $ne: false },
+        isBanned: { $ne: true },
+        isSuspended: { $ne: true },
+        $or: [
+          { "birthday.day": { $gt: 0 }, "birthday.month": { $gt: 0 } },
+          { dob: { $type: "date" } },
+        ],
+      })
+        .select("_id name username avatar birthday +dob")
+        .lean(),
+    ]);
+    const friendIdSet = new Set(
+      (viewer?.friends || []).map((entry) => toIdString(entry)).filter(Boolean)
+    );
+
+    const birthdays = users
+      .map((entry) => buildCommunityBirthdayCard(entry, friendIdSet.has(toIdString(entry?._id))))
+      .filter(Boolean)
+      .sort((left, right) => {
+        const dayDelta = Number(left.birthdayDaysUntil || 0) - Number(right.birthdayDaysUntil || 0);
+        if (dayDelta !== 0) {
+          return dayDelta;
+        }
+        return String(left.name || left.username || "").localeCompare(
+          String(right.name || right.username || "")
+        );
+      });
+
+    const today = birthdays.filter((entry) => entry.birthdayIsToday);
+    const upcoming = birthdays
+      .filter((entry) => Number(entry.birthdayDaysUntil) > 0)
+      .slice(0, limit);
+    const recent = birthdays
+      .filter((entry) => Number(entry.birthdayDaysAgo) > 0 && Number(entry.birthdayDaysAgo) <= 7)
+      .sort((left, right) => Number(left.birthdayDaysAgo) - Number(right.birthdayDaysAgo));
+
+    return res.json({
+      generatedAt: new Date().toISOString(),
+      totalWithSharedBirthdays: birthdays.length,
+      today,
+      upcoming,
+      recent,
+    });
+  } catch (err) {
+    console.error("Community birthdays fetch failed:", err);
+    return res.status(500).json({ error: "Failed to load community birthdays" });
   }
 });
 

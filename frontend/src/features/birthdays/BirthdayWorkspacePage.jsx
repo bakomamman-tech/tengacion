@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { getFriendsHub, resolveImage, sendChatMessage } from "../../api";
+import { getCommunityBirthdays, resolveImage, sendChatMessage } from "../../api";
 import QuickAccessLayout from "../../components/QuickAccessLayout";
 import "./birthdays.css";
 
@@ -29,6 +29,32 @@ const formatBirthdayDate = (person) => {
     day: "numeric",
     ...(year ? { year: "numeric" } : {}),
   }).format(new Date(year || 2000, month - 1, day));
+};
+
+const formatUpcomingDate = (person) => {
+  const date = person?.nextBirthdayAt ? new Date(person.nextBirthdayAt) : null;
+  if (!date || Number.isNaN(date.getTime())) {
+    return formatBirthdayDate(person);
+  }
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+};
+
+const formatCountdown = (days) => {
+  const count = Number(days) || 0;
+  if (count === 1) {
+    return "Tomorrow";
+  }
+  if (count < 7) {
+    return `In ${count} days`;
+  }
+  const weeks = Math.floor(count / 7);
+  return `In ${weeks} week${weeks === 1 ? "" : "s"}`;
 };
 
 function BirthdayIcon({ name }) {
@@ -80,7 +106,7 @@ function BirthdaySidebar({ search, onSearch }) {
       <section>
         <h2>Birthdays</h2>
         <button type="button" className="active"><span><BirthdayIcon name="cake" /></span>Birthday calendar</button>
-        <p>Birthday reminders are based on the dates your friends choose to share.</p>
+        <p>Community celebrations show only the month and day members share. Email addresses and birth years stay private.</p>
       </section>
     </aside>
   );
@@ -114,7 +140,6 @@ function WishComposer({ person, value, sending, onChange, onPreset, onSend }) {
 }
 
 function BirthdayPerson({ person, recent = false, draft, sending, onDraft, onPreset, onSend, onProfile }) {
-  const age = Number(person?.birthdayAge) || 0;
   return (
     <article className={`birthday-fb-person${recent ? " recent" : ""}`} id={`birthday-${person?._id}`}>
       <button type="button" className="birthday-fb-person__avatar" onClick={onProfile}>
@@ -124,16 +149,21 @@ function BirthdayPerson({ person, recent = false, draft, sending, onDraft, onPre
         <div className="birthday-fb-person__heading">
           <button type="button" onClick={onProfile}>{person?.name || "Tengacion friend"}</button>
           {recent ? <span>{formatBirthdayDate(person)}</span> : null}
-          {age ? <small>{age} years old</small> : null}
+          {!recent ? <span className="birthday-official-label">Official Tengacion birthday celebration</span> : null}
+          {person?.username ? <small>@{person.username}</small> : null}
         </div>
-        <WishComposer
-          person={person}
-          value={draft}
-          sending={sending}
-          onChange={onDraft}
-          onPreset={onPreset}
-          onSend={onSend}
-        />
+        {person?.canWish ? (
+          <WishComposer
+            person={person}
+            value={draft}
+            sending={sending}
+            onChange={onDraft}
+            onPreset={onPreset}
+            onSend={onSend}
+          />
+        ) : (
+          <button type="button" className="birthday-view-profile" onClick={onProfile}>View profile</button>
+        )}
       </div>
     </article>
   );
@@ -163,10 +193,44 @@ function BirthdaySection({ title, people, recent, loading, drafts, sendingKey, o
   );
 }
 
+function UpcomingBirthdays({ people, loading, onProfile }) {
+  return (
+    <section className="birthday-fb-section birthday-upcoming-section" aria-busy={loading}>
+      <div className="birthday-section-heading">
+        <div>
+          <span className="birthday-section-eyebrow">Community calendar</span>
+          <h2>Next 10 birthdays</h2>
+        </div>
+        <span className="birthday-section-count">{people.length}/10</span>
+      </div>
+      {loading ? <p className="birthday-fb-empty">Finding the next celebrations...</p> : people.length ? (
+        <div className="birthday-community-list">
+          {people.map((person, index) => (
+            <article className={`birthday-community-card${index === 0 ? " is-next" : ""}`} id={`birthday-${person?._id}`} key={person?._id || person?.username}>
+              <button type="button" className="birthday-community-card__avatar" onClick={() => onProfile(person)}>
+                <img src={resolveImage(person?.avatar) || fallbackAvatar(person?.name)} alt={person?.name || "Tengacion member"} />
+                <span>{index + 1}</span>
+              </button>
+              <div className="birthday-community-card__copy">
+                {index === 0 ? <small>Up next</small> : null}
+                <button type="button" onClick={() => onProfile(person)}>{person?.name || "Tengacion member"}</button>
+                {person?.username ? <span>@{person.username}</span> : null}
+                <strong>{formatUpcomingDate(person)}</strong>
+              </div>
+              <div className="birthday-community-card__countdown">{formatCountdown(person?.birthdayDaysUntil)}</div>
+            </article>
+          ))}
+        </div>
+      ) : <p className="birthday-fb-empty">No upcoming community birthdays are currently shared.</p>}
+    </section>
+  );
+}
+
 export default function BirthdayWorkspacePage({ user }) {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [birthdays, setBirthdays] = useState([]);
+  const [upcoming, setUpcoming] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -177,8 +241,12 @@ export default function BirthdayWorkspacePage({ user }) {
     try {
       setLoading(true);
       setError("");
-      const payload = await getFriendsHub();
-      setBirthdays(Array.isArray(payload?.birthdays) ? payload.birthdays : []);
+      const payload = await getCommunityBirthdays(10);
+      setBirthdays([
+        ...(Array.isArray(payload?.today) ? payload.today : []),
+        ...(Array.isArray(payload?.recent) ? payload.recent : []),
+      ]);
+      setUpcoming(Array.isArray(payload?.upcoming) ? payload.upcoming : []);
     } catch (err) {
       setError(err?.message || "Could not load birthdays");
     } finally {
@@ -199,8 +267,14 @@ export default function BirthdayWorkspacePage({ user }) {
 
   const visible = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    return needle ? birthdays.filter((person) => `${person?.name || ""} ${person?.username || ""}`.toLowerCase().includes(needle)) : birthdays;
-  }, [birthdays, search]);
+    const combined = [...birthdays, ...upcoming];
+    const unique = Array.from(
+      new Map(combined.map((person) => [String(person?._id || person?.username || ""), person])).values()
+    );
+    return needle
+      ? unique.filter((person) => `${person?.name || ""} ${person?.username || ""}`.toLowerCase().includes(needle))
+      : unique;
+  }, [birthdays, search, upcoming]);
 
   const today = visible.filter((person) => person?.birthdayIsToday);
   const recent = visible.filter((person) => !person?.birthdayIsToday && Number(person?.birthdayDaysAgo) > 0 && Number(person?.birthdayDaysAgo) <= 7);
@@ -230,8 +304,13 @@ export default function BirthdayWorkspacePage({ user }) {
         <BirthdaySidebar search={search} onSearch={setSearch} />
         <main className="birthdays-content">
           {error ? <section className="birthday-fb-error"><span>{error}</span><button type="button" onClick={() => void loadBirthdays()}>Try again</button></section> : null}
+          <UpcomingBirthdays
+            people={search.trim() ? visible.filter((person) => Number(person?.birthdayDaysUntil) > 0).slice(0, 10) : upcoming}
+            loading={loading}
+            onProfile={(person) => navigate(`/profile/${person?.username || ""}`)}
+          />
           <BirthdaySection
-            title="Today's birthdays"
+            title="Celebrating today"
             people={today}
             loading={loading}
             drafts={drafts}
@@ -240,7 +319,7 @@ export default function BirthdayWorkspacePage({ user }) {
             onPreset={(id, value) => setDrafts((current) => ({ ...current, [id]: value }))}
             onSend={(person) => void sendWish(person)}
             onProfile={(person) => navigate(`/profile/${person?.username || ""}`)}
-            emptyText="No friends are celebrating today."
+            emptyText="No community birthdays are being celebrated today."
           />
           <BirthdaySection
             title="Recent birthdays"

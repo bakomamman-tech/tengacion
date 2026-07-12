@@ -180,6 +180,115 @@
   line-height: 1.2;
 }
 
+.birthday-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.birthday-section-heading h2 { margin-bottom: 0; }
+
+.birthday-section-eyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.birthday-section-count,
+.birthday-community-card__countdown {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand) 12%, #f0f2f5);
+  color: var(--brand-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.birthday-section-count { padding: 7px 11px; }
+
+.birthday-community-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding-bottom: 10px;
+}
+
+.birthday-community-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid #e0e3e7;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #fff, #f7f9f8);
+}
+
+.birthday-community-card.is-next {
+  grid-column: 1 / -1;
+  padding: 16px;
+  border-color: color-mix(in srgb, var(--brand) 28%, #e0e3e7);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 10%, #fff), #fff8e9);
+  box-shadow: 0 10px 28px rgba(23, 73, 48, 0.08);
+}
+
+.birthday-community-card__avatar {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  overflow: visible;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: #e4e6eb;
+}
+
+.birthday-community-card__avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.birthday-community-card__avatar span {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.birthday-community-card__copy { min-width: 0; display: grid; gap: 2px; }
+.birthday-community-card__copy small { color: var(--brand); font-size: 11px; font-weight: 850; text-transform: uppercase; }
+.birthday-community-card__copy > button { justify-self: start; overflow: hidden; border: 0; padding: 0; background: transparent; color: #050505; font: inherit; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
+.birthday-community-card__copy > span { color: #65676b; font-size: 12px; }
+.birthday-community-card__copy > strong { margin-top: 3px; color: #39433d; font-size: 13px; }
+.birthday-community-card__countdown { padding: 7px 9px; white-space: nowrap; }
+
+.birthday-view-profile {
+  min-height: 38px;
+  border: 1px solid #ced0d4;
+  border-radius: 999px;
+  padding: 0 14px;
+  background: #fff;
+  color: var(--brand-strong);
+  font-weight: 800;
+}
+
 .birthday-fb-person {
   display: grid;
   grid-template-columns: 74px minmax(0, 1fr);
@@ -238,6 +347,11 @@
   grid-column: 1;
   color: #65676b;
   font-size: 13px;
+}
+
+.birthday-fb-person__heading > .birthday-official-label {
+  color: var(--brand);
+  font-weight: 750;
 }
 
 .birthday-fb-person__heading > small {
@@ -385,6 +499,21 @@ html.dark-mode .birthday-fb-presets button {
   color: #b0b3b8;
 }
 
+html.dark-mode .birthday-community-card {
+  border-color: #3e4042;
+  background: linear-gradient(145deg, #2b2d2f, #242526);
+}
+
+html.dark-mode .birthday-community-card.is-next {
+  border-color: color-mix(in srgb, var(--brand) 45%, #3e4042);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 18%, #242526), #302b21);
+}
+
+html.dark-mode .birthday-community-card__copy > button,
+html.dark-mode .birthday-community-card__copy > strong { color: #e4e6eb; }
+html.dark-mode .birthday-community-card__avatar span { border-color: #242526; }
+html.dark-mode .birthday-view-profile { border-color: #4e4f50; background: #242526; color: #b8e2c7; }
+
 @media (max-width: 1180px) {
   .birthdays-workspace {
     grid-template-columns: 330px minmax(0, 1fr);
@@ -474,4 +603,10 @@ html.dark-mode .birthday-fb-presets button {
   .birthday-fb-presets button {
     font-size: 14px;
   }
+
+  .birthday-community-list { grid-template-columns: 1fr; }
+  .birthday-community-card.is-next { grid-column: auto; }
+  .birthday-community-card { grid-template-columns: 48px minmax(0, 1fr); }
+  .birthday-community-card__avatar { width: 48px; height: 48px; }
+  .birthday-community-card__countdown { grid-column: 2; justify-self: start; }
 }

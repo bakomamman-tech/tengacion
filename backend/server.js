@@ -777,7 +777,7 @@ if (process.env.NODE_ENV !== "test") {
       await repairUserProfileIndexes({ logger: console });
       await repairUserMediaFields({ logger: console });
       await repairUserSecurityFields({ logger: console });
-      await runBirthdayRecognition({ logger: console });
+      await runBirthdayRecognition({ logger: console, io });
       await startPaymentMaintenance({ logger: console });
       await startEntitlementMaintenance({ logger: console });
       await startWalletMaintenance({ logger: console });
@@ -787,7 +787,7 @@ if (process.env.NODE_ENV !== "test") {
     }
 
     const birthdayRecognitionTimer = setInterval(() => {
-      runBirthdayRecognition({ logger: console }).catch((err) => {
+      runBirthdayRecognition({ logger: console, io }).catch((err) => {
         console.error("Birthday recognition task failed:", err?.message || err);
       });
     }, 60 * 60 * 1000);

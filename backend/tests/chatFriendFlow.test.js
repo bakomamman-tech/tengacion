@@ -9,7 +9,10 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "1234567890123456789012345678
 const app = require("../app");
 const User = require("../models/User");
 const Message = require("../models/Message");
+const Notification = require("../models/Notification");
 const { signAccessToken } = require("../services/authTokens");
+const { runBirthdayRecognition } = require("../services/birthdayService");
+const { getDatePartsInTimeZone } = require("../utils/birthday");
 
 describe("chat + friend request flow", () => {
   let mongod;
@@ -382,6 +385,73 @@ describe("chat + friend request flow", () => {
     expect(response.body.suggestions.some((entry) => entry._id === userB._id.toString())).toBe(false);
     expect(response.body.suggestions.some((entry) => entry._id === userC._id.toString())).toBe(false);
     expect(response.body.suggestions.some((entry) => entry._id === userD._id.toString())).toBe(false);
+  });
+
+  test("community birthdays returns the nearest dates without exposing private identity fields", async () => {
+    const today = getDatePartsInTimeZone(new Date());
+    const todayStamp = Date.UTC(today.year, today.month - 1, today.day);
+    const futureBirthday = (days) => {
+      const date = new Date(todayStamp + (days * 86400000));
+      return {
+        day: date.getUTCDate(),
+        month: date.getUTCMonth() + 1,
+        year: 1995,
+        visibility: "friends",
+      };
+    };
+
+    userA.friends = [userB._id];
+    userB.friends = [userA._id];
+    userB.birthday = futureBirthday(4);
+    userC.birthday = futureBirthday(1);
+    userD.birthday = futureBirthday(7);
+    userE.birthday = futureBirthday(2);
+    await Promise.all([userA.save(), userB.save(), userC.save(), userD.save(), userE.save()]);
+
+    const response = await request(app)
+      .get("/api/users/birthdays/community?limit=3")
+      .set("Authorization", `Bearer ${tokenA}`)
+      .expect(200);
+
+    expect(response.body.upcoming).toHaveLength(3);
+    expect(response.body.upcoming.map((entry) => entry._id)).toEqual([
+      userC._id.toString(),
+      userE._id.toString(),
+      userB._id.toString(),
+    ]);
+    expect(response.body.upcoming[2].canWish).toBe(true);
+    response.body.upcoming.forEach((entry) => {
+      expect(entry).not.toHaveProperty("email");
+      expect(entry).not.toHaveProperty("dob");
+      expect(entry).not.toHaveProperty("birthdayAge");
+      expect(entry.birthday).not.toHaveProperty("year");
+    });
+  });
+
+  test("birthday recognition publishes one idempotent community announcement per recipient", async () => {
+    const today = getDatePartsInTimeZone(new Date());
+    userB.birthday = {
+      day: today.day,
+      month: today.month,
+      year: 1995,
+      visibility: "friends",
+    };
+    await userB.save();
+
+    await runBirthdayRecognition({ logger: { info: jest.fn() } });
+    await runBirthdayRecognition({ logger: { info: jest.fn() } });
+
+    const announcements = await Notification.find({
+      recipient: userA._id,
+      sender: userB._id,
+      "metadata.type": "birthday",
+    }).lean();
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0].text).toContain("celebrating a birthday today");
+    expect(announcements[0].metadata).toMatchObject({
+      birthdayPersonId: userB._id.toString(),
+      link: `/birthdays?focus=${userB._id.toString()}`,
+    });
   });
 
   test("find friends directory lists every visible account with paging and relationship state", async () => {

@@ -776,6 +776,11 @@ export const getFriendsHub = () =>
     headers: getAuthHeaders(),
   });
 
+export const getCommunityBirthdays = (limit = 10) =>
+  request(`${API_BASE}/users/birthdays/community?limit=${encodeURIComponent(limit)}`, {
+    headers: getAuthHeaders(),
+  });
+
 export const sendFriendRequest = (userId) =>
   request(`${API_BASE}/users/${encodeURIComponent(userId || "")}/request`, {
     method: "POST",

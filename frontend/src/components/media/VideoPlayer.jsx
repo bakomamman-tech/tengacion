@@ -38,14 +38,14 @@ const VideoPlayer = forwardRef(function VideoPlayer(
         controls={false}
         playsInline
         preload="metadata"
-        crossOrigin="anonymous"
+        aria-label="Post video"
         onWaiting={onWaiting}
         onPlaying={onPlaying}
         onPlay={onPlay}
         onPause={onPause}
         onError={onError}
       >
-        <source src={src} type={sourceType || "video/mp4"} />
+        <source src={src} type={sourceType || undefined} />
       </video>
 
       <VideoControlsOverlay

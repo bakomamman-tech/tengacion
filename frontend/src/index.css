@@ -134,6 +134,9 @@ html.dark-mode .live-preview-panel {
 
 .post-video-wrapper {
   position: relative;
+  overflow: hidden;
+  min-height: 240px;
+  background: #030806;
 }
 
 .post-video-controls {
@@ -169,6 +172,7 @@ html.dark-mode .live-preview-panel {
   background: rgba(0, 0, 0, 0.3);
   color: #fff;
   border-radius: 0.75rem;
+  pointer-events: none;
 }
 
 .post-video-error {
@@ -12639,9 +12643,12 @@ html.dark-mode .post-shared-preview__text-block .expandable-post-text__measure {
 
 .post-video {
   width: 100%;
+  min-height: 240px;
+  aspect-ratio: 16 / 9;
   max-height: 520px;
   display: block;
   background: #000;
+  object-fit: contain;
 }
 
 .post-video-error {

@@ -285,6 +285,17 @@ export default function VideoControlsOverlay({
   return (
     <div className={styles.overlay} aria-hidden={visible || !isPlaying ? "false" : "true"}>
       <div className={styles.gradient} />
+      {!isPlaying && (
+        <button
+          type="button"
+          className={styles.heroPlay}
+          onClick={togglePlayPause}
+          aria-label="Play video"
+          title="Play video"
+        >
+          {"\u25B6"}
+        </button>
+      )}
       <div
         className={`${styles.controls} ${visible || !isPlaying ? styles.shown : styles.hidden}`}
         onMouseEnter={() => {

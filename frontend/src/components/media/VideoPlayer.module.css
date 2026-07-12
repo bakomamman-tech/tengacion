@@ -15,6 +15,32 @@
   pointer-events: none;
 }
 
+.heroPlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  width: clamp(58px, 9vw, 76px);
+  height: clamp(58px, 9vw, 76px);
+  padding: 0 0 0 5px;
+  border: 1px solid rgba(255, 255, 255, 0.34) !important;
+  border-radius: 50%;
+  color: #fff !important;
+  background: rgba(8, 14, 12, 0.78) !important;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.38) !important;
+  backdrop-filter: blur(12px);
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: pointer;
+  font-size: 25px;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.heroPlay:hover {
+  background: #20a875 !important;
+  transform: translate(-50%, -50%) scale(1.06);
+}
+
 .controls {
   position: relative;
   z-index: 1;
@@ -104,7 +130,7 @@
 }
 
 .played {
-  background: rgba(255, 255, 255, 0.95);
+  background: #2dd391;
 }
 
 .row {
@@ -229,22 +255,13 @@
     padding: 8px 8px 6px;
   }
 
-  .row {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-
-  .time {
-    order: 3;
-    text-align: left;
-  }
-
-  .cluster:last-child {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
+  .row { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  .time { font-size: 11px; }
+  .cluster:last-child { justify-content: flex-end; }
 
   .volume {
-    width: 64px;
+    display: none;
   }
+
+  .vpBtn { width: 28px; min-width: 28px; height: 28px; padding: 6px; }
 }

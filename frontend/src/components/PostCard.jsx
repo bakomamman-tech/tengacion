@@ -81,7 +81,10 @@ const inferVideoMimeType = (url = "", fallback = "") => {
   if (cleanUrl.includes(".ogg")) {return "video/ogg";}
   if (cleanUrl.includes(".mov")) {return "video/quicktime";}
   if (cleanUrl.includes(".m4v")) {return "video/mp4";}
-  return "video/mp4";
+  if (cleanUrl.includes(".mp4")) {return "video/mp4";}
+  // Extensionless CDN URLs must use the response Content-Type. Guessing MP4
+  // can make a valid source fail before the browser inspects the response.
+  return "";
 };
 
 const normalizeTagHandle = (value = "") =>

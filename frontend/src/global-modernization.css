@@ -1,0 +1,171 @@
+/*
+ * Shared experience layer
+ * Keeps page-specific art direction intact while standardizing interaction,
+ * accessibility, responsive behavior, and surface quality across the app.
+ */
+:root {
+  --ux-content-wide: 1440px;
+  --ux-content-reading: 760px;
+  --ux-space-1: 4px;
+  --ux-space-2: 8px;
+  --ux-space-3: 12px;
+  --ux-space-4: 16px;
+  --ux-space-5: 24px;
+  --ux-space-6: 32px;
+  --ux-radius-control: 13px;
+  --ux-radius-card: 18px;
+  --ux-radius-modal: 24px;
+  --ux-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ux-transition-fast: 150ms var(--ux-ease);
+  --ux-transition: 210ms var(--ux-ease);
+  --ux-focus: color-mix(in srgb, var(--brand) 34%, transparent);
+  --ux-field-bg: color-mix(in srgb, var(--surface-soft) 92%, transparent);
+  --ux-field-border: color-mix(in srgb, var(--border) 78%, var(--brand) 22%);
+  --ux-surface-glass: color-mix(in srgb, var(--surface) 88%, transparent);
+  --ux-card-shadow: 0 10px 30px rgba(13, 33, 25, 0.07);
+  --ux-card-shadow-hover: 0 16px 38px rgba(13, 33, 25, 0.11);
+}
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-color: color-mix(in srgb, var(--brand) 48%, var(--border)) transparent;
+  scrollbar-width: thin;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  font-kerning: normal;
+}
+
+::selection { color: var(--text); background: color-mix(in srgb, var(--brand) 24%, transparent); }
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--brand) 42%, var(--border)) transparent; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 999px; background: color-mix(in srgb, var(--brand) 42%, var(--border)); background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--brand) 65%, var(--border)); background-clip: padding-box; }
+
+:where(a, button, input, textarea, select, summary, [role="button"], [tabindex]):focus-visible {
+  outline: 3px solid var(--ux-focus) !important;
+  outline-offset: 3px;
+}
+
+:where(a, button, input, textarea, select, summary, [role="button"]) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(button, [role="button"], a) { touch-action: manipulation; }
+:where(button, [role="button"]):not(:disabled) { transition: transform var(--ux-transition-fast), box-shadow var(--ux-transition), border-color var(--ux-transition), background-color var(--ux-transition); }
+:where(button, [role="button"]):not(:disabled):active { transform: scale(0.98); }
+:where(button, input, select, textarea):disabled { cursor: not-allowed; opacity: 0.58; }
+
+:where(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]) {
+  min-height: 44px;
+  border-radius: var(--ux-radius-control);
+  border-color: var(--ux-field-border);
+  background-color: var(--ux-field-bg);
+  color: var(--text);
+  transition: border-color var(--ux-transition-fast), box-shadow var(--ux-transition-fast), background-color var(--ux-transition-fast);
+}
+
+:where(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):hover {
+  border-color: color-mix(in srgb, var(--brand) 42%, var(--border));
+}
+
+:where(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 13%, transparent);
+}
+
+:where(input, textarea)::placeholder { color: color-mix(in srgb, var(--muted) 74%, transparent); opacity: 1; }
+:where(textarea) { line-height: 1.55; }
+:where(label) { text-wrap: pretty; }
+
+:where(.card, .settings-card, .form-card, .table-card):not(.tdash-stat-card):not(.creator-summary-card) {
+  border-radius: var(--ux-radius-card);
+  border-color: color-mix(in srgb, var(--border) 84%, transparent);
+  box-shadow: var(--ux-card-shadow);
+}
+
+:where(.modal-content, .dialog-panel, [role="dialog"] > .modal) {
+  border-radius: var(--ux-radius-modal);
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  box-shadow: 0 28px 70px rgba(7, 24, 16, 0.2);
+}
+
+:where(.modal-overlay, .dialog-backdrop) {
+  background: rgba(6, 18, 12, 0.58);
+  backdrop-filter: blur(8px) saturate(90%);
+  -webkit-backdrop-filter: blur(8px) saturate(90%);
+}
+
+:where(table) { border-collapse: separate; border-spacing: 0; }
+:where(th) { font-size: 0.76rem; letter-spacing: 0.045em; text-transform: uppercase; }
+:where(tbody tr) { transition: background-color var(--ux-transition-fast); }
+:where(tbody tr:hover) { background-color: color-mix(in srgb, var(--brand) 5%, transparent); }
+
+:where(img, video) { max-width: 100%; }
+:where(img) { image-rendering: auto; }
+:where(video) { background: #020705; }
+
+:where(h1, h2, h3) { text-wrap: balance; letter-spacing: -0.025em; }
+:where(p, li) { text-wrap: pretty; }
+:where(small, .muted, .helper-text) { line-height: 1.45; }
+
+:where(.skeleton, [class*="skeleton__"], [class$="-skeleton"]) {
+  background-size: 220% 100%;
+  animation-duration: 1.6s;
+}
+
+.skip-to-content {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 10000;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--brand);
+  color: #fff;
+  transform: translateY(-150%);
+}
+.skip-to-content:focus { transform: translateY(0); }
+
+html.dark-mode {
+  --ux-field-bg: color-mix(in srgb, var(--surface-soft) 86%, transparent);
+  --ux-field-border: color-mix(in srgb, var(--border) 74%, var(--brand) 26%);
+  --ux-surface-glass: color-mix(in srgb, var(--surface) 85%, transparent);
+  --ux-card-shadow: 0 12px 34px rgba(0, 0, 0, 0.2);
+  --ux-card-shadow-hover: 0 18px 44px rgba(0, 0, 0, 0.28);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(.card, .settings-card, .form-card):not(.tdash-stat-card):not(.creator-summary-card) {
+    transition: transform var(--ux-transition), box-shadow var(--ux-transition), border-color var(--ux-transition);
+  }
+  :where(.card, .settings-card, .form-card):not(.tdash-stat-card):not(.creator-summary-card):hover {
+    border-color: color-mix(in srgb, var(--brand) 24%, var(--border));
+    box-shadow: var(--ux-card-shadow-hover);
+  }
+}
+
+@media (max-width: 720px) {
+  :root { --ux-radius-card: 15px; --ux-radius-modal: 18px; }
+  :where(button, [role="button"], input, select) { min-height: 42px; }
+  :where(.modal-content, .dialog-panel) { max-width: calc(100vw - 20px); max-height: calc(100dvh - 20px); }
+  :where(.table-wrap, [class*="table-wrap"]) { overflow-x: auto; overscroll-behavior-inline: contain; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root { --border: color-mix(in srgb, currentColor 48%, transparent); }
+  :where(input, select, textarea, button) { border-width: 2px; }
+}

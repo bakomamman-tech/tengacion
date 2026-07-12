@@ -27,6 +27,7 @@ import "./royalty-theme.css";
 import "./peaceful-theme.css";
 import "./nature-afro-themes.css";
 import "./terra-minimal-theme.css";
+import "./global-modernization.css";
 
 const initializeThemeEarly = () => {
   if (typeof window === "undefined") {
@@ -71,8 +72,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
                       },
                       success: {
                         iconTheme: {
-                          primary: "#bb833f",
-                          secondary: "#fff8ef",
+                          primary: "#2a9f6b",
+                          secondary: "#f2fff8",
                         },
                       },
                       error: {

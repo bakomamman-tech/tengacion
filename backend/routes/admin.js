@@ -1662,9 +1662,11 @@ router.get("/content", async (req, res) => {
         (row) => Number(row.playsCount || row.playCount || 0),
         (row) => ({
           artistName: row.artistName || "",
+          description: row.description || "",
           copyrightScanStatus: row.copyrightScanStatus || "pending_scan",
           audioAvailable: Boolean(resolveTrackAudioUrl(row)),
           previewAvailable: Boolean(resolveTrackPreviewUrl(row)),
+          audioUrl: resolveTrackPreviewUrl(row) || resolveTrackAudioUrl(row) || "",
           price: Number(row.price || row.priceNGN || 0),
           currency: row.currency || "NGN",
         })
@@ -1703,9 +1705,12 @@ router.get("/content", async (req, res) => {
         (row) => row.createdAt,
         (row) => Number(row.playsCount || row.playCount || 0),
         (row) => ({
+          artistName: row.artistName || row.authorName || "",
+          description: row.description || "",
           copyrightScanStatus: row.copyrightScanStatus || "pending_scan",
           audioAvailable: Boolean(resolveTrackAudioUrl(row)),
           previewAvailable: Boolean(resolveTrackPreviewUrl(row)),
+          audioUrl: resolveTrackPreviewUrl(row) || resolveTrackAudioUrl(row) || "",
           price: Number(row.price || row.priceNGN || 0),
           currency: row.currency || "NGN",
         })

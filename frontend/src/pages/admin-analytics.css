@@ -431,6 +431,16 @@
 .adminx-table {
   width: 100%;
   border-collapse: collapse;
+  border: 0;
+  border-radius: 18px;
+  background: var(--adminx-panel-2);
+  color: var(--adminx-text);
+}
+
+.adminx-table thead,
+.adminx-table th {
+  background: #13271e;
+  color: #b9d8c5;
 }
 
 .adminx-table th,
@@ -438,10 +448,18 @@
   padding: 14px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   text-align: left;
+  color: inherit;
 }
+
+.adminx-table td { background: rgba(8, 20, 14, 0.72); }
+.adminx-table tbody tr:nth-child(even) td { background: rgba(13, 29, 21, 0.78); }
 
 .adminx-table tbody tr:hover {
   background: rgba(255, 255, 255, 0.03);
+}
+
+.adminx-table tbody tr:hover td {
+  background: rgba(33, 73, 50, 0.78);
 }
 
 .adminx-empty,
@@ -626,6 +644,71 @@
   flex-wrap: wrap;
 }
 
+.adminx-eyebrow {
+  margin-bottom: 6px;
+  color: var(--adminx-accent);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.adminx-review-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.adminx-review-summary > div {
+  display: grid;
+  gap: 5px;
+  padding: 13px;
+  border: 1px solid var(--adminx-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.adminx-review-summary span,
+.adminx-audio-review span {
+  color: var(--adminx-muted);
+  font-size: 0.78rem;
+}
+
+.adminx-review-description {
+  margin: 0 0 16px;
+  color: var(--adminx-muted);
+}
+
+.adminx-audio-review {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 16px;
+  border: 1px solid var(--adminx-border-strong);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(63, 218, 122, 0.1), rgba(255, 255, 255, 0.025));
+}
+
+.adminx-audio-review > div { display: grid; gap: 3px; }
+.adminx-audio-review audio { width: 100%; min-height: 48px; }
+
+.adminx-review-checklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.adminx-review-checklist span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(63, 218, 122, 0.1);
+  color: #a7edbe;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .adminx-tuition-detail-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -674,7 +757,18 @@
   .adminx-sidebar {
     position: static;
     height: auto;
+    padding: 16px;
   }
+
+  .adminx-nav {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scroll-snap-type: x proximity;
+  }
+
+  .adminx-nav-item { flex: 0 0 auto; scroll-snap-align: start; }
+  .adminx-sidebar-foot { display: none; }
 
   .adminx-main {
     padding: 18px;
@@ -751,4 +845,9 @@
   .adminx-tuition-detail-grid__wide {
     grid-column: auto;
   }
+
+  .adminx-main { padding: 14px 10px 24px; }
+  .adminx-table-wrap { overflow-x: auto; border-radius: 18px; }
+  .adminx-table { min-width: 860px; }
+  .adminx-review-summary { grid-template-columns: 1fr; }
 }

@@ -95,6 +95,7 @@ export default function AdminContentPage({ user }) {
   const [reviewError, setReviewError] = useState("");
   const [reviewNote, setReviewNote] = useState("Rights and manuscript reviewed by Admin.");
   const [publishBusyKey, setPublishBusyKey] = useState("");
+  const [audioReview, setAudioReview] = useState(null);
 
   useEffect(() => {
     const nextCategory = searchParams.get("category") || "all";
@@ -204,6 +205,7 @@ export default function AdminContentPage({ user }) {
         : "Audio rights and release metadata reviewed by Admin.";
       await adminPublishTrack(entry.id, { reason: note });
       setStatusMessage(`${entry.title || "Track"} is now published.`);
+      setAudioReview(null);
       await load();
     } catch (err) {
       setError(err?.message || "Failed to publish track");
@@ -281,10 +283,9 @@ export default function AdminContentPage({ user }) {
                         <button
                           type="button"
                           className="adminx-btn adminx-btn--primary"
-                          onClick={() => publishTrack(entry)}
-                          disabled={publishBusyKey === `${entry.type}-${entry.id}`}
+                          onClick={() => setAudioReview(entry)}
                         >
-                          {publishBusyKey === `${entry.type}-${entry.id}` ? "Publishing..." : getTrackPublishLabel(entry)}
+                          Review {entry.type === "podcast" ? "episode" : "track"}
                         </button>
                       )
                     ) : (
@@ -363,6 +364,60 @@ export default function AdminContentPage({ user }) {
               </button>
               <button type="button" className="adminx-btn adminx-btn--primary" onClick={approveBook} disabled={reviewLoading || reviewBusy || !canApproveReviewBook}>
                 {reviewBusy ? "Approving..." : "Approve book"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {audioReview ? (
+        <div className="adminx-modal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !publishBusyKey) {setAudioReview(null);} }}>
+          <div className="adminx-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="audio-review-title">
+            <div className="adminx-modal__head">
+              <div>
+                <div className="adminx-eyebrow">{audioReview.type === "podcast" ? "Podcast episode" : "Music track"}</div>
+                <h3 id="audio-review-title">{audioReview.title || "Untitled audio"}</h3>
+                <p>Listen and verify the release details before approving publication.</p>
+              </div>
+              <button type="button" className="adminx-modal__close" onClick={() => setAudioReview(null)} disabled={Boolean(publishBusyKey)} aria-label="Close audio review">×</button>
+            </div>
+
+            <div className="adminx-review-summary">
+              <div><span>Creator / artist</span><strong>{audioReview.artistName || "Not supplied"}</strong></div>
+              <div><span>Status</span><strong>{formatStatus(audioReview.status)}</strong></div>
+              <div><span>Copyright scan</span><strong>{formatStatus(audioReview.copyrightScanStatus)}</strong></div>
+              <div><span>Price</span><strong>{formatCurrency(audioReview.price, audioReview.currency)}</strong></div>
+            </div>
+
+            {audioReview.description ? <p className="adminx-review-description">{audioReview.description}</p> : null}
+
+            <div className="adminx-audio-review">
+              <div>
+                <strong>Audio preview</strong>
+                <span>{audioReview.previewAvailable ? "Creator-provided preview" : "Full upload available to administrators"}</span>
+              </div>
+              {audioReview.audioUrl ? (
+                <audio controls preload="metadata" src={resolveImage(audioReview.audioUrl)}>
+                  Your browser does not support audio playback.
+                </audio>
+              ) : <p className="adminx-modal__error">No playable audio file is available.</p>}
+            </div>
+
+            <div className="adminx-review-checklist" aria-label="Approval checklist">
+              <span>✓ Audio available</span>
+              <span>✓ Metadata visible</span>
+              <span>✓ Scan result visible</span>
+            </div>
+
+            <div className="adminx-modal__actions">
+              <button type="button" className="adminx-btn" onClick={() => setAudioReview(null)} disabled={Boolean(publishBusyKey)}>Cancel</button>
+              <button
+                type="button"
+                className="adminx-btn adminx-btn--primary"
+                onClick={() => publishTrack(audioReview)}
+                disabled={Boolean(publishBusyKey) || !audioReview.audioUrl}
+              >
+                {publishBusyKey ? "Approving..." : getTrackPublishLabel(audioReview)}
               </button>
             </div>
           </div>

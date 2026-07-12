@@ -1017,6 +1017,13 @@
   white-space: pre-wrap;
 }
 
+.tg-assistant-message__formatted > p:first-child {
+  color: color-mix(in srgb, var(--text) 96%, var(--brand-strong) 4%);
+  font-size: 1.01em;
+  font-weight: 650;
+  line-height: 1.58;
+}
+
 .tg-assistant-message__formatted ol,
 .tg-assistant-message__formatted ul {
   display: grid;
@@ -1027,6 +1034,51 @@
 
 .tg-assistant-message__formatted li {
   padding-left: 0.1rem;
+}
+
+.tg-assistant-message__formatted ol {
+  padding-left: 0;
+  list-style: none;
+  counter-reset: akuso-step;
+}
+
+.tg-assistant-message__formatted ol li {
+  position: relative;
+  min-height: 2rem;
+  padding: 0.4rem 0.5rem 0.4rem 2.55rem;
+  border-radius: 12px;
+  counter-increment: akuso-step;
+}
+
+.tg-assistant-message__formatted ol li::before {
+  content: counter(akuso-step);
+  position: absolute;
+  top: 0.35rem;
+  left: 0.25rem;
+  width: 1.65rem;
+  height: 1.65rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--brand) 22%, var(--border));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--brand) 10%, var(--surface));
+  color: var(--brand-strong);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.tg-assistant-message__formatted ul li::marker {
+  color: var(--brand);
+}
+
+.tg-assistant-message__formatted > h3:not(:first-child),
+.tg-assistant-message__formatted > h4:not(:first-child) {
+  margin-top: 0.6rem;
+}
+
+.tg-assistant-message__formatted > h3 + p,
+.tg-assistant-message__formatted > h4 + p {
+  color: color-mix(in srgb, var(--text) 82%, var(--muted) 18%);
 }
 
 .tg-assistant-message__formatted pre {
@@ -1051,7 +1103,7 @@
   display: grid;
   justify-items: center;
   margin: 0.05rem 0;
-  padding: 0.72rem 0.9rem;
+  padding: 1rem clamp(0.8rem, 3vw, 1.4rem);
   overflow-x: auto;
   border: 1px solid rgba(42, 111, 79, 0.14);
   border-radius: 14px;
@@ -1063,11 +1115,22 @@
   display: block;
   min-width: max-content;
   font-family: "Times New Roman", Georgia, ui-serif, serif;
-  font-size: 1.02rem;
+  font-size: clamp(1.05rem, 2.3vw, 1.28rem);
   font-weight: 700;
   line-height: 1.65;
   text-align: center;
   white-space: pre;
+}
+
+.tg-assistant-message__formula-line + .tg-assistant-message__formula-line {
+  margin-top: 0.3rem;
+}
+
+.tg-assistant-message__formatted h3 {
+  margin-top: 1rem;
+  padding-left: 0.7rem;
+  border-left: 3px solid var(--brand);
+  color: color-mix(in srgb, var(--text) 88%, var(--brand) 12%);
 }
 
 body:has(.pyrexx-player),
@@ -1091,6 +1154,16 @@ body:has(.creator-fan-page__player) {
   margin: 0 0.08em;
   vertical-align: middle;
   white-space: nowrap;
+}
+
+.tg-assistant-message__mixed-number.is-fraction {
+  margin-inline: 0.08em;
+  vertical-align: -0.28em;
+}
+
+.tg-assistant-message__mixed-number.is-fraction .tg-assistant-message__mixed-fraction {
+  min-width: 1.45em;
+  font-size: 0.82em;
 }
 
 .tg-assistant-message__mixed-whole {
@@ -1361,8 +1434,31 @@ body:has(.creator-fan-page__player) {
 }
 
 .tg-assistant-detail {
-  padding: 0.75rem 0.85rem;
+  padding: 0.82rem 0.9rem;
+  transition: border-color 160ms ease, background 160ms ease;
 }
+
+.tg-assistant-detail[open] {
+  border-color: color-mix(in srgb, var(--brand) 22%, transparent);
+  background: color-mix(in srgb, var(--surface) 92%, var(--brand) 8%);
+}
+
+.tg-assistant-detail summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  list-style: none;
+}
+
+.tg-assistant-detail summary::-webkit-details-marker { display: none; }
+.tg-assistant-detail summary::after {
+  content: "+";
+  color: var(--brand-strong);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.tg-assistant-detail[open] summary::after { content: "−"; }
 
 .tg-assistant-detail p {
   margin: 0.55rem 0 0;

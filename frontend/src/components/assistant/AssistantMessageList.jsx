@@ -155,25 +155,24 @@ const formatClassroomMath = (value = "") =>
 
 const renderClassroomMath = (value = "") => {
   const text = String(value || "");
-  const mixedNumberPattern = /(-?\d+)\s+(\d+)[/\u2044](\d+)/g;
+  const fractionPattern = /(-?\d+\s+)?(-?\d+)[/\u2044](\d+)/g;
   const parts = [];
   let lastIndex = 0;
 
-  for (const match of text.matchAll(mixedNumberPattern)) {
+  for (const match of text.matchAll(fractionPattern)) {
     if (match.index > lastIndex) {
       parts.push(text.slice(lastIndex, match.index));
     }
 
-    const [matchedText, whole, numerator, denominator] = match;
+    const [matchedText, wholeWithSpace, numerator, denominator] = match;
+    const whole = String(wholeWithSpace || "").trim();
     parts.push(
       <span
         key={`${matchedText}-${match.index}`}
-        className="tg-assistant-message__mixed-number"
-        aria-label={`Mixed number ${whole} and ${numerator} over ${denominator}`}
+        className={`tg-assistant-message__mixed-number${whole ? " is-mixed" : " is-fraction"}`}
+        aria-label={whole ? `Mixed number ${whole} and ${numerator} over ${denominator}` : `${numerator} over ${denominator}`}
       >
-        <span className="tg-assistant-message__mixed-whole" aria-hidden="true">
-          {whole}
-        </span>
+        {whole ? <span className="tg-assistant-message__mixed-whole" aria-hidden="true">{whole}</span> : null}
         <span className="tg-assistant-message__mixed-fraction" aria-hidden="true">
           <span className="tg-assistant-message__mixed-numerator">{numerator}</span>
           <span className="tg-assistant-message__mixed-denominator">{denominator}</span>

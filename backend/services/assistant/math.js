@@ -604,6 +604,66 @@ const formatNumber = (value) => {
   return String(rounded);
 };
 
+const toRational = (value) => {
+  if (!Number.isFinite(value)) return null;
+  if (Number.isInteger(value)) return { numerator: value, denominator: 1 };
+  const text = String(value);
+  const decimals = (text.split(".")[1] || "").length;
+  const denominator = 10 ** decimals;
+  const numerator = Math.round(value * denominator);
+  const divisor = greatestCommonDivisor(numerator, denominator);
+  return { numerator: numerator / divisor, denominator: denominator / divisor };
+};
+
+const simplifyRational = (numerator, denominator) => {
+  if (!denominator) return null;
+  const sign = denominator < 0 ? -1 : 1;
+  const divisor = greatestCommonDivisor(numerator, denominator);
+  return {
+    numerator: (sign * numerator) / divisor,
+    denominator: Math.abs(denominator) / divisor,
+  };
+};
+
+const formatRational = (value) =>
+  !value
+    ? "undefined"
+    : value.denominator === 1
+      ? String(value.numerator)
+      : `${value.numerator}/${value.denominator}`;
+
+const applyRationalOperator = (left, right, operator) => {
+  if (!left || !right) return null;
+  if (operator === "+") return simplifyRational(left.numerator * right.denominator + right.numerator * left.denominator, left.denominator * right.denominator);
+  if (operator === "-") return simplifyRational(left.numerator * right.denominator - right.numerator * left.denominator, left.denominator * right.denominator);
+  if (operator === "*") return simplifyRational(left.numerator * right.numerator, left.denominator * right.denominator);
+  if (operator === "/") return right.numerator === 0 ? null : simplifyRational(left.numerator * right.denominator, left.denominator * right.numerator);
+  if (operator === "^" && right.denominator === 1 && Number.isInteger(right.numerator)) {
+    const exponent = right.numerator;
+    if (exponent >= 0) return simplifyRational(left.numerator ** exponent, left.denominator ** exponent);
+    return left.numerator === 0 ? null : simplifyRational(left.denominator ** Math.abs(exponent), left.numerator ** Math.abs(exponent));
+  }
+  return null;
+};
+
+const evaluateRationalAst = (node, steps = []) => {
+  if (!node) return null;
+  if (node.type === "number") return toRational(node.value);
+  if (node.type === "unary") {
+    const operand = evaluateRationalAst(node.left, steps);
+    if (!operand) return null;
+    const result = simplifyRational(-operand.numerator, operand.denominator);
+    steps.push(`${node.value}${formatRational(operand)} = ${formatRational(result)}`);
+    return result;
+  }
+  const left = evaluateRationalAst(node.left, steps);
+  const right = evaluateRationalAst(node.right, steps);
+  const result = applyRationalOperator(left, right, node.value);
+  if (!result) return null;
+  steps.push(`${formatRational(left)} ${node.value} ${formatRational(right)} = ${formatRational(result)}`);
+  return result;
+};
+
 const evaluateAst = (node, steps = []) => {
   if (!node) {
     return { value: NaN, steps };
@@ -651,16 +711,19 @@ const solveMathExpression = (expression = "") => {
   }
 
   const steps = [];
-  const result = evaluateAst(ast, steps);
-  if (!Number.isFinite(result.value)) {
+  const exactResult = evaluateRationalAst(ast, steps);
+  if (!exactResult) {
     return null;
   }
 
+  const value = exactResult.numerator / exactResult.denominator;
+
   return {
     expression: cleaned,
-    answer: result.value,
+    answer: value,
     steps,
-    answerText: formatNumber(result.value),
+    answerText: formatRational(exactResult),
+    exact: exactResult,
   };
 };
 
@@ -746,7 +809,7 @@ const buildMathResponse = ({ message = "", expression = "" } = {}) => {
         ]
       : []),
     ...calculationSteps.flatMap((step, index) => [
-      `## Step ${index + 1}${index === 0 ? ": Begin the calculation" : ": Continue the calculation"}`,
+      `## Step ${index + 1}: ${index === 0 ? "Simplify the innermost operation" : index === calculationSteps.length - 1 ? "Complete the calculation" : "Substitute and simplify"}`,
       index === 0
         ? "Use the standard order of operations and evaluate the first part that can be simplified."
         : "Substitute the previous result and simplify the next part.",
@@ -755,7 +818,7 @@ const buildMathResponse = ({ message = "", expression = "" } = {}) => {
     ]),
     "",
     "## Final Answer",
-    `The final answer is ${solved.answerText}.`,
+    "Therefore, the exact simplified answer is:",
     buildFormulaBlock([`\\boxed{${solved.answerText}}`]),
   ].join("\n");
 

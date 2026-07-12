@@ -63,6 +63,15 @@ run("solves arithmetic accurately", () => {
   expect(/144/.test(result?.message || ""), "Expected arithmetic result of 144");
 });
 
+run("solves compound fraction expressions exactly and systematically", () => {
+  const result = buildMathResponse({
+    expression: "(3/4 - 2/3 * (5/8 - 1/4)) / (7/9 + 5/6 * 3/10)",
+  });
+  expect(result?.answerText === "18/37", `Expected exact answer 18/37, received ${result?.answerText}`);
+  expect((result?.steps || []).some((step) => step.includes("5/8 - 1/4 = 3/8")), "Expected the inner bracket to be solved first");
+  expect(/\\boxed\{18\/37\}/.test(result?.message || ""), "Expected a boxed exact final answer");
+});
+
 run("keeps health guidance cautious", () => {
   const result = buildHealthResponse({ message: "What does a headache mean?" });
   const combined = `${result?.message || ""} ${result?.safety?.notice || ""}`;
@@ -130,6 +139,14 @@ run("keeps rich conversation continuity in the guarded model prompt", () => {
   });
   expect(/How do I publish a song/i.test(prompt), "Expected previous user request in model context");
   expect(/Explained the creator music upload workflow/i.test(prompt), "Expected previous answer summary in model context");
+});
+
+run("enforces a universal comprehension-first answer structure", () => {
+  const prompt = buildAssistantSystemPrompt({});
+  expect(/Organize every non-trivial answer for comprehension/i.test(prompt), "Expected universal answer organization guidance");
+  expect(/numbered steps for procedures/i.test(prompt), "Expected systematic procedural guidance");
+  expect(/state the problem, identify known information/i.test(prompt), "Expected a general problem-solving framework");
+  expect(/Never produce a wall of text/i.test(prompt), "Expected scannability protection");
 });
 
 const failed = results.filter((result) => !result.ok);

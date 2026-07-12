@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   },
   {
     key: "friends",
-    label: "Friends",
+    label: "Find New Friends",
     path: "/find-friends",
     description: "People you know",
     icon: "friends",

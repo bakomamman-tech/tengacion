@@ -6,14 +6,14 @@ import { describe, expect, it } from "vitest";
 import RightQuickNav from "../RightQuickNav";
 
 describe("RightQuickNav", () => {
-  it("routes the Friends quick access item to Find Friends", () => {
+  it("routes the Find New Friends quick access item to Find Friends", () => {
     render(
       <MemoryRouter initialEntries={["/home"]}>
         <RightQuickNav />
       </MemoryRouter>
     );
 
-    expect(screen.getByRole("link", { name: /friends/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /find new friends/i })).toHaveAttribute(
       "href",
       "/find-friends"
     );

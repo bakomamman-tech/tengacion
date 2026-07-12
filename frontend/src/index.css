@@ -24039,6 +24039,10 @@ html.dark-mode .message-row.me .msg-text {
   text-shadow: none;
 }
 
+.login-container--luxury .login-field-label {
+  color: var(--auth-ink);
+}
+
 .login-container--luxury input.login-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]) {
   border-color: rgba(25, 69, 47, 0.18);
   color: var(--auth-ink);

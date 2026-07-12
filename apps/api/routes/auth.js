@@ -123,6 +123,7 @@ const validateRegisterBody = (req, res, next) => {
   const country = trimText(req.body?.country);
   const stateOfOrigin = trimText(req.body?.stateOfOrigin);
   const password = trimText(req.body?.password);
+  const dob = trimText(req.body?.dob);
 
   if (!name) {
     return reject(res, "Name is required");
@@ -142,6 +143,22 @@ const validateRegisterBody = (req, res, next) => {
   if (!stateOfOrigin) {
     return reject(res, "State of origin is required");
   }
+  if (!dob) {
+    return reject(res, "Date of birth is required");
+  }
+  const birthDate = new Date(dob);
+  if (Number.isNaN(birthDate.getTime()) || birthDate > new Date()) {
+    return reject(res, "A valid date of birth is required");
+  }
+  const today = new Date();
+  let age = today.getUTCFullYear() - birthDate.getUTCFullYear();
+  const monthDelta = today.getUTCMonth() - birthDate.getUTCMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && today.getUTCDate() < birthDate.getUTCDate())) {
+    age -= 1;
+  }
+  if (age < 13) {
+    return reject(res, "You must be at least 13 years old to register");
+  }
   if (!isStrongPassword(password)) {
     return reject(res, "Password must be at least 8 characters");
   }
@@ -152,6 +169,7 @@ const validateRegisterBody = (req, res, next) => {
   req.body.phone = phone;
   req.body.country = country;
   req.body.stateOfOrigin = stateOfOrigin;
+  req.body.dob = birthDate.toISOString();
   req.body.password = password;
   return next();
 };

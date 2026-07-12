@@ -12,6 +12,7 @@ const { isEmailConfigured } = require("../../../backend/utils/emailSettings");
 const { ensureOnboardingReminderMessage } = require("../../../backend/services/onboardingReminderService");
 const { normalizeMediaValue } = require("../../../backend/utils/userMedia");
 const { normalizeAudioPrefs } = require("../../../backend/utils/audioPrefs");
+const { birthdayFromDob } = require("../../../backend/utils/birthday");
 const { isValidPhoneNumber, normalizePhoneNumber } = require("../../../backend/utils/phone");
 const {
   hashToken,
@@ -167,6 +168,7 @@ const tryLegacyInsertFallback = async ({
     createdAt: now,
     updatedAt: now,
     dob: dob ? new Date(dob) : null,
+    birthday: birthdayFromDob(dob, "friends") || { day: 0, month: 0, year: 0, visibility: "private" },
     avatar: { public_id: "", url: "" },
     cover: { public_id: "", url: "" },
   };
@@ -837,6 +839,7 @@ class AuthService {
       country: country || undefined,
       stateOfOrigin: stateOfOrigin || undefined,
       dob: dob ? new Date(dob) : undefined,
+      birthday: birthdayFromDob(dob, "friends") || undefined,
       gender: gender || undefined,
     };
 

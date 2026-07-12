@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import Sidebar from "../Sidebar";
-import { getRechargeRaffleStatus } from "../api";
+import { getFriendsHub, getRechargeRaffleStatus, sendFriendRequest } from "../api";
 
 const navigateMock = vi.fn();
 const locationMock = { pathname: "/home" };
@@ -41,6 +41,8 @@ vi.mock("../api", () => ({
   getRechargeRaffleStatus: vi.fn(() =>
     Promise.resolve({ visibility: { visible: true, reason: "available" } })
   ),
+  getFriendsHub: vi.fn(() => Promise.resolve({ suggestions: [] })),
+  sendFriendRequest: vi.fn(() => Promise.resolve({ sent: true })),
 }));
 
 describe("Sidebar", () => {
@@ -50,6 +52,10 @@ describe("Sidebar", () => {
     getRechargeRaffleStatus.mockResolvedValue({
       visibility: { visible: true, reason: "available" },
     });
+    getFriendsHub.mockReset();
+    getFriendsHub.mockResolvedValue({ suggestions: [] });
+    sendFriendRequest.mockReset();
+    sendFriendRequest.mockResolvedValue({ sent: true });
   });
 
   afterEach(() => {
@@ -97,6 +103,21 @@ describe("Sidebar", () => {
     fireEvent.click(screen.getByRole("button", { name: /messages/i }));
 
     expect(navigateMock).toHaveBeenCalledWith("/messages");
+  });
+
+  it("shows friend suggestions and sends a request from the sidebar", async () => {
+    setMatchMedia(false);
+    getFriendsHub.mockResolvedValueOnce({
+      suggestions: [{ _id: "user-2", name: "Bola", username: "bola", mutualFriendsCount: 2 }],
+    });
+
+    render(<Sidebar user={{ _id: "user-1", name: "Ada", username: "ada" }} />);
+
+    expect(await screen.findByText("Bola")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /add friend/i }));
+
+    await waitFor(() => expect(sendFriendRequest).toHaveBeenCalledWith("user-2"));
+    await waitFor(() => expect(screen.queryByText("Bola")).not.toBeInTheDocument());
   });
 
   it("uses the raffle status API when a complete local profile may not have spun yet", async () => {

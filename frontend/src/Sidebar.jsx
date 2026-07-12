@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getRechargeRaffleStatus, resolveImage } from "./api";
+import {
+  getFriendsHub,
+  getRechargeRaffleStatus,
+  resolveImage,
+  sendFriendRequest,
+} from "./api";
 
 const MOBILE_SIDEBAR_QUERY = "(max-width: 1020px)";
 const RAFFLE_DEMO_USERNAME = "pyrexx_singz";
@@ -123,12 +128,69 @@ function RaffleGameCard({ isExpanded, onToggle, onPlay }) {
   );
 }
 
+function FriendSuggestionsCard({ suggestions, pendingIds, onAdd, onProfile, onSeeAll }) {
+  if (!suggestions.length) {
+    return null;
+  }
+
+  return (
+    <section className="sidebar-friend-suggestions" aria-labelledby="friend-suggestions-title">
+      <div className="sidebar-friend-suggestions__head">
+        <div>
+          <span>Discover people</span>
+          <strong id="friend-suggestions-title">Friend suggestions</strong>
+        </div>
+        <button type="button" onClick={onSeeAll}>See all</button>
+      </div>
+
+      <div className="sidebar-friend-suggestions__list">
+        {suggestions.map((person) => {
+          const isPending = pendingIds.has(person._id);
+          return (
+            <article className="sidebar-friend-suggestion" key={person._id}>
+              <button
+                type="button"
+                className="sidebar-friend-suggestion__profile"
+                onClick={() => onProfile(person)}
+                aria-label={`View ${person.name || person.username}'s profile`}
+              >
+                <img
+                  src={resolveImage(person.avatar) || fallbackAvatar(person.name)}
+                  alt=""
+                />
+                <span>
+                  <strong>{person.name || person.username}</strong>
+                  <small>
+                    {person.mutualFriendsCount
+                      ? `${person.mutualFriendsCount} mutual friend${person.mutualFriendsCount === 1 ? "" : "s"}`
+                      : `@${person.username}`}
+                  </small>
+                </span>
+              </button>
+              <button
+                type="button"
+                className="sidebar-friend-suggestion__add"
+                disabled={isPending}
+                onClick={() => onAdd(person)}
+              >
+                {isPending ? "Sending…" : "Add friend"}
+              </button>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default function Sidebar({ user, openChat, openProfile }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isRaffleExpanded, setIsRaffleExpanded] = useState(false);
   const [isMobileSidebar, setIsMobileSidebar] = useState(getIsMobileSidebar);
   const [raffleVisible, setRaffleVisible] = useState(() => !hidesRaffleByProfile(user));
+  const [friendSuggestions, setFriendSuggestions] = useState([]);
+  const [pendingSuggestionIds, setPendingSuggestionIds] = useState(() => new Set());
 
   const avatar = resolveImage(user?.avatar) || fallbackAvatar(user?.name);
   const raffleProfileHidden = hidesRaffleByProfile(user);
@@ -189,6 +251,29 @@ export default function Sidebar({ user, openChat, openProfile }) {
     };
   }, [raffleProfileHidden, raffleVisibilityKey, user?._id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?._id || isMobileSidebar) {
+      return undefined;
+    }
+
+    getFriendsHub()
+      .then((payload) => {
+        if (!cancelled) {
+          setFriendSuggestions((payload?.suggestions || []).slice(0, 4));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFriendSuggestions([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isMobileSidebar, user?._id]);
+
   const goProfile = () => {
     if (typeof openProfile === "function") {
       openProfile();
@@ -211,6 +296,31 @@ export default function Sidebar({ user, openChat, openProfile }) {
     }
 
     navigate("/messages");
+  };
+  const openSuggestedProfile = (person) => {
+    if (person?.username) {
+      navigate(`/profile/${person.username}`);
+    }
+  };
+  const addSuggestedFriend = async (person) => {
+    const personId = person?._id;
+    if (!personId || pendingSuggestionIds.has(personId)) {
+      return;
+    }
+
+    setPendingSuggestionIds((current) => new Set(current).add(personId));
+    try {
+      await sendFriendRequest(personId);
+      setFriendSuggestions((current) => current.filter((entry) => entry._id !== personId));
+    } catch {
+      // Keep the suggestion visible so a transient request failure can be retried.
+    } finally {
+      setPendingSuggestionIds((current) => {
+        const next = new Set(current);
+        next.delete(personId);
+        return next;
+      });
+    }
   };
 
   if (isMobileSidebar) {
@@ -246,6 +356,16 @@ export default function Sidebar({ user, openChat, openProfile }) {
       ) : null}
 
       <div className="sb-divider" />
+
+      <FriendSuggestionsCard
+        suggestions={friendSuggestions}
+        pendingIds={pendingSuggestionIds}
+        onAdd={addSuggestedFriend}
+        onProfile={openSuggestedProfile}
+        onSeeAll={() => navigate("/find-friends")}
+      />
+
+      {friendSuggestions.length ? <div className="sb-divider" /> : null}
 
       <div className="sidebar-links">
         <button

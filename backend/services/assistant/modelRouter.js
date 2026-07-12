@@ -8,7 +8,7 @@ const { buildAssistantSystemPrompt } = require("./systemPrompt");
 const { normalizeWritingPreferences } = require("./writingProfiles");
 
 const MODEL_TIMEOUT_MS = Number(config.assistantModelTimeoutMs || 9000);
-const ELIGIBLE_MODES = new Set(["knowledge", "writing", "copilot", "general"]);
+const ELIGIBLE_MODES = new Set(["knowledge", "writing", "copilot", "general", "math"]);
 
 const modelPayloadSchema = z
   .object({
@@ -100,6 +100,19 @@ const buildUserPrompt = ({
 - Simplicity: ${normalizedPreferences.simplicity}
 - Language: ${normalizedPreferences.language}`
       : "";
+  const mathHint =
+    classification?.mode === "math" || classification?.category === "math"
+      ? `Mathematics requirements:
+- Solve the exact problem supplied by the user; do not replace it with an easier example.
+- State domain restrictions before algebraic manipulation when denominators, roots, logarithms, or inverse functions are involved.
+- Use standard order of operations and show every material transformation in sequence.
+- Put display mathematics inside fenced math blocks using readable plain-text/LaTeX notation.
+- For equations, perform equivalent operations on both sides and reject extraneous or domain-invalid solutions.
+- Simplify the numerator and denominator separately when solving a complex rational expression.
+- Verify the final result by substitution, an inverse operation, or an independent check.
+- End with a "## Final Answer" section and a boxed result using \\boxed{...}.
+- If asked to create an exam question, provide the question first, then a complete marking-scheme-quality solution.`
+      : "";
 
   const cards = Array.isArray(fallbackResponse?.cards)
     ? fallbackResponse.cards
@@ -156,6 +169,7 @@ Trusted facts:
 ${trustedFacts.length > 0 ? trustedFacts.map((line) => `- ${sanitizeMultilineText(line, 400)}`).join("\n") : "- none"}
 
 ${writingHint}
+${mathHint}
 
 Output JSON schema:
 {
@@ -168,12 +182,17 @@ Output JSON schema:
 `.trim();
 };
 
-const shouldUseModel = ({ classification = {}, retrieved = {} } = {}) => {
+const shouldUseModel = ({ classification = {}, retrieved = {}, fallbackResponse = {} } = {}) => {
   if (!config.hasOpenAI || config.nodeEnv === "test") return false;
   const mode = String(classification?.mode || "general").trim().toLowerCase() || "general";
   if (!ELIGIBLE_MODES.has(mode)) return false;
-  if (["prompt_injection", "disallowed", "emergency", "medical", "sensitive_action", "math"].includes(classification?.category)) {
+  if (["prompt_injection", "disallowed", "emergency", "medical", "sensitive_action"].includes(classification?.category)) {
     return false;
+  }
+  if (mode === "math" || classification?.category === "math") {
+    // Keep exact deterministic results local. Use the reasoning model only
+    // when the local solver returned its low-confidence unsupported response.
+    return Number(fallbackResponse?.confidence || 0) < 0.8;
   }
   if (mode === "copilot") {
     return Boolean(retrieved?.feature || (retrieved?.helpArticles || []).length > 0);
@@ -188,7 +207,7 @@ const shouldUseModel = ({ classification = {}, retrieved = {} } = {}) => {
   return true;
 };
 
-const callResponsesApi = async ({ systemPrompt, userPrompt, signal }) => {
+const callResponsesApi = async ({ systemPrompt, userPrompt, signal, model = "" }) => {
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     signal,
@@ -197,7 +216,7 @@ const callResponsesApi = async ({ systemPrompt, userPrompt, signal }) => {
       Authorization: `Bearer ${config.openAiApiKey}`,
     },
     body: JSON.stringify({
-      model: config.openAiModel,
+      model: model || config.openAiModel,
       input: [
         {
           role: "system",
@@ -303,7 +322,7 @@ const enhanceAssistantResponse = async ({
   memory = {},
   fallbackResponse = {},
 } = {}) => {
-  if (!shouldUseModel({ classification, retrieved })) {
+  if (!shouldUseModel({ classification, retrieved, fallbackResponse })) {
     return null;
   }
 
@@ -332,6 +351,10 @@ const enhanceAssistantResponse = async ({
       systemPrompt,
       userPrompt,
       signal: controller.signal,
+      model:
+        classification?.mode === "math" || classification?.category === "math"
+          ? config.openAiModelReasoning || config.openAiModel
+          : config.openAiModel,
     });
     const parsed = parseModelJson(extractJsonText(payload));
 
@@ -388,4 +411,5 @@ const enhanceAssistantResponse = async ({
 
 module.exports = {
   enhanceAssistantResponse,
+  shouldUseModel,
 };

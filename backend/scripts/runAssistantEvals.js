@@ -1,4 +1,5 @@
 const { classifyAssistantRequest } = require("../services/assistant/policyEngine");
+const { config } = require("../config/env");
 const { findFeatureByIntent } = require("../services/assistant/featureRegistry");
 const { searchKnowledgeArticles } = require("../services/assistant/knowledgeBase");
 const { buildMathResponse } = require("../services/assistant/math");
@@ -7,6 +8,7 @@ const { buildWritingFallbackDraft } = require("../services/assistant/writingProf
 const { buildAssistantSources, buildAssistantTrust } = require("../services/assistant/trustSignals");
 const { buildContextualQuery } = require("../services/assistant/retrieval");
 const { buildAssistantSystemPrompt } = require("../services/assistant/systemPrompt");
+const { shouldUseModel } = require("../services/assistant/modelRouter");
 
 const results = [];
 
@@ -147,6 +149,32 @@ run("enforces a universal comprehension-first answer structure", () => {
   expect(/numbered steps for procedures/i.test(prompt), "Expected systematic procedural guidance");
   expect(/state the problem, identify known information/i.test(prompt), "Expected a general problem-solving framework");
   expect(/Never produce a wall of text/i.test(prompt), "Expected scannability protection");
+});
+
+run("routes unsupported symbolic math to guarded reasoning", () => {
+  const previousHasOpenAI = config.hasOpenAI;
+  const previousNodeEnv = config.nodeEnv;
+  config.hasOpenAI = true;
+  config.nodeEnv = "production";
+  try {
+    expect(
+      shouldUseModel({
+        classification: { mode: "math", category: "math" },
+        fallbackResponse: { confidence: 0.6 },
+      }),
+      "Expected unsupported symbolic math to use the reasoning model"
+    );
+    expect(
+      !shouldUseModel({
+        classification: { mode: "math", category: "math" },
+        fallbackResponse: { confidence: 0.9 },
+      }),
+      "Expected exact locally solved math to remain deterministic"
+    );
+  } finally {
+    config.hasOpenAI = previousHasOpenAI;
+    config.nodeEnv = previousNodeEnv;
+  }
 });
 
 const failed = results.filter((result) => !result.ok);

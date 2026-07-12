@@ -818,7 +818,7 @@ const buildMathResponse = ({ message = "", expression = "" } = {}) => {
     ]),
     "",
     "## Final Answer",
-    "Therefore, the exact simplified answer is:",
+    `The final answer is ${solved.answerText}.`,
     buildFormulaBlock([`\\boxed{${solved.answerText}}`]),
   ].join("\n");
 

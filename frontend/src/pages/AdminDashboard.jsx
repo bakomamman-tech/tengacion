@@ -12,6 +12,7 @@ import TopUsersCard from "../components/adminDashboard/TopUsersCard";
 import KPICompactCard from "../components/adminDashboard/KPICompactCard";
 import AudienceAgeCard from "../components/adminDashboard/AudienceAgeCard";
 import DashboardSummaryPanel from "../components/adminDashboard/DashboardSummaryPanel";
+import AdminDashboardIcon from "../components/adminDashboard/AdminDashboardIcon";
 import { loadAdminDashboard } from "../services/adminDashboard";
 
 import "./admin-dashboard.css";
@@ -106,6 +107,10 @@ export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
   }, [user]);
 
   const content = dashboard;
+  const todayLabel = useMemo(
+    () => new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(new Date()),
+    []
+  );
 
   return (
     <div className="tdash-page">
@@ -160,6 +165,27 @@ export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
             >
+              <section className="tdash-command" aria-label="Dashboard overview and shortcuts">
+                <div className="tdash-command__welcome">
+                  <span className="tdash-command__eyebrow">{todayLabel}</span>
+                  <h1>Good to see you, {String(content?.header?.adminName || user?.name || "Admin").split(" ")[0]}.</h1>
+                  <p>Here is the latest operational pulse across Tengacion.</p>
+                </div>
+                <nav className="tdash-command__quick" aria-label="Quick admin actions">
+                  {[
+                    { label: "Creator earnings", path: "/admin/creator-earnings", icon: "finance" },
+                    { label: "Review content", path: "/admin/content", icon: "posts" },
+                    { label: "Manage users", path: "/admin/users", icon: "users" },
+                    { label: "View analytics", path: "/admin/analytics", icon: "analytics" },
+                  ].map((item) => (
+                    <button key={item.path} type="button" onClick={() => navigate(item.path)}>
+                      <span><AdminDashboardIcon name={item.icon} size={17} /></span>
+                      {item.label}
+                    </button>
+                  ))}
+                </nav>
+              </section>
+
               <DashboardNotice mode={content.dataMode} error={content.error} />
 
               <DashboardSummaryPanel dashboard={content} onNavigate={navigate} />

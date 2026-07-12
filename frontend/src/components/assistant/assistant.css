@@ -2830,6 +2830,91 @@ html:is(:not(.dark-mode), .dark-mode) .tg-assistant-confirm-card__badge {
   color: #626a80;
 }
 
+/* Akuso contrast contract: the workspace is always a dark canvas, regardless
+   of the surrounding Tengacion theme. Keep every reading and input role above
+   WCAG AA contrast and prevent earlier component selectors from winning. */
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock {
+  --akuso-text: #f8fafc;
+  --akuso-text-strong: #ffffff;
+  --akuso-muted: #c4cede;
+  --akuso-subtle: #aebbd0;
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock :is(
+  .tg-assistant-message__formatted,
+  .tg-assistant-message__formatted p,
+  .tg-assistant-message__formatted > p:first-child,
+  .tg-assistant-message__formatted li,
+  .tg-assistant-message__formatted strong,
+  .tg-assistant-message__bubble--assistant,
+  .tg-assistant-detail,
+  .tg-assistant-detail p,
+  .tg-assistant-evidence,
+  .tg-assistant-evidence__note
+) {
+  color: var(--akuso-text);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock :is(
+  .tg-assistant-message__formatted h3,
+  .tg-assistant-message__formatted h4,
+  .tg-assistant-message__formatted h5,
+  .tg-assistant-message__formatted h6,
+  .tg-assistant-panel__identity h2,
+  .tg-assistant-detail summary,
+  .tg-assistant-card__title
+) {
+  color: var(--akuso-text-strong);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock :is(
+  .tg-assistant-composer__textarea,
+  .tg-assistant-panel--expanded .tg-assistant-composer__textarea,
+  .tg-assistant-panel--expanded .tg-assistant-composer__textarea:focus-visible
+) {
+  color: #ffffff;
+  caret-color: #ffd979;
+  -webkit-text-fill-color: #ffffff;
+  opacity: 1;
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock .tg-assistant-composer__textarea::placeholder {
+  color: var(--akuso-subtle);
+  -webkit-text-fill-color: var(--akuso-subtle);
+  opacity: 1;
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock :is(
+  .tg-assistant-composer__hint,
+  .tg-assistant-stage__composer-note,
+  .tg-assistant-card__subtitle,
+  .tg-assistant-card__description,
+  .tg-assistant-typing__text,
+  .tg-assistant-sidebar__thread-card p
+) {
+  color: var(--akuso-muted);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock .tg-assistant-message__formatted a {
+  color: #9fd8ff;
+  text-decoration-color: rgba(159, 216, 255, 0.58);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock .tg-assistant-message__formatted code:not(pre code) {
+  color: #fff0bd;
+  background: rgba(255, 240, 189, 0.1);
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock .tg-assistant-message__formatted ol li::before {
+  border-color: rgba(255, 217, 121, 0.42);
+  background: rgba(255, 217, 121, 0.12);
+  color: #ffe6a3;
+}
+
+html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock .tg-assistant-message__formatted ul li::marker {
+  color: #ffd979;
+}
+
 :is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-panel,
 :is(body:has(.public-home), body:has(.login-container--luxury)) .tg-assistant-confirm-card {
   border-color: rgba(232, 194, 116, 0.5);

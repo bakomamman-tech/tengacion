@@ -102,4 +102,23 @@ describe("FindCreatorsPage", () => {
       );
     });
   });
+
+  it("keeps loaded results when active discovery controls are reselected", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/creators"]}>
+        <FindCreatorsPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("heading", { name: "Jordan Bangoji" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /trending/i }));
+    await user.click(screen.getByRole("button", { name: /all creators/i }));
+    await user.click(screen.getByRole("button", { name: /^popular$/i }));
+
+    expect(screen.getByRole("heading", { name: "Jordan Bangoji" })).toBeInTheDocument();
+    expect(getCreatorDiscovery).toHaveBeenCalledTimes(1);
+  });
 });

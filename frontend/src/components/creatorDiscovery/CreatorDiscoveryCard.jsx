@@ -6,6 +6,7 @@ import { resolveImage, toggleFollowCreator } from "../../api";
 import { formatCurrency } from "../creator/creatorConfig";
 import { useAuth } from "../../context/AuthContext";
 import { buildCreatorPublicPath, buildCreatorSubscribePath } from "../../lib/publicRoutes";
+import CreatorDiscoveryIcon from "./CreatorDiscoveryIcon";
 
 import "./creatorDiscovery.css";
 
@@ -36,6 +37,9 @@ export default function CreatorDiscoveryCard({ item }) {
         ...(item?.isVerified ? ["Verified Creator"] : []),
         ...(item?.status === "active" ? ["Active Profile"] : []),
       ];
+  const visibleTrustBadges = trustBadges.filter(
+    (badge) => !(item?.isVerified && String(badge).toLowerCase() === "verified creator")
+  );
   const creatorRoute = String(item?.creatorRoute || "").trim() || buildCreatorPublicPath({
     creatorId: item?.creatorId,
     username: item?.username,
@@ -82,62 +86,88 @@ export default function CreatorDiscoveryCard({ item }) {
 
   return (
     <article className="creator-discovery-card">
-      <div className="creator-discovery-card__media">
+      <Link
+        to={creatorRoute}
+        className="creator-discovery-card__media"
+        aria-label={`Visit ${item?.name || "creator"}'s page${item?.isVerified ? " (verified creator)" : ""}`}
+      >
         {item?.banner || item?.avatar ? (
           <img
             src={resolveImage(item.banner || item.avatar) || item.banner || item.avatar}
-            alt={item?.name || "Creator"}
+            alt=""
           />
         ) : (
-          <div className="creator-discovery-card__media creator-discovery-card__media--fallback">
-            <span>{getInitial(item?.name)}</span>
-          </div>
+          <span className="creator-discovery-card__media-fallback" aria-hidden="true">
+            {getInitial(item?.name)}
+          </span>
         )}
         <span className="creator-discovery-card__badge">{categoryLabel}</span>
         {item?.isVerified ? (
-          <span className="creator-discovery-card__verified">Verified Creator</span>
+          <span className="creator-discovery-card__verified">
+            <CreatorDiscoveryIcon name="badgeCheck" size={15} />
+            Verified
+          </span>
         ) : null}
-      </div>
+      </Link>
 
       <div className="creator-discovery-card__body">
         <div className="creator-discovery-card__top">
           <div className="creator-discovery-card__creator">
             <div className="creator-discovery-card__avatar">
               {item?.avatar ? (
-                <img src={resolveImage(item.avatar) || item.avatar} alt={item?.name || "Creator"} />
+                <img src={resolveImage(item.avatar) || item.avatar} alt="" />
               ) : (
-                <span>{getInitial(item?.name)}</span>
+                <span aria-hidden="true">{getInitial(item?.name)}</span>
               )}
             </div>
             <div className="creator-discovery-card__creator-copy">
-              <strong>{item?.name || "Creator"}</strong>
+              <h3 className="creator-discovery-card__title">
+                <Link to={creatorRoute}>{item?.name || "Creator"}</Link>
+              </h3>
               <span>@{item?.username || "creator"}</span>
             </div>
           </div>
           <span className="creator-discovery-card__category">
-            {item?.categoryLabels?.join(" / ") || categoryLabel}
+            {item?.categoryLabels?.join(" · ") || categoryLabel}
           </span>
         </div>
 
-        <div>
-          <h3 className="creator-discovery-card__title">
-            <Link to={creatorRoute}>{item?.name || "Creator"}</Link>
-          </h3>
-          <p className="creator-discovery-card__bio">{item?.bio || "A creator on Tengacion."}</p>
-        </div>
+        <p className="creator-discovery-card__bio">{item?.bio || "A creator on Tengacion."}</p>
 
         <div className="creator-discovery-card__meta-list">
-          <span>{Number(item?.followerCount || 0).toLocaleString()} followers</span>
-          <span>{Number(item?.contentCount || 0).toLocaleString()} releases</span>
-          {item?.locationLabel ? <span>{item.locationLabel}</span> : null}
-          {item?.subscriptionPrice > 0 ? <span>{formatCurrency(item.subscriptionPrice)}</span> : <span>Free to follow</span>}
-          {item?.latestContentAt ? <span>Updated recently</span> : null}
+          <span>
+            <CreatorDiscoveryIcon name="users" size={15} />
+            {Number(item?.followerCount || 0).toLocaleString()} followers
+          </span>
+          <span>
+            <CreatorDiscoveryIcon name="layers" size={15} />
+            {Number(item?.contentCount || 0).toLocaleString()} releases
+          </span>
+          {item?.locationLabel ? (
+            <span>
+              <CreatorDiscoveryIcon name="mapPin" size={15} />
+              {item.locationLabel}
+            </span>
+          ) : null}
+          <span>
+            <CreatorDiscoveryIcon name="wallet" size={15} />
+            {item?.subscriptionPrice > 0 ? formatCurrency(item.subscriptionPrice) : "Free to follow"}
+          </span>
+          {item?.latestContentAt ? (
+            <span>
+              <CreatorDiscoveryIcon name="clock" size={15} />
+              Updated recently
+            </span>
+          ) : null}
         </div>
 
-        {trustBadges.length ? (
+        {visibleTrustBadges.length ? (
           <div className="creator-discovery-card__trust" aria-label={`${item?.name || "Creator"} trust signals`}>
-            {trustBadges.slice(0, 3).map((badge) => (
-              <span key={badge}>{badge}</span>
+            {visibleTrustBadges.slice(0, 3).map((badge) => (
+              <span key={badge}>
+                <CreatorDiscoveryIcon name="check" size={14} />
+                {badge}
+              </span>
             ))}
           </div>
         ) : null}
@@ -148,6 +178,7 @@ export default function CreatorDiscoveryCard({ item }) {
             className="creator-discovery-card__action creator-discovery-card__action--accent"
           >
             Visit Page
+            <CreatorDiscoveryIcon name="arrowUpRight" size={16} />
           </Link>
           <button
             type="button"
@@ -155,6 +186,7 @@ export default function CreatorDiscoveryCard({ item }) {
             onClick={handlePrimaryAction}
             disabled={busy || isSubscribed}
           >
+            <CreatorDiscoveryIcon name={following || isSubscribed ? "check" : "userPlus"} size={16} />
             {busy ? "Working..." : isSubscribed ? "Subscribed" : canSubscribe ? "Subscribe" : following ? "Following" : "Follow"}
           </button>
         </div>

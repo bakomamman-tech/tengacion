@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { getCreatorDiscovery } from "../api";
 import SeoHead from "../components/seo/SeoHead";
 import CreatorDiscoveryCard from "../components/creatorDiscovery/CreatorDiscoveryCard";
+import CreatorDiscoveryIcon from "../components/creatorDiscovery/CreatorDiscoveryIcon";
 import { useAuth } from "../context/AuthContext";
 import {
   buildBreadcrumbJsonLd,
@@ -13,12 +14,13 @@ import {
 } from "../lib/seo";
 
 import "../components/creatorDiscovery/creatorDiscovery.css";
+import "./findCreatorsPage.css";
 
 const CATEGORY_TABS = [
-  { id: "all", label: "All Creators" },
-  { id: "music", label: "Music" },
-  { id: "books", label: "Books" },
-  { id: "podcasts", label: "Podcasts" },
+  { id: "all", label: "All Creators", icon: "sparkles" },
+  { id: "music", label: "Music", icon: "music" },
+  { id: "books", label: "Books", icon: "book" },
+  { id: "podcasts", label: "Podcasts", icon: "microphone" },
 ];
 
 const SORT_OPTIONS = [
@@ -28,12 +30,12 @@ const SORT_OPTIONS = [
 ];
 
 const QUICK_FILTERS = [
-  { id: "trending", label: "Trending", category: "all", sort: "popular" },
-  { id: "music", label: "Music", category: "music", sort: "popular" },
-  { id: "books", label: "Books", category: "books", sort: "popular" },
-  { id: "podcasts", label: "Podcasts", category: "podcasts", sort: "popular" },
-  { id: "new", label: "New Creators", category: "all", sort: "newest" },
-  { id: "marketplace", label: "Marketplace", path: "/marketplace" },
+  { id: "trending", label: "Trending", icon: "sparkles", category: "all", sort: "popular" },
+  { id: "music", label: "Music", icon: "music", category: "music", sort: "popular" },
+  { id: "books", label: "Books", icon: "book", category: "books", sort: "popular" },
+  { id: "podcasts", label: "Podcasts", icon: "microphone", category: "podcasts", sort: "popular" },
+  { id: "new", label: "New Creators", icon: "users", category: "all", sort: "newest" },
+  { id: "marketplace", label: "Marketplace", icon: "arrowUpRight", path: "/marketplace" },
 ];
 
 const PAGE_SIZE = 12;
@@ -79,14 +81,24 @@ export default function FindCreatorsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const requestSeqRef = useRef(0);
+  const appliedSearchRef = useRef("");
+
+  const commitSearch = useCallback((value) => {
+    const nextSearch = String(value || "").trim();
+    if (appliedSearchRef.current !== nextSearch) {
+      appliedSearchRef.current = nextSearch;
+      setItems([]);
+      setSearch(nextSearch);
+    }
+    setPage(1);
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setSearch(searchInput.trim());
-      setPage(1);
+      commitSearch(searchInput);
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [searchInput]);
+  }, [commitSearch, searchInput]);
 
   const fetchCreators = useCallback(
     async ({ nextPage = 1, replace = true } = {}) => {
@@ -169,24 +181,40 @@ export default function FindCreatorsPage() {
   };
 
   const handleReset = () => {
+    const shouldReload = Boolean(
+      search || category !== "all" || sort !== "popular" || verifiedOnly || page !== 1
+    );
+    appliedSearchRef.current = "";
     setSearchInput("");
     setSearch("");
     setCategory("all");
     setSort("popular");
     setVerifiedOnly(false);
     setPage(1);
-    setItems([]);
+    if (shouldReload) {
+      setItems([]);
+    }
   };
 
   const applyQuickFilter = (filter) => {
     if (!filter || filter.path) {
       return;
     }
+    const nextCategory = filter.category || "all";
+    const nextSort = filter.sort || "popular";
+    const nextVerifiedOnly = Boolean(filter.verifiedOnly);
+    if (
+      category === nextCategory
+      && sort === nextSort
+      && verifiedOnly === nextVerifiedOnly
+    ) {
+      return;
+    }
     setItems([]);
     setPage(1);
-    setCategory(filter.category || "all");
-    setSort(filter.sort || "popular");
-    setVerifiedOnly(Boolean(filter.verifiedOnly));
+    setCategory(nextCategory);
+    setSort(nextSort);
+    setVerifiedOnly(nextVerifiedOnly);
   };
 
   const isQuickFilterActive = (filter) =>
@@ -194,6 +222,18 @@ export default function FindCreatorsPage() {
     && category === filter.category
     && sort === filter.sort
     && verifiedOnly === Boolean(filter.verifiedOnly);
+
+  const selectedCategory = CATEGORY_TABS.find((tab) => tab.id === category) || CATEGORY_TABS[0];
+  const hasActiveFilters = Boolean(
+    searchInput.trim() || search || category !== "all" || sort !== "popular" || verifiedOnly
+  );
+  const resultsHeading = search
+    ? `Results for “${search}”`
+    : category !== "all"
+      ? `${selectedCategory.label} creators`
+      : sort === "newest"
+        ? "New creators to discover"
+        : "Creators worth discovering";
 
   return (
     <section className="creator-discovery-page creator-discovery-theme">
@@ -205,126 +245,268 @@ export default function FindCreatorsPage() {
         ogType="website"
         structuredData={structuredData}
       />
-      <div className="creator-discovery-page__head">
-        <div className="creator-discovery-page__title">
-          <h1>Discover Creators on Tengacion</h1>
-          <p>
-            Browse music artists, authors, and podcast creators across Africa. Find new talent,
-            explore albums, and support creators directly.
-          </p>
-        </div>
-        <div className="creator-summary-feed__toolbar">
-          <Link to={backLink} className="creator-secondary-btn">
-            {backLabel}
-          </Link>
-          <button type="button" className="creator-primary-btn" onClick={handleReset}>
-            Reset filters
-          </button>
-        </div>
-      </div>
-
-      <div className="creator-discovery-page__banner">
-        <div>
-          <strong>African creator discovery starts here</strong>
-          <small>Filter by music, books, podcasts, marketplace activity, trending creators, and new creators.</small>
-        </div>
-        <small>{resultsLabel}</small>
-      </div>
-
-      <div className="creator-discovery-page__search-row">
-        <input
-          className="creator-discovery-page__search"
-          value={searchInput}
-          onChange={(event) => applySearch(event.target.value)}
-          placeholder="Search creator name or @handle"
-          aria-label="Search creators"
-        />
-        <button
-          type="button"
-          className="creator-secondary-btn"
-          onClick={() => {
-            setSearch(searchInput.trim());
-            setPage(1);
-          }}
-        >
-          Search
-        </button>
-      </div>
-
-      <div className="creator-discovery-page__filters" aria-label="Creator categories">
-        <div className="creator-summary-feed__tabs" aria-label="Quick creator filters">
-          {QUICK_FILTERS.map((filter) =>
-            filter.path ? (
-              <Link key={filter.id} to={filter.path} className="creator-discovery-tab">
-                {filter.label}
-              </Link>
-            ) : (
-              <button
-                key={filter.id}
-                type="button"
-                aria-pressed={isQuickFilterActive(filter)}
-                className={`creator-discovery-tab ${isQuickFilterActive(filter) ? "is-active" : ""}`}
-                onClick={() => applyQuickFilter(filter)}
-              >
-                {filter.label}
-              </button>
-            )
-          )}
-        </div>
-        <div className="creator-summary-feed__tabs creator-summary-feed__tabs--compact" role="tablist" aria-label="Detailed creator categories">
-          {CATEGORY_TABS.map((tab) => (
+      <header className="creator-discovery-page__head creator-discovery-hero">
+        <div className="creator-discovery-hero__topline">
+          <span className="creator-discovery-eyebrow">
+            <CreatorDiscoveryIcon name="sparkles" size={16} />
+            Tengacion creator directory
+          </span>
+          <div className="creator-summary-feed__toolbar creator-discovery-hero__toolbar">
+            <Link to={backLink} className="creator-secondary-btn">
+              <CreatorDiscoveryIcon name="arrowLeft" size={17} />
+              {backLabel}
+            </Link>
             <button
-              key={tab.id}
               type="button"
-              role="tab"
-              aria-selected={category === tab.id}
-              className={`creator-discovery-tab ${category === tab.id ? "is-active" : ""}`}
-              onClick={() => {
-                setItems([]);
-                setPage(1);
-                setCategory(tab.id);
-                setVerifiedOnly(false);
-              }}
+              className="creator-secondary-btn creator-discovery-reset-btn"
+              onClick={handleReset}
+              disabled={!hasActiveFilters}
             >
-              {tab.label}
+              <CreatorDiscoveryIcon name="reset" size={17} />
+              Reset filters
             </button>
-          ))}
+          </div>
         </div>
-        <div className="creator-discovery-pagination" aria-label="Sort creators">
-          {SORT_OPTIONS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              className={sort === option.id ? "is-active" : ""}
-              onClick={() => {
-                setItems([]);
-                setPage(1);
-                setSort(option.id);
-                if (option.id !== "popular") {
-                  setVerifiedOnly(false);
-                }
-              }}
-            >
-              {option.label}
-            </button>
-          ))}
-          <button
-            type="button"
-            className={verifiedOnly ? "is-active" : ""}
-            aria-pressed={verifiedOnly}
-            onClick={() => {
-              setItems([]);
-              setPage(1);
-              setVerifiedOnly((current) => !current);
+
+        <div className="creator-discovery-hero__content">
+          <div className="creator-discovery-page__title">
+            <h1>
+              Discover creators
+              <span> on Tengacion.</span>
+            </h1>
+            <p>
+              Browse music artists, authors, and podcast creators across Africa. Find new talent,
+              explore original work, and support creators directly.
+            </p>
+            <div className="creator-discovery-hero__proof" aria-label="Creator directory benefits">
+              <span>
+                <CreatorDiscoveryIcon name="badgeCheck" size={17} />
+                Verified profiles
+              </span>
+              <span>
+                <CreatorDiscoveryIcon name="users" size={17} />
+                Follow for free
+              </span>
+              <span>
+                <CreatorDiscoveryIcon name="wallet" size={17} />
+                Support directly
+              </span>
+            </div>
+          </div>
+
+          <aside className="creator-discovery-hero__spotlight" aria-label="Creator categories">
+            <span className="creator-discovery-hero__spotlight-kicker">Explore across</span>
+            <strong>One home for African creativity.</strong>
+            <div className="creator-discovery-hero__category-list">
+              <span>
+                <CreatorDiscoveryIcon name="music" size={19} />
+                Music
+              </span>
+              <span>
+                <CreatorDiscoveryIcon name="book" size={19} />
+                Books
+              </span>
+              <span>
+                <CreatorDiscoveryIcon name="microphone" size={19} />
+                Podcasts
+              </span>
+            </div>
+            <small>Meet the people behind the work, then follow, subscribe, or visit their page.</small>
+          </aside>
+        </div>
+      </header>
+
+      <div className="creator-discovery-page__banner" role="status" aria-live="polite">
+        <div className="creator-discovery-page__banner-copy">
+          <span className="creator-discovery-page__banner-icon" aria-hidden="true">
+            <CreatorDiscoveryIcon name="sparkles" size={19} />
+          </span>
+          <span>
+            <strong>African creator discovery starts here</strong>
+            <small>Search by name or handle, then refine the directory to match your interests.</small>
+          </span>
+        </div>
+        <span className="creator-discovery-page__results-pill">{resultsLabel}</span>
+      </div>
+
+      <section className="creator-discovery-controls" aria-label="Find and filter creators">
+        <div className="creator-discovery-search-block">
+          <div className="creator-discovery-controls__heading">
+            <label htmlFor="creator-directory-search">Search creators</label>
+            <small>Try a creator name, username, or @handle.</small>
+          </div>
+          <form
+            className="creator-discovery-page__search-row"
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              commitSearch(searchInput);
             }}
           >
-            Verified only
-          </button>
+            <span className="creator-discovery-page__search-icon" aria-hidden="true">
+              <CreatorDiscoveryIcon name="search" size={21} />
+            </span>
+            <input
+              id="creator-directory-search"
+              className="creator-discovery-page__search"
+              value={searchInput}
+              onChange={(event) => applySearch(event.target.value)}
+              placeholder="Search creator name or @handle"
+            />
+            {searchInput ? (
+              <button
+                type="button"
+                className="creator-discovery-page__search-clear"
+                aria-label="Clear creator search"
+                onClick={() => applySearch("")}
+              >
+                <CreatorDiscoveryIcon name="x" size={18} />
+              </button>
+            ) : null}
+            <button type="submit" className="creator-primary-btn creator-discovery-page__search-submit">
+              <CreatorDiscoveryIcon name="search" size={18} />
+              Search
+            </button>
+          </form>
+        </div>
+
+        <div className="creator-discovery-page__filters" aria-label="Creator categories">
+          <div className="creator-discovery-filter-group creator-discovery-filter-group--quick">
+            <div className="creator-discovery-filter-group__label">
+              <span>Quick discovery</span>
+              <small>Jump into what is moving now</small>
+            </div>
+            <div className="creator-summary-feed__tabs" aria-label="Quick creator filters">
+              {QUICK_FILTERS.map((filter) =>
+                filter.path ? (
+                  <Link
+                    key={filter.id}
+                    to={filter.path}
+                    className="creator-discovery-tab creator-discovery-tab--link"
+                  >
+                    {filter.label}
+                    <CreatorDiscoveryIcon name={filter.icon} size={16} />
+                  </Link>
+                ) : (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    aria-pressed={isQuickFilterActive(filter)}
+                    className={`creator-discovery-tab ${isQuickFilterActive(filter) ? "is-active" : ""}`}
+                    onClick={() => applyQuickFilter(filter)}
+                  >
+                    <CreatorDiscoveryIcon name={filter.icon} size={16} />
+                    {filter.label}
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+
+          <div className="creator-discovery-filters__refine">
+            <div className="creator-discovery-filter-group">
+              <div className="creator-discovery-filter-group__label">
+                <span>Creator type</span>
+              </div>
+              <div
+                className="creator-summary-feed__tabs creator-summary-feed__tabs--compact"
+                role="group"
+                aria-label="Detailed creator categories"
+              >
+                {CATEGORY_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    aria-pressed={category === tab.id}
+                    className={`creator-discovery-tab ${category === tab.id ? "is-active" : ""}`}
+                    onClick={() => {
+                      if (category === tab.id && !verifiedOnly) {
+                        return;
+                      }
+                      setItems([]);
+                      setPage(1);
+                      setCategory(tab.id);
+                      setVerifiedOnly(false);
+                    }}
+                  >
+                    <CreatorDiscoveryIcon name={tab.icon} size={16} />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="creator-discovery-filter-group creator-discovery-filter-group--sort">
+              <div className="creator-discovery-filter-group__label">
+                <span>
+                  <CreatorDiscoveryIcon name="sliders" size={16} />
+                  Sort & refine
+                </span>
+              </div>
+              <div className="creator-discovery-pagination" aria-label="Sort creators">
+                {SORT_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={sort === option.id ? "is-active" : ""}
+                    aria-pressed={sort === option.id}
+                    onClick={() => {
+                      if (sort === option.id) {
+                        return;
+                      }
+                      setItems([]);
+                      setPage(1);
+                      setSort(option.id);
+                      if (option.id !== "popular") {
+                        setVerifiedOnly(false);
+                      }
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={`creator-discovery-verified-filter ${verifiedOnly ? "is-active" : ""}`}
+                  aria-pressed={verifiedOnly}
+                  onClick={() => {
+                    setItems([]);
+                    setPage(1);
+                    setVerifiedOnly((current) => !current);
+                  }}
+                >
+                  <CreatorDiscoveryIcon name="badgeCheck" size={17} />
+                  Verified only
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="creator-discovery-results-head">
+        <div>
+          <span className="creator-discovery-results-head__eyebrow">Creator directory</span>
+          <h2>{resultsHeading}</h2>
+          <p>Explore profiles, original releases, and ways to support the people you discover.</p>
+        </div>
+        <div className="creator-discovery-results-head__context" aria-label="Active result filters">
+          <span>{selectedCategory.label}</span>
+          {verifiedOnly ? (
+            <span>
+              <CreatorDiscoveryIcon name="badgeCheck" size={15} />
+              Verified
+            </span>
+          ) : null}
+          {hasActiveFilters ? (
+            <button type="button" onClick={handleReset}>Clear all</button>
+          ) : null}
         </div>
       </div>
 
       {loading && !items.length ? (
-        <div className="creator-discovery-grid" aria-busy="true">
+        <div className="creator-discovery-grid" aria-busy="true" aria-label="Loading creator results">
+          <DiscoverySkeleton />
           <DiscoverySkeleton />
           <DiscoverySkeleton />
           <DiscoverySkeleton />
@@ -339,7 +521,7 @@ export default function FindCreatorsPage() {
         </div>
       ) : items.length ? (
         <>
-          <div className="creator-discovery-grid">
+          <div className="creator-discovery-grid" aria-label="Creator results">
             {items.map((item) => (
               <CreatorDiscoveryCard key={String(item?.creatorId || item?.id || item?.route)} item={item} />
             ))}
@@ -349,7 +531,12 @@ export default function FindCreatorsPage() {
               Showing {items.length.toLocaleString()} of {total.toLocaleString()} creators
             </small>
             <div className="creator-discovery-pagination">
-              <button type="button" onClick={handleLoadMore} disabled={!hasMore || loadingMore}>
+              <button
+                type="button"
+                className="creator-discovery-load-more"
+                onClick={handleLoadMore}
+                disabled={!hasMore || loadingMore}
+              >
                 {loadingMore ? "Loading..." : hasMore ? "Load more" : "End of results"}
               </button>
             </div>

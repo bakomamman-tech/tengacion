@@ -22,3 +22,5 @@ desktop.ini
 frontend/android/keystore.properties
 *.jks
 *.keystore
+
+.tmp/

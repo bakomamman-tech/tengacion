@@ -47,13 +47,14 @@ describe("PublicHomePage", () => {
     });
 
     vi.mocked(getCreatorDiscovery).mockResolvedValue({
-      total: 1,
+      total: 2,
       items: [
         {
           id: "creator-1",
           creatorId: "creator-1",
           name: "Zainab Sounds",
           username: "zainab",
+          avatar: "/avatars/zainab.jpg",
           category: "Music",
           categoryLabels: ["Music"],
           bio: "Soulful northern music.",
@@ -61,6 +62,17 @@ describe("PublicHomePage", () => {
           contentCount: 6,
           creatorRoute: "/creator/zainab",
           trustBadges: ["Verified Creator"],
+        },
+        {
+          id: "creator-2",
+          creatorId: "creator-2",
+          name: "Banner Studio",
+          username: "banner-studio",
+          banner: "/banners/banner-studio.jpg",
+          category: "Business",
+          followerCount: 4,
+          contentCount: 2,
+          creatorRoute: "/creator/banner-studio",
         },
       ],
     });
@@ -135,6 +147,14 @@ describe("PublicHomePage", () => {
     });
 
     expect(await screen.findByText("Zainab Sounds")).toBeInTheDocument();
+    expect(document.querySelector(".public-home-creator__avatar--profile img")).toHaveAttribute(
+      "src",
+      "/avatars/zainab.jpg"
+    );
+    expect(document.querySelector(".public-home-creator__avatar--banner img")).toHaveAttribute(
+      "src",
+      "/banners/banner-studio.jpg"
+    );
     expect(screen.getByText("Verified Creator")).toBeInTheDocument();
     expect(await screen.findByText("Firelight")).toBeInTheDocument();
     expect(screen.getByText("Pyrexx_Singz")).toBeInTheDocument();

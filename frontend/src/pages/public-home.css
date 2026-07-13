@@ -1097,10 +1097,11 @@
 .public-home-creator {
   min-height: 286px;
   display: grid;
-  grid-template-rows: 120px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .public-home-creator__avatar {
+  aspect-ratio: 4 / 3;
   position: relative;
   display: grid;
   place-items: center;
@@ -1126,7 +1127,13 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 35%;
   transition: transform 320ms ease;
+}
+
+.public-home-creator__avatar--banner img {
+  object-fit: contain;
+  object-position: center;
 }
 
 .public-home-creator:hover .public-home-creator__avatar img,
@@ -1289,6 +1296,7 @@
 }
 
 .public-home-release--loading .public-home-release__art,
+.public-home-creator--loading .public-home-creator__avatar,
 .public-home-release--loading .public-home-release__body span,
 .public-home-release--loading .public-home-release__body strong,
 .public-home-release--loading .public-home-release__body p,
@@ -2854,6 +2862,7 @@
 }
 
 .public-home-release--loading .public-home-release__art,
+.public-home-creator--loading .public-home-creator__avatar,
 .public-home-release--loading .public-home-release__body span,
 .public-home-release--loading .public-home-release__body strong,
 .public-home-release--loading .public-home-release__body p,

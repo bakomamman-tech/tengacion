@@ -158,7 +158,15 @@ const getActivityKind = (post = {}) => {
 
 const getActivityRoute = (post = {}) => (post._id ? `/activity#post-${post._id}` : "/activity");
 
-const getCreatorAvatar = (creator = {}) => resolveImage(creator.avatar || creator.banner || "");
+const getCreatorVisual = (creator = {}) => {
+  const profileImage = resolveImage(creator.avatar || "");
+  if (profileImage) {
+    return { src: profileImage, kind: "profile" };
+  }
+
+  const bannerImage = resolveImage(creator.banner || "");
+  return bannerImage ? { src: bannerImage, kind: "banner" } : { src: "", kind: "fallback" };
+};
 
 const getCreatorRoute = (creator = {}) =>
   creator.creatorRoute ||
@@ -387,16 +395,19 @@ export default function PublicHomePage() {
           <div className="public-home__creator-grid" aria-busy="true">
             {[0, 1, 2, 3].map((entry) => (
               <article key={entry} className="public-home-creator public-home-creator--loading">
-                <span />
-                <strong />
-                <p />
+                <div className="public-home-creator__avatar" />
+                <div className="public-home-creator__body">
+                  <span />
+                  <strong />
+                  <p />
+                </div>
               </article>
             ))}
           </div>
         ) : featuredCreators.length ? (
           <div className="public-home__creator-grid">
             {featuredCreators.map((creator) => {
-              const avatar = getCreatorAvatar(creator);
+              const visual = getCreatorVisual(creator);
               const badges = Array.isArray(creator.trustBadges) ? creator.trustBadges : [];
               return (
                 <Link
@@ -404,9 +415,12 @@ export default function PublicHomePage() {
                   className="public-home-creator"
                   to={getCreatorRoute(creator)}
                 >
-                  <div className="public-home-creator__avatar" aria-hidden="true">
-                    {avatar ? (
-                      <img src={avatar} alt="" loading="lazy" />
+                  <div
+                    className={`public-home-creator__avatar public-home-creator__avatar--${visual.kind}`}
+                    aria-hidden="true"
+                  >
+                    {visual.src ? (
+                      <img src={visual.src} alt="" loading="lazy" />
                     ) : (
                       <span>{getInitial(creator.name || creator.username)}</span>
                     )}

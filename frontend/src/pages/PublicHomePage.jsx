@@ -67,6 +67,30 @@ const TRUST_SIGNALS = [
   "Copyright takedown process",
 ];
 
+const HERO_SURFACES = [
+  {
+    path: "/creators",
+    label: "Creator hub",
+    description: "Build an audience",
+    icon: "creators",
+    tone: "leaf",
+  },
+  {
+    path: "/music",
+    label: "Music & media",
+    description: "Stream and discover",
+    icon: "music",
+    tone: "gold",
+  },
+  {
+    path: "/marketplace",
+    label: "Marketplace",
+    description: "Sell with confidence",
+    icon: "marketplace",
+    tone: "mint",
+  },
+];
+
 const formatCount = (value = 0) => Number(value || 0).toLocaleString();
 
 const formatMoney = (value) => {
@@ -183,6 +207,36 @@ const ReleaseSkeleton = () => (
     </div>
   </article>
 );
+
+const HeroSurfaceIcon = ({ name }) => {
+  if (name === "music") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M9 18V6.8l10-2.2v10.8" />
+        <circle cx="6.5" cy="18" r="2.5" />
+        <circle cx="16.5" cy="15.5" r="2.5" />
+      </svg>
+    );
+  }
+
+  if (name === "marketplace") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M5.5 8.5h13l1 11h-15l1-11Z" />
+        <path d="M9 9V7a3 3 0 0 1 6 0v2" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="9" cy="8" r="3" />
+      <circle cx="17" cy="9.5" r="2.25" />
+      <path d="M3.5 19c.5-3.7 2.3-5.5 5.5-5.5s5 1.8 5.5 5.5" />
+      <path d="M14 14.2c.8-.7 1.8-1 3-1 2.4 0 3.7 1.5 4 4.3" />
+    </svg>
+  );
+};
 
 export default function PublicHomePage() {
   const [releaseItems, setReleaseItems] = useState([]);
@@ -326,47 +380,141 @@ export default function PublicHomePage() {
       />
 
       <section className="public-home__hero">
-        <PublicNav theme="dark" />
+        <PublicNav theme="dark" className="public-nav--landing" />
 
         <div className="public-home__hero-inner">
-          <p className="public-home__eyebrow">Tengacion</p>
-          <h1>Africa&apos;s social commerce and creator monetization platform.</h1>
-          <p className="public-home__lede">
-            One connected platform where African creators build audiences, sell their work,
-            stream content, and turn community into sustainable earnings.
-          </p>
-          <p className="public-home__action-line" aria-label="Create, connect, sell, stream, and earn">
-            <span>Create.</span>
-            <span>Connect.</span>
-            <span>Sell.</span>
-            <span>Stream.</span>
-            <span>Earn.</span>
-          </p>
-          <div className="public-home__actions">
-            <Link className="public-home__button public-home__button--primary" to="/creator/register">
-              Join as Creator
-            </Link>
-            <Link className="public-home__button" to="/marketplace">
-              Explore Marketplace
-            </Link>
-            <Link className="public-home__button" to="/music">
-              Discover Music
-            </Link>
-            <Link className="public-home__button" to="/marketplace/register">
-              Sell on Tengacion
-            </Link>
+          <div className="public-home__hero-copy">
+            <p className="public-home__hero-badge">
+              <span aria-hidden="true" />
+              Built for Africa. Open to the world.
+            </p>
+            <p className="public-home__eyebrow">The creator economy, connected</p>
+            <h1>
+              Africa&apos;s <span>social commerce</span> and creator monetization platform.
+            </h1>
+            <p className="public-home__lede">
+              One connected platform where African creators build audiences, sell their work,
+              stream content, and turn community into sustainable earnings.
+            </p>
+            <p
+              className="public-home__action-line"
+              aria-label="Create, connect, sell, stream, and earn"
+            >
+              <span>Create</span>
+              <span>Connect</span>
+              <span>Sell</span>
+              <span>Stream</span>
+              <span>Earn</span>
+            </p>
+
+            <div className="public-home__actions">
+              <Link
+                className="public-home__button public-home__button--primary"
+                to="/creator/register"
+              >
+                Join as Creator
+                <span aria-hidden="true">&rarr;</span>
+              </Link>
+              <Link className="public-home__button public-home__button--secondary" to="/marketplace">
+                Explore Marketplace
+              </Link>
+            </div>
+
+            <div className="public-home__quick-links" aria-label="More ways to explore Tengacion">
+              <span>More to explore</span>
+              <Link to="/music">Discover Music</Link>
+              <Link to="/marketplace/register">Sell on Tengacion</Link>
+            </div>
+
+            <div className="public-home__hero-proof" aria-label="Tengacion public proof points">
+              <span>Verified creator profiles</span>
+              <span>Creator earnings and payouts</span>
+              <span>Approved sellers</span>
+              <span>Secure checkout</span>
+            </div>
           </div>
 
-          <div className="public-home__hero-proof" aria-label="Tengacion public proof points">
-            <span>Verified creator profiles</span>
-            <span>Creator earnings and payouts</span>
-            <span>Approved seller marketplace</span>
-            <span>Secure checkout</span>
+          <div className="public-home__hero-visual" aria-label="Explore the Tengacion ecosystem">
+            <div className="public-home__visual-glow" aria-hidden="true" />
+
+            <div className="public-home__platform-window">
+              <div className="public-home__window-bar">
+                <span>
+                  <i aria-hidden="true" />
+                  Tengacion ecosystem
+                </span>
+                <small>One connected platform</small>
+              </div>
+
+              <div className="public-home__platform-core">
+                <div className="public-home__brand-orbit" aria-hidden="true">
+                  <span className="public-home__orbit public-home__orbit--outer" />
+                  <span className="public-home__orbit public-home__orbit--inner" />
+                  <div className="public-home__brand-mark">
+                    <img src="/tengacion_logo_512.png" width="512" height="512" alt="" />
+                  </div>
+                </div>
+
+                <div className="public-home__surface-grid">
+                  {HERO_SURFACES.map((surface) => (
+                    <Link
+                      key={surface.path}
+                      className={`public-home__surface-card public-home__surface-card--${surface.tone}`}
+                      to={surface.path}
+                    >
+                      <span className="public-home__surface-icon">
+                        <HeroSurfaceIcon name={surface.icon} />
+                      </span>
+                      <span>
+                        <strong>{surface.label}</strong>
+                        <small>{surface.description}</small>
+                      </span>
+                      <i aria-hidden="true">{"\u2197"}</i>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div className="public-home__window-footer">
+                <span>
+                  <i aria-hidden="true" />
+                  Create
+                </span>
+                <span>
+                  <i aria-hidden="true" />
+                  Connect
+                </span>
+                <span>
+                  <i aria-hidden="true" />
+                  Earn
+                </span>
+              </div>
+            </div>
+
+            <div className="public-home__floating-card public-home__floating-card--earnings">
+              <span aria-hidden="true">&#8599;</span>
+              <div>
+                <small>Creator earnings</small>
+                <strong>Built into your journey</strong>
+              </div>
+            </div>
+
+            <div className="public-home__floating-card public-home__floating-card--trust">
+              <span aria-hidden="true">&#10003;</span>
+              <div>
+                <small>Trusted commerce</small>
+                <strong>Safer ways to sell</strong>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="public-home__proof" aria-label="Live Tengacion proof">
+      <section
+        className="public-home__proof"
+        aria-label="Live Tengacion proof"
+        aria-busy={loadingProof}
+      >
         {proofStats.map((stat) => (
           <div key={stat.label} className="public-home__proof-card">
             <strong>{loadingProof ? "..." : stat.value}</strong>

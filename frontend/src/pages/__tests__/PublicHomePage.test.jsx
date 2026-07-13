@@ -1,5 +1,6 @@
 import { MemoryRouter } from "react-router-dom";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import PublicHomePage from "../PublicHomePage";
@@ -94,6 +95,8 @@ describe("PublicHomePage", () => {
   });
 
   it("shows live public releases, activity, and conversion actions", async () => {
+    const user = userEvent.setup();
+
     render(
       <MemoryRouter>
         <PublicHomePage />
@@ -128,6 +131,14 @@ describe("PublicHomePage", () => {
     expect(screen.getByRole("link", { name: "Leadership" })).toHaveAttribute(
       "href",
       "/leadership"
+    );
+
+    const menuButton = screen.getByRole("button", { name: "Open navigation menu" });
+    expect(menuButton).toHaveAttribute("aria-expanded", "false");
+    await user.click(menuButton);
+    expect(screen.getByRole("button", { name: "Close navigation menu" })).toHaveAttribute(
+      "aria-expanded",
+      "true"
     );
 
     await waitFor(() => {

@@ -82,7 +82,7 @@ describe("PublicCategoryPage", () => {
     expect(await screen.findByRole("heading", { name: /trending songs/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /new releases/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /editor's picks/i })).toBeInTheDocument();
-    expect(screen.getByText("Firelight")).toBeInTheDocument();
+    expect(screen.getAllByText("Firelight")).toHaveLength(2);
     expect(screen.getByText("Morning Drop")).toBeInTheDocument();
     expect(screen.getByText("Golden Verse")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /open creator page/i })[0]).toHaveAttribute(

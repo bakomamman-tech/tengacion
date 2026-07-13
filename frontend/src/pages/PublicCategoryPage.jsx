@@ -12,6 +12,7 @@ import {
 import { normalizePurchaseType } from "../utils/purchaseUx";
 
 import "../components/creatorDiscovery/creatorDiscovery.css";
+import "./publicCategoryPage.css";
 
 const CATEGORY_CONFIG = {
   music: {
@@ -30,7 +31,8 @@ const CATEGORY_CONFIG = {
     previewLabel: "Play preview",
     heroTitle: "Stream the songs people are finding first",
     heroCopy:
-      "Trending songs, fresh drops, and editor-worthy picks make the music page feel active even before a fan opens the private feed.",
+      "Preview trending tracks, discover fresh drops, and go deeper into the catalogs of independent artists shaping what comes next.",
+    statsLabels: ["Releases", "Artists", "Ready to play", "Free to explore"],
     shelves: [
       {
         id: "trending",
@@ -172,6 +174,17 @@ const formatPrice = (item = {}) => {
   }).format(amount);
 };
 
+const formatDuration = (value = 0) => {
+  const totalSeconds = Math.max(0, Math.round(Number(value) || 0));
+  if (!totalSeconds) {
+    return "";
+  }
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+};
+
 const getItemKey = (item = {}) =>
   String(item.contentId || item.id || item.route || `${item.title || ""}:${item.creatorId || ""}`).trim();
 
@@ -216,42 +229,172 @@ const getCreatorName = (item = {}) => item.creatorName || item.creatorUsername |
 
 const getInitial = (value = "") => String(value || "T").trim().slice(0, 1).toUpperCase();
 
-function CategoryReleaseCard({ item, config, onPreview }) {
+function MusicNoteIcon() {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      <path d="M9 18V5l10-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="16" cy="16" r="3" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      <path d="m8 5 11 7-11 7V5Z" />
+    </svg>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+function FeaturedMusicRelease({ item, loading, onPreview }) {
+  const title = item?.title || "A new sound is on the way";
+  const creatorName = item ? getCreatorName(item) : "Independent creators on Tengacion";
+  const image = item ? getReleaseImage(item) : "";
+  const detailRoute = item ? getDetailRoute(item) : "/creators";
+  const creatorRoute = item ? getCreatorRoute(item) : "/creators";
+
+  return (
+    <article
+      className={`public-category-featured${loading ? " is-loading" : ""}`}
+      aria-label={loading ? "Loading featured music" : `Featured release: ${title}`}
+      aria-busy={loading || undefined}
+    >
+      <div className="public-category-featured__artwork">
+        <Link
+          to={detailRoute}
+          className="public-category-featured__cover"
+          aria-label={item ? `Open ${title}` : "Browse music creators"}
+          tabIndex={loading ? -1 : undefined}
+        >
+          {image ? <img src={image} alt="" /> : <span>{loading ? "" : getInitial(title)}</span>}
+        </Link>
+        <span className="public-category-featured__badge">
+          <span aria-hidden="true" />
+          Featured now
+        </span>
+        {item?.canPreview ? (
+          <button
+            type="button"
+            className="public-category-featured__play"
+            onClick={() => onPreview(item)}
+            aria-label={`Play preview: ${title}`}
+          >
+            <PlayIcon />
+          </button>
+        ) : null}
+      </div>
+
+      <div className="public-category-featured__copy">
+        <span>On Tengacion now</span>
+        <h3>
+          <Link to={detailRoute} tabIndex={loading ? -1 : undefined}>
+            {loading ? "Loading a featured release..." : title}
+          </Link>
+        </h3>
+        <div>
+          <Link to={creatorRoute} tabIndex={loading ? -1 : undefined}>
+            {creatorName}
+          </Link>
+          {item ? <small>{formatPrice(item)}</small> : null}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function CategoryReleaseCard({ item, config, onPreview, category }) {
   const image = getReleaseImage(item);
+  const creatorAvatar = resolveImage(item.creatorAvatar || "");
   const creatorRoute = getCreatorRoute(item);
   const detailRoute = getDetailRoute(item);
   const creatorName = getCreatorName(item);
   const title = item.title || "Untitled release";
+  const isMusic = category === "music";
+  const duration = formatDuration(item.durationSec);
+  const CardTitle = isMusic ? "h4" : "h3";
 
   return (
-    <article className="public-category-card">
-      <div className="public-category-card__image" aria-hidden="true">
-        {image ? <img src={image} alt="" loading="lazy" /> : <span>{getInitial(title)}</span>}
+    <article className={`public-category-card${isMusic ? " public-category-card--music" : ""}`}>
+      <div className="public-category-card__image">
+        {isMusic ? (
+          <Link to={detailRoute} className="public-category-card__image-link" aria-label={`Open ${title}`}>
+            {image ? <img src={image} alt="" loading="lazy" /> : <span>{getInitial(title)}</span>}
+          </Link>
+        ) : image ? (
+          <img src={image} alt="" loading="lazy" />
+        ) : (
+          <span>{getInitial(title)}</span>
+        )}
+
+        {isMusic ? (
+          <>
+            <div className="public-category-card__image-meta" aria-hidden="true">
+              <span>{item.summaryLabel || "Music"}</span>
+              <span>{formatPrice(item)}</span>
+            </div>
+            {duration ? <small className="public-category-card__duration">{duration}</small> : null}
+            <button
+              type="button"
+              className="public-category-card__play"
+              onClick={() => onPreview(item)}
+              disabled={!item.canPreview}
+              aria-label={`${config.previewLabel}: ${title}`}
+            >
+              <PlayIcon />
+              <span>{config.previewLabel}</span>
+            </button>
+          </>
+        ) : null}
       </div>
       <div className="public-category-card__body">
-        <div className="public-category-card__meta">
-          <span>{item.summaryLabel || item.creatorCategory || "Release"}</span>
-          <span>{formatPrice(item)}</span>
-        </div>
-        <h3>
+        {!isMusic ? (
+          <div className="public-category-card__meta">
+            <span>{item.summaryLabel || item.creatorCategory || "Release"}</span>
+            <span>{formatPrice(item)}</span>
+          </div>
+        ) : null}
+        <CardTitle>
           <Link to={detailRoute}>{title}</Link>
-        </h3>
+        </CardTitle>
         <p>{item.summary || "A public Tengacion release ready for discovery."}</p>
         <div className="public-category-card__creator">
-          <span>{creatorName}</span>
-          {item.timestampLabel ? <small>{item.timestampLabel}</small> : null}
+          {isMusic ? (
+            <span className="public-category-card__avatar" aria-hidden="true">
+              {creatorAvatar ? <img src={creatorAvatar} alt="" loading="lazy" /> : getInitial(creatorName)}
+            </span>
+          ) : null}
+          <span className="public-category-card__creator-copy">
+            <span>{creatorName}</span>
+            {item.timestampLabel ? <small>{item.timestampLabel}</small> : null}
+          </span>
         </div>
         <div className="public-category-card__actions">
-          <button
-            type="button"
-            className="creator-discovery-card__action creator-discovery-card__action--accent"
-            onClick={() => onPreview(item)}
-            disabled={!item.canPreview}
+          {!isMusic ? (
+            <button
+              type="button"
+              className="creator-discovery-card__action creator-discovery-card__action--accent"
+              onClick={() => onPreview(item)}
+              disabled={!item.canPreview}
+            >
+              {config.previewLabel}
+            </button>
+          ) : null}
+          <Link
+            to={creatorRoute}
+            className={isMusic ? "public-category-card__creator-link" : "creator-discovery-card__action"}
+            aria-label={isMusic ? `Open Creator Page for ${creatorName}` : undefined}
           >
-            {config.previewLabel}
-          </button>
-          <Link to={creatorRoute} className="creator-discovery-card__action">
-            Open Creator Page
+            <span>{isMusic ? "Creator page" : "Open Creator Page"}</span>
+            {isMusic ? <ArrowIcon /> : null}
           </Link>
         </div>
       </div>
@@ -264,6 +407,7 @@ export default function PublicCategoryPage({ category = "music" }) {
   const creatorPlayer = useCreatorPlayer();
   const resolvedCategory = CATEGORY_CONFIG[category] ? category : "music";
   const config = CATEGORY_CONFIG[resolvedCategory];
+  const isMusic = resolvedCategory === "music";
   const [showcase, setShowcase] = useState({
     loading: true,
     error: "",
@@ -285,6 +429,10 @@ export default function PublicCategoryPage({ category = "music" }) {
     () => showcase.shelves.filter((shelf) => Array.isArray(shelf.items) && shelf.items.length),
     [showcase.shelves]
   );
+  const featuredItem = useMemo(
+    () => allShowcaseItems.find((item) => item.canPreview) || allShowcaseItems[0] || null,
+    [allShowcaseItems]
+  );
   const showcaseStats = useMemo(() => {
     const creatorKeys = new Set();
     allShowcaseItems.forEach((item) => {
@@ -297,13 +445,20 @@ export default function PublicCategoryPage({ category = "music" }) {
     const previewCount = allShowcaseItems.filter((item) => item.canPreview).length;
     const freeCount = allShowcaseItems.filter((item) => Number(item.price || item.priceValue || 0) <= 0).length;
 
-    return [
-      { label: "Public items", value: formatCount(allShowcaseItems.length) },
-      { label: "Creators shown", value: formatCount(creatorKeys.size) },
-      { label: "Preview-ready", value: formatCount(previewCount) },
-      { label: "Free entries", value: formatCount(freeCount) },
+    const labels = config.statsLabels || [
+      "Public items",
+      "Creators shown",
+      "Preview-ready",
+      "Free entries",
     ];
-  }, [allShowcaseItems]);
+
+    return [
+      { label: labels[0], value: formatCount(allShowcaseItems.length) },
+      { label: labels[1], value: formatCount(creatorKeys.size) },
+      { label: labels[2], value: formatCount(previewCount) },
+      { label: labels[3], value: formatCount(freeCount) },
+    ];
+  }, [allShowcaseItems, config.statsLabels]);
 
   useEffect(() => {
     let isMounted = true;
@@ -384,7 +539,9 @@ export default function PublicCategoryPage({ category = "music" }) {
   };
 
   return (
-    <section className="creator-discovery-page creator-discovery-theme">
+    <section
+      className={`creator-discovery-page creator-discovery-theme public-category-page public-category-page--${resolvedCategory}`}
+    >
       <SeoHead
         title={config.title}
         description={config.description}
@@ -393,44 +550,113 @@ export default function PublicCategoryPage({ category = "music" }) {
         structuredData={structuredData}
       />
 
-
-      <div className="creator-discovery-page__head">
+      <header className="creator-discovery-page__head public-category-header">
         <div className="creator-discovery-page__title">
+          {isMusic ? (
+            <span className="public-category-header__eyebrow">
+              <MusicNoteIcon />
+              Music discovery
+            </span>
+          ) : null}
           <h1>{config.heading}</h1>
           <p>{config.intro}</p>
         </div>
-        <div className="creator-summary-feed__toolbar">
+        <nav className="creator-summary-feed__toolbar" aria-label="Browse public creator categories">
           {SECONDARY_LINKS.filter((entry) => entry.path !== config.path).map((entry) => (
             <Link key={entry.path} to={entry.path} className="creator-secondary-btn">
               {entry.label}
             </Link>
           ))}
-        </div>
-      </div>
+        </nav>
+      </header>
 
       <div className="creator-discovery-page__banner">
-        <div>
-          <strong>{config.bannerTitle}</strong>
-          <small>Every item links back to its creator page for deeper discovery.</small>
+        <div className="public-category-banner__message">
+          {isMusic ? (
+            <span className="public-category-banner__icon" aria-hidden="true">
+              <MusicNoteIcon />
+            </span>
+          ) : null}
+          <div>
+            <strong>{config.bannerTitle}</strong>
+            <small>Every item links back to its creator page for deeper discovery.</small>
+          </div>
         </div>
-        <small>Canonical public category page</small>
+        <small className="public-category-banner__status">
+          <span aria-hidden="true" />
+          Updated from public creator catalogs
+        </small>
       </div>
 
       <section className="public-category-showcase" aria-labelledby={`${resolvedCategory}-showcase-title`}>
-        <div className="public-category-showcase__hero">
-          <div>
+        <div className={`public-category-showcase__hero${isMusic ? " public-category-showcase__hero--music" : ""}`}>
+          <div className="public-category-showcase__hero-copy">
             <span className="public-category-showcase__eyebrow">{config.proofLabel}</span>
             <h2 id={`${resolvedCategory}-showcase-title`}>{config.heroTitle}</h2>
             <p>{config.heroCopy}</p>
+
+            {isMusic ? (
+              <div className="public-category-showcase__hero-actions">
+                {showcase.loading ? (
+                  <button type="button" className="public-category-showcase__primary" disabled>
+                    <PlayIcon />
+                    Finding your next listen...
+                  </button>
+                ) : featuredItem?.canPreview ? (
+                  <button
+                    type="button"
+                    className="public-category-showcase__primary"
+                    onClick={() => handlePreview(featuredItem)}
+                    aria-label={`Play featured release: ${featuredItem.title || "Untitled release"}`}
+                  >
+                    <PlayIcon />
+                    Play featured
+                  </button>
+                ) : featuredItem ? (
+                  <Link className="public-category-showcase__primary" to={getDetailRoute(featuredItem)}>
+                    Open featured release
+                    <ArrowIcon />
+                  </Link>
+                ) : (
+                  <Link className="public-category-showcase__primary" to="/creators">
+                    Browse music creators
+                    <ArrowIcon />
+                  </Link>
+                )}
+
+                {featuredItem ? (
+                  <Link className="public-category-showcase__secondary" to={getCreatorRoute(featuredItem)}>
+                    Meet the artist
+                    <ArrowIcon />
+                  </Link>
+                ) : null}
+              </div>
+            ) : null}
+
+            {isMusic ? (
+              <dl className="public-category-showcase__stats public-category-showcase__stats--music" aria-label={`${config.heading} public stats`}>
+                {showcaseStats.map((stat) => (
+                  <div key={stat.label}>
+                    <dt>{stat.label}</dt>
+                    <dd>{showcase.loading ? "..." : stat.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
           </div>
-          <div className="public-category-showcase__stats" aria-label={`${config.heading} public stats`}>
-            {showcaseStats.map((stat) => (
-              <span key={stat.label}>
-                <strong>{showcase.loading ? "..." : stat.value}</strong>
-                {stat.label}
-              </span>
-            ))}
-          </div>
+
+          {isMusic ? (
+            <FeaturedMusicRelease item={featuredItem} loading={showcase.loading} onPreview={handlePreview} />
+          ) : (
+            <div className="public-category-showcase__stats" aria-label={`${config.heading} public stats`}>
+              {showcaseStats.map((stat) => (
+                <span key={stat.label}>
+                  <strong>{showcase.loading ? "..." : stat.value}</strong>
+                  {stat.label}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {showcase.error ? (
@@ -441,15 +667,32 @@ export default function PublicCategoryPage({ category = "music" }) {
         ) : null}
 
         {showcase.loading ? (
-          <div className="public-category-showcase__loading" aria-busy="true">
-            <div className="creator-summary-feed__skeleton">
-              <div className="creator-summary-feed__skeleton-media" />
-              <div className="creator-summary-feed__skeleton-body">
-                <div className="creator-summary-feed__skeleton-line creator-summary-feed__skeleton-line--wide" />
-                <div className="creator-summary-feed__skeleton-line creator-summary-feed__skeleton-line--medium" />
-                <div className="creator-summary-feed__skeleton-line" />
+          <div
+            className={`public-category-showcase__loading${isMusic ? " public-category-showcase__loading--music" : ""}`}
+            aria-busy="true"
+            aria-label={`Loading ${resolvedCategory} releases`}
+          >
+            {isMusic ? (
+              Array.from({ length: SHOWCASE_LIMIT }, (_, index) => (
+                <div key={index} className="public-category-card public-category-card--skeleton" aria-hidden="true">
+                  <div className="public-category-card__skeleton-art" />
+                  <div className="public-category-card__skeleton-copy">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="creator-summary-feed__skeleton">
+                <div className="creator-summary-feed__skeleton-media" />
+                <div className="creator-summary-feed__skeleton-body">
+                  <div className="creator-summary-feed__skeleton-line creator-summary-feed__skeleton-line--wide" />
+                  <div className="creator-summary-feed__skeleton-line creator-summary-feed__skeleton-line--medium" />
+                  <div className="creator-summary-feed__skeleton-line" />
+                </div>
               </div>
-            </div>
+            )}
           </div>
         ) : (
           <div className="public-category-showcase__shelves">
@@ -460,7 +703,9 @@ export default function PublicCategoryPage({ category = "music" }) {
                     <h3 id={`${resolvedCategory}-${shelf.id}-title`}>{shelf.title}</h3>
                     <p>{shelf.description}</p>
                   </div>
-                  <small>{formatCount(shelf.total || shelf.items.length)} tracked</small>
+                  <small>
+                    {formatCount(shelf.total || shelf.items.length)} {isMusic ? "releases" : "tracked"}
+                  </small>
                 </div>
                 {shelf.items.length ? (
                   <div className="public-category-showcase__shelf-grid">
@@ -470,6 +715,7 @@ export default function PublicCategoryPage({ category = "music" }) {
                         item={item}
                         config={config}
                         onPreview={handlePreview}
+                        category={resolvedCategory}
                       />
                     ))}
                   </div>

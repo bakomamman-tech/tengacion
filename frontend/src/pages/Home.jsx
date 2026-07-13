@@ -33,12 +33,6 @@ import {
 } from "../api";
 import { UPLOAD_LIMITS } from "../config/uploadLimits";
 import { buildAlphabeticalCreatorRotation } from "./homeCreatorRotation";
-import "./home.css";
-
-const fallbackAvatar = (name) =>
-  `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    name || "User"
-  )}&size=96&background=E3EFE7&color=1B5838`;
 
 const FEELING_OPTIONS = [
   "Blessed",
@@ -786,7 +780,7 @@ export function PostComposerModal({
                 >
                   <img
                     className="composer-tag-avatar"
-                    src={person.avatar || fallbackAvatar(person.name)}
+                    src={person.avatar || "/avatar.png"}
                     alt={person.name || person.username || "User"}
                   />
                   <span className="composer-tag-copy">
@@ -937,7 +931,7 @@ export function PostComposerModal({
 
         <div className="pc-user">
           <img
-            src={resolveImage(user?.avatar) || fallbackAvatar(user?.name || user?.username)}
+            src={resolveImage(user?.avatar) || "/avatar.png"}
             className="pc-avatar"
             alt={user?.username || "You"}
           />
@@ -1451,11 +1445,6 @@ export default function Home({ user }) {
   };
 
   const currentUser = profile || user;
-  const homeDisplayName = String(
-    currentUser?.name || currentUser?.username || "friend"
-  )
-    .trim()
-    .split(/\s+/)[0];
   const visibleFeedItems = useMemo(
     () => (Array.isArray(feedItems) ? feedItems.slice(0, visiblePostCount) : []),
     [feedItems, visiblePostCount]
@@ -1627,10 +1616,7 @@ export default function Home({ user }) {
   );
 
   return (
-    <div className="home-page home-page--modern">
-      <a className="home-skip-link" href="#home-feed">
-        Skip to your feed
-      </a>
+    <>
       <Navbar
         user={currentUser}
         onLogout={logout}
@@ -1658,8 +1644,8 @@ export default function Home({ user }) {
         }}
       />
 
-      <div className="app-shell app-shell--home">
-        <aside className="sidebar home-navigation-rail" aria-label="Home navigation">
+      <div className="app-shell">
+        <aside className="sidebar">
           <Sidebar
             user={currentUser}
             openChat={() => {
@@ -1671,12 +1657,7 @@ export default function Home({ user }) {
           />
         </aside>
 
-        <main
-          id="home-feed"
-          className="feed home-feed-column"
-          aria-labelledby="home-feed-title"
-          tabIndex={-1}
-        >
+        <main className="feed">
           {isBirthdayToday(currentUser?.birthday) && (
             <section className="card birthday-banner">
               <img src="/assets/birthday-cake.svg" alt="Birthday cake" />
@@ -1686,64 +1667,16 @@ export default function Home({ user }) {
               </div>
             </section>
           )}
-          <section className="card home-feed-hero" aria-labelledby="home-feed-title">
-            <header className="home-feed-hero__header">
-              <div className="home-feed-hero__copy">
-                <p className="home-feed-eyebrow">
-                  <span aria-hidden="true" />
-                  Curated for you
-                </p>
-                <h1 id="home-feed-title">Welcome back, {homeDisplayName}</h1>
-                <p>Catch up with your community and discover something worth sharing.</p>
-              </div>
-              <button
-                type="button"
-                className="home-feed-hero__action"
-                onClick={() => openComposer()}
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                <span>Share something</span>
-              </button>
-            </header>
+          {!loading && <Stories user={currentUser} openCreateSignal={storyCreatorSignal} />}
 
-            <div className="home-stories-section">
-              <div className="home-section-heading">
-                <h2>Stories</h2>
-                <p>Fresh moments from your circle</p>
-              </div>
-              {!loading ? (
-                <Stories user={currentUser} openCreateSignal={storyCreatorSignal} />
-              ) : (
-                <div className="home-stories-loading" role="status" aria-live="polite">
-                  Preparing your stories...
-                </div>
-              )}
-            </div>
-          </section>
-
-          <div className="card create-post home-composer" onClick={() => openComposer()}>
+          <div className="card create-post" onClick={() => openComposer()}>
             <div className="create-post-row">
               <img
                 className="create-post-avatar"
-                src={
-                  resolveImage(currentUser?.avatar) ||
-                  fallbackAvatar(currentUser?.name || currentUser?.username)
-                }
-                alt=""
+                src={resolveImage(currentUser?.avatar) || "/avatar.png"}
+                alt="me"
               />
-              <button
-                type="button"
-                className="home-composer-prompt"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  openComposer();
-                }}
-              >
-                <span>What's on your mind?</span>
-                <small>Share a thought, photo, or reel</small>
-              </button>
+              <input placeholder="What's on your mind?" readOnly />
               <div className="create-post-quick-actions">
                 <button
                   type="button"
@@ -1760,7 +1693,6 @@ export default function Home({ user }) {
                       <path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm0 2v8.8l4.2-4 3.3 2.7 4.1-3.5L21 15.9V7H4zm3.5 2.2a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2z" />
                     </svg>
                   </span>
-                  <span className="create-post-quick-label">Photo</span>
                 </button>
                 <button
                   type="button"
@@ -1778,7 +1710,6 @@ export default function Home({ user }) {
                       <circle cx="9.2" cy="12" r="2.1" />
                     </svg>
                   </span>
-                  <span className="create-post-quick-label">Live</span>
                 </button>
                 <button
                   type="button"
@@ -1795,7 +1726,6 @@ export default function Home({ user }) {
                       <path d="M4 6h11a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm14 2.3L22 6v12l-4-2.3V8.3z" />
                     </svg>
                   </span>
-                  <span className="create-post-quick-label">Reel</span>
                 </button>
               </div>
             </div>
@@ -1829,7 +1759,7 @@ export default function Home({ user }) {
             </section>
           )}
 
-          <div className="tengacion-feed home-feed-stream">
+          <div className="tengacion-feed">
             {feedLoading ? (
               <>
                 <PostSkeleton />
@@ -1927,19 +1857,14 @@ export default function Home({ user }) {
               })
             )}
             {visibleFeedItems.length < feedItems.length ? (
-              <div
-                ref={loadMoreRef}
-                className="card home-feed-loading-more"
-                role="status"
-                aria-live="polite"
-              >
+              <div ref={loadMoreRef} className="card" style={{ padding: 12, textAlign: "center" }}>
                 Loading more...
               </div>
             ) : null}
           </div>
         </main>
 
-        <aside className="home-right-rail home-community-rail" aria-label="Community shortcuts">
+        <aside className="home-right-rail">
           <RightQuickNav />
           <FriendRequests />
           {!chatOpen && chatMinimized && (
@@ -1953,11 +1878,7 @@ export default function Home({ user }) {
               title="Restore chat"
             >
               <img
-                src={
-                  resolveImage(chatDockMeta?.avatar) ||
-                  resolveImage(currentUser?.avatar) ||
-                  fallbackAvatar(currentUser?.name || currentUser?.username)
-                }
+                src={resolveImage(chatDockMeta?.avatar) || resolveImage(currentUser?.avatar) || "/avatar.png"}
                 alt=""
               />
               <span>{chatDockMeta?.name || "Messenger"}</span>
@@ -1986,6 +1907,6 @@ export default function Home({ user }) {
         open={Boolean(selectedNewsCard)}
         onClose={() => setSelectedNewsCard(null)}
       />
-    </div>
+    </>
   );
 }

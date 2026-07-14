@@ -729,6 +729,11 @@ html[data-theme="terra-minimal"] .creator-discovery-theme {
   overflow: hidden;
 }
 
+.creator-summary-card__title {
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .creator-summary-card__meta,
 .creator-discovery-card__meta-list,
 .creator-discovery-card__trust {

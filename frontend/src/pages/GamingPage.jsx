@@ -12,8 +12,11 @@ import Tengacion2048 from "../components/gaming/Tengacion2048";
 import SnakeXavia from "../components/gaming/SnakeXavia";
 import TengacionTetris from "../components/gaming/TengacionTetris";
 import WordSprint from "../components/gaming/WordSprint";
+import "./gaming.css";
 
 const SAVED_GAMES_KEY = "tengacion.gaming.saved";
+const LAST_GAME_KEY = "tengacion.gaming.last-game";
+const DEFAULT_GAME_ID = "tengacion-racer";
 
 const GAME_LIBRARY = [
   {
@@ -103,6 +106,7 @@ const GAME_LIBRARY = [
     genre: "Arcade",
     status: "Playable now",
     playable: true,
+    isNew: true,
     accent: "linear-gradient(145deg, #4359a8 0%, #15182f 54%, #ff4f9a 100%)",
     summary: "A live neon survival run with lane dodges, pulse fire, and escalating signal waves.",
     description:
@@ -123,6 +127,7 @@ const GAME_LIBRARY = [
     genre: "Word",
     status: "Playable now",
     playable: true,
+    isNew: true,
     accent: "linear-gradient(145deg, #67d59b 0%, #23765d 52%, #173d37 100%)",
     summary: "A live sixty-second vocabulary sprint with clues, scrambles, streaks, and time pressure.",
     description:
@@ -143,6 +148,7 @@ const GAME_LIBRARY = [
     genre: "Strategy",
     status: "Playable now",
     playable: true,
+    isNew: true,
     accent: "linear-gradient(145deg, #7e7bf5 0%, #4431a5 52%, #201648 100%)",
     summary: "A live 8×8 spatial strategy board with rotatable shapes, line clears, and combo scoring.",
     description:
@@ -239,6 +245,37 @@ const GAMING_VIEWS = [
 
 const GAME_CATEGORIES = ["All", "Puzzle", "Arcade", "Racing", "Word", "Strategy", "Board"];
 
+const GAME_MARKS = {
+  "2048-classic": "2048",
+  "snake-xavia": "SX",
+  "tengacion-racer": "TR",
+  "mushroom-run": "MR",
+  "night-raid": "NR",
+  "word-sprint": "WS",
+  "block-drop": "BD",
+  "chess-room": "CR",
+  "memory-atlas": "MA",
+  "tengacion-tetris": "TT",
+};
+
+const VIEW_HEADINGS = {
+  play: {
+    eyebrow: "Canopy Arcade",
+    title: "Choose your lane. Keep your streak.",
+    description: "Ten instant-play games, one calm place to pick up where you left off.",
+  },
+  activity: {
+    eyebrow: "Local progress",
+    title: "Your game room, at a glance.",
+    description: "See the scores, streaks, and milestones saved on this device.",
+  },
+  saved: {
+    eyebrow: "Your collection",
+    title: "Ready when you are.",
+    description: "A focused shortlist of the games you want to revisit next.",
+  },
+};
+
 const readSavedGames = () => {
   if (typeof window === "undefined") {
     return ["2048-classic"];
@@ -246,12 +283,48 @@ const readSavedGames = () => {
 
   try {
     const raw = window.localStorage.getItem(SAVED_GAMES_KEY);
-    const parsed = JSON.parse(raw || "[]");
-    return Array.isArray(parsed) && parsed.length ? parsed : ["2048-classic"];
+    if (raw === null) {
+      return ["2048-classic"];
+    }
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : ["2048-classic"];
   } catch {
     return ["2048-classic"];
   }
 };
+
+const readLastGame = () => {
+  if (typeof window === "undefined") {
+    return DEFAULT_GAME_ID;
+  }
+
+  try {
+    const storedGameId = window.localStorage.getItem(LAST_GAME_KEY);
+    return GAME_LIBRARY.some((game) => game.id === storedGameId && game.playable)
+      ? storedGameId
+      : DEFAULT_GAME_ID;
+  } catch {
+    return DEFAULT_GAME_ID;
+  }
+};
+
+const persistGamingValue = (key, value) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Keep the game room usable when storage is blocked or unavailable.
+  }
+};
+
+const getPreferredScrollBehavior = () =>
+  typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
 
 export default function GamingPage({ user }) {
   const navigate = useNavigate();
@@ -259,7 +332,7 @@ export default function GamingPage({ user }) {
   const [activeView, setActiveView] = useState("play");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
-  const [selectedGameId, setSelectedGameId] = useState("tengacion-racer");
+  const [selectedGameId, setSelectedGameId] = useState(() => readLastGame());
   const [savedGameIds, setSavedGameIds] = useState(() => readSavedGames());
   const [lastSession, setLastSession] = useState({
     score: 0,
@@ -283,19 +356,23 @@ export default function GamingPage({ user }) {
     integrity: 100,
     lastPlaced: "T",
     gameOver: false,
-    game: "2048-classic",
+    game: selectedGameId,
     turn: "w",
     materialLead: "Even board",
     capturedWhiteValue: 0,
     capturedBlackValue: 0,
-    status: "White to move",
+    status: selectedGameId === "tengacion-racer" ? "Race ready" : "Ready to play",
   });
 
   const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
-    window.localStorage.setItem(SAVED_GAMES_KEY, JSON.stringify(savedGameIds));
+    persistGamingValue(SAVED_GAMES_KEY, JSON.stringify(savedGameIds));
   }, [savedGameIds]);
+
+  useEffect(() => {
+    persistGamingValue(LAST_GAME_KEY, selectedGameId);
+  }, [selectedGameId]);
 
   const filteredGames = useMemo(() => {
     const needle = deferredSearch.trim().toLowerCase();
@@ -328,6 +405,10 @@ export default function GamingPage({ user }) {
     () => GAME_LIBRARY.filter((game) => game.playable).length,
     []
   );
+  const newReleaseCount = useMemo(
+    () => GAME_LIBRARY.filter((game) => game.isNew).length,
+    []
+  );
   const isChessSession = lastSession.game === "chess-room";
   const isTetrisSession = lastSession.game === "tengacion-tetris";
   const isMemorySession = lastSession.game === "memory-atlas";
@@ -335,6 +416,8 @@ export default function GamingPage({ user }) {
   const isRacerSession = lastSession.game === "tengacion-racer";
   const lastPlayedTitle =
     GAME_LIBRARY.find((game) => game.id === lastSession.game)?.title || "2048 Classic";
+  const activityGame =
+    GAME_LIBRARY.find((game) => game.id === lastSession.game) || featuredGame;
   const activityCards = isChessSession
     ? [
         {
@@ -569,7 +652,7 @@ export default function GamingPage({ user }) {
     },
     {
       label: "New releases",
-      value: 3,
+      value: newReleaseCount,
       meta: "Freshly playable",
     },
     {
@@ -587,6 +670,21 @@ export default function GamingPage({ user }) {
     );
   };
 
+  const handleSearchChange = (event) => {
+    setSearch(event.target.value);
+
+    if (activeView !== "play") {
+      startTransition(() => setActiveView("play"));
+    }
+  };
+
+  const selectCategory = (category) => {
+    startTransition(() => {
+      setActiveCategory(category);
+      setActiveView("play");
+    });
+  };
+
   const openGame = (gameId, focusDeck = false) => {
     startTransition(() => {
       setSelectedGameId(gameId);
@@ -595,7 +693,7 @@ export default function GamingPage({ user }) {
 
     if (focusDeck) {
       window.requestAnimationFrame(() => {
-        gameDeckRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        gameDeckRef.current?.scrollIntoView({ behavior: getPreferredScrollBehavior(), block: "start" });
       });
     }
   };
@@ -646,131 +744,48 @@ export default function GamingPage({ user }) {
 
   const renderPlayDeck = () => (
     <>
-      <section className="gaming-hero">
-        <div className="gaming-hero-copy">
-          <p className="gaming-kicker">Gaming hub</p>
-          <h1>Ten games. Zero waiting. Your next run starts here.</h1>
-          <p className="gaming-hero-lede">
-            Every lane is live, touch-ready, and built to remember your progress on this device.
-          </p>
-
-          <div className="gaming-hero-metrics">
-            {heroMetrics.map((item) => (
-              <article key={item.label} className="gaming-metric-card">
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <small>{item.meta}</small>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        <div className="gaming-hero-stage">
-          <div className="gaming-hero-card" style={{ background: featuredGame.accent }}>
-            <span>{featuredGame.status}</span>
-            <strong>{featuredGame.title}</strong>
-            <p>{featuredGame.summary}</p>
-
-            <div className="gaming-card-meta">
-              <small>{featuredGame.genre}</small>
-              <small>{featuredGame.difficulty}</small>
-              <small>{featuredGame.session}</small>
+      <section ref={gameDeckRef} className="gaming-play-grid" aria-labelledby="gaming-now-playing">
+        <div
+          className="gaming-play-panel"
+          style={{ "--gaming-accent": featuredGame.accent }}
+          data-game-id={featuredGame.id}
+        >
+          <header className="gaming-play-header">
+            <div className="gaming-play-identity">
+              <span
+                className="gaming-play-mark"
+                style={{ background: featuredGame.accent }}
+                aria-hidden="true"
+              >
+                {GAME_MARKS[featuredGame.id]}
+              </span>
+              <div>
+                <p className="gaming-kicker">Now playing · {featuredGame.genre}</p>
+                <h2 id="gaming-now-playing">{featuredGame.title}</h2>
+              </div>
             </div>
 
-            <div className="gaming-hero-actions">
-              <button type="button" className="btn-primary" onClick={() => openGame(featuredGame.id, true)}>
-                {featuredGame.playable ? "Play now" : "Open preview"}
-              </button>
+            <div className="gaming-play-actions">
+              <span className="gaming-live-pill">
+                <i aria-hidden="true" /> Live
+              </span>
               <button
                 type="button"
-                className="btn-secondary"
+                className={`gaming-save-button ${savedGameIds.includes(featuredGame.id) ? "active" : ""}`}
+                aria-pressed={savedGameIds.includes(featuredGame.id)}
                 onClick={() => toggleSavedGame(featuredGame.id)}
               >
-                {savedGameIds.includes(featuredGame.id) ? "Saved" : "Save game"}
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6.75 4.75A1.75 1.75 0 0 1 8.5 3h7a1.75 1.75 0 0 1 1.75 1.75v15l-5.25-3.4-5.25 3.4v-15Z" />
+                </svg>
+                {savedGameIds.includes(featuredGame.id) ? "Saved" : "Save"}
               </button>
             </div>
-          </div>
-
-          <div className="gaming-hero-notes">
-            {featuredGame.highlights.map((item) => (
-              <article key={item}>
-                <span />
-                <p>{item}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="gaming-section">
-        <div className="gaming-section-head">
-          <div>
-            <p className="gaming-kicker">Top picks</p>
-            <h2>Choose a game lane</h2>
-          </div>
-
-          <div className="gaming-chip-row">
-            {GAME_CATEGORIES.map((category) => (
-              <button
-                key={category}
-                type="button"
-                className={`gaming-chip ${activeCategory === category ? "active" : ""}`}
-                onClick={() => startTransition(() => setActiveCategory(category))}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="gaming-card-grid">
-          {filteredGames.map((game) => (
-            <button
-              key={game.id}
-              type="button"
-              className={`gaming-game-card ${selectedGameId === game.id ? "active" : ""}`}
-              onClick={() => openGame(game.id, true)}
-            >
-              <div className="gaming-game-card-art" style={{ background: game.accent }}>
-                <span>{game.genre}</span>
-                <strong>{game.playable ? "Live" : "Concept"}</strong>
-              </div>
-              <div className="gaming-game-card-body">
-                <div className="gaming-card-title-row">
-                  <strong>{game.title}</strong>
-                  {savedGameIds.includes(game.id) && <small className="gaming-card-save">Saved</small>}
-                </div>
-                <p>{game.summary}</p>
-                <div className="gaming-card-meta">
-                  <small>{game.difficulty}</small>
-                  <small>{game.controls}</small>
-                  <small>{game.session}</small>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        {filteredGames.length === 0 && (
-          <div className="gaming-empty-state">
-            <h3>No games matched that search</h3>
-            <p>Try another keyword or switch back to the full category list.</p>
-          </div>
-        )}
-      </section>
-
-      <section ref={gameDeckRef} className="gaming-play-grid">
-        <div className="gaming-play-panel">
-          <div className="gaming-section-head compact">
-            <div>
-              <p className="gaming-kicker">Play deck</p>
-              <h2>{featuredGame.title}</h2>
-            </div>
-          </div>
+          </header>
 
           <p className="gaming-panel-copy">{featuredGame.description}</p>
 
-          <div className="gaming-fact-grid">
+          <div className="gaming-fact-grid" aria-label={`${featuredGame.title} details`}>
             <article className="gaming-fact-card">
               <span>Difficulty</span>
               <strong>{featuredGame.difficulty}</strong>
@@ -792,7 +807,7 @@ export default function GamingPage({ user }) {
           {featuredGame.playable ? (
             <>
               {(featuredGame.originalUrl || featuredGame.sourceUrl || featuredGame.builtInLabel) && (
-                <div className="gaming-link-row">
+                <div className="gaming-link-row" aria-label="Game credits">
                   {featuredGame.originalUrl && (
                     <a href={featuredGame.originalUrl} target="_blank" rel="noreferrer">
                       Original game
@@ -806,7 +821,7 @@ export default function GamingPage({ user }) {
                   {featuredGame.builtInLabel && <span>{featuredGame.builtInLabel}</span>}
                 </div>
               )}
-              {renderPlayableGame()}
+              <div className="gaming-live-stage">{renderPlayableGame()}</div>
             </>
           ) : (
             <div className="gaming-coming-soon-card" style={{ background: featuredGame.accent }}>
@@ -826,6 +841,7 @@ export default function GamingPage({ user }) {
               <button
                 type="button"
                 className="btn-secondary"
+                aria-pressed={savedGameIds.includes(featuredGame.id)}
                 onClick={() => toggleSavedGame(featuredGame.id)}
               >
                 {savedGameIds.includes(featuredGame.id) ? "Saved for later" : "Save this concept"}
@@ -834,35 +850,34 @@ export default function GamingPage({ user }) {
           )}
         </div>
 
-        <div className="gaming-side-stack">
-          <div className="gaming-side-card gaming-side-card-focus">
-            <p className="gaming-kicker">Game intel</p>
-            <div className="gaming-intel-list">
-              {featuredGame.highlights.map((item) => (
-                <article key={item} className="gaming-intel-item">
-                  <span />
-                  <p>{item}</p>
-                </article>
-              ))}
+        <aside className="gaming-side-stack" aria-label="Current game information">
+          <div className="gaming-side-card gaming-session-card">
+            <div className="gaming-side-card-head">
+              <div>
+                <p className="gaming-kicker">Live session</p>
+                <strong>{lastPlayedTitle}</strong>
+              </div>
+              <span
+                className={`gaming-session-pulse ${lastSession.gameOver ? "ended" : ""}`}
+                aria-label={lastSession.gameOver ? "Session ended" : "Session active"}
+              >
+                <i aria-hidden="true" /> {lastSession.gameOver ? "Ended" : "Active"}
+              </span>
             </div>
-          </div>
-
-          <div className="gaming-side-card">
-            <p className="gaming-kicker">Live session</p>
             <div className="gaming-current-game">
-              <strong>{lastPlayedTitle}</strong>
               <small>
                 {isChessSession
                   ? lastSession.status || "White to move"
                   : isRacerSession
                     ? lastSession.status || "Race in motion"
-                  : isMushroomSession
-                    ? lastSession.status || "Course in motion"
-                  : isMemorySession
-                    ? lastSession.status || "Route in motion"
-                  : isTetrisSession
-                    ? lastSession.status || "Stack in motion"
-                  : lastSession.status || (lastSession.gameOver ? "Last run ended" : "Run in progress")}
+                    : isMushroomSession
+                      ? lastSession.status || "Course in motion"
+                      : isMemorySession
+                        ? lastSession.status || "Route in motion"
+                        : isTetrisSession
+                          ? lastSession.status || "Stack in motion"
+                          : lastSession.status ||
+                            (lastSession.gameOver ? "Last run ended" : "Run in progress")}
               </small>
             </div>
 
@@ -889,66 +904,85 @@ export default function GamingPage({ user }) {
                     ? "White capture"
                     : isRacerSession
                       ? "Overtakes"
-                    : isMushroomSession
-                      ? "Coins"
-                    : isMemorySession
-                      ? "Pairs banked"
-                    : isTetrisSession
-                      ? "Lines cleared"
-                    : lastSession.metricLabel
-                      ? lastSession.metricLabel
-                    : lastSession.game === "snake-xavia"
-                      ? "Snake length"
-                      : "Top tile"}
+                      : isMushroomSession
+                        ? "Coins"
+                        : isMemorySession
+                          ? "Pairs banked"
+                          : isTetrisSession
+                            ? "Lines cleared"
+                            : lastSession.metricLabel
+                              ? lastSession.metricLabel
+                              : lastSession.game === "snake-xavia"
+                                ? "Snake length"
+                                : "Top tile"}
                 </span>
                 <strong>
                   {isChessSession
                     ? lastSession.capturedWhiteValue || 0
                     : isRacerSession
                       ? lastSession.overtakes || 0
-                    : isMushroomSession
-                      ? lastSession.coins || 0
-                    : isMemorySession
-                      ? lastSession.matches || 0
-                    : isTetrisSession
-                      ? lastSession.lines || 0
-                    : lastSession.metricValue ??
-                      (lastSession.highestTile || (lastSession.game === "snake-xavia" ? 3 : 4))}
+                      : isMushroomSession
+                        ? lastSession.coins || 0
+                        : isMemorySession
+                          ? lastSession.matches || 0
+                          : isTetrisSession
+                            ? lastSession.lines || 0
+                            : lastSession.metricValue ??
+                              (lastSession.highestTile || (lastSession.game === "snake-xavia" ? 3 : 4))}
                 </strong>
               </div>
               <div>
                 <span>
                   {isChessSession
                     ? "Black capture"
-                    : isRacerSession
+                    : isRacerSession || isMushroomSession
                       ? "Distance"
-                    : isMushroomSession
-                      ? "Distance"
-                    : isMemorySession
-                      ? "Chapter"
-                      : isTetrisSession
-                        ? "Level"
-                        : lastSession.progressLabel || "Steps"}
+                      : isMemorySession
+                        ? "Chapter"
+                        : isTetrisSession
+                          ? "Level"
+                          : lastSession.progressLabel || "Steps"}
                 </span>
                 <strong>
                   {isChessSession
                     ? lastSession.capturedBlackValue || 0
-                    : isRacerSession
+                    : isRacerSession || isMushroomSession
                       ? lastSession.distance || 0
-                    : isMushroomSession
-                      ? lastSession.distance || 0
-                    : isMemorySession
-                      ? lastSession.chapter || 1
-                    : isTetrisSession
-                      ? lastSession.level || 1
-                      : lastSession.progressValue ?? lastSession.moves ?? 0}
+                      : isMemorySession
+                        ? lastSession.chapter || 1
+                        : isTetrisSession
+                          ? lastSession.level || 1
+                          : lastSession.progressValue ?? lastSession.moves ?? 0}
                 </strong>
               </div>
             </div>
           </div>
 
-          <div className="gaming-side-card">
-            <p className="gaming-kicker">Happening now</p>
+          <div className="gaming-side-card gaming-side-card-focus gaming-intel-card">
+            <div className="gaming-side-card-head">
+              <div>
+                <p className="gaming-kicker">Game intel</p>
+                <strong>Before you play</strong>
+              </div>
+              <span className="gaming-side-index" aria-hidden="true">03</span>
+            </div>
+            <div className="gaming-intel-list">
+              {featuredGame.highlights.map((item) => (
+                <article key={item} className="gaming-intel-item">
+                  <span />
+                  <p>{item}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="gaming-side-card gaming-spotlight-card">
+            <div className="gaming-side-card-head">
+              <div>
+                <p className="gaming-kicker">Happening now</p>
+                <strong>Across the arcade</strong>
+              </div>
+            </div>
             <div className="gaming-spotlight-list">
               {spotlightCards.map((card) => (
                 <article key={card.title}>
@@ -958,58 +992,71 @@ export default function GamingPage({ user }) {
               ))}
             </div>
           </div>
-        </div>
+        </aside>
       </section>
-    </>
-  );
 
-  const renderActivityDeck = () => (
-    <section className="gaming-section">
-      <div className="gaming-section-head">
-        <div>
-          <p className="gaming-kicker">Gaming activity</p>
-          <h2>Your current local progress</h2>
+      <section
+        id="gaming-library"
+        className="gaming-section gaming-library-section"
+        aria-labelledby="gaming-library-title"
+      >
+        <div className="gaming-section-head">
+          <div>
+            <p className="gaming-kicker">Game library</p>
+            <h2 id="gaming-library-title">Pick your next lane</h2>
+            <p className="gaming-results-status" role="status" aria-live="polite">
+              {filteredGames.length} {filteredGames.length === 1 ? "game" : "games"} ready
+              {activeCategory === "All" ? "" : ` in ${activeCategory}`}
+            </p>
+          </div>
+
+          <div className="gaming-chip-row" role="group" aria-label="Filter games by category">
+            {GAME_CATEGORIES.map((category) => (
+              <button
+                key={category}
+                type="button"
+                className={`gaming-chip ${activeCategory === category ? "active" : ""}`}
+                aria-pressed={activeCategory === category}
+                onClick={() => selectCategory(category)}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="gaming-activity-grid">
-        {activityCards.map((card) => (
-          <article key={card.title} className="gaming-activity-card">
-            <span>{card.title}</span>
-            <strong>{card.value}</strong>
-            <p>{card.meta}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-
-  const renderSavedDeck = () => (
-    <section className="gaming-section">
-      <div className="gaming-section-head">
-        <div>
-          <p className="gaming-kicker">Saved games</p>
-          <h2>Your shortlist</h2>
-        </div>
-      </div>
-
-      {savedGames.length ? (
         <div className="gaming-card-grid">
-          {savedGames.map((game) => (
+          {filteredGames.map((game) => (
             <button
               key={game.id}
               type="button"
-              className="gaming-game-card active"
+              className={`gaming-game-card ${selectedGameId === game.id ? "active" : ""}`}
+              aria-pressed={selectedGameId === game.id}
+              data-game-id={game.id}
               onClick={() => openGame(game.id, true)}
             >
               <div className="gaming-game-card-art" style={{ background: game.accent }}>
-                <span>{game.genre}</span>
-                <strong>{game.playable ? "Live" : "Concept"}</strong>
+                <div className="gaming-game-card-art-top">
+                  <span>{game.genre}</span>
+                  <strong>
+                    {selectedGameId === game.id
+                      ? "Selected"
+                      : game.isNew
+                        ? "New"
+                        : game.playable
+                          ? "Live"
+                          : "Concept"}
+                  </strong>
+                </div>
+                <b className="gaming-game-mark" aria-hidden="true">{GAME_MARKS[game.id]}</b>
+                <small className="gaming-game-card-cta">
+                  Open lane <span aria-hidden="true">→</span>
+                </small>
               </div>
               <div className="gaming-game-card-body">
                 <div className="gaming-card-title-row">
                   <strong>{game.title}</strong>
-                  <small className="gaming-card-save">Saved</small>
+                  {savedGameIds.includes(game.id) && <small className="gaming-card-save">Saved</small>}
                 </div>
                 <p>{game.summary}</p>
                 <div className="gaming-card-meta">
@@ -1021,17 +1068,269 @@ export default function GamingPage({ user }) {
             </button>
           ))}
         </div>
+
+        {filteredGames.length === 0 && (
+          <div className="gaming-empty-state">
+            <span className="gaming-empty-mark" aria-hidden="true">?</span>
+            <h3>No games matched that search</h3>
+            <p>Try another keyword or switch back to the full category list.</p>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                setSearch("");
+                startTransition(() => setActiveCategory("All"));
+              }}
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+      </section>
+
+      <section className="gaming-hero" aria-labelledby="gaming-collection-title">
+        <div className="gaming-hero-copy">
+          <p className="gaming-kicker">Your game room</p>
+          <h2 id="gaming-collection-title">Ten games. Zero waiting.</h2>
+          <p className="gaming-hero-lede">
+            Every lane is live, touch-ready, and built to remember your progress on this device.
+          </p>
+
+          <div className="gaming-hero-metrics">
+            {heroMetrics.map((item) => (
+              <article key={item.label} className="gaming-metric-card">
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <small>{item.meta}</small>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="gaming-hero-stage">
+          <div className="gaming-hero-card" style={{ background: featuredGame.accent }}>
+            <div className="gaming-hero-card-top">
+              <span>{featuredGame.status}</span>
+              <b className="gaming-game-mark" aria-hidden="true">{GAME_MARKS[featuredGame.id]}</b>
+            </div>
+            <strong>{featuredGame.title}</strong>
+            <p>{featuredGame.summary}</p>
+
+            <div className="gaming-card-meta">
+              <small>{featuredGame.genre}</small>
+              <small>{featuredGame.difficulty}</small>
+              <small>{featuredGame.session}</small>
+            </div>
+
+            <div className="gaming-hero-actions">
+              <button type="button" className="btn-primary" onClick={() => openGame(featuredGame.id, true)}>
+                Play now
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                aria-pressed={savedGameIds.includes(featuredGame.id)}
+                onClick={() => toggleSavedGame(featuredGame.id)}
+              >
+                {savedGameIds.includes(featuredGame.id) ? "Saved" : "Save game"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+
+  const renderActivityDeck = () => (
+    <section
+      className="gaming-section gaming-activity-section"
+      aria-labelledby="gaming-activity-title"
+    >
+      <div className="gaming-view-head">
+        <div>
+          <p className="gaming-kicker">Gaming activity</p>
+          <h2 id="gaming-activity-title">Your current local progress</h2>
+          <p>One useful snapshot of the lane currently saved on this device.</p>
+        </div>
+        <button
+          type="button"
+          className="gaming-view-action"
+          onClick={() => openGame(activityGame.id, true)}
+        >
+          Resume {activityGame.title}
+          <span aria-hidden="true">→</span>
+        </button>
+      </div>
+
+      <article className="gaming-activity-banner">
+        <span
+          className="gaming-activity-banner__mark"
+          style={{ background: activityGame.accent }}
+          aria-hidden="true"
+        >
+          {GAME_MARKS[activityGame.id]}
+        </span>
+        <div className="gaming-activity-banner__copy">
+          <p>Last lane touched</p>
+          <h3>{activityGame.title}</h3>
+          <span>{activityGame.summary}</span>
+        </div>
+        <dl className="gaming-activity-banner__stats">
+          {activityCards.slice(1, 4).map((card) => (
+            <div key={card.title}>
+              <dt>{card.title}</dt>
+              <dd>{card.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </article>
+
+      <div className="gaming-activity-grid">
+        {activityCards.map((card, index) => (
+          <article key={card.title} className="gaming-activity-card">
+            <div className="gaming-activity-card__top">
+              <span>{card.title}</span>
+              <small aria-hidden="true">{String(index + 1).padStart(2, "0")}</small>
+            </div>
+            <strong>{card.value}</strong>
+            <p>{card.meta}</p>
+          </article>
+        ))}
+      </div>
+
+      <aside className="gaming-local-progress-note">
+        <span aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <rect x="5" y="10" width="14" height="10" rx="3" />
+            <path d="M8.5 10V7.5a3.5 3.5 0 0 1 7 0V10" />
+          </svg>
+        </span>
+        <div>
+          <strong>Private by default</strong>
+          <p>Your game progress stays in this browser. Nothing here is posted to your profile.</p>
+        </div>
+      </aside>
+    </section>
+  );
+
+  const renderSavedDeck = () => (
+    <section
+      className="gaming-section gaming-saved-section"
+      aria-labelledby="gaming-saved-title"
+    >
+      <div className="gaming-view-head">
+        <div>
+          <p className="gaming-kicker">Saved games</p>
+          <h2 id="gaming-saved-title">Your shortlist</h2>
+          <p>
+            {savedGames.length
+              ? `${savedGames.length} saved lane${savedGames.length === 1 ? "" : "s"}, ready without the hunt.`
+              : "Build a compact collection of the lanes you want close by."}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="gaming-view-action gaming-view-action--quiet"
+          onClick={() => {
+            startTransition(() => setActiveView("play"));
+            window.requestAnimationFrame(() => {
+              document
+                .getElementById("gaming-library")
+                ?.scrollIntoView({ behavior: getPreferredScrollBehavior(), block: "start" });
+            });
+          }}
+        >
+          Browse all games
+          <span aria-hidden="true">→</span>
+        </button>
+      </div>
+
+      {savedGames.length ? (
+        <>
+          <div className="gaming-saved-summary">
+            <span className="gaming-saved-summary__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M6.75 4.75A1.75 1.75 0 0 1 8.5 3h7a1.75 1.75 0 0 1 1.75 1.75v15l-5.25-3.4-5.25 3.4v-15Z" />
+              </svg>
+            </span>
+            <div>
+              <strong>Return-ready collection</strong>
+              <p>Open a lane to play immediately, or remove it here without losing game progress.</p>
+            </div>
+            <span className="gaming-saved-summary__count">
+              {savedGames.length.toString().padStart(2, "0")}
+            </span>
+          </div>
+
+          <div className="gaming-card-grid gaming-saved-grid">
+            {savedGames.map((game, index) => (
+              <article key={game.id} className="gaming-saved-card" data-game-id={game.id}>
+                <button
+                  type="button"
+                  className="gaming-game-card"
+                  onClick={() => openGame(game.id, true)}
+                >
+                  <div className="gaming-game-card-art" style={{ background: game.accent }}>
+                    <div className="gaming-game-card-art-top">
+                      <span>{game.genre}</span>
+                      <strong>{game.isNew ? "New" : "Saved"}</strong>
+                    </div>
+                    <b className="gaming-game-mark" aria-hidden="true">{GAME_MARKS[game.id]}</b>
+                    <small className="gaming-game-card-cta">
+                      Play lane <span aria-hidden="true">→</span>
+                    </small>
+                  </div>
+                  <div className="gaming-game-card-body">
+                    <div className="gaming-card-title-row">
+                      <strong id={`saved-game-${game.id}`}>{game.title}</strong>
+                      <small className="gaming-card-save">Ready</small>
+                    </div>
+                    <p>{game.summary}</p>
+                    <div className="gaming-card-meta">
+                      <small>{game.difficulty}</small>
+                      <small>{game.controls}</small>
+                      <small>{game.session}</small>
+                    </div>
+                  </div>
+                </button>
+                <footer>
+                  <span>Saved lane {String(index + 1).padStart(2, "0")}</span>
+                  <button
+                    type="button"
+                    aria-label="Remove from saved games"
+                    aria-describedby={`saved-game-${game.id}`}
+                    onClick={() => toggleSavedGame(game.id)}
+                  >
+                    Remove
+                  </button>
+                </footer>
+              </article>
+            ))}
+          </div>
+        </>
       ) : (
-        <div className="gaming-empty-state">
+        <div className="gaming-empty-state gaming-saved-empty">
+          <span className="gaming-empty-mark" aria-hidden="true">+</span>
           <h3>No saved games yet</h3>
           <p>Save a game from the play deck and it will appear here for quick access.</p>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => startTransition(() => setActiveView("play"))}
+          >
+            Explore live games
+          </button>
         </div>
       )}
     </section>
   );
 
   return (
-    <>
+    <div className="gaming-page gaming-page--modern">
+      <a className="gaming-skip-link" href="#gaming-main">
+        Skip to games
+      </a>
+
       <Navbar
         user={user}
         onLogout={handleLogout}
@@ -1053,14 +1352,21 @@ export default function GamingPage({ user }) {
         }
       />
 
-      <div className="gaming-page-shell">
-        <aside className="gaming-sidebar">
-          <div className="gaming-sidebar-card">
+      <div className="gaming-page-shell gaming-page-shell--modern">
+        <aside className="gaming-sidebar" aria-label="Game library controls">
+          <div className="gaming-sidebar-card gaming-sidebar-card--command">
             <div className="gaming-sidebar-head">
+              <span className="gaming-room-icon" aria-hidden="true">
+                <svg viewBox="0 0 32 32">
+                  <path d="M10.2 10.5h11.6a6.2 6.2 0 0 1 6 7.7l-1.5 6.1a3.2 3.2 0 0 1-5.4 1.5l-2.3-2.3h-5.2l-2.3 2.3a3.2 3.2 0 0 1-5.4-1.5l-1.5-6.1a6.2 6.2 0 0 1 6-7.7Z" />
+                  <path d="M11 15v5M8.5 17.5h5M21.7 16.1h.1M24 19h.1" />
+                </svg>
+              </span>
               <div>
                 <p className="gaming-kicker">Tengacion</p>
-                <h2>Games</h2>
+                <h2>Game room</h2>
               </div>
+              <span className="gaming-rail-live"><i aria-hidden="true" /> Live</span>
             </div>
 
             <div className="gaming-sidebar-stats">
@@ -1073,31 +1379,48 @@ export default function GamingPage({ user }) {
             </div>
 
             <label className="gaming-search-shell">
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search games"
-                aria-label="Search games"
-              />
+              <span className="gaming-search-label">Search library</span>
+              <span className="gaming-search-field">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="10.8" cy="10.8" r="6.3" />
+                  <path d="m15.5 15.5 4.2 4.2" />
+                </svg>
+                <input
+                  type="search"
+                  value={search}
+                  onChange={handleSearchChange}
+                  placeholder="Title, genre, or controls"
+                  aria-describedby="gaming-search-status"
+                />
+              </span>
             </label>
 
-            <div className="gaming-nav-list">
+            <p id="gaming-search-status" className="gaming-search-results-status">
+              {filteredGames.length} of {GAME_LIBRARY.length} games shown
+            </p>
+
+            <nav className="gaming-nav-list" aria-label="Gaming sections">
               {GAMING_VIEWS.map((view) => (
                 <button
                   key={view.id}
                   type="button"
+                  data-view={view.id}
                   className={`gaming-nav-btn ${activeView === view.id ? "active" : ""}`}
+                  aria-current={activeView === view.id ? "page" : undefined}
                   onClick={() => startTransition(() => setActiveView(view.id))}
                 >
-                  <strong>{view.label}</strong>
-                  <span>{view.description}</span>
+                  <span className="gaming-nav-icon" aria-hidden="true" />
+                  <span className="gaming-nav-copy">
+                    <strong>{view.label}</strong>
+                    <span>{view.description}</span>
+                  </span>
+                  <span className="gaming-nav-arrow" aria-hidden="true">→</span>
                 </button>
               ))}
-            </div>
+            </nav>
           </div>
 
-          <div className="gaming-sidebar-card">
+          <div className="gaming-sidebar-card gaming-sidebar-card--saved">
             <div className="gaming-rail-head">
               <h3>Your games</h3>
               <button type="button" onClick={() => startTransition(() => setActiveView("saved"))}>
@@ -1109,7 +1432,9 @@ export default function GamingPage({ user }) {
               <div className="gaming-mini-list">
                 {savedGames.slice(0, 4).map((game) => (
                   <button key={game.id} type="button" onClick={() => openGame(game.id, true)}>
-                    <span className="swatch" style={{ background: game.accent }} />
+                    <span className="swatch" style={{ background: game.accent }} aria-hidden="true">
+                      {GAME_MARKS[game.id]}
+                    </span>
                     <div>
                       <strong>{game.title}</strong>
                       <small>{game.genre}</small>
@@ -1124,15 +1449,16 @@ export default function GamingPage({ user }) {
             )}
           </div>
 
-          <div className="gaming-sidebar-card">
+          <div className="gaming-sidebar-card gaming-sidebar-card--categories">
             <h3>Categories</h3>
-            <div className="gaming-category-list">
+            <div className="gaming-category-list" role="group" aria-label="Game categories">
               {GAME_CATEGORIES.map((category) => (
                 <button
                   key={category}
                   type="button"
                   className={activeCategory === category ? "active" : ""}
-                  onClick={() => startTransition(() => setActiveCategory(category))}
+                  aria-pressed={activeCategory === category}
+                  onClick={() => selectCategory(category)}
                 >
                   {category}
                 </button>
@@ -1141,12 +1467,41 @@ export default function GamingPage({ user }) {
           </div>
         </aside>
 
-        <main className="gaming-main">
+        <main id="gaming-main" className="gaming-main" aria-labelledby="gaming-page-title" tabIndex="-1">
+          <header className="gaming-command-bar">
+            <div className="gaming-command-copy">
+              <p className="gaming-kicker">{VIEW_HEADINGS[activeView].eyebrow}</p>
+              <h1 id="gaming-page-title">{VIEW_HEADINGS[activeView].title}</h1>
+              <p>{VIEW_HEADINGS[activeView].description}</p>
+            </div>
+
+            <div className="gaming-command-actions">
+              <span className="gaming-live-count">
+                <i aria-hidden="true" /> {playableCount} games live
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeView !== "play") {
+                    startTransition(() => setActiveView("play"));
+                    return;
+                  }
+                  document
+                    .getElementById("gaming-library")
+                    ?.scrollIntoView({ behavior: getPreferredScrollBehavior(), block: "start" });
+                }}
+              >
+                {activeView === "play" ? "Browse library" : "Back to play"}
+                <span aria-hidden="true">→</span>
+              </button>
+            </div>
+          </header>
+
           {activeView === "play" && renderPlayDeck()}
           {activeView === "activity" && renderActivityDeck()}
           {activeView === "saved" && renderSavedDeck()}
         </main>
       </div>
-    </>
+    </div>
   );
 }

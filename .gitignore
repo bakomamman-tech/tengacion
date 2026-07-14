@@ -24,3 +24,15 @@ frontend/android/keystore.properties
 *.keystore
 
 .tmp/
+
+.tmp-chrome-gaming-mobile/
+
+gaming-audit.png
+
+gaming-mobile-audit.png
+
+gaming-play-compact.png
+
+gaming-play-desktop.png
+
+gaming-play-mobile.png

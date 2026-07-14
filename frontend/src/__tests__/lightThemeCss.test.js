@@ -23,7 +23,7 @@ function getRule(css, selector) {
 describe("Light theme CSS", () => {
   it("keeps the leafy studio background attached to the default light theme", () => {
     const css = readFileSync(cssPath, "utf8").replace(/\r\n/g, "\n");
-    const bodyRule = getRule(css, "html:not(.dark-mode):not(.peaceful-mode):not(.nature-green-mode):not(.terra-minimal-mode) body");
+    const bodyRule = getRule(css, "html:not(.dark-mode):not(.peaceful-mode):not(.nature-green-mode):not(.terra-minimal-mode):not(.blue-ray-mode) body");
 
     expect(existsSync(studioAssetPath)).toBe(true);
     expect(css).toContain('--light-mode-studio-bg: url("/assets/light-mode-leaf-studio-background.jpg");');

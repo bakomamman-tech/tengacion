@@ -916,7 +916,7 @@ export default function Navbar({
         {
           id: "display-blue-ray",
           label: "Blue Ray",
-          description: "Use crisp white surfaces, Facebook blue accents, and soft grey controls.",
+          description: "Use luminous cobalt accents, cool pearl surfaces, and layered blue depth.",
           glyph: "BR",
           badge: theme === "blue-ray" ? "On" : "Off",
           active: theme === "blue-ray",

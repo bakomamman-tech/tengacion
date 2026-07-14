@@ -294,7 +294,7 @@ export function DisplayAccessibilityPage({ user }) {
     {
       value: "blue-ray",
       title: "Blue Ray",
-      description: "Crisp white surfaces, Facebook blue accents, and soft grey controls.",
+      description: "Luminous cobalt accents, cool pearl surfaces, and layered blue depth.",
     },
     {
       value: "nature-green",

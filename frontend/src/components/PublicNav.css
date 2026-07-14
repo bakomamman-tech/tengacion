@@ -65,6 +65,11 @@
   gap: clamp(16px, 2.2vw, 34px);
 }
 
+.public-nav__button-rail {
+  min-width: 0;
+  display: contents;
+}
+
 .public-nav__links {
   min-width: 0;
   justify-content: center;
@@ -133,6 +138,47 @@
   filter: brightness(1.04);
   transform: translateY(-1px);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.8), 0 14px 30px rgba(224, 171, 61, 0.27);
+}
+
+.public-nav__rail-control {
+  width: 38px;
+  height: 38px;
+  display: none;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(240, 202, 115, 0.4);
+  border-radius: 999px;
+  color: #fff8dc;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    opacity 180ms ease;
+}
+
+.public-nav__rail-control svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.25;
+}
+
+.public-nav__rail-control:hover:not(:disabled),
+.public-nav__rail-control:focus-visible {
+  border-color: rgba(240, 202, 115, 0.74);
+  background: rgba(255, 255, 255, 0.14);
+  outline: 0;
+}
+
+.public-nav__rail-control:disabled {
+  opacity: 0.36;
+  cursor: default;
 }
 
 .public-nav__toggle {
@@ -231,6 +277,96 @@
   .public-nav__account {
     width: 100%;
   }
+
+  .public-nav--landing {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .public-nav--landing .public-nav__toggle {
+    display: none;
+  }
+
+  .public-nav--landing .public-nav__menu {
+    max-height: none;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: visible;
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .public-nav--landing .public-nav__button-rail {
+    min-width: 0;
+    grid-column: 2;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: 2px 1px 6px;
+    scroll-behavior: smooth;
+    scroll-padding-inline: 4px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .public-nav--landing .public-nav__button-rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .public-nav--landing .public-nav__links {
+    display: contents;
+  }
+
+  .public-nav--landing .public-nav__links a,
+  .public-nav--landing .public-nav__account {
+    min-height: 44px;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  .public-nav--landing .public-nav__links a {
+    order: 1;
+    padding: 0 15px;
+    border-color: rgba(224, 190, 111, 0.18);
+    color: rgba(244, 249, 239, 0.82);
+    background: rgba(255, 255, 255, 0.055);
+  }
+
+  .public-nav--landing .public-nav__links a:hover,
+  .public-nav--landing .public-nav__links a:focus-visible,
+  .public-nav--landing .public-nav__links a[aria-current="page"] {
+    border-color: var(--public-nav-active-border);
+    color: var(--public-nav-active-text);
+    background: var(--public-nav-active-bg);
+  }
+
+  .public-nav--landing .public-nav__account {
+    width: auto;
+    order: 0;
+    padding: 0 15px;
+  }
+
+  .public-nav--landing .public-nav__rail-control {
+    align-self: center;
+  }
+
+  .public-nav--landing .public-nav__rail-control.is-visible {
+    display: grid;
+  }
+
+  .public-nav--landing .public-nav__rail-control--previous {
+    grid-column: 1;
+  }
+
+  .public-nav--landing .public-nav__rail-control--next {
+    grid-column: 3;
+  }
 }
 
 @media (max-width: 560px) {
@@ -272,6 +408,43 @@
 
   .public-nav__account {
     min-height: 46px;
+  }
+
+  .public-nav--landing .public-nav__menu {
+    gap: 6px;
+  }
+
+  .public-nav--landing .public-nav__button-rail {
+    gap: 5px;
+    padding-bottom: 5px;
+  }
+
+  .public-nav--landing .public-nav__links a,
+  .public-nav--landing .public-nav__account {
+    min-height: 42px;
+    font-size: 0.81rem;
+  }
+
+  .public-nav--landing .public-nav__links a {
+    padding: 0 13px;
+  }
+
+  .public-nav--landing .public-nav__account {
+    padding: 0 13px;
+  }
+
+  .public-nav--landing .public-nav__account strong {
+    padding-left: 8px;
+  }
+
+  .public-nav--landing .public-nav__rail-control {
+    width: 34px;
+    height: 34px;
+  }
+
+  .public-nav--landing .public-nav__rail-control svg {
+    width: 18px;
+    height: 18px;
   }
 }
 

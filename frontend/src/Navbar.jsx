@@ -914,6 +914,15 @@ export default function Navbar({
           onClick: () => setTheme("light"),
         },
         {
+          id: "display-blue-ray",
+          label: "Blue Ray",
+          description: "Use crisp white surfaces, Facebook blue accents, and soft grey controls.",
+          glyph: "BR",
+          badge: theme === "blue-ray" ? "On" : "Off",
+          active: theme === "blue-ray",
+          onClick: () => setTheme("blue-ray"),
+        },
+        {
           id: "display-nature-green",
           label: "Nature Green",
           description: "Use fresh organic greens, cream surfaces, and leafy calm across Tengacion.",

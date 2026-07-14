@@ -2140,7 +2140,7 @@ body {
   background-attachment: fixed;
 }
 
-html:not(.dark-mode):not(.peaceful-mode):not(.nature-green-mode):not(.terra-minimal-mode) body {
+html:not(.dark-mode):not(.peaceful-mode):not(.nature-green-mode):not(.terra-minimal-mode):not(.blue-ray-mode) body {
   background-color: var(--bg);
   background-image:
     linear-gradient(180deg, rgba(246, 250, 243, 0.36), rgba(228, 237, 229, 0.28) 48%, rgba(207, 220, 210, 0.42)),

@@ -292,6 +292,11 @@ export function DisplayAccessibilityPage({ user }) {
       description: "Brighter surfaces with warm contrast for daytime browsing.",
     },
     {
+      value: "blue-ray",
+      title: "Blue Ray",
+      description: "Crisp white surfaces, Facebook blue accents, and soft grey controls.",
+    },
+    {
       value: "nature-green",
       title: "Nature Green",
       description: "Fresh organic greens, cream surfaces, and leafy calm across Tengacion.",

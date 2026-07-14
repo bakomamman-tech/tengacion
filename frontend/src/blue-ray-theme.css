@@ -1,0 +1,334 @@
+/*
+ * Blue Ray
+ * A Facebook-inspired light palette for Tengacion. This theme keeps the
+ * current component structure intact and only remaps surfaces, text, borders,
+ * action states, and shadows.
+ */
+
+html.blue-ray-mode {
+  --bg: #f0f2f5;
+  --bg-layer: linear-gradient(180deg, #f0f2f5 0%, #f0f2f5 100%);
+  --surface: #ffffff;
+  --surface-soft: #f0f2f5;
+  --surface-strong: #e4e6eb;
+  --bg-dark: #18191a;
+  --text: #050505;
+  --muted: #65676b;
+  --border: #dddfe2;
+  --border-strong: #cfd2d6;
+  --brand: #1877f2;
+  --brand-strong: #0866ff;
+  --brand-soft: #e7f3ff;
+  --danger: #fa383e;
+  --success: #31a24c;
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.16);
+  --btn-bg: #1877f2;
+  --btn-bg-hover: #166fe5;
+  --btn-bg-active: #0d5bd6;
+  --btn-bg-soft: #e7f3ff;
+  --btn-text: #ffffff;
+  --btn-focus: rgba(24, 119, 242, 0.22);
+  --glass-action-fill: #e4e6eb;
+  --glass-action-fill-hover: #d8dadf;
+  --glass-action-fill-active: #ccd0d5;
+  --glass-action-fill-selected: #e7f3ff;
+  --glass-action-border: rgba(0, 0, 0, 0.08);
+  --glass-action-border-strong: rgba(24, 119, 242, 0.32);
+  --glass-action-highlight: rgba(255, 255, 255, 0.9);
+  --glass-action-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --glass-action-shadow-hover: 0 2px 6px rgba(0, 0, 0, 0.14);
+  --glass-action-ring: rgba(24, 119, 242, 0.2);
+  --glass-reaction-fill: #ffffff;
+  --glass-reaction-btn-fill: #f0f2f5;
+  --home-soft-btn-bg: #e4e6eb;
+  --home-soft-btn-bg-hover: #d8dadf;
+  --home-soft-btn-border: rgba(0, 0, 0, 0.08);
+  --home-soft-btn-border-strong: rgba(24, 119, 242, 0.26);
+  --home-soft-btn-shadow: none;
+  --home-soft-btn-shadow-hover: none;
+  --home-soft-btn-text: #050505;
+  --tg-btn-shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --tg-btn-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --tg-btn-shadow-press: inset 0 0 0 999px rgba(0, 0, 0, 0.04);
+  --tg-btn-shadow-primary: 0 1px 2px rgba(24, 119, 242, 0.22);
+  --tg-btn-shadow-primary-hover: 0 2px 8px rgba(24, 119, 242, 0.22);
+  --tg-btn-ring: 0 0 0 3px rgba(24, 119, 242, 0.18);
+  --tg-btn-ring-strong: 0 0 0 4px rgba(24, 119, 242, 0.16);
+  --tg-btn-primary-bg: #1877f2;
+  --tg-btn-primary-bg-hover: #166fe5;
+  --tg-btn-primary-bg-active: #0d5bd6;
+  --tg-btn-primary-border: rgba(24, 119, 242, 0.34);
+  --tg-btn-primary-text: #ffffff;
+  --tg-btn-secondary-bg: #e4e6eb;
+  --tg-btn-secondary-bg-hover: #d8dadf;
+  --tg-btn-secondary-bg-active: #ccd0d5;
+  --tg-btn-secondary-border: rgba(0, 0, 0, 0.08);
+  --tg-btn-secondary-border-hover: rgba(24, 119, 242, 0.24);
+  --tg-btn-secondary-text: #050505;
+  --tg-btn-ghost-bg-hover: rgba(24, 119, 242, 0.08);
+  --tg-btn-ghost-bg-active: rgba(24, 119, 242, 0.14);
+  --tg-btn-ghost-text: #1877f2;
+  --tg-btn-outline-bg: #ffffff;
+  --tg-btn-outline-bg-hover: #f0f2f5;
+  --tg-btn-outline-bg-active: #e4e6eb;
+  --tg-btn-outline-border: #ccd0d5;
+  --tg-btn-outline-border-active: rgba(24, 119, 242, 0.36);
+  --tg-btn-outline-text: #1877f2;
+  --tg-btn-tab-bg: #ffffff;
+  --tg-btn-tab-bg-hover: #f0f2f5;
+  --tg-btn-tab-bg-active: #e7f3ff;
+  --tg-btn-tab-border: transparent;
+  --tg-btn-tab-border-active: #1877f2;
+  --tg-btn-tab-text: #65676b;
+  --tg-btn-tab-text-active: #1877f2;
+  --tg-btn-icon-bg: #e4e6eb;
+  --tg-btn-icon-bg-hover: #d8dadf;
+  --tg-btn-icon-bg-active: #ccd0d5;
+  --tg-btn-icon-border: transparent;
+  --tg-btn-icon-text: #050505;
+  --tg-btn-toolbar-bg: #ffffff;
+  --tg-toast-bg: #ffffff;
+  --tg-toast-border: #dddfe2;
+  --tg-toast-text: #050505;
+  --tg-toast-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+html.blue-ray-mode body {
+  background: #f0f2f5;
+  color: var(--text);
+}
+
+html.blue-ray-mode .navbar,
+html.blue-ray-mode .topNavRow {
+  border-bottom-color: #dddfe2;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html.blue-ray-mode .brand-text {
+  color: #1877f2;
+}
+
+html.blue-ray-mode .nav-logo {
+  filter: drop-shadow(0 1px 1px rgba(24, 119, 242, 0.22));
+}
+
+html.blue-ray-mode :is(.nav-pill-group, .pillGroup, .nav-actions-shell) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+html.blue-ray-mode :is(.nav-tab, .pillLink, .sidebar-btn, .quick-nav-more, .checkin-card > button, .friend-requests-head .btn-link) {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #65676b !important;
+  box-shadow: none !important;
+}
+
+html.blue-ray-mode :is(.nav-tab:hover, .pillLink:hover, .sidebar-btn:hover, .quick-nav-more:hover, .checkin-card > button:hover, .friend-requests-head .btn-link:hover) {
+  background: #f0f2f5 !important;
+  border-color: transparent !important;
+  color: #050505 !important;
+  box-shadow: none !important;
+}
+
+html.blue-ray-mode :is(.nav-tab.active, .pillLink.active, .sidebar-btn.active, .filter-tab.active, .category-pill.active) {
+  background: #e7f3ff !important;
+  border-color: transparent !important;
+  color: #1877f2 !important;
+  box-shadow: inset 0 -3px 0 #1877f2 !important;
+}
+
+html.blue-ray-mode :is(.nav-circle-btn, .nav-avatar-chip, .pm-panel-back, .pm-nav-item-icon, .quick-nav-item-icon) {
+  border-color: transparent;
+  background: #e4e6eb;
+  color: #050505;
+  box-shadow: none;
+}
+
+html.blue-ray-mode :is(.nav-circle-btn:hover, .nav-avatar-chip:hover, .pm-panel-back:hover) {
+  background: #d8dadf;
+}
+
+html.blue-ray-mode :is(.nav-search, .quick-nav-search, .create-post-row input, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea) {
+  border-color: transparent;
+  background: #f0f2f5;
+  color: #050505;
+  box-shadow: none;
+}
+
+html.blue-ray-mode :is(input, textarea)::placeholder {
+  color: #65676b;
+}
+
+html.blue-ray-mode :is(
+  .card,
+  .post-card,
+  .create-post,
+  .create-post-card,
+  .sidebar-nav,
+  .quick-nav-panel,
+  .friend-requests-card,
+  .checkin-card,
+  .quick-access-hero,
+  .account-choice-card,
+  .account-shortcut-card,
+  .account-kpi-card,
+  .account-note-card,
+  .modal-content,
+  .settings-card,
+  .form-card,
+  .table-card,
+  .marketplace-card,
+  .marketplace-panel,
+  .product-card,
+  .right-rail-card,
+  .notifications-panel
+) {
+  border-color: #dddfe2;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+html.blue-ray-mode :is(.post-card:hover, .account-choice-card:hover, .account-shortcut-card:hover, .marketplace-card:hover, .product-card:hover) {
+  border-color: #cfd2d6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+}
+
+html.blue-ray-mode :is(.search-dropdown, .create-menu-dropdown, .profile-menu, .nav-notif-dropdown, .messenger-inbox-dropdown) {
+  border-color: #dddfe2;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+}
+
+html.blue-ray-mode :is(.sd-item:hover, .pm-nav-item:hover, .pm-user:hover, .pm-item:hover, .quick-nav-item:hover, .quick-nav-item.active, .create-menu-item:hover) {
+  background: #f0f2f5;
+}
+
+html.blue-ray-mode .pm-nav-item.is-active,
+html.blue-ray-mode .account-choice-card.active {
+  border: 1px solid rgba(24, 119, 242, 0.24);
+  background: #e7f3ff;
+  box-shadow: 0 1px 2px rgba(24, 119, 242, 0.14);
+}
+
+html.blue-ray-mode .pm-nav-item.is-active .pm-nav-item-icon {
+  background: #1877f2;
+  color: #ffffff;
+}
+
+html.blue-ray-mode .pm-nav-item-badge {
+  background: #e4e6eb;
+  color: #65676b;
+}
+
+html.blue-ray-mode .pm-nav-item.is-active .pm-nav-item-badge {
+  background: #1877f2;
+  color: #ffffff;
+}
+
+html.blue-ray-mode :is(.btn-primary, .login-btn, .signup-btn, .create-post-btn, .sidebar-raffle-btn, .tg-btn--primary) {
+  background: #1877f2 !important;
+  border-color: #1877f2 !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(24, 119, 242, 0.22) !important;
+}
+
+html.blue-ray-mode :is(.btn-primary, .login-btn, .signup-btn, .create-post-btn, .sidebar-raffle-btn, .tg-btn--primary):hover:not(:disabled) {
+  background: #166fe5 !important;
+  border-color: #166fe5 !important;
+}
+
+html.blue-ray-mode :is(.btn-secondary, .tg-btn--secondary, .btn-outline, .tg-btn--outline) {
+  background: #e4e6eb !important;
+  border-color: transparent !important;
+  color: #050505 !important;
+  box-shadow: none !important;
+}
+
+html.blue-ray-mode :is(.btn-secondary, .tg-btn--secondary, .btn-outline, .tg-btn--outline):hover:not(:disabled) {
+  background: #d8dadf !important;
+}
+
+html.blue-ray-mode .create-post-quick-actions {
+  border-color: transparent;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+html.blue-ray-mode .create-post-quick-btn {
+  background: #e4e6eb !important;
+  color: #050505 !important;
+  box-shadow: none;
+}
+
+html.blue-ray-mode .create-post-quick-btn:hover {
+  background: #d8dadf !important;
+}
+
+html.blue-ray-mode :is(.nav-avatar, .create-post-avatar, .post-avatar, .sb-avatar) {
+  border: 2px solid #1877f2;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+html.blue-ray-mode .post-actions .action-btn.active-like {
+  color: #1877f2;
+}
+
+html.blue-ray-mode .sidebar-raffle-card {
+  border-color: rgba(24, 119, 242, 0.18);
+  background: #e7f3ff;
+  color: #050505;
+}
+
+html.blue-ray-mode .messenger--whatsapp-light {
+  --wa-green: #1877f2;
+  --wa-green-strong: #166fe5;
+  --wa-accent-text: #ffffff;
+  --wa-outgoing: #e7f3ff;
+  --wa-outgoing-ink: #050505;
+  --wa-incoming: #ffffff;
+  --wa-incoming-ink: #050505;
+  --wa-chat-paper: #f0f2f5;
+  --wa-ink: #050505;
+  --wa-muted: #65676b;
+  --wa-icon: #65676b;
+  --wa-header-bg: #ffffff;
+  --wa-surface-bg: #ffffff;
+  --wa-border: #dddfe2;
+  --wa-entry-border: #ccd0d5;
+  --wa-hover-bg: #f0f2f5;
+  --wa-composer-bg: #f0f2f5;
+  --wa-wallpaper-wash: rgba(240, 242, 245, 0.75);
+  --wa-online: #31a24c;
+  --wa-delivery: #1877f2;
+  --wa-bubble-shadow: 0 1px 1px rgba(0, 0, 0, 0.12);
+  --wa-header-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --wa-menu-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+html.blue-ray-mode .creator-discovery-theme {
+  --creator-summary-refresh-bg: #1877f2;
+  --creator-summary-refresh-bg-hover: #166fe5;
+  --creator-summary-refresh-border: rgba(24, 119, 242, 0.36);
+  --creator-summary-refresh-text: #ffffff;
+  --creator-summary-refresh-shadow: 0 2px 8px rgba(24, 119, 242, 0.2);
+}
+
+html.blue-ray-mode ::selection {
+  background: rgba(24, 119, 242, 0.22);
+  color: #050505;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.blue-ray-mode *,
+  html.blue-ray-mode *::before,
+  html.blue-ray-mode *::after {
+    scroll-behavior: auto !important;
+  }
+}

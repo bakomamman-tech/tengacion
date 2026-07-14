@@ -33,6 +33,15 @@ describe("themeConfig", () => {
     expect(getThemeColorScheme("peaceful")).toBe("light");
   });
 
+  it("supports and persists Blue Ray as a light theme", () => {
+    localStorage.setItem(THEME_KEY, "blue-ray");
+
+    expect(SUPPORTED_THEMES).toContain("blue-ray");
+    expect(readStoredTheme()).toBe("blue-ray");
+    expect(getThemeLabel("blue-ray")).toBe("Blue Ray");
+    expect(getThemeColorScheme("blue-ray")).toBe("light");
+  });
+
   it("supports and persists Nature Green as a light theme", () => {
     localStorage.setItem(THEME_KEY, "nature-green");
 
@@ -67,8 +76,31 @@ describe("themeConfig", () => {
 
     expect(root.dataset.theme).toBe("royalty");
     expect(root).toHaveClass("dark-mode", "royalty-mode");
-    expect(root).not.toHaveClass("nature-green-mode", "afro-gold-mode", "terra-minimal-mode");
+    expect(root).not.toHaveClass(
+      "nature-green-mode",
+      "afro-gold-mode",
+      "terra-minimal-mode",
+      "blue-ray-mode"
+    );
     expect(root.style.colorScheme).toBe("dark");
+  });
+
+  it("applies the light-like Blue Ray document classes", () => {
+    const root = document.createElement("div");
+
+    applyThemeToDocument("blue-ray", root);
+
+    expect(root.dataset.theme).toBe("blue-ray");
+    expect(root).toHaveClass("blue-ray-mode");
+    expect(root).not.toHaveClass(
+      "dark-mode",
+      "peaceful-mode",
+      "royalty-mode",
+      "nature-green-mode",
+      "afro-gold-mode",
+      "terra-minimal-mode"
+    );
+    expect(root.style.colorScheme).toBe("light");
   });
 
   it("applies the light-like peaceful document classes", () => {
@@ -83,7 +115,8 @@ describe("themeConfig", () => {
       "royalty-mode",
       "nature-green-mode",
       "afro-gold-mode",
-      "terra-minimal-mode"
+      "terra-minimal-mode",
+      "blue-ray-mode"
     );
     expect(root.style.colorScheme).toBe("light");
   });
@@ -100,7 +133,8 @@ describe("themeConfig", () => {
       "peaceful-mode",
       "royalty-mode",
       "afro-gold-mode",
-      "terra-minimal-mode"
+      "terra-minimal-mode",
+      "blue-ray-mode"
     );
     expect(root.style.colorScheme).toBe("light");
   });
@@ -116,7 +150,8 @@ describe("themeConfig", () => {
       "peaceful-mode",
       "royalty-mode",
       "nature-green-mode",
-      "terra-minimal-mode"
+      "terra-minimal-mode",
+      "blue-ray-mode"
     );
     expect(root.style.colorScheme).toBe("dark");
   });
@@ -133,7 +168,8 @@ describe("themeConfig", () => {
       "peaceful-mode",
       "royalty-mode",
       "nature-green-mode",
-      "afro-gold-mode"
+      "afro-gold-mode",
+      "blue-ray-mode"
     );
     expect(root.style.colorScheme).toBe("light");
   });
@@ -146,7 +182,8 @@ describe("themeConfig", () => {
   });
 
   it("includes Nature Green and Peaceful Mode after Light Mode in the theme cycle", () => {
-    expect(getNextTheme("light")).toBe("nature-green");
+    expect(getNextTheme("light")).toBe("blue-ray");
+    expect(getNextTheme("blue-ray")).toBe("nature-green");
     expect(getNextTheme("nature-green")).toBe("peaceful");
     expect(getNextTheme("peaceful")).toBe("dark");
   });

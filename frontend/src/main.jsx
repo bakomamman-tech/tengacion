@@ -27,6 +27,7 @@ import "./royalty-theme.css";
 import "./peaceful-theme.css";
 import "./nature-afro-themes.css";
 import "./terra-minimal-theme.css";
+import "./blue-ray-theme.css";
 import "./global-modernization.css";
 
 const initializeThemeEarly = () => {

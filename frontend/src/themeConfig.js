@@ -3,6 +3,7 @@ export const LEGACY_THEME_KEY = "tengacion-theme";
 export const DEFAULT_THEME = "light";
 export const SUPPORTED_THEMES = [
   "light",
+  "blue-ray",
   "nature-green",
   "peaceful",
   "dark",
@@ -13,6 +14,7 @@ export const SUPPORTED_THEMES = [
 
 const THEME_LABELS = {
   light: "Light Mode",
+  "blue-ray": "Blue Ray",
   "nature-green": "Nature Green",
   peaceful: "Peaceful Mode",
   dark: "Dark Mode",
@@ -28,6 +30,7 @@ const THEME_MODE_CLASSES = [
   "nature-green-mode",
   "afro-gold-mode",
   "terra-minimal-mode",
+  "blue-ray-mode",
 ];
 
 export function normalizeThemeValue(value) {
@@ -87,5 +90,6 @@ export function applyThemeToDocument(theme, root = document.documentElement) {
   root.classList.toggle("nature-green-mode", nextTheme === "nature-green");
   root.classList.toggle("afro-gold-mode", nextTheme === "afro-gold");
   root.classList.toggle("terra-minimal-mode", nextTheme === "terra-minimal");
+  root.classList.toggle("blue-ray-mode", nextTheme === "blue-ray");
   root.style.colorScheme = getThemeColorScheme(nextTheme);
 }

@@ -106,7 +106,11 @@ export default function PublicNav({ theme = "dark", className = "" }) {
       return;
     }
 
-    rail.scrollTo({ left: 0, behavior: "auto" });
+    if (typeof rail.scrollTo === "function") {
+      rail.scrollTo({ left: 0, behavior: "auto" });
+    } else {
+      rail.scrollLeft = 0;
+    }
     window.requestAnimationFrame(syncRailOverflow);
   }, [menuOpen, pathname, syncRailOverflow]);
 
@@ -127,10 +131,16 @@ export default function PublicNav({ theme = "dark", className = "" }) {
       const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
       const distance = Math.max(160, rail.clientWidth * 0.72);
 
-      rail.scrollBy({
-        left: direction === "previous" ? -distance : distance,
-        behavior: prefersReducedMotion ? "auto" : "smooth",
-      });
+      const left = direction === "previous" ? -distance : distance;
+
+      if (typeof rail.scrollBy === "function") {
+        rail.scrollBy({
+          left,
+          behavior: prefersReducedMotion ? "auto" : "smooth",
+        });
+      } else {
+        rail.scrollLeft += left;
+      }
 
       window.setTimeout(syncRailOverflow, 260);
     },

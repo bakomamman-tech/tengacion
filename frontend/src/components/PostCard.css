@@ -1,0 +1,455 @@
+/* Unified, theme-aware engagement dock for feed post cards. */
+.post-card .post-engagement-footer {
+  --post-action-line: color-mix(in srgb, var(--brand) 12%, var(--border) 88%);
+  --post-action-muted: color-mix(in srgb, var(--muted) 88%, var(--text) 12%);
+  margin-top: 8px;
+}
+
+.post-card .post-engagement-footer .post-engagement-summary {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 8px 3px 7px;
+  border-top: 1px solid var(--post-action-line);
+  border-bottom: 0;
+}
+
+.post-card .post-engagement-footer :is(.post-engagement-left, .post-engagement-right) {
+  display: flex;
+  width: auto;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--post-action-muted);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.post-card .post-engagement-footer .post-engagement-left {
+  min-width: 0;
+}
+
+.post-card .post-engagement-footer .post-engagement-right {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.post-card .post-engagement-footer .post-engagement-right span {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.post-card .post-engagement-footer .post-engagement-right strong {
+  color: color-mix(in srgb, var(--text) 84%, var(--muted) 16%);
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.post-card .post-engagement-footer .post-engagement-right i {
+  color: color-mix(in srgb, var(--muted) 52%, transparent);
+  font-style: normal;
+}
+
+.post-engagement-reaction {
+  display: grid;
+  flex: 0 0 auto;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border: 1px solid var(--post-action-line);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface-soft) 78%, transparent);
+  color: color-mix(in srgb, var(--brand-strong) 72%, var(--text) 28%);
+  font-size: 14px;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 62%, transparent);
+}
+
+.post-engagement-reaction.is-selected {
+  border-color: color-mix(in srgb, var(--brand) 24%, var(--border));
+  background: color-mix(in srgb, var(--brand-soft) 62%, var(--surface));
+}
+
+.post-engagement-reaction .post-action-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.post-card .post-engagement-footer .post-engagement-count {
+  margin: 0;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--text) 82%, var(--muted) 18%);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.post-card .post-action-dock {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 3px;
+  margin-top: 2px;
+  padding: 4px;
+  overflow: visible;
+  border: 1px solid var(--post-action-line);
+  border-radius: 18px;
+  background: var(--glass-reaction-fill);
+  box-shadow:
+    inset 0 1px 0 var(--glass-action-highlight),
+    0 8px 22px color-mix(in srgb, var(--bg-dark) 8%, transparent);
+  backdrop-filter: blur(14px) saturate(135%);
+  -webkit-backdrop-filter: blur(14px) saturate(135%);
+}
+
+.post-card .post-action-dock .post-reaction-control {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.post-like-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: stretch;
+  min-width: 0;
+  height: 100%;
+}
+
+.post-card .post-action-dock .post-action-btn {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: color-mix(in srgb, var(--text) 74%, var(--muted) 26%);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 780;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.post-card .post-action-dock .post-action-btn::before {
+  display: none;
+}
+
+.post-card .post-action-dock .post-action-btn > * {
+  position: relative;
+  z-index: 1;
+}
+
+.post-card .post-action-dock .post-action-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--brand) 14%, var(--border));
+  background: color-mix(in srgb, var(--surface) 66%, transparent);
+  color: var(--text);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 54%, transparent);
+  transform: translateY(-1px);
+}
+
+.post-card .post-action-dock .post-action-btn:active:not(:disabled) {
+  background: color-mix(in srgb, var(--brand-soft) 42%, transparent);
+  transform: scale(0.985);
+}
+
+.post-card .post-action-dock .post-action-btn:focus-visible,
+.post-card .post-action-dock .post-reaction-trigger:focus-visible,
+.post-card .post-engagement-footer .reaction-bar-btn:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brand) 62%, var(--text) 38%);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.post-card .post-action-dock .post-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.post-action-icon {
+  display: block;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.post-card .post-action-dock .btn-emoji {
+  display: inline-grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.post-card .post-action-dock .post-action-btn--like {
+  --post-reaction-color: #1877f2;
+  --post-reaction-soft: #e8f2ff;
+  padding-right: 6px;
+}
+
+.post-card .post-action-dock .post-action-btn--like.reaction-love {
+  --post-reaction-color: #d72561;
+  --post-reaction-soft: #ffe7ef;
+}
+
+.post-card .post-action-dock .post-action-btn--like.reaction-haha {
+  --post-reaction-color: #a96f05;
+  --post-reaction-soft: #fff2bf;
+}
+
+.post-card .post-action-dock .post-action-btn--like.reaction-wow {
+  --post-reaction-color: #b96b08;
+  --post-reaction-soft: #ffeac1;
+}
+
+.post-card .post-action-dock .post-action-btn--like.reaction-sad {
+  --post-reaction-color: #2470ca;
+  --post-reaction-soft: #e4f0ff;
+}
+
+.post-card .post-action-dock .post-action-btn--like.reaction-angry {
+  --post-reaction-color: #d43b2f;
+  --post-reaction-soft: #ffe5df;
+}
+
+.post-card .post-action-dock .post-action-btn--like.active-like,
+.post-card .post-action-dock .post-action-btn--like.active-like:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--post-reaction-color) 24%, var(--border));
+  background: color-mix(in srgb, var(--post-reaction-soft) 82%, var(--surface) 18%);
+  color: var(--post-reaction-color);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 72%, transparent),
+    inset 0 -2px 0 color-mix(in srgb, var(--post-reaction-color) 54%, transparent);
+}
+
+.post-card .post-action-dock .post-action-btn--comment.active,
+.post-card .post-action-dock .post-action-btn--share.active {
+  border-color: color-mix(in srgb, var(--brand) 26%, var(--border));
+  background: color-mix(in srgb, var(--brand-soft) 64%, var(--surface));
+  color: color-mix(in srgb, var(--brand-strong) 72%, var(--text) 28%);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--brand) 42%, transparent);
+}
+
+.post-reaction-trigger {
+  display: grid;
+  min-width: 44px;
+  min-height: 44px;
+  place-items: center;
+  align-self: center;
+  margin: 1px 2px 1px 0;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--post-action-line);
+  border-radius: 0 12px 12px 0;
+  background: transparent;
+  color: var(--post-action-muted);
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease;
+}
+
+.post-reaction-trigger .post-action-icon {
+  width: 17px;
+  height: 17px;
+  transition: transform 160ms ease;
+}
+
+.post-reaction-control.is-open .post-reaction-trigger {
+  background: color-mix(in srgb, var(--brand-soft) 48%, transparent);
+  color: var(--brand-strong);
+}
+
+.post-reaction-control.is-open .post-reaction-trigger .post-action-icon {
+  transform: rotate(180deg);
+}
+
+.post-card .post-engagement-footer .reaction-bar {
+  left: -4px;
+  bottom: calc(100% + 11px);
+  display: inline-flex;
+  width: max-content;
+  max-width: min(342px, calc(100vw - 34px));
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border: 1px solid color-mix(in srgb, var(--brand) 20%, var(--border));
+  border-radius: 999px;
+  background: var(--glass-reaction-fill);
+  color: var(--text);
+  box-shadow:
+    inset 0 1px 0 var(--glass-action-highlight),
+    0 18px 42px color-mix(in srgb, var(--bg-dark) 24%, transparent);
+  scrollbar-width: none;
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+}
+
+.post-card .post-engagement-footer .reaction-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.post-card .post-engagement-footer .reaction-bar-btn {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border-width: 1px;
+  font-size: 20px;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 62%, transparent),
+    0 6px 15px color-mix(in srgb, var(--bg-dark) 14%, transparent);
+}
+
+.post-card .post-engagement-footer .reaction-bar-btn:hover {
+  transform: translateY(-2px) scale(1.08);
+}
+
+.post-card .post-engagement-footer .reaction-bar-btn.is-selected {
+  border-color: color-mix(in srgb, var(--brand) 46%, var(--border));
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--brand-soft) 68%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #ffffff 72%, transparent),
+    0 8px 18px color-mix(in srgb, var(--bg-dark) 16%, transparent);
+}
+
+html.dark-mode .post-card .post-engagement-footer {
+  --post-action-line: color-mix(in srgb, var(--brand) 16%, var(--border) 84%);
+}
+
+html.dark-mode .post-card .post-action-dock .post-action-btn--like.active-like,
+html.dark-mode .post-card .post-action-dock .post-action-btn--like.active-like:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--post-reaction-color) 34%, var(--border));
+  background: color-mix(in srgb, var(--post-reaction-color) 15%, var(--surface));
+  color: color-mix(in srgb, var(--post-reaction-color) 56%, #ffffff 44%);
+}
+
+html.dark-mode .post-card .post-action-dock .post-action-btn--comment.active,
+html.dark-mode .post-card .post-action-dock .post-action-btn--share.active {
+  background: color-mix(in srgb, var(--brand) 16%, var(--surface));
+  color: color-mix(in srgb, var(--brand) 46%, #ffffff 54%);
+}
+
+@media (max-width: 640px) {
+  .post-card .post-engagement-footer .post-engagement-summary {
+    gap: 8px;
+    padding-inline: 1px;
+  }
+
+  .post-card .post-engagement-footer :is(.post-engagement-left, .post-engagement-right) {
+    width: auto;
+    gap: 5px;
+    font-size: 10.5px;
+  }
+
+  .post-card .post-engagement-footer .post-engagement-right {
+    margin-left: auto;
+    justify-content: flex-end;
+  }
+
+  .post-engagement-reaction {
+    width: 25px;
+    height: 25px;
+  }
+
+  .post-card .post-action-dock {
+    gap: 2px;
+    border-radius: 16px;
+  }
+
+  .post-card .post-action-dock .post-action-btn {
+    min-height: 46px;
+    gap: 5px;
+    padding-inline: 7px;
+    border-radius: 12px;
+    font-size: 11px;
+  }
+
+  .post-card .post-engagement-footer .reaction-bar {
+    max-width: calc(100vw - 26px);
+  }
+}
+
+@media (max-width: 380px) {
+  .post-card .post-engagement-footer .post-engagement-summary {
+    gap: 5px;
+  }
+
+  .post-card .post-engagement-footer :is(.post-engagement-left, .post-engagement-right) {
+    font-size: 9.5px;
+  }
+
+  .post-card .post-engagement-footer .post-engagement-right {
+    gap: 4px;
+  }
+
+  .post-engagement-reaction {
+    width: 23px;
+    height: 23px;
+    font-size: 12px;
+  }
+
+  .post-card .post-action-dock .post-action-btn {
+    gap: 4px;
+    padding-inline: 4px;
+    font-size: 10px;
+  }
+
+  .post-card .post-action-dock .post-action-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .post-card .post-action-dock .btn-emoji {
+    width: 18px;
+    height: 18px;
+    font-size: 15px;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .post-card .post-action-dock .post-action-btn:hover:not(:disabled),
+  .post-card .post-engagement-footer .reaction-bar-btn:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post-card .post-engagement-footer *,
+  .post-card .post-engagement-footer *::before,
+  .post-card .post-engagement-footer *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -9,7 +9,17 @@ import PostCard from "../PostCard";
 const apiRequestMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../share/PostShareModal", () => ({
-  default: () => null,
+  default: ({ open, onClose, onShareCountChange }) =>
+    open ? (
+      <div role="dialog" aria-label="Share post">
+        <button type="button" onClick={() => onShareCountChange(2)}>
+          Complete test share
+        </button>
+        <button type="button" onClick={onClose}>
+          Close share
+        </button>
+      </div>
+    ) : null,
 }));
 
 vi.mock("../media/VideoPlayer", () => ({
@@ -54,12 +64,20 @@ describe("PostCard reactions", () => {
     globalThis.ResizeObserver = MockResizeObserver;
     globalThis.URL.createObjectURL = vi.fn(() => "blob:post-edit-preview");
     globalThis.URL.revokeObjectURL = vi.fn();
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn((callback) => {
+        callback(0);
+        return 1;
+      })
+    );
     apiRequestMock.mockReset();
   });
 
   afterEach(() => {
     delete globalThis.IntersectionObserver;
     delete globalThis.ResizeObserver;
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -122,6 +140,152 @@ describe("PostCard reactions", () => {
         "true"
       )
     );
+  });
+
+  it("opens the labelled reaction picker and returns focus to its trigger on Escape", async () => {
+    const user = userEvent.setup();
+
+    renderPostCard({
+      _id: "post-1",
+      text: "A post with an accessible reaction picker.",
+      createdAt: "2026-03-30T10:00:00.000Z",
+      user: {
+        name: "Admin User",
+        username: "admin",
+        profilePic: "",
+      },
+      comments: [],
+      likesCount: 2,
+      shareCount: 0,
+      likedByViewer: false,
+    });
+
+    const reactionTrigger = screen.getByRole("button", {
+      name: /^Choose a reaction$/i,
+    });
+    expect(reactionTrigger).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByRole("group", { name: /^Choose a reaction$/i })
+    ).not.toBeInTheDocument();
+
+    await user.click(reactionTrigger);
+
+    expect(reactionTrigger).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("group", { name: /^Choose a reaction$/i })
+    ).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("group", { name: /^Choose a reaction$/i })
+      ).not.toBeInTheDocument();
+      expect(reactionTrigger).toHaveAttribute("aria-expanded", "false");
+      expect(reactionTrigger).toHaveFocus();
+    });
+  });
+
+  it("toggles the default Like reaction and keeps the reaction count in sync", async () => {
+    apiRequestMock
+      .mockResolvedValueOnce({
+        success: true,
+        liked: true,
+        likedByViewer: true,
+        likesCount: 3,
+        viewerReaction: "like",
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        liked: false,
+        likedByViewer: false,
+        likesCount: 2,
+        viewerReaction: null,
+      });
+
+    const user = userEvent.setup();
+
+    renderPostCard({
+      _id: "post-1",
+      text: "A post with a direct Like action.",
+      createdAt: "2026-03-30T10:00:00.000Z",
+      user: {
+        name: "Admin User",
+        username: "admin",
+        profilePic: "",
+      },
+      comments: [],
+      likesCount: 2,
+      shareCount: 0,
+      likedByViewer: false,
+    });
+
+    const likeButton = screen.getByRole("button", { name: /^Like$/i });
+    expect(likeButton).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByText("2 reactions")).toBeInTheDocument();
+
+    await user.click(likeButton);
+
+    await waitFor(() => expect(apiRequestMock).toHaveBeenCalledTimes(1));
+    expect(apiRequestMock).toHaveBeenLastCalledWith(
+      "/api/posts/post-1/like",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ reactionKey: "like" }),
+      })
+    );
+    expect(likeButton).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("3 reactions")).toBeInTheDocument();
+
+    await user.click(likeButton);
+
+    await waitFor(() => expect(apiRequestMock).toHaveBeenCalledTimes(2));
+    expect(apiRequestMock).toHaveBeenLastCalledWith(
+      "/api/posts/post-1/like",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ reactionKey: "" }),
+      })
+    );
+    await waitFor(() => {
+      expect(likeButton).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByText("2 reactions")).toBeInTheDocument();
+    });
+  });
+
+  it("opens the share composer and reflects its live share count", async () => {
+    const user = userEvent.setup();
+
+    renderPostCard({
+      _id: "post-1",
+      text: "A post ready to share.",
+      createdAt: "2026-03-30T10:00:00.000Z",
+      user: {
+        name: "Admin User",
+        username: "admin",
+        profilePic: "",
+      },
+      comments: [],
+      likesCount: 0,
+      shareCount: 1,
+      likedByViewer: false,
+    });
+
+    const shareButton = screen.getByRole("button", { name: /^Share$/i });
+    const engagement = screen.getByLabelText("Post engagement");
+    expect(shareButton).toHaveAttribute("aria-expanded", "false");
+    expect(engagement).toHaveTextContent(/1\s+share/);
+
+    await user.click(shareButton);
+
+    expect(shareButton).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("dialog", { name: /share post/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /complete test share/i }));
+    expect(engagement).toHaveTextContent(/2\s+shares/);
+
+    await user.click(screen.getByRole("button", { name: /close share/i }));
+    expect(shareButton).toHaveAttribute("aria-expanded", "false");
   });
 
   it("submits replacement pictures from the edit post modal", async () => {

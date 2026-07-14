@@ -18,6 +18,7 @@ import VideoPlayer from "./media/VideoPlayer";
 import { useDialog } from "./ui/useDialog";
 import { normalizePostMedia } from "../utils/postMedia";
 import { isMobileStoreBuild } from "../runtimePlatform";
+import "./PostCard.css";
 
 /* ======================================================
    SYSTEM / STARTER POST HANDLING
@@ -30,6 +31,33 @@ function SystemPost({ text }) {
         <p className="system-text post-text">{text}</p>
       </div>
     </article>
+  );
+}
+
+function PostActionIcon({ name }) {
+  const paths = {
+    like: (
+      <>
+        <path d="M7.7 20H5.2A2.2 2.2 0 0 1 3 17.8v-6.1a2.2 2.2 0 0 1 2.2-2.2h2.5" />
+        <path d="M7.7 9.5 11 3.9c.4-.7 1.2-1 1.9-.7.9.3 1.4 1.2 1.2 2.1l-.8 4.2h4.9a2.8 2.8 0 0 1 2.7 3.5l-1.2 4.8a3 3 0 0 1-2.9 2.2H7.7V9.5Z" />
+      </>
+    ),
+    comment: (
+      <path d="M20.5 11.2a7.8 7.8 0 0 1-8.2 7.3 9.3 9.3 0 0 1-3.1-.7L4 19.3l1.5-4a6.4 6.4 0 0 1-1.2-3.7c0-4 3.6-7.2 8.1-7.2s8.1 3 8.1 6.8Z" />
+    ),
+    share: (
+      <>
+        <path d="m14.3 5.2 5.1 5.1-5.1 5.1" />
+        <path d="M19 10.3h-7.1a6.8 6.8 0 0 0-6.8 6.8v1.7" />
+      </>
+    ),
+    chevron: <path d="m8 10 4 4 4-4" />,
+  };
+
+  return (
+    <svg className="post-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+      {paths[name]}
+    </svg>
   );
 }
 
@@ -461,6 +489,8 @@ export default function PostCard({
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const reactionOpenTimerRef = useRef(null);
   const reactionCloseTimerRef = useRef(null);
+  const reactionWrapperRef = useRef(null);
+  const reactionTriggerRef = useRef(null);
 
   const timeLabel = post?.createdAt
     ? new Date(post.createdAt).toLocaleString()
@@ -642,7 +672,9 @@ export default function PostCard({
   const reactionsCount = likesCount;
   const commentsLabel = liveCommentsCount === 1 ? "comment" : "comments";
   const sharesLabel = shareCount === 1 ? "share" : "shares";
+  const reactionsLabel = reactionsCount === 1 ? "reaction" : "reactions";
   const commentsPanelId = `post-comments-${post?._id || "panel"}`;
+  const reactionPickerId = `post-reactions-${post?._id || "picker"}`;
   const currentUserId = String(currentUser?._id || currentUser?.id || "").trim();
   const postAuthorId = String(
     post?.user?._id || post?.authorId || post?.author?._id || post?.author || ""
@@ -870,6 +902,33 @@ export default function PostCard({
     setShowReactions(false);
     setHoveredReactionKey("");
   }, [clearReactionCloseTimer]);
+
+  useEffect(() => {
+    if (!showReactions) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      if (!reactionWrapperRef.current?.contains(event.target)) {
+        hideReactionPicker();
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      hideReactionPicker();
+      window.requestAnimationFrame(() => reactionTriggerRef.current?.focus());
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [hideReactionPicker, showReactions]);
 
   const scheduleHideReactionPicker = useCallback(() => {
     if (reactionOpenTimerRef.current) {
@@ -1457,117 +1516,153 @@ export default function PostCard({
           )}
         </div>
 
-        <div className="post-engagement-summary">
-          <div className="post-engagement-left">
-            <div className="post-reaction-icons" aria-hidden="true">
-              <span className="post-reaction-dot like">{"\u{1F44D}"}</span>
-              <span className="post-reaction-dot wow">{"\u{1F62E}"}</span>
-              <span className="post-reaction-dot love">{"\u{2764}\u{FE0F}"}</span>
+        <footer className="post-engagement-footer" aria-label="Post engagement">
+          <div className="post-engagement-summary">
+            <div className="post-engagement-left">
+              <span
+                className={`post-engagement-reaction${likedByViewer ? " is-selected" : ""}`}
+                aria-hidden="true"
+              >
+                {likedByViewer ? likeBtnEmoji : <PostActionIcon name="like" />}
+              </span>
+              <span className="post-engagement-count">
+                {reactionsCount} {reactionsLabel}
+              </span>
             </div>
-            <span className="post-engagement-count">{reactionsCount}</span>
+
+            <div className="post-engagement-right">
+              <span>
+                <strong>{liveCommentsCount}</strong> {commentsLabel}
+              </span>
+              <i aria-hidden="true">·</i>
+              <span>
+                <strong>{shareCount}</strong> {sharesLabel}
+              </span>
+            </div>
           </div>
 
-          <div className="post-engagement-right">
-            <span>
-              {liveCommentsCount} {commentsLabel}
-            </span>
-            <span>
-              {shareCount} {sharesLabel}
-            </span>
-          </div>
-        </div>
+          {/* ACTIONS */}
+          <div className="post-actions post-action-dock" role="group" aria-label="Post actions">
+            <div
+              ref={reactionWrapperRef}
+              className={`reaction-wrapper post-reaction-control${showReactions ? " is-open" : ""}`}
+              onMouseEnter={openReactionPicker}
+              onMouseLeave={scheduleHideReactionPicker}
+            >
+              {showReactions && (
+                <div id={reactionPickerId} className="reaction-bar" role="group" aria-label="Choose a reaction">
+                  {REACTIONS.map((nextReaction) => (
+                    <button
+                      key={nextReaction.key}
+                      type="button"
+                      data-reaction-key={nextReaction.key}
+                      className={`reaction-bar-btn reaction-bar-btn--${nextReaction.key}${reaction?.key === nextReaction.key ? " is-selected" : ""}`}
+                      title={nextReaction.name}
+                      aria-label={nextReaction.name}
+                      aria-pressed={reaction?.key === nextReaction.key}
+                      onMouseEnter={() => setHoveredReactionKey(nextReaction.key)}
+                      onMouseLeave={() => {
+                        setHoveredReactionKey((current) =>
+                          current === nextReaction.key ? "" : current
+                        );
+                      }}
+                      onFocus={() => setHoveredReactionKey(nextReaction.key)}
+                      onBlur={() => setHoveredReactionKey("")}
+                      onClick={() => {
+                        hideReactionPicker();
+                        syncLike(true, nextReaction);
+                      }}
+                    >
+                      {nextReaction.label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-        {/* ACTIONS */}
-        <div className="post-actions">
-          <div
-            className={`reaction-wrapper${showReactions ? " is-open" : ""}`}
-            onMouseEnter={openReactionPicker}
-            onMouseLeave={scheduleHideReactionPicker}
-          >
-            {showReactions && (
-              <div className="reaction-bar">
-                {REACTIONS.map((nextReaction) => (
-                  <button
-                    key={nextReaction.key}
-                    type="button"
-                    data-reaction-key={nextReaction.key}
-                    className={`reaction-bar-btn reaction-bar-btn--${nextReaction.key}${reaction?.key === nextReaction.key ? " is-selected" : ""}`}
-                    title={nextReaction.name}
-                    aria-label={nextReaction.name}
-                    aria-pressed={reaction?.key === nextReaction.key}
-                    onMouseEnter={() => setHoveredReactionKey(nextReaction.key)}
-                    onMouseLeave={() => {
-                      setHoveredReactionKey((current) =>
-                        current === nextReaction.key ? "" : current
-                      );
-                    }}
-                    onFocus={() => setHoveredReactionKey(nextReaction.key)}
-                    onBlur={() => setHoveredReactionKey("")}
-                    onClick={() => {
+              <div className="post-like-split">
+                <button
+                  type="button"
+                  className={`action-btn post-action-btn post-action-btn--like ${likedByViewer ? "active-like" : ""}${likedByViewer ? ` reaction-${likeBtnReactionKey}` : ""}`}
+                  data-reaction-key={likeBtnReactionKey}
+                  onClick={() => syncLike(!likedByViewer, likedByViewer ? null : DEFAULT_REACTION)}
+                  disabled={liking}
+                  aria-busy={liking}
+                  aria-pressed={likedByViewer}
+                >
+                  {likedByViewer ? (
+                    <span className="btn-emoji" aria-hidden="true">{likeBtnEmoji}</span>
+                  ) : (
+                    <PostActionIcon name="like" />
+                  )}
+                  <span>{likeBtnLabel}</span>
+                </button>
+
+                <button
+                  ref={reactionTriggerRef}
+                  type="button"
+                  className="post-reaction-trigger"
+                  aria-label="Choose a reaction"
+                  aria-expanded={showReactions}
+                  aria-controls={reactionPickerId}
+                  aria-haspopup="true"
+                  onClick={() => {
+                    if (showReactions) {
                       hideReactionPicker();
-                      syncLike(true, nextReaction);
-                    }}
-                  >
-                    {nextReaction.label}
-                  </button>
-                ))}
+                      return;
+                    }
+                    if (reactionOpenTimerRef.current) {
+                      window.clearTimeout(reactionOpenTimerRef.current);
+                      reactionOpenTimerRef.current = null;
+                    }
+                    clearReactionCloseTimer();
+                    setShowReactions(true);
+                  }}
+                >
+                  <PostActionIcon name="chevron" />
+                </button>
               </div>
-            )}
+            </div>
 
             <button
               type="button"
-              className={`action-btn ${likedByViewer ? "active-like" : ""}${likedByViewer ? ` reaction-${likeBtnReactionKey}` : ""}`}
-              data-reaction-key={likeBtnReactionKey}
-              onClick={() => syncLike(!likedByViewer, likedByViewer ? null : DEFAULT_REACTION)}
-              disabled={liking}
-              aria-pressed={likedByViewer}
-              aria-expanded={showReactions}
-              aria-haspopup="true"
+              className={`action-btn post-action-btn post-action-btn--comment ${showComments ? "active" : ""}`}
+              onClick={() => {
+                setShowComments((state) => {
+                  const nextState = !state;
+                  if (nextState) {
+                    setMenuOpen(false);
+                    void runRecommendationAction({
+                      action: "open_comments",
+                      eventType: "post_opened",
+                      metadata: {
+                        engagement: "comments",
+                      },
+                    });
+                  }
+                  return nextState;
+                });
+              }}
+              aria-pressed={showComments}
+              aria-expanded={showComments}
+              aria-controls={commentsPanelId}
             >
-              <span className="btn-emoji">
-                {likeBtnEmoji}
-              </span>
-              <span>{likeBtnLabel}</span>
+              <PostActionIcon name="comment" />
+              <span>Comment</span>
+            </button>
+
+            <button
+              type="button"
+              className={`action-btn post-action-btn post-action-btn--share ${shareOpen ? "active" : ""}`}
+              onClick={openShareComposer}
+              disabled={!post?._id}
+              aria-expanded={shareOpen}
+              aria-haspopup="dialog"
+            >
+              <PostActionIcon name="share" />
+              <span>Share</span>
             </button>
           </div>
-
-          <button
-            type="button"
-            className={`action-btn ${showComments ? "active" : ""}`}
-            onClick={() => {
-              setShowComments((state) => {
-                const nextState = !state;
-                if (nextState) {
-                  setMenuOpen(false);
-                  void runRecommendationAction({
-                    action: "open_comments",
-                    eventType: "post_opened",
-                    metadata: {
-                      engagement: "comments",
-                    },
-                  });
-                }
-                return nextState;
-              });
-            }}
-            aria-pressed={showComments}
-            aria-expanded={showComments}
-            aria-controls={commentsPanelId}
-          >
-            <span className="btn-emoji">{"\u{1F4AC}"}</span>
-            <span>Comment</span>
-          </button>
-
-          <button
-            type="button"
-            className="action-btn"
-            onClick={openShareComposer}
-            disabled={!post?._id}
-          >
-            <span className="btn-emoji">{"\u{21AA}"}</span>
-            <span>Share</span>
-          </button>
-        </div>
+        </footer>
 
         {/* COMMENTS */}
       </article>

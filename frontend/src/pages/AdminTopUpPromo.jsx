@@ -80,12 +80,12 @@ export default function AdminTopUpPromoPage({ user }) {
           <span className="admin-topup-eyebrow">Live application discovery game</span>
           <h2>{campaign.title || "Top-Up Bank Account Promo"}</h2>
           <p>
-            Fifteen stars distributed across permitted Tengacion pages open server-controlled chests. Two chest positions contain gold,
+            Fifty stars distributed across permitted Tengacion pages open server-controlled chests. Two chest positions contain gold,
             confetti, a unique passcode, and a {naira(campaign.prizeAmount || 5000)} declaration;
-            thirteen contain animated water. Each account can record one discovery.
+            forty-eight contain animated water. Each account can record one discovery.
           </p>
           <div className="admin-topup-rules">
-            <span>{number(campaign.totalChests || 15)} chests</span>
+            <span>{number(campaign.totalChests || 50)} chests</span>
             <span>{number(campaign.prizeChests || 2)} winning positions</span>
             <span>Customer Care: {campaign.customerCarePhone || "08164649980"}</span>
           </div>

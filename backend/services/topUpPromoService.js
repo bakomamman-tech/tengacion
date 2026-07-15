@@ -5,18 +5,19 @@ const { CAMPAIGN_KEY } = require("../models/TopUpPromoPlay");
 const User = require("../models/User");
 const { sanitizePhoneValue } = require("../utils/profileFields");
 
+// Kept on the server so the two winning stars cannot be found in the browser bundle.
+const WINNING_CHEST_NUMBERS = new Set([4, 11]);
+
 const CAMPAIGN = Object.freeze({
   key: CAMPAIGN_KEY,
   title: "Top-Up Bank Account Promo",
-  totalChests: 15,
-  prizeChests: 2,
+  totalChests: 50,
+  prizeChests: WINNING_CHEST_NUMBERS.size,
   prizeAmount: 5000,
   customerCarePhone: "08164649980",
   artworkUrl: "/assets/promos/top-up-bank-account-promo.png",
 });
 
-// Kept on the server so the two winning stars cannot be found in the browser bundle.
-const WINNING_CHEST_NUMBERS = new Set([4, 11]);
 const ALPHANUMERIC = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ADMIN_ROLES = new Set(["admin", "super_admin", "moderator", "trust_safety_admin"]);
 

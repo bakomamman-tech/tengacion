@@ -26,7 +26,7 @@ const CONFETTI = Array.from({ length: 42 }, (_, index) => ({
 
 const DEFAULT_CAMPAIGN = {
   title: "Top-Up Bank Account Promo",
-  totalChests: 15,
+  totalChests: 50,
   prizeChests: 2,
   prizeAmount: 5000,
   customerCarePhone: "08164649980",
@@ -190,7 +190,10 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
 
   const campaign = status?.campaign || DEFAULT_CAMPAIGN;
   const displayName = String(user?.name || user?.username || "friend").trim();
-  const tipIndex = Math.max(0, Math.min(14, Number(play?.chestNumber || selectedChest || 1) - 1));
+  const tipIndex = Math.max(
+    0,
+    Math.min(DISCOVERY_TIPS.length - 1, Number(play?.chestNumber || selectedChest || 1) - 1)
+  );
   const tip = useMemo(() => {
     const value = DISCOVERY_TIPS[tipIndex] || DISCOVERY_TIPS[0];
     return {

@@ -92,7 +92,7 @@ describe("Top-Up Bank Account Promo routes", () => {
     expect(statusResponse.body.hasPlayed).toBe(false);
     expect(statusResponse.body.campaign).toMatchObject({
       title: "Top-Up Bank Account Promo",
-      totalChests: 15,
+      totalChests: 50,
       prizeChests: 2,
       prizeAmount: 5000,
     });
@@ -216,5 +216,32 @@ describe("Top-Up Bank Account Promo routes", () => {
       .expect(403);
 
     expect(await TopUpPromoPlay.countDocuments({ userId: admin._id })).toBe(0);
+  });
+
+  test("accepts chest 50 and rejects numbers outside the expanded campaign", async () => {
+    const user = await createUser({
+      username: "fiftieth_explorer",
+      email: "fiftieth@example.com",
+    });
+    const token = await issueSessionToken(user._id);
+
+    await request(app)
+      .post("/api/top-up-promo/discover")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ chestNumber: 51 })
+      .expect(400);
+
+    const response = await request(app)
+      .post("/api/top-up-promo/discover")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ chestNumber: 50 })
+      .expect(200);
+
+    expect(response.body.play).toMatchObject({
+      chestNumber: 50,
+      outcome: "water",
+      won: false,
+      passcode: "",
+    });
   });
 });

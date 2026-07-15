@@ -72,8 +72,8 @@
 .admin-topup-map-star {
   position: absolute;
   z-index: 5;
-  width: 42px;
-  height: 42px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
   padding: 0;
@@ -86,8 +86,8 @@
   cursor: pointer;
 }
 
-.admin-topup-map-star span { font-size: 18px; line-height: 1; }
-.admin-topup-map-star b { position: absolute; right: -7px; top: -8px; min-width: 21px; height: 21px; display: grid; place-items: center; padding: 0 4px; border-radius: 999px; background: #f9ce4d; color: #082343; font-size: 0.67rem; box-shadow: 0 3px 8px rgba(0, 13, 35, 0.3); }
+.admin-topup-map-star span { font-size: 14px; line-height: 1; }
+.admin-topup-map-star b { position: absolute; right: -8px; top: -9px; min-width: 19px; height: 19px; display: grid; place-items: center; padding: 0 3px; border-radius: 999px; background: #f9ce4d; color: #082343; font-size: 0.58rem; box-shadow: 0 3px 8px rgba(0, 13, 35, 0.3); }
 .admin-topup-map-star.is-selected { border-color: #7dffc4; box-shadow: 0 0 0 5px rgba(46, 221, 151, 0.32), 0 0 26px rgba(255, 210, 70, 0.9); transform: translate(-50%, -50%) scale(1.15); }
 
 .admin-topup-selected-tip { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; margin-top: 14px; padding: 14px; border: 1px solid rgba(83, 209, 158, 0.24); border-radius: 15px; background: rgba(29, 126, 91, 0.1); }

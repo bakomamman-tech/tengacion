@@ -264,6 +264,7 @@ export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
                     { label: "Review content", path: "/admin/content", icon: "posts" },
                     { label: "Manage users", path: "/admin/users", icon: "users" },
                     { label: "View analytics", path: "/admin/analytics", icon: "analytics" },
+                    { label: "Top-Up Bank Account Promo", path: "/admin/top-up-bank-account-promo", icon: "spark" },
                   ].map((item) => (
                     <button key={item.path} type="button" onClick={() => navigate(item.path)}>
                       <span><AdminDashboardIcon name={item.icon} size={17} /></span>

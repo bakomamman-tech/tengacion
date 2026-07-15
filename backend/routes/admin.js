@@ -393,6 +393,7 @@ router.use("/news", require("./newsAdmin.routes"));
 router.use("/assistant", require("./adminAssistant"));
 router.use("/marketplace", require("./marketplaceAdminRoutes"));
 router.use("/raffle", require("./adminRaffle"));
+router.use("/top-up-promo", require("./adminTopUpPromo"));
 
 router.get("/assurance/dashboard", async (req, res) => {
   try {

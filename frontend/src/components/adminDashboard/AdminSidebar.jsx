@@ -20,6 +20,7 @@ const NAV_GROUPS = [
       { key: "users", label: "Users", icon: "users", path: "/admin/users" },
       { key: "messages", label: "Messages", icon: "messages", path: "/admin/messages", dotKey: "messages" },
       { key: "campaigns", label: "Campaigns", icon: "campaigns", path: "/admin/campaigns", dotKey: "campaigns" },
+      { key: "top-up-promo", label: "Top-Up Bank Account Promo", icon: "spark", path: "/admin/top-up-bank-account-promo" },
     ],
   },
   {

@@ -771,6 +771,21 @@ export const spinRechargeRaffle = (payload = {}) =>
     body: JSON.stringify(payload || {}),
   });
 
+export const getTopUpPromoStatus = () =>
+  request(`${API_BASE}/top-up-promo/me`, {
+    headers: getAuthHeaders(),
+  });
+
+export const discoverTopUpPromoChest = (chestNumber) =>
+  request(`${API_BASE}/top-up-promo/discover`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ chestNumber }),
+  });
+
 export const getFriendsHub = () =>
   request(`${API_BASE}/users/me/friends-hub`, {
     headers: getAuthHeaders(),
@@ -2481,6 +2496,18 @@ export const adminLoadRaffleCards = (payload = {}) =>
     },
     body: JSON.stringify(payload || {}),
   });
+
+export const adminGetTopUpPromoPlays = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  });
+  return request(`${API_BASE}/admin/top-up-promo/plays?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
 
 export const adminGetAssistantMetrics = (params = {}) => {
   const query = new URLSearchParams();

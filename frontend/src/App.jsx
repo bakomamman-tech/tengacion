@@ -65,6 +65,7 @@ const AdminAssistantPage = lazy(() => import("./pages/AdminAssistant"));
 const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalytics"));
 const AdminMessagesPage = lazy(() => import("./pages/AdminMessages"));
 const AdminCampaignsPage = lazy(() => import("./pages/AdminCampaigns"));
+const AdminTopUpPromoPage = lazy(() => import("./pages/AdminTopUpPromo"));
 const AdminRaffleCardsPage = lazy(() => import("./pages/AdminRaffleCards"));
 const AdminSettingsPage = lazy(() => import("./pages/AdminSettings"));
 const AdminStoragePage = lazy(() => import("./pages/AdminStorage"));
@@ -908,6 +909,14 @@ export default function App() {
             element={
               <AdminRoute user={user}>
                 <AdminCampaignsPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/top-up-bank-account-promo"
+            element={
+              <AdminRoute user={user}>
+                <AdminTopUpPromoPage user={user} />
               </AdminRoute>
             }
           />

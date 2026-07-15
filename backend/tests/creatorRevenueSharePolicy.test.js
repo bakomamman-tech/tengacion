@@ -320,6 +320,7 @@ describe("Paystack processing-fee deductions", () => {
     ).toEqual({
       processingFeeAmount: 325,
       taxAmount: 125.5,
+      taxProviderReported: true,
       processingFeeEstimated: false,
       cardCountry: "US",
     });
@@ -350,6 +351,7 @@ describe("Paystack processing-fee deductions", () => {
     ).toEqual({
       processingFeeAmount: 137.5,
       taxAmount: 75,
+      taxProviderReported: false,
       processingFeeEstimated: true,
       cardCountry: "NG",
     });

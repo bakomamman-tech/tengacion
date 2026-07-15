@@ -342,7 +342,7 @@ export default function AdminCreatorEarningsPage({ user }) {
   const headlineCards = useMemo(
     () => [
       { label: "Tengacion allocations", value: currency(repository.repositoryAmount), icon: "₦", tone: "emerald", note: "Recorded transaction allocations" },
-      { label: "Gross creator sales", value: currency(repository.grossRevenue), icon: "↗", tone: "blue", note: `${number(repository.paidTransactions)} paid transactions` },
+      { label: "Gross creator sales", value: currency(repository.grossRevenue), icon: "↗", tone: "blue", note: `${number(repository.paidTransactions)} paid / ${currency(repository.reversalGrossRevenue)} reversed` },
       { label: "Recorded net revenue", value: currency(repository.netRevenue), icon: "−", tone: "blue", note: `${currency(Number(repository.processingFees || 0) + Number(repository.taxes || 0))} processing fees and taxes` },
       { label: "Creator allocations", value: currency(repository.creatorAmount), icon: "◎", tone: "amber", note: "Recorded creator liability" },
       { label: "Ledger entries", value: number(ledgerSummary.totalEntries || repository.paidTransactions), icon: "≡", tone: "violet", note: "Auditable finance events" },
@@ -355,6 +355,7 @@ export default function AdminCreatorEarningsPage({ user }) {
       repository.paidTransactions,
       repository.processingFees,
       repository.repositoryAmount,
+      repository.reversalGrossRevenue,
       repository.taxes,
     ]
   );
@@ -928,13 +929,13 @@ export default function AdminCreatorEarningsPage({ user }) {
             <section className="adminx-panel adminx-panel--span-7">
               <div className="adminx-panel-head">
                 <h2 className="adminx-panel-title">Recent Repository Entries</h2>
-                <span className="adminx-section-meta">Latest paid creator transactions</span>
+                <span className="adminx-section-meta">Latest sales, refunds, and chargebacks</span>
               </div>
               <div className="adminx-table-wrap adminx-table-wrap--flush">
                 <table className="adminx-table">
                   <thead>
                     <tr>
-                      <th>Paid At</th>
+                      <th>Effective At</th>
                       <th>Creator</th>
                       <th>Item</th>
                       <th>Source</th>

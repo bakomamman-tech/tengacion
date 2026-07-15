@@ -7,6 +7,7 @@ const CreatorProfile = require("../models/CreatorProfile");
 const Purchase = require("../models/Purchase");
 const Track = require("../models/Track");
 const User = require("../models/User");
+const WalletEntry = require("../models/WalletEntry");
 const { buildCreatorFinanceRepository } = require("../services/creatorFinanceRepositoryService");
 const { buildRevenueLedgerSummary } = require("../services/revenueLedgerService");
 const { reconcilePaidPurchaseWalletEntries } = require("../services/walletService");
@@ -168,5 +169,112 @@ describe("creatorFinanceRepositoryService", () => {
         }),
       ])
     );
+  });
+
+  test("nets a processed chargeback against repository and creator earnings", async () => {
+    const saleAt = new Date("2026-06-30T12:00:00.000Z");
+    const chargebackAt = new Date("2026-07-15T12:00:00.000Z");
+    const creator = await createCreator();
+    const track = await Track.create({
+      _id: new mongoose.Types.ObjectId(),
+      creatorId: creator.profile._id,
+      title: "Chargeback Track",
+      description: "Premium release",
+      price: 2500,
+      audioUrl: "https://example.com/full-track.mp3",
+      previewUrl: "https://example.com/preview-track.mp3",
+      kind: "music",
+      creatorCategory: "music",
+      contentType: "track",
+      publishedStatus: "published",
+      isPublished: true,
+    });
+
+    const purchase = await Purchase.create({
+      userId: new mongoose.Types.ObjectId(),
+      creatorId: creator.profile._id,
+      itemType: "track",
+      itemId: track._id,
+      amount: 2500,
+      priceNGN: 2500,
+      currency: "NGN",
+      status: "paid",
+      provider: "paystack",
+      providerRef: "finance_chargeback_ref",
+      paidAt: saleAt,
+    });
+
+    await reconcilePaidPurchaseWalletEntries({ logger: null, reason: "test" });
+    const platformFee = await WalletEntry.findOne({
+      ownerType: "platform",
+      entryType: "platform_fee",
+      sourceId: purchase._id,
+    }).lean();
+
+    await WalletEntry.create({
+      walletAccountId: platformFee.walletAccountId,
+      ownerType: "platform",
+      ownerId: null,
+      currency: "NGN",
+      direction: "debit",
+      bucket: "available",
+      entryType: "chargeback_debit",
+      amount: 600,
+      grossAmount: 1000,
+      sourceType: "dispute",
+      sourceId: new mongoose.Types.ObjectId(),
+      sourceRef: "DSP_REPOSITORY_TEST",
+      dedupeKey: "repository_chargeback_platform_test",
+      effectiveAt: chargebackAt,
+      metadata: {
+        ...platformFee.metadata,
+        purchaseId: purchase._id.toString(),
+        creatorAmount: 400,
+        platformAmount: 600,
+        netRevenueAmount: 1000,
+        providerLossAmount: 1000,
+      },
+    });
+
+    const repository = await buildCreatorFinanceRepository({
+      range: "custom",
+      startDate: "2026-07-01",
+      endDate: "2026-07-31",
+    });
+
+    expect(repository.repository).toMatchObject({
+      grossRevenue: 0,
+      reversalGrossRevenue: 1000,
+      refundedGrossRevenue: 0,
+      chargebackGrossRevenue: 1000,
+      netRevenue: -1000,
+      repositoryAmount: -600,
+      creatorAmount: -400,
+      paidTransactions: 0,
+      reversalEntries: 1,
+    });
+    expect(repository.breakdown.items[0]).toMatchObject({
+      key: "music",
+      grossRevenue: 0,
+      reversalGrossRevenue: 1000,
+      chargebackGrossRevenue: 1000,
+      netRevenue: -1000,
+      repositoryAmount: -600,
+      creatorAmount: -400,
+      transactions: 0,
+      reversals: 1,
+    });
+    expect(repository.recentEntries[0]).toMatchObject({
+      purchaseId: purchase._id.toString(),
+      entryType: "chargeback_debit",
+      direction: "debit",
+      isReversal: true,
+      sourceLabel: "Chargeback - Music Downloads & Stream Access",
+      grossAmount: -1000,
+      netRevenueAmount: -1000,
+      repositoryAmount: -600,
+      creatorAmount: -400,
+    });
+    expect(repository.recentEntries[0].id).not.toBe(purchase._id.toString());
   });
 });

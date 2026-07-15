@@ -10,64 +10,42 @@
   position: absolute;
   left: var(--star-x);
   top: var(--star-y);
-  width: 44px;
-  height: 44px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   padding: 0;
-  border: 2px solid #ffffff !important;
+  border: 0;
   border-radius: 999px;
-  appearance: none;
-  -webkit-appearance: none;
-  background: radial-gradient(circle at 38% 32%, #fffde5 0 8%, #ffd84a 9% 30%, #9b5700 31% 48%, #071124 49% 66%, rgba(7, 17, 36, 0.36) 67% 100%) !important;
-  background-color: #071124 !important;
-  box-shadow:
-    0 0 0 3px #071124,
-    0 0 0 5px rgba(255, 255, 255, 0.96),
-    0 0 18px 8px rgba(255, 196, 36, 0.88),
-    0 0 34px 13px rgba(255, 228, 113, 0.48) !important;
-  color: #fff7bd !important;
-  color-scheme: only light;
+  background: transparent;
+  color: #f7c84b;
   cursor: pointer;
-  isolation: isolate;
-  mix-blend-mode: normal;
-  opacity: 1 !important;
   pointer-events: auto;
   transform: translate(-50%, -50%) scale(var(--star-scale));
-  filter: none !important;
+  filter: drop-shadow(0 0 7px rgba(255, 206, 71, 0.62));
 }
 
 .topup-discovery-star::before,
 .topup-discovery-star::after {
   content: "";
   position: absolute;
-  inset: 6px;
-  border: 2px solid rgba(255, 228, 123, 0.72);
+  inset: 7px;
+  border: 1px solid rgba(255, 218, 96, 0.48);
   border-radius: 999px;
   opacity: 0;
-  animation: topup-star-ring 4.8s ease-out var(--star-delay) infinite;
+  animation: topup-star-ring 7s ease-out var(--star-delay) infinite;
 }
 
 .topup-discovery-star::after {
-  border-color: #ffffff;
-  box-shadow: 0 0 0 2px #071124, 0 0 12px 3px rgba(255, 196, 36, 0.88);
-  animation-delay: calc(var(--star-delay) + 0.48s);
+  animation-delay: calc(var(--star-delay) + 0.75s);
 }
 
 .topup-discovery-star span {
   display: block;
-  font-size: 20px;
-  font-weight: 900;
+  font-size: 14px;
   line-height: 1;
-  opacity: 0.38;
-  color: #fff7bd !important;
-  -webkit-text-fill-color: #fff7bd;
-  text-shadow:
-    0 1px 1px #271300,
-    0 0 4px #ffffff,
-    0 0 9px #ffd84a,
-    0 0 18px rgba(255, 184, 0, 0.96) !important;
-  animation: topup-star-blink 4.8s ease-in-out var(--star-delay) infinite;
+  opacity: 0.24;
+  animation: topup-star-blink 7s ease-in-out var(--star-delay) infinite;
 }
 
 .topup-discovery-star:hover span,
@@ -411,17 +389,16 @@
 .topup-promo-error p { margin: 0; color: #ffd7dc; line-height: 1.55; }
 
 @keyframes topup-star-blink {
-  0%, 68%, 100% { opacity: 0.32; transform: scale(0.82) rotate(0); }
-  74% { opacity: 1; transform: scale(1.38) rotate(24deg); }
-  82% { opacity: 0.5; transform: scale(0.92) rotate(35deg); }
-  89% { opacity: 1; transform: scale(1.22) rotate(45deg); }
-  94% { opacity: 0.56; transform: scale(0.96) rotate(55deg); }
+  0%, 78%, 100% { opacity: 0.13; transform: scale(0.72) rotate(0); }
+  83% { opacity: 0.86; transform: scale(1.2) rotate(24deg); }
+  88% { opacity: 0.22; transform: scale(0.8) rotate(35deg); }
+  91% { opacity: 0.78; transform: scale(1.02) rotate(45deg); }
 }
 
 @keyframes topup-star-ring {
-  0%, 68% { opacity: 0; transform: scale(0.5); }
-  74% { opacity: 0.88; }
-  92%, 100% { opacity: 0; transform: scale(2.05); }
+  0%, 80% { opacity: 0; transform: scale(0.55); }
+  84% { opacity: 0.52; }
+  94%, 100% { opacity: 0; transform: scale(1.7); }
 }
 
 @keyframes topup-backdrop-in { from { opacity: 0; } }
@@ -463,9 +440,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .topup-discovery-star span { animation: none; opacity: 0.82; transform: scale(1.05); }
-  .topup-discovery-star::before,
-  .topup-discovery-star::after { animation: none; opacity: 0.38; }
+  .topup-discovery-star span { animation-duration: 14s; }
   .topup-chest-lid,
   .topup-chest-contents { transition-duration: 1ms; transition-delay: 0ms; }
   .topup-confetti i { animation-iteration-count: 1; }

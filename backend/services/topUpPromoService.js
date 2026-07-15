@@ -103,10 +103,33 @@ const buildVisibility = (user = {}) => {
   return { visible: true, reason: "available", message: "" };
 };
 
+const buildAvailability = (chestNumbers = []) => {
+  const discoveredChestNumbers = [...new Set(chestNumbers)]
+    .map(Number)
+    .filter(
+      (chestNumber) =>
+        Number.isInteger(chestNumber) &&
+        chestNumber >= 1 &&
+        chestNumber <= CAMPAIGN.totalChests
+    )
+    .sort((left, right) => left - right);
+
+  return {
+    discoveredChestNumbers,
+    remainingChests: Math.max(0, CAMPAIGN.totalChests - discoveredChestNumbers.length),
+  };
+};
+
+const getTopUpPromoAvailability = async () =>
+  buildAvailability(
+    await TopUpPromoPlay.distinct("chestNumber", { campaignKey: CAMPAIGN.key })
+  );
+
 const buildTopUpPromoStatus = async (userId) => {
-  const [user, play] = await Promise.all([
+  const [user, play, availability] = await Promise.all([
     getUserForPromo(userId),
     TopUpPromoPlay.findOne({ campaignKey: CAMPAIGN.key, userId }).lean(),
+    getTopUpPromoAvailability(),
   ]);
 
   if (!user) {
@@ -119,6 +142,7 @@ const buildTopUpPromoStatus = async (userId) => {
     visibility,
     hasPlayed: Boolean(play),
     play: serializePlay(play),
+    ...availability,
   };
 };
 
@@ -190,6 +214,7 @@ const discoverTopUpPromoChest = async ({ userId, chestNumber }) => {
       alreadyPlayed: true,
       hasPlayed: true,
       play: serializePlay(existing),
+      ...(await getTopUpPromoAvailability()),
     };
   }
 
@@ -200,9 +225,10 @@ const discoverTopUpPromoChest = async ({ userId, chestNumber }) => {
       alreadyPlayed: false,
       hasPlayed: true,
       play: serializePlay(play),
+      ...(await getTopUpPromoAvailability()),
     };
   } catch (error) {
-    if (error?.code === 11000 && error?.keyPattern?.campaignKey === 1) {
+    if (error?.code === 11000) {
       const play = await TopUpPromoPlay.findOne({ campaignKey: CAMPAIGN.key, userId });
       if (play) {
         return {
@@ -210,7 +236,24 @@ const discoverTopUpPromoChest = async ({ userId, chestNumber }) => {
           alreadyPlayed: true,
           hasPlayed: true,
           play: serializePlay(play),
+          ...(await getTopUpPromoAvailability()),
         };
+      }
+
+      const discoveredPlay = await TopUpPromoPlay.findOne({
+        campaignKey: CAMPAIGN.key,
+        chestNumber: normalizedChest,
+      })
+        .select("_id")
+        .lean();
+
+      if (discoveredPlay) {
+        throw new TopUpPromoError(
+          "Another user just discovered this chest. Choose one of the remaining stars.",
+          409,
+          "chest_already_discovered",
+          await getTopUpPromoAvailability()
+        );
       }
     }
     throw error;

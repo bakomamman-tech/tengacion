@@ -66,6 +66,7 @@ const TopUpPromoPlaySchema = new mongoose.Schema(
 );
 
 TopUpPromoPlaySchema.index({ campaignKey: 1, userId: 1 }, { unique: true });
+TopUpPromoPlaySchema.index({ campaignKey: 1, chestNumber: 1 }, { unique: true });
 TopUpPromoPlaySchema.index({ passcode: 1 }, { unique: true, sparse: true });
 TopUpPromoPlaySchema.index({ campaignKey: 1, outcome: 1, discoveredAt: -1 });
 

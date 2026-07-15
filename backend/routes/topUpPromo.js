@@ -42,12 +42,20 @@ router.get("/me", auth, async (req, res) => {
 
 router.post("/discover", auth, discoveryLimiter, async (req, res) => {
   try {
-    return res.json(
-      await discoverTopUpPromoChest({
-        userId: req.user.id,
-        chestNumber: req.body?.chestNumber,
-      })
-    );
+    const result = await discoverTopUpPromoChest({
+      userId: req.user.id,
+      chestNumber: req.body?.chestNumber,
+    });
+
+    if (result?.alreadyPlayed === false) {
+      req.app.get("io")?.emit("top-up-promo:discovered", {
+        chestNumber: Number(result.play?.chestNumber || 0),
+        discoveredChestNumbers: result.discoveredChestNumbers || [],
+        remainingChests: Number(result.remainingChests || 0),
+      });
+    }
+
+    return res.json(result);
   } catch (error) {
     return handleError(res, error);
   }

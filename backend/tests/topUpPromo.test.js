@@ -66,6 +66,8 @@ describe("Top-Up Bank Account Promo routes", () => {
 
   beforeEach(async () => {
     await mongoose.connection.db.dropDatabase();
+    await TopUpPromoPlay.syncIndexes();
+    app.set("io", undefined);
   });
 
   afterAll(async () => {
@@ -96,6 +98,10 @@ describe("Top-Up Bank Account Promo routes", () => {
       prizeChests: 2,
       prizeAmount: 5000,
     });
+    expect(statusResponse.body).toMatchObject({
+      discoveredChestNumbers: [],
+      remainingChests: 50,
+    });
 
     const winResponse = await request(app)
       .post("/api/top-up-promo/discover")
@@ -110,6 +116,10 @@ describe("Top-Up Bank Account Promo routes", () => {
       prizeAmount: 5000,
     });
     expect(winResponse.body.play.passcode).toMatch(/^[A-Z0-9]{8}$/);
+    expect(winResponse.body).toMatchObject({
+      discoveredChestNumbers: [4],
+      remainingChests: 49,
+    });
 
     const repeatResponse = await request(app)
       .post("/api/top-up-promo/discover")
@@ -121,6 +131,59 @@ describe("Top-Up Bank Account Promo routes", () => {
     expect(repeatResponse.body.play.id).toBe(winResponse.body.play.id);
     expect(repeatResponse.body.play.passcode).toBe(winResponse.body.play.passcode);
     expect(await TopUpPromoPlay.countDocuments({ userId: user._id })).toBe(1);
+  });
+
+  test("each revealed chest disappears globally and concurrent users cannot consume it twice", async () => {
+    const emit = jest.fn();
+    app.set("io", { emit });
+    const firstUser = await createUser({
+      username: "first_global_explorer",
+      email: "first-global@example.com",
+      phone: "+2348000000011",
+    });
+    const secondUser = await createUser({
+      username: "second_global_explorer",
+      email: "second-global@example.com",
+      phone: "+2348000000012",
+    });
+    const [firstToken, secondToken] = await Promise.all([
+      issueSessionToken(firstUser._id),
+      issueSessionToken(secondUser._id),
+    ]);
+
+    const responses = await Promise.all([
+      request(app)
+        .post("/api/top-up-promo/discover")
+        .set("Authorization", `Bearer ${firstToken}`)
+        .send({ chestNumber: 8 }),
+      request(app)
+        .post("/api/top-up-promo/discover")
+        .set("Authorization", `Bearer ${secondToken}`)
+        .send({ chestNumber: 8 }),
+    ]);
+
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+    expect(await TopUpPromoPlay.countDocuments({ chestNumber: 8 })).toBe(1);
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith("top-up-promo:discovered", {
+      chestNumber: 8,
+      discoveredChestNumbers: [8],
+      remainingChests: 49,
+    });
+
+    const rejectedResponse = responses.find((response) => response.status === 409);
+    expect(rejectedResponse.body).toMatchObject({
+      code: "chest_already_discovered",
+      discoveredChestNumbers: [8],
+      remainingChests: 49,
+    });
+
+    const secondStatus = await request(app)
+      .get("/api/top-up-promo/me")
+      .set("Authorization", `Bearer ${secondToken}`)
+      .expect(200);
+    expect(secondStatus.body.discoveredChestNumbers).toEqual([8]);
+    expect(secondStatus.body.remainingChests).toBe(49);
   });
 
   test("water outcomes and winner contact snapshots are available to admins", async () => {

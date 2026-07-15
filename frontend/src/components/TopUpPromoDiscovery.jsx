@@ -10,6 +10,7 @@ import {
   DISCOVERY_TIPS,
   speakOutcome,
 } from "./topUpPromoConfig";
+import { getSocket } from "../socket";
 import "./top-up-promo-discovery.css";
 
 const ADMIN_ROLES = new Set(["admin", "super_admin", "moderator", "trust_safety_admin"]);
@@ -150,13 +151,23 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
   const isAdminAccount = ADMIN_ROLES.has(role);
   const path = String(location.pathname || "/");
   const isExcludedSurface = /^\/(?:admin|creator|marketplace)(?:\/|$)/i.test(path);
-  const visiblePlacements = useMemo(
+  const routePlacements = useMemo(
     () => DISCOVERY_PLACEMENTS.filter((placement) =>
       placement.match === "prefix"
         ? path === placement.route || path.startsWith(placement.route)
         : path === placement.route
     ),
     [path]
+  );
+  const discoveredChestNumbers = useMemo(
+    () => new Set((status?.discoveredChestNumbers || []).map(Number)),
+    [status?.discoveredChestNumbers]
+  );
+  const visiblePlacements = useMemo(
+    () => routePlacements.filter(
+      (placement) => !discoveredChestNumbers.has(placement.id)
+    ),
+    [discoveredChestNumbers, routePlacements]
   );
 
   const loadStatus = useCallback(async () => {
@@ -187,6 +198,81 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
       }
     };
   }, [loadStatus]);
+
+  useEffect(() => {
+    if (isAdminAccount || isExcludedSurface) {
+      return undefined;
+    }
+
+    const refreshWhenActive = () => {
+      if (typeof document === "undefined" || document.visibilityState === "visible") {
+        void loadStatus();
+      }
+    };
+    const refreshTimer = window.setInterval(refreshWhenActive, 30000);
+    window.addEventListener("focus", refreshWhenActive);
+    document.addEventListener("visibilitychange", refreshWhenActive);
+
+    return () => {
+      window.clearInterval(refreshTimer);
+      window.removeEventListener("focus", refreshWhenActive);
+      document.removeEventListener("visibilitychange", refreshWhenActive);
+    };
+  }, [isAdminAccount, isExcludedSurface, loadStatus]);
+
+  useEffect(() => {
+    if (isAdminAccount || isExcludedSurface) {
+      return undefined;
+    }
+
+    let activeSocket = null;
+    const onDiscovered = (payload = {}) => {
+      const chestNumber = Number(payload.chestNumber || 0);
+      setStatus((current) => {
+        if (!current || !Number.isInteger(chestNumber) || chestNumber < 1) {
+          return current;
+        }
+
+        const discoveredChestNumbers = [...new Set([
+          ...(payload.discoveredChestNumbers || current.discoveredChestNumbers || []),
+          chestNumber,
+        ].map(Number))].sort((left, right) => left - right);
+
+        return {
+          ...current,
+          discoveredChestNumbers,
+          remainingChests:
+            payload.remainingChests ??
+            Math.max(0, (current.campaign?.totalChests || DEFAULT_CAMPAIGN.totalChests) - discoveredChestNumbers.length),
+        };
+      });
+    };
+    const attachSocket = () => {
+      const nextSocket = getSocket();
+      if (!nextSocket || nextSocket === activeSocket) {
+        return Boolean(nextSocket);
+      }
+      activeSocket?.off("top-up-promo:discovered", onDiscovered);
+      activeSocket = nextSocket;
+      activeSocket.on("top-up-promo:discovered", onDiscovered);
+      return true;
+    };
+
+    if (attachSocket()) {
+      return () => activeSocket?.off("top-up-promo:discovered", onDiscovered);
+    }
+
+    const attachTimer = window.setInterval(() => {
+      if (attachSocket()) {
+        window.clearInterval(attachTimer);
+      }
+    }, 1000);
+
+    return () => {
+      window.clearInterval(attachTimer);
+      activeSocket?.off("top-up-promo:discovered", onDiscovered);
+    };
+  }, [isAdminAccount, isExcludedSurface]);
 
   const campaign = status?.campaign || DEFAULT_CAMPAIGN;
   const displayName = String(user?.name || user?.username || "friend").trim();
@@ -221,6 +307,10 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
         hasPlayed: true,
         play: nextPlay,
         visibility: current?.visibility || { visible: true, reason: "available" },
+        discoveredChestNumbers:
+          payload?.discoveredChestNumbers || current?.discoveredChestNumbers || [],
+        remainingChests:
+          payload?.remainingChests ?? current?.remainingChests ?? DEFAULT_CAMPAIGN.totalChests,
       }));
       setPlay(nextPlay);
 
@@ -233,6 +323,18 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
         });
       }, 520);
     } catch (err) {
+      if (err?.payload?.code === "chest_already_discovered") {
+        setStatus((current) => ({
+          ...(current || {}),
+          discoveredChestNumbers:
+            err.payload.discoveredChestNumbers || current?.discoveredChestNumbers || [],
+          remainingChests:
+            err.payload.remainingChests ?? current?.remainingChests ?? 0,
+        }));
+        setSelectedChest(0);
+        setModalOpen(false);
+        return;
+      }
       setError(err?.message || "This chest could not be opened. Please try again.");
       setModalOpen(true);
     } finally {
@@ -265,7 +367,8 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
     isAdminAccount ||
     isExcludedSurface ||
     status?.visibility?.visible === false ||
-    visiblePlacements.length === 0
+    routePlacements.length === 0 ||
+    (!status?.hasPlayed && visiblePlacements.length === 0)
   ) {
     return null;
   }

@@ -326,6 +326,55 @@ const paystackBaseUrl = toText(process.env.PAYSTACK_BASE_URL) || "https://api.pa
 const paystackCurrency = toText(process.env.PAYSTACK_CURRENCY) || "NGN";
 const paystackRequireLiveKey =
   isProduction || toBool(process.env.PAYSTACK_REQUIRE_LIVE_KEY || "false");
+const artistMusicTaxEnabled = toBool(process.env.ARTIST_MUSIC_TAX_ENABLED || "false");
+const artistMusicTaxRateBpsInput = toText(process.env.ARTIST_MUSIC_TAX_RATE_BPS);
+const artistMusicTaxRateBps = artistMusicTaxRateBpsInput
+  ? Number(artistMusicTaxRateBpsInput)
+  : 0;
+const artistMusicTaxPriceMode =
+  toText(process.env.ARTIST_MUSIC_TAX_PRICE_MODE).toLowerCase() || "inclusive";
+const artistMusicTaxEffectiveAtInput =
+  toText(process.env.ARTIST_MUSIC_TAX_EFFECTIVE_AT) || "2026-07-14T23:00:00.000Z";
+const artistMusicTaxEffectiveAt = new Date(artistMusicTaxEffectiveAtInput);
+const artistMusicTaxCurrencies = parseTextList(
+  process.env.ARTIST_MUSIC_TAX_CURRENCIES || "NGN"
+).map((currency) => currency.toUpperCase());
+const supportedArtistMusicTaxCurrencies = new Set(["NGN", "USD"]);
+const artistMusicTaxJurisdiction = toText(
+  process.env.ARTIST_MUSIC_TAX_JURISDICTION
+).toUpperCase();
+
+if (
+  !Number.isInteger(artistMusicTaxRateBps) ||
+  artistMusicTaxRateBps < 0 ||
+  artistMusicTaxRateBps > 10000
+) {
+  throw new Error("ARTIST_MUSIC_TAX_RATE_BPS must be an integer from 0 to 10000");
+}
+if (artistMusicTaxEnabled && artistMusicTaxRateBps === 0) {
+  throw new Error("ARTIST_MUSIC_TAX_RATE_BPS must be greater than 0 when tax is enabled");
+}
+if (artistMusicTaxEnabled && !artistMusicTaxJurisdiction) {
+  throw new Error("ARTIST_MUSIC_TAX_JURISDICTION is required when tax is enabled");
+}
+if (artistMusicTaxPriceMode !== "inclusive") {
+  throw new Error(
+    "ARTIST_MUSIC_TAX_PRICE_MODE must be inclusive until checkout tax disclosure is enabled"
+  );
+}
+if (!Number.isFinite(artistMusicTaxEffectiveAt.getTime())) {
+  throw new Error("ARTIST_MUSIC_TAX_EFFECTIVE_AT must be a valid date-time");
+}
+if (
+  artistMusicTaxCurrencies.length === 0 ||
+  artistMusicTaxCurrencies.some(
+    (currency) => !supportedArtistMusicTaxCurrencies.has(currency)
+  )
+) {
+  throw new Error(
+    "ARTIST_MUSIC_TAX_CURRENCIES must contain only supported checkout currencies: NGN or USD"
+  );
+}
 const platformSettlementAccountName =
   toText(process.env.PLATFORM_SETTLEMENT_ACCOUNT_NAME) || "Stephen Mamman Kurah";
 const platformSettlementBankName =
@@ -462,6 +511,15 @@ const akuso = {
   apiKeyConfigured: hasOpenAI,
 };
 
+const artistMusicTax = {
+  enabled: artistMusicTaxEnabled,
+  rateBps: artistMusicTaxRateBps,
+  priceMode: artistMusicTaxPriceMode,
+  effectiveAt: artistMusicTaxEffectiveAt,
+  currencies: artistMusicTaxCurrencies,
+  jurisdiction: artistMusicTaxJurisdiction,
+};
+
 const config = {
   nodeEnv,
   isProduction,
@@ -500,6 +558,7 @@ const config = {
   paystackBaseUrl,
   paystackCurrency,
   paystackRequireLiveKey,
+  artistMusicTax,
   platformSettlementAccount,
   stripeSecretKey,
   stripePublishableKey,
@@ -591,6 +650,12 @@ const config = {
   PAYSTACK_BASE_URL: paystackBaseUrl,
   PAYSTACK_CURRENCY: paystackCurrency,
   PAYSTACK_REQUIRE_LIVE_KEY: paystackRequireLiveKey,
+  ARTIST_MUSIC_TAX_ENABLED: artistMusicTaxEnabled,
+  ARTIST_MUSIC_TAX_RATE_BPS: artistMusicTaxRateBps,
+  ARTIST_MUSIC_TAX_PRICE_MODE: artistMusicTaxPriceMode,
+  ARTIST_MUSIC_TAX_EFFECTIVE_AT: artistMusicTaxEffectiveAt.toISOString(),
+  ARTIST_MUSIC_TAX_CURRENCIES: artistMusicTaxCurrencies.join(","),
+  ARTIST_MUSIC_TAX_JURISDICTION: artistMusicTaxJurisdiction,
   PLATFORM_SETTLEMENT_ACCOUNT_NAME: platformSettlementAccountName,
   PLATFORM_SETTLEMENT_BANK_NAME: platformSettlementBankName,
   PLATFORM_SETTLEMENT_ACCOUNT_NUMBER: platformSettlementAccountNumber,

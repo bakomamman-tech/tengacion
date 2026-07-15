@@ -77,9 +77,6 @@ export default function AnalyticsChartCard({
   tabs = [],
   activeTab = "activity",
   onTabChange,
-  rangeOptions = [],
-  activeRange = "30d",
-  onRangeChange,
   series = [],
 }) {
   const lines = chartSets[activeTab] || chartSets.activity;
@@ -89,12 +86,20 @@ export default function AnalyticsChartCard({
 
   return (
     <section className="tdash-panel tdash-panel--chart">
-      <div className="tdash-panel__head tdash-panel__head--stack">
-        <div className="tdash-chart-tabs" role="tablist" aria-label="Analytics chart tabs">
+      <div className="tdash-panel__head tdash-panel__head--chart">
+        <div className="tdash-panel__heading">
+          <span className="tdash-panel__eyebrow">Trend explorer</span>
+          <h3 className="tdash-panel__title">Platform activity</h3>
+          <p>Switch the signal group to compare performance across the reporting window.</p>
+        </div>
+
+        <div className="tdash-chart-tabs" role="tablist" aria-label="Analytics signal groups">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
               className={`tdash-chart-tabs__button ${activeTab === tab.id ? "is-active" : ""}`}
               onClick={() => onTabChange(tab.id)}
             >
@@ -102,21 +107,15 @@ export default function AnalyticsChartCard({
             </button>
           ))}
         </div>
+      </div>
 
-        <label className="tdash-select-wrap">
-          <select
-            className="tdash-select"
-            value={activeRange}
-            onChange={(event) => onRangeChange(event.target.value)}
-            aria-label="Select time range"
-          >
-            {rangeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="tdash-chart-legend" aria-label="Visible chart signals">
+        {lines.map((line) => (
+          <span key={line.key}>
+            <i style={{ backgroundColor: line.color }} aria-hidden="true" />
+            {line.label}
+          </span>
+        ))}
       </div>
 
       <div className="tdash-chart">

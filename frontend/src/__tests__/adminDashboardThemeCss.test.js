@@ -76,12 +76,12 @@ describe("admin dashboard theme contrast CSS", () => {
     {
       name: "default dashboard surfaces",
       rule: baseRule,
-      surfaces: { main: "#f8f9fd", sidebar: "#101b31", surface: "#121f3b" },
+      surfaces: { main: "#f8f9fd", sidebar: "#101b31", surface: "#ffffff" },
     },
     {
       name: "Nature Green surfaces",
       rule: getRule(css, 'html[data-theme="nature-green"] .tdash-page'),
-      surfaces: { main: "#fbfaf1", sidebar: "#f1f8e7", surface: "#f1f8e7" },
+      surfaces: { main: "#fbfaf1", sidebar: "#071b13", surface: "#f1f8e7" },
     },
     {
       name: "Afro Gold surfaces",

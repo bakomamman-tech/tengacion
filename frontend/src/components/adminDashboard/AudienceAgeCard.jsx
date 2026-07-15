@@ -18,11 +18,18 @@ function AgeTooltip({ active, payload, label }) {
 
 export default function AudienceAgeCard({ items = [] }) {
   const hasData = items.some((item) => Number(item?.value || 0) > 0);
+  const total = items.reduce((sum, item) => sum + Number(item?.value || 0), 0);
+  const leadCohort = [...items].sort((left, right) => Number(right?.value || 0) - Number(left?.value || 0))[0];
 
   return (
     <section className="tdash-panel">
       <div className="tdash-panel__head">
-        <h3 className="tdash-panel__title">Audience by Age</h3>
+        <div className="tdash-panel__heading">
+          <span className="tdash-panel__eyebrow">Demographics</span>
+          <h3 className="tdash-panel__title">Audience by age</h3>
+          <p>Tracked audience distribution by cohort.</p>
+        </div>
+        <span className="tdash-panel__count">{hasData ? `${leadCohort?.label} leads` : `${total} tracked`}</span>
       </div>
 
       {!hasData ? <div className="tdash-empty">No audience age data is available yet.</div> : null}
@@ -36,6 +43,14 @@ export default function AudienceAgeCard({ items = [] }) {
             <Bar dataKey="value" fill="#7a8dff" radius={[10, 10, 0, 0]} maxBarSize={32} />
           </BarChart>
         </ResponsiveContainer>
+      </div>
+      <div className="tdash-age-breakdown" aria-label="Audience age totals">
+        {items.map((item) => (
+          <div key={item.label}>
+            <span>{item.label}</span>
+            <strong>{Number(item.value || 0).toLocaleString()}</strong>
+          </div>
+        ))}
       </div>
     </section>
   );

@@ -28,12 +28,39 @@
   position: sticky;
   top: 0;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   gap: 22px;
   padding: 28px 20px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-color: var(--adminx-accent-2) rgba(140, 255, 190, 0.08);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
   background: linear-gradient(180deg, rgba(12, 28, 21, 0.96), rgba(7, 17, 13, 0.98));
   border-right: 1px solid var(--adminx-border);
+}
+
+.adminx-sidebar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.adminx-sidebar::-webkit-scrollbar-track {
+  background: rgba(140, 255, 190, 0.08);
+}
+
+.adminx-sidebar::-webkit-scrollbar-thumb {
+  min-height: 44px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--adminx-accent-2);
+  background-clip: padding-box;
+}
+
+.adminx-sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--adminx-accent);
+  background-clip: padding-box;
 }
 
 .adminx-brand {
@@ -758,6 +785,8 @@
     position: static;
     height: auto;
     padding: 16px;
+    overflow-y: visible;
+    scrollbar-gutter: auto;
   }
 
   .adminx-nav {

@@ -116,6 +116,9 @@ export default function PurchaseReceiptPage() {
         itemLabel={receipt.itemTitle || "Purchase"}
         itemType={receipt.itemType || ""}
         platformFeeAmount={receipt.feeSummary?.platformFeeIncluded}
+        platformFeeLabel="Tengacion revenue share"
+        processingFeeAmount={receipt.feeSummary?.processingFeeDeducted}
+        netRevenueAmount={receipt.feeSummary?.netRevenue}
         platformFeeExplanation={receipt.feeSummary?.explanation}
       />
 

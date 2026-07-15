@@ -147,6 +147,11 @@ const PAGE_CONFIG = {
         body:
           "Music category pages and creator tabs give fans multiple routes into the same catalog, from public browsing to direct release links.",
       },
+      {
+        title: "Artist earnings",
+        body:
+          "For qualifying song and album sales completed from 15 July 2026, artists receive 75% of Net Revenue and Tengacion retains 25%. Full definitions and transition terms are published in the Creator Monetization Terms.",
+      },
     ],
     primaryAction: { path: "/music", label: "Browse music" },
   },
@@ -346,16 +351,38 @@ const PAGE_CONFIG = {
     path: "/creator-monetization-terms",
     title: "Creator Monetization Terms | Tengacion",
     description:
-      "Review Tengacion creator monetization terms for paid releases, subscriptions, earnings, payout readiness, and platform review.",
+      "Review Tengacion creator monetization terms, including the 75/25 song and album Net Revenue split effective 15 July 2026.",
     eyebrow: "Creator monetization",
-    heading: "Creator earnings require eligible content and payout readiness",
+    heading: "Clear revenue sharing for songs and albums",
     lead:
-      "Creators can monetize eligible releases, memberships, and creator commerce only when their account, rights, payout information, and platform status remain in good standing.",
+      "Artists can earn from eligible song and album sales when their account, rights, payout information, and platform status remain in good standing.",
     sections: [
       {
         title: "Rights and eligibility",
         body:
           "Creators must have the rights needed to publish and monetize music, books, podcasts, videos, artwork, descriptions, and any related media they upload.",
+      },
+      {
+        title: "Song and album revenue share",
+        body:
+          "Effective 15 July 2026, artists receive 75% of Net Revenue generated from sales of their songs and albums. Tengacion retains 25% for platform hosting, payment administration, content delivery, creator tools, customer support, and platform development.",
+        items: [
+          "Net Revenue means the selling price actually received, less payment-processing fees, refunds, chargebacks, and applicable taxes.",
+          "The 75/25 split applies to song and album sales completed on or after 15 July 2026. Purchases completed and revenue allocations made before that date remain valid under the terms then in effect.",
+        ],
+      },
+      {
+        title: "Payment-processing fee reference",
+        body:
+          "The actual processing fee reported by the payment provider for each transaction governs the Net Revenue calculation, including when a published rate changes or differs by payment method.",
+        items: [
+          "As at 15 July 2026, Paystack's published schedule lists Nigerian local transactions at 1.5% plus ₦100, with the ₦100 component waived for transactions below ₦2,500.",
+          "As at 15 July 2026, Paystack's published schedule lists international card transactions at 3.9% plus ₦100.",
+        ],
+        source: {
+          href: "https://paystack.com/pricing",
+          label: "View Paystack's current pricing",
+        },
       },
       {
         title: "Earnings and payouts",
@@ -477,6 +504,13 @@ export default function PublicInfoPage({ pageKey = "about" }) {
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
+              ) : null}
+              {section.source?.href ? (
+                <p>
+                  <a href={section.source.href} target="_blank" rel="noreferrer">
+                    {section.source.label || "View source"}
+                  </a>
+                </p>
               ) : null}
             </article>
           ))}

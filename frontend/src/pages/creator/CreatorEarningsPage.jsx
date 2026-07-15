@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import {
   formatCurrency,
@@ -12,13 +14,26 @@ export default function CreatorEarningsPage() {
   const recentEntries = Array.isArray(wallet.recentEntries)
     ? wallet.recentEntries.slice(0, 6)
     : [];
+  const netRevenue = summary.netRevenue ?? summary.grossRevenue ?? 0;
 
   return (
     <div className="creator-page-stack">
       <section className="creator-metric-grid">
         <article className="creator-metric-card card">
-          <span>Gross revenue</span>
+          <span>Gross sales</span>
           <strong>{formatCurrency(summary.grossRevenue || 0)}</strong>
+        </article>
+        <article className="creator-metric-card card">
+          <span>Payment-processing fees</span>
+          <strong>{formatCurrency(summary.processingFees || 0)}</strong>
+        </article>
+        <article className="creator-metric-card card">
+          <span>Applicable taxes</span>
+          <strong>{formatCurrency(summary.taxes || 0)}</strong>
+        </article>
+        <article className="creator-metric-card card">
+          <span>Net revenue</span>
+          <strong>{formatCurrency(netRevenue)}</strong>
         </article>
         <article className="creator-metric-card card">
           <span>Total earnings</span>
@@ -32,6 +47,23 @@ export default function CreatorEarningsPage() {
           <span>Pending balance</span>
           <strong>{formatCurrency(summary.pendingBalance || 0)}</strong>
         </article>
+      </section>
+
+      <section className="creator-panel card">
+        <div className="creator-panel-head">
+          <div>
+            <h2>Song and album Net Revenue policy</h2>
+            <p>
+              From 15 July 2026, artists receive 75% of Net Revenue from song and
+              album sales and Tengacion retains 25%. Payment-processing fees,
+              refunds, chargebacks, and applicable taxes are deducted before the
+              split. Payments allocated under earlier terms remain valid.
+            </p>
+          </div>
+          <Link className="creator-secondary-btn" to="/creator-monetization-terms">
+            View policy
+          </Link>
+        </div>
       </section>
 
       <section className="creator-panel card">

@@ -24,6 +24,9 @@ const TERMS_SECTIONS = [
   {
     title: "Creator monetization and seller rules",
     items: [
+      "Effective 15 July 2026, artists receive 75% of Net Revenue from song and album sales completed on or after that date. Tengacion retains 25% for platform hosting, payment administration, content delivery, creator tools, customer support, and platform development.",
+      "Net Revenue means the selling price actually received, less payment-processing fees, refunds, chargebacks, and applicable taxes.",
+      "Purchases completed and revenue allocations made before 15 July 2026 remain valid under the terms then in effect.",
       "Paid releases, subscriptions, creator earnings, seller payouts, and marketplace listings require eligible content, accurate account details, and platform review.",
       "Sellers must keep product titles, images, condition, price, stock, pickup, delivery, and contact details accurate.",
       "Payouts can be delayed, reduced, reversed, or restricted when there are refunds, chargebacks, fraud signals, rights issues, missing payout details, or unresolved policy reviews.",
@@ -33,6 +36,7 @@ const TERMS_SECTIONS = [
     title: "Payments, refunds, and disputes",
     items: [
       "Payment processors may handle payment details, authorization, settlement, failed payments, chargebacks, and fraud checks.",
+      "The actual processing fee reported by the payment provider for each transaction is deducted before revenue sharing and governs if published fee schedules change or differ by payment method.",
       "Refunds are reviewed under Tengacion's refund policy and may depend on payment status, entitlement delivery, marketplace fulfillment, duplicate charges, and abuse prevention.",
       "Users should report payment or order problems with transaction references, account email, product or creator links, and a clear description of the issue.",
     ],
@@ -66,7 +70,7 @@ export default function TermsPage() {
           These terms explain the baseline rules for accounts, public content, creator
           monetization, marketplace selling, payments, moderation, and reports on Tengacion.
         </p>
-        <small>Last updated: June 1, 2026</small>
+        <small>Last updated: 15 July 2026</small>
       </section>
 
       <section className="public-policy-grid" aria-label="Terms details">

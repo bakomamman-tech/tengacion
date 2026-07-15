@@ -46,6 +46,41 @@ const PODCAST_DEFAULT = {
 
 const fmtMoney = (value) => `NGN ${Number(value || 0).toLocaleString()}`;
 
+const normalizeCreatorSales = ({ salesResponse = {}, dashboardResponse = {} } = {}) => ({
+  totalSalesCount: Number(
+    salesResponse?.totalSalesCount ?? dashboardResponse?.totalSales ?? 0
+  ),
+  totalRevenue: Number(
+    salesResponse?.totalRevenue ?? dashboardResponse?.revenueNGN ?? 0
+  ),
+  netRevenue: Number(
+    salesResponse?.netRevenue ??
+      salesResponse?.totalRevenue ??
+      dashboardResponse?.revenueNGN ??
+      0
+  ),
+  processingFees: Number(salesResponse?.processingFees || 0),
+  taxes: Number(salesResponse?.taxes || 0),
+  totalCreatorEarnings:
+    salesResponse?.totalCreatorEarnings === null ||
+    salesResponse?.totalCreatorEarnings === undefined
+      ? null
+      : Number(salesResponse.totalCreatorEarnings),
+  platformRevenue:
+    salesResponse?.platformRevenue === null ||
+    salesResponse?.platformRevenue === undefined
+      ? null
+      : Number(salesResponse.platformRevenue),
+  availableBalance: Number(salesResponse?.availableBalance || 0),
+  pendingBalance: Number(salesResponse?.pendingBalance || 0),
+  withdrawn: Number(salesResponse?.withdrawn || 0),
+  breakdown:
+    salesResponse?.breakdown && typeof salesResponse.breakdown === "object"
+      ? salesResponse.breakdown
+      : {},
+  currency: salesResponse?.currency || "NGN",
+});
+
 function DropZone({ icon, label, description, accept, multiple = false, files = [], onChange }) {
   const [dragging, setDragging] = useState(false);
 
@@ -134,7 +169,15 @@ export default function CreatorDashboardMVP() {
   const [sales, setSales] = useState({
     totalSalesCount: 0,
     totalRevenue: 0,
+    netRevenue: 0,
+    processingFees: 0,
+    taxes: 0,
     totalCreatorEarnings: null,
+    platformRevenue: null,
+    availableBalance: 0,
+    pendingBalance: 0,
+    withdrawn: 0,
+    breakdown: {},
     currency: "NGN",
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -186,16 +229,12 @@ export default function CreatorDashboardMVP() {
         }
 
         setCreator(profileRes || null);
-        setSales({
-          totalSalesCount: Number(dashRes?.totalSales ?? salesRes?.totalSalesCount ?? 0),
-          totalRevenue: Number(dashRes?.revenueNGN ?? salesRes?.totalRevenue ?? 0),
-          totalCreatorEarnings:
-            salesRes?.totalCreatorEarnings === null ||
-            salesRes?.totalCreatorEarnings === undefined
-              ? null
-              : Number(salesRes.totalCreatorEarnings),
-          currency: "NGN",
-        });
+        setSales(
+          normalizeCreatorSales({
+            salesResponse: salesRes,
+            dashboardResponse: dashRes,
+          })
+        );
 
         if (profileRes?._id) {
           const [tracksRes, booksRes, albumsRes, videosRes] = await Promise.all([
@@ -253,16 +292,35 @@ export default function CreatorDashboardMVP() {
   }, []);
 
   const stats = useMemo(() => {
-    const totalRevenue = Number(sales.totalRevenue || 0);
-    const creatorTotal = Number(
-      sales.totalCreatorEarnings ?? totalRevenue * 0.6
-    );
-    const platformTotal = Math.max(0, totalRevenue - creatorTotal);
-    const withdrawn = Math.round(creatorTotal * 0.35);
-    const pending = Math.round(creatorTotal * 0.25);
-    const available = Math.max(0, creatorTotal - withdrawn - pending);
-    return { available, pending, withdrawn, total: creatorTotal, platformTotal };
-  }, [sales.totalCreatorEarnings, sales.totalRevenue]);
+    const creatorTotal = Math.max(0, Number(sales.totalCreatorEarnings || 0));
+    const platformTotal =
+      sales.platformRevenue === null
+        ? null
+        : Math.max(0, Number(sales.platformRevenue || 0));
+    const categoryBreakdown = [
+      ["Track and podcast sales", sales.breakdown?.track?.creatorAmount],
+      ["Album sales", sales.breakdown?.album?.creatorAmount],
+      ["Book sales", sales.breakdown?.book?.creatorAmount],
+      ["Video unlocks", sales.breakdown?.video?.creatorAmount],
+      ["Memberships", sales.breakdown?.subscription?.creatorAmount],
+    ];
+
+    return {
+      available: Math.max(0, Number(sales.availableBalance || 0)),
+      pending: Math.max(0, Number(sales.pendingBalance || 0)),
+      withdrawn: Math.max(0, Number(sales.withdrawn || 0)),
+      total: creatorTotal,
+      platformTotal,
+      categoryBreakdown,
+    };
+  }, [
+    sales.availableBalance,
+    sales.breakdown,
+    sales.pendingBalance,
+    sales.platformRevenue,
+    sales.totalCreatorEarnings,
+    sales.withdrawn,
+  ]);
 
   const creatorAvatar = resolveImage(creator?.user?.avatar || "") || "/avatar.png";
   const creatorName = creator?.displayName || creator?.user?.name || "Creator";
@@ -297,16 +355,12 @@ export default function CreatorDashboardMVP() {
       setBooks(Array.isArray(booksRes) ? booksRes : []);
       setAlbums(Array.isArray(albumsRes) ? albumsRes : []);
       setVideos(Array.isArray(videosRes) ? videosRes : []);
-      setSales({
-        totalSalesCount: Number(dashRes?.totalSales ?? salesRes?.totalSalesCount ?? 0),
-        totalRevenue: Number(dashRes?.revenueNGN ?? salesRes?.totalRevenue ?? 0),
-        totalCreatorEarnings:
-          salesRes?.totalCreatorEarnings === null ||
-          salesRes?.totalCreatorEarnings === undefined
-            ? null
-            : Number(salesRes.totalCreatorEarnings),
-        currency: "NGN",
-      });
+      setSales(
+        normalizeCreatorSales({
+          salesResponse: salesRes,
+          dashboardResponse: dashRes,
+        })
+      );
     } catch (err) {
       setPageError(err.message || "Refresh failed.");
     } finally {
@@ -1108,25 +1162,12 @@ export default function CreatorDashboardMVP() {
           <aside className="crd-right-panel">
             <section className="crd-side-card">
               <h3>Earnings</h3>
-              <p className="crd-side-muted">Current week</p>
+              <p className="crd-side-muted">Available wallet balance</p>
               <strong className="crd-side-total">{fmtMoney(stats.available)}</strong>
-              <div className="crd-week-chart" aria-hidden="true">
-                <span style={{ height: "24%" }} />
-                <span style={{ height: "18%" }} />
-                <span style={{ height: "27%" }} />
-                <span style={{ height: "22%" }} />
-                <span style={{ height: "41%" }} />
-                <span style={{ height: "36%" }} />
-                <span style={{ height: "58%" }} />
-                <span style={{ height: "74%" }} />
-                <span style={{ height: "79%" }} />
-              </div>
               <ul className="crd-breakdown">
-                <li><span>Music Sales</span><b>{fmtMoney(stats.total * 0.18)}</b></li>
-                <li><span>Book Sales</span><b>{fmtMoney(stats.total * 0.1)}</b></li>
-                <li><span>Video Unlocks</span><b>{fmtMoney(stats.total * 0.14)}</b></li>
-                <li><span>Podcast Streams</span><b>{fmtMoney(stats.total * 0.12)}</b></li>
-                <li><span>Tips</span><b>{fmtMoney(stats.total * 0.05)}</b></li>
+                {stats.categoryBreakdown.map(([label, amount]) => (
+                  <li key={label}><span>{label}</span><b>{fmtMoney(amount)}</b></li>
+                ))}
               </ul>
               <button type="button" className="crd-submit-btn">Withdraw Earnings</button>
             </section>
@@ -1148,11 +1189,26 @@ export default function CreatorDashboardMVP() {
                 <b>{fmtMoney(stats.total)}</b>
               </div>
               <div className="crd-split-row">
-                <span>Tengacion share</span>
-                <b>{fmtMoney(stats.platformTotal)}</b>
+                <span>Recorded Tengacion allocation</span>
+                <b>
+                  {stats.platformTotal === null
+                    ? "Ledger data unavailable"
+                    : fmtMoney(stats.platformTotal)}
+                </b>
               </div>
+              <p className="crd-side-muted">
+                From 15 July 2026, the 75% artist / 25% Tengacion split applies to
+                Net Revenue from song and album sales only. Earlier allocations remain valid.
+              </p>
               <button type="button" className="crd-submit-btn">Manage Accounts</button>
               <button type="button" className="crd-light-btn full">Add Account</button>
+              <button
+                type="button"
+                className="crd-light-btn full"
+                onClick={() => navigate("/creator-monetization-terms")}
+              >
+                How Net Revenue works
+              </button>
             </section>
 
             <section className="crd-side-card compact">

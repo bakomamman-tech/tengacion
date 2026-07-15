@@ -7,8 +7,8 @@ import CreatorEarningsPage from "../CreatorEarningsPage";
 import CreatorPayoutsPage from "../CreatorPayoutsPage";
 import { useCreatorWorkspace } from "../../../components/creator/useCreatorWorkspace";
 import {
-  createCreatorPayoutRequest,
-  getCreatorPayoutRequests,
+  createCreatorWithdrawal,
+  getCreatorWithdrawals,
 } from "../../../api";
 
 vi.mock("../../../components/creator/useCreatorWorkspace", () => ({
@@ -16,8 +16,8 @@ vi.mock("../../../components/creator/useCreatorWorkspace", () => ({
 }));
 
 vi.mock("../../../api", () => ({
-  createCreatorPayoutRequest: vi.fn(),
-  getCreatorPayoutRequests: vi.fn(),
+  createCreatorWithdrawal: vi.fn(),
+  getCreatorWithdrawals: vi.fn(),
 }));
 
 const baseWorkspace = {
@@ -99,18 +99,19 @@ describe("Creator wallet pages", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useCreatorWorkspace.mockReturnValue(baseWorkspace);
-    createCreatorPayoutRequest.mockResolvedValue({ success: true });
-    getCreatorPayoutRequests.mockResolvedValue({
+    createCreatorWithdrawal.mockResolvedValue({ success: true });
+    getCreatorWithdrawals.mockResolvedValue({
       summary: {
-        availableForRequest: 1000,
-        openRequestAmount: 0,
+        withdrawableAmount: 1000,
+        openWithdrawalAmount: 0,
+        reserveAmount: 1000,
       },
-      requests: [
+      withdrawals: [
         {
           id: "payout-request-1",
           amount: 1000,
           status: "pending_review",
-          requestReference: "CPR_TEST",
+          reference: "CPR_TEST",
           requestedAt: "2026-04-08T05:18:26.928Z",
         },
       ],
@@ -141,7 +142,7 @@ describe("Creator wallet pages", () => {
     expect(screen.getByText("Settlement source")).toBeInTheDocument();
     expect(screen.getByText("Live wallet ledger")).toBeInTheDocument();
     expect(screen.getByText("******4805")).toBeInTheDocument();
-    expect(screen.getByText("Payout request")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Withdrawals" })).toBeInTheDocument();
     expect(screen.getByText("Available")).toBeInTheDocument();
     expect(screen.getByText("Next step")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Review earnings" })).toHaveAttribute(
@@ -150,8 +151,8 @@ describe("Creator wallet pages", () => {
     );
     expect(screen.getByText("Recent settlement activity")).toBeInTheDocument();
     expect(screen.getByText("Sale credited")).toBeInTheDocument();
-    expect(screen.getByText("Request payout review")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Submit request" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Withdraw now" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Withdraw now" })).toBeInTheDocument();
     expect(await screen.findByText("CPR_TEST")).toBeInTheDocument();
   });
 });

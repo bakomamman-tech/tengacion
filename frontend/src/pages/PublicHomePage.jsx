@@ -29,6 +29,7 @@ const TRUST_LINKS = [
   { path: "/community-guidelines", label: "Guidelines" },
   { path: "/child-safety", label: "Child safety" },
   { path: "/refund-policy", label: "Refunds" },
+  { path: "/creator-monetization-terms", label: "Creator monetization" },
   { path: "/copyright-policy", label: "Copyright" },
   { path: "/contact", label: "Contact" },
 ];

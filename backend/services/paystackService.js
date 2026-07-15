@@ -174,14 +174,166 @@ const mapGatewayStatus = (status = "") => {
   return normalized || "pending";
 };
 
+const roundMoney = (value) =>
+  Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+
+const toNonNegativeMoney = (value, fallback = null) => {
+  if (value == null || value === "") {
+    return fallback;
+  }
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount >= 0 ? roundMoney(amount) : fallback;
+};
+
+const fromMinorCurrencyUnit = (value, fallback = null) => {
+  const amount = toNonNegativeMoney(value, null);
+  return amount == null ? fallback : roundMoney(amount / 100);
+};
+
+const normalizeCardCountry = (value = "") => {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (["NG", "NGA", "NIGERIA"].includes(normalized)) {
+    return "NG";
+  }
+  return normalized;
+};
+
+const toProviderDate = (value) => {
+  if (value == null || value === "") {
+    return null;
+  }
+  const numericValue = Number(value);
+  const date =
+    Number.isFinite(numericValue) && String(value).trim() !== ""
+      ? new Date(numericValue < 1e12 ? numericValue * 1000 : numericValue)
+      : new Date(value);
+  return Number.isFinite(date.getTime()) ? date : null;
+};
+
+const resolvePaystackTransactionPaidAt = (transaction = {}, fallback = null) => {
+  const raw = transaction?.raw || transaction || {};
+  const candidates = [
+    transaction?.paidAt,
+    transaction?.paid_at,
+    transaction?.transaction_date,
+    raw?.paidAt,
+    raw?.paid_at,
+    raw?.transaction_date,
+  ];
+
+  for (const candidate of candidates) {
+    const date = toProviderDate(candidate);
+    if (date) {
+      return date;
+    }
+  }
+
+  return toProviderDate(fallback);
+};
+
+const resolvePaystackCardCountry = (transaction = {}) => {
+  const raw = transaction?.raw || transaction || {};
+  const authorization = transaction?.authorization || raw?.authorization || {};
+  return normalizeCardCountry(
+    transaction?.cardCountry ||
+      authorization?.country_code ||
+      authorization?.countryCode ||
+      authorization?.country ||
+      raw?.card_country ||
+      raw?.cardCountry ||
+      ""
+  );
+};
+
+const extractActualPaystackFeeAmount = (transaction = {}) => {
+  if (transaction?.processingFeeAmount != null) {
+    return toNonNegativeMoney(transaction.processingFeeAmount, null);
+  }
+
+  if (transaction?.feesKobo != null) {
+    return fromMinorCurrencyUnit(transaction.feesKobo, null);
+  }
+
+  const raw = transaction?.raw || transaction || {};
+  return raw?.fees != null ? fromMinorCurrencyUnit(raw.fees, null) : null;
+};
+
+const extractPaystackTaxAmount = (transaction = {}, fallback = 0) => {
+  if (transaction?.taxAmount != null) {
+    return toNonNegativeMoney(transaction.taxAmount, fallback);
+  }
+
+  const raw = transaction?.raw || transaction || {};
+  if (raw?.tax_amount != null) {
+    return fromMinorCurrencyUnit(raw.tax_amount, fallback);
+  }
+  if (raw?.tax?.amount != null) {
+    return fromMinorCurrencyUnit(raw.tax.amount, fallback);
+  }
+
+  const metadataTaxAmount =
+    transaction?.metadata?.taxAmount ??
+    transaction?.metadata?.tax_amount ??
+    raw?.metadata?.taxAmount ??
+    raw?.metadata?.tax_amount;
+  if (metadataTaxAmount != null) {
+    return toNonNegativeMoney(metadataTaxAmount, fallback);
+  }
+
+  return fallback == null ? null : toNonNegativeMoney(fallback, 0);
+};
+
+const estimatePaystackProcessingFee = ({ grossAmount = 0, cardCountry = "" } = {}) => {
+  const gross = Math.max(0, roundMoney(grossAmount));
+  if (gross <= 0) {
+    return 0;
+  }
+
+  const normalizedCountry = normalizeCardCountry(cardCountry);
+  if (normalizedCountry && normalizedCountry !== "NG") {
+    return roundMoney(gross * 0.039 + 100);
+  }
+
+  const localFixedFee = gross < 2500 ? 0 : 100;
+  return Math.min(2000, roundMoney(gross * 0.015 + localFixedFee));
+};
+
+const resolvePaystackTransactionDeductions = ({
+  transaction = {},
+  grossAmount = 0,
+  taxAmount = 0,
+} = {}) => {
+  const cardCountry = resolvePaystackCardCountry(transaction);
+  const actualProcessingFeeAmount = extractActualPaystackFeeAmount(transaction);
+  return {
+    processingFeeAmount:
+      actualProcessingFeeAmount == null
+        ? estimatePaystackProcessingFee({ grossAmount, cardCountry })
+        : actualProcessingFeeAmount,
+    taxAmount: extractPaystackTaxAmount(transaction, taxAmount),
+    processingFeeEstimated: actualProcessingFeeAmount == null,
+    cardCountry,
+  };
+};
+
 const normalizePaystackResponse = (payload = {}) => {
   const data = payload?.data || payload || {};
   const amountKobo = Number(data.amount || 0);
+  const feesKobo = data?.fees == null ? null : Number(data.fees);
+  const processingFeeAmount = Number.isFinite(feesKobo)
+    ? fromMinorCurrencyUnit(feesKobo, null)
+    : null;
+  const taxAmount = extractPaystackTaxAmount(data, null);
 
   return {
     ...data,
     amount: Number.isFinite(amountKobo) ? amountKobo / 100 : 0,
     amountKobo: Number.isFinite(amountKobo) ? amountKobo : 0,
+    feesKobo: Number.isFinite(feesKobo) ? feesKobo : null,
+    processingFeeAmount,
+    taxAmount,
+    cardCountry: resolvePaystackCardCountry(data),
+    paidAt: resolvePaystackTransactionPaidAt(data),
     currency: String(data.currency || getCurrency()).trim().toUpperCase() || getCurrency(),
     status: mapGatewayStatus(data.status || payload?.status || ""),
     authorization_url: String(data.authorization_url || ""),
@@ -546,6 +698,7 @@ module.exports = {
   generatePaymentReference,
   getCurrency,
   getPaystackKeyMode,
+  estimatePaystackProcessingFee,
   initializeTransaction,
   initiateTransfer,
   isPaystackLiveKeyRequired,
@@ -556,6 +709,9 @@ module.exports = {
   normalizePaystackResponse,
   normalizeTransferResponse,
   resolveBankAccount,
+  resolvePaystackCardCountry,
+  resolvePaystackTransactionPaidAt,
+  resolvePaystackTransactionDeductions,
   validateWebhookSignature,
   verifyTransfer,
   verifyTransaction,

@@ -253,6 +253,9 @@ const recordPurchaseSettlementLedgerEntries = async ({
 
   const base = buildPurchaseLedgerBase({ purchase, actorUserId, actorRole, actorType });
   const {
+    processingFeeAmount,
+    taxAmount,
+    netRevenueAmount,
     creatorAmount,
     platformAmount,
     creatorShareRate,
@@ -264,6 +267,9 @@ const recordPurchaseSettlementLedgerEntries = async ({
   const settlementMetadata = {
     ...base.auditMetadata,
     grossAmount: base.amount,
+    processingFeeAmount,
+    taxAmount,
+    netRevenueAmount,
     creatorAmount,
     platformAmount,
     creatorShareRate,
@@ -365,6 +371,9 @@ const recordRefundSettledLedgerEntries = async ({
     actorType: actorUserId ? "admin" : "system",
   });
   const {
+    processingFeeAmount,
+    taxAmount,
+    netRevenueAmount,
     creatorAmount,
     platformAmount,
     creatorShareRate,
@@ -376,6 +385,9 @@ const recordRefundSettledLedgerEntries = async ({
   const auditMetadata = {
     ...base.auditMetadata,
     grossAmount: base.amount,
+    processingFeeAmount,
+    taxAmount,
+    netRevenueAmount,
     creatorAmount,
     platformAmount,
     creatorShareRate,

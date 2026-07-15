@@ -674,7 +674,14 @@ const buildRecentSales = ({
       const itemType = String(purchase?.itemType || "").trim().toLowerCase();
       const itemId = toIdString(purchase?.itemId);
       const item = contentLookup.get(`${itemType}:${itemId}`);
-      const { grossAmount, creatorAmount } =
+      const {
+        grossAmount,
+        processingFeeAmount,
+        taxAmount,
+        netRevenueAmount,
+        creatorAmount,
+        platformAmount,
+      } =
         computePurchaseRevenueShare(purchase);
 
       return {
@@ -686,7 +693,11 @@ const buildRecentSales = ({
         itemLabel: getPurchaseItemLabel(itemType),
         buyer: buildBuyerPayload(purchase?.userId),
         amount: grossAmount,
+        processingFeeAmount,
+        taxAmount,
+        netRevenueAmount,
         creatorAmount: toMoney(creatorAmount),
+        platformAmount: toMoney(platformAmount),
         currency: purchase?.currency || "NGN",
         provider: purchase?.provider || "",
         providerRef: purchase?.providerRef || "",

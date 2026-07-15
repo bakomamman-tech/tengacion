@@ -161,7 +161,7 @@ RevenueLedgerEntrySchema.pre("validate", function () {
   if (this.auditMetadata && typeof this.auditMetadata === "object") {
     this.auditMetadata = sanitizePlainObject(this.auditMetadata, {
       maxDepth: 2,
-      maxKeys: 18,
+      maxKeys: 24,
       maxStringLength: 400,
       maxArrayLength: 8,
     });

@@ -111,6 +111,9 @@ describe("creatorFinanceRepositoryService", () => {
 
     expect(repository.repository).toMatchObject({
       grossRevenue: 2500,
+      processingFees: 0,
+      taxes: 0,
+      netRevenue: 2500,
       repositoryAmount: 1500,
       creatorAmount: 1000,
       paidTransactions: 1,
@@ -120,10 +123,17 @@ describe("creatorFinanceRepositoryService", () => {
         bankName: "Opay",
         accountNumber: "8061201090",
       },
+      songAlbumPlatformSharePercent: 25,
+      songAlbumCreatorSharePercent: 75,
     });
+    expect(repository.repository.purpose).toContain("song and album sales");
+    expect(repository.repository.accountingNote).toContain(
+      "Historical payments retain their original stored split"
+    );
     expect(repository.breakdown.items[0]).toMatchObject({
       key: "music",
       grossRevenue: 2500,
+      netRevenue: 2500,
       repositoryAmount: 1500,
       creatorAmount: 1000,
       transactions: 1,
@@ -132,6 +142,7 @@ describe("creatorFinanceRepositoryService", () => {
       itemTitle: "Ledger-backed Track",
       providerRef: "finance_wallet_ref",
       grossAmount: 2500,
+      netRevenueAmount: 2500,
       repositoryAmount: 1500,
       creatorAmount: 1000,
     });

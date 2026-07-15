@@ -42,19 +42,41 @@ const appendQueryParams = (url = "", params = {}) => {
   return `${target}${target.includes("?") ? "&" : "?"}${pairs.join("&")}`;
 };
 
-const normalizeStripeSession = (session = {}) => ({
-  id: String(session.id || ""),
-  authorization_url: String(session.url || ""),
-  url: String(session.url || ""),
-  reference: String(session.metadata?.providerRef || ""),
-  amount: Number(session.amount_total || 0) / 100,
-  amountMinor: Number(session.amount_total || 0),
-  currency: String(session.currency || "usd").trim().toUpperCase() || "USD",
-  payment_status: String(session.payment_status || ""),
-  status: String(session.status || ""),
-  metadata: session.metadata || {},
-  raw: session,
-});
+const normalizeStripeSession = (session = {}) => {
+  const paymentIntent =
+    session?.payment_intent && typeof session.payment_intent === "object"
+      ? session.payment_intent
+      : {};
+  const latestCharge =
+    paymentIntent?.latest_charge && typeof paymentIntent.latest_charge === "object"
+      ? paymentIntent.latest_charge
+      : {};
+  const balanceTransaction =
+    latestCharge?.balance_transaction
+      && typeof latestCharge.balance_transaction === "object"
+      ? latestCharge.balance_transaction
+      : {};
+  const paidAtSeconds = Number(latestCharge?.created || paymentIntent?.created || 0);
+
+  return {
+    id: String(session.id || ""),
+    authorization_url: String(session.url || ""),
+    url: String(session.url || ""),
+    reference: String(session.metadata?.providerRef || ""),
+    amount: Number(session.amount_total || 0) / 100,
+    amountMinor: Number(session.amount_total || 0),
+    processingFeeAmount: Number(balanceTransaction.fee || 0) / 100,
+    taxAmount: Number(session?.total_details?.amount_tax || 0) / 100,
+    paidAt: Number.isFinite(paidAtSeconds) && paidAtSeconds > 0
+      ? new Date(paidAtSeconds * 1000)
+      : null,
+    currency: String(session.currency || "usd").trim().toUpperCase() || "USD",
+    payment_status: String(session.payment_status || ""),
+    status: String(session.status || ""),
+    metadata: session.metadata || {},
+    raw: session,
+  };
+};
 
 const createCheckoutSession = async ({
   email,
@@ -117,7 +139,9 @@ const createCheckoutSession = async ({
 
 const retrieveCheckoutSession = async (sessionId) => {
   const stripe = createStripeClient();
-  const session = await stripe.checkout.sessions.retrieve(String(sessionId || ""));
+  const session = await stripe.checkout.sessions.retrieve(String(sessionId || ""), {
+    expand: ["payment_intent.latest_charge.balance_transaction"],
+  });
   return normalizeStripeSession(session);
 };
 

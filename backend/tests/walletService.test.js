@@ -284,4 +284,77 @@ describe("walletService", () => {
       ])
     );
   });
+
+  test("credits and reverses the dated 75/25 artist split from net revenue", async () => {
+    const purchase = await createPurchase({
+      creatorId: creator.profile._id,
+      amount: 2500,
+      providerRef: "wallet_ref_artist_net_policy",
+      revenueCategory: "music",
+      revenueSharePolicy: "artist_music_net_75_v1",
+      creatorShareRate: 0.75,
+      platformShareRate: 0.25,
+      processingFeeAmount: 137.5,
+      taxAmount: 12.5,
+    });
+
+    await reconcilePaidPurchaseWalletEntries({ logger: null, reason: "test" });
+
+    const entries = await WalletEntry.find({ sourceId: purchase._id }).lean();
+    expect(entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entryType: "sale_credit",
+          amount: 1762.5,
+          metadata: expect.objectContaining({
+            processingFeeAmount: 137.5,
+            taxAmount: 12.5,
+            netRevenueAmount: 2350,
+          }),
+        }),
+        expect.objectContaining({
+          entryType: "platform_fee",
+          amount: 587.5,
+        }),
+      ])
+    );
+
+    await expect(
+      buildCreatorWalletSummary({ creatorId: creator.profile._id })
+    ).resolves.toMatchObject({
+      grossRevenue: 2500,
+      processingFees: 137.5,
+      taxes: 12.5,
+      netRevenue: 2350,
+      totalEarnings: 1762.5,
+      platformRevenue: 587.5,
+    });
+
+    purchase.status = "refunded";
+    purchase.refundedAt = new Date();
+    await purchase.save();
+    await recordPurchaseRefundEntries({
+      purchase,
+      logger: null,
+      reason: "artist_net_policy_refund",
+    });
+
+    const refundEntries = await WalletEntry.find({
+      sourceId: purchase._id,
+      sourceType: "refund",
+    }).lean();
+    expect(refundEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ ownerType: "creator", amount: 1762.5 }),
+        expect.objectContaining({ ownerType: "platform", amount: 587.5 }),
+      ])
+    );
+    await expect(
+      buildCreatorWalletSummary({ creatorId: creator.profile._id })
+    ).resolves.toMatchObject({
+      netRevenue: 0,
+      totalEarnings: 0,
+      platformRevenue: 0,
+    });
+  });
 });

@@ -74,9 +74,14 @@ export default function CreatorUploadSupportPanels({
   const creatorInitial = String(creatorName).trim().charAt(0).toUpperCase() || "C";
   const maskedAccount = maskAccountNumber(creatorProfile?.accountNumber || "");
 
-  const grossRevenue = toNumber(summary.grossRevenue);
   const totalEarnings = toNumber(summary.totalEarnings);
-  const platformShare = Math.max(0, grossRevenue - totalEarnings);
+  const hasPlatformRevenue =
+    summary.platformRevenue !== null &&
+    summary.platformRevenue !== undefined &&
+    Number.isFinite(Number(summary.platformRevenue));
+  const platformRevenue = hasPlatformRevenue
+    ? toNumber(summary.platformRevenue)
+    : null;
 
   return (
     <>
@@ -149,17 +154,31 @@ export default function CreatorUploadSupportPanels({
             <strong>{formatCurrency(totalEarnings)}</strong>
           </div>
           <div className="creator-stack-row">
-            <span>Tengacion share</span>
-            <strong>{formatCurrency(platformShare)}</strong>
+            <span>Recorded Tengacion allocation</span>
+            <strong>
+              {platformRevenue === null
+                ? "Ledger data unavailable"
+                : formatCurrency(platformRevenue)}
+            </strong>
           </div>
         </div>
-        <p>New music, book, and podcast sales use a 60% creator / 40% Tengacion split.</p>
+        <p>
+          From 15 July 2026, artists receive 75% of Net Revenue from song and album
+          sales and Tengacion retains 25%. Earlier payment allocations remain valid.
+        </p>
+        <p>
+          Payment-processing fees, refunds, chargebacks, and applicable taxes are
+          deducted before Net Revenue is shared.
+        </p>
         <div className="creator-category-actions">
           <Link className="creator-primary-btn" to="/creator/payouts">
             Manage accounts
           </Link>
           <Link className="creator-secondary-btn" to="/creator/settings">
             Update details
+          </Link>
+          <Link className="creator-secondary-btn" to="/creator-monetization-terms">
+            How Net Revenue works
           </Link>
         </div>
       </section>

@@ -15,8 +15,15 @@ const {
   verifyWebhookSignature,
 } = require("../services/paymentProviders/paystack");
 const { logAnalyticsEvent } = require("../services/analyticsService");
+const {
+  resolvePaystackTransactionDeductions,
+  resolvePaystackTransactionPaidAt,
+} = require("../services/paystackService");
 const { config } = require("../config/env");
-const { buildRevenueShareSnapshot } = require("../services/creatorRevenueSharePolicy");
+const {
+  buildRevenueShareSnapshot,
+  buildSettlementRevenueShareSnapshot,
+} = require("../services/creatorRevenueSharePolicy");
 
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -25,10 +32,16 @@ const toPurchasePayload = (purchase) => ({
   itemType: purchase.itemType,
   itemId: purchase.itemId?.toString?.() || String(purchase.itemId || ""),
   amount: Number(purchase.amount) || 0,
+  processingFeeAmount: Number(purchase.processingFeeAmount) || 0,
+  taxAmount: Number(purchase.taxAmount) || 0,
   currency: purchase.currency || "NGN",
   status: purchase.status || "pending",
   provider: purchase.provider || "paystack",
   providerRef: purchase.providerRef || "",
+  revenueCategory: purchase.revenueCategory || "",
+  revenueSharePolicy: purchase.revenueSharePolicy || "",
+  creatorShareRate: Number(purchase.creatorShareRate) || 0,
+  platformShareRate: Number(purchase.platformShareRate) || 0,
   paidAt: purchase.paidAt || null,
   createdAt: purchase.createdAt,
 });
@@ -51,12 +64,15 @@ const emitEntitlementGranted = ({ req, purchase }) => {
   io.to(`user:${String(purchase.userId)}`).emit("entitlement:granted", payload);
 };
 
-const markPurchasePaidAndGrantEntitlement = async (purchase) => {
+const markPurchasePaidAndGrantEntitlement = async (
+  purchase,
+  { paidAt = new Date(), financialSnapshot = {} } = {}
+) => {
   if (!purchase) return;
 
-  const paidAt = new Date();
   purchase.status = "paid";
   purchase.paidAt = paidAt;
+  Object.assign(purchase, financialSnapshot);
   if (purchase.itemType === "subscription") {
     purchase.billingInterval = "monthly";
     purchase.accessExpiresAt = new Date(paidAt.getTime() + MONTH_MS);
@@ -243,7 +259,23 @@ const handlePaystackWebhook = async (req, res) => {
     return res.status(200).json({ received: true });
   }
 
-  await markPurchasePaidAndGrantEntitlement(purchase);
+  const paidAt = resolvePaystackTransactionPaidAt(tx, new Date()) || new Date();
+  const revenueShareSnapshot = buildSettlementRevenueShareSnapshot(purchase, {
+    settledAt: paidAt,
+  });
+  const deductionSnapshot = resolvePaystackTransactionDeductions({
+    transaction: tx,
+    grossAmount: Number(purchase.amount || 0),
+    taxAmount: Number(purchase.taxAmount || 0),
+  });
+  await markPurchasePaidAndGrantEntitlement(purchase, {
+    paidAt,
+    financialSnapshot: {
+      ...revenueShareSnapshot,
+      processingFeeAmount: deductionSnapshot.processingFeeAmount,
+      taxAmount: deductionSnapshot.taxAmount,
+    },
+  });
   emitEntitlementGranted({ req, purchase });
   await notifyPurchaseUnlocked({ req, purchase }).catch(() => null);
   await logAnalyticsEvent({

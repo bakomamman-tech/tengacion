@@ -184,17 +184,32 @@ const ensurePlatformWalletAccount = async (currency = "NGN") =>
 
 const buildAvailableOnlySummary = ({
   grossRevenue = 0,
+  processingFees = 0,
+  taxes = 0,
+  netRevenue = null,
   totalEarnings = 0,
+  platformRevenue = 0,
   currency = "NGN",
   walletBacked = false,
 } = {}) => {
   const normalizedGrossRevenue = clampMoney(grossRevenue);
+  const normalizedProcessingFees = clampMoney(processingFees);
+  const normalizedTaxes = clampMoney(taxes);
+  const normalizedNetRevenue = clampMoney(
+    netRevenue == null
+      ? normalizedGrossRevenue - normalizedProcessingFees - normalizedTaxes
+      : netRevenue
+  );
   const normalizedTotalEarnings = clampMoney(totalEarnings);
 
   return {
     currency: normalizeCurrency(currency),
     grossRevenue: normalizedGrossRevenue,
+    processingFees: normalizedProcessingFees,
+    taxes: normalizedTaxes,
+    netRevenue: normalizedNetRevenue,
     totalEarnings: normalizedTotalEarnings,
+    platformRevenue: clampMoney(platformRevenue),
     availableBalance: normalizedTotalEarnings,
     pendingBalance: 0,
     withdrawn: 0,
@@ -209,6 +224,9 @@ const buildPurchaseSettlementEntryPayloads = async (purchase) => {
 
   const {
     grossAmount,
+    processingFeeAmount,
+    taxAmount,
+    netRevenueAmount,
     creatorAmount,
     platformAmount,
     creatorShareRate,
@@ -240,6 +258,9 @@ const buildPurchaseSettlementEntryPayloads = async (purchase) => {
     billingInterval: purchase.billingInterval || "one_time",
     creatorAmount,
     platformAmount,
+    processingFeeAmount,
+    taxAmount,
+    netRevenueAmount,
     creatorShareRate,
     platformShareRate,
     revenueCategory,
@@ -291,6 +312,9 @@ const buildPurchaseRefundEntryPayloads = async (purchase) => {
 
   const {
     grossAmount,
+    processingFeeAmount,
+    taxAmount,
+    netRevenueAmount,
     creatorAmount,
     platformAmount,
     creatorShareRate,
@@ -322,6 +346,9 @@ const buildPurchaseRefundEntryPayloads = async (purchase) => {
     billingInterval: purchase.billingInterval || "one_time",
     creatorAmount,
     platformAmount,
+    processingFeeAmount,
+    taxAmount,
+    netRevenueAmount,
     creatorShareRate,
     platformShareRate,
     revenueCategory,
@@ -506,7 +533,11 @@ const buildCreatorWalletSummary = async ({ creatorId, fallbackGrossRevenue = 0, 
     return {
       currency: normalizeCurrency(currency),
       grossRevenue: clampMoney(fallbackGrossRevenue),
+      processingFees: 0,
+      taxes: 0,
+      netRevenue: clampMoney(fallbackGrossRevenue),
       totalEarnings: 0,
+      platformRevenue: 0,
       availableBalance: 0,
       pendingBalance: 0,
       withdrawn: 0,
@@ -525,7 +556,11 @@ const buildCreatorWalletSummary = async ({ creatorId, fallbackGrossRevenue = 0, 
     return {
       currency: normalizedCurrency,
       grossRevenue: clampMoney(fallbackGrossRevenue),
+      processingFees: 0,
+      taxes: 0,
+      netRevenue: clampMoney(fallbackGrossRevenue),
       totalEarnings: 0,
+      platformRevenue: 0,
       availableBalance: 0,
       pendingBalance: 0,
       withdrawn: 0,
@@ -546,6 +581,60 @@ const buildCreatorWalletSummary = async ({ creatorId, fallbackGrossRevenue = 0, 
         grossRevenue: {
           $sum: {
             $cond: [{ $eq: ["$entryType", "sale_credit"] }, "$grossAmount", 0],
+          },
+        },
+        processingFees: {
+          $sum: {
+            $cond: [
+              { $eq: ["$entryType", "sale_credit"] },
+              { $ifNull: ["$metadata.processingFeeAmount", 0] },
+              0,
+            ],
+          },
+        },
+        taxes: {
+          $sum: {
+            $cond: [
+              { $eq: ["$entryType", "sale_credit"] },
+              { $ifNull: ["$metadata.taxAmount", 0] },
+              0,
+            ],
+          },
+        },
+        saleNetRevenue: {
+          $sum: {
+            $cond: [
+              { $eq: ["$entryType", "sale_credit"] },
+              { $ifNull: ["$metadata.netRevenueAmount", "$grossAmount"] },
+              0,
+            ],
+          },
+        },
+        refundedNetRevenue: {
+          $sum: {
+            $cond: [
+              { $eq: ["$entryType", "refund_debit"] },
+              { $ifNull: ["$metadata.netRevenueAmount", "$grossAmount"] },
+              0,
+            ],
+          },
+        },
+        platformRevenue: {
+          $sum: {
+            $cond: [
+              { $eq: ["$entryType", "sale_credit"] },
+              { $ifNull: ["$metadata.platformAmount", 0] },
+              0,
+            ],
+          },
+        },
+        refundedPlatformRevenue: {
+          $sum: {
+            $cond: [
+              { $eq: ["$entryType", "refund_debit"] },
+              { $ifNull: ["$metadata.platformAmount", 0] },
+              0,
+            ],
           },
         },
         saleCredits: {
@@ -646,7 +735,17 @@ const buildCreatorWalletSummary = async ({ creatorId, fallbackGrossRevenue = 0, 
     grossRevenue: clampMoney(
       Number(aggregate?.grossRevenue || 0) || Number(fallbackGrossRevenue || 0)
     ),
+    processingFees: clampMoney(aggregate?.processingFees),
+    taxes: clampMoney(aggregate?.taxes),
+    netRevenue: clampMoney(
+      Number(aggregate?.saleNetRevenue || 0)
+        - Number(aggregate?.refundedNetRevenue || 0)
+    ),
     totalEarnings,
+    platformRevenue: clampMoney(
+      Number(aggregate?.platformRevenue || 0)
+        - Number(aggregate?.refundedPlatformRevenue || 0)
+    ),
     availableBalance: clampMoney(
       Number(aggregate?.availableCredits || 0) - Number(aggregate?.availableDebits || 0)
     ),
@@ -684,6 +783,9 @@ const buildWalletRecentEntryFromLedger = (entry = {}) => {
     providerRef: entry?.sourceRef || metadata?.providerRef || "",
     creatorAmount: clampMoney(metadata?.creatorAmount || 0),
     platformAmount: clampMoney(metadata?.platformAmount || 0),
+    processingFeeAmount: clampMoney(metadata?.processingFeeAmount || 0),
+    taxAmount: clampMoney(metadata?.taxAmount || 0),
+    netRevenueAmount: clampMoney(metadata?.netRevenueAmount ?? entry?.grossAmount),
     effectiveAt: entry?.effectiveAt || entry?.createdAt || null,
   };
 };
@@ -691,6 +793,9 @@ const buildWalletRecentEntryFromLedger = (entry = {}) => {
 const buildWalletRecentEntryFromPurchase = (purchase = {}) => {
   const {
     grossAmount,
+    processingFeeAmount,
+    taxAmount,
+    netRevenueAmount,
     creatorAmount,
     platformAmount,
   } = computePurchaseRevenueShare(purchase);
@@ -714,6 +819,9 @@ const buildWalletRecentEntryFromPurchase = (purchase = {}) => {
     providerRef: purchase?.providerRef || "",
     creatorAmount,
     platformAmount,
+    processingFeeAmount,
+    taxAmount,
+    netRevenueAmount,
     effectiveAt: purchase?.paidAt || purchase?.updatedAt || purchase?.createdAt || null,
   };
 };
@@ -759,6 +867,13 @@ const buildCreatorWalletSnapshot = async ({
           $group: {
             _id: "$metadata.itemType",
             grossRevenue: { $sum: "$grossAmount" },
+            processingFees: {
+              $sum: { $ifNull: ["$metadata.processingFeeAmount", 0] },
+            },
+            taxes: { $sum: { $ifNull: ["$metadata.taxAmount", 0] } },
+            netRevenue: {
+              $sum: { $ifNull: ["$metadata.netRevenueAmount", "$grossAmount"] },
+            },
             creatorEarnings: { $sum: "$amount" },
             transactions: { $sum: 1 },
           },
@@ -810,6 +925,9 @@ const buildCreatorWalletSnapshot = async ({
               key: itemType,
               label: buildBreakdownLabel(itemType),
               grossRevenue: clampMoney(row?.grossRevenue),
+              processingFees: clampMoney(row?.processingFees),
+              taxes: clampMoney(row?.taxes),
+              netRevenue: clampMoney(row?.netRevenue),
               creatorEarnings: clampMoney(row?.creatorEarnings),
               transactions: Number(row?.transactions || 0),
             };
@@ -828,19 +946,38 @@ const buildCreatorWalletSnapshot = async ({
       })
         .sort({ paidAt: -1, createdAt: -1, _id: -1 })
         .select(
-          "_id itemType itemId amount currency provider providerRef paidAt createdAt updatedAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate"
+          "_id itemType itemId amount currency provider providerRef paidAt createdAt updatedAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate processingFeeAmount taxAmount"
         )
         .lean()
     : [];
 
   const grossRevenue = purchases.reduce((sum, row) => sum + clampMoney(row?.amount), 0);
+  const processingFees = purchases.reduce(
+    (sum, row) => sum + computePurchaseRevenueShare(row).processingFeeAmount,
+    0
+  );
+  const taxes = purchases.reduce(
+    (sum, row) => sum + computePurchaseRevenueShare(row).taxAmount,
+    0
+  );
+  const netRevenue = purchases.reduce(
+    (sum, row) => sum + computePurchaseRevenueShare(row).netRevenueAmount,
+    0
+  );
   const totalEarnings = purchases.reduce(
     (sum, row) => sum + computePurchaseRevenueShare(row).creatorAmount,
     0
   );
   const summary = buildAvailableOnlySummary({
     grossRevenue,
+    processingFees,
+    taxes,
+    netRevenue,
     totalEarnings,
+    platformRevenue: purchases.reduce(
+      (sum, row) => sum + computePurchaseRevenueShare(row).platformAmount,
+      0
+    ),
     currency: normalizedCurrency,
     walletBacked: false,
   });
@@ -851,7 +988,13 @@ const buildCreatorWalletSnapshot = async ({
   purchases.forEach((purchase) => {
     const itemType = normalizeItemType(purchase?.itemType || "");
     const itemId = toIdString(purchase?.itemId);
-    const { creatorAmount, grossAmount } = computePurchaseRevenueShare(purchase);
+    const {
+      creatorAmount,
+      grossAmount,
+      processingFeeAmount,
+      taxAmount,
+      netRevenueAmount,
+    } = computePurchaseRevenueShare(purchase);
 
     if (itemId) {
       const itemKey = `${itemType}:${itemId}`;
@@ -862,11 +1005,17 @@ const buildCreatorWalletSnapshot = async ({
       key: itemType,
       label: buildBreakdownLabel(itemType),
       grossRevenue: 0,
+      processingFees: 0,
+      taxes: 0,
+      netRevenue: 0,
       creatorEarnings: 0,
       transactions: 0,
     };
 
     bucket.grossRevenue += grossAmount;
+    bucket.processingFees += processingFeeAmount;
+    bucket.taxes += taxAmount;
+    bucket.netRevenue += netRevenueAmount;
     bucket.creatorEarnings += creatorAmount;
     bucket.transactions += 1;
     breakdownMap.set(itemType, bucket);
@@ -882,6 +1031,9 @@ const buildCreatorWalletSnapshot = async ({
       .map((row) => ({
         ...row,
         grossRevenue: clampMoney(row.grossRevenue),
+        processingFees: clampMoney(row.processingFees),
+        taxes: clampMoney(row.taxes),
+        netRevenue: clampMoney(row.netRevenue),
         creatorEarnings: clampMoney(row.creatorEarnings),
       }))
       .sort((left, right) => Number(right.creatorEarnings || 0) - Number(left.creatorEarnings || 0)),
@@ -904,7 +1056,7 @@ const reconcilePaidPurchaseWalletEntries = async ({ logger = console, reason = "
   })
     .sort({ paidAt: 1, createdAt: 1, _id: 1 })
     .select(
-      "_id creatorId itemType itemId amount currency provider providerRef billingInterval paidAt createdAt updatedAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate"
+      "_id creatorId itemType itemId amount currency provider providerRef billingInterval paidAt createdAt updatedAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate processingFeeAmount taxAmount"
     )
     .cursor();
 

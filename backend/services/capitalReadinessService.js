@@ -1055,25 +1055,44 @@ const buildScenarioInputs = ({ financeClose, scorecard = [], startingCashBalance
   const financeReady = scorecardMap.get("revenue_quality")?.state === "ready";
   const creatorReady = scorecardMap.get("creator_earnings_confidence")?.state === "ready";
   const disputeReady = scorecardMap.get("refund_dispute_handling")?.state === "ready";
+  const walletReconciliation = reconciliation.wallet || {};
+  const hasWalletAllocations = asNumber(walletReconciliation.actualEntries) > 0;
+  const platformAllocation = hasWalletAllocations
+    ? asNumber(walletReconciliation.actualPlatformFees)
+    : asNumber(walletReconciliation.expectedPlatformFees);
+  const creatorAllocation = hasWalletAllocations
+    ? asNumber(walletReconciliation.actualCreatorCredits)
+    : asNumber(walletReconciliation.expectedCreatorCredits);
 
   const baseGrossPaid = clampMoney(asNumber(summary.grossPaidAmount) * monthlyFactor);
   const basePlatformRevenue = clampMoney(
-    asNumber(reconciliation.wallet?.expectedPlatformFees, asNumber(summary.grossPaidAmount) * 0.4) * monthlyFactor
+    platformAllocation * monthlyFactor
   );
   const baseCreatorEarnings = clampMoney(
-    asNumber(reconciliation.wallet?.expectedCreatorCredits, asNumber(summary.grossPaidAmount) * 0.6) * monthlyFactor
+    creatorAllocation * monthlyFactor
   );
-  const baseRefunds = clampMoney(asNumber(summary.refundedAmount) * monthlyFactor);
+  const basePaymentFees = clampMoney(
+    asNumber(summary.processingFeeAmount) * monthlyFactor
+  );
+  const baseTaxes = clampMoney(asNumber(summary.taxAmount) * monthlyFactor);
+  const baseRevenueDeductions = clampMoney(
+    basePaymentFees + baseTaxes
+  );
+  const baseRefunds = clampMoney(
+    asNumber(summary.refundedNetRevenueAmount ?? summary.refundedAmount) * monthlyFactor
+  );
   const basePayoutExposure = clampMoney(asNumber(summary.payoutOpenAmount));
 
   return SCENARIOS.map((scenario) => {
     const grossPaidAmount = clampMoney(baseGrossPaid * scenario.revenueMultiplier);
     const platformRevenue = clampMoney(basePlatformRevenue * scenario.revenueMultiplier);
     const creatorEarnings = clampMoney(baseCreatorEarnings * scenario.revenueMultiplier);
+    const paymentFees = clampMoney(basePaymentFees * scenario.revenueMultiplier);
+    const taxes = clampMoney(baseTaxes * scenario.revenueMultiplier);
+    const revenueDeductions = clampMoney(baseRevenueDeductions * scenario.revenueMultiplier);
     const payoutExposure = clampMoney(basePayoutExposure * scenario.revenueMultiplier);
     const refundReserve = clampMoney(Math.max(baseRefunds * scenario.revenueMultiplier, grossPaidAmount * 0.02));
     const disputeReserve = clampMoney(grossPaidAmount * 0.01);
-    const paymentFees = clampMoney(grossPaidAmount * 0.015);
     const infrastructureCost = clampMoney(Math.max(30000, grossPaidAmount * 0.04) * scenario.costMultiplier);
     const storageMediaCost = clampMoney(Math.max(10000, grossPaidAmount * 0.015) * scenario.costMultiplier);
     const supportCost = clampMoney(Math.max(15000, grossPaidAmount * 0.03) * scenario.costMultiplier);
@@ -1083,8 +1102,7 @@ const buildScenarioInputs = ({ financeClose, scorecard = [], startingCashBalance
     const hiringCost = clampMoney(0);
     const partnerCost = clampMoney(Math.max(5000, grossPaidAmount * 0.01) * scenario.costMultiplier);
     const operatingCost = clampMoney(
-      paymentFees +
-        infrastructureCost +
+      infrastructureCost +
         storageMediaCost +
         supportCost +
         moderationCost +
@@ -1109,10 +1127,12 @@ const buildScenarioInputs = ({ financeClose, scorecard = [], startingCashBalance
       grossPaidAmount: money(grossPaidAmount, currency),
       platformRevenue: money(platformRevenue, currency),
       creatorEarnings: money(creatorEarnings, currency),
+      paymentFees: money(paymentFees, currency),
+      taxes: money(taxes, currency),
+      revenueDeductions: money(revenueDeductions, currency),
       payoutExposure: money(payoutExposure, currency),
       refundReserve: money(refundReserve, currency),
       disputeReserve: money(disputeReserve, currency),
-      paymentFees: money(paymentFees, currency),
       infrastructureCost: money(infrastructureCost, currency),
       storageMediaCost: money(storageMediaCost, currency),
       supportCost: money(supportCost, currency),
@@ -1139,15 +1159,31 @@ const buildScenarioInputs = ({ financeClose, scorecard = [], startingCashBalance
         },
         {
           key: "platform_revenue",
-          label: "Platform revenue",
-          classification: financeReady ? "actual" : "not_approved_for_external_use",
+          label: "Recorded Tengacion allocation",
+          classification: financeReady
+            ? hasWalletAllocations
+              ? "actual_wallet_allocation"
+              : "purchase_allocation"
+            : "not_approved_for_external_use",
           confidenceState: scorecardMap.get("revenue_quality")?.state || "evidence_needed",
         },
         {
           key: "creator_earnings",
           label: "Creator earnings",
-          classification: creatorReady ? "actual" : "not_approved_for_external_use",
+          classification: creatorReady
+            ? hasWalletAllocations
+              ? "actual_wallet_allocation"
+              : "purchase_allocation"
+            : "not_approved_for_external_use",
           confidenceState: scorecardMap.get("creator_earnings_confidence")?.state || "evidence_needed",
+        },
+        {
+          key: "revenue_deductions",
+          label: "Recorded processing fees and taxes deducted before revenue sharing",
+          classification: baseRevenueDeductions > 0
+            ? "derived_from_recorded_allocations"
+            : "no_recorded_deductions",
+          confidenceState: scorecardMap.get("revenue_quality")?.state || "evidence_needed",
         },
         {
           key: "refund_reserve",

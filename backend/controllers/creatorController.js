@@ -93,7 +93,8 @@ const buildSocialLinks = (socialHandles = {}) => {
   ].filter(Boolean);
 };
 
-const clampMoney = (value) => Math.max(0, Math.round(Number(value || 0)));
+const clampMoney = (value) =>
+  Math.max(0, Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100);
 const clampSubscriptionAmount = (value, fallback = 0) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
@@ -458,7 +459,7 @@ const getDashboardPayload = async ({ profile, user }) => {
     itemType: { $in: ["track", "book", "album", "video", "subscription"] },
   })
     .select(
-      "userId itemType itemId amount currency status provider providerRef accessExpiresAt cancelAtPeriodEnd canceledAt refundedAt paidAt createdAt updatedAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate"
+      "userId itemType itemId amount currency status provider providerRef accessExpiresAt cancelAtPeriodEnd canceledAt refundedAt paidAt createdAt updatedAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate processingFeeAmount taxAmount"
     )
     .populate("userId", "name username avatar")
     .sort({ paidAt: -1, createdAt: -1, _id: -1 })
@@ -487,7 +488,11 @@ const getDashboardPayload = async ({ profile, user }) => {
 
   const summary = {
     grossRevenue: clampMoney(walletSnapshot.summary?.grossRevenue),
+    processingFees: clampMoney(walletSnapshot.summary?.processingFees),
+    taxes: clampMoney(walletSnapshot.summary?.taxes),
+    netRevenue: clampMoney(walletSnapshot.summary?.netRevenue),
     totalEarnings: clampMoney(walletSnapshot.summary?.totalEarnings),
+    platformRevenue: clampMoney(walletSnapshot.summary?.platformRevenue),
     availableBalance: clampMoney(walletSnapshot.summary?.availableBalance),
     pendingBalance: clampMoney(walletSnapshot.summary?.pendingBalance),
     withdrawn: clampMoney(walletSnapshot.summary?.withdrawn),

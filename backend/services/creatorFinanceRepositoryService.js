@@ -8,13 +8,14 @@ const Video = require("../models/Video");
 const { buildDateRange } = require("./analyticsService");
 const { getPlatformSettlementAccount } = require("./walletService");
 const {
-  CREATOR_CONTENT_CREATOR_SHARE_RATE,
-  CREATOR_CONTENT_PLATFORM_SHARE_RATE,
+  ARTIST_MUSIC_CREATOR_SHARE_RATE,
+  ARTIST_MUSIC_PLATFORM_SHARE_RATE,
+  ARTIST_MUSIC_SPLIT_EFFECTIVE_AT,
   computePurchaseRevenueShare,
 } = require("./creatorRevenueSharePolicy");
 
-const PLATFORM_SHARE_PERCENT = CREATOR_CONTENT_PLATFORM_SHARE_RATE * 100;
-const CREATOR_SHARE_PERCENT = CREATOR_CONTENT_CREATOR_SHARE_RATE * 100;
+const PLATFORM_SHARE_PERCENT = ARTIST_MUSIC_PLATFORM_SHARE_RATE * 100;
+const CREATOR_SHARE_PERCENT = ARTIST_MUSIC_CREATOR_SHARE_RATE * 100;
 const MAX_RECENT_ENTRIES = 20;
 const MAX_TOP_CREATORS = 8;
 
@@ -68,6 +69,9 @@ const createCategoryBucket = (meta) => ({
   key: meta.key,
   label: meta.label,
   grossRevenue: 0,
+  processingFees: 0,
+  taxes: 0,
+  netRevenue: 0,
   repositoryAmount: 0,
   creatorAmount: 0,
   transactions: 0,
@@ -235,17 +239,23 @@ const createEmptyResponse = (dates) => ({
     name: "Earnings From Creators",
     currency: "NGN",
     grossRevenue: 0,
+    processingFees: 0,
+    taxes: 0,
+    netRevenue: 0,
     repositoryAmount: 0,
     creatorAmount: 0,
     paidTransactions: 0,
     activeCreators: 0,
-    platformSharePercent: PLATFORM_SHARE_PERCENT,
-    creatorSharePercent: CREATOR_SHARE_PERCENT,
+    songAlbumPlatformSharePercent: PLATFORM_SHARE_PERCENT,
+    songAlbumCreatorSharePercent: CREATOR_SHARE_PERCENT,
+    songAlbumPolicyEffectiveAt: ARTIST_MUSIC_SPLIT_EFFECTIVE_AT.toISOString(),
     settlementAccount: getPlatformSettlementAccount(),
     purpose:
-      "New music, book, and podcast purchases reserve 40% for Tengacion and credit 60% to creators.",
+      "From 15 July 2026, song and album sales allocate 75% of Net Revenue to the artist and 25% to Tengacion. Other content types retain their applicable policy.",
+    netRevenueNote:
+      "Under the current song/album policy, recorded payment-processing fees and applicable taxes reduce Net Revenue at settlement; processed refunds and chargebacks reverse the related allocations.",
     accountingNote:
-      "Historical purchases retain their original stored split. Only paid creator transactions are included.",
+      "Historical payments retain their original stored split. Refund and reversal entries are tracked in the revenue ledger; automated provider chargeback ingestion remains a finance-assurance coverage gap.",
   },
   breakdown: {
     items: [],
@@ -272,6 +282,11 @@ const loadWalletRepositoryRows = async (dates) => {
     itemId: toId(entry?.metadata?.itemId),
     amount: roundMoney(entry?.grossAmount),
     grossAmount: roundMoney(entry?.grossAmount),
+    processingFeeAmount: roundMoney(entry?.metadata?.processingFeeAmount),
+    taxAmount: roundMoney(entry?.metadata?.taxAmount),
+    netRevenueAmount: roundMoney(
+      entry?.metadata?.netRevenueAmount ?? entry?.grossAmount
+    ),
     repositoryAmount: roundMoney(entry?.amount),
     creatorAmount: roundMoney(entry?.metadata?.creatorAmount),
     currency: entry?.currency || "NGN",
@@ -290,19 +305,25 @@ const loadPurchaseRepositoryRows = async (dates) => {
   })
     .sort({ paidAt: -1, createdAt: -1 })
     .select(
-      "_id creatorId itemType itemId amount currency provider providerRef paidAt createdAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate"
+      "_id creatorId itemType itemId amount currency provider providerRef paidAt createdAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate processingFeeAmount taxAmount"
     )
     .lean();
 
   return purchases.map((purchase) => {
     const {
       grossAmount,
+      processingFeeAmount,
+      taxAmount,
+      netRevenueAmount,
       platformAmount: repositoryAmount,
       creatorAmount,
     } = computePurchaseRevenueShare(purchase);
     return {
       ...purchase,
       grossAmount,
+      processingFeeAmount,
+      taxAmount,
+      netRevenueAmount,
       repositoryAmount,
       creatorAmount,
     };
@@ -334,6 +355,9 @@ const buildCreatorFinanceRepository = async ({
   const recentEntries = [];
 
   let grossRevenue = 0;
+  let processingFees = 0;
+  let taxes = 0;
+  let netRevenue = 0;
   let repositoryAmount = 0;
   let creatorAmount = 0;
   let paidTransactions = 0;
@@ -364,6 +388,13 @@ const buildCreatorFinanceRepository = async ({
       ...purchase,
       amount,
     });
+    const processingFee = roundMoney(
+      purchase?.processingFeeAmount ?? purchaseShare.processingFeeAmount
+    );
+    const tax = roundMoney(purchase?.taxAmount ?? purchaseShare.taxAmount);
+    const shareableNetRevenue = roundMoney(
+      purchase?.netRevenueAmount ?? purchaseShare.netRevenueAmount
+    );
     const platformAllocation = roundMoney(
       purchase?.repositoryAmount ?? purchaseShare.platformAmount
     );
@@ -373,12 +404,18 @@ const buildCreatorFinanceRepository = async ({
 
     paidTransactions += 1;
     grossRevenue += amount;
+    processingFees += processingFee;
+    taxes += tax;
+    netRevenue += shareableNetRevenue;
     repositoryAmount += platformAllocation;
     creatorAmount += creatorAllocation;
 
     const bucket = breakdownMap.get(categoryMeta.key);
     if (bucket) {
       bucket.grossRevenue += amount;
+      bucket.processingFees += processingFee;
+      bucket.taxes += tax;
+      bucket.netRevenue += shareableNetRevenue;
       bucket.repositoryAmount += platformAllocation;
       bucket.creatorAmount += creatorAllocation;
       bucket.transactions += 1;
@@ -389,11 +426,17 @@ const buildCreatorFinanceRepository = async ({
       displayName: creator.displayName,
       username: creator.username,
       grossRevenue: 0,
+      processingFees: 0,
+      taxes: 0,
+      netRevenue: 0,
       repositoryAmount: 0,
       creatorAmount: 0,
       transactions: 0,
     };
     creatorRow.grossRevenue += amount;
+    creatorRow.processingFees += processingFee;
+    creatorRow.taxes += tax;
+    creatorRow.netRevenue += shareableNetRevenue;
     creatorRow.repositoryAmount += platformAllocation;
     creatorRow.creatorAmount += creatorAllocation;
     creatorRow.transactions += 1;
@@ -410,6 +453,9 @@ const buildCreatorFinanceRepository = async ({
         sourceKey: categoryMeta.key,
         sourceLabel: categoryMeta.label,
         grossAmount: amount,
+        processingFeeAmount: processingFee,
+        taxAmount: tax,
+        netRevenueAmount: shareableNetRevenue,
         repositoryAmount: platformAllocation,
         creatorAmount: creatorAllocation,
         currency: purchase?.currency || "NGN",
@@ -425,6 +471,9 @@ const buildCreatorFinanceRepository = async ({
     .map((entry) => ({
       ...entry,
       grossRevenue: roundMoney(entry.grossRevenue),
+      processingFees: roundMoney(entry.processingFees),
+      taxes: roundMoney(entry.taxes),
+      netRevenue: roundMoney(entry.netRevenue),
       repositoryAmount: roundMoney(entry.repositoryAmount),
       creatorAmount: roundMoney(entry.creatorAmount),
     }))
@@ -434,6 +483,9 @@ const buildCreatorFinanceRepository = async ({
     .map((entry) => ({
       ...entry,
       grossRevenue: roundMoney(entry.grossRevenue),
+      processingFees: roundMoney(entry.processingFees),
+      taxes: roundMoney(entry.taxes),
+      netRevenue: roundMoney(entry.netRevenue),
       repositoryAmount: roundMoney(entry.repositoryAmount),
       creatorAmount: roundMoney(entry.creatorAmount),
     }))
@@ -450,17 +502,23 @@ const buildCreatorFinanceRepository = async ({
       name: "Earnings From Creators",
       currency: "NGN",
       grossRevenue: roundMoney(grossRevenue),
+      processingFees: roundMoney(processingFees),
+      taxes: roundMoney(taxes),
+      netRevenue: roundMoney(netRevenue),
       repositoryAmount: roundMoney(repositoryAmount),
       creatorAmount: roundMoney(creatorAmount),
       paidTransactions,
       activeCreators: creatorsAggregate.size,
-      platformSharePercent: PLATFORM_SHARE_PERCENT,
-      creatorSharePercent: CREATOR_SHARE_PERCENT,
+      songAlbumPlatformSharePercent: PLATFORM_SHARE_PERCENT,
+      songAlbumCreatorSharePercent: CREATOR_SHARE_PERCENT,
+      songAlbumPolicyEffectiveAt: ARTIST_MUSIC_SPLIT_EFFECTIVE_AT.toISOString(),
       settlementAccount: getPlatformSettlementAccount(),
       purpose:
-        "New music, book, and podcast purchases reserve 40% for Tengacion and credit 60% to creators.",
+        "From 15 July 2026, song and album sales allocate 75% of Net Revenue to the artist and 25% to Tengacion. Other content types retain their applicable policy.",
+      netRevenueNote:
+        "Under the current song/album policy, recorded payment-processing fees and applicable taxes reduce Net Revenue at settlement; processed refunds and chargebacks reverse the related allocations.",
       accountingNote:
-        "Historical purchases retain their original stored split. Only paid creator transactions are included.",
+        "Historical payments retain their original stored split. Refund and reversal entries are tracked in the revenue ledger; automated provider chargeback ingestion remains a finance-assurance coverage gap.",
     },
     breakdown: {
       items: breakdownItems,

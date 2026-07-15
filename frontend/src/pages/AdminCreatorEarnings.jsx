@@ -122,6 +122,10 @@ export default function AdminCreatorEarningsPage({ user }) {
   }, [load]);
 
   const repository = payload?.repository || {};
+  const songAlbumPlatformSharePercent =
+    repository.songAlbumPlatformSharePercent ?? 25;
+  const songAlbumCreatorSharePercent =
+    repository.songAlbumCreatorSharePercent ?? 75;
   const settlementAccount = repository.settlementAccount || {};
   const breakdownItems = payload?.breakdown?.items || [];
   const topCreators = payload?.topCreators || [];
@@ -337,19 +341,21 @@ export default function AdminCreatorEarningsPage({ user }) {
 
   const headlineCards = useMemo(
     () => [
-      { label: "Platform earnings", value: currency(repository.repositoryAmount), icon: "₦", tone: "emerald", note: `${number(repository.platformSharePercent)}% current platform share` },
-      { label: "Gross creator revenue", value: currency(repository.grossRevenue), icon: "↗", tone: "blue", note: `${number(repository.paidTransactions)} paid transactions` },
-      { label: "Creator liability", value: currency(repository.creatorAmount), icon: "◎", tone: "amber", note: `${number(repository.creatorSharePercent)}% owed to creators` },
+      { label: "Tengacion allocations", value: currency(repository.repositoryAmount), icon: "₦", tone: "emerald", note: "Recorded transaction allocations" },
+      { label: "Gross creator sales", value: currency(repository.grossRevenue), icon: "↗", tone: "blue", note: `${number(repository.paidTransactions)} paid transactions` },
+      { label: "Recorded net revenue", value: currency(repository.netRevenue), icon: "−", tone: "blue", note: `${currency(Number(repository.processingFees || 0) + Number(repository.taxes || 0))} processing fees and taxes` },
+      { label: "Creator allocations", value: currency(repository.creatorAmount), icon: "◎", tone: "amber", note: "Recorded creator liability" },
       { label: "Ledger entries", value: number(ledgerSummary.totalEntries || repository.paidTransactions), icon: "≡", tone: "violet", note: "Auditable finance events" },
     ],
     [
       ledgerSummary.totalEntries,
       repository.creatorAmount,
-      repository.creatorSharePercent,
       repository.grossRevenue,
+      repository.netRevenue,
       repository.paidTransactions,
-      repository.platformSharePercent,
+      repository.processingFees,
       repository.repositoryAmount,
+      repository.taxes,
     ]
   );
 
@@ -845,16 +851,17 @@ export default function AdminCreatorEarningsPage({ user }) {
               </div>
               <div className="adminx-pill-row">
                 <span className="adminx-badge adminx-badge--good">
-                  Current: {number(repository.platformSharePercent)}% Tengacion
+                  Song/album policy: {number(songAlbumPlatformSharePercent)}% Tengacion of Net Revenue
                 </span>
                 <span className="adminx-badge">
-                  Current: {number(repository.creatorSharePercent)}% creator
+                  Song/album policy: {number(songAlbumCreatorSharePercent)}% artist of Net Revenue
                 </span>
                 <span className="adminx-badge">
                   {dateTime(payload.filters?.startDate)} to {dateTime(payload.filters?.endDate)}
                 </span>
               </div>
               <p className="adminx-repository-copy">{repository.purpose}</p>
+              <p className="adminx-muted">{repository.netRevenueNote}</p>
               <div className="adminx-finance-meta">
                 <span>Settlement: {settlementAccount.accountName || "Not set"}</span>
                 <span>{settlementAccount.bankName || "Bank not set"}</span>
@@ -866,7 +873,7 @@ export default function AdminCreatorEarningsPage({ user }) {
             <section className="adminx-panel adminx-panel--span-7">
               <div className="adminx-panel-head">
                 <h2 className="adminx-panel-title">Revenue Sources</h2>
-                <span className="adminx-section-meta">Paid creator income feeding the repository</span>
+                <span className="adminx-section-meta">Recorded paid-sale allocations by content type</span>
               </div>
               <div className="adminx-leaderboard">
                 {breakdownItems.map((entry) => (
@@ -877,7 +884,8 @@ export default function AdminCreatorEarningsPage({ user }) {
                     </div>
                     <div className="adminx-finance-meta">
                       <span>Gross: {currency(entry.grossRevenue)}</span>
-                      <span>Creator Share: {currency(entry.creatorAmount)}</span>
+                      <span>Net: {currency(entry.netRevenue)}</span>
+                      <span>Creator allocation: {currency(entry.creatorAmount)}</span>
                       <span>Transactions: {number(entry.transactions)}</span>
                     </div>
                   </article>
@@ -891,7 +899,7 @@ export default function AdminCreatorEarningsPage({ user }) {
             <section className="adminx-panel adminx-panel--span-5">
               <div className="adminx-panel-head">
                 <h2 className="adminx-panel-title">Top Contributing Creators</h2>
-                <span className="adminx-section-meta">Ranked by repository contribution</span>
+                <span className="adminx-section-meta">Ranked by recorded Tengacion allocation</span>
               </div>
               <div className="adminx-leaderboard">
                 {topCreators.map((entry) => (
@@ -907,7 +915,8 @@ export default function AdminCreatorEarningsPage({ user }) {
                     </div>
                     <div className="adminx-finance-meta">
                       <span>Gross: {currency(entry.grossRevenue)}</span>
-                      <span>Creator Share: {currency(entry.creatorAmount)}</span>
+                      <span>Net: {currency(entry.netRevenue)}</span>
+                      <span>Creator allocation: {currency(entry.creatorAmount)}</span>
                       <span>Transactions: {number(entry.transactions)}</span>
                     </div>
                   </button>
@@ -930,8 +939,9 @@ export default function AdminCreatorEarningsPage({ user }) {
                       <th>Item</th>
                       <th>Source</th>
                       <th>Gross</th>
-                      <th>Repository</th>
-                      <th>Creator</th>
+                      <th>Net</th>
+                      <th>Tengacion allocation</th>
+                      <th>Creator allocation</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -950,13 +960,14 @@ export default function AdminCreatorEarningsPage({ user }) {
                         <td>{entry.itemTitle}</td>
                         <td>{entry.sourceLabel}</td>
                         <td>{currency(entry.grossAmount)}</td>
+                        <td>{currency(entry.netRevenueAmount)}</td>
                         <td>{currency(entry.repositoryAmount)}</td>
                         <td>{currency(entry.creatorAmount)}</td>
                       </tr>
                     ))}
                     {!recentEntries.length ? (
                       <tr>
-                        <td colSpan={7} className="adminx-table-empty">
+                        <td colSpan={8} className="adminx-table-empty">
                           No repository entries found.
                         </td>
                       </tr>

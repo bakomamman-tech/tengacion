@@ -51,6 +51,9 @@ const buildItemRoute = ({ itemType = "", itemId = "", creatorId = "" } = {}) => 
 const buildFeeSummary = (purchase = {}) => {
   const {
     grossAmount,
+    processingFeeAmount,
+    taxAmount,
+    netRevenueAmount,
     platformAmount,
     creatorAmount,
     platformShareRate,
@@ -59,13 +62,17 @@ const buildFeeSummary = (purchase = {}) => {
 
   return {
     buyerTotal: grossAmount,
+    processingFeeDeducted: processingFeeAmount,
+    taxDeducted: taxAmount,
+    netRevenue: netRevenueAmount,
     platformFeeIncluded: platformAmount,
+    tengacionReceives: platformAmount,
     creatorReceives: creatorAmount,
     platformSharePercent: roundMoney(platformShareRate * 100),
     creatorSharePercent: roundMoney(creatorShareRate * 100),
     currency: purchase.currency || "NGN",
     explanation:
-      "Tengacion platform fees are included in the displayed price. Paystack charges only the verified total shown on this receipt.",
+      "The buyer total is unchanged. Processing charges and applicable taxes are deducted from settlement before the stored artist revenue share is applied.",
   };
 };
 
@@ -267,22 +274,32 @@ exports.getCreatorSales = asyncHandler(async (req, res) => {
   );
 
   const seededBreakdown = {
-    track: { count: 0, revenue: 0, creatorAmount: 0 },
-    book: { count: 0, revenue: 0, creatorAmount: 0 },
-    album: { count: 0, revenue: 0, creatorAmount: 0 },
-    video: { count: 0, revenue: 0, creatorAmount: 0 },
-    subscription: { count: 0, revenue: 0, creatorAmount: 0 },
+    track: { count: 0, revenue: 0, processingFees: 0, taxes: 0, netRevenue: 0, creatorAmount: 0 },
+    book: { count: 0, revenue: 0, processingFees: 0, taxes: 0, netRevenue: 0, creatorAmount: 0 },
+    album: { count: 0, revenue: 0, processingFees: 0, taxes: 0, netRevenue: 0, creatorAmount: 0 },
+    video: { count: 0, revenue: 0, processingFees: 0, taxes: 0, netRevenue: 0, creatorAmount: 0 },
+    subscription: { count: 0, revenue: 0, processingFees: 0, taxes: 0, netRevenue: 0, creatorAmount: 0 },
   };
 
   const breakdown = walletSnapshot.breakdown.reduce((acc, row) => {
     const key = String(row?.key || "").trim().toLowerCase();
     if (!acc[key]) {
-      acc[key] = { count: 0, revenue: 0, creatorAmount: 0 };
+      acc[key] = {
+        count: 0,
+        revenue: 0,
+        processingFees: 0,
+        taxes: 0,
+        netRevenue: 0,
+        creatorAmount: 0,
+      };
     }
 
     acc[key] = {
       count: Number(row?.transactions || 0),
       revenue: Number(row?.grossRevenue || 0),
+      processingFees: Number(row?.processingFees || 0),
+      taxes: Number(row?.taxes || 0),
+      netRevenue: Number(row?.netRevenue ?? row?.grossRevenue ?? 0),
       creatorAmount: Number(row?.creatorEarnings || 0),
     };
     return acc;
@@ -291,7 +308,13 @@ exports.getCreatorSales = asyncHandler(async (req, res) => {
   return res.json({
     totalSalesCount,
     totalRevenue: Number(walletSnapshot.summary?.grossRevenue || 0),
+    processingFees: Number(walletSnapshot.summary?.processingFees || 0),
+    taxes: Number(walletSnapshot.summary?.taxes || 0),
+    netRevenue: Number(
+      walletSnapshot.summary?.netRevenue ?? walletSnapshot.summary?.grossRevenue ?? 0
+    ),
     totalCreatorEarnings: Number(walletSnapshot.summary?.totalEarnings || 0),
+    platformRevenue: Number(walletSnapshot.summary?.platformRevenue || 0),
     availableBalance: Number(walletSnapshot.summary?.availableBalance || 0),
     pendingBalance: Number(walletSnapshot.summary?.pendingBalance || 0),
     withdrawn: Number(walletSnapshot.summary?.withdrawn || 0),

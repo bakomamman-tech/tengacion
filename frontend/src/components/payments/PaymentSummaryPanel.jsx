@@ -23,6 +23,9 @@ export default function PaymentSummaryPanel({
   quantity = 1,
   platformFeeAmount = null,
   platformFeeLabel = "",
+  processingFeeAmount = null,
+  processingFeeLabel = "Payment processing deducted",
+  netRevenueAmount = null,
   platformFeeExplanation = "",
   totalLabel = "Total before checkout",
   compact = false,
@@ -34,6 +37,14 @@ export default function PaymentSummaryPanel({
     platformFeeAmount === null || platformFeeAmount === undefined
       ? null
       : Number(platformFeeAmount || 0);
+  const processingFeeNumber =
+    processingFeeAmount === null || processingFeeAmount === undefined
+      ? null
+      : Number(processingFeeAmount || 0);
+  const netRevenueNumber =
+    netRevenueAmount === null || netRevenueAmount === undefined
+      ? null
+      : Number(netRevenueAmount || 0);
   const classes = [
     "payment-summary",
     compact ? "payment-summary--compact" : "",
@@ -72,6 +83,18 @@ export default function PaymentSummaryPanel({
           <div>
             <dt>{platformFeeLabel || "Platform fee"}</dt>
             <dd>{formatMoney(platformFeeNumber, currency)}</dd>
+          </div>
+        ) : null}
+        {processingFeeNumber !== null ? (
+          <div>
+            <dt>{processingFeeLabel}</dt>
+            <dd>{formatMoney(processingFeeNumber, currency)}</dd>
+          </div>
+        ) : null}
+        {netRevenueNumber !== null ? (
+          <div>
+            <dt>Net revenue shared</dt>
+            <dd>{formatMoney(netRevenueNumber, currency)}</dd>
           </div>
         ) : null}
       </dl>

@@ -34,6 +34,16 @@ const PurchaseSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    processingFeeAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    taxAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     currency: {
       type: String,
       required: true,

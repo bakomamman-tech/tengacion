@@ -271,11 +271,11 @@ const PUBLIC_INFO_PAGES = {
   "/creator-monetization-terms": {
     title: "Creator Monetization Terms | Tengacion",
     description:
-      "Review Tengacion creator monetization terms for paid releases, subscriptions, earnings, payout readiness, and platform review.",
+      "Review Tengacion creator monetization terms, including the 75/25 song and album Net Revenue split effective 15 July 2026.",
     canonicalPath: "/creator-monetization-terms",
     previewTitle: "Creator monetization terms",
     previewDescription:
-      "Creator monetization on Tengacion depends on accurate rights, eligible content, payout readiness, and platform review.",
+      "Artists receive 75% of Net Revenue from qualifying song and album sales completed from 15 July 2026; Tengacion retains 25%.",
   },
   "/marketplace-seller-terms": {
     title: "Marketplace Seller Terms | Tengacion",

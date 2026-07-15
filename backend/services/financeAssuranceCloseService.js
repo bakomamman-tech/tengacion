@@ -383,7 +383,7 @@ const buildFinanceAssuranceClose = async ({
       paidAt: { $gte: dates.start, $lte: dates.end },
     })
       .select(
-        "_id userId creatorId itemType itemId amount currency provider providerRef status paidAt createdAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate"
+        "_id userId creatorId itemType itemId amount currency provider providerRef status paidAt createdAt revenueCategory revenueSharePolicy creatorShareRate platformShareRate processingFeeAmount taxAmount"
       )
       .lean(),
     Purchase.find({
@@ -391,7 +391,7 @@ const buildFinanceAssuranceClose = async ({
       refundedAt: { $gte: dates.start, $lte: dates.end },
     })
       .select(
-        "_id userId creatorId itemType itemId amount currency provider providerRef status refundedAt refundReason revenueCategory revenueSharePolicy creatorShareRate platformShareRate"
+        "_id userId creatorId itemType itemId amount currency provider providerRef status refundedAt refundReason revenueCategory revenueSharePolicy creatorShareRate platformShareRate processingFeeAmount taxAmount"
       )
       .lean(),
     loadPayoutRows(dates),
@@ -628,7 +628,23 @@ const buildFinanceAssuranceClose = async ({
   const readinessState = deriveReadinessState(exceptions);
   const closeCurrency = resolveCloseCurrency([...paidPurchases, ...refundedPurchases, ...payoutRows]);
   const grossPaidAmount = sumBy(paidPurchases, (purchase) => purchase.amount);
+  const processingFeeAmount = sumBy(
+    paidPurchases,
+    (purchase) => computePurchaseRevenueShare(purchase).processingFeeAmount
+  );
+  const taxAmount = sumBy(
+    paidPurchases,
+    (purchase) => computePurchaseRevenueShare(purchase).taxAmount
+  );
+  const netRevenueAmount = sumBy(
+    paidPurchases,
+    (purchase) => computePurchaseRevenueShare(purchase).netRevenueAmount
+  );
   const refundedAmount = sumBy(refundedPurchases, (purchase) => purchase.amount);
+  const refundedNetRevenueAmount = sumBy(
+    refundedPurchases,
+    (purchase) => computePurchaseRevenueShare(purchase).netRevenueAmount
+  );
 
   return {
     filters: {
@@ -656,8 +672,12 @@ const buildFinanceAssuranceClose = async ({
       abandonedPayments: Number(purchaseStatusSummary.counts.abandoned || 0),
       refundedPayments: refundedPurchases.length,
       grossPaidAmount,
+      processingFeeAmount,
+      taxAmount,
+      netRevenueAmount,
       refundedAmount,
-      netSettledAmount: clampMoney(grossPaidAmount - refundedAmount),
+      refundedNetRevenueAmount,
+      netSettledAmount: clampMoney(netRevenueAmount - refundedNetRevenueAmount),
       entitlementEligiblePurchases: entitlementEligiblePurchases.length,
       entitlementGrants: entitlementCoverage.grants,
       entitlementMissing: entitlementCoverage.missing,
@@ -680,7 +700,11 @@ const buildFinanceAssuranceClose = async ({
         statusCounts: purchaseStatusSummary.counts,
         statusAmounts: purchaseStatusSummary.amounts,
         grossPaidAmount,
+        processingFeeAmount,
+        taxAmount,
+        netRevenueAmount,
         refundedAmount,
+        refundedNetRevenueAmount,
       },
       webhooks: webhookSummary,
       entitlements: {

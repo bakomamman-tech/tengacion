@@ -13,6 +13,8 @@ const { hasCreatorSubscriptionAccess } = require("./entitlementService");
 const {
   generatePaymentReference,
   initializeTransaction,
+  resolvePaystackTransactionPaidAt,
+  resolvePaystackTransactionDeductions,
   validateWebhookSignature,
   verifyTransaction,
 } = require("./paystackService");
@@ -46,7 +48,10 @@ const {
   isSubscriptionPurchase,
   resolveSubscriptionLifecycle,
 } = require("./purchaseLifecycleService");
-const { buildRevenueShareSnapshot } = require("./creatorRevenueSharePolicy");
+const {
+  buildRevenueShareSnapshot,
+  buildSettlementRevenueShareSnapshot,
+} = require("./creatorRevenueSharePolicy");
 const { notifyPurchaseUnlocked } = require("./fanReturnPathService");
 const { config } = require("../config/env");
 const logger = require("../utils/logger");
@@ -103,6 +108,33 @@ const toIdString = (value) => {
   return value.toString();
 };
 
+const toSettlementDate = (value) => {
+  if (value == null || value === "") {
+    return null;
+  }
+  const numericValue = Number(value);
+  const date =
+    Number.isFinite(numericValue) && String(value).trim() !== ""
+      ? new Date(numericValue < 1e12 ? numericValue * 1000 : numericValue)
+      : new Date(value);
+  return Number.isFinite(date.getTime()) ? date : null;
+};
+
+const resolveVerifiedSettlementAt = ({ verified = {}, provider = "" } = {}) => {
+  const fallback = new Date();
+  if (String(provider || "").trim().toLowerCase() === "paystack") {
+    return resolvePaystackTransactionPaidAt(verified, fallback) || fallback;
+  }
+
+  return (
+    toSettlementDate(verified?.paidAt) ||
+    toSettlementDate(verified?.paid_at) ||
+    toSettlementDate(verified?.raw?.paidAt) ||
+    toSettlementDate(verified?.raw?.paid_at) ||
+    fallback
+  );
+};
+
 const normalizeType = (value = "") => {
   const raw = String(value || "").trim().toLowerCase();
   const aliases = {
@@ -133,6 +165,8 @@ const toPurchasePayload = (purchase) => ({
   itemId: toIdString(purchase?.itemId),
   creatorId: toIdString(purchase?.creatorId),
   amount: Number(purchase?.amount) || 0,
+  processingFeeAmount: Number(purchase?.processingFeeAmount) || 0,
+  taxAmount: Number(purchase?.taxAmount) || 0,
   currency: purchase?.currency || "NGN",
   status: purchase?.status || "pending",
   provider: purchase?.provider || "paystack",
@@ -145,6 +179,10 @@ const toPurchasePayload = (purchase) => ({
   canceledAt: purchase?.canceledAt || null,
   refundedAt: purchase?.refundedAt || null,
   refundReason: purchase?.refundReason || "",
+  revenueCategory: purchase?.revenueCategory || "",
+  revenueSharePolicy: purchase?.revenueSharePolicy || "",
+  creatorShareRate: Number(purchase?.creatorShareRate) || 0,
+  platformShareRate: Number(purchase?.platformShareRate) || 0,
   lifecycle: buildPurchaseLifecyclePayload(purchase),
   paidAt: purchase?.paidAt || null,
   createdAt: purchase?.createdAt || null,
@@ -764,7 +802,10 @@ const initializeCheckout = async ({
   });
 };
 
-const settlePurchasedAccess = async (purchase, { paidAt = new Date() } = {}) => {
+const settlePurchasedAccess = async (
+  purchase,
+  { paidAt = new Date(), financialSnapshot = {} } = {}
+) => {
   if (!purchase) {
     return {
       purchase: null,
@@ -782,6 +823,7 @@ const settlePurchasedAccess = async (purchase, { paidAt = new Date() } = {}) => 
       $set: {
         status: "paid",
         paidAt,
+        ...financialSnapshot,
         ...(purchase.itemType === "subscription"
           ? {
               billingInterval: "monthly",
@@ -1425,7 +1467,34 @@ const reconcileVerifiedPurchase = async ({
     }
   }
 
-  const settled = await settlePurchasedAccess(purchase, { paidAt: new Date() });
+  const paidAt = resolveVerifiedSettlementAt({
+    verified,
+    provider: purchase.provider,
+  });
+  const revenueShareSnapshot = buildSettlementRevenueShareSnapshot(purchase, {
+    settledAt: paidAt,
+  });
+  const deductionSnapshot =
+    String(purchase.provider || "").trim().toLowerCase() === "paystack"
+      ? resolvePaystackTransactionDeductions({
+          transaction: verified,
+          grossAmount: Number(purchase.amount || 0),
+          taxAmount: Number(purchase.taxAmount || 0),
+        })
+      : {
+          processingFeeAmount: Number(
+            verified?.processingFeeAmount ?? purchase.processingFeeAmount ?? 0
+          ) || 0,
+          taxAmount: Number(verified?.taxAmount ?? purchase.taxAmount ?? 0) || 0,
+        };
+  const settled = await settlePurchasedAccess(purchase, {
+    paidAt,
+    financialSnapshot: {
+      ...revenueShareSnapshot,
+      processingFeeAmount: deductionSnapshot.processingFeeAmount,
+      taxAmount: deductionSnapshot.taxAmount,
+    },
+  });
   if (!settled.purchase) {
     throw createServiceError("Failed to load purchase after settlement", 500);
   }
@@ -1779,6 +1848,11 @@ const normalizeStripeSessionForVerification = (session = {}) => {
     status,
     amountKobo: amountMinor,
     amountMinor,
+    processingFeeAmount: Number(
+      session?.processingFeeAmount ?? raw?.processingFeeAmount ?? 0
+    ) || 0,
+    taxAmount: Number(session?.taxAmount ?? raw?.taxAmount ?? 0) || 0,
+    paidAt: session?.paidAt || raw?.paidAt || raw?.paid_at || null,
     currency: String(session?.currency || raw.currency || "USD").trim().toUpperCase() || "USD",
     raw,
   };

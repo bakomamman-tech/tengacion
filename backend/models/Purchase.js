@@ -34,6 +34,16 @@ const PurchaseSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    listedPriceAmount: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+    taxableBaseAmount: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
     processingFeeAmount: {
       type: Number,
       default: 0,
@@ -43,6 +53,44 @@ const PurchaseSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: 0,
+    },
+    taxRateBps: {
+      type: Number,
+      default: null,
+      min: 0,
+      max: 10000,
+    },
+    taxPriceMode: {
+      type: String,
+      enum: ["inclusive", "exclusive"],
+      default: null,
+    },
+    taxSource: {
+      type: String,
+      enum: ["none", "configured", "provider", "legacy"],
+      default: "none",
+      index: true,
+    },
+    taxPolicy: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 80,
+    },
+    taxJurisdiction: {
+      type: String,
+      default: "",
+      trim: true,
+      uppercase: true,
+      maxlength: 32,
+    },
+    taxProviderReported: {
+      type: Boolean,
+      default: false,
+    },
+    taxEffectiveAt: {
+      type: Date,
+      default: null,
     },
     currency: {
       type: String,
@@ -134,6 +182,18 @@ const PurchaseSchema = new mongoose.Schema(
       default: null,
       min: 0,
       max: 1,
+    },
+    disputeAccountingLockOwner: {
+      type: String,
+      default: "",
+      trim: true,
+      select: false,
+    },
+    disputeAccountingLockUntil: {
+      type: Date,
+      default: null,
+      select: false,
+      index: true,
     },
   },
   {

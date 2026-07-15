@@ -49,6 +49,9 @@ const WalletEntrySchema = new mongoose.Schema(
         "hold_release",
         "payout_debit",
         "refund_debit",
+        "dispute_hold",
+        "dispute_release",
+        "chargeback_debit",
         "adjustment_credit",
         "adjustment_debit",
       ],
@@ -67,7 +70,7 @@ const WalletEntrySchema = new mongoose.Schema(
     },
     sourceType: {
       type: String,
-      enum: ["purchase", "payout", "refund", "adjustment", "system"],
+      enum: ["purchase", "payout", "refund", "dispute", "adjustment", "system"],
       default: "purchase",
       required: true,
       index: true,

@@ -44,6 +44,21 @@ const PaymentWebhookEventSchema = new mongoose.Schema(
       default: "received",
       index: true,
     },
+    processingStartedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    processingLeaseUntil: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    attemptCount: {
+      type: Number,
+      default: 1,
+      min: 0,
+    },
     duplicateCount: {
       type: Number,
       default: 0,

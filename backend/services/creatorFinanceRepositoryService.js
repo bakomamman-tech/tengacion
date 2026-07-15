@@ -69,12 +69,16 @@ const createCategoryBucket = (meta) => ({
   key: meta.key,
   label: meta.label,
   grossRevenue: 0,
+  reversalGrossRevenue: 0,
+  refundedGrossRevenue: 0,
+  chargebackGrossRevenue: 0,
   processingFees: 0,
   taxes: 0,
   netRevenue: 0,
   repositoryAmount: 0,
   creatorAmount: 0,
   transactions: 0,
+  reversals: 0,
 });
 
 const resolveTrackCategory = (track) =>
@@ -239,12 +243,16 @@ const createEmptyResponse = (dates) => ({
     name: "Earnings From Creators",
     currency: "NGN",
     grossRevenue: 0,
+    reversalGrossRevenue: 0,
+    refundedGrossRevenue: 0,
+    chargebackGrossRevenue: 0,
     processingFees: 0,
     taxes: 0,
     netRevenue: 0,
     repositoryAmount: 0,
     creatorAmount: 0,
     paidTransactions: 0,
+    reversalEntries: 0,
     activeCreators: 0,
     songAlbumPlatformSharePercent: PLATFORM_SHARE_PERCENT,
     songAlbumCreatorSharePercent: CREATOR_SHARE_PERCENT,
@@ -253,9 +261,9 @@ const createEmptyResponse = (dates) => ({
     purpose:
       "From 15 July 2026, song and album sales allocate 75% of Net Revenue to the artist and 25% to Tengacion. Other content types retain their applicable policy.",
     netRevenueNote:
-      "Under the current song/album policy, recorded payment-processing fees and applicable taxes reduce Net Revenue at settlement; processed refunds and chargebacks reverse the related allocations.",
+      "Recorded payment-processing fees and applicable taxes reduce Net Revenue at settlement. Gross sales remain gross, while processed refunds and chargebacks are reported separately and reverse the related allocations.",
     accountingNote:
-      "Historical payments retain their original stored split. Refund and reversal entries are tracked in the revenue ledger; automated provider chargeback ingestion remains a finance-assurance coverage gap.",
+      "Historical payments retain their original stored split. Refunds and Paystack dispute outcomes are tracked through idempotent wallet and revenue-ledger reversals.",
   },
   breakdown: {
     items: [],
@@ -267,34 +275,66 @@ const createEmptyResponse = (dates) => ({
 const loadWalletRepositoryRows = async (dates) => {
   const entries = await WalletEntry.find({
     ownerType: "platform",
-    entryType: "platform_fee",
-    sourceType: "purchase",
+    $or: [
+      {
+        entryType: "platform_fee",
+        sourceType: "purchase",
+        direction: "credit",
+      },
+      {
+        entryType: "refund_debit",
+        sourceType: "refund",
+        direction: "debit",
+      },
+      {
+        entryType: "chargeback_debit",
+        sourceType: "dispute",
+        direction: "debit",
+      },
+    ],
     effectiveAt: { $gte: dates.start, $lte: dates.end },
   })
     .sort({ effectiveAt: -1, createdAt: -1 })
-    .select("amount grossAmount currency sourceRef effectiveAt createdAt metadata")
+    .select(
+      "amount grossAmount currency direction entryType sourceId sourceRef effectiveAt createdAt metadata"
+    )
     .lean();
 
-  return entries.map((entry) => ({
-    _id: toId(entry?.metadata?.purchaseId || entry?._id),
-    creatorId: toId(entry?.metadata?.creatorId),
-    itemType: String(entry?.metadata?.itemType || "").trim().toLowerCase(),
-    itemId: toId(entry?.metadata?.itemId),
-    amount: roundMoney(entry?.grossAmount),
-    grossAmount: roundMoney(entry?.grossAmount),
-    processingFeeAmount: roundMoney(entry?.metadata?.processingFeeAmount),
-    taxAmount: roundMoney(entry?.metadata?.taxAmount),
-    netRevenueAmount: roundMoney(
-      entry?.metadata?.netRevenueAmount ?? entry?.grossAmount
-    ),
-    repositoryAmount: roundMoney(entry?.amount),
-    creatorAmount: roundMoney(entry?.metadata?.creatorAmount),
-    currency: entry?.currency || "NGN",
-    provider: entry?.metadata?.provider || "paystack",
-    providerRef: entry?.sourceRef || entry?.metadata?.providerRef || "",
-    paidAt: entry?.effectiveAt || null,
-    createdAt: entry?.createdAt || entry?.effectiveAt || null,
-  }));
+  return entries.map((entry) => {
+    const isReversal = entry?.direction === "debit";
+    const multiplier = isReversal ? -1 : 1;
+    const signedMoney = (value) => roundMoney(multiplier * roundMoney(value));
+
+    return {
+      _id: toId(entry?._id),
+      purchaseId: toId(entry?.metadata?.purchaseId || entry?.sourceId),
+      creatorId: toId(entry?.metadata?.creatorId),
+      itemType: String(entry?.metadata?.itemType || "").trim().toLowerCase(),
+      itemId: toId(entry?.metadata?.itemId),
+      amount: signedMoney(entry?.grossAmount),
+      grossAmount: signedMoney(entry?.grossAmount),
+      processingFeeAmount: isReversal
+        ? 0
+        : signedMoney(entry?.metadata?.processingFeeAmount),
+      taxAmount: isReversal ? 0 : signedMoney(entry?.metadata?.taxAmount),
+      netRevenueAmount: signedMoney(
+        entry?.metadata?.netRevenueAmount ?? entry?.grossAmount
+      ),
+      repositoryAmount: signedMoney(entry?.amount),
+      creatorAmount: signedMoney(entry?.metadata?.creatorAmount),
+      currency: entry?.currency || "NGN",
+      provider: entry?.metadata?.provider || "paystack",
+      providerRef: entry?.sourceRef || entry?.metadata?.providerRef || "",
+      paidAt: entry?.effectiveAt || null,
+      createdAt: entry?.createdAt || entry?.effectiveAt || null,
+      entryType: entry?.entryType || "platform_fee",
+      direction: entry?.direction || "credit",
+      isReversal,
+      reversalGrossAmount: isReversal ? roundMoney(entry?.grossAmount) : 0,
+      transactionDelta: isReversal ? 0 : 1,
+      reversalDelta: isReversal ? 1 : 0,
+    };
+  });
 };
 
 const loadPurchaseRepositoryRows = async (dates) => {
@@ -355,16 +395,20 @@ const buildCreatorFinanceRepository = async ({
   const recentEntries = [];
 
   let grossRevenue = 0;
+  let reversalGrossRevenue = 0;
+  let refundedGrossRevenue = 0;
+  let chargebackGrossRevenue = 0;
   let processingFees = 0;
   let taxes = 0;
   let netRevenue = 0;
   let repositoryAmount = 0;
   let creatorAmount = 0;
   let paidTransactions = 0;
+  let reversalEntries = 0;
 
   repositoryRows.forEach((purchase) => {
     const amount = roundMoney(purchase?.grossAmount || purchase?.amount);
-    if (amount <= 0) {
+    if (!Number.isFinite(amount) || amount === 0) {
       return;
     }
 
@@ -402,8 +446,24 @@ const buildCreatorFinanceRepository = async ({
       purchase?.creatorAmount ?? purchaseShare.creatorAmount
     );
 
-    paidTransactions += 1;
-    grossRevenue += amount;
+    const transactionDelta = Number(purchase?.transactionDelta ?? 1);
+    const reversalDelta = Number(purchase?.reversalDelta ?? 0);
+    const isReversal = Boolean(purchase?.isReversal);
+    const reversalGrossAmount = isReversal
+      ? roundMoney(purchase?.reversalGrossAmount ?? Math.abs(amount))
+      : 0;
+    const refundGrossAmount = purchase?.entryType === "refund_debit"
+      ? reversalGrossAmount
+      : 0;
+    const chargebackGrossAmount = purchase?.entryType === "chargeback_debit"
+      ? reversalGrossAmount
+      : 0;
+    paidTransactions += transactionDelta;
+    reversalEntries += reversalDelta;
+    grossRevenue += isReversal ? 0 : amount;
+    reversalGrossRevenue += reversalGrossAmount;
+    refundedGrossRevenue += refundGrossAmount;
+    chargebackGrossRevenue += chargebackGrossAmount;
     processingFees += processingFee;
     taxes += tax;
     netRevenue += shareableNetRevenue;
@@ -412,13 +472,17 @@ const buildCreatorFinanceRepository = async ({
 
     const bucket = breakdownMap.get(categoryMeta.key);
     if (bucket) {
-      bucket.grossRevenue += amount;
+      bucket.grossRevenue += isReversal ? 0 : amount;
+      bucket.reversalGrossRevenue += reversalGrossAmount;
+      bucket.refundedGrossRevenue += refundGrossAmount;
+      bucket.chargebackGrossRevenue += chargebackGrossAmount;
       bucket.processingFees += processingFee;
       bucket.taxes += tax;
       bucket.netRevenue += shareableNetRevenue;
       bucket.repositoryAmount += platformAllocation;
       bucket.creatorAmount += creatorAllocation;
-      bucket.transactions += 1;
+      bucket.transactions += transactionDelta;
+      bucket.reversals += reversalDelta;
     }
 
     const creatorRow = creatorsAggregate.get(creatorId) || {
@@ -426,32 +490,43 @@ const buildCreatorFinanceRepository = async ({
       displayName: creator.displayName,
       username: creator.username,
       grossRevenue: 0,
+      reversalGrossRevenue: 0,
+      refundedGrossRevenue: 0,
+      chargebackGrossRevenue: 0,
       processingFees: 0,
       taxes: 0,
       netRevenue: 0,
       repositoryAmount: 0,
       creatorAmount: 0,
       transactions: 0,
+      reversals: 0,
     };
-    creatorRow.grossRevenue += amount;
+    creatorRow.grossRevenue += isReversal ? 0 : amount;
+    creatorRow.reversalGrossRevenue += reversalGrossAmount;
+    creatorRow.refundedGrossRevenue += refundGrossAmount;
+    creatorRow.chargebackGrossRevenue += chargebackGrossAmount;
     creatorRow.processingFees += processingFee;
     creatorRow.taxes += tax;
     creatorRow.netRevenue += shareableNetRevenue;
     creatorRow.repositoryAmount += platformAllocation;
     creatorRow.creatorAmount += creatorAllocation;
-    creatorRow.transactions += 1;
+    creatorRow.transactions += transactionDelta;
+    creatorRow.reversals += reversalDelta;
     creatorsAggregate.set(creatorId, creatorRow);
 
     if (recentEntries.length < MAX_RECENT_ENTRIES) {
       recentEntries.push({
         id: toId(purchase?._id),
+        purchaseId: toId(purchase?.purchaseId || purchase?._id),
         creatorId,
         creatorDisplayName: creator.displayName,
         creatorUsername: creator.username,
         itemType: purchase?.itemType || "",
         itemTitle,
         sourceKey: categoryMeta.key,
-        sourceLabel: categoryMeta.label,
+        sourceLabel: purchase?.isReversal
+          ? `${purchase?.entryType === "chargeback_debit" ? "Chargeback" : "Refund"} - ${categoryMeta.label}`
+          : categoryMeta.label,
         grossAmount: amount,
         processingFeeAmount: processingFee,
         taxAmount: tax,
@@ -462,15 +537,21 @@ const buildCreatorFinanceRepository = async ({
         provider: purchase?.provider || "",
         providerRef: purchase?.providerRef || "",
         paidAt: purchase?.paidAt || purchase?.createdAt || null,
+        entryType: purchase?.entryType || "platform_fee",
+        direction: purchase?.direction || "credit",
+        isReversal: Boolean(purchase?.isReversal),
       });
     }
   });
 
   const breakdownItems = Array.from(breakdownMap.values())
-    .filter((entry) => entry.transactions > 0)
+    .filter((entry) => entry.transactions > 0 || entry.reversals > 0)
     .map((entry) => ({
       ...entry,
       grossRevenue: roundMoney(entry.grossRevenue),
+      reversalGrossRevenue: roundMoney(entry.reversalGrossRevenue),
+      refundedGrossRevenue: roundMoney(entry.refundedGrossRevenue),
+      chargebackGrossRevenue: roundMoney(entry.chargebackGrossRevenue),
       processingFees: roundMoney(entry.processingFees),
       taxes: roundMoney(entry.taxes),
       netRevenue: roundMoney(entry.netRevenue),
@@ -483,6 +564,9 @@ const buildCreatorFinanceRepository = async ({
     .map((entry) => ({
       ...entry,
       grossRevenue: roundMoney(entry.grossRevenue),
+      reversalGrossRevenue: roundMoney(entry.reversalGrossRevenue),
+      refundedGrossRevenue: roundMoney(entry.refundedGrossRevenue),
+      chargebackGrossRevenue: roundMoney(entry.chargebackGrossRevenue),
       processingFees: roundMoney(entry.processingFees),
       taxes: roundMoney(entry.taxes),
       netRevenue: roundMoney(entry.netRevenue),
@@ -502,12 +586,16 @@ const buildCreatorFinanceRepository = async ({
       name: "Earnings From Creators",
       currency: "NGN",
       grossRevenue: roundMoney(grossRevenue),
+      reversalGrossRevenue: roundMoney(reversalGrossRevenue),
+      refundedGrossRevenue: roundMoney(refundedGrossRevenue),
+      chargebackGrossRevenue: roundMoney(chargebackGrossRevenue),
       processingFees: roundMoney(processingFees),
       taxes: roundMoney(taxes),
       netRevenue: roundMoney(netRevenue),
       repositoryAmount: roundMoney(repositoryAmount),
       creatorAmount: roundMoney(creatorAmount),
       paidTransactions,
+      reversalEntries,
       activeCreators: creatorsAggregate.size,
       songAlbumPlatformSharePercent: PLATFORM_SHARE_PERCENT,
       songAlbumCreatorSharePercent: CREATOR_SHARE_PERCENT,
@@ -516,9 +604,9 @@ const buildCreatorFinanceRepository = async ({
       purpose:
         "From 15 July 2026, song and album sales allocate 75% of Net Revenue to the artist and 25% to Tengacion. Other content types retain their applicable policy.",
       netRevenueNote:
-        "Under the current song/album policy, recorded payment-processing fees and applicable taxes reduce Net Revenue at settlement; processed refunds and chargebacks reverse the related allocations.",
+        "Recorded payment-processing fees and applicable taxes reduce Net Revenue at settlement. Gross sales remain gross, while processed refunds and chargebacks are reported separately and reverse the related allocations.",
       accountingNote:
-        "Historical payments retain their original stored split. Refund and reversal entries are tracked in the revenue ledger; automated provider chargeback ingestion remains a finance-assurance coverage gap.",
+        "Historical payments retain their original stored split. Refunds and Paystack dispute outcomes are tracked through idempotent wallet and revenue-ledger reversals.",
     },
     breakdown: {
       items: breakdownItems,

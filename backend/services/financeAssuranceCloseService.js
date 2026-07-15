@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const CreatorPayoutRequest = require("../models/CreatorPayoutRequest");
 const Entitlement = require("../models/Entitlement");
+const PaymentDispute = require("../models/PaymentDispute");
 const PaymentWebhookEvent = require("../models/PaymentWebhookEvent");
 const Purchase = require("../models/Purchase");
 const WalletEntry = require("../models/WalletEntry");
@@ -47,6 +48,27 @@ const toObjectId = (value) => {
 const createDateMatch = (field, dates) => ({
   [field]: { $gte: dates.start, $lte: dates.end },
 });
+
+const toValidDate = (value) => {
+  if (!value) {
+    return null;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(date.getTime()) ? date : null;
+};
+
+const isDateWithin = (value, dates) => {
+  const date = toValidDate(value);
+  return Boolean(date && date >= dates.start && date <= dates.end);
+};
+
+const latestDate = (values = []) => {
+  const dates = values.map(toValidDate).filter(Boolean);
+  if (!dates.length) {
+    return null;
+  }
+  return new Date(Math.max(...dates.map((date) => date.getTime())));
+};
 
 const sumBy = (rows = [], selector = () => 0) =>
   clampMoney(rows.reduce((sum, row) => sum + Number(selector(row) || 0), 0));
@@ -200,7 +222,12 @@ const loadEntitlementCoverage = async (eligiblePurchases = []) => {
   };
 };
 
-const loadWalletEntries = async ({ sourceType, sourceIds, entryTypes }) => {
+const loadWalletEntries = async ({
+  sourceType,
+  sourceIds,
+  entryTypes,
+  effectiveDates = null,
+}) => {
   const ids = sourceIds.map(toObjectId).filter(Boolean);
   if (!ids.length) {
     return [];
@@ -210,8 +237,9 @@ const loadWalletEntries = async ({ sourceType, sourceIds, entryTypes }) => {
     sourceType,
     sourceId: { $in: ids },
     entryType: { $in: entryTypes },
+    ...(effectiveDates ? createDateMatch("effectiveAt", effectiveDates) : {}),
   })
-    .select("_id ownerType ownerId entryType amount grossAmount currency sourceType sourceId sourceRef direction bucket")
+    .select("_id ownerType ownerId entryType amount grossAmount currency sourceType sourceId sourceRef direction bucket effectiveAt")
     .lean();
 };
 
@@ -250,14 +278,296 @@ const loadWebhookSummary = async (dates) => {
     .lean();
   const statusCounts = countBy(rows, (row) => row.status || "unknown");
   const providerCounts = countBy(rows, (row) => row.provider || "unknown");
+  const eventTypeCounts = countBy(rows, (row) => row.eventType || "unknown");
+  const paystackRows = rows.filter(
+    (row) => normalizeDisputeValue(row.provider) === "paystack"
+  );
+  const disputeRows = paystackRows.filter((row) =>
+    normalizeDisputeValue(row.eventType).startsWith("charge.dispute.")
+  );
+  const latestPaystackEventAt = latestDate(paystackRows.map((row) => row.createdAt));
+  const latestDisputeEventAt = latestDate(disputeRows.map((row) => row.createdAt));
 
   return {
     total: rows.length,
     statusCounts,
     providerCounts,
+    eventTypeCounts,
     failed: Number(statusCounts.failed || 0),
     processed: Number(statusCounts.processed || 0),
     duplicates: rows.reduce((sum, row) => sum + Number(row?.duplicateCount || 0), 0),
+    paystackEvents: paystackRows.length,
+    disputeEvents: disputeRows.length,
+    disputeEventTypeCounts: countBy(
+      disputeRows,
+      (row) => row.eventType || "unknown"
+    ),
+    latestPaystackEventAt: latestPaystackEventAt?.toISOString() || null,
+    latestDisputeEventAt: latestDisputeEventAt?.toISOString() || null,
+  };
+};
+
+const loadDisputeRows = async (dates) =>
+  PaymentDispute.find({
+    $or: [
+      createDateMatch("openedAt", dates),
+      createDateMatch("resolvedAt", dates),
+      createDateMatch("lastEventAt", dates),
+      createDateMatch("createdAt", dates),
+      {
+        $and: [
+          {
+            $or: [
+              { openedAt: { $lte: dates.end } },
+              { openedAt: null, createdAt: { $lte: dates.end } },
+            ],
+          },
+          {
+            $or: [
+              { resolvedAt: null },
+              { resolvedAt: { $gt: dates.end } },
+            ],
+          },
+        ],
+      },
+    ],
+  })
+    .select(
+      "_id provider providerDisputeId purchaseId providerRef providerTransactionId status resolution currency disputedAmount refundAmount financialState chargebackAmount creatorChargebackAmount platformChargebackAmount manualReviewReason openedAt resolvedAt lastEventAt lastEventType createdAt updatedAt"
+    )
+    .lean();
+
+const normalizeDisputeValue = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, "-");
+
+const hasAcceptedDisputeResolution = (row) => {
+  const resolution = normalizeDisputeValue(row?.resolution);
+  return resolution === "merchant-accepted" || resolution === "accepted";
+};
+
+const isConfirmedDebitedDispute = (row) =>
+  normalizeDisputeValue(row?.financialState) === "debited";
+
+const getDisputeFinancialEffectiveAt = (row) =>
+  toValidDate(row?.resolvedAt || row?.lastEventAt || row?.updatedAt || row?.createdAt);
+
+const isDisputeDebitWithin = (row, dates) =>
+  isConfirmedDebitedDispute(row) &&
+  isDateWithin(getDisputeFinancialEffectiveAt(row), dates);
+
+const hasDisputeActivityWithin = (row, dates) =>
+  [row?.openedAt, row?.resolvedAt, row?.lastEventAt, row?.createdAt].some((value) =>
+    isDateWithin(value, dates)
+  );
+
+const isDisputeOpenAsOf = (row, endDate) => {
+  const end = toValidDate(endDate);
+  const openedAt = toValidDate(row?.openedAt || row?.createdAt);
+  const resolvedAt = toValidDate(row?.resolvedAt);
+  const financialState = normalizeDisputeValue(row?.financialState);
+  if (!end || !openedAt || openedAt > end) {
+    return false;
+  }
+  if (resolvedAt) {
+    return resolvedAt > end;
+  }
+  return !["debited", "released"].includes(financialState);
+};
+
+const buildDisputeSummary = ({
+  disputeRows = [],
+  walletEntries = [],
+  webhookSummary = {},
+  dates,
+} = {}) => {
+  const periodDisputes = disputeRows.filter((row) =>
+    hasDisputeActivityWithin(row, dates)
+  );
+  const openedDisputes = disputeRows.filter((row) => isDateWithin(row?.openedAt, dates));
+  const resolvedDisputes = disputeRows.filter((row) =>
+    isDateWithin(row?.resolvedAt, dates)
+  );
+  const debitedDisputes = disputeRows.filter(
+    (row) => isDisputeDebitWithin(row, dates)
+  );
+  const openDisputes = disputeRows.filter((row) =>
+    isDisputeOpenAsOf(row, dates.end)
+  );
+  const manualReviewDisputes = disputeRows.filter((row) => {
+    const financialEffectiveAt = getDisputeFinancialEffectiveAt(row);
+    return Boolean(
+      financialEffectiveAt &&
+        financialEffectiveAt <= dates.end &&
+        (normalizeDisputeValue(row?.financialState) === "manual-review" ||
+          String(row?.manualReviewReason || "").trim())
+    );
+  });
+  const acceptedLosses = resolvedDisputes.filter(hasAcceptedDisputeResolution);
+  const missingFinancialDisputes = acceptedLosses.filter(
+    (row) => !isDisputeDebitWithin(row, dates)
+  );
+  const allocationMismatchDisputes = debitedDisputes.filter(
+    (row) =>
+      Math.abs(
+        Number(row?.chargebackAmount || 0) -
+          Number(row?.creatorChargebackAmount || 0) -
+          Number(row?.platformChargebackAmount || 0)
+      ) > 0.009
+  );
+  const creatorDebitEntries = walletEntries.filter(
+    (entry) =>
+      entry.entryType === "chargeback_debit" &&
+      entry.ownerType === "creator" &&
+      Number(entry.amount || 0) > 0
+  );
+  const platformDebitEntries = walletEntries.filter(
+    (entry) =>
+      entry.entryType === "chargeback_debit" &&
+      entry.ownerType === "platform" &&
+      Number(entry.amount || 0) > 0
+  );
+  const ignoredZeroAmountWalletEntries = walletEntries.filter(
+    (entry) =>
+      entry.entryType === "chargeback_debit" && Number(entry.amount || 0) <= 0
+  ).length;
+  const expectedCreatorChargebacks = sumBy(
+    debitedDisputes,
+    (row) => row.creatorChargebackAmount
+  );
+  const expectedPlatformChargebacks = sumBy(
+    debitedDisputes,
+    (row) => row.platformChargebackAmount
+  );
+  const actualCreatorChargebacks = sumBy(creatorDebitEntries, (entry) => entry.amount);
+  const actualPlatformChargebacks = sumBy(platformDebitEntries, (entry) => entry.amount);
+  const expectedWalletEntries = debitedDisputes.reduce(
+    (count, row) =>
+      count +
+      (Number(row?.creatorChargebackAmount || 0) > 0 ? 1 : 0) +
+      (Number(row?.platformChargebackAmount || 0) > 0 ? 1 : 0),
+    0
+  );
+  const actualWalletEntries = creatorDebitEntries.length + platformDebitEntries.length;
+  const hasModelActivity = periodDisputes.length > 0;
+  const hasPaystackWebhookActivity = Number(webhookSummary.paystackEvents || 0) > 0;
+  const hasDisputeWebhookActivity = Number(webhookSummary.disputeEvents || 0) > 0;
+  const sourceFreshness =
+    hasModelActivity || hasPaystackWebhookActivity ? "current" : "delayed";
+  let sourceStatus = "unobserved";
+  if (hasDisputeWebhookActivity) {
+    sourceStatus = "current";
+  } else if (hasModelActivity) {
+    sourceStatus = "current_model_evidence";
+  } else if (openDisputes.length > 0) {
+    sourceStatus = "tracked_open_disputes";
+  } else if (hasPaystackWebhookActivity) {
+    sourceStatus = "configured_no_dispute_activity";
+  }
+  const latestModelEventAt = latestDate(
+    [...periodDisputes, ...openDisputes].flatMap((row) => [
+      row.lastEventAt,
+      row.resolvedAt,
+      row.openedAt,
+      row.createdAt,
+    ])
+  );
+  const latestProviderEventAt = latestDate([
+    webhookSummary.latestDisputeEventAt,
+    latestModelEventAt,
+  ]);
+
+  return {
+    sourceStatus,
+    sourceFreshness,
+    latestProviderEventAt: latestProviderEventAt?.toISOString() || null,
+    reconciliationStatus:
+      manualReviewDisputes.length > 0 ||
+      openDisputes.length > 0 ||
+      missingFinancialDisputes.length > 0 ||
+      allocationMismatchDisputes.length > 0 ||
+      expectedWalletEntries !== actualWalletEntries ||
+      expectedCreatorChargebacks !== actualCreatorChargebacks ||
+      expectedPlatformChargebacks !== actualPlatformChargebacks
+        ? "attention_required"
+        : "reconciled",
+    disputeEvents: Number(webhookSummary.disputeEvents || 0),
+    disputeEventTypeCounts: webhookSummary.disputeEventTypeCounts || {},
+    disputeCount: periodDisputes.length,
+    trackedDisputeCount: disputeRows.length,
+    statusCounts: countBy(periodDisputes, (row) =>
+      isDisputeOpenAsOf(row, dates.end) ? "open" : row.status || "unknown"
+    ),
+    resolutionCounts: countBy(
+      resolvedDisputes,
+      (row) => row.resolution || "unresolved"
+    ),
+    financialStateCounts: countBy(
+      periodDisputes,
+      (row) =>
+        isDisputeOpenAsOf(row, dates.end)
+          ? "held"
+          : row.financialState || "none"
+    ),
+    openedCount: openedDisputes.length,
+    resolvedCount: resolvedDisputes.length,
+    openCount: openDisputes.length,
+    openDisputedAmount: sumBy(openDisputes, (row) => row.disputedAmount),
+    acceptedLossCount: acceptedLosses.length,
+    debitedCount: debitedDisputes.length,
+    missingFinancialCount: missingFinancialDisputes.length,
+    manualReviewCount: manualReviewDisputes.length,
+    allocationMismatchCount: allocationMismatchDisputes.length,
+    disputedAmount: sumBy(openedDisputes, (row) => row.disputedAmount),
+    reportedProviderRefundAmount: sumBy(
+      resolvedDisputes,
+      (row) => row.refundAmount
+    ),
+    providerRefundAmount: sumBy(debitedDisputes, (row) => row.refundAmount),
+    chargebackAmount: sumBy(debitedDisputes, (row) => row.chargebackAmount),
+    expectedCreatorChargebacks,
+    actualCreatorChargebacks,
+    expectedPlatformChargebacks,
+    actualPlatformChargebacks,
+    expectedWalletEntries,
+    actualWalletEntries,
+    ignoredZeroAmountWalletEntries,
+    missingWalletEntries: Math.max(0, expectedWalletEntries - actualWalletEntries),
+    manualReviewDisputes: manualReviewDisputes.slice(0, 8).map((row) => ({
+      disputeId: toIdString(row._id),
+      provider: row.provider || "",
+      providerDisputeId: row.providerDisputeId || "",
+      providerRef: row.providerRef || "",
+      purchaseId: toIdString(row.purchaseId),
+      status: row.status || "",
+      resolution: row.resolution || "",
+      financialState: row.financialState || "",
+      reason: row.manualReviewReason || "",
+    })),
+    missingFinancialDisputes: missingFinancialDisputes.slice(0, 8).map((row) => ({
+      disputeId: toIdString(row._id),
+      provider: row.provider || "",
+      providerDisputeId: row.providerDisputeId || "",
+      providerRef: row.providerRef || "",
+      purchaseId: toIdString(row.purchaseId),
+      resolution: row.resolution || "",
+      financialState: row.financialState || "",
+      chargebackAmount: clampMoney(row.chargebackAmount || 0),
+    })),
+    openDisputes: openDisputes.slice(0, 8).map((row) => ({
+      disputeId: toIdString(row._id),
+      provider: row.provider || "",
+      providerDisputeId: row.providerDisputeId || "",
+      providerRef: row.providerRef || "",
+      purchaseId: toIdString(row.purchaseId),
+      status: row.status || "",
+      financialState: row.financialState || "",
+      disputedAmount: clampMoney(row.disputedAmount || 0),
+      openedAt: row.openedAt || null,
+      lastEventAt: row.lastEventAt || null,
+    })),
   };
 };
 
@@ -269,6 +579,10 @@ const buildCreatorBalanceConfidence = ({
   walletEntries,
   refundEntries,
   payoutDebitEntries,
+  disputeRows,
+  disputePurchases,
+  disputeWalletEntries,
+  dates,
 } = {}) => {
   const expectedSaleCreditsByCreator = new Map();
   const actualSaleCreditsByCreator = new Map();
@@ -276,6 +590,8 @@ const buildCreatorBalanceConfidence = ({
   const actualRefundDebitsByCreator = new Map();
   const expectedPayoutDebitsByCreator = new Map();
   const actualPayoutDebitsByCreator = new Map();
+  const expectedChargebackDebitsByCreator = new Map();
+  const actualChargebackDebitsByCreator = new Map();
 
   paidPurchases.forEach((purchase) => {
     addMapAmount(
@@ -312,6 +628,32 @@ const buildCreatorBalanceConfidence = ({
     addMapAmount(actualPayoutDebitsByCreator, toIdString(entry.ownerId), entry.amount);
   });
 
+  const disputeCreatorByPurchaseId = new Map(
+    (disputePurchases || []).map((purchase) => [
+      toIdString(purchase._id),
+      toIdString(purchase.creatorId),
+    ])
+  );
+  (disputeRows || [])
+    .filter((row) => isDisputeDebitWithin(row, dates))
+    .forEach((row) => {
+      addMapAmount(
+        expectedChargebackDebitsByCreator,
+        disputeCreatorByPurchaseId.get(toIdString(row.purchaseId)),
+        row.creatorChargebackAmount
+      );
+    });
+  (disputeWalletEntries || [])
+    .filter(
+      (entry) =>
+        entry.entryType === "chargeback_debit" &&
+        entry.ownerType === "creator" &&
+        Number(entry.amount || 0) > 0
+    )
+    .forEach((entry) => {
+      addMapAmount(actualChargebackDebitsByCreator, toIdString(entry.ownerId), entry.amount);
+    });
+
   const rows = uniqueIds(creators).map((creatorId) => {
     const saleVariance = clampMoney(
       Math.abs(
@@ -331,10 +673,17 @@ const buildCreatorBalanceConfidence = ({
           Number(actualPayoutDebitsByCreator.get(creatorId) || 0)
       )
     );
+    const chargebackVariance = clampMoney(
+      Math.abs(
+        Number(expectedChargebackDebitsByCreator.get(creatorId) || 0) -
+          Number(actualChargebackDebitsByCreator.get(creatorId) || 0)
+      )
+    );
     const issues = [
       saleVariance > 0 ? "sale_credit_variance" : "",
       refundVariance > 0 ? "refund_debit_variance" : "",
       payoutVariance > 0 ? "payout_debit_variance" : "",
+      chargebackVariance > 0 ? "chargeback_debit_variance" : "",
     ].filter(Boolean);
 
     return {
@@ -346,7 +695,15 @@ const buildCreatorBalanceConfidence = ({
       actualRefundDebits: clampMoney(actualRefundDebitsByCreator.get(creatorId) || 0),
       expectedPayoutDebits: clampMoney(expectedPayoutDebitsByCreator.get(creatorId) || 0),
       actualPayoutDebits: clampMoney(actualPayoutDebitsByCreator.get(creatorId) || 0),
-      variance: clampMoney(saleVariance + refundVariance + payoutVariance),
+      expectedChargebackDebits: clampMoney(
+        expectedChargebackDebitsByCreator.get(creatorId) || 0
+      ),
+      actualChargebackDebits: clampMoney(
+        actualChargebackDebitsByCreator.get(creatorId) || 0
+      ),
+      variance: clampMoney(
+        saleVariance + refundVariance + payoutVariance + chargebackVariance
+      ),
       issues,
     };
   });
@@ -376,6 +733,7 @@ const buildFinanceAssuranceClose = async ({
     refundedPurchases,
     payoutRows,
     webhookSummary,
+    disputeRows,
   ] = await Promise.all([
     loadPurchaseStatusSummary(dates),
     Purchase.find({
@@ -396,16 +754,26 @@ const buildFinanceAssuranceClose = async ({
       .lean(),
     loadPayoutRows(dates),
     loadWebhookSummary(dates),
+    loadDisputeRows(dates),
   ]);
 
   const settlementPurchases = paidPurchases.filter(
     (purchase) => purchase.creatorId && Number(purchase.amount || 0) > 0
   );
+  const chargebackPurchaseIds = new Set(
+    disputeRows
+      .filter(isConfirmedDebitedDispute)
+      .map((row) => toIdString(row.purchaseId))
+      .filter(Boolean)
+  );
+  const standardRefundedPurchases = refundedPurchases.filter(
+    (purchase) => !chargebackPurchaseIds.has(toIdString(purchase._id))
+  );
   const entitlementEligiblePurchases = paidPurchases.filter(
     (purchase) =>
       purchase.status === "paid" && ENTITLEMENT_ITEM_TYPES.includes(String(purchase.itemType || ""))
   );
-  const refundSettlementPurchases = refundedPurchases.filter(
+  const refundSettlementPurchases = standardRefundedPurchases.filter(
     (purchase) => purchase.creatorId && Number(purchase.amount || 0) > 0
   );
 
@@ -414,6 +782,8 @@ const buildFinanceAssuranceClose = async ({
     walletEntries,
     refundEntries,
     payoutDebitEntries,
+    disputeWalletEntries,
+    disputePurchases,
   ] = await Promise.all([
     loadEntitlementCoverage(entitlementEligiblePurchases),
     loadWalletEntries({
@@ -429,7 +799,27 @@ const buildFinanceAssuranceClose = async ({
     loadPayoutDebitEntries(
       payoutRows.filter((row) => row.status === "paid").map((row) => row._id)
     ),
+    loadWalletEntries({
+      sourceType: "dispute",
+      sourceIds: disputeRows.map((row) => row._id),
+      entryTypes: ["chargeback_debit"],
+      effectiveDates: dates,
+    }),
+    Purchase.find({
+      _id: {
+        $in: disputeRows.map((row) => toObjectId(row.purchaseId)).filter(Boolean),
+      },
+    })
+      .select("_id creatorId")
+      .lean(),
   ]);
+
+  const disputeSummary = buildDisputeSummary({
+    disputeRows,
+    walletEntries: disputeWalletEntries,
+    webhookSummary,
+    dates,
+  });
 
   const saleCreditEntries = walletEntries.filter((entry) => entry.entryType === "sale_credit");
   const platformFeeEntries = walletEntries.filter((entry) => entry.entryType === "platform_fee");
@@ -482,6 +872,7 @@ const buildFinanceAssuranceClose = async ({
     ...settlementPurchases.map((purchase) => purchase.creatorId),
     ...refundSettlementPurchases.map((purchase) => purchase.creatorId),
     ...payoutRows.map((row) => row.creatorProfile),
+    ...disputePurchases.map((purchase) => purchase.creatorId),
   ]);
   const creatorBalanceConfidence = buildCreatorBalanceConfidence({
     creators: creatorsReviewed,
@@ -491,6 +882,10 @@ const buildFinanceAssuranceClose = async ({
     walletEntries,
     refundEntries,
     payoutDebitEntries,
+    disputeRows,
+    disputePurchases,
+    disputeWalletEntries,
+    dates,
   });
 
   const exceptions = [];
@@ -610,6 +1005,101 @@ const buildFinanceAssuranceClose = async ({
       })
     );
   }
+  if (disputeSummary.openCount > 0) {
+    exceptions.push(
+      createVariance({
+        key: "dispute_open_exposure",
+        area: "disputes",
+        label: "Provider disputes remain open at finance close",
+        severity: "medium",
+        expected: 0,
+        actual: disputeSummary.openCount,
+        readinessImpact: "Keeps finance assurance in watch while disputed funds remain exposed to a provider decision.",
+        remediation: "Track provider response deadlines and retain the disputed amount until each dispute is released or debited.",
+      })
+    );
+  }
+  if (disputeSummary.missingFinancialCount > 0) {
+    exceptions.push(
+      createVariance({
+        key: "dispute_financial_gap",
+        area: "disputes",
+        label: "Accepted dispute losses are missing financial reversal evidence",
+        severity: "critical",
+        expected: 0,
+        actual: disputeSummary.missingFinancialCount,
+        readinessImpact: "Blocks finance close because confirmed chargebacks are not reflected in creator and platform balances.",
+        remediation: "Review the listed disputes, resolve purchase matching, and post idempotent chargeback debit entries.",
+      })
+    );
+  }
+  if (disputeSummary.manualReviewCount > 0) {
+    exceptions.push(
+      createVariance({
+        key: "dispute_manual_review",
+        area: "disputes",
+        label: "Provider disputes require manual finance review",
+        severity: "high",
+        expected: 0,
+        actual: disputeSummary.manualReviewCount,
+        readinessImpact: "Requires finance review before chargeback exposure and creator balances can be approved.",
+        remediation: "Resolve each dispute's purchase reference, currency, amount, or provider outcome and replay the safe financial action.",
+      })
+    );
+  }
+  if (disputeSummary.allocationMismatchCount > 0) {
+    exceptions.push(
+      createVariance({
+        key: "dispute_allocation_variance",
+        area: "disputes",
+        label: "Chargeback allocations do not equal the recorded net-revenue loss",
+        severity: "high",
+        expected: disputeSummary.chargebackAmount,
+        actual:
+          disputeSummary.expectedCreatorChargebacks +
+          disputeSummary.expectedPlatformChargebacks,
+        unit: "money",
+        readinessImpact: "Requires finance review because creator and platform chargeback allocations are incomplete or overstated.",
+        remediation: "Recalculate each debited dispute from its purchase revenue-share snapshot and correct the allocation evidence.",
+      })
+    );
+  }
+  if (disputeSummary.expectedWalletEntries !== disputeSummary.actualWalletEntries) {
+    exceptions.push(
+      createVariance({
+        key: "dispute_wallet_gap",
+        area: "disputes",
+        label: "Chargeback wallet entries do not match debited disputes",
+        severity: "critical",
+        expected: disputeSummary.expectedWalletEntries,
+        actual: disputeSummary.actualWalletEntries,
+        readinessImpact: "Blocks balance confidence because recorded chargeback outcomes are missing creator or platform ledger evidence.",
+        remediation: "Replay idempotent chargeback accounting and inspect duplicate or missing dispute source ids.",
+      })
+    );
+  }
+  if (
+    disputeSummary.expectedCreatorChargebacks !== disputeSummary.actualCreatorChargebacks ||
+    disputeSummary.expectedPlatformChargebacks !== disputeSummary.actualPlatformChargebacks
+  ) {
+    exceptions.push(
+      createVariance({
+        key: "dispute_wallet_amount_variance",
+        area: "disputes",
+        label: "Chargeback wallet debit amounts differ from recorded allocations",
+        severity: "high",
+        expected:
+          disputeSummary.expectedCreatorChargebacks +
+          disputeSummary.expectedPlatformChargebacks,
+        actual:
+          disputeSummary.actualCreatorChargebacks +
+          disputeSummary.actualPlatformChargebacks,
+        unit: "money",
+        readinessImpact: "Requires finance review before approving net revenue and creator balance confidence.",
+        remediation: "Compare chargeback_debit entries against creator and platform allocations on each dispute.",
+      })
+    );
+  }
   if (failedPayouts.length > 0) {
     exceptions.push(
       createVariance({
@@ -626,7 +1116,12 @@ const buildFinanceAssuranceClose = async ({
   }
 
   const readinessState = deriveReadinessState(exceptions);
-  const closeCurrency = resolveCloseCurrency([...paidPurchases, ...refundedPurchases, ...payoutRows]);
+  const closeCurrency = resolveCloseCurrency([
+    ...paidPurchases,
+    ...standardRefundedPurchases,
+    ...payoutRows,
+    ...disputeRows,
+  ]);
   const grossPaidAmount = sumBy(paidPurchases, (purchase) => purchase.amount);
   const processingFeeAmount = sumBy(
     paidPurchases,
@@ -640,11 +1135,12 @@ const buildFinanceAssuranceClose = async ({
     paidPurchases,
     (purchase) => computePurchaseRevenueShare(purchase).netRevenueAmount
   );
-  const refundedAmount = sumBy(refundedPurchases, (purchase) => purchase.amount);
+  const refundedAmount = sumBy(standardRefundedPurchases, (purchase) => purchase.amount);
   const refundedNetRevenueAmount = sumBy(
-    refundedPurchases,
+    standardRefundedPurchases,
     (purchase) => computePurchaseRevenueShare(purchase).netRevenueAmount
   );
+  const chargebackNetRevenueAmount = disputeSummary.chargebackAmount;
 
   return {
     filters: {
@@ -670,14 +1166,18 @@ const buildFinanceAssuranceClose = async ({
       failedPayments: Number(purchaseStatusSummary.counts.failed || 0),
       pendingPayments: Number(purchaseStatusSummary.counts.pending || 0),
       abandonedPayments: Number(purchaseStatusSummary.counts.abandoned || 0),
-      refundedPayments: refundedPurchases.length,
+      refundedPayments: standardRefundedPurchases.length,
       grossPaidAmount,
       processingFeeAmount,
       taxAmount,
       netRevenueAmount,
       refundedAmount,
       refundedNetRevenueAmount,
-      netSettledAmount: clampMoney(netRevenueAmount - refundedNetRevenueAmount),
+      chargebackProviderAmount: disputeSummary.providerRefundAmount,
+      chargebackNetRevenueAmount,
+      netSettledAmount: roundMoney(
+        netRevenueAmount - refundedNetRevenueAmount - chargebackNetRevenueAmount
+      ),
       entitlementEligiblePurchases: entitlementEligiblePurchases.length,
       entitlementGrants: entitlementCoverage.grants,
       entitlementMissing: entitlementCoverage.missing,
@@ -691,6 +1191,11 @@ const buildFinanceAssuranceClose = async ({
       payoutOpenAmount: sumBy(openPayouts, (row) => row.amount),
       payoutPaidAmount: sumBy(paidPayouts, (row) => row.amount),
       payoutFailedCount: failedPayouts.length,
+      disputeCount: disputeSummary.disputeCount,
+      disputeOpenCount: disputeSummary.openCount,
+      disputeOpenAmount: disputeSummary.openDisputedAmount,
+      disputeManualReviewCount: disputeSummary.manualReviewCount,
+      disputeMissingFinancialCount: disputeSummary.missingFinancialCount,
       creatorBalanceConfidenceRate: creatorBalanceConfidence.confidenceRate,
       creatorBalanceConfidenceState: creatorBalanceConfidence.confidenceState,
       exceptionCount: exceptions.length,
@@ -705,6 +1210,8 @@ const buildFinanceAssuranceClose = async ({
         netRevenueAmount,
         refundedAmount,
         refundedNetRevenueAmount,
+        chargebackProviderAmount: disputeSummary.providerRefundAmount,
+        chargebackNetRevenueAmount,
       },
       webhooks: webhookSummary,
       entitlements: {
@@ -722,7 +1229,7 @@ const buildFinanceAssuranceClose = async ({
         actualPlatformFees,
       },
       refunds: {
-        events: refundedPurchases.length,
+        events: standardRefundedPurchases.length,
         expectedEntries: expectedRefundEntries,
         actualEntries: actualRefundEntries,
         expectedCreatorRefunds,
@@ -743,10 +1250,7 @@ const buildFinanceAssuranceClose = async ({
         actualWalletDebits: actualPayoutDebits,
       },
       creatorBalances: creatorBalanceConfidence,
-      disputes: {
-        sourceStatus: "not_configured",
-        disputeEvents: 0,
-      },
+      disputes: disputeSummary,
     },
     sourceSystems: [
       { key: "purchases", label: "Purchase records", freshness: "current" },
@@ -754,17 +1258,14 @@ const buildFinanceAssuranceClose = async ({
       { key: "entitlements", label: "Entitlement grants", freshness: "current" },
       { key: "wallet_entries", label: "Wallet ledger entries", freshness: "current" },
       { key: "creator_payout_requests", label: "Creator payout requests", freshness: "current" },
-      { key: "disputes", label: "Provider dispute feed", freshness: "blocked" },
-    ],
-    evidenceGaps: [
       {
-        key: "provider_dispute_feed",
-        severity: "medium",
-        owner: "Finance and operations",
-        status: "blocked",
-        note: "No provider dispute or chargeback source is configured yet, so dispute events are reported as a coverage gap rather than reconciled evidence.",
+        key: "disputes",
+        label: "Provider dispute feed",
+        freshness: disputeSummary.sourceFreshness,
+        latestEventAt: disputeSummary.latestProviderEventAt,
       },
     ],
+    evidenceGaps: [],
     exceptions,
   };
 };

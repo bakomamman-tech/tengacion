@@ -274,11 +274,11 @@ exports.getCreatorSales = asyncHandler(async (req, res) => {
   );
 
   const seededBreakdown = {
-    track: { count: 0, revenue: 0, processingFees: 0, taxes: 0, netRevenue: 0, creatorAmount: 0 },
-    book: { count: 0, revenue: 0, processingFees: 0, taxes: 0, netRevenue: 0, creatorAmount: 0 },
-    album: { count: 0, revenue: 0, processingFees: 0, taxes: 0, netRevenue: 0, creatorAmount: 0 },
-    video: { count: 0, revenue: 0, processingFees: 0, taxes: 0, netRevenue: 0, creatorAmount: 0 },
-    subscription: { count: 0, revenue: 0, processingFees: 0, taxes: 0, netRevenue: 0, creatorAmount: 0 },
+    track: { count: 0, revenue: 0, processingFees: 0, taxes: 0, chargebacks: 0, netRevenue: 0, creatorAmount: 0 },
+    book: { count: 0, revenue: 0, processingFees: 0, taxes: 0, chargebacks: 0, netRevenue: 0, creatorAmount: 0 },
+    album: { count: 0, revenue: 0, processingFees: 0, taxes: 0, chargebacks: 0, netRevenue: 0, creatorAmount: 0 },
+    video: { count: 0, revenue: 0, processingFees: 0, taxes: 0, chargebacks: 0, netRevenue: 0, creatorAmount: 0 },
+    subscription: { count: 0, revenue: 0, processingFees: 0, taxes: 0, chargebacks: 0, netRevenue: 0, creatorAmount: 0 },
   };
 
   const breakdown = walletSnapshot.breakdown.reduce((acc, row) => {
@@ -289,6 +289,7 @@ exports.getCreatorSales = asyncHandler(async (req, res) => {
         revenue: 0,
         processingFees: 0,
         taxes: 0,
+        chargebacks: 0,
         netRevenue: 0,
         creatorAmount: 0,
       };
@@ -299,6 +300,7 @@ exports.getCreatorSales = asyncHandler(async (req, res) => {
       revenue: Number(row?.grossRevenue || 0),
       processingFees: Number(row?.processingFees || 0),
       taxes: Number(row?.taxes || 0),
+      chargebacks: Number(row?.chargebacks || 0),
       netRevenue: Number(row?.netRevenue ?? row?.grossRevenue ?? 0),
       creatorAmount: Number(row?.creatorEarnings || 0),
     };
@@ -310,12 +312,16 @@ exports.getCreatorSales = asyncHandler(async (req, res) => {
     totalRevenue: Number(walletSnapshot.summary?.grossRevenue || 0),
     processingFees: Number(walletSnapshot.summary?.processingFees || 0),
     taxes: Number(walletSnapshot.summary?.taxes || 0),
+    chargebacks: Number(walletSnapshot.summary?.chargebacks || 0),
     netRevenue: Number(
       walletSnapshot.summary?.netRevenue ?? walletSnapshot.summary?.grossRevenue ?? 0
     ),
     totalCreatorEarnings: Number(walletSnapshot.summary?.totalEarnings || 0),
     platformRevenue: Number(walletSnapshot.summary?.platformRevenue || 0),
     availableBalance: Number(walletSnapshot.summary?.availableBalance || 0),
+    spendableBalance: Number(walletSnapshot.summary?.spendableBalance || 0),
+    recoverableBalance: Number(walletSnapshot.summary?.recoverableBalance || 0),
+    debtBalance: Number(walletSnapshot.summary?.debtBalance || 0),
     pendingBalance: Number(walletSnapshot.summary?.pendingBalance || 0),
     withdrawn: Number(walletSnapshot.summary?.withdrawn || 0),
     currency: walletSnapshot.currency || "NGN",

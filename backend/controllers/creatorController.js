@@ -490,11 +490,14 @@ const getDashboardPayload = async ({ profile, user }) => {
     grossRevenue: clampMoney(walletSnapshot.summary?.grossRevenue),
     processingFees: clampMoney(walletSnapshot.summary?.processingFees),
     taxes: clampMoney(walletSnapshot.summary?.taxes),
-    netRevenue: clampMoney(walletSnapshot.summary?.netRevenue),
-    totalEarnings: clampMoney(walletSnapshot.summary?.totalEarnings),
-    platformRevenue: clampMoney(walletSnapshot.summary?.platformRevenue),
-    availableBalance: clampMoney(walletSnapshot.summary?.availableBalance),
-    pendingBalance: clampMoney(walletSnapshot.summary?.pendingBalance),
+    netRevenue: Number(walletSnapshot.summary?.netRevenue || 0),
+    totalEarnings: Number(walletSnapshot.summary?.totalEarnings || 0),
+    platformRevenue: Number(walletSnapshot.summary?.platformRevenue || 0),
+    availableBalance: Number(walletSnapshot.summary?.availableBalance || 0),
+    spendableBalance: clampMoney(walletSnapshot.summary?.spendableBalance),
+    recoverableBalance: Number(walletSnapshot.summary?.recoverableBalance || 0),
+    debtBalance: clampMoney(walletSnapshot.summary?.debtBalance),
+    pendingBalance: Number(walletSnapshot.summary?.pendingBalance || 0),
     withdrawn: clampMoney(walletSnapshot.summary?.withdrawn),
     walletBacked: Boolean(walletSnapshot.walletBacked),
   };
@@ -505,7 +508,7 @@ const getDashboardPayload = async ({ profile, user }) => {
     (entry) => entry.key === "subscriptions" || entry.key === "subscription"
   );
   const subscriptionEarnings = subscriptionWalletBucket
-    ? clampMoney(subscriptionWalletBucket.creatorEarnings)
+    ? Number(subscriptionWalletBucket.creatorEarnings || 0)
     : subscriptionPurchases.reduce(
         (sum, entry) =>
           sum + clampMoney(computePurchaseRevenueShare(entry).creatorAmount),
@@ -519,9 +522,9 @@ const getDashboardPayload = async ({ profile, user }) => {
       drafts: musicTracks.filter((entry) => entry.publishedStatus === "draft").length
         + albums.filter((entry) => entry.publishedStatus === "draft").length
         + videos.filter((entry) => entry.publishedStatus === "draft").length,
-      earnings: musicTracks.reduce((sum, entry) => sum + clampMoney(entry.earnings), 0)
-        + albums.reduce((sum, entry) => sum + clampMoney(entry.earnings), 0)
-        + videos.reduce((sum, entry) => sum + clampMoney(entry.earnings), 0),
+      earnings: musicTracks.reduce((sum, entry) => sum + Number(entry.earnings || 0), 0)
+        + albums.reduce((sum, entry) => sum + Number(entry.earnings || 0), 0)
+        + videos.reduce((sum, entry) => sum + Number(entry.earnings || 0), 0),
       underReview: musicTracks.filter((entry) => entry.publishedStatus === "under_review").length
         + albums.filter((entry) => entry.publishedStatus === "under_review").length
         + videos.filter((entry) => entry.publishedStatus === "under_review").length,
@@ -529,13 +532,13 @@ const getDashboardPayload = async ({ profile, user }) => {
     bookPublishing: {
       uploads: books.filter((entry) => entry.publishedStatus !== "draft").length,
       drafts: books.filter((entry) => entry.publishedStatus === "draft").length,
-      earnings: books.reduce((sum, entry) => sum + clampMoney(entry.earnings), 0),
+      earnings: books.reduce((sum, entry) => sum + Number(entry.earnings || 0), 0),
       underReview: books.filter((entry) => entry.publishedStatus === "under_review").length,
     },
     podcast: {
       uploads: podcastTracks.filter((entry) => entry.publishedStatus !== "draft").length,
       drafts: podcastTracks.filter((entry) => entry.publishedStatus === "draft").length,
-      earnings: podcastTracks.reduce((sum, entry) => sum + clampMoney(entry.earnings), 0),
+      earnings: podcastTracks.reduce((sum, entry) => sum + Number(entry.earnings || 0), 0),
       underReview: podcastTracks.filter((entry) => entry.publishedStatus === "under_review").length,
     },
     subscriptions: {

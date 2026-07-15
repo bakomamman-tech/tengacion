@@ -7,10 +7,12 @@ const {
   getDiscoveryHomeMock,
   getFeedMock,
   getProfileMock,
+  getTopUpPromoStatusMock,
 } = vi.hoisted(() => ({
   getDiscoveryHomeMock: vi.fn(),
   getFeedMock: vi.fn(),
   getProfileMock: vi.fn(),
+  getTopUpPromoStatusMock: vi.fn(),
 }));
 
 vi.mock("react-hot-toast", () => ({
@@ -101,6 +103,8 @@ vi.mock("../../api", () => ({
   getCreatorSummaryFeed: vi.fn().mockResolvedValue({ items: [] }),
   getFeed: getFeedMock,
   getProfile: getProfileMock,
+  getTopUpPromoStatus: getTopUpPromoStatusMock,
+  discoverTopUpPromoChest: vi.fn(),
   getUsers: vi.fn().mockResolvedValue([]),
   muteUser: vi.fn(),
   resolveImage: (value) => value,
@@ -130,9 +134,15 @@ describe("Home discovery feed", () => {
     getDiscoveryHomeMock.mockReset();
     getFeedMock.mockReset();
     getProfileMock.mockReset();
+    getTopUpPromoStatusMock.mockReset();
 
     getProfileMock.mockResolvedValue(viewer);
     getFeedMock.mockResolvedValue([]);
+    getTopUpPromoStatusMock.mockResolvedValue({
+      visibility: { visible: false, reason: "test" },
+      hasPlayed: false,
+      play: null,
+    });
   });
 
   afterEach(() => {

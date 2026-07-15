@@ -59,6 +59,11 @@
   outline-offset: 2px;
 }
 
+.topup-discovery-star:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
 .topup-saved-result {
   position: fixed;
   right: 18px;

@@ -130,6 +130,38 @@ describe("TopUpPromoDiscovery", () => {
     expect(screen.getAllByRole("button", { name: /open discovery star/i })).toHaveLength(5);
   });
 
+  it("keeps every other available star blinking after this user reveals water", async () => {
+    statusMock.mockResolvedValue({
+      campaign,
+      visibility: { visible: true, reason: "available" },
+      hasPlayed: true,
+      play: {
+        id: "water-play-1",
+        chestNumber: 4,
+        outcome: "water",
+        won: false,
+        prizeAmount: 0,
+        passcode: "",
+        discoveredAt: "2026-07-15T17:20:00.000Z",
+      },
+      discoveredChestNumbers: [4],
+      remainingChests: 49,
+    });
+
+    renderDiscovery();
+
+    const availableStars = await screen.findAllByRole("button", {
+      name: /available discovery star/i,
+    });
+    expect(availableStars).toHaveLength(5);
+    expect(screen.queryByRole("button", { name: /star 4 of 50/i })).not.toBeInTheDocument();
+    availableStars.forEach((star) => {
+      expect(star).toBeDisabled();
+      expect(star).toHaveClass("topup-discovery-star");
+    });
+    expect(screen.getByRole("button", { name: /view promo result/i })).toBeInTheDocument();
+  });
+
   it("renders no discovery stars once the shared count reaches zero", async () => {
     statusMock.mockResolvedValue({
       campaign,

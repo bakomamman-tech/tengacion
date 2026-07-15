@@ -377,7 +377,7 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
 
   return (
     <>
-      {!status?.hasPlayed ? (
+      {visiblePlacements.length > 0 ? (
         <div className="topup-discovery-layer" aria-label={`${campaign.title} discovery area`}>
           {visiblePlacements.map((position) => (
             <button
@@ -391,18 +391,26 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
                 "--star-scale": position.scale,
               }}
               onClick={() => handleDiscover(position.id)}
-              aria-label={`Open discovery star ${position.id} of ${campaign.totalChests} near ${position.zone}`}
+              disabled={status?.hasPlayed}
+              aria-label={status?.hasPlayed
+                ? `Available discovery star ${position.id} of ${campaign.totalChests} near ${position.zone}`
+                : `Open discovery star ${position.id} of ${campaign.totalChests} near ${position.zone}`}
+              title={status?.hasPlayed
+                ? "This star is still available for another Tengacion player."
+                : undefined}
             >
               <span aria-hidden="true">✦</span>
             </button>
           ))}
         </div>
-      ) : (
+      ) : null}
+
+      {status?.hasPlayed ? (
         <button type="button" className="topup-saved-result" onClick={openSavedResult}>
           <span aria-hidden="true">✦</span>
           View promo result
         </button>
-      )}
+      ) : null}
 
       {modalOpen ? (
         <div className="topup-modal-backdrop" role="presentation" onMouseDown={(event) => {

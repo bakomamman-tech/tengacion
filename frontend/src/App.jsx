@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 
 import AdminRoute from "./components/AdminRoute";
 import InstallPrompt from "./components/InstallPrompt";
@@ -7,6 +7,7 @@ import TengacionAssistantDock from "./components/assistant/TengacionAssistantDoc
 import ProtectedRoute from "./components/ProtectedRoute";
 import RouteSeoController from "./components/seo/RouteSeoController";
 import WelcomeVoiceController from "./components/WelcomeVoiceController";
+import TopUpPromoDiscovery from "./components/TopUpPromoDiscovery";
 import { useAuth } from "./context/AuthContext";
 import usePageTracking from "./hooks/usePageTracking";
 
@@ -66,6 +67,7 @@ const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalytics"));
 const AdminMessagesPage = lazy(() => import("./pages/AdminMessages"));
 const AdminCampaignsPage = lazy(() => import("./pages/AdminCampaigns"));
 const AdminTopUpPromoPage = lazy(() => import("./pages/AdminTopUpPromo"));
+const AdminTopUpPromoPreviewPage = lazy(() => import("./pages/AdminTopUpPromoPreview"));
 const AdminRaffleCardsPage = lazy(() => import("./pages/AdminRaffleCards"));
 const AdminSettingsPage = lazy(() => import("./pages/AdminSettings"));
 const AdminStoragePage = lazy(() => import("./pages/AdminStorage"));
@@ -150,6 +152,7 @@ function AppShellFallback({ message = "Loading Tengacion..." }) {
 
 export default function App() {
   const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   usePageTracking();
 
   if (authLoading) {
@@ -921,6 +924,14 @@ export default function App() {
             }
           />
           <Route
+            path="/admin/top-up-bank-account-promo/preview"
+            element={
+              <AdminRoute user={user}>
+                <AdminTopUpPromoPreviewPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
             path="/admin/recharge-raffle"
             element={
               <AdminRoute user={user}>
@@ -946,6 +957,24 @@ export default function App() {
           />
         </Routes>
       </Suspense>
+      {user ? (
+        <TopUpPromoDiscovery
+          user={user}
+          onExploreTip={(tip) => {
+            if (tip?.action === "create_post") {
+              navigate("/home", { state: { openComposer: true } });
+              return;
+            }
+            if (tip?.action === "stories") {
+              navigate("/home");
+              return;
+            }
+            if (tip?.path) {
+              navigate(tip.path);
+            }
+          }}
+        />
+      ) : null}
       <InstallPrompt />
       <TengacionAssistantDock />
     </>

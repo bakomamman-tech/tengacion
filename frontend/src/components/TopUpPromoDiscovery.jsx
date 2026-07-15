@@ -1,125 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 import {
   discoverTopUpPromoChest,
   getTopUpPromoStatus,
 } from "../api";
+import {
+  DISCOVERY_PLACEMENTS,
+  DISCOVERY_TIPS,
+  speakOutcome,
+} from "./topUpPromoConfig";
 import "./top-up-promo-discovery.css";
 
 const ADMIN_ROLES = new Set(["admin", "super_admin", "moderator", "trust_safety_admin"]);
-
-const STAR_POSITIONS = [
-  { x: 2.2, y: 8, delay: 0.4, scale: 0.78 },
-  { x: 96.8, y: 12, delay: 2.1, scale: 0.66 },
-  { x: 17, y: 18, delay: 4.3, scale: 0.72 },
-  { x: 81, y: 23, delay: 1.2, scale: 0.84 },
-  { x: 7, y: 34, delay: 5.4, scale: 0.64 },
-  { x: 92, y: 39, delay: 3.2, scale: 0.7 },
-  { x: 27, y: 44, delay: 0.8, scale: 0.62 },
-  { x: 72, y: 50, delay: 4.8, scale: 0.82 },
-  { x: 3.8, y: 58, delay: 2.8, scale: 0.74 },
-  { x: 97, y: 65, delay: 6.1, scale: 0.68 },
-  { x: 21, y: 69, delay: 1.7, scale: 0.8 },
-  { x: 84, y: 75, delay: 3.7, scale: 0.64 },
-  { x: 10, y: 84, delay: 5.8, scale: 0.76 },
-  { x: 62, y: 87, delay: 2.4, scale: 0.7 },
-  { x: 94, y: 91, delay: 4.9, scale: 0.82 },
-];
-
-const DISCOVERY_TIPS = [
-  {
-    title: "Search across Tengacion",
-    description: "Use Search to find people, creators, posts, music, books, and more from one place.",
-    actionLabel: "Open Search",
-    path: "/search",
-  },
-  {
-    title: "Keep conversations together",
-    description: "Messages is your private space for opening conversations and returning to recent chats.",
-    actionLabel: "Open Messages",
-    path: "/messages",
-  },
-  {
-    title: "See what needs your attention",
-    description: "Notifications collects reactions, requests, updates, and activity around your account.",
-    actionLabel: "Open Notifications",
-    path: "/notifications",
-  },
-  {
-    title: "Discover Stories",
-    description: "Stories appear near the top of Home. Tap a story to watch it or use the create tile to share yours.",
-    actionLabel: "Show me Stories",
-    path: "/home",
-    action: "stories",
-  },
-  {
-    title: "Share from the Home feed",
-    description: "The “What's on your mind?” space opens the post composer for text, photos, videos, and reels.",
-    actionLabel: "Create a Post",
-    path: "/home",
-    action: "create_post",
-  },
-  {
-    title: "Manage your friendships",
-    description: "Friends brings your connections, requests, and people discovery into one clear workspace.",
-    actionLabel: "Open Friends",
-    path: "/friends",
-  },
-  {
-    title: "Find Tengacion creators",
-    description: "Creator discovery lets you browse talent and open public creator pages without placing promo chests there.",
-    actionLabel: "Find Creators",
-    path: "/find-creators",
-  },
-  {
-    title: "Watch short-form Reels",
-    description: "Reels is the fast, vertical viewing space for short videos and creator moments.",
-    actionLabel: "Open Reels",
-    path: "/reels",
-  },
-  {
-    title: "Explore live rooms",
-    description: "Live shows active sessions and upcoming broadcasts, with controls for watching or going live.",
-    actionLabel: "Open Live",
-    path: "/live",
-  },
-  {
-    title: "Play inside Gaming",
-    description: "Gaming brings Tengacion's playable experiences and game controls into one dedicated space.",
-    actionLabel: "Open Gaming",
-    path: "/gaming",
-  },
-  {
-    title: "Browse the Marketplace",
-    description: "Marketplace is where products and storefronts live. This lesson links there, but no promo chest is hidden there.",
-    actionLabel: "Open Marketplace",
-    path: "/marketplace",
-  },
-  {
-    title: "Review your purchases",
-    description: "Purchases keeps receipts and access details for the content and products connected to your account.",
-    actionLabel: "Open Purchases",
-    path: "/purchases",
-  },
-  {
-    title: "See what is trending",
-    description: "Trending highlights active conversations and popular content across Tengacion.",
-    actionLabel: "Open Trending",
-    path: "/trending",
-  },
-  {
-    title: "Join community Rooms",
-    description: "Rooms helps you discover topic spaces and enter conversations with other Tengacion users.",
-    actionLabel: "Open Rooms",
-    path: "/rooms",
-  },
-  {
-    title: "Know your Profile space",
-    description: "Your profile is where you review how your identity, details, and activity appear on Tengacion.",
-    actionLabel: "Open My Profile",
-    path: "/profile/:username",
-  },
-];
 
 const CONFETTI = Array.from({ length: 42 }, (_, index) => ({
   id: index,
@@ -142,28 +35,7 @@ const DEFAULT_CAMPAIGN = {
 
 const formatNaira = (value) => `₦${Number(value || 0).toLocaleString("en-NG")}`;
 
-const speakOutcome = ({ name, won, customerCarePhone }) => {
-  if (
-    typeof window === "undefined" ||
-    !("speechSynthesis" in window) ||
-    typeof window.SpeechSynthesisUtterance !== "function"
-  ) {
-    return;
-  }
-
-  const safeName = String(name || "friend").trim().slice(0, 80) || "friend";
-  const message = won
-    ? `Congratulations! ${safeName}, you won five thousand Naira. Kindly contact the Customer Care team via ${customerCarePhone} to claim your winnings.`
-    : `Keep searching, ${safeName}. You might just be lucky.`;
-  const utterance = new window.SpeechSynthesisUtterance(message);
-  utterance.rate = 0.92;
-  utterance.pitch = won ? 1.08 : 1;
-  utterance.volume = 1;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
-};
-
-function PromoChest({ won, revealed }) {
+export function PromoChest({ won, revealed }) {
   return (
     <div className={`topup-chest-scene ${revealed ? "is-revealed" : ""} ${won ? "is-win" : "is-water"}`}>
       {won && revealed ? (
@@ -263,6 +135,7 @@ function PromoChest({ won, revealed }) {
 }
 
 export default function TopUpPromoDiscovery({ user, onExploreTip }) {
+  const location = useLocation();
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [discovering, setDiscovering] = useState(false);
@@ -275,9 +148,19 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
 
   const role = String(user?.role || "user").trim().toLowerCase();
   const isAdminAccount = ADMIN_ROLES.has(role);
+  const path = String(location.pathname || "/");
+  const isExcludedSurface = /^\/(?:admin|creator|marketplace)(?:\/|$)/i.test(path);
+  const visiblePlacements = useMemo(
+    () => DISCOVERY_PLACEMENTS.filter((placement) =>
+      placement.match === "prefix"
+        ? path === placement.route || path.startsWith(placement.route)
+        : path === placement.route
+    ),
+    [path]
+  );
 
   const loadStatus = useCallback(async () => {
-    if (isAdminAccount) {
+    if (isAdminAccount || isExcludedSurface) {
       setLoading(false);
       return;
     }
@@ -286,12 +169,12 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
       setStatus(payload || null);
       setPlay(payload?.play || null);
     } catch {
-      // The promo should never prevent the Home feed from loading.
+      // The promo should never prevent the current app surface from loading.
       setStatus(null);
     } finally {
       setLoading(false);
     }
-  }, [isAdminAccount]);
+  }, [isAdminAccount, isExcludedSurface]);
 
   useEffect(() => {
     void loadStatus();
@@ -373,7 +256,14 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
     onExploreTip?.(tip);
   };
 
-  if (loading || !status || isAdminAccount || status?.visibility?.visible === false) {
+  if (
+    loading ||
+    !status ||
+    isAdminAccount ||
+    isExcludedSurface ||
+    status?.visibility?.visible === false ||
+    visiblePlacements.length === 0
+  ) {
     return null;
   }
 
@@ -383,9 +273,9 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
     <>
       {!status?.hasPlayed ? (
         <div className="topup-discovery-layer" aria-label={`${campaign.title} discovery area`}>
-          {STAR_POSITIONS.map((position, index) => (
+          {visiblePlacements.map((position) => (
             <button
-              key={index}
+              key={position.id}
               type="button"
               className="topup-discovery-star"
               style={{
@@ -394,8 +284,8 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
                 "--star-delay": `${position.delay}s`,
                 "--star-scale": position.scale,
               }}
-              onClick={() => handleDiscover(index + 1)}
-              aria-label={`Open discovery star ${index + 1} of ${campaign.totalChests}`}
+              onClick={() => handleDiscover(position.id)}
+              aria-label={`Open discovery star ${position.id} of ${campaign.totalChests} near ${position.zone}`}
             >
               <span aria-hidden="true">✦</span>
             </button>

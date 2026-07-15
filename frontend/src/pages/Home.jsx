@@ -16,7 +16,6 @@ import Sidebar from "../Sidebar";
 import Messenger from "../Messenger";
 import FriendRequests from "../FriendRequests";
 import RightQuickNav from "../components/RightQuickNav";
-import TopUpPromoDiscovery from "../components/TopUpPromoDiscovery";
 import Stories from "../stories/StoriesBar";
 
 import {
@@ -1642,24 +1641,6 @@ export default function Home({ user }) {
             return;
           }
           openComposer();
-        }}
-      />
-
-      <TopUpPromoDiscovery
-        user={currentUser}
-        onExploreTip={(tip) => {
-          if (tip?.action === "create_post") {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-            openComposer();
-            return;
-          }
-          if (tip?.action === "stories") {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-            return;
-          }
-          if (tip?.path) {
-            navigate(tip.path);
-          }
         }}
       />
 

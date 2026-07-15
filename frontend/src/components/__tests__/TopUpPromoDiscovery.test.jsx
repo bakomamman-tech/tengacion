@@ -1,5 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { discoverMock, statusMock } = vi.hoisted(() => ({
@@ -31,6 +32,13 @@ const campaign = {
 };
 
 describe("TopUpPromoDiscovery", () => {
+  const renderDiscovery = (props = {}, route = "/home") =>
+    render(
+      <MemoryRouter initialEntries={[route]}>
+        <TopUpPromoDiscovery user={user} onExploreTip={vi.fn()} {...props} />
+      </MemoryRouter>
+    );
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal("scrollTo", vi.fn());
@@ -42,11 +50,29 @@ describe("TopUpPromoDiscovery", () => {
     });
   });
 
-  it("shows fifteen subtle discovery stars only after the campaign status allows them", async () => {
-    render(<TopUpPromoDiscovery user={user} onExploreTip={vi.fn()} />);
+  it("shows only the three strategically assigned Home stars after campaign status allows them", async () => {
+    renderDiscovery();
 
     const stars = await screen.findAllByRole("button", { name: /open discovery star/i });
-    expect(stars).toHaveLength(15);
+    expect(stars).toHaveLength(3);
+    expect(stars.map((star) => star.getAttribute("aria-label"))).toEqual(expect.arrayContaining([
+      expect.stringContaining("star 4 of 15 near Stories tray"),
+      expect.stringContaining("star 5 of 15 near Post composer"),
+      expect.stringContaining("star 7 of 15 near Right quick-navigation sidebar"),
+    ]));
+  });
+
+  it("distributes checkpoints by route and excludes Creator and Marketplace", async () => {
+    const messagesView = renderDiscovery({}, "/messages");
+    expect(await screen.findByRole("button", { name: /star 2 of 15 near Conversation sidebar/i })).toBeInTheDocument();
+    messagesView.unmount();
+
+    renderDiscovery({}, "/creator/dashboard");
+    await waitFor(() => expect(statusMock).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("button", { name: /open discovery star/i })).not.toBeInTheDocument();
+
+    renderDiscovery({}, "/marketplace");
+    expect(screen.queryByRole("button", { name: /open discovery star/i })).not.toBeInTheDocument();
   });
 
   it("reveals and preserves a server-issued winning passcode", async () => {
@@ -64,8 +90,8 @@ describe("TopUpPromoDiscovery", () => {
       },
     });
 
-    render(<TopUpPromoDiscovery user={user} onExploreTip={vi.fn()} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Open discovery star 4 of 15" }));
+    renderDiscovery();
+    fireEvent.click(await screen.findByRole("button", { name: /Open discovery star 4 of 15/i }));
 
     await waitFor(() => expect(discoverMock).toHaveBeenCalledWith(4));
     expect(await screen.findByText("K9P2QX7A")).toBeInTheDocument();
@@ -74,7 +100,7 @@ describe("TopUpPromoDiscovery", () => {
   });
 
   it("does not load or render promo stars for administrator accounts", async () => {
-    render(<TopUpPromoDiscovery user={{ ...user, role: "admin" }} onExploreTip={vi.fn()} />);
+    renderDiscovery({ user: { ...user, role: "admin" } });
     await waitFor(() => expect(statusMock).not.toHaveBeenCalled());
     expect(screen.queryByRole("button", { name: /open discovery star/i })).not.toBeInTheDocument();
   });

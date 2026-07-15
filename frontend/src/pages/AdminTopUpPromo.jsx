@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import AdminShell from "../components/AdminShell";
 import { adminGetTopUpPromoPlays } from "../api";
@@ -21,6 +22,7 @@ const dateTime = (value) => {
 };
 
 export default function AdminTopUpPromoPage({ user }) {
+  const navigate = useNavigate();
   const [outcome, setOutcome] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -60,9 +62,14 @@ export default function AdminTopUpPromoPage({ user }) {
   return (
     <AdminShell
       title="Top-Up Bank Account Promo"
-      subtitle="Secure winner and participant records for the homepage discovery campaign."
+      subtitle="Secure winner and participant records for the application-wide discovery campaign."
       user={user}
-      actions={<button type="button" className="adminx-btn" onClick={load}>Refresh</button>}
+      actions={(
+        <>
+          <button type="button" className="adminx-btn adminx-btn--primary" onClick={() => navigate("/admin/top-up-bank-account-promo/preview")}>Preview UI/UX</button>
+          <button type="button" className="adminx-btn" onClick={load}>Refresh</button>
+        </>
+      )}
     >
       <section className="adminx-panel adminx-panel--span-12 admin-topup-hero">
         <img
@@ -70,10 +77,10 @@ export default function AdminTopUpPromoPage({ user }) {
           alt="Tengacion Find the Passcode and Top Up Your Bank Account Promo flyer"
         />
         <div className="admin-topup-hero__copy">
-          <span className="admin-topup-eyebrow">Live homepage discovery game</span>
+          <span className="admin-topup-eyebrow">Live application discovery game</span>
           <h2>{campaign.title || "Top-Up Bank Account Promo"}</h2>
           <p>
-            Fifteen homepage stars open server-controlled chests. Two chest positions contain gold,
+            Fifteen stars distributed across permitted Tengacion pages open server-controlled chests. Two chest positions contain gold,
             confetti, a unique passcode, and a {naira(campaign.prizeAmount || 5000)} declaration;
             thirteen contain animated water. Each account can record one discovery.
           </p>
@@ -83,8 +90,8 @@ export default function AdminTopUpPromoPage({ user }) {
             <span>Customer Care: {campaign.customerCarePhone || "08164649980"}</span>
           </div>
           <small>
-            Promo stars are restricted to the signed-in Home feed. They do not appear on Creator,
-            Marketplace, public, or Admin pages/accounts.
+            Promo stars may sit near navbar controls and sidebars. They do not appear in the full-registration
+            Creator workspace, Marketplace, public authentication pages, or Admin pages/accounts.
           </small>
         </div>
       </section>

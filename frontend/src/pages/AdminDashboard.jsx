@@ -57,6 +57,84 @@ function DashboardSkeleton() {
   );
 }
 
+const formatUpdatedAt = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Waiting for live data";
+  }
+
+  return `Updated ${date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  })}`;
+};
+
+function DashboardToolbar({
+  activeRange,
+  filter,
+  generatedAt,
+  loading,
+  onRangeChange,
+  onRefresh,
+  rangeOptions = [],
+}) {
+  return (
+    <section className="tdash-toolbar" aria-label="Dashboard reporting controls">
+      <div className="tdash-toolbar__status">
+        <span className={`tdash-toolbar__status-dot ${loading ? "is-loading" : ""}`} aria-hidden="true" />
+        <div>
+          <strong>{filter?.label || "Last 30 days"}</strong>
+          <span>{loading ? "Refreshing operational signals..." : formatUpdatedAt(generatedAt)}</span>
+        </div>
+      </div>
+
+      <div className="tdash-toolbar__controls">
+        <div className="tdash-range-tabs" role="group" aria-label="Dashboard reporting period">
+          {rangeOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={activeRange === option.value ? "is-active" : ""}
+              aria-pressed={activeRange === option.value}
+              onClick={() => onRangeChange(option.value)}
+            >
+              {option.label.replace("Last ", "")}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="tdash-toolbar__refresh"
+          onClick={onRefresh}
+          disabled={loading}
+        >
+          <AdminDashboardIcon name="refresh" size={16} />
+          <span>{loading ? "Refreshing" : "Refresh"}</span>
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function DashboardSectionHeader({ eyebrow, title, description, actionLabel, headingId, onAction }) {
+  return (
+    <div className="tdash-section-head">
+      <div>
+        <span className="tdash-section-head__eyebrow">{eyebrow}</span>
+        <h2 id={headingId}>{title}</h2>
+        <p>{description}</p>
+      </div>
+      {actionLabel ? (
+        <button type="button" onClick={onAction}>
+          {actionLabel}
+          <AdminDashboardIcon name="arrowRight" size={15} />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 const MotionDiv = m.div;
 
 export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
@@ -66,6 +144,7 @@ export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
   const [loading, setLoading] = useState(true);
   const [dashboard, setDashboard] = useState(null);
   const [activeTab, setActiveTab] = useState("activity");
+  const [refreshSequence, setRefreshSequence] = useState(0);
 
   useEffect(() => {
     let ignore = false;
@@ -94,7 +173,7 @@ export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
     return () => {
       ignore = true;
     };
-  }, [range]);
+  }, [range, refreshSequence]);
 
   const avatarSrc = useMemo(() => {
     if (!user) {
@@ -116,7 +195,13 @@ export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
     <div className="tdash-page">
       <div className="tdash-shell">
         <div className="tdash-shell__sidebar-desktop">
-          <AdminSidebar activeKey={activeNav} navDots={content?.navDots} avatarSrc={avatarSrc} />
+          <AdminSidebar
+            activeKey={activeNav}
+            adminName={content?.header?.adminName || user?.name || "Admin User"}
+            roleLabel={content?.header?.roleLabel || "Admin"}
+            navDots={content?.navDots}
+            avatarSrc={avatarSrc}
+          />
         </div>
 
         <AnimatePresence>
@@ -136,6 +221,8 @@ export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
               >
                 <AdminSidebar
                   activeKey={activeNav}
+                  adminName={content?.header?.adminName || user?.name || "Admin User"}
+                  roleLabel={content?.header?.roleLabel || "Admin"}
                   navDots={content?.navDots}
                   avatarSrc={avatarSrc}
                   onClose={() => setSidebarOpen(false)}
@@ -147,7 +234,7 @@ export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
 
         <main className="tdash-main">
           <AdminHeader
-            title="Dashboard"
+            title="Operations overview"
             secondaryText={content?.header?.secondaryText || "Platform oversight"}
             notificationCount={content?.header?.notificationCount || 0}
             avatarSrc={avatarSrc}
@@ -167,9 +254,9 @@ export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
             >
               <section className="tdash-command" aria-label="Dashboard overview and shortcuts">
                 <div className="tdash-command__welcome">
-                  <span className="tdash-command__eyebrow">{todayLabel}</span>
+                  <span className="tdash-command__eyebrow">{todayLabel} - Admin workspace</span>
                   <h1>Good to see you, {String(content?.header?.adminName || user?.name || "Admin").split(" ")[0]}.</h1>
-                  <p>Here is the latest operational pulse across Tengacion.</p>
+                  <p>Track the signals that need a decision, then move into the details.</p>
                 </div>
                 <nav className="tdash-command__quick" aria-label="Quick admin actions">
                   {[
@@ -186,42 +273,84 @@ export default function AdminDashboardPage({ user, activeNav = "dashboard" }) {
                 </nav>
               </section>
 
+              <DashboardToolbar
+                activeRange={range}
+                filter={content.filter}
+                generatedAt={content.generatedAt}
+                loading={loading}
+                rangeOptions={content.chart?.rangeOptions || []}
+                onRangeChange={(nextRange) =>
+                  startTransition(() => {
+                    setRange(nextRange);
+                  })
+                }
+                onRefresh={() => setRefreshSequence((current) => current + 1)}
+              />
+
               <DashboardNotice mode={content.dataMode} error={content.error} />
 
               <DashboardSummaryPanel dashboard={content} onNavigate={navigate} />
 
-              <section className="tdash-stats-grid">
-                {(content.overview?.cards || []).map((card) => (
-                  <StatCard key={card.id} card={card} />
-                ))}
-              </section>
-
-              <section className="tdash-main-grid">
-                <AnalyticsChartCard
-                  tabs={content.chart?.tabs || []}
-                  activeTab={activeTab}
-                  onTabChange={setActiveTab}
-                  rangeOptions={content.chart?.rangeOptions || []}
-                  activeRange={range}
-                  onRangeChange={(nextRange) =>
-                    startTransition(() => {
-                      setRange(nextRange);
-                    })
-                  }
-                  series={content.chart?.series || []}
+              <section className="tdash-section" aria-labelledby="tdash-health-heading">
+                <DashboardSectionHeader
+                  eyebrow="Platform health"
+                  title="Core signals"
+                  description="A fast read on audience size, activity, engagement, and reach for the selected window."
+                  actionLabel="Open analytics"
+                  headingId="tdash-health-heading"
+                  onAction={() => navigate("/admin/analytics")}
                 />
-
-                <div className="tdash-stack">
-                  <DevicesUsageCard data={content.devicesUsage} />
-                  <RecentPostsCard items={content.recentPosts?.items || []} onOpenAll={() => navigate("/admin/content")} />
+                <div className="tdash-stats-grid">
+                  {(content.overview?.cards || []).map((card) => (
+                    <StatCard key={card.id} card={card} />
+                  ))}
                 </div>
               </section>
 
-              <section className="tdash-lower-grid">
-                <TopUsersCard items={content.topUsers?.items || []} />
-
-                <div className="tdash-stack">
+              <section className="tdash-section" aria-labelledby="tdash-performance-heading">
+                <DashboardSectionHeader
+                  eyebrow="Performance"
+                  title="Activity over time"
+                  description="Compare the platform's strongest interaction signals without losing the wider context."
+                  headingId="tdash-performance-heading"
+                />
+                <div className="tdash-main-grid tdash-main-grid--performance">
+                  <AnalyticsChartCard
+                    tabs={content.chart?.tabs || []}
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
+                    series={content.chart?.series || []}
+                  />
                   <KPICompactCard items={content.kpis?.items || []} />
+                </div>
+              </section>
+
+              <section className="tdash-section" aria-labelledby="tdash-audience-heading">
+                <DashboardSectionHeader
+                  eyebrow="Audience"
+                  title="People and access"
+                  description="See who is driving activity and how the platform is being accessed."
+                  actionLabel="Manage users"
+                  headingId="tdash-audience-heading"
+                  onAction={() => navigate("/admin/users")}
+                />
+                <div className="tdash-main-grid tdash-main-grid--audience">
+                  <TopUsersCard items={content.topUsers?.items || []} />
+                  <DevicesUsageCard data={content.devicesUsage} />
+                </div>
+              </section>
+
+              <section className="tdash-section" aria-labelledby="tdash-content-heading">
+                <DashboardSectionHeader
+                  eyebrow="Content intelligence"
+                  title="Recent publishing pulse"
+                  description="Review new content alongside the audience cohort it is reaching."
+                  actionLabel="Review content"
+                  headingId="tdash-content-heading"
+                  onAction={() => navigate("/admin/content")}
+                />
+                <div className="tdash-lower-grid tdash-lower-grid--content">
+                  <RecentPostsCard items={content.recentPosts?.items || []} onOpenAll={() => navigate("/admin/content")} />
                   <AudienceAgeCard items={content.audienceAge?.items || []} />
                 </div>
               </section>

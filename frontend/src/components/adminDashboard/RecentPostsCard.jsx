@@ -19,14 +19,18 @@ export default function RecentPostsCard({ items = [], onOpenAll }) {
   return (
     <section className="tdash-panel">
       <div className="tdash-panel__head">
-        <h3 className="tdash-panel__title">Recent Posts</h3>
+        <div className="tdash-panel__heading">
+          <span className="tdash-panel__eyebrow">Publishing stream</span>
+          <h3 className="tdash-panel__title">Recent posts</h3>
+          <p>{items.length ? `${items.length} approved post${items.length === 1 ? "" : "s"} surfaced` : "New approved content will appear here."}</p>
+        </div>
         <button
           type="button"
-          className="tdash-panel__ghost-btn"
-          aria-label="Open recent posts menu"
+          className="tdash-panel__text-btn"
           onClick={onOpenAll}
         >
-          <AdminDashboardIcon name="more" size={18} />
+          View all
+          <AdminDashboardIcon name="arrowRight" size={16} />
         </button>
       </div>
 

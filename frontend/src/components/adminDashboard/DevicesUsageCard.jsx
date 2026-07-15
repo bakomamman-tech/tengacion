@@ -54,12 +54,19 @@ function DonutBlock({ title, items }) {
 }
 
 export default function DevicesUsageCard({ data }) {
-  const hasData = [...(data?.primary || []), ...(data?.secondary || [])].some((item) => Number(item?.value || 0) > 0);
+  const allItems = [...(data?.primary || []), ...(data?.secondary || [])];
+  const hasData = allItems.some((item) => Number(item?.value || 0) > 0);
+  const trackedSessions = (data?.legend || []).reduce((sum, item) => sum + Number(item?.value || 0), 0);
 
   return (
     <section className="tdash-panel">
       <div className="tdash-panel__head">
-        <h3 className="tdash-panel__title">Devices Usage</h3>
+        <div className="tdash-panel__heading">
+          <span className="tdash-panel__eyebrow">Access mix</span>
+          <h3 className="tdash-panel__title">Device usage</h3>
+          <p>Operating systems and access channels.</p>
+        </div>
+        <span className="tdash-panel__count">{trackedSessions.toLocaleString()} sessions</span>
       </div>
 
       {!hasData ? <div className="tdash-empty">No device sessions have been recorded yet.</div> : null}
@@ -73,7 +80,10 @@ export default function DevicesUsageCard({ data }) {
           <div key={item.label} className="tdash-devices__legend-item">
             <span className="tdash-devices__legend-dot" style={{ backgroundColor: item.color }} />
             <span>{item.label}</span>
-            <strong>{Number(item.percent || item.value || 0)}%</strong>
+            <strong>
+              {Number(item.percent || 0).toFixed(Number(item.percent || 0) % 1 ? 1 : 0)}%
+              <small>{Number(item.value || 0).toLocaleString()}</small>
+            </strong>
           </div>
         ))}
       </div>

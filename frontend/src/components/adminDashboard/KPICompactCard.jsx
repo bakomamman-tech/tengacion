@@ -4,11 +4,17 @@ const formatValue = (value) => Number(value || 0).toLocaleString();
 
 export default function KPICompactCard({ items = [] }) {
   const hasData = items.some((item) => Number(item?.value || 0) > 0);
+  const totalInteractions = items.reduce((sum, item) => sum + Number(item?.value || 0), 0);
 
   return (
-    <section className="tdash-panel">
+    <section className="tdash-panel tdash-panel--kpis">
       <div className="tdash-panel__head">
-        <h3 className="tdash-panel__title">KPI Snapshot</h3>
+        <div className="tdash-panel__heading">
+          <span className="tdash-panel__eyebrow">Interaction mix</span>
+          <h3 className="tdash-panel__title">KPI snapshot</h3>
+          <p>The actions behind the headline engagement rate.</p>
+        </div>
+        <span className="tdash-panel__count">{formatValue(totalInteractions)} total</span>
       </div>
 
       {!hasData ? <div className="tdash-empty">No interaction KPIs have been recorded in this range yet.</div> : null}

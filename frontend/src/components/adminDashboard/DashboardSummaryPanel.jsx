@@ -97,7 +97,10 @@ const getRouteForAlert = (alert) => {
     return defaultRoute;
   }
 
-  return alertRoutes[alert.key] || defaultRoute;
+  const configuredRoute = alertRoutes[alert.key] || defaultRoute;
+  return alert.actionPath
+    ? { ...configuredRoute, path: alert.actionPath }
+    : configuredRoute;
 };
 
 const toCardTone = (severity) => {
@@ -132,6 +135,12 @@ export default function DashboardSummaryPanel({ dashboard, onNavigate }) {
   const primaryAlert = pickPrimaryAlert(alerts);
   const primaryRoute = getRouteForAlert(primaryAlert);
   const primaryTone = toCardTone(primaryAlert?.severity);
+  const sortedAlerts = [...alerts]
+    .filter(Boolean)
+    .sort(
+      (left, right) =>
+        (severityRank[right?.severity] || 0) - (severityRank[left?.severity] || 0)
+    );
 
   const summaryBadge = primaryAlert
     ? `${primaryAlert.severity} priority`
@@ -146,10 +155,10 @@ export default function DashboardSummaryPanel({ dashboard, onNavigate }) {
       : "Live signals are still warming up";
 
   const summaryCopy = primaryAlert
-    ? `There are ${alerts.length} active alert${alerts.length === 1 ? "" : "s"}. Start with ${primaryRoute.label.toLowerCase()} first, then move through the quick lanes below to clear the rest of the queue.`
+    ? primaryAlert.description || `There are ${alerts.length} active alert${alerts.length === 1 ? "" : "s"}. Start with ${primaryRoute.label.toLowerCase()} and work down the priority queue.`
     : dataMode === "live"
-      ? "No critical alerts are active right now. Use the quick lanes to check Messages, Content, and Analytics before the next issue grows."
-      : "The dashboard is in a limited-data state. The quick lanes still point you to the most useful places to inspect first.";
+      ? "No critical alerts are active. The core operating signals are available below for routine review."
+      : "Live signals are limited for this window. Use the quick lanes to inspect the areas most likely to need attention.";
 
   const routeCards = [
     {
@@ -196,6 +205,31 @@ export default function DashboardSummaryPanel({ dashboard, onNavigate }) {
 
   const followUpRoute = routeCards.find((card) => card.path !== primaryRoute.path) || routeCards[1];
 
+  const queueItems = sortedAlerts.length
+    ? sortedAlerts.slice(0, 4).map((alert) => {
+        const route = getRouteForAlert(alert);
+        return {
+          key: alert.key,
+          title: alert.title,
+          hint: alert.description || route.hint,
+          icon: route.icon,
+          path: route.path,
+          tone: toCardTone(alert.severity),
+          value: formatNumber(alert.value),
+          meta: `${alert.severity || "low"} priority`,
+        };
+      })
+    : routeCards.slice(1).map((card) => ({
+        key: card.key,
+        title: card.label,
+        hint: card.hint,
+        icon: card.icon,
+        path: card.path,
+        tone: card.tone,
+        value: card.value,
+        meta: "Quick lane",
+      }));
+
   const metrics = [
     {
       label: "Alerts",
@@ -232,7 +266,7 @@ export default function DashboardSummaryPanel({ dashboard, onNavigate }) {
   };
 
   return (
-    <section className="tdash-summary">
+    <section className={`tdash-summary tdash-summary--${primaryTone}`}>
       <div className="tdash-summary__hero">
         <div className="tdash-summary__eyebrow">
           <span className={`tdash-summary__badge tdash-summary__badge--${primaryTone}`}>
@@ -261,35 +295,56 @@ export default function DashboardSummaryPanel({ dashboard, onNavigate }) {
             Open {followUpRoute?.label || "Analytics"}
           </button>
         </div>
-
-        <div className="tdash-summary__metrics">
-          {metrics.map((metric) => (
-            <div key={metric.label} className="tdash-summary__metric">
-              <span className="tdash-summary__metric-label">{metric.label}</span>
-              <strong className="tdash-summary__metric-value">{metric.value}</strong>
-              <span className="tdash-summary__metric-note">{metric.note}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
-      <div className="tdash-summary__rail">
-        {routeCards.map((card) => (
+      <aside className="tdash-summary__rail" aria-label={alerts.length ? "Active alert queue" : "Admin quick lanes"}>
+        <div className="tdash-summary__rail-head">
+          <div>
+            <span>{alerts.length ? "Needs review" : "Ready when needed"}</span>
+            <h4>{alerts.length ? "Priority queue" : "Quick lanes"}</h4>
+          </div>
+          <strong>{alerts.length || queueItems.length}</strong>
+        </div>
+
+        <div className="tdash-summary__queue">
+          {queueItems.map((item) => (
           <button
-            key={card.key}
+            key={item.key}
             type="button"
-            className={`tdash-summary-card tdash-summary-card--${card.tone}`}
-            onClick={() => navigateTo(card.path)}
+            className={`tdash-queue-item tdash-queue-item--${item.tone}`}
+            onClick={() => navigateTo(item.path)}
           >
-            <div className="tdash-summary-card__top">
-              <span className="tdash-summary-card__icon">
-                <AdminDashboardIcon name={card.icon} size={16} />
-              </span>
-              <span className="tdash-summary-card__label">{card.label}</span>
-            </div>
-            <div className="tdash-summary-card__value">{card.value}</div>
-            <div className="tdash-summary-card__hint">{card.hint}</div>
+            <span className="tdash-queue-item__icon">
+              <AdminDashboardIcon name={item.icon} size={17} />
+            </span>
+            <span className="tdash-queue-item__copy">
+              <span className="tdash-queue-item__meta">{item.meta}</span>
+              <strong>{item.title}</strong>
+              <small>{item.hint}</small>
+            </span>
+            <span className="tdash-queue-item__value">
+              <strong>{item.value}</strong>
+              <AdminDashboardIcon name="arrowRight" size={15} />
+            </span>
           </button>
+          ))}
+        </div>
+
+        {alerts.length > queueItems.length ? (
+          <button type="button" className="tdash-summary__queue-more" onClick={() => navigateTo("/admin/analytics")}>
+            +{alerts.length - queueItems.length} more active alert{alerts.length - queueItems.length === 1 ? "" : "s"}
+            <AdminDashboardIcon name="arrowRight" size={15} />
+          </button>
+        ) : null}
+      </aside>
+
+      <div className="tdash-summary__metrics" aria-label="Operational tracking metrics">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="tdash-summary__metric">
+            <span className="tdash-summary__metric-label">{metric.label}</span>
+            <strong className="tdash-summary__metric-value">{metric.value}</strong>
+            <span className="tdash-summary__metric-note">{metric.note}</span>
+          </div>
         ))}
       </div>
     </section>

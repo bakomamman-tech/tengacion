@@ -1,9 +1,18 @@
+import AdminDashboardIcon from "./AdminDashboardIcon";
+
 const formatValue = (value, unit = "number") => {
   const numericValue = Number(value || 0);
   if (unit === "percent") {
     return `${numericValue.toFixed(1)}%`;
   }
   return numericValue.toLocaleString();
+};
+
+const statIcons = {
+  "total-users": "users",
+  "active-users": "profile",
+  engagement: "spark",
+  reach: "analytics",
 };
 
 const buildPath = (values = [], width = 124, height = 42) => {
@@ -24,7 +33,8 @@ const buildPath = (values = [], width = 124, height = 42) => {
 
 export default function StatCard({ card }) {
   const change = Number(card?.change || 0);
-  const isPositive = change >= 0;
+  const isPositive = change > 0;
+  const isNeutral = change === 0;
   const sparklineValues = Array.isArray(card?.sparkline) && card.sparkline.length
     ? card.sparkline
     : [0, 0, 0, 0];
@@ -32,11 +42,16 @@ export default function StatCard({ card }) {
   return (
     <article className="tdash-stat-card">
       <div className="tdash-stat-card__copy">
-        <p className="tdash-stat-card__label">{card?.label}</p>
+        <div className="tdash-stat-card__top">
+          <p className="tdash-stat-card__label">{card?.label}</p>
+          <span className="tdash-stat-card__icon">
+            <AdminDashboardIcon name={statIcons[card?.id] || "analytics"} size={17} />
+          </span>
+        </div>
         <h3 className="tdash-stat-card__value">{formatValue(card?.value, card?.unit)}</h3>
         <div className="tdash-stat-card__meta">
           <span>{card?.helper}</span>
-          <span className={`tdash-stat-card__change ${isPositive ? "is-positive" : "is-negative"}`}>
+          <span className={`tdash-stat-card__change ${isNeutral ? "is-neutral" : isPositive ? "is-positive" : "is-negative"}`}>
             {isPositive ? "+" : ""}
             {change.toFixed(1)}%
           </span>

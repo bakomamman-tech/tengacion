@@ -1,0 +1,101 @@
+.admin-topup-hero {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 25px;
+  align-items: center;
+  background:
+    radial-gradient(circle at 88% 10%, rgba(31, 123, 255, 0.22), transparent 32%),
+    linear-gradient(145deg, rgba(4, 20, 43, 0.98), rgba(8, 43, 76, 0.95));
+  border-color: rgba(247, 194, 57, 0.34);
+}
+
+.admin-topup-hero > img {
+  width: 100%;
+  max-height: 310px;
+  display: block;
+  object-fit: cover;
+  object-position: center 18%;
+  border: 1px solid rgba(255, 215, 92, 0.37);
+  border-radius: 17px;
+  box-shadow: 0 20px 45px rgba(0, 5, 18, 0.4);
+}
+
+.admin-topup-hero__copy {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-topup-eyebrow {
+  color: #ffd65d;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.admin-topup-hero__copy h2 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  letter-spacing: -0.035em;
+}
+
+.admin-topup-hero__copy p,
+.admin-topup-hero__copy small {
+  margin: 0;
+  max-width: 780px;
+  color: rgba(226, 241, 255, 0.78);
+  line-height: 1.58;
+}
+
+.admin-topup-hero__copy small { color: rgba(186, 214, 235, 0.64); }
+
+.admin-topup-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-topup-rules span {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 216, 95, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 211, 84, 0.08);
+  color: #ffecae;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.admin-topup-table-head > div:first-child { display: grid; gap: 5px; }
+.admin-topup-table-wrap { overflow-x: auto; }
+.admin-topup-table { min-width: 1050px; }
+
+.admin-topup-table td:first-child,
+.admin-topup-table td:nth-child(2) {
+  display: table-cell;
+}
+
+.admin-topup-table td:first-child strong,
+.admin-topup-table td:first-child small,
+.admin-topup-table td:nth-child(2) a {
+  display: block;
+}
+
+.admin-topup-table td:first-child small,
+.admin-topup-table td:nth-child(2) a {
+  margin-top: 4px;
+  color: var(--adminx-muted);
+  font-size: 0.78rem;
+}
+
+.admin-topup-table td:nth-child(2) a:hover { color: #a9f2c1; }
+.admin-topup-table code { color: #ffd75f; font-size: 0.92rem; letter-spacing: 0.08em; }
+
+@media (max-width: 760px) {
+  .admin-topup-hero { grid-template-columns: 1fr; }
+  .admin-topup-hero > img { max-height: 230px; }
+  .admin-topup-table-head { align-items: flex-start; flex-direction: column; }
+}

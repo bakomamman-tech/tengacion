@@ -7,11 +7,13 @@ const User = require("../models/User");
 const CreatorProfile = require("../models/CreatorProfile");
 const AnalyticsEvent = require("../models/AnalyticsEvent");
 const WalletEntry = require("../models/WalletEntry");
+const PaymentDispute = require("../models/PaymentDispute");
 const SchoolTuitionPayment = require("../models/SchoolTuitionPayment");
 const { resolvePurchasableItem } = require("./catalogService");
 const { hasCreatorSubscriptionAccess } = require("./entitlementService");
 const {
   generatePaymentReference,
+  fetchDispute,
   initializeTransaction,
   resolvePaystackTransactionPaidAt,
   resolvePaystackTransactionDeductions,
@@ -51,7 +53,20 @@ const {
 const {
   buildRevenueShareSnapshot,
   buildSettlementRevenueShareSnapshot,
+  computePurchaseRevenueShare,
 } = require("./creatorRevenueSharePolicy");
+const {
+  buildArtistSaleTaxSnapshot,
+  resolveSettlementTaxSnapshot,
+} = require("./artistSaleTaxService");
+const {
+  markPaymentDisputeFinancialState,
+  normalizePaystackDispute,
+  recordDisputeOpenedEntries,
+  recordDisputeResolvedEntries,
+  shouldResolvePaystackDispute,
+  upsertPaystackDispute,
+} = require("./paymentDisputeService");
 const { notifyPurchaseUnlocked } = require("./fanReturnPathService");
 const { config } = require("../config/env");
 const logger = require("../utils/logger");
@@ -91,6 +106,10 @@ const TIMELINE_EVENT_META = {
   purchase_access_revoked: { label: "Access revoked", tone: "danger" },
   purchase_refund_requested: { label: "Refund requested", tone: "info" },
   purchase_refunded: { label: "Refund completed", tone: "danger" },
+  purchase_dispute_opened: { label: "Payment dispute opened", tone: "warn" },
+  purchase_dispute_reminded: { label: "Payment dispute reminder", tone: "warn" },
+  purchase_dispute_resolved: { label: "Payment dispute resolved", tone: "info" },
+  purchase_chargeback_applied: { label: "Chargeback applied", tone: "danger" },
   purchase_success: { label: "Purchase success metric recorded", tone: "success" },
   purchase_failed: { label: "Purchase failure metric recorded", tone: "danger" },
 };
@@ -165,8 +184,23 @@ const toPurchasePayload = (purchase) => ({
   itemId: toIdString(purchase?.itemId),
   creatorId: toIdString(purchase?.creatorId),
   amount: Number(purchase?.amount) || 0,
+  listedPriceAmount:
+    purchase?.listedPriceAmount == null
+      ? Number(purchase?.amount) || 0
+      : Number(purchase.listedPriceAmount) || 0,
+  taxableBaseAmount:
+    purchase?.taxableBaseAmount == null
+      ? null
+      : Number(purchase.taxableBaseAmount) || 0,
   processingFeeAmount: Number(purchase?.processingFeeAmount) || 0,
   taxAmount: Number(purchase?.taxAmount) || 0,
+  taxRateBps: purchase?.taxRateBps == null ? null : Number(purchase.taxRateBps),
+  taxPriceMode: purchase?.taxPriceMode || null,
+  taxSource: purchase?.taxSource || "none",
+  taxPolicy: purchase?.taxPolicy || "",
+  taxJurisdiction: purchase?.taxJurisdiction || "",
+  taxProviderReported: Boolean(purchase?.taxProviderReported),
+  taxEffectiveAt: purchase?.taxEffectiveAt || null,
   currency: purchase?.currency || "NGN",
   status: purchase?.status || "pending",
   provider: purchase?.provider || "paystack",
@@ -454,12 +488,22 @@ const createPendingPurchase = async ({
   providerSessionId = "",
 } = {}) => {
   const revenueShareSnapshot = buildRevenueShareSnapshot(item);
+  const listedPriceAmount = Number(
+    amount ?? resolveItemAmountForCurrency(item, currency)
+  ) || 0;
+  const taxSnapshot = buildArtistSaleTaxSnapshot({
+    item,
+    listedPriceAmount,
+    currency: normalizeCurrency(currency),
+    effectiveAt: new Date(),
+  });
+  const { chargeAmount, ...persistedTaxSnapshot } = taxSnapshot;
   return Purchase.create({
     userId,
     creatorId: item.creatorId || undefined,
     itemType: item.itemType,
     itemId: item.itemId,
-    amount: Number(amount ?? resolveItemAmountForCurrency(item, currency)) || 0,
+    amount: chargeAmount,
     priceNGN: Number(item.priceNGN ?? item.price) || 0,
     currency: normalizeCurrency(currency),
     status: "initiated",
@@ -468,6 +512,7 @@ const createPendingPurchase = async ({
     providerSessionId,
     billingInterval: item.itemType === "subscription" ? "monthly" : "one_time",
     ...revenueShareSnapshot,
+    ...persistedTaxSnapshot,
   });
 };
 
@@ -560,7 +605,7 @@ const initializePaystackCheckout = async ({
   try {
     const payment = await initializeTransaction({
       email: userEmail,
-      amountNgn: amount,
+      amountNgn: Number(purchase.amount || 0),
       reference,
       callbackUrl,
       metadata: {
@@ -572,6 +617,9 @@ const initializePaystackCheckout = async ({
         productTitle: item.title || "",
         purchaseId: toIdString(purchase._id),
         currencyMode: String(currencyMode || "NG").trim().toUpperCase(),
+        tengacionTaxPolicy: purchase.taxPolicy || "",
+        tengacionTaxSource: purchase.taxSource || "none",
+        tengacionTaxJurisdiction: purchase.taxJurisdiction || "",
       },
     });
 
@@ -708,7 +756,7 @@ const initializeStripeCheckout = async ({
   try {
     const payment = await createCheckoutSession({
       email: user.email,
-      amountUsd: amount,
+      amountUsd: Number(purchase.amount || 0),
       reference,
       purchaseId: purchase._id,
       item,
@@ -720,6 +768,9 @@ const initializeStripeCheckout = async ({
         productType: item.itemType,
         productTitle: item.title || "",
         currencyMode: "GLOBAL",
+        tengacionTaxPolicy: purchase.taxPolicy || "",
+        tengacionTaxSource: purchase.taxSource || "none",
+        tengacionTaxJurisdiction: purchase.taxJurisdiction || "",
       },
     });
 
@@ -1486,13 +1537,22 @@ const reconcileVerifiedPurchase = async ({
             verified?.processingFeeAmount ?? purchase.processingFeeAmount ?? 0
           ) || 0,
           taxAmount: Number(verified?.taxAmount ?? purchase.taxAmount ?? 0) || 0,
+          taxProviderReported: Boolean(verified?.taxProviderReported),
         };
+  const resolvedTaxSnapshot = resolveSettlementTaxSnapshot({
+    purchase,
+    providerTaxAmount: deductionSnapshot.taxAmount,
+    providerTaxReported: Boolean(deductionSnapshot.taxProviderReported),
+    settledAt: paidAt,
+  });
+  const { chargeAmount: _settlementChargeAmount, ...persistedTaxSnapshot } =
+    resolvedTaxSnapshot;
   const settled = await settlePurchasedAccess(purchase, {
     paidAt,
     financialSnapshot: {
       ...revenueShareSnapshot,
       processingFeeAmount: deductionSnapshot.processingFeeAmount,
-      taxAmount: deductionSnapshot.taxAmount,
+      ...persistedTaxSnapshot,
     },
   });
   if (!settled.purchase) {
@@ -1659,6 +1719,315 @@ const logDuplicateWebhookEvent = async ({
   }).catch(() => null);
 };
 
+const PAYSTACK_DISPUTE_EVENT_TYPES = new Set([
+  "charge.dispute.create",
+  "charge.dispute.remind",
+  "charge.dispute.resolve",
+]);
+
+const getPaystackEventReference = (payload = {}) =>
+  String(
+    payload?.data?.transaction?.reference ||
+      payload?.data?.transaction_reference ||
+      payload?.data?.merchant_transaction_reference ||
+      payload?.data?.reference ||
+      ""
+  ).trim();
+
+const assertDisputeAccountingComplete = (result = {}) => {
+  const ledgerFailed = Boolean(
+    result?.revenueLedgerFailed || result?.releaseResult?.revenueLedgerFailed
+  );
+  if (ledgerFailed) {
+    throw createServiceError(
+      "Chargeback wallet entries were written but revenue-ledger recording failed",
+      500
+    );
+  }
+};
+
+const synchronizePurchasedItemCounter = async (purchase) => {
+  if (!purchase?.itemId || !["track", "book", "album"].includes(purchase.itemType)) {
+    return;
+  }
+
+  const purchaseCount = await Purchase.countDocuments({
+    itemType: purchase.itemType,
+    itemId: purchase.itemId,
+    status: "paid",
+  });
+  const model =
+    purchase.itemType === "track"
+      ? Track
+      : purchase.itemType === "book"
+        ? Book
+        : Album;
+  await model.updateOne(
+    { _id: purchase.itemId },
+    { $set: { purchaseCount } }
+  );
+};
+
+const loadCumulativePurchaseChargebackAmount = async (purchaseId) => {
+  const rows = await PaymentDispute.aggregate([
+    {
+      $match: {
+        purchaseId: purchaseId,
+        financialState: "debited",
+      },
+    },
+    { $group: { _id: null, amount: { $sum: "$chargebackAmount" } } },
+  ]);
+  return Math.max(0, Number(rows?.[0]?.amount || 0));
+};
+
+const finalizeFullyChargedBackPurchase = async ({ purchase, dispute } = {}) => {
+  if (!purchase?._id || !dispute?._id) {
+    return { purchase, accessRevoked: false, fullyChargedBack: false };
+  }
+
+  const shareBaseAmount = Number(computePurchaseRevenueShare(purchase).shareBaseAmount || 0);
+  const cumulativeChargebackAmount = await loadCumulativePurchaseChargebackAmount(
+    purchase._id
+  );
+  const fullyChargedBack =
+    shareBaseAmount > 0 && cumulativeChargebackAmount + 0.009 >= shareBaseAmount;
+  if (!fullyChargedBack) {
+    return {
+      purchase,
+      accessRevoked: false,
+      fullyChargedBack: false,
+      cumulativeChargebackAmount,
+      shareBaseAmount,
+    };
+  }
+
+  const refundedAt = dispute.resolvedAt || dispute.lastEventAt || new Date();
+  const updatedPurchase = await Purchase.findOneAndUpdate(
+    { _id: purchase._id, status: "paid" },
+    {
+      $set: {
+        status: "refunded",
+        refundedAt,
+        refundReason: `paystack_chargeback:${dispute.providerDisputeId}`,
+        cancelAtPeriodEnd: false,
+        ...(isSubscriptionPurchase(purchase)
+          ? {
+              canceledAt: refundedAt,
+              accessExpiresAt: refundedAt,
+            }
+          : {}),
+      },
+    },
+    { returnDocument: "after" }
+  );
+
+  const finalPurchase = updatedPurchase || (await Purchase.findById(purchase._id));
+  const chargebackReason = `paystack_chargeback:${dispute.providerDisputeId}`;
+  const shouldEnsureRevocation = Boolean(
+    finalPurchase &&
+      (updatedPurchase ||
+        (finalPurchase.status === "refunded" &&
+          finalPurchase.refundReason === chargebackReason))
+  );
+  if (!shouldEnsureRevocation) {
+    return {
+      purchase: finalPurchase,
+      accessRevoked: false,
+      fullyChargedBack: true,
+      cumulativeChargebackAmount,
+      shareBaseAmount,
+    };
+  }
+
+  if (!isSubscriptionPurchase(finalPurchase)) {
+    await Entitlement.deleteOne({
+      buyerId: finalPurchase.userId,
+      itemType: finalPurchase.itemType,
+      itemId: finalPurchase.itemId,
+    });
+    await synchronizePurchasedItemCounter(finalPurchase);
+  }
+
+  await logPurchaseLifecycleEvent({
+    type: "purchase_access_revoked",
+    purchase: finalPurchase,
+    userId: toIdString(finalPurchase.userId),
+    actorRole: "system",
+    metadata: {
+      reason: "paystack_chargeback",
+      providerDisputeId: dispute.providerDisputeId,
+      cumulativeChargebackAmount,
+      shareBaseAmount,
+    },
+  }).catch(() => null);
+
+  return {
+    purchase: finalPurchase,
+    accessRevoked: true,
+    fullyChargedBack: true,
+    cumulativeChargebackAmount,
+    shareBaseAmount,
+  };
+};
+
+const handlePaystackDisputeWebhook = async ({
+  payload,
+  eventType,
+  reservation,
+} = {}) => {
+  const eventDisputeId = String(
+    payload?.data?.id || payload?.data?.dispute_code || ""
+  ).trim();
+  if (!eventDisputeId) {
+    throw createServiceError("Paystack dispute event is missing its dispute ID", 400);
+  }
+
+  const canonical = await fetchDispute(eventDisputeId);
+  const eventData = payload?.data && typeof payload.data === "object" ? payload.data : {};
+  const canonicalData = canonical && typeof canonical === "object" ? canonical : {};
+  const normalized = normalizePaystackDispute(
+    {
+      ...eventData,
+      ...canonicalData,
+      id: canonicalData.id || eventData.id || eventData.dispute_code,
+      transaction: canonicalData.transaction || eventData.transaction || {},
+    },
+    { eventType }
+  );
+  const purchase = normalized.providerRef
+    ? await Purchase.findOne({
+        provider: "paystack",
+        providerRef: normalized.providerRef,
+      })
+    : null;
+  const stored = await upsertPaystackDispute({
+    dispute: normalized,
+    purchaseId: purchase?._id || null,
+    eventType,
+  });
+  let dispute = stored.dispute;
+
+  if (!purchase) {
+    dispute = await markPaymentDisputeFinancialState({
+      dispute,
+      financialState: "manual_review",
+      manualReviewReason: normalized.providerRef
+        ? "purchase_not_found"
+        : "missing_purchase_reference",
+    });
+    await markPaymentWebhookEvent({
+      event: reservation.event,
+      status: "processed",
+      providerRef: normalized.providerRef,
+    });
+    return {
+      received: true,
+      dispute: true,
+      manualReview: true,
+      reason: dispute?.manualReviewReason || "purchase_not_found",
+    };
+  }
+
+  const purchaseStatus = String(purchase.status || "").trim().toLowerCase();
+  if (
+    purchaseStatus !== "paid" &&
+    !(purchaseStatus === "refunded" && dispute?.financialState === "debited")
+  ) {
+    dispute = await markPaymentDisputeFinancialState({
+      dispute,
+      financialState: "manual_review",
+      manualReviewReason: `purchase_status_${purchaseStatus || "unknown"}`,
+    });
+    await markPaymentWebhookEvent({
+      event: reservation.event,
+      status: "processed",
+      purchaseId: purchase._id,
+      providerRef: normalized.providerRef,
+    });
+    return {
+      received: true,
+      dispute: true,
+      manualReview: true,
+      reason: dispute?.manualReviewReason || "purchase_not_paid",
+    };
+  }
+
+  const isResolve = shouldResolvePaystackDispute({
+    eventType,
+    dispute: normalized,
+  });
+  const accountingResult = isResolve
+    ? await recordDisputeResolvedEntries({ purchase, dispute, logger })
+    : await recordDisputeOpenedEntries({ purchase, dispute, logger });
+  assertDisputeAccountingComplete(accountingResult);
+  dispute = accountingResult.dispute || dispute;
+
+  let finalization = {
+    purchase,
+    accessRevoked: false,
+    fullyChargedBack: false,
+  };
+  if (
+    isResolve &&
+    accountingResult.action === "chargeback" &&
+    accountingResult.financialState === "debited"
+  ) {
+    finalization = await finalizeFullyChargedBackPurchase({ purchase, dispute });
+    await logPurchaseLifecycleEvent({
+      type: "purchase_chargeback_applied",
+      purchase: finalization.purchase || purchase,
+      userId: toIdString(purchase.userId),
+      actorRole: "system",
+      metadata: {
+        providerDisputeId: dispute.providerDisputeId,
+        chargebackAmount: Number(accountingResult.chargebackAmount || 0),
+        creatorChargebackAmount: Number(
+          accountingResult.creatorChargebackAmount || 0
+        ),
+        platformChargebackAmount: Number(
+          accountingResult.platformChargebackAmount || 0
+        ),
+        fullyChargedBack: Boolean(finalization.fullyChargedBack),
+      },
+    }).catch(() => null);
+  }
+
+  await logPurchaseLifecycleEvent({
+    type: isResolve
+      ? "purchase_dispute_resolved"
+      : eventType === "charge.dispute.remind"
+        ? "purchase_dispute_reminded"
+        : "purchase_dispute_opened",
+    purchase: finalization.purchase || purchase,
+    userId: toIdString(purchase.userId),
+    actorRole: "system",
+    metadata: {
+      providerDisputeId: dispute.providerDisputeId,
+      status: dispute.status || "",
+      resolution: dispute.resolution || "",
+      financialState: dispute.financialState || accountingResult.financialState || "",
+      action: accountingResult.action || "",
+    },
+  }).catch(() => null);
+
+  await markPaymentWebhookEvent({
+    event: reservation.event,
+    status: "processed",
+    purchaseId: purchase._id,
+    providerRef: normalized.providerRef,
+  });
+
+  return {
+    received: true,
+    dispute: true,
+    action: accountingResult.action || "",
+    financialState: dispute.financialState || accountingResult.financialState || "",
+    accessRevoked: Boolean(finalization.accessRevoked),
+    fullyChargedBack: Boolean(finalization.fullyChargedBack),
+  };
+};
+
 const handlePaystackWebhookEvent = async ({
   req = null,
   rawBody = "",
@@ -1671,7 +2040,7 @@ const handlePaystackWebhookEvent = async ({
 
   const payload = event || {};
   const eventType = String(payload?.event || "").trim();
-  const reference = String(payload?.data?.reference || "").trim();
+  const reference = getPaystackEventReference(payload);
   const eventId = buildPaystackEventId({ event: payload, rawBody });
   const reservation = await reservePaymentWebhookEvent({
     provider: "paystack",
@@ -1682,11 +2051,17 @@ const handlePaystackWebhookEvent = async ({
     payload,
     payloadSummary: {
       reference,
-      gatewayId: String(payload?.data?.id || payload?.id || ""),
+      gatewayId: String(
+        payload?.data?.id || payload?.data?.dispute_code || payload?.id || ""
+      ),
       amount: Number(payload?.data?.amount || 0),
       currency: String(payload?.data?.currency || "").trim().toUpperCase(),
     },
   });
+
+  if (reservation.duplicate && reservation.retryable) {
+    throw createServiceError("Paystack webhook processing is still in progress", 503);
+  }
 
   if (reservation.duplicate && reservation.event?.status !== "failed") {
     if (reference) {
@@ -1699,6 +2074,24 @@ const handlePaystackWebhookEvent = async ({
       });
     }
     return { received: true, duplicate: true };
+  }
+
+  if (PAYSTACK_DISPUTE_EVENT_TYPES.has(eventType)) {
+    try {
+      return await handlePaystackDisputeWebhook({
+        payload,
+        eventType,
+        reservation,
+      });
+    } catch (error) {
+      await markPaymentWebhookEvent({
+        event: reservation.event,
+        status: "failed",
+        providerRef: reference,
+        errorMessage: error.message || "Paystack dispute processing failed",
+      });
+      throw error;
+    }
   }
 
   if (eventType !== "charge.success" || !reference) {
@@ -1833,6 +2226,16 @@ const normalizeStripeSessionForVerification = (session = {}) => {
   const paymentStatus = String(session?.payment_status || raw.payment_status || "").trim().toLowerCase();
   const checkoutStatus = String(session?.status || raw.status || "").trim().toLowerCase();
   const amountMinor = Number(session?.amountMinor ?? raw.amount_total ?? 0) || 0;
+  const rawTaxMinor = raw?.total_details?.amount_tax;
+  const automaticTaxStatus = String(raw?.automatic_tax?.status || "")
+    .trim()
+    .toLowerCase();
+  const taxProviderReported = Boolean(
+    session?.taxProviderReported ??
+      raw?.taxProviderReported ??
+      (automaticTaxStatus === "complete" ||
+        (rawTaxMinor != null && Number(rawTaxMinor) > 0))
+  );
 
   let status = "pending";
   if (paymentStatus === "paid") {
@@ -1851,7 +2254,13 @@ const normalizeStripeSessionForVerification = (session = {}) => {
     processingFeeAmount: Number(
       session?.processingFeeAmount ?? raw?.processingFeeAmount ?? 0
     ) || 0,
-    taxAmount: Number(session?.taxAmount ?? raw?.taxAmount ?? 0) || 0,
+    taxAmount:
+      Number(
+        session?.taxAmount ??
+          raw?.taxAmount ??
+          (rawTaxMinor == null ? 0 : Number(rawTaxMinor) / 100)
+      ) || 0,
+    taxProviderReported,
     paidAt: session?.paidAt || raw?.paidAt || raw?.paid_at || null,
     currency: String(session?.currency || raw.currency || "USD").trim().toUpperCase() || "USD",
     raw,
@@ -1944,6 +2353,10 @@ const handleStripeWebhookEvent = async ({
       checkoutStatus: String(eventSession?.status || "").trim(),
     },
   });
+
+  if (reservation.duplicate && reservation.retryable) {
+    throw createServiceError("Stripe webhook processing is still in progress", 503);
+  }
 
   if (reservation.duplicate && reservation.event?.status !== "failed") {
     const purchase = await findStripePurchaseForSession(eventSession).catch(() => null);
@@ -2046,6 +2459,11 @@ const loadPurchaseOperationalArtifacts = async (purchase) => {
         .sort({ grantedAt: 1, createdAt: 1 })
         .lean();
 
+  const disputes = await PaymentDispute.find({ purchaseId: purchase._id })
+    .sort({ lastEventAt: 1, createdAt: 1, _id: 1 })
+    .lean();
+  const disputeIds = disputes.map((row) => row._id);
+
   const [events, entitlements, walletEntries] = await Promise.all([
     AnalyticsEvent.find({
       targetType: "purchase",
@@ -2055,8 +2473,15 @@ const loadPurchaseOperationalArtifacts = async (purchase) => {
       .lean(),
     entitlementQuery,
     WalletEntry.find({
-      sourceId: purchase._id,
-      sourceType: { $in: ["purchase", "refund"] },
+      $or: [
+        {
+          sourceId: purchase._id,
+          sourceType: { $in: ["purchase", "refund"] },
+        },
+        ...(disputeIds.length
+          ? [{ sourceId: { $in: disputeIds }, sourceType: "dispute" }]
+          : []),
+      ],
     })
       .sort({ effectiveAt: 1, createdAt: 1, _id: 1 })
       .lean(),
@@ -2066,6 +2491,7 @@ const loadPurchaseOperationalArtifacts = async (purchase) => {
     events,
     entitlements,
     walletEntries,
+    disputes,
   };
 };
 
@@ -2077,6 +2503,7 @@ const buildPurchaseOperationsSummary = ({
   const events = Array.isArray(artifacts?.events) ? artifacts.events : [];
   const entitlements = Array.isArray(artifacts?.entitlements) ? artifacts.entitlements : [];
   const walletEntries = Array.isArray(artifacts?.walletEntries) ? artifacts.walletEntries : [];
+  const disputes = Array.isArray(artifacts?.disputes) ? artifacts.disputes : [];
   const lifecycle = buildPurchaseLifecyclePayload(purchase);
   const now = Date.now();
   const updatedAt = purchase?.updatedAt ? new Date(purchase.updatedAt).getTime() : now;
@@ -2084,6 +2511,15 @@ const buildPurchaseOperationsSummary = ({
   const saleCreditCount = walletEntries.filter((entry) => entry.entryType === "sale_credit").length;
   const platformFeeCount = walletEntries.filter((entry) => entry.entryType === "platform_fee").length;
   const refundDebitCount = walletEntries.filter((entry) => entry.entryType === "refund_debit").length;
+  const chargebackDebitCount = walletEntries.filter(
+    (entry) => entry.entryType === "chargeback_debit"
+  ).length;
+  const disputeAttentionCount = disputes.filter(
+    (entry) =>
+      ["manual_review", "held"].includes(
+        String(entry?.financialState || "").trim().toLowerCase()
+      )
+  ).length;
   const isSubscription = purchase?.itemType === "subscription";
   const entitlementPresent = isSubscription
     ? Boolean(lifecycle.hasActiveAccess)
@@ -2104,7 +2540,12 @@ const buildPurchaseOperationsSummary = ({
     needsEntitlementRepair,
     walletSettled,
     needsWalletRepair,
-    needsAttention: Boolean(stuckPending || needsEntitlementRepair || needsWalletRepair),
+    needsAttention: Boolean(
+      stuckPending || needsEntitlementRepair || needsWalletRepair || disputeAttentionCount
+    ),
+    disputeCount: disputes.length,
+    disputeAttentionCount,
+    chargebackDebitCount,
     walletEntryCount: walletEntries.length,
     refundEntryCount: refundDebitCount,
     entitlementCount: entitlements.length,

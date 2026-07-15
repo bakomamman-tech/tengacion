@@ -108,7 +108,7 @@ describe("capitalReadinessService", () => {
             }),
             expect.objectContaining({
               key: "dispute_reserve",
-              classification: "coverage_gap",
+              classification: "estimated",
             }),
           ]),
         }),
@@ -144,11 +144,13 @@ describe("capitalReadinessService", () => {
     expect(report.riskRegister).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          key: "finance_gap_provider_dispute_feed",
-        }),
-        expect.objectContaining({
           key: "scenario_inputs_not_external",
         }),
+      ])
+    );
+    expect(report.riskRegister).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "finance_gap_provider_dispute_feed" }),
       ])
     );
     expect(report.diligencePipeline).toHaveLength(DILIGENCE_PIPELINE_DEFINITIONS.length);

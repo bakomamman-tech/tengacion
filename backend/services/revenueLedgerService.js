@@ -209,6 +209,14 @@ const buildPurchaseLedgerBase = ({ purchase, actorUserId = "", actorRole = "", a
       revenueSharePolicy: purchase?.revenueSharePolicy || "",
       creatorShareRate: purchase?.creatorShareRate,
       platformShareRate: purchase?.platformShareRate,
+      listedPriceAmount: purchase?.listedPriceAmount,
+      taxableBaseAmount: purchase?.taxableBaseAmount,
+      taxRateBps: purchase?.taxRateBps,
+      taxPriceMode: purchase?.taxPriceMode || null,
+      taxSource: purchase?.taxSource || "none",
+      taxPolicy: purchase?.taxPolicy || "",
+      taxJurisdiction: purchase?.taxJurisdiction || "",
+      taxProviderReported: Boolean(purchase?.taxProviderReported),
     },
   };
 };
@@ -423,6 +431,181 @@ const recordRefundSettledLedgerEntries = async ({
       dedupeKey: `refund_settled_platform:${base.purchaseId}`,
       occurredAt,
       auditMetadata,
+    },
+  ]);
+};
+
+const buildDisputeLedgerBase = ({
+  purchase,
+  dispute,
+  actorType = "provider",
+} = {}) => {
+  const providerDisputeId = normalizeText(
+    dispute?.providerDisputeId || dispute?.id || "",
+    160
+  );
+  const provider = normalizeText(dispute?.provider || purchase?.provider || "paystack", 40)
+    .toLowerCase();
+  const purchaseId = toIdString(purchase?._id);
+
+  return {
+    currency: normalizeCurrency(dispute?.currency || purchase?.currency),
+    actorType,
+    actorId: null,
+    actorRole: "",
+    sourceType: "dispute",
+    sourceId: dispute?._id,
+    sourceRef: providerDisputeId,
+    provider,
+    providerReference: providerDisputeId,
+    auditMetadata: {
+      disputeId: toIdString(dispute?._id),
+      providerDisputeId,
+      purchaseId,
+      buyerId: toIdString(purchase?.userId),
+      creatorId: toIdString(purchase?.creatorId),
+      provider,
+      purchaseProviderReference: normalizeText(purchase?.providerRef || "", 160),
+      disputeStatus: normalizeText(dispute?.status || "", 80).toLowerCase(),
+      disputeResolution: normalizeText(dispute?.resolution || "", 80).toLowerCase(),
+    },
+  };
+};
+
+const buildDisputeAllocationMetadata = ({ base, allocation = {}, dispute = {} } = {}) => ({
+  ...base.auditMetadata,
+  disputedAmount: clampMoney(dispute?.disputedAmount),
+  providerRefundAmount: clampMoney(dispute?.refundAmount),
+  priorChargebackAmount: clampMoney(allocation?.priorLossAmount),
+  chargebackAmount: clampMoney(allocation?.deductibleLossAmount),
+  creatorChargebackAmount: clampMoney(allocation?.creatorDebitAmount),
+  platformChargebackAmount: clampMoney(allocation?.platformDebitAmount),
+  shareBaseAmount: clampMoney(allocation?.shareBaseAmount),
+  unallocatedLossAmount: clampMoney(allocation?.unallocatedLossAmount),
+});
+
+const recordDisputeOpenedLedgerEntries = async ({
+  purchase,
+  dispute,
+  allocation,
+} = {}) => {
+  if (!purchase?._id || !dispute?._id || !dispute?.providerDisputeId) {
+    return { createdCount: 0, skipped: true, reason: "missing_dispute_identity" };
+  }
+
+  const base = buildDisputeLedgerBase({ purchase, dispute });
+  const metadata = buildDisputeAllocationMetadata({ base, allocation, dispute });
+  const occurredAt = dispute.openedAt || dispute.lastEventAt || new Date();
+  const providerDisputeId = normalizeText(dispute.providerDisputeId, 160);
+
+  return recordMany([
+    {
+      ...base,
+      ledgerEventType: "dispute_opened",
+      accountType: "creator",
+      accountId: purchase.creatorId,
+      amount: allocation?.creatorDebitAmount,
+      direction: "debit",
+      balanceScope: "available",
+      dedupeKey: `dispute_hold_creator:${providerDisputeId}`,
+      occurredAt,
+      auditMetadata: metadata,
+    },
+    {
+      ...base,
+      ledgerEventType: "dispute_opened",
+      accountType: "platform",
+      accountId: null,
+      amount: allocation?.platformDebitAmount,
+      direction: "debit",
+      balanceScope: "commission",
+      dedupeKey: `dispute_hold_platform:${providerDisputeId}`,
+      occurredAt,
+      auditMetadata: metadata,
+    },
+  ]);
+};
+
+const recordDisputeReleasedLedgerEntries = async ({
+  purchase,
+  dispute,
+  allocation,
+} = {}) => {
+  if (!purchase?._id || !dispute?._id || !dispute?.providerDisputeId) {
+    return { createdCount: 0, skipped: true, reason: "missing_dispute_identity" };
+  }
+
+  const base = buildDisputeLedgerBase({ purchase, dispute });
+  const metadata = buildDisputeAllocationMetadata({ base, allocation, dispute });
+  const occurredAt = dispute.resolvedAt || dispute.lastEventAt || new Date();
+  const providerDisputeId = normalizeText(dispute.providerDisputeId, 160);
+
+  return recordMany([
+    {
+      ...base,
+      ledgerEventType: "dispute_released",
+      accountType: "creator",
+      accountId: purchase.creatorId,
+      amount: allocation?.creatorDebitAmount,
+      direction: "credit",
+      balanceScope: "available",
+      dedupeKey: `dispute_release_creator:${providerDisputeId}`,
+      occurredAt,
+      auditMetadata: metadata,
+    },
+    {
+      ...base,
+      ledgerEventType: "dispute_released",
+      accountType: "platform",
+      accountId: null,
+      amount: allocation?.platformDebitAmount,
+      direction: "credit",
+      balanceScope: "commission",
+      dedupeKey: `dispute_release_platform:${providerDisputeId}`,
+      occurredAt,
+      auditMetadata: metadata,
+    },
+  ]);
+};
+
+const recordChargebackSettledLedgerEntries = async ({
+  purchase,
+  dispute,
+  allocation,
+} = {}) => {
+  if (!purchase?._id || !dispute?._id || !dispute?.providerDisputeId) {
+    return { createdCount: 0, skipped: true, reason: "missing_dispute_identity" };
+  }
+
+  const base = buildDisputeLedgerBase({ purchase, dispute });
+  const metadata = buildDisputeAllocationMetadata({ base, allocation, dispute });
+  const occurredAt = dispute.resolvedAt || dispute.lastEventAt || new Date();
+  const providerDisputeId = normalizeText(dispute.providerDisputeId, 160);
+
+  return recordMany([
+    {
+      ...base,
+      ledgerEventType: "chargeback_settled",
+      accountType: "creator",
+      accountId: purchase.creatorId,
+      amount: allocation?.creatorDebitAmount,
+      direction: "debit",
+      balanceScope: "available",
+      dedupeKey: `chargeback_settled_creator:${providerDisputeId}`,
+      occurredAt,
+      auditMetadata: metadata,
+    },
+    {
+      ...base,
+      ledgerEventType: "chargeback_settled",
+      accountType: "platform",
+      accountId: null,
+      amount: allocation?.platformDebitAmount,
+      direction: "debit",
+      balanceScope: "commission",
+      dedupeKey: `chargeback_settled_platform:${providerDisputeId}`,
+      occurredAt,
+      auditMetadata: metadata,
     },
   ]);
 };
@@ -738,6 +921,9 @@ const buildRevenueLedgerSummary = async ({
       platformCommissionReserved: roundMoney(eventAmounts.platform_commission_reserved || 0),
       creatorEarningCredited: roundMoney(eventAmounts.creator_earning_credited || 0),
       refundSettled: roundMoney(eventAmounts.refund_settled || 0),
+      disputeOpened: roundMoney(eventAmounts.dispute_opened || 0),
+      disputeReleased: roundMoney(eventAmounts.dispute_released || 0),
+      chargebackSettled: roundMoney(eventAmounts.chargeback_settled || 0),
       payoutRequested: roundMoney(eventAmounts.payout_requested || 0),
       payoutSent: roundMoney(eventAmounts.payout_sent || 0),
       payoutFailed: Number(eventCounts.payout_failed || 0),
@@ -756,6 +942,9 @@ module.exports = {
   recordPurchaseSettlementLedgerEntries,
   recordRefundInitiated,
   recordRefundSettledLedgerEntries,
+  recordDisputeOpenedLedgerEntries,
+  recordDisputeReleasedLedgerEntries,
+  recordChargebackSettledLedgerEntries,
   recordMarketplaceOrderLedgerEntries,
   recordMarketplacePayoutRequested,
   recordMarketplacePayoutStatusLedgerEntry,

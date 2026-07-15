@@ -51,6 +51,12 @@ const sendPurchaseConfirmationEmail = async ({ purchase } = {}) => {
   const receiptUrl = `${resolveAppUrl()}/purchases/${toIdString(purchase._id)}`;
   const reference = purchase.providerRef || "";
   const paidAt = purchase.paidAt ? new Date(purchase.paidAt).toUTCString() : new Date().toUTCString();
+  const taxAmount = Math.max(0, Number(purchase.taxAmount || 0));
+  const listedPriceAmount =
+    purchase.listedPriceAmount == null
+      ? Number(purchase.amount || 0)
+      : Number(purchase.listedPriceAmount || 0);
+  const taxLabel = purchase.taxPriceMode === "exclusive" ? "Tax" : "Tax included";
 
   await sendSecurityEmail({
     to: email,
@@ -61,11 +67,13 @@ const sendPurchaseConfirmationEmail = async ({ purchase } = {}) => {
         <p>Hello ${escapeHtml(buyer.name || buyer.username || "there")},</p>
         <p>Your Tengacion payment for <strong>${escapeHtml(title)}</strong> has been verified.</p>
         <table style="border-collapse:collapse;margin:16px 0;width:100%;max-width:520px;">
-          <tr><td style="padding:8px;border:1px solid #e5e7eb;">Amount</td><td style="padding:8px;border:1px solid #e5e7eb;"><strong>${escapeHtml(formatMoney(purchase.amount, purchase.currency))}</strong></td></tr>
+          ${taxAmount > 0 ? `<tr><td style="padding:8px;border:1px solid #e5e7eb;">Listed price</td><td style="padding:8px;border:1px solid #e5e7eb;">${escapeHtml(formatMoney(listedPriceAmount, purchase.currency))}</td></tr>` : ""}
+          ${taxAmount > 0 ? `<tr><td style="padding:8px;border:1px solid #e5e7eb;">${taxLabel}</td><td style="padding:8px;border:1px solid #e5e7eb;">${escapeHtml(formatMoney(taxAmount, purchase.currency))}</td></tr>` : ""}
+          <tr><td style="padding:8px;border:1px solid #e5e7eb;">Total paid</td><td style="padding:8px;border:1px solid #e5e7eb;"><strong>${escapeHtml(formatMoney(purchase.amount, purchase.currency))}</strong></td></tr>
           <tr><td style="padding:8px;border:1px solid #e5e7eb;">Reference</td><td style="padding:8px;border:1px solid #e5e7eb;">${escapeHtml(reference)}</td></tr>
           <tr><td style="padding:8px;border:1px solid #e5e7eb;">Verified at</td><td style="padding:8px;border:1px solid #e5e7eb;">${escapeHtml(paidAt)}</td></tr>
         </table>
-        <p>Tengacion platform fees are included in the displayed price. Paystack charged only the verified total shown above.</p>
+        <p>Tengacion platform fees are included in the displayed price. Your payment provider charged only the verified total shown above.</p>
         <p><a href="${escapeHtml(receiptUrl)}" style="display:inline-block;padding:10px 14px;background:#1f4b34;color:#fff;text-decoration:none;border-radius:8px;">View receipt</a></p>
       </div>
     `,

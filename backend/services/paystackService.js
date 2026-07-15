@@ -283,6 +283,13 @@ const extractPaystackTaxAmount = (transaction = {}, fallback = 0) => {
   return fallback == null ? null : toNonNegativeMoney(fallback, 0);
 };
 
+const hasPaystackTaxAmount = (transaction = {}) => {
+  // A provider flag or a merely present field is not enough: malformed values
+  // must not relabel the configured fallback as provider-reported tax. Passing
+  // a null fallback makes this true for valid non-negative amounts, including 0.
+  return extractPaystackTaxAmount(transaction, null) != null;
+};
+
 const estimatePaystackProcessingFee = ({ grossAmount = 0, cardCountry = "" } = {}) => {
   const gross = Math.max(0, roundMoney(grossAmount));
   if (gross <= 0) {
@@ -311,6 +318,7 @@ const resolvePaystackTransactionDeductions = ({
         ? estimatePaystackProcessingFee({ grossAmount, cardCountry })
         : actualProcessingFeeAmount,
     taxAmount: extractPaystackTaxAmount(transaction, taxAmount),
+    taxProviderReported: hasPaystackTaxAmount(transaction),
     processingFeeEstimated: actualProcessingFeeAmount == null,
     cardCountry,
   };
@@ -332,6 +340,7 @@ const normalizePaystackResponse = (payload = {}) => {
     feesKobo: Number.isFinite(feesKobo) ? feesKobo : null,
     processingFeeAmount,
     taxAmount,
+    taxProviderReported: hasPaystackTaxAmount(data),
     cardCountry: resolvePaystackCardCountry(data),
     paidAt: resolvePaystackTransactionPaidAt(data),
     currency: String(data.currency || getCurrency()).trim().toUpperCase() || getCurrency(),
@@ -659,6 +668,20 @@ const verifyTransaction = async (reference) => {
   return normalizePaystackResponse(payload);
 };
 
+const fetchDispute = async (disputeId) => {
+  const normalizedDisputeId = String(disputeId || "").trim();
+  if (!normalizedDisputeId) {
+    throw createValidationError("Paystack dispute ID is required.");
+  }
+
+  const payload = await paystackRequest({
+    path: `/dispute/${encodeURIComponent(normalizedDisputeId)}`,
+    errorMessage: "Failed to fetch Paystack dispute",
+  });
+
+  return payload?.data || {};
+};
+
 const validateWebhookSignature = ({ rawBody = "", signature = "" }) => {
   let secret = "";
   try {
@@ -695,6 +718,7 @@ module.exports = {
   PAYSTACK_CHECKOUT_CHANNELS,
   assertPaystackSecretUsable,
   createTransferRecipient,
+  fetchDispute,
   generatePaymentReference,
   getCurrency,
   getPaystackKeyMode,

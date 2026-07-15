@@ -57,6 +57,13 @@ const normalizeStripeSession = (session = {}) => {
       ? latestCharge.balance_transaction
       : {};
   const paidAtSeconds = Number(latestCharge?.created || paymentIntent?.created || 0);
+  const rawTaxAmount = session?.total_details?.amount_tax;
+  const automaticTaxStatus = String(session?.automatic_tax?.status || "")
+    .trim()
+    .toLowerCase();
+  const taxProviderReported =
+    automaticTaxStatus === "complete" ||
+    (rawTaxAmount != null && Number(rawTaxAmount) > 0);
 
   return {
     id: String(session.id || ""),
@@ -66,7 +73,8 @@ const normalizeStripeSession = (session = {}) => {
     amount: Number(session.amount_total || 0) / 100,
     amountMinor: Number(session.amount_total || 0),
     processingFeeAmount: Number(balanceTransaction.fee || 0) / 100,
-    taxAmount: Number(session?.total_details?.amount_tax || 0) / 100,
+    taxAmount: Number(rawTaxAmount || 0) / 100,
+    taxProviderReported,
     paidAt: Number.isFinite(paidAtSeconds) && paidAtSeconds > 0
       ? new Date(paidAtSeconds * 1000)
       : null,

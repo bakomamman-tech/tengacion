@@ -7,6 +7,9 @@ const { config } = require("../config/env");
 const {
   recordPurchaseSettlementLedgerEntries,
   recordRefundSettledLedgerEntries,
+  recordDisputeOpenedLedgerEntries,
+  recordDisputeReleasedLedgerEntries,
+  recordChargebackSettledLedgerEntries,
 } = require("./revenueLedgerService");
 const {
   computePurchaseRevenueShare,
@@ -32,6 +35,9 @@ const WALLET_ENTRY_LABELS = {
   hold_release: "Hold released",
   payout_debit: "Payout sent",
   refund_debit: "Refund",
+  dispute_hold: "Dispute reserve",
+  dispute_release: "Dispute reserve released",
+  chargeback_debit: "Chargeback",
   adjustment_credit: "Adjustment credit",
   adjustment_debit: "Adjustment debit",
 };
@@ -51,6 +57,55 @@ const toIdString = (value) => {
 
 const roundMoney = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 const clampMoney = (value) => Math.max(0, roundMoney(value));
+
+const computePurchaseDisputeAllocation = ({
+  purchase,
+  lossAmount = 0,
+  priorLossAmount = 0,
+} = {}) => {
+  const original = computePurchaseRevenueShare(purchase || {});
+  const shareBaseAmount = clampMoney(original.shareBaseAmount);
+  const normalizedPriorLoss = Math.min(shareBaseAmount, clampMoney(priorLossAmount));
+  const requestedLossAmount = clampMoney(lossAmount);
+  const beforeBaseAmount = clampMoney(shareBaseAmount - normalizedPriorLoss);
+  const deductibleLossAmount = Math.min(beforeBaseAmount, requestedLossAmount);
+  const afterBaseAmount = clampMoney(beforeBaseAmount - deductibleLossAmount);
+
+  // Re-run the stored policy against each remaining share base. This preserves
+  // the policy-specific rounding rule and makes each debit the exact delta
+  // between the pre- and post-dispute allocations.
+  const beforeShare = computePurchaseRevenueShare({
+    ...(purchase?.toObject ? purchase.toObject() : purchase || {}),
+    amount: beforeBaseAmount,
+    processingFeeAmount: 0,
+    taxAmount: 0,
+  });
+  const afterShare = computePurchaseRevenueShare({
+    ...(purchase?.toObject ? purchase.toObject() : purchase || {}),
+    amount: afterBaseAmount,
+    processingFeeAmount: 0,
+    taxAmount: 0,
+  });
+  const creatorDebitAmount = clampMoney(
+    beforeShare.creatorAmount - afterShare.creatorAmount
+  );
+  const platformDebitAmount = clampMoney(
+    beforeShare.platformAmount - afterShare.platformAmount
+  );
+
+  return {
+    shareBaseAmount,
+    requestedLossAmount,
+    priorLossAmount: normalizedPriorLoss,
+    cumulativeLossAmount: clampMoney(normalizedPriorLoss + deductibleLossAmount),
+    beforeBaseAmount,
+    afterBaseAmount,
+    deductibleLossAmount: clampMoney(creatorDebitAmount + platformDebitAmount),
+    creatorDebitAmount,
+    platformDebitAmount,
+    unallocatedLossAmount: clampMoney(requestedLossAmount - deductibleLossAmount),
+  };
+};
 
 const normalizeCurrency = (value = "NGN") => String(value || "NGN").trim().toUpperCase() || "NGN";
 
@@ -186,6 +241,7 @@ const buildAvailableOnlySummary = ({
   grossRevenue = 0,
   processingFees = 0,
   taxes = 0,
+  chargebacks = 0,
   netRevenue = null,
   totalEarnings = 0,
   platformRevenue = 0,
@@ -207,10 +263,14 @@ const buildAvailableOnlySummary = ({
     grossRevenue: normalizedGrossRevenue,
     processingFees: normalizedProcessingFees,
     taxes: normalizedTaxes,
+    chargebacks: clampMoney(chargebacks),
     netRevenue: normalizedNetRevenue,
     totalEarnings: normalizedTotalEarnings,
     platformRevenue: clampMoney(platformRevenue),
     availableBalance: normalizedTotalEarnings,
+    spendableBalance: normalizedTotalEarnings,
+    recoverableBalance: 0,
+    debtBalance: 0,
     pendingBalance: 0,
     withdrawn: 0,
     walletBacked,
@@ -260,6 +320,20 @@ const buildPurchaseSettlementEntryPayloads = async (purchase) => {
     platformAmount,
     processingFeeAmount,
     taxAmount,
+    listedPriceAmount:
+      purchase.listedPriceAmount == null
+        ? grossAmount
+        : clampMoney(purchase.listedPriceAmount),
+    taxableBaseAmount:
+      purchase.taxableBaseAmount == null
+        ? clampMoney(grossAmount - taxAmount)
+        : clampMoney(purchase.taxableBaseAmount),
+    taxRateBps: purchase.taxRateBps == null ? null : Number(purchase.taxRateBps),
+    taxPriceMode: purchase.taxPriceMode || null,
+    taxSource: purchase.taxSource || "none",
+    taxPolicy: purchase.taxPolicy || "",
+    taxJurisdiction: purchase.taxJurisdiction || "",
+    taxProviderReported: Boolean(purchase.taxProviderReported),
     netRevenueAmount,
     creatorShareRate,
     platformShareRate,
@@ -348,6 +422,20 @@ const buildPurchaseRefundEntryPayloads = async (purchase) => {
     platformAmount,
     processingFeeAmount,
     taxAmount,
+    listedPriceAmount:
+      purchase.listedPriceAmount == null
+        ? grossAmount
+        : clampMoney(purchase.listedPriceAmount),
+    taxableBaseAmount:
+      purchase.taxableBaseAmount == null
+        ? clampMoney(grossAmount - taxAmount)
+        : clampMoney(purchase.taxableBaseAmount),
+    taxRateBps: purchase.taxRateBps == null ? null : Number(purchase.taxRateBps),
+    taxPriceMode: purchase.taxPriceMode || null,
+    taxSource: purchase.taxSource || "none",
+    taxPolicy: purchase.taxPolicy || "",
+    taxJurisdiction: purchase.taxJurisdiction || "",
+    taxProviderReported: Boolean(purchase.taxProviderReported),
     netRevenueAmount,
     creatorShareRate,
     platformShareRate,
@@ -394,6 +482,106 @@ const buildPurchaseRefundEntryPayloads = async (purchase) => {
   ];
 };
 
+const getDisputeIdentity = (dispute = {}) => ({
+  disputeObjectId: dispute?._id || null,
+  disputeId: toIdString(dispute?._id),
+  providerDisputeId: String(dispute?.providerDisputeId || dispute?.id || "").trim(),
+});
+
+const buildPurchaseDisputeEntryPayloads = async ({
+  purchase,
+  dispute,
+  allocation,
+  entryType,
+  direction,
+  effectiveAt,
+} = {}) => {
+  if (!purchase?.creatorId) {
+    return [];
+  }
+
+  const { disputeObjectId, disputeId, providerDisputeId } = getDisputeIdentity(dispute);
+  if (!disputeObjectId || !providerDisputeId) {
+    return [];
+  }
+
+  const currency = normalizeCurrency(dispute?.currency || purchase.currency);
+  const [creatorWallet, platformWallet] = await Promise.all([
+    ensureCreatorWalletAccount(purchase.creatorId, currency),
+    ensurePlatformWalletAccount(currency),
+  ]);
+  const purchaseId = toIdString(purchase._id);
+  const providerLossAmount = clampMoney(
+    allocation?.requestedLossAmount ??
+      (entryType === "dispute_hold"
+        ? dispute?.disputedAmount || dispute?.refundAmount
+        : dispute?.refundAmount || dispute?.disputedAmount)
+  );
+  const sharedMetadata = {
+    disputeId,
+    providerDisputeId,
+    purchaseId,
+    creatorId: toIdString(purchase.creatorId),
+    itemType: String(purchase.itemType || "").trim().toLowerCase(),
+    itemId: toIdString(purchase.itemId),
+    provider: dispute?.provider || purchase.provider || "paystack",
+    providerRef: purchase.providerRef || dispute?.providerRef || "",
+    disputeStatus: String(dispute?.status || "").trim().toLowerCase(),
+    disputeResolution: String(dispute?.resolution || "").trim().toLowerCase(),
+    providerLossAmount,
+    priorChargebackAmount: clampMoney(allocation?.priorLossAmount),
+    chargebackAmount: clampMoney(allocation?.deductibleLossAmount),
+    netRevenueAmount: clampMoney(allocation?.deductibleLossAmount),
+    creatorAmount: clampMoney(allocation?.creatorDebitAmount),
+    platformAmount: clampMoney(allocation?.platformDebitAmount),
+    shareBaseAmount: clampMoney(allocation?.shareBaseAmount),
+    unallocatedLossAmount: clampMoney(allocation?.unallocatedLossAmount),
+  };
+  const action =
+    entryType === "dispute_hold"
+      ? "hold"
+      : entryType === "dispute_release"
+        ? "release"
+        : "chargeback";
+
+  return [
+    {
+      walletAccountId: creatorWallet._id,
+      ownerType: "creator",
+      ownerId: purchase.creatorId,
+      currency,
+      direction,
+      bucket: "available",
+      entryType,
+      amount: clampMoney(allocation?.creatorDebitAmount),
+      grossAmount: providerLossAmount,
+      sourceType: "dispute",
+      sourceId: disputeObjectId,
+      sourceRef: providerDisputeId,
+      dedupeKey: `purchase_dispute_${action}_creator:${purchaseId}:${providerDisputeId}`,
+      effectiveAt,
+      metadata: sharedMetadata,
+    },
+    {
+      walletAccountId: platformWallet._id,
+      ownerType: "platform",
+      ownerId: null,
+      currency,
+      direction,
+      bucket: "available",
+      entryType,
+      amount: clampMoney(allocation?.platformDebitAmount),
+      grossAmount: providerLossAmount,
+      sourceType: "dispute",
+      sourceId: disputeObjectId,
+      sourceRef: providerDisputeId,
+      dedupeKey: `purchase_dispute_${action}_platform:${purchaseId}:${providerDisputeId}`,
+      effectiveAt,
+      metadata: sharedMetadata,
+    },
+  ];
+};
+
 const upsertWalletEntry = async (payload) => {
   const result = await WalletEntry.updateOne(
     { dedupeKey: payload.dedupeKey },
@@ -404,6 +592,296 @@ const upsertWalletEntry = async (payload) => {
   return {
     created: Boolean(result?.upsertedCount),
   };
+};
+
+const upsertWalletEntries = async (payloads = []) => {
+  let createdCount = 0;
+  for (const payload of payloads) {
+    const result = await upsertWalletEntry(payload);
+    if (result.created) {
+      createdCount += 1;
+    }
+  }
+  return createdCount;
+};
+
+const buildDisputeEntryResult = ({
+  purchase,
+  dispute,
+  allocation,
+  createdCount = 0,
+  revenueLedgerResult = {},
+  releaseResult = null,
+} = {}) => ({
+  createdCount,
+  revenueLedgerCreatedCount: Number(revenueLedgerResult?.createdCount || 0),
+  revenueLedgerFailed: Boolean(revenueLedgerResult?.failed),
+  skipped: false,
+  purchaseId: toIdString(purchase?._id),
+  disputeId: toIdString(dispute?._id),
+  providerDisputeId: String(dispute?.providerDisputeId || "").trim(),
+  chargebackAmount: clampMoney(allocation?.deductibleLossAmount),
+  creatorChargebackAmount: clampMoney(allocation?.creatorDebitAmount),
+  platformChargebackAmount: clampMoney(allocation?.platformDebitAmount),
+  unallocatedLossAmount: clampMoney(allocation?.unallocatedLossAmount),
+  ...(releaseResult ? { releaseResult } : {}),
+});
+
+const recordPurchaseDisputeHoldEntries = async ({
+  purchase,
+  dispute,
+  priorLossAmount = 0,
+  logger = console,
+} = {}) => {
+  if (!purchase?._id || !dispute?._id || !dispute?.providerDisputeId) {
+    return { createdCount: 0, skipped: true, reason: "missing_dispute_identity" };
+  }
+
+  const existingAllocation = await loadDisputeEntryAllocation({
+    dispute,
+    entryType: "dispute_hold",
+  });
+  const allocation =
+    existingAllocation ||
+    computePurchaseDisputeAllocation({
+      purchase,
+      lossAmount: dispute.disputedAmount || dispute.refundAmount,
+      priorLossAmount,
+    });
+  if (allocation.deductibleLossAmount <= 0) {
+    return {
+      createdCount: 0,
+      skipped: true,
+      reason: "non_positive_dispute_amount",
+      allocation,
+    };
+  }
+
+  const settlementResult = await recordPurchaseSettlementEntries({
+    purchase,
+    logger: null,
+  });
+  if (settlementResult.skipped || settlementResult.revenueLedgerFailed) {
+    return {
+      createdCount: 0,
+      skipped: true,
+      reason: settlementResult.revenueLedgerFailed
+        ? "purchase_settlement_ledger_failed"
+        : settlementResult.reason || "purchase_settlement_unavailable",
+      revenueLedgerFailed: Boolean(settlementResult.revenueLedgerFailed),
+      settlementResult,
+      allocation,
+    };
+  }
+  const payloads = await buildPurchaseDisputeEntryPayloads({
+    purchase,
+    dispute,
+    allocation,
+    entryType: "dispute_hold",
+    direction: "debit",
+    effectiveAt: dispute.openedAt || dispute.lastEventAt || new Date(),
+  });
+  const createdCount = await upsertWalletEntries(payloads);
+  const revenueLedgerResult = await recordDisputeOpenedLedgerEntries({
+    purchase,
+    dispute,
+    allocation,
+  }).catch((error) => ({
+    createdCount: 0,
+    failed: true,
+    reason: error?.message || "Revenue ledger dispute hold failed",
+  }));
+
+  if (createdCount > 0 && logger?.info) {
+    logger.info("[wallet] dispute reserve recorded", {
+      purchaseId: toIdString(purchase._id),
+      providerDisputeId: dispute.providerDisputeId,
+      chargebackAmount: allocation.deductibleLossAmount,
+    });
+  }
+
+  return buildDisputeEntryResult({
+    purchase,
+    dispute,
+    allocation,
+    createdCount,
+    revenueLedgerResult,
+  });
+};
+
+const loadDisputeEntryAllocation = async ({ dispute, entryType } = {}) => {
+  if (!dispute?._id) {
+    return null;
+  }
+  const entries = await WalletEntry.find({
+    sourceType: "dispute",
+    sourceId: dispute._id,
+    entryType,
+  })
+    .select("ownerType amount metadata")
+    .lean();
+  if (!entries.length) {
+    return null;
+  }
+
+  const creatorEntry = entries.find((entry) => entry.ownerType === "creator");
+  const platformEntry = entries.find((entry) => entry.ownerType === "platform");
+  const metadata = creatorEntry?.metadata || platformEntry?.metadata || {};
+  const creatorDebitAmount = clampMoney(
+    metadata.creatorAmount ?? creatorEntry?.amount
+  );
+  const platformDebitAmount = clampMoney(
+    metadata.platformAmount ?? platformEntry?.amount
+  );
+  return {
+    shareBaseAmount: clampMoney(metadata.shareBaseAmount),
+    requestedLossAmount: clampMoney(metadata.providerLossAmount),
+    priorLossAmount: clampMoney(metadata.priorChargebackAmount),
+    deductibleLossAmount: clampMoney(creatorDebitAmount + platformDebitAmount),
+    creatorDebitAmount,
+    platformDebitAmount,
+    unallocatedLossAmount: clampMoney(metadata.unallocatedLossAmount),
+  };
+};
+
+const loadDisputeHoldAllocation = async (dispute) =>
+  loadDisputeEntryAllocation({ dispute, entryType: "dispute_hold" });
+
+const recordPurchaseDisputeReleaseEntries = async ({
+  purchase,
+  dispute,
+  logger = console,
+} = {}) => {
+  if (!purchase?._id || !dispute?._id || !dispute?.providerDisputeId) {
+    return { createdCount: 0, skipped: true, reason: "missing_dispute_identity" };
+  }
+
+  const allocation = await loadDisputeHoldAllocation(dispute);
+  if (!allocation) {
+    return { createdCount: 0, skipped: true, reason: "no_dispute_hold" };
+  }
+
+  const payloads = await buildPurchaseDisputeEntryPayloads({
+    purchase,
+    dispute,
+    allocation,
+    entryType: "dispute_release",
+    direction: "credit",
+    effectiveAt: dispute.resolvedAt || dispute.lastEventAt || new Date(),
+  });
+  const createdCount = await upsertWalletEntries(payloads);
+  const revenueLedgerResult = await recordDisputeReleasedLedgerEntries({
+    purchase,
+    dispute,
+    allocation,
+  }).catch((error) => ({
+    createdCount: 0,
+    failed: true,
+    reason: error?.message || "Revenue ledger dispute release failed",
+  }));
+
+  if (createdCount > 0 && logger?.info) {
+    logger.info("[wallet] dispute reserve released", {
+      purchaseId: toIdString(purchase._id),
+      providerDisputeId: dispute.providerDisputeId,
+    });
+  }
+
+  return buildDisputeEntryResult({
+    purchase,
+    dispute,
+    allocation,
+    createdCount,
+    revenueLedgerResult,
+  });
+};
+
+const recordPurchaseChargebackEntries = async ({
+  purchase,
+  dispute,
+  priorLossAmount = 0,
+  logger = console,
+} = {}) => {
+  if (!purchase?._id || !dispute?._id || !dispute?.providerDisputeId) {
+    return { createdCount: 0, skipped: true, reason: "missing_dispute_identity" };
+  }
+
+  const existingAllocation = await loadDisputeEntryAllocation({
+    dispute,
+    entryType: "chargeback_debit",
+  });
+  const allocation =
+    existingAllocation ||
+    computePurchaseDisputeAllocation({
+      purchase,
+      lossAmount: dispute.refundAmount,
+      priorLossAmount,
+    });
+  if (allocation.deductibleLossAmount <= 0) {
+    return {
+      createdCount: 0,
+      skipped: true,
+      reason: "non_positive_chargeback_amount",
+      allocation,
+    };
+  }
+
+  const settlementResult = await recordPurchaseSettlementEntries({
+    purchase,
+    logger: null,
+  });
+  if (settlementResult.skipped || settlementResult.revenueLedgerFailed) {
+    return {
+      createdCount: 0,
+      skipped: true,
+      reason: settlementResult.revenueLedgerFailed
+        ? "purchase_settlement_ledger_failed"
+        : settlementResult.reason || "purchase_settlement_unavailable",
+      revenueLedgerFailed: Boolean(settlementResult.revenueLedgerFailed),
+      settlementResult,
+      allocation,
+    };
+  }
+  const releaseResult = await recordPurchaseDisputeReleaseEntries({
+    purchase,
+    dispute,
+    logger,
+  });
+  const payloads = await buildPurchaseDisputeEntryPayloads({
+    purchase,
+    dispute,
+    allocation,
+    entryType: "chargeback_debit",
+    direction: "debit",
+    effectiveAt: dispute.resolvedAt || dispute.lastEventAt || new Date(),
+  });
+  const createdCount = await upsertWalletEntries(payloads);
+  const revenueLedgerResult = await recordChargebackSettledLedgerEntries({
+    purchase,
+    dispute,
+    allocation,
+  }).catch((error) => ({
+    createdCount: 0,
+    failed: true,
+    reason: error?.message || "Revenue ledger chargeback failed",
+  }));
+
+  if (createdCount > 0 && logger?.info) {
+    logger.info("[wallet] chargeback recorded", {
+      purchaseId: toIdString(purchase._id),
+      providerDisputeId: dispute.providerDisputeId,
+      chargebackAmount: allocation.deductibleLossAmount,
+    });
+  }
+
+  return buildDisputeEntryResult({
+    purchase,
+    dispute,
+    allocation,
+    createdCount,
+    revenueLedgerResult,
+    releaseResult,
+  });
 };
 
 const recordPurchaseSettlementEntries = async ({
@@ -535,10 +1013,14 @@ const buildCreatorWalletSummary = async ({ creatorId, fallbackGrossRevenue = 0, 
       grossRevenue: clampMoney(fallbackGrossRevenue),
       processingFees: 0,
       taxes: 0,
+      chargebacks: 0,
       netRevenue: clampMoney(fallbackGrossRevenue),
       totalEarnings: 0,
       platformRevenue: 0,
       availableBalance: 0,
+      spendableBalance: 0,
+      recoverableBalance: 0,
+      debtBalance: 0,
       pendingBalance: 0,
       withdrawn: 0,
       walletBacked: false,
@@ -558,10 +1040,14 @@ const buildCreatorWalletSummary = async ({ creatorId, fallbackGrossRevenue = 0, 
       grossRevenue: clampMoney(fallbackGrossRevenue),
       processingFees: 0,
       taxes: 0,
+      chargebacks: 0,
       netRevenue: clampMoney(fallbackGrossRevenue),
       totalEarnings: 0,
       platformRevenue: 0,
       availableBalance: 0,
+      spendableBalance: 0,
+      recoverableBalance: 0,
+      debtBalance: 0,
       pendingBalance: 0,
       withdrawn: 0,
       walletBacked: false,
@@ -619,6 +1105,15 @@ const buildCreatorWalletSummary = async ({ creatorId, fallbackGrossRevenue = 0, 
             ],
           },
         },
+        chargebackNetRevenue: {
+          $sum: {
+            $cond: [
+              { $eq: ["$entryType", "chargeback_debit"] },
+              { $ifNull: ["$metadata.netRevenueAmount", "$amount"] },
+              0,
+            ],
+          },
+        },
         platformRevenue: {
           $sum: {
             $cond: [
@@ -632,6 +1127,15 @@ const buildCreatorWalletSummary = async ({ creatorId, fallbackGrossRevenue = 0, 
           $sum: {
             $cond: [
               { $eq: ["$entryType", "refund_debit"] },
+              { $ifNull: ["$metadata.platformAmount", 0] },
+              0,
+            ],
+          },
+        },
+        chargebackPlatformRevenue: {
+          $sum: {
+            $cond: [
+              { $eq: ["$entryType", "chargeback_debit"] },
               { $ifNull: ["$metadata.platformAmount", 0] },
               0,
             ],
@@ -655,6 +1159,11 @@ const buildCreatorWalletSummary = async ({ creatorId, fallbackGrossRevenue = 0, 
         refundDebits: {
           $sum: {
             $cond: [{ $eq: ["$entryType", "refund_debit"] }, "$amount", 0],
+          },
+        },
+        chargebackDebits: {
+          $sum: {
+            $cond: [{ $eq: ["$entryType", "chargeback_debit"] }, "$amount", 0],
           },
         },
         payoutDebits: {
@@ -722,11 +1231,18 @@ const buildCreatorWalletSummary = async ({ creatorId, fallbackGrossRevenue = 0, 
     },
   ]);
 
-  const totalEarnings = clampMoney(
+  const totalEarnings = roundMoney(
     Number(aggregate?.saleCredits || 0)
       + Number(aggregate?.adjustmentCredits || 0)
       - Number(aggregate?.adjustmentDebits || 0)
       - Number(aggregate?.refundDebits || 0)
+      - Number(aggregate?.chargebackDebits || 0)
+  );
+  const availableBalance = roundMoney(
+    Number(aggregate?.availableCredits || 0) - Number(aggregate?.availableDebits || 0)
+  );
+  const pendingBalance = roundMoney(
+    Number(aggregate?.pendingCredits || 0) - Number(aggregate?.pendingDebits || 0)
   );
   const hasLedgerEntries = Number(aggregate?.entryCount || 0) > 0;
 
@@ -737,21 +1253,23 @@ const buildCreatorWalletSummary = async ({ creatorId, fallbackGrossRevenue = 0, 
     ),
     processingFees: clampMoney(aggregate?.processingFees),
     taxes: clampMoney(aggregate?.taxes),
-    netRevenue: clampMoney(
+    chargebacks: clampMoney(aggregate?.chargebackNetRevenue),
+    netRevenue: roundMoney(
       Number(aggregate?.saleNetRevenue || 0)
         - Number(aggregate?.refundedNetRevenue || 0)
+        - Number(aggregate?.chargebackNetRevenue || 0)
     ),
     totalEarnings,
-    platformRevenue: clampMoney(
+    platformRevenue: roundMoney(
       Number(aggregate?.platformRevenue || 0)
         - Number(aggregate?.refundedPlatformRevenue || 0)
+        - Number(aggregate?.chargebackPlatformRevenue || 0)
     ),
-    availableBalance: clampMoney(
-      Number(aggregate?.availableCredits || 0) - Number(aggregate?.availableDebits || 0)
-    ),
-    pendingBalance: clampMoney(
-      Number(aggregate?.pendingCredits || 0) - Number(aggregate?.pendingDebits || 0)
-    ),
+    availableBalance,
+    spendableBalance: clampMoney(availableBalance),
+    recoverableBalance: Math.min(0, availableBalance),
+    debtBalance: clampMoney(-availableBalance),
+    pendingBalance,
     withdrawn: clampMoney(Number(aggregate?.payoutDebits || 0)),
     walletBacked: hasLedgerEntries,
   };
@@ -781,6 +1299,8 @@ const buildWalletRecentEntryFromLedger = (entry = {}) => {
     purchaseId: toIdString(metadata?.purchaseId || entry?.sourceId),
     provider: metadata?.provider || "",
     providerRef: entry?.sourceRef || metadata?.providerRef || "",
+    disputeId: toIdString(metadata?.disputeId),
+    providerDisputeId: metadata?.providerDisputeId || "",
     creatorAmount: clampMoney(metadata?.creatorAmount || 0),
     platformAmount: clampMoney(metadata?.platformAmount || 0),
     processingFeeAmount: clampMoney(metadata?.processingFeeAmount || 0),
@@ -860,22 +1380,70 @@ const buildCreatorWalletSnapshot = async ({
         {
           $match: {
             walletAccountId: walletObjectId,
-            entryType: "sale_credit",
+            entryType: { $in: ["sale_credit", "chargeback_debit"] },
           },
         },
         {
           $group: {
             _id: "$metadata.itemType",
-            grossRevenue: { $sum: "$grossAmount" },
+            grossRevenue: {
+              $sum: {
+                $cond: [{ $eq: ["$entryType", "sale_credit"] }, "$grossAmount", 0],
+              },
+            },
             processingFees: {
-              $sum: { $ifNull: ["$metadata.processingFeeAmount", 0] },
+              $sum: {
+                $cond: [
+                  { $eq: ["$entryType", "sale_credit"] },
+                  { $ifNull: ["$metadata.processingFeeAmount", 0] },
+                  0,
+                ],
+              },
             },
-            taxes: { $sum: { $ifNull: ["$metadata.taxAmount", 0] } },
+            taxes: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$entryType", "sale_credit"] },
+                  { $ifNull: ["$metadata.taxAmount", 0] },
+                  0,
+                ],
+              },
+            },
             netRevenue: {
-              $sum: { $ifNull: ["$metadata.netRevenueAmount", "$grossAmount"] },
+              $sum: {
+                $cond: [
+                  { $eq: ["$entryType", "chargeback_debit"] },
+                  {
+                    $multiply: [
+                      -1,
+                      { $ifNull: ["$metadata.netRevenueAmount", "$amount"] },
+                    ],
+                  },
+                  { $ifNull: ["$metadata.netRevenueAmount", "$grossAmount"] },
+                ],
+              },
             },
-            creatorEarnings: { $sum: "$amount" },
-            transactions: { $sum: 1 },
+            chargebacks: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$entryType", "chargeback_debit"] },
+                  { $ifNull: ["$metadata.netRevenueAmount", "$amount"] },
+                  0,
+                ],
+              },
+            },
+            creatorEarnings: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$entryType", "chargeback_debit"] },
+                  { $multiply: [-1, "$amount"] },
+                  "$amount",
+                ],
+              },
+            },
+            transactions: {
+              $sum: { $cond: [{ $eq: ["$entryType", "sale_credit"] }, 1, 0] },
+            },
           },
         },
       ]),
@@ -883,7 +1451,7 @@ const buildCreatorWalletSnapshot = async ({
         {
           $match: {
             walletAccountId: walletObjectId,
-            entryType: "sale_credit",
+            entryType: { $in: ["sale_credit", "chargeback_debit"] },
           },
         },
         {
@@ -892,7 +1460,15 @@ const buildCreatorWalletSnapshot = async ({
               itemType: "$metadata.itemType",
               itemId: "$metadata.itemId",
             },
-            creatorEarnings: { $sum: "$amount" },
+            creatorEarnings: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$entryType", "chargeback_debit"] },
+                  { $multiply: [-1, "$amount"] },
+                  "$amount",
+                ],
+              },
+            },
           },
         },
       ]),
@@ -906,7 +1482,7 @@ const buildCreatorWalletSnapshot = async ({
         if (!itemId) {
           return;
         }
-        itemEarningsMap.set(`${itemType}:${itemId}`, clampMoney(row?.creatorEarnings));
+        itemEarningsMap.set(`${itemType}:${itemId}`, roundMoney(row?.creatorEarnings));
       });
 
       return {
@@ -927,8 +1503,9 @@ const buildCreatorWalletSnapshot = async ({
               grossRevenue: clampMoney(row?.grossRevenue),
               processingFees: clampMoney(row?.processingFees),
               taxes: clampMoney(row?.taxes),
-              netRevenue: clampMoney(row?.netRevenue),
-              creatorEarnings: clampMoney(row?.creatorEarnings),
+              chargebacks: clampMoney(row?.chargebacks),
+              netRevenue: roundMoney(row?.netRevenue),
+              creatorEarnings: roundMoney(row?.creatorEarnings),
               transactions: Number(row?.transactions || 0),
             };
           })
@@ -1149,6 +1726,10 @@ module.exports = {
   ensurePlatformWalletAccount,
   recordPurchaseRefundEntries,
   recordPurchaseSettlementEntries,
+  computePurchaseDisputeAllocation,
+  recordPurchaseDisputeHoldEntries,
+  recordPurchaseDisputeReleaseEntries,
+  recordPurchaseChargebackEntries,
   buildCreatorWalletSummary,
   buildCreatorWalletSnapshot,
   reconcilePaidPurchaseWalletEntries,

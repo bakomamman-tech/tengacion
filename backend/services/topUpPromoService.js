@@ -11,7 +11,7 @@ const WINNING_CHEST_NUMBERS = new Set([4, 11]);
 const CAMPAIGN = Object.freeze({
   key: CAMPAIGN_KEY,
   title: "Top-Up Bank Account Promo",
-  totalChests: 50,
+  totalChests: 103,
   prizeChests: WINNING_CHEST_NUMBERS.size,
   prizeAmount: 5000,
   customerCarePhone: "08164649980",

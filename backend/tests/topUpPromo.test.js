@@ -94,13 +94,13 @@ describe("Top-Up Bank Account Promo routes", () => {
     expect(statusResponse.body.hasPlayed).toBe(false);
     expect(statusResponse.body.campaign).toMatchObject({
       title: "Top-Up Bank Account Promo",
-      totalChests: 50,
+      totalChests: 103,
       prizeChests: 2,
       prizeAmount: 5000,
     });
     expect(statusResponse.body).toMatchObject({
       discoveredChestNumbers: [],
-      remainingChests: 50,
+      remainingChests: 103,
     });
 
     const winResponse = await request(app)
@@ -118,7 +118,7 @@ describe("Top-Up Bank Account Promo routes", () => {
     expect(winResponse.body.play.passcode).toMatch(/^[A-Z0-9]{8}$/);
     expect(winResponse.body).toMatchObject({
       discoveredChestNumbers: [4],
-      remainingChests: 49,
+      remainingChests: 102,
     });
 
     const repeatResponse = await request(app)
@@ -168,14 +168,14 @@ describe("Top-Up Bank Account Promo routes", () => {
     expect(emit).toHaveBeenCalledWith("top-up-promo:discovered", {
       chestNumber: 8,
       discoveredChestNumbers: [8],
-      remainingChests: 49,
+      remainingChests: 102,
     });
 
     const rejectedResponse = responses.find((response) => response.status === 409);
     expect(rejectedResponse.body).toMatchObject({
       code: "chest_already_discovered",
       discoveredChestNumbers: [8],
-      remainingChests: 49,
+      remainingChests: 102,
     });
 
     const secondStatus = await request(app)
@@ -183,7 +183,7 @@ describe("Top-Up Bank Account Promo routes", () => {
       .set("Authorization", `Bearer ${secondToken}`)
       .expect(200);
     expect(secondStatus.body.discoveredChestNumbers).toEqual([8]);
-    expect(secondStatus.body.remainingChests).toBe(49);
+    expect(secondStatus.body.remainingChests).toBe(102);
   });
 
   test("water outcomes and winner contact snapshots are available to admins", async () => {
@@ -281,27 +281,27 @@ describe("Top-Up Bank Account Promo routes", () => {
     expect(await TopUpPromoPlay.countDocuments({ userId: admin._id })).toBe(0);
   });
 
-  test("accepts chest 50 and rejects numbers outside the expanded campaign", async () => {
+  test("accepts water chest 103 and rejects numbers outside the expanded campaign", async () => {
     const user = await createUser({
-      username: "fiftieth_explorer",
-      email: "fiftieth@example.com",
+      username: "last_chest_explorer",
+      email: "last-chest@example.com",
     });
     const token = await issueSessionToken(user._id);
 
     await request(app)
       .post("/api/top-up-promo/discover")
       .set("Authorization", `Bearer ${token}`)
-      .send({ chestNumber: 51 })
+      .send({ chestNumber: 104 })
       .expect(400);
 
     const response = await request(app)
       .post("/api/top-up-promo/discover")
       .set("Authorization", `Bearer ${token}`)
-      .send({ chestNumber: 50 })
+      .send({ chestNumber: 103 })
       .expect(200);
 
     expect(response.body.play).toMatchObject({
-      chestNumber: 50,
+      chestNumber: 103,
       outcome: "water",
       won: false,
       passcode: "",

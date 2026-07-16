@@ -1,4 +1,6 @@
-const STAR_COORDINATES = [
+export const TOTAL_DISCOVERY_STARS = 103;
+
+const BASE_STAR_COORDINATES = [
   [47, 8], [10, 28], [88, 8], [32, 20], [53, 34],
   [9, 42], [90, 49], [8, 76], [90, 80], [10, 55],
   [73, 14], [88, 42], [9, 35], [81, 86], [88, 24],
@@ -11,6 +13,21 @@ const STAR_COORDINATES = [
   [69, 48], [12, 30], [81, 44], [77, 73], [88, 34],
 ];
 
+const keepInViewport = (value) => Math.max(6, Math.min(94, value));
+
+const STAR_COORDINATES = Array.from({ length: TOTAL_DISCOVERY_STARS }, (_, index) => {
+  const [baseX, baseY] = BASE_STAR_COORDINATES[index % BASE_STAR_COORDINATES.length];
+  const placementRound = Math.floor(index / BASE_STAR_COORDINATES.length);
+
+  if (placementRound === 0) {
+    return [baseX, baseY];
+  }
+
+  const xOffset = placementRound === 1 ? (index % 2 === 0 ? 7 : -7) : 12;
+  const yOffset = placementRound === 1 ? (index % 3 === 0 ? 8 : -8) : 13;
+  return [keepInViewport(baseX + xOffset), keepInViewport(baseY + yOffset)];
+});
+
 export const STAR_POSITIONS = STAR_COORDINATES.map(([x, y], index) => ({
   x,
   y,
@@ -18,7 +35,7 @@ export const STAR_POSITIONS = STAR_COORDINATES.map(([x, y], index) => ({
   scale: Number((0.72 + (index % 5) * 0.04).toFixed(2)),
 }));
 
-const PLACEMENT_DEFINITIONS = [
+const BASE_PLACEMENT_DEFINITIONS = [
   ["Search", "/search", "exact", "Navbar search and results header", "search"],
   ["Messages", "/messages", "exact", "Conversation sidebar", "messages"],
   ["Notifications", "/notifications", "exact", "Navbar notification corner", "notifications"],
@@ -70,6 +87,11 @@ const PLACEMENT_DEFINITIONS = [
   ["Events", "/events", "exact", "Events calendar and list", "events"],
   ["Birthdays", "/birthdays", "exact", "Upcoming birthdays sidebar", "birthdays"],
 ];
+
+const PLACEMENT_DEFINITIONS = Array.from(
+  { length: TOTAL_DISCOVERY_STARS },
+  (_, index) => BASE_PLACEMENT_DEFINITIONS[index % BASE_PLACEMENT_DEFINITIONS.length]
+);
 
 export const DISCOVERY_PLACEMENTS = PLACEMENT_DEFINITIONS.map(
   ([page, route, match, zone, tipKey], index) => ({

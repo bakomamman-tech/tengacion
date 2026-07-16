@@ -37,7 +37,7 @@ const user = {
 
 const campaign = {
   title: "Top-Up Bank Account Promo",
-  totalChests: 50,
+  totalChests: 103,
   prizeChests: 2,
   prizeAmount: 5000,
   customerCarePhone: "08164649980",
@@ -62,29 +62,29 @@ describe("TopUpPromoDiscovery", () => {
       hasPlayed: false,
       play: null,
       discoveredChestNumbers: [],
-      remainingChests: 50,
+      remainingChests: 103,
     });
   });
 
-  it("defines fifty permitted placements and shows the six assigned Home stars", async () => {
-    expect(DISCOVERY_PLACEMENTS).toHaveLength(50);
-    expect(new Set(DISCOVERY_PLACEMENTS.map((placement) => placement.id)).size).toBe(50);
+  it("defines 103 permitted placements and shows the twelve assigned Home stars", async () => {
+    expect(DISCOVERY_PLACEMENTS).toHaveLength(103);
+    expect(new Set(DISCOVERY_PLACEMENTS.map((placement) => placement.id)).size).toBe(103);
     expect(DISCOVERY_PLACEMENTS.every((placement) => !/^\/(admin|creator|marketplace)(?:\/|$)/i.test(placement.route))).toBe(true);
 
     renderDiscovery();
 
     const stars = await screen.findAllByRole("button", { name: /open discovery star/i });
-    expect(stars).toHaveLength(6);
+    expect(stars).toHaveLength(12);
     expect(stars.map((star) => star.getAttribute("aria-label"))).toEqual(expect.arrayContaining([
-      expect.stringContaining("star 4 of 50 near Stories tray"),
-      expect.stringContaining("star 5 of 50 near Post composer"),
-      expect.stringContaining("star 7 of 50 near Right quick-navigation sidebar"),
+      expect.stringContaining("star 4 of 103 near Stories tray"),
+      expect.stringContaining("star 5 of 103 near Post composer"),
+      expect.stringContaining("star 7 of 103 near Right quick-navigation sidebar"),
     ]));
   });
 
   it("distributes checkpoints by route and excludes Creator and Marketplace", async () => {
     const messagesView = renderDiscovery({}, "/messages");
-    expect(await screen.findByRole("button", { name: /star 2 of 50 near Conversation sidebar/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /star 2 of 103 near Conversation sidebar/i })).toBeInTheDocument();
     messagesView.unmount();
 
     renderDiscovery({}, "/creator/dashboard");
@@ -102,32 +102,32 @@ describe("TopUpPromoDiscovery", () => {
       hasPlayed: false,
       play: null,
       discoveredChestNumbers: [4, 7, 16],
-      remainingChests: 47,
+      remainingChests: 100,
     });
 
     renderDiscovery();
 
     const stars = await screen.findAllByRole("button", { name: /open discovery star/i });
-    expect(stars).toHaveLength(3);
-    expect(screen.queryByRole("button", { name: /star 4 of 50/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /star 7 of 50/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /star 16 of 50/i })).not.toBeInTheDocument();
+    expect(stars).toHaveLength(9);
+    expect(screen.queryByRole("button", { name: /star 4 of 103/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /star 7 of 103/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /star 16 of 103/i })).not.toBeInTheDocument();
   });
 
   it("removes a newly revealed position immediately for other connected users", async () => {
     renderDiscovery();
-    expect(await screen.findByRole("button", { name: /Open discovery star 4 of 50/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Open discovery star 4 of 103/i })).toBeInTheDocument();
 
     act(() => {
       socketHandlers.get("top-up-promo:discovered")?.({
         chestNumber: 4,
         discoveredChestNumbers: [4],
-        remainingChests: 49,
+        remainingChests: 102,
       });
     });
 
-    expect(screen.queryByRole("button", { name: /Open discovery star 4 of 50/i })).not.toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /open discovery star/i })).toHaveLength(5);
+    expect(screen.queryByRole("button", { name: /Open discovery star 4 of 103/i })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /open discovery star/i })).toHaveLength(11);
   });
 
   it("keeps every other available star blinking after this user reveals water", async () => {
@@ -145,7 +145,7 @@ describe("TopUpPromoDiscovery", () => {
         discoveredAt: "2026-07-15T17:20:00.000Z",
       },
       discoveredChestNumbers: [4],
-      remainingChests: 49,
+      remainingChests: 102,
     });
 
     renderDiscovery();
@@ -153,8 +153,8 @@ describe("TopUpPromoDiscovery", () => {
     const availableStars = await screen.findAllByRole("button", {
       name: /available discovery star/i,
     });
-    expect(availableStars).toHaveLength(5);
-    expect(screen.queryByRole("button", { name: /star 4 of 50/i })).not.toBeInTheDocument();
+    expect(availableStars).toHaveLength(11);
+    expect(screen.queryByRole("button", { name: /star 4 of 103/i })).not.toBeInTheDocument();
     availableStars.forEach((star) => {
       expect(star).toBeDisabled();
       expect(star).toHaveClass("topup-discovery-star");
@@ -168,7 +168,7 @@ describe("TopUpPromoDiscovery", () => {
       visibility: { visible: true, reason: "available" },
       hasPlayed: false,
       play: null,
-      discoveredChestNumbers: Array.from({ length: 50 }, (_, index) => index + 1),
+      discoveredChestNumbers: Array.from({ length: 103 }, (_, index) => index + 1),
       remainingChests: 0,
     });
 
@@ -183,18 +183,18 @@ describe("TopUpPromoDiscovery", () => {
     error.payload = {
       code: "chest_already_discovered",
       discoveredChestNumbers: [4],
-      remainingChests: 49,
+      remainingChests: 102,
     };
     discoverMock.mockRejectedValue(error);
 
     renderDiscovery();
-    fireEvent.click(await screen.findByRole("button", { name: /Open discovery star 4 of 50/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Open discovery star 4 of 103/i }));
 
     await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /Open discovery star 4 of 50/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Open discovery star 4 of 103/i })).not.toBeInTheDocument();
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /open discovery star/i })).toHaveLength(5);
+    expect(screen.getAllByRole("button", { name: /open discovery star/i })).toHaveLength(11);
   });
 
   it("reveals and preserves a server-issued winning passcode", async () => {
@@ -213,7 +213,7 @@ describe("TopUpPromoDiscovery", () => {
     });
 
     renderDiscovery();
-    fireEvent.click(await screen.findByRole("button", { name: /Open discovery star 4 of 50/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /Open discovery star 4 of 103/i }));
 
     await waitFor(() => expect(discoverMock).toHaveBeenCalledWith(4));
     expect(await screen.findByText("K9P2QX7A")).toBeInTheDocument();
@@ -229,26 +229,26 @@ describe("TopUpPromoDiscovery", () => {
 
   it("keeps the promo visible for non-admin account types", async () => {
     renderDiscovery({ user: { ...user, role: "artist" } });
-    expect(await screen.findAllByRole("button", { name: /open discovery star/i })).toHaveLength(6);
+    expect(await screen.findAllByRole("button", { name: /open discovery star/i })).toHaveLength(12);
   });
 
-  it("renders and submits the fiftieth chest on its assigned route", async () => {
+  it("renders and submits the 103rd chest on its assigned route", async () => {
     discoverMock.mockResolvedValue({
       campaign,
       hasPlayed: true,
       play: {
-        id: "play-50",
-        chestNumber: 50,
+        id: "play-103",
+        chestNumber: 103,
         outcome: "water",
         won: false,
         prizeAmount: 0,
         passcode: "",
-        discoveredAt: "2026-07-15T17:50:00.000Z",
+        discoveredAt: "2026-07-15T17:53:00.000Z",
       },
     });
 
-    renderDiscovery({}, "/birthdays");
-    fireEvent.click(await screen.findByRole("button", { name: /Open discovery star 50 of 50/i }));
-    await waitFor(() => expect(discoverMock).toHaveBeenCalledWith(50));
+    renderDiscovery({}, "/notifications");
+    fireEvent.click(await screen.findByRole("button", { name: /Open discovery star 103 of 103/i }));
+    await waitFor(() => expect(discoverMock).toHaveBeenCalledWith(103));
   });
 });

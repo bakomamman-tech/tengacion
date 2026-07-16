@@ -18,15 +18,15 @@ const admin = {
 };
 
 describe("AdminTopUpPromoPreviewPage", () => {
-  it("shows all fifty placement coordinates without starting a game", () => {
+  it("shows all 103 placement coordinates without starting a game", () => {
     render(
       <MemoryRouter initialEntries={["/admin/top-up-bank-account-promo/preview"]}>
         <AdminTopUpPromoPreviewPage user={admin} />
       </MemoryRouter>
     );
 
-    expect(screen.getAllByRole("button", { name: /inspect star position/i })).toHaveLength(50);
-    expect(screen.getByText("All 50 application star placements")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /inspect star position/i })).toHaveLength(103);
+    expect(screen.getByText("All 103 application star placements")).toBeInTheDocument();
     expect(screen.getByText(/Creator, Marketplace, and Admin surfaces are excluded/i)).toBeInTheDocument();
   });
 

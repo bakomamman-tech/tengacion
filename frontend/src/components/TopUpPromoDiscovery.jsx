@@ -8,6 +8,7 @@ import {
 import {
   DISCOVERY_PLACEMENTS,
   DISCOVERY_TIPS,
+  TOTAL_DISCOVERY_STARS,
   speakOutcome,
 } from "./topUpPromoConfig";
 import { getSocket } from "../socket";
@@ -27,7 +28,7 @@ const CONFETTI = Array.from({ length: 42 }, (_, index) => ({
 
 const DEFAULT_CAMPAIGN = {
   title: "Top-Up Bank Account Promo",
-  totalChests: 50,
+  totalChests: TOTAL_DISCOVERY_STARS,
   prizeChests: 2,
   prizeAmount: 5000,
   customerCarePhone: "08164649980",

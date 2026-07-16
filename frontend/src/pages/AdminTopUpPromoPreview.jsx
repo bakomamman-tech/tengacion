@@ -43,10 +43,10 @@ export default function AdminTopUpPromoPreviewPage({ user }) {
       <section className="adminx-panel adminx-panel--span-12 admin-topup-preview-notice">
         <div>
           <span>Admin preview</span>
-          <h2>All 50 application star placements</h2>
+          <h2>All 103 application star placements</h2>
           <p>
             The numbered markers below combine the exact viewport coordinates used across permitted
-            app pages. Numbers and labels are visible only here; users see one to six bright blinking stars on
+            app pages. Numbers and labels are visible only here; users see the bright blinking stars assigned to
             the relevant page.
           </p>
         </div>
@@ -62,10 +62,10 @@ export default function AdminTopUpPromoPreviewPage({ user }) {
             <h2 className="adminx-panel-title">Application placement map</h2>
             <span className="adminx-section-meta">A combined coordinate view—select a star to see its actual page and zone</span>
           </div>
-          <span className="adminx-badge">50 positions</span>
+          <span className="adminx-badge">103 positions</span>
         </div>
 
-        <div className="admin-topup-preview-stage" aria-label="Combined numbered map of all fifty promo stars across the app">
+        <div className="admin-topup-preview-stage" aria-label="Combined numbered map of all 103 promo stars across the app">
           <div className="admin-topup-preview-navbar">
             <div className="admin-topup-preview-logo">T</div>
             <div className="admin-topup-preview-search">Search Tengacion</div>

@@ -2504,6 +2504,7 @@ export const adminGetTopUpPromoPlays = (params = {}) => {
       query.set(key, String(value));
     }
   });
+  query.set("t", String(Date.now()));
   return request(`${API_BASE}/admin/top-up-promo/plays?${query.toString()}`, {
     headers: getAuthHeaders(),
   });

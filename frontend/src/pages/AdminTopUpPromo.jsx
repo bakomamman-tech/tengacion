@@ -82,7 +82,7 @@ export default function AdminTopUpPromoPage({ user }) {
           <p>
             {number(campaign.totalChests || 103)} stars distributed across permitted Tengacion pages open server-controlled chests. Two chest positions contain gold,
             confetti, a unique passcode, and a {naira(campaign.prizeAmount || 5000)} declaration; the other {number(Math.max(0, (campaign.totalChests || 103) - (campaign.prizeChests || 2)))} contain animated water.
-            Each account can record one discovery.
+            Each chest can be recorded once globally. Participants can keep searching after water until they find a winning chest.
           </p>
           <div className="admin-topup-rules">
             <span>{number(campaign.totalChests || 103)} chests</span>

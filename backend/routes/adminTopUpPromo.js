@@ -9,6 +9,7 @@ const router = express.Router();
 
 router.get("/plays", async (req, res) => {
   try {
+    res.set("Cache-Control", "private, no-store, max-age=0");
     return res.json(
       await listTopUpPromoPlaysForAdmin({
         outcome: req.query.outcome,

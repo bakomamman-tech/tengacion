@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const TopUpPromoPlay = require("../models/TopUpPromoPlay");
 const { CAMPAIGN_KEY } = require("../models/TopUpPromoPlay");
 const User = require("../models/User");
+const { repairTopUpPromoIndexes } = require("../scripts/repairTopUpPromoIndexes");
 const { sanitizePhoneValue } = require("../utils/profileFields");
 
 // Kept on the server so the two winning stars cannot be found in the browser bundle.
@@ -20,6 +21,7 @@ const CAMPAIGN = Object.freeze({
 
 const ALPHANUMERIC = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ADMIN_ROLES = new Set(["admin", "super_admin", "moderator", "trust_safety_admin"]);
+let promoIndexRepairPromise = null;
 
 class TopUpPromoError extends Error {
   constructor(message, status = 400, code = "top_up_promo_error", payload = {}) {
@@ -125,10 +127,25 @@ const getTopUpPromoAvailability = async () =>
     await TopUpPromoPlay.distinct("chestNumber", { campaignKey: CAMPAIGN.key })
   );
 
+const ensureMultipleDiscoveriesPerUser = () => {
+  if (!promoIndexRepairPromise) {
+    promoIndexRepairPromise = repairTopUpPromoIndexes().catch((error) => {
+      promoIndexRepairPromise = null;
+      throw error;
+    });
+  }
+  return promoIndexRepairPromise;
+};
+
 const buildTopUpPromoStatus = async (userId) => {
-  const [user, play, availability] = await Promise.all([
+  const [user, play, winningPlay, availability] = await Promise.all([
     getUserForPromo(userId),
-    TopUpPromoPlay.findOne({ campaignKey: CAMPAIGN.key, userId }).lean(),
+    TopUpPromoPlay.findOne({ campaignKey: CAMPAIGN.key, userId })
+      .sort({ discoveredAt: -1, _id: -1 })
+      .lean(),
+    TopUpPromoPlay.findOne({ campaignKey: CAMPAIGN.key, userId, outcome: "win" })
+      .sort({ discoveredAt: -1, _id: -1 })
+      .lean(),
     getTopUpPromoAvailability(),
   ]);
 
@@ -142,6 +159,7 @@ const buildTopUpPromoStatus = async (userId) => {
     visibility,
     hasPlayed: Boolean(play),
     play: serializePlay(play),
+    canDiscover: visibility.visible && !winningPlay,
     ...availability,
   };
 };
@@ -207,15 +225,37 @@ const discoverTopUpPromoChest = async ({ userId, chestNumber }) => {
     throw new TopUpPromoError(visibility.message, 403, "promo_unavailable", { visibility });
   }
 
-  const existing = await TopUpPromoPlay.findOne({ campaignKey: CAMPAIGN.key, userId });
-  if (existing) {
-    return {
-      campaign: CAMPAIGN,
-      alreadyPlayed: true,
-      hasPlayed: true,
-      play: serializePlay(existing),
-      ...(await getTopUpPromoAvailability()),
-    };
+  await ensureMultipleDiscoveriesPerUser();
+
+  const winningPlay = await TopUpPromoPlay.findOne({
+    campaignKey: CAMPAIGN.key,
+    userId,
+    outcome: "win",
+  });
+  if (winningPlay) {
+    const availability = await getTopUpPromoAvailability();
+    if (Number(winningPlay.chestNumber) === normalizedChest) {
+      return {
+        campaign: CAMPAIGN,
+        alreadyPlayed: true,
+        hasPlayed: true,
+        canDiscover: false,
+        play: serializePlay(winningPlay),
+        ...availability,
+      };
+    }
+
+    throw new TopUpPromoError(
+      "You have already found a winning chest.",
+      409,
+      "promo_already_won",
+      {
+        hasPlayed: true,
+        canDiscover: false,
+        play: serializePlay(winningPlay),
+        ...availability,
+      }
+    );
   }
 
   try {
@@ -224,28 +264,27 @@ const discoverTopUpPromoChest = async ({ userId, chestNumber }) => {
       campaign: CAMPAIGN,
       alreadyPlayed: false,
       hasPlayed: true,
+      canDiscover: !play.won && String(play.outcome || "") !== "win",
       play: serializePlay(play),
       ...(await getTopUpPromoAvailability()),
     };
   } catch (error) {
     if (error?.code === 11000) {
-      const play = await TopUpPromoPlay.findOne({ campaignKey: CAMPAIGN.key, userId });
-      if (play) {
+      const discoveredPlay = await TopUpPromoPlay.findOne({
+        campaignKey: CAMPAIGN.key,
+        chestNumber: normalizedChest,
+      });
+
+      if (discoveredPlay && toId(discoveredPlay.userId) === toId(userId)) {
         return {
           campaign: CAMPAIGN,
           alreadyPlayed: true,
           hasPlayed: true,
-          play: serializePlay(play),
+          canDiscover: String(discoveredPlay.outcome || "") !== "win",
+          play: serializePlay(discoveredPlay),
           ...(await getTopUpPromoAvailability()),
         };
       }
-
-      const discoveredPlay = await TopUpPromoPlay.findOne({
-        campaignKey: CAMPAIGN.key,
-        chestNumber: normalizedChest,
-      })
-        .select("_id")
-        .lean();
 
       if (discoveredPlay) {
         throw new TopUpPromoError(
@@ -253,6 +292,25 @@ const discoverTopUpPromoChest = async ({ userId, chestNumber }) => {
           409,
           "chest_already_discovered",
           await getTopUpPromoAvailability()
+        );
+      }
+
+      const concurrentWinningPlay = await TopUpPromoPlay.findOne({
+        campaignKey: CAMPAIGN.key,
+        userId,
+        outcome: "win",
+      });
+      if (concurrentWinningPlay) {
+        throw new TopUpPromoError(
+          "You have already found a winning chest.",
+          409,
+          "promo_already_won",
+          {
+            hasPlayed: true,
+            canDiscover: false,
+            play: serializePlay(concurrentWinningPlay),
+            ...(await getTopUpPromoAvailability()),
+          }
         );
       }
     }

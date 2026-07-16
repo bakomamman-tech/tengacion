@@ -277,6 +277,7 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
 
   const campaign = status?.campaign || DEFAULT_CAMPAIGN;
   const displayName = String(user?.name || user?.username || "friend").trim();
+  const canDiscover = status?.canDiscover !== false && !play?.won;
   const tipIndex = Math.max(
     0,
     Math.min(DISCOVERY_TIPS.length - 1, Number(play?.chestNumber || selectedChest || 1) - 1)
@@ -290,7 +291,7 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
   }, [tipIndex, user?.username]);
 
   const handleDiscover = async (chestNumber) => {
-    if (discovering || status?.hasPlayed) {
+    if (discovering || !canDiscover) {
       return;
     }
     setSelectedChest(chestNumber);
@@ -306,6 +307,7 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
         ...(current || {}),
         campaign: payload?.campaign || current?.campaign || DEFAULT_CAMPAIGN,
         hasPlayed: true,
+        canDiscover: payload?.canDiscover ?? !nextPlay?.won,
         play: nextPlay,
         visibility: current?.visibility || { visible: true, reason: "available" },
         discoveredChestNumbers:
@@ -334,6 +336,23 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
         }));
         setSelectedChest(0);
         setModalOpen(false);
+        return;
+      }
+      if (err?.payload?.code === "promo_already_won" && err.payload.play) {
+        setPlay(err.payload.play);
+        setSelectedChest(Number(err.payload.play.chestNumber || 0));
+        setStatus((current) => ({
+          ...(current || {}),
+          hasPlayed: true,
+          canDiscover: false,
+          play: err.payload.play,
+          discoveredChestNumbers:
+            err.payload.discoveredChestNumbers || current?.discoveredChestNumbers || [],
+          remainingChests:
+            err.payload.remainingChests ?? current?.remainingChests ?? 0,
+        }));
+        setRevealed(true);
+        setModalOpen(true);
         return;
       }
       setError(err?.message || "This chest could not be opened. Please try again.");
@@ -378,7 +397,7 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
 
   return (
     <>
-      {visiblePlacements.length > 0 ? (
+      {canDiscover && visiblePlacements.length > 0 ? (
         <div className="topup-discovery-layer" aria-label={`${campaign.title} discovery area`}>
           {visiblePlacements.map((position) => (
             <button
@@ -391,15 +410,8 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
                 "--star-delay": `${position.delay}s`,
                 "--star-scale": position.scale,
               }}
-              onClick={status?.hasPlayed
-                ? openSavedResult
-                : () => handleDiscover(position.id)}
-              aria-label={status?.hasPlayed
-                ? `View revealed promo chest from available discovery star ${position.id} of ${campaign.totalChests} near ${position.zone}`
-                : `Open discovery star ${position.id} of ${campaign.totalChests} near ${position.zone}`}
-              title={status?.hasPlayed
-                ? "View your revealed promo chest. This star remains available for another Tengacion player."
-                : undefined}
+              onClick={() => handleDiscover(position.id)}
+              aria-label={`Open discovery star ${position.id} of ${campaign.totalChests} near ${position.zone}`}
             >
               <span aria-hidden="true">✦</span>
             </button>

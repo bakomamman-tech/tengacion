@@ -131,7 +131,7 @@ describe("TopUpPromoDiscovery", () => {
     expect(screen.getAllByRole("button", { name: /open discovery star/i })).toHaveLength(11);
   });
 
-  it("keeps every other blinking star clickable so a participant can reopen the revealed chest", async () => {
+  it("records another available star after a participant finds water", async () => {
     statusMock.mockResolvedValue({
       campaign,
       visibility: { visible: true, reason: "available" },
@@ -148,11 +148,27 @@ describe("TopUpPromoDiscovery", () => {
       discoveredChestNumbers: [4],
       remainingChests: 102,
     });
+    discoverMock.mockResolvedValue({
+      campaign,
+      hasPlayed: true,
+      canDiscover: true,
+      play: {
+        id: "water-play-2",
+        chestNumber: 5,
+        outcome: "water",
+        won: false,
+        prizeAmount: 0,
+        passcode: "",
+        discoveredAt: "2026-07-16T08:20:00.000Z",
+      },
+      discoveredChestNumbers: [4, 5],
+      remainingChests: 101,
+    });
 
     renderDiscovery();
 
     const availableStars = await screen.findAllByRole("button", {
-      name: /view revealed promo chest from available discovery star/i,
+      name: /open discovery star/i,
     });
     expect(availableStars).toHaveLength(11);
     expect(screen.queryByRole("button", { name: /star 4 of 103/i })).not.toBeInTheDocument();
@@ -161,9 +177,10 @@ describe("TopUpPromoDiscovery", () => {
       expect(star).toHaveClass("topup-discovery-star");
     });
 
-    fireEvent.click(availableStars[0]);
+    fireEvent.click(screen.getByRole("button", { name: /Open discovery star 5 of 103/i }));
+    await waitFor(() => expect(discoverMock).toHaveBeenCalledWith(5));
     expect(screen.getByRole("dialog", { name: /Keep searching, Amina Yusuf/i })).toBeInTheDocument();
-    expect(screen.getByText(/Water this time/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Water this time/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /view promo result/i })).toBeInTheDocument();
   });
 
@@ -253,6 +270,7 @@ describe("TopUpPromoDiscovery", () => {
     expect(await screen.findByText("K9P2QX7A")).toBeInTheDocument();
     expect(screen.getByText("You won ₦5,000!")).toBeInTheDocument();
     expect(screen.getByText(/Congratulations, Amina Yusuf/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /open discovery star/i })).not.toBeInTheDocument();
   });
 
   it("does not load or render promo stars for administrator accounts", async () => {

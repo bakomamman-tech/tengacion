@@ -65,7 +65,15 @@ const TopUpPromoPlaySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-TopUpPromoPlaySchema.index({ campaignKey: 1, userId: 1 }, { unique: true });
+TopUpPromoPlaySchema.index({ campaignKey: 1, userId: 1, discoveredAt: -1 });
+TopUpPromoPlaySchema.index(
+  { campaignKey: 1, userId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { outcome: "win" },
+    name: "campaignKey_1_userId_1_winner",
+  }
+);
 TopUpPromoPlaySchema.index({ campaignKey: 1, chestNumber: 1 }, { unique: true });
 TopUpPromoPlaySchema.index({ passcode: 1 }, { unique: true, sparse: true });
 TopUpPromoPlaySchema.index({ campaignKey: 1, outcome: 1, discoveredAt: -1 });

@@ -10,6 +10,10 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "top_up_promo_test_secret_123
 const app = require("../app");
 const TopUpPromoPlay = require("../models/TopUpPromoPlay");
 const User = require("../models/User");
+const {
+  WINNER_INDEX_NAME,
+  repairTopUpPromoIndexes,
+} = require("../scripts/repairTopUpPromoIndexes");
 
 let mongod;
 
@@ -81,7 +85,7 @@ describe("Top-Up Bank Account Promo routes", () => {
     }
   });
 
-  test("a winning chest issues one unique passcode and repeat clicks return the same play", async () => {
+  test("a winning chest issues one unique passcode and an exact retry returns the same play", async () => {
     const user = await createUser();
     const token = await issueSessionToken(user._id);
 
@@ -117,6 +121,7 @@ describe("Top-Up Bank Account Promo routes", () => {
     });
     expect(winResponse.body.play.passcode).toMatch(/^[A-Z0-9]{8}$/);
     expect(winResponse.body).toMatchObject({
+      canDiscover: false,
       discoveredChestNumbers: [4],
       remainingChests: 102,
     });
@@ -124,13 +129,111 @@ describe("Top-Up Bank Account Promo routes", () => {
     const repeatResponse = await request(app)
       .post("/api/top-up-promo/discover")
       .set("Authorization", `Bearer ${token}`)
-      .send({ chestNumber: 1 })
+      .send({ chestNumber: 4 })
       .expect(200);
 
     expect(repeatResponse.body.alreadyPlayed).toBe(true);
     expect(repeatResponse.body.play.id).toBe(winResponse.body.play.id);
     expect(repeatResponse.body.play.passcode).toBe(winResponse.body.play.passcode);
     expect(await TopUpPromoPlay.countDocuments({ userId: user._id })).toBe(1);
+  });
+
+  test("the same participant can record two water discoveries and Admin sees both", async () => {
+    const explorer = await createUser({
+      name: "Stephen Daniel Kurah",
+      username: "stephen_kurah",
+      email: "stephen-kurah@example.com",
+      phone: "+2348000000042",
+    });
+    const admin = await createUser({
+      name: "Promo Admin",
+      username: "two_water_admin",
+      email: "two-water-admin@example.com",
+      phone: "+2348000000043",
+      role: "admin",
+    });
+    const [explorerToken, adminToken] = await Promise.all([
+      issueSessionToken(explorer._id),
+      issueSessionToken(admin._id),
+    ]);
+
+    for (const chestNumber of [1, 2]) {
+      const response = await request(app)
+        .post("/api/top-up-promo/discover")
+        .set("Authorization", `Bearer ${explorerToken}`)
+        .send({ chestNumber })
+        .expect(200);
+
+      expect(response.body).toMatchObject({
+        alreadyPlayed: false,
+        canDiscover: true,
+        play: { chestNumber, outcome: "water", won: false },
+      });
+    }
+
+    const adminList = await request(app)
+      .get("/api/admin/top-up-promo/plays")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(adminList.headers["cache-control"]).toContain("no-store");
+    expect(adminList.body.summary).toMatchObject({
+      totalDiscoveries: 2,
+      winners: 0,
+      waterDiscoveries: 2,
+      prizeLiability: 0,
+    });
+    expect(adminList.body.plays).toEqual([
+      expect.objectContaining({ name: "Stephen Daniel Kurah", chestNumber: 2, outcome: "water" }),
+      expect.objectContaining({ name: "Stephen Daniel Kurah", chestNumber: 1, outcome: "water" }),
+    ]);
+  });
+
+  test("repairs the legacy unique participant index without weakening chest uniqueness", async () => {
+    await TopUpPromoPlay.collection.dropIndex(WINNER_INDEX_NAME);
+    await TopUpPromoPlay.collection.createIndex(
+      { campaignKey: 1, userId: 1 },
+      { unique: true, name: "legacy_one_discovery_per_user" }
+    );
+
+    const result = await repairTopUpPromoIndexes({ logger: { info: jest.fn() } });
+    const indexes = await TopUpPromoPlay.collection.indexes();
+
+    expect(result.dropped).toContain("legacy_one_discovery_per_user");
+    expect(indexes.some((index) => index.name === "legacy_one_discovery_per_user")).toBe(false);
+    expect(indexes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: { campaignKey: 1, chestNumber: 1 }, unique: true }),
+      expect.objectContaining({
+        name: WINNER_INDEX_NAME,
+        key: { campaignKey: 1, userId: 1 },
+        unique: true,
+        partialFilterExpression: { outcome: "win" },
+      }),
+    ]));
+  });
+
+  test("one participant cannot claim both winning chests concurrently", async () => {
+    const user = await createUser({
+      username: "concurrent_winner",
+      email: "concurrent-winner@example.com",
+      phone: "+2348000000044",
+    });
+    const token = await issueSessionToken(user._id);
+
+    const responses = await Promise.all(
+      [4, 11].map((chestNumber) => request(app)
+        .post("/api/top-up-promo/discover")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ chestNumber }))
+    );
+
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+    expect(responses.find((response) => response.status === 409).body).toMatchObject({
+      code: "promo_already_won",
+      canDiscover: false,
+      play: { outcome: "win", won: true },
+    });
+    expect(await TopUpPromoPlay.countDocuments({ userId: user._id, outcome: "win" })).toBe(1);
   });
 
   test("each revealed chest disappears globally and concurrent users cannot consume it twice", async () => {

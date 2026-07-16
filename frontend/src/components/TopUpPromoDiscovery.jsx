@@ -391,13 +391,14 @@ export default function TopUpPromoDiscovery({ user, onExploreTip }) {
                 "--star-delay": `${position.delay}s`,
                 "--star-scale": position.scale,
               }}
-              onClick={() => handleDiscover(position.id)}
-              disabled={status?.hasPlayed}
+              onClick={status?.hasPlayed
+                ? openSavedResult
+                : () => handleDiscover(position.id)}
               aria-label={status?.hasPlayed
-                ? `Available discovery star ${position.id} of ${campaign.totalChests} near ${position.zone}`
+                ? `View revealed promo chest from available discovery star ${position.id} of ${campaign.totalChests} near ${position.zone}`
                 : `Open discovery star ${position.id} of ${campaign.totalChests} near ${position.zone}`}
               title={status?.hasPlayed
-                ? "This star is still available for another Tengacion player."
+                ? "View your revealed promo chest. This star remains available for another Tengacion player."
                 : undefined}
             >
               <span aria-hidden="true">✦</span>

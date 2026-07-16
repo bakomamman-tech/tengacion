@@ -1,7 +1,7 @@
 .topup-discovery-layer {
   position: fixed;
   inset: 0;
-  z-index: 210;
+  z-index: 215;
   pointer-events: none;
   overflow: hidden;
 }
@@ -10,8 +10,9 @@
   position: absolute;
   left: var(--star-x);
   top: var(--star-y);
-  width: 34px;
-  height: 34px;
+  width: 46px;
+  height: 46px;
+  min-height: 46px;
   display: grid;
   place-items: center;
   padding: 0;
@@ -21,6 +22,8 @@
   color: #f7c84b;
   cursor: pointer;
   pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transform: translate(-50%, -50%) scale(var(--star-scale));
   filter: drop-shadow(0 0 7px rgba(255, 206, 71, 0.62));
 }
@@ -429,18 +432,27 @@
 @media (max-width: 760px) {
   .topup-modal-backdrop { padding: 9px; }
   .topup-modal {
+    height: min(780px, calc(100vh - 18px));
+    height: min(780px, calc(100dvh - 18px));
     max-height: calc(100vh - 18px);
+    max-height: calc(100dvh - 18px);
     grid-template-columns: 1fr;
+    grid-template-rows: 132px minmax(0, 1fr);
     border-radius: 22px;
   }
   .topup-modal-artwork { min-height: 132px; max-height: 132px; }
   .topup-modal-artwork > img { min-height: 0; height: 230px; object-position: center 24%; }
   .topup-artwork-caption { left: 18px; bottom: 15px; }
   .topup-artwork-caption strong { font-size: 1.08rem; }
-  .topup-modal-content { padding: 19px 17px 23px; }
+  .topup-modal-content { min-height: 0; padding: 19px 17px 23px; }
   .topup-modal-content h2 { margin-top: 4px; font-size: 1.65rem; }
   .topup-chest-scene { min-height: 260px; margin-bottom: -16px; }
   .topup-chest-svg { max-height: 280px; }
+  .topup-discovery-star {
+    width: 52px;
+    height: 52px;
+    min-height: 52px;
+  }
   .topup-saved-result { right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); }
 }
 

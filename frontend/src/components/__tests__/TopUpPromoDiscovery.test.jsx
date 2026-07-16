@@ -1,5 +1,6 @@
 import React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -130,7 +131,7 @@ describe("TopUpPromoDiscovery", () => {
     expect(screen.getAllByRole("button", { name: /open discovery star/i })).toHaveLength(11);
   });
 
-  it("keeps every other available star blinking after this user reveals water", async () => {
+  it("keeps every other blinking star clickable so a participant can reopen the revealed chest", async () => {
     statusMock.mockResolvedValue({
       campaign,
       visibility: { visible: true, reason: "available" },
@@ -151,15 +152,48 @@ describe("TopUpPromoDiscovery", () => {
     renderDiscovery();
 
     const availableStars = await screen.findAllByRole("button", {
-      name: /available discovery star/i,
+      name: /view revealed promo chest from available discovery star/i,
     });
     expect(availableStars).toHaveLength(11);
     expect(screen.queryByRole("button", { name: /star 4 of 103/i })).not.toBeInTheDocument();
     availableStars.forEach((star) => {
-      expect(star).toBeDisabled();
+      expect(star).toBeEnabled();
       expect(star).toHaveClass("topup-discovery-star");
     });
+
+    fireEvent.click(availableStars[0]);
+    expect(screen.getByRole("dialog", { name: /Keep searching, Amina Yusuf/i })).toBeInTheDocument();
+    expect(screen.getByText(/Water this time/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /view promo result/i })).toBeInTheDocument();
+  });
+
+  it("opens the promo from a touch pointer and reveals the selected chest", async () => {
+    const touchUser = userEvent.setup();
+    discoverMock.mockResolvedValue({
+      campaign,
+      hasPlayed: true,
+      play: {
+        id: "touch-play-1",
+        chestNumber: 4,
+        outcome: "water",
+        won: false,
+        prizeAmount: 0,
+        passcode: "",
+        discoveredAt: "2026-07-15T17:20:00.000Z",
+      },
+    });
+
+    renderDiscovery();
+    const star = await screen.findByRole("button", { name: /Open discovery star 4 of 103/i });
+
+    await touchUser.pointer([
+      { keys: "[TouchA>]", target: star },
+      { keys: "[/TouchA]", target: star },
+    ]);
+
+    await waitFor(() => expect(discoverMock).toHaveBeenCalledWith(4));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByText(/Water this time/i)).toBeInTheDocument();
   });
 
   it("renders no discovery stars once the shared count reaches zero", async () => {

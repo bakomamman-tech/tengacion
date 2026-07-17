@@ -19,6 +19,48 @@ const compactFormatter = new Intl.NumberFormat("en", {
   maximumFractionDigits: 1,
 });
 
+function ReelsGlyph({ name, size = 18 }) {
+  const glyphs = {
+    reel: (
+      <>
+        <rect x="3" y="4" width="18" height="16" rx="4" />
+        <path d="m10 9 5 3-5 3Z" />
+        <path d="M7 4v16M17 4v16" />
+      </>
+    ),
+    plus: <><path d="M12 5v14" /><path d="M5 12h14" /></>,
+    home: <><path d="m3 11 9-8 9 8" /><path d="M5 10v11h14V10M9 21v-6h6v6" /></>,
+    volume: <><path d="M11 5 6 9H2v6h4l5 4Z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" /></>,
+    volumeOff: <><path d="M11 5 6 9H2v6h4l5 4Z" /><path d="m22 9-6 6M16 9l6 6" /></>,
+    heart: <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1.1-1a5.5 5.5 0 0 0-7.7 7.8l1 1L12 21l7.8-7.6a5.5 5.5 0 0 0 1-8.8Z" />,
+    message: <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />,
+    share: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" /></>,
+    user: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>,
+    previous: <><path d="m15 18-6-6 6-6" /><path d="M9 12h10" /></>,
+    next: <><path d="m9 18 6-6-6-6" /><path d="M5 12h10" /></>,
+    refresh: <><path d="M20 11a8 8 0 0 0-15.5-2M4 4v5h5" /><path d="M4 13a8 8 0 0 0 15.5 2M20 20v-5h-5" /></>,
+    upload: <><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M20 15v5H4v-5" /></>,
+    spark: <><path d="m12 3-1.4 3.6L7 8l3.6 1.4L12 13l1.4-3.6L17 8l-3.6-1.4Z" /><path d="m5 14-.8 2.2L2 17l2.2.8L5 20l.8-2.2L8 17l-2.2-.8Z" /></>,
+  };
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="reels-glyph"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {glyphs[name]}
+    </svg>
+  );
+}
+
 const formatCompactNumber = (value) =>
   compactFormatter.format(Math.max(0, Number(value) || 0));
 
@@ -234,11 +276,17 @@ function ReelComposerModal({ user, onClose, onCreated }) {
 
   return (
     <div className="reels-composer-overlay">
-      <div className="reels-composer" ref={boxRef} role="dialog" aria-modal="true">
+      <div
+        className="reels-composer"
+        ref={boxRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reels-composer-title"
+      >
         <div className="reels-composer-head">
           <div>
             <p className="reels-composer-kicker">Reels studio</p>
-            <h2>Create Reel</h2>
+            <h2 id="reels-composer-title">Create Reel</h2>
           </div>
           <button type="button" className="reels-composer-close" onClick={onClose} aria-label="Close">
             X
@@ -263,6 +311,7 @@ function ReelComposerModal({ user, onClose, onCreated }) {
           </div>
 
           <button type="button" className="reels-composer-picker" onClick={() => inputRef.current?.click()}>
+            <ReelsGlyph name="upload" />
             {file ? "Choose another video" : "Choose reel video"}
           </button>
 
@@ -272,6 +321,7 @@ function ReelComposerModal({ user, onClose, onCreated }) {
             </div>
           ) : (
             <div className="reels-composer-empty">
+              <span className="reels-composer-empty-glyph"><ReelsGlyph name="reel" size={28} /></span>
               <span>9:16 videos look best here.</span>
               <small>MP4, MOV, or WebM, up to 100MB.</small>
             </div>
@@ -280,13 +330,21 @@ function ReelComposerModal({ user, onClose, onCreated }) {
           <textarea
             className="reels-composer-caption"
             placeholder={`Write a caption for your reel, ${user?.username || "creator"}...`}
+            aria-label="Reel caption"
             value={caption}
             onChange={(event) => setCaption(event.target.value)}
             maxLength={240}
           />
 
           {progress > 0 && submitting && (
-            <div className="reels-composer-progress">
+            <div
+              className="reels-composer-progress"
+              role="progressbar"
+              aria-label="Uploading reel"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow={Math.min(progress, 100)}
+            >
               <div style={{ width: `${Math.min(progress, 100)}%` }} />
               <span>Uploading reel ({progress}%)</span>
             </div>
@@ -508,7 +566,7 @@ export default function ReelsPage({ user }) {
       <div className="reels-page-shell">
         <aside className="reels-left-rail">
           <div className="reels-rail-card reels-hero-card">
-            <p className="reels-section-kicker">Tengacion Reels</p>
+            <p className="reels-section-kicker"><ReelsGlyph name="reel" size={15} />Tengacion Reels</p>
             <h1>Short videos with a stronger stage.</h1>
             <p>
               Watch the latest creator drops, browse already published reels, and publish your
@@ -517,9 +575,11 @@ export default function ReelsPage({ user }) {
 
             <div className="reels-hero-actions">
               <button type="button" className="btn-primary reels-create-btn" onClick={() => setComposerOpen(true)}>
+                <ReelsGlyph name="plus" />
                 Create Reel
               </button>
               <button type="button" className="btn-secondary reels-back-btn" onClick={() => navigate("/home")}>
+                <ReelsGlyph name="home" />
                 Back Home
               </button>
             </div>
@@ -537,7 +597,7 @@ export default function ReelsPage({ user }) {
           </div>
 
           <div className="reels-rail-card reels-tips-card">
-            <h3>What works best</h3>
+            <h3><span className="reels-title-glyph"><ReelsGlyph name="spark" size={17} /></span>What works best</h3>
             <ul>
               <li>Vertical video gets the best stage presence.</li>
               <li>Keep captions short so the video remains the focus.</li>
@@ -552,13 +612,19 @@ export default function ReelsPage({ user }) {
               <p className="reels-section-kicker">Already created reels</p>
               <h2>Discover what creators are posting now</h2>
             </div>
-            <button type="button" className="reels-sound-toggle" onClick={() => setSoundOn((current) => !current)}>
+            <button
+              type="button"
+              className="reels-sound-toggle"
+              onClick={() => setSoundOn((current) => !current)}
+              aria-pressed={soundOn}
+            >
+              <ReelsGlyph name={soundOn ? "volume" : "volumeOff"} />
               {soundOn ? "Sound on" : "Sound off"}
             </button>
           </div>
 
           {loading ? (
-            <section className="reels-status-card">
+            <section className="reels-status-card" role="status">
               <h3>Loading reels</h3>
               <p>Pulling the latest short-form videos from Tengacion.</p>
             </section>
@@ -567,6 +633,7 @@ export default function ReelsPage({ user }) {
               <h3>No reels yet</h3>
               <p>Be the first creator to publish a reel and shape what this page becomes.</p>
               <button type="button" className="btn-primary reels-create-btn" onClick={() => setComposerOpen(true)}>
+                <ReelsGlyph name="plus" />
                 Create Reel
               </button>
             </section>
@@ -611,6 +678,7 @@ export default function ReelsPage({ user }) {
                         muted={!soundOn}
                         controls={isActive}
                         preload="metadata"
+                        aria-label={`${authorName}'s reel`}
                       />
 
                       <div className="reel-overlay reel-overlay-top">
@@ -648,7 +716,10 @@ export default function ReelsPage({ user }) {
                         type="button"
                         className={`reel-action-btn ${reel?.likedByViewer ? "active" : ""}`}
                         onClick={() => handleLike(reelId)}
+                        aria-pressed={Boolean(reel?.likedByViewer)}
+                        aria-label={`${reel?.likedByViewer ? "Unlike" : "Like"} reel. ${formatCompactNumber(getLikesCount(reel))} likes`}
                       >
+                        <span className="reel-action-icon"><ReelsGlyph name="heart" size={20} /></span>
                         <span>Like</span>
                         <strong>{formatCompactNumber(getLikesCount(reel))}</strong>
                       </button>
@@ -656,11 +727,14 @@ export default function ReelsPage({ user }) {
                         type="button"
                         className="reel-action-btn"
                         onClick={() => navigate(`/posts/${reelId}`)}
+                        aria-label={`Open comments. ${formatCompactNumber(getCommentsCount(reel))} comments`}
                       >
+                        <span className="reel-action-icon"><ReelsGlyph name="message" size={20} /></span>
                         <span>Comments</span>
                         <strong>{formatCompactNumber(getCommentsCount(reel))}</strong>
                       </button>
-                      <button type="button" className="reel-action-btn" onClick={() => handleShare(reelId)}>
+                      <button type="button" className="reel-action-btn" onClick={() => handleShare(reelId)} aria-label="Copy reel link">
+                        <span className="reel-action-icon"><ReelsGlyph name="share" size={20} /></span>
                         <span>Share</span>
                         <strong>Link</strong>
                       </button>
@@ -668,7 +742,9 @@ export default function ReelsPage({ user }) {
                         type="button"
                         className="reel-action-btn"
                         onClick={() => username && navigate(`/profile/${username}`)}
+                        aria-label={`Open ${authorName}'s profile`}
                       >
+                        <span className="reel-action-icon"><ReelsGlyph name="user" size={20} /></span>
                         <span>Profile</span>
                         <strong>Open</strong>
                       </button>
@@ -692,14 +768,17 @@ export default function ReelsPage({ user }) {
 
             <div className="reels-nav-controls">
               <button type="button" className="btn-secondary" onClick={() => scrollToIndex(activeIndex - 1)}>
+                <ReelsGlyph name="previous" />
                 Previous
               </button>
               <button type="button" className="btn-secondary" onClick={() => scrollToIndex(activeIndex + 1)}>
                 Next
+                <ReelsGlyph name="next" />
               </button>
             </div>
 
             <button type="button" className="btn-secondary reels-refresh-btn" onClick={loadReels}>
+              <ReelsGlyph name="refresh" />
               Refresh Reels
             </button>
           </div>
@@ -713,12 +792,14 @@ export default function ReelsPage({ user }) {
                   type="button"
                   className={`reels-queue-item ${reel._id === activeReelId ? "active" : ""}`}
                   onClick={() => scrollToIndex(index)}
+                  aria-current={reel._id === activeReelId ? "true" : undefined}
                 >
                   <img src={getReelPoster(reel) || getAvatar(reel)} alt={getDisplayName(reel)} />
                   <div>
                     <strong>{getDisplayName(reel)}</strong>
                     <span>{formatRelativeTime(reel?.createdAt)}</span>
                   </div>
+                  <span className="reels-queue-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
                 </button>
               ))}
             </div>
@@ -727,6 +808,7 @@ export default function ReelsPage({ user }) {
       </div>
 
       <button type="button" className="reels-mobile-create" onClick={() => setComposerOpen(true)}>
+        <ReelsGlyph name="plus" size={20} />
         Create Reel
       </button>
 

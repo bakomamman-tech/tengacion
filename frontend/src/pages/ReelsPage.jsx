@@ -19,6 +19,44 @@ const compactFormatter = new Intl.NumberFormat("en", {
   maximumFractionDigits: 1,
 });
 
+function ReelIcon({ name, size = 20, strokeWidth = 1.9 }) {
+  const paths = {
+    arrowLeft: <><path d="m15 18-6-6 6-6" /><path d="M9 12h10" /></>,
+    chevronLeft: <path d="m15 18-6-6 6-6" />,
+    chevronRight: <path d="m9 18 6-6-6-6" />,
+    close: <><path d="m18 6-12 12" /><path d="m6 6 12 12" /></>,
+    film: <><rect width="18" height="18" x="3" y="3" rx="3" /><path d="M7 3v18M17 3v18M3 8h4M17 8h4M3 16h4M17 16h4" /></>,
+    heart: <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1.1-1a5.5 5.5 0 0 0-7.7 7.8l1 1L12 21l7.8-7.6a5.5 5.5 0 0 0 1-8.8Z" />,
+    home: <><path d="m3 11 9-8 9 8" /><path d="M5 10v11h14V10M9 21v-6h6v6" /></>,
+    message: <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />,
+    plus: <><path d="M12 5v14" /><path d="M5 12h14" /></>,
+    refresh: <><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5" /></>,
+    share: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" /></>,
+    sparkles: <><path d="m12 3-1.4 3.6L7 8l3.6 1.4L12 13l1.4-3.6L17 8l-3.6-1.4Z" /><path d="m5 14-.8 2.2L2 17l2.2.8L5 20l.8-2.2L8 17l-2.2-.8ZM19 14l-.8 2.2L16 17l2.2.8L19 20l.8-2.2L22 17l-2.2-.8Z" /></>,
+    upload: <><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M20 15v5H4v-5" /></>,
+    user: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>,
+    volume: <><path d="M11 5 6 9H2v6h4l5 4Z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" /></>,
+    volumeOff: <><path d="M11 5 6 9H2v6h4l5 4Z" /><path d="m22 9-6 6M16 9l6 6" /></>,
+  };
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="reels-icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {paths[name]}
+    </svg>
+  );
+}
+
 const formatCompactNumber = (value) =>
   compactFormatter.format(Math.max(0, Number(value) || 0));
 
@@ -241,7 +279,7 @@ function ReelComposerModal({ user, onClose, onCreated }) {
             <h2>Create Reel</h2>
           </div>
           <button type="button" className="reels-composer-close" onClick={onClose} aria-label="Close">
-            X
+            <ReelIcon name="close" size={19} />
           </button>
         </div>
 
@@ -263,6 +301,7 @@ function ReelComposerModal({ user, onClose, onCreated }) {
           </div>
 
           <button type="button" className="reels-composer-picker" onClick={() => inputRef.current?.click()}>
+            <ReelIcon name="upload" size={18} />
             {file ? "Choose another video" : "Choose reel video"}
           </button>
 
@@ -272,6 +311,7 @@ function ReelComposerModal({ user, onClose, onCreated }) {
             </div>
           ) : (
             <div className="reels-composer-empty">
+              <span className="reels-composer-empty-icon"><ReelIcon name="film" size={28} /></span>
               <span>9:16 videos look best here.</span>
               <small>MP4, MOV, or WebM, up to 100MB.</small>
             </div>
@@ -300,7 +340,8 @@ function ReelComposerModal({ user, onClose, onCreated }) {
             Cancel
           </button>
           <button type="button" className="btn-primary" onClick={submit} disabled={!file || submitting}>
-            {submitting ? "Posting..." : "Post"}
+            {!submitting && <ReelIcon name="upload" size={17} />}
+            {submitting ? "Posting..." : "Post reel"}
           </button>
         </div>
       </div>
@@ -508,40 +549,51 @@ export default function ReelsPage({ user }) {
       <div className="reels-page-shell">
         <aside className="reels-left-rail">
           <div className="reels-rail-card reels-hero-card">
-            <p className="reels-section-kicker">Tengacion Reels</p>
-            <h1>Short videos with a stronger stage.</h1>
+            <div className="reels-rail-brand">
+              <span className="reels-rail-brand-icon"><ReelIcon name="film" size={20} /></span>
+              <div>
+                <strong>Reels</strong>
+                <span>Made on Tengacion</span>
+              </div>
+            </div>
+            <p className="reels-section-kicker">Watch. Share. Create.</p>
+            <h1>Stories that move with you.</h1>
             <p>
-              Watch the latest creator drops, browse already published reels, and publish your
-              own without leaving the experience.
+              Discover quick moments from your community, then share one of your own.
             </p>
 
             <div className="reels-hero-actions">
               <button type="button" className="btn-primary reels-create-btn" onClick={() => setComposerOpen(true)}>
+                <ReelIcon name="plus" size={19} />
                 Create Reel
               </button>
               <button type="button" className="btn-secondary reels-back-btn" onClick={() => navigate("/home")}>
-                Back Home
+                <ReelIcon name="home" size={18} />
+                Home
               </button>
             </div>
 
             <div className="reels-mini-stats">
               <div>
                 <strong>{formatCompactNumber(totalReels)}</strong>
-                <span>published reels</span>
+                <span>In your stream</span>
               </div>
               <div>
                 <strong>{formatCompactNumber(reels.filter((entry) => entry?.type === "reel").length)}</strong>
-                <span>native reel uploads</span>
+                <span>Original reels</span>
               </div>
             </div>
           </div>
 
           <div className="reels-rail-card reels-tips-card">
-            <h3>What works best</h3>
+            <div className="reels-card-title-row">
+              <span className="reels-card-title-icon"><ReelIcon name="sparkles" size={17} /></span>
+              <h3>Creator notes</h3>
+            </div>
             <ul>
-              <li>Vertical video gets the best stage presence.</li>
-              <li>Keep captions short so the video remains the focus.</li>
-              <li>Use the right rail controls to jump through the stream.</li>
+              <li><span>01</span>Vertical video owns the screen.</li>
+              <li><span>02</span>Short captions keep the moment moving.</li>
+              <li><span>03</span>Use the queue to jump between creators.</li>
             </ul>
           </div>
         </aside>
@@ -549,10 +601,16 @@ export default function ReelsPage({ user }) {
         <main className="reels-stage">
           <div className="reels-stage-head">
             <div>
-              <p className="reels-section-kicker">Already created reels</p>
-              <h2>Discover what creators are posting now</h2>
+              <p className="reels-section-kicker"><span className="reels-live-dot" /> Community stream</p>
+              <h2>Discover</h2>
             </div>
-            <button type="button" className="reels-sound-toggle" onClick={() => setSoundOn((current) => !current)}>
+            <button
+              type="button"
+              className={`reels-sound-toggle ${soundOn ? "active" : ""}`}
+              onClick={() => setSoundOn((current) => !current)}
+              aria-pressed={soundOn}
+            >
+              <ReelIcon name={soundOn ? "volume" : "volumeOff"} size={18} />
               {soundOn ? "Sound on" : "Sound off"}
             </button>
           </div>
@@ -595,6 +653,7 @@ export default function ReelsPage({ user }) {
                     }}
                   >
                     <div className="reel-viewer-card">
+                      {posterUrl ? <img className="reel-poster-ambient" src={posterUrl} alt="" aria-hidden="true" /> : null}
                       <video
                         ref={(node) => {
                           if (node) {
@@ -614,7 +673,10 @@ export default function ReelsPage({ user }) {
                       />
 
                       <div className="reel-overlay reel-overlay-top">
-                        <span className="reel-badge">{reel?.type === "reel" ? "Reel" : "Video reel"}</span>
+                        <span className="reel-badge">
+                          <ReelIcon name="film" size={14} />
+                          {reel?.type === "reel" ? "Reel" : "Video reel"}
+                        </span>
                         <span className="reel-time">{formatRelativeTime(reel?.createdAt)}</span>
                       </div>
 
@@ -648,29 +710,41 @@ export default function ReelsPage({ user }) {
                         type="button"
                         className={`reel-action-btn ${reel?.likedByViewer ? "active" : ""}`}
                         onClick={() => handleLike(reelId)}
+                        aria-label={`${reel?.likedByViewer ? "Unlike" : "Like"} reel. ${formatCompactNumber(getLikesCount(reel))} likes`}
                       >
-                        <span>Like</span>
+                        <span className="reel-action-icon"><ReelIcon name="heart" size={22} /></span>
                         <strong>{formatCompactNumber(getLikesCount(reel))}</strong>
+                        <span className="reel-action-label">Like</span>
                       </button>
                       <button
                         type="button"
                         className="reel-action-btn"
                         onClick={() => navigate(`/posts/${reelId}`)}
+                        aria-label={`Open comments. ${formatCompactNumber(getCommentsCount(reel))} comments`}
                       >
-                        <span>Comments</span>
+                        <span className="reel-action-icon"><ReelIcon name="message" size={21} /></span>
                         <strong>{formatCompactNumber(getCommentsCount(reel))}</strong>
+                        <span className="reel-action-label">Comment</span>
                       </button>
-                      <button type="button" className="reel-action-btn" onClick={() => handleShare(reelId)}>
-                        <span>Share</span>
-                        <strong>Link</strong>
+                      <button
+                        type="button"
+                        className="reel-action-btn"
+                        onClick={() => handleShare(reelId)}
+                        aria-label="Copy reel link"
+                      >
+                        <span className="reel-action-icon"><ReelIcon name="share" size={21} /></span>
+                        <strong>Share</strong>
+                        <span className="reel-action-label">Link</span>
                       </button>
                       <button
                         type="button"
                         className="reel-action-btn"
                         onClick={() => username && navigate(`/profile/${username}`)}
+                        aria-label={`Open ${authorName}'s profile`}
                       >
-                        <span>Profile</span>
-                        <strong>Open</strong>
+                        <span className="reel-action-icon"><ReelIcon name="user" size={21} /></span>
+                        <strong>View</strong>
+                        <span className="reel-action-label">Profile</span>
                       </button>
                     </div>
                   </article>
@@ -682,30 +756,54 @@ export default function ReelsPage({ user }) {
 
         <aside className="reels-right-rail">
           <div className="reels-rail-card reels-active-card">
-            <p className="reels-section-kicker">Now playing</p>
-            <h3>{activeReel ? getDisplayName(activeReel) : "No active reel"}</h3>
-            <p>
-              {activeReel
-                ? `${activeIndex + 1} of ${totalReels} in the stream`
-                : "Scroll the stage to lock onto a reel."}
-            </p>
+            <div className="reels-now-playing-head">
+              <p className="reels-section-kicker">Now playing</p>
+              <span className="reels-equalizer" aria-hidden="true"><i /><i /><i /></span>
+            </div>
+
+            <div className="reels-active-creator">
+              <img
+                src={activeReel ? getAvatar(activeReel) : "/avatar.png"}
+                alt={activeReel ? getDisplayName(activeReel) : "No active creator"}
+              />
+              <div>
+                <h3>{activeReel ? getDisplayName(activeReel) : "No active reel"}</h3>
+                <p>{activeReel && getUsername(activeReel) ? `@${getUsername(activeReel)}` : "Tengacion creator"}</p>
+              </div>
+            </div>
+
+            <div className="reels-stream-progress">
+              <div>
+                <span>Up next</span>
+                <strong>{activeReel ? `${activeIndex + 1} / ${totalReels}` : `0 / ${totalReels}`}</strong>
+              </div>
+              <span className="reels-progress-track">
+                <i style={{ width: `${totalReels ? ((activeIndex + 1) / totalReels) * 100 : 0}%` }} />
+              </span>
+            </div>
 
             <div className="reels-nav-controls">
               <button type="button" className="btn-secondary" onClick={() => scrollToIndex(activeIndex - 1)}>
+                <ReelIcon name="chevronLeft" size={18} />
                 Previous
               </button>
               <button type="button" className="btn-secondary" onClick={() => scrollToIndex(activeIndex + 1)}>
                 Next
+                <ReelIcon name="chevronRight" size={18} />
               </button>
             </div>
 
             <button type="button" className="btn-secondary reels-refresh-btn" onClick={loadReels}>
+              <ReelIcon name="refresh" size={17} />
               Refresh Reels
             </button>
           </div>
 
           <div className="reels-rail-card reels-queue-card">
-            <h3>Stream queue</h3>
+            <div className="reels-queue-head">
+              <h3>Stream queue</h3>
+              <span>{totalReels} reels</span>
+            </div>
             <div className="reels-queue-list">
               {reels.slice(0, 6).map((reel, index) => (
                 <button
@@ -714,11 +812,15 @@ export default function ReelsPage({ user }) {
                   className={`reels-queue-item ${reel._id === activeReelId ? "active" : ""}`}
                   onClick={() => scrollToIndex(index)}
                 >
-                  <img src={getReelPoster(reel) || getAvatar(reel)} alt={getDisplayName(reel)} />
+                  <span className="reels-queue-thumb">
+                    <img src={getReelPoster(reel) || getAvatar(reel)} alt={getDisplayName(reel)} />
+                    <i>{String(index + 1).padStart(2, "0")}</i>
+                  </span>
                   <div>
                     <strong>{getDisplayName(reel)}</strong>
-                    <span>{formatRelativeTime(reel?.createdAt)}</span>
+                    <span>{reel._id === activeReelId ? "Playing now" : formatRelativeTime(reel?.createdAt)}</span>
                   </div>
+                  <ReelIcon name="chevronRight" size={17} />
                 </button>
               ))}
             </div>
@@ -727,6 +829,7 @@ export default function ReelsPage({ user }) {
       </div>
 
       <button type="button" className="reels-mobile-create" onClick={() => setComposerOpen(true)}>
+        <ReelIcon name="plus" size={20} />
         Create Reel
       </button>
 

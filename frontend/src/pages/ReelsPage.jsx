@@ -81,8 +81,20 @@ const getReelVideoUrl = (post) => {
 const getReelPoster = (post) => {
   const firstMedia = getFirstMedia(post);
   const firstMediaUrl = getMediaUrl(firstMedia);
+  const firstMediaType =
+    firstMedia && typeof firstMedia === "object"
+      ? String(firstMedia.type || "").toLowerCase()
+      : "";
+  const firstMediaPoster =
+    firstMedia && typeof firstMedia === "object"
+      ? firstMedia.thumbnailUrl || firstMedia.thumbnail_url || firstMedia.poster || ""
+      : "";
+  const imageFallback =
+    firstMediaType === "video" || VIDEO_EXT_RE.test(firstMediaUrl) ? "" : firstMediaUrl;
 
-  return resolveImage(post?.video?.thumbnailUrl || post?.image || post?.photo || firstMediaUrl || "");
+  return resolveImage(
+    post?.video?.thumbnailUrl || firstMediaPoster || post?.image || post?.photo || imageFallback || ""
+  );
 };
 
 const isReelCandidate = (post) => {
@@ -126,6 +138,81 @@ const getCommentsCount = (post) =>
   Number(post?.commentsCount) || (Array.isArray(post?.comments) ? post.comments.length : 0);
 
 const getLikesCount = (post) => Number(post?.likesCount ?? post?.likes ?? 0) || 0;
+
+function ReelsIcon({ name }) {
+  const paths = {
+    add: (
+      <>
+        <rect x="4" y="5" width="16" height="14" rx="4" />
+        <path d="M9 12h6M12 9v6" />
+      </>
+    ),
+    home: (
+      <>
+        <path d="m4 11 8-7 8 7" />
+        <path d="M6.5 10v9h11v-9M10 19v-5h4v5" />
+      </>
+    ),
+    volume: (
+      <>
+        <path d="M5 10v4h3l4 3V7l-4 3H5Z" />
+        <path d="M16 9.5a4 4 0 0 1 0 5M18.5 7a7.5 7.5 0 0 1 0 10" />
+      </>
+    ),
+    mute: (
+      <>
+        <path d="M5 10v4h3l4 3V7l-4 3H5Z" />
+        <path d="m16 10 4 4M20 10l-4 4" />
+      </>
+    ),
+    up: <path d="m7 14 5-5 5 5" />,
+    down: <path d="m7 10 5 5 5-5" />,
+    refresh: (
+      <>
+        <path d="M19 8a8 8 0 1 0 1 6" />
+        <path d="M19 4v4h-4" />
+      </>
+    ),
+    heart: <path d="M20 9c0 5-8 10-8 10S4 14 4 9a4 4 0 0 1 7-2.7L12 7.5l1-1.2A4 4 0 0 1 20 9Z" />,
+    comment: (
+      <>
+        <path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 9 9 0 0 1-3.4-.7L4 20l1.7-4A7.3 7.3 0 0 1 4 11.5a7.5 7.5 0 0 1 8-7.5 7.5 7.5 0 0 1 8 7.5Z" />
+        <path d="M9 11.5h6" />
+      </>
+    ),
+    share: (
+      <>
+        <circle cx="18" cy="5" r="2" />
+        <circle cx="6" cy="12" r="2" />
+        <circle cx="18" cy="19" r="2" />
+        <path d="m8 11 8-5M8 13l8 5" />
+      </>
+    ),
+    user: (
+      <>
+        <circle cx="12" cy="8" r="4" />
+        <path d="M5 20a7 7 0 0 1 14 0" />
+      </>
+    ),
+    play: <path d="m9 7 8 5-8 5V7Z" />,
+  };
+
+  return (
+    <svg
+      className="reels-icon"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {paths[name] || null}
+    </svg>
+  );
+}
 
 function ReelComposerModal({ user, onClose, onCreated }) {
   const boxRef = useRef(null);
@@ -397,6 +484,8 @@ export default function ReelsPage({ user }) {
 
   const activeReel = reels[activeIndex] || null;
   const totalReels = reels.length;
+  const queueStart = Math.min(Math.max(activeIndex - 2, 0), Math.max(totalReels - 6, 0));
+  const visibleQueue = reels.slice(queueStart, queueStart + 6);
 
   const scrollToIndex = (index) => {
     if (!reels.length) {
@@ -408,8 +497,22 @@ export default function ReelsPage({ user }) {
     if (!node) {
       return;
     }
-    node.scrollIntoView({ behavior: "smooth", block: "center" });
+    streamRef.current?.scrollTo({ top: node.offsetTop, behavior: "smooth" });
     setActiveReelId(targetReel._id);
+  };
+
+  const handleStreamKeyDown = (event) => {
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+
+    if (event.key === "ArrowDown" || event.key === "PageDown") {
+      event.preventDefault();
+      scrollToIndex(activeIndex + 1);
+    } else if (event.key === "ArrowUp" || event.key === "PageUp") {
+      event.preventDefault();
+      scrollToIndex(activeIndex - 1);
+    }
   };
 
   const handleCreateFlow = (target = "post") => {
@@ -508,7 +611,10 @@ export default function ReelsPage({ user }) {
       <div className="reels-page-shell">
         <aside className="reels-left-rail">
           <div className="reels-rail-card reels-hero-card">
-            <p className="reels-section-kicker">Tengacion Reels</p>
+            <div className="reels-hero-mark" aria-hidden="true">
+              <span><ReelsIcon name="play" /></span>
+              Tengacion Reels
+            </div>
             <h1>Short videos with a stronger stage.</h1>
             <p>
               Watch the latest creator drops, browse already published reels, and publish your
@@ -516,11 +622,13 @@ export default function ReelsPage({ user }) {
             </p>
 
             <div className="reels-hero-actions">
-              <button type="button" className="btn-primary reels-create-btn" onClick={() => setComposerOpen(true)}>
-                Create Reel
+              <button type="button" className="reels-rail-action reels-rail-action--primary reels-create-btn" onClick={() => setComposerOpen(true)}>
+                <span className="reels-rail-action-icon"><ReelsIcon name="add" /></span>
+                <span><strong>Create Reel</strong><small>Share your moment</small></span>
               </button>
-              <button type="button" className="btn-secondary reels-back-btn" onClick={() => navigate("/home")}>
-                Back Home
+              <button type="button" className="reels-rail-action reels-back-btn" onClick={() => navigate("/home")}>
+                <span className="reels-rail-action-icon"><ReelsIcon name="home" /></span>
+                <span><strong>Back Home</strong><small>Return to your feed</small></span>
               </button>
             </div>
 
@@ -553,7 +661,8 @@ export default function ReelsPage({ user }) {
               <h2>Discover what creators are posting now</h2>
             </div>
             <button type="button" className="reels-sound-toggle" onClick={() => setSoundOn((current) => !current)}>
-              {soundOn ? "Sound on" : "Sound off"}
+              <ReelsIcon name={soundOn ? "volume" : "mute"} />
+              <span>{soundOn ? "Sound on" : "Sound off"}</span>
             </button>
           </div>
 
@@ -571,7 +680,13 @@ export default function ReelsPage({ user }) {
               </button>
             </section>
           ) : (
-            <div className="reels-stream" ref={streamRef}>
+            <div
+              className="reels-stream"
+              ref={streamRef}
+              tabIndex="0"
+              onKeyDown={handleStreamKeyDown}
+              aria-label="Reels feed. Use the up and down arrow keys to change reels."
+            >
               {reels.map((reel, index) => {
                 const reelId = reel?._id || `reel-${index}`;
                 const videoUrl = getReelVideoUrl(reel);
@@ -607,10 +722,14 @@ export default function ReelsPage({ user }) {
                         src={videoUrl}
                         poster={posterUrl}
                         playsInline
-                        loop
                         muted={!soundOn}
                         controls={isActive}
                         preload="metadata"
+                        onEnded={() => {
+                          if (index < totalReels - 1) {
+                            scrollToIndex(index + 1);
+                          }
+                        }}
                       />
 
                       <div className="reel-overlay reel-overlay-top">
@@ -649,28 +768,28 @@ export default function ReelsPage({ user }) {
                         className={`reel-action-btn ${reel?.likedByViewer ? "active" : ""}`}
                         onClick={() => handleLike(reelId)}
                       >
-                        <span>Like</span>
-                        <strong>{formatCompactNumber(getLikesCount(reel))}</strong>
+                        <span className="reel-action-icon"><ReelsIcon name="heart" /></span>
+                        <span className="reel-action-copy"><strong>{formatCompactNumber(getLikesCount(reel))}</strong><small>Like</small></span>
                       </button>
                       <button
                         type="button"
                         className="reel-action-btn"
                         onClick={() => navigate(`/posts/${reelId}`)}
                       >
-                        <span>Comments</span>
-                        <strong>{formatCompactNumber(getCommentsCount(reel))}</strong>
+                        <span className="reel-action-icon"><ReelsIcon name="comment" /></span>
+                        <span className="reel-action-copy"><strong>{formatCompactNumber(getCommentsCount(reel))}</strong><small>Comments</small></span>
                       </button>
                       <button type="button" className="reel-action-btn" onClick={() => handleShare(reelId)}>
-                        <span>Share</span>
-                        <strong>Link</strong>
+                        <span className="reel-action-icon"><ReelsIcon name="share" /></span>
+                        <span className="reel-action-copy"><strong>Share</strong><small>Copy link</small></span>
                       </button>
                       <button
                         type="button"
                         className="reel-action-btn"
                         onClick={() => username && navigate(`/profile/${username}`)}
                       >
-                        <span>Profile</span>
-                        <strong>Open</strong>
+                        <span className="reel-action-icon"><ReelsIcon name="user" /></span>
+                        <span className="reel-action-copy"><strong>Profile</strong><small>View creator</small></span>
                       </button>
                     </div>
                   </article>
@@ -690,37 +809,78 @@ export default function ReelsPage({ user }) {
                 : "Scroll the stage to lock onto a reel."}
             </p>
 
+            {totalReels > 0 && (
+              <div
+                className="reels-stream-progress"
+                role="progressbar"
+                aria-label="Reel stream progress"
+                aria-valuemin="1"
+                aria-valuemax={totalReels}
+                aria-valuenow={activeIndex + 1}
+              >
+                <span style={{ width: `${((activeIndex + 1) / totalReels) * 100}%` }} />
+              </div>
+            )}
+
             <div className="reels-nav-controls">
-              <button type="button" className="btn-secondary" onClick={() => scrollToIndex(activeIndex - 1)}>
-                Previous
+              <button
+                type="button"
+                className="reels-nav-btn"
+                onClick={() => scrollToIndex(activeIndex - 1)}
+                disabled={activeIndex === 0}
+              >
+                <span className="reels-nav-icon"><ReelsIcon name="up" /></span>
+                <span><strong>Previous</strong><small>Swipe down</small></span>
               </button>
-              <button type="button" className="btn-secondary" onClick={() => scrollToIndex(activeIndex + 1)}>
-                Next
+              <button
+                type="button"
+                className="reels-nav-btn reels-nav-btn--next"
+                onClick={() => scrollToIndex(activeIndex + 1)}
+                disabled={activeIndex >= totalReels - 1}
+              >
+                <span><strong>Next</strong><small>Swipe up</small></span>
+                <span className="reels-nav-icon"><ReelsIcon name="down" /></span>
               </button>
             </div>
 
-            <button type="button" className="btn-secondary reels-refresh-btn" onClick={loadReels}>
-              Refresh Reels
+            <button type="button" className="reels-refresh-btn" onClick={loadReels}>
+              <span className="reels-refresh-icon"><ReelsIcon name="refresh" /></span>
+              <span><strong>Refresh stream</strong><small>Find the latest reels</small></span>
             </button>
           </div>
 
           <div className="reels-rail-card reels-queue-card">
             <h3>Stream queue</h3>
             <div className="reels-queue-list">
-              {reels.slice(0, 6).map((reel, index) => (
+              {visibleQueue.map((reel, index) => {
+                const queueIndex = queueStart + index;
+                const avatar = getAvatar(reel);
+                return (
                 <button
                   key={reel._id || index}
                   type="button"
                   className={`reels-queue-item ${reel._id === activeReelId ? "active" : ""}`}
-                  onClick={() => scrollToIndex(index)}
+                  onClick={() => scrollToIndex(queueIndex)}
                 >
-                  <img src={getReelPoster(reel) || getAvatar(reel)} alt={getDisplayName(reel)} />
+                  <span className="reels-queue-thumb">
+                    <img
+                      src={getReelPoster(reel) || avatar}
+                      alt=""
+                      onError={(event) => {
+                        event.currentTarget.onerror = null;
+                        event.currentTarget.src = avatar;
+                      }}
+                    />
+                    <span className="reels-queue-play"><ReelsIcon name="play" /></span>
+                  </span>
                   <div>
+                    <small>Reel {queueIndex + 1}</small>
                     <strong>{getDisplayName(reel)}</strong>
                     <span>{formatRelativeTime(reel?.createdAt)}</span>
                   </div>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         </aside>

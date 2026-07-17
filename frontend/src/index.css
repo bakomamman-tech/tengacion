@@ -6360,33 +6360,47 @@ html.dark-mode .game-live-control-dock {
 }
 
 .reels-page-shell {
+  --reels-accent: #d89737;
+  --reels-accent-strong: #a76316;
   display: grid;
-  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) minmax(250px, 300px);
-  gap: 24px;
-  padding: 24px;
-  min-height: calc(100vh - 78px);
+  grid-template-columns: minmax(238px, 282px) minmax(0, 1fr) minmax(244px, 286px);
+  gap: clamp(14px, 1.2vw, 22px);
+  height: calc(100dvh - 72px);
+  min-height: 0;
+  padding: 18px;
+  overflow: hidden;
 }
 
 .reels-left-rail,
 .reels-right-rail {
   display: grid;
-  gap: 18px;
+  align-content: start;
+  gap: 14px;
   align-self: start;
-  position: sticky;
-  top: 92px;
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.reels-left-rail::-webkit-scrollbar,
+.reels-right-rail::-webkit-scrollbar {
+  display: none;
 }
 
 .reels-stage {
   min-width: 0;
   display: grid;
-  gap: 18px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
 }
 
 .reels-stage-head {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
+  padding: 0 8px;
 }
 
 .reels-stage-head h2,
@@ -6409,20 +6423,64 @@ html.dark-mode .game-live-control-dock {
 .reels-rail-card,
 .reels-status-card,
 .reels-composer {
-  border: 1px solid color-mix(in srgb, var(--brand) 18%, var(--border) 82%);
-  border-radius: 28px;
-  box-shadow: 0 22px 60px rgba(74, 45, 18, 0.12);
+  border: 1px solid color-mix(in srgb, var(--reels-accent) 20%, var(--border) 80%);
+  border-radius: 24px;
+  box-shadow: 0 18px 48px rgba(51, 32, 16, 0.1);
 }
 
 .reels-rail-card,
 .reels-status-card {
-  padding: 22px;
+  padding: 18px;
+}
+
+.reels-hero-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.reels-hero-card::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 150px;
+  height: 150px;
+  top: -74px;
+  right: -62px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--reels-accent) 28%, transparent);
+  filter: blur(2px);
+}
+
+.reels-hero-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 16px;
+  color: color-mix(in srgb, var(--reels-accent-strong) 80%, var(--text) 20%);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.reels-hero-mark > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #fff9ed;
+  background: linear-gradient(145deg, #f2b657, #a55e12);
+  box-shadow: 0 9px 22px rgba(166, 97, 19, 0.28);
 }
 
 .reels-hero-card h1 {
   margin: 0;
-  font-size: clamp(30px, 3.2vw, 42px);
-  line-height: 1.02;
+  max-width: 10ch;
+  font-size: clamp(29px, 2.6vw, 38px);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
 }
 
 .reels-hero-card p,
@@ -6443,19 +6501,105 @@ html.dark-mode .game-live-control-dock {
 }
 
 .reels-hero-actions {
-  margin-top: 22px;
+  display: grid;
+  grid-template-columns: 1fr;
+  margin-top: 20px;
+}
+
+.reels-icon {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+
+.reels-rail-action {
+  width: 100%;
+  min-height: 62px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid color-mix(in srgb, var(--reels-accent) 22%, var(--border) 78%);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-soft) 86%, transparent);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.reels-rail-action:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--reels-accent) 52%, var(--border) 48%);
+  box-shadow: 0 12px 28px rgba(86, 51, 15, 0.12);
+}
+
+.reels-rail-action--primary {
+  color: #fffaf1;
+  border-color: transparent;
+  background: linear-gradient(135deg, #d99632, #9f5a11);
+  box-shadow: 0 14px 30px rgba(148, 83, 13, 0.24);
+}
+
+.reels-rail-action--primary:hover {
+  border-color: transparent;
+  box-shadow: 0 17px 34px rgba(148, 83, 13, 0.32);
+}
+
+.reels-rail-action-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  color: var(--reels-accent-strong);
+  background: color-mix(in srgb, var(--reels-accent) 15%, var(--surface-soft) 85%);
+}
+
+.reels-rail-action--primary .reels-rail-action-icon {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.reels-rail-action > span:last-child,
+.reels-refresh-btn > span:last-child,
+.reels-nav-btn > span:not(.reels-nav-icon) {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.reels-rail-action strong,
+.reels-refresh-btn strong,
+.reels-nav-btn strong {
+  font-size: 14px;
+  line-height: 1.1;
+}
+
+.reels-rail-action small,
+.reels-refresh-btn small,
+.reels-nav-btn small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.reels-rail-action--primary small {
+  color: rgba(255, 250, 240, 0.75);
 }
 
 .reels-mini-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin-top: 22px;
+  margin-top: 18px;
 }
 
 .reels-mini-stats > div {
-  padding: 14px 16px;
-  border-radius: 18px;
+  padding: 13px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.4);
   border: 1px solid color-mix(in srgb, var(--brand) 18%, transparent);
 }
@@ -6475,10 +6619,28 @@ html.dark-mode .game-live-control-dock {
 
 .reels-tips-card ul {
   margin: 14px 0 0;
-  padding-left: 18px;
+  padding: 0;
+  list-style: none;
   color: var(--muted);
   display: grid;
   gap: 10px;
+}
+
+.reels-tips-card li {
+  position: relative;
+  padding-left: 22px;
+}
+
+.reels-tips-card li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.6em;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--reels-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--reels-accent) 13%, transparent);
 }
 
 .reels-sound-toggle,
@@ -6488,6 +6650,26 @@ html.dark-mode .game-live-control-dock {
   min-height: 46px;
 }
 
+.reels-sound-toggle {
+  min-height: 42px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid color-mix(in srgb, var(--reels-accent) 25%, var(--border) 75%);
+  border-radius: 999px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-soft) 78%, transparent);
+  box-shadow: 0 8px 22px rgba(57, 35, 14, 0.08);
+  cursor: pointer;
+}
+
+.reels-sound-toggle .reels-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--reels-accent-strong);
+}
+
 .reels-status-card {
   display: grid;
   gap: 12px;
@@ -6495,12 +6677,24 @@ html.dark-mode .game-live-control-dock {
 }
 
 .reels-stream {
-  height: calc(100vh - 160px);
+  position: relative;
+  height: auto;
+  min-height: 0;
   overflow-y: auto;
-  padding-right: 8px;
+  padding: 0 8px;
   display: grid;
-  gap: 24px;
+  grid-auto-rows: 100%;
+  gap: 0;
   scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  outline: none;
+}
+
+.reels-stream:focus-visible {
+  border-radius: 28px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--reels-accent) 32%, transparent);
 }
 
 .reels-stream::-webkit-scrollbar {
@@ -6513,28 +6707,38 @@ html.dark-mode .game-live-control-dock {
 }
 
 .reels-slide {
-  min-height: calc(100vh - 170px);
+  position: relative;
+  height: 100%;
+  min-height: 100%;
+  padding: 4px 0;
+  box-sizing: border-box;
   display: grid;
-  grid-template-columns: minmax(0, 420px) 88px;
-  gap: 18px;
+  grid-template-columns: minmax(0, 420px) 78px;
+  gap: 14px;
   justify-content: center;
-  align-items: end;
-  scroll-snap-align: center;
+  align-items: center;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .reels-slide.active .reel-viewer-card {
-  transform: translateY(-4px);
-  box-shadow: 0 26px 80px rgba(6, 10, 22, 0.34);
+  transform: scale(1);
+  box-shadow: 0 24px 70px rgba(6, 10, 22, 0.32);
 }
 
 .reel-viewer-card {
   position: relative;
   aspect-ratio: 9 / 16;
-  width: min(100%, 420px);
-  border-radius: 34px;
+  width: min(100%, 420px, calc((100dvh - 182px) * 0.5625));
+  max-height: 100%;
+  justify-self: end;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 30px;
   overflow: hidden;
   background: #05070c;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 16px 46px rgba(6, 10, 22, 0.2);
+  transform: scale(0.985);
+  transition: transform 0.28s ease, box-shadow 0.28s ease;
 }
 
 .reel-video {
@@ -6642,50 +6846,215 @@ html.dark-mode .game-live-control-dock {
 .reel-actions {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  align-self: end;
+  gap: 7px;
+  align-self: center;
+  width: 78px;
+  padding: 8px 5px;
+  border: 1px solid color-mix(in srgb, var(--reels-accent) 18%, var(--border) 82%);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--surface) 76%, transparent);
+  box-shadow: 0 14px 38px rgba(38, 23, 10, 0.14);
+  backdrop-filter: blur(18px);
 }
 
 .reel-action-btn {
-  border: 1px solid color-mix(in srgb, var(--brand) 26%, transparent);
-  border-radius: 20px;
-  min-height: 74px;
-  padding: 12px 10px;
+  width: 66px;
+  min-height: 70px;
+  padding: 7px 4px;
   display: grid;
   place-items: center;
-  gap: 4px;
+  gap: 5px;
+  border: 1px solid transparent;
+  border-radius: 22px;
+  color: var(--text);
+  background: transparent;
   cursor: pointer;
-  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease;
 }
 
 .reel-action-btn:hover {
-  transform: translateY(-2px);
+  transform: scale(1.04);
+  background: color-mix(in srgb, var(--reels-accent) 11%, transparent);
 }
 
 .reel-action-btn.active {
-  border-color: color-mix(in srgb, var(--brand-strong) 66%, white 34%);
+  color: #c96b56;
+  background: color-mix(in srgb, #db725d 14%, transparent);
+}
+
+.reel-action-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--surface-soft) 72%, transparent);
+}
+
+.reel-action-icon .reels-icon {
+  width: 19px;
+  height: 19px;
+}
+
+.reel-action-btn.active .reel-action-icon {
+  background: color-mix(in srgb, #db725d 20%, transparent);
+}
+
+.reel-action-copy {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+}
+
+.reel-action-copy strong {
+  max-width: 58px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+}
+
+.reel-action-copy small {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.05;
+}
+
+.reel-action-btn .reel-action-icon,
+.reel-action-btn .reel-action-copy strong {
+  color: inherit;
 }
 
 .reels-active-card,
 .reels-queue-card {
   display: grid;
-  gap: 16px;
+  gap: 13px;
+}
+
+.reels-active-card h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reels-stream-progress {
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--reels-accent) 12%, var(--border) 88%);
+}
+
+.reels-stream-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #a45e13, #edb75d);
+  box-shadow: 0 0 18px rgba(224, 157, 58, 0.44);
+  transition: width 0.3s ease;
+}
+
+.reels-nav-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.reels-nav-btn {
+  min-width: 0;
+  min-height: 82px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--reels-accent) 20%, var(--border) 80%);
+  border-radius: 18px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-soft) 82%, transparent);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.reels-nav-btn--next {
+  align-items: flex-end;
+  text-align: right;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--reels-accent) 20%, var(--surface-soft) 80%), color-mix(in srgb, var(--reels-accent) 8%, var(--surface-soft) 92%));
+}
+
+.reels-nav-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--reels-accent) 52%, var(--border) 48%);
+}
+
+.reels-nav-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.reels-nav-icon,
+.reels-refresh-icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 11px;
+  color: var(--reels-accent-strong);
+  background: color-mix(in srgb, var(--reels-accent) 15%, var(--surface-soft) 85%);
+}
+
+.reels-nav-icon .reels-icon,
+.reels-refresh-icon .reels-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.reels-refresh-btn {
+  width: 100%;
+  min-height: 58px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid color-mix(in srgb, var(--reels-accent) 22%, var(--border) 78%);
+  border-radius: 18px;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.reels-refresh-btn:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--reels-accent) 10%, transparent);
+}
+
+.reels-refresh-btn:hover .reels-refresh-icon .reels-icon {
+  transform: rotate(35deg);
+}
+
+.reels-refresh-icon .reels-icon {
+  transition: transform 0.25s ease;
 }
 
 .reels-queue-list {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .reels-queue-item {
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px;
   align-items: center;
   width: 100%;
   border: 1px solid transparent;
-  border-radius: 18px;
-  padding: 10px;
+  border-radius: 16px;
+  padding: 7px;
   background: transparent;
   cursor: pointer;
   color: inherit;
@@ -6697,12 +7066,69 @@ html.dark-mode .game-live-control-dock {
   transform: translateX(2px);
 }
 
-.reels-queue-item img {
-  width: 58px;
-  height: 76px;
-  border-radius: 14px;
-  object-fit: cover;
+.reels-queue-item.active {
+  border-color: color-mix(in srgb, var(--reels-accent) 36%, var(--border) 64%);
+  background: color-mix(in srgb, var(--reels-accent) 10%, transparent);
+}
+
+.reels-queue-thumb {
+  position: relative;
+  width: 48px;
+  height: 62px;
+  overflow: hidden;
+  border-radius: 13px;
   background: rgba(0, 0, 0, 0.12);
+}
+
+.reels-queue-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.reels-queue-play {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  color: #fff;
+  background: rgba(12, 10, 8, 0.66);
+  backdrop-filter: blur(6px);
+}
+
+.reels-queue-play .reels-icon {
+  width: 11px;
+  height: 11px;
+}
+
+.reels-queue-item > div {
+  min-width: 0;
+}
+
+.reels-queue-item > div > small {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--reels-accent-strong);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.reels-queue-item strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reels-queue-item > div > span {
+  font-size: 11px;
 }
 
 .reels-mobile-create {
@@ -6898,7 +7324,7 @@ html:not(.dark-mode) .reels-composer h2 {
 }
 
 html:not(.dark-mode) .reel-action-btn {
-  background: rgba(255, 250, 243, 0.9);
+  background: transparent;
   color: #2d1c12;
 }
 
@@ -6907,6 +7333,11 @@ html:not(.dark-mode) .reels-queue-item:hover,
 html:not(.dark-mode) .reels-queue-item.active {
   background: rgba(255, 255, 255, 0.95);
   border-color: rgba(184, 128, 52, 0.28);
+}
+
+html:not(.dark-mode) .reel-action-btn.active {
+  color: #bd5948;
+  background: rgba(226, 109, 89, 0.13);
 }
 
 html:not(.dark-mode) .reels-mini-stats > div,
@@ -6936,7 +7367,7 @@ html.dark-mode .reels-composer-empty {
 }
 
 html.dark-mode .reel-action-btn {
-  background: rgba(255, 255, 255, 0.05);
+  background: transparent;
   color: #f7f2eb;
 }
 
@@ -6947,6 +7378,16 @@ html.dark-mode .reels-queue-item.active {
   border-color: rgba(243, 184, 98, 0.32);
 }
 
+html.dark-mode .reel-action-btn.active {
+  color: #ff9c87;
+  background: rgba(231, 112, 88, 0.13);
+}
+
+html.dark-mode .reel-actions {
+  background: rgba(28, 19, 16, 0.78);
+  border-color: rgba(243, 184, 98, 0.2);
+}
+
 html.dark-mode .reels-composer-overlay {
   background: rgba(8, 6, 6, 0.74);
 }
@@ -6954,31 +7395,52 @@ html.dark-mode .reels-composer-overlay {
 @media (max-width: 1180px) {
   .reels-page-shell {
     grid-template-columns: 280px minmax(0, 1fr);
+    height: auto;
+    min-height: calc(100dvh - 72px);
+    overflow: visible;
+  }
+
+  .reels-left-rail {
+    position: sticky;
+    top: 90px;
+    max-height: calc(100dvh - 108px);
+  }
+
+  .reels-stage {
+    height: calc(100dvh - 108px);
+    min-height: 640px;
   }
 
   .reels-right-rail {
     grid-column: 1 / -1;
     position: static;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: none;
+    overflow: visible;
   }
 }
 
 @media (max-width: 920px) {
   .reels-page-shell {
     grid-template-columns: 1fr;
+    min-height: 0;
   }
 
   .reels-left-rail,
   .reels-right-rail {
     position: static;
+    max-height: none;
+    overflow: visible;
   }
 
   .reels-left-rail {
-    order: 1;
+    order: 2;
   }
 
   .reels-stage {
-    order: 2;
+    order: 1;
+    height: auto;
+    min-height: 0;
   }
 
   .reels-right-rail {
@@ -6987,19 +7449,19 @@ html.dark-mode .reels-composer-overlay {
   }
 
   .reels-stream {
-    height: auto;
-    overflow: visible;
+    height: clamp(540px, 76dvh, 760px);
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .reels-slide {
-    min-height: 0;
-    grid-template-columns: minmax(0, 1fr);
+    height: 100%;
+    min-height: 100%;
+    grid-template-columns: minmax(0, 420px) 78px;
   }
 
   .reel-actions {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    align-self: stretch;
+    align-self: center;
   }
 
   .reels-mobile-create {
@@ -7011,16 +7473,26 @@ html.dark-mode .reels-composer-overlay {
 
 @media (max-width: 640px) {
   .reels-page-shell {
-    padding: 16px;
-    gap: 18px;
+    padding: 12px;
+    gap: 16px;
   }
 
   .reels-stage-head,
-  .reels-hero-actions,
-  .reels-nav-controls,
   .reels-composer-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .reels-stage-head {
+    padding: 0 2px;
+  }
+
+  .reels-stage-head h2 {
+    font-size: 21px;
+  }
+
+  .reels-sound-toggle {
+    align-self: flex-start;
   }
 
   .reels-hero-card h1 {
@@ -7031,12 +7503,25 @@ html.dark-mode .reels-composer-overlay {
     grid-template-columns: 1fr;
   }
 
+  .reels-stream {
+    height: clamp(500px, 72dvh, 680px);
+    padding: 0;
+    scrollbar-gutter: auto;
+  }
+
   .reels-slide {
-    gap: 14px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 5px 0;
   }
 
   .reel-viewer-card {
-    border-radius: 26px;
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+    justify-self: center;
+    border-radius: 24px;
   }
 
   .reel-overlay {
@@ -7044,7 +7529,33 @@ html.dark-mode .reels-composer-overlay {
   }
 
   .reel-actions {
+    width: min(100%, 420px);
+    padding: 5px;
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+    justify-self: center;
+    border-radius: 20px;
+  }
+
+  .reel-action-btn {
+    width: 100%;
+    min-height: 52px;
+    padding: 5px 7px;
+    grid-template-columns: auto minmax(0, 1fr);
+    justify-content: start;
+    justify-items: start;
+    border-radius: 15px;
+    text-align: left;
+  }
+
+  .reel-action-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .reel-action-copy {
+    justify-items: start;
   }
 
   .reels-composer {
@@ -7062,6 +7573,41 @@ html.dark-mode .reels-composer-overlay {
 
   .reels-composer-preview video {
     max-height: min(22dvh, 210px);
+  }
+}
+
+@media (max-width: 420px) {
+  .reels-stream {
+    height: clamp(480px, 68dvh, 620px);
+  }
+
+  .reel-overlay {
+    padding: 13px;
+  }
+
+  .reel-author img {
+    width: 42px;
+    height: 42px;
+  }
+
+  .reels-mobile-create {
+    right: 12px;
+    bottom: 14px;
+    min-width: 124px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reels-stream {
+    scroll-behavior: auto;
+  }
+
+  .reel-viewer-card,
+  .reel-action-btn,
+  .reels-rail-action,
+  .reels-nav-btn,
+  .reels-refresh-btn {
+    transition: none;
   }
 }
 

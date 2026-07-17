@@ -140,7 +140,12 @@ function FriendSuggestionsCard({ suggestions, pendingIds, onAdd, onProfile, onSe
           <span>Discover people</span>
           <strong id="friend-suggestions-title">Friend suggestions</strong>
         </div>
-        <button type="button" onClick={onSeeAll}>See all</button>
+        <button type="button" onClick={onSeeAll}>
+          <span>See all</span>
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="m6 3 5 5-5 5" />
+          </svg>
+        </button>
       </div>
 
       <div className="sidebar-friend-suggestions__list">
@@ -154,10 +159,12 @@ function FriendSuggestionsCard({ suggestions, pendingIds, onAdd, onProfile, onSe
                 onClick={() => onProfile(person)}
                 aria-label={`View ${person.name || person.username}'s profile`}
               >
-                <img
-                  src={resolveImage(person.avatar) || fallbackAvatar(person.name)}
-                  alt=""
-                />
+                <span className="sidebar-friend-suggestion__avatar">
+                  <img
+                    src={resolveImage(person.avatar) || fallbackAvatar(person.name)}
+                    alt=""
+                  />
+                </span>
                 <span>
                   <strong>{person.name || person.username}</strong>
                   <small>
@@ -171,9 +178,23 @@ function FriendSuggestionsCard({ suggestions, pendingIds, onAdd, onProfile, onSe
                 type="button"
                 className="sidebar-friend-suggestion__add"
                 disabled={isPending}
+                aria-busy={isPending}
                 onClick={() => onAdd(person)}
               >
-                {isPending ? "Sending…" : "Add friend"}
+                {isPending ? (
+                  <>
+                    <span className="sidebar-friend-suggestion__spinner" aria-hidden="true" />
+                    <span>Sending…</span>
+                  </>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                      <path d="M6.4 7.15a2.65 2.65 0 1 0 0-5.3 2.65 2.65 0 0 0 0 5.3Z" />
+                      <path d="M1.75 13.65c.25-2.45 2.1-3.9 4.65-3.9 1.05 0 1.98.24 2.72.7M12.15 7.8v5M9.65 10.3h5" />
+                    </svg>
+                    <span>Add friend</span>
+                  </>
+                )}
               </button>
             </article>
           );

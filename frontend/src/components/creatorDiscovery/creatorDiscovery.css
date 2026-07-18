@@ -646,12 +646,23 @@ html[data-theme="terra-minimal"] .creator-discovery-theme {
   min-width: 0;
 }
 
+.creator-summary-card__body {
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+
 .creator-summary-card__top,
 .creator-discovery-card__top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.creator-summary-card__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(104px, 142px);
+  gap: 8px;
 }
 
 .creator-summary-card__creator,
@@ -704,6 +715,17 @@ html[data-theme="terra-minimal"] .creator-discovery-theme {
   white-space: nowrap;
 }
 
+.creator-summary-card__creator-copy strong {
+  display: block;
+  overflow: visible;
+  color: inherit;
+  font-size: 0.95rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 .creator-summary-card__category,
 .creator-discovery-card__category {
   display: inline-flex;
@@ -720,6 +742,16 @@ html[data-theme="terra-minimal"] .creator-discovery-theme {
   text-transform: uppercase;
   text-align: center;
   font-weight: 800;
+}
+
+.creator-summary-card__category {
+  justify-self: end;
+  width: 100%;
+  max-width: 142px;
+  min-height: 30px;
+  padding: 4px 8px;
+  font-size: 0.65rem;
+  line-height: 1.3;
 }
 
 .creator-summary-card__summary {
@@ -744,6 +776,12 @@ html[data-theme="terra-minimal"] .creator-discovery-theme {
   font-size: 0.9rem;
 }
 
+.creator-summary-card__meta {
+  align-self: start;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
 .creator-summary-card__meta span,
 .creator-discovery-card__meta-list span {
   padding: 6px 10px;
@@ -752,6 +790,17 @@ html[data-theme="terra-minimal"] .creator-discovery-theme {
   border: 1px solid var(--creator-discovery-meta-border);
   color: var(--creator-discovery-meta-text);
   font-weight: 800;
+}
+
+.creator-summary-card__meta span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 11px;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .creator-discovery-card__trust span {
@@ -1143,5 +1192,15 @@ html[data-theme="terra-minimal"] .creator-discovery-theme {
   .public-category-showcase__shelf-head {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .creator-summary-card__top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .creator-summary-card__category {
+    justify-self: start;
+    width: fit-content;
+    max-width: 100%;
   }
 }

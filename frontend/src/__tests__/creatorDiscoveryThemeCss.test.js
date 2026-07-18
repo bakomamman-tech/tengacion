@@ -52,4 +52,26 @@ describe("creator discovery theme controls", () => {
     expect(rule).toContain("--creator-summary-refresh-text:");
     expect(rule).toContain("--creator-summary-refresh-shadow:");
   });
+
+  it("keeps creator names complete and metadata pills compact", () => {
+    const css = readFileSync(cssPath, "utf8").replace(/\r\n/g, "\n");
+    const bodyRule = getRule(css, ".creator-summary-card__body");
+    const topRule = getRule(css, ".creator-summary-card__top");
+    const nameRule = getRule(css, ".creator-summary-card__creator-copy strong");
+    const metaRule = getRule(css, ".creator-summary-card__meta");
+    const metaPillRule = getRule(css, ".creator-summary-card__meta span");
+
+    expect(bodyRule).toContain("align-content: start;");
+    expect(bodyRule).toContain("grid-auto-rows: max-content;");
+    expect(topRule).toContain("grid-template-columns: minmax(0, 1fr) minmax(104px, 142px);");
+    expect(nameRule).toContain("overflow: visible;");
+    expect(nameRule).toContain("white-space: normal;");
+    expect(nameRule).not.toContain("text-overflow: ellipsis;");
+    expect(metaRule).toContain("align-self: start;");
+    expect(metaRule).toContain("align-items: center;");
+    expect(metaPillRule).toContain("display: inline-flex;");
+    expect(metaPillRule).toContain("align-items: center;");
+    expect(metaPillRule).toContain("justify-content: center;");
+    expect(metaPillRule).toContain("min-height: 36px;");
+  });
 });

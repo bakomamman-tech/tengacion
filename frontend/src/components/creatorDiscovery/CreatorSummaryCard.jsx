@@ -43,6 +43,7 @@ export default function CreatorSummaryCard({ item }) {
     () => String(item?.summaryLabel || item?.creatorCategory || "Creator").trim(),
     [item?.creatorCategory, item?.summaryLabel]
   );
+  const creatorTypeLabel = item?.creatorTypeLabels?.join(" / ") || categoryLabel;
 
   if (!item) {
     return null;
@@ -143,12 +144,12 @@ export default function CreatorSummaryCard({ item }) {
               )}
             </div>
             <div className="creator-summary-card__creator-copy">
-              <strong>{item?.creatorName || "Creator"}</strong>
+              <strong title={item?.creatorName || "Creator"}>{item?.creatorName || "Creator"}</strong>
               <span>@{item?.creatorUsername || "creator"}</span>
             </div>
           </div>
-          <span className="creator-summary-card__category">
-            {item?.creatorTypeLabels?.join(" / ") || categoryLabel}
+          <span className="creator-summary-card__category" title={creatorTypeLabel}>
+            {creatorTypeLabel}
           </span>
         </div>
 

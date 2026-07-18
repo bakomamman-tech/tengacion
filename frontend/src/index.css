@@ -13220,10 +13220,10 @@ html.dark-mode .create-post-quick-btn--reel {
 .sidebar-friend-suggestion__add {
   min-height: 34px;
   padding: 0 9px;
-  border: 1px solid color-mix(in srgb, var(--brand) 28%, var(--border));
+  border: 1px solid var(--tg-btn-primary-border);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--brand) 10%, var(--surface-soft));
-  color: var(--brand);
+  background: var(--tg-btn-primary-bg);
+  color: #fff;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -13232,7 +13232,7 @@ html.dark-mode .create-post-quick-btn--reel {
   font-size: 0.68rem;
   font-weight: 800;
   white-space: nowrap;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  box-shadow: var(--tg-btn-shadow-primary);
   transition: border-color 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
@@ -13247,10 +13247,11 @@ html.dark-mode .create-post-quick-btn--reel {
 }
 
 .sidebar-friend-suggestion__add:hover:not(:disabled) {
-  background: var(--brand);
+  border-color: var(--tg-btn-primary-border);
+  background: var(--tg-btn-primary-bg);
   color: #fff;
-  box-shadow: 0 6px 13px color-mix(in srgb, var(--brand) 22%, transparent);
-  transform: translateY(-1px);
+  box-shadow: var(--tg-btn-shadow-primary);
+  transform: none;
 }
 
 .sidebar-friend-suggestion__add:focus-visible {

@@ -3,7 +3,9 @@ const auth = require("../middleware/auth");
 const User = require("../models/User");
 const Post = require("../models/Post");
 const Room = require("../models/Room");
+const PostService = require("../../apps/api/services/postService");
 const { normalizeMediaValue } = require("../utils/userMedia");
+const { createLegacyCompatiblePublicModerationFilter } = require("../utils/publicModeration");
 
 const router = express.Router();
 
@@ -53,6 +55,7 @@ router.get("/", auth, async (req, res) => {
             { hashtags: sanitizeQuery(q).replace(/^#/, "").toLowerCase() },
           ],
           privacy: "public",
+          ...createLegacyCompatiblePublicModerationFilter(),
         },
         "_id text author hashtags createdAt"
       )
@@ -64,9 +67,22 @@ router.get("/", auth, async (req, res) => {
         .sort({ createdAt: -1 })
         .limit(30)
         .lean();
+      const visiblePostIds = new Set((await Promise.all(
+        posts.map(async (post) => {
+          try {
+            await PostService.getPostById({
+              viewerId: req.user.id,
+              postId: post._id.toString(),
+            });
+            return post._id.toString();
+          } catch {
+            return "";
+          }
+        })
+      )).filter(Boolean));
       return res.json({
         type,
-        data: posts.map((post) => ({
+        data: posts.filter((post) => visiblePostIds.has(post._id.toString())).map((post) => ({
           ...post,
           author:
             post?.author && typeof post.author === "object"
@@ -82,6 +98,9 @@ router.get("/", auth, async (req, res) => {
     if (type === "hashtags") {
       const normalized = q.replace(/^#/, "").toLowerCase();
       const hashtags = await Post.aggregate([
+        {
+          $match: createLegacyCompatiblePublicModerationFilter(),
+        },
         { $unwind: "$hashtags" },
         { $match: { hashtags: { $regex: `^${normalized}`, $options: "i" } } },
         { $group: { _id: "$hashtags", count: { $sum: 1 } } },
@@ -125,6 +144,9 @@ router.get("/", auth, async (req, res) => {
 router.get("/trending/hashtags", auth, async (_req, res) => {
   try {
     const data = await Post.aggregate([
+      {
+        $match: createLegacyCompatiblePublicModerationFilter(),
+      },
       { $unwind: "$hashtags" },
       { $group: { _id: "$hashtags", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
@@ -157,6 +179,9 @@ router.get("/suggestions", auth, async (req, res) => {
       .lean();
     const rooms = await Room.find({}, "_id name description cover members").limit(8).lean();
     const hashtags = await Post.aggregate([
+      {
+        $match: createLegacyCompatiblePublicModerationFilter(),
+      },
       { $unwind: "$hashtags" },
       { $group: { _id: "$hashtags", count: { $sum: 1 } } },
       { $sort: { count: -1 } },

@@ -867,6 +867,7 @@ describe("creator profile routes", () => {
       price: 0,
       publishedStatus: "published",
       isPublished: true,
+      moderationStatus: "approved",
     });
 
     await Post.create({

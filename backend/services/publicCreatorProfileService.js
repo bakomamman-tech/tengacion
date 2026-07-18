@@ -35,11 +35,12 @@ const {
   serializeProduct,
   serializeSellerSnippet,
 } = require("./marketplaceProductService");
+const { createPublicModerationFilter } = require("../utils/publicModeration");
 
-const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null };
+const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
 const ACTIVE_PUBLIC_POST_FILTER = {
   privacy: "public",
   visibility: "public",

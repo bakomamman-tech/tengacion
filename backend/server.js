@@ -10,7 +10,7 @@ const {
   extractBearerToken,
 } = require("./services/sessionAuth");
 const { persistChatMessage } = require("./services/chatService");
-const { toIdString } = require("./utils/messagePayload");
+const { buildConversationId, toIdString } = require("./utils/messagePayload");
 const Message = require("./models/Message");
 const { config, redactSecretsForLog } = require("./config/env");
 const { registerGracefulShutdown } = require("./services/gracefulShutdownService");
@@ -660,11 +660,36 @@ if (process.env.NODE_ENV !== "test") {
       socket.join(`watch:${chatId}`);
     });
 
-    socket.on("watch:state", ({ chatId, videoUrl, t, isPlaying }) => {
+    socket.on("watch:state", async ({ chatId, videoUrl, t, isPlaying }) => {
       if (!chatId) return;
+      const safeVideoUrl = String(videoUrl || "").trim().slice(0, 1200);
+      if (safeVideoUrl) {
+        const conversationId = buildConversationId(socket.userId, chatId);
+        const sharedModeratedVideo = await Message.exists({
+          conversationId,
+          attachments: {
+            $elemMatch: {
+              type: "video",
+              provider: { $in: ["cloudinary", "s3", "gridfs"] },
+              $or: [
+                { url: safeVideoUrl },
+                { secureUrl: safeVideoUrl },
+                { secure_url: safeVideoUrl },
+              ],
+            },
+          },
+        }).catch(() => null);
+        if (!sharedModeratedVideo) {
+          socket.emit("watch:error", {
+            chatId,
+            error: "Share the video in this chat through Tengacion before starting Watch Together",
+          });
+          return;
+        }
+      }
       socket.to(`watch:${chatId}`).emit("watch:state", {
         chatId,
-        videoUrl: String(videoUrl || ""),
+        videoUrl: safeVideoUrl,
         t: Number(t) || 0,
         isPlaying: Boolean(isPlaying),
       });

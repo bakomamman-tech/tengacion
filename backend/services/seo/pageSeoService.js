@@ -17,6 +17,7 @@ const {
   normalizePublicText,
   uniquePublicActivity,
 } = require("../../utils/publicText");
+const { createPublicModerationFilter } = require("../../utils/publicModeration");
 const { findCreatorProfileByReference } = require("../creatorLookupService");
 const {
   PRIVATE_CREATOR_ALIAS_SEGMENTS,
@@ -38,10 +39,10 @@ const {
   toCanonicalUrl,
 } = require("./siteSeo");
 
-const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null };
+const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
 const ACTIVE_MARKETPLACE_PRODUCT_FILTER = {
   isPublished: true,
   isHidden: false,

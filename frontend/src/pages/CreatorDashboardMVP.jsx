@@ -15,6 +15,7 @@ import {
   getCreatorVideos,
   getMyCreatorProfile,
   resolveImage,
+  uploadCover,
   upsertCreatorProfile,
 } from "../api";
 import { useDialog } from "../components/ui/useDialog";
@@ -185,6 +186,7 @@ export default function CreatorDashboardMVP() {
   const [archiving, setArchiving] = useState(false);
 
   const [profileForm, setProfileForm] = useState(PROFILE_DEFAULT);
+  const [heroBannerFile, setHeroBannerFile] = useState(null);
   const [trackForm, setTrackForm] = useState(TRACK_DEFAULT);
   const [trackFiles, setTrackFiles] = useState({ audio: null, preview: null, cover: null });
   const [trackProgress, setTrackProgress] = useState(0);
@@ -373,6 +375,14 @@ export default function CreatorDashboardMVP() {
     setProfileSaving(true);
     setPageError("");
     try {
+      let heroBannerUrl = profileForm.heroBannerUrl.trim();
+      if (heroBannerFile) {
+        const updatedUser = await uploadCover(heroBannerFile);
+        heroBannerUrl = resolveImage(updatedUser?.cover || "");
+        if (!heroBannerUrl) {
+          throw new Error("The moderated hero image upload did not return a usable URL.");
+        }
+      }
       const genres = profileForm.genresRaw
         .split(",")
         .map((entry) => entry.trim())
@@ -386,13 +396,14 @@ export default function CreatorDashboardMVP() {
       await upsertCreatorProfile({
         displayName: profileForm.displayName.trim(),
         bio: profileForm.bio.trim(),
-        heroBannerUrl: profileForm.heroBannerUrl.trim(),
-        coverImageUrl: profileForm.heroBannerUrl.trim(),
+        heroBannerUrl,
+        coverImageUrl: heroBannerUrl,
         tagline: profileForm.tagline.trim(),
         genres,
         links,
         onboardingComplete: true,
       });
+      setHeroBannerFile(null);
       await refreshAll();
       setSettingsOpen(false);
     } catch (err) {
@@ -754,11 +765,16 @@ export default function CreatorDashboardMVP() {
                     }
                   />
                   <input
-                    placeholder="Hero image URL"
+                    aria-label="Current creator hero image"
                     value={profileForm.heroBannerUrl}
-                    onChange={(event) =>
-                      setProfileForm((prev) => ({ ...prev, heroBannerUrl: event.target.value }))
-                    }
+                    placeholder="No hero image uploaded"
+                    readOnly
+                  />
+                  <input
+                    aria-label="Upload creator hero image"
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => setHeroBannerFile(event.target.files?.[0] || null)}
                   />
                   <textarea
                     placeholder="Bio"

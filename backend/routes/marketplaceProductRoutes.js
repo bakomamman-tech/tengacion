@@ -3,6 +3,7 @@ const express = require("express");
 const auth = require("../middleware/auth");
 const approvedSellerGuard = require("../middleware/approvedSellerGuard");
 const upload = require("../middleware/marketplaceProductUpload");
+const moderateUpload = require("../middleware/moderateUpload");
 const productController = require("../controllers/marketplaceProductController");
 
 const router = express.Router();
@@ -37,6 +38,11 @@ router.post(
     { name: "video", maxCount: 1 },
   ]),
   validateProductMediaFields,
+  moderateUpload({
+    sourceType: "marketplace_product_upload",
+    titleFields: ["title", "name"],
+    descriptionFields: ["description", "details"],
+  }),
   productController.createListing
 );
 router.put(
@@ -48,6 +54,11 @@ router.put(
     { name: "video", maxCount: 1 },
   ]),
   validateProductMediaFields,
+  moderateUpload({
+    sourceType: "marketplace_product_upload",
+    titleFields: ["title", "name"],
+    descriptionFields: ["description", "details"],
+  }),
   productController.updateListing
 );
 router.delete("/products/:id", auth, approvedSellerGuard, productController.deleteListing);

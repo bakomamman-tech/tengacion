@@ -381,12 +381,12 @@ describe("moderation routes and enforcement", () => {
       expect(await Post.countDocuments()).toBe(0);
 
       const moderationCase = await ModerationCase.findOne({
-        queue: "upload_moderation",
+        queue: "explicit_pornography",
         "subject.targetType": "post_upload",
         "subject.mediaType": "video",
       }).lean();
       expect(moderationCase).toBeTruthy();
-      expect(moderationCase.status).toBe("rejected");
+      expect(moderationCase.status).toBe("BLOCK_EXPLICIT_ADULT");
       expect(moderationCase.visibility).toBe("blocked");
       expect(String(moderationCase.fileUrl || "")).toContain("private://");
     } finally {
@@ -419,7 +419,7 @@ describe("moderation routes and enforcement", () => {
       expect(await Post.countDocuments()).toBe(0);
 
       const moderationCase = await ModerationCase.findOne({
-        queue: "upload_moderation",
+        queue: "graphic_gore",
         "subject.targetType": "post_upload",
         "subject.mediaType": "image",
       }).lean();

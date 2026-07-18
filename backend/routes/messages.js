@@ -6,6 +6,7 @@ const upload = require("../middleware/privateUpload");
 const auth = require("../middleware/auth");
 const moderateUpload = require("../middleware/moderateUpload");
 const { persistChatMessage } = require("../services/chatService");
+const { issueChatAttachmentReceipt } = require("../services/chatAttachmentReceiptService");
 const { createNotification } = require("../services/notificationService");
 const {
   deleteUploadedMediaBatch,
@@ -84,7 +85,7 @@ router.post(
         source: resolveChatAttachmentSource(req.file.mimetype),
         resourceType: resolveChatAttachmentResourceType(req.file.mimetype),
       });
-      return res.json({
+      const attachment = {
         url: uploaded.secureUrl || uploaded.url,
         secureUrl: uploaded.secureUrl || uploaded.url,
         secure_url: uploaded.secureUrl || uploaded.url,
@@ -98,6 +99,13 @@ router.post(
         type: toAttachmentType(req.file.mimetype),
         name: req.file.originalname || req.file.filename,
         size: Number(req.file.size) || 0,
+      };
+      return res.json({
+        ...attachment,
+        uploadToken: issueChatAttachmentReceipt({
+          userId: req.user.id,
+          attachment,
+        }),
       });
     } catch (err) {
       console.error("Chat attachment upload failed:", err);

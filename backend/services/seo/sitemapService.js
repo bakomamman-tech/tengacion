@@ -12,11 +12,12 @@ const {
 const Video = require("../../models/Video");
 const { buildCreatorPublicPath } = require("../publicRouteService");
 const { normalizePathname, toCanonicalUrl } = require("./siteSeo");
+const { createPublicModerationFilter } = require("../../utils/publicModeration");
 
-const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null };
+const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
 const ACTIVE_MARKETPLACE_PRODUCT_FILTER = {
   isPublished: true,
   isHidden: false,

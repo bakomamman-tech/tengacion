@@ -1,9 +1,10 @@
 const crypto = require("crypto");
 const fsp = require("fs/promises");
-const { analyzeImage } = require("../services/moderationService");
+const { analyzeImage, analyzeImages } = require("../services/moderationService");
 const { analyzeVideo } = require("../services/videoModerationService");
 const {
   createUploadModerationCase,
+  resolveUploadRejectionStatus,
 } = require("../services/uploadModerationService");
 const {
   moveToQuarantineStorage,
@@ -42,7 +43,10 @@ const flattenFiles = (files) => {
     return Object.entries(files).flatMap(([fieldName, list]) =>
       (Array.isArray(list) ? list : [list])
         .filter(Boolean)
-        .map((file) => ({ ...file, fieldname: file?.fieldname || fieldName }))
+        .map((file) => {
+          if (!file.fieldname) file.fieldname = fieldName;
+          return file;
+        })
     );
   }
   return [];
@@ -105,10 +109,20 @@ const chooseWorstDecision = (results = []) => {
 const analyzeUploadFile = async (file = {}, uploaderId = "") => {
   const mime = String(file?.mimetype || "").toLowerCase();
   if (mime.startsWith("video/")) {
-    return analyzeVideo({ localPath: file?.path || "", mimeType: mime, uploaderId });
+    return analyzeVideo({
+      localPath: file?.path || "",
+      mimeType: mime,
+      originalFilename: file?.originalname || file?.filename || "",
+      uploaderId,
+    });
   }
   if (mime.startsWith("image/")) {
-    return analyzeImage({ localPath: file?.path || "", mimeType: mime, uploaderId });
+    return analyzeImage({
+      localPath: file?.path || "",
+      mimeType: mime,
+      originalFilename: file?.originalname || file?.filename || "",
+      uploaderId,
+    });
   }
   return analyzeImage({ localPath: file?.path || "", mimeType: mime, uploaderId });
 };
@@ -151,13 +165,26 @@ const moderateUpload = ({
           .map((field) => normalizeValue(req.body?.[field], 3000))
           .find(Boolean) || "";
 
-      const perFileResults = [];
-      for (const file of files) {
-        perFileResults.push({
-          ...toFileDescriptor(file),
-          ...(await analyzeUploadFile(file, req.user?.id || req.user?._id || "")),
-        });
-      }
+      const uploaderId = req.user?.id || req.user?._id || "";
+      const imageFiles = files.filter((file) =>
+        String(file?.mimetype || "").toLowerCase().startsWith("image/")
+      );
+      const imageDecision = imageFiles.length > 0
+        ? await analyzeImages({
+            assets: imageFiles.map((file) => ({
+              localPath: file?.path || "",
+              mimeType: file?.mimetype || "image/jpeg",
+              originalFilename: file?.originalname || file?.filename || "",
+            })),
+            uploaderId,
+          })
+        : null;
+      const perFileResults = await Promise.all(files.map(async (file) => ({
+        ...toFileDescriptor(file),
+        ...(imageFiles.includes(file)
+          ? imageDecision
+          : await analyzeUploadFile(file, uploaderId)),
+      })));
       const moderationUpload = chooseWorstDecision(perFileResults);
       req.moderationUpload = {
         ...moderationUpload,
@@ -204,7 +231,10 @@ const moderateUpload = ({
         labels: moderationUpload.labels || [],
         reason: moderationUpload.reason || "",
         confidence: moderationUpload.confidence || 0,
-        status: moderationUpload.decision === "quarantine" ? "quarantined" : "rejected",
+        status:
+          moderationUpload.decision === "quarantine"
+            ? "quarantined"
+            : resolveUploadRejectionStatus(moderationUpload.labels),
         visibility: moderationUpload.decision === "quarantine" ? "private" : "blocked",
         storageStage: "quarantine",
         subject: {

@@ -118,14 +118,14 @@ function CreateGroupModal({ open, onClose, onCreate }) {
   const [name, setName] = useState("");
   const [privacy, setPrivacy] = useState("public");
   const [description, setDescription] = useState("");
-  const [coverImage, setCoverImage] = useState("");
+  const [coverImage, setCoverImage] = useState(null);
 
   useEffect(() => {
     if (!open) {
       setName("");
       setPrivacy("public");
       setDescription("");
-      setCoverImage("");
+      setCoverImage(null);
       return undefined;
     }
     const closeOnEscape = (event) => {
@@ -198,12 +198,11 @@ function CreateGroupModal({ open, onClose, onCreate }) {
             />
           </label>
           <label>
-            Cover image URL <span>(optional)</span>
+            Cover image <span>(optional)</span>
             <input
-              type="url"
-              value={coverImage}
-              onChange={(event) => setCoverImage(event.target.value)}
-              placeholder="https://example.com/cover.jpg"
+              type="file"
+              accept="image/*"
+              onChange={(event) => setCoverImage(event.target.files?.[0] || null)}
             />
           </label>
           <footer>

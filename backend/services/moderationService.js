@@ -41,6 +41,10 @@ const { hasAllPermissions } = require("./permissionService");
 const { disconnectUserSockets } = require("../utils/realtimeSessions");
 const { resolvePublicSensitivity } = require("../utils/publicModeration");
 const sendSecurityEmail = require("../utils/sendSecurityEmail");
+const {
+  analyzeVisualAssets,
+  mergeVisualDecisions,
+} = require("./visualModerationProvider");
 
 const ACTIVE_REVIEW_STATES = ["OPEN", "UNDER_REVIEW", "ESCALATED"];
 const CASE_ACTIONS = [
@@ -966,45 +970,90 @@ const normalizeImageModerationResult = (policyDecision = {}, { localPath = "", m
   };
 };
 
-const analyzeImage = async ({ localPath = "", mimeType = "", uploaderId = "" } = {}) => {
+const analyzeImages = async ({ assets = [], uploaderId = "" } = {}) => {
   try {
-    const normalizedPath = String(localPath || "").trim();
-    const snippet = await readInspectionSnippet(normalizedPath);
-    const fileName = path.basename(normalizedPath || "uploaded-image");
+    const normalizedAssets = (Array.isArray(assets) ? assets : [])
+      .map((asset) => ({
+        localPath: String(asset?.localPath || "").trim(),
+        mimeType: String(asset?.mimeType || "image/jpeg").trim().toLowerCase(),
+        originalFilename: String(asset?.originalFilename || "").trim(),
+      }))
+      .filter((asset) => asset.localPath);
+    if (normalizedAssets.length === 0) {
+      return {
+        decision: "quarantine",
+        labels: ["inspection_failed"],
+        reason: "Unable to inspect uploaded image.",
+        confidence: 0.2,
+      };
+    }
+
+    const inspectedAssets = [];
+    for (const asset of normalizedAssets) {
+      inspectedAssets.push({
+        ...asset,
+        snippet: await readInspectionSnippet(asset.localPath),
+        fileName: asset.originalFilename || path.basename(asset.localPath || "uploaded-image"),
+      });
+    }
+
     const policyDecision = evaluateModerationPolicy({
-      title: fileName,
-      description: snippet,
+      title: inspectedAssets.map((asset) => asset.fileName).join(" | "),
+      description: inspectedAssets.map((asset) => asset.snippet).filter(Boolean).join(" | "),
       metadata: {
-        mimeType,
-        localPath: normalizedPath,
+        mimeType: inspectedAssets.map((asset) => asset.mimeType).join(","),
         uploaderId,
       },
-      media: [
-        {
-          originalFilename: fileName,
-          sourceUrl: normalizedPath || fileName,
-          previewUrl: snippet || fileName,
-          mimeType,
-          mediaType: mimeType.startsWith("video/") ? "video" : "image",
-        },
-      ],
+      media: inspectedAssets.map((asset) => ({
+        originalFilename: asset.fileName,
+        sourceUrl: asset.localPath || asset.fileName,
+        previewUrl: asset.snippet || asset.fileName,
+        mimeType: asset.mimeType,
+        mediaType: "image",
+      })),
       detectionSource: "automated_upload_scan",
     });
 
-    return normalizeImageModerationResult(policyDecision, {
-      localPath: normalizedPath,
-      mimeType,
+    const heuristicDecision = normalizeImageModerationResult(policyDecision, {
+      localPath: inspectedAssets[0].localPath,
+      mimeType: inspectedAssets[0].mimeType,
       uploaderId,
     });
+
+    if (heuristicDecision.decision === "reject") {
+      return heuristicDecision;
+    }
+
+    const containsOnlyImages = inspectedAssets.every((asset) =>
+      asset.mimeType.startsWith("image/")
+    );
+    const providerDecision = containsOnlyImages
+      ? await analyzeVisualAssets(
+          inspectedAssets.map((asset) => ({
+            localPath: asset.localPath,
+            mimeType: asset.mimeType,
+          }))
+        )
+      : null;
+
+    return providerDecision
+      ? mergeVisualDecisions([heuristicDecision, providerDecision])
+      : heuristicDecision;
   } catch {
     return {
       decision: "quarantine",
-      labels: ["inspection_failed"],
+      labels: ["inspection_failed", "visual_provider_unavailable"],
       reason: "Unable to inspect uploaded file.",
       confidence: 0.2,
     };
   }
 };
+
+const analyzeImage = async ({ localPath = "", mimeType = "", originalFilename = "", uploaderId = "" } = {}) =>
+  analyzeImages({
+    assets: [{ localPath, mimeType, originalFilename }],
+    uploaderId,
+  });
 
 const mergeVisibilityWithModeration = (baselineAccess = {}, moderationDecision = {}) => {
   const status = String(moderationDecision?.status || "ALLOW");
@@ -3116,4 +3165,5 @@ module.exports = {
   suspendUserAccount,
   banUserAccount,
   analyzeImage,
+  analyzeImages,
 };

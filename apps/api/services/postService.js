@@ -16,6 +16,7 @@ const {
 } = require("../../../backend/services/storageQuarantineService");
 const {
   createUploadModerationCase,
+  resolveUploadRejectionStatus,
 } = require("../../../backend/services/uploadModerationService");
 const ApiError = require("../utils/ApiError");
 const {
@@ -63,6 +64,11 @@ const DEFAULT_POST_REACTION_KEY = POST_REACTIONS[0].key;
 const POST_REACTION_BY_KEY = new Map(POST_REACTIONS.map((reaction) => [reaction.key, reaction]));
 const POST_REACTION_BY_EMOJI = new Map(POST_REACTIONS.map((reaction) => [reaction.emoji, reaction]));
 const MAX_POST_MEDIA_FILES = 10;
+
+const isEnforcedHiddenPostStatus = (value = "") => {
+  const status = String(value || "").trim();
+  return Boolean(status && status !== "pending" && isHiddenFromPublicStatus(status));
+};
 
 const normalizePostReactionKey = (value = "") => {
   const raw = String(value || "").trim();
@@ -854,14 +860,60 @@ const attachPostModerationOverlays = async (posts = [], viewerId = null, req = n
     return [];
   }
 
-  const caseMap = await getLatestCaseMapForTargets(
-    "post",
-    normalizedPosts.map((post) => post?._id).filter(Boolean)
+  const postIds = normalizedPosts.map((post) => post?._id).filter(Boolean);
+  const sharedOriginalIds = normalizedPosts
+    .map((post) => post?.sharedPost?.originalPostId)
+    .filter((id) => mongoose.Types.ObjectId.isValid(id));
+  const [caseMap, originalPosts, originalCaseMap] = await Promise.all([
+    getLatestCaseMapForTargets("post", postIds),
+    sharedOriginalIds.length > 0
+      ? Post.find({ _id: { $in: sharedOriginalIds } })
+          .select("_id moderationStatus sensitiveContent reviewRequired")
+          .lean()
+      : [],
+    sharedOriginalIds.length > 0
+      ? getLatestCaseMapForTargets("post", sharedOriginalIds)
+      : new Map(),
+  ]);
+  const originalPostMap = new Map(
+    originalPosts.map((post) => [toIdString(post._id), post])
   );
+  const isUnsafeSharedOriginal = (post) => {
+    const originalId = toIdString(post?.sharedPost?.originalPostId);
+    if (!originalId) return false;
+    const original = originalPostMap.get(originalId);
+    const originalCase = originalCaseMap.get(originalId) || null;
+    if (!original) return true;
+    if (
+      originalCase
+      && !shouldDeferPublicUserReportCase(originalCase)
+      && isHiddenFromPublicStatus(originalCase.status)
+    ) {
+      return true;
+    }
+    return (
+      isEnforcedHiddenPostStatus(original.moderationStatus)
+      || Boolean(original.sensitiveContent)
+      || Boolean(original.reviewRequired)
+    );
+  };
 
   return normalizedPosts
     .filter((post) => {
       const caseDoc = caseMap.get(toIdString(post?._id)) || null;
+      const isOwner = toIdString(post?.author?._id || post?.author) === toIdString(viewerId);
+      if (!isOwner && isUnsafeSharedOriginal(post)) {
+        return false;
+      }
+      if (
+        !isOwner
+        && (
+          isEnforcedHiddenPostStatus(post?.moderationStatus)
+          || Boolean(post?.reviewRequired)
+        )
+      ) {
+        return false;
+      }
       return (
         !caseDoc
         || shouldDeferPublicUserReportCase(caseDoc)
@@ -986,6 +1038,19 @@ const buildSharedPostMeta = async (value) => {
   const originalPost = await withPostAuthor(Post.findById(payload.postId)).lean();
   if (!originalPost) {
     throw ApiError.notFound("Shared post not found");
+  }
+
+  const originalModerationCase = await getLatestCaseForTarget("post", originalPost._id);
+  if (
+    isEnforcedHiddenPostStatus(originalPost.moderationStatus)
+    || Boolean(originalPost.reviewRequired)
+    || (
+      originalModerationCase
+      && !shouldDeferPublicUserReportCase(originalModerationCase)
+      && isHiddenFromPublicStatus(originalModerationCase.status)
+    )
+  ) {
+    throw ApiError.notFound("Shared post is not available");
   }
 
   if (originalPost.sharedPost && typeof originalPost.sharedPost === "object") {
@@ -1207,6 +1272,10 @@ class PostService {
 
     validateVideoMeta(videoMeta);
 
+    if (videoMeta && !firstVideoUploadFile) {
+      throw ApiError.badRequest("Video posts must use the moderated Tengacion upload flow");
+    }
+
     const hasVideo = Boolean(videoMeta) || hasUploadVideo;
     const hasSharedPost = Boolean(sharedPost);
     if (!text && uploadFiles.length === 0 && !hasMetadata && !hasVideo && !hasSharedPost) {
@@ -1322,7 +1391,7 @@ class PostService {
     }
 
     let legacyPreflightModerationDecision = null;
-    if (uploadFiles.length > 0) {
+    if (uploadFiles.length > 0 && !moderationUpload) {
       const preflightModerationMedia = buildPostModerationMedia({
         media: [],
         uploadFiles,
@@ -1361,6 +1430,7 @@ class PostService {
     });
 
     if (uploadFiles.length > 0 && moderationUploadDecision.decision !== "approve") {
+      const rejectionStatus = resolveUploadRejectionStatus(moderationUploadDecision.labels || []);
       const tempTargetId = `pending:post_upload:${viewerId}:${new mongoose.Types.ObjectId().toString()}`;
       const quarantinedMedia = [];
       for (const uploadFile of uploadFiles) {
@@ -1393,7 +1463,7 @@ class PostService {
         labels: moderationUploadDecision.labels || [],
         reason: moderationUploadDecision.reason || "",
         confidence: moderationUploadDecision.confidence || 0,
-        status: moderationUploadDecision.decision === "quarantine" ? "quarantined" : "rejected",
+        status: moderationUploadDecision.decision === "quarantine" ? "quarantined" : rejectionStatus,
         visibility: moderationUploadDecision.decision === "quarantine" ? "private" : "blocked",
         storageStage: "quarantine",
         subject: {
@@ -1409,7 +1479,7 @@ class PostService {
       if (moderationUploadDecision.decision === "reject") {
         return {
           success: false,
-          moderationStatus: legacyPreflightModerationDecision?.status || "rejected",
+          moderationStatus: legacyPreflightModerationDecision?.status || rejectionStatus,
           reviewRequired: false,
           message: "This upload violates Tengacion safety rules and could not be published.",
           httpStatus: 422,
@@ -1482,13 +1552,14 @@ class PostService {
       mentions,
       poll: type === "poll" ? poll : undefined,
       quiz: type === "quiz" ? quiz : undefined,
-      moderationStatus: "approved",
+      moderationStatus: "pending",
       moderationLabels: moderationUploadDecision.labels || [],
       moderationReason: moderationUploadDecision.reason || "",
       moderationConfidence: Number(moderationUploadDecision.confidence || 0),
       reviewedBy: null,
       reviewedAt: null,
       storageStage: "permanent",
+      reviewRequired: true,
     });
 
     const post = await withPostAuthor(Post.findById(created._id)).lean();
@@ -1597,7 +1668,7 @@ class PostService {
         }
       );
     }
-    if (uploadModerationCase?._id) {
+    if (uploadModerationCase?._id && moderationDecision?.status === "ALLOW") {
       await Post.updateOne(
         { _id: created._id },
         {
@@ -1861,6 +1932,30 @@ class PostService {
       && isHiddenFromPublicStatus(moderationCase.status)
     ) {
       throw ApiError.notFound("Post not found");
+    }
+    if (isEnforcedHiddenPostStatus(post.moderationStatus) || Boolean(post.reviewRequired)) {
+      throw ApiError.notFound("Post not found");
+    }
+    if (post?.sharedPost?.originalPostId) {
+      const originalPost = await Post.findById(post.sharedPost.originalPostId)
+        .select("_id moderationStatus sensitiveContent reviewRequired")
+        .lean();
+      const originalCase = originalPost
+        ? await getLatestCaseForTarget("post", originalPost._id)
+        : null;
+      if (
+        !originalPost
+        || isEnforcedHiddenPostStatus(originalPost.moderationStatus)
+        || Boolean(originalPost.sensitiveContent)
+        || Boolean(originalPost.reviewRequired)
+        || (
+          originalCase
+          && !shouldDeferPublicUserReportCase(originalCase)
+          && isHiddenFromPublicStatus(originalCase.status)
+        )
+      ) {
+        throw ApiError.notFound("Post not found");
+      }
     }
 
     const payload = toPostPayload(post, viewerId);

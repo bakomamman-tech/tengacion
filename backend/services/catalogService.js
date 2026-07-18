@@ -4,6 +4,9 @@ const Track = require("../models/Track");
 const Book = require("../models/Book");
 const Album = require("../models/Album");
 const Video = require("../models/Video");
+const { createPublicModerationFilter } = require("../utils/publicModeration");
+
+const PUBLIC_CATALOG_FILTER = createPublicModerationFilter();
 
 const toObjectId = (value) => {
   if (!mongoose.Types.ObjectId.isValid(value)) {
@@ -21,7 +24,7 @@ const resolvePurchasableItem = async (itemType, itemId) => {
   }
 
   if (["track", "song", "podcast"].includes(normalizedType)) {
-    const track = await Track.findById(objectId).lean();
+    const track = await Track.findOne({ _id: objectId, ...PUBLIC_CATALOG_FILTER }).lean();
     if (!track) {
       return null;
     }
@@ -38,7 +41,7 @@ const resolvePurchasableItem = async (itemType, itemId) => {
   }
 
   if (["book", "ebook"].includes(normalizedType)) {
-    const book = await Book.findById(objectId).lean();
+    const book = await Book.findOne({ _id: objectId, ...PUBLIC_CATALOG_FILTER }).lean();
     if (!book) {
       return null;
     }
@@ -55,7 +58,7 @@ const resolvePurchasableItem = async (itemType, itemId) => {
   }
 
   if (["album"].includes(normalizedType)) {
-    const album = await Album.findById(objectId).lean();
+    const album = await Album.findOne({ _id: objectId, ...PUBLIC_CATALOG_FILTER }).lean();
     if (!album) {
       return null;
     }
@@ -72,7 +75,7 @@ const resolvePurchasableItem = async (itemType, itemId) => {
   }
 
   if (["video", "comedy"].includes(normalizedType)) {
-    const video = await Video.findById(objectId).lean();
+    const video = await Video.findOne({ _id: objectId, ...PUBLIC_CATALOG_FILTER }).lean();
     if (!video) {
       return null;
     }

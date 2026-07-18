@@ -3,6 +3,7 @@ const auth = require("../middleware/auth");
 const creatorAuth = require("../middleware/creatorAuth");
 const optionalAuth = require("../middleware/optionalAuth");
 const upload = require("../utils/upload");
+const moderateUpload = require("../middleware/moderateUpload");
 const {
   createBook,
   createChapter,
@@ -25,6 +26,11 @@ router.post(
     { name: "content", maxCount: 1 },
     { name: "preview", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "creator_book_upload",
+    titleFields: ["title", "authorName"],
+    descriptionFields: ["description", "previewExcerptText"],
+  }),
   createBook
 );
 router.put(
@@ -36,6 +42,11 @@ router.put(
     { name: "content", maxCount: 1 },
     { name: "preview", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "creator_book_upload",
+    titleFields: ["title", "authorName"],
+    descriptionFields: ["description", "previewExcerptText"],
+  }),
   updateBook
 );
 router.post("/:bookId/chapters", auth, creatorAuth, createChapter);

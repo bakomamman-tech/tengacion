@@ -8,11 +8,12 @@ const Purchase = require("../models/Purchase");
 const LiveSession = require("../models/LiveSession");
 const PostService = require("../../apps/api/services/postService");
 const { normalizeId, normalizeContentType } = require("./affinityService");
+const { createPublicModerationFilter } = require("../utils/publicModeration");
 
-const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null };
+const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
 
 const safeDate = (value) => (value ? new Date(value) : new Date(0));
 const makeEntityKey = (entityType, entityId) => `${entityType}:${entityId}`;

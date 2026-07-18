@@ -4,6 +4,20 @@ const {
 } = require("../config/moderation");
 
 const APPROVED_PUBLIC_STATUSES = new Set(["ALLOW", "approved"]);
+const ENFORCED_BLOCKED_PUBLIC_STATUSES = [...BLOCKED_PUBLIC_STATUSES].filter(
+  (status) => status !== "pending"
+);
+
+const createPublicModerationFilter = () => ({
+  moderationStatus: { $in: ["approved", "ALLOW"] },
+  sensitiveContent: { $ne: true },
+  reviewRequired: { $ne: true },
+});
+
+const createLegacyCompatiblePublicModerationFilter = () => ({
+  moderationStatus: { $nin: ENFORCED_BLOCKED_PUBLIC_STATUSES },
+  reviewRequired: { $ne: true },
+});
 
 const normalizeModerationStatus = (value = "") => String(value || "").trim();
 
@@ -49,6 +63,8 @@ const resolvePublicSensitivity = ({
 
 module.exports = {
   APPROVED_PUBLIC_STATUSES,
+  createLegacyCompatiblePublicModerationFilter,
+  createPublicModerationFilter,
   isHiddenFromPublicStatus,
   isRestrictedForPublicStatus,
   normalizeModerationStatus,

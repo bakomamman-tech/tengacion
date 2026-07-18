@@ -304,6 +304,47 @@ describe("Marketplace routes", () => {
     expect(stored.video.url).toContain("/video/upload/");
   });
 
+  test("marketplace edits retain the stored media URL when existing media metadata is tampered with", async () => {
+    const { user: sellerUser, token } = await createUser({
+      name: "Safe Edit Seller",
+      username: "safe_edit_seller",
+      email: "safe-edit-seller@example.com",
+    });
+    const seller = await createSellerProfile({
+      userId: sellerUser._id,
+      storeName: "Safe Edit Store",
+    });
+    const product = await createProduct({
+      sellerId: seller._id,
+      title: "Original Product",
+    });
+    const originalImage = product.images[0];
+
+    const response = await request(app)
+      .put(`/api/marketplace/products/${product._id.toString()}`)
+      .set("Authorization", `Bearer ${token}`)
+      .field("title", "Updated Product")
+      .field("description", "Updated product description")
+      .field("category", "Fashion")
+      .field("price", "5000")
+      .field("stock", "8")
+      .field("condition", "new")
+      .field("state", "Lagos")
+      .field("city", "Ikeja")
+      .field("deliveryOptions", JSON.stringify(["pickup"]))
+      .field("existingImages", JSON.stringify([{
+        publicId: originalImage.publicId,
+        url: "https://attacker.example/unreviewed.jpg",
+        secureUrl: "https://attacker.example/unreviewed.jpg",
+        resourceType: "image",
+      }]))
+      .expect(200);
+
+    expect(response.body.product.images[0].url).toBe(originalImage.url);
+    const stored = await MarketplaceProduct.findById(product._id).lean();
+    expect(stored.images[0].url).toBe(originalImage.url);
+  });
+
   test("product validation enforces the minimum NGN 300 listing price", () => {
     const result = validateProductPayload({
       payload: {

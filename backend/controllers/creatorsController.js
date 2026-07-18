@@ -22,11 +22,13 @@ const {
   buildCreatorDiscoveryDirectory,
   buildCreatorSummaryFeed,
 } = require("../services/creatorDiscoveryService");
+const { createPublicModerationFilter } = require("../utils/publicModeration");
+const { getMediaUrl } = require("../utils/userMedia");
 
-const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null };
+const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_BOOK_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_VIDEO_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
 
 const toCreatorPayload = (profile, extras = {}) => ({
   _id: profile._id.toString(),
@@ -282,6 +284,25 @@ exports.upsertMyCreatorProfile = asyncHandler(async (req, res) => {
         .filter((entry) => entry.url)
         .slice(0, 10)
     : [];
+
+  const [existingProfile, owner] = await Promise.all([
+    CreatorProfile.findOne({ userId }).select("coverImageUrl heroBannerUrl").lean(),
+    User.findById(userId).select("avatar cover").lean(),
+  ]);
+  const allowedMediaUrls = new Set([
+    existingProfile?.coverImageUrl,
+    existingProfile?.heroBannerUrl,
+    getMediaUrl(owner?.avatar),
+    getMediaUrl(owner?.cover),
+  ].map((value) => String(value || "").trim()).filter(Boolean));
+  const unsafeProfileMedia = [coverImageUrl, heroBannerUrl].find((value) =>
+    value && !allowedMediaUrls.has(value)
+  );
+  if (unsafeProfileMedia) {
+    return res.status(400).json({
+      error: "Creator images must use a moderated Tengacion profile upload",
+    });
+  }
 
   if (!displayName) {
     return res.status(400).json({ error: "displayName is required" });

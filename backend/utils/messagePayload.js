@@ -55,6 +55,7 @@ const normalizeAttachment = (file = {}) => {
     name: truncate(file?.name || normalizedMedia.originalFilename || "", 260),
     size: Number(file?.size) || 0,
     durationSeconds: Number(file?.durationSeconds) || 0,
+    uploadToken: truncate(file?.uploadToken || "", 4000),
   };
 };
 
@@ -223,4 +224,5 @@ module.exports = {
   buildConversationId,
   normalizeMessage,
   normalizeIncomingMessagePayload,
+  normalizeAttachment,
 };

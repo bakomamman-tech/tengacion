@@ -3,6 +3,7 @@ const auth = require("../middleware/auth");
 const creatorAuth = require("../middleware/creatorAuth");
 const optionalAuth = require("../middleware/optionalAuth");
 const upload = require("../utils/upload");
+const moderateUpload = require("../middleware/moderateUpload");
 const {
   createTrack,
   deleteTrack,
@@ -22,6 +23,11 @@ router.post(
     { name: "preview", maxCount: 1 },
     { name: "cover", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "creator_track_upload",
+    titleFields: ["title", "podcastSeries"],
+    descriptionFields: ["description", "lyrics", "showNotes"],
+  }),
   createTrack
 );
 
@@ -37,6 +43,11 @@ router.put(
     { name: "previewClip", maxCount: 1 },
     { name: "cover", maxCount: 1 },
   ]),
+  moderateUpload({
+    sourceType: "creator_track_upload",
+    titleFields: ["title", "podcastSeries"],
+    descriptionFields: ["description", "lyrics", "showNotes"],
+  }),
   updateTrack
 );
 

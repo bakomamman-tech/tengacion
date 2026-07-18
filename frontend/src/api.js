@@ -1703,16 +1703,6 @@ export const createPostWithUploadProgress = async (
   throw lastError || new Error("Upload failed");
 };
 
-export const requestVideoUploadUrl = ({ filename, contentType, sizeBytes }) =>
-  request(`${API_BASE}/videos/presign`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(),
-    },
-    body: JSON.stringify({ filename, contentType, sizeBytes }),
-  });
-
 export const getPostById = (postId) =>
   request(`${API_BASE}/posts/${encodeURIComponent(postId || "")}`, {
     headers: getAuthHeaders(),

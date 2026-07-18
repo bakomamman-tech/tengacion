@@ -448,7 +448,7 @@ describe("Posts feed", () => {
     expect(cloudinary.uploader.upload_stream).not.toHaveBeenCalled();
   });
 
-  test("POST /api/posts accepts video payload", async () => {
+  test("POST /api/posts rejects a client-supplied video URL that bypasses moderation", async () => {
     const videoPayload = {
       type: "video",
       video: {
@@ -466,16 +466,10 @@ describe("Posts feed", () => {
       .post("/api/posts")
       .set("Authorization", `Bearer ${authToken}`)
       .send(videoPayload)
-      .expect(201);
+      .expect(400);
 
-    expect(response.body).toMatchObject({
-      type: "video",
-      video: expect.objectContaining({ url: videoPayload.video.url }),
-    });
-
-    const stored = await Post.findOne({ _id: response.body._id });
-    expect(stored).toBeTruthy();
-    expect(stored.video.url).toBe(videoPayload.video.url);
+    expect(response.body.message).toMatch(/moderated Tengacion upload flow/i);
+    expect(await Post.countDocuments()).toBe(0);
   });
 
   test("POST /api/posts rejects video metadata above the 50MB feed limit", async () => {

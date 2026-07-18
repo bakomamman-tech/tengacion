@@ -107,6 +107,7 @@ describe("Messenger attachment persistence", () => {
             type: "image",
             name: imageUpload.body.name,
             size: imageUpload.body.size,
+            uploadToken: imageUpload.body.uploadToken,
           },
         ],
         clientId: "messenger-image-persist",
@@ -131,6 +132,7 @@ describe("Messenger attachment persistence", () => {
             name: voiceUpload.body.name,
             size: voiceUpload.body.size,
             durationSeconds: 3,
+            uploadToken: voiceUpload.body.uploadToken,
           },
         ],
         clientId: "messenger-voice-persist",
@@ -220,6 +222,7 @@ describe("Messenger attachment persistence", () => {
             type: "image",
             name: imageUpload.body.name,
             size: imageUpload.body.size,
+            uploadToken: imageUpload.body.uploadToken,
           },
         ],
         clientId: "messenger-image-unsend",
@@ -244,32 +247,71 @@ describe("Messenger attachment persistence", () => {
   });
 
   test("unsending a legacy attachment without public id does not crash cleanup", async () => {
-    const message = await request(app)
+    const message = await Message.create({
+      conversationId: [userA._id.toString(), userB._id.toString()].sort().join("_"),
+      senderId: userA._id,
+      receiverId: userB._id,
+      senderName: userA.name,
+      type: "text",
+      text: "legacy attachment",
+      attachments: [{
+        url: "/uploads/chat/legacy-audio.mp3",
+        legacyPath: "/uploads/chat/legacy-audio.mp3",
+        type: "audio",
+        name: "legacy-audio.mp3",
+        size: 120,
+      }],
+      clientId: "messenger-legacy-unsend",
+    });
+
+    await request(app)
+      .patch(`/api/messages/${message._id}/unsend`)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .expect(200);
+
+    expect(await Message.findById(message._id).lean()).toBeNull();
+    expect(cloudinary.uploader.destroy).not.toHaveBeenCalled();
+  });
+
+  test("rejects a client-supplied image URL that did not pass the upload gate", async () => {
+    const response = await request(app)
       .post("/api/chat/messages")
       .set("Authorization", `Bearer ${tokenA}`)
       .send({
         receiverId: userB._id.toString(),
         type: "text",
-        text: "legacy attachment",
-        attachments: [
-          {
-            url: "/uploads/chat/legacy-audio.mp3",
-            legacyPath: "/uploads/chat/legacy-audio.mp3",
-            type: "audio",
-            name: "legacy-audio.mp3",
-            size: 120,
-          },
-        ],
-        clientId: "messenger-legacy-unsend",
-      })
-      .expect(201);
+        text: "",
+        attachments: [{
+          url: "https://attacker.example/unreviewed.jpg",
+          type: "image",
+          name: "unreviewed.jpg",
+        }],
+        clientId: "unsigned-visual-attachment",
+      });
 
-    await request(app)
-      .patch(`/api/messages/${message.body._id}/unsend`)
+    expect(response.status).toBe(400);
+    expect(String(response.body?.error || response.body?.message || "")).toMatch(/uploaded through Tengacion/i);
+    expect(await Message.countDocuments({ clientId: "unsigned-visual-attachment" })).toBe(0);
+  });
+
+  test("rejects an unreviewed image URL disguised as a generic file", async () => {
+    const response = await request(app)
+      .post("/api/chat/messages")
       .set("Authorization", `Bearer ${tokenA}`)
-      .expect(200);
+      .send({
+        receiverId: userB._id.toString(),
+        type: "text",
+        text: "look at this",
+        attachments: [{
+          url: "https://attacker.example/unreviewed.jpg",
+          type: "file",
+          name: "photo.jpg",
+        }],
+        clientId: "unsigned-masquerading-attachment",
+      });
 
-    expect(await Message.findById(message.body._id).lean()).toBeNull();
-    expect(cloudinary.uploader.destroy).not.toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    expect(String(response.body?.error || response.body?.message || "")).toMatch(/uploaded through Tengacion/i);
+    expect(await Message.countDocuments({ clientId: "unsigned-masquerading-attachment" })).toBe(0);
   });
 });

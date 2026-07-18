@@ -47,6 +47,15 @@ const {
   normalizeSubscriptionBenefits,
   trimCreatorText,
 } = require("../services/creatorProfileService");
+const { getMediaUrl } = require("../utils/userMedia");
+
+const isAllowedCreatorProfileMedia = (value, allowedValues = []) => {
+  const url = String(value || "").trim();
+  return (
+    !url
+    || allowedValues.some((entry) => String(entry || "").trim() === url)
+  );
+};
 
 const CREATOR_NO_STORE_HEADER = "no-store, no-cache, must-revalidate, proxy-revalidate";
 
@@ -763,6 +772,16 @@ exports.registerCreator = asyncHandler(async (req, res) => {
   const subscriptionBenefits = normalizeSubscriptionBenefits(req.body?.subscriptionBenefits);
   const existingProfile = await CreatorProfile.findOne({ userId: req.user.id }).lean();
 
+  if (!isAllowedCreatorProfileMedia(coverImageUrl, [
+    existingProfile?.coverImageUrl,
+    getMediaUrl(user.avatar),
+    getMediaUrl(user.cover),
+  ])) {
+    return res.status(400).json({
+      error: "Creator images must use a moderated Tengacion profile upload",
+    });
+  }
+
   const profile = await CreatorProfile.findOneAndUpdate(
     { userId: req.user.id },
     {
@@ -864,6 +883,12 @@ exports.updateCreatorProfile = asyncHandler(async (req, res) => {
   const subscriptionBenefits = hasOwn(req.body, "subscriptionBenefits")
     ? normalizeSubscriptionBenefits(req.body?.subscriptionBenefits)
     : normalizeSubscriptionBenefits(existing.subscriptionBenefits || []);
+
+  if (!isAllowedCreatorProfileMedia(nextCoverImageUrl, [existing.coverImageUrl])) {
+    return res.status(400).json({
+      error: "Creator images must use a moderated Tengacion profile upload",
+    });
+  }
 
   if (!String(req.body?.fullName || existing.fullName || existing.displayName || "").trim()) {
     return res.status(400).json({ error: "Full Name is required" });

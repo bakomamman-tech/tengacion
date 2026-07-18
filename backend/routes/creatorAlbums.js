@@ -2,6 +2,7 @@ const express = require("express");
 const auth = require("../middleware/auth");
 const creatorAuth = require("../middleware/creatorAuth");
 const upload = require("../utils/upload");
+const moderateUpload = require("../middleware/moderateUpload");
 const { createAlbum } = require("../controllers/albumsController");
 
 const router = express.Router();
@@ -18,6 +19,11 @@ router.post(
     { name: "previews", maxCount: 25 },
     { name: "previews[]", maxCount: 25 },
   ]),
+  moderateUpload({
+    sourceType: "creator_album_upload",
+    titleFields: ["title"],
+    descriptionFields: ["description"],
+  }),
   createAlbum
 );
 

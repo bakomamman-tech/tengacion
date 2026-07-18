@@ -191,8 +191,14 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
   let coverMedia = null;
   let previewClipMedia = null;
 
-  if (!videoUrl && !videoFile) {
-    return sendBadRequest(res, "Video file or videoUrl is required");
+  if (!videoFile) {
+    return sendBadRequest(res, "Music videos must be uploaded through the moderated video upload field");
+  }
+  if (coverImageUrl && !thumbnailFile) {
+    return sendBadRequest(res, "Thumbnail images must be uploaded through the moderated thumbnail field");
+  }
+  if (previewClipUrl && !previewClipFile) {
+    return sendBadRequest(res, "Preview clips must be uploaded through the moderated preview field");
   }
   if (!Number.isFinite(price)) {
     return sendBadRequest(res, "price must be a valid non-negative number");
@@ -558,6 +564,21 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
   const previousVideoMedia = video.videoMedia || null;
   const previousCoverMedia = video.coverMedia || null;
   const previousPreviewClipMedia = video.previewClipMedia || null;
+
+  const rawUrlChanges = [
+    ["videoUrl", video.videoUrl, videoFile, "Video"],
+    ["coverImageUrl", video.coverImageUrl, thumbnailFile, "Thumbnail"],
+    ["previewClipUrl", video.previewClipUrl, previewClipFile, "Preview clip"],
+  ];
+  for (const [field, currentValue, replacementFile, label] of rawUrlChanges) {
+    if (
+      Object.prototype.hasOwnProperty.call(req.body || {}, field)
+      && String(req.body?.[field] || "").trim() !== String(currentValue || "").trim()
+      && !replacementFile
+    ) {
+      return sendBadRequest(res, `${label} changes must use the moderated upload field`);
+    }
+  }
 
   if (!Number.isFinite(price)) {
     return sendBadRequest(res, "price must be a valid non-negative number");

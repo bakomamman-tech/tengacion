@@ -3,9 +3,10 @@ const CreatorProfile = require("../models/CreatorProfile");
 const Track = require("../models/Track");
 const { buildSignedMediaUrl } = require("./mediaSigner");
 const { normalizeMediaValue, sanitizeLegacyMediaFieldsForNewWrite } = require("../utils/userMedia");
+const { createPublicModerationFilter } = require("../utils/publicModeration");
 
-const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null };
-const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null };
+const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
 const MUSIC_ITEM_TYPES = new Set(["track", "album"]);
 const DEFAULT_PREVIEW_LIMIT = 30;
 const REGISTERED_MUSIC_CREATOR_FILTER = {

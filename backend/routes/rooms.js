@@ -4,6 +4,7 @@ const auth = require("../middleware/auth");
 const Room = require("../models/Room");
 const RoomMessage = require("../models/RoomMessage");
 const Post = require("../models/Post");
+const PostService = require("../../apps/api/services/postService");
 
 const router = express.Router();
 
@@ -90,8 +91,19 @@ router.get("/:id/feed", auth, async (req, res) => {
     const posts = await Post.find({ roomId: req.params.id })
       .sort({ createdAt: -1 })
       .limit(100)
+      .select("_id")
       .lean();
-    return res.json(posts);
+    const visiblePosts = (await Promise.all(posts.map(async (post) => {
+      try {
+        return await PostService.getPostById({
+          viewerId: req.user.id,
+          postId: post._id.toString(),
+        });
+      } catch {
+        return null;
+      }
+    }))).filter(Boolean);
+    return res.json(visiblePosts);
   } catch (err) {
     console.error("Room feed failed:", err);
     return res.status(500).json({ error: "Failed to load room feed" });

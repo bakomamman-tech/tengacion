@@ -3,7 +3,10 @@ const mongoose = require("mongoose");
 
 const auth = require("../middleware/auth");
 const asyncHandler = require("../middleware/asyncHandler");
+const upload = require("../middleware/privateUpload");
+const moderateUpload = require("../middleware/moderateUpload");
 const Group = require("../models/Group");
+const { saveUploadedMedia } = require("../services/mediaStore");
 
 const router = express.Router();
 
@@ -66,18 +69,39 @@ router.get(
 
 router.post(
   "/",
+  upload.single("coverImage"),
+  moderateUpload({
+    sourceType: "group_cover",
+    titleFields: ["name"],
+    descriptionFields: ["description"],
+  }),
   asyncHandler(async (req, res) => {
     const name = cleanText(req.body?.name);
     if (name.length < 2 || name.length > 80) {
       return res.status(400).json({ error: "Group name must be between 2 and 80 characters" });
     }
     const userId = new mongoose.Types.ObjectId(req.user.id);
+    if (cleanText(req.body?.coverImage)) {
+      return res.status(400).json({
+        error: "Upload the group cover image instead of providing an external URL",
+      });
+    }
+    if (req.file && !String(req.file.mimetype || "").toLowerCase().startsWith("image/")) {
+      return res.status(400).json({ error: "Group cover must be an image file" });
+    }
+    const uploadedCover = req.file
+      ? await saveUploadedMedia(req.file, {
+          source: "group_cover",
+          resourceType: "image",
+        })
+      : null;
+    const coverImage = String(uploadedCover?.secureUrl || uploadedCover?.url || "").slice(0, 2048);
     const group = await Group.create({
       owner: userId,
       name,
       description: cleanText(req.body?.description).slice(0, 500),
       privacy: req.body?.privacy === "private" ? "private" : "public",
-      coverImage: cleanText(req.body?.coverImage).slice(0, 2048),
+      coverImage,
       members: [{ user: userId, role: "admin" }],
     });
     const populated = await populateGroup(Group.findById(group._id));

@@ -42,6 +42,7 @@ const extractMediaId = (value = "") => {
 const inferSeverity = ({ status = "pending", labels = [] } = {}) => {
   const normalizedLabels = uniqueStrings(labels).map((entry) => entry.toLowerCase());
   if (normalizedLabels.includes("suspected_child_exploitation")) return "CRITICAL";
+  if (normalizedLabels.includes("child_abuse")) return "CRITICAL";
   if (normalizedLabels.includes("explicit_pornography")) return "CRITICAL";
   if (normalizedLabels.includes("graphic_gore") || normalizedLabels.includes("animal_cruelty")) {
     return status === "quarantined" ? "HIGH" : "HIGH";
@@ -49,6 +50,49 @@ const inferSeverity = ({ status = "pending", labels = [] } = {}) => {
   if (status === "approved") return "LOW";
   if (status === "pending") return "MEDIUM";
   return "HIGH";
+};
+
+const inferQueue = ({ requestedQueue = "", labels = [] } = {}) => {
+  const normalizedRequestedQueue = normalizeText(requestedQueue, 80);
+  if (normalizedRequestedQueue && normalizedRequestedQueue !== "upload_moderation") {
+    return normalizedRequestedQueue;
+  }
+
+  const normalizedLabels = uniqueStrings(labels).map((entry) => entry.toLowerCase());
+  if (normalizedLabels.some((entry) =>
+    entry.includes("suspected_child_exploitation") || entry.includes("csam") || entry === "child_abuse"
+  )) {
+    return "suspected_child_exploitation";
+  }
+  if (normalizedLabels.some((entry) =>
+    entry.includes("explicit_pornography") || entry === "sexual_content_review"
+  )) {
+    return "explicit_pornography";
+  }
+  if (normalizedLabels.some((entry) => entry.includes("graphic_gore"))) {
+    return "graphic_gore";
+  }
+  if (normalizedLabels.some((entry) => entry.includes("animal_cruelty"))) {
+    return "animal_cruelty";
+  }
+  return normalizedRequestedQueue || "upload_moderation";
+};
+
+const resolveUploadRejectionStatus = (labels = []) => {
+  const normalized = uniqueStrings(labels).map((entry) => entry.toLowerCase());
+  if (normalized.some((entry) => entry.includes("suspected_child_exploitation") || entry.includes("csam"))) {
+    return "BLOCK_SUSPECTED_CHILD_EXPLOITATION";
+  }
+  if (normalized.some((entry) => entry.includes("explicit_pornography"))) {
+    return "BLOCK_EXPLICIT_ADULT";
+  }
+  if (normalized.some((entry) => entry.includes("animal_cruelty"))) {
+    return "BLOCK_ANIMAL_CRUELTY";
+  }
+  if (normalized.some((entry) => entry.includes("graphic_gore"))) {
+    return "BLOCK_EXTREME_GORE";
+  }
+  return "rejected";
 };
 
 const inferPriority = ({ confidence = 0, status = "pending" } = {}) => {
@@ -245,6 +289,7 @@ const createUploadModerationCase = async ({
   const normalizedTargetId = normalizeText(targetId, 120);
   const normalizedStatus = normalizeText(status, 40) || "pending";
   const normalizedLabels = uniqueStrings(labels).slice(0, 30);
+  const nextQueue = inferQueue({ requestedQueue: queue, labels: normalizedLabels });
   const normalizedReason = normalizeText(reason, 2000);
   const normalizedMimeType = normalizeText(mimeType || media[0]?.mimeType || "", 120);
   const normalizedFileUrl = normalizeText(fileUrl || media[0]?.fileUrl || media[0]?.sourceUrl || "", 1200);
@@ -271,7 +316,7 @@ const createUploadModerationCase = async ({
   const sourceMediaType = nextMedia[0]?.mediaType || toMediaType(normalizedMimeType, "image");
 
   const nextPayload = {
-    queue: String(queue || "upload_moderation"),
+    queue: nextQueue,
     targetType: normalizedTargetType,
     targetId: normalizedTargetId,
     fileUrl: normalizedFileUrl,
@@ -316,12 +361,18 @@ const createUploadModerationCase = async ({
       quarantinedAt: normalizedStatus !== "approved" ? new Date() : null,
       neverGeneratePreview:
         normalizedLabels.some((entry) =>
-          ["suspected_child_exploitation", "explicit_pornography"].includes(String(entry || "").toLowerCase())
+          ["suspected_child_exploitation", "explicit_pornography", "child_abuse"].includes(String(entry || "").toLowerCase())
         ) || normalizedStatus === "rejected",
     },
     escalation: {
-      required: normalizedLabels.some((entry) => String(entry || "").toLowerCase().includes("suspected_child_exploitation")),
-      status: normalizedLabels.some((entry) => String(entry || "").toLowerCase().includes("suspected_child_exploitation"))
+      required: normalizedLabels.some((entry) => {
+        const normalized = String(entry || "").toLowerCase();
+        return normalized.includes("suspected_child_exploitation") || normalized === "child_abuse";
+      }),
+      status: normalizedLabels.some((entry) => {
+        const normalized = String(entry || "").toLowerCase();
+        return normalized.includes("suspected_child_exploitation") || normalized === "child_abuse";
+      })
         ? "pending_review"
         : "not_required",
       escalatedAt: null,
@@ -343,7 +394,7 @@ const createUploadModerationCase = async ({
 
   const moderationCase = await ModerationCase.findOneAndUpdate(
     {
-      queue: "upload_moderation",
+      queue: nextQueue,
       targetType: normalizedTargetType,
       targetId: normalizedTargetId,
     },
@@ -687,6 +738,7 @@ module.exports = {
   getModerationItem,
   isHardBlockedCsamRisk,
   listModerationItems,
+  resolveUploadRejectionStatus,
   moveToQuarantineStorage,
   promoteToPermanentStorage,
   resolvePrivateMediaPath,

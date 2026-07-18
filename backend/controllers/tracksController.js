@@ -12,6 +12,13 @@ const { creatorHasCategory } = require("../services/creatorProfileService");
 const { notifySavedContentUpdated } = require("../services/fanReturnPathService");
 const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
+const { createPublicModerationFilter } = require("../utils/publicModeration");
+
+const PUBLIC_TRACK_FILTER = {
+  isPublished: { $ne: false },
+  archivedAt: null,
+  ...createPublicModerationFilter(),
+};
 
 const hasRequestedStatus = (body = {}) =>
   ["publishedStatus", "publishMode", "status", "saveAsDraft"].some((field) =>
@@ -202,6 +209,12 @@ exports.createTrack = asyncHandler(async (req, res) => {
   const previewFile = req.files?.preview?.[0] || null;
   const coverFile = req.files?.cover?.[0] || null;
 
+  if (coverImageUrl && !coverFile) {
+    return res.status(400).json({
+      error: "Cover images must be uploaded through the moderated cover field",
+    });
+  }
+
   if (audioFile) {
     audioMedia = await saveUploadedMedia(audioFile, {
       source: kind === "podcast" ? "creator_podcast_audio" : "creator_music_audio",
@@ -300,6 +313,8 @@ exports.createTrack = asyncHandler(async (req, res) => {
           coverImageUrl: track.coverImageUrl,
         },
         privacy: "public",
+        moderationStatus: "approved",
+        storageStage: "permanent",
       });
     } catch (err) {
       console.error("Failed to create feed post for track:", err);
@@ -398,6 +413,36 @@ exports.updateTrack = asyncHandler(async (req, res) => {
   const mediaFile = req.files?.media?.[0] || req.files?.audio?.[0] || req.files?.video?.[0] || null;
   const previewFile = req.files?.preview?.[0] || req.files?.previewClip?.[0] || null;
   const coverFile = req.files?.cover?.[0] || null;
+
+  if (
+    Object.prototype.hasOwnProperty.call(req.body || {}, "coverImageUrl")
+    && coverImageUrl !== String(track.coverImageUrl || "").trim()
+    && !coverFile
+  ) {
+    return res.status(400).json({
+      error: "Cover image changes must use the moderated cover upload field",
+    });
+  }
+  if (
+    mediaType === "video"
+    && Object.prototype.hasOwnProperty.call(req.body || {}, "videoUrl")
+    && videoUrl !== String(track.videoUrl || "").trim()
+    && !mediaFile
+  ) {
+    return res.status(400).json({
+      error: "Podcast video changes must use the moderated media upload field",
+    });
+  }
+  if (
+    mediaType === "video"
+    && Object.prototype.hasOwnProperty.call(req.body || {}, "previewClipUrl")
+    && previewClipUrl !== String(track.previewClipUrl || "").trim()
+    && !previewFile
+  ) {
+    return res.status(400).json({
+      error: "Podcast preview changes must use the moderated preview upload field",
+    });
+  }
 
   if (mediaFile) {
     const uploadedMedia = await saveUploadedMedia(mediaFile, {
@@ -544,7 +589,7 @@ exports.getTrackById = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid track id" });
   }
 
-  const track = await Track.findOne({ _id: trackId, isPublished: { $ne: false }, archivedAt: null })
+  const track = await Track.findOne({ _id: trackId, ...PUBLIC_TRACK_FILTER })
     .populate({
       path: "creatorId",
       select: "displayName userId",
@@ -575,7 +620,7 @@ exports.getTrackStream = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid track id" });
   }
 
-  const track = await Track.findOne({ _id: trackId, isPublished: { $ne: false }, archivedAt: null })
+  const track = await Track.findOne({ _id: trackId, ...PUBLIC_TRACK_FILTER })
     .populate("creatorId", "userId")
     .lean();
 

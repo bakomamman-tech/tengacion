@@ -377,8 +377,40 @@ const updateMarketplaceListing = async ({
     productId,
   });
 
-  const existingImages = parseExistingImages(payload.existingImages);
-  const existingVideo = parseExistingVideo(payload.existingVideo);
+  const submittedExistingImages = parseExistingImages(payload.existingImages);
+  const submittedExistingVideo = parseExistingVideo(payload.existingVideo);
+  const currentImages = Array.isArray(product.images) ? product.images : [];
+  const findCurrentMedia = (submitted, candidates = []) => {
+    const normalizedSubmitted = normalizeMediaValue(submitted);
+    const submittedPublicId = normalizedSubmitted.publicId || normalizedSubmitted.public_id || "";
+    const submittedUrl = normalizedSubmitted.secureUrl || normalizedSubmitted.url || "";
+    return candidates.find((candidate) => {
+      const normalizedCandidate = normalizeMediaValue(candidate);
+      const candidatePublicId = normalizedCandidate.publicId || normalizedCandidate.public_id || "";
+      const candidateUrl = normalizedCandidate.secureUrl || normalizedCandidate.url || "";
+      return submittedPublicId
+        ? submittedPublicId === candidatePublicId
+        : Boolean(submittedUrl && submittedUrl === candidateUrl);
+    }) || null;
+  };
+  const existingImages = submittedExistingImages
+    .map((entry) => findCurrentMedia(entry, currentImages))
+    .filter(Boolean);
+  if (existingImages.length !== submittedExistingImages.length) {
+    throw createServiceError(
+      "Product images must be uploaded through the moderated marketplace upload field",
+      400
+    );
+  }
+  const existingVideo = submittedExistingVideo
+    ? findCurrentMedia(submittedExistingVideo, product.video ? [product.video] : [])
+    : null;
+  if (submittedExistingVideo && !existingVideo) {
+      throw createServiceError(
+        "Product videos must be uploaded through the moderated marketplace upload field",
+        400
+      );
+  }
   const removeVideo = isTruthy(payload.removeVideo);
   const { errors, value } = validateProductPayload({
     payload,

@@ -16,6 +16,13 @@ const {
   streamBookPreviewDocument,
 } = require("../services/bookPreviewService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
+const { createPublicModerationFilter } = require("../utils/publicModeration");
+
+const PUBLIC_BOOK_FILTER = {
+  isPublished: { $ne: false },
+  archivedAt: null,
+  ...createPublicModerationFilter(),
+};
 
 // Non-goal for the current book flow: audiobook media is handled through music/podcast uploads.
 const BOOK_CHAPTER_ONE_PREVIEW_CHAR_LIMIT = 60000;
@@ -217,6 +224,12 @@ exports.createBook = asyncHandler(async (req, res) => {
   const contentFile = req.files?.content?.[0] || null;
   const previewFile = req.files?.preview?.[0] || null;
 
+  if (coverImageUrl && !coverFile) {
+    return res.status(400).json({
+      error: "Book covers must be uploaded through the moderated cover field",
+    });
+  }
+
   if (!title) {
     return res.status(400).json({ error: "title is required" });
   }
@@ -390,6 +403,16 @@ exports.updateBook = asyncHandler(async (req, res) => {
   const contentFile = req.files?.content?.[0] || null;
   const previewFile = req.files?.preview?.[0] || null;
 
+  if (
+    Object.prototype.hasOwnProperty.call(req.body || {}, "coverImageUrl")
+    && coverImageUrl !== String(book.coverImageUrl || "").trim()
+    && !coverFile
+  ) {
+    return res.status(400).json({
+      error: "Book cover changes must use the moderated cover upload field",
+    });
+  }
+
   if (coverFile) {
     const uploadedCover = await saveUploadedMedia(coverFile, {
       source: "book_cover",
@@ -558,7 +581,7 @@ exports.getBookById = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid book id" });
   }
 
-  const book = await Book.findOne({ _id: bookId, isPublished: { $ne: false }, archivedAt: null })
+  const book = await Book.findOne({ _id: bookId, ...PUBLIC_BOOK_FILTER })
     .populate({
       path: "creatorId",
       select: "displayName userId",
@@ -601,7 +624,7 @@ exports.getBookPreviewDocument = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid book id" });
   }
 
-  const book = await Book.findOne({ _id: bookId, isPublished: { $ne: false }, archivedAt: null }).lean();
+  const book = await Book.findOne({ _id: bookId, ...PUBLIC_BOOK_FILTER }).lean();
   if (!book) {
     return res.status(404).json({ error: "Book not found" });
   }
@@ -624,7 +647,7 @@ exports.getBookChapters = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid book id" });
   }
 
-  const book = await Book.findOne({ _id: bookId, isPublished: { $ne: false }, archivedAt: null })
+  const book = await Book.findOne({ _id: bookId, ...PUBLIC_BOOK_FILTER })
     .populate("creatorId", "userId")
     .lean();
   if (!book) {
@@ -668,7 +691,7 @@ exports.getBookChapterById = asyncHandler(async (req, res) => {
   }
 
   const [book, chapter] = await Promise.all([
-    Book.findOne({ _id: bookId, isPublished: { $ne: false }, archivedAt: null }).populate("creatorId", "userId").lean(),
+    Book.findOne({ _id: bookId, ...PUBLIC_BOOK_FILTER }).populate("creatorId", "userId").lean(),
     Chapter.findOne({ _id: chapterId, bookId }).lean(),
   ]);
 

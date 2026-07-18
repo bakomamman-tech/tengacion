@@ -1820,6 +1820,7 @@ export default function Messenger({
               type: uploaded?.type || "file",
               name: uploaded?.name || file.name || "attachment",
               size: Number(uploaded?.size) || file.size || 0,
+              uploadToken: uploaded?.uploadToken || "",
               ...attachmentPatch,
             },
           ],
@@ -2237,12 +2238,20 @@ export default function Messenger({
     if (!gifUrl) {
       return;
     }
-    await sendPayload({
-      type: "text",
-      text: "",
-      attachments: [{ url: gifUrl, type: "image", name: "gif", size: 0 }],
-    });
-    setGifOpen(false);
+    try {
+      const response = await fetch(gifUrl);
+      if (!response.ok) {
+        throw new Error("GIF download failed");
+      }
+      const blob = await response.blob();
+      const file = new File([blob], "reaction.gif", {
+        type: blob.type || "image/gif",
+      });
+      await uploadAndSendAttachment(file, { type: "image", name: "gif" });
+      setGifOpen(false);
+    } catch (err) {
+      setError(err?.message || "GIF could not be checked before sending");
+    }
   };
 
   const handleDeleteVoiceNote = useCallback(async (messageId) => {

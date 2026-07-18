@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Message = require("../models/Message");
 const User = require("../models/User");
 const { resolvePurchasableItem } = require("./catalogService");
+const { verifyChatAttachmentReceipt } = require("./chatAttachmentReceiptService");
 const {
   buildConversationId,
   normalizeIncomingMessagePayload,
@@ -88,6 +89,20 @@ const persistChatMessage = async ({ senderId, receiverId, payload }) => {
   if (parsed.error) {
     throw new Error(parsed.error);
   }
+
+  parsed.attachments = (parsed.attachments || []).map((attachment) => {
+    const verified = verifyChatAttachmentReceipt({
+      token: attachment.uploadToken,
+      userId: senderId,
+    });
+    if (verified.type === "audio") {
+      verified.durationSeconds = Math.min(
+        24 * 60 * 60,
+        Math.max(0, Number(attachment.durationSeconds) || 0)
+      );
+    }
+    return verified;
+  });
 
   const [sender, receiver] = await Promise.all([
     User.findById(senderId).select("name"),

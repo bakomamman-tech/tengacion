@@ -411,6 +411,12 @@ router.put("/me", auth, async (req, res) => {
       birthday,
     } = req.body;
 
+    if (avatar !== undefined || cover !== undefined) {
+      return res.status(400).json({
+        error: "Profile images must be uploaded through the moderated avatar or cover endpoint",
+      });
+    }
+
     const updates = {};
     if (bio !== undefined) updates.bio = trimTextValue(bio);
     if (gender !== undefined) updates.gender = trimTextValue(gender);
@@ -431,13 +437,6 @@ router.put("/me", auth, async (req, res) => {
           : user?.birthday?.visibility || "private",
       };
     }
-    if (avatar !== undefined) {
-      updates.avatar = normalizeMediaValue(avatar);
-    }
-    if (cover !== undefined) {
-      updates.cover = normalizeMediaValue(cover);
-    }
-
     const safeUser = await User.findByIdAndUpdate(
       req.user.id,
       { $set: updates },
@@ -1259,6 +1258,11 @@ router.post(
           type: "image",
           video: null,
           privacy: "public",
+          moderationStatus: "approved",
+          moderationLabels: req.moderationUpload?.labels || [],
+          moderationReason: req.moderationUpload?.reason || "",
+          moderationConfidence: Number(req.moderationUpload?.confidence || 0),
+          storageStage: "permanent",
         });
       } catch (postErr) {
         console.error("Avatar update post creation failed:", postErr);
@@ -1337,6 +1341,11 @@ router.post(
           type: "image",
           video: null,
           privacy: "public",
+          moderationStatus: "approved",
+          moderationLabels: req.moderationUpload?.labels || [],
+          moderationReason: req.moderationUpload?.reason || "",
+          moderationConfidence: Number(req.moderationUpload?.confidence || 0),
+          storageStage: "permanent",
         });
       } catch (postErr) {
         console.error("Cover update post creation failed:", postErr);

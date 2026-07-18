@@ -4,6 +4,7 @@ const Story = require("../models/Story");
 const User = require("../models/User");
 const Message = require("../models/Message");
 const upload = require("../middleware/storyUpload");
+const moderateUpload = require("../middleware/moderateUpload");
 const { saveUploadedMedia } = require("../services/mediaStore");
 const { createNotification } = require("../services/notificationService");
 const {
@@ -253,6 +254,11 @@ router.post(
   auth,
   upload.any(),
   validateStoryUploads,
+  moderateUpload({
+    sourceType: "story_upload",
+    titleFields: ["caption", "text"],
+    descriptionFields: ["caption", "text"],
+  }),
   async (req, res) => {
     try {
       const user = await User.findById(req.userId);

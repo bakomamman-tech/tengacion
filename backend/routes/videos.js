@@ -3,10 +3,6 @@ const auth = require("../middleware/auth");
 const creatorAuth = require("../middleware/creatorAuth");
 const upload = require("../middleware/privateUpload");
 const moderateUpload = require("../middleware/moderateUpload");
-const {
-  createVideoUploadPayload,
-  MAX_VIDEO_BYTES,
-} = require("../services/videoStorage");
 const asyncHandler = require("../middleware/asyncHandler");
 const {
   createCreatorVideo,
@@ -21,29 +17,9 @@ const router = express.Router();
 router.post(
   "/presign",
   auth,
-  async (req, res) => {
-    const { filename, contentType, sizeBytes } = req.body || {};
-    if (!filename || !contentType) {
-      return res
-        .status(400)
-        .json({ error: "filename and contentType are required" });
-    }
-
-    try {
-      const payload = await createVideoUploadPayload({
-        filename,
-        contentType,
-        sizeBytes: Number(sizeBytes) || undefined,
-      });
-
-      return res.json({
-        ...payload,
-        maxSizeBytes: MAX_VIDEO_BYTES,
-      });
-    } catch (err) {
-      return res.status(400).json({ error: err.message });
-    }
-  }
+  (_req, res) => res.status(410).json({
+    error: "Direct video uploads are disabled; use the moderated video upload endpoint",
+  })
 );
 
 router.post(

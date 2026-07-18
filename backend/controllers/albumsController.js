@@ -16,6 +16,14 @@ const {
 } = require("../services/fanReturnPathService");
 const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
+const { createPublicModerationFilter } = require("../utils/publicModeration");
+
+const PUBLIC_ALBUM_FILTER = {
+  status: "published",
+  isPublished: { $ne: false },
+  archivedAt: null,
+  ...createPublicModerationFilter(),
+};
 
 const MAX_ALBUM_TRACKS = 25;
 const MAX_TRACK_FILE_SIZE_BYTES = 25 * 1024 * 1024;
@@ -337,6 +345,15 @@ exports.updateAlbum = asyncHandler(async (req, res) => {
   let coverUrl = String(req.body?.coverUrl || album.coverUrl || "").trim();
   let coverMedia = album.coverMedia || null;
   const previousCoverMedia = album.coverMedia || null;
+  if (
+    Object.prototype.hasOwnProperty.call(req.body || {}, "coverUrl")
+    && coverUrl !== String(album.coverUrl || "").trim()
+    && !coverFile
+  ) {
+    return res.status(400).json({
+      error: "Album cover changes must use the moderated cover upload field",
+    });
+  }
   if (coverFile) {
     const uploadedCover = await saveUploadedMedia(coverFile, {
       source: "album_cover",
@@ -411,7 +428,7 @@ exports.getCreatorAlbums = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid creator id" });
   }
 
-  const albums = await Album.find({ creatorId, status: "published", isPublished: { $ne: false }, archivedAt: null })
+  const albums = await Album.find({ creatorId, ...PUBLIC_ALBUM_FILTER })
     .sort({ createdAt: -1 })
     .lean();
 
@@ -424,7 +441,7 @@ exports.getAlbumById = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: "Invalid album id" });
   }
 
-  const album = await Album.findOne({ _id: albumId, isPublished: { $ne: false }, archivedAt: null })
+  const album = await Album.findOne({ _id: albumId, ...PUBLIC_ALBUM_FILTER })
     .populate({
       path: "creatorId",
       select: "displayName fullName userId",

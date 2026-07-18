@@ -429,6 +429,21 @@ const resolveBookPreviewUrl = (book = {}) =>
 const resolveBookCoverUrl = (book = {}) =>
   mediaDocumentToUrl(book.coverMedia, book.coverImageUrl || book.coverUrl || "");
 
+const resolveAlbumCoverUrl = (album = {}) =>
+  mediaDocumentToUrl(album.coverMedia, album.coverUrl || "");
+
+const resolveAlbumTracks = (album = {}) =>
+  (Array.isArray(album.tracks) ? album.tracks : [])
+    .slice()
+    .sort((left, right) => Number(left?.order || 0) - Number(right?.order || 0))
+    .map((track, index) => ({
+      title: String(track?.title || `Track ${index + 1}`),
+      order: Number(track?.order || index + 1),
+      audioUrl: mediaDocumentToUrl(track?.trackMedia, track?.trackUrl || ""),
+      previewUrl: mediaDocumentToUrl(track?.previewMedia, track?.previewUrl || ""),
+      duration: Number(track?.duration || 0),
+    }));
+
 const resolveTrackAudioUrl = (track = {}) =>
   mediaDocumentToUrl(track.audioMedia, track.audioUrl || track.fullAudioUrl || track.videoUrl || "");
 
@@ -440,6 +455,15 @@ const resolveTrackPreviewUrl = (track = {}) =>
 
 const resolveTrackCoverUrl = (track = {}) =>
   mediaDocumentToUrl(track.coverMedia, track.coverImageUrl || track.coverUrl || "");
+
+const resolveVideoUrl = (video = {}) =>
+  mediaDocumentToUrl(video.videoMedia, video.videoUrl || "");
+
+const resolveVideoPreviewUrl = (video = {}) =>
+  mediaDocumentToUrl(video.previewClipMedia, video.previewClipUrl || "");
+
+const resolveVideoCoverUrl = (video = {}) =>
+  mediaDocumentToUrl(video.coverMedia, video.coverImageUrl || "");
 
 const resolveContentStatus = (row = {}) => {
   const status = String(row.publishedStatus || row.status || "").trim().toLowerCase();
@@ -488,6 +512,43 @@ const toAdminTrackReviewDTO = (track = {}) => {
   };
 };
 
+const toAdminAlbumReviewDTO = (album = {}) => {
+  const creator = album.creatorId && typeof album.creatorId === "object" ? album.creatorId : null;
+  const creatorUser = creator?.userId && typeof creator.userId === "object" ? creator.userId : null;
+  const tracks = resolveAlbumTracks(album);
+
+  return {
+    id: toId(album._id),
+    type: "album",
+    title: String(album.title || "Untitled Album"),
+    description: String(album.description || ""),
+    releaseType: String(album.releaseType || album.contentType || "album"),
+    status: resolveContentStatus(album),
+    publishedStatus: resolveContentStatus(album),
+    copyrightScanStatus: String(album.copyrightScanStatus || "pending_scan"),
+    verificationNotes: String(album.verificationNotes || ""),
+    reviewRequired: Boolean(album.reviewRequired),
+    moderationStatus: String(album.moderationStatus || "ALLOW"),
+    price: Number(album.price || album.priceNGN || 0),
+    currency: String(album.currency || "NGN"),
+    coverImageUrl: resolveAlbumCoverUrl(album),
+    tracks,
+    tracksAvailable: tracks.length > 0 && tracks.every((track) => Boolean(track.audioUrl)),
+    totalTracks: Number(album.totalTracks || tracks.length),
+    createdAt: album.createdAt || null,
+    updatedAt: album.updatedAt || null,
+    creator: creator
+      ? {
+          id: toId(creator._id),
+          displayName: String(creator.displayName || creator.fullName || ""),
+          username: String(creatorUser?.username || ""),
+          userId: toId(creatorUser?._id || creator.userId),
+          email: String(creatorUser?.email || ""),
+        }
+      : null,
+  };
+};
+
 const toAdminBookReviewDTO = (book = {}) => {
   const creator = book.creatorId && typeof book.creatorId === "object" ? book.creatorId : null;
   const creatorUser = creator?.userId && typeof creator.userId === "object" ? creator.userId : null;
@@ -524,6 +585,54 @@ const toAdminBookReviewDTO = (book = {}) => {
           email: String(creatorUser?.email || ""),
         }
       : null,
+  };
+};
+
+const toAdminVideoReviewDTO = (video = {}) => {
+  const creator =
+    video.creatorProfileId && typeof video.creatorProfileId === "object"
+      ? video.creatorProfileId
+      : null;
+  const creatorUser = creator?.userId && typeof creator.userId === "object" ? creator.userId : null;
+  const videoUrl = resolveVideoUrl(video);
+
+  return {
+    id: toId(video._id),
+    type: "video",
+    title: String(video.caption || "Untitled Video"),
+    description: String(video.description || ""),
+    status: resolveContentStatus(video),
+    publishedStatus: resolveContentStatus(video),
+    copyrightScanStatus: String(video.copyrightScanStatus || "pending_scan"),
+    verificationNotes: String(video.verificationNotes || ""),
+    reviewRequired: Boolean(video.reviewRequired),
+    moderationStatus: String(video.moderationStatus || "pending"),
+    visibility: String(video.visibility || "private"),
+    videoAvailable: Boolean(videoUrl),
+    videoUrl,
+    previewClipUrl: resolveVideoPreviewUrl(video),
+    coverImageUrl: resolveVideoCoverUrl(video),
+    durationSec: Number(video.durationSec || 0),
+    videoFormat: String(video.videoFormat || ""),
+    price: Number(video.price || 0),
+    currency: "NGN",
+    createdAt: video.createdAt || video.time || null,
+    updatedAt: video.updatedAt || video.time || null,
+    creator: creator
+      ? {
+          id: toId(creator._id),
+          displayName: String(creator.displayName || creator.fullName || video.name || ""),
+          username: String(creatorUser?.username || video.username || ""),
+          userId: toId(creatorUser?._id || creator.userId || video.userId),
+          email: String(creatorUser?.email || ""),
+        }
+      : {
+          id: toId(video.creatorProfileId),
+          displayName: String(video.name || ""),
+          username: String(video.username || ""),
+          userId: toId(video.userId),
+          email: "",
+        },
   };
 };
 
@@ -1363,16 +1472,25 @@ router.post("/books/:bookId/approve", adminMutationLimiter, async (req, res) => 
       return res.status(404).json({ error: "Book not found" });
     }
 
+    const previousStatus = resolveContentStatus(book);
+    if (book.publishedStatus === "blocked" || book.copyrightScanStatus === "blocked") {
+      return res.status(409).json({ error: "Blocked books must be cleared before approval" });
+    }
+    if (previousStatus === "draft") {
+      return res.status(409).json({ error: "Draft books must be submitted for review before approval" });
+    }
+    if (
+      previousStatus === "published" ||
+      (previousStatus !== "under_review" && !book.reviewRequired)
+    ) {
+      return res.status(409).json({ error: "Only books submitted for review can be approved" });
+    }
+
     const manuscriptUrl = resolveBookManuscriptUrl(book);
     if (!manuscriptUrl) {
       return res.status(400).json({ error: "Book manuscript is missing" });
     }
 
-    if (book.publishedStatus === "blocked" || book.copyrightScanStatus === "blocked") {
-      return res.status(409).json({ error: "Blocked books must be cleared before approval" });
-    }
-
-    const previousStatus = resolveContentStatus(book);
     const previousScanStatus = String(book.copyrightScanStatus || "pending_scan");
     const reason = String(req.body?.reason || req.body?.note || "Admin approved manuscript").trim();
     const adminLine = `Admin approved manuscript${reason ? `: ${reason}` : ""}`;
@@ -1476,6 +1594,145 @@ router.post("/books/:bookId/approve", adminMutationLimiter, async (req, res) => 
   }
 });
 
+router.post("/albums/:albumId/publish", adminMutationLimiter, async (req, res) => {
+  try {
+    const { albumId } = req.params;
+    if (!isValidId(albumId)) {
+      return res.status(400).json({ error: "Invalid album id" });
+    }
+
+    const album = await Album.findById(albumId);
+    if (!album || album.archivedAt) {
+      return res.status(404).json({ error: "Album not found" });
+    }
+
+    const previousStatus = resolveContentStatus(album);
+    if (previousStatus === "blocked" || album.copyrightScanStatus === "blocked") {
+      return res.status(409).json({ error: "Blocked albums must be cleared before approval" });
+    }
+    if (previousStatus === "draft") {
+      return res.status(409).json({ error: "Draft albums must be submitted for review before approval" });
+    }
+    if (
+      previousStatus === "published" ||
+      (previousStatus !== "under_review" && !album.reviewRequired)
+    ) {
+      return res.status(409).json({ error: "Only albums submitted for review can be approved" });
+    }
+
+    const albumTracks = resolveAlbumTracks(album);
+    if (!albumTracks.length || albumTracks.some((track) => !track.audioUrl)) {
+      return res.status(400).json({ error: "Album tracks are missing" });
+    }
+
+    const previousScanStatus = String(album.copyrightScanStatus || "pending_scan");
+    const reason = String(req.body?.reason || req.body?.note || "Admin approved album").trim();
+    const adminLine = `Admin approved ${album.releaseType === "ep" ? "EP" : "album"}${reason ? `: ${reason}` : ""}`;
+    const existingNotes = String(album.verificationNotes || "").trim();
+
+    album.publishedStatus = "published";
+    album.status = "published";
+    album.isPublished = true;
+    album.reviewRequired = false;
+    album.copyrightScanStatus = "passed";
+    album.moderationStatus = "ALLOW";
+    album.verificationNotes = existingNotes
+      ? `${existingNotes} ${adminLine}`.slice(0, 2000)
+      : adminLine.slice(0, 2000);
+
+    await album.save();
+
+    const creatorProfile = await CreatorProfile.findById(album.creatorId)
+      .select("displayName fullName userId")
+      .lean();
+    const creatorUserId = toId(creatorProfile?.userId);
+    const itemLabel = album.releaseType === "ep" ? "EP" : "album";
+
+    await Promise.all([
+      writeAuditLog({
+        req,
+        actorId: req.user.id,
+        action: "admin.album.publish",
+        targetType: "Album",
+        targetId: toId(album._id),
+        reason,
+        metadata: {
+          title: album.title || "",
+          releaseType: album.releaseType || "album",
+          previousStatus,
+          nextStatus: "published",
+          previousScanStatus,
+          nextScanStatus: "passed",
+          creatorId: toId(album.creatorId),
+        },
+      }),
+      logAnalyticsEvent({
+        type: "album_approved",
+        userId: req.user.id,
+        actorRole: req.user.role || "admin",
+        targetId: album._id,
+        targetType: "album",
+        contentType: album.releaseType === "ep" ? "ep" : "album",
+        metadata: {
+          creatorId: toId(album.creatorId),
+          title: album.title || "",
+          releaseType: album.releaseType || "album",
+          previousStatus,
+          price: Number(album.price || 0),
+          tracksCount: albumTracks.length,
+        },
+      }).catch(() => null),
+      creatorUserId
+        ? createNotification({
+            recipient: creatorUserId,
+            sender: req.user.id,
+            type: "system",
+            text: `${album.title || `Your ${itemLabel}`} has been approved and is now published.`,
+            entity: {
+              id: album._id,
+              model: "Album",
+            },
+            metadata: {
+              eventType: "album_published_by_admin",
+              creatorId: toId(album.creatorId),
+              itemType: "album",
+              itemId: toId(album._id),
+              link: `/albums/${toId(album._id)}`,
+              dedupeKey: `album_published_by_admin:${toId(album._id)}`,
+            },
+          }).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    if (creatorProfile && Number(album.price || 0) > 0) {
+      await notifyCreatorPublishedPaidContent({
+        req,
+        creatorProfile,
+        itemType: "album",
+        itemId: album._id,
+        title: album.title,
+        price: Number(album.price || 0),
+      }).catch(() => null);
+    }
+
+    const hydrated = await Album.findById(album._id)
+      .populate({
+        path: "creatorId",
+        select: "displayName fullName userId",
+        populate: { path: "userId", select: "_id name username email" },
+      })
+      .lean();
+
+    return res.json({
+      success: true,
+      album: toAdminAlbumReviewDTO(hydrated),
+    });
+  } catch (err) {
+    console.error("Admin album publish error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
 router.post("/tracks/:trackId/publish", adminMutationLimiter, async (req, res) => {
   try {
     const { trackId } = req.params;
@@ -1488,16 +1745,26 @@ router.post("/tracks/:trackId/publish", adminMutationLimiter, async (req, res) =
       return res.status(404).json({ error: "Track not found" });
     }
 
+    const previousStatus = resolveContentStatus(track);
+    if (track.publishedStatus === "blocked" || track.copyrightScanStatus === "blocked") {
+      return res.status(409).json({ error: "Blocked tracks must be cleared before publishing" });
+    }
+    if (previousStatus === "draft") {
+      return res.status(409).json({ error: "Draft tracks must be submitted for review before approval" });
+    }
+    if (
+      previousStatus === "published" ||
+      (previousStatus !== "under_review" && !track.reviewRequired)
+    ) {
+      return res.status(409).json({ error: "Only tracks submitted for review can be approved" });
+    }
+
     const audioUrl = resolveTrackAudioUrl(track);
     const previewUrl = resolveTrackPreviewUrl(track);
     if (!audioUrl) {
       return res.status(400).json({ error: "Track audio is missing" });
     }
-    if (track.publishedStatus === "blocked" || track.copyrightScanStatus === "blocked") {
-      return res.status(409).json({ error: "Blocked tracks must be cleared before publishing" });
-    }
 
-    const previousStatus = resolveContentStatus(track);
     const previousScanStatus = String(track.copyrightScanStatus || "pending_scan");
     const reason = String(req.body?.reason || req.body?.note || "Admin approved track").trim();
     const adminLine = `Admin approved track${reason ? `: ${reason}` : ""}`;
@@ -1625,6 +1892,155 @@ router.post("/tracks/:trackId/publish", adminMutationLimiter, async (req, res) =
   }
 });
 
+router.post("/videos/:videoId/publish", adminMutationLimiter, async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    if (!isValidId(videoId)) {
+      return res.status(400).json({ error: "Invalid video id" });
+    }
+
+    const video = await Video.findById(videoId);
+    if (!video || video.archivedAt) {
+      return res.status(404).json({ error: "Video not found" });
+    }
+
+    const previousStatus = resolveContentStatus(video);
+    const moderationStatus = String(video.moderationStatus || "").trim().toUpperCase();
+    const isBlocked =
+      previousStatus === "blocked" ||
+      String(video.copyrightScanStatus || "").toLowerCase() === "blocked" ||
+      String(video.visibility || "").toLowerCase() === "blocked" ||
+      String(video.storageStage || "").toLowerCase() === "quarantine" ||
+      moderationStatus.startsWith("BLOCK_") ||
+      ["REJECTED", "QUARANTINED"].includes(moderationStatus);
+
+    if (isBlocked) {
+      return res.status(409).json({ error: "Blocked videos must be cleared before approval" });
+    }
+    if (previousStatus === "draft") {
+      return res.status(409).json({ error: "Draft videos must be submitted for review before approval" });
+    }
+    if (
+      previousStatus === "published" ||
+      (previousStatus !== "under_review" && !video.reviewRequired)
+    ) {
+      return res.status(409).json({ error: "Only videos submitted for review can be approved" });
+    }
+
+    const videoUrl = resolveVideoUrl(video);
+    if (!videoUrl) {
+      return res.status(400).json({ error: "Video media is missing" });
+    }
+
+    const previousScanStatus = String(video.copyrightScanStatus || "pending_scan");
+    const reason = String(req.body?.reason || req.body?.note || "Admin approved video").trim();
+    const adminLine = `Admin approved video${reason ? `: ${reason}` : ""}`;
+    const existingNotes = String(video.verificationNotes || "").trim();
+
+    video.publishedStatus = "published";
+    video.isPublished = true;
+    video.visibility = "public";
+    video.reviewRequired = false;
+    video.copyrightScanStatus = "passed";
+    video.moderationStatus = "ALLOW";
+    video.reviewedBy = req.user.id;
+    video.reviewedAt = new Date();
+    video.verificationNotes = existingNotes
+      ? `${existingNotes} ${adminLine}`.slice(0, 2000)
+      : adminLine.slice(0, 2000);
+
+    await video.save();
+
+    const creatorProfile = isValidId(video.creatorProfileId)
+      ? await CreatorProfile.findById(video.creatorProfileId)
+          .select("displayName fullName userId")
+          .lean()
+      : null;
+    const fallbackUserId = isValidId(video.userId) ? toId(video.userId) : "";
+    const creatorUserId = toId(creatorProfile?.userId) || fallbackUserId;
+
+    await Promise.all([
+      writeAuditLog({
+        req,
+        actorId: req.user.id,
+        action: "admin.video.publish",
+        targetType: "Video",
+        targetId: toId(video._id),
+        reason,
+        metadata: {
+          title: video.caption || "",
+          previousStatus,
+          nextStatus: "published",
+          previousScanStatus,
+          nextScanStatus: "passed",
+          creatorId: toId(video.creatorProfileId),
+        },
+      }),
+      logAnalyticsEvent({
+        type: "video_approved",
+        userId: req.user.id,
+        actorRole: req.user.role || "admin",
+        targetId: video._id,
+        targetType: "video",
+        contentType: "video",
+        metadata: {
+          creatorId: toId(video.creatorProfileId),
+          title: video.caption || "",
+          previousStatus,
+          price: Number(video.price || 0),
+        },
+      }).catch(() => null),
+      creatorUserId && isValidId(creatorUserId)
+        ? createNotification({
+            recipient: creatorUserId,
+            sender: req.user.id,
+            type: "system",
+            text: `${video.caption || "Your video"} has been approved and is now published.`,
+            entity: {
+              id: video._id,
+              model: "Video",
+            },
+            metadata: {
+              eventType: "video_published_by_admin",
+              creatorId: toId(video.creatorProfileId),
+              itemType: "video",
+              itemId: toId(video._id),
+              link: "/creator/music",
+              dedupeKey: `video_published_by_admin:${toId(video._id)}`,
+            },
+          }).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    if (creatorProfile && Number(video.price || 0) > 0) {
+      await notifyCreatorPublishedPaidContent({
+        req,
+        creatorProfile,
+        itemType: "video",
+        itemId: video._id,
+        title: video.caption || "Music video",
+        price: Number(video.price || 0),
+      }).catch(() => null);
+    }
+
+    const hydrated = await Video.findById(video._id)
+      .populate({
+        path: "creatorProfileId",
+        select: "displayName fullName userId",
+        populate: { path: "userId", select: "_id name username email" },
+      })
+      .lean();
+
+    return res.json({
+      success: true,
+      video: toAdminVideoReviewDTO(hydrated),
+    });
+  } catch (err) {
+    console.error("Admin video publish error:", req.requestId, err);
+    return res.status(500).json({ error: "Internal Server Error", requestId: req.requestId });
+  }
+});
+
 router.get("/content", async (req, res) => {
   try {
     const page = clamp(req.query.page, 1, 500, 1);
@@ -1679,7 +2095,25 @@ router.get("/content", async (req, res) => {
         "album",
         (row) => row.title || "Untitled Album",
         (row) => row.createdAt,
-        (row) => Number(row.playCount || 0)
+        (row) => Number(row.playCount || 0),
+        (row) => {
+          const tracks = resolveAlbumTracks(row);
+          return {
+            description: row.description || "",
+            releaseType: row.releaseType || row.contentType || "album",
+            copyrightScanStatus: row.copyrightScanStatus || "pending_scan",
+            verificationNotes: row.verificationNotes || "",
+            coverImageUrl: resolveAlbumCoverUrl(row),
+            tracks,
+            tracksAvailable: tracks.length > 0 && tracks.every((track) => Boolean(track.audioUrl)),
+            totalTracks: Number(row.totalTracks || tracks.length),
+            price: Number(row.price || row.priceNGN || 0),
+            currency: row.currency || "NGN",
+            creator: {
+              id: toId(row.creatorId),
+            },
+          };
+        }
       );
     }
     if (["all", "books"].includes(category)) {
@@ -1723,7 +2157,27 @@ router.get("/content", async (req, res) => {
         "video",
         (row) => row.caption || "Untitled Video",
         (row) => row.time || row.createdAt,
-        (row) => Number(row.viewsCount || 0)
+        (row) => Number(row.viewsCount || 0),
+        (row) => ({
+          description: row.description || "",
+          copyrightScanStatus: row.copyrightScanStatus || "pending_scan",
+          verificationNotes: row.verificationNotes || "",
+          visibility: row.visibility || "private",
+          videoAvailable: Boolean(resolveVideoUrl(row)),
+          videoUrl: resolveVideoUrl(row),
+          previewClipUrl: resolveVideoPreviewUrl(row),
+          coverImageUrl: resolveVideoCoverUrl(row),
+          durationSec: Number(row.durationSec || 0),
+          videoFormat: row.videoFormat || "",
+          price: Number(row.price || 0),
+          currency: "NGN",
+          creator: {
+            id: toId(row.creatorProfileId),
+            displayName: String(row.name || ""),
+            username: String(row.username || ""),
+            userId: toId(row.userId),
+          },
+        })
       );
     }
 

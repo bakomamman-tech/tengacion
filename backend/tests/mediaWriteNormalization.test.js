@@ -230,7 +230,7 @@ describe("media write normalization", () => {
     expect(classifyRecordMedia(refreshed, bookSource).status).toBe("cloudinary");
   });
 
-  test("replacing a published book file does not flag the book as a duplicate of itself", async () => {
+  test("replacing a book file does not flag it as a duplicate while submitting for review", async () => {
     const { profile, token } = await createCreator();
 
     const book = await Book.create({
@@ -262,16 +262,21 @@ describe("media write normalization", () => {
       })
       .expect(200);
 
-    expect(response.body.publishedStatus).toBe("published");
-    expect(response.body.copyrightScanStatus).toBe("passed");
+    expect(response.body).toMatchObject({
+      publishedStatus: "under_review",
+      copyrightScanStatus: "passed",
+      reviewRequired: true,
+      approvalRequired: true,
+      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+    });
 
     const refreshed = await Book.findById(book._id).lean();
-    expect(refreshed.publishedStatus).toBe("published");
-    expect(refreshed.isPublished).toBe(true);
-    expect(refreshed.reviewRequired).toBe(false);
+    expect(refreshed.publishedStatus).toBe("under_review");
+    expect(refreshed.isPublished).toBe(false);
+    expect(refreshed.reviewRequired).toBe(true);
 
     await request(app)
       .get(`/api/books/${book._id}`)
-      .expect(200);
+      .expect(404);
   });
 });

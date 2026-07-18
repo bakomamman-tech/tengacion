@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useCreatorWorkspace } from "../../useCreatorWorkspace";
 import BookUploadStudio from "../BookUploadStudio";
+import CreatorPublishOutcomeCard from "../CreatorPublishOutcomeCard";
 import MusicUploadStudio from "../MusicUploadStudio";
 import PodcastUploadStudio from "../PodcastUploadStudio";
 
@@ -58,6 +59,13 @@ describe("Creator upload studios", () => {
     expect(screen.queryByLabelText(/podcast series name/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/manuscript upload/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/season number/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save as draft/i })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: /publish music for admin approval/i })
+    ).toBeVisible();
+    expect(screen.getByRole("note", { name: /admin approval required/i })).toHaveTextContent(
+      /stays private until an admin approves it to go live/i
+    );
 
     await act(async () => {
       fireEvent.change(screen.getByLabelText(/release format/i), {
@@ -71,6 +79,9 @@ describe("Creator upload studios", () => {
     expect(
       screen.queryByLabelText(/chorus preview starts at \(seconds\)/i)
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /publish video \/ film for admin approval/i })
+    ).toBeVisible();
   });
 
   it("renders a podcast-only form without music or book fields", async () => {
@@ -85,6 +96,23 @@ describe("Creator upload studios", () => {
     expect(screen.getAllByText(/transcript upload/i)[0]).toBeInTheDocument();
     expect(screen.queryByLabelText(/track title/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/manuscript upload/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save as draft/i })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: /publish podcast for admin approval/i })
+    ).toBeVisible();
+    expect(screen.getByRole("note", { name: /admin approval required/i })).toHaveTextContent(
+      /stays private until an admin approves it to go live/i
+    );
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(/episode format/i), {
+        target: { value: "video" },
+      });
+    });
+
+    expect(
+      screen.getByRole("button", { name: /publish video podcast for admin approval/i })
+    ).toBeVisible();
   });
 
   it("renders a book-only form without audio episode fields", async () => {
@@ -99,5 +127,28 @@ describe("Creator upload studios", () => {
     expect(screen.queryByText(/full audio upload/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/episode title/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/season number/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save as draft/i })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: /publish book for admin approval/i })
+    ).toBeVisible();
+    expect(screen.getByRole("note", { name: /admin approval required/i })).toHaveTextContent(
+      /stays private until an admin approves it to go live/i
+    );
+  });
+
+  it("explains that submitted uploads wait for Admin before going live", () => {
+    render(
+      <CreatorPublishOutcomeCard
+        outcome={{
+          title: "Northern Lights",
+          publishedStatus: "under_review",
+          audienceActions: [],
+        }}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: /submitted for review/i })).toBeInTheDocument();
+    expect(screen.getByText(/an admin must approve it before it goes live/i)).toBeInTheDocument();
+    expect(screen.getByText(/awaiting admin/i)).toBeInTheDocument();
   });
 });

@@ -278,6 +278,7 @@ export default function InFeedReelsCarousel({ reels = [], blockIndex = 0 }) {
                 key={reelId}
                 className="in-feed-reel-card"
                 to={`/reels?reel=${encodeURIComponent(reelId)}`}
+                state={{ fromFeed: true }}
                 aria-label={`Watch ${caption} by ${authorName}`}
               >
                 <span className="in-feed-reel-media">

@@ -9,6 +9,7 @@ process.env.MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/teng
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test_secret_1234567890123456789012";
 
 const app = require("../app");
+const Album = require("../models/Album");
 const AnalyticsEvent = require("../models/AnalyticsEvent");
 const Book = require("../models/Book");
 const CreatorProfile = require("../models/CreatorProfile");
@@ -147,6 +148,12 @@ describe("creator upload routes", () => {
     expect(response.body.releaseType).toBe("single");
     expect(response.body.previewStartSec).toBe(75);
     expect(response.body.previewLimitSec).toBe(30);
+    expect(response.body).toMatchObject({
+      publishedStatus: "draft",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "Draft saved.",
+    });
     expect(response.body.audioUrl).toContain(
       "https://res.cloudinary.com/test-cloud/video/upload/"
     );
@@ -163,6 +170,8 @@ describe("creator upload routes", () => {
     expect(savedTrack.contentType).toBe("track");
     expect(savedTrack.previewStartSec).toBe(75);
     expect(savedTrack.previewLimitSec).toBe(30);
+    expect(savedTrack.publishedStatus).toBe("draft");
+    expect(savedTrack.isPublished).toBe(false);
     expect(savedTrack.audioMedia).toMatchObject({
       assetId: "asset-1",
       publicId: "tengacion/creators/audio/mock-1",
@@ -198,6 +207,41 @@ describe("creator upload routes", () => {
     expect(savedTrack.coverUrl).toBe(savedTrack.coverImageUrl);
     expect(classifyRecordMedia(savedTrack, trackSource).status).toBe("cloudinary");
 
+    const savedDraftResponse = await request(app)
+      .put(`/api/tracks/${savedTrack._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ description: "A polished single with updated notes" })
+      .expect(200);
+
+    expect(savedDraftResponse.body).toMatchObject({
+      publishedStatus: "draft",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "Draft saved.",
+      copyrightScanStatus: "passed",
+    });
+
+    const publishResponse = await request(app)
+      .put(`/api/tracks/${savedTrack._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ publishedStatus: "published" })
+      .expect(200);
+
+    expect(publishResponse.body).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      approvalRequired: true,
+      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      copyrightScanStatus: "passed",
+    });
+
+    const submittedDraft = await Track.findById(savedTrack._id).lean();
+    expect(submittedDraft).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      isPublished: false,
+    });
+
     expect(cloudinary.uploader.upload_stream).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -214,6 +258,138 @@ describe("creator upload routes", () => {
       }),
       expect.any(Function)
     );
+  });
+
+  test("creator albums stay private until submitted and approved by Admin", async () => {
+    const { token } = await createUserAndProfile();
+
+    const draftResponse = await request(app)
+      .post("/api/creator/music/albums")
+      .set("Authorization", `Bearer ${token}`)
+      .field("albumTitle", "Northern Lights")
+      .field("description", "An album draft in progress")
+      .field("releaseType", "album")
+      .field("price", "0")
+      .field("publishedStatus", "draft")
+      .attach("coverImage", Buffer.from("northern-lights-cover"), {
+        filename: "northern-lights.webp",
+        contentType: "image/webp",
+      })
+      .attach("tracks", Buffer.from("northern-lights-track"), {
+        filename: "opening-light.mp3",
+        contentType: "audio/mpeg",
+      })
+      .expect(201);
+
+    expect(draftResponse.body).toMatchObject({
+      title: "Northern Lights",
+      releaseType: "album",
+      publishedStatus: "draft",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "Draft saved.",
+    });
+    expect(await Album.findById(draftResponse.body._id).lean()).toMatchObject({
+      status: "draft",
+      publishedStatus: "draft",
+      reviewRequired: false,
+      isPublished: false,
+    });
+
+    const savedDraftResponse = await request(app)
+      .put(`/api/albums/${draftResponse.body._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ description: "Updated album notes" })
+      .expect(200);
+
+    expect(savedDraftResponse.body).toMatchObject({
+      publishedStatus: "draft",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "Draft saved.",
+      copyrightScanStatus: "passed",
+    });
+
+    const submittedResponse = await request(app)
+      .put(`/api/albums/${draftResponse.body._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ publishedStatus: "published" })
+      .expect(200);
+
+    expect(submittedResponse.body).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      approvalRequired: true,
+      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      copyrightScanStatus: "passed",
+    });
+    expect(await Album.findById(draftResponse.body._id).lean()).toMatchObject({
+      status: "draft",
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      isPublished: false,
+    });
+
+    await Album.updateOne(
+      { _id: draftResponse.body._id },
+      {
+        $set: {
+          status: "published",
+          publishedStatus: "published",
+          reviewRequired: false,
+          isPublished: true,
+        },
+      }
+    );
+    const publishedEditResponse = await request(app)
+      .put(`/api/albums/${draftResponse.body._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ description: "A corrected public album description" })
+      .expect(200);
+
+    expect(publishedEditResponse.body).toMatchObject({
+      publishedStatus: "published",
+      reviewRequired: false,
+      approvalRequired: false,
+    });
+    expect(await Album.findById(draftResponse.body._id).lean()).toMatchObject({
+      status: "published",
+      publishedStatus: "published",
+      reviewRequired: false,
+      isPublished: true,
+    });
+
+    const submittedEpResponse = await request(app)
+      .post("/api/creator/music/albums")
+      .set("Authorization", `Bearer ${token}`)
+      .field("albumTitle", "Three Songs North")
+      .field("description", "An EP submitted for release")
+      .field("releaseType", "ep")
+      .field("price", "500")
+      .field("publishedStatus", "published")
+      .attach("coverImage", Buffer.from("three-songs-cover"), {
+        filename: "three-songs.webp",
+        contentType: "image/webp",
+      })
+      .attach("tracks", Buffer.from("three-songs-track"), {
+        filename: "first-song.mp3",
+        contentType: "audio/mpeg",
+      })
+      .expect(201);
+
+    expect(submittedEpResponse.body).toMatchObject({
+      releaseType: "ep",
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      approvalRequired: true,
+      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+    });
+    expect(await Album.findById(submittedEpResponse.body._id).lean()).toMatchObject({
+      status: "draft",
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      isPublished: false,
+    });
   });
 
   test("creator uploads record first upload onboarding milestones once", async () => {
@@ -254,7 +430,7 @@ describe("creator upload routes", () => {
       }),
     });
 
-    await request(app)
+    const submittedResponse = await request(app)
       .post("/api/creator/music")
       .set("Authorization", `Bearer ${token}`)
       .field("title", "First Published")
@@ -269,6 +445,20 @@ describe("creator upload routes", () => {
         contentType: "audio/mpeg",
       })
       .expect(201);
+
+    expect(submittedResponse.body).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      approvalRequired: true,
+      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+    });
+
+    const submittedTrack = await Track.findById(submittedResponse.body._id).lean();
+    expect(submittedTrack).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      isPublished: false,
+    });
 
     events = await AnalyticsEvent.find({
       type: "creator_onboarding_step_completed",
@@ -286,7 +476,7 @@ describe("creator upload routes", () => {
         source: "creator_music_upload",
         totalSteps: 6,
         progressPercent: 100,
-        uploadStatus: "published",
+        uploadStatus: "under_review",
         uploadContentType: "music",
       }),
     });
@@ -321,6 +511,12 @@ describe("creator upload routes", () => {
     expect(response.body.description).toBe("High-energy performance video");
     expect(response.body.durationSec).toBe(215);
     expect(response.body.videoFormat).toBe("m4v");
+    expect(response.body).toMatchObject({
+      publishedStatus: "draft",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "Draft saved.",
+    });
 
     const savedVideo = await Video.findOne({ caption: "Visual Anthem" }).lean();
     expect(savedVideo).toBeTruthy();
@@ -329,6 +525,73 @@ describe("creator upload routes", () => {
     expect(savedVideo.coverImageUrl).toBeTruthy();
     expect(savedVideo.durationSec).toBe(215);
     expect(savedVideo.videoFormat).toBe("m4v");
+    expect(savedVideo.publishedStatus).toBe("draft");
+    expect(savedVideo.isPublished).toBe(false);
+    expect(savedVideo.visibility).toBe("private");
+
+    const savedDraftResponse = await request(app)
+      .put(`/api/videos/${savedVideo._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ description: "Updated performance notes" })
+      .expect(200);
+
+    expect(savedDraftResponse.body).toMatchObject({
+      publishedStatus: "draft",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "Draft saved.",
+      copyrightScanStatus: "passed",
+    });
+
+    const publishResponse = await request(app)
+      .put(`/api/videos/${savedVideo._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ publishedStatus: "published" })
+      .expect(200);
+
+    expect(publishResponse.body).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      approvalRequired: true,
+      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      copyrightScanStatus: "passed",
+    });
+    expect(await Video.findById(savedVideo._id).lean()).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      isPublished: false,
+      visibility: "private",
+    });
+  });
+
+  test("POST /api/creator/music/videos submits published music videos for Admin approval", async () => {
+    const { token } = await createUserAndProfile();
+
+    const response = await request(app)
+      .post("/api/creator/music/videos")
+      .set("Authorization", `Bearer ${token}`)
+      .field("title", "Review This Film")
+      .field("description", "A creator film awaiting approval")
+      .field("price", "0")
+      .field("publishedStatus", "published")
+      .attach("video", Buffer.from("review-film-video"), {
+        filename: "review-film.mp4",
+        contentType: "video/mp4",
+      })
+      .expect(201);
+
+    expect(response.body).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      approvalRequired: true,
+      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+    });
+    expect(await Video.findById(response.body._id).lean()).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      isPublished: false,
+      visibility: "private",
+    });
   });
 
   test("POST /api/creator/music rejects podcast-only metadata fields", async () => {
@@ -403,6 +666,12 @@ describe("creator upload routes", () => {
     expect(response.body.coverImageUrl).toContain(
       "https://res.cloudinary.com/test-cloud/image/upload/"
     );
+    expect(response.body).toMatchObject({
+      publishedStatus: "draft",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "Draft saved.",
+    });
 
     const savedTrack = await Track.findOne({ title: "Video Episode One" }).lean();
     expect(savedTrack).toBeTruthy();
@@ -410,6 +679,8 @@ describe("creator upload routes", () => {
     expect(savedTrack.mediaType).toBe("video");
     expect(savedTrack.videoUrl).toBeTruthy();
     expect(savedTrack.audioUrl).toBe(savedTrack.videoUrl);
+    expect(savedTrack.publishedStatus).toBe("draft");
+    expect(savedTrack.isPublished).toBe(false);
     expect(savedTrack.videoMedia).toMatchObject({
       publicId: "tengacion/podcasts/videos/mock-1",
       resourceType: "video",
@@ -421,6 +692,71 @@ describe("creator upload routes", () => {
       resourceType: "image",
       folder: "tengacion/podcasts/covers",
       originalFilename: "video-episode-cover.png",
+    });
+
+    const savedDraftResponse = await request(app)
+      .put(`/api/tracks/${savedTrack._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ description: "Updated episode notes" })
+      .expect(200);
+
+    expect(savedDraftResponse.body).toMatchObject({
+      publishedStatus: "draft",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "Draft saved.",
+      copyrightScanStatus: "passed",
+    });
+
+    const publishResponse = await request(app)
+      .put(`/api/tracks/${savedTrack._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ publishedStatus: "published" })
+      .expect(200);
+
+    expect(publishResponse.body).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      approvalRequired: true,
+      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      copyrightScanStatus: "passed",
+    });
+    expect(await Track.findById(savedTrack._id).lean()).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      isPublished: false,
+    });
+  });
+
+  test("POST /api/creator/podcasts submits published episodes for Admin approval", async () => {
+    const { token } = await createUserAndProfile();
+
+    const response = await request(app)
+      .post("/api/creator/podcasts")
+      .set("Authorization", `Bearer ${token}`)
+      .field("title", "Episode Awaiting Review")
+      .field("podcastSeries", "Studio Stories")
+      .field("mediaType", "audio")
+      .field("category", "Culture")
+      .field("price", "0")
+      .field("publishedStatus", "published")
+      .attach("media", Buffer.from("review-podcast-audio"), {
+        filename: "review-episode.mp3",
+        contentType: "audio/mpeg",
+      })
+      .expect(201);
+
+    expect(response.body).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      approvalRequired: true,
+      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+    });
+    expect(await Track.findById(response.body._id).lean()).toMatchObject({
+      kind: "podcast",
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      isPublished: false,
     });
   });
 
@@ -443,6 +779,105 @@ describe("creator upload routes", () => {
       .expect(400);
 
     expect(await Book.countDocuments()).toBe(0);
+  });
+
+  test("creator books stay draft until submitted and then wait for Admin approval", async () => {
+    const { token } = await createUserAndProfile();
+
+    const draftResponse = await request(app)
+      .post("/api/creator/books")
+      .set("Authorization", `Bearer ${token}`)
+      .field("title", "A Draft Memoir")
+      .field("authorName", "Creator Example")
+      .field("genre", "Memoir")
+      .field("language", "English")
+      .field("description", "A manuscript being prepared")
+      .field("price", "0")
+      .field("publishedStatus", "draft")
+      .field("copyrightDeclared", "true")
+      .attach("content", Buffer.from("draft memoir manuscript"), {
+        filename: "draft-memoir.pdf",
+        contentType: "application/pdf",
+      })
+      .expect(201);
+
+    expect(draftResponse.body).toMatchObject({
+      publishedStatus: "draft",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "Draft saved.",
+    });
+    expect(await Book.findById(draftResponse.body._id).lean()).toMatchObject({
+      publishedStatus: "draft",
+      reviewRequired: false,
+      isPublished: false,
+    });
+
+    const savedDraftResponse = await request(app)
+      .put(`/api/books/${draftResponse.body._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ description: "Updated manuscript notes" })
+      .expect(200);
+
+    expect(savedDraftResponse.body).toMatchObject({
+      publishedStatus: "draft",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "Draft saved.",
+      copyrightScanStatus: "passed",
+    });
+
+    const submittedResponse = await request(app)
+      .put(`/api/books/${draftResponse.body._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ publishedStatus: "published" })
+      .expect(200);
+
+    expect(submittedResponse.body).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      approvalRequired: true,
+      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      copyrightScanStatus: "passed",
+    });
+    expect(await Book.findById(draftResponse.body._id).lean()).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      isPublished: false,
+    });
+  });
+
+  test("POST /api/creator/books submits published manuscripts for Admin approval", async () => {
+    const { token } = await createUserAndProfile();
+
+    const response = await request(app)
+      .post("/api/creator/books")
+      .set("Authorization", `Bearer ${token}`)
+      .field("title", "Review This Manuscript")
+      .field("authorName", "Creator Example")
+      .field("genre", "Fiction")
+      .field("language", "English")
+      .field("description", "A manuscript awaiting approval")
+      .field("price", "0")
+      .field("publishedStatus", "published")
+      .field("copyrightDeclared", "true")
+      .attach("content", Buffer.from("submitted manuscript"), {
+        filename: "submitted-manuscript.pdf",
+        contentType: "application/pdf",
+      })
+      .expect(201);
+
+    expect(response.body).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      approvalRequired: true,
+      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+    });
+    expect(await Book.findById(response.body._id).lean()).toMatchObject({
+      publishedStatus: "under_review",
+      reviewRequired: true,
+      isPublished: false,
+    });
   });
 
   test("DELETE /api/tracks/:trackId removes associated cloudinary assets", async () => {

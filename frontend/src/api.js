@@ -2760,8 +2760,28 @@ export const adminApproveBook = (bookId, body = {}) =>
     body: JSON.stringify(body || {}),
   });
 
+export const adminPublishAlbum = (albumId, body = {}) =>
+  request(`${API_BASE}/admin/albums/${encodeURIComponent(albumId || "")}/publish`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(body || {}),
+  });
+
 export const adminPublishTrack = (trackId, body = {}) =>
   request(`${API_BASE}/admin/tracks/${encodeURIComponent(trackId || "")}/publish`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(body || {}),
+  });
+
+export const adminPublishVideo = (videoId, body = {}) =>
+  request(`${API_BASE}/admin/videos/${encodeURIComponent(videoId || "")}/publish`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

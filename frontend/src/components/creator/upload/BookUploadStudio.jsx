@@ -111,6 +111,7 @@ export default function BookUploadStudio({ showNotice = true }) {
       }
 
       const created = await createCreatorBook(formData, { onProgress: setProgress });
+      const finalStatus = String(created?.publishedStatus || publishMode).trim().toLowerCase();
       await refreshWorkspace();
       setOutcome(
         buildUploadOutcome({
@@ -119,10 +120,16 @@ export default function BookUploadStudio({ showNotice = true }) {
           itemType: "book",
           itemId: created?._id || "",
           title: created?.title || values.bookTitle,
-          publishedStatus: created?.publishedStatus || publishMode,
+          publishedStatus: finalStatus,
         })
       );
-      toast.success(publishMode === "draft" ? "Book draft saved" : "Book published");
+      toast.success(
+        finalStatus === "draft"
+          ? "Book draft saved"
+          : finalStatus === "under_review" || created?.approvalRequired
+            ? "Book submitted for Admin approval"
+            : "Book published"
+      );
       reset(buildDefaultValues(creatorProfile));
     } catch (err) {
       toast.error(err?.message || "Could not publish this book");
@@ -284,12 +291,25 @@ export default function BookUploadStudio({ showNotice = true }) {
               <div className="creator-upload-progress-bar">
                 <span style={{ width: `${progress}%` }} />
               </div>
-              <strong>{busyMode === "draft" ? "Saving draft" : "Publishing book"}...</strong>
+              <strong>{busyMode === "draft" ? "Saving draft" : "Submitting book for Admin review"}...</strong>
               <small>{progress}% uploaded</small>
             </div>
           ) : null}
 
-          <div className="creator-form-actions">
+          <div className="creator-publish-approval-note" role="note" aria-label="Admin approval required">
+            <strong>Admin approval required</strong>
+            <span>
+              Publish submits this manuscript for review. It stays private until an Admin approves it to go live.
+            </span>
+          </div>
+
+          {Object.keys(errors).length ? (
+            <p className="creator-upload-action-error" role="alert">
+              Complete the highlighted required fields before saving or publishing.
+            </p>
+          ) : null}
+
+          <div className="creator-form-actions creator-upload-publish-actions">
             <button
               type="button"
               className="creator-ghost-btn"
@@ -304,7 +324,7 @@ export default function BookUploadStudio({ showNotice = true }) {
               disabled={Boolean(busyMode)}
               onClick={handleSubmit((values) => submitUpload(values, "published"))}
             >
-              Publish Book
+              Publish Book for Admin Approval
             </button>
           </div>
         </section>

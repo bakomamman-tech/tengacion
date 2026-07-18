@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import AdminShell from "../components/AdminShell";
-import { adminApproveBook, adminGetBookReview, adminListContent, adminPublishTrack, resolveImage } from "../api";
+import {
+  adminApproveBook,
+  adminGetBookReview,
+  adminListContent,
+  adminPublishAlbum,
+  adminPublishTrack,
+  adminPublishVideo,
+  resolveImage,
+} from "../api";
 
 const CATEGORY_OPTIONS = [
   ["all", "All Content"],
@@ -52,15 +60,29 @@ const formatCurrency = (value, currency = "NGN") => {
   }
 };
 
-const isReviewableBook = (entry = {}) =>
-  entry.type === "book" &&
-  (entry.status === "under_review" || entry.reviewRequired);
-
 const isTrackLike = (entry = {}) => entry.type === "track" || entry.type === "podcast";
+
+const isSubmittedForReview = (entry = {}) => {
+  const status = String(entry.status || "").toLowerCase();
+  return status !== "draft" && (status === "under_review" || Boolean(entry.reviewRequired));
+};
+
+const isReviewableBook = (entry = {}) =>
+  entry.type === "book" && isSubmittedForReview(entry);
+
+const isPublishableAlbum = (entry = {}) => {
+  const status = String(entry.status || "").toLowerCase();
+  return entry.type === "album" && !["published", "blocked"].includes(status) && isSubmittedForReview(entry);
+};
 
 const isPublishableTrack = (entry = {}) => {
   const status = String(entry.status || "").toLowerCase();
-  return isTrackLike(entry) && !["published", "blocked"].includes(status);
+  return isTrackLike(entry) && !["published", "blocked"].includes(status) && isSubmittedForReview(entry);
+};
+
+const isPublishableVideo = (entry = {}) => {
+  const status = String(entry.status || "").toLowerCase();
+  return entry.type === "video" && !["published", "blocked"].includes(status) && isSubmittedForReview(entry);
 };
 
 const getTrackPublishBlock = (entry = {}) => {
@@ -75,9 +97,9 @@ const getTrackPublishBlock = (entry = {}) => {
 
 const getTrackPublishLabel = (entry = {}) => {
   if (entry.type === "podcast") {
-    return String(entry.status || "").toLowerCase() === "under_review" ? "Approve episode" : "Publish episode";
+    return "Approve episode";
   }
-  return String(entry.status || "").toLowerCase() === "under_review" ? "Approve track" : "Publish track";
+  return "Approve track";
 };
 
 export default function AdminContentPage({ user }) {
@@ -95,7 +117,9 @@ export default function AdminContentPage({ user }) {
   const [reviewError, setReviewError] = useState("");
   const [reviewNote, setReviewNote] = useState("Rights and manuscript reviewed by Admin.");
   const [publishBusyKey, setPublishBusyKey] = useState("");
+  const [albumReview, setAlbumReview] = useState(null);
   const [audioReview, setAudioReview] = useState(null);
+  const [videoReview, setVideoReview] = useState(null);
 
   useEffect(() => {
     const nextCategory = searchParams.get("category") || "all";
@@ -191,6 +215,28 @@ export default function AdminContentPage({ user }) {
     }
   };
 
+  const publishAlbum = async (entry) => {
+    if (!entry?.id) {
+      return;
+    }
+    const busyKey = `album-${entry.id}`;
+    setPublishBusyKey(busyKey);
+    setError("");
+    setStatusMessage("");
+    try {
+      await adminPublishAlbum(entry.id, {
+        reason: "Album rights, track playback and release metadata reviewed by Admin.",
+      });
+      setStatusMessage(`${entry.title || "Album"} is now published.`);
+      setAlbumReview(null);
+      await load();
+    } catch (err) {
+      setError(err?.message || "Failed to approve album");
+    } finally {
+      setPublishBusyKey("");
+    }
+  };
+
   const publishTrack = async (entry) => {
     if (!entry?.id) {
       return;
@@ -214,8 +260,30 @@ export default function AdminContentPage({ user }) {
     }
   };
 
+  const publishVideo = async (entry) => {
+    if (!entry?.id) {
+      return;
+    }
+    const busyKey = `video-${entry.id}`;
+    setPublishBusyKey(busyKey);
+    setError("");
+    setStatusMessage("");
+    try {
+      await adminPublishVideo(entry.id, {
+        reason: "Video rights, playback and release metadata reviewed by Admin.",
+      });
+      setStatusMessage(`${entry.title || "Video"} is now published.`);
+      setVideoReview(null);
+      await load();
+    } catch (err) {
+      setError(err?.message || "Failed to approve video");
+    } finally {
+      setPublishBusyKey("");
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil((payload.total || 0) / (payload.limit || 20)));
-  const canApproveReviewBook = reviewBook && !["published", "blocked"].includes(String(reviewBook.status || "").toLowerCase());
+  const canApproveReviewBook = reviewBook && isSubmittedForReview(reviewBook);
   const modalOpen = reviewLoading || reviewBook;
 
   return (
@@ -276,6 +344,18 @@ export default function AdminContentPage({ user }) {
                       <button type="button" className="adminx-btn adminx-btn--primary" onClick={() => openBookReview(entry)}>
                         Review manuscript
                       </button>
+                    ) : isPublishableAlbum(entry) ? (
+                      entry.tracksAvailable === false ? (
+                        <span className="adminx-muted">Missing album tracks</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="adminx-btn adminx-btn--primary"
+                          onClick={() => setAlbumReview(entry)}
+                        >
+                          Review {entry.releaseType === "ep" ? "EP" : "album"}
+                        </button>
+                      )
                     ) : isPublishableTrack(entry) ? (
                       getTrackPublishBlock(entry) ? (
                         <span className="adminx-muted">{getTrackPublishBlock(entry)}</span>
@@ -286,6 +366,18 @@ export default function AdminContentPage({ user }) {
                           onClick={() => setAudioReview(entry)}
                         >
                           Review {entry.type === "podcast" ? "episode" : "track"}
+                        </button>
+                      )
+                    ) : isPublishableVideo(entry) ? (
+                      entry.videoAvailable === false ? (
+                        <span className="adminx-muted">Missing video</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="adminx-btn adminx-btn--primary"
+                          onClick={() => setVideoReview(entry)}
+                        >
+                          Review video
                         </button>
                       )
                     ) : (
@@ -370,6 +462,63 @@ export default function AdminContentPage({ user }) {
         </div>
       ) : null}
 
+      {albumReview ? (
+        <div className="adminx-modal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !publishBusyKey) {setAlbumReview(null);} }}>
+          <div className="adminx-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="album-review-title">
+            <div className="adminx-modal__head">
+              <div>
+                <div className="adminx-eyebrow">Creator {albumReview.releaseType === "ep" ? "EP" : "album"}</div>
+                <h3 id="album-review-title">{albumReview.title || "Untitled album"}</h3>
+                <p>Listen to the submitted tracks and verify the release details before approving publication.</p>
+              </div>
+              <button type="button" className="adminx-modal__close" onClick={() => setAlbumReview(null)} disabled={Boolean(publishBusyKey)} aria-label="Close album review">X</button>
+            </div>
+
+            <div className="adminx-review-summary">
+              <div><span>Release</span><strong>{albumReview.releaseType === "ep" ? "EP" : "Album"}</strong></div>
+              <div><span>Status</span><strong>{formatStatus(albumReview.status)}</strong></div>
+              <div><span>Copyright scan</span><strong>{formatStatus(albumReview.copyrightScanStatus)}</strong></div>
+              <div><span>Price</span><strong>{formatCurrency(albumReview.price, albumReview.currency)}</strong></div>
+            </div>
+
+            {albumReview.description ? <p className="adminx-review-description">{albumReview.description}</p> : null}
+
+            <div className="adminx-audio-review">
+              <div>
+                <strong>{Number(albumReview.totalTracks || albumReview.tracks?.length || 0)} submitted tracks</strong>
+                <span>Each track must be playable before approval.</span>
+              </div>
+              {(albumReview.tracks || []).map((track, index) => (
+                <div key={`${track.order || index}-${track.title || "track"}`}>
+                  <strong>{track.order || index + 1}. {track.title || `Track ${index + 1}`}</strong>
+                  {track.audioUrl ? (
+                    <audio controls preload="metadata" src={resolveImage(track.previewUrl || track.audioUrl)}>
+                      Your browser does not support audio playback.
+                    </audio>
+                  ) : <p className="adminx-modal__error">Track audio is missing.</p>}
+                </div>
+              ))}
+            </div>
+
+            {albumReview.verificationNotes ? (
+              <p className="adminx-code-block">{albumReview.verificationNotes}</p>
+            ) : null}
+
+            <div className="adminx-modal__actions">
+              <button type="button" className="adminx-btn" onClick={() => setAlbumReview(null)} disabled={Boolean(publishBusyKey)}>Cancel</button>
+              <button
+                type="button"
+                className="adminx-btn adminx-btn--primary"
+                onClick={() => publishAlbum(albumReview)}
+                disabled={Boolean(publishBusyKey) || albumReview.tracksAvailable === false}
+              >
+                {publishBusyKey ? "Approving..." : `Approve ${albumReview.releaseType === "ep" ? "EP" : "album"}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {audioReview ? (
         <div className="adminx-modal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !publishBusyKey) {setAudioReview(null);} }}>
           <div className="adminx-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="audio-review-title">
@@ -418,6 +567,70 @@ export default function AdminContentPage({ user }) {
                 disabled={Boolean(publishBusyKey) || !audioReview.audioUrl}
               >
                 {publishBusyKey ? "Approving..." : getTrackPublishLabel(audioReview)}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {videoReview ? (
+        <div className="adminx-modal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !publishBusyKey) {setVideoReview(null);} }}>
+          <div className="adminx-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="video-review-title">
+            <div className="adminx-modal__head">
+              <div>
+                <div className="adminx-eyebrow">Creator video</div>
+                <h3 id="video-review-title">{videoReview.title || "Untitled video"}</h3>
+                <p>Play the full upload and verify its release details before approving publication.</p>
+              </div>
+              <button type="button" className="adminx-modal__close" onClick={() => setVideoReview(null)} disabled={Boolean(publishBusyKey)} aria-label="Close video review">X</button>
+            </div>
+
+            <div className="adminx-review-summary">
+              <div><span>Creator</span><strong>{videoReview.creator?.displayName || videoReview.creator?.username || "Not supplied"}</strong></div>
+              <div><span>Status</span><strong>{formatStatus(videoReview.status)}</strong></div>
+              <div><span>Copyright scan</span><strong>{formatStatus(videoReview.copyrightScanStatus)}</strong></div>
+              <div><span>Price</span><strong>{formatCurrency(videoReview.price, videoReview.currency)}</strong></div>
+            </div>
+
+            {videoReview.description ? <p className="adminx-review-description">{videoReview.description}</p> : null}
+
+            <div className="adminx-audio-review">
+              <div>
+                <strong>Video upload</strong>
+                <span>{videoReview.durationSec ? `${Math.round(Number(videoReview.durationSec))} seconds` : "Duration not supplied"}</span>
+              </div>
+              {videoReview.videoUrl ? (
+                <video
+                  controls
+                  preload="metadata"
+                  src={resolveImage(videoReview.videoUrl)}
+                  poster={resolveImage(videoReview.coverImageUrl || "") || undefined}
+                  style={{ width: "100%", maxHeight: "52vh", background: "#000", borderRadius: 12 }}
+                >
+                  Your browser does not support video playback.
+                </video>
+              ) : <p className="adminx-modal__error">No playable video file is available.</p>}
+            </div>
+
+            {videoReview.verificationNotes ? (
+              <p className="adminx-code-block">{videoReview.verificationNotes}</p>
+            ) : null}
+
+            <div className="adminx-review-checklist" aria-label="Video approval checklist">
+              <span>Video available</span>
+              <span>Metadata visible</span>
+              <span>Scan result visible</span>
+            </div>
+
+            <div className="adminx-modal__actions">
+              <button type="button" className="adminx-btn" onClick={() => setVideoReview(null)} disabled={Boolean(publishBusyKey)}>Cancel</button>
+              <button
+                type="button"
+                className="adminx-btn adminx-btn--primary"
+                onClick={() => publishVideo(videoReview)}
+                disabled={Boolean(publishBusyKey) || !videoReview.videoUrl}
+              >
+                {publishBusyKey ? "Approving..." : "Approve video"}
               </button>
             </div>
           </div>

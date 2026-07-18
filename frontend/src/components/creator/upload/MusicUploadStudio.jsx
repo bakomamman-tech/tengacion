@@ -133,14 +133,14 @@ export default function MusicUploadStudio({ showNotice = true }) {
     setValue,
   ]);
 
-  const titleLabel = isVideoRelease ? "Video Title" : "Track Title";
+  const titleLabel = isVideoRelease ? "Video / Film Title" : "Track Title";
   const titlePlaceholder = isVideoRelease ? "Lights On Me (Official Video)" : "Midnight Bloom";
   const descriptionPlaceholder = isVideoRelease
     ? "Describe the visual concept, performance story, and what makes this release special..."
     : "Tell listeners what this release is about...";
   const primaryUploadLabel = isVideoRelease ? "Full Video Upload" : "Full Audio Upload";
   const primaryUploadHelper = isVideoRelease
-    ? "Upload the full high-quality music video for this release"
+    ? "Upload the full high-quality video or film for this release"
     : "Upload the full master audio for this release";
   const primaryUploadFormats = isVideoRelease
     ? "MP4, MOV, M4V, WEBM"
@@ -155,9 +155,11 @@ export default function MusicUploadStudio({ showNotice = true }) {
     : "Optional audio teaser";
   const coverUploadLabel = isVideoRelease ? "Thumbnail Upload" : "Cover Image Upload";
   const coverUploadHelper = isVideoRelease
-    ? "Poster art or thumbnail for your music video"
+    ? "Poster art or thumbnail for your video or film"
     : "Square artwork for your release cover";
-  const publishLabel = isVideoRelease ? "Publish Music Video" : "Publish Music";
+  const publishLabel = isVideoRelease
+    ? "Publish Video / Film for Admin Approval"
+    : "Publish Music for Admin Approval";
 
   const submitUpload = async (values, publishMode) => {
     const isVideoUpload = values.releaseMediaType === "video";
@@ -226,6 +228,9 @@ export default function MusicUploadStudio({ showNotice = true }) {
       const created = isVideoUpload
         ? await createMusicVideo(formData, { onProgress: setProgress })
         : await createMusicTrack(formData, { onProgress: setProgress });
+      const finalStatus = created?.publishedStatus || publishMode;
+      const awaitingAdminApproval =
+        finalStatus === "under_review" || Boolean(created?.approvalRequired);
 
       await refreshWorkspace();
       setOutcome(
@@ -235,7 +240,7 @@ export default function MusicUploadStudio({ showNotice = true }) {
           itemType: isVideoUpload ? "video" : "track",
           itemId: created?._id || "",
           title: created?.title || values.trackTitle,
-          publishedStatus: created?.publishedStatus || publishMode,
+          publishedStatus: finalStatus,
         })
       );
       toast.success(
@@ -243,9 +248,13 @@ export default function MusicUploadStudio({ showNotice = true }) {
           ? isVideoUpload
             ? "Music video draft saved"
             : "Music draft saved"
-          : isVideoUpload
-            ? "Music video published"
-            : "Music release published"
+          : awaitingAdminApproval
+            ? isVideoUpload
+              ? "Video / film submitted for Admin approval"
+              : "Music submitted for Admin approval"
+            : isVideoUpload
+              ? "Music video published"
+              : "Music release published"
       );
       reset(buildDefaultValues(creatorProfile));
     } catch (err) {
@@ -267,8 +276,8 @@ export default function MusicUploadStudio({ showNotice = true }) {
         <section className="creator-upload-notice card">
           <strong>Music uploads only</strong>
           <p>
-            This studio is built for music releases only, whether you are
-            publishing master audio or high-quality music videos. Podcast
+            This studio is built for music and creator video releases, whether you are
+            publishing master audio or high-quality videos and films. Podcast
             episode fields and book publishing inputs stay excluded here by
             design.
           </p>
@@ -328,7 +337,7 @@ export default function MusicUploadStudio({ showNotice = true }) {
                   }}
                 >
                   <option value="audio">Audio release</option>
-                  <option value="video">Music video</option>
+                  <option value="video">Video / film release</option>
                 </select>
               </label>
 
@@ -554,15 +563,28 @@ export default function MusicUploadStudio({ showNotice = true }) {
                 {busyMode === "draft"
                   ? "Saving draft"
                   : isVideoRelease
-                    ? "Publishing music video"
-                    : "Publishing release"}
+                    ? "Submitting video / film for Admin review"
+                    : "Submitting music for Admin review"}
                 ...
               </strong>
               <small>{progress}% uploaded</small>
             </div>
           ) : null}
 
-          <div className="creator-form-actions">
+          <div className="creator-publish-approval-note" role="note" aria-label="Admin approval required">
+            <strong>Admin approval required</strong>
+            <span>
+              Publish submits this release for review. It stays private until an Admin approves it to go live.
+            </span>
+          </div>
+
+          {Object.keys(errors).length ? (
+            <p className="creator-upload-action-error" role="alert">
+              Complete the highlighted required fields before saving or publishing.
+            </p>
+          ) : null}
+
+          <div className="creator-form-actions creator-upload-publish-actions">
             <button
               type="button"
               className="creator-ghost-btn"

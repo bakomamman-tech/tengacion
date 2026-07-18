@@ -26,6 +26,22 @@ const collectBookMediaAssets = (book = {}) => [
   book?.previewMedia || book?.previewUrl,
 ].filter(Boolean);
 
+const toApprovalPayload = (content = {}) => {
+  const publishedStatus = String(
+    content.publishedStatus || (content.isPublished ? "published" : "draft")
+  ).trim().toLowerCase();
+  const approvalRequired = publishedStatus === "under_review";
+
+  return {
+    approvalRequired,
+    message: approvalRequired
+      ? "Submitted for Admin approval. This upload will go live after an Admin approves it."
+      : publishedStatus === "draft"
+        ? "Draft saved."
+        : "",
+  };
+};
+
 const toBookPayload = (book) => ({
   _id: book._id.toString(),
   creatorId:
@@ -59,6 +75,7 @@ const toBookPayload = (book) => ({
   copyrightScanStatus: book.copyrightScanStatus || "pending_scan",
   verificationNotes: book.verificationNotes || "",
   reviewRequired: Boolean(book.reviewRequired),
+  ...toApprovalPayload(book),
   creatorCategory: "books",
   contentType: book.contentType || "ebook",
   creator:
@@ -115,7 +132,19 @@ const resolveChapterPreviewPage = (content = "") => {
   return `${pageText.slice(0, cutAt).trim()}...`;
 };
 
-const resolveRequestedStatus = (body = {}) => {
+const hasRequestedStatus = (body = {}) =>
+  ["publishedStatus", "publishMode", "status", "saveAsDraft"].some((field) =>
+    Object.prototype.hasOwnProperty.call(body || {}, field)
+  );
+
+const resolveRequestedStatus = (body = {}, { fallback = "published" } = {}) => {
+  if (!hasRequestedStatus(body)) {
+    const normalizedFallback = String(fallback || "published").trim().toLowerCase();
+    return ["draft", "published", "under_review", "blocked"].includes(normalizedFallback)
+      ? normalizedFallback
+      : "published";
+  }
+
   const value = String(
     body?.publishedStatus || body?.publishMode || body?.status || ""
   )
@@ -238,6 +267,7 @@ exports.createBook = asyncHandler(async (req, res) => {
       language,
       fileFormat,
     },
+    requireAdminApproval: true,
   });
 
   const book = await Book.create({
@@ -335,7 +365,10 @@ exports.updateBook = asyncHandler(async (req, res) => {
   const chapterCount = chapterCountRequested
     ? parseOptionalNonNegativeInteger(req.body?.chapterCount)
     : book.chapterCount ?? null;
-  const requestedStatus = resolveRequestedStatus(req.body);
+  const statusWasRequested = hasRequestedStatus(req.body);
+  const requestedStatus = resolveRequestedStatus(req.body, {
+    fallback: book.publishedStatus || (book.isPublished ? "published" : "draft"),
+  });
 
   if (!title) {
     return res.status(400).json({ error: "title is required" });
@@ -401,6 +434,9 @@ exports.updateBook = asyncHandler(async (req, res) => {
       language,
       fileFormat,
     },
+    requireAdminApproval: statusWasRequested
+      ? requestedStatus === "published"
+      : requestedStatus === "under_review",
   });
 
   book.title = title;

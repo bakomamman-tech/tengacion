@@ -169,6 +169,9 @@ export default function PodcastUploadStudio({ showNotice = true }) {
       const created = await createPodcastEpisode(formData, {
         onProgress: setProgress,
       });
+      const finalStatus = created?.publishedStatus || publishMode;
+      const awaitingAdminApproval =
+        finalStatus === "under_review" || Boolean(created?.approvalRequired);
       await refreshWorkspace();
       setOutcome(
         buildUploadOutcome({
@@ -177,13 +180,15 @@ export default function PodcastUploadStudio({ showNotice = true }) {
           itemType: "podcast",
           itemId: created?._id || "",
           title: created?.title || values.episodeTitle,
-          publishedStatus: created?.publishedStatus || publishMode,
+          publishedStatus: finalStatus,
         })
       );
       toast.success(
         publishMode === "draft"
           ? "Podcast draft saved"
-          : "Podcast episode published"
+          : awaitingAdminApproval
+            ? "Podcast submitted for Admin approval"
+            : "Podcast episode published"
       );
       reset(buildDefaultValues(creatorProfile));
     } catch (err) {
@@ -511,14 +516,27 @@ export default function PodcastUploadStudio({ showNotice = true }) {
               <strong>
                 {busyMode === "draft"
                   ? "Saving draft"
-                  : "Publishing episode"}
+                  : "Submitting episode for Admin review"}
                 ...
               </strong>
               <small>{progress}% uploaded</small>
             </div>
           ) : null}
 
-          <div className="creator-form-actions">
+          <div className="creator-publish-approval-note" role="note" aria-label="Admin approval required">
+            <strong>Admin approval required</strong>
+            <span>
+              Publish submits this episode for review. It stays private until an Admin approves it to go live.
+            </span>
+          </div>
+
+          {Object.keys(errors).length ? (
+            <p className="creator-upload-action-error" role="alert">
+              Complete the highlighted required fields before saving or publishing.
+            </p>
+          ) : null}
+
+          <div className="creator-form-actions creator-upload-publish-actions">
             <button
               type="button"
               className="creator-ghost-btn"
@@ -535,7 +553,9 @@ export default function PodcastUploadStudio({ showNotice = true }) {
                 submitUpload(values, "published")
               )}
             >
-              {isVideoEpisode ? "Publish Video Podcast" : "Publish Podcast"}
+              {isVideoEpisode
+                ? "Publish Video Podcast for Admin Approval"
+                : "Publish Podcast for Admin Approval"}
             </button>
           </div>
         </section>

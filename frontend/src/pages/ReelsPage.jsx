@@ -4,8 +4,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import Navbar from "../Navbar";
 import ExpandablePostText from "../components/posts/ExpandablePostText";
+import ImmersiveReelsViewer from "../components/reels/ImmersiveReelsViewer";
 import {
   createPostWithUploadProgress,
+  getPostById,
   getReelsFeed,
   likePost,
   resolveImage,
@@ -332,22 +334,85 @@ export default function ReelsPage({ user }) {
   const streamRef = useRef(null);
   const cardRefs = useRef(new Map());
   const videoRefs = useRef(new Map());
+  const requestedReelCacheRef = useRef(new Map());
+  const requestedReelRequestsRef = useRef(new Map());
+  const pendingLikePatchesRef = useRef(new Map());
+  const suppressedReelIdsRef = useRef(new Set());
 
   const [reels, setReels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
   const [activeReelId, setActiveReelId] = useState("");
+  const [requestedReelLoading, setRequestedReelLoading] = useState(false);
+  const [requestedReelError, setRequestedReelError] = useState("");
+  const [requestedReelErrorId, setRequestedReelErrorId] = useState("");
   const requestedReelId = useMemo(
     () => String(new URLSearchParams(location.search).get("reel") || "").trim(),
     [location.search]
   );
 
+  const requestReelById = useCallback((reelId) => {
+    const pendingRequest = requestedReelRequestsRef.current.get(reelId);
+    if (pendingRequest) {
+      return pendingRequest;
+    }
+
+    const request = getPostById(reelId);
+    requestedReelRequestsRef.current.set(reelId, request);
+    const clearRequest = () => {
+      if (requestedReelRequestsRef.current.get(reelId) === request) {
+        requestedReelRequestsRef.current.delete(reelId);
+      }
+    };
+    request.then(clearRequest, clearRequest);
+    return request;
+  }, []);
+
   const loadReels = useCallback(async () => {
     try {
       setLoading(true);
       const feed = await getReelsFeed({ limit: 24 });
-      const nextReels = sortReels((Array.isArray(feed) ? feed : []).filter(isReelCandidate));
+      const rawFeed = Array.isArray(feed) ? feed : [];
+      const rawFeedIds = new Set();
+      const seenReelIds = new Set();
+      const feedReels = rawFeed.flatMap((entry) => {
+        const reelId = String(entry?._id || "");
+        if (!reelId) {
+          return [];
+        }
+        rawFeedIds.add(reelId);
+
+        if (!isReelCandidate(entry)) {
+          requestedReelCacheRef.current.delete(reelId);
+          pendingLikePatchesRef.current.delete(reelId);
+          suppressedReelIdsRef.current.add(reelId);
+          return [];
+        }
+
+        suppressedReelIdsRef.current.delete(reelId);
+        const likePatch = pendingLikePatchesRef.current.get(reelId);
+        const authoritativeEntry = likePatch ? { ...entry, ...likePatch } : entry;
+        pendingLikePatchesRef.current.delete(reelId);
+        if (requestedReelCacheRef.current.has(reelId)) {
+          requestedReelCacheRef.current.set(reelId, authoritativeEntry);
+        }
+        return [authoritativeEntry];
+      });
+      const cachedExtras = [...requestedReelCacheRef.current.entries()]
+        .filter(([reelId]) => !rawFeedIds.has(reelId) && !suppressedReelIdsRef.current.has(reelId))
+        .map(([reelId, entry]) => {
+          const likePatch = pendingLikePatchesRef.current.get(reelId);
+          return likePatch ? { ...entry, ...likePatch } : entry;
+        });
+      const nextReels = sortReels([...feedReels, ...cachedExtras].filter((entry) => {
+        const reelId = String(entry?._id || "");
+        if (!reelId || seenReelIds.has(reelId) || !isReelCandidate(entry)) {
+          return false;
+        }
+        seenReelIds.add(reelId);
+        return true;
+      }));
       setReels(nextReels);
       setActiveReelId((current) =>
         current && nextReels.some((entry) => entry._id === current) ? current : nextReels[0]?._id || ""
@@ -384,6 +449,86 @@ export default function ReelsPage({ user }) {
     const frame = window.requestAnimationFrame(revealRequestedReel);
     return () => window.cancelAnimationFrame(frame);
   }, [reels, requestedReelId]);
+
+  useEffect(() => {
+    if (!requestedReelId) {
+      setRequestedReelLoading(false);
+      setRequestedReelError("");
+      setRequestedReelErrorId("");
+      return undefined;
+    }
+
+    const requestedReel = reels.find(
+      (reel) => String(reel?._id || "") === requestedReelId
+    );
+    if (requestedReel) {
+      setActiveReelId(requestedReelId);
+      setRequestedReelLoading(false);
+      setRequestedReelError("");
+      setRequestedReelErrorId("");
+      return undefined;
+    }
+
+    if (suppressedReelIdsRef.current.has(requestedReelId)) {
+      setRequestedReelLoading(false);
+      setRequestedReelError("This reel is no longer available.");
+      setRequestedReelErrorId(requestedReelId);
+      return undefined;
+    }
+
+    if (requestedReelErrorId === requestedReelId && requestedReelError) {
+      setRequestedReelLoading(false);
+      return undefined;
+    }
+
+    let alive = true;
+    setRequestedReelLoading(true);
+    if (requestedReelErrorId !== requestedReelId) {
+      setRequestedReelError("");
+      setRequestedReelErrorId("");
+    }
+
+    requestReelById(requestedReelId)
+      .then((post) => {
+        if (!alive) {
+          return;
+        }
+        if (!post || !isReelCandidate(post)) {
+          throw new Error("This post is not an available reel.");
+        }
+        requestedReelCacheRef.current.set(String(post._id), post);
+        setReels((current) =>
+          sortReels([
+            post,
+            ...current.filter(
+              (entry) => String(entry?._id || "") !== String(post._id || "")
+            ),
+          ])
+        );
+        setActiveReelId(String(post._id));
+      })
+      .catch((err) => {
+        if (alive) {
+          setRequestedReelError(err?.message || "This reel could not be loaded.");
+          setRequestedReelErrorId(requestedReelId);
+        }
+      })
+      .finally(() => {
+        if (alive) {
+          setRequestedReelLoading(false);
+        }
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [
+    reels,
+    requestReelById,
+    requestedReelError,
+    requestedReelErrorId,
+    requestedReelId,
+  ]);
 
   useEffect(() => {
     const root = streamRef.current;
@@ -489,6 +634,33 @@ export default function ReelsPage({ user }) {
     navigate("/");
   };
 
+  const updateReelState = (reelId, updater, { rememberLikePatch = false } = {}) => {
+    const normalizedReelId = String(reelId || "");
+    setReels((current) =>
+      current.map((entry) => {
+        if (String(entry?._id || "") !== normalizedReelId) {
+          return entry;
+        }
+        const updated = updater(entry);
+        const likePatch = {
+          likedByViewer: Boolean(updated?.likedByViewer),
+          likesCount: getLikesCount(updated),
+          likes: getLikesCount(updated),
+        };
+        if (rememberLikePatch) {
+          pendingLikePatchesRef.current.set(normalizedReelId, likePatch);
+        }
+        if (requestedReelCacheRef.current.has(normalizedReelId)) {
+          requestedReelCacheRef.current.set(normalizedReelId, {
+            ...requestedReelCacheRef.current.get(normalizedReelId),
+            ...likePatch,
+          });
+        }
+        return updated;
+      })
+    );
+  };
+
   const handleLike = async (reelId) => {
     const previous = reels.find((entry) => entry._id === reelId);
     if (!previous) {
@@ -496,36 +668,30 @@ export default function ReelsPage({ user }) {
     }
 
     const willLike = !previous.likedByViewer;
-    setReels((current) =>
-      current.map((entry) =>
-        entry._id === reelId
-          ? {
-              ...entry,
-              likedByViewer: willLike,
-              likesCount: Math.max(0, getLikesCount(entry) + (willLike ? 1 : -1)),
-              likes: Math.max(0, getLikesCount(entry) + (willLike ? 1 : -1)),
-            }
-          : entry
-      )
-    );
+    updateReelState(reelId, (entry) => ({
+      ...entry,
+      likedByViewer: willLike,
+      likesCount: Math.max(0, getLikesCount(entry) + (willLike ? 1 : -1)),
+      likes: Math.max(0, getLikesCount(entry) + (willLike ? 1 : -1)),
+    }), { rememberLikePatch: true });
 
     try {
       const response = await likePost(reelId);
       const nextCount = Number(response?.likesCount);
-      setReels((current) =>
-        current.map((entry) =>
-          entry._id === reelId
-            ? {
-                ...entry,
-                likedByViewer: Boolean(response?.liked),
-                likesCount: Number.isFinite(nextCount) ? nextCount : getLikesCount(entry),
-                likes: Number.isFinite(nextCount) ? nextCount : getLikesCount(entry),
-              }
-            : entry
-        )
-      );
+      updateReelState(reelId, (entry) => ({
+        ...entry,
+        likedByViewer: Boolean(response?.liked),
+        likesCount: Number.isFinite(nextCount) ? nextCount : getLikesCount(entry),
+        likes: Number.isFinite(nextCount) ? nextCount : getLikesCount(entry),
+      }), { rememberLikePatch: true });
     } catch (err) {
-      setReels((current) => current.map((entry) => (entry._id === reelId ? previous : entry)));
+      pendingLikePatchesRef.current.delete(String(reelId));
+      updateReelState(reelId, (entry) => ({
+        ...entry,
+        likedByViewer: Boolean(previous?.likedByViewer),
+        likesCount: getLikesCount(previous),
+        likes: getLikesCount(previous),
+      }));
       toast.error(err?.message || "Failed to update like");
     }
   };
@@ -540,6 +706,30 @@ export default function ReelsPage({ user }) {
     }
   };
 
+  const handleImmersiveShare = async (reelId) => {
+    const shareUrl = `${window.location.origin}/reels?reel=${encodeURIComponent(reelId)}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Reel link copied");
+    } catch {
+      window.prompt("Copy this reel link", shareUrl);
+    }
+  };
+
+  const selectImmersiveReel = (reelId) => {
+    const nextId = String(reelId || "").trim();
+    if (!nextId) {
+      return;
+    }
+    const search = new URLSearchParams(location.search);
+    search.set("reel", nextId);
+    setActiveReelId(nextId);
+    navigate(
+      { pathname: "/reels", search: `?${search.toString()}` },
+      { replace: true, state: location.state }
+    );
+  };
+
   const handleReelCreated = (created) => {
     if (!created || !isReelCandidate(created)) {
       loadReels();
@@ -549,6 +739,39 @@ export default function ReelsPage({ user }) {
     setReels((current) => sortReels([created, ...current.filter((entry) => entry._id !== created._id)]));
     setActiveReelId(created._id);
   };
+
+  if (requestedReelId) {
+    const requestedReelPresent = reels.some(
+      (reel) => String(reel?._id || "") === requestedReelId
+    );
+    const activeRequestedError =
+      requestedReelErrorId === requestedReelId ? requestedReelError : "";
+    const immersiveLoading =
+      requestedReelLoading ||
+      (!requestedReelPresent && (loading || !activeRequestedError));
+    return (
+      <ImmersiveReelsViewer
+        reels={reels}
+        activeReelId={requestedReelPresent ? requestedReelId : activeReelId || requestedReelId}
+        loading={immersiveLoading}
+        error={immersiveLoading ? "" : activeRequestedError}
+        soundOn={soundOn}
+        onClose={() => {
+          if (location.state?.fromFeed) {
+            navigate(-1);
+            return;
+          }
+          navigate("/home", { replace: true });
+        }}
+        onSelectReel={selectImmersiveReel}
+        onToggleSound={() => setSoundOn((current) => !current)}
+        onLike={handleLike}
+        onComment={(reelId) => navigate(`/posts/${reelId}`)}
+        onShare={handleImmersiveShare}
+        onProfile={(username) => navigate(`/profile/${username}`)}
+      />
+    );
+  }
 
   return (
     <>

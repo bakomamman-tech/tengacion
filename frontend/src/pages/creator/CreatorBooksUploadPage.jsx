@@ -18,7 +18,7 @@ export default function CreatorBooksUploadPage() {
             <div>
               <span className="creator-eyebrow">Book Studio</span>
               <h2>Book Publishing Uploads</h2>
-              <p>A calm, premium publishing flow for digital books with supported manuscript formats, metadata, and polished draft or publish states.</p>
+              <p>A calm, premium publishing flow for digital books with supported manuscript formats, metadata, private drafts, and Admin-reviewed publication.</p>
             </div>
             <Link className="creator-secondary-btn" to="/creator/books">
               Back to Book Publishing
@@ -28,7 +28,7 @@ export default function CreatorBooksUploadPage() {
           <div className="creator-metric-grid">
             <div className="creator-stats-card creator-stats-card--success">
               <strong>{Number(bookStats.uploads || 0)}</strong>
-              <small>Published books available on your creator page.</small>
+              <small>Admin-approved books available on your creator page.</small>
             </div>
             <div className="creator-stats-card">
               <strong>{Number(bookStats.drafts || 0)}</strong>

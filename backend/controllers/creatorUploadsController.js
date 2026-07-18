@@ -30,6 +30,22 @@ const {
   validateFile,
 } = require("../services/creatorUploadValidation");
 
+const toApprovalPayload = (content = {}) => {
+  const publishedStatus = String(
+    content.publishedStatus || (content.isPublished ? "published" : "draft")
+  ).trim().toLowerCase();
+  const approvalRequired = publishedStatus === "under_review";
+
+  return {
+    approvalRequired,
+    message: approvalRequired
+      ? "Submitted for Admin approval. This upload will go live after an Admin approves it."
+      : publishedStatus === "draft"
+        ? "Draft saved."
+        : "",
+  };
+};
+
 const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   _id: track._id.toString(),
   creatorId: track.creatorId?._id?.toString() || track.creatorId?.toString() || "",
@@ -59,6 +75,7 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   copyrightScanStatus: track.copyrightScanStatus || "pending_scan",
   verificationNotes: track.verificationNotes || "",
   reviewRequired: Boolean(track.reviewRequired),
+  ...toApprovalPayload(track),
   creatorCategory: track.creatorCategory || (track.kind === "podcast" ? "podcasts" : "music"),
   contentType: track.contentType || (track.kind === "podcast" ? "podcast_episode" : "track"),
   podcastSeries: track.podcastSeries || "",
@@ -114,6 +131,7 @@ const toBookPayload = (book) => ({
   copyrightScanStatus: book.copyrightScanStatus || "pending_scan",
   verificationNotes: book.verificationNotes || "",
   reviewRequired: Boolean(book.reviewRequired),
+  ...toApprovalPayload(book),
   creatorCategory: "books",
   contentType: book.contentType || "ebook",
   copyrightDeclared: Boolean(book.copyrightDeclared),
@@ -264,6 +282,7 @@ exports.createMusicUpload = asyncHandler(async (req, res) => {
       genre: parsed.data.genre,
       releaseType: parsed.data.releaseType,
     },
+    requireAdminApproval: true,
   });
 
   const track = await Track.create({
@@ -488,6 +507,7 @@ exports.createPodcastUpload = asyncHandler(async (req, res) => {
       episodeType: parsed.data.episodeType,
       mediaType,
     },
+    requireAdminApproval: true,
   });
 
   const track = await Track.create({
@@ -688,6 +708,7 @@ exports.createBookUpload = asyncHandler(async (req, res) => {
       language: parsed.data.language,
       fileFormat: finalFormat,
     },
+    requireAdminApproval: true,
   });
 
   const book = await Book.create({

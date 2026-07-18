@@ -76,7 +76,19 @@ const inferUploadedFormat = (file) => {
   return extension ? extension.slice(1) : String(file?.mimetype || "").split("/")[1] || "";
 };
 
-const resolveRequestedStatus = (body = {}) => {
+const hasRequestedStatus = (body = {}) =>
+  ["publishedStatus", "publishMode", "status", "saveAsDraft"].some((field) =>
+    Object.prototype.hasOwnProperty.call(body || {}, field)
+  );
+
+const resolveRequestedStatus = (body = {}, { fallback = "published" } = {}) => {
+  if (!hasRequestedStatus(body)) {
+    const normalizedFallback = String(fallback || "published").trim().toLowerCase();
+    return ["draft", "published", "under_review", "blocked"].includes(normalizedFallback)
+      ? normalizedFallback
+      : "published";
+  }
+
   const value = String(body?.publishedStatus || body?.publishMode || body?.status || "")
     .trim()
     .toLowerCase();
@@ -84,6 +96,22 @@ const resolveRequestedStatus = (body = {}) => {
     return "draft";
   }
   return "published";
+};
+
+const toApprovalPayload = (content = {}) => {
+  const publishedStatus = String(
+    content.publishedStatus || (content.isPublished ? "published" : "draft")
+  ).trim().toLowerCase();
+  const approvalRequired = publishedStatus === "under_review";
+
+  return {
+    approvalRequired,
+    message: approvalRequired
+      ? "Submitted for Admin approval. This upload will go live after an Admin approves it."
+      : publishedStatus === "draft"
+        ? "Draft saved."
+        : "",
+  };
 };
 
 const collectVideoMediaAssets = (video = {}) => [
@@ -109,6 +137,7 @@ const toVideoPayload = (video) => ({
   copyrightScanStatus: String(video?.copyrightScanStatus || "pending_scan"),
   verificationNotes: String(video?.verificationNotes || ""),
   reviewRequired: Boolean(video?.reviewRequired),
+  ...toApprovalPayload(video),
   viewsCount: Number(video?.viewsCount || 0),
   createdAt: video?.createdAt || video?.time || null,
   updatedAt: video?.updatedAt || video?.time || null,
@@ -357,6 +386,7 @@ exports.createCreatorVideo = asyncHandler(async (req, res) => {
       hasPreviewClip: Boolean(previewClipUrl),
       durationSec,
     },
+    requireAdminApproval: true,
   });
 
   const video = await Video.create({
@@ -504,7 +534,10 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
   const description = String(req.body?.description ?? video.description ?? video.caption ?? "").trim();
   const price = parseNonNegativeNumber(req.body?.price, { fallback: Number(video.price || 0) });
   const durationSec = parseNonNegativeNumber(req.body?.durationSec, { fallback: Number(video.durationSec || 0) });
-  const requestedStatus = resolveRequestedStatus(req.body);
+  const statusWasRequested = hasRequestedStatus(req.body);
+  const requestedStatus = resolveRequestedStatus(req.body, {
+    fallback: video.publishedStatus || (video.isPublished ? "published" : "draft"),
+  });
   const {
     videoUrl,
     coverImageUrl,
@@ -719,6 +752,10 @@ exports.updateCreatorVideo = asyncHandler(async (req, res) => {
       hasPreviewClip: Boolean(nextPreviewClipUrl),
       durationSec,
     },
+    excludeContentId: video._id,
+    requireAdminApproval: statusWasRequested
+      ? requestedStatus === "published"
+      : requestedStatus === "under_review",
   });
 
   video.videoUrl = nextVideoUrl;

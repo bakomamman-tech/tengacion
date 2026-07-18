@@ -3963,3 +3963,63 @@ html[data-theme="terra-minimal"] .creator-shell {
   outline: 3px solid var(--creator-focus-ring);
   outline-offset: 3px;
 }
+
+/* Keep upload actions visible against every creator-workspace theme. */
+.creator-shell .creator-upload-studio .creator-primary-btn {
+  background: linear-gradient(135deg, var(--creator-accent), var(--creator-accent-strong));
+  border-color: transparent;
+  color: var(--creator-primary-text);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--creator-accent) 24%, transparent);
+}
+
+.creator-shell .creator-upload-studio .creator-primary-btn:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.creator-publish-approval-note {
+  display: grid;
+  gap: 5px;
+  margin-top: 20px;
+  padding: 15px 17px;
+  border: 1px solid color-mix(in srgb, var(--creator-warning) 30%, transparent);
+  border-radius: 16px;
+  background: var(--creator-surface-warning);
+  color: var(--creator-text);
+}
+
+.creator-publish-approval-note strong {
+  color: var(--creator-warning);
+  font-size: 0.94rem;
+}
+
+.creator-publish-approval-note span {
+  color: var(--creator-muted);
+  line-height: 1.5;
+}
+
+.creator-upload-action-error {
+  margin: 10px 0 0;
+  color: #b42318;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.creator-upload-publish-actions {
+  padding: 14px;
+  border: 1px solid var(--creator-inner-border);
+  border-radius: 18px;
+  background: var(--creator-surface-soft);
+}
+
+@media (max-width: 640px) {
+  .creator-upload-publish-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .creator-shell .creator-upload-studio .creator-upload-publish-actions > button {
+    width: 100%;
+    min-width: 0;
+  }
+}

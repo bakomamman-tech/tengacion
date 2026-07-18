@@ -8,6 +8,19 @@ import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import { formatCurrency, formatShortDate } from "../../components/creator/creatorConfig";
 
+const normalizePublishStatus = (value) => String(value || "draft").trim().toLowerCase();
+
+const approvalToast = (book, fallback = "Book updated") => {
+  const status = normalizePublishStatus(book?.publishedStatus);
+  if (status === "under_review" || book?.approvalRequired) {
+    return "Book submitted for Admin approval";
+  }
+  if (status === "draft") {
+    return "Book draft saved";
+  }
+  return fallback;
+};
+
 function BookEditPanel({ item, onCancel, onSave }) {
   const isPublishedBook = String(item.publishedStatus || "").toLowerCase() === "published";
   const [values, setValues] = useState({
@@ -104,12 +117,16 @@ function BookEditPanel({ item, onCancel, onSave }) {
           <textarea rows={4} value={values.previewExcerptText} onChange={(event) => update("previewExcerptText", event.target.value)} />
         </label>
       </div>
+      <div className="creator-publish-approval-note" role="note" aria-label="Admin approval required">
+        <strong>Admin approval required</strong>
+        <span>Publishing submits this manuscript for review. It remains private until an Admin approves it.</span>
+      </div>
       <div className="creator-form-actions">
         <button type="button" className="creator-ghost-btn" onClick={onCancel}>
           Cancel
         </button>
         <button type="button" className="creator-primary-btn" onClick={() => onSave(values)}>
-          Save changes
+          {values.publishedStatus === "draft" ? "Save changes" : "Submit for Admin Approval"}
         </button>
       </div>
     </section>
@@ -157,12 +174,28 @@ export default function CreatorBooksPage() {
         formData.append("preview", values.preview);
       }
 
-      await updateBookWithUploadProgress(editingItem._id, formData, { onProgress: setProgress });
+      const updatedBook = await updateBookWithUploadProgress(editingItem._id, formData, { onProgress: setProgress });
       await refreshWorkspace();
-      toast.success("Book updated");
+      toast.success(approvalToast(updatedBook));
       setEditingItem(null);
     } catch (err) {
       toast.error(err?.message || "Could not update this book");
+    } finally {
+      setBusy(false);
+      setProgress(0);
+    }
+  };
+
+  const submitForApproval = async (book) => {
+    try {
+      setBusy(true);
+      const formData = new FormData();
+      formData.append("publishedStatus", "published");
+      const updatedBook = await updateBookWithUploadProgress(book._id, formData, { onProgress: setProgress });
+      await refreshWorkspace();
+      toast.success(approvalToast(updatedBook, "Book submitted for Admin approval"));
+    } catch (err) {
+      toast.error(err?.message || "Could not submit this book for approval");
     } finally {
       setBusy(false);
       setProgress(0);
@@ -227,9 +260,21 @@ export default function CreatorBooksPage() {
                   <span>{formatShortDate(book.updatedAt || book.createdAt)}</span>
                   <CopyrightStatusBadge status={book.copyrightScanStatus} />
                 </div>
-                <button type="button" className="creator-ghost-btn" onClick={() => setEditingItem(book)}>
-                  {String(book.publishedStatus || "").toLowerCase() === "published" ? "Edit Published Book" : "Edit Book"}
-                </button>
+                <div className="creator-inline-row">
+                  <button type="button" className="creator-ghost-btn" disabled={busy} onClick={() => setEditingItem(book)}>
+                    {normalizePublishStatus(book.publishedStatus) === "published" ? "Edit Published Book" : "Edit Book"}
+                  </button>
+                  {normalizePublishStatus(book.publishedStatus) === "draft" ? (
+                    <button
+                      type="button"
+                      className="creator-primary-btn"
+                      disabled={busy}
+                      onClick={() => submitForApproval(book)}
+                    >
+                      Publish for Admin Approval
+                    </button>
+                  ) : null}
+                </div>
               </article>
             ))
           ) : (

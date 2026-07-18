@@ -43,6 +43,22 @@ const collectAlbumMediaAssets = (album = {}) => {
   return assets.filter(Boolean);
 };
 
+const toApprovalPayload = (album = {}) => {
+  const publishedStatus = String(
+    album.publishedStatus || (album.isPublished ? "published" : "draft")
+  ).trim().toLowerCase();
+  const approvalRequired = publishedStatus === "under_review";
+
+  return {
+    approvalRequired,
+    message: approvalRequired
+      ? "Submitted for Admin approval. This upload will go live after an Admin approves it."
+      : publishedStatus === "draft"
+        ? "Draft saved."
+        : "",
+  };
+};
+
 const toAlbumListPayload = (album) => ({
   _id: album._id.toString(),
   creatorId: album.creatorId?._id?.toString?.() || album.creatorId?.toString?.() || "",
@@ -57,6 +73,7 @@ const toAlbumListPayload = (album) => ({
   copyrightScanStatus: album.copyrightScanStatus || "pending_scan",
   verificationNotes: album.verificationNotes || "",
   reviewRequired: Boolean(album.reviewRequired),
+  ...toApprovalPayload(album),
   creatorCategory: "music",
   contentType: album.contentType || album.releaseType || "album",
   createdAt: album.createdAt,
@@ -72,7 +89,19 @@ const toAlbumListPayload = (album) => ({
       : null,
 });
 
-const resolveRequestedStatus = (body = {}) => {
+const hasRequestedStatus = (body = {}) =>
+  ["publishedStatus", "publishMode", "status", "saveAsDraft"].some((field) =>
+    Object.prototype.hasOwnProperty.call(body || {}, field)
+  );
+
+const resolveRequestedStatus = (body = {}, { fallback = "published" } = {}) => {
+  if (!hasRequestedStatus(body)) {
+    const normalizedFallback = String(fallback || "published").trim().toLowerCase();
+    return ["draft", "published", "under_review", "blocked"].includes(normalizedFallback)
+      ? normalizedFallback
+      : "published";
+  }
+
   const value = String(
     body?.publishedStatus || body?.publishMode || body?.status || ""
   )
@@ -205,6 +234,7 @@ exports.createAlbum = asyncHandler(async (req, res) => {
       tracksCount: trackFiles.length,
       releaseType,
     },
+    requireAdminApproval: true,
   });
 
   const album = await Album.create({
@@ -291,7 +321,10 @@ exports.updateAlbum = asyncHandler(async (req, res) => {
     .toLowerCase() === "ep"
     ? "ep"
     : "album";
-  const requestedStatus = resolveRequestedStatus(req.body);
+  const statusWasRequested = hasRequestedStatus(req.body);
+  const requestedStatus = resolveRequestedStatus(req.body, {
+    fallback: album.publishedStatus || (album.isPublished ? "published" : "draft"),
+  });
 
   if (!title) {
     return res.status(400).json({ error: "albumTitle is required" });
@@ -329,6 +362,10 @@ exports.updateAlbum = asyncHandler(async (req, res) => {
       tracksCount: Array.isArray(album.tracks) ? album.tracks.length : 0,
       releaseType,
     },
+    excludeContentId: album._id,
+    requireAdminApproval: statusWasRequested
+      ? requestedStatus === "published"
+      : requestedStatus === "under_review",
   });
 
   album.title = title;

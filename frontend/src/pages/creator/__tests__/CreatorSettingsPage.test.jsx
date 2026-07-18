@@ -34,7 +34,10 @@ describe("CreatorSettingsPage", () => {
       fullName: "Creator Example",
       displayName: "Creator Example",
       phoneNumber: "08000000000",
+      bankName: "Access Bank",
+      bankCode: "044",
       accountNumber: "1234567890",
+      accountName: "Creator Example",
       country: "Nigeria",
       countryOfResidence: "Nigeria",
       tagline: "",
@@ -69,7 +72,9 @@ describe("CreatorSettingsPage", () => {
     );
 
     await userEvent.click(screen.getByRole("checkbox", { name: /book publishing/i }));
-    await userEvent.click(screen.getByRole("button", { name: /save creator profile/i }));
+    const saveButton = screen.getByRole("button", { name: /save creator profile/i });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    await userEvent.click(saveButton);
 
     await waitFor(() => {
       expect(updateCreatorWorkspaceProfile).toHaveBeenCalledWith(

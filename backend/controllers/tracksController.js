@@ -13,7 +13,19 @@ const { notifySavedContentUpdated } = require("../services/fanReturnPathService"
 const { logCreatorUploadOnboardingMilestones } = require("../services/creatorOnboardingAnalyticsService");
 const { cleanupReplacedMedia, mediaDocumentToUrl, toMediaDocument } = require("../utils/cloudinaryMedia");
 
-const resolveRequestedStatus = (body = {}) => {
+const hasRequestedStatus = (body = {}) =>
+  ["publishedStatus", "publishMode", "status", "saveAsDraft"].some((field) =>
+    Object.prototype.hasOwnProperty.call(body || {}, field)
+  );
+
+const resolveRequestedStatus = (body = {}, { fallback = "published" } = {}) => {
+  if (!hasRequestedStatus(body)) {
+    const normalizedFallback = String(fallback || "published").trim().toLowerCase();
+    return ["draft", "published", "under_review", "blocked"].includes(normalizedFallback)
+      ? normalizedFallback
+      : "published";
+  }
+
   const value = String(
     body?.publishedStatus || body?.publishMode || body?.status || ""
   )
@@ -23,6 +35,22 @@ const resolveRequestedStatus = (body = {}) => {
     return "draft";
   }
   return "published";
+};
+
+const toApprovalPayload = (content = {}) => {
+  const publishedStatus = String(
+    content.publishedStatus || (content.isPublished ? "published" : "draft")
+  ).trim().toLowerCase();
+  const approvalRequired = publishedStatus === "under_review";
+
+  return {
+    approvalRequired,
+    message: approvalRequired
+      ? "Submitted for Admin approval. This upload will go live after an Admin approves it."
+      : publishedStatus === "draft"
+        ? "Draft saved."
+        : "",
+  };
 };
 
 const inferUploadedFormat = (file) => {
@@ -75,6 +103,7 @@ const toTrackPayload = (track, { includeAudio = false } = {}) => ({
   copyrightScanStatus: track.copyrightScanStatus || "pending_scan",
   verificationNotes: track.verificationNotes || "",
   reviewRequired: Boolean(track.reviewRequired),
+  ...toApprovalPayload(track),
   creatorCategory: track.creatorCategory || (track.kind === "podcast" ? "podcasts" : "music"),
   contentType: track.contentType || (track.kind === "podcast" ? "podcast_episode" : "track"),
   podcastSeries: track.podcastSeries || "",
@@ -214,6 +243,7 @@ exports.createTrack = asyncHandler(async (req, res) => {
       genre,
       seriesName: podcastSeries,
     },
+    requireAdminApproval: true,
   });
 
   const track = await Track.create({
@@ -322,7 +352,10 @@ exports.updateTrack = asyncHandler(async (req, res) => {
     });
   }
 
-  const requestedStatus = resolveRequestedStatus(req.body);
+  const statusWasRequested = hasRequestedStatus(req.body);
+  const requestedStatus = resolveRequestedStatus(req.body, {
+    fallback: track.publishedStatus || (track.isPublished ? "published" : "draft"),
+  });
   const title = String(req.body?.title || track.title || "").trim();
   const description = String(req.body?.description || track.description || "").trim();
   const genre = String(req.body?.genre || track.genre || "").trim();
@@ -423,6 +456,10 @@ exports.updateTrack = asyncHandler(async (req, res) => {
       seriesName: podcastSeries,
       mediaType,
     },
+    excludeContentId: track._id,
+    requireAdminApproval: statusWasRequested
+      ? requestedStatus === "published"
+      : requestedStatus === "under_review",
   });
 
   track.title = title;

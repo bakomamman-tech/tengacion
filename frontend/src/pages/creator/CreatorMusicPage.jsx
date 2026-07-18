@@ -51,7 +51,7 @@ function ReleaseCard({ item, type, onEdit, onPublish, busy }) {
       <div className="creator-release-actions">
         {isDraft ? (
           <button type="button" className="creator-primary-btn" onClick={onPublish} disabled={busy}>
-            {busy ? "Publishing..." : "Publish"}
+            {busy ? "Submitting..." : "Publish for Admin Approval"}
           </button>
         ) : null}
         <button type="button" className="creator-ghost-btn" onClick={onEdit} disabled={busy}>
@@ -114,7 +114,7 @@ function MusicEditPanel({ entry, onCancel, onSave }) {
         <label>
           <span>Publishing mode</span>
           <select value={values.publishedStatus} onChange={(event) => update("publishedStatus", event.target.value)}>
-            <option value="published">Publish</option>
+            <option value="published">Publish for Admin approval</option>
             <option value="draft">Save as draft</option>
           </select>
         </label>
@@ -150,6 +150,11 @@ function MusicEditPanel({ entry, onCancel, onSave }) {
             </label>
           </>
         ) : null}
+      </div>
+
+      <div className="creator-publish-approval-note" role="note" aria-label="Admin approval required">
+        <strong>Admin approval required</strong>
+        <span>Publishing submits this release for review. It remains private until an Admin approves it.</span>
       </div>
 
       <div className="creator-form-actions">
@@ -189,6 +194,7 @@ export default function CreatorMusicPage() {
     try {
       const action = values.publishedStatus === "published" ? "publish" : "edit";
       setBusyKey(`${action}-${entry._id}`);
+      let updated = null;
       const formData = new FormData();
       formData.append("title", values.title.trim());
       formData.append("description", values.description.trim());
@@ -207,13 +213,13 @@ export default function CreatorMusicPage() {
         if (values.preview) {
           formData.append("preview", values.preview);
         }
-        await updateTrackWithUploadProgress(entry._id, formData, { onProgress: setProgress });
+        updated = await updateTrackWithUploadProgress(entry._id, formData, { onProgress: setProgress });
       } else if (entry.contentType === "album" || entry.contentType === "ep") {
         formData.append("releaseType", values.releaseType || "album");
         if (values.cover) {
           formData.append("coverImage", values.cover);
         }
-        await updateAlbumWithUploadProgress(entry._id, formData, { onProgress: setProgress });
+        updated = await updateAlbumWithUploadProgress(entry._id, formData, { onProgress: setProgress });
       } else {
         if (values.thumbnail) {
           formData.append("thumbnail", values.thumbnail);
@@ -224,11 +230,17 @@ export default function CreatorMusicPage() {
         if (values.previewClip) {
           formData.append("previewClip", values.previewClip);
         }
-        await updateCreatorVideoWithUploadProgress(entry._id, formData, { onProgress: setProgress });
+        updated = await updateCreatorVideoWithUploadProgress(entry._id, formData, { onProgress: setProgress });
       }
 
       await refreshWorkspace();
-      toast.success(successMessage);
+      const awaitingAdminApproval =
+        updated?.publishedStatus === "under_review" || Boolean(updated?.approvalRequired);
+      toast.success(
+        awaitingAdminApproval
+          ? `${entry.title || "Release"} submitted for Admin approval`
+          : successMessage
+      );
       if (closeEditor) {
         setEditingEntry(null);
       }

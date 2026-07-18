@@ -17,12 +17,12 @@ export default function CreatorPublishOutcomeCard({ outcome }) {
             {isPublished
               ? `${outcome.title} is now live on your public creator page, where your audience can preview, stream, buy, read, or watch it.`
               : isDraft
-                ? `${outcome.title} is saved as a draft. Publish it when you are ready to send your audience to the final release page.`
-                : `${outcome.title} is being reviewed before it appears on your public creator page for audience access.`}
+                ? `${outcome.title} is saved as a draft. Submit it for Admin approval when it is ready; it will remain private until approved.`
+                : `${outcome.title} was submitted successfully. An Admin must approve it before it goes live on your public creator page.`}
           </p>
         </div>
         <span className={`creator-status-badge ${isPublished ? "success" : isDraft ? "neutral" : "warning"}`}>
-          {isPublished ? "Live" : isDraft ? "Draft" : "In review"}
+          {isPublished ? "Live" : isDraft ? "Draft" : "Awaiting Admin"}
         </span>
       </div>
 

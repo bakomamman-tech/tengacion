@@ -61,7 +61,10 @@ describe("CreatorBooksPage", () => {
       dashboard,
       refreshWorkspace: vi.fn(),
     });
-    updateBookWithUploadProgress.mockResolvedValue({});
+    updateBookWithUploadProgress.mockResolvedValue({
+      publishedStatus: "under_review",
+      approvalRequired: true,
+    });
   });
 
   it("lets authors edit published books and save chapter count", async () => {
@@ -80,12 +83,16 @@ describe("CreatorBooksPage", () => {
 
     await user.click(screen.getByRole("button", { name: /edit published book/i }));
 
+    expect(screen.getByRole("note", { name: /admin approval required/i })).toHaveTextContent(
+      /remains private until an admin approves it/i
+    );
+
     const chapterCountInput = screen.getByLabelText(/number of chapters/i);
     expect(chapterCountInput).toHaveValue(12);
 
     await user.clear(chapterCountInput);
     await user.type(chapterCountInput, "14");
-    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    await user.click(screen.getByRole("button", { name: /submit for admin approval/i }));
 
     await waitFor(() => {
       expect(updateBookWithUploadProgress).toHaveBeenCalledWith(
@@ -97,5 +104,48 @@ describe("CreatorBooksPage", () => {
 
     const submittedForm = updateBookWithUploadProgress.mock.calls[0][1];
     expect(submittedForm.get("chapterCount")).toBe("14");
+    expect(submittedForm.get("publishedStatus")).toBe("published");
   }, 15000);
+
+  it("lets authors submit a saved draft for Admin approval", async () => {
+    const user = userEvent.setup();
+    const refreshWorkspace = vi.fn();
+    useCreatorWorkspace.mockReturnValue({
+      dashboard: {
+        ...dashboard,
+        content: {
+          books: {
+            analytics: dashboard.content.books.analytics,
+            items: [
+              {
+                ...dashboard.content.books.items[0],
+                _id: "book-draft",
+                title: "Unpublished Manuscript",
+                publishedStatus: "draft",
+              },
+            ],
+          },
+        },
+      },
+      refreshWorkspace,
+    });
+
+    render(
+      <MemoryRouter>
+        <CreatorBooksPage />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("button", { name: /publish for admin approval/i }));
+
+    await waitFor(() => {
+      expect(updateBookWithUploadProgress).toHaveBeenCalledWith(
+        "book-draft",
+        expect.any(FormData),
+        expect.objectContaining({ onProgress: expect.any(Function) })
+      );
+    });
+    expect(updateBookWithUploadProgress.mock.calls[0][1].get("publishedStatus")).toBe("published");
+    expect(refreshWorkspace).toHaveBeenCalled();
+  });
 });

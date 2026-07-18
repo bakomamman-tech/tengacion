@@ -8,21 +8,24 @@ import CreatorStatsCard from "../../components/creator/CreatorStatsCard";
 import { useCreatorWorkspace } from "../../components/creator/useCreatorWorkspace";
 import { formatCurrency, formatShortDate } from "../../components/creator/creatorConfig";
 
+const buildPodcastEditValues = (item = {}, publishedStatus) => ({
+  title: item.title || "",
+  description: item.description || "",
+  podcastSeries: item.podcastSeries || "",
+  seasonNumber: String(item.seasonNumber ?? ""),
+  episodeNumber: String(item.episodeNumber ?? ""),
+  price: String(item.price ?? ""),
+  publishedStatus:
+    publishedStatus || (item.publishedStatus === "draft" ? "draft" : "published"),
+  mediaType: item.mediaType || "audio",
+  cover: null,
+  media: null,
+  preview: null,
+});
+
 function PodcastEditPanel({ item, onCancel, onSave }) {
   const isVideoEpisode = item.mediaType === "video";
-  const [values, setValues] = useState({
-    title: item.title || "",
-    description: item.description || "",
-    podcastSeries: item.podcastSeries || "",
-    seasonNumber: String(item.seasonNumber ?? ""),
-    episodeNumber: String(item.episodeNumber ?? ""),
-    price: String(item.price ?? ""),
-    publishedStatus: item.publishedStatus === "draft" ? "draft" : "published",
-    mediaType: item.mediaType || "audio",
-    cover: null,
-    media: null,
-    preview: null,
-  });
+  const [values, setValues] = useState(() => buildPodcastEditValues(item));
 
   const update = (key, value) => setValues((current) => ({ ...current, [key]: value }));
 
@@ -58,7 +61,7 @@ function PodcastEditPanel({ item, onCancel, onSave }) {
         <label>
           <span>Publishing mode</span>
           <select value={values.publishedStatus} onChange={(event) => update("publishedStatus", event.target.value)}>
-            <option value="published">Publish</option>
+            <option value="published">Publish for Admin approval</option>
             <option value="draft">Save as draft</option>
           </select>
         </label>
@@ -86,6 +89,10 @@ function PodcastEditPanel({ item, onCancel, onSave }) {
           <span>Description</span>
           <textarea rows={4} value={values.description} onChange={(event) => update("description", event.target.value)} />
         </label>
+      </div>
+      <div className="creator-publish-approval-note" role="note" aria-label="Admin approval required">
+        <strong>Admin approval required</strong>
+        <span>Publishing submits this episode for review. It remains private until an Admin approves it.</span>
       </div>
       <div className="creator-form-actions">
         <button type="button" className="creator-ghost-btn" onClick={onCancel}>
@@ -122,8 +129,8 @@ export default function CreatorPodcastsPage() {
     [episodes]
   );
 
-  const saveEdit = async (values) => {
-    if (!editingItem) {
+  const saveEpisode = async (item, values, { closeEditor = true } = {}) => {
+    if (!item) {
       return;
     }
     try {
@@ -137,7 +144,7 @@ export default function CreatorPodcastsPage() {
       formData.append("episodeNumber", values.episodeNumber || "0");
       formData.append("price", values.price || "0");
       formData.append("publishedStatus", values.publishedStatus);
-      formData.append("mediaType", values.mediaType || editingItem.mediaType || "audio");
+      formData.append("mediaType", values.mediaType || item.mediaType || "audio");
       if (values.cover) {
         formData.append("cover", values.cover);
       }
@@ -148,16 +155,34 @@ export default function CreatorPodcastsPage() {
         formData.append("preview", values.preview);
       }
 
-      await updateTrackWithUploadProgress(editingItem._id, formData, { onProgress: setProgress });
+      const updated = await updateTrackWithUploadProgress(item._id, formData, { onProgress: setProgress });
       await refreshWorkspace();
-      toast.success("Podcast episode updated");
-      setEditingItem(null);
+      const awaitingAdminApproval =
+        updated?.publishedStatus === "under_review" || Boolean(updated?.approvalRequired);
+      toast.success(
+        awaitingAdminApproval
+          ? `${item.title || "Podcast episode"} submitted for Admin approval`
+          : "Podcast episode updated"
+      );
+      if (closeEditor) {
+        setEditingItem(null);
+      }
     } catch (err) {
       toast.error(err?.message || "Could not update this episode");
     } finally {
       setBusy(false);
       setProgress(0);
     }
+  };
+
+  const saveEdit = async (values) => {
+    await saveEpisode(editingItem, values);
+  };
+
+  const submitEpisodeForApproval = async (item) => {
+    await saveEpisode(item, buildPodcastEditValues(item, "published"), {
+      closeEditor: false,
+    });
   };
 
   return (
@@ -241,9 +266,21 @@ export default function CreatorPodcastsPage() {
                   <span>{formatShortDate(episode.updatedAt || episode.createdAt)}</span>
                   <CopyrightStatusBadge status={episode.copyrightScanStatus} />
                 </div>
-                <button type="button" className="creator-ghost-btn" onClick={() => setEditingItem(episode)}>
-                  Edit metadata
-                </button>
+                <div className="creator-release-actions">
+                  {String(episode.publishedStatus || "").toLowerCase() === "draft" ? (
+                    <button
+                      type="button"
+                      className="creator-primary-btn"
+                      disabled={busy}
+                      onClick={() => submitEpisodeForApproval(episode)}
+                    >
+                      {busy ? "Submitting..." : "Publish for Admin Approval"}
+                    </button>
+                  ) : null}
+                  <button type="button" className="creator-ghost-btn" onClick={() => setEditingItem(episode)}>
+                    Edit metadata
+                  </button>
+                </div>
               </article>
             ))
           ) : (

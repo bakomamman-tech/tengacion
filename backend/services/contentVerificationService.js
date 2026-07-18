@@ -147,14 +147,27 @@ const buildFingerprintHash = ({
     )
     .digest("hex");
 
-const buildPublishedStatus = ({ requestedStatus = "published", scanStatus = "pending_scan", reviewRequired = false }) => {
+const buildPublishedStatus = ({
+  requestedStatus = "published",
+  scanStatus = "pending_scan",
+  reviewRequired = false,
+  requireAdminApproval = false,
+}) => {
   if (scanStatus === "blocked") {
     return "blocked";
   }
   if (requestedStatus === "draft") {
     return "draft";
   }
-  if (reviewRequired || scanStatus === "flagged") {
+  if (requestedStatus === "blocked") {
+    return "blocked";
+  }
+  if (
+    requestedStatus === "under_review"
+    || requireAdminApproval
+    || reviewRequired
+    || scanStatus === "flagged"
+  ) {
     return "under_review";
   }
   return "published";
@@ -248,6 +261,7 @@ const evaluateVerification = async ({
   primaryFile = null,
   metadata = {},
   excludeContentId = "",
+  requireAdminApproval = false,
 }) => {
   const textForScreening = [title, description, metadata?.authorName, metadata?.seriesName]
     .filter(Boolean)
@@ -276,7 +290,11 @@ const evaluateVerification = async ({
 
   const notes = ["Queued for metadata and duplicate screening."];
   let scanStatus = "pending_scan";
-  let reviewRequired = false;
+  let reviewRequired = Boolean(requireAdminApproval && requestedStatus !== "draft");
+
+  if (reviewRequired) {
+    notes.push("Admin approval is required before this upload can go live.");
+  }
 
   if (blockedMatches.length) {
     scanStatus = "blocked";
@@ -323,6 +341,7 @@ const evaluateVerification = async ({
     requestedStatus,
     scanStatus,
     reviewRequired,
+    requireAdminApproval,
   });
 
   return {

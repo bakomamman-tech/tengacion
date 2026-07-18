@@ -45,6 +45,15 @@ export const TEAM_LEADS = [
 
 export const INTERNS = [
   {
+    id: "samuel-h-kaboshia",
+    name: "Samuel H. Kaboshia",
+    role: "Intern",
+    image: "/assets/leadership/samuel-h-kaboshia.png",
+    imageAlt: "Samuel H. Kaboshia, Intern at Tengacion",
+    bio:
+      "Samuel H. Kaboshia supports Tengacion's work while gaining practical experience and contributing to the platform's continued development.",
+  },
+  {
     id: "tengacion-intern",
     name: "Tengacion Intern",
     role: "Intern (Software Development)",

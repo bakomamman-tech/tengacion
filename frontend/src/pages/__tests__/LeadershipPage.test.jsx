@@ -76,6 +76,18 @@ describe("LeadershipPage", () => {
       screen.getByRole("heading", { name: "Interns" })
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("heading", { name: "Samuel H. Kaboshia" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Intern", { selector: ".leadership-card__role" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByAltText("Samuel H. Kaboshia, Intern at Tengacion")
+    ).toHaveAttribute(
+      "src",
+      "/assets/leadership/samuel-h-kaboshia.png"
+    );
+    expect(
       screen.getByText("Intern (Software Development)")
     ).toBeInTheDocument();
     expect(

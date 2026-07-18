@@ -1655,12 +1655,18 @@ class PostService {
     return toPostPayload(refreshedPost, viewerId);
   }
 
-  static async getFeed({ userId, search, publicOnly = false, limit = null } = {}) {
+  static async getFeed({
+    userId,
+    search,
+    publicOnly = false,
+    reelsOnly = false,
+    limit = null,
+  } = {}) {
     const viewerId = userId;
     const rawSearch = (search || "").trim();
     const searchTerm = rawSearch.replace(/^@+/, "");
     const numericLimit = Math.floor(Number(limit || 0));
-    const safeLimit = numericLimit > 0 ? Math.min(numericLimit, 50) : 0;
+    const safeLimit = numericLimit > 0 ? Math.min(numericLimit, 50) : reelsOnly ? 24 : 0;
 
     let matchedAuthorIds = [];
     if (searchTerm) {
@@ -1747,12 +1753,48 @@ class PostService {
     if (blockedIds.length > 0) {
       query.author = { $nin: blockedIds };
     }
+    const conjunctiveFilters = [];
+    if (reelsOnly) {
+      const hasMediaUrl = { $exists: true, $type: "string", $ne: "" };
+      const playableVideoMedia = {
+        media: {
+          $elemMatch: {
+            type: "video",
+            $or: [
+              { secureUrl: hasMediaUrl },
+              { secure_url: hasMediaUrl },
+              { url: hasMediaUrl },
+              { legacyPath: hasMediaUrl },
+            ],
+          },
+        },
+      };
+      conjunctiveFilters.push({
+        $or: [
+          {
+            type: { $in: ["reel", "video"] },
+            $or: [
+              { "video.playbackUrl": hasMediaUrl },
+              { "video.secureUrl": hasMediaUrl },
+              { "video.secure_url": hasMediaUrl },
+              { "video.url": hasMediaUrl },
+              { "video.legacyPath": hasMediaUrl },
+              playableVideoMedia,
+            ],
+          },
+          playableVideoMedia,
+        ],
+      });
+    }
     if (searchTerm) {
       const searchFilters = [{ text: { $regex: searchTerm, $options: "i" } }];
       if (matchedAuthorIds.length > 0) {
         searchFilters.push({ author: { $in: matchedAuthorIds } });
       }
-      query.$and = [{ $or: searchFilters }];
+      conjunctiveFilters.push({ $or: searchFilters });
+    }
+    if (conjunctiveFilters.length > 0) {
+      query.$and = conjunctiveFilters;
     }
 
     const findQuery = Post.find(query).sort({ createdAt: -1 });

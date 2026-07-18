@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -10,6 +10,7 @@ import NewsStoryCard from "../features/news/components/NewsStoryCard";
 import { useNewsFeed } from "../features/news/hooks/useNewsFeed";
 import { useNewsPreferences } from "../features/news/hooks/useNewsPreferences";
 import CreatorSummaryCard from "../components/creatorDiscovery/CreatorSummaryCard";
+import InFeedReelsCarousel from "../components/feed/InFeedReelsCarousel";
 
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
@@ -25,6 +26,7 @@ import {
   getCreatorSummaryFeed,
   getFeed,
   getProfile,
+  getReelsFeed,
   getUsers,
   muteUser,
   resolveImage,
@@ -32,6 +34,7 @@ import {
   trackDiscoveryEvents,
 } from "../api";
 import { UPLOAD_LIMITS } from "../config/uploadLimits";
+import { isReelCandidate, sortReels } from "../utils/reels";
 import { buildAlphabeticalCreatorRotation } from "./homeCreatorRotation";
 
 const FEELING_OPTIONS = [
@@ -1134,6 +1137,7 @@ export default function Home({ user }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [feedItems, setFeedItems] = useState([]);
+  const [reelItems, setReelItems] = useState([]);
   const [creatorRotation, setCreatorRotation] = useState([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState("");
@@ -1217,6 +1221,17 @@ export default function Home({ user }) {
     },
     [flushDiscoveryEvents]
   );
+
+  const loadReels = useCallback(async () => {
+    try {
+      const feed = await getReelsFeed({ limit: 24 });
+      setReelItems(
+        sortReels((Array.isArray(feed) ? feed : []).filter(isReelCandidate))
+      );
+    } catch {
+      // Reels are optional here; keep the main feed usable if this request fails.
+    }
+  }, []);
 
   const loadFeed = useCallback(async ({ silent = false, preserveVisibleCount = false } = {}) => {
     const requestSequence = ++feedRequestSequenceRef.current;
@@ -1302,6 +1317,10 @@ export default function Home({ user }) {
   }, [loadFeed]);
 
   useEffect(() => {
+    void loadReels();
+  }, [loadReels]);
+
+  useEffect(() => {
     let active = true;
     getCreatorSummaryFeed({ category: "all", mode: "latest", page: 1, limit: CREATOR_ROTATION_LIMIT })
       .then((payload) => {
@@ -1326,6 +1345,7 @@ export default function Home({ user }) {
       if (typeof document !== "undefined" && document.hidden) {
         return;
       }
+      void loadReels();
       void loadFeed({
         silent: true,
         preserveVisibleCount: true,
@@ -1339,6 +1359,7 @@ export default function Home({ user }) {
       if (Date.now() - lastFeedRefreshAtRef.current < FEED_AUTO_REFRESH_MS) {
         return;
       }
+      void loadReels();
       void loadFeed({
         silent: true,
         preserveVisibleCount: true,
@@ -1356,7 +1377,7 @@ export default function Home({ user }) {
         document.removeEventListener("visibilitychange", handleVisibilityChange);
       }
     };
-  }, [loadFeed]);
+  }, [loadFeed, loadReels]);
 
   useEffect(() => () => {
     if (typeof window !== "undefined" && discoveryFlushTimerRef.current) {
@@ -1821,38 +1842,55 @@ export default function Home({ user }) {
                   ? creatorRotation[postIndex % creatorRotation.length]
                   : null;
                 return (
-                  <div key={entry.key} className="home-feed-pair">
-                    <PostCard
-                      post={entry.post}
-                      discoveryMeta={entry.discoveryMeta}
-                      onRecommendationAction={handleRecommendationAction}
-                      onShareCreated={(sharedPost) =>
-                        setFeedItems((prev) => [
-                          createFeedEntry(sharedPost),
-                          ...prev.filter((feedEntry) => feedEntry?.post?._id !== sharedPost?._id),
-                        ])
-                      }
-                      onDelete={(id) =>
-                        setFeedItems((prev) =>
-                          prev.filter((feedEntry) => feedEntry?.post?._id !== id)
-                        )
-                      }
-                      onEdit={(updatedPost) =>
-                        setFeedItems((prev) =>
-                          prev.map((feedEntry) =>
-                            feedEntry?.post?._id === updatedPost._id
-                              ? { ...feedEntry, post: updatedPost }
-                              : feedEntry
-                          )
-                        )
-                      }
-                    />
-                    {creatorItem ? (
-                      <section className="creator-summary-feed creator-discovery-theme home-creator-rotation">
-                        <CreatorSummaryCard item={creatorItem} />
-                      </section>
+                  <Fragment key={entry.key}>
+                    <div className="home-feed-pair">
+                      <PostCard
+                        post={entry.post}
+                        discoveryMeta={entry.discoveryMeta}
+                        onRecommendationAction={handleRecommendationAction}
+                        onShareCreated={(sharedPost) =>
+                          setFeedItems((prev) => [
+                            createFeedEntry(sharedPost),
+                            ...prev.filter((feedEntry) => feedEntry?.post?._id !== sharedPost?._id),
+                          ])
+                        }
+                        onDelete={(id) => {
+                          setFeedItems((prev) =>
+                            prev.filter((feedEntry) => feedEntry?.post?._id !== id)
+                          );
+                          setReelItems((prev) => prev.filter((reel) => reel?._id !== id));
+                        }}
+                        onEdit={(updatedPost) => {
+                          setFeedItems((prev) =>
+                            prev.map((feedEntry) =>
+                              feedEntry?.post?._id === updatedPost._id
+                                ? { ...feedEntry, post: updatedPost }
+                                : feedEntry
+                            )
+                          );
+                          setReelItems((prev) => {
+                            const withoutEditedReel = prev.filter(
+                              (reel) => reel?._id !== updatedPost?._id
+                            );
+                            return isReelCandidate(updatedPost)
+                              ? sortReels([updatedPost, ...withoutEditedReel])
+                              : withoutEditedReel;
+                          });
+                        }}
+                      />
+                      {creatorItem ? (
+                        <section className="creator-summary-feed creator-discovery-theme home-creator-rotation">
+                          <CreatorSummaryCard item={creatorItem} />
+                        </section>
+                      ) : null}
+                    </div>
+                    {(postIndex + 1) % 5 === 0 && reelItems.length ? (
+                      <InFeedReelsCarousel
+                        reels={reelItems}
+                        blockIndex={Math.floor(postIndex / 5)}
+                      />
                     ) : null}
-                  </div>
+                  </Fragment>
                 );
               })
             )}
@@ -1897,9 +1935,14 @@ export default function Home({ user }) {
             setComposerInitialFiles([]);
             setComposerInitialMode("");
           }}
-          onPosted={(post) =>
-            setFeedItems((prev) => [createFeedEntry(post), ...prev])
-          }
+          onPosted={(post) => {
+            setFeedItems((prev) => [createFeedEntry(post), ...prev]);
+            if (isReelCandidate(post)) {
+              setReelItems((prev) =>
+                sortReels([post, ...prev.filter((reel) => reel?._id !== post?._id)])
+              );
+            }
+          }}
         />
       )}
       <NewsDetailDrawer

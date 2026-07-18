@@ -7,12 +7,16 @@ const {
   getDiscoveryHomeMock,
   getFeedMock,
   getProfileMock,
+  getReelsFeedMock,
   getTopUpPromoStatusMock,
+  newsFeedCardsState,
 } = vi.hoisted(() => ({
   getDiscoveryHomeMock: vi.fn(),
   getFeedMock: vi.fn(),
   getProfileMock: vi.fn(),
+  getReelsFeedMock: vi.fn(),
   getTopUpPromoStatusMock: vi.fn(),
+  newsFeedCardsState: { current: [] },
 }));
 
 vi.mock("react-hot-toast", () => ({
@@ -36,7 +40,7 @@ vi.mock("../../components/PostCard", () => ({
 }));
 
 vi.mock("../../features/news/components/NewsClusterCard", () => ({
-  default: () => null,
+  default: ({ card }) => <aside data-testid="news-cluster-card">{card?.title}</aside>,
 }));
 
 vi.mock("../../features/news/components/NewsDetailDrawer", () => ({
@@ -44,11 +48,11 @@ vi.mock("../../features/news/components/NewsDetailDrawer", () => ({
 }));
 
 vi.mock("../../features/news/components/NewsStoryCard", () => ({
-  default: () => null,
+  default: ({ card }) => <aside data-testid="news-story-card">{card?.title}</aside>,
 }));
 
 vi.mock("../../features/news/hooks/useNewsFeed", () => ({
-  useNewsFeed: () => ({ cards: [] }),
+  useNewsFeed: () => ({ cards: newsFeedCardsState.current }),
 }));
 
 vi.mock("../../features/news/hooks/useNewsPreferences", () => ({
@@ -103,6 +107,7 @@ vi.mock("../../api", () => ({
   getCreatorSummaryFeed: vi.fn().mockResolvedValue({ items: [] }),
   getFeed: getFeedMock,
   getProfile: getProfileMock,
+  getReelsFeed: getReelsFeedMock,
   getTopUpPromoStatus: getTopUpPromoStatusMock,
   discoverTopUpPromoChest: vi.fn(),
   getUsers: vi.fn().mockResolvedValue([]),
@@ -134,10 +139,13 @@ describe("Home discovery feed", () => {
     getDiscoveryHomeMock.mockReset();
     getFeedMock.mockReset();
     getProfileMock.mockReset();
+    getReelsFeedMock.mockReset();
     getTopUpPromoStatusMock.mockReset();
+    newsFeedCardsState.current = [];
 
     getProfileMock.mockResolvedValue(viewer);
     getFeedMock.mockResolvedValue([]);
+    getReelsFeedMock.mockResolvedValue([]);
     getTopUpPromoStatusMock.mockResolvedValue({
       visibility: { visible: false, reason: "test" },
       hasPlayed: false,
@@ -183,6 +191,7 @@ describe("Home discovery feed", () => {
     expect(screen.getByText("New and relevant right now")).toBeInTheDocument();
     expect(getDiscoveryHomeMock).toHaveBeenCalledWith({ limit: 40 });
     expect(getFeedMock).not.toHaveBeenCalled();
+    expect(getReelsFeedMock).toHaveBeenCalledWith({ limit: 24 });
   });
 
   it("falls back to the legacy feed when discovery is unavailable", async () => {
@@ -207,6 +216,59 @@ describe("Home discovery feed", () => {
     await waitFor(() => {
       expect(getFeedMock).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("places a horizontal reels carousel after every five feed posts", async () => {
+    newsFeedCardsState.current = [
+      { id: "news-1", cardType: "story", title: "An injected news card" },
+    ];
+    getDiscoveryHomeMock.mockResolvedValue({
+      requestId: "rec-home-reels",
+      surface: "home",
+      items: Array.from({ length: 10 }, (_, index) => ({
+        id: `post-${index + 1}`,
+        entityType: "post",
+        rank: index + 1,
+        payload: {
+          _id: `post-${index + 1}`,
+          text: `Feed post ${index + 1}`,
+          user: {
+            _id: `author-${index + 1}`,
+            name: `Creator ${index + 1}`,
+            username: `creator_${index + 1}`,
+          },
+        },
+      })),
+    });
+    getReelsFeedMock.mockResolvedValue([
+      {
+        _id: "reel-1",
+        type: "reel",
+        text: "A posted Tengacion reel",
+        createdAt: "2026-07-18T10:00:00.000Z",
+        video: {
+          playbackUrl: "/uploads/reel-1.mp4",
+          thumbnailUrl: "/uploads/reel-1.jpg",
+        },
+        user: {
+          _id: "reel-author-1",
+          name: "Reel Creator",
+          username: "reel_creator",
+        },
+      },
+    ]);
+
+    renderHome();
+
+    const posts = await screen.findAllByTestId("post-card");
+    const reelCarousels = await screen.findAllByRole("region", { name: "Tengacion reels" });
+
+    expect(posts).toHaveLength(10);
+    expect(screen.getByTestId("news-story-card")).toHaveTextContent("An injected news card");
+    expect(reelCarousels).toHaveLength(2);
+    expect(reelCarousels[0].previousElementSibling).toContainElement(posts[4]);
+    expect(reelCarousels[1].previousElementSibling).toContainElement(posts[9]);
+    expect(screen.getAllByRole("link", { name: /watch a posted tengacion reel/i })).toHaveLength(2);
   });
 
   it("cycles every creator release alphabetically before repeating", () => {

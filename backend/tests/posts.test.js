@@ -152,6 +152,83 @@ describe("Posts feed", () => {
     expect(texts).not.toContain("Private activity post");
   });
 
+  test("GET /api/posts reels mode returns a bounded video-only feed", async () => {
+    await Post.create([
+      {
+        author: artist._id,
+        text: "Regular text post",
+        type: "text",
+        privacy: "public",
+      },
+      {
+        author: artist._id,
+        text: "Regular image post",
+        type: "image",
+        privacy: "public",
+      },
+      {
+        author: artist._id,
+        text: "Broken reel without playable media",
+        type: "reel",
+        privacy: "public",
+        createdAt: new Date("2026-07-18T12:00:00.000Z"),
+      },
+      {
+        author: artist._id,
+        text: "Native reel post",
+        type: "reel",
+        privacy: "public",
+        video: { playbackUrl: "https://cdn.test/native-reel.mp4" },
+        createdAt: new Date("2026-07-18T10:00:00.000Z"),
+      },
+      {
+        author: artist._id,
+        text: "Video reel candidate",
+        type: "video",
+        privacy: "public",
+        video: { playbackUrl: "https://cdn.test/video-reel.mp4" },
+        createdAt: new Date("2026-07-18T11:00:00.000Z"),
+      },
+      {
+        author: artist._id,
+        text: "Legacy media video",
+        type: "text",
+        privacy: "public",
+        media: [
+          {
+            type: "video",
+            secureUrl: "https://cdn.test/legacy-video.mp4",
+          },
+        ],
+        createdAt: new Date("2026-07-18T09:00:00.000Z"),
+      },
+    ]);
+
+    const response = await request(app).get("/api/posts?reels=1&limit=3").expect(200);
+
+    expect(response.body).toHaveLength(3);
+    expect(response.body.map((post) => post.text)).toEqual([
+      "Video reel candidate",
+      "Native reel post",
+      "Legacy media video",
+    ]);
+    expect(response.body.map((post) => post.text)).not.toContain(
+      "Broken reel without playable media"
+    );
+
+    await Post.insertMany(
+      Array.from({ length: 30 }, (_, index) => ({
+        author: artist._id,
+        text: `Additional reel ${index + 1}`,
+        type: "reel",
+        privacy: "public",
+        video: { playbackUrl: `https://cdn.test/additional-reel-${index + 1}.mp4` },
+      }))
+    );
+    const defaultBoundedResponse = await request(app).get("/api/posts?reels=1").expect(200);
+    expect(defaultBoundedResponse.body).toHaveLength(24);
+  });
+
   test("POST /api/posts requires auth and succeeds with token", async () => {
     await request(app)
       .post("/api/posts")

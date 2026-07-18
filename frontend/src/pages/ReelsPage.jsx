@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import Navbar from "../Navbar";
 import ExpandablePostText from "../components/posts/ExpandablePostText";
@@ -11,9 +11,17 @@ import {
   resolveImage,
 } from "../api";
 import { UPLOAD_LIMITS } from "../config/uploadLimits";
+import {
+  getReelAvatar as getAvatar,
+  getReelDisplayName as getDisplayName,
+  getReelPoster,
+  getReelUsername as getUsername,
+  getReelVideoUrl,
+  isReelCandidate,
+  sortReels,
+} from "../utils/reels";
 
 const MAX_REEL_BYTES = UPLOAD_LIMITS.FEED_VIDEO_BYTES;
-const VIDEO_EXT_RE = /\.(mp4|webm|ogg|mov|m4v)(?:\?.*)?$/i;
 const compactFormatter = new Intl.NumberFormat("en", {
   notation: "compact",
   maximumFractionDigits: 1,
@@ -55,84 +63,6 @@ const formatRelativeTime = (value) => {
 
   return new Date(value).toLocaleDateString();
 };
-
-const getFirstMedia = (post) =>
-  Array.isArray(post?.media) ? post.media[0] || null : post?.media || null;
-
-const getMediaUrl = (value) => {
-  if (!value) {
-    return "";
-  }
-  if (typeof value === "string") {
-    return value;
-  }
-  return String(value.secureUrl || value.secure_url || value.url || "").trim();
-};
-
-const getReelVideoUrl = (post) => {
-  const firstMedia = getFirstMedia(post);
-  const firstMediaUrl = getMediaUrl(firstMedia);
-
-  return resolveImage(
-    post?.video?.playbackUrl || post?.video?.url || firstMediaUrl || post?.image || post?.photo || ""
-  );
-};
-
-const getReelPoster = (post) => {
-  const firstMedia = getFirstMedia(post);
-  const firstMediaUrl = getMediaUrl(firstMedia);
-  const firstMediaType =
-    firstMedia && typeof firstMedia === "object"
-      ? String(firstMedia.type || "").toLowerCase()
-      : "";
-  const firstMediaPoster =
-    firstMedia && typeof firstMedia === "object"
-      ? firstMedia.thumbnailUrl || firstMedia.thumbnail_url || firstMedia.poster || ""
-      : "";
-  const imageFallback =
-    firstMediaType === "video" || VIDEO_EXT_RE.test(firstMediaUrl) ? "" : firstMediaUrl;
-
-  return resolveImage(
-    post?.video?.thumbnailUrl || firstMediaPoster || post?.image || post?.photo || imageFallback || ""
-  );
-};
-
-const isReelCandidate = (post) => {
-  const firstMedia = getFirstMedia(post);
-  const firstMediaType =
-    firstMedia && typeof firstMedia === "object"
-      ? String(firstMedia.type || "").toLowerCase()
-      : "";
-  const videoUrl = getReelVideoUrl(post);
-
-  return Boolean(
-    videoUrl &&
-      (
-        String(post?.type || "").toLowerCase() === "reel" ||
-        String(post?.type || "").toLowerCase() === "video" ||
-        firstMediaType === "video" ||
-        VIDEO_EXT_RE.test(videoUrl)
-      )
-  );
-};
-
-const sortReels = (feed) =>
-  [...feed].sort((left, right) => {
-    const leftIsNativeReel = String(left?.type || "").toLowerCase() === "reel";
-    const rightIsNativeReel = String(right?.type || "").toLowerCase() === "reel";
-    if (leftIsNativeReel !== rightIsNativeReel) {
-      return Number(rightIsNativeReel) - Number(leftIsNativeReel);
-    }
-    return new Date(right?.createdAt || 0).getTime() - new Date(left?.createdAt || 0).getTime();
-  });
-
-const getDisplayName = (post) =>
-  post?.user?.name || post?.name || post?.user?.username || post?.username || "Unknown creator";
-
-const getUsername = (post) => post?.user?.username || post?.username || "";
-
-const getAvatar = (post) =>
-  resolveImage(post?.user?.profilePic || post?.avatar || post?.user?.avatar) || "/avatar.png";
 
 const getCommentsCount = (post) =>
   Number(post?.commentsCount) || (Array.isArray(post?.comments) ? post.comments.length : 0);
@@ -397,6 +327,7 @@ function ReelComposerModal({ user, onClose, onCreated }) {
 
 export default function ReelsPage({ user }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const streamRef = useRef(null);
   const cardRefs = useRef(new Map());
   const videoRefs = useRef(new Map());
@@ -406,6 +337,10 @@ export default function ReelsPage({ user }) {
   const [composerOpen, setComposerOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
   const [activeReelId, setActiveReelId] = useState("");
+  const requestedReelId = useMemo(
+    () => String(new URLSearchParams(location.search).get("reel") || "").trim(),
+    [location.search]
+  );
 
   const loadReels = useCallback(async () => {
     try {
@@ -426,6 +361,28 @@ export default function ReelsPage({ user }) {
   useEffect(() => {
     loadReels();
   }, [loadReels]);
+
+  useEffect(() => {
+    if (!requestedReelId || !reels.some((reel) => reel?._id === requestedReelId)) {
+      return undefined;
+    }
+
+    setActiveReelId(requestedReelId);
+    const revealRequestedReel = () => {
+      const node = cardRefs.current.get(requestedReelId);
+      if (node) {
+        streamRef.current?.scrollTo?.({ top: node.offsetTop, behavior: "auto" });
+      }
+    };
+
+    if (typeof window.requestAnimationFrame !== "function") {
+      revealRequestedReel();
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(revealRequestedReel);
+    return () => window.cancelAnimationFrame(frame);
+  }, [reels, requestedReelId]);
 
   useEffect(() => {
     const root = streamRef.current;

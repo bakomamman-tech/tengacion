@@ -16,10 +16,13 @@ exports.createPost = catchAsync(async (req, res) => {
 exports.getFeed = catchAsync(async (req, res) => {
   const publicOnly = String(req.query.public || "").toLowerCase() === "1"
     || String(req.query.publicOnly || "").toLowerCase() === "true";
+  const reelsOnly = String(req.query.reels || "").toLowerCase() === "1"
+    || String(req.query.reelsOnly || "").toLowerCase() === "true";
   const result = await PostService.getFeed({
     userId: publicOnly ? null : req.user?.id,
     search: req.query.search,
     publicOnly,
+    reelsOnly,
     limit: req.query.limit,
   });
   res.json(result);

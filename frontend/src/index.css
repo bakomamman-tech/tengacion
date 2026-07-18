@@ -12908,8 +12908,8 @@ html.dark-mode .create-post-quick-btn--reel {
 }
 
 .in-feed-reel-media,
-.in-feed-reel-media > img,
-.in-feed-reel-media > video,
+.in-feed-reel-preview,
+.in-feed-reel-preview-fallback,
 .in-feed-reel-shade {
   position: absolute;
   inset: 0;
@@ -12917,9 +12917,15 @@ html.dark-mode .create-post-quick-btn--reel {
   height: 100%;
 }
 
-.in-feed-reel-media > img,
-.in-feed-reel-media > video {
+.in-feed-reel-preview {
   object-fit: cover;
+}
+
+.in-feed-reel-preview-fallback {
+  display: block;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.12), transparent 34%),
+    linear-gradient(145deg, #163d2a, #050a07 72%);
 }
 
 .in-feed-reel-shade {
@@ -12972,13 +12978,15 @@ html.dark-mode .create-post-quick-btn--reel {
   font-weight: 700;
 }
 
-.in-feed-reel-copy > span > img {
-  width: 22px;
-  height: 22px;
+.in-feed-reel-avatar {
+  width: 30px;
+  height: 30px;
   flex: 0 0 auto;
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.9);
   border-radius: 50%;
+  background: #1b5838;
   object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.32);
 }
 
 .in-feed-reel-copy > span > span {

@@ -6,13 +6,14 @@ import Navbar from "../Navbar";
 import ExpandablePostText from "../components/posts/ExpandablePostText";
 import {
   createPostWithUploadProgress,
-  getFeed,
+  getReelsFeed,
   likePost,
   resolveImage,
 } from "../api";
 import { UPLOAD_LIMITS } from "../config/uploadLimits";
 import {
   getReelAvatar as getAvatar,
+  getReelAvatarFallback,
   getReelDisplayName as getDisplayName,
   getReelPoster,
   getReelUsername as getUsername,
@@ -345,7 +346,7 @@ export default function ReelsPage({ user }) {
   const loadReels = useCallback(async () => {
     try {
       setLoading(true);
-      const feed = await getFeed();
+      const feed = await getReelsFeed({ limit: 24 });
       const nextReels = sortReels((Array.isArray(feed) ? feed : []).filter(isReelCandidate));
       setReels(nextReels);
       setActiveReelId((current) =>
@@ -700,7 +701,14 @@ export default function ReelsPage({ user }) {
                           className="reel-author"
                           onClick={() => username && navigate(`/profile/${username}`)}
                         >
-                          <img src={getAvatar(reel)} alt={authorName} />
+                          <img
+                            src={getAvatar(reel)}
+                            alt={authorName}
+                            onError={(event) => {
+                              event.currentTarget.onerror = null;
+                              event.currentTarget.src = getReelAvatarFallback(reel);
+                            }}
+                          />
                           <div>
                             <strong>{authorName}</strong>
                             <span>{username ? `@${username}` : "Tengacion creator"}</span>
@@ -824,8 +832,16 @@ export default function ReelsPage({ user }) {
                       src={getReelPoster(reel) || avatar}
                       alt=""
                       onError={(event) => {
+                        if (
+                          event.currentTarget.dataset.fallbackStage !== "avatar" &&
+                          avatar !== getReelAvatarFallback(reel)
+                        ) {
+                          event.currentTarget.dataset.fallbackStage = "avatar";
+                          event.currentTarget.src = avatar;
+                          return;
+                        }
                         event.currentTarget.onerror = null;
-                        event.currentTarget.src = avatar;
+                        event.currentTarget.src = getReelAvatarFallback(reel);
                       }}
                     />
                     <span className="reels-queue-play"><ReelsIcon name="play" /></span>

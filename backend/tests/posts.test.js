@@ -753,6 +753,143 @@ describe("Posts feed", () => {
     });
   });
 
+  test("restricted blurred reels never expose original media URL aliases", async () => {
+    const originalVideoUrl = "https://cdn.test/media/restricted-original.mp4";
+    const originalPublicId = "tengacion/posts/videos/restricted-original";
+    const blurredPreviewUrl = "https://cdn.test/media/restricted-preview.svg";
+    const post = await Post.create({
+      author: artist._id,
+      text: "Restricted reel with blurred preview",
+      type: "reel",
+      privacy: "public",
+      visibility: "public",
+      media: [
+        {
+          type: "video",
+          url: originalVideoUrl,
+          secureUrl: originalVideoUrl,
+          secure_url: originalVideoUrl,
+          publicId: originalPublicId,
+          public_id: originalPublicId,
+          resourceType: "video",
+          resource_type: "video",
+          mimeType: "video/mp4",
+        },
+      ],
+      video: {
+        url: originalVideoUrl,
+        secureUrl: originalVideoUrl,
+        secure_url: originalVideoUrl,
+        playbackUrl: originalVideoUrl,
+        publicId: originalPublicId,
+        public_id: originalPublicId,
+        resourceType: "video",
+        resource_type: "video",
+        mimeType: "video/mp4",
+      },
+    });
+
+    await createUploadModerationCase({
+      targetType: "post",
+      targetId: post._id.toString(),
+      uploader: {
+        userId: artist._id,
+        email: artist.email,
+        username: artist.username,
+        displayName: artist.name,
+      },
+      fileUrl: originalVideoUrl,
+      mimeType: "video/mp4",
+      labels: ["graphic_gore"],
+      reason: "Restricted graphic media",
+      confidence: 0.92,
+      status: "RESTRICTED_BLURRED",
+      visibility: "blocked",
+      storageStage: "quarantine",
+      queue: "graphic_gore",
+      subject: {
+        title: post.text,
+        description: post.text,
+        mediaType: "video",
+        createdAt: post.createdAt,
+      },
+      media: [
+        {
+          role: "primary",
+          mediaType: "video",
+          mimeType: "video/mp4",
+          sourceUrl: originalVideoUrl,
+          previewUrl: originalVideoUrl,
+          restrictedPreviewUrl: blurredPreviewUrl,
+          originalFilename: "restricted-original.mp4",
+          fileSizeBytes: 4096,
+        },
+      ],
+    });
+
+    const feedResponse = await request(app).get("/api/posts?reels=1&limit=10").expect(200);
+    const feedPost = feedResponse.body.find((entry) => entry._id === post._id.toString());
+
+    expect(feedPost).toBeTruthy();
+    expect(feedPost).toMatchObject({
+      image: blurredPreviewUrl,
+      moderationStatus: "RESTRICTED_BLURRED",
+      autoplayDisabled: true,
+      video: {
+        url: "",
+        playbackUrl: "",
+        thumbnailUrl: blurredPreviewUrl,
+        restricted: true,
+      },
+    });
+    expect(feedPost.media).toEqual([
+      expect.objectContaining({
+        type: "image",
+        url: blurredPreviewUrl,
+        secureUrl: blurredPreviewUrl,
+        secure_url: blurredPreviewUrl,
+        publicId: "",
+        public_id: "",
+        restricted: true,
+      }),
+    ]);
+    expect(JSON.stringify(feedPost)).not.toContain(originalVideoUrl);
+    expect(JSON.stringify(feedPost)).not.toContain(originalPublicId);
+
+    const detailResponse = await request(app).get(`/api/posts/${post._id}`).expect(200);
+    expect(JSON.stringify(detailResponse.body)).not.toContain(originalVideoUrl);
+    expect(JSON.stringify(detailResponse.body)).not.toContain(originalPublicId);
+    expect(detailResponse.body.autoplayDisabled).toBe(true);
+
+    const persistedRestrictedPost = await Post.create({
+      author: artist._id,
+      text: "Persisted restricted reel without a preview",
+      type: "reel",
+      privacy: "public",
+      visibility: "public",
+      moderationStatus: "RESTRICTED_BLURRED",
+      media: [{ type: "video", url: originalVideoUrl, secureUrl: originalVideoUrl }],
+      video: { url: originalVideoUrl, playbackUrl: originalVideoUrl },
+    });
+    const persistedResponse = await request(app)
+      .get(`/api/posts/${persistedRestrictedPost._id}`)
+      .expect(200);
+
+    expect(persistedResponse.body).toMatchObject({
+      image: "",
+      media: [],
+      moderationStatus: "RESTRICTED_BLURRED",
+      autoplayDisabled: true,
+      video: {
+        url: "",
+        playbackUrl: "",
+        thumbnailUrl: "",
+        restricted: true,
+      },
+    });
+    expect(JSON.stringify(persistedResponse.body)).not.toContain(originalVideoUrl);
+  });
+
   test("GET /api/posts/:id hides posts with pending upload-moderation cases", async () => {
     const post = await Post.create({
       author: artist._id,

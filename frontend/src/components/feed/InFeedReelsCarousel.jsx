@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import {
   getReelAvatar,
+  getReelAvatarFallback,
   getReelDisplayName,
   getReelPoster,
   getReelUsername,
@@ -11,8 +12,17 @@ import {
 
 const MAX_REELS_PER_CAROUSEL = 12;
 const EDGE_TOLERANCE_PX = 4;
+const VIDEO_PREVIEW_ROOT_MARGIN = "180px";
 
 const clampCaption = (value = "") => String(value || "").trim() || "Watch this reel";
+
+const getPreviewVideoUrl = (value = "") => {
+  const url = String(value || "").trim();
+  if (!url || url.includes("#")) {
+    return url;
+  }
+  return `${url}#t=0.1`;
+};
 
 const selectReelsForCarousel = (reels = [], blockIndex = 0) => {
   const candidates = (Array.isArray(reels) ? reels : []).filter(
@@ -43,6 +53,104 @@ function CarouselArrow({ direction }) {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d={isPrevious ? "m15 5-7 7 7 7" : "m9 5 7 7-7 7"} />
     </svg>
+  );
+}
+
+function ReelPreview({ posterUrl, videoUrl }) {
+  const previewGateRef = useRef(null);
+  const [failedPosterUrl, setFailedPosterUrl] = useState("");
+  const [failedVideoUrl, setFailedVideoUrl] = useState("");
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(
+    () => typeof IntersectionObserver !== "function"
+  );
+  const posterFailed = Boolean(posterUrl && failedPosterUrl === posterUrl);
+  const videoFailed = Boolean(videoUrl && failedVideoUrl === videoUrl);
+
+  useEffect(() => {
+    if (
+      shouldLoadVideo ||
+      !videoUrl ||
+      videoFailed ||
+      (posterUrl && !posterFailed) ||
+      typeof IntersectionObserver !== "function"
+    ) {
+      return undefined;
+    }
+
+    const previewGate = previewGateRef.current;
+    if (!previewGate) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting || entry.intersectionRatio > 0)) {
+          setShouldLoadVideo(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: VIDEO_PREVIEW_ROOT_MARGIN, threshold: 0.01 }
+    );
+    observer.observe(previewGate);
+
+    return () => observer.disconnect();
+  }, [posterFailed, posterUrl, shouldLoadVideo, videoFailed, videoUrl]);
+
+  if (posterUrl && !posterFailed) {
+    return (
+      <img
+        className="in-feed-reel-preview"
+        src={posterUrl}
+        alt=""
+        loading="lazy"
+        draggable="false"
+        onError={() => setFailedPosterUrl(posterUrl)}
+      />
+    );
+  }
+
+  if (videoUrl && !videoFailed && shouldLoadVideo) {
+    return (
+      <video
+        className="in-feed-reel-preview"
+        src={getPreviewVideoUrl(videoUrl)}
+        muted
+        playsInline
+        preload="metadata"
+        aria-hidden="true"
+        onError={() => setFailedVideoUrl(videoUrl)}
+      />
+    );
+  }
+
+  return (
+    <span
+      ref={videoUrl && !videoFailed ? previewGateRef : null}
+      className="in-feed-reel-preview-fallback"
+      aria-hidden="true"
+    />
+  );
+}
+
+function ReelAuthorAvatar({ reel }) {
+  const avatarFallback = getReelAvatarFallback(reel);
+  const avatarUrl = getReelAvatar(reel);
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState("");
+  const src = avatarUrl === failedAvatarUrl ? avatarFallback : avatarUrl;
+
+  return (
+    <img
+      className="in-feed-reel-avatar"
+      src={src}
+      alt=""
+      loading="lazy"
+      draggable="false"
+      onError={() => {
+        if (src !== avatarFallback) {
+          setFailedAvatarUrl(avatarUrl);
+        }
+      }}
+    />
   );
 }
 
@@ -173,17 +281,7 @@ export default function InFeedReelsCarousel({ reels = [], blockIndex = 0 }) {
                 aria-label={`Watch ${caption} by ${authorName}`}
               >
                 <span className="in-feed-reel-media">
-                  {posterUrl ? (
-                    <img src={posterUrl} alt="" loading="lazy" draggable="false" />
-                  ) : (
-                    <video
-                      src={videoUrl}
-                      muted
-                      playsInline
-                      preload="metadata"
-                      aria-hidden="true"
-                    />
-                  )}
+                  <ReelPreview posterUrl={posterUrl} videoUrl={videoUrl} />
                   <span className="in-feed-reel-shade" aria-hidden="true" />
                   <span className="in-feed-reel-play" aria-hidden="true">
                     <ReelPlayIcon />
@@ -191,7 +289,7 @@ export default function InFeedReelsCarousel({ reels = [], blockIndex = 0 }) {
                   <span className="in-feed-reel-copy">
                     <strong>{caption}</strong>
                     <span>
-                      <img src={getReelAvatar(reel)} alt="" loading="lazy" />
+                      <ReelAuthorAvatar reel={reel} />
                       <span>{username ? `@${username}` : authorName}</span>
                     </span>
                   </span>

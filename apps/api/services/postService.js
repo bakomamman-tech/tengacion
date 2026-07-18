@@ -882,26 +882,6 @@ const attachPostModerationOverlays = async (posts = [], viewerId = null, req = n
         payload.blurPreviewUrl = post.blurPreviewUrl || caseDoc.media?.[0]?.restrictedPreviewUrl || "";
         payload.reviewRequired = caseDoc.status === "HOLD_FOR_REVIEW";
         payload.moderationOverlay = getPublicModerationOverlay(caseDoc, req);
-        if (caseDoc.status === "RESTRICTED_BLURRED" && payload.blurPreviewUrl) {
-          payload.image = payload.blurPreviewUrl;
-          payload.media = Array.isArray(payload.media)
-            ? payload.media.map((entry, index) => ({
-              ...entry,
-              url: index === 0 ? payload.blurPreviewUrl : entry.url,
-              isBlurred: index === 0,
-            }))
-            : [];
-          if (payload.video) {
-            payload.video = {
-              ...payload.video,
-              url: "",
-              playbackUrl: "",
-              thumbnailUrl: payload.blurPreviewUrl,
-              restricted: true,
-            };
-          }
-          payload.autoplayDisabled = true;
-        }
       } else {
         const publicSensitivity = resolvePublicSensitivity({
           moderationStatus: post?.moderationStatus,
@@ -915,8 +895,56 @@ const attachPostModerationOverlays = async (posts = [], viewerId = null, req = n
         payload.reviewRequired = Boolean(post?.reviewRequired);
         payload.moderationOverlay = null;
       }
+      if (payload.moderationStatus === "RESTRICTED_BLURRED") {
+        applyRestrictedBlurredMedia(payload, payload.blurPreviewUrl);
+      }
       return payload;
     });
+};
+
+const applyRestrictedBlurredMedia = (payload, previewUrl) => {
+  const safePreviewUrl = String(previewUrl || "").trim();
+  if (!payload) {
+    return payload;
+  }
+
+  payload.image = safePreviewUrl;
+  payload.media = safePreviewUrl
+    ? [
+        {
+          assetId: "",
+          publicId: "",
+          public_id: "",
+          url: safePreviewUrl,
+          secureUrl: safePreviewUrl,
+          secure_url: safePreviewUrl,
+          resourceType: "image",
+          resource_type: "image",
+          mimeType: "",
+          type: "image",
+          provider: "",
+          legacyPath: "",
+          isBlurred: true,
+          restricted: true,
+        },
+      ]
+    : [];
+
+  if (payload.video) {
+    payload.video = {
+      url: "",
+      playbackUrl: "",
+      thumbnailUrl: safePreviewUrl,
+      duration: Number(payload.video.duration) || 0,
+      width: Number(payload.video.width) || 0,
+      height: Number(payload.video.height) || 0,
+      sizeBytes: 0,
+      mimeType: "",
+      restricted: true,
+    };
+  }
+  payload.autoplayDisabled = true;
+  return payload;
 };
 
 const parseSharedPostPayload = (value) => {
@@ -1847,26 +1875,10 @@ class PostService {
       payload.blurPreviewUrl = post.blurPreviewUrl || moderationCase.media?.[0]?.restrictedPreviewUrl || "";
       payload.reviewRequired = moderationCase.status === "HOLD_FOR_REVIEW";
       payload.moderationOverlay = getPublicModerationOverlay(moderationCase);
-      if (moderationCase.status === "RESTRICTED_BLURRED" && payload.blurPreviewUrl) {
-        payload.image = payload.blurPreviewUrl;
-        payload.media = Array.isArray(payload.media)
-          ? payload.media.map((entry, index) => ({
-            ...entry,
-            url: index === 0 ? payload.blurPreviewUrl : entry.url,
-            isBlurred: index === 0,
-          }))
-          : [];
-        if (payload.video) {
-          payload.video = {
-            ...payload.video,
-            url: "",
-            playbackUrl: "",
-            thumbnailUrl: payload.blurPreviewUrl,
-            restricted: true,
-          };
-        }
-        payload.autoplayDisabled = true;
-      }
+    }
+
+    if (payload.moderationStatus === "RESTRICTED_BLURRED") {
+      applyRestrictedBlurredMedia(payload, payload.blurPreviewUrl);
     }
 
     return payload;

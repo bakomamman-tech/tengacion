@@ -199,7 +199,14 @@ function FriendSuggestionsCard({ suggestions, pendingIds, onAdd, onProfile, onSe
   );
 }
 
-export default function Sidebar({ user, openChat, openProfile }) {
+export default function Sidebar({
+  user,
+  openChat,
+  openProfile,
+  friendSuggestions: controlledFriendSuggestions,
+  pendingSuggestionIds: controlledPendingSuggestionIds,
+  onAddSuggestedFriend,
+}) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isRaffleExpanded, setIsRaffleExpanded] = useState(false);
@@ -209,8 +216,15 @@ export default function Sidebar({ user, openChat, openProfile }) {
   const [rafflePlayMessage, setRafflePlayMessage] = useState(() =>
     hasRequiredRafflePhotos(user) ? "" : PROFILE_MEDIA_REQUIRED_MESSAGE
   );
-  const [friendSuggestions, setFriendSuggestions] = useState([]);
-  const [pendingSuggestionIds, setPendingSuggestionIds] = useState(() => new Set());
+  const [localFriendSuggestions, setLocalFriendSuggestions] = useState([]);
+  const [localPendingSuggestionIds, setLocalPendingSuggestionIds] = useState(() => new Set());
+  const hasControlledFriendSuggestions = Array.isArray(controlledFriendSuggestions);
+  const friendSuggestions = hasControlledFriendSuggestions
+    ? controlledFriendSuggestions.slice(0, 4)
+    : localFriendSuggestions;
+  const pendingSuggestionIds = hasControlledFriendSuggestions
+    ? controlledPendingSuggestionIds || new Set()
+    : localPendingSuggestionIds;
 
   const avatar = resolveImage(user?.avatar) || fallbackAvatar(user?.name);
   const raffleLocallyEligible = hasRequiredRafflePhotos(user);
@@ -283,26 +297,26 @@ export default function Sidebar({ user, openChat, openProfile }) {
 
   useEffect(() => {
     let cancelled = false;
-    if (!user?._id || isMobileSidebar) {
+    if (!user?._id || isMobileSidebar || hasControlledFriendSuggestions) {
       return undefined;
     }
 
     getFriendsHub()
       .then((payload) => {
         if (!cancelled) {
-          setFriendSuggestions((payload?.suggestions || []).slice(0, 4));
+          setLocalFriendSuggestions((payload?.suggestions || []).slice(0, 4));
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setFriendSuggestions([]);
+          setLocalFriendSuggestions([]);
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [isMobileSidebar, user?._id]);
+  }, [hasControlledFriendSuggestions, isMobileSidebar, user?._id]);
 
   const goProfile = () => {
     if (typeof openProfile === "function") {
@@ -339,19 +353,24 @@ export default function Sidebar({ user, openChat, openProfile }) {
     }
   };
   const addSuggestedFriend = async (person) => {
+    if (typeof onAddSuggestedFriend === "function") {
+      await onAddSuggestedFriend(person);
+      return;
+    }
+
     const personId = person?._id;
     if (!personId || pendingSuggestionIds.has(personId)) {
       return;
     }
 
-    setPendingSuggestionIds((current) => new Set(current).add(personId));
+    setLocalPendingSuggestionIds((current) => new Set(current).add(personId));
     try {
       await sendFriendRequest(personId);
-      setFriendSuggestions((current) => current.filter((entry) => entry._id !== personId));
+      setLocalFriendSuggestions((current) => current.filter((entry) => entry._id !== personId));
     } catch {
       // Keep the suggestion visible so a transient request failure can be retried.
     } finally {
-      setPendingSuggestionIds((current) => {
+      setLocalPendingSuggestionIds((current) => {
         const next = new Set(current);
         next.delete(personId);
         return next;

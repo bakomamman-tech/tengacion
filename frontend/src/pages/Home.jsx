@@ -10,7 +10,9 @@ import NewsStoryCard from "../features/news/components/NewsStoryCard";
 import { useNewsFeed } from "../features/news/hooks/useNewsFeed";
 import { useNewsPreferences } from "../features/news/hooks/useNewsPreferences";
 import CreatorSummaryCard from "../components/creatorDiscovery/CreatorSummaryCard";
+import InFeedPeopleCarousel from "../components/feed/InFeedPeopleCarousel";
 import InFeedReelsCarousel from "../components/feed/InFeedReelsCarousel";
+import InFeedStoriesCarousel from "../components/feed/InFeedStoriesCarousel";
 
 import Navbar from "../Navbar";
 import Sidebar from "../Sidebar";
@@ -18,6 +20,7 @@ import Messenger from "../Messenger";
 import FriendRequests from "../FriendRequests";
 import RightQuickNav from "../components/RightQuickNav";
 import Stories from "../stories/StoriesBar";
+import { groupStoriesByOwner, markStoriesSeen } from "../stories/storyGroups";
 
 import {
   createPost,
@@ -25,11 +28,14 @@ import {
   getDiscoveryHome,
   getCreatorSummaryFeed,
   getFeed,
+  getFriendsHub,
   getProfile,
   getReelsFeed,
+  getStories,
   getUsers,
   muteUser,
   resolveImage,
+  sendFriendRequest,
   toggleFollowCreator,
   trackDiscoveryEvents,
 } from "../api";
@@ -59,6 +65,7 @@ const LOAD_MORE_INCREMENT = 8;
 const HOME_DISCOVERY_LIMIT = 40;
 const DISCOVERY_BATCH_DELAY_MS = 1400;
 const FEED_AUTO_REFRESH_MS = 5 * 60 * 1000;
+const STORIES_AUTO_REFRESH_MS = 30 * 1000;
 const HOME_NEWS_INTERVAL = Math.max(
   1,
   Number(import.meta.env.VITE_HOME_NEWS_INJECTION_INTERVAL || 8)
@@ -175,7 +182,12 @@ const injectNewsCards = (postEntries = [], newsCards = [], interval = HOME_NEWS_
   let newsIndex = 0;
 
   posts.forEach((entry, index) => {
-    result.push({ type: "post", entry, key: `post-${entry?.key || index}` });
+    result.push({
+      type: "post",
+      entry,
+      postNumber: index + 1,
+      key: `post-${entry?.key || index}`,
+    });
     if ((index + 1) % interval === 0 && cards[newsIndex]) {
       const card = cards[newsIndex];
       result.push({
@@ -1138,6 +1150,10 @@ export default function Home({ user }) {
   const [loading, setLoading] = useState(true);
   const [feedItems, setFeedItems] = useState([]);
   const [reelItems, setReelItems] = useState([]);
+  const [storyItems, setStoryItems] = useState([]);
+  const [storiesLoading, setStoriesLoading] = useState(true);
+  const [peopleSuggestions, setPeopleSuggestions] = useState([]);
+  const [pendingSuggestionIds, setPendingSuggestionIds] = useState(() => new Set());
   const [creatorRotation, setCreatorRotation] = useState([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState("");
@@ -1157,6 +1173,8 @@ export default function Home({ user }) {
   const lastFeedRefreshAtRef = useRef(0);
   const discoveryQueueRef = useRef([]);
   const discoveryFlushTimerRef = useRef(null);
+  const currentUser = profile || user;
+  const viewerId = String(currentUser?._id || "");
   const newsFeed = useNewsFeed({
     tab: "local",
     limit: 12,
@@ -1230,6 +1248,26 @@ export default function Home({ user }) {
       );
     } catch {
       // Reels are optional here; keep the main feed usable if this request fails.
+    }
+  }, []);
+
+  const loadStories = useCallback(async () => {
+    try {
+      const feed = await getStories();
+      setStoryItems(Array.isArray(feed) ? feed : []);
+    } catch {
+      // Stories are optional on Home; retain the last successful shelf on a transient error.
+    } finally {
+      setStoriesLoading(false);
+    }
+  }, []);
+
+  const loadPeopleSuggestions = useCallback(async () => {
+    try {
+      const payload = await getFriendsHub();
+      setPeopleSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : []);
+    } catch {
+      // Friend discovery should never prevent the primary feed from loading.
     }
   }, []);
 
@@ -1319,6 +1357,30 @@ export default function Home({ user }) {
   useEffect(() => {
     void loadReels();
   }, [loadReels]);
+
+  useEffect(() => {
+    if (!viewerId) {
+      return undefined;
+    }
+
+    void loadPeopleSuggestions();
+    return undefined;
+  }, [loadPeopleSuggestions, viewerId]);
+
+  useEffect(() => {
+    if (!viewerId || typeof window === "undefined") {
+      return undefined;
+    }
+
+    void loadStories();
+    const timer = window.setInterval(() => {
+      if (typeof document === "undefined" || !document.hidden) {
+        void loadStories();
+      }
+    }, STORIES_AUTO_REFRESH_MS);
+
+    return () => window.clearInterval(timer);
+  }, [loadStories, viewerId]);
 
   useEffect(() => {
     let active = true;
@@ -1465,7 +1527,6 @@ export default function Home({ user }) {
     openComposer("", files);
   };
 
-  const currentUser = profile || user;
   const visibleFeedItems = useMemo(
     () => (Array.isArray(feedItems) ? feedItems.slice(0, visiblePostCount) : []),
     [feedItems, visiblePostCount]
@@ -1474,6 +1535,49 @@ export default function Home({ user }) {
     () => injectNewsCards(visibleFeedItems, newsFeed.cards || [], HOME_NEWS_INTERVAL),
     [newsFeed.cards, visibleFeedItems]
   );
+  const storyGroups = useMemo(
+    () => groupStoriesByOwner(storyItems, viewerId),
+    [storyItems, viewerId]
+  );
+  const handleStoriesSeen = useCallback(
+    (storyIds = []) => {
+      setStoryItems((current) => markStoriesSeen(current, storyIds, viewerId));
+    },
+    [viewerId]
+  );
+  const handleAddSuggestedFriend = useCallback(async (person) => {
+    const personId = String(person?._id || "");
+    if (!personId || pendingSuggestionIds.has(personId)) {
+      return;
+    }
+
+    setPendingSuggestionIds((current) => new Set(current).add(personId));
+
+    try {
+      await sendFriendRequest(personId);
+      setPeopleSuggestions((current) =>
+        current.filter((entry) => String(entry?._id || "") !== personId)
+      );
+      toast.success(`Friend request sent to ${person?.name || person?.username || "this person"}.`);
+    } catch (error) {
+      toast.error(error?.message || "Could not send the friend request.");
+    } finally {
+      setPendingSuggestionIds((current) => {
+        const next = new Set(current);
+        next.delete(personId);
+        return next;
+      });
+    }
+  }, [pendingSuggestionIds]);
+  const handleDismissSuggestion = useCallback((person) => {
+    const personId = String(person?._id || "");
+    if (!personId) {
+      return;
+    }
+    setPeopleSuggestions((current) =>
+      current.filter((entry) => String(entry?._id || "") !== personId)
+    );
+  }, []);
   const handleNewsReport = useCallback(
     async (payload = {}) => {
       const reason = window.prompt(
@@ -1669,6 +1773,9 @@ export default function Home({ user }) {
         <aside className="sidebar">
           <Sidebar
             user={currentUser}
+            friendSuggestions={peopleSuggestions}
+            pendingSuggestionIds={pendingSuggestionIds}
+            onAddSuggestedFriend={handleAddSuggestedFriend}
             openChat={() => {
               setSelectedChatId("");
               setChatOpen(true);
@@ -1688,7 +1795,16 @@ export default function Home({ user }) {
               </div>
             </section>
           )}
-          {!loading && <Stories user={currentUser} openCreateSignal={storyCreatorSignal} />}
+          {!loading && (
+            <Stories
+              user={currentUser}
+              openCreateSignal={storyCreatorSignal}
+              stories={storyItems}
+              loading={storiesLoading}
+              onRefresh={loadStories}
+              onStoriesSeen={handleStoriesSeen}
+            />
+          )}
 
           <div className="card create-post" onClick={() => openComposer()}>
             <div className="create-post-row">
@@ -1835,9 +1951,8 @@ export default function Home({ user }) {
                 }
 
                 const entry = item.entry;
-                const postIndex = visibleMixedFeedItems
-                  .slice(0, visibleMixedFeedItems.indexOf(item) + 1)
-                  .filter((feedItem) => feedItem.type === "post").length - 1;
+                const postNumber = Number(item.postNumber) || 1;
+                const postIndex = postNumber - 1;
                 const creatorItem = creatorRotation.length
                   ? creatorRotation[postIndex % creatorRotation.length]
                   : null;
@@ -1884,7 +1999,23 @@ export default function Home({ user }) {
                         </section>
                       ) : null}
                     </div>
-                    {(postIndex + 1) % 5 === 0 && reelItems.length ? (
+                    {postNumber % 2 === 0 && peopleSuggestions.length ? (
+                      <InFeedPeopleCarousel
+                        people={peopleSuggestions}
+                        blockIndex={Math.floor(postIndex / 2)}
+                        pendingIds={pendingSuggestionIds}
+                        onAdd={handleAddSuggestedFriend}
+                        onDismiss={handleDismissSuggestion}
+                      />
+                    ) : null}
+                    {postNumber % 3 === 0 && storyGroups.length ? (
+                      <InFeedStoriesCarousel
+                        groups={storyGroups}
+                        blockIndex={Math.floor(postIndex / 3)}
+                        onSeen={handleStoriesSeen}
+                      />
+                    ) : null}
+                    {postNumber % 5 === 0 && reelItems.length ? (
                       <InFeedReelsCarousel
                         reels={reelItems}
                         blockIndex={Math.floor(postIndex / 5)}

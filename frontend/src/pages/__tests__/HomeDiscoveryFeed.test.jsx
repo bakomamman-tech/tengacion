@@ -6,15 +6,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const {
   getDiscoveryHomeMock,
   getFeedMock,
+  getFriendsHubMock,
   getProfileMock,
   getReelsFeedMock,
+  getStoriesMock,
+  sendFriendRequestMock,
   getTopUpPromoStatusMock,
   newsFeedCardsState,
 } = vi.hoisted(() => ({
   getDiscoveryHomeMock: vi.fn(),
   getFeedMock: vi.fn(),
+  getFriendsHubMock: vi.fn(),
   getProfileMock: vi.fn(),
   getReelsFeedMock: vi.fn(),
+  getStoriesMock: vi.fn(),
+  sendFriendRequestMock: vi.fn(),
   getTopUpPromoStatusMock: vi.fn(),
   newsFeedCardsState: { current: [] },
 }));
@@ -72,6 +78,16 @@ vi.mock("../../components/creatorDiscovery/CreatorSummaryCard", () => ({
   default: ({ item }) => <aside data-testid="creator-release">{item?.title}</aside>,
 }));
 
+vi.mock("../../components/feed/InFeedPeopleCarousel", () => ({
+  default: ({ blockIndex }) => (
+    <section aria-label="People you may know" data-block-index={blockIndex} />
+  ),
+}));
+
+vi.mock("../../components/feed/InFeedStoriesCarousel", () => ({
+  default: ({ blockIndex }) => <section aria-label="Stories" data-block-index={blockIndex} />,
+}));
+
 vi.mock("../../Navbar", () => ({
   default: () => null,
 }));
@@ -106,13 +122,16 @@ vi.mock("../../api", () => ({
   getDiscoveryHome: getDiscoveryHomeMock,
   getCreatorSummaryFeed: vi.fn().mockResolvedValue({ items: [] }),
   getFeed: getFeedMock,
+  getFriendsHub: getFriendsHubMock,
   getProfile: getProfileMock,
   getReelsFeed: getReelsFeedMock,
+  getStories: getStoriesMock,
   getTopUpPromoStatus: getTopUpPromoStatusMock,
   discoverTopUpPromoChest: vi.fn(),
   getUsers: vi.fn().mockResolvedValue([]),
   muteUser: vi.fn(),
   resolveImage: (value) => value,
+  sendFriendRequest: sendFriendRequestMock,
   toggleFollowCreator: vi.fn(),
   trackDiscoveryEvents: vi.fn(),
 }));
@@ -138,14 +157,20 @@ describe("Home discovery feed", () => {
   beforeEach(() => {
     getDiscoveryHomeMock.mockReset();
     getFeedMock.mockReset();
+    getFriendsHubMock.mockReset();
     getProfileMock.mockReset();
     getReelsFeedMock.mockReset();
+    getStoriesMock.mockReset();
+    sendFriendRequestMock.mockReset();
     getTopUpPromoStatusMock.mockReset();
     newsFeedCardsState.current = [];
 
     getProfileMock.mockResolvedValue(viewer);
     getFeedMock.mockResolvedValue([]);
+    getFriendsHubMock.mockResolvedValue({ suggestions: [] });
     getReelsFeedMock.mockResolvedValue([]);
+    getStoriesMock.mockResolvedValue([]);
+    sendFriendRequestMock.mockResolvedValue({ sent: true });
     getTopUpPromoStatusMock.mockResolvedValue({
       visibility: { visible: false, reason: "test" },
       hasPlayed: false,
@@ -269,6 +294,93 @@ describe("Home discovery feed", () => {
     expect(reelCarousels[0].previousElementSibling).toContainElement(posts[4]);
     expect(reelCarousels[1].previousElementSibling).toContainElement(posts[9]);
     expect(screen.getAllByRole("link", { name: /watch a posted tengacion reel/i })).toHaveLength(2);
+  });
+
+  it("keeps People, Stories, and Reels on independent post cadences", async () => {
+    newsFeedCardsState.current = [
+      { id: "news-1", cardType: "story", title: "News does not change shelf timing" },
+    ];
+    getDiscoveryHomeMock.mockResolvedValue({
+      requestId: "rec-home-shelves",
+      surface: "home",
+      items: Array.from({ length: 10 }, (_, index) => ({
+        id: `cadence-post-${index + 1}`,
+        entityType: "post",
+        rank: index + 1,
+        payload: {
+          _id: `cadence-post-${index + 1}`,
+          text: `Cadence post ${index + 1}`,
+          user: {
+            _id: `cadence-author-${index + 1}`,
+            name: `Cadence Creator ${index + 1}`,
+            username: `cadence_creator_${index + 1}`,
+          },
+        },
+      })),
+    });
+    getFriendsHubMock.mockResolvedValue({
+      suggestions: [
+        {
+          _id: "suggestion-1",
+          name: "Suggested Person",
+          username: "suggested_person",
+          avatar: "/uploads/suggested-person.jpg",
+          mutualFriendsCount: 2,
+        },
+      ],
+    });
+    getStoriesMock.mockResolvedValue([
+      {
+        _id: "story-1",
+        userId: "story-author-1",
+        username: "story_author",
+        mediaUrl: "/uploads/story-1.jpg",
+        mediaType: "image",
+        time: "2026-07-18T11:00:00.000Z",
+        viewerSeen: false,
+      },
+    ]);
+    getReelsFeedMock.mockResolvedValue([
+      {
+        _id: "cadence-reel-1",
+        type: "reel",
+        text: "Cadence reel",
+        video: {
+          playbackUrl: "/uploads/cadence-reel-1.mp4",
+          thumbnailUrl: "/uploads/cadence-reel-1.jpg",
+        },
+        user: {
+          _id: "reel-author-1",
+          name: "Reel Creator",
+          username: "reel_creator",
+        },
+      },
+    ]);
+
+    renderHome();
+
+    const posts = await screen.findAllByTestId("post-card");
+    const peopleShelves = await screen.findAllByRole("region", { name: "People you may know" });
+    const storyShelves = await screen.findAllByRole("region", { name: "Stories" });
+    const reelShelves = await screen.findAllByRole("region", { name: "Tengacion reels" });
+
+    expect(posts).toHaveLength(10);
+    expect(peopleShelves).toHaveLength(5);
+    expect(storyShelves).toHaveLength(3);
+    expect(reelShelves).toHaveLength(2);
+    expect(getFriendsHubMock).toHaveBeenCalledTimes(1);
+    expect(getStoriesMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("news-story-card")).toHaveTextContent(
+      "News does not change shelf timing"
+    );
+
+    const afterSix = posts[5].closest(".home-feed-pair");
+    expect(afterSix?.nextElementSibling).toBe(peopleShelves[2]);
+    expect(peopleShelves[2].nextElementSibling).toBe(storyShelves[1]);
+
+    const afterTen = posts[9].closest(".home-feed-pair");
+    expect(afterTen?.nextElementSibling).toBe(peopleShelves[4]);
+    expect(peopleShelves[4].nextElementSibling).toBe(reelShelves[1]);
   });
 
   it("cycles every creator release alphabetically before repeating", () => {

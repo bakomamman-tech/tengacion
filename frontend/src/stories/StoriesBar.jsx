@@ -2,31 +2,50 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getStories } from "../api";
 import StoryCard from "./StoryCard";
 import CreateStory from "./CreateStory";
+import { groupStoriesByOwner, markStoriesSeen } from "./storyGroups";
 import "./stories.css";
 
-const getTimeValue = (value) => {
-  const next = new Date(value || 0).getTime();
-  return Number.isFinite(next) ? next : 0;
-};
-
-export default function StoriesBar({ user, openCreateSignal = 0 }) {
-  const [stories, setStories] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function StoriesBar({
+  user,
+  openCreateSignal = 0,
+  stories: controlledStories,
+  loading: controlledLoading,
+  onRefresh,
+  onStoriesSeen,
+}) {
+  const isControlled = controlledStories !== undefined;
+  const [localStories, setLocalStories] = useState([]);
+  const [localLoading, setLocalLoading] = useState(true);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const viewerId = user?._id?.toString() || "";
   const scrollerRef = useRef(null);
+  const stories = useMemo(
+    () =>
+      isControlled
+        ? Array.isArray(controlledStories)
+          ? controlledStories
+          : []
+        : localStories,
+    [controlledStories, isControlled, localStories]
+  );
+  const loading = isControlled ? Boolean(controlledLoading) : localLoading;
 
   const loadStories = useCallback(async () => {
+    if (isControlled) {
+      await onRefresh?.();
+      return;
+    }
+
     try {
       const data = await getStories();
-      setStories(Array.isArray(data) ? data : []);
+      setLocalStories(Array.isArray(data) ? data : []);
     } catch {
-      setStories([]);
+      setLocalStories([]);
     } finally {
-      setLoading(false);
+      setLocalLoading(false);
     }
-  }, []);
+  }, [isControlled, onRefresh]);
 
   const syncArrows = useCallback(() => {
     const node = scrollerRef.current;
@@ -41,6 +60,10 @@ export default function StoriesBar({ user, openCreateSignal = 0 }) {
   }, []);
 
   useEffect(() => {
+    if (isControlled) {
+      return undefined;
+    }
+
     loadStories();
 
     const timer = window.setInterval(() => {
@@ -48,7 +71,7 @@ export default function StoriesBar({ user, openCreateSignal = 0 }) {
     }, 30000);
 
     return () => window.clearInterval(timer);
-  }, [loadStories]);
+  }, [isControlled, loadStories]);
 
   useEffect(() => {
     const node = scrollerRef.current;
@@ -85,61 +108,10 @@ export default function StoriesBar({ user, openCreateSignal = 0 }) {
     node.scrollBy({ left: distance, behavior: "smooth" });
   };
 
-  const groupedStories = useMemo(() => {
-    const groups = new Map();
-
-    (Array.isArray(stories) ? stories : []).forEach((entry) => {
-      const ownerId = String(entry?.userId || entry?.username || entry?._id || "");
-      if (!ownerId) {
-        return;
-      }
-
-      if (!groups.has(ownerId)) {
-        groups.set(ownerId, {
-          ownerId,
-          username: entry?.username || "User",
-          avatar: entry?.avatar || "",
-          stories: [],
-        });
-      }
-
-      groups.get(ownerId).stories.push(entry);
-    });
-
-    return [...groups.values()]
-      .map((group) => {
-        const ordered = [...group.stories].sort(
-          (a, b) => getTimeValue(b?.time) - getTimeValue(a?.time)
-        );
-
-        const hasUnseen = ordered.some((entry) => {
-          if (typeof entry?.viewerSeen === "boolean") {
-            return !entry.viewerSeen;
-          }
-          const seenBy = Array.isArray(entry?.seenBy) ? entry.seenBy.map(String) : [];
-          return viewerId ? !seenBy.includes(viewerId) : false;
-        });
-
-        return {
-          ...group,
-          latestStory: ordered[0] || null,
-          stories: ordered,
-          hasUnseen,
-          isOwner: Boolean(viewerId && group.ownerId === viewerId),
-          latestTime: getTimeValue(ordered[0]?.time),
-        };
-      })
-      .filter((group) => group.latestStory)
-      .sort((a, b) => {
-        if (a.isOwner !== b.isOwner) {
-          return a.isOwner ? -1 : 1;
-        }
-        if (a.hasUnseen !== b.hasUnseen) {
-          return a.hasUnseen ? -1 : 1;
-        }
-        return b.latestTime - a.latestTime;
-      });
-  }, [stories, viewerId]);
+  const groupedStories = useMemo(
+    () => groupStoriesByOwner(stories, viewerId),
+    [stories, viewerId]
+  );
 
   const handleStoriesSeen = useCallback(
     (storyIds = []) => {
@@ -147,29 +119,12 @@ export default function StoriesBar({ user, openCreateSignal = 0 }) {
         return;
       }
 
-      const ids = new Set(storyIds.map(String));
-      setStories((current) =>
-        current.map((entry) => {
-          if (!ids.has(String(entry?._id))) {
-            return entry;
-          }
-
-          const seenBy = Array.isArray(entry?.seenBy)
-            ? entry.seenBy.map(String)
-            : [];
-          if (seenBy.includes(viewerId)) {
-            return entry;
-          }
-
-          return {
-            ...entry,
-            seenBy: [...seenBy, viewerId],
-            viewerSeen: true,
-          };
-        })
-      );
+      if (!isControlled) {
+        setLocalStories((current) => markStoriesSeen(current, storyIds, viewerId));
+      }
+      onStoriesSeen?.(storyIds);
     },
-    [viewerId]
+    [isControlled, onStoriesSeen, viewerId]
   );
 
   return (

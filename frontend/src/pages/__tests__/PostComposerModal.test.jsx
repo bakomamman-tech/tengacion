@@ -50,6 +50,14 @@ vi.mock("../../components/creatorDiscovery/CreatorSummaryFeed", () => ({
   default: () => null,
 }));
 
+vi.mock("../../components/feed/InFeedPeopleCarousel", () => ({
+  default: () => null,
+}));
+
+vi.mock("../../components/feed/InFeedStoriesCarousel", () => ({
+  default: () => null,
+}));
+
 vi.mock("../../Navbar", () => ({
   default: () => null,
 }));

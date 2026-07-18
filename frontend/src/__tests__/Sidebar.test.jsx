@@ -179,6 +179,36 @@ describe("Sidebar", () => {
     await waitFor(() => expect(screen.queryByText("Bola")).not.toBeInTheDocument());
   });
 
+  it("uses Home's shared suggestions without starting a second friends-hub request", async () => {
+    setMatchMedia(false);
+    const onAddSuggestedFriend = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <Sidebar
+        user={{ _id: "user-1", name: "Ada", username: "ada" }}
+        friendSuggestions={[
+          { _id: "user-2", name: "Bola", username: "bola", mutualFriendsCount: 2 },
+          { _id: "user-3", name: "Chidi", username: "chidi" },
+          { _id: "user-4", name: "Dami", username: "dami" },
+          { _id: "user-5", name: "Emeka", username: "emeka" },
+          { _id: "user-6", name: "Fatima", username: "fatima" },
+        ]}
+        pendingSuggestionIds={new Set()}
+        onAddSuggestedFriend={onAddSuggestedFriend}
+      />
+    );
+
+    expect(screen.getByText("Bola")).toBeInTheDocument();
+    expect(screen.queryByText("Fatima")).not.toBeInTheDocument();
+    expect(getFriendsHub).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /add friend/i })[0]);
+    await waitFor(() => expect(onAddSuggestedFriend).toHaveBeenCalledWith(
+      expect.objectContaining({ _id: "user-2" })
+    ));
+    expect(sendFriendRequest).not.toHaveBeenCalled();
+  });
+
   it("uses the raffle status API when a complete local profile may not have spun yet", async () => {
     setMatchMedia(false);
     getRechargeRaffleStatus.mockResolvedValueOnce({

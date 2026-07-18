@@ -9,6 +9,7 @@ export default function StoryCard({
   hasUnseen = false,
   isOwner = false,
   onSeen,
+  videoPreload = "metadata",
 }) {
   const [open, setOpen] = useState(false);
   const { mediaType, mediaUrl, thumbnailUrl } = getStoryMedia(story);
@@ -25,18 +26,33 @@ export default function StoryCard({
     "story-card",
     hasUnseen && !isOwner ? "updated" : "seen",
   ].join(" ");
+  const openStory = () => setOpen(true);
 
   return (
     <>
-      <div className={wrapperClass} onClick={() => setOpen(true)}>
+      <div
+        className={wrapperClass}
+        role="button"
+        tabIndex={0}
+        aria-label={`View ${story?.username || "this user's"} story`}
+        onClick={openStory}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openStory();
+          }
+        }}
+      >
         {cover ? (
-          mediaType === "video" ? (
-            <video src={cover} muted playsInline preload="metadata" />
-          ) : (
-            <img
-              src={cover}
-              alt="Story"
+          mediaType === "video" && !thumbnailUrl ? (
+            <video
+              src={mediaUrl}
+              muted
+              playsInline
+              preload={videoPreload === "none" ? "none" : "metadata"}
             />
+          ) : (
+            <img src={cover} alt="" loading="lazy" draggable="false" />
           )
         ) : (
           <div className="story-card-text-fallback">

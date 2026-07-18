@@ -50,4 +50,31 @@ describe("StoryCard", () => {
     expect(screen.getByRole("button", { name: "View Friend Two story" }).querySelector("video"))
       .toHaveAttribute("preload", "none");
   });
+
+  it("shows attached music with an accessible full title and creator", () => {
+    render(
+      <StoryCard
+        story={{
+          _id: "story-3",
+          username: "Friend Three",
+          mediaType: "image",
+          mediaUrl: "/story-three.jpg",
+          musicAttachment: {
+            title: "Mama",
+            creatorName: "Tengacion Artist",
+            previewUrl: "/mama-preview.mp3",
+          },
+        }}
+      />
+    );
+
+    const storyButton = screen.getByRole("button", {
+      name: "View Friend Three story with music Mama by Tengacion Artist",
+    });
+    const music = storyButton.querySelector(".story-card__music");
+    expect(music).toHaveClass("story-card__music");
+    expect(music).toHaveAttribute("aria-hidden", "true");
+    expect(music).toHaveAttribute("title", "Mama - Tengacion Artist");
+    expect(music.querySelector(".story-card__music-title")).toHaveTextContent("Mama");
+  });
 });

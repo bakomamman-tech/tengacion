@@ -93,6 +93,11 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
     : "";
   const { mediaType, mediaUrl } = getStoryMedia(activeStory);
   const soundtrack = activeStory?.musicAttachment || null;
+  const soundtrackTitle = String(soundtrack?.title || "Creator soundtrack").trim()
+    || "Creator soundtrack";
+  const soundtrackCreator = String(soundtrack?.creatorName || "Tengacion creator").trim()
+    || "Tengacion creator";
+  const soundtrackSummary = String(soundtrack?.summaryLabel || "Music").trim() || "Music";
   const storyDurationMs = soundtrack?.previewUrl
     ? getSoundtrackPreviewSeconds(soundtrack) * 1000
     : IMAGE_DURATION_MS;
@@ -431,136 +436,157 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
             className="story-viewer-close"
             onClick={onClose}
             aria-label="Close story"
+            title="Close story"
           >
-            X
+            <svg className="story-viewer-close__icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
           </Button>
         </div>
 
-        <div className="story-viewer-media">
-          {mediaUrl ? (
-            mediaType === "video" ? (
-              <video
-                ref={videoRef}
-                src={mediaUrl}
-                controls
-                playsInline
-                onTimeUpdate={(event) => {
-                  const duration = event.currentTarget.duration || 0;
-                  const now = event.currentTarget.currentTime || 0;
-                  setProgress(duration > 0 ? Math.min(1, now / duration) : 0);
-                }}
-                onEnded={handleVideoEnded}
-              />
+        <div className="story-viewer-body">
+          <div className="story-viewer-media">
+            {mediaUrl ? (
+              mediaType === "video" ? (
+                <video
+                  ref={videoRef}
+                  src={mediaUrl}
+                  controls
+                  playsInline
+                  onTimeUpdate={(event) => {
+                    const duration = event.currentTarget.duration || 0;
+                    const now = event.currentTarget.currentTime || 0;
+                    setProgress(duration > 0 ? Math.min(1, now / duration) : 0);
+                  }}
+                  onEnded={handleVideoEnded}
+                />
+              ) : (
+                <img src={mediaUrl} alt="Story" />
+              )
             ) : (
-              <img src={mediaUrl} alt="Story" />
-            )
-          ) : (
-            <div className="story-viewer-text-only">{activeStory?.text || "Story"}</div>
-          )}
-        </div>
+              <div className="story-viewer-text-only">{activeStory?.text || "Story"}</div>
+            )}
+          </div>
 
-        {soundtrack?.previewUrl ? (
-          <div className="story-viewer-soundtrack">
-            <div className="story-viewer-soundtrack__head">
-              <img
-                src={resolveImage(soundtrack.coverImage) || soundtrack.coverImage || mediaUrl}
-                alt={soundtrack.title || "Soundtrack"}
-              />
-              <div className="story-viewer-soundtrack__copy">
-                <span>{soundtrack.summaryLabel || "Music"}</span>
-                <strong>{soundtrack.title || "Creator soundtrack"}</strong>
-                <small>
-                  {soundtrack.creatorName || "Tengacion creator"} - {soundtrack.previewLimitSec || 30}
-                  s preview
-                </small>
+          {soundtrack?.previewUrl ? (
+            <div
+              className="story-viewer-soundtrack"
+              role="group"
+              aria-label={`Music: ${soundtrackTitle} by ${soundtrackCreator}`}
+            >
+              <div className="story-viewer-soundtrack__head">
+                <img
+                  src={resolveImage(soundtrack.coverImage) || soundtrack.coverImage || mediaUrl}
+                  alt={`${soundtrackTitle} cover`}
+                />
+                <div className="story-viewer-soundtrack__copy">
+                  <span className="story-viewer-soundtrack__label">{soundtrackSummary}</span>
+                  <strong title={soundtrackTitle}>{soundtrackTitle}</strong>
+                  <small title={`${soundtrackCreator} - ${soundtrack.previewLimitSec || 30}s preview`}>
+                    {soundtrackCreator} - {soundtrack.previewLimitSec || 30}s preview
+                  </small>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleSoundtrackToggle}
+                  className="story-viewer-soundtrack__control"
+                >
+                  {soundtrackPlaying ? "Pause" : "Play"}
+                </Button>
               </div>
+              <div className="story-viewer-soundtrack__progress">
+                <span style={{ "--music-progress": `${Math.round(soundtrackProgress * 100)}%` }} />
+              </div>
+              {soundtrackError ? (
+                <p className="story-viewer-soundtrack__error">{soundtrackError}</p>
+              ) : null}
+              <audio
+                ref={soundtrackRef}
+                hidden
+                preload="auto"
+                onEnded={(event) => {
+                  event.currentTarget.currentTime = 0;
+                  void event.currentTarget.play();
+                }}
+                onPause={() => setSoundtrackPlaying(false)}
+                onPlay={() => setSoundtrackPlaying(true)}
+                onTimeUpdate={(event) => {
+                  const previewLimit = getSoundtrackPreviewSeconds(soundtrack);
+                  const duration = Math.min(event.currentTarget.duration || previewLimit, previewLimit);
+                  const now = event.currentTarget.currentTime || 0;
+                  setSoundtrackProgress(duration > 0 ? Math.min(1, now / duration) : 0);
+                  if (now >= previewLimit) {
+                    event.currentTarget.pause();
+                    event.currentTarget.currentTime = 0;
+                    setSoundtrackProgress(0);
+                    void event.currentTarget.play();
+                  }
+                }}
+              />
+            </div>
+          ) : null}
+
+          {activeStory?.text && mediaUrl && (
+            <p className="story-viewer-text-caption">{activeStory.text}</p>
+          )}
+
+          <div className="story-viewer-actions">
+            <div className="story-viewer-quick-reactions">
+              {QUICK_REACTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  className={reactionBusy === emoji ? "is-reacting" : ""}
+                  onClick={(event) => handleReact(emoji, event)}
+                  disabled={Boolean(reactionBusy)}
+                  aria-label={`React with ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            <div className="story-viewer-reply-row">
+              <input
+                ref={replyInputRef}
+                value={replyText}
+                onChange={(event) => setReplyText(event.target.value)}
+                onBlur={() => setReplyFocused(false)}
+                onFocus={() => setReplyFocused(true)}
+                placeholder="Reply to story..."
+                maxLength={220}
+              />
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={handleSoundtrackToggle}
-                className="story-viewer-soundtrack__control"
+                loading={replyBusy}
+                onClick={handleReply}
+                disabled={!replyText.trim()}
               >
-                {soundtrackPlaying ? "Pause" : "Play"}
+                Reply
               </Button>
             </div>
-            <div className="story-viewer-soundtrack__progress">
-              <span style={{ "--music-progress": `${Math.round(soundtrackProgress * 100)}%` }} />
-            </div>
-            {soundtrackError ? <p className="story-viewer-soundtrack__error">{soundtrackError}</p> : null}
-            <audio
-              ref={soundtrackRef}
-              hidden
-              preload="auto"
-              onEnded={(event) => {
-                event.currentTarget.currentTime = 0;
-                void event.currentTarget.play();
-              }}
-              onPause={() => setSoundtrackPlaying(false)}
-              onPlay={() => setSoundtrackPlaying(true)}
-              onTimeUpdate={(event) => {
-                const previewLimit = getSoundtrackPreviewSeconds(soundtrack);
-                const duration = Math.min(event.currentTarget.duration || previewLimit, previewLimit);
-                const now = event.currentTarget.currentTime || 0;
-                setSoundtrackProgress(duration > 0 ? Math.min(1, now / duration) : 0);
-                if (now >= previewLimit) {
-                  event.currentTarget.pause();
-                  event.currentTarget.currentTime = 0;
-                  setSoundtrackProgress(0);
-                  void event.currentTarget.play();
-                }
-              }}
-            />
           </div>
-        ) : null}
 
-        {activeStory?.text && mediaUrl && (
-          <p className="story-viewer-text-caption">{activeStory.text}</p>
-        )}
-
-        <div className="story-viewer-actions">
-          <div className="story-viewer-quick-reactions">
-            {QUICK_REACTIONS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                className={reactionBusy === emoji ? "is-reacting" : ""}
-                onClick={(event) => handleReact(emoji, event)}
-                disabled={Boolean(reactionBusy)}
-                aria-label={`React with ${emoji}`}
+          {orderedStories.length > 1 && (
+            <div className="story-viewer-controls">
+              <Button variant="outline" size="sm" onClick={goToPrev} disabled={index === 0}>
+                Previous
+              </Button>
+              <span>
+                {index + 1}/{orderedStories.length}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNext}
+                disabled={index === orderedStories.length - 1}
               >
-                {emoji}
-              </button>
-            ))}
-          </div>
-          <div className="story-viewer-reply-row">
-            <input
-              ref={replyInputRef}
-              value={replyText}
-              onChange={(event) => setReplyText(event.target.value)}
-              onBlur={() => setReplyFocused(false)}
-              onFocus={() => setReplyFocused(true)}
-              placeholder="Reply to story..."
-              maxLength={220}
-            />
-            <Button variant="secondary" size="sm" loading={replyBusy} onClick={handleReply} disabled={!replyText.trim()}>
-              Reply
-            </Button>
-          </div>
+                Next
+              </Button>
+            </div>
+          )}
         </div>
-
-        {orderedStories.length > 1 && (
-          <div className="story-viewer-controls">
-            <Button variant="outline" size="sm" onClick={goToPrev} disabled={index === 0}>
-              Previous
-            </Button>
-            <span>
-              {index + 1}/{orderedStories.length}
-            </span>
-            <Button variant="outline" size="sm" onClick={goToNext} disabled={index === orderedStories.length - 1}>
-              Next
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );

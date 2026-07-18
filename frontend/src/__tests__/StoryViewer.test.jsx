@@ -107,5 +107,25 @@ describe("StoryViewer", () => {
 
     expect(playMock).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: /pause/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "Music: Mama by Tengacion Artist" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Mama")).toHaveAttribute("title", "Mama");
+    expect(screen.getByText(/Tengacion Artist - 30s preview/i)).toBeInTheDocument();
+  });
+
+  it("keeps the close control outside the scrollable story content", () => {
+    const onClose = vi.fn();
+    render(<StoryViewer story={story} onClose={onClose} />);
+
+    const closeButton = screen.getByRole("button", { name: "Close story" });
+    const scrollableBody = document.querySelector(".story-viewer-body");
+    expect(closeButton).toHaveClass("story-viewer-close");
+    expect(closeButton).toHaveAttribute("title", "Close story");
+    expect(closeButton.querySelector(".story-viewer-close__icon")).toBeInTheDocument();
+    expect(scrollableBody).not.toContainElement(closeButton);
+
+    fireEvent.click(closeButton);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

@@ -15,6 +15,16 @@ export default function StoryCard({
   const { mediaType, mediaUrl, thumbnailUrl } = getStoryMedia(story);
   const cover = thumbnailUrl || mediaUrl;
   const soundtrack = story?.musicAttachment || null;
+  const soundtrackTitle = String(
+    soundtrack?.title || soundtrack?.creatorName || soundtrack?.summaryLabel || "Music"
+  ).trim() || "Music";
+  const soundtrackCreator = String(soundtrack?.creatorName || "Tengacion creator").trim()
+    || "Tengacion creator";
+  const storyAccessibleName = `View ${story?.username || "this user's"} story${
+    soundtrack?.previewUrl
+      ? ` with music ${soundtrackTitle} by ${soundtrackCreator}`
+      : ""
+  }`;
 
   const avatarSrc = story?.avatar
     ? resolveImage(story.avatar)
@@ -34,7 +44,7 @@ export default function StoryCard({
         className={wrapperClass}
         role="button"
         tabIndex={0}
-        aria-label={`View ${story?.username || "this user's"} story`}
+        aria-label={storyAccessibleName}
         onClick={openStory}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -73,8 +83,12 @@ export default function StoryCard({
         )}
 
         {soundtrack?.previewUrl ? (
-          <span className="story-card__music">
-            {soundtrack.title || soundtrack.creatorName || soundtrack.summaryLabel || "Music"}
+          <span
+            className="story-card__music"
+            aria-hidden="true"
+            title={`${soundtrackTitle} - ${soundtrackCreator}`}
+          >
+            <span className="story-card__music-title">{soundtrackTitle}</span>
           </span>
         ) : null}
 

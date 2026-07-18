@@ -9,9 +9,13 @@ const {
 } = require("../utils/profileFields");
 
 const MAX_SPINS = 5;
-const COOLDOWN_MS = 2 * 24 * 60 * 60 * 1000;
+const COOLDOWN_MS = 60 * 60 * 1000;
 const PRIZE_AMOUNT = 100;
-const RAFFLE_DEMO_USERNAME = "pyrexx_singz";
+const RAFFLE_DEMO_EMAIL = "tmintldo4_life@yahoo.com";
+const PROFILE_MEDIA_REQUIRED_MESSAGE =
+  "Upload a profile picture and cover photo to be able to play";
+const ROUND_RETRY_MESSAGE =
+  "Try after one hour but you must make a post to activate the game again.";
 const NETWORKS = {
   mtn: {
     id: "mtn",
@@ -61,7 +65,7 @@ const normalizeNetwork = (value = "") => {
 const normalizePin = (value = "") => String(value || "").replace(/\D/g, "").trim();
 
 const isRaffleDemoUser = (user = {}) =>
-  String(user?.username || "").trim().toLowerCase() === RAFFLE_DEMO_USERNAME;
+  String(user?.email || "").trim().toLowerCase() === RAFFLE_DEMO_EMAIL;
 
 const validatePinForNetwork = (network, pin) => {
   const config = NETWORKS[network];
@@ -98,6 +102,7 @@ const getNetworkPayload = () =>
   }));
 
 const hasProfilePhoto = (user = {}) => Boolean(mediaToUrl(user.avatar));
+const hasCoverPhoto = (user = {}) => Boolean(mediaToUrl(user.cover));
 
 const hasDateValue = (value) => {
   if (!value) {
@@ -123,9 +128,6 @@ const hasCompletedProfileDetails = (user = {}) => {
   );
 };
 
-const hasCompletedProfileWithPhoto = (user = {}) =>
-  hasCompletedProfileDetails(user) && hasProfilePhoto(user);
-
 const hasActiveAccount = (user = {}) =>
   Boolean(user?._id) &&
   user.isActive !== false &&
@@ -137,6 +139,7 @@ const getEligibility = (user = {}) => {
   const accountBasicsComplete = Boolean(user?.name && user?.username && user?.email);
   const profileDetailsComplete = hasCompletedProfileDetails(user);
   const profilePhotoComplete = hasProfilePhoto(user);
+  const coverPhotoComplete = hasCoverPhoto(user);
   const activeAccount = hasActiveAccount(user);
 
   const requirements = [
@@ -146,23 +149,24 @@ const getEligibility = (user = {}) => {
       complete: accountBasicsComplete && activeAccount,
     },
     {
-      id: "profile",
-      label: "Update profile details",
-      complete: profileDetailsComplete,
-    },
-    {
       id: "avatar",
       label: "Upload a profile picture",
       complete: profilePhotoComplete,
     },
+    {
+      id: "cover",
+      label: "Upload a cover photo",
+      complete: coverPhotoComplete,
+    },
   ];
 
   return {
-    eligible: activeAccount,
+    eligible: activeAccount && profilePhotoComplete && coverPhotoComplete,
     requirements,
     accountBasicsComplete,
     profileDetailsComplete,
     profilePhotoComplete,
+    coverPhotoComplete,
     activeAccount,
   };
 };
@@ -190,7 +194,9 @@ const hasClaimedRaffleWin = async (userId) => {
 const buildRaffleVisibility = ({ user = {}, hasClaimedWin = false } = {}) => {
   const profileDetailsComplete = hasCompletedProfileDetails(user);
   const profilePhotoComplete = hasProfilePhoto(user);
-  const profileCompleteWithPhoto = profileDetailsComplete && profilePhotoComplete;
+  const coverPhotoComplete = hasCoverPhoto(user);
+  const profileCompleteWithPhoto =
+    profileDetailsComplete && profilePhotoComplete && coverPhotoComplete;
 
   if (!hasActiveAccount(user)) {
     return {
@@ -200,6 +206,7 @@ const buildRaffleVisibility = ({ user = {}, hasClaimedWin = false } = {}) => {
       hasClaimedWin,
       profileDetailsComplete,
       profilePhotoComplete,
+      coverPhotoComplete,
       profileCompleteWithPhoto,
     };
   }
@@ -213,6 +220,7 @@ const buildRaffleVisibility = ({ user = {}, hasClaimedWin = false } = {}) => {
       hasClaimedWin,
       profileDetailsComplete,
       profilePhotoComplete,
+      coverPhotoComplete,
       profileCompleteWithPhoto,
     };
   }
@@ -225,18 +233,7 @@ const buildRaffleVisibility = ({ user = {}, hasClaimedWin = false } = {}) => {
       hasClaimedWin,
       profileDetailsComplete,
       profilePhotoComplete,
-      profileCompleteWithPhoto,
-    };
-  }
-
-  if (profileCompleteWithPhoto) {
-    return {
-      visible: false,
-      reason: "profile_complete_with_photo",
-      message: "Spin & Win is reserved for new and unfinished profiles.",
-      hasClaimedWin,
-      profileDetailsComplete,
-      profilePhotoComplete,
+      coverPhotoComplete,
       profileCompleteWithPhoto,
     };
   }
@@ -248,6 +245,7 @@ const buildRaffleVisibility = ({ user = {}, hasClaimedWin = false } = {}) => {
     hasClaimedWin,
     profileDetailsComplete,
     profilePhotoComplete,
+    coverPhotoComplete,
     profileCompleteWithPhoto,
   };
 };
@@ -258,16 +256,6 @@ const getRepeatPostRequirement = async (userId, latestPlay = null, now = new Dat
       required: false,
       complete: true,
       since: null,
-      latestPostAt: null,
-    };
-  }
-
-  const nextAvailableAt = latestPlay.nextAvailableAt ? new Date(latestPlay.nextAvailableAt) : null;
-  if (nextAvailableAt && nextAvailableAt.getTime() > now.getTime()) {
-    return {
-      required: false,
-      complete: true,
-      since: latestPlay.wonAt || latestPlay.updatedAt || latestPlay.createdAt || null,
       latestPostAt: null,
     };
   }
@@ -305,6 +293,10 @@ const getEffectiveEligibility = async (user = {}, latestPlay = null, now = new D
     return {
       ...base,
       eligible: base.activeAccount,
+      requirements: base.requirements.map((requirement) => ({
+        ...requirement,
+        complete: true,
+      })),
       demoAccess: true,
       repeatPostRequirement: {
         required: false,
@@ -350,6 +342,29 @@ const serializePrize = (play = {}) => {
   };
 };
 
+const getRoundCompletedAt = (play = {}) => {
+  const history = Array.isArray(play?.spinHistory) ? play.spinHistory : [];
+  const lastSpinAt = history.length ? history[history.length - 1]?.createdAt : null;
+  return lastSpinAt || play?.wonAt || play?.updatedAt || play?.createdAt || null;
+};
+
+const getEffectiveNextAvailableAt = (play = {}) => {
+  const storedNextAvailableAt = play?.nextAvailableAt
+    ? new Date(play.nextAvailableAt)
+    : null;
+  const completedAt = getRoundCompletedAt(play);
+  const oneHourAfterCompletion = completedAt
+    ? new Date(new Date(completedAt).getTime() + COOLDOWN_MS)
+    : null;
+
+  if (storedNextAvailableAt && oneHourAfterCompletion) {
+    return storedNextAvailableAt.getTime() <= oneHourAfterCompletion.getTime()
+      ? storedNextAvailableAt
+      : oneHourAfterCompletion;
+  }
+  return storedNextAvailableAt || oneHourAfterCompletion;
+};
+
 const serializePlay = (play = null, now = new Date(), options = {}) => {
   if (!play) {
     return null;
@@ -358,7 +373,7 @@ const serializePlay = (play = null, now = new Date(), options = {}) => {
   const status = String(play.status || "active");
   const spinsUsed = Number(play.spinsUsed || 0);
   const maxSpins = Number(play.maxSpins || MAX_SPINS);
-  const nextAvailableAt = play.nextAvailableAt || null;
+  const nextAvailableAt = status === "active" ? null : getEffectiveNextAvailableAt(play);
   const cooldownActive =
     !options.ignoreCooldown &&
     status !== "active" &&
@@ -431,7 +446,7 @@ const buildRaffleStatus = async (userId, options = {}) => {
   const [user, latestPlay, availability, hasClaimedWin] = await Promise.all([
     User.findById(userId)
       .select(
-        "_id name username email phone country dob gender onboarding avatar isActive isDeleted isBanned isSuspended"
+        "_id name username email phone country dob gender onboarding avatar cover isActive isDeleted isBanned isSuspended"
       )
       .lean(),
     RechargeRafflePlay.findOne({ userId }).sort({ createdAt: -1, _id: -1 }).lean(),
@@ -497,11 +512,7 @@ const chooseLossOutcome = (spinNumber) => {
 };
 
 const shouldWinSpin = (spinNumber) => {
-  if (spinNumber >= MAX_SPINS) {
-    return true;
-  }
-
-  const probabilities = [0.18, 0.24, 0.34, 0.46];
+  const probabilities = [0.18, 0.24, 0.34, 0.46, 0.58];
   return Math.random() < probabilities[Math.max(0, spinNumber - 1)];
 };
 
@@ -534,7 +545,7 @@ const getOrCreatePlayableRound = async ({ userId, network, now, bypassCooldown =
   }
 
   const status = String(latest.status || "active");
-  const nextAvailableAt = latest.nextAvailableAt ? new Date(latest.nextAvailableAt) : null;
+  const nextAvailableAt = getEffectiveNextAvailableAt(latest);
   if (bypassCooldown && Number(latest.spinsUsed || 0) > 0) {
     return RechargeRafflePlay.create({ userId, network });
   }
@@ -567,7 +578,7 @@ const spinRaffle = async ({ userId, network: rawNetwork }) => {
 
   const user = await User.findById(userId)
     .select(
-      "_id name username email phone country dob gender onboarding avatar isActive isDeleted isBanned isSuspended"
+      "_id name username email phone country dob gender onboarding avatar cover isActive isDeleted isBanned isSuspended"
     )
     .lean();
   if (!user) {
@@ -588,17 +599,20 @@ const spinRaffle = async ({ userId, network: rawNetwork }) => {
   }
 
   const eligibility = await getEffectiveEligibility(user, latest, now);
-  if (!eligibility.eligible) {
+  if (
+    !demoAccess &&
+    (!eligibility.profilePhotoComplete || !eligibility.coverPhotoComplete)
+  ) {
     throw new RechargeRaffleError(
-      "Complete the raffle requirements to unlock Spin & Win.",
+      PROFILE_MEDIA_REQUIRED_MESSAGE,
       403,
-      "not_eligible",
+      "profile_media_required",
       { eligibility }
     );
   }
 
   if (!demoAccess && latest && String(latest.status || "active") !== "active") {
-    const nextAvailableAt = latest.nextAvailableAt ? new Date(latest.nextAvailableAt) : null;
+    const nextAvailableAt = getEffectiveNextAvailableAt(latest);
     if (nextAvailableAt && nextAvailableAt.getTime() > now.getTime()) {
       const status = await buildRaffleStatus(userId);
       return {
@@ -606,10 +620,30 @@ const spinRaffle = async ({ userId, network: rawNetwork }) => {
         rateLimited: true,
         spin: {
           won: Boolean(status.play?.prize),
-          message: "You have reached your raffle rate limit. Your winning PIN stays available to copy.",
+          message: ROUND_RETRY_MESSAGE,
         },
       };
     }
+  }
+
+  if (!eligibility.eligible) {
+    if (
+      eligibility.repeatPostRequirement?.required &&
+      !eligibility.repeatPostRequirement.complete
+    ) {
+      throw new RechargeRaffleError(
+        "Make a post on Tengacion, then revisit the game after one hour.",
+        403,
+        "post_required",
+        { eligibility }
+      );
+    }
+    throw new RechargeRaffleError(
+      "Complete the raffle requirements to unlock Spin & Win.",
+      403,
+      "not_eligible",
+      { eligibility }
+    );
   }
 
   const availableCard = await findAvailableCard(network);
@@ -634,7 +668,7 @@ const spinRaffle = async ({ userId, network: rawNetwork }) => {
       rateLimited: true,
       spin: {
         won: Boolean(status.play?.prize),
-        message: "You have reached your raffle rate limit. Your winning PIN stays available to copy.",
+        message: ROUND_RETRY_MESSAGE,
       },
     };
   }
@@ -656,6 +690,11 @@ const spinRaffle = async ({ userId, network: rawNetwork }) => {
   if (!won) {
     const outcome = chooseLossOutcome(spinNumber);
     play.spinsUsed = spinNumber;
+    const roundExhausted = spinNumber >= MAX_SPINS;
+    if (roundExhausted) {
+      play.status = "exhausted";
+      play.nextAvailableAt = new Date(now.getTime() + COOLDOWN_MS);
+    }
     play.spinHistory.push({
       spinNumber,
       outcome: outcome.label,
@@ -671,11 +710,15 @@ const spinRaffle = async ({ userId, network: rawNetwork }) => {
         spinNumber,
         won: false,
         outcome,
+        ...(roundExhausted ? { roundExhausted: true } : {}),
         message:
-          spinNumber >= MAX_SPINS - 1
+          roundExhausted
+            ? ROUND_RETRY_MESSAGE
+            : spinNumber >= MAX_SPINS - 1
             ? "The next spin is the pressure lane."
             : "Close call. Keep the wheel moving.",
       },
+      ...(roundExhausted ? { rateLimited: true } : {}),
     };
   }
 
@@ -694,7 +737,7 @@ const spinRaffle = async ({ userId, network: rawNetwork }) => {
   play.rechargeCardId = card._id;
   play.prizePin = card.pin;
   play.wonAt = now;
-  play.nextAvailableAt = demoAccess ? null : new Date(now.getTime() + COOLDOWN_MS);
+  play.nextAvailableAt = null;
   play.spinHistory.push({
     spinNumber,
     outcome: "N100 recharge PIN",
@@ -875,8 +918,10 @@ module.exports = {
   COOLDOWN_MS,
   MAX_SPINS,
   NETWORKS,
+  PROFILE_MEDIA_REQUIRED_MESSAGE,
   PRIZE_AMOUNT,
-  RAFFLE_DEMO_USERNAME,
+  RAFFLE_DEMO_EMAIL,
+  ROUND_RETRY_MESSAGE,
   RechargeRaffleError,
   buildDialCodes,
   buildRaffleStatus,

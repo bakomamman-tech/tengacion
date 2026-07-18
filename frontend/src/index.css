@@ -19249,18 +19249,35 @@ html.dark-mode .tg-share-inline-error {
   z-index: 70;
   width: auto;
   max-width: min(240px, calc(100vw - 32px));
-  border: 1px solid var(--border) !important;
+  border: 1px solid var(--tg-btn-primary-border) !important;
   border-radius: 999px !important;
-  background: var(--surface) !important;
-  color: var(--text) !important;
+  background: var(--tg-btn-primary-bg) !important;
+  color: var(--tg-btn-primary-text) !important;
   padding: 8px 14px !important;
   font-weight: 800 !important;
   white-space: nowrap;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--tg-btn-shadow-primary);
+  transition:
+    background var(--tg-btn-transition),
+    border-color var(--tg-btn-transition),
+    box-shadow var(--tg-btn-transition),
+    transform var(--tg-btn-transition);
 }
 
 .install-prompt-btn:hover {
-  background: var(--surface-soft) !important;
+  background: var(--tg-btn-primary-bg-hover) !important;
+  box-shadow: var(--tg-btn-shadow-primary-hover);
+  transform: translateY(-1px);
+}
+
+.install-prompt-btn:active {
+  background: var(--tg-btn-primary-bg-active) !important;
+  transform: translateY(0);
+}
+
+.install-prompt-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--tg-btn-shadow-primary-hover), var(--tg-btn-ring);
 }
 
 /* Login + register */

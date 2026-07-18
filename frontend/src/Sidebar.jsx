@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   getFriendsHub,
@@ -8,7 +9,11 @@ import {
 } from "./api";
 
 const MOBILE_SIDEBAR_QUERY = "(max-width: 1020px)";
-const RAFFLE_DEMO_USERNAME = "pyrexx_singz";
+const RAFFLE_DEMO_EMAIL = "tmintldo4_life@yahoo.com";
+const PROFILE_MEDIA_REQUIRED_MESSAGE =
+  "Upload a profile picture and cover photo to be able to play";
+const ROUND_RETRY_MESSAGE =
+  "Try after one hour but you must make a post to activate the game again.";
 
 const fallbackAvatar = (name) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -33,45 +38,35 @@ const getMediaUrl = (value) => {
   return String(value.secureUrl || value.secure_url || value.url || "").trim();
 };
 
-const hasDateValue = (value) => {
-  if (!value) {
-    return false;
-  }
-  const date = new Date(value);
-  return !Number.isNaN(date.getTime());
-};
+const hasRaffleDemoAccess = (user = {}) =>
+  String(user?.email || "").trim().toLowerCase() === RAFFLE_DEMO_EMAIL;
 
-const cleanProfileValue = (value, placeholderPrefix = "") => {
-  const nextValue = String(value || "").trim();
-  if (!nextValue) {
+const hasRequiredRafflePhotos = (user = {}) =>
+  hasRaffleDemoAccess(user) ||
+  (Boolean(getMediaUrl(user?.avatar)) && Boolean(getMediaUrl(user?.cover)));
+
+const getRafflePlayMessage = (payload, locallyEligible) => {
+  if (payload?.demoAccess) {
     return "";
   }
-  return placeholderPrefix && nextValue.startsWith(placeholderPrefix) ? "" : nextValue;
-};
-
-const hasCompletedProfileDetails = (user = {}) => {
-  if (user?.onboarding?.completed) {
-    return true;
+  const eligibility = payload?.eligibility;
+  if (
+    eligibility &&
+    (!eligibility.profilePhotoComplete || !eligibility.coverPhotoComplete)
+  ) {
+    return PROFILE_MEDIA_REQUIRED_MESSAGE;
   }
-
-  return Boolean(
-    user?.name &&
-      user?.username &&
-      user?.email &&
-      cleanProfileValue(user?.phone, "tmp_phone_") &&
-      cleanProfileValue(user?.country, "tmp_country_") &&
-      hasDateValue(user?.dob) &&
-      String(user?.gender || "").trim()
-  );
+  if (payload?.cooldown?.active) {
+    return ROUND_RETRY_MESSAGE;
+  }
+  if (
+    eligibility?.repeatPostRequirement?.required &&
+    !eligibility.repeatPostRequirement.complete
+  ) {
+    return "Make a post on Tengacion, then revisit the game after one hour.";
+  }
+  return locallyEligible ? "" : PROFILE_MEDIA_REQUIRED_MESSAGE;
 };
-
-const hasRaffleDemoAccess = (user = {}) =>
-  String(user?.username || "").trim().toLowerCase() === RAFFLE_DEMO_USERNAME;
-
-const hidesRaffleByProfile = (user = {}) =>
-  !hasRaffleDemoAccess(user) &&
-  hasCompletedProfileDetails(user) &&
-  Boolean(getMediaUrl(user?.avatar));
 
 function RaffleGameCard({ isExpanded, onToggle, onPlay }) {
   return (
@@ -102,7 +97,7 @@ function RaffleGameCard({ isExpanded, onToggle, onPlay }) {
           </div>
 
           <p className="sidebar-raffle-copy">
-            New or unfinished accounts can choose MTN or Airtel, then spin for a recharge PIN.
+            New users with profile and cover photos can spin for an MTN or Airtel recharge PIN.
           </p>
         </>
       ) : (
@@ -112,7 +107,7 @@ function RaffleGameCard({ isExpanded, onToggle, onPlay }) {
           </div>
 
           <p className="sidebar-raffle-copy">
-            Five spins, MTN or Airtel, for new and unfinished profiles.
+            Five spins per round. Losing rounds reopen after one hour and a new post.
           </p>
         </div>
       )}
@@ -209,20 +204,21 @@ export default function Sidebar({ user, openChat, openProfile }) {
   const location = useLocation();
   const [isRaffleExpanded, setIsRaffleExpanded] = useState(false);
   const [isMobileSidebar, setIsMobileSidebar] = useState(getIsMobileSidebar);
-  const [raffleVisible, setRaffleVisible] = useState(() => !hidesRaffleByProfile(user));
+  const [raffleVisible, setRaffleVisible] = useState(() => Boolean(user?._id));
+  const [raffleCanPlay, setRaffleCanPlay] = useState(() => hasRequiredRafflePhotos(user));
+  const [rafflePlayMessage, setRafflePlayMessage] = useState(() =>
+    hasRequiredRafflePhotos(user) ? "" : PROFILE_MEDIA_REQUIRED_MESSAGE
+  );
   const [friendSuggestions, setFriendSuggestions] = useState([]);
   const [pendingSuggestionIds, setPendingSuggestionIds] = useState(() => new Set());
 
   const avatar = resolveImage(user?.avatar) || fallbackAvatar(user?.name);
-  const raffleProfileHidden = hidesRaffleByProfile(user);
+  const raffleLocallyEligible = hasRequiredRafflePhotos(user);
   const raffleVisibilityKey = [
     user?._id || "",
+    user?.email || "",
     getMediaUrl(user?.avatar),
-    user?.onboarding?.completed ? "done" : "pending",
-    user?.phone || "",
-    user?.country || "",
-    user?.dob || "",
-    user?.gender || "",
+    getMediaUrl(user?.cover),
   ].join("|");
 
   useEffect(() => {
@@ -254,23 +250,36 @@ export default function Sidebar({ user, openChat, openProfile }) {
       };
     }
 
-    setRaffleVisible(!raffleProfileHidden);
+    setRaffleVisible(true);
+    setRaffleCanPlay(raffleLocallyEligible);
+    setRafflePlayMessage(
+      raffleLocallyEligible ? "" : PROFILE_MEDIA_REQUIRED_MESSAGE
+    );
     getRechargeRaffleStatus()
       .then((payload) => {
         if (!cancelled) {
           setRaffleVisible(payload?.visibility?.visible !== false);
+          const canPlay = payload?.eligibility
+            ? Boolean(payload.eligibility.eligible) && !payload?.cooldown?.active
+            : raffleLocallyEligible;
+          setRaffleCanPlay(canPlay);
+          setRafflePlayMessage(getRafflePlayMessage(payload, raffleLocallyEligible));
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setRaffleVisible(!raffleProfileHidden);
+          setRaffleVisible(true);
+          setRaffleCanPlay(raffleLocallyEligible);
+          setRafflePlayMessage(
+            raffleLocallyEligible ? "" : PROFILE_MEDIA_REQUIRED_MESSAGE
+          );
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [raffleProfileHidden, raffleVisibilityKey, user?._id]);
+  }, [raffleLocallyEligible, raffleVisibilityKey, user?._id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -309,7 +318,13 @@ export default function Sidebar({ user, openChat, openProfile }) {
   const isProfileRoute = location.pathname.startsWith("/profile/");
   const sidebarBtnClass = (isActive) => `sidebar-btn${isActive ? " active" : ""}`;
   const toggleRaffleCard = () => setIsRaffleExpanded((current) => !current);
-  const openRaffleGame = () => navigate("/recharge-raffle");
+  const openRaffleGame = () => {
+    if (!raffleCanPlay) {
+      toast.error(rafflePlayMessage || PROFILE_MEDIA_REQUIRED_MESSAGE);
+      return;
+    }
+    navigate("/recharge-raffle");
+  };
   const openMessages = () => {
     if (typeof openChat === "function") {
       openChat();

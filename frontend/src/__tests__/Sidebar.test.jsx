@@ -1,4 +1,5 @@
 import React from "react";
+import toast from "react-hot-toast";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,6 +28,10 @@ const setMatchMedia = (matches) => {
   });
 };
 
+vi.mock("react-hot-toast", () => ({
+  default: { error: vi.fn() },
+}));
+
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
   return {
@@ -48,6 +53,7 @@ vi.mock("../api", () => ({
 describe("Sidebar", () => {
   beforeEach(() => {
     navigateMock.mockReset();
+    toast.error.mockReset();
     getRechargeRaffleStatus.mockReset();
     getRechargeRaffleStatus.mockResolvedValue({
       visibility: { visible: true, reason: "available" },
@@ -93,6 +99,59 @@ describe("Sidebar", () => {
     const raffleCard = feature.querySelector(".sidebar-raffle-card");
     expect(feature.firstElementChild).toBe(raffleCard);
     expect(feature.childElementCount).toBe(1);
+  });
+
+  it("instructs users without both photos instead of opening the game", async () => {
+    setMatchMedia(false);
+
+    render(
+      <Sidebar
+        user={{
+          _id: "user-1",
+          name: "Ada",
+          username: "ada",
+          email: "ada@example.com",
+          avatar: { url: "/uploads/ada.jpg" },
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /^play$/i }));
+
+    expect(toast.error).toHaveBeenCalledWith(
+      "Upload a profile picture and cover photo to be able to play"
+    );
+    expect(navigateMock).not.toHaveBeenCalledWith("/recharge-raffle");
+  });
+
+  it("opens the game for a user with profile and cover photos", async () => {
+    setMatchMedia(false);
+    getRechargeRaffleStatus.mockResolvedValueOnce({
+      visibility: { visible: true, reason: "available" },
+      eligibility: {
+        eligible: true,
+        profilePhotoComplete: true,
+        coverPhotoComplete: true,
+      },
+      cooldown: { active: false },
+    });
+
+    render(
+      <Sidebar
+        user={{
+          _id: "user-1",
+          name: "Ada",
+          username: "ada",
+          email: "ada@example.com",
+          avatar: { url: "/uploads/ada.jpg" },
+          cover: { url: "/uploads/ada-cover.jpg" },
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /^play$/i }));
+
+    expect(navigateMock).toHaveBeenCalledWith("/recharge-raffle");
   });
 
   it("navigates to the standalone messages page when no chat launcher is provided", async () => {
@@ -147,10 +206,10 @@ describe("Sidebar", () => {
     expect(getRechargeRaffleStatus).toHaveBeenCalled();
   });
 
-  it("hides the raffle when the account status says the completed profile is unavailable", async () => {
+  it("hides the raffle when the account status says it is unavailable", async () => {
     setMatchMedia(false);
     getRechargeRaffleStatus.mockResolvedValueOnce({
-      visibility: { visible: false, reason: "profile_complete_with_photo" },
+      visibility: { visible: false, reason: "inactive_account" },
     });
 
     render(
@@ -190,7 +249,7 @@ describe("Sidebar", () => {
     expect(screen.queryByText(/recharge raffle/i)).not.toBeInTheDocument();
   });
 
-  it("keeps the raffle visible for the pyrexx_singz demo account", async () => {
+  it("keeps the raffle visible for Stephen Daniel Kurah's designated email", async () => {
     setMatchMedia(false);
     getRechargeRaffleStatus.mockRejectedValueOnce(new Error("offline"));
 
@@ -200,7 +259,7 @@ describe("Sidebar", () => {
           _id: "pyrexx-user",
           name: "Stephen Daniel Kurah",
           username: "pyrexx_singz",
-          email: "pyrexx@example.com",
+          email: "tmintldo4_life@yahoo.com",
           phone: "+2348012345678",
           country: "Nigeria",
           dob: "1990-01-01T00:00:00.000Z",

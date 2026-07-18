@@ -31,7 +31,10 @@ const WHEEL_SEGMENTS = [
 const WHEEL_LIGHTS = Array.from({ length: 12 });
 
 const SPIN_FEEDBACK_DURATION_MS = 2800;
-const RATE_LIMIT_MESSAGE = "Try Again After 2 days";
+const PROFILE_MEDIA_REQUIRED_MESSAGE =
+  "Upload a profile picture and cover photo to be able to play";
+const RATE_LIMIT_MESSAGE =
+  "Try after one hour but you must make a post to activate the game again.";
 const CONFETTI_COLORS = ["#ffe08b", "#34d399", "#60a5fa", "#fb7185", "#ffffff"];
 
 const formatCount = (value) => Number(value || 0).toLocaleString();
@@ -185,6 +188,8 @@ function RequirementList({ requirements = [], onProfile, onPostFeed }) {
                   ? "Account details pending"
                 : item.id === "avatar"
                   ? "Profile photo pending"
+                  : item.id === "cover"
+                    ? "Cover photo pending"
                   : item.id === "feed_post"
                     ? "Share a post on your registered feed page"
                     : "Needs attention"}
@@ -194,6 +199,9 @@ function RequirementList({ requirements = [], onProfile, onPostFeed }) {
             <button type="button" onClick={onProfile}>Update</button>
           ) : null}
           {!item.complete && item.id === "avatar" ? (
+            <button type="button" onClick={onProfile}>Upload</button>
+          ) : null}
+          {!item.complete && item.id === "cover" ? (
             <button type="button" onClick={onProfile}>Upload</button>
           ) : null}
           {!item.complete && item.id === "feed_post" ? (
@@ -307,15 +315,13 @@ export default function RechargeRafflePage({ user }) {
   const cooldown = status?.cooldown || { active: false };
   const raffleVisible = status?.visibility?.visible !== false;
   const activeRound = play?.status === "active";
-  const spinsUsed = activeRound ? Number(play?.spinsUsed || 0) : 0;
-  const spinsRemaining = activeRound ? Number(play?.spinsRemaining || 5) : 5;
+  const spinsUsed = Number(play?.spinsUsed || 0);
+  const spinsRemaining = Number(play?.spinsRemaining ?? 5);
   const canSpin =
     raffleVisible &&
-    Boolean(eligibility.eligible) &&
+    Boolean(status?.canSpin) &&
     Boolean(selectedNetwork) &&
-    !cooldown.active &&
-    !spinning &&
-    (!activeRound || spinsRemaining > 0);
+    !spinning;
   const stockForNetwork = selectedNetwork
     ? Number(status?.availability?.[selectedNetwork]?.available || 0)
     : 0;
@@ -348,7 +354,15 @@ export default function RechargeRafflePage({ user }) {
       return;
     }
     if (!eligibility.eligible) {
-      toast.error("Your account cannot play Spin & Win right now.");
+      const missingRequiredPhoto =
+        !eligibility.profilePhotoComplete || !eligibility.coverPhotoComplete;
+      toast.error(
+        missingRequiredPhoto
+          ? PROFILE_MEDIA_REQUIRED_MESSAGE
+          : eligibility.repeatPostRequirement?.required
+            ? "Make a post on Tengacion, then revisit the game after one hour."
+            : "Your account cannot play Spin & Win right now."
+      );
       return;
     }
     if (!raffleVisible) {
@@ -368,7 +382,13 @@ export default function RechargeRafflePage({ user }) {
         const won = Boolean(payload?.spin?.won);
 
         setStatus(payload);
-        setResultMessage(rateLimited ? RATE_LIMIT_MESSAGE : won ? (payload?.spin?.message || "") : "Try Again");
+        setResultMessage(
+          rateLimited
+            ? (payload?.spin?.message || RATE_LIMIT_MESSAGE)
+            : won
+              ? (payload?.spin?.message || "")
+              : "Try Again"
+        );
         if (payload?.play?.network) {
           setSelectedNetwork(payload.play.network);
         }
@@ -438,8 +458,8 @@ export default function RechargeRafflePage({ user }) {
               <span className="raffle-eyebrow">Tengacion Spin & Win</span>
               <h1 id="raffle-title">Choose your network, spin the wheel, copy your recharge PIN.</h1>
               <p>
-                New and unfinished accounts can stand a chance to win N100, N500,
-                N1,000 or N10,000 recharge card PINs.
+                New users with a profile picture and cover photo can stand a chance
+                to win N100, N500, N1,000 or N10,000 recharge card PINs.
               </p>
 
               <div className="raffle-prize-strip" aria-label="Prize tiers">
@@ -525,9 +545,9 @@ export default function RechargeRafflePage({ user }) {
                 ))}
               </div>
               <div className="raffle-rule-copy">
-                <span>5 daily spins</span>
-                <span>Next round opens after two days</span>
-                <span>Return rounds need a new feed post</span>
+                <span>5 spins per round</span>
+                <span>Next round opens after one hour</span>
+                <span>Make a new Tengacion post before returning</span>
               </div>
               {selectedNetwork ? (
                 <div className="raffle-stock-note">

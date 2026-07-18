@@ -25,6 +25,7 @@ const auth = asyncHandler(async (req, res, next) => {
       id: authContext.userId,
       _id: authContext.user._id,
       username: authContext.user.username || "",
+      email: authContext.user.email || "",
       role: authContext.user.role || "user",
       permissions: [...getEffectivePermissions(authContext.user)],
       isActive: Boolean(authContext.user.isActive),

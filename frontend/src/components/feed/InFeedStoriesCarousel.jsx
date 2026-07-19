@@ -145,11 +145,13 @@ export default function InFeedStoriesCarousel({ groups = [], blockIndex = 0, onS
             }
           }}
         >
-          {carouselGroups.map((group) => (
+          {carouselGroups.map((group, groupIndex) => (
             <StoryCard
               key={group.ownerId || group.latestStory?._id || group.latestStory?.id}
               story={group.latestStory}
               stories={group.stories}
+              storyGroups={carouselGroups}
+              groupIndex={groupIndex}
               hasUnseen={group.hasUnseen}
               isOwner={group.isOwner}
               onSeen={onSeen}

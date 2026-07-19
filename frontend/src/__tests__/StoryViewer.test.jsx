@@ -128,4 +128,94 @@ describe("StoryViewer", () => {
     fireEvent.click(closeButton);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("navigates stories with the side toggle buttons", () => {
+    const onClose = vi.fn();
+    const stories = [
+      story,
+      {
+        ...story,
+        _id: "story-2",
+        time: "2026-05-10T10:00:00.000Z",
+        image: "https://cdn.test/story-two.jpg",
+      },
+      {
+        ...story,
+        _id: "story-3",
+        time: "2026-05-10T11:00:00.000Z",
+        image: "https://cdn.test/story-three.jpg",
+      },
+    ];
+
+    render(<StoryViewer story={stories[2]} stories={stories} onClose={onClose} />);
+
+    const previous = screen.getByRole("button", { name: "Previous story" });
+    const next = screen.getByRole("button", { name: "Next story" });
+    expect(previous).toBeEnabled();
+    expect(next).toBeDisabled();
+    expect(document.querySelector(".story-viewer-media img")).toHaveAttribute(
+      "src",
+      "https://cdn.test/story-three.jpg"
+    );
+
+    fireEvent.click(previous);
+
+    expect(document.querySelector(".story-viewer-media img")).toHaveAttribute(
+      "src",
+      "https://cdn.test/story-two.jpg"
+    );
+    expect(next).toBeEnabled();
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(next);
+    expect(document.querySelector(".story-viewer-media img")).toHaveAttribute(
+      "src",
+      "https://cdn.test/story-three.jpg"
+    );
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("continues from the current owner into the next owner's story", () => {
+    const onClose = vi.fn();
+    const nextOwnerStory = {
+      ...story,
+      _id: "story-next-owner",
+      username: "prosper",
+      time: "2026-05-10T12:00:00.000Z",
+      image: "https://cdn.test/prosper-story.jpg",
+    };
+
+    render(
+      <StoryViewer
+        story={story}
+        stories={[story]}
+        storyGroups={[
+          { ownerId: "owner-1", stories: [story], latestStory: story },
+          {
+            ownerId: "owner-2",
+            stories: [nextOwnerStory],
+            latestStory: nextOwnerStory,
+          },
+        ]}
+        initialGroupIndex={0}
+        onClose={onClose}
+      />
+    );
+
+    const previous = screen.getByRole("button", { name: "Previous story" });
+    const next = screen.getByRole("button", { name: "Next story" });
+    expect(previous).toBeDisabled();
+    expect(next).toBeEnabled();
+
+    fireEvent.click(next);
+
+    expect(screen.getByText("prosper")).toBeInTheDocument();
+    expect(document.querySelector(".story-viewer-media img")).toHaveAttribute(
+      "src",
+      "https://cdn.test/prosper-story.jpg"
+    );
+    expect(previous).toBeEnabled();
+    expect(next).toBeDisabled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

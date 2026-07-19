@@ -4,6 +4,7 @@ import Button from "../components/ui/Button";
 import { getStoryMedia } from "./storyMedia";
 
 const IMAGE_DURATION_MS = 5000;
+const EMPTY_STORY_LIST = [];
 const getSoundtrackPreviewSeconds = (soundtrack = null) =>
   Math.max(1, Math.min(30, Number(soundtrack?.previewLimitSec || 30)));
 
@@ -33,6 +34,15 @@ const isTextEntryTarget = (target) => {
   return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
 };
 
+function StoryViewerChevron({ direction }) {
+  const isPrevious = direction === "previous";
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d={isPrevious ? "m15 5-7 7 7 7" : "m9 5 7 7-7 7"} />
+    </svg>
+  );
+}
+
 const formatStoryTime = (value) => {
   const time = new Date(value || "");
   if (Number.isNaN(time.getTime())) {
@@ -53,18 +63,50 @@ const formatStoryTime = (value) => {
   return `${Math.floor(diffHours / 24)}d`;
 };
 
-export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
-  const orderedStories = useMemo(() => {
-    const source =
-      Array.isArray(stories) && stories.length > 0
-        ? stories
-        : story
-          ? [story]
-          : [];
-    return [...source].sort(
-      (a, b) => new Date(a?.time || 0).getTime() - new Date(b?.time || 0).getTime()
-    );
-  }, [stories, story]);
+const orderStoriesChronologically = (stories = []) =>
+  [...stories].sort(
+    (a, b) => new Date(a?.time || 0).getTime() - new Date(b?.time || 0).getTime()
+  );
+
+export default function StoryViewer({
+  story,
+  stories = EMPTY_STORY_LIST,
+  storyGroups = EMPTY_STORY_LIST,
+  initialGroupIndex = 0,
+  onClose,
+  onSeen,
+}) {
+  const navigationGroups = useMemo(() => {
+    const groups = (Array.isArray(storyGroups) ? storyGroups : [])
+      .map((group) => {
+        const groupStories = Array.isArray(group?.stories) ? group.stories : [];
+        const source = groupStories.length > 0
+          ? groupStories
+          : group?.latestStory
+            ? [group.latestStory]
+            : [];
+        return orderStoriesChronologically(source);
+      })
+      .filter((group) => group.length > 0);
+
+    if (groups.length > 0) {
+      return groups;
+    }
+
+    const source = Array.isArray(stories) && stories.length > 0
+      ? stories
+      : story
+        ? [story]
+        : [];
+    return [orderStoriesChronologically(source)].filter((group) => group.length > 0);
+  }, [stories, story, storyGroups]);
+
+  const safeInitialGroupIndex = Math.min(
+    Math.max(0, Number(initialGroupIndex) || 0),
+    Math.max(0, navigationGroups.length - 1)
+  );
+  const [groupIndex, setGroupIndex] = useState(safeInitialGroupIndex);
+  const orderedStories = navigationGroups[groupIndex] || [];
 
   const [index, setIndex] = useState(Math.max(0, (orderedStories?.length || 1) - 1));
   const [progress, setProgress] = useState(0);
@@ -108,19 +150,41 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
         activeStory?.username || "User"
       )}`;
 
+  const hasPreviousStory = index > 0 || groupIndex > 0;
+  const hasNextStory =
+    index < orderedStories.length - 1 || groupIndex < navigationGroups.length - 1;
+  const hasMultipleStories = navigationGroups.length > 1 || orderedStories.length > 1;
+
   const goToNext = useCallback(() => {
-    setIndex((current) => {
-      if (current >= orderedStories.length - 1) {
-        onClose?.();
-        return current;
-      }
-      return current + 1;
-    });
-  }, [onClose, orderedStories.length]);
+    if (index < orderedStories.length - 1) {
+      setIndex(index + 1);
+      return;
+    }
+
+    if (groupIndex < navigationGroups.length - 1) {
+      const nextGroupIndex = groupIndex + 1;
+      const nextStories = navigationGroups[nextGroupIndex] || [];
+      setGroupIndex(nextGroupIndex);
+      setIndex(Math.max(0, nextStories.length - 1));
+      return;
+    }
+
+    onClose?.();
+  }, [groupIndex, index, navigationGroups, onClose, orderedStories.length]);
 
   const goToPrev = useCallback(() => {
-    setIndex((current) => Math.max(current - 1, 0));
-  }, []);
+    if (index > 0) {
+      setIndex(index - 1);
+      return;
+    }
+
+    if (groupIndex > 0) {
+      const previousGroupIndex = groupIndex - 1;
+      const previousStories = navigationGroups[previousGroupIndex] || [];
+      setGroupIndex(previousGroupIndex);
+      setIndex(Math.max(0, previousStories.length - 1));
+    }
+  }, [groupIndex, index, navigationGroups]);
 
   const handleVideoEnded = useCallback(() => {
     if (holdAdvanceRef.current) {
@@ -377,6 +441,20 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
 
   return (
     <div className="story-viewer-overlay" onClick={onClose}>
+      <button
+        type="button"
+        className="story-viewer-toggle story-viewer-toggle--previous"
+        aria-label="Previous story"
+        title="Previous story"
+        disabled={!hasPreviousStory}
+        onClick={(event) => {
+          event.stopPropagation();
+          goToPrev();
+        }}
+      >
+        <StoryViewerChevron direction="previous" />
+      </button>
+
       <div
         ref={viewerRef}
         className={`story-viewer${soundtrack?.previewUrl ? " story-viewer--with-soundtrack" : ""}`}
@@ -568,9 +646,9 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
             </div>
           </div>
 
-          {orderedStories.length > 1 && (
+          {hasMultipleStories && (
             <div className="story-viewer-controls">
-              <Button variant="outline" size="sm" onClick={goToPrev} disabled={index === 0}>
+              <Button variant="outline" size="sm" onClick={goToPrev} disabled={!hasPreviousStory}>
                 Previous
               </Button>
               <span>
@@ -580,7 +658,7 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
                 variant="outline"
                 size="sm"
                 onClick={goToNext}
-                disabled={index === orderedStories.length - 1}
+                disabled={!hasNextStory}
               >
                 Next
               </Button>
@@ -588,6 +666,20 @@ export default function StoryViewer({ story, stories = [], onClose, onSeen }) {
           )}
         </div>
       </div>
+
+      <button
+        type="button"
+        className="story-viewer-toggle story-viewer-toggle--next"
+        aria-label="Next story"
+        title="Next story"
+        disabled={!hasNextStory}
+        onClick={(event) => {
+          event.stopPropagation();
+          goToNext();
+        }}
+      >
+        <StoryViewerChevron direction="next" />
+      </button>
     </div>
   );
 }

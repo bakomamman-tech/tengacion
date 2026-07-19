@@ -5,6 +5,15 @@ import CreateStory from "./CreateStory";
 import { groupStoriesByOwner, markStoriesSeen } from "./storyGroups";
 import "./stories.css";
 
+function StoryChevron({ direction }) {
+  const isLeft = direction === "left";
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d={isLeft ? "m15 5-7 7 7 7" : "m9 5 7 7-7 7"} />
+    </svg>
+  );
+}
+
 export default function StoriesBar({
   user,
   openCreateSignal = 0,
@@ -91,11 +100,15 @@ export default function StoriesBar({
     node.addEventListener("scroll", onScroll);
     node.addEventListener("wheel", onWheel, { passive: true });
     window.addEventListener("resize", onScroll);
+    const resizeObserver =
+      typeof ResizeObserver === "function" ? new ResizeObserver(onScroll) : null;
+    resizeObserver?.observe(node);
 
     return () => {
       node.removeEventListener("scroll", onScroll);
       node.removeEventListener("wheel", onWheel);
       window.removeEventListener("resize", onScroll);
+      resizeObserver?.disconnect();
     };
   }, [syncArrows, stories.length, loading]);
 
@@ -129,49 +142,53 @@ export default function StoriesBar({
 
   return (
     <div className="stories-shell">
-      {canScrollLeft && (
+      <CreateStory user={user} onCreated={loadStories} openSignal={openCreateSignal} />
+
+      <div className="stories-carousel">
         <button
           type="button"
           className="stories-nav stories-nav-left"
           aria-label="Scroll stories left"
+          title="Previous stories"
+          disabled={!canScrollLeft}
           onClick={() => scrollByPage(-1)}
         >
-          {"<"}
+          <StoryChevron direction="left" />
         </button>
-      )}
 
-      <div className="stories-bar" ref={scrollerRef}>
-        <CreateStory user={user} onCreated={loadStories} openSignal={openCreateSignal} />
+        <div className="stories-bar" ref={scrollerRef}>
+          {!loading &&
+            groupedStories.map((entry, groupIndex) => (
+              <StoryCard
+                key={entry.ownerId}
+                story={entry.latestStory}
+                stories={entry.stories}
+                storyGroups={groupedStories}
+                groupIndex={groupIndex}
+                hasUnseen={entry.hasUnseen}
+                isOwner={entry.isOwner}
+                onSeen={handleStoriesSeen}
+              />
+            ))}
 
-        {!loading &&
-          groupedStories.map((entry) => (
-            <StoryCard
-              key={entry.ownerId}
-              story={entry.latestStory}
-              stories={entry.stories}
-              hasUnseen={entry.hasUnseen}
-              isOwner={entry.isOwner}
-              onSeen={handleStoriesSeen}
-            />
-          ))}
+          {loading && (
+            <div className="story-card story-loading">
+              <p>Loading...</p>
+            </div>
+          )}
+        </div>
 
-        {loading && (
-          <div className="story-card story-loading">
-            <p>Loading...</p>
-          </div>
-        )}
-      </div>
-
-      {canScrollRight && (
         <button
           type="button"
           className="stories-nav stories-nav-right"
           aria-label="Scroll stories right"
+          title="Next stories"
+          disabled={!canScrollRight}
           onClick={() => scrollByPage(1)}
         >
-          {">"}
+          <StoryChevron direction="right" />
         </button>
-      )}
+      </div>
     </div>
   );
 }

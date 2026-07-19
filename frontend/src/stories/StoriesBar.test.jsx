@@ -79,5 +79,26 @@ describe("StoriesBar", () => {
     expect(await screen.findByRole("button", { name: "Friend Two" })).toBeInTheDocument();
     expect(apiMocks.getStories).toHaveBeenCalledTimes(1);
   });
-});
 
+  it("keeps the create card fixed and shows disabled carousel controls at the edges", () => {
+    const { container } = render(
+      <StoriesBar
+        user={{ _id: "viewer-1" }}
+        stories={[
+          {
+            _id: "story-3",
+            userId: "friend-3",
+            username: "Friend Three",
+            time: "2026-07-18T12:00:00.000Z",
+          },
+        ]}
+        loading={false}
+      />
+    );
+
+    const scroller = container.querySelector(".stories-bar");
+    expect(scroller).not.toContainElement(screen.getByRole("button", { name: "Create story" }));
+    expect(screen.getByRole("button", { name: "Scroll stories left" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Scroll stories right" })).toBeDisabled();
+  });
+});

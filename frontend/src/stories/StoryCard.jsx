@@ -6,12 +6,15 @@ import { getStoryMedia } from "./storyMedia";
 export default function StoryCard({
   story,
   stories = [],
+  storyGroups = [],
+  groupIndex = 0,
   hasUnseen = false,
   isOwner = false,
   onSeen,
   videoPreload = "metadata",
 }) {
   const [open, setOpen] = useState(false);
+  const [viewerNavigation, setViewerNavigation] = useState(null);
   const { mediaType, mediaUrl, thumbnailUrl } = getStoryMedia(story);
   const cover = thumbnailUrl || mediaUrl;
   const soundtrack = story?.musicAttachment || null;
@@ -36,7 +39,10 @@ export default function StoryCard({
     "story-card",
     hasUnseen && !isOwner ? "updated" : "seen",
   ].join(" ");
-  const openStory = () => setOpen(true);
+  const openStory = () => {
+    setViewerNavigation({ groups: storyGroups, groupIndex });
+    setOpen(true);
+  };
 
   return (
     <>
@@ -101,7 +107,12 @@ export default function StoryCard({
         <StoryViewer
           story={story}
           stories={stories}
-          onClose={() => setOpen(false)}
+          storyGroups={viewerNavigation?.groups}
+          initialGroupIndex={viewerNavigation?.groupIndex}
+          onClose={() => {
+            setOpen(false);
+            setViewerNavigation(null);
+          }}
           onSeen={onSeen}
         />
       )}

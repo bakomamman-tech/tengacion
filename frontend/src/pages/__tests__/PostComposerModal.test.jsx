@@ -233,4 +233,29 @@ describe("PostComposerModal", () => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
   });
+
+  it("does not insert an under-review response as an empty feed post", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onPosted = vi.fn();
+    createPostWithUploadProgressMock.mockResolvedValue({
+      success: true,
+      moderationStatus: "quarantined",
+      reviewRequired: true,
+      message: "The upload could not be inspected. Please try again.",
+    });
+
+    const { container } = renderComposer({ onClose, onPosted });
+    await user.upload(
+      container.querySelector('input[type="file"]'),
+      buildImageFile("retry-photo.png")
+    );
+    await user.click(screen.getByRole("button", { name: /^post$/i }));
+
+    expect(
+      await screen.findAllByText("The upload could not be inspected. Please try again.")
+    ).not.toHaveLength(0);
+    expect(onPosted).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

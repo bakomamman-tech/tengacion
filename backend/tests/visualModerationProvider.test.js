@@ -23,7 +23,7 @@ describe("visual moderation decision mapping", () => {
     })).toMatchObject({ decision: "approve" });
   });
 
-  test("explicit pornography is rejected while uncertain sexual content is reviewed", () => {
+  test("explicit pornography is rejected without holding low-confidence sexual signals", () => {
     expect(mapOmniModerationResult({
       categories: { sexual: true },
       category_scores: { sexual: 0.96 },
@@ -32,6 +32,11 @@ describe("visual moderation decision mapping", () => {
     expect(mapOmniModerationResult({
       categories: { sexual: true },
       category_scores: { sexual: 0.55 },
+    })).toMatchObject({ decision: "approve" });
+
+    expect(mapOmniModerationResult({
+      categories: { sexual: true },
+      category_scores: { sexual: 0.85 },
     })).toMatchObject({ decision: "quarantine" });
   });
 

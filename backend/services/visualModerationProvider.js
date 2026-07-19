@@ -111,7 +111,7 @@ const mapOmniModerationResult = (result = {}) => {
     });
   }
 
-  if (categories.sexual || sexualScore >= REVIEW_THRESHOLD) {
+  if (sexualScore >= REVIEW_THRESHOLD) {
     return buildDecision({
       decision: "quarantine",
       labels: ["explicit_pornography", "sexual_content_review", "provider:openai_moderation"],
@@ -129,7 +129,7 @@ const mapOmniModerationResult = (result = {}) => {
     });
   }
 
-  if (categories["violence/graphic"] || graphicScore >= GORE_RESTRICT_THRESHOLD) {
+  if (graphicScore >= GORE_RESTRICT_THRESHOLD) {
     return buildDecision({
       decision: "quarantine",
       labels: ["graphic_gore", "provider:openai_moderation"],

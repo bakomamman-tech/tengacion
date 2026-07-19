@@ -9,6 +9,9 @@ process.env.NODE_ENV = "test";
 require("../../apps/api/config/env");
 
 const postsRoutes = require("../../apps/api/routes/posts");
+const {
+  resolvePostUploadDecision,
+} = require("../../apps/api/services/postService");
 const errorHandler = require("../../apps/api/middleware/errorHandler");
 const User = require("../models/User");
 const Post = require("../models/Post");
@@ -249,6 +252,39 @@ describe("Posts feed", () => {
     const stored = await Post.findOne({ text: "Authorized feed post" }).lean();
     expect(stored).toBeTruthy();
     expect(stored.author.toString()).toBe(artist._id.toString());
+    expect(stored.moderationStatus).toBe("approved");
+    expect(stored.reviewRequired).toBe(false);
+  });
+
+  test("POST /api/posts allows ordinary text discussions without keyword blocking", async () => {
+    const response = await request(app)
+      .post("/api/posts")
+      .set("Authorization", `Bearer ${authToken}`)
+      .send({ text: "A public discussion about pornography policy and online safety" })
+      .expect(201);
+
+    expect(response.body).toMatchObject({
+      username: "feed_artist",
+      moderationStatus: "approved",
+      reviewRequired: false,
+    });
+    expect(response.body._id).toBeTruthy();
+  });
+
+  test("post uploads fail open for scanner outages but retain safety signals", () => {
+    expect(resolvePostUploadDecision({
+      decision: "quarantine",
+      labels: ["inspection_failed", "visual_provider_unavailable"],
+      reason: "Provider timeout",
+      confidence: 0.2,
+    })).toMatchObject({ decision: "approve", confidence: 0 });
+
+    expect(resolvePostUploadDecision({
+      decision: "quarantine",
+      labels: ["inspection_failed", "explicit_pornography"],
+      reason: "Safety signal retained",
+      confidence: 0.82,
+    })).toMatchObject({ decision: "quarantine" });
   });
 
   test("POST /api/posts uploads an image to Cloudinary and stores metadata", async () => {

@@ -30,6 +30,17 @@ const EXPLICIT_ADULT_TERMS = [
   "nsfw sex",
 ];
 
+const EXPLICIT_CONTEXT_TERMS = [
+  "awareness",
+  "discussion",
+  "education",
+  "journalism",
+  "news",
+  "policy",
+  "research",
+  "safety",
+];
+
 const EXTREME_GORE_TERMS = [
   "beheading",
   "bloodshed",
@@ -165,7 +176,8 @@ const evaluateModerationPolicy = ({
   }
 
   const explicitAdultMatches = collectMatches(combinedText, EXPLICIT_ADULT_TERMS);
-  if (explicitAdultMatches.length > 0) {
+  const hasLegitimateExplicitContext = hasAnyMatch(combinedText, EXPLICIT_CONTEXT_TERMS);
+  if (explicitAdultMatches.length > 0 && !hasLegitimateExplicitContext) {
     return {
       queue: QUEUE.explicit_pornography,
       status: STATUS.BLOCK_EXPLICIT_ADULT,

@@ -39,9 +39,23 @@ import {
   toggleFollowCreator,
   trackDiscoveryEvents,
 } from "../api";
+
 import { UPLOAD_LIMITS } from "../config/uploadLimits";
 import { isReelCandidate, sortReels } from "../utils/reels";
 import { buildAlphabeticalCreatorRotation } from "./homeCreatorRotation";
+
+const requirePublishedPost = (payload) => {
+  if (payload?._id) {
+    return payload;
+  }
+
+  const error = new Error(
+    payload?.message || "Your post was not published. Please try again."
+  );
+  error.status = Number(payload?.httpStatus) || (payload?.reviewRequired ? 202 : 0);
+  error.moderationStatus = payload?.moderationStatus || "";
+  throw error;
+};
 
 const FEELING_OPTIONS = [
   "Blessed",
@@ -669,7 +683,7 @@ export function PostComposerModal({
     setIsUploadingMedia(true);
     setMediaUploadError("");
     try {
-      const created = await createPostWithUploadProgress(
+      const created = requirePublishedPost(await createPostWithUploadProgress(
         {
           text: text.trim(),
           type: isReelMode ? "reel" : hasSelectedVideo ? "video" : "",
@@ -686,7 +700,7 @@ export function PostComposerModal({
           retries: 2,
           timeoutMs: 10 * 60 * 1000,
         }
-      );
+      ));
 
       replaceSelectedMedia([]);
       setMediaUploadProgress(0);
@@ -716,7 +730,7 @@ export function PostComposerModal({
       if (selectedFiles.length > 0) {
         createdPost = await handleMediaPost();
       } else {
-        createdPost = await createPost({
+        createdPost = requirePublishedPost(await createPost({
           text: text.trim(),
           tags: taggedPeople,
           feeling,
@@ -724,7 +738,7 @@ export function PostComposerModal({
           callsEnabled,
           callNumber: callNumber.trim(),
           moreOptions: selectedMore,
-        });
+        }));
       }
 
       onPosted(createdPost);

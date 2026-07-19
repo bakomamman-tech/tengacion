@@ -584,6 +584,9 @@ export default function PostShareModal({
           postId: resolvedPostId,
         },
       });
+      if (!createdPost?._id) {
+        throw new Error(createdPost?.message || "The shared post was not published.");
+      }
       await recordShare().catch(() => null);
       onShareCreated?.(createdPost);
       finishSuccess("Shared to your feed.", { action: "feed", sharedPostId: createdPost?._id });

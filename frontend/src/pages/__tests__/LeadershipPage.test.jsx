@@ -73,6 +73,17 @@ describe("LeadershipPage", () => {
       "/assets/leadership/christopher-ebere-chibuzor.png"
     );
     expect(
+      screen.getByText("Customer Care Lead in Zamfara State")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Charles Nomzi" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByAltText(
+        "Charles Nomzi, Customer Care Lead in Zamfara State at Tengacion"
+      )
+    ).toHaveAttribute("src", "/assets/leadership/charles-nomzi.png");
+    expect(
       screen.getByRole("heading", { name: "Interns" })
     ).toBeInTheDocument();
     expect(

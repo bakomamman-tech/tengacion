@@ -41,6 +41,15 @@ export const TEAM_LEADS = [
     bio:
       "Christopher Ebere Chibuzor leads Tengacion's creator support in Abuja, helping creators receive practical guidance, responsive assistance, and stronger connections to the platform.",
   },
+  {
+    id: "charles-nomzi",
+    name: "Charles Nomzi",
+    role: "Customer Care Lead in Zamfara State",
+    image: "/assets/leadership/charles-nomzi.png",
+    imageAlt: "Charles Nomzi, Customer Care Lead in Zamfara State at Tengacion",
+    bio:
+      "Charles Nomzi leads Tengacion's customer care work in Zamfara State, helping customers access responsive support and dependable issue resolution.",
+  },
 ];
 
 export const INTERNS = [

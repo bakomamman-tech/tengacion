@@ -13310,17 +13310,33 @@ html.dark-mode .create-post-quick-btn--reel {
   gap: 7px;
   margin: 0 9px 10px;
   padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, var(--brand) 24%, transparent);
+  border: 1px solid var(--tg-btn-primary-border);
   border-radius: 10px;
-  color: var(--brand-strong);
-  background: color-mix(in srgb, var(--brand) 12%, var(--surface) 88%);
+  color: var(--tg-btn-primary-text);
+  background: var(--tg-btn-primary-bg);
+  box-shadow: var(--tg-btn-shadow-primary);
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
+  transition:
+    border-color var(--tg-btn-transition),
+    background var(--tg-btn-transition),
+    box-shadow var(--tg-btn-transition),
+    transform var(--tg-btn-transition);
 }
 
 .in-feed-people-add:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--brand) 19%, var(--surface) 81%);
+  border-color: var(--tg-btn-primary-border);
+  color: var(--tg-btn-primary-text);
+  background: var(--tg-btn-primary-bg-hover);
+  box-shadow: var(--tg-btn-shadow-primary-hover);
+  transform: translateY(-1px);
+}
+
+.in-feed-people-add:active:not(:disabled) {
+  background: var(--tg-btn-primary-bg-active);
+  box-shadow: var(--tg-btn-shadow-primary);
+  transform: none;
 }
 
 .in-feed-people-add:disabled {

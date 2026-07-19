@@ -512,6 +512,47 @@ export default function PublicHomePage() {
       </section>
 
       <section
+        className="public-home__bootcamp"
+        aria-labelledby="public-home-bootcamp-title"
+      >
+        <div className="public-home__bootcamp-media">
+          <span>New · Family learning</span>
+          <img
+            src="/assets/campaigns/summer-bootcamp-2026.png"
+            alt="Tengacion Virtual Summer Bootcamp flyer"
+            loading="lazy"
+          />
+        </div>
+        <div className="public-home__bootcamp-copy">
+          <p className="public-home__eyebrow">This summer on Tengacion</p>
+          <h2 id="public-home-bootcamp-title">
+            A virtual bootcamp for curious kids who love to learn.
+          </h2>
+          <p>
+            From 1 to 30 August 2026, children aged 5 to 18 can join practical
+            classes in Abacus Math, Tech Skills, Reading and Phonics, and Critical
+            Thinking. The fee is ₦50,000 per participant, with a negotiated family
+            rate available when three children are registered together.
+          </p>
+          <div className="public-home__bootcamp-tracks" aria-label="Summer Bootcamp learning tracks">
+            <span>Abacus Math</span>
+            <span>Tech Skills</span>
+            <span>Reading &amp; Phonics</span>
+            <span>Critical Thinking</span>
+          </div>
+          <div className="public-home__bootcamp-actions">
+            <Link to="/summer-bootcamp/register">
+              Register your family <span aria-hidden="true">&rarr;</span>
+            </Link>
+            <a href="tel:+2348061201090">Call 080 6120 1090</a>
+          </div>
+          <small>
+            One secure family application creates the parent&apos;s Tengacion account · 100% virtual · Private child records
+          </small>
+        </div>
+      </section>
+
+      <section
         className="public-home__proof"
         aria-label="Live Tengacion proof"
         aria-busy={loadingProof}

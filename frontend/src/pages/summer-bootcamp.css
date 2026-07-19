@@ -1,0 +1,1159 @@
+.bootcamp-page {
+  --bootcamp-navy: #05072d;
+  --bootcamp-navy-soft: #10134c;
+  --bootcamp-blue: #0ea5e9;
+  --bootcamp-cyan: #22d3ee;
+  --bootcamp-magenta: #d80c74;
+  --bootcamp-pink: #f43f8f;
+  --bootcamp-yellow: #ffd21c;
+  --bootcamp-cream: #fffaf0;
+  --bootcamp-ink: #11183f;
+  --bootcamp-muted: #68708e;
+  --bootcamp-line: #dfe4f2;
+  min-height: 100vh;
+  color: var(--bootcamp-ink);
+  background:
+    radial-gradient(circle at 8% 20%, rgba(14, 165, 233, 0.08), transparent 30rem),
+    radial-gradient(circle at 95% 42%, rgba(216, 12, 116, 0.07), transparent 28rem),
+    #f5f7fc;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.bootcamp-page,
+.bootcamp-page *,
+.bootcamp-page *::before,
+.bootcamp-page *::after {
+  box-sizing: border-box;
+}
+
+.bootcamp-page :is(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid rgba(34, 211, 238, 0.7);
+  outline-offset: 3px;
+}
+
+.bootcamp-header {
+  position: relative;
+  z-index: 20;
+  background: var(--bootcamp-navy);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bootcamp-hero {
+  min-height: 780px;
+  padding: clamp(54px, 7vw, 96px) max(28px, calc((100vw - 1280px) / 2));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.7fr);
+  align-items: center;
+  gap: clamp(42px, 7vw, 96px);
+  position: relative;
+  overflow: hidden;
+  color: white;
+  background:
+    linear-gradient(115deg, rgba(2, 4, 35, 0.99), rgba(8, 9, 54, 0.94) 53%, rgba(40, 4, 58, 0.9)),
+    var(--bootcamp-navy);
+}
+
+.bootcamp-hero::before {
+  content: "";
+  width: 540px;
+  height: 540px;
+  position: absolute;
+  top: -270px;
+  right: 30%;
+  border: 1px solid rgba(34, 211, 238, 0.16);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 80px rgba(34, 211, 238, 0.025),
+    0 0 0 170px rgba(244, 63, 143, 0.025);
+}
+
+.bootcamp-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.2;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 64px 64px,
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 64px 64px;
+  mask-image: linear-gradient(90deg, #000, transparent 66%);
+}
+
+.bootcamp-hero__copy,
+.bootcamp-hero__flyer {
+  position: relative;
+  z-index: 2;
+}
+
+.bootcamp-kicker {
+  margin: 0 0 17px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--bootcamp-magenta);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.bootcamp-hero .bootcamp-kicker {
+  color: var(--bootcamp-cyan);
+}
+
+.bootcamp-kicker > span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--bootcamp-yellow);
+  box-shadow: 0 0 0 6px rgba(255, 210, 28, 0.12);
+}
+
+.bootcamp-hero h1 {
+  max-width: 11.5ch;
+  margin: 0;
+  color: white;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3.4rem, 6vw, 6.4rem);
+  font-weight: 700;
+  letter-spacing: -0.065em;
+  line-height: 0.94;
+  text-wrap: balance;
+}
+
+.bootcamp-hero h1 em {
+  color: var(--bootcamp-yellow);
+  font-style: normal;
+}
+
+.bootcamp-hero__lede {
+  max-width: 680px;
+  margin: 30px 0 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: clamp(1rem, 1.25vw, 1.22rem);
+  line-height: 1.75;
+}
+
+.bootcamp-hero__facts {
+  margin: 27px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.bootcamp-hero__facts span {
+  padding: 9px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.055);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.bootcamp-hero__button {
+  width: fit-content;
+  min-height: 54px;
+  margin-top: 34px;
+  padding: 0 23px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  border-radius: 14px;
+  color: #16122b;
+  background: var(--bootcamp-yellow);
+  box-shadow: 0 18px 46px rgba(255, 210, 28, 0.2);
+  font-size: 0.83rem;
+  font-weight: 900;
+  text-decoration: none;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.bootcamp-hero__button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 24px 56px rgba(255, 210, 28, 0.27);
+}
+
+.bootcamp-hero__assurance {
+  margin: 19px 0 0;
+  color: rgba(255, 255, 255, 0.54);
+  font-size: 0.73rem;
+  font-weight: 700;
+}
+
+.bootcamp-hero__flyer {
+  max-width: 470px;
+  justify-self: end;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.4);
+  transform: rotate(1.5deg);
+}
+
+.bootcamp-hero__flyer > span {
+  position: absolute;
+  top: 24px;
+  left: -22px;
+  z-index: 2;
+  padding: 10px 14px;
+  border-radius: 9px;
+  color: #2b1430;
+  background: var(--bootcamp-yellow);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bootcamp-hero__flyer img {
+  width: 100%;
+  display: block;
+  border-radius: 20px;
+}
+
+.bootcamp-trust-strip {
+  width: min(1180px, calc(100% - 40px));
+  margin: -46px auto 0;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  position: relative;
+  z-index: 4;
+  border: 1px solid rgba(18, 24, 63, 0.1);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 24px 70px rgba(27, 31, 73, 0.13);
+  backdrop-filter: blur(16px);
+}
+
+.bootcamp-trust-strip > div {
+  min-height: 92px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-radius: 14px;
+}
+
+.bootcamp-trust-strip > div + div {
+  border-left: 1px solid var(--bootcamp-line);
+}
+
+.bootcamp-trust-strip strong {
+  color: var(--bootcamp-navy-soft);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.45rem;
+}
+
+.bootcamp-trust-strip span {
+  margin-top: 5px;
+  color: var(--bootcamp-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.bootcamp-form {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 110px 0 120px;
+}
+
+.bootcamp-form__intro {
+  max-width: 750px;
+  margin-bottom: 50px;
+}
+
+.bootcamp-form__intro h2 {
+  margin: 0;
+  color: var(--bootcamp-navy-soft);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.25rem, 4.2vw, 4.2rem);
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+}
+
+.bootcamp-form__intro > p:last-child {
+  margin: 20px 0 0;
+  color: var(--bootcamp-muted);
+  line-height: 1.7;
+}
+
+.bootcamp-form-section {
+  margin-top: 24px;
+  padding: clamp(24px, 4.5vw, 54px);
+  border: 1px solid rgba(18, 24, 63, 0.1);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 22px 70px rgba(26, 34, 75, 0.07);
+}
+
+.bootcamp-form-section__heading {
+  margin-bottom: 34px;
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: start;
+  gap: 17px;
+}
+
+.bootcamp-form-section__heading > span {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(14, 165, 233, 0.19);
+  border-radius: 16px;
+  color: #0876ad;
+  background: #eefaff;
+  font-size: 0.73rem;
+  font-weight: 950;
+}
+
+.bootcamp-form-section__heading p {
+  margin: 0 0 6px;
+  color: var(--bootcamp-magenta);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.bootcamp-form-section__heading h2 {
+  margin: 0;
+  color: var(--bootcamp-navy-soft);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.65rem, 3vw, 2.55rem);
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+}
+
+.bootcamp-form-section__heading small {
+  margin-top: 9px;
+  display: block;
+  color: var(--bootcamp-muted);
+  line-height: 1.55;
+}
+
+.bootcamp-field-grid {
+  display: grid;
+  gap: 21px;
+}
+
+.bootcamp-field-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.bootcamp-field-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bootcamp-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bootcamp-field--full {
+  grid-column: 1 / -1;
+}
+
+.bootcamp-field > span,
+.bootcamp-track-picker legend {
+  color: #30385b;
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+.bootcamp-field :is(input, select, textarea),
+.bootcamp-field .auth-password-field {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid #d6dced;
+  border-radius: 12px;
+  color: var(--bootcamp-ink);
+  background: #fbfcff;
+  font: inherit;
+  font-size: 0.88rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.bootcamp-field :is(input, select) {
+  padding: 0 14px;
+}
+
+.bootcamp-field textarea {
+  padding: 13px 14px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.bootcamp-field :is(input, select, textarea):focus {
+  border-color: rgba(14, 165, 233, 0.7);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.09);
+  outline: none;
+}
+
+.bootcamp-field :is(input, select):disabled {
+  color: #7e849d;
+  background: #f0f2f8;
+  cursor: not-allowed;
+}
+
+.bootcamp-field > small {
+  color: #8790a9;
+  font-size: 0.67rem;
+  line-height: 1.45;
+}
+
+.bootcamp-signed-in {
+  margin-bottom: 28px;
+  padding: 17px 18px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 14px;
+  color: #145d49;
+  background: #effcf6;
+}
+
+.bootcamp-signed-in > span {
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  color: white;
+  background: #13a477;
+  font-weight: 900;
+}
+
+.bootcamp-signed-in p {
+  margin: 3px 0 0;
+  color: #5c7d72;
+  font-size: 0.74rem;
+}
+
+.bootcamp-photo-picker {
+  margin-top: 26px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px dashed #bec9df;
+  border-radius: 17px;
+  background: #f8faff;
+}
+
+.bootcamp-photo-picker.has-photo {
+  border-color: rgba(14, 165, 233, 0.4);
+  background: #f2fbff;
+}
+
+.bootcamp-photo-picker__preview {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid #d6dded;
+  border-radius: 16px;
+  color: #8794ad;
+  background: white;
+  font-size: 1.8rem;
+  font-weight: 500;
+}
+
+.bootcamp-photo-picker__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bootcamp-photo-picker input {
+  width: 1px;
+  height: 1px;
+  position: absolute;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.bootcamp-photo-picker__button {
+  min-height: 36px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9px;
+  color: white;
+  background: var(--bootcamp-navy-soft);
+  font-size: 0.73rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.bootcamp-photo-picker p {
+  margin: 8px 0 0;
+  color: #7a839d;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.bootcamp-subsection-title {
+  margin: 34px 0 17px;
+  padding-top: 28px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  border-top: 1px solid var(--bootcamp-line);
+}
+
+.bootcamp-subsection-title strong {
+  color: var(--bootcamp-navy-soft);
+}
+
+.bootcamp-subsection-title span {
+  color: var(--bootcamp-muted);
+  font-size: 0.72rem;
+}
+
+.bootcamp-form-section--students {
+  padding-right: clamp(18px, 3vw, 34px);
+  padding-left: clamp(18px, 3vw, 34px);
+  background: linear-gradient(145deg, #fff, #f8faff);
+}
+
+.bootcamp-student-list {
+  display: grid;
+  gap: 22px;
+}
+
+.bootcamp-student-card {
+  padding: clamp(20px, 3vw, 32px);
+  border: 1px solid #dbe2f1;
+  border-radius: 22px;
+  background: white;
+  box-shadow: 0 14px 40px rgba(29, 37, 80, 0.055);
+}
+
+.bootcamp-student-card > header {
+  margin-bottom: 25px;
+  padding-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid #e5e9f3;
+}
+
+.bootcamp-student-card > header span {
+  color: var(--bootcamp-magenta);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.bootcamp-student-card > header h3 {
+  margin: 4px 0 0;
+  color: var(--bootcamp-navy-soft);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.45rem;
+}
+
+.bootcamp-student-card > header button {
+  border: 0;
+  color: #a92861;
+  background: transparent;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.bootcamp-track-picker {
+  margin: 28px 0;
+  padding: 0;
+  border: 0;
+}
+
+.bootcamp-track-picker legend {
+  margin-bottom: 11px;
+}
+
+.bootcamp-track-picker > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bootcamp-track-picker label {
+  min-height: 88px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 41px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  position: relative;
+  border: 1px solid #dce2ef;
+  border-radius: 14px;
+  background: #fbfcff;
+  cursor: pointer;
+}
+
+.bootcamp-track-picker label.is-selected {
+  border-color: rgba(14, 165, 233, 0.55);
+  background: #eefaff;
+  box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.08);
+}
+
+.bootcamp-track-picker input {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  accent-color: var(--bootcamp-blue);
+}
+
+.bootcamp-track-picker i {
+  width: 41px;
+  height: 41px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: #0879b4;
+  background: white;
+  box-shadow: 0 5px 16px rgba(17, 24, 63, 0.08);
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.bootcamp-track-picker span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bootcamp-track-picker strong {
+  color: #222b56;
+  font-size: 0.75rem;
+}
+
+.bootcamp-track-picker small {
+  padding-right: 18px;
+  color: #7b849f;
+  font-size: 0.64rem;
+  line-height: 1.35;
+}
+
+.bootcamp-add-student {
+  min-height: 46px;
+  margin: 22px auto 0;
+  padding: 0 20px;
+  display: block;
+  border: 1px solid #cbd4e7;
+  border-radius: 12px;
+  color: var(--bootcamp-navy-soft);
+  background: white;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.bootcamp-add-student:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bootcamp-form-section--consent {
+  color: white;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(244, 63, 143, 0.18), transparent 28rem),
+    linear-gradient(140deg, #080a3b, #151651);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.bootcamp-form-section--consent .bootcamp-form-section__heading h2 {
+  color: white;
+}
+
+.bootcamp-form-section--consent .bootcamp-form-section__heading small {
+  color: rgba(255, 255, 255, 0.61);
+}
+
+.bootcamp-form-section--consent .bootcamp-form-section__heading > span {
+  color: var(--bootcamp-cyan);
+  background: rgba(34, 211, 238, 0.08);
+  border-color: rgba(34, 211, 238, 0.2);
+}
+
+.bootcamp-consent-list {
+  display: grid;
+  gap: 10px;
+}
+
+.bootcamp-fee-summary {
+  margin-bottom: 18px;
+  padding: 20px;
+  border: 1px solid rgba(255, 210, 28, 0.32);
+  border-radius: 15px;
+  background: linear-gradient(135deg, rgba(255, 210, 28, 0.12), rgba(231, 14, 119, 0.08));
+}
+
+.bootcamp-fee-summary > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.bootcamp-fee-summary span {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.bootcamp-fee-summary strong {
+  color: var(--bootcamp-yellow);
+  font-size: clamp(1.3rem, 3vw, 2rem);
+}
+
+.bootcamp-fee-summary p {
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.bootcamp-consent-list label {
+  padding: 15px 16px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.76);
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 0.75rem;
+  line-height: 1.55;
+  cursor: pointer;
+}
+
+.bootcamp-consent-list input {
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  accent-color: var(--bootcamp-cyan);
+}
+
+.bootcamp-consent-list a {
+  color: var(--bootcamp-yellow);
+}
+
+.bootcamp-privacy-note {
+  margin-top: 20px;
+  padding: 17px 18px;
+  border-left: 3px solid var(--bootcamp-cyan);
+  border-radius: 0 12px 12px 0;
+  background: rgba(34, 211, 238, 0.07);
+}
+
+.bootcamp-privacy-note strong {
+  color: var(--bootcamp-cyan);
+  font-size: 0.78rem;
+}
+
+.bootcamp-privacy-note p {
+  margin: 6px 0 0;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.bootcamp-submit {
+  width: 100%;
+  min-height: 58px;
+  margin-top: 27px;
+  border: 0;
+  border-radius: 14px;
+  color: #211735;
+  background: var(--bootcamp-yellow);
+  box-shadow: 0 18px 40px rgba(255, 210, 28, 0.16);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.bootcamp-submit:disabled {
+  opacity: 0.64;
+  cursor: wait;
+}
+
+.bootcamp-progress {
+  height: 6px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.bootcamp-progress span {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--bootcamp-cyan), var(--bootcamp-yellow));
+  transition: width 180ms ease;
+}
+
+.bootcamp-submit-note {
+  margin: 15px 0 0;
+  color: rgba(255, 255, 255, 0.53);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.bootcamp-submit-note a {
+  color: white;
+  font-weight: 800;
+}
+
+.bootcamp-footer {
+  min-height: 130px;
+  padding: 25px max(28px, calc((100vw - 1180px) / 2));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  color: white;
+  background: var(--bootcamp-navy);
+}
+
+.bootcamp-footer div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.bootcamp-footer span {
+  color: var(--bootcamp-cyan);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.bootcamp-footer a {
+  color: var(--bootcamp-yellow);
+  font-size: 1.15rem;
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.bootcamp-success {
+  width: min(860px, calc(100% - 40px));
+  min-height: calc(100vh - 90px);
+  margin: 0 auto;
+  padding: 90px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.bootcamp-success__mark {
+  width: 88px;
+  height: 88px;
+  margin-bottom: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: linear-gradient(145deg, #08a3d8, #12b981);
+  box-shadow: 0 22px 50px rgba(14, 165, 233, 0.25);
+  font-size: 2rem;
+  font-weight: 950;
+}
+
+.bootcamp-success h1 {
+  max-width: 14ch;
+  margin: 0;
+  color: var(--bootcamp-navy-soft);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.8rem, 6vw, 5.4rem);
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.bootcamp-success > p:not(.bootcamp-kicker) {
+  max-width: 680px;
+  margin: 24px 0 0;
+  color: var(--bootcamp-muted);
+  line-height: 1.75;
+}
+
+.bootcamp-success__reference {
+  min-width: min(100%, 410px);
+  margin-top: 30px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid #d8dfed;
+  border-radius: 17px;
+  background: white;
+  box-shadow: 0 18px 50px rgba(24, 31, 71, 0.08);
+}
+
+.bootcamp-success__reference span,
+.bootcamp-success__reference small {
+  color: var(--bootcamp-muted);
+  font-size: 0.7rem;
+}
+
+.bootcamp-success__reference strong {
+  color: var(--bootcamp-magenta);
+  font-size: 1.25rem;
+  letter-spacing: 0.04em;
+}
+
+.bootcamp-success__programme {
+  width: min(100%, 680px);
+  margin-top: 14px;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  border-radius: 17px;
+  color: white;
+  background: linear-gradient(135deg, #10114d, #27206c);
+}
+
+.bootcamp-success__programme > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.bootcamp-success__programme span,
+.bootcamp-success__programme small {
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.bootcamp-success__programme strong {
+  color: var(--bootcamp-yellow);
+  font-size: 1.05rem;
+}
+
+.bootcamp-success__programme small {
+  grid-column: 1 / -1;
+}
+
+.bootcamp-success__account {
+  width: 100%;
+  margin-top: 30px;
+  padding: clamp(24px, 4vw, 38px);
+  border-radius: 24px;
+  color: white;
+  background: linear-gradient(145deg, #080a3b, #181859);
+}
+
+.bootcamp-success__account h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2rem;
+}
+
+.bootcamp-success__account p {
+  margin: 10px auto 0;
+  color: rgba(255, 255, 255, 0.66);
+}
+
+.bootcamp-success__account > div {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.bootcamp-success__account a {
+  min-height: 42px;
+  padding: 0 15px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  color: white;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 0.73rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.bootcamp-success__account a:first-child {
+  border-color: var(--bootcamp-yellow);
+  color: #241834;
+  background: var(--bootcamp-yellow);
+}
+
+.bootcamp-success__phone {
+  margin-top: 24px;
+  color: var(--bootcamp-navy-soft);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+@media (max-width: 980px) {
+  .bootcamp-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .bootcamp-hero__copy {
+    max-width: 760px;
+  }
+
+  .bootcamp-hero__flyer {
+    max-width: 600px;
+    justify-self: center;
+    transform: none;
+  }
+
+  .bootcamp-trust-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bootcamp-trust-strip > div:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid var(--bootcamp-line);
+  }
+
+  .bootcamp-trust-strip > div:nth-child(4) {
+    border-top: 1px solid var(--bootcamp-line);
+  }
+
+  .bootcamp-field-grid--three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .bootcamp-hero {
+    min-height: 0;
+    padding: 54px 18px 90px;
+  }
+
+  .bootcamp-hero h1 {
+    font-size: clamp(3rem, 14vw, 4.8rem);
+  }
+
+  .bootcamp-hero__flyer > span {
+    left: 18px;
+  }
+
+  .bootcamp-trust-strip,
+  .bootcamp-form,
+  .bootcamp-success {
+    width: calc(100% - 24px);
+  }
+
+  .bootcamp-trust-strip {
+    margin-top: -54px;
+  }
+
+  .bootcamp-form {
+    padding: 80px 0;
+  }
+
+  .bootcamp-form-section {
+    padding: 23px 17px;
+    border-radius: 21px;
+  }
+
+  .bootcamp-field-grid--two,
+  .bootcamp-field-grid--three,
+  .bootcamp-track-picker > div {
+    grid-template-columns: 1fr;
+  }
+
+  .bootcamp-form-section__heading {
+    grid-template-columns: 43px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .bootcamp-form-section__heading > span {
+    width: 43px;
+    height: 43px;
+    border-radius: 12px;
+  }
+
+  .bootcamp-photo-picker {
+    align-items: flex-start;
+  }
+
+  .bootcamp-fee-summary > div,
+  .bootcamp-success__programme {
+    grid-template-columns: 1fr;
+  }
+
+  .bootcamp-fee-summary > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .bootcamp-subsection-title {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .bootcamp-footer {
+    padding: 28px 20px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 440px) {
+  .bootcamp-trust-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .bootcamp-trust-strip > div + div,
+  .bootcamp-trust-strip > div:nth-child(3),
+  .bootcamp-trust-strip > div:nth-child(4) {
+    border-top: 1px solid var(--bootcamp-line);
+    border-left: 0;
+  }
+
+  .bootcamp-photo-picker {
+    flex-direction: column;
+  }
+
+  .bootcamp-success__account > div {
+    flex-direction: column;
+  }
+
+  .bootcamp-success__account a {
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bootcamp-page *,
+  .bootcamp-page *::before,
+  .bootcamp-page *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

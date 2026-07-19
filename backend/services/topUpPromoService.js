@@ -8,8 +8,13 @@ const { sanitizePhoneValue } = require("../utils/profileFields");
 
 // Kept on the server so the two winning stars cannot be found in the browser bundle.
 const WINNING_CHEST_NUMBERS = new Set([4, 11]);
+const isCampaignActive = () =>
+  String(process.env.TOP_UP_PROMO_ACTIVE || "").trim().toLowerCase() === "true";
 
 const CAMPAIGN = Object.freeze({
+  get active() {
+    return isCampaignActive();
+  },
   key: CAMPAIGN_KEY,
   title: "Top-Up Bank Account Promo",
   totalChests: 103,
@@ -86,6 +91,14 @@ const getUserForPromo = (userId) =>
     .lean();
 
 const buildVisibility = (user = {}) => {
+  if (!isCampaignActive()) {
+    return {
+      visible: false,
+      reason: "campaign_inactive",
+      message: "This promotion is not currently active.",
+    };
+  }
+
   if (!isActiveAccount(user)) {
     return {
       visible: false,

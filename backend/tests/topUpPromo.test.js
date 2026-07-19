@@ -6,6 +6,7 @@ const { MongoMemoryServer } = require("mongodb-memory-server");
 process.env.NODE_ENV = "test";
 process.env.MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/tengacion-top-up-promo-test";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "top_up_promo_test_secret_123456789012345";
+process.env.TOP_UP_PROMO_ACTIVE = "true";
 
 const app = require("../app");
 const TopUpPromoPlay = require("../models/TopUpPromoPlay");
@@ -136,6 +137,64 @@ describe("Top-Up Bank Account Promo routes", () => {
     expect(repeatResponse.body.play.id).toBe(winResponse.body.play.id);
     expect(repeatResponse.body.play.passcode).toBe(winResponse.body.play.passcode);
     expect(await TopUpPromoPlay.countDocuments({ userId: user._id })).toBe(1);
+  });
+
+  test("an inactive campaign disappears for users while its Admin records remain available", async () => {
+    const user = await createUser({
+      username: "paused_promo_user",
+      email: "paused-promo-user@example.com",
+    });
+    const admin = await createUser({
+      name: "Paused Promo Admin",
+      username: "paused_promo_admin",
+      email: "paused-promo-admin@example.com",
+      role: "admin",
+    });
+    const [token, adminToken] = await Promise.all([
+      issueSessionToken(user._id),
+      issueSessionToken(admin._id),
+    ]);
+
+    await request(app)
+      .post("/api/top-up-promo/discover")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ chestNumber: 1 })
+      .expect(200);
+
+    process.env.TOP_UP_PROMO_ACTIVE = "false";
+    try {
+      const statusResponse = await request(app)
+        .get("/api/top-up-promo/me")
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200);
+
+      expect(statusResponse.body.campaign.active).toBe(false);
+      expect(statusResponse.body.visibility).toMatchObject({
+        visible: false,
+        reason: "campaign_inactive",
+      });
+      expect(statusResponse.body.canDiscover).toBe(false);
+
+      const blockedDiscovery = await request(app)
+        .post("/api/top-up-promo/discover")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ chestNumber: 2 })
+        .expect(403);
+
+      expect(blockedDiscovery.body.code).toBe("promo_unavailable");
+      expect(await TopUpPromoPlay.countDocuments({ userId: user._id })).toBe(1);
+
+      const adminList = await request(app)
+        .get("/api/admin/top-up-promo/plays")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(adminList.body.campaign.active).toBe(false);
+      expect(adminList.body.summary.totalDiscoveries).toBe(1);
+      expect(adminList.body.plays).toHaveLength(1);
+    } finally {
+      process.env.TOP_UP_PROMO_ACTIVE = "true";
+    }
   });
 
   test("the same participant can record two water discoveries and Admin sees both", async () => {

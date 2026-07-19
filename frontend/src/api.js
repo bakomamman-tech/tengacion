@@ -341,6 +341,7 @@ const uploadFormWithProgress = ({
   method = "POST",
   onProgress,
   timeoutMs = 10 * 60 * 1000,
+  suppressAuthFailure = false,
 }) =>
   new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -371,7 +372,7 @@ const uploadFormWithProgress = ({
         }
       }
 
-      if (xhr.status === 401) {
+      if (xhr.status === 401 && !suppressAuthFailure) {
         handleAuthFailure(data?.error || data?.message || "Unauthorized");
       }
 
@@ -755,6 +756,43 @@ export const submitKadunaGotTalentApplication = (payload = {}) =>
     body: JSON.stringify(payload || {}),
     suppressAuthFailure: true,
   });
+
+export const getSummerBootcampApplication = () =>
+  request(`${API_BASE}/summer-bootcamp/application`, {
+    headers: getAuthHeaders(),
+  });
+
+export const submitSummerBootcampRegistration = async (
+  { payload = {}, parentPhoto = null, studentPhotos = [] } = {},
+  onProgress
+) => {
+  const formData = new FormData();
+  formData.append("payload", JSON.stringify(payload || {}));
+  if (parentPhoto) {
+    formData.append("parentPhoto", await compressImageFile(parentPhoto));
+  }
+  const compressedStudentPhotos = await Promise.all(
+    (Array.isArray(studentPhotos) ? studentPhotos : []).map((file) =>
+      compressImageFile(file)
+    )
+  );
+  compressedStudentPhotos.forEach((file) => {
+    if (file) {
+      formData.append("studentPhotos", file);
+    }
+  });
+
+  const response = await uploadFormWithProgress({
+    url: `${API_BASE}/summer-bootcamp/register`,
+    formData,
+    onProgress,
+    suppressAuthFailure: true,
+  });
+  if (response?.token) {
+    setSessionAccessToken(response.token);
+  }
+  return response;
+};
 
 export const getRechargeRaffleStatus = () =>
   request(`${API_BASE}/recharge-raffle/me`, {

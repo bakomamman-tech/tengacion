@@ -368,7 +368,7 @@ const NOINDEX_PAGE_CONFIG = [
     canonicalPath: "/login",
   },
   {
-    patterns: ["/register", "/signup", "/kaduna-got-talent/register"],
+    patterns: ["/register", "/signup", "/kaduna-got-talent/register", "/summer-bootcamp/register"],
     title: "Create Account | Tengacion",
     description: "Create your Tengacion account to connect with creators, friends, and communities.",
   },

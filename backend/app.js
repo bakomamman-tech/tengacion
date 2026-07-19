@@ -211,6 +211,7 @@ app.use("/api/messages", require("./routes/messages"));
 app.use("/api/reports", require("./routes/reports"));
 app.use("/api/support", require("./routes/support"));
 app.use("/api/talent-show", require("./routes/talentShow"));
+app.use("/api/summer-bootcamp", require("./routes/summerBootcamp"));
 app.use("/api/recharge-raffle", require("./routes/rechargeRaffle"));
 app.use("/api/top-up-promo", require("./routes/topUpPromo"));
 app.use("/api/search", require("./routes/search"));

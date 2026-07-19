@@ -132,6 +132,21 @@ describe("PublicHomePage", () => {
       "href",
       "/leadership"
     );
+    expect(
+      screen.getByRole("heading", {
+        name: /a virtual bootcamp for curious kids who love to learn/i,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "Tengacion Virtual Summer Bootcamp flyer" })
+    ).toHaveAttribute("src", "/assets/campaigns/summer-bootcamp-2026.png");
+    expect(screen.getByRole("link", { name: /register your family/i })).toHaveAttribute(
+      "href",
+      "/summer-bootcamp/register"
+    );
+    expect(screen.getByText(/from 1 to 30 august 2026/i)).toBeInTheDocument();
+    expect(screen.getByText(/₦50,000 per participant/i)).toBeInTheDocument();
+    expect(screen.getByText(/negotiated family rate available when three children/i)).toBeInTheDocument();
 
     const menuButton = screen.getByRole("button", { name: "Open navigation menu" });
     expect(menuButton).toHaveAttribute("aria-expanded", "false");

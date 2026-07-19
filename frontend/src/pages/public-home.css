@@ -1891,3 +1891,198 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+.public-home.public-home--nature-green .public-home__bootcamp {
+  width: min(1280px, calc(100% - 48px));
+  margin: 92px auto 12px;
+  padding: clamp(18px, 2.5vw, 30px);
+  display: grid;
+  grid-template-columns: minmax(300px, 0.72fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(34px, 5vw, 78px);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 34px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(210, 11, 111, 0.35), transparent 28rem),
+    linear-gradient(135deg, #05062d, #0c1044 62%, #25083f);
+  box-shadow: 0 32px 90px rgba(10, 16, 52, 0.2);
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp::after {
+  content: "SUMMER";
+  position: absolute;
+  right: -24px;
+  bottom: -40px;
+  color: rgba(255, 255, 255, 0.03);
+  font-size: clamp(5rem, 13vw, 12rem);
+  font-weight: 950;
+  letter-spacing: -0.07em;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-media,
+.public-home.public-home--nature-green .public-home__bootcamp-copy {
+  min-width: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-media {
+  max-width: 470px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 23px;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.35);
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-media > span {
+  position: absolute;
+  top: 20px;
+  left: -13px;
+  z-index: 2;
+  padding: 9px 13px;
+  border-radius: 8px;
+  color: #26122d;
+  background: #ffd21c;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+  font-size: 0.63rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-media img {
+  width: 100%;
+  display: block;
+  border-radius: 16px;
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-copy {
+  padding-right: clamp(10px, 3vw, 44px);
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-copy .public-home__eyebrow {
+  color: #22d3ee;
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-copy .public-home__eyebrow::before {
+  background: linear-gradient(90deg, #22d3ee, rgba(34, 211, 238, 0.1));
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-copy h2 {
+  max-width: 13ch;
+  margin: 0;
+  color: #fff;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.4rem, 4.5vw, 4.7rem);
+  font-weight: 680;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-copy > p:not(.public-home__eyebrow) {
+  max-width: 690px;
+  margin: 24px 0 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.93rem;
+  line-height: 1.72;
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-tracks {
+  margin-top: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-tracks span {
+  padding: 8px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.055);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-actions {
+  margin-top: 29px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 13px;
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-actions a {
+  min-height: 48px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  color: white;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-actions a:first-child {
+  border-color: #ffd21c;
+  color: #21142e;
+  background: #ffd21c;
+  box-shadow: 0 16px 38px rgba(255, 210, 28, 0.17);
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-copy > small {
+  margin-top: 19px;
+  display: block;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+@media (max-width: 880px) {
+  .public-home.public-home--nature-green .public-home__bootcamp {
+    grid-template-columns: 1fr;
+  }
+
+  .public-home.public-home--nature-green .public-home__bootcamp-media {
+    max-width: 580px;
+    justify-self: center;
+  }
+
+  .public-home.public-home--nature-green .public-home__bootcamp-copy {
+    padding: 0 10px 24px;
+  }
+}
+
+@media (max-width: 430px) {
+  .public-home.public-home--nature-green .public-home__bootcamp {
+    width: calc(100% - 16px);
+    margin-top: 62px;
+    padding: 10px;
+    border-radius: 24px;
+  }
+
+  .public-home.public-home--nature-green .public-home__bootcamp-copy {
+    padding: 13px 7px 20px;
+  }
+
+  .public-home.public-home--nature-green .public-home__bootcamp-copy h2 {
+    font-size: 2.65rem;
+  }
+
+  .public-home.public-home--nature-green .public-home__bootcamp-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

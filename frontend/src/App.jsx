@@ -29,6 +29,7 @@ const PyrexxSingzPage = lazy(() => import("./pages/PyrexxSingzPage"));
 const SchoolProfilePage = lazy(() => import("./pages/SchoolProfilePage"));
 const Register = lazy(() => import("./pages/Register"));
 const KadunaGotTalentRegisterPage = lazy(() => import("./pages/KadunaGotTalentRegisterPage"));
+const SummerBootcampRegisterPage = lazy(() => import("./pages/SummerBootcampRegisterPage"));
 const Search = lazy(() => import("./pages/Search"));
 const Home = lazy(() => import("./pages/Home"));
 const RechargeRafflePage = lazy(() => import("./pages/RechargeRafflePage"));
@@ -200,6 +201,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/kaduna-got-talent/register" element={<KadunaGotTalentRegisterPage user={user} />} />
+          <Route path="/summer-bootcamp/register" element={<SummerBootcampRegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />

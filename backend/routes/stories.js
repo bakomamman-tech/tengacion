@@ -5,7 +5,7 @@ const User = require("../models/User");
 const Message = require("../models/Message");
 const upload = require("../middleware/storyUpload");
 const moderateUpload = require("../middleware/moderateUpload");
-const { saveUploadedMedia } = require("../services/mediaStore");
+const { deleteUploadedMedia, saveUploadedMedia } = require("../services/mediaStore");
 const { createNotification } = require("../services/notificationService");
 const {
   buildStoryMusicCatalog,
@@ -177,6 +177,7 @@ const buildStoryPayload = async (story = {}, { authorAvatarMap = new Map(), req 
     createdAt: story?.time || story?.createdAt,
     seenBy,
     viewerSeen: seenBy.includes(viewerIdString),
+    isOwner: Boolean(ownerId && ownerId === viewerIdString),
   };
 };
 
@@ -258,6 +259,7 @@ router.post(
     sourceType: "story_upload",
     titleFields: ["caption", "text"],
     descriptionFields: ["caption", "text"],
+    allowOnTechnicalFailure: true,
   }),
   async (req, res) => {
     try {
@@ -336,6 +338,42 @@ router.get("/", auth, async (req, res) => {
   } catch (err) {
     console.error("Story fetch error:", err);
     res.status(500).json({ error: "Failed to load stories" });
+  }
+});
+
+/* ================= DELETE OWN STORY ================= */
+
+router.delete("/:id", auth, async (req, res) => {
+  try {
+    const storyId = String(req.params.id || "").trim();
+    if (!mongoose.Types.ObjectId.isValid(storyId)) {
+      return res.status(400).json({ error: "Invalid story id" });
+    }
+
+    const story = await Story.findById(storyId);
+    if (!story) {
+      return res.status(404).json({ error: "Story not found" });
+    }
+
+    const ownerId = toIdString(story.authorId || story.userId);
+    if (!ownerId || ownerId !== toIdString(req.userId)) {
+      return res.status(403).json({ error: "You can only delete your own story" });
+    }
+
+    await Story.deleteOne({ _id: story._id });
+
+    const storedMedia = story.media?.toObject?.() || story.media || {
+      url: story.mediaUrl || story.image || "",
+      resourceType: story.mediaType || "image",
+    };
+    await deleteUploadedMedia(storedMedia, {
+      resourceType: story.mediaType || storedMedia.resourceType || storedMedia.resource_type,
+    });
+
+    return res.json({ success: true, storyId });
+  } catch (err) {
+    console.error("Story delete error:", err);
+    return res.status(500).json({ error: "Failed to delete story" });
   }
 });
 

@@ -182,6 +182,7 @@ describe("story music attachment", () => {
     expect(createResponse.body.musicAttachment).toBeTruthy();
     expect(createResponse.body.musicAttachment.title).toBe("After Sunset");
     expect(createResponse.body.musicAttachment.previewUrl).toContain("/api/media/delivery/");
+    expect(createResponse.body.isOwner).toBe(true);
 
     const feedResponse = await request(app)
       .get("/api/stories")
@@ -193,6 +194,40 @@ describe("story music attachment", () => {
     expect(feedStory.musicAttachment).toBeTruthy();
     expect(feedStory.musicAttachment.title).toBe("After Sunset");
     expect(feedStory.musicAttachment.previewUrl).toContain("/api/media/delivery/");
+    expect(feedStory.isOwner).toBe(false);
+  });
+
+  test("only the owner can delete a story", async () => {
+    const creator = await createCreator();
+    const viewer = await createViewer();
+    const story = await Story.create({
+      userId: creator.user._id.toString(),
+      authorId: creator.user._id,
+      name: creator.user.name,
+      username: creator.user.username,
+      text: "Owner can remove this story",
+      visibility: "public",
+      time: new Date(),
+    });
+
+    const deniedResponse = await request(app)
+      .delete(`/api/stories/${story._id.toString()}`)
+      .set("Authorization", `Bearer ${viewer.token}`)
+      .expect(403);
+
+    expect(deniedResponse.body.error).toBe("You can only delete your own story");
+    expect(await Story.findById(story._id)).toBeTruthy();
+
+    const deletedResponse = await request(app)
+      .delete(`/api/stories/${story._id.toString()}`)
+      .set("Authorization", `Bearer ${creator.token}`)
+      .expect(200);
+
+    expect(deletedResponse.body).toEqual({
+      success: true,
+      storyId: story._id.toString(),
+    });
+    expect(await Story.findById(story._id)).toBeNull();
   });
 
   test("lists only published songs from fully registered active music creators", async () => {

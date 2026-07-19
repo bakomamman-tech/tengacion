@@ -14,6 +14,22 @@ const {
   ensureUploadTempFile,
 } = require("../utils/uploadTempFile");
 
+const TECHNICAL_INSPECTION_LABELS = new Set([
+  "inspection_failed",
+  "visual_provider_unavailable",
+  "video_decoder_unavailable",
+  "video_frames_missing",
+  "video_frame_extraction_failed",
+]);
+const ENFORCED_SAFETY_LABELS = new Set([
+  "explicit_pornography",
+  "suspected_child_exploitation",
+  "child_abuse",
+  "graphic_gore",
+  "animal_cruelty",
+  "duplicate_ban_match",
+]);
+
 const toMediaType = (file = {}) => {
   const mime = String(file?.mimetype || "").toLowerCase();
   if (mime.startsWith("video/")) return "video";
@@ -106,6 +122,25 @@ const chooseWorstDecision = (results = []) => {
   };
 };
 
+const allowTechnicalInspectionFailure = (decision = {}) => {
+  const labels = (Array.isArray(decision?.labels) ? decision.labels : [])
+    .map((label) => String(label || "").trim().toLowerCase())
+    .filter(Boolean);
+  const hasTechnicalFailure = labels.some((label) => TECHNICAL_INSPECTION_LABELS.has(label));
+  const hasSafetySignal = labels.some((label) => ENFORCED_SAFETY_LABELS.has(label));
+
+  if (decision?.decision !== "quarantine" || !hasTechnicalFailure || hasSafetySignal) {
+    return decision;
+  }
+
+  return {
+    ...decision,
+    decision: "approve",
+    reason: "Automated media inspection was unavailable; the upload was allowed to publish.",
+    confidence: 0,
+  };
+};
+
 const analyzeUploadFile = async (file = {}, uploaderId = "") => {
   const mime = String(file?.mimetype || "").toLowerCase();
   if (mime.startsWith("video/")) {
@@ -140,6 +175,7 @@ const moderateUpload = ({
   titleFields = ["title", "caption", "text"],
   descriptionFields = ["description", "details", "lyrics", "showNotes"],
   deferDecisionResponse = false,
+  allowOnTechnicalFailure = false,
 } = {}) =>
   async (req, res, next) => {
     if (String(process.env.MODERATION_ENABLED || "true").toLowerCase() === "false") {
@@ -185,7 +221,10 @@ const moderateUpload = ({
           ? imageDecision
           : await analyzeUploadFile(file, uploaderId)),
       })));
-      const moderationUpload = chooseWorstDecision(perFileResults);
+      const scannedUpload = chooseWorstDecision(perFileResults);
+      const moderationUpload = allowOnTechnicalFailure
+        ? allowTechnicalInspectionFailure(scannedUpload)
+        : scannedUpload;
       req.moderationUpload = {
         ...moderationUpload,
         sourceType,
@@ -273,3 +312,4 @@ const moderateUpload = ({
   };
 
 module.exports = moderateUpload;
+module.exports.allowTechnicalInspectionFailure = allowTechnicalInspectionFailure;

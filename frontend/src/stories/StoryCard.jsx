@@ -10,8 +10,10 @@ export default function StoryCard({
   groupIndex = 0,
   hasUnseen = false,
   isOwner = false,
+  onDeleted,
   onSeen,
   videoPreload = "metadata",
+  viewerId = "",
 }) {
   const [open, setOpen] = useState(false);
   const [viewerNavigation, setViewerNavigation] = useState(null);
@@ -109,10 +111,12 @@ export default function StoryCard({
           stories={stories}
           storyGroups={viewerNavigation?.groups}
           initialGroupIndex={viewerNavigation?.groupIndex}
+          viewerId={viewerId}
           onClose={() => {
             setOpen(false);
             setViewerNavigation(null);
           }}
+          onDeleted={onDeleted}
           onSeen={onSeen}
         />
       )}

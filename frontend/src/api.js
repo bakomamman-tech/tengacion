@@ -1925,15 +1925,20 @@ export const createStoryWithUploadProgress = ({
         handleAuthFailure(data?.error || data?.message || "Unauthorized");
       }
 
-      if (xhr.status >= 200 && xhr.status < 300) {
+      if (xhr.status >= 200 && xhr.status < 300 && (data?._id || data?.id)) {
         resolve(data);
         return;
       }
 
       const err = new Error(
-        data?.error || data?.message || `Story upload failed (${xhr.status || 0})`
+        data?.error
+          || data?.message
+          || (xhr.status >= 200 && xhr.status < 300
+            ? "The story was not published. Please try again."
+            : `Story upload failed (${xhr.status || 0})`)
       );
       err.status = xhr.status || 0;
+      err.moderationStatus = data?.moderationStatus || "";
       reject(err);
     };
 
@@ -1954,6 +1959,12 @@ export const createStoryWithUploadProgress = ({
 export const markStorySeen = (storyId) =>
   request(`${API_BASE}/stories/${encodeURIComponent(storyId || "")}/seen`, {
     method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+export const deleteStory = (storyId) =>
+  request(`${API_BASE}/stories/${encodeURIComponent(storyId || "")}`, {
+    method: "DELETE",
     headers: getAuthHeaders(),
   });
 

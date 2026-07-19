@@ -6,8 +6,10 @@ import StoryViewer from "../stories/StoryViewer";
 const markStorySeenMock = vi.hoisted(() => vi.fn());
 const reactToStoryMock = vi.hoisted(() => vi.fn());
 const replyToStoryMock = vi.hoisted(() => vi.fn());
+const deleteStoryMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../api", () => ({
+  deleteStory: deleteStoryMock,
   markStorySeen: markStorySeenMock,
   reactToStory: reactToStoryMock,
   replyToStory: replyToStoryMock,
@@ -33,6 +35,7 @@ describe("StoryViewer", () => {
     markStorySeenMock.mockResolvedValue({ seen: true });
     reactToStoryMock.mockResolvedValue({ success: true });
     replyToStoryMock.mockResolvedValue({ success: true });
+    deleteStoryMock.mockResolvedValue({ success: true });
   });
 
   afterEach(() => {
@@ -41,6 +44,7 @@ describe("StoryViewer", () => {
     markStorySeenMock.mockReset();
     reactToStoryMock.mockReset();
     replyToStoryMock.mockReset();
+    deleteStoryMock.mockReset();
     vi.restoreAllMocks();
   });
 
@@ -127,6 +131,40 @@ describe("StoryViewer", () => {
 
     fireEvent.click(closeButton);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets the owner delete a story from the three-dot options menu", async () => {
+    const onClose = vi.fn();
+    const onDeleted = vi.fn();
+    const confirmMock = vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(
+      <StoryViewer
+        story={{ ...story, isOwner: true }}
+        onClose={onClose}
+        onDeleted={onDeleted}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Story options" }));
+    expect(screen.getByRole("menu", { name: "Story options" })).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Delete story" }));
+      await Promise.resolve();
+    });
+
+    expect(confirmMock).toHaveBeenCalledWith(
+      "Delete this story? It will stop displaying to everyone."
+    );
+    expect(deleteStoryMock).toHaveBeenCalledWith("story-1");
+    expect(onDeleted).toHaveBeenCalledWith("story-1");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not show story deletion controls to another viewer", () => {
+    render(<StoryViewer story={{ ...story, isOwner: false }} onClose={vi.fn()} />);
+
+    expect(screen.queryByRole("button", { name: "Story options" })).not.toBeInTheDocument();
   });
 
   it("navigates stories with the side toggle buttons", () => {

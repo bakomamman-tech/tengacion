@@ -2026,6 +2026,7 @@ export default function Home({ user }) {
                       <InFeedStoriesCarousel
                         groups={storyGroups}
                         blockIndex={Math.floor(postIndex / 3)}
+                        onDeleted={loadStories}
                         onSeen={handleStoriesSeen}
                       />
                     ) : null}

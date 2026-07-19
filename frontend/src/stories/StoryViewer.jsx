@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { markStorySeen, reactToStory, replyToStory, resolveImage } from "../api";
+import { deleteStory, markStorySeen, reactToStory, replyToStory, resolveImage } from "../api";
 import Button from "../components/ui/Button";
 import { getStoryMedia } from "./storyMedia";
 
@@ -74,7 +74,9 @@ export default function StoryViewer({
   storyGroups = EMPTY_STORY_LIST,
   initialGroupIndex = 0,
   onClose,
+  onDeleted,
   onSeen,
+  viewerId = "",
 }) {
   const navigationGroups = useMemo(() => {
     const groups = (Array.isArray(storyGroups) ? storyGroups : [])
@@ -116,6 +118,7 @@ export default function StoryViewer({
   const videoRef = useRef(null);
   const soundtrackRef = useRef(null);
   const replyInputRef = useRef(null);
+  const ownerMenuRef = useRef(null);
   const holdAdvanceRef = useRef(false);
   const pendingVideoAdvanceRef = useRef(false);
   const burstIdRef = useRef(0);
@@ -128,6 +131,9 @@ export default function StoryViewer({
   const [soundtrackPlaying, setSoundtrackPlaying] = useState(false);
   const [soundtrackProgress, setSoundtrackProgress] = useState(0);
   const [soundtrackError, setSoundtrackError] = useState("");
+  const [ownerMenuOpen, setOwnerMenuOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const activeStory = orderedStories[index] || story;
   const activeStoryKey = activeStory
@@ -140,10 +146,15 @@ export default function StoryViewer({
   const soundtrackCreator = String(soundtrack?.creatorName || "Tengacion creator").trim()
     || "Tengacion creator";
   const soundtrackSummary = String(soundtrack?.summaryLabel || "Music").trim() || "Music";
+  const activeStoryOwnerId = String(activeStory?.authorId || activeStory?.userId || "");
+  const activeStoryIsOwner = Boolean(
+    activeStory?.isOwner || (viewerId && activeStoryOwnerId === String(viewerId))
+  );
   const storyDurationMs = soundtrack?.previewUrl
     ? getSoundtrackPreviewSeconds(soundtrack) * 1000
     : IMAGE_DURATION_MS;
-  const holdStoryAdvance = replyFocused || Boolean(replyText.trim()) || replyBusy;
+  const holdStoryAdvance =
+    replyFocused || Boolean(replyText.trim()) || replyBusy || ownerMenuOpen || deleteBusy;
   const avatarSrc = activeStory?.avatar
     ? resolveImage(activeStory.avatar)
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -239,7 +250,25 @@ export default function StoryViewer({
 
   useEffect(() => {
     pendingVideoAdvanceRef.current = false;
+    setOwnerMenuOpen(false);
+    setDeleteError("");
   }, [activeStoryKey, mediaType]);
+
+  useEffect(() => {
+    if (!ownerMenuOpen) {
+      return undefined;
+    }
+
+    const closeOwnerMenu = (event) => {
+      if (!ownerMenuRef.current?.contains(event.target)) {
+        setOwnerMenuOpen(false);
+        setDeleteError("");
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOwnerMenu);
+    return () => document.removeEventListener("pointerdown", closeOwnerMenu);
+  }, [ownerMenuOpen]);
 
   useEffect(() => {
     if (!activeStory?._id) {
@@ -366,7 +395,12 @@ export default function StoryViewer({
       }
 
       if (event.key === "Escape") {
-        onClose?.();
+        if (ownerMenuOpen) {
+          setOwnerMenuOpen(false);
+          setDeleteError("");
+        } else {
+          onClose?.();
+        }
       } else if (event.key === "ArrowRight") {
         goToNext();
       } else if (event.key === "ArrowLeft") {
@@ -376,7 +410,7 @@ export default function StoryViewer({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [goToNext, goToPrev, onClose]);
+  }, [goToNext, goToPrev, onClose, ownerMenuOpen]);
 
   if (!activeStory) {
     return null;
@@ -412,6 +446,32 @@ export default function StoryViewer({
       // Keep existing UI stable on network errors.
     } finally {
       setReplyBusy(false);
+    }
+  };
+
+  const handleDeleteStory = async () => {
+    const storyId = String(activeStory?._id || activeStory?.id || "");
+    if (!activeStoryIsOwner || !storyId || deleteBusy) {
+      return;
+    }
+
+    const confirmed = window.confirm?.(
+      "Delete this story? It will stop displaying to everyone."
+    );
+    if (confirmed === false) {
+      return;
+    }
+
+    try {
+      setDeleteBusy(true);
+      setDeleteError("");
+      await deleteStory(storyId);
+      onDeleted?.(storyId);
+      onClose?.();
+    } catch (error) {
+      setDeleteError(error?.message || "Could not delete this story. Please try again.");
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -507,6 +567,45 @@ export default function StoryViewer({
               <span>{formatStoryTime(activeStory?.time)}</span>
             </div>
           </div>
+          {activeStoryIsOwner ? (
+            <div className="story-viewer-owner-menu" ref={ownerMenuRef}>
+              <button
+                type="button"
+                className="story-viewer-more"
+                aria-label="Story options"
+                title="Story options"
+                aria-haspopup="menu"
+                aria-expanded={ownerMenuOpen}
+                onClick={() => {
+                  setOwnerMenuOpen((current) => !current);
+                  setDeleteError("");
+                }}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="5" cy="12" r="1.8" />
+                  <circle cx="12" cy="12" r="1.8" />
+                  <circle cx="19" cy="12" r="1.8" />
+                </svg>
+              </button>
+              {ownerMenuOpen ? (
+                <div className="story-viewer-owner-popover" role="menu" aria-label="Story options">
+                  <button
+                    type="button"
+                    className="story-viewer-delete"
+                    role="menuitem"
+                    disabled={deleteBusy}
+                    onClick={handleDeleteStory}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" />
+                    </svg>
+                    <span>{deleteBusy ? "Deleting..." : "Delete story"}</span>
+                  </button>
+                  {deleteError ? <p role="alert">{deleteError}</p> : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <Button
             variant="icon"
             size="sm"

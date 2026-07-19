@@ -915,7 +915,7 @@
 .story-viewer-header {
   flex: 0 0 auto;
   min-height: 56px;
-  padding: 8px 66px 8px 12px;
+  padding: 8px 116px 8px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -955,6 +955,101 @@
   margin-top: 2px;
   font-size: 12px;
   color: rgba(232, 240, 253, 0.82);
+}
+
+.story-viewer-owner-menu {
+  position: absolute;
+  z-index: 13;
+  top: 22px;
+  right: 62px;
+}
+
+button.story-viewer-more {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 50%;
+  background: rgba(3, 10, 20, 0.88);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.38);
+}
+
+button.story-viewer-more:hover,
+button.story-viewer-more[aria-expanded="true"] {
+  border-color: #fff;
+  background: rgba(24, 42, 58, 0.98);
+}
+
+button.story-viewer-more:focus-visible {
+  outline: 3px solid #9ee8b4;
+  outline-offset: 2px;
+}
+
+button.story-viewer-more svg {
+  width: 23px;
+  height: 23px;
+  fill: currentColor;
+}
+
+.story-viewer-owner-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(230px, calc(100vw - 44px));
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: #fff;
+  color: #17202b;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
+}
+
+button.story-viewer-delete {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #b42318;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.story-viewer-delete:hover:not(:disabled),
+button.story-viewer-delete:focus-visible {
+  background: #fff0ee;
+}
+
+button.story-viewer-delete:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+button.story-viewer-delete svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.story-viewer-owner-popover p {
+  margin: 6px 8px 3px;
+  color: #b42318;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 button.story-viewer-close {

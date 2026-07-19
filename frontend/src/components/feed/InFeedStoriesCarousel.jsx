@@ -42,7 +42,12 @@ function CarouselArrow({ direction }) {
   );
 }
 
-export default function InFeedStoriesCarousel({ groups = [], blockIndex = 0, onSeen }) {
+export default function InFeedStoriesCarousel({
+  groups = [],
+  blockIndex = 0,
+  onDeleted,
+  onSeen,
+}) {
   const trackRef = useRef(null);
   const [canScrollPrevious, setCanScrollPrevious] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(false);
@@ -154,6 +159,7 @@ export default function InFeedStoriesCarousel({ groups = [], blockIndex = 0, onS
               groupIndex={groupIndex}
               hasUnseen={group.hasUnseen}
               isOwner={group.isOwner}
+              onDeleted={onDeleted}
               onSeen={onSeen}
               videoPreload="none"
             />

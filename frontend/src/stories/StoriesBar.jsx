@@ -140,6 +140,23 @@ export default function StoriesBar({
     [isControlled, onStoriesSeen, viewerId]
   );
 
+  const handleStoryDeleted = useCallback(
+    (storyId) => {
+      const deletedId = String(storyId || "");
+      if (!deletedId) {
+        return;
+      }
+
+      if (!isControlled) {
+        setLocalStories((current) =>
+          current.filter((entry) => String(entry?._id || entry?.id || "") !== deletedId)
+        );
+      }
+      void loadStories();
+    },
+    [isControlled, loadStories]
+  );
+
   return (
     <div className="stories-shell">
       <CreateStory user={user} onCreated={loadStories} openSignal={openCreateSignal} />
@@ -167,7 +184,9 @@ export default function StoriesBar({
                 groupIndex={groupIndex}
                 hasUnseen={entry.hasUnseen}
                 isOwner={entry.isOwner}
+                onDeleted={handleStoryDeleted}
                 onSeen={handleStoriesSeen}
+                viewerId={viewerId}
               />
             ))}
 

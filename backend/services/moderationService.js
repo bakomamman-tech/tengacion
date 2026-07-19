@@ -1,7 +1,10 @@
 const crypto = require("crypto");
 const fs = require("fs");
 const fsp = require("fs/promises");
+const os = require("os");
 const path = require("path");
+const { Transform } = require("stream");
+const { pipeline } = require("stream/promises");
 const mongoose = require("mongoose");
 
 const Album = require("../models/Album");
@@ -41,6 +44,12 @@ const { hasAllPermissions } = require("./permissionService");
 const { disconnectUserSockets } = require("../utils/realtimeSessions");
 const { resolvePublicSensitivity } = require("../utils/publicModeration");
 const sendSecurityEmail = require("../utils/sendSecurityEmail");
+const { UPLOAD_LIMITS } = require("../config/uploadLimits");
+const {
+  extensionFromContentType,
+  inferContentTypeFromFilename,
+  openMediaSourceStream,
+} = require("./mediaDeliveryService");
 const {
   analyzeVisualAssets,
   mergeVisualDecisions,
@@ -60,6 +69,19 @@ const CASE_ACTIONS = [
   "preserve_evidence",
   "escalate_case",
 ];
+const ADMIN_SCAN_MAX_MEDIA_ASSETS = 12;
+const ADMIN_SCAN_MAX_MEDIA_BYTES = UPLOAD_LIMITS.ADMIN_SPECIAL_BYTES;
+const MEDIA_INSPECTION_FAILURE_LABELS = new Set([
+  "inspection_failed",
+  "visual_provider_unavailable",
+  "visual_provider_partial_failure",
+  "video_decoder_unavailable",
+  "video_frames_missing",
+  "video_frame_extraction_failed",
+  "media_download_failed",
+  "media_too_large",
+]);
+let adminMediaInspectorForTests = null;
 
 const TARGET_MODEL_MAP = {
   album: Album,
@@ -258,7 +280,10 @@ const buildPostScanMedia = (post = {}, req = null) => {
   const mediaList = Array.isArray(post?.media) ? post.media : [];
 
   mediaList.forEach((asset, index) => {
-    const sourceUrl = toAbsoluteSourceUrl(asset?.url || "", req);
+    const sourceUrl = toAbsoluteSourceUrl(
+      asset?.secureUrl || asset?.secure_url || asset?.url || asset?.legacyPath || "",
+      req
+    );
     if (!sourceUrl) {
       return;
     }
@@ -266,9 +291,10 @@ const buildPostScanMedia = (post = {}, req = null) => {
     assets.push({
       role: index === 0 ? "primary" : `attachment_${index + 1}`,
       mediaId: extractMediaIdFromSource(sourceUrl),
-      mediaType: normalizeText(asset?.type || "image", 40),
+      mediaType: normalizeText(asset?.type || asset?.resourceType || asset?.resource_type || "image", 40),
       mimeType: normalizeText(
-        asset?.type === "video" ? "video/mp4" : asset?.type === "image" ? "image/jpeg" : "",
+        asset?.mimeType
+          || (asset?.type === "video" ? "video/mp4" : asset?.type === "image" ? "image/jpeg" : ""),
         120
       ),
       sourceUrl,
@@ -294,6 +320,22 @@ const buildPostScanMedia = (post = {}, req = null) => {
       ),
       originalFilename: normalizeText(`${post?._id || "post"}-video`, 260),
       fileSizeBytes: Number(post?.video?.sizeBytes || 0),
+    });
+  }
+
+  const legacyImageUrl = toAbsoluteSourceUrl(
+    post?.image || post?.imageUrl || post?.photoUrl || post?.sharedPost?.previewImage || "",
+    req
+  );
+  if (legacyImageUrl && !assets.some((entry) => entry.sourceUrl === legacyImageUrl)) {
+    assets.push({
+      role: assets.length === 0 ? "primary" : "legacy_preview",
+      mediaId: extractMediaIdFromSource(legacyImageUrl),
+      mediaType: "image",
+      mimeType: "image/jpeg",
+      sourceUrl: legacyImageUrl,
+      previewUrl: legacyImageUrl,
+      originalFilename: normalizeText(`${post?._id || "post"}-legacy-image`, 260),
     });
   }
 
@@ -389,7 +431,10 @@ const buildStoryScanMedia = (story = {}, req = null) => {
   const assets = [];
   const storyMedia = story?.media || {};
   const mainUrl =
-    storyMedia?.url
+    storyMedia?.secureUrl
+    || storyMedia?.secure_url
+    || storyMedia?.url
+    || storyMedia?.legacyPath
     || story?.mediaUrl
     || story?.image
     || story?.thumbnailUrl
@@ -1054,6 +1099,297 @@ const analyzeImage = async ({ localPath = "", mimeType = "", originalFilename = 
     assets: [{ localPath, mimeType, originalFilename }],
     uploaderId,
   });
+
+const normalizeInspectionLabels = (decision = {}) =>
+  uniqueStrings(Array.isArray(decision?.labels) ? decision.labels : [])
+    .map((label) => String(label || "").trim().toLowerCase())
+    .filter(Boolean);
+
+const buildInspectionFailureDecision = ({ labels = [], reason = "" } = {}) => ({
+  decision: "quarantine",
+  labels: uniqueStrings(["inspection_failed", ...labels]),
+  reason: normalizeText(
+    reason || "Stored visual media could not be completely inspected and was held for review.",
+    500
+  ),
+  confidence: 0.2,
+});
+
+const isPotentialVisualAsset = (asset = {}) => {
+  const mediaType = String(asset?.mediaType || "").trim().toLowerCase();
+  const mimeType = String(asset?.mimeType || "").trim().toLowerCase();
+  const source = String(asset?.sourceUrl || asset?.previewUrl || "").trim().toLowerCase();
+  return (
+    ["image", "video", "gif", "reel"].includes(mediaType)
+    || mimeType.startsWith("image/")
+    || mimeType.startsWith("video/")
+    || /\.(?:avif|bmp|gif|jpe?g|png|webp|mp4|m4v|mov|webm|avi|mkv|ogg)(?:$|[?#])/i.test(source)
+  );
+};
+
+const resolveDownloadedVisualKind = ({ asset = {}, contentType = "", filename = "" } = {}) => {
+  const mimeType = String(contentType || asset?.mimeType || "").split(";")[0].trim().toLowerCase();
+  const mediaType = String(asset?.mediaType || "").trim().toLowerCase();
+  const source = `${filename || ""} ${asset?.sourceUrl || ""}`;
+  if (mimeType.startsWith("video/") || ["video", "reel"].includes(mediaType)) return "video";
+  if (mimeType.startsWith("image/") || ["image", "gif"].includes(mediaType)) return "image";
+  if (/\.(?:mp4|m4v|mov|webm|avi|mkv|ogg)(?:$|[?#\s])/i.test(source)) return "video";
+  if (/\.(?:avif|bmp|gif|jpe?g|png|webp)(?:$|[?#\s])/i.test(source)) return "image";
+  return "";
+};
+
+const createByteLimitTransform = (maxBytes = ADMIN_SCAN_MAX_MEDIA_BYTES) => {
+  let receivedBytes = 0;
+  return new Transform({
+    transform(chunk, _encoding, callback) {
+      receivedBytes += chunk.length;
+      if (receivedBytes > maxBytes) {
+        const error = new Error("Stored media exceeds the moderation scan size limit.");
+        error.code = "MEDIA_SCAN_TOO_LARGE";
+        callback(error);
+        return;
+      }
+      callback(null, chunk);
+    },
+  });
+};
+
+const hasCompletedVisualProviderCheck = (decision = {}) =>
+  normalizeInspectionLabels(decision).some((label) => label.startsWith("provider:"));
+
+const inspectCandidateMediaForModeration = async (candidate = {}) => {
+  if (typeof adminMediaInspectorForTests === "function") {
+    return adminMediaInspectorForTests(candidate);
+  }
+
+  const assets = (Array.isArray(candidate?.media) ? candidate.media : [])
+    .filter(isPotentialVisualAsset)
+    .slice(0, ADMIN_SCAN_MAX_MEDIA_ASSETS);
+  if (assets.length === 0) {
+    return {
+      decision: null,
+      visualAssetCount: 0,
+      inspectedAssetCount: 0,
+      failedAssetCount: 0,
+      skippedAssetCount: 0,
+    };
+  }
+
+  const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "tengacion-admin-scan-"));
+  const imageAssets = [];
+  const videoAssets = [];
+  const failureDecisions = [];
+  let skippedAssetCount = 0;
+
+  try {
+    for (const [index, asset] of assets.entries()) {
+      const sourceUrl = String(asset?.sourceUrl || asset?.previewUrl || "").trim();
+      if (!sourceUrl) {
+        failureDecisions.push(buildInspectionFailureDecision({
+          labels: ["media_download_failed"],
+          reason: "Stored visual media has no readable source URL.",
+        }));
+        continue;
+      }
+
+      try {
+        const source = await openMediaSourceStream(sourceUrl);
+        const detectedContentType = String(
+          source?.contentType
+          || asset?.mimeType
+          || inferContentTypeFromFilename(source?.filename || sourceUrl)
+          || "application/octet-stream"
+        ).split(";")[0].trim().toLowerCase();
+        const kind = resolveDownloadedVisualKind({
+          asset,
+          contentType: detectedContentType,
+          filename: source?.filename || "",
+        });
+        if (!kind) {
+          source?.stream?.destroy?.();
+          skippedAssetCount += 1;
+          continue;
+        }
+        if (Number(source?.length || 0) > ADMIN_SCAN_MAX_MEDIA_BYTES) {
+          source?.stream?.destroy?.();
+          failureDecisions.push(buildInspectionFailureDecision({
+            labels: ["media_too_large"],
+            reason: "Stored media exceeds the moderation scan size limit.",
+          }));
+          continue;
+        }
+
+        const detectedExtension = extensionFromContentType(detectedContentType);
+        const sourceExtension = path.extname(String(source?.filename || "")).toLowerCase();
+        const safeExtension = /^\.[a-z0-9]{1,8}$/i.test(detectedExtension || sourceExtension)
+          ? (detectedExtension || sourceExtension)
+          : kind === "video" ? ".mp4" : ".jpg";
+        const localPath = path.join(tempDir, `asset-${index + 1}${safeExtension}`);
+        await pipeline(
+          source.stream,
+          createByteLimitTransform(),
+          fs.createWriteStream(localPath)
+        );
+
+        const normalizedAsset = {
+          localPath,
+          mimeType: detectedContentType || (kind === "video" ? "video/mp4" : "image/jpeg"),
+          originalFilename: asset?.originalFilename || source?.filename || `asset-${index + 1}`,
+        };
+        if (kind === "video") {
+          videoAssets.push(normalizedAsset);
+        } else {
+          imageAssets.push(normalizedAsset);
+        }
+      } catch (error) {
+        failureDecisions.push(buildInspectionFailureDecision({
+          labels: [error?.code === "MEDIA_SCAN_TOO_LARGE" ? "media_too_large" : "media_download_failed"],
+          reason: error?.message || "Stored media could not be downloaded for inspection.",
+        }));
+      }
+    }
+
+    const decisions = [];
+    if (imageAssets.length > 0) {
+      decisions.push(await analyzeImages({
+        assets: imageAssets,
+        uploaderId: toId(candidate?.uploader?.userId || ""),
+      }));
+    }
+    if (videoAssets.length > 0) {
+      // Lazy loading avoids a module cycle because videoModerationService uses analyzeImages.
+      const { analyzeVideo } = require("./videoModerationService");
+      for (const asset of videoAssets) {
+        decisions.push(await analyzeVideo({
+          ...asset,
+          uploaderId: toId(candidate?.uploader?.userId || ""),
+        }));
+      }
+    }
+    decisions.push(...failureDecisions);
+
+    if (decisions.length === 0) {
+      return {
+        decision: null,
+        visualAssetCount: assets.length,
+        inspectedAssetCount: 0,
+        failedAssetCount: 0,
+        skippedAssetCount,
+      };
+    }
+
+    let decision = mergeVisualDecisions(decisions);
+    if (
+      decision.decision === "approve"
+      && (imageAssets.length > 0 || videoAssets.length > 0)
+      && !hasCompletedVisualProviderCheck(decision)
+    ) {
+      decision = mergeVisualDecisions([
+        decision,
+        buildInspectionFailureDecision({
+          labels: ["visual_provider_unavailable"],
+          reason: "No visual moderation provider confirmed this media as safe.",
+        }),
+      ]);
+    }
+
+    return {
+      decision,
+      visualAssetCount: assets.length,
+      inspectedAssetCount: imageAssets.length + videoAssets.length,
+      failedAssetCount: Math.max(
+        failureDecisions.length,
+        normalizeInspectionLabels(decision).some((label) => MEDIA_INSPECTION_FAILURE_LABELS.has(label)) ? 1 : 0
+      ),
+      skippedAssetCount,
+    };
+  } finally {
+    await fsp.rm(tempDir, { recursive: true, force: true }).catch(() => null);
+  }
+};
+
+const mapMediaInspectionDecisionToPolicy = (decision = null) => {
+  if (!decision || decision.decision === "approve") {
+    return null;
+  }
+
+  const labels = normalizeInspectionLabels(decision);
+  const hasLabel = (...values) => values.some((value) => labels.includes(value));
+  const isReject = decision.decision === "reject";
+  const confidence = Math.max(0, Math.min(1, Number(decision?.confidence || 0)));
+  const reason = normalizeText(decision?.reason || "Visual media requires moderation review.", 1000);
+  const isSuspectedChild = hasLabel("suspected_child_exploitation", "child_abuse");
+  const isExplicit = hasLabel("explicit_pornography", "sexual_content_review", "explicit_adult");
+  const isGore = hasLabel("graphic_gore");
+  const isAnimalCruelty = hasLabel("animal_cruelty");
+
+  let queue = "upload_moderation";
+  if (isSuspectedChild) queue = "suspected_child_exploitation";
+  else if (isExplicit) queue = "explicit_pornography";
+  else if (isGore) queue = "graphic_gore";
+  else if (isAnimalCruelty) queue = "animal_cruelty";
+
+  let status = "HOLD_FOR_REVIEW";
+  if (isReject && isSuspectedChild) status = "BLOCK_SUSPECTED_CHILD_EXPLOITATION";
+  else if (isReject && isExplicit) status = "BLOCK_EXPLICIT_ADULT";
+  else if (isReject && isGore) status = "BLOCK_EXTREME_GORE";
+  else if (isReject && isAnimalCruelty) status = "BLOCK_ANIMAL_CRUELTY";
+
+  const critical = ["BLOCK_SUSPECTED_CHILD_EXPLOITATION", "BLOCK_EXPLICIT_ADULT"].includes(status);
+  return {
+    queue,
+    status,
+    severity: critical ? "CRITICAL" : status === "HOLD_FOR_REVIEW" ? "HIGH" : "CRITICAL",
+    priorityScore: critical ? Math.max(90, Math.round(confidence * 100)) : Math.max(70, Math.round(confidence * 100)),
+    riskLabels: uniqueStrings(labels),
+    quarantineMedia: true,
+    neverGeneratePreview: isSuspectedChild || isExplicit,
+    requiresEscalation: isSuspectedChild,
+    workflowState: isSuspectedChild ? "ESCALATED" : "OPEN",
+    publicWarningLabel: isExplicit
+      ? "Explicit adult content blocked"
+      : isSuspectedChild
+        ? "Suspected child exploitation content blocked"
+        : "Visual media held for safety review",
+    summary: reason,
+  };
+};
+
+const MODERATION_STATUS_RANK = new Map([
+  ["ALLOW", 0],
+  ["RESTRICTED_BLURRED", 1],
+  ["HOLD_FOR_REVIEW", 2],
+  ["BLOCK_EXTREME_GORE", 3],
+  ["BLOCK_ANIMAL_CRUELTY", 3],
+  ["BLOCK_EXPLICIT_ADULT", 4],
+  ["BLOCK_SUSPECTED_CHILD_EXPLOITATION", 5],
+]);
+
+const mergePolicyWithMediaInspection = (policyDecision = {}, mediaInspectionDecision = null) => {
+  const mediaPolicy = mapMediaInspectionDecisionToPolicy(mediaInspectionDecision);
+  if (!mediaPolicy) {
+    return policyDecision;
+  }
+
+  const policyRank = MODERATION_STATUS_RANK.get(String(policyDecision?.status || "ALLOW")) || 0;
+  const mediaRank = MODERATION_STATUS_RANK.get(String(mediaPolicy.status || "HOLD_FOR_REVIEW")) || 0;
+  const selected = mediaRank > policyRank ? mediaPolicy : policyDecision;
+  return {
+    ...selected,
+    priorityScore: Math.max(Number(policyDecision?.priorityScore || 0), Number(mediaPolicy.priorityScore || 0)),
+    riskLabels: uniqueStrings([
+      ...(policyDecision?.riskLabels || []),
+      ...(mediaPolicy.riskLabels || []),
+    ]),
+    quarantineMedia: Boolean(policyDecision?.quarantineMedia || mediaPolicy.quarantineMedia),
+    neverGeneratePreview: Boolean(policyDecision?.neverGeneratePreview || mediaPolicy.neverGeneratePreview),
+    requiresEscalation: Boolean(policyDecision?.requiresEscalation || mediaPolicy.requiresEscalation),
+  };
+};
+
+const setAdminMediaInspectorForTests = (inspector = null) => {
+  adminMediaInspectorForTests = typeof inspector === "function" ? inspector : null;
+};
 
 const mergeVisibilityWithModeration = (baselineAccess = {}, moderationDecision = {}) => {
   const status = String(moderationDecision?.status || "ALLOW");
@@ -1985,6 +2321,7 @@ const createOrUpdateModerationCase = async ({
   forceReview = false,
   manualReviewReason = "",
   autoEnforce = true,
+  mediaInspectionDecision = null,
 }) => {
   const normalizedTargetType = normalizeText(targetType, 40);
   const normalizedTargetId = normalizeText(targetId, 120);
@@ -2037,6 +2374,11 @@ const createOrUpdateModerationCase = async ({
       ]),
     };
   }
+
+  moderationDecision = mergePolicyWithMediaInspection(
+    moderationDecision,
+    mediaInspectionDecision
+  );
 
   if (forceReview && moderationDecision.status === "ALLOW") {
     moderationDecision = {
@@ -2331,6 +2673,7 @@ const scanContentForModeration = async ({
   limit = 20,
   includeManualReview = false,
 }) => {
+  const startedAt = new Date();
   const normalizedSearch = normalizeText(search, 160);
   const normalizedLimit = Math.max(1, Math.min(50, Number(limit) || 20));
   const regex = normalizedSearch ? new RegExp(escapeRegex(normalizedSearch), "i") : null;
@@ -2444,6 +2787,10 @@ const scanContentForModeration = async ({
           { text: regex },
           { name: regex },
           { username: regex },
+          { image: regex },
+          { "media.url": regex },
+          { "media.secureUrl": regex },
+          { "media.secure_url": regex },
           { mediaUrl: regex },
           { thumbnailUrl: regex },
           ...(matchedUserIds.length > 0 ? [{ authorId: { $in: matchedUserIds } }] : []),
@@ -2454,6 +2801,9 @@ const scanContentForModeration = async ({
         $or: [
           { text: { $exists: true, $ne: "" } },
           { "media.url": { $exists: true, $ne: "" } },
+          { "media.secureUrl": { $exists: true, $ne: "" } },
+          { "media.secure_url": { $exists: true, $ne: "" } },
+          { image: { $exists: true, $ne: "" } },
           { mediaUrl: { $exists: true, $ne: "" } },
           { thumbnailUrl: { $exists: true, $ne: "" } },
         ],
@@ -2751,6 +3101,13 @@ const scanContentForModeration = async ({
   let reviewCount = 0;
   let restrictedCount = 0;
   let flaggedCount = 0;
+  let visualItemCount = 0;
+  let visualInspectedCount = 0;
+  let visualAssetCount = 0;
+  let inspectedAssetCount = 0;
+  let inspectionFailureCount = 0;
+  let skippedAssetCount = 0;
+  let metadataOnlyCount = 0;
   const flaggedAccountIds = new Set();
 
   const tallyScanResult = (candidate = {}, result = {}) => {
@@ -2777,6 +3134,27 @@ const scanContentForModeration = async ({
   };
 
   for (const candidate of candidates) {
+    const mediaInspection = await inspectCandidateMediaForModeration(candidate);
+    visualAssetCount += Number(mediaInspection?.visualAssetCount || 0);
+    inspectedAssetCount += Number(mediaInspection?.inspectedAssetCount || 0);
+    skippedAssetCount += Number(mediaInspection?.skippedAssetCount || 0);
+    if (Number(mediaInspection?.visualAssetCount || 0) > 0) {
+      visualItemCount += 1;
+      if (Number(mediaInspection?.inspectedAssetCount || 0) > 0) {
+        visualInspectedCount += 1;
+      }
+      if (
+        Number(mediaInspection?.failedAssetCount || 0) > 0
+        || normalizeInspectionLabels(mediaInspection?.decision).some((label) =>
+          MEDIA_INSPECTION_FAILURE_LABELS.has(label)
+        )
+      ) {
+        inspectionFailureCount += 1;
+      }
+    } else {
+      metadataOnlyCount += 1;
+    }
+
     const result = await createOrUpdateModerationCase({
       targetType: candidate.targetType,
       targetId: candidate.targetId,
@@ -2796,6 +3174,7 @@ const scanContentForModeration = async ({
       manualReviewReason: normalizedSearch
         ? `Admin scan requested for "${normalizedSearch}"`
         : "Admin scan requested",
+      mediaInspectionDecision: mediaInspection?.decision || null,
     });
 
     if (result?.moderationCase) {
@@ -2804,13 +3183,40 @@ const scanContentForModeration = async ({
     tallyScanResult(candidate, result);
   }
 
+  const completedAt = new Date();
+  const candidateTimes = candidates
+    .map((candidate) => new Date(candidate?.sortAt || 0))
+    .filter((value) => Number.isFinite(value.getTime()) && value.getTime() > 0)
+    .sort((left, right) => left.getTime() - right.getTime());
+
   return {
     scannedCount: candidates.length,
+    processedCount: candidates.length,
     approvedCount,
     blockedCount,
     reviewCount,
     restrictedCount,
     flaggedCount,
+    visualItemCount,
+    visualInspectedCount,
+    visualAssetCount,
+    inspectedAssetCount,
+    inspectionFailureCount,
+    skippedAssetCount,
+    metadataOnlyCount,
+    providerStatus:
+      visualItemCount === 0
+        ? "not_required"
+        : inspectionFailureCount > 0
+          ? "degraded"
+          : "available",
+    scanScope: normalizedSearch ? "search_matches" : "recent_content",
+    startedAt: startedAt.toISOString(),
+    completedAt: completedAt.toISOString(),
+    coverage: {
+      oldestCandidateAt: candidateTimes[0]?.toISOString?.() || null,
+      newestCandidateAt: candidateTimes[candidateTimes.length - 1]?.toISOString?.() || null,
+    },
     accountsFlagged: flaggedAccountIds.size,
     cases,
   };
@@ -3157,11 +3563,13 @@ module.exports = {
   isRestrictedForPublic,
   shouldDeferPublicUserReportCase,
   listModerationCases,
+  mapMediaInspectionDecisionToPolicy,
   mergeVisibilityWithModeration,
   performModerationAction,
   recordUserStrike,
   resolveRejectStatus,
   scanContentForModeration,
+  setAdminMediaInspectorForTests,
   suspendUserAccount,
   banUserAccount,
   analyzeImage,

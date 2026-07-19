@@ -271,13 +271,13 @@ describe("Posts feed", () => {
     expect(response.body._id).toBeTruthy();
   });
 
-  test("post uploads fail open for scanner outages but retain safety signals", () => {
+  test("post uploads fail closed for scanner outages and retain safety signals", () => {
     expect(resolvePostUploadDecision({
       decision: "quarantine",
       labels: ["inspection_failed", "visual_provider_unavailable"],
       reason: "Provider timeout",
       confidence: 0.2,
-    })).toMatchObject({ decision: "approve", confidence: 0 });
+    })).toMatchObject({ decision: "quarantine", confidence: 0.2 });
 
     expect(resolvePostUploadDecision({
       decision: "quarantine",

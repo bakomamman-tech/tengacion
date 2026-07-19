@@ -145,7 +145,13 @@ const buildStoryPayload = async (story = {}, { authorAvatarMap = new Map(), req 
     queue: story?.sensitiveType,
   });
 
-  if (ownerId !== viewerIdString && isHiddenFromPublicStatus(publicSensitivity.moderationStatus)) {
+  if (isHiddenFromPublicStatus(publicSensitivity.moderationStatus)) {
+    return null;
+  }
+  if (
+    publicSensitivity.moderationStatus === "RESTRICTED_BLURRED"
+    && !String(story?.blurPreviewUrl || story?.media?.restrictedPreviewUrl || "").trim()
+  ) {
     return null;
   }
 
@@ -259,7 +265,6 @@ router.post(
     sourceType: "story_upload",
     titleFields: ["caption", "text"],
     descriptionFields: ["caption", "text"],
-    allowOnTechnicalFailure: true,
   }),
   async (req, res) => {
     try {
@@ -290,6 +295,7 @@ router.post(
       const normalizedVisibility = ["public", "friends", "close_friends"].includes(visibility)
         ? visibility
         : "friends";
+      const moderationDisabled = String(process.env.MODERATION_ENABLED || "true").toLowerCase() === "false";
 
       const storedAvatar = sanitizeMediaUrlForNewWrite(avatarToUrl(user.avatar));
 
@@ -309,6 +315,14 @@ router.post(
         mediaUrl: storyMediaUrl,
         mediaType,
         thumbnailUrl: mediaType === "image" ? storyMediaUrl : "",
+        moderationStatus: mediaFile
+          ? (moderationDisabled || req.moderationUpload?.decision === "approve" ? "approved" : "pending")
+          : "approved",
+        reviewRequired: Boolean(
+          mediaFile
+          && !moderationDisabled
+          && req.moderationUpload?.decision !== "approve"
+        ),
         musicAttachment,
         time: new Date(),
         seenBy: [],

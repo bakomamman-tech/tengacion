@@ -20,12 +20,14 @@ import {
 
 const CATEGORIES = [
   ["", "All"],
+  ["upload_moderation", "Inspection Failures"],
   ["suspected_child_exploitation", "CSAM / Child Exploitation"],
   ["explicit_pornography", "Explicit Porn"],
   ["graphic_gore", "Graphic Gore"],
   ["animal_cruelty", "Animal Cruelty"],
   ["user_reported_sensitive_content", "Reported Content"],
 ];
+const ADMIN_SCAN_BATCH_LIMIT = 20;
 
 const STAT_CARDS = [
   ["pendingReview", "Pending Review", "Cases waiting for a decision"],
@@ -137,6 +139,23 @@ const getQueueSummary = (payload = {}) => ({
   total: Number(payload?.total || 0),
   cases: Array.isArray(payload?.cases) ? payload.cases : [],
 });
+const getScanConcernCount = (payload = {}) =>
+  Number(payload?.blockedCount || 0)
+  + Number(payload?.reviewCount || 0)
+  + Number(payload?.restrictedCount || 0)
+  + Number(payload?.inspectionFailureCount || 0)
+  + Number(payload?.skippedAssetCount || 0);
+const getScanCompletedLabel = (payload = {}) =>
+  formatDateTime(payload?.completedAt || payload?.startedAt || "");
+const buildScanToastMessage = (payload = {}, scopeLabel = "recent items") => {
+  const scanned = formatNumber(payload?.processedCount ?? payload?.scannedCount);
+  const approved = formatNumber(payload?.approvedCount);
+  const blocked = formatNumber(payload?.blockedCount);
+  const review = formatNumber(payload?.reviewCount);
+  const restricted = formatNumber(payload?.restrictedCount);
+  const failures = formatNumber(payload?.inspectionFailureCount);
+  return `Checked ${scanned} ${scopeLabel}: ${approved} cleared in this batch, ${blocked} blocked, ${review} held for review, ${restricted} restricted, ${failures} inspection failures.`;
+};
 
 function Badge({ status, workflowState }) {
   const isResolved = String(workflowState || "").toUpperCase() === "RESOLVED";
@@ -257,6 +276,7 @@ export default function AdminReportsPage({ user }) {
   const [detailError, setDetailError] = useState("");
   const [note, setNote] = useState("");
   const [busyKey, setBusyKey] = useState("");
+  const [lastScan, setLastScan] = useState(null);
   const statsRequestRef = useRef(0);
   const queueRequestRef = useRef(0);
   const detailRequestRef = useRef(0);
@@ -424,19 +444,35 @@ export default function AdminReportsPage({ user }) {
   const handleScanRecent = useCallback(async () => {
     setBusyKey("scan_recent");
     try {
-      const response = await scanRecentMedia({ limit });
+      const response = await scanRecentMedia({ limit: ADMIN_SCAN_BATCH_LIMIT });
+      setLastScan(response || null);
       const accountsFlagged = Number(response?.accountsFlagged || 0);
       const accountNote = accountsFlagged > 0
         ? ` ${formatNumber(accountsFlagged)} accounts flagged.`
         : "";
-      toast.success(`Scanned ${formatNumber(response?.scannedCount)} recent items. ${formatNumber(response?.approvedCount)} approved, ${formatNumber(response?.blockedCount)} blocked, ${formatNumber(response?.reviewCount)} sent to review.${accountNote}`);
-      await Promise.all([loadStats(), loadQueue(), selectedCaseId ? loadCase(selectedCaseId) : Promise.resolve()]);
+      const message = `${buildScanToastMessage(response, "recent candidates")}${accountNote}`;
+      if (getScanConcernCount(response) > 0) {
+        toast.error(message);
+      } else {
+        toast.success(message);
+      }
+      const firstFlaggedCase = Array.isArray(response?.cases) ? response.cases[0] : null;
+      if (firstFlaggedCase?._id) {
+        selectCase(firstFlaggedCase);
+      }
+      await Promise.all([
+        loadStats(),
+        loadQueue(),
+        firstFlaggedCase?._id
+          ? loadCase(firstFlaggedCase._id)
+          : selectedCaseId ? loadCase(selectedCaseId) : Promise.resolve(),
+      ]);
     } catch (error) {
       toast.error(error?.message || "Failed to scan recent media");
     } finally {
       setBusyKey("");
     }
-  }, [limit, loadCase, loadQueue, loadStats, selectedCaseId]);
+  }, [loadCase, loadQueue, loadStats, selectCase, selectedCaseId]);
 
   const handleScanSearch = useCallback(async () => {
     const searchTerm = normalizeText(search);
@@ -446,19 +482,35 @@ export default function AdminReportsPage({ user }) {
     }
     setBusyKey("scan_search");
     try {
-      const response = await scanSearchMatches({ search: searchTerm, limit });
+      const response = await scanSearchMatches({ search: searchTerm, limit: ADMIN_SCAN_BATCH_LIMIT });
+      setLastScan(response || null);
       const accountsFlagged = Number(response?.accountsFlagged || 0);
       const accountNote = accountsFlagged > 0
         ? ` ${formatNumber(accountsFlagged)} accounts flagged.`
         : "";
-      toast.success(`Scanned ${formatNumber(response?.scannedCount)} matching items. ${formatNumber(response?.approvedCount)} approved, ${formatNumber(response?.blockedCount)} blocked, ${formatNumber(response?.reviewCount)} sent to review.${accountNote}`);
-      await Promise.all([loadStats(), loadQueue(), selectedCaseId ? loadCase(selectedCaseId) : Promise.resolve()]);
+      const message = `${buildScanToastMessage(response, "matching candidates")}${accountNote}`;
+      if (getScanConcernCount(response) > 0) {
+        toast.error(message);
+      } else {
+        toast.success(message);
+      }
+      const firstFlaggedCase = Array.isArray(response?.cases) ? response.cases[0] : null;
+      if (firstFlaggedCase?._id) {
+        selectCase(firstFlaggedCase);
+      }
+      await Promise.all([
+        loadStats(),
+        loadQueue(),
+        firstFlaggedCase?._id
+          ? loadCase(firstFlaggedCase._id)
+          : selectedCaseId ? loadCase(selectedCaseId) : Promise.resolve(),
+      ]);
     } catch (error) {
       toast.error(error?.message || "Failed to scan search matches");
     } finally {
       setBusyKey("");
     }
-  }, [limit, loadCase, loadQueue, loadStats, search, selectedCaseId]);
+  }, [loadCase, loadQueue, loadStats, search, selectCase, selectedCaseId]);
 
   const handleUserAction = useCallback(async (action) => {
     const uploaderId = selectedUploaderUser?._id || visibleCase?.uploader?.userId || "";
@@ -585,6 +637,30 @@ export default function AdminReportsPage({ user }) {
           <span className="adminx-muted">Search updates the queue in real time.</span>
           <span className="adminx-muted">Scan Search Matches uses the exact text in the search box.</span>
         </div>
+
+        {lastScan ? (
+          <div className="adminx-panel" role="status" style={{ display: "grid", gap: 10, padding: 14 }}>
+            <div className="adminx-row" style={{ flexWrap: "wrap", gap: 8, justifyContent: "flex-start" }}>
+              <strong>Latest manual scan</strong>
+              <span className={`adminx-badge ${getScanConcernCount(lastScan) > 0 ? "adminx-badge--warn" : "adminx-badge--good"}`}>
+                {getScanConcernCount(lastScan) > 0 ? "Attention required" : "Batch completed"}
+              </span>
+              <span className="adminx-muted">Completed {getScanCompletedLabel(lastScan)}</span>
+            </div>
+            <div className="adminx-row" style={{ flexWrap: "wrap", gap: 8, justifyContent: "flex-start" }}>
+              <span className="adminx-badge">Checked {formatNumber(lastScan?.processedCount ?? lastScan?.scannedCount)}</span>
+              <span className="adminx-badge adminx-badge--good">Cleared {formatNumber(lastScan?.approvedCount)}</span>
+              <span className="adminx-badge adminx-badge--danger">Blocked {formatNumber(lastScan?.blockedCount)}</span>
+              <span className="adminx-badge adminx-badge--warn">Review {formatNumber(lastScan?.reviewCount)}</span>
+              <span className="adminx-badge adminx-badge--warn">Restricted {formatNumber(lastScan?.restrictedCount)}</span>
+              <span className="adminx-badge adminx-badge--warn">Inspection failures {formatNumber(lastScan?.inspectionFailureCount)}</span>
+              <span className="adminx-badge">Visual items inspected {formatNumber(lastScan?.visualInspectedCount)} / {formatNumber(lastScan?.visualItemCount)}</span>
+            </div>
+            <span className="adminx-muted">
+              This result covers only the listed batch as of {getScanCompletedLabel(lastScan)}. Content uploaded afterward was not included.
+            </span>
+          </div>
+        ) : null}
 
         {hasActiveFilters ? (
           <div className="adminx-row" style={{ flexWrap: "wrap", gap: 8 }}>

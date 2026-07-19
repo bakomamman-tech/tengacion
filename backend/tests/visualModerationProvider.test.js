@@ -1,11 +1,17 @@
 process.env.NODE_ENV = "test";
 
 const {
+  analyzeVisualAssets,
   mapContextualVisionResult,
   mapOmniModerationResult,
   mapOmniModerationResults,
   mergeVisualDecisions,
+  setVisualModerationClientForTests,
 } = require("../services/visualModerationProvider");
+
+afterEach(() => {
+  setVisualModerationClientForTests(null);
+});
 
 describe("visual moderation decision mapping", () => {
   test("ordinary low-risk images remain allowed", () => {
@@ -32,7 +38,7 @@ describe("visual moderation decision mapping", () => {
     expect(mapOmniModerationResult({
       categories: { sexual: true },
       category_scores: { sexual: 0.55 },
-    })).toMatchObject({ decision: "approve" });
+    })).toMatchObject({ decision: "quarantine" });
 
     expect(mapOmniModerationResult({
       categories: { sexual: true },
@@ -114,6 +120,35 @@ describe("visual moderation decision mapping", () => {
     ])).toMatchObject({
       decision: "reject",
       labels: expect.arrayContaining(["explicit_pornography"]),
+    });
+  });
+
+  test("preserves an explicit rejection when contextual vision fails", async () => {
+    setVisualModerationClientForTests({
+      moderations: {
+        create: async () => ({
+          results: [{
+            categories: { sexual: true, "violence/graphic": false },
+            category_scores: { sexual: 0.98, "violence/graphic": 0.01 },
+          }],
+        }),
+      },
+      responses: {
+        create: async () => {
+          throw new Error("Contextual model unavailable");
+        },
+      },
+    });
+
+    await expect(analyzeVisualAssets([{
+      localPath: __filename,
+      mimeType: "image/jpeg",
+    }])).resolves.toMatchObject({
+      decision: "reject",
+      labels: expect.arrayContaining([
+        "explicit_pornography",
+        "visual_provider_partial_failure",
+      ]),
     });
   });
 });

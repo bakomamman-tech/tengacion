@@ -18,11 +18,12 @@ const buildParams = (values = {}) => {
   return params;
 };
 
-const postJson = (url, payload = {}) =>
+const postJson = (url, payload = {}, options = {}) =>
   apiRequest(url, {
     method: "POST",
     headers: jsonHeaders,
     body: JSON.stringify(payload || {}),
+    ...options,
   });
 
 const userAction = (userId, action, reason = "") =>
@@ -97,10 +98,10 @@ export const escalateModerationCase = (caseId, payload = {}) =>
   applyModerationAction(caseId, "escalate_case", payload);
 
 export const scanRecentMedia = (payload = {}) =>
-  postJson(`${MODERATION_BASE}/scan/recent`, payload);
+  postJson(`${MODERATION_BASE}/scan/recent`, payload, { timeoutMs: 120000 });
 
 export const scanSearchMatches = (payload = {}) =>
-  postJson(`${MODERATION_BASE}/scan/search`, payload);
+  postJson(`${MODERATION_BASE}/scan/search`, payload, { timeoutMs: 120000 });
 
 export const fetchModerationAuditLogs = ({ page = 1, limit = 30, action = "", caseId = "" } = {}) => {
   const params = buildParams({ page, limit, action, caseId });

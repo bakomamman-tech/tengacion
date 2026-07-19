@@ -71,15 +71,6 @@ const POST_SCAN_FAILURE_LABELS = new Set([
   "video_frames_missing",
   "video_frame_extraction_failed",
 ]);
-const POST_SAFETY_RISK_LABELS = new Set([
-  "explicit_pornography",
-  "suspected_child_exploitation",
-  "child_abuse",
-  "graphic_gore",
-  "animal_cruelty",
-  "duplicate_ban_match",
-]);
-
 const isEnforcedHiddenPostStatus = (value = "") => {
   const status = String(value || "").trim();
   return Boolean(status && status !== "pending" && isHiddenFromPublicStatus(status));
@@ -281,17 +272,16 @@ const resolvePostUploadDecision = (decision = {}) => {
     .map((label) => String(label || "").trim().toLowerCase())
     .filter(Boolean);
   const isTechnicalFailure = labels.some((label) => POST_SCAN_FAILURE_LABELS.has(label));
-  const hasSafetySignal = labels.some((label) => POST_SAFETY_RISK_LABELS.has(label));
 
-  if (decision?.decision !== "quarantine" || !isTechnicalFailure || hasSafetySignal) {
+  if (!isTechnicalFailure || decision?.decision === "reject") {
     return decision;
   }
 
   return {
     ...decision,
-    decision: "approve",
-    reason: "Automated media inspection was unavailable; the post was allowed to publish.",
-    confidence: 0,
+    decision: "quarantine",
+    reason: "Automated media inspection was unavailable; the post was held for safety review.",
+    confidence: Math.max(Number(decision?.confidence || 0), 0.2),
   };
 };
 
@@ -935,16 +925,12 @@ const attachPostModerationOverlays = async (posts = [], viewerId = null, req = n
   return normalizedPosts
     .filter((post) => {
       const caseDoc = caseMap.get(toIdString(post?._id)) || null;
-      const isOwner = toIdString(post?.author?._id || post?.author) === toIdString(viewerId);
-      if (!isOwner && isUnsafeSharedOriginal(post)) {
+      if (isUnsafeSharedOriginal(post)) {
         return false;
       }
       if (
-        !isOwner
-        && (
-          isEnforcedHiddenPostStatus(post?.moderationStatus)
-          || Boolean(post?.reviewRequired)
-        )
+        isEnforcedHiddenPostStatus(post?.moderationStatus)
+        || Boolean(post?.reviewRequired)
       ) {
         return false;
       }

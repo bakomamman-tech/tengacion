@@ -95,7 +95,7 @@ const StorySchema = new mongoose.Schema({
 
   moderationStatus: {
     type: String,
-    default: "ALLOW",
+    default: "pending",
     trim: true,
     maxlength: 80,
     index: true,

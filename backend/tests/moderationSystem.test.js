@@ -16,12 +16,14 @@ const moderationRoutes = require("../routes/moderation");
 const adminRoutes = require("../routes/admin");
 const mediaRoutes = require("../routes/media");
 const postsRoutes = require("../../apps/api/routes/posts");
+const storiesRoutes = require("../routes/stories");
 const errorHandler = require("../../apps/api/middleware/errorHandler");
 const User = require("../models/User");
 const Message = require("../models/Message");
 const ModerationAuditLog = require("../models/ModerationAuditLog");
 const ModerationCase = require("../models/ModerationCase");
 const Post = require("../models/Post");
+const Story = require("../models/Story");
 const UserStrike = require("../models/UserStrike");
 const Video = require("../models/Video");
 const { MODERATION_REPEAT_VIOLATOR_STRIKE_THRESHOLD } = require("../config/moderation");
@@ -29,10 +31,14 @@ const { STEP_UP_COOKIE_NAME, signStepUpToken } = require("../services/authTokens
 const { saveUploadedMedia, saveUploadedMediaToGridFs } = require("../services/mediaStore");
 const {
   createOrUpdateModerationCase,
+  setAdminMediaInspectorForTests,
 } = require("../services/moderationService");
 const {
   createUploadModerationCase,
 } = require("../services/uploadModerationService");
+const {
+  setVisualModerationClientForTests,
+} = require("../services/visualModerationProvider");
 
 let mongod;
 let app;
@@ -100,11 +106,36 @@ beforeAll(async () => {
   app.use("/api/admin", adminRoutes);
   app.use("/api/moderation", moderationRoutes);
   app.use("/api/posts", postsRoutes);
+  app.use("/api/stories", storiesRoutes);
   app.use(errorHandler);
 });
 
 beforeEach(async () => {
   await mongoose.connection.db.dropDatabase();
+
+  setAdminMediaInspectorForTests(async (candidate = {}) => {
+    const visualAssetCount = Array.isArray(candidate.media) ? candidate.media.length : 0;
+    return visualAssetCount > 0
+      ? {
+          decision: {
+            decision: "approve",
+            labels: ["provider:test_visual_scan"],
+            reason: "Test visual scan passed.",
+            confidence: 0.99,
+          },
+          visualAssetCount,
+          inspectedAssetCount: visualAssetCount,
+          failedAssetCount: 0,
+          skippedAssetCount: 0,
+        }
+      : {
+          decision: null,
+          visualAssetCount: 0,
+          inspectedAssetCount: 0,
+          failedAssetCount: 0,
+          skippedAssetCount: 0,
+        };
+  });
 
   regularUser = await User.create({
     name: "Regular User",
@@ -137,6 +168,8 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  setAdminMediaInspectorForTests(null);
+  setVisualModerationClientForTests(null);
   try {
     if (mongoose.connection.readyState === 1) {
       await mongoose.connection.dropDatabase();
@@ -320,6 +353,57 @@ describe("moderation decision engine", () => {
 });
 
 describe("moderation routes and enforcement", () => {
+  test("scanner outages hold post and story media instead of publishing it", async () => {
+    setVisualModerationClientForTests({
+      moderations: {
+        create: async () => {
+          throw new Error("Moderation provider unavailable");
+        },
+      },
+      responses: {
+        create: async () => {
+          throw new Error("Contextual provider unavailable");
+        },
+      },
+    });
+
+    try {
+      const postResponse = await request(app)
+        .post("/api/posts")
+        .set("Authorization", `Bearer ${userToken}`)
+        .field("text", "Neutral upload during scanner outage")
+        .attach("image", Buffer.from("uninspectable-image"), {
+          filename: "neutral.jpg",
+          contentType: "image/jpeg",
+        })
+        .expect(202);
+
+      expect(postResponse.body).toMatchObject({
+        moderationStatus: "quarantined",
+        reviewRequired: true,
+      });
+      expect(await Post.countDocuments({ text: "Neutral upload during scanner outage" })).toBe(0);
+
+      const storyResponse = await request(app)
+        .post("/api/stories")
+        .set("Authorization", `Bearer ${userToken}`)
+        .field("caption", "Neutral story during scanner outage")
+        .attach("media", Buffer.from("uninspectable-story-image"), {
+          filename: "neutral-story.jpg",
+          contentType: "image/jpeg",
+        })
+        .expect(202);
+
+      expect(storyResponse.body).toMatchObject({
+        moderationStatus: "quarantined",
+        reviewRequired: true,
+      });
+      expect(await Story.countDocuments({ text: "Neutral story during scanner outage" })).toBe(0);
+    } finally {
+      setVisualModerationClientForTests(null);
+    }
+  });
+
   test("multipart explicit image uploads are blocked before a post is created", async () => {
     const tempFilePath = path.join(
       os.tmpdir(),
@@ -1096,6 +1180,112 @@ describe("moderation routes and enforcement", () => {
     expect(response.body.accountsFlagged).toBe(0);
     expect(Array.isArray(response.body.cases)).toBe(true);
     expect(response.body.cases).toHaveLength(1);
+  });
+
+  test("admin recent scan blocks a visually explicit post with neutral text", async () => {
+    const post = await Post.create({
+      author: regularUser._id,
+      text: "Y",
+      privacy: "public",
+      visibility: "public",
+      moderationStatus: "approved",
+      media: [{ url: "https://cdn.test/media/neutral-name.jpg", type: "image" }],
+    });
+
+    setAdminMediaInspectorForTests(async (candidate = {}) => {
+      const isTarget = String(candidate.targetId || "") === post._id.toString();
+      const visualAssetCount = Array.isArray(candidate.media) ? candidate.media.length : 0;
+      return isTarget
+        ? {
+            decision: {
+              decision: "reject",
+              labels: ["explicit_pornography", "provider:test_visual_scan"],
+              reason: "Explicit adult sexual content was detected in the image.",
+              confidence: 0.98,
+            },
+            visualAssetCount,
+            inspectedAssetCount: visualAssetCount,
+            failedAssetCount: 0,
+            skippedAssetCount: 0,
+          }
+        : {
+            decision: null,
+            visualAssetCount: 0,
+            inspectedAssetCount: 0,
+            failedAssetCount: 0,
+            skippedAssetCount: 0,
+          };
+    });
+
+    const response = await request(app)
+      .post("/api/admin/moderation/scan/recent")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ limit: 20 })
+      .expect(200);
+
+    expect(response.body.blockedCount).toBeGreaterThanOrEqual(1);
+    expect(response.body.visualInspectedCount).toBeGreaterThanOrEqual(1);
+    expect(response.body.inspectionFailureCount).toBe(0);
+    expect(response.body.cases).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        status: "BLOCK_EXPLICIT_ADULT",
+        subject: expect.objectContaining({ targetId: post._id.toString() }),
+      }),
+    ]));
+
+    await expect(Post.findById(post._id).lean()).resolves.toMatchObject({
+      moderationStatus: "BLOCK_EXPLICIT_ADULT",
+      reviewRequired: false,
+      visibility: "private",
+    });
+  });
+
+  test("admin recent scan holds uninspectable visual media instead of approving it", async () => {
+    const post = await Post.create({
+      author: regularUser._id,
+      text: "Neutral caption",
+      privacy: "public",
+      visibility: "public",
+      moderationStatus: "approved",
+      media: [{ url: "https://cdn.test/media/unreachable.jpg", type: "image" }],
+    });
+
+    setAdminMediaInspectorForTests(async (candidate = {}) => {
+      const isTarget = String(candidate.targetId || "") === post._id.toString();
+      return isTarget
+        ? {
+            decision: {
+              decision: "quarantine",
+              labels: ["inspection_failed", "media_download_failed"],
+              reason: "Stored media could not be downloaded for inspection.",
+              confidence: 0.2,
+            },
+            visualAssetCount: 1,
+            inspectedAssetCount: 0,
+            failedAssetCount: 1,
+            skippedAssetCount: 0,
+          }
+        : {
+            decision: null,
+            visualAssetCount: 0,
+            inspectedAssetCount: 0,
+            failedAssetCount: 0,
+            skippedAssetCount: 0,
+          };
+    });
+
+    const response = await request(app)
+      .post("/api/admin/moderation/scan/recent")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ limit: 20 })
+      .expect(200);
+
+    expect(response.body.reviewCount).toBeGreaterThanOrEqual(1);
+    expect(response.body.inspectionFailureCount).toBe(1);
+    await expect(Post.findById(post._id).lean()).resolves.toMatchObject({
+      moderationStatus: "HOLD_FOR_REVIEW",
+      reviewRequired: true,
+    });
   });
 
   test("admin scan recent alias flags user accounts and direct messages", async () => {

@@ -448,6 +448,7 @@ describe("story music attachment", () => {
       mediaUrl: "",
       image: "",
       thumbnailUrl: "",
+      moderationStatus: "approved",
       time: new Date(),
     });
 

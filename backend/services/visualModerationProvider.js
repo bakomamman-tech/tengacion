@@ -111,7 +111,7 @@ const mapOmniModerationResult = (result = {}) => {
     });
   }
 
-  if (sexualScore >= REVIEW_THRESHOLD) {
+  if (categories.sexual || sexualScore >= REVIEW_THRESHOLD) {
     return buildDecision({
       decision: "quarantine",
       labels: ["explicit_pornography", "sexual_content_review", "provider:openai_moderation"],
@@ -129,7 +129,7 @@ const mapOmniModerationResult = (result = {}) => {
     });
   }
 
-  if (graphicScore >= GORE_RESTRICT_THRESHOLD) {
+  if (categories["violence/graphic"] || graphicScore >= GORE_RESTRICT_THRESHOLD) {
     return buildDecision({
       decision: "quarantine",
       labels: ["graphic_gore", "provider:openai_moderation"],
@@ -160,12 +160,21 @@ const mapContextualVisionResult = (result = {}) => {
   const critical = ["high", "critical"].includes(severity);
   const reason = String(result.reason || "").trim();
 
-  if (category === "none" || confidence < REVIEW_THRESHOLD) {
+  if (category === "none") {
     return buildDecision({
       decision: "approve",
       labels: ["provider:contextual_vision"],
       reason: "No contextual child-abuse or animal-cruelty risk was detected.",
       confidence: Math.max(0.1, 1 - confidence),
+    });
+  }
+
+  if (confidence < REVIEW_THRESHOLD) {
+    return buildDecision({
+      decision: "quarantine",
+      labels: [category, "low_confidence_visual_risk", "provider:contextual_vision"],
+      reason: reason || "A visual safety signal requires review before publication.",
+      confidence,
     });
   }
 
@@ -331,31 +340,57 @@ const analyzeWithOpenAI = async (assets = []) => {
       }))
     : Promise.resolve(null);
 
-  const [moderationResponse, contextualResponse] = await Promise.all([
+  const [moderationResult, contextualResult] = await Promise.allSettled([
     moderationPromise,
     contextualPromise,
   ]);
-  const moderationResults = moderationResponse?.results;
-  if (!Array.isArray(moderationResults) || moderationResults.length === 0) {
-    throw new Error("Visual moderation provider returned no result.");
+  const decisions = [];
+  const providerFailures = [];
+
+  if (moderationResult.status === "fulfilled") {
+    const moderationResults = moderationResult.value?.results;
+    if (Array.isArray(moderationResults) && moderationResults.length > 0) {
+      decisions.push(mapOmniModerationResults(moderationResults));
+    } else {
+      providerFailures.push("OpenAI moderation returned no result.");
+    }
+  } else {
+    providerFailures.push(moderationResult.reason?.message || "OpenAI moderation failed.");
   }
 
-  const decisions = [mapOmniModerationResults(moderationResults)];
   if (MODERATION_CONTEXTUAL_VISION_ENABLED) {
-    const rawText = normalizeResponseText(contextualResponse);
-    let contextualResult = null;
-    try {
-      contextualResult = JSON.parse(rawText);
-    } catch {
-      throw new Error("Contextual visual moderation returned an invalid result.");
+    if (contextualResult.status === "fulfilled") {
+      const rawText = normalizeResponseText(contextualResult.value);
+      try {
+        decisions.push(mapContextualVisionResult(JSON.parse(rawText)));
+      } catch {
+        providerFailures.push("Contextual visual moderation returned an invalid result.");
+      }
+    } else {
+      providerFailures.push(contextualResult.reason?.message || "Contextual visual moderation failed.");
     }
-    decisions.push(mapContextualVisionResult(contextualResult));
+  }
+
+  if (providerFailures.length > 0) {
+    decisions.push(buildDecision({
+      decision: "quarantine",
+      labels: ["inspection_failed", "visual_provider_partial_failure"],
+      reason: providerFailures.join(" ").slice(0, 500),
+      confidence: 0.2,
+    }));
+  }
+
+  if (decisions.length === 0) {
+    throw new Error("No visual moderation provider returned a usable result.");
   }
 
   return mergeVisualDecisions(decisions);
 };
 
 const analyzeVisualAssets = async (assets = []) => {
+  if (testClient) {
+    return analyzeWithOpenAI(assets);
+  }
   if (MODERATION_PROVIDER === "internal_heuristics") {
     return null;
   }

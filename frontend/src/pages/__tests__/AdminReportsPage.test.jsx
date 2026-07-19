@@ -226,22 +226,34 @@ describe("AdminReportsPage", () => {
     vi.mocked(fetchModerationReviewUrl).mockResolvedValue({ url: "https://review.test/case-1" });
     vi.mocked(applyModerationCaseAction).mockResolvedValue({ success: true });
     vi.mocked(scanRecentMedia).mockResolvedValue({
+      processedCount: 2,
       scannedCount: 2,
       approvedCount: 1,
       blockedCount: 1,
       reviewCount: 0,
       restrictedCount: 0,
       flaggedCount: 1,
+      visualItemCount: 2,
+      visualInspectedCount: 2,
+      inspectionFailureCount: 0,
+      skippedAssetCount: 0,
+      completedAt: "2026-03-26T10:00:00.000Z",
       accountsFlagged: 0,
       cases: [moderationCase],
     });
     vi.mocked(scanSearchMatches).mockResolvedValue({
+      processedCount: 2,
       scannedCount: 2,
       approvedCount: 1,
       blockedCount: 1,
       reviewCount: 0,
       restrictedCount: 0,
       flaggedCount: 1,
+      visualItemCount: 2,
+      visualInspectedCount: 2,
+      inspectionFailureCount: 0,
+      skippedAssetCount: 0,
+      completedAt: "2026-03-26T10:00:00.000Z",
       accountsFlagged: 0,
       cases: [moderationCase],
     });
@@ -351,16 +363,20 @@ describe("AdminReportsPage", () => {
     await waitFor(() =>
       expect(scanSearchMatches).toHaveBeenCalledWith({
         search: "Search Match Person",
-        limit: 12,
+        limit: 20,
       })
     );
 
     fireEvent.click(scanRecentButton);
     await waitFor(() =>
       expect(scanRecentMedia).toHaveBeenCalledWith({
-        limit: 12,
+        limit: 20,
       })
     );
+
+    expect(await screen.findByText("Latest manual scan")).toBeInTheDocument();
+    expect(screen.getByText(/covers only the listed batch/i)).toBeInTheDocument();
+    expect(screen.getByText("Blocked 1")).toBeInTheDocument();
   }, 15000);
 
   it("shows blocked explicit cases as pending until they are resolved", async () => {

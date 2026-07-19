@@ -9,6 +9,21 @@ import {
 } from "./storyMusicUtils";
 
 const FEED_LIMIT = 30;
+const getPreviewStartSeconds = (item = {}) =>
+  Math.max(0, Number(item?.previewStartSec || 0));
+
+const normalizeCatalogItems = (payload = {}) =>
+  (Array.isArray(payload?.items) ? payload.items : [])
+    .filter((item) => isStoryMusicCandidate(item));
+
+const mergeCatalogItems = (current = [], incoming = []) => {
+  const merged = new Map(
+    [...current, ...incoming]
+      .map((item) => [String(item?.id || item?.contentId || ""), item])
+      .filter(([itemId]) => Boolean(itemId))
+  );
+  return Array.from(merged.values());
+};
 
 export default function StoryMusicPicker({ value = null, onSelect, onClear, onClose }) {
   const [items, setItems] = useState([]);
@@ -16,8 +31,10 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState("");
   const [activePreviewId, setActivePreviewId] = useState("");
   const [previewNonce, setPreviewNonce] = useState(0);
   const [previewPlaying, setPreviewPlaying] = useState(false);
@@ -29,31 +46,66 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
     const audio = audioRef.current;
 
     const loadFeed = async () => {
+      let mergedItems = [];
+      let nextPage = 1;
       try {
         setLoading(true);
+        setLoadingMore(false);
         setError("");
-        const payload = await getStoryMusicCatalog({
-          page: 1,
-          limit: FEED_LIMIT,
-          search: query.trim(),
-        });
-        if (!alive) {
-          return;
-        }
-        const nextItems = Array.isArray(payload?.items)
-          ? payload.items.filter((item) => isStoryMusicCandidate(item))
-          : [];
-        setItems(nextItems);
+        setLoadMoreError("");
+        setItems([]);
         setPage(1);
-        setHasMore(Boolean(payload?.hasMore));
+        setTotal(0);
+        setHasMore(false);
+
+        while (alive) {
+          if (nextPage > 1) {
+            setLoadingMore(true);
+          }
+
+          const payload = await getStoryMusicCatalog({
+            page: nextPage,
+            limit: FEED_LIMIT,
+            search: query.trim(),
+          });
+          if (!alive) {
+            return;
+          }
+
+          mergedItems = mergeCatalogItems(mergedItems, normalizeCatalogItems(payload));
+          const responsePage = Math.max(
+            nextPage,
+            Number.parseInt(payload?.page, 10) || nextPage
+          );
+          const moreAvailable = Boolean(payload?.hasMore);
+
+          setItems(mergedItems);
+          setPage(responsePage);
+          setTotal(Math.max(mergedItems.length, Number(payload?.total) || 0));
+          setHasMore(moreAvailable);
+          setLoading(false);
+
+          if (!moreAvailable) {
+            break;
+          }
+          nextPage = responsePage + 1;
+        }
       } catch (loadError) {
         if (!alive) {
           return;
         }
-        setError(loadError?.message || "Could not load Tengacion music.");
+        if (mergedItems.length > 0) {
+          setLoadMoreError(
+            loadError?.message || "Some songs could not be loaded. Tap below to retry."
+          );
+          setHasMore(true);
+        } else {
+          setError(loadError?.message || "Could not load Tengacion music.");
+        }
       } finally {
         if (alive) {
           setLoading(false);
+          setLoadingMore(false);
         }
       }
     };
@@ -118,7 +170,7 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
 
     audio.pause();
     audio.src = activePreviewItem.previewUrl;
-    audio.currentTime = 0;
+    audio.currentTime = getPreviewStartSeconds(activePreviewItem);
 
     let cancelled = false;
     const start = async () => {
@@ -177,7 +229,7 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
     if (!audio || !activePreviewItem?.previewUrl) {
       return;
     }
-    audio.currentTime = 0;
+    audio.currentTime = getPreviewStartSeconds(activePreviewItem);
     setPreviewNonce((current) => current + 1);
   };
 
@@ -187,25 +239,19 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
     }
     try {
       setLoadingMore(true);
+      setLoadMoreError("");
       const nextPage = page + 1;
       const payload = await getStoryMusicCatalog({
         page: nextPage,
         limit: FEED_LIMIT,
         search: query.trim(),
       });
-      const nextItems = Array.isArray(payload?.items)
-        ? payload.items.filter((item) => isStoryMusicCandidate(item))
-        : [];
-      setItems((current) => {
-        const merged = new Map(
-          [...current, ...nextItems].map((item) => [String(item?.id || item?.contentId || ""), item])
-        );
-        return Array.from(merged.values());
-      });
-      setPage(nextPage);
+      setItems((current) => mergeCatalogItems(current, normalizeCatalogItems(payload)));
+      setPage(Number.parseInt(payload?.page, 10) || nextPage);
+      setTotal((current) => Math.max(current, Number(payload?.total) || 0));
       setHasMore(Boolean(payload?.hasMore));
     } catch (loadError) {
-      setError(loadError?.message || "Could not load more Tengacion music.");
+      setLoadMoreError(loadError?.message || "Could not load more Tengacion music.");
     } finally {
       setLoadingMore(false);
     }
@@ -224,11 +270,12 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
         onPause={() => setPreviewPlaying(false)}
         onPlay={() => setPreviewPlaying(true)}
         onTimeUpdate={(event) => {
+          const start = getPreviewStartSeconds(activePreviewItem);
           const limit = Math.max(
             1,
             Math.min(30, Number(activePreviewItem?.previewLimitSec || 30))
           );
-          if (event.currentTarget.currentTime >= limit) {
+          if (event.currentTarget.currentTime >= start + limit) {
             event.currentTarget.pause();
             restartActivePreview(event.currentTarget);
           }
@@ -271,7 +318,16 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
       ) : null}
 
       <label className="story-music-picker__search">
-        <span>Search soundtrack</span>
+        <span className="story-music-picker__search-label">
+          <span>Search soundtrack</span>
+          <small aria-live="polite">
+            {loading
+              ? "Loading songs..."
+              : loadingMore
+                ? `Loading all songs${total ? ` (${items.length} of ${total})` : ""}...`
+                : `${items.length}${query.trim() ? " matching" : " available"} song${items.length === 1 ? "" : "s"}`}
+          </small>
+        </span>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -280,6 +336,9 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
       </label>
 
       {previewError ? <p className="story-music-picker__error">{previewError}</p> : null}
+      {loadMoreError ? (
+        <p className="story-music-picker__error" role="alert">{loadMoreError}</p>
+      ) : null}
 
       {loading ? (
         <div className="story-music-picker__state">Loading creator music...</div>
@@ -346,7 +405,11 @@ export default function StoryMusicPicker({ value = null, onSelect, onClear, onCl
               onClick={handleLoadMore}
               disabled={loadingMore}
             >
-              {loadingMore ? "Loading songs..." : "Load more songs"}
+              {loadingMore
+                ? "Loading all songs..."
+                : loadMoreError
+                  ? "Retry loading remaining songs"
+                  : "Load remaining songs"}
             </button>
           ) : null}
         </div>

@@ -7,6 +7,8 @@ const IMAGE_DURATION_MS = 5000;
 const EMPTY_STORY_LIST = [];
 const getSoundtrackPreviewSeconds = (soundtrack = null) =>
   Math.max(1, Math.min(30, Number(soundtrack?.previewLimitSec || 30)));
+const getSoundtrackPreviewStartSeconds = (soundtrack = null) =>
+  Math.max(0, Number(soundtrack?.previewStartSec || 0));
 
 const QUICK_REACTIONS = [
   "\u2764\uFE0F",
@@ -146,6 +148,7 @@ export default function StoryViewer({
   const soundtrackCreator = String(soundtrack?.creatorName || "Tengacion creator").trim()
     || "Tengacion creator";
   const soundtrackSummary = String(soundtrack?.summaryLabel || "Music").trim() || "Music";
+  const soundtrackStartSec = getSoundtrackPreviewStartSeconds(soundtrack);
   const activeStoryOwnerId = String(activeStory?.authorId || activeStory?.userId || "");
   const activeStoryIsOwner = Boolean(
     activeStory?.isOwner || (viewerId && activeStoryOwnerId === String(viewerId))
@@ -361,7 +364,7 @@ export default function StoryViewer({
 
     const startSoundtrack = async () => {
       try {
-        audio.currentTime = 0;
+        audio.currentTime = soundtrackStartSec;
         await audio.play();
         if (!cancelled) {
           setSoundtrackPlaying(true);
@@ -382,7 +385,7 @@ export default function StoryViewer({
       audio.removeAttribute("src");
       audio.load();
     };
-  }, [activeStory?._id, soundtrack?.itemId, soundtrack?.previewUrl]);
+  }, [activeStory?._id, soundtrack?.itemId, soundtrack?.previewUrl, soundtrackStartSec]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -489,7 +492,7 @@ export default function StoryViewer({
 
     try {
       setSoundtrackProgress(0);
-      audio.currentTime = 0;
+      audio.currentTime = soundtrackStartSec;
       await audio.play();
       setSoundtrackError("");
       setSoundtrackPlaying(true);
@@ -683,19 +686,19 @@ export default function StoryViewer({
                 hidden
                 preload="auto"
                 onEnded={(event) => {
-                  event.currentTarget.currentTime = 0;
+                  event.currentTarget.currentTime = soundtrackStartSec;
                   void event.currentTarget.play();
                 }}
                 onPause={() => setSoundtrackPlaying(false)}
                 onPlay={() => setSoundtrackPlaying(true)}
                 onTimeUpdate={(event) => {
                   const previewLimit = getSoundtrackPreviewSeconds(soundtrack);
-                  const duration = Math.min(event.currentTarget.duration || previewLimit, previewLimit);
                   const now = event.currentTarget.currentTime || 0;
-                  setSoundtrackProgress(duration > 0 ? Math.min(1, now / duration) : 0);
-                  if (now >= previewLimit) {
+                  const elapsed = Math.max(0, now - soundtrackStartSec);
+                  setSoundtrackProgress(Math.min(1, elapsed / previewLimit));
+                  if (now >= soundtrackStartSec + previewLimit) {
                     event.currentTarget.pause();
-                    event.currentTarget.currentTime = 0;
+                    event.currentTarget.currentTime = soundtrackStartSec;
                     setSoundtrackProgress(0);
                     void event.currentTarget.play();
                   }

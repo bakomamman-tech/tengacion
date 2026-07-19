@@ -285,6 +285,119 @@ describe("story music attachment", () => {
     expect(response.body.items[0].previewUrl).toContain("/api/media/delivery/");
   });
 
+  test("includes every eligible free song even when no separate preview was uploaded", async () => {
+    const creator = await createCreator();
+    const freeTrack = await Track.create({
+      creatorId: creator.profile._id,
+      title: "Free Full Track Preview",
+      price: 0,
+      audioUrl: "https://cdn.tengacion.test/tracks/free-full.mp3",
+      previewUrl: "",
+      isFree: true,
+      isPublished: true,
+      publishedStatus: "published",
+      archivedAt: null,
+    });
+    await Track.create({
+      creatorId: creator.profile._id,
+      title: "Paid Track Without Preview",
+      price: 2500,
+      audioUrl: "https://cdn.tengacion.test/tracks/paid-full.mp3",
+      previewUrl: "",
+      isFree: false,
+      isPublished: true,
+      publishedStatus: "published",
+      archivedAt: null,
+    });
+
+    const catalogResponse = await request(app)
+      .get("/api/stories/music-catalog?limit=1")
+      .set("Authorization", `Bearer ${creator.token}`)
+      .expect(200);
+
+    expect(catalogResponse.body).toMatchObject({
+      page: 1,
+      limit: 1,
+      total: 1,
+      hasMore: false,
+    });
+    expect(catalogResponse.body.items).toHaveLength(1);
+    expect(catalogResponse.body.items[0]).toMatchObject({
+      id: freeTrack._id.toString(),
+      title: "Free Full Track Preview",
+      previewLimitSec: 30,
+    });
+    expect(catalogResponse.body.items[0].previewUrl).toContain("/api/media/delivery/");
+
+    const storyResponse = await request(app)
+      .post("/api/stories")
+      .set("Authorization", `Bearer ${creator.token}`)
+      .field("caption", "Free song soundtrack")
+      .field(
+        "musicAttachment",
+        JSON.stringify({ itemType: "track", itemId: freeTrack._id.toString() })
+      )
+      .attach("media", Buffer.from("story-image-binary"), {
+        filename: "story.jpg",
+        contentType: "image/jpeg",
+      })
+      .expect(200);
+
+    expect(storyResponse.body.musicAttachment).toMatchObject({
+      itemId: freeTrack._id.toString(),
+      title: "Free Full Track Preview",
+      previewLimitSec: 30,
+    });
+  });
+
+  test("recognizes a fully registered legacy music creator with older completion flags", async () => {
+    const legacyUser = await User.create({
+      name: "Legacy Registered Artist",
+      username: "legacy_registered_artist",
+      email: "legacyartist@example.com",
+      password: "Password123!",
+      role: "artist",
+      isVerified: true,
+    });
+    const legacyProfile = await CreatorProfile.create({
+      userId: legacyUser._id,
+      displayName: "Legacy Registered Artist",
+      creatorTypes: ["music"],
+      acceptedTerms: true,
+      acceptedCopyrightDeclaration: true,
+      onboardingComplete: false,
+      onboardingCompleted: false,
+      status: "active",
+    });
+    await CreatorProfile.collection.updateOne(
+      { _id: legacyProfile._id },
+      { $unset: { isCreator: "", onboardingComplete: "", onboardingCompleted: "" } }
+    );
+    await Track.create({
+      creatorId: legacyProfile._id,
+      title: "Legacy Creator Song",
+      price: 0,
+      audioUrl: "https://cdn.tengacion.test/tracks/legacy-full.mp3",
+      previewUrl: "https://cdn.tengacion.test/tracks/legacy-preview.mp3",
+      isPublished: true,
+      publishedStatus: "published",
+      archivedAt: null,
+    });
+    const token = await issueSessionToken(legacyUser._id);
+
+    const response = await request(app)
+      .get("/api/stories/music-catalog")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body.items).toEqual([
+      expect.objectContaining({
+        title: "Legacy Creator Song",
+        creatorName: "Legacy Registered Artist",
+      }),
+    ]);
+  });
+
   test("rejects a soundtrack selection that no longer resolves", async () => {
     const creator = await createCreator();
 

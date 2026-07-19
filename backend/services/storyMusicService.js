@@ -5,21 +5,71 @@ const { buildSignedMediaUrl } = require("./mediaSigner");
 const { normalizeMediaValue, sanitizeLegacyMediaFieldsForNewWrite } = require("../utils/userMedia");
 const { createPublicModerationFilter } = require("../utils/publicModeration");
 
-const ACTIVE_TRACK_FILTER = { isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
+const ACTIVE_TRACK_FILTER = {
+  isPublished: { $ne: false },
+  publishedStatus: { $nin: ["draft", "under_review", "blocked"] },
+  archivedAt: null,
+  ...createPublicModerationFilter(),
+};
 const ACTIVE_ALBUM_FILTER = { status: "published", isPublished: { $ne: false }, archivedAt: null, ...createPublicModerationFilter() };
 const MUSIC_ITEM_TYPES = new Set(["track", "album"]);
 const DEFAULT_PREVIEW_LIMIT = 30;
 const REGISTERED_MUSIC_CREATOR_FILTER = {
-  isCreator: true,
+  isCreator: { $ne: false },
   status: "active",
   creatorTypes: "music",
-  $or: [{ onboardingComplete: true }, { onboardingCompleted: true }],
+  $or: [
+    { onboardingComplete: true },
+    { onboardingCompleted: true },
+    { acceptedTerms: true, acceptedCopyrightDeclaration: true },
+  ],
+};
+
+const TRACK_PREVIEW_AVAILABILITY_FILTER = {
+  $or: [
+    { previewUrl: { $exists: true, $type: "string", $ne: "" } },
+    { previewSampleUrl: { $exists: true, $type: "string", $ne: "" } },
+    { previewClipUrl: { $exists: true, $type: "string", $ne: "" } },
+    {
+      $and: [
+        {
+          $or: [
+            { price: { $lte: 0 } },
+            { price: { $exists: false } },
+            { isFree: true },
+          ],
+        },
+        {
+          $or: [
+            { audioUrl: { $exists: true, $type: "string", $ne: "" } },
+            { fullAudioUrl: { $exists: true, $type: "string", $ne: "" } },
+          ],
+        },
+      ],
+    },
+  ],
 };
 
 const toCleanString = (value = "") => String(value || "").trim();
 
 const clampPreviewLimit = (value = DEFAULT_PREVIEW_LIMIT) =>
   Math.max(1, Math.min(DEFAULT_PREVIEW_LIMIT, Number(value) || DEFAULT_PREVIEW_LIMIT));
+
+const isFreeTrack = (track = {}) =>
+  track?.isFree === true || Number(track?.price ?? track?.priceNGN ?? 0) <= 0;
+
+const resolveTrackPreviewSource = (track = {}) => {
+  const dedicatedPreview = toCleanString(
+    track.previewUrl || track.previewSampleUrl || track.previewClipUrl
+  );
+  if (dedicatedPreview) {
+    return dedicatedPreview;
+  }
+  if (!isFreeTrack(track)) {
+    return "";
+  }
+  return toCleanString(track.audioUrl || track.fullAudioUrl);
+};
 
 const parseMaybeJson = (value) => {
   if (!value || typeof value === "object") {
@@ -91,11 +141,7 @@ const resolveTrackAttachment = async (selection, { sanitizeForWrite = true } = {
     return null;
   }
 
-  const previewSource = toCleanString(
-    track.previewUrl ||
-      track.previewSampleUrl ||
-      track.previewClipUrl
-  );
+  const previewSource = resolveTrackPreviewSource(track);
 
   if (!previewSource) {
     return null;
@@ -151,11 +197,7 @@ const buildStoryMusicCatalog = async ({ req, viewerId = "", page = 1, limit = 30
     ...ACTIVE_TRACK_FILTER,
     kind: "music",
     creatorId: { $in: creatorIds },
-    $or: [
-      { previewUrl: { $exists: true, $type: "string", $ne: "" } },
-      { previewSampleUrl: { $exists: true, $type: "string", $ne: "" } },
-      { previewClipUrl: { $exists: true, $type: "string", $ne: "" } },
-    ],
+    ...TRACK_PREVIEW_AVAILABILITY_FILTER,
   };
 
   if (query) {
@@ -185,7 +227,7 @@ const buildStoryMusicCatalog = async ({ req, viewerId = "", page = 1, limit = 30
   const [total, tracks] = await Promise.all([
     Track.countDocuments(trackMatch),
     Track.find(trackMatch)
-      .sort({ createdAt: -1, updatedAt: -1 })
+      .sort({ createdAt: -1, updatedAt: -1, _id: -1 })
       .skip((pageNumber - 1) * pageSize)
       .limit(pageSize)
       .lean(),
@@ -195,9 +237,7 @@ const buildStoryMusicCatalog = async ({ req, viewerId = "", page = 1, limit = 30
     const creator = creatorById.get(String(track.creatorId)) || {};
     const creatorUser = creator.userId || {};
     const itemId = String(track._id || "");
-    const previewSource = toCleanString(
-      track.previewUrl || track.previewSampleUrl || track.previewClipUrl
-    );
+    const previewSource = resolveTrackPreviewSource(track);
     const previewUrl = buildSignedMediaUrl({
       sourceUrl: previewSource,
       itemType: "track",
@@ -222,7 +262,13 @@ const buildStoryMusicCatalog = async ({ req, viewerId = "", page = 1, limit = 30
         creator.coverImageUrl || creator.heroBannerUrl || normalizeMediaValue(creatorUser.avatar).url
       ),
       title: toCleanString(track.title || "Untitled song"),
-      coverImage: toCleanString(track.coverImageUrl || track.coverUrl || creator.coverImageUrl),
+      coverImage: toCleanString(
+        track.coverImageUrl
+          || track.coverUrl
+          || creator.coverImageUrl
+          || creator.heroBannerUrl
+          || normalizeMediaValue(creatorUser.avatar).url
+      ),
       previewUrl,
       previewAudioUrl: previewUrl,
       previewStartSec: Math.max(0, Number(track.previewStartSec || 0)),

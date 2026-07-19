@@ -93,6 +93,18 @@ const MEDIA_INSPECTION_FAILURE_LABELS = new Set([
   "scan_deadline_exceeded",
   "media_too_large",
 ]);
+const PUBLICATION_BLOCK_STATUSES = new Set([
+  "BLOCK_EXPLICIT_ADULT",
+  "BLOCK_SUSPECTED_CHILD_EXPLOITATION",
+  "BLOCK_EXTREME_GORE",
+  "BLOCK_ANIMAL_CRUELTY",
+]);
+const IMMEDIATE_PUBLICATION_TARGETS = new Set([
+  "post",
+  "post_upload",
+  "story",
+  "story_upload",
+]);
 let adminMediaInspectorForTests = null;
 
 const TARGET_MODEL_MAP = {
@@ -1043,7 +1055,6 @@ const normalizeImageModerationResult = (policyDecision = {}, { localPath = "", m
     mimeType ? `mime:${String(mimeType).toLowerCase()}` : "",
     uploaderId ? `uploader:${uploaderId}` : "",
   ]).filter(Boolean);
-  const severity = String(policyDecision.severity || "").toUpperCase();
   const confidence = Math.max(
     0.05,
     Math.min(0.99, Number(policyDecision.priorityScore || 0) / 100 || 0.08)
@@ -1070,11 +1081,7 @@ const normalizeImageModerationResult = (policyDecision = {}, { localPath = "", m
     };
   }
 
-  if (
-    status === "BLOCK_EXTREME_GORE" ||
-    status === "BLOCK_ANIMAL_CRUELTY" ||
-    (status === "RESTRICTED_BLURRED" && ["HIGH", "CRITICAL"].includes(severity))
-  ) {
+  if (status === "BLOCK_EXTREME_GORE" || status === "BLOCK_ANIMAL_CRUELTY") {
     return {
       decision: "reject",
       labels,
@@ -1087,7 +1094,7 @@ const normalizeImageModerationResult = (policyDecision = {}, { localPath = "", m
     const lowerLabels = labels.map((entry) => String(entry).toLowerCase());
     const sensitive = lowerLabels.some((entry) => entry.includes("graphic_gore") || entry.includes("animal_cruelty"));
     return {
-      decision: sensitive ? "quarantine" : "quarantine",
+      decision: "quarantine",
       labels,
       reason: policyDecision.summary || "Your upload is under review by the Tengacion moderation team.",
       confidence: Math.max(confidence, sensitive ? 0.72 : 0.62),
@@ -2617,6 +2624,25 @@ const createOrUpdateModerationCase = async ({
     moderationDecision,
     mediaInspectionDecision
   );
+
+  if (
+    String(detectionSource || "") === "automated_upload_scan"
+    && IMMEDIATE_PUBLICATION_TARGETS.has(normalizedTargetType)
+    && !PUBLICATION_BLOCK_STATUSES.has(String(moderationDecision.status || ""))
+  ) {
+    moderationDecision = {
+      ...moderationDecision,
+      queue: "",
+      status: "ALLOW",
+      severity: "LOW",
+      quarantineMedia: false,
+      neverGeneratePreview: false,
+      requiresEscalation: false,
+      workflowState: "RESOLVED",
+      publicWarningLabel: "",
+      summary: "No prohibited publication category was confirmed.",
+    };
+  }
 
   if (forceReview && moderationDecision.status === "ALLOW") {
     moderationDecision = {

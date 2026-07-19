@@ -354,7 +354,7 @@ describe("moderation decision engine", () => {
 });
 
 describe("moderation routes and enforcement", () => {
-  test("scanner outages hold post and story media instead of publishing it", async () => {
+  test("scanner outages do not place safe post and story media in an admin queue", async () => {
     setVisualModerationClientForTests({
       moderations: {
         create: async () => {
@@ -377,13 +377,13 @@ describe("moderation routes and enforcement", () => {
           filename: "neutral.jpg",
           contentType: "image/jpeg",
         })
-        .expect(202);
+        .expect(201);
 
       expect(postResponse.body).toMatchObject({
-        moderationStatus: "quarantined",
-        reviewRequired: true,
+        moderationStatus: "approved",
+        reviewRequired: false,
       });
-      expect(await Post.countDocuments({ text: "Neutral upload during scanner outage" })).toBe(0);
+      expect(await Post.countDocuments({ text: "Neutral upload during scanner outage" })).toBe(1);
 
       const storyResponse = await request(app)
         .post("/api/stories")
@@ -393,13 +393,14 @@ describe("moderation routes and enforcement", () => {
           filename: "neutral-story.jpg",
           contentType: "image/jpeg",
         })
-        .expect(202);
+        .expect(200);
 
       expect(storyResponse.body).toMatchObject({
-        moderationStatus: "quarantined",
-        reviewRequired: true,
+        moderationStatus: "approved",
+        reviewRequired: false,
       });
-      expect(await Story.countDocuments({ text: "Neutral story during scanner outage" })).toBe(0);
+      expect(await Story.countDocuments({ text: "Neutral story during scanner outage" })).toBe(1);
+
     } finally {
       setVisualModerationClientForTests(null);
     }
@@ -479,7 +480,7 @@ describe("moderation routes and enforcement", () => {
     }
   });
 
-  test("gory uploads are quarantined and kept private", async () => {
+  test("borderline graphic text signals publish without an admin approval delay", async () => {
     const tempFilePath = await makeTempUploadFile({
       prefix: "tengacion-gore",
       filename: "gore-review.jpg",
@@ -495,24 +496,22 @@ describe("moderation routes and enforcement", () => {
           filename: "gore-review.jpg",
           contentType: "image/jpeg",
         })
-        .expect(202);
+        .expect(201);
 
       expect(response.body).toMatchObject({
-        moderationStatus: "quarantined",
-        reviewRequired: true,
+        moderationStatus: "approved",
+        reviewRequired: false,
       });
-      expect(await Post.countDocuments()).toBe(0);
+      expect(await Post.countDocuments({ text: "graphic violence scene" })).toBe(1);
 
       const moderationCase = await ModerationCase.findOne({
         queue: "graphic_gore",
-        "subject.targetType": "post_upload",
+        "subject.targetType": "post",
         "subject.mediaType": "image",
       }).lean();
       expect(moderationCase).toBeTruthy();
-      expect(moderationCase.status).toBe("quarantined");
-      expect(moderationCase.visibility).toBe("private");
-      expect(moderationCase.storageStage).toBe("quarantine");
-      expect(String(moderationCase.fileUrl || "")).toContain("private://");
+      expect(moderationCase.status).toBe("approved");
+      expect(moderationCase.storageStage).toBe("permanent");
     } finally {
       await fs.unlink(tempFilePath).catch(() => null);
     }
@@ -814,7 +813,7 @@ describe("moderation routes and enforcement", () => {
         username: regularUser.username,
         displayName: regularUser.name,
       },
-      detectionSource: "automated_upload_scan",
+      detectionSource: "admin_dashboard_scan",
       targetDoc: post,
     });
 
@@ -856,7 +855,7 @@ describe("moderation routes and enforcement", () => {
         username: regularUser.username,
         displayName: regularUser.name,
       },
-      detectionSource: "automated_upload_scan",
+      detectionSource: "admin_dashboard_scan",
       targetDoc: post,
     });
 

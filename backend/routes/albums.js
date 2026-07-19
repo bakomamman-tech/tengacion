@@ -24,6 +24,7 @@ router.post(
     sourceType: "creator_album_upload",
     titleFields: ["title"],
     descriptionFields: ["description"],
+    publishWithoutManualReview: true,
   }),
   createAlbum
 );
@@ -40,6 +41,7 @@ router.put(
     sourceType: "creator_album_upload",
     titleFields: ["title"],
     descriptionFields: ["description"],
+    publishWithoutManualReview: true,
   }),
   updateAlbum
 );

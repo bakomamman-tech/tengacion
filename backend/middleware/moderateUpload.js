@@ -140,6 +140,7 @@ const moderateUpload = ({
   titleFields = ["title", "caption", "text"],
   descriptionFields = ["description", "details", "lyrics", "showNotes"],
   deferDecisionResponse = false,
+  publishWithoutManualReview = false,
 } = {}) =>
   async (req, res, next) => {
     if (String(process.env.MODERATION_ENABLED || "true").toLowerCase() === "false") {
@@ -185,7 +186,11 @@ const moderateUpload = ({
           ? imageDecision
           : await analyzeUploadFile(file, uploaderId)),
       })));
-      const moderationUpload = chooseWorstDecision(perFileResults);
+      const rawModerationUpload = chooseWorstDecision(perFileResults);
+      const moderationUpload =
+        publishWithoutManualReview && rawModerationUpload.decision === "quarantine"
+          ? { ...rawModerationUpload, decision: "approve" }
+          : rawModerationUpload;
       req.moderationUpload = {
         ...moderationUpload,
         sourceType,

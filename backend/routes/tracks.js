@@ -27,6 +27,7 @@ router.post(
     sourceType: "creator_track_upload",
     titleFields: ["title", "podcastSeries"],
     descriptionFields: ["description", "lyrics", "showNotes"],
+    publishWithoutManualReview: true,
   }),
   createTrack
 );
@@ -47,6 +48,7 @@ router.put(
     sourceType: "creator_track_upload",
     titleFields: ["title", "podcastSeries"],
     descriptionFields: ["description", "lyrics", "showNotes"],
+    publishWithoutManualReview: true,
   }),
   updateTrack
 );

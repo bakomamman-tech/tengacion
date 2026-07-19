@@ -2,15 +2,15 @@ const {
   resolvePostUploadDecision,
 } = require("../../apps/api/services/postService");
 
-describe("upload moderation technical failure handling", () => {
-  test("holds an upload when inspection infrastructure is unavailable", () => {
+describe("upload moderation publication handling", () => {
+  test("publishes an upload when no prohibited category was confirmed", () => {
     expect(resolvePostUploadDecision({
       decision: "quarantine",
       labels: ["inspection_failed", "visual_provider_unavailable"],
       reason: "Provider unavailable",
       confidence: 0.2,
     })).toMatchObject({
-      decision: "quarantine",
+      decision: "approve",
       labels: ["inspection_failed", "visual_provider_unavailable"],
       confidence: 0.2,
     });

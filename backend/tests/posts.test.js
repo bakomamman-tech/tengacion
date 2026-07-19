@@ -271,20 +271,20 @@ describe("Posts feed", () => {
     expect(response.body._id).toBeTruthy();
   });
 
-  test("post uploads fail closed for scanner outages and retain safety signals", () => {
+  test("post uploads avoid admin holds while preserving explicit rejections", () => {
     expect(resolvePostUploadDecision({
       decision: "quarantine",
       labels: ["inspection_failed", "visual_provider_unavailable"],
       reason: "Provider timeout",
       confidence: 0.2,
-    })).toMatchObject({ decision: "quarantine", confidence: 0.2 });
+    })).toMatchObject({ decision: "approve", confidence: 0.2 });
 
     expect(resolvePostUploadDecision({
-      decision: "quarantine",
+      decision: "reject",
       labels: ["inspection_failed", "explicit_pornography"],
       reason: "Safety signal retained",
       confidence: 0.82,
-    })).toMatchObject({ decision: "quarantine" });
+    })).toMatchObject({ decision: "reject" });
   });
 
   test("POST /api/posts uploads an image to Cloudinary and stores metadata", async () => {

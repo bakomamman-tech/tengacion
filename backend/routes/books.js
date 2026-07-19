@@ -30,6 +30,7 @@ router.post(
     sourceType: "creator_book_upload",
     titleFields: ["title", "authorName"],
     descriptionFields: ["description", "previewExcerptText"],
+    publishWithoutManualReview: true,
   }),
   createBook
 );
@@ -46,6 +47,7 @@ router.put(
     sourceType: "creator_book_upload",
     titleFields: ["title", "authorName"],
     descriptionFields: ["description", "previewExcerptText"],
+    publishWithoutManualReview: true,
   }),
   updateBook
 );

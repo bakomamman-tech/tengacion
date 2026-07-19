@@ -74,6 +74,7 @@ router.post(
     sourceType: "chat_attachment",
     titleFields: ["text"],
     descriptionFields: ["text"],
+    publishWithoutManualReview: true,
   }),
   async (req, res) => {
     try {

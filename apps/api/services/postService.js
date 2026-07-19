@@ -64,13 +64,6 @@ const DEFAULT_POST_REACTION_KEY = POST_REACTIONS[0].key;
 const POST_REACTION_BY_KEY = new Map(POST_REACTIONS.map((reaction) => [reaction.key, reaction]));
 const POST_REACTION_BY_EMOJI = new Map(POST_REACTIONS.map((reaction) => [reaction.emoji, reaction]));
 const MAX_POST_MEDIA_FILES = 10;
-const POST_SCAN_FAILURE_LABELS = new Set([
-  "inspection_failed",
-  "visual_provider_unavailable",
-  "video_decoder_unavailable",
-  "video_frames_missing",
-  "video_frame_extraction_failed",
-]);
 const isEnforcedHiddenPostStatus = (value = "") => {
   const status = String(value || "").trim();
   return Boolean(status && status !== "pending" && isHiddenFromPublicStatus(status));
@@ -211,26 +204,17 @@ const mapLegacyModerationStatusToDecision = (status = "") => {
     };
   }
 
-  if (normalized === "BLOCK_SUSPECTED_CHILD_EXPLOITATION" || normalized === "BLOCK_EXPLICIT_ADULT") {
+  if (
+    normalized === "BLOCK_SUSPECTED_CHILD_EXPLOITATION"
+    || normalized === "BLOCK_EXPLICIT_ADULT"
+    || normalized === "BLOCK_EXTREME_GORE"
+    || normalized === "BLOCK_ANIMAL_CRUELTY"
+  ) {
     return {
       decision: "reject",
       labels: [normalized.toLowerCase()],
       reason: "This upload violates Tengacion safety rules and could not be published.",
       confidence: 0.98,
-    };
-  }
-
-  if (
-    normalized === "BLOCK_EXTREME_GORE" ||
-    normalized === "BLOCK_ANIMAL_CRUELTY" ||
-    normalized === "HOLD_FOR_REVIEW" ||
-    normalized === "RESTRICTED_BLURRED"
-  ) {
-    return {
-      decision: "quarantine",
-      labels: [normalized.toLowerCase()],
-      reason: "Your upload is under review by the Tengacion moderation team.",
-      confidence: 0.78,
     };
   }
 
@@ -252,36 +236,24 @@ const mergeModerationDecisions = ({ nextDecision = null, legacyStatus = "" } = {
     return legacyDecision;
   }
 
-  if (legacyDecision.decision === "quarantine" && nextDecision.decision === "approve") {
-    return legacyDecision;
-  }
-
   if (nextDecision.decision === "reject") {
     return nextDecision;
   }
 
-  if (nextDecision.decision === "quarantine") {
-    return nextDecision;
-  }
-
-  return nextDecision;
+  return {
+    ...nextDecision,
+    decision: "approve",
+  };
 };
 
 const resolvePostUploadDecision = (decision = {}) => {
-  const labels = (Array.isArray(decision?.labels) ? decision.labels : [])
-    .map((label) => String(label || "").trim().toLowerCase())
-    .filter(Boolean);
-  const isTechnicalFailure = labels.some((label) => POST_SCAN_FAILURE_LABELS.has(label));
-
-  if (!isTechnicalFailure || decision?.decision === "reject") {
+  if (decision?.decision === "reject") {
     return decision;
   }
 
   return {
     ...decision,
-    decision: "quarantine",
-    reason: "Automated media inspection was unavailable; the post was held for safety review.",
-    confidence: Math.max(Number(decision?.confidence || 0), 0.2),
+    decision: "approve",
   };
 };
 
@@ -1745,6 +1717,8 @@ class PostService {
     if (
       moderationDecision?.status === "BLOCK_SUSPECTED_CHILD_EXPLOITATION"
       || moderationDecision?.status === "BLOCK_EXPLICIT_ADULT"
+      || moderationDecision?.status === "BLOCK_EXTREME_GORE"
+      || moderationDecision?.status === "BLOCK_ANIMAL_CRUELTY"
     ) {
       return {
         success: false,
@@ -1758,8 +1732,6 @@ class PostService {
     if (
       moderationDecision?.status === "HOLD_FOR_REVIEW"
       || moderationDecision?.status === "RESTRICTED_BLURRED"
-      || moderationDecision?.status === "BLOCK_EXTREME_GORE"
-      || moderationDecision?.status === "BLOCK_ANIMAL_CRUELTY"
       || moderationDecision?.status === "BLOCK_REPEAT_VIOLATOR"
     ) {
       return {
@@ -2286,6 +2258,8 @@ class PostService {
       if (
         moderationDecision?.status === "BLOCK_SUSPECTED_CHILD_EXPLOITATION"
         || moderationDecision?.status === "BLOCK_EXPLICIT_ADULT"
+        || moderationDecision?.status === "BLOCK_EXTREME_GORE"
+        || moderationDecision?.status === "BLOCK_ANIMAL_CRUELTY"
       ) {
         await deleteUploadedMediaBatch(media).catch(() => null);
         return {

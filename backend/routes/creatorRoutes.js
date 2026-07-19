@@ -58,6 +58,7 @@ router.post(
     sourceType: "creator_music_upload",
     titleFields: ["title"],
     descriptionFields: ["description", "lyrics"],
+    publishWithoutManualReview: true,
   }),
   createMusicUpload
 );
@@ -75,6 +76,7 @@ router.post(
     sourceType: "creator_music_upload",
     titleFields: ["title"],
     descriptionFields: ["description", "lyrics"],
+    publishWithoutManualReview: true,
   }),
   createMusicUpload
 );
@@ -95,6 +97,7 @@ router.post(
     sourceType: "creator_album_upload",
     titleFields: ["title"],
     descriptionFields: ["description"],
+    publishWithoutManualReview: true,
   }),
   createAlbum
 );
@@ -113,6 +116,7 @@ router.post(
     titleFields: ["title", "caption"],
     descriptionFields: ["description", "caption"],
     deferDecisionResponse: true,
+    publishWithoutManualReview: true,
   }),
   createCreatorVideo
 );
@@ -133,6 +137,7 @@ router.post(
     sourceType: "creator_podcast_upload",
     titleFields: ["title", "podcastSeries"],
     descriptionFields: ["description", "showNotes"],
+    publishWithoutManualReview: true,
   }),
   createPodcastUpload
 );
@@ -153,6 +158,7 @@ router.post(
     sourceType: "creator_podcast_upload",
     titleFields: ["title", "podcastSeries"],
     descriptionFields: ["description", "showNotes"],
+    publishWithoutManualReview: true,
   }),
   createPodcastUpload
 );
@@ -170,6 +176,7 @@ router.post(
     sourceType: "creator_book_upload",
     titleFields: ["title", "authorName"],
     descriptionFields: ["description", "previewExcerptText"],
+    publishWithoutManualReview: true,
   }),
   createBookUpload
 );

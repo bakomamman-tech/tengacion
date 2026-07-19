@@ -12,6 +12,7 @@
     "seed:news": "node scripts/seedNewsSampleData.js",
     "seed:admin": "node scripts/seedAdmin.js",
     "repair:user-media": "node scripts/repairUserMediaFields.js",
+    "release:safe-moderation-holds": "node scripts/releaseSafeModerationHolds.js",
     "reset:admin-password": "node scripts/resetAdminPassword.js",
     "audit:legacy-media": "node scripts/reportLegacyMedia.js",
     "report:legacy-media": "node scripts/reportLegacyMedia.js",

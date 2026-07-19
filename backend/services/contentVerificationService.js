@@ -152,19 +152,25 @@ const buildPublishedStatus = ({
   scanStatus = "pending_scan",
   reviewRequired = false,
   requireAdminApproval = false,
+  publishWithoutAdminReview = false,
 }) => {
-  if (scanStatus === "blocked") {
-    return "blocked";
-  }
   if (requestedStatus === "draft") {
     return "draft";
   }
   if (requestedStatus === "blocked") {
     return "blocked";
   }
+  if (requestedStatus === "under_review") {
+    return "under_review";
+  }
+  if (publishWithoutAdminReview) {
+    return "published";
+  }
+  if (scanStatus === "blocked") {
+    return "blocked";
+  }
   if (
-    requestedStatus === "under_review"
-    || requireAdminApproval
+    requireAdminApproval
     || reviewRequired
     || scanStatus === "flagged"
   ) {
@@ -262,6 +268,7 @@ const evaluateVerification = async ({
   metadata = {},
   excludeContentId = "",
   requireAdminApproval = false,
+  publishWithoutAdminReview = true,
 }) => {
   const textForScreening = [title, description, metadata?.authorName, metadata?.seriesName]
     .filter(Boolean)
@@ -337,11 +344,20 @@ const evaluateVerification = async ({
     notes.push("Metadata screening passed and the upload is ready for publication.");
   }
 
+  if (
+    publishWithoutAdminReview
+    && !["draft", "blocked", "under_review"].includes(String(requestedStatus || ""))
+  ) {
+    reviewRequired = false;
+    notes.push("Screening signals were logged without delaying publication.");
+  }
+
   const publishedStatus = buildPublishedStatus({
     requestedStatus,
     scanStatus,
     reviewRequired,
     requireAdminApproval,
+    publishWithoutAdminReview,
   });
 
   return {

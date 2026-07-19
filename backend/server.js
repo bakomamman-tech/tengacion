@@ -174,6 +174,10 @@ if (process.env.NODE_ENV !== "test") {
   const { startEntitlementMaintenance } = require("./services/entitlementService");
   const { startPaymentMaintenance } = require("./services/paymentMaintenanceService");
   const { startWalletMaintenance } = require("./services/walletService");
+  const { releaseSafePublicationHolds } = require("./services/moderationPublicationService");
+  const {
+    startModerationDashboardRetention,
+  } = require("./services/moderationDashboardRetentionService");
   const { cleanupUploadDir } = require("./services/uploadCleanupService");
   const { runCleanup } = require("./services/storageMaintenanceService");
   const privateUpload = require("./middleware/privateUpload");
@@ -804,6 +808,8 @@ if (process.env.NODE_ENV !== "test") {
       await repairTopUpPromoIndexes({ logger: console });
       await repairUserMediaFields({ logger: console });
       await repairUserSecurityFields({ logger: console });
+      await releaseSafePublicationHolds({ logger: console });
+      startModerationDashboardRetention({ logger: console });
       await runBirthdayRecognition({ logger: console, io });
       await startPaymentMaintenance({ logger: console });
       await startEntitlementMaintenance({ logger: console });

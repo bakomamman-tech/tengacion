@@ -265,6 +265,7 @@ router.post(
     sourceType: "story_upload",
     titleFields: ["caption", "text"],
     descriptionFields: ["caption", "text"],
+    publishWithoutManualReview: true,
   }),
   async (req, res) => {
     try {

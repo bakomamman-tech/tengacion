@@ -36,6 +36,7 @@ router.post(
     titleFields: ["title", "caption"],
     descriptionFields: ["description", "caption"],
     deferDecisionResponse: true,
+    publishWithoutManualReview: true,
   }),
   createCreatorVideo
 );
@@ -61,6 +62,7 @@ router.put(
     titleFields: ["title", "caption"],
     descriptionFields: ["description", "caption"],
     deferDecisionResponse: true,
+    publishWithoutManualReview: true,
   }),
   updateCreatorVideo
 );

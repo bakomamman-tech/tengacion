@@ -228,18 +228,18 @@ describe("creator upload routes", () => {
       .expect(200);
 
     expect(publishResponse.body).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      approvalRequired: true,
-      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      publishedStatus: "published",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "",
       copyrightScanStatus: "passed",
     });
 
     const submittedDraft = await Track.findById(savedTrack._id).lean();
     expect(submittedDraft).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      isPublished: false,
+      publishedStatus: "published",
+      reviewRequired: false,
+      isPublished: true,
     });
 
     expect(cloudinary.uploader.upload_stream).toHaveBeenNthCalledWith(
@@ -260,7 +260,7 @@ describe("creator upload routes", () => {
     );
   });
 
-  test("creator albums stay private until submitted and approved by Admin", async () => {
+  test("creator albums stay private until submitted and then publish immediately", async () => {
     const { token } = await createUserAndProfile();
 
     const draftResponse = await request(app)
@@ -317,17 +317,17 @@ describe("creator upload routes", () => {
       .expect(200);
 
     expect(submittedResponse.body).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      approvalRequired: true,
-      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      publishedStatus: "published",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "",
       copyrightScanStatus: "passed",
     });
     expect(await Album.findById(draftResponse.body._id).lean()).toMatchObject({
-      status: "draft",
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      isPublished: false,
+      status: "published",
+      publishedStatus: "published",
+      reviewRequired: false,
+      isPublished: true,
     });
 
     await Album.updateOne(
@@ -379,16 +379,16 @@ describe("creator upload routes", () => {
 
     expect(submittedEpResponse.body).toMatchObject({
       releaseType: "ep",
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      approvalRequired: true,
-      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      publishedStatus: "published",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "",
     });
     expect(await Album.findById(submittedEpResponse.body._id).lean()).toMatchObject({
-      status: "draft",
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      isPublished: false,
+      status: "published",
+      publishedStatus: "published",
+      reviewRequired: false,
+      isPublished: true,
     });
   });
 
@@ -447,17 +447,17 @@ describe("creator upload routes", () => {
       .expect(201);
 
     expect(submittedResponse.body).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      approvalRequired: true,
-      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      publishedStatus: "published",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "",
     });
 
     const submittedTrack = await Track.findById(submittedResponse.body._id).lean();
     expect(submittedTrack).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      isPublished: false,
+      publishedStatus: "published",
+      reviewRequired: false,
+      isPublished: true,
     });
 
     events = await AnalyticsEvent.find({
@@ -476,7 +476,7 @@ describe("creator upload routes", () => {
         source: "creator_music_upload",
         totalSteps: 6,
         progressPercent: 100,
-        uploadStatus: "under_review",
+        uploadStatus: "published",
         uploadContentType: "music",
       }),
     });
@@ -550,21 +550,21 @@ describe("creator upload routes", () => {
       .expect(200);
 
     expect(publishResponse.body).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      approvalRequired: true,
-      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      publishedStatus: "published",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "",
       copyrightScanStatus: "passed",
     });
     expect(await Video.findById(savedVideo._id).lean()).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      isPublished: false,
-      visibility: "private",
+      publishedStatus: "published",
+      reviewRequired: false,
+      isPublished: true,
+      visibility: "public",
     });
   });
 
-  test("POST /api/creator/music/videos submits published music videos for Admin approval", async () => {
+  test("POST /api/creator/music/videos publishes eligible music videos immediately", async () => {
     const { token } = await createUserAndProfile();
 
     const response = await request(app)
@@ -581,16 +581,16 @@ describe("creator upload routes", () => {
       .expect(201);
 
     expect(response.body).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      approvalRequired: true,
-      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      publishedStatus: "published",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "",
     });
     expect(await Video.findById(response.body._id).lean()).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      isPublished: false,
-      visibility: "private",
+      publishedStatus: "published",
+      reviewRequired: false,
+      isPublished: true,
+      visibility: "public",
     });
   });
 
@@ -715,20 +715,20 @@ describe("creator upload routes", () => {
       .expect(200);
 
     expect(publishResponse.body).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      approvalRequired: true,
-      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      publishedStatus: "published",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "",
       copyrightScanStatus: "passed",
     });
     expect(await Track.findById(savedTrack._id).lean()).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      isPublished: false,
+      publishedStatus: "published",
+      reviewRequired: false,
+      isPublished: true,
     });
   });
 
-  test("POST /api/creator/podcasts submits published episodes for Admin approval", async () => {
+  test("POST /api/creator/podcasts publishes eligible episodes immediately", async () => {
     const { token } = await createUserAndProfile();
 
     const response = await request(app)
@@ -747,16 +747,16 @@ describe("creator upload routes", () => {
       .expect(201);
 
     expect(response.body).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      approvalRequired: true,
-      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      publishedStatus: "published",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "",
     });
     expect(await Track.findById(response.body._id).lean()).toMatchObject({
       kind: "podcast",
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      isPublished: false,
+      publishedStatus: "published",
+      reviewRequired: false,
+      isPublished: true,
     });
   });
 
@@ -781,7 +781,7 @@ describe("creator upload routes", () => {
     expect(await Book.countDocuments()).toBe(0);
   });
 
-  test("creator books stay draft until submitted and then wait for Admin approval", async () => {
+  test("creator books stay draft until submitted and then publish immediately", async () => {
     const { token } = await createUserAndProfile();
 
     const draftResponse = await request(app)
@@ -834,20 +834,20 @@ describe("creator upload routes", () => {
       .expect(200);
 
     expect(submittedResponse.body).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      approvalRequired: true,
-      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      publishedStatus: "published",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "",
       copyrightScanStatus: "passed",
     });
     expect(await Book.findById(draftResponse.body._id).lean()).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      isPublished: false,
+      publishedStatus: "published",
+      reviewRequired: false,
+      isPublished: true,
     });
   });
 
-  test("POST /api/creator/books submits published manuscripts for Admin approval", async () => {
+  test("POST /api/creator/books publishes eligible manuscripts immediately", async () => {
     const { token } = await createUserAndProfile();
 
     const response = await request(app)
@@ -868,15 +868,15 @@ describe("creator upload routes", () => {
       .expect(201);
 
     expect(response.body).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      approvalRequired: true,
-      message: "Submitted for Admin approval. This upload will go live after an Admin approves it.",
+      publishedStatus: "published",
+      reviewRequired: false,
+      approvalRequired: false,
+      message: "",
     });
     expect(await Book.findById(response.body._id).lean()).toMatchObject({
-      publishedStatus: "under_review",
-      reviewRequired: true,
-      isPublished: false,
+      publishedStatus: "published",
+      reviewRequired: false,
+      isPublished: true,
     });
   });
 

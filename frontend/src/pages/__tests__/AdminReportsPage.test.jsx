@@ -237,6 +237,20 @@ describe("AdminReportsPage", () => {
       visualInspectedCount: 2,
       inspectionFailureCount: 0,
       skippedAssetCount: 0,
+      preservedResolutionCount: 1,
+      processingFailureCount: 1,
+      processingFailures: [{
+        targetType: "story",
+        targetId: "story-1",
+        message: "Story could not be updated",
+      }],
+      scanScope: "recent_content",
+      scanOffset: 0,
+      nextOffset: 20,
+      nextCursor: ["post:000000000000000000000001"],
+      truncated: true,
+      availableCandidateCount: 20,
+      candidateCountLowerBound: 21,
       completedAt: "2026-03-26T10:00:00.000Z",
       accountsFlagged: 0,
       cases: [moderationCase],
@@ -253,6 +267,14 @@ describe("AdminReportsPage", () => {
       visualInspectedCount: 2,
       inspectionFailureCount: 0,
       skippedAssetCount: 0,
+      preservedResolutionCount: 0,
+      processingFailureCount: 0,
+      scanScope: "search_matches",
+      scanQuery: "Search Match Person",
+      scanOffset: 0,
+      nextOffset: 20,
+      nextCursor: ["story:000000000000000000000002"],
+      truncated: true,
       completedAt: "2026-03-26T10:00:00.000Z",
       accountsFlagged: 0,
       cases: [moderationCase],
@@ -275,6 +297,7 @@ describe("AdminReportsPage", () => {
         limit: 12,
         queue: "",
         status: "",
+        workflowState: "ACTIVE",
         search: "",
       })
     );
@@ -285,6 +308,7 @@ describe("AdminReportsPage", () => {
         expect.objectContaining({
           queue: "explicit_pornography",
           status: "",
+          workflowState: "ACTIVE",
           search: "",
         })
       )
@@ -298,8 +322,16 @@ describe("AdminReportsPage", () => {
         expect.objectContaining({
           queue: "explicit_pornography",
           status: "",
+          workflowState: "ACTIVE",
           search: "Pending explicit",
         })
+      )
+    );
+
+    fireEvent.change(screen.getByDisplayValue("Active work"), { target: { value: "RESOLVED" } });
+    await waitFor(() =>
+      expect(fetchModerationCases).toHaveBeenLastCalledWith(
+        expect.objectContaining({ workflowState: "RESOLVED" })
       )
     );
 
@@ -312,6 +344,7 @@ describe("AdminReportsPage", () => {
           limit: 12,
           queue: "",
           status: "",
+          workflowState: "ACTIVE",
           search: "",
         })
       )
@@ -329,6 +362,7 @@ describe("AdminReportsPage", () => {
       expect.objectContaining({
         queue: "",
         status: "",
+        workflowState: "ACTIVE",
         search: "",
       })
     );
@@ -364,6 +398,16 @@ describe("AdminReportsPage", () => {
       expect(scanSearchMatches).toHaveBeenCalledWith({
         search: "Search Match Person",
         limit: 20,
+        cursor: [],
+      })
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Scan next batch" }));
+    await waitFor(() =>
+      expect(scanSearchMatches).toHaveBeenLastCalledWith({
+        search: "Search Match Person",
+        limit: 20,
+        cursor: ["story:000000000000000000000002"],
       })
     );
 
@@ -371,12 +415,24 @@ describe("AdminReportsPage", () => {
     await waitFor(() =>
       expect(scanRecentMedia).toHaveBeenCalledWith({
         limit: 20,
+        cursor: [],
       })
     );
 
     expect(await screen.findByText("Latest manual scan")).toBeInTheDocument();
     expect(screen.getByText(/covers only the listed batch/i)).toBeInTheDocument();
     expect(screen.getByText("Blocked 1")).toBeInTheDocument();
+    expect(screen.getByText("Prior resolutions kept 1")).toBeInTheDocument();
+    expect(screen.getByText("Some items could not be completed")).toBeInTheDocument();
+    expect(screen.getByText(/Story could not be updated/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Scan next batch" }));
+    await waitFor(() =>
+      expect(scanRecentMedia).toHaveBeenLastCalledWith({
+        limit: 20,
+        cursor: ["post:000000000000000000000001"],
+      })
+    );
   }, 15000);
 
   it("shows blocked explicit cases as pending until they are resolved", async () => {

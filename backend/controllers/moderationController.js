@@ -132,6 +132,7 @@ const scanContent = async (req, res) => {
     req,
     search: req.body?.search || req.query.search || "",
     limit: req.body?.limit ?? req.query.limit ?? 20,
+    cursor: req.body?.cursor ?? req.query.cursor ?? [],
     includeManualReview:
       String(req.body?.includeManualReview ?? req.query.includeManualReview ?? "true").toLowerCase() !== "false",
   });

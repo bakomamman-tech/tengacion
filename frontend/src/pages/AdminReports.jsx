@@ -31,10 +31,10 @@ const ADMIN_SCAN_BATCH_LIMIT = 20;
 
 const STAT_CARDS = [
   ["pendingReview", "Pending Review", "Cases waiting for a decision"],
-  ["blockedExplicit", "Blocked Explicit", "Explicit porn blocked by the pipeline"],
-  ["suspectedCsam", "Suspected CSAM", "Escalated child exploitation risk"],
-  ["restrictedGore", "Restricted Gore", "Blurred or restricted graphic media"],
-  ["animalCruelty", "Animal Cruelty", "Blocked animal cruelty content"],
+  ["blockedExplicit", "Blocked Explicit Inventory", "Explicit content kept blocked, including completed decisions"],
+  ["suspectedCsam", "CSAM Block Inventory", "Child-exploitation content kept blocked or escalated"],
+  ["restrictedGore", "Restricted Gore Inventory", "Graphic media currently kept blurred or restricted"],
+  ["animalCruelty", "Animal Cruelty Inventory", "Animal-cruelty content currently kept blocked"],
   ["repeatViolators", "Repeat Violators", "Users above the strike threshold"],
 ];
 
@@ -52,6 +52,14 @@ const STATUS_OPTIONS = [
   ["ALLOW", "Allowed"],
   ["approved", "Approved"],
   ["rejected", "Rejected"],
+];
+const WORKFLOW_OPTIONS = [
+  ["ACTIVE", "Active work"],
+  ["", "All workflow states"],
+  ["RESOLVED", "Resolved history"],
+  ["OPEN", "Open"],
+  ["UNDER_REVIEW", "Under review"],
+  ["ESCALATED", "Escalated"],
 ];
 
 const ACTION_LABELS = {
@@ -144,7 +152,10 @@ const getScanConcernCount = (payload = {}) =>
   + Number(payload?.reviewCount || 0)
   + Number(payload?.restrictedCount || 0)
   + Number(payload?.inspectionFailureCount || 0)
-  + Number(payload?.skippedAssetCount || 0);
+  + Number(payload?.skippedAssetCount || 0)
+  + Number(payload?.processingFailureCount || 0)
+  + Number(payload?.sourceQueryFailureCount || 0)
+  + (payload?.scanDeadlineReached ? 1 : 0);
 const getScanCompletedLabel = (payload = {}) =>
   formatDateTime(payload?.completedAt || payload?.startedAt || "");
 const buildScanToastMessage = (payload = {}, scopeLabel = "recent items") => {
@@ -154,7 +165,10 @@ const buildScanToastMessage = (payload = {}, scopeLabel = "recent items") => {
   const review = formatNumber(payload?.reviewCount);
   const restricted = formatNumber(payload?.restrictedCount);
   const failures = formatNumber(payload?.inspectionFailureCount);
-  return `Checked ${scanned} ${scopeLabel}: ${approved} cleared in this batch, ${blocked} blocked, ${review} held for review, ${restricted} restricted, ${failures} inspection failures.`;
+  const preserved = formatNumber(payload?.preservedResolutionCount);
+  const processingFailures = formatNumber(payload?.processingFailureCount);
+  const sourceFailures = formatNumber(payload?.sourceQueryFailureCount);
+  return `Checked ${scanned} ${scopeLabel}: ${approved} cleared, ${blocked} newly blocked, ${review} held for review, ${restricted} restricted, ${preserved} prior resolutions preserved, ${failures} inspection failures, ${processingFailures} processing errors, ${sourceFailures} source errors.`;
 };
 
 function Badge({ status, workflowState }) {
@@ -259,6 +273,7 @@ export default function AdminReportsPage({ user }) {
   const { caseId: routeCaseId } = useParams();
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState("");
+  const [workflowState, setWorkflowState] = useState("ACTIVE");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [page, setPage] = useState(1);
@@ -287,12 +302,13 @@ export default function AdminReportsPage({ user }) {
   const visibleCase = selectedCase || selectedQueueCase || null;
   const detailActions = useMemo(() => DETAIL_ACTIONS.filter((action) => canUseAction(visibleCase, action)), [visibleCase]);
   const selectedUploaderUser = selectedUploader?.user || null;
-  const hasActiveFilters = Boolean(category || status || normalizeText(search) || page !== 1 || Number(limit) !== 12);
+  const hasActiveFilters = Boolean(category || status || workflowState !== "ACTIVE" || normalizeText(search) || page !== 1 || Number(limit) !== 12);
   const selectionIsOutsideCurrentQueue = Boolean(selectedCaseId && visibleCase && !selectedQueueCase && !routeCaseId);
 
   const resetFilters = useCallback(() => {
     setCategory("");
     setStatus("");
+    setWorkflowState("ACTIVE");
     setSearch("");
     setPage(1);
     setLimit(12);
@@ -329,7 +345,7 @@ export default function AdminReportsPage({ user }) {
     setQueueLoading(true);
     setQueueError("");
     try {
-      const payload = await fetchModerationCases({ page, limit, queue: category, status, search: deferredSearch });
+      const payload = await fetchModerationCases({ page, limit, queue: category, status, workflowState, search: deferredSearch });
       if (queueRequestRef.current === requestId) {
         setQueue(getQueueSummary(payload));
       }
@@ -345,7 +361,7 @@ export default function AdminReportsPage({ user }) {
         setQueueLoading(false);
       }
     }
-  }, [category, deferredSearch, limit, page, status]);
+  }, [category, deferredSearch, limit, page, status, workflowState]);
 
   const loadCase = useCallback(async (caseId) => {
     if (!caseId) {
@@ -441,10 +457,13 @@ export default function AdminReportsPage({ user }) {
     }
   }, [loadCase, loadQueue, loadStats, note]);
 
-  const handleScanRecent = useCallback(async () => {
+  const runRecentScan = useCallback(async (cursor = []) => {
     setBusyKey("scan_recent");
     try {
-      const response = await scanRecentMedia({ limit: ADMIN_SCAN_BATCH_LIMIT });
+      const response = await scanRecentMedia({
+        limit: ADMIN_SCAN_BATCH_LIMIT,
+        cursor: Array.isArray(cursor) ? cursor : [],
+      });
       setLastScan(response || null);
       const accountsFlagged = Number(response?.accountsFlagged || 0);
       const accountNote = accountsFlagged > 0
@@ -473,16 +492,16 @@ export default function AdminReportsPage({ user }) {
       setBusyKey("");
     }
   }, [loadCase, loadQueue, loadStats, selectCase, selectedCaseId]);
+  const handleScanRecent = useCallback(() => runRecentScan([]), [runRecentScan]);
 
-  const handleScanSearch = useCallback(async () => {
-    const searchTerm = normalizeText(search);
-    if (!searchTerm) {
-      toast.error("Enter a search term before scanning matches");
-      return;
-    }
+  const runSearchScan = useCallback(async (searchTerm, cursor = []) => {
     setBusyKey("scan_search");
     try {
-      const response = await scanSearchMatches({ search: searchTerm, limit: ADMIN_SCAN_BATCH_LIMIT });
+      const response = await scanSearchMatches({
+        search: searchTerm,
+        limit: ADMIN_SCAN_BATCH_LIMIT,
+        cursor: Array.isArray(cursor) ? cursor : [],
+      });
       setLastScan(response || null);
       const accountsFlagged = Number(response?.accountsFlagged || 0);
       const accountNote = accountsFlagged > 0
@@ -510,7 +529,27 @@ export default function AdminReportsPage({ user }) {
     } finally {
       setBusyKey("");
     }
-  }, [loadCase, loadQueue, loadStats, search, selectCase, selectedCaseId]);
+  }, [loadCase, loadQueue, loadStats, selectCase, selectedCaseId]);
+
+  const handleScanSearch = useCallback(() => {
+    const searchTerm = normalizeText(search);
+    if (!searchTerm) {
+      toast.error("Enter a search term before scanning matches");
+      return;
+    }
+    runSearchScan(searchTerm, []);
+  }, [runSearchScan, search]);
+
+  const handleScanNextBatch = useCallback(() => {
+    if (!Array.isArray(lastScan?.nextCursor)) {
+      return;
+    }
+    if (lastScan?.scanScope === "search_matches") {
+      runSearchScan(normalizeText(lastScan?.scanQuery), lastScan.nextCursor);
+      return;
+    }
+    runRecentScan(lastScan.nextCursor);
+  }, [lastScan, runRecentScan, runSearchScan]);
 
   const handleUserAction = useCallback(async (action) => {
     const uploaderId = selectedUploaderUser?._id || visibleCase?.uploader?.userId || "";
@@ -625,6 +664,9 @@ export default function AdminReportsPage({ user }) {
           <select className="adminx-select" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}>
             {STATUS_OPTIONS.map(([value, label]) => <option key={value || "all-statuses"} value={value}>{label}</option>)}
           </select>
+          <select className="adminx-select" value={workflowState} onChange={(event) => { setWorkflowState(event.target.value); setPage(1); }}>
+            {WORKFLOW_OPTIONS.map(([value, label]) => <option key={value || "all-workflows"} value={value}>{label}</option>)}
+          </select>
           <select className="adminx-select" value={limit} onChange={(event) => { setLimit(Number(event.target.value) || 12); setPage(1); }}>
             {[8, 12, 20, 40].map((value) => <option key={value} value={value}>{value} per page</option>)}
           </select>
@@ -653,12 +695,61 @@ export default function AdminReportsPage({ user }) {
               <span className="adminx-badge adminx-badge--danger">Blocked {formatNumber(lastScan?.blockedCount)}</span>
               <span className="adminx-badge adminx-badge--warn">Review {formatNumber(lastScan?.reviewCount)}</span>
               <span className="adminx-badge adminx-badge--warn">Restricted {formatNumber(lastScan?.restrictedCount)}</span>
+              <span className="adminx-badge adminx-badge--good">Prior resolutions kept {formatNumber(lastScan?.preservedResolutionCount)}</span>
               <span className="adminx-badge adminx-badge--warn">Inspection failures {formatNumber(lastScan?.inspectionFailureCount)}</span>
+              <span className="adminx-badge adminx-badge--warn">Processing errors {formatNumber(lastScan?.processingFailureCount)}</span>
+              <span className="adminx-badge adminx-badge--warn">Source errors {formatNumber(lastScan?.sourceQueryFailureCount)}</span>
               <span className="adminx-badge">Visual items inspected {formatNumber(lastScan?.visualInspectedCount)} / {formatNumber(lastScan?.visualItemCount)}</span>
             </div>
             <span className="adminx-muted">
               This result covers only the listed batch as of {getScanCompletedLabel(lastScan)}. Content uploaded afterward was not included.
             </span>
+            {lastScan?.truncated ? (
+              <span className="adminx-muted">
+                This page checked {formatNumber(lastScan?.processedCount ?? lastScan?.scannedCount)} candidates starting at offset {formatNumber(lastScan?.scanOffset)}. At least {formatNumber(lastScan?.candidateCountLowerBound ?? lastScan?.availableCandidateCount)} candidates are available; use the next batch or Scan Search Matches for a specific item.
+              </span>
+            ) : null}
+            {lastScan?.scanDeadlineReached ? (
+              <span className="adminx-muted">
+                The bounded scan window was reached. The current item was held for review and the remaining items are available in the next batch.
+              </span>
+            ) : null}
+            {Array.isArray(lastScan?.nextCursor) ? (
+              <button
+                type="button"
+                className="adminx-link-btn"
+                style={{ justifySelf: "start" }}
+                onClick={handleScanNextBatch}
+                disabled={Boolean(busyKey)}
+              >
+                {busyKey === "scan_recent" || busyKey === "scan_search" ? "Scanning next batch..." : "Scan next batch"}
+              </button>
+            ) : null}
+            {lastScan?.cursorLimitReached ? (
+              <span className="adminx-muted">
+                This scan reached the continuation limit. Narrow the queue search and use Scan Search Matches to continue safely.
+              </span>
+            ) : null}
+            {Array.isArray(lastScan?.processingFailures) && lastScan.processingFailures.length > 0 ? (
+              <div className="adminx-error" style={{ display: "grid", gap: 4 }}>
+                <strong>Some items could not be completed</strong>
+                {lastScan.processingFailures.slice(0, 3).map((failure) => (
+                  <span key={`${failure?.targetType || "item"}:${failure?.targetId || failure?.message || "error"}`}>
+                    {getStatusLabel(failure?.targetType || "item")}: {normalizeText(failure?.message || "Processing failed")}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {Array.isArray(lastScan?.sourceQueryFailures) && lastScan.sourceQueryFailures.length > 0 ? (
+              <div className="adminx-error" style={{ display: "grid", gap: 4 }}>
+                <strong>Some content sources could not be queried</strong>
+                {lastScan.sourceQueryFailures.slice(0, 3).map((failure) => (
+                  <span key={`${failure?.source || "source"}:${failure?.message || "error"}`}>
+                    {getStatusLabel(failure?.source || "source")}: {normalizeText(failure?.message || "Query failed")}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -667,6 +758,7 @@ export default function AdminReportsPage({ user }) {
             <span className="adminx-muted">Active filters:</span>
             {category ? <span className="adminx-badge">Category: {getLabel(category)}</span> : null}
             {status ? <span className="adminx-badge">Status: {getStatusLabel(status)}</span> : null}
+            {workflowState !== "ACTIVE" ? <span className="adminx-badge">Workflow: {workflowState ? getStatusLabel(workflowState) : "All"}</span> : null}
             {normalizeText(search) ? <span className="adminx-badge">Search: {normalizeText(search)}</span> : null}
             {page !== 1 ? <span className="adminx-badge">Page: {page}</span> : null}
             {Number(limit) !== 12 ? <span className="adminx-badge">Per page: {formatNumber(limit)}</span> : null}

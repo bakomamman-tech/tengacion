@@ -22,6 +22,7 @@ const User = require("../models/User");
 const Message = require("../models/Message");
 const ModerationAuditLog = require("../models/ModerationAuditLog");
 const ModerationCase = require("../models/ModerationCase");
+const MediaHash = require("../models/MediaHash");
 const Post = require("../models/Post");
 const Story = require("../models/Story");
 const UserStrike = require("../models/UserStrike");
@@ -1192,9 +1193,26 @@ describe("moderation routes and enforcement", () => {
       media: [{ url: "https://cdn.test/media/neutral-name.jpg", type: "image" }],
     });
 
+    let inspectedFileHash = "a".repeat(64);
+    let inspectionMode = "explicit";
     setAdminMediaInspectorForTests(async (candidate = {}) => {
       const isTarget = String(candidate.targetId || "") === post._id.toString();
       const visualAssetCount = Array.isArray(candidate.media) ? candidate.media.length : 0;
+      if (isTarget && inspectionMode === "failure") {
+        return {
+          decision: {
+            decision: "quarantine",
+            labels: ["inspection_failed", "media_download_timeout"],
+            reason: "Stored media download timed out during inspection.",
+            confidence: 0.2,
+          },
+          visualAssetCount,
+          inspectedAssetCount: 0,
+          failedAssetCount: 1,
+          skippedAssetCount: 0,
+          contentFileHashes: [],
+        };
+      }
       return isTarget
         ? {
             decision: {
@@ -1207,6 +1225,7 @@ describe("moderation routes and enforcement", () => {
             inspectedAssetCount: visualAssetCount,
             failedAssetCount: 0,
             skippedAssetCount: 0,
+            contentFileHashes: [{ candidateIndex: 0, fileHash: inspectedFileHash }],
           }
         : {
             decision: null,
@@ -1238,6 +1257,111 @@ describe("moderation routes and enforcement", () => {
       reviewRequired: false,
       visibility: "private",
     });
+
+    const caseId = response.body.cases.find(
+      (entry) => entry.subject?.targetId === post._id.toString()
+    )?._id;
+    expect(caseId).toBeTruthy();
+    const firstHashCount = await MediaHash.countDocuments({ moderationCaseId: caseId });
+
+    const repeatResponse = await request(app)
+      .post("/api/admin/moderation/scan/recent")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ limit: 20 })
+      .expect(200);
+
+    expect(repeatResponse.body.processingFailureCount).toBe(0);
+    expect(repeatResponse.body.cases).toEqual(expect.arrayContaining([
+      expect.objectContaining({ _id: caseId }),
+    ]));
+    expect(await ModerationCase.countDocuments({ "subject.targetId": post._id.toString() })).toBe(1);
+    expect(await MediaHash.countDocuments({ moderationCaseId: caseId })).toBe(firstHashCount);
+
+    await request(app)
+      .post(`/api/moderation/cases/${caseId}/actions`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ action: "reject", reason: "Confirmed and resolved by trust and safety" })
+      .expect(200);
+
+    const resolvedRescan = await request(app)
+      .post("/api/admin/moderation/scan/recent")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ limit: 20 })
+      .expect(200);
+
+    expect(resolvedRescan.body.preservedResolutionCount).toBeGreaterThanOrEqual(1);
+    expect(resolvedRescan.body.cases).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ _id: caseId }),
+    ]));
+    expect(await ModerationCase.countDocuments({ "subject.targetId": post._id.toString() })).toBe(1);
+    await expect(ModerationCase.findById(caseId).lean()).resolves.toMatchObject({
+      status: "BLOCK_EXPLICIT_ADULT",
+      workflowState: "RESOLVED",
+    });
+
+    inspectionMode = "failure";
+    const transientFailureRescan = await request(app)
+      .post("/api/admin/moderation/scan/recent")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ limit: 20 })
+      .expect(200);
+    expect(transientFailureRescan.body.preservedResolutionCount).toBeGreaterThanOrEqual(1);
+    expect(await ModerationCase.countDocuments({ "subject.targetId": post._id.toString() })).toBe(1);
+    await expect(ModerationCase.findById(caseId).lean()).resolves.toMatchObject({
+      status: "BLOCK_EXPLICIT_ADULT",
+      workflowState: "RESOLVED",
+    });
+    inspectionMode = "explicit";
+
+    const activeQueue = await request(app)
+      .get("/api/admin/moderation/cases")
+      .query({ workflowState: "ACTIVE", limit: 100 })
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+    expect(activeQueue.body.cases.some((entry) => entry._id === caseId)).toBe(false);
+
+    const resolvedQueue = await request(app)
+      .get("/api/admin/moderation/cases")
+      .query({ workflowState: "RESOLVED", limit: 100 })
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+    expect(resolvedQueue.body.cases.some((entry) => entry._id === caseId)).toBe(true);
+
+    await request(app)
+      .post(`/api/moderation/cases/${caseId}/actions`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ action: "approve", reason: "Manual false-positive override" })
+      .expect(200);
+
+    const approvedRescan = await request(app)
+      .post("/api/admin/moderation/scan/recent")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ limit: 20 })
+      .expect(200);
+    expect(approvedRescan.body.preservedResolutionCount).toBeGreaterThanOrEqual(1);
+    expect(await ModerationCase.countDocuments({ "subject.targetId": post._id.toString() })).toBe(1);
+    await expect(ModerationCase.findById(caseId).lean()).resolves.toMatchObject({
+      status: "ALLOW",
+      workflowState: "RESOLVED",
+    });
+    await expect(Post.findById(post._id).lean()).resolves.toMatchObject({
+      moderationStatus: "ALLOW",
+      reviewRequired: false,
+      visibility: "public",
+    });
+
+    inspectedFileHash = "b".repeat(64);
+    const revisedContentScan = await request(app)
+      .post("/api/admin/moderation/scan/recent")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ limit: 20 })
+      .expect(200);
+    expect(revisedContentScan.body.preservedResolutionCount).toBe(0);
+    expect(await ModerationCase.countDocuments({ "subject.targetId": post._id.toString() })).toBe(2);
+    await expect(ModerationCase.findOne({
+      "subject.targetId": post._id.toString(),
+      workflowState: { $in: ["OPEN", "UNDER_REVIEW", "ESCALATED"] },
+    }).lean()).resolves.toMatchObject({ status: "BLOCK_EXPLICIT_ADULT" });
   });
 
   test("admin recent scan holds uninspectable visual media instead of approving it", async () => {
@@ -1286,6 +1410,115 @@ describe("moderation routes and enforcement", () => {
       moderationStatus: "HOLD_FOR_REVIEW",
       reviewRequired: true,
     });
+
+    const heldCase = await ModerationCase.findOne({
+      "subject.targetId": post._id.toString(),
+      workflowState: { $in: ["OPEN", "UNDER_REVIEW", "ESCALATED"] },
+    });
+    expect(heldCase).toBeTruthy();
+
+    setAdminMediaInspectorForTests(async (candidate = {}) => {
+      const isTarget = String(candidate.targetId || "") === post._id.toString();
+      return isTarget
+        ? {
+            decision: {
+              decision: "approve",
+              labels: ["provider:test_visual_scan"],
+              reason: "The image passed the completed provider retry.",
+              confidence: 0.99,
+            },
+            visualAssetCount: 1,
+            inspectedAssetCount: 1,
+            failedAssetCount: 0,
+            skippedAssetCount: 0,
+            contentFileHashes: [{ candidateIndex: 0, fileHash: "c".repeat(64) }],
+          }
+        : {
+            decision: null,
+            visualAssetCount: 0,
+            inspectedAssetCount: 0,
+            failedAssetCount: 0,
+            skippedAssetCount: 0,
+          };
+    });
+
+    const retryResponse = await request(app)
+      .post("/api/admin/moderation/scan/recent")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ limit: 20 })
+      .expect(200);
+    expect(retryResponse.body.processingFailureCount).toBe(0);
+    await expect(ModerationCase.findById(heldCase._id).lean()).resolves.toMatchObject({
+      status: "ALLOW",
+      workflowState: "RESOLVED",
+    });
+    await expect(Post.findById(post._id).lean()).resolves.toMatchObject({
+      moderationStatus: "ALLOW",
+      reviewRequired: false,
+      visibility: "public",
+    });
+  });
+
+  test("admin recent scan bounds the whole batch and isolates inspector failures", async () => {
+    await Post.create({
+      author: regularUser._id,
+      text: "Newest visual candidate",
+      privacy: "public",
+      visibility: "public",
+      moderationStatus: "approved",
+      media: [{ url: "https://cdn.test/media/newest.jpg", type: "image" }],
+    });
+    await Post.create({
+      author: regularUser._id,
+      text: "Older visual candidate",
+      privacy: "public",
+      visibility: "public",
+      moderationStatus: "approved",
+      media: [{ url: "https://cdn.test/media/older.jpg", type: "image" }],
+    });
+    await Story.create({
+      userId: regularUser._id.toString(),
+      authorId: regularUser._id,
+      name: regularUser.name,
+      username: regularUser.username,
+      text: "Story visual candidate",
+      mediaUrl: "https://cdn.test/media/story-candidate.jpg",
+      mediaType: "image",
+      moderationStatus: "approved",
+      time: new Date(),
+    });
+
+    setAdminMediaInspectorForTests(async () => {
+      throw new Error("Injected visual inspector failure");
+    });
+
+    const response = await request(app)
+      .post("/api/admin/moderation/scan/search")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ search: "visual candidate", limit: 1 })
+      .expect(200);
+
+    expect(response.body.processedCount).toBe(1);
+    expect(response.body.availableCandidateCount).toBeGreaterThan(1);
+    expect(response.body.truncated).toBe(true);
+    expect(response.body.scanOffset).toBe(0);
+    expect(response.body.nextOffset).toBe(1);
+    expect(Array.isArray(response.body.nextCursor)).toBe(true);
+    expect(response.body.inspectionFailureCount).toBe(1);
+    expect(response.body.reviewCount).toBe(1);
+    expect(response.body.processingFailureCount).toBe(0);
+
+    const nextPage = await request(app)
+      .post("/api/admin/moderation/scan/search")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ search: "visual candidate", limit: 1, cursor: response.body.nextCursor })
+      .expect(200);
+    expect(nextPage.body.processedCount).toBe(1);
+    expect(nextPage.body.scanOffset).toBe(1);
+    expect(nextPage.body.processingFailureCount).toBe(0);
+    expect(nextPage.body.cases[0]?.subject?.targetId).not.toBe(
+      response.body.cases[0]?.subject?.targetId
+    );
   });
 
   test("admin scan recent alias flags user accounts and direct messages", async () => {

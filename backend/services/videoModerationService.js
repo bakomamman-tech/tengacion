@@ -9,13 +9,24 @@ const { analyzeImages } = require("./moderationService");
 const uniqueStrings = (values = []) => [...new Set(values.filter(Boolean).map((entry) => String(entry)))];
 
 let ffmpegAvailability = null;
+const VIDEO_PROBE_TIMEOUT_MS = Math.max(
+  5000,
+  Number(process.env.MODERATION_VIDEO_PROBE_TIMEOUT_MS || 10000)
+);
+const VIDEO_FRAME_EXTRACTION_TIMEOUT_MS = Math.max(
+  10000,
+  Number(process.env.MODERATION_VIDEO_EXTRACTION_TIMEOUT_MS || 30000)
+);
 const isFfmpegAvailable = () => {
   if (ffmpegAvailability !== null) {
     return ffmpegAvailability;
   }
 
   try {
-    const result = spawnSync("ffmpeg", ["-version"], { stdio: "ignore" });
+    const result = spawnSync("ffmpeg", ["-version"], {
+      stdio: "ignore",
+      timeout: 5000,
+    });
     ffmpegAvailability = result.status === 0;
   } catch {
     ffmpegAvailability = false;
@@ -24,7 +35,7 @@ const isFfmpegAvailable = () => {
   return ffmpegAvailability;
 };
 
-const probeVideoDuration = async (localPath) =>
+const probeVideoDuration = async (localPath, { signal = null } = {}) =>
   new Promise((resolve) => {
     const child = spawn(
       "ffprobe",
@@ -39,18 +50,36 @@ const probeVideoDuration = async (localPath) =>
       ],
       { stdio: ["ignore", "pipe", "ignore"] }
     );
+    let settled = false;
+    let timeoutId = null;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      signal?.removeEventListener?.("abort", abortProbe);
+      resolve(value);
+    };
+    const abortProbe = () => {
+      child.kill("SIGKILL");
+      finish(0);
+    };
+    signal?.addEventListener?.("abort", abortProbe, { once: true });
+    timeoutId = setTimeout(() => {
+      child.kill("SIGKILL");
+      finish(0);
+    }, VIDEO_PROBE_TIMEOUT_MS);
     let output = "";
     child.stdout.on("data", (chunk) => {
       output += chunk.toString();
     });
-    child.on("error", () => resolve(0));
+    child.on("error", () => finish(0));
     child.on("close", (code) => {
       const duration = Number.parseFloat(output.trim());
-      resolve(code === 0 && Number.isFinite(duration) && duration > 0 ? duration : 0);
+      finish(code === 0 && Number.isFinite(duration) && duration > 0 ? duration : 0);
     });
   });
 
-const runFfmpegExtract = async ({ localPath, frameDir, durationSec = 0 }) =>
+const runFfmpegExtract = async ({ localPath, frameDir, durationSec = 0, signal = null }) =>
   new Promise((resolve, reject) => {
     const outputPattern = path.join(frameDir, "frame-%03d.jpg");
     const sampleRate = durationSec > 0
@@ -70,13 +99,32 @@ const runFfmpegExtract = async ({ localPath, frameDir, durationSec = 0 }) =>
       outputPattern,
     ];
     const child = spawn("ffmpeg", args, { stdio: "ignore" });
-    child.on("error", reject);
+    let settled = false;
+    let timeoutId = null;
+    const finish = (error = null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      signal?.removeEventListener?.("abort", abortExtraction);
+      if (error) reject(error);
+      else resolve();
+    };
+    const abortExtraction = () => {
+      child.kill("SIGKILL");
+      finish(new Error("Video frame extraction was interrupted"));
+    };
+    signal?.addEventListener?.("abort", abortExtraction, { once: true });
+    timeoutId = setTimeout(() => {
+      child.kill("SIGKILL");
+      finish(new Error("Video frame extraction timed out"));
+    }, VIDEO_FRAME_EXTRACTION_TIMEOUT_MS);
+    child.on("error", finish);
     child.on("close", (code) => {
       if (code === 0) {
-        resolve();
+        finish();
         return;
       }
-      reject(new Error(`ffmpeg exited with code ${code}`));
+      finish(new Error(`ffmpeg exited with code ${code}`));
     });
   });
 
@@ -148,7 +196,13 @@ const normalizeAggregatedDecision = (frameResults = []) => {
   };
 };
 
-const analyzeVideo = async ({ localPath, mimeType = "", originalFilename = "", uploaderId = "" } = {}) => {
+const analyzeVideo = async ({
+  localPath,
+  mimeType = "",
+  originalFilename = "",
+  uploaderId = "",
+  signal = null,
+} = {}) => {
   const normalizedPath = String(localPath || "").trim();
   if (!normalizedPath || !fs.existsSync(normalizedPath)) {
     return {
@@ -183,10 +237,17 @@ const analyzeVideo = async ({ localPath, mimeType = "", originalFilename = "", u
     };
   }
 
-  const frameDir = await fsp.mkdtemp(path.join(os.tmpdir(), "tengacion-video-frames-"));
+  let frameDir = "";
   try {
-    const durationSec = await probeVideoDuration(normalizedPath);
-    await runFfmpegExtract({ localPath: normalizedPath, frameDir, durationSec });
+    if (signal?.aborted) {
+      throw new Error("Video inspection was interrupted");
+    }
+    frameDir = await fsp.mkdtemp(path.join(os.tmpdir(), "tengacion-video-frames-"));
+    const durationSec = await probeVideoDuration(normalizedPath, { signal });
+    if (signal?.aborted) {
+      throw new Error("Video inspection was interrupted");
+    }
+    await runFfmpegExtract({ localPath: normalizedPath, frameDir, durationSec, signal });
     const frames = await collectFramePaths(frameDir);
     if (frames.length === 0) {
       return {
@@ -214,7 +275,9 @@ const analyzeVideo = async ({ localPath, mimeType = "", originalFilename = "", u
       confidence: 0.2,
     };
   } finally {
-    await fsp.rm(frameDir, { recursive: true, force: true }).catch(() => null);
+    if (frameDir) {
+      await fsp.rm(frameDir, { recursive: true, force: true }).catch(() => null);
+    }
   }
 };
 

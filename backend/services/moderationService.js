@@ -69,8 +69,17 @@ const CASE_ACTIONS = [
   "preserve_evidence",
   "escalate_case",
 ];
-const ADMIN_SCAN_MAX_MEDIA_ASSETS = 12;
+const ADMIN_SCAN_MAX_MEDIA_ASSETS = 4;
 const ADMIN_SCAN_MAX_MEDIA_BYTES = UPLOAD_LIMITS.ADMIN_SPECIAL_BYTES;
+const ADMIN_SCAN_MEDIA_TIMEOUT_MS = Math.max(
+  5000,
+  Number(process.env.MODERATION_ADMIN_MEDIA_TIMEOUT_MS || 10000)
+);
+const ADMIN_SCAN_DEADLINE_MS = Math.max(
+  30000,
+  Number(process.env.MODERATION_ADMIN_SCAN_DEADLINE_MS || 90000)
+);
+const ADMIN_SCAN_CURSOR_LIMIT = 2000;
 const MEDIA_INSPECTION_FAILURE_LABELS = new Set([
   "inspection_failed",
   "visual_provider_unavailable",
@@ -79,6 +88,9 @@ const MEDIA_INSPECTION_FAILURE_LABELS = new Set([
   "video_frames_missing",
   "video_frame_extraction_failed",
   "media_download_failed",
+  "media_download_timeout",
+  "media_asset_limit_exceeded",
+  "scan_deadline_exceeded",
   "media_too_large",
 ]);
 let adminMediaInspectorForTests = null;
@@ -189,6 +201,81 @@ const buildFingerprintHash = ({ title = "", description = "", asset = {}, source
       })
     )
     .digest("hex");
+
+const normalizeFingerprintSource = (value = "") => {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "";
+  try {
+    const parsed = new URL(normalized, "http://tengacion.local");
+    if (
+      parsed.origin === "http://tengacion.local"
+      || /^\/(?:api\/media|uploads?)\//i.test(parsed.pathname)
+    ) {
+      return parsed.pathname;
+    }
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return normalized.split(/[?#]/, 1)[0];
+  }
+};
+
+const buildModerationFingerprint = ({
+  targetType = "",
+  targetId = "",
+  title = "",
+  description = "",
+  media = [],
+} = {}, { includeContentHashes = true } = {}) => {
+  const mediaIdentity = (Array.isArray(media) ? media : [])
+    .map((asset = {}) => ({
+      role: normalizeText(asset.role || "primary", 40),
+      mediaType: normalizeText(asset.mediaType || "", 40).toLowerCase(),
+      source: normalizeFingerprintSource(asset.sourceUrl || asset.previewUrl || "")
+        || normalizeText(asset.mediaId || "", 120)
+        || `${normalizeText(asset.originalFilename || "", 260)}:${Number(asset.fileSizeBytes || 0)}`,
+      contentHash: includeContentHashes && asset.fileHash
+        ? String(asset.fileHash).trim().toLowerCase()
+        : "",
+    }))
+    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+
+  return crypto
+    .createHash("sha256")
+    .update(JSON.stringify({
+      targetType: normalizeText(targetType, 40),
+      targetId: normalizeText(targetId, 120),
+      title: normalizeText(title, 240),
+      description: normalizeText(description, 3000),
+      media: mediaIdentity,
+    }))
+    .digest("hex");
+};
+
+const buildModerationContentFingerprint = (values = {}) =>
+  buildModerationFingerprint(values, { includeContentHashes: true });
+
+const buildModerationSourceFingerprint = (values = {}) =>
+  buildModerationFingerprint(values, { includeContentHashes: false });
+
+const buildCaseContentFingerprint = (caseDoc = {}) =>
+  String(caseDoc?.contentFingerprint || "").trim()
+  || buildModerationContentFingerprint({
+    targetType: caseDoc?.subject?.targetType,
+    targetId: caseDoc?.subject?.targetId,
+    title: caseDoc?.subject?.title,
+    description: caseDoc?.subject?.description,
+    media: caseDoc?.media,
+  });
+
+const buildCaseSourceFingerprint = (caseDoc = {}) =>
+  String(caseDoc?.sourceFingerprint || "").trim()
+  || buildModerationSourceFingerprint({
+    targetType: caseDoc?.subject?.targetType,
+    targetId: caseDoc?.subject?.targetId,
+    title: caseDoc?.subject?.title,
+    description: caseDoc?.subject?.description,
+    media: caseDoc?.media,
+  });
 
 const buildCaseMediaEntries = ({ media = [], req, queue = "", severity = "" }) =>
   (Array.isArray(media) ? media : []).map((asset) => {
@@ -1157,15 +1244,40 @@ const createByteLimitTransform = (maxBytes = ADMIN_SCAN_MAX_MEDIA_BYTES) => {
 const hasCompletedVisualProviderCheck = (decision = {}) =>
   normalizeInspectionLabels(decision).some((label) => label.startsWith("provider:"));
 
-const inspectCandidateMediaForModeration = async (candidate = {}) => {
+const withAdminScanDeadline = (promise, deadlineAt, onTimeout = null) =>
+  new Promise((resolve, reject) => {
+    const remainingMs = Math.max(1, Number(deadlineAt || 0) - Date.now());
+    const timeoutId = setTimeout(() => {
+      if (typeof onTimeout === "function") {
+        onTimeout();
+      }
+      const error = new Error("The moderation scan reached its bounded processing deadline.");
+      error.code = "ADMIN_SCAN_DEADLINE_EXCEEDED";
+      reject(error);
+    }, remainingMs);
+
+    Promise.resolve(promise).then(
+      (value) => {
+        clearTimeout(timeoutId);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      }
+    );
+  });
+
+const inspectCandidateMediaForModeration = async (candidate = {}, { signal = null } = {}) => {
   if (typeof adminMediaInspectorForTests === "function") {
     return adminMediaInspectorForTests(candidate);
   }
 
-  const assets = (Array.isArray(candidate?.media) ? candidate.media : [])
-    .filter(isPotentialVisualAsset)
-    .slice(0, ADMIN_SCAN_MAX_MEDIA_ASSETS);
-  if (assets.length === 0) {
+  const visualAssets = (Array.isArray(candidate?.media) ? candidate.media : [])
+    .map((asset, candidateIndex) => ({ ...asset, candidateIndex }))
+    .filter(isPotentialVisualAsset);
+  const assets = visualAssets.slice(0, ADMIN_SCAN_MAX_MEDIA_ASSETS);
+  if (visualAssets.length === 0) {
     return {
       decision: null,
       visualAssetCount: 0,
@@ -1179,10 +1291,23 @@ const inspectCandidateMediaForModeration = async (candidate = {}) => {
   const imageAssets = [];
   const videoAssets = [];
   const failureDecisions = [];
-  let skippedAssetCount = 0;
+  let skippedAssetCount = Math.max(0, visualAssets.length - assets.length);
+  if (skippedAssetCount > 0) {
+    failureDecisions.push(buildInspectionFailureDecision({
+      labels: ["media_asset_limit_exceeded"],
+      reason: "Some attachments exceeded the bounded scan batch and require manual review.",
+    }));
+  }
 
   try {
     for (const [index, asset] of assets.entries()) {
+      if (signal?.aborted) {
+        failureDecisions.push(buildInspectionFailureDecision({
+          labels: ["scan_deadline_exceeded"],
+          reason: "The bounded scan deadline was reached before this attachment could be inspected.",
+        }));
+        break;
+      }
       const sourceUrl = String(asset?.sourceUrl || asset?.previewUrl || "").trim();
       if (!sourceUrl) {
         failureDecisions.push(buildInspectionFailureDecision({
@@ -1192,8 +1317,17 @@ const inspectCandidateMediaForModeration = async (candidate = {}) => {
         continue;
       }
 
+      const abortController = new AbortController();
+      const abortFromScanDeadline = () => abortController.abort();
+      signal?.addEventListener?.("abort", abortFromScanDeadline, { once: true });
+      const timeoutId = setTimeout(
+        () => abortController.abort(),
+        ADMIN_SCAN_MEDIA_TIMEOUT_MS
+      );
       try {
-        const source = await openMediaSourceStream(sourceUrl);
+        const source = await openMediaSourceStream(sourceUrl, {
+          signal: abortController.signal,
+        });
         const detectedContentType = String(
           source?.contentType
           || asset?.mimeType
@@ -1228,13 +1362,16 @@ const inspectCandidateMediaForModeration = async (candidate = {}) => {
         await pipeline(
           source.stream,
           createByteLimitTransform(),
-          fs.createWriteStream(localPath)
+          fs.createWriteStream(localPath),
+          { signal: abortController.signal }
         );
 
         const normalizedAsset = {
           localPath,
           mimeType: detectedContentType || (kind === "video" ? "video/mp4" : "image/jpeg"),
           originalFilename: asset?.originalFilename || source?.filename || `asset-${index + 1}`,
+          candidateIndex: Number(asset?.candidateIndex ?? index),
+          fileHash: await hashFileFromDisk(localPath),
         };
         if (kind === "video") {
           videoAssets.push(normalizedAsset);
@@ -1242,27 +1379,51 @@ const inspectCandidateMediaForModeration = async (candidate = {}) => {
           imageAssets.push(normalizedAsset);
         }
       } catch (error) {
+        const timedOut = error?.name === "AbortError" || abortController.signal.aborted;
         failureDecisions.push(buildInspectionFailureDecision({
-          labels: [error?.code === "MEDIA_SCAN_TOO_LARGE" ? "media_too_large" : "media_download_failed"],
-          reason: error?.message || "Stored media could not be downloaded for inspection.",
+          labels: [
+            error?.code === "MEDIA_SCAN_TOO_LARGE"
+              ? "media_too_large"
+              : timedOut ? "media_download_timeout" : "media_download_failed",
+          ],
+          reason: timedOut
+            ? "Stored media download timed out during inspection."
+            : error?.message || "Stored media could not be downloaded for inspection.",
         }));
+      } finally {
+        clearTimeout(timeoutId);
+        signal?.removeEventListener?.("abort", abortFromScanDeadline);
       }
     }
 
     const decisions = [];
-    if (imageAssets.length > 0) {
+    if (signal?.aborted) {
+      failureDecisions.push(buildInspectionFailureDecision({
+        labels: ["scan_deadline_exceeded"],
+        reason: "The bounded scan deadline interrupted visual inspection.",
+      }));
+    } else if (imageAssets.length > 0) {
       decisions.push(await analyzeImages({
         assets: imageAssets,
         uploaderId: toId(candidate?.uploader?.userId || ""),
       }));
     }
-    if (videoAssets.length > 0) {
+    const videoAssetsToAnalyze = videoAssets.slice(0, 1);
+    if (videoAssets.length > videoAssetsToAnalyze.length) {
+      skippedAssetCount += videoAssets.length - videoAssetsToAnalyze.length;
+      failureDecisions.push(buildInspectionFailureDecision({
+        labels: ["media_asset_limit_exceeded"],
+        reason: "Additional video attachments require manual review.",
+      }));
+    }
+    if (videoAssetsToAnalyze.length > 0 && !signal?.aborted) {
       // Lazy loading avoids a module cycle because videoModerationService uses analyzeImages.
       const { analyzeVideo } = require("./videoModerationService");
-      for (const asset of videoAssets) {
+      for (const asset of videoAssetsToAnalyze) {
         decisions.push(await analyzeVideo({
           ...asset,
           uploaderId: toId(candidate?.uploader?.userId || ""),
+          signal,
         }));
       }
     }
@@ -1271,10 +1432,11 @@ const inspectCandidateMediaForModeration = async (candidate = {}) => {
     if (decisions.length === 0) {
       return {
         decision: null,
-        visualAssetCount: assets.length,
+        visualAssetCount: visualAssets.length,
         inspectedAssetCount: 0,
         failedAssetCount: 0,
         skippedAssetCount,
+        contentFileHashes: [],
       };
     }
 
@@ -1295,13 +1457,19 @@ const inspectCandidateMediaForModeration = async (candidate = {}) => {
 
     return {
       decision,
-      visualAssetCount: assets.length,
-      inspectedAssetCount: imageAssets.length + videoAssets.length,
+      visualAssetCount: visualAssets.length,
+      inspectedAssetCount: imageAssets.length + videoAssetsToAnalyze.length,
       failedAssetCount: Math.max(
         failureDecisions.length,
         normalizeInspectionLabels(decision).some((label) => MEDIA_INSPECTION_FAILURE_LABELS.has(label)) ? 1 : 0
       ),
       skippedAssetCount,
+      contentFileHashes: [...imageAssets, ...videoAssets]
+        .filter((asset) => asset.fileHash)
+        .map((asset) => ({
+          candidateIndex: asset.candidateIndex,
+          fileHash: asset.fileHash,
+        })),
     };
   } finally {
     await fsp.rm(tempDir, { recursive: true, force: true }).catch(() => null);
@@ -1362,6 +1530,7 @@ const MODERATION_STATUS_RANK = new Map([
   ["BLOCK_EXTREME_GORE", 3],
   ["BLOCK_ANIMAL_CRUELTY", 3],
   ["BLOCK_EXPLICIT_ADULT", 4],
+  ["BLOCK_REPEAT_VIOLATOR", 4],
   ["BLOCK_SUSPECTED_CHILD_EXPLOITATION", 5],
 ]);
 
@@ -1481,8 +1650,7 @@ const getLatestCaseForTarget = async (targetType, targetId) => {
     "subject.targetType": String(targetType),
     "subject.targetId": String(targetId),
   })
-    .sort({ updatedAt: -1, createdAt: -1 })
-    .lean();
+    .sort({ updatedAt: -1, createdAt: -1 });
 };
 
 const getLatestCaseForMediaId = async (mediaId) => {
@@ -1681,7 +1849,44 @@ const persistMediaHashes = async ({ moderationCase, title = "", description = ""
     return moderationCase.media || [];
   }
 
-  const created = await MediaHash.create(assetRecords);
+  await MediaHash.bulkWrite(
+    assetRecords.map((record) => ({
+      updateOne: {
+        filter: {
+          moderationCaseId: record.moderationCaseId,
+          mediaRole: record.mediaRole,
+          hashKind: record.hashKind,
+          hashValue: record.hashValue,
+        },
+        update: {
+          $set: {
+            targetType: record.targetType,
+            targetId: record.targetId,
+            algorithm: record.algorithm,
+            sourceUrl: record.sourceUrl,
+            mimeType: record.mimeType,
+            originalFilename: record.originalFilename,
+          },
+          $setOnInsert: {
+            moderationCaseId: record.moderationCaseId,
+            mediaRole: record.mediaRole,
+            hashKind: record.hashKind,
+            hashValue: record.hashValue,
+          },
+        },
+        upsert: true,
+      },
+    })),
+    { ordered: false }
+  );
+  const created = await MediaHash.find({
+    moderationCaseId: moderationCase._id,
+    $or: assetRecords.map((record) => ({
+      mediaRole: record.mediaRole,
+      hashKind: record.hashKind,
+      hashValue: record.hashValue,
+    })),
+  });
   const createdByAsset = new Map();
   created.forEach((doc) => {
     const key = `${String(doc.mediaRole || "")}:${String(doc.hashKind || "")}:${String(doc.hashValue || "")}`;
@@ -1923,7 +2128,10 @@ const applyModerationStatusToTarget = async ({
 
     if (publicSensitivity.moderationStatus === "ALLOW" || publicSensitivity.moderationStatus === "approved") {
       doc.visibility = String(doc.originalVisibility || baselineAccess?.visibility || currentVisibility || "public");
-    } else if (publicSensitivity.moderationStatus !== "RESTRICTED_BLURRED") {
+    } else if (
+      normalizedTargetType !== "story"
+      && publicSensitivity.moderationStatus !== "RESTRICTED_BLURRED"
+    ) {
       doc.visibility = "private";
     }
   }
@@ -2179,7 +2387,13 @@ const buildDecisionFromMatchedCase = (matchedCase = null) => {
   };
 };
 
-const findMatchedHashDecision = async ({ title = "", description = "", media = [] }) => {
+const findMatchedHashDecision = async ({
+  title = "",
+  description = "",
+  media = [],
+  targetType = "",
+  targetId = "",
+}) => {
   const candidates = [];
 
   for (const asset of Array.isArray(media) ? media : []) {
@@ -2215,13 +2429,21 @@ const findMatchedHashDecision = async ({ title = "", description = "", media = [
     return null;
   }
 
-  const hashDocs = await MediaHash.find({
+  const hashQuery = {
     $or: normalizedCandidates.map((entry) => ({
       hashKind: entry.hashKind,
       hashValue: entry.hashValue,
     })),
     moderationCaseId: { $ne: null },
-  })
+  };
+  if (targetType && targetId) {
+    hashQuery.$nor = [{
+      targetType: String(targetType),
+      targetId: String(targetId),
+    }];
+  }
+
+  const hashDocs = await MediaHash.find(hashQuery)
     .sort({ createdAt: -1 })
     .lean();
 
@@ -2342,6 +2564,20 @@ const createOrUpdateModerationCase = async ({
     media: normalizedMedia,
     req,
   });
+  const contentFingerprint = buildModerationContentFingerprint({
+    targetType: normalizedTargetType,
+    targetId: normalizedTargetId,
+    title,
+    description,
+    media: caseMediaEntries,
+  });
+  const sourceFingerprint = buildModerationSourceFingerprint({
+    targetType: normalizedTargetType,
+    targetId: normalizedTargetId,
+    title,
+    description,
+    media: caseMediaEntries,
+  });
 
   let moderationDecision = evaluateModerationPolicy({
     title,
@@ -2356,6 +2592,8 @@ const createOrUpdateModerationCase = async ({
     title,
     description,
     media: normalizedMedia,
+    targetType: normalizedTargetType,
+    targetId: normalizedTargetId,
   });
   if (
     matchedHashDecision
@@ -2406,6 +2644,237 @@ const createOrUpdateModerationCase = async ({
     || detectionSource === "user_report"
     || linkedReportIds.length > 0;
 
+  const latestCase =
+    shouldCreateCase || String(detectionSource || "") === "admin_dashboard_scan"
+      ? await getLatestCaseForTarget(normalizedTargetType, normalizedTargetId)
+      : null;
+  let matchingResolvedCase = null;
+  if (String(detectionSource || "") === "admin_dashboard_scan") {
+    const resolvedCandidates = latestCase?.workflowState === "RESOLVED"
+      ? [latestCase]
+      : await ModerationCase.find({
+          "subject.targetType": normalizedTargetType,
+          "subject.targetId": normalizedTargetId,
+          workflowState: "RESOLVED",
+        })
+          .sort({ reviewedAt: -1, updatedAt: -1, createdAt: -1 })
+          .limit(25);
+    const exactResolvedCase = resolvedCandidates.find(
+      (entry) => buildCaseContentFingerprint(entry) === contentFingerprint
+    ) || null;
+    const stableBlockedResolvedCase = resolvedCandidates.find((entry) => {
+      const status = String(entry?.status || "");
+      const isHumanResolved = Boolean(
+        entry?.reviewedAt || entry?.latestDecisionSummary?.decidedAt
+      );
+      return isHumanResolved
+        && (status === "RESTRICTED_BLURRED" || status.startsWith("BLOCK_"))
+        && buildCaseSourceFingerprint(entry) === sourceFingerprint;
+    }) || null;
+    matchingResolvedCase = exactResolvedCase || stableBlockedResolvedCase;
+
+    const resolvedStatus = String(matchingResolvedCase?.status || "");
+    const incomingStatus = String(moderationDecision?.status || "ALLOW");
+    const isHumanResolved = Boolean(
+      matchingResolvedCase?.reviewedAt
+      || matchingResolvedCase?.latestDecisionSummary?.decidedAt
+    );
+    const terminalResolvedStatus = isHumanResolved && (
+      resolvedStatus === "ALLOW"
+      || resolvedStatus === "RESTRICTED_BLURRED"
+      || resolvedStatus.startsWith("BLOCK_")
+    );
+    const comparisonStatus = resolvedStatus === "ALLOW"
+      ? String(matchingResolvedCase?.latestDecisionSummary?.previousStatus || "ALLOW")
+      : resolvedStatus;
+    if (
+      !terminalResolvedStatus
+      || (MODERATION_STATUS_RANK.get(incomingStatus) || 0)
+        > (MODERATION_STATUS_RANK.get(comparisonStatus) || 0)
+    ) {
+      matchingResolvedCase = null;
+    }
+
+    const priorRiskLabels = new Set(
+      Array.isArray(matchingResolvedCase?.riskLabels)
+        ? matchingResolvedCase.riskLabels.map((entry) => String(entry || "").toLowerCase())
+        : []
+    );
+    const primarySafetyLabels = new Set([
+      "explicit_pornography",
+      "suspected_child_exploitation",
+      "child_abuse",
+      "graphic_gore",
+      "animal_cruelty",
+    ]);
+    const hasNewSafetyEvidence =
+      Array.isArray(moderationDecision?.riskLabels)
+      && moderationDecision.riskLabels.some((entry) =>
+        primarySafetyLabels.has(String(entry || "").toLowerCase())
+        && !priorRiskLabels.has(String(entry || "").toLowerCase())
+      );
+    const hasInspectionFailure =
+      Array.isArray(moderationDecision?.riskLabels)
+      && moderationDecision.riskLabels.some((entry) =>
+        MEDIA_INSPECTION_FAILURE_LABELS.has(String(entry || "").toLowerCase())
+      );
+    if (
+      hasNewSafetyEvidence
+      || linkedReportIds.length > 0
+      || (resolvedStatus === "ALLOW" && hasInspectionFailure)
+    ) {
+      matchingResolvedCase = null;
+    }
+  }
+
+  if (matchingResolvedCase) {
+    let resolvedCaseChanged = false;
+    if (!String(matchingResolvedCase.sourceFingerprint || "").trim()) {
+      matchingResolvedCase.sourceFingerprint = sourceFingerprint;
+      resolvedCaseChanged = true;
+    }
+    if (!String(matchingResolvedCase.contentFingerprint || "").trim()) {
+      matchingResolvedCase.contentFingerprint = contentFingerprint;
+      resolvedCaseChanged = true;
+    }
+    if (resolvedCaseChanged) {
+      await matchingResolvedCase.save();
+    }
+
+    const activeDuplicates = await ModerationCase.find({
+      _id: { $ne: matchingResolvedCase._id },
+      "subject.targetType": normalizedTargetType,
+      "subject.targetId": normalizedTargetId,
+      workflowState: { $in: ACTIVE_REVIEW_STATES },
+      detectionSource: "admin_dashboard_scan",
+    }).limit(50);
+    const matchingDuplicates = activeDuplicates.filter((entry) =>
+      buildCaseContentFingerprint(entry) === contentFingerprint
+      || buildCaseSourceFingerprint(entry) === sourceFingerprint
+    );
+    for (const duplicate of matchingDuplicates) {
+      const previousStatus = String(duplicate.status || "ALLOW");
+      duplicate.status = matchingResolvedCase.status;
+      duplicate.workflowState = "RESOLVED";
+      duplicate.visibilityDecision = matchingResolvedCase.visibilityDecision;
+      duplicate.reviewedBy = matchingResolvedCase.reviewedBy || null;
+      duplicate.reviewedAt = matchingResolvedCase.reviewedAt || new Date();
+      duplicate.reviewer = matchingResolvedCase.reviewer || null;
+      duplicate.reviewerNote = matchingResolvedCase.reviewerNote || "";
+      duplicate.latestDecisionSummary = matchingResolvedCase.latestDecisionSummary;
+      duplicate.contentFingerprint = contentFingerprint;
+      duplicate.sourceFingerprint = sourceFingerprint;
+      duplicate.history.push({
+        actionType: "preserve_prior_resolution",
+        adminUserId: matchingResolvedCase.reviewedBy || matchingResolvedCase.reviewer || null,
+        adminEmail: matchingResolvedCase.latestDecisionSummary?.adminEmail || "",
+        previousStatus,
+        newStatus: matchingResolvedCase.status,
+        reason: "An unchanged admin-scanned item kept its prior manual resolution.",
+        createdAt: new Date(),
+      });
+      await duplicate.save();
+    }
+
+    if (autoEnforce && matchingDuplicates.length > 0) {
+      await applyModerationStatusToTarget({
+        targetType: normalizedTargetType,
+        targetId: normalizedTargetId,
+        status: matchingResolvedCase.status,
+        baselineAccess: matchingResolvedCase.subject?.baselineAccess || baselineAccess,
+        moderationCaseId: matchingResolvedCase._id,
+        sensitiveType: matchingResolvedCase.queue,
+        blurPreviewUrl: matchingResolvedCase.media?.[0]?.restrictedPreviewUrl || "",
+        action:
+          matchingResolvedCase.status === "ALLOW"
+            ? "restore_content"
+            : matchingResolvedCase.latestDecisionSummary?.actionType || "",
+      });
+    }
+
+    return {
+      moderationDecision: {
+        ...moderationDecision,
+        queue: matchingResolvedCase.queue,
+        status: matchingResolvedCase.status,
+        severity: matchingResolvedCase.severity,
+        riskLabels: matchingResolvedCase.riskLabels || [],
+      },
+      moderationCase: matchingResolvedCase,
+      publicOverlay: getPublicModerationOverlay(matchingResolvedCase, req),
+      baselineAccess: matchingResolvedCase.subject?.baselineAccess || baselineAccess,
+      resolutionPreserved: true,
+      reconciledCaseCount: matchingDuplicates.length,
+    };
+  }
+
+  const latestRiskLabels = Array.isArray(latestCase?.riskLabels)
+    ? latestCase.riskLabels.map((entry) => String(entry || "").toLowerCase())
+    : [];
+  const latestPolicyRiskLabels = latestRiskLabels.filter(
+    (label) => !["provider:", "mime:", "uploader:"].some((prefix) => label.startsWith(prefix))
+  );
+  const latestHasInspectionFailure = latestPolicyRiskLabels.some(
+    (label) => MEDIA_INSPECTION_FAILURE_LABELS.has(label)
+  );
+  const latestHasSubstantiveRisk = latestPolicyRiskLabels.some(
+    (label) => !MEDIA_INSPECTION_FAILURE_LABELS.has(label)
+  );
+  const latestIsTechnicalInspectionHold = Boolean(
+    latestCase
+    && ACTIVE_REVIEW_STATES.includes(String(latestCase.workflowState || ""))
+    && String(latestCase.detectionSource || "") === "admin_dashboard_scan"
+    && String(latestCase.queue || "") === "upload_moderation"
+    && latestHasInspectionFailure
+    && !latestHasSubstantiveRisk
+  );
+  const cleanProviderRetry = Boolean(
+    moderationDecision.status === "ALLOW"
+    && mediaInspectionDecision?.decision === "approve"
+    && hasCompletedVisualProviderCheck(mediaInspectionDecision)
+  );
+  if (latestIsTechnicalInspectionHold && cleanProviderRetry) {
+    const previousStatus = String(latestCase.status || "HOLD_FOR_REVIEW");
+    latestCase.status = "ALLOW";
+    latestCase.workflowState = "RESOLVED";
+    latestCase.visibilityDecision = "allowed";
+    latestCase.contentFingerprint = contentFingerprint;
+    latestCase.sourceFingerprint = sourceFingerprint;
+    latestCase.quarantine.isQuarantined = false;
+    latestCase.quarantine.quarantinedAt = null;
+    latestCase.publicWarningLabel = "";
+    latestCase.history.push({
+      actionType: "inspection_retry_cleared",
+      adminUserId: null,
+      adminEmail: "",
+      previousStatus,
+      newStatus: "ALLOW",
+      reason: "A completed visual-provider retry cleared the earlier technical inspection hold.",
+      createdAt: new Date(),
+    });
+    await latestCase.save();
+
+    if (autoEnforce) {
+      await applyModerationStatusToTarget({
+        targetType: normalizedTargetType,
+        targetId: normalizedTargetId,
+        status: "ALLOW",
+        baselineAccess: latestCase.subject?.baselineAccess || baselineAccess,
+        moderationCaseId: latestCase._id,
+        sensitiveType: latestCase.queue,
+        action: "restore_content",
+      });
+    }
+
+    return {
+      moderationDecision,
+      moderationCase: latestCase,
+      publicOverlay: getPublicModerationOverlay(latestCase, req),
+      baselineAccess: latestCase.subject?.baselineAccess || baselineAccess,
+      technicalFailureCleared: true,
+    };
+  }
+
   if (!shouldCreateCase) {
     return {
       moderationDecision,
@@ -2415,7 +2884,6 @@ const createOrUpdateModerationCase = async ({
     };
   }
 
-  const latestCase = await getLatestCaseForTarget(normalizedTargetType, normalizedTargetId);
   const uploaderInfo = {
     userId: uploader.userId || (await resolveTargetOwnerId({
       targetType: normalizedTargetType,
@@ -2442,6 +2910,8 @@ const createOrUpdateModerationCase = async ({
     priorityScore: Number(moderationDecision.priorityScore || 0),
     riskLabels: uniqueStrings(moderationDecision.riskLabels || []),
     detectionSource,
+    contentFingerprint,
+    sourceFingerprint,
     visibilityDecision:
       moderationDecision.status === "ALLOW"
         ? "allowed"
@@ -2505,7 +2975,14 @@ const createOrUpdateModerationCase = async ({
     && latestCase.status !== "ALLOW";
 
   if (shouldReuseCase) {
+    const existingWorkflowState = String(latestCase.workflowState || "OPEN");
     Object.assign(latestCase, nextPayload);
+    if (
+      ["UNDER_REVIEW", "ESCALATED"].includes(existingWorkflowState)
+      && String(nextPayload.workflowState || "OPEN") === "OPEN"
+    ) {
+      latestCase.workflowState = existingWorkflowState;
+    }
     moderationCase = await latestCase.save();
   } else {
     moderationCase = await ModerationCase.create(nextPayload);
@@ -2567,7 +3044,11 @@ const listModerationCases = async ({
   const query = {};
   if (queue) query.queue = String(queue);
   if (status) query.status = String(status);
-  if (workflowState) query.workflowState = String(workflowState);
+  if (String(workflowState || "").toUpperCase() === "ACTIVE") {
+    query.workflowState = { $in: ACTIVE_REVIEW_STATES };
+  } else if (workflowState) {
+    query.workflowState = String(workflowState);
+  }
   if (severity) query.severity = String(severity);
   if (criticalOnly) {
     query.$or = [{ severity: "CRITICAL" }, { priorityScore: { $gte: 90 } }];
@@ -2607,6 +3088,21 @@ const listModerationCases = async ({
 
 const getModerationSummary = async ({ user }) => {
   const repeatViolatorThreshold = MODERATION_REPEAT_VIOLATOR_STRIKE_THRESHOLD;
+  const countDistinctTargets = async (match = {}) => {
+    const [result] = await ModerationCase.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: {
+            targetType: "$subject.targetType",
+            targetId: "$subject.targetId",
+          },
+        },
+      },
+      { $count: "count" },
+    ]);
+    return Number(result?.count || 0);
+  };
   const [
     queueSummary,
     statusSummary,
@@ -2634,13 +3130,13 @@ const getModerationSummary = async ({ user }) => {
     ModerationCase.countDocuments({
       workflowState: { $in: ["OPEN", "UNDER_REVIEW", "ESCALATED"] },
     }),
-    ModerationCase.countDocuments({ status: "BLOCK_EXPLICIT_ADULT" }),
-    ModerationCase.countDocuments({ status: "BLOCK_SUSPECTED_CHILD_EXPLOITATION" }),
-    ModerationCase.countDocuments({
+    countDistinctTargets({ status: "BLOCK_EXPLICIT_ADULT" }),
+    countDistinctTargets({ status: "BLOCK_SUSPECTED_CHILD_EXPLOITATION" }),
+    countDistinctTargets({
       queue: "graphic_gore",
       status: "RESTRICTED_BLURRED",
     }),
-    ModerationCase.countDocuments({ status: "BLOCK_ANIMAL_CRUELTY" }),
+    countDistinctTargets({ status: "BLOCK_ANIMAL_CRUELTY" }),
     UserStrike.countDocuments({ count: { $gte: repeatViolatorThreshold } }),
   ]);
 
@@ -2671,14 +3167,47 @@ const scanContentForModeration = async ({
   req = null,
   search = "",
   limit = 20,
+  cursor = [],
   includeManualReview = false,
 }) => {
   const startedAt = new Date();
+  const scanDeadlineAt = startedAt.getTime() + ADMIN_SCAN_DEADLINE_MS;
   const normalizedSearch = normalizeText(search, 160);
   const normalizedLimit = Math.max(1, Math.min(50, Number(limit) || 20));
+  const normalizedCursor = uniqueStrings(Array.isArray(cursor) ? cursor : [])
+    .map((entry) => normalizeText(entry, 180))
+    .filter((entry) => /^(?:album|book|message|post|story|track|user|video):[a-f0-9]{24}$/i.test(entry))
+    .slice(0, ADMIN_SCAN_CURSOR_LIMIT);
+  const seenCandidateKeys = new Set(normalizedCursor);
+  const sourceQueryFailures = [];
+  const readSettledQuery = (result, source) => {
+    if (result?.status === "fulfilled") {
+      return Array.isArray(result.value) ? result.value : [];
+    }
+    sourceQueryFailures.push({
+      source,
+      message: normalizeText(result?.reason?.message || "Moderation scan source query failed.", 240),
+    });
+    return [];
+  };
+  const queryWindowSize = normalizedLimit + 1;
+  const getSeenTargetIds = (targetType) => normalizedCursor
+    .filter((entry) => entry.startsWith(`${targetType}:`))
+    .map((entry) => entry.slice(targetType.length + 1))
+    .filter(isValidObjectId);
+  const excludeSeenTargets = (query = {}, targetType = "", field = "_id") => {
+    const seenIds = getSeenTargetIds(targetType);
+    if (seenIds.length === 0) return query;
+    return {
+      $and: [
+        query,
+        { [field]: { $nin: seenIds } },
+      ],
+    };
+  };
   const regex = normalizedSearch ? new RegExp(escapeRegex(normalizedSearch), "i") : null;
-  const [matchedUsers, matchedCreatorProfiles] = regex
-    ? await Promise.all([
+  const matchedLookupResults = regex
+    ? await Promise.allSettled([
       User.find(
         {
           $or: [
@@ -2714,7 +3243,13 @@ const scanContentForModeration = async ({
         "_id userId displayName fullName"
       ).lean(),
     ])
-    : [[], []];
+    : [];
+  const matchedUsers = regex
+    ? readSettledQuery(matchedLookupResults[0], "matched_users")
+    : [];
+  const matchedCreatorProfiles = regex
+    ? readSettledQuery(matchedLookupResults[1], "matched_creator_profiles")
+    : [];
 
   const matchedUserIds = uniqueStrings([
     ...matchedUsers.map((entry) => toId(entry._id)),
@@ -2944,53 +3479,79 @@ const scanContentForModeration = async ({
         ],
       };
 
-  const [posts, stories, messages, videos, books, tracks, albums, users, creatorProfiles] = await Promise.all([
-    Post.find(postQuery)
+  const contentQueryResults = await Promise.allSettled([
+    Post.find(excludeSeenTargets(postQuery, "post"))
       .sort({ createdAt: -1, updatedAt: -1 })
-      .limit(normalizedLimit)
+      .limit(queryWindowSize)
       .populate("author", "_id name username email bio currentCity hometown workplace education website gender pronouns avatar cover status")
       .lean(),
-    Story.find(storyQuery)
+    Story.find(excludeSeenTargets(storyQuery, "story"))
       .sort({ time: -1, updatedAt: -1, createdAt: -1 })
-      .limit(normalizedLimit)
+      .limit(queryWindowSize)
       .populate("authorId", "_id name username email bio currentCity hometown workplace education website gender pronouns avatar cover status")
       .lean(),
-    Message.find(messageQuery)
+    Message.find(excludeSeenTargets(messageQuery, "message"))
       .sort({ createdAt: -1, time: -1, updatedAt: -1 })
-      .limit(normalizedLimit)
+      .limit(queryWindowSize)
       .populate("senderId", "_id name username email bio currentCity hometown workplace education website gender pronouns avatar cover status")
       .populate("receiverId", "_id name username email bio currentCity hometown workplace education website gender pronouns avatar cover status")
       .lean(),
-    Video.find(videoQuery)
+    Video.find(excludeSeenTargets(videoQuery, "video"))
       .sort({ time: -1, createdAt: -1, updatedAt: -1 })
-      .limit(normalizedLimit)
+      .limit(queryWindowSize)
       .lean(),
-    Book.find(bookQuery)
+    Book.find(excludeSeenTargets(bookQuery, "book"))
       .sort({ updatedAt: -1, createdAt: -1 })
-      .limit(normalizedLimit)
+      .limit(queryWindowSize)
       .populate("creatorId", "_id userId displayName fullName bio tagline country countryOfResidence coverImageUrl heroBannerUrl")
       .lean(),
-    Track.find(trackQuery)
+    Track.find(excludeSeenTargets(trackQuery, "track"))
       .sort({ updatedAt: -1, createdAt: -1 })
-      .limit(normalizedLimit)
+      .limit(queryWindowSize)
       .populate("creatorId", "_id userId displayName fullName bio tagline country countryOfResidence coverImageUrl heroBannerUrl")
       .lean(),
-    Album.find(albumQuery)
+    Album.find(excludeSeenTargets(albumQuery, "album"))
       .sort({ updatedAt: -1, createdAt: -1 })
-      .limit(normalizedLimit)
+      .limit(queryWindowSize)
       .populate("creatorId", "_id userId displayName fullName bio tagline country countryOfResidence coverImageUrl heroBannerUrl")
       .lean(),
-    User.find(userQuery)
+    User.find(excludeSeenTargets(userQuery, "user"))
       .sort({ updatedAt: -1, createdAt: -1 })
-      .limit(normalizedLimit)
+      .limit(queryWindowSize)
       .select("_id name username email bio currentCity hometown workplace education website gender pronouns status avatar cover isBanned isSuspended updatedAt createdAt")
       .lean(),
-    CreatorProfile.find(creatorProfileQuery)
+    CreatorProfile.find(excludeSeenTargets(creatorProfileQuery, "user", "userId"))
       .sort({ updatedAt: -1, createdAt: -1 })
-      .limit(normalizedLimit)
+      .limit(queryWindowSize)
       .select("_id userId displayName fullName bio tagline country countryOfResidence musicProfile booksProfile podcastsProfile links coverImageUrl heroBannerUrl updatedAt createdAt")
       .lean(),
   ]);
+  const contentQuerySources = [
+    "posts",
+    "stories",
+    "messages",
+    "videos",
+    "books",
+    "tracks",
+    "albums",
+    "users",
+    "creator_profiles",
+  ];
+  const [posts, stories, messages, videos, books, tracks, albums, users, creatorProfiles] =
+    contentQueryResults.map((result, index) =>
+      readSettledQuery(result, contentQuerySources[index])
+    );
+  const sourceWindowMayHaveMore = [
+    posts,
+    stories,
+    messages,
+    videos,
+    books,
+    tracks,
+    albums,
+    users,
+    creatorProfiles,
+  ].some((entries) => entries.length >= queryWindowSize);
 
   const candidateMap = new Map();
   const dedupeMediaAssets = (assets = []) => {
@@ -3015,6 +3576,10 @@ const scanContentForModeration = async ({
     if (!targetType || !targetId) {
       return;
     }
+    const key = `${targetType}:${targetId}`;
+    if (seenCandidateKeys.has(key)) {
+      return;
+    }
 
     const normalizedCandidate = {
       ...candidate,
@@ -3030,7 +3595,6 @@ const scanContentForModeration = async ({
       sortAt: candidate.sortAt || new Date(0),
     };
 
-    const key = `${targetType}:${targetId}`;
     const existing = candidateMap.get(key);
     if (!existing) {
       candidateMap.set(key, normalizedCandidate);
@@ -3091,9 +3655,21 @@ const scanContentForModeration = async ({
   users.forEach((entry) => addCandidate(buildUserAccountScanCandidate(entry, creatorProfileByUserId.get(toId(entry?._id)) || null, req)));
   creatorProfiles.forEach((entry) => addCandidate(buildUserAccountScanCandidate(userById.get(toId(entry?.userId)) || {}, entry, req)));
 
-  const candidates = [...candidateMap.values()].sort(
-    (left, right) => new Date(right.sortAt || 0).getTime() - new Date(left.sortAt || 0).getTime()
-  );
+  const getCandidateScanPriority = (candidate = {}) => {
+    const hasVisualMedia = (Array.isArray(candidate?.media) ? candidate.media : [])
+      .some(isPotentialVisualAsset);
+    if (!hasVisualMedia) return 0;
+    return String(candidate?.targetType || "") === "message" ? 1 : 2;
+  };
+  const availableCandidates = [...candidateMap.values()].sort((left, right) => {
+    const priorityDifference = getCandidateScanPriority(right) - getCandidateScanPriority(left);
+    if (priorityDifference !== 0) return priorityDifference;
+    return new Date(right.sortAt || 0).getTime() - new Date(left.sortAt || 0).getTime();
+  });
+  const candidates = availableCandidates.slice(0, normalizedLimit);
+  let hasMoreCandidates =
+    availableCandidates.length > candidates.length
+    || sourceWindowMayHaveMore;
 
   const cases = [];
   let approvedCount = 0;
@@ -3108,6 +3684,13 @@ const scanContentForModeration = async ({
   let inspectionFailureCount = 0;
   let skippedAssetCount = 0;
   let metadataOnlyCount = 0;
+  let preservedResolutionCount = 0;
+  let reconciledCaseCount = 0;
+  let processingFailureCount = 0;
+  let attemptedCandidateCount = 0;
+  let scanDeadlineReached = false;
+  const processingFailures = [];
+  const attemptedCandidates = [];
   const flaggedAccountIds = new Set();
 
   const tallyScanResult = (candidate = {}, result = {}) => {
@@ -3134,7 +3717,45 @@ const scanContentForModeration = async ({
   };
 
   for (const candidate of candidates) {
-    const mediaInspection = await inspectCandidateMediaForModeration(candidate);
+    if (Date.now() >= scanDeadlineAt) {
+      scanDeadlineReached = true;
+      break;
+    }
+    attemptedCandidateCount += 1;
+    attemptedCandidates.push(candidate);
+    let mediaInspection;
+    try {
+      const inspectionAbortController = new AbortController();
+      mediaInspection = await withAdminScanDeadline(
+        inspectCandidateMediaForModeration(candidate, {
+          signal: inspectionAbortController.signal,
+        }),
+        scanDeadlineAt,
+        () => inspectionAbortController.abort()
+      );
+    } catch (error) {
+      const deadlineExceeded = error?.code === "ADMIN_SCAN_DEADLINE_EXCEEDED";
+      if (deadlineExceeded) {
+        scanDeadlineReached = true;
+      }
+      const candidateVisualAssetCount = (Array.isArray(candidate?.media) ? candidate.media : [])
+        .filter(isPotentialVisualAsset)
+        .length;
+      mediaInspection = {
+        decision: buildInspectionFailureDecision({
+          labels: deadlineExceeded
+            ? ["inspection_failed", "scan_deadline_exceeded"]
+            : ["inspection_failed"],
+          reason: deadlineExceeded
+            ? "Stored media inspection reached the bounded scan deadline and requires manual review."
+            : error?.message || "Stored media inspection failed.",
+        }),
+        visualAssetCount: candidateVisualAssetCount,
+        inspectedAssetCount: 0,
+        failedAssetCount: Math.max(1, candidateVisualAssetCount),
+        skippedAssetCount: Math.max(0, candidateVisualAssetCount - ADMIN_SCAN_MAX_MEDIA_ASSETS),
+      };
+    }
     visualAssetCount += Number(mediaInspection?.visualAssetCount || 0);
     inspectedAssetCount += Number(mediaInspection?.inspectedAssetCount || 0);
     skippedAssetCount += Number(mediaInspection?.skippedAssetCount || 0);
@@ -3154,44 +3775,103 @@ const scanContentForModeration = async ({
     } else {
       metadataOnlyCount += 1;
     }
+    const inspectedHashByIndex = new Map(
+      (Array.isArray(mediaInspection?.contentFileHashes) ? mediaInspection.contentFileHashes : [])
+        .map((entry) => [Number(entry?.candidateIndex), String(entry?.fileHash || "")])
+        .filter(([index, fileHash]) => Number.isInteger(index) && fileHash)
+    );
+    const moderationMedia = (Array.isArray(candidate?.media) ? candidate.media : []).map(
+      (asset, index) => ({
+        ...asset,
+        fileHash: inspectedHashByIndex.get(index) || asset?.fileHash || "",
+      })
+    );
 
-    const result = await createOrUpdateModerationCase({
-      targetType: candidate.targetType,
-      targetId: candidate.targetId,
-      title: candidate.title,
-      description: candidate.description,
-      metadata: {
-        ...(candidate.metadata || {}),
-        scanSource: "admin_dashboard_scan",
-      },
-      media: candidate.media || [],
-      uploader: candidate.uploader || {},
-      detectionSource: candidate.detectionSource || "admin_dashboard_scan",
-      req,
-      targetDoc: candidate.targetDoc || null,
-      subjectMediaType: candidate.subjectMediaType || "",
-      forceReview: includeManualReview && Boolean(normalizedSearch),
-      manualReviewReason: normalizedSearch
-        ? `Admin scan requested for "${normalizedSearch}"`
-        : "Admin scan requested",
-      mediaInspectionDecision: mediaInspection?.decision || null,
-    });
+    try {
+      const result = await createOrUpdateModerationCase({
+        targetType: candidate.targetType,
+        targetId: candidate.targetId,
+        title: candidate.title,
+        description: candidate.description,
+        metadata: {
+          ...(candidate.metadata || {}),
+          scanSource: "admin_dashboard_scan",
+        },
+        media: moderationMedia,
+        uploader: candidate.uploader || {},
+        detectionSource: candidate.detectionSource || "admin_dashboard_scan",
+        req,
+        targetDoc: candidate.targetDoc || null,
+        subjectMediaType: candidate.subjectMediaType || "",
+        forceReview: includeManualReview && Boolean(normalizedSearch),
+        manualReviewReason: normalizedSearch
+          ? `Admin scan requested for "${normalizedSearch}"`
+          : "Admin scan requested",
+        mediaInspectionDecision: mediaInspection?.decision || null,
+      });
 
-    if (result?.moderationCase) {
-      cases.push(buildAdminCasePayload(result.moderationCase, user));
+      if (result?.resolutionPreserved) {
+        preservedResolutionCount += 1;
+        reconciledCaseCount += Number(result?.reconciledCaseCount || 0);
+        continue;
+      }
+      if (result?.technicalFailureCleared) {
+        tallyScanResult(candidate, result);
+        continue;
+      }
+      if (result?.moderationCase) {
+        cases.push(buildAdminCasePayload(result.moderationCase, user));
+      }
+      tallyScanResult(candidate, result);
+    } catch (error) {
+      processingFailureCount += 1;
+      if (processingFailures.length < 10) {
+        processingFailures.push({
+          targetType: String(candidate?.targetType || "unknown"),
+          targetId: String(candidate?.targetId || ""),
+          message: normalizeText(error?.message || "Candidate processing failed.", 240),
+        });
+      }
     }
-    tallyScanResult(candidate, result);
+
+    if (scanDeadlineReached) {
+      break;
+    }
   }
 
+  if (attemptedCandidateCount < candidates.length) {
+    hasMoreCandidates = true;
+  }
+
+  const attemptedCandidateKeys = attemptedCandidates.map(
+    (candidate) => `${candidate.targetType}:${candidate.targetId}`
+  );
+  const continuedCursor = uniqueStrings([...normalizedCursor, ...attemptedCandidateKeys]);
+  const cursorLimitReached = hasMoreCandidates
+    && continuedCursor.length >= ADMIN_SCAN_CURSOR_LIMIT;
+
   const completedAt = new Date();
-  const candidateTimes = candidates
+  const candidateTimes = attemptedCandidates
     .map((candidate) => new Date(candidate?.sortAt || 0))
     .filter((value) => Number.isFinite(value.getTime()) && value.getTime() > 0)
     .sort((left, right) => left.getTime() - right.getTime());
 
   return {
-    scannedCount: candidates.length,
-    processedCount: candidates.length,
+    scannedCount: attemptedCandidateCount,
+    processedCount: attemptedCandidateCount,
+    completedCount: attemptedCandidateCount - processingFailureCount,
+    availableCandidateCount: availableCandidates.length,
+    candidateCountLowerBound: Math.max(
+      normalizedCursor.length + availableCandidates.length,
+      normalizedCursor.length + attemptedCandidateCount + (hasMoreCandidates ? 1 : 0)
+    ),
+    scanOffset: normalizedCursor.length,
+    nextOffset: hasMoreCandidates ? normalizedCursor.length + attemptedCandidateCount : null,
+    nextCursor: hasMoreCandidates && !cursorLimitReached ? continuedCursor : null,
+    cursorLimitReached,
+    truncated: hasMoreCandidates,
+    scanDeadlineReached,
+    scanDeadlineMs: ADMIN_SCAN_DEADLINE_MS,
     approvedCount,
     blockedCount,
     reviewCount,
@@ -3204,13 +3884,22 @@ const scanContentForModeration = async ({
     inspectionFailureCount,
     skippedAssetCount,
     metadataOnlyCount,
+    preservedResolutionCount,
+    reconciledCaseCount,
+    processingFailureCount,
+    processingFailures,
+    sourceQueryFailureCount: sourceQueryFailures.length,
+    sourceQueryFailures: sourceQueryFailures.slice(0, 10),
     providerStatus:
-      visualItemCount === 0
+      processingFailureCount > 0 || sourceQueryFailures.length > 0
+        ? "degraded"
+        : visualItemCount === 0
         ? "not_required"
         : inspectionFailureCount > 0
           ? "degraded"
           : "available",
     scanScope: normalizedSearch ? "search_matches" : "recent_content",
+    scanQuery: normalizedSearch,
     startedAt: startedAt.toISOString(),
     completedAt: completedAt.toISOString(),
     coverage: {

@@ -447,7 +447,7 @@ const proxyRemoteMedia = async ({
   return true;
 };
 
-const openMediaSourceStream = async (sourceUrl = "") => {
+const openMediaSourceStream = async (sourceUrl = "", { signal } = {}) => {
   const localDetails = await resolveLocalMediaDetails(sourceUrl).catch(() => null);
   if (localDetails) {
     return {
@@ -479,6 +479,7 @@ const openMediaSourceStream = async (sourceUrl = "") => {
   const response = await fetch(sourceUrl, {
     method: "GET",
     redirect: "follow",
+    signal,
   });
 
   if (!response.ok || !response.body) {

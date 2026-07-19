@@ -292,6 +292,20 @@ const ModerationCaseSchema = new mongoose.Schema(
       trim: true,
       maxlength: 80,
     },
+    contentFingerprint: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 64,
+      index: true,
+    },
+    sourceFingerprint: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 64,
+      index: true,
+    },
     visibilityDecision: {
       type: String,
       enum: ["blocked", "review", "restricted", "allowed"],

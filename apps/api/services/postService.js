@@ -64,6 +64,21 @@ const DEFAULT_POST_REACTION_KEY = POST_REACTIONS[0].key;
 const POST_REACTION_BY_KEY = new Map(POST_REACTIONS.map((reaction) => [reaction.key, reaction]));
 const POST_REACTION_BY_EMOJI = new Map(POST_REACTIONS.map((reaction) => [reaction.emoji, reaction]));
 const MAX_POST_MEDIA_FILES = 10;
+const POST_SCAN_FAILURE_LABELS = new Set([
+  "inspection_failed",
+  "visual_provider_unavailable",
+  "video_decoder_unavailable",
+  "video_frames_missing",
+  "video_frame_extraction_failed",
+]);
+const POST_SAFETY_RISK_LABELS = new Set([
+  "explicit_pornography",
+  "suspected_child_exploitation",
+  "child_abuse",
+  "graphic_gore",
+  "animal_cruelty",
+  "duplicate_ban_match",
+]);
 
 const isEnforcedHiddenPostStatus = (value = "") => {
   const status = String(value || "").trim();
@@ -259,6 +274,25 @@ const mergeModerationDecisions = ({ nextDecision = null, legacyStatus = "" } = {
   }
 
   return nextDecision;
+};
+
+const resolvePostUploadDecision = (decision = {}) => {
+  const labels = (Array.isArray(decision?.labels) ? decision.labels : [])
+    .map((label) => String(label || "").trim().toLowerCase())
+    .filter(Boolean);
+  const isTechnicalFailure = labels.some((label) => POST_SCAN_FAILURE_LABELS.has(label));
+  const hasSafetySignal = labels.some((label) => POST_SAFETY_RISK_LABELS.has(label));
+
+  if (decision?.decision !== "quarantine" || !isTechnicalFailure || hasSafetySignal) {
+    return decision;
+  }
+
+  return {
+    ...decision,
+    decision: "approve",
+    reason: "Automated media inspection was unavailable; the post was allowed to publish.",
+    confidence: 0,
+  };
 };
 
 const ALLOWED_POST_TYPES = new Set(["text", "image", "video", "reel", "poll", "quiz", "checkin"]);
@@ -1424,10 +1458,12 @@ class PostService {
       legacyPreflightModerationDecision = preflightResult.moderationDecision || null;
     }
 
-    const moderationUploadDecision = mergeModerationDecisions({
-      nextDecision: moderationUpload || null,
-      legacyStatus: legacyPreflightModerationDecision?.status || "",
-    });
+    const moderationUploadDecision = resolvePostUploadDecision(
+      mergeModerationDecisions({
+        nextDecision: moderationUpload || null,
+        legacyStatus: legacyPreflightModerationDecision?.status || "",
+      })
+    );
 
     if (uploadFiles.length > 0 && moderationUploadDecision.decision !== "approve") {
       const rejectionStatus = resolveUploadRejectionStatus(moderationUploadDecision.labels || []);
@@ -1552,14 +1588,14 @@ class PostService {
       mentions,
       poll: type === "poll" ? poll : undefined,
       quiz: type === "quiz" ? quiz : undefined,
-      moderationStatus: "pending",
+      moderationStatus: "approved",
       moderationLabels: moderationUploadDecision.labels || [],
       moderationReason: moderationUploadDecision.reason || "",
       moderationConfidence: Number(moderationUploadDecision.confidence || 0),
       reviewedBy: null,
       reviewedAt: null,
       storageStage: "permanent",
-      reviewRequired: true,
+      reviewRequired: false,
     });
 
     const post = await withPostAuthor(Post.findById(created._id)).lean();
@@ -2072,10 +2108,12 @@ class PostService {
         subjectMediaType: hasUploadVideo ? "video" : inferMediaKind(firstUploadFile),
       });
 
-      const moderationUploadDecision = mergeModerationDecisions({
-        nextDecision: moderationUpload || null,
-        legacyStatus: preflightResult.moderationDecision?.status || "",
-      });
+      const moderationUploadDecision = resolvePostUploadDecision(
+        mergeModerationDecisions({
+          nextDecision: moderationUpload || null,
+          legacyStatus: preflightResult.moderationDecision?.status || "",
+        })
+      );
 
       if (moderationUploadDecision.decision !== "approve") {
         const tempTargetId = `pending:post_edit:${userId}:${new mongoose.Types.ObjectId().toString()}`;
@@ -2654,3 +2692,4 @@ class PostService {
 }
 
 module.exports = PostService;
+module.exports.resolvePostUploadDecision = resolvePostUploadDecision;

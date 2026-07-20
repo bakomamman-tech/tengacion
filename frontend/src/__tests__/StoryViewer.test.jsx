@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import StoryViewer from "../stories/StoryViewer";
@@ -23,6 +24,16 @@ const story = {
   image: "https://cdn.test/story.jpg",
   mediaType: "image",
 };
+
+const renderInRouter = (ui, extraRoutes = []) =>
+  render(
+    <MemoryRouter initialEntries={["/home"]}>
+      <Routes>
+        <Route path="/home" element={ui} />
+        {extraRoutes}
+      </Routes>
+    </MemoryRouter>
+  );
 
 describe("StoryViewer", () => {
   let playMock;
@@ -50,7 +61,7 @@ describe("StoryViewer", () => {
 
   it("keeps the story open while a reply is being written", async () => {
     const onClose = vi.fn();
-    render(<StoryViewer story={story} onClose={onClose} />);
+    renderInRouter(<StoryViewer story={story} onClose={onClose} />);
 
     const input = screen.getByPlaceholderText(/reply to story/i);
     fireEvent.focus(input);
@@ -77,7 +88,7 @@ describe("StoryViewer", () => {
   });
 
   it("shows a reaction burst when a quick emoji is clicked", async () => {
-    const { container } = render(<StoryViewer story={story} onClose={vi.fn()} />);
+    const { container } = renderInRouter(<StoryViewer story={story} onClose={vi.fn()} />);
 
     await act(async () => {
       fireEvent.click(screen.getAllByRole("button", { name: /react with/i })[0]);
@@ -89,7 +100,7 @@ describe("StoryViewer", () => {
   });
 
   it("automatically plays an attached creator soundtrack when the story opens", async () => {
-    render(
+    renderInRouter(
       <StoryViewer
         story={{
           ...story,
@@ -120,7 +131,7 @@ describe("StoryViewer", () => {
 
   it("keeps the close control outside the scrollable story content", () => {
     const onClose = vi.fn();
-    render(<StoryViewer story={story} onClose={onClose} />);
+    renderInRouter(<StoryViewer story={story} onClose={onClose} />);
 
     const closeButton = screen.getByRole("button", { name: "Close story" });
     const scrollableBody = document.querySelector(".story-viewer-body");
@@ -133,11 +144,31 @@ describe("StoryViewer", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("opens the story poster's profile when their name is clicked", () => {
+    renderInRouter(
+      <StoryViewer story={story} onClose={vi.fn()} />,
+      [
+        <Route
+          key="profile"
+          path="/profile/:username"
+          element={<div>Profile destination</div>}
+        />,
+      ]
+    );
+
+    const profileLink = screen.getByRole("link", { name: "Open madaki's profile" });
+    expect(profileLink).toHaveAttribute("href", "/profile/madaki");
+
+    fireEvent.click(profileLink);
+
+    expect(screen.getByText("Profile destination")).toBeInTheDocument();
+  });
+
   it("lets the owner delete a story from the three-dot options menu", async () => {
     const onClose = vi.fn();
     const onDeleted = vi.fn();
     const confirmMock = vi.spyOn(window, "confirm").mockReturnValue(true);
-    render(
+    renderInRouter(
       <StoryViewer
         story={{ ...story, isOwner: true }}
         onClose={onClose}
@@ -162,7 +193,7 @@ describe("StoryViewer", () => {
   });
 
   it("does not show story deletion controls to another viewer", () => {
-    render(<StoryViewer story={{ ...story, isOwner: false }} onClose={vi.fn()} />);
+    renderInRouter(<StoryViewer story={{ ...story, isOwner: false }} onClose={vi.fn()} />);
 
     expect(screen.queryByRole("button", { name: "Story options" })).not.toBeInTheDocument();
   });
@@ -185,7 +216,7 @@ describe("StoryViewer", () => {
       },
     ];
 
-    render(<StoryViewer story={stories[2]} stories={stories} onClose={onClose} />);
+    renderInRouter(<StoryViewer story={stories[2]} stories={stories} onClose={onClose} />);
 
     const previous = screen.getByRole("button", { name: "Previous story" });
     const next = screen.getByRole("button", { name: "Next story" });
@@ -223,7 +254,7 @@ describe("StoryViewer", () => {
       image: "https://cdn.test/prosper-story.jpg",
     };
 
-    render(
+    renderInRouter(
       <StoryViewer
         story={story}
         stories={[story]}

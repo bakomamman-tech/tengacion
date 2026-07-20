@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { deleteStory, markStorySeen, reactToStory, replyToStory, resolveImage } from "../api";
 import Button from "../components/ui/Button";
+import ProfileNameLink from "../components/ui/ProfileNameLink";
 import { getStoryMedia } from "./storyMedia";
 
 const IMAGE_DURATION_MS = 5000;
@@ -566,7 +567,13 @@ export default function StoryViewer({
           <div className="story-viewer-user">
             <img src={avatarSrc} alt={activeStory?.username || "User"} />
             <div>
-              <strong>{activeStory?.username || "User"}</strong>
+              <ProfileNameLink
+                username={activeStory?.username}
+                className="story-viewer-profile-link"
+                ariaLabel={`Open ${activeStory?.username || "this user"}'s profile`}
+              >
+                <strong>{activeStory?.username || "User"}</strong>
+              </ProfileNameLink>
               <span>{formatStoryTime(activeStory?.time)}</span>
             </div>
           </div>

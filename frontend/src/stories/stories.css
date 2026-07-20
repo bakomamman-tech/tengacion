@@ -969,6 +969,22 @@
   font-size: 14px;
 }
 
+.story-viewer-user .story-viewer-profile-link {
+  color: #fff;
+  font-weight: 800;
+}
+
+.story-viewer-user .story-viewer-profile-link:hover,
+.story-viewer-user .story-viewer-profile-link:focus-visible {
+  color: #fff;
+}
+
+.story-viewer-user .story-viewer-profile-link:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid #9ee8b4;
+  outline-offset: 2px;
+}
+
 .story-viewer-user span {
   display: block;
   margin-top: 2px;

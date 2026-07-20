@@ -50,6 +50,16 @@ export const TEAM_LEADS = [
     bio:
       "Charles Nomzi leads Tengacion's customer care work in Zamfara State, helping customers access responsive support and dependable issue resolution.",
   },
+  {
+    id: "rebecca-s-magaji",
+    name: "Mrs. Rebecca S. Magaji",
+    role: "Customer Care Support Lead",
+    location: "Southern Kaduna, Nigeria",
+    image: "/assets/leadership/rebecca-s-magaji.png",
+    imageAlt: "Mrs. Rebecca S. Magaji, Customer Care Support Lead at Tengacion",
+    bio:
+      "Mrs. Rebecca S. Magaji leads Tengacion's customer care support in Southern Kaduna, Nigeria, helping customers access responsive assistance and dependable issue resolution.",
+  },
 ];
 
 export const INTERNS = [

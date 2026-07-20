@@ -244,6 +244,11 @@ export default function LeadershipPage() {
                 <div className="leadership-card__body">
                   <p className="leadership-card__role">{leader.role}</p>
                   <h3>{leader.name}</h3>
+                  {leader.location ? (
+                    <span className="leadership-card__location">
+                      {leader.location}
+                    </span>
+                  ) : null}
                   <div className="leadership-card__rule" aria-hidden="true" />
                   <p className="leadership-card__bio">{leader.bio}</p>
                 </div>

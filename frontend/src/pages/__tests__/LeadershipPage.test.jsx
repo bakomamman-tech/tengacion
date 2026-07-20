@@ -83,6 +83,16 @@ describe("LeadershipPage", () => {
         "Charles Nomzi, Customer Care Lead in Zamfara State at Tengacion"
       )
     ).toHaveAttribute("src", "/assets/leadership/charles-nomzi.png");
+    expect(screen.getByText("Customer Care Support Lead")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Mrs. Rebecca S. Magaji" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Southern Kaduna, Nigeria")).toBeInTheDocument();
+    expect(
+      screen.getByAltText(
+        "Mrs. Rebecca S. Magaji, Customer Care Support Lead at Tengacion"
+      )
+    ).toHaveAttribute("src", "/assets/leadership/rebecca-s-magaji.png");
     expect(
       screen.getByRole("heading", { name: "Interns" })
     ).toBeInTheDocument();

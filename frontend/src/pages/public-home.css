@@ -1956,9 +1956,14 @@
   text-transform: uppercase;
 }
 
+.public-home.public-home--nature-green .public-home__bootcamp-media picture,
 .public-home.public-home--nature-green .public-home__bootcamp-media img {
   width: 100%;
   display: block;
+}
+
+.public-home.public-home--nature-green .public-home__bootcamp-media img {
+  height: auto;
   border-radius: 16px;
 }
 

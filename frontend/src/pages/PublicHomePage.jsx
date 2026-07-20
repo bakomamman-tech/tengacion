@@ -517,11 +517,22 @@ export default function PublicHomePage() {
       >
         <div className="public-home__bootcamp-media">
           <span>New · Family learning</span>
-          <img
-            src="/assets/campaigns/summer-bootcamp-2026.png"
-            alt="Tengacion Virtual Summer Bootcamp flyer"
-            loading="lazy"
-          />
+          <picture>
+            <source
+              type="image/webp"
+              srcSet="/assets/campaigns/summer-bootcamp-2026-480.webp 480w, /assets/campaigns/summer-bootcamp-2026-768.webp 768w, /assets/campaigns/summer-bootcamp-2026-1024.webp 1024w"
+              sizes="(max-width: 430px) calc(100vw - 36px), (max-width: 880px) min(580px, calc(100vw - 96px)), 470px"
+            />
+            <img
+              src="/assets/campaigns/summer-bootcamp-2026-768.webp"
+              width="768"
+              height="1152"
+              alt="Tengacion Virtual Summer Bootcamp flyer"
+              loading="lazy"
+              decoding="async"
+              fetchPriority="low"
+            />
+          </picture>
         </div>
         <div className="public-home__bootcamp-copy">
           <p className="public-home__eyebrow">This summer on Tengacion</p>

@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import AdminRoute from "./components/AdminRoute";
 import InstallPrompt from "./components/InstallPrompt";
@@ -153,10 +153,14 @@ function AppShellFallback({ message = "Loading Tengacion..." }) {
 
 export default function App() {
   const { user, loading: authLoading } = useAuth();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
   usePageTracking();
 
-  if (authLoading) {
+  // The public landing page must remain useful while a slow mobile connection
+  // checks for an existing session. Authenticated visitors are redirected as
+  // soon as restoration completes; protected routes still keep the full gate.
+  if (authLoading && pathname !== "/") {
     return <AppShellFallback />;
   }
 

@@ -139,7 +139,10 @@ describe("PublicHomePage", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("img", { name: "Tengacion Virtual Summer Bootcamp flyer" })
-    ).toHaveAttribute("src", "/assets/campaigns/summer-bootcamp-2026.png");
+    ).toHaveAttribute("src", "/assets/campaigns/summer-bootcamp-2026-768.webp");
+    expect(
+      screen.getByRole("img", { name: "Tengacion Virtual Summer Bootcamp flyer" })
+    ).toHaveAttribute("loading", "lazy");
     expect(screen.getByRole("link", { name: /register your family/i })).toHaveAttribute(
       "href",
       "/summer-bootcamp/register"

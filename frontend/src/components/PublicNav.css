@@ -416,26 +416,62 @@
   }
 
   .public-nav--landing .public-nav__menu {
-    gap: 6px;
+    max-height: 0;
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding-top: 0;
+    border-top: 0;
+    overflow: hidden;
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition:
+      max-height 240ms ease,
+      padding-top 240ms ease,
+      opacity 180ms ease,
+      transform 180ms ease,
+      visibility 180ms ease;
+  }
+
+  .public-nav--landing {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .public-nav--landing .public-nav__toggle {
+    display: grid;
+  }
+
+  .public-nav--landing .public-nav__menu--open {
+    max-height: 520px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
   }
 
   .public-nav--landing .public-nav__button-rail {
-    gap: 5px;
-    padding-bottom: 5px;
+    display: contents;
   }
 
-  .public-nav--landing .public-nav__links a,
-  .public-nav--landing .public-nav__account {
-    min-height: 42px;
-    font-size: 0.81rem;
+  .public-nav--landing .public-nav__links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
   }
 
   .public-nav--landing .public-nav__links a {
-    padding: 0 13px;
+    min-height: 42px;
+    padding: 0 8px;
+    font-size: 0.81rem;
   }
 
   .public-nav--landing .public-nav__account {
+    width: 100%;
+    min-height: 46px;
     padding: 0 13px;
+    font-size: 0.81rem;
   }
 
   .public-nav--landing .public-nav__account strong {
@@ -443,13 +479,7 @@
   }
 
   .public-nav--landing .public-nav__rail-control {
-    width: 34px;
-    height: 34px;
-  }
-
-  .public-nav--landing .public-nav__rail-control svg {
-    width: 18px;
-    height: 18px;
+    display: none !important;
   }
 }
 

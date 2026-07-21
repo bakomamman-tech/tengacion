@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { deleteStory, markStorySeen, reactToStory, replyToStory, resolveImage } from "../api";
 import Button from "../components/ui/Button";
 import ProfileNameLink from "../components/ui/ProfileNameLink";
@@ -503,7 +504,7 @@ export default function StoryViewer({
     }
   };
 
-  return (
+  return createPortal(
     <div className="story-viewer-overlay" onClick={onClose}>
       <button
         type="button"
@@ -789,6 +790,7 @@ export default function StoryViewer({
       >
         <StoryViewerChevron direction="next" />
       </button>
-    </div>
+    </div>,
+    document.body
   );
 }

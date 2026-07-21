@@ -87,8 +87,14 @@ describe("StoryViewer", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("renders the viewer at the document root above in-feed stacking contexts", () => {
+    renderInRouter(<StoryViewer story={story} onClose={vi.fn()} />);
+
+    expect(document.querySelector(".story-viewer-overlay")?.parentElement).toBe(document.body);
+  });
+
   it("shows a reaction burst when a quick emoji is clicked", async () => {
-    const { container } = renderInRouter(<StoryViewer story={story} onClose={vi.fn()} />);
+    renderInRouter(<StoryViewer story={story} onClose={vi.fn()} />);
 
     await act(async () => {
       fireEvent.click(screen.getAllByRole("button", { name: /react with/i })[0]);
@@ -96,7 +102,7 @@ describe("StoryViewer", () => {
     });
 
     expect(reactToStoryMock).toHaveBeenCalledWith("story-1", expect.any(String));
-    expect(container.querySelector(".story-viewer-reaction-burst")).toBeInTheDocument();
+    expect(document.querySelector(".story-viewer-reaction-burst")).toBeInTheDocument();
   });
 
   it("automatically plays an attached creator soundtrack when the story opens", async () => {

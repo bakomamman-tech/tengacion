@@ -12,6 +12,9 @@ const {
   classifyRecordMedia,
   LEGACY_MEDIA_SOURCES,
 } = require("../services/mediaAuditService");
+const {
+  setVisualModerationClientForTests,
+} = require("../services/visualModerationProvider");
 
 const loginUser = async (email, password) => {
   const response = await request(app)
@@ -50,6 +53,7 @@ describe("user media uploads", () => {
   });
 
   afterAll(async () => {
+    setVisualModerationClientForTests(null);
     await mongoose.disconnect();
     if (mongod) {
       await mongod.stop();
@@ -162,6 +166,51 @@ describe("user media uploads", () => {
       legacyPath: "",
     });
     expect(classifyRecordMedia(refreshed, userSource).status).toBe("cloudinary");
+  });
+
+  test("avatar and cover uploads continue when automated visual review is unavailable", async () => {
+    const unavailableClient = {
+      moderations: {
+        create: jest.fn().mockRejectedValue(new Error("Moderation provider unavailable")),
+      },
+      responses: {
+        create: jest.fn().mockRejectedValue(new Error("Vision provider unavailable")),
+      },
+    };
+    setVisualModerationClientForTests(unavailableClient);
+
+    try {
+      const avatarResponse = await request(app)
+        .post("/api/users/me/avatar")
+        .set("Authorization", `Bearer ${token}`)
+        .attach("image", Buffer.from("avatar-image"), {
+          filename: "avatar.jpg",
+          contentType: "image/jpeg",
+        })
+        .expect(200);
+
+      const coverResponse = await request(app)
+        .post("/api/users/me/cover")
+        .set("Authorization", `Bearer ${token}`)
+        .attach("image", Buffer.from("cover-image"), {
+          filename: "cover.jpg",
+          contentType: "image/jpeg",
+        })
+        .expect(200);
+
+      expect(avatarResponse.body.user.avatar).toMatchObject({
+        provider: "cloudinary",
+        publicId: "tengacion/profiles/mock-1",
+      });
+      expect(coverResponse.body.user.cover).toMatchObject({
+        provider: "cloudinary",
+        publicId: "tengacion/covers/mock-2",
+      });
+      expect(unavailableClient.moderations.create).toHaveBeenCalledTimes(2);
+      expect(unavailableClient.responses.create).toHaveBeenCalledTimes(2);
+    } finally {
+      setVisualModerationClientForTests(null);
+    }
   });
 
   test("legacy profile media still responds safely", async () => {

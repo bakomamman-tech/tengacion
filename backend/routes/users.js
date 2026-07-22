@@ -1211,6 +1211,7 @@ router.post(
     sourceType: "profile_avatar",
     titleFields: ["text"],
     descriptionFields: ["text"],
+    publishWithoutManualReview: true,
   }),
   async (req, res) => {
     try {
@@ -1294,6 +1295,7 @@ router.post(
     sourceType: "profile_cover",
     titleFields: ["text"],
     descriptionFields: ["text"],
+    publishWithoutManualReview: true,
   }),
   async (req, res) => {
     try {

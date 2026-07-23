@@ -8,9 +8,11 @@ const markStorySeenMock = vi.hoisted(() => vi.fn());
 const reactToStoryMock = vi.hoisted(() => vi.fn());
 const replyToStoryMock = vi.hoisted(() => vi.fn());
 const deleteStoryMock = vi.hoisted(() => vi.fn());
+const getStoryActivityMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../api", () => ({
   deleteStory: deleteStoryMock,
+  getStoryActivity: getStoryActivityMock,
   markStorySeen: markStorySeenMock,
   reactToStory: reactToStoryMock,
   replyToStory: replyToStoryMock,
@@ -47,6 +49,12 @@ describe("StoryViewer", () => {
     reactToStoryMock.mockResolvedValue({ success: true });
     replyToStoryMock.mockResolvedValue({ success: true });
     deleteStoryMock.mockResolvedValue({ success: true });
+    getStoryActivityMock.mockResolvedValue({
+      storyId: "story-1",
+      viewerCount: 0,
+      reactionsCount: 0,
+      viewers: [],
+    });
   });
 
   afterEach(() => {
@@ -56,6 +64,7 @@ describe("StoryViewer", () => {
     reactToStoryMock.mockReset();
     replyToStoryMock.mockReset();
     deleteStoryMock.mockReset();
+    getStoryActivityMock.mockReset();
     vi.restoreAllMocks();
   });
 
@@ -202,6 +211,49 @@ describe("StoryViewer", () => {
     renderInRouter(<StoryViewer story={{ ...story, isOwner: false }} onClose={vi.fn()} />);
 
     expect(screen.queryByRole("button", { name: "Story options" })).not.toBeInTheDocument();
+  });
+
+  it("shows named viewers and their emoji reactions only in the owner's activity panel", async () => {
+    getStoryActivityMock.mockResolvedValueOnce({
+      storyId: "story-1",
+      viewerCount: 2,
+      reactionsCount: 1,
+      viewers: [
+        {
+          userId: "viewer-1",
+          name: "Amina Bello",
+          username: "amina",
+          avatar: "https://cdn.test/amina.jpg",
+          reaction: { emoji: "\u2764\uFE0F" },
+        },
+        {
+          userId: "viewer-2",
+          name: "John Okafor",
+          username: "john",
+          avatar: "",
+          reaction: null,
+        },
+      ],
+    });
+
+    renderInRouter(
+      <StoryViewer
+        story={{ ...story, isOwner: true, viewerCount: 2 }}
+        onClose={vi.fn()}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /2 viewers/i }));
+      await Promise.resolve();
+    });
+
+    expect(getStoryActivityMock).toHaveBeenCalledWith("story-1");
+    expect(screen.getByRole("region", { name: "Story viewers" })).toBeInTheDocument();
+    expect(screen.getByText("Amina Bello")).toBeInTheDocument();
+    expect(screen.getByText("John Okafor")).toBeInTheDocument();
+    expect(screen.getByTitle("Amina Bello reacted")).toHaveTextContent("\u2764\uFE0F");
+    expect(screen.getByText("Viewed")).toBeInTheDocument();
   });
 
   it("navigates stories with the side toggle buttons", () => {

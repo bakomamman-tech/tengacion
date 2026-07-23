@@ -81,6 +81,7 @@ router.post(
 );
 router.get("/", optionalAuth, postController.getFeed);
 router.get("/user/:username", auth, postController.getUserPosts);
+router.get("/:id/reactions", optionalAuth, postController.getReactions);
 router.get("/:id", optionalAuth, postController.getPostById);
 router.put(
   "/:id",

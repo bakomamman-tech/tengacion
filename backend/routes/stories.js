@@ -95,6 +95,171 @@ const toObjectIds = (values = []) =>
     .filter((value) => mongoose.Types.ObjectId.isValid(value))
     .map((value) => new mongoose.Types.ObjectId(value));
 
+const getStoryOwnerId = (story = {}) => toIdString(story?.authorId || story?.userId);
+
+const getStoryViewerIds = (story = {}) => {
+  const ownerId = getStoryOwnerId(story);
+  const legacyIds = Array.isArray(story?.seenBy)
+    ? story.seenBy.map((entry) => toIdString(entry))
+    : [];
+  const viewIds = Array.isArray(story?.views)
+    ? story.views.map((entry) => toIdString(entry?.userId))
+    : [];
+  const reactionIds = Array.isArray(story?.reactions)
+    ? story.reactions.map((entry) => toIdString(entry?.userId))
+    : [];
+
+  return [
+    ...new Set(
+      [...legacyIds, ...viewIds, ...reactionIds].filter((id) => id && id !== ownerId)
+    ),
+  ];
+};
+
+const canViewerAccessStory = (story = {}, viewer = null) => {
+  const viewerId = toIdString(viewer?._id || viewer?.id);
+  const ownerId = getStoryOwnerId(story);
+  if (!viewerId || !ownerId) return false;
+  if (viewerId === ownerId) return true;
+  if (story?.expiresAt && new Date(story.expiresAt).getTime() <= Date.now()) return false;
+  if (String(story?.visibility || "friends") === "public") return true;
+
+  const friendIds = (Array.isArray(viewer?.friends) ? viewer.friends : []).map((id) => toIdString(id));
+  if (String(story?.visibility || "friends") === "friends") {
+    return friendIds.includes(ownerId);
+  }
+
+  const closeFriendIds = (Array.isArray(viewer?.closeFriends) ? viewer.closeFriends : [])
+    .map((id) => toIdString(id));
+  return String(story?.visibility || "") === "close_friends" && closeFriendIds.includes(ownerId);
+};
+
+const buildStoryPersonSnapshot = (user = {}) => ({
+  userId: user?._id,
+  name: String(user?.name || "").trim().slice(0, 120),
+  username: String(user?.username || "").trim().slice(0, 30),
+  avatar: sanitizeMediaUrlForNewWrite(avatarToUrl(user?.avatar)),
+});
+
+const recordStoryView = async (story = {}, viewer = null) => {
+  const viewerId = toIdString(viewer?._id);
+  if (!story?._id || !viewerId || viewerId === getStoryOwnerId(story)) {
+    return false;
+  }
+
+  const person = buildStoryPersonSnapshot(viewer);
+  await Story.updateOne(
+    { _id: story._id },
+    { $addToSet: { seenBy: viewerId } }
+  );
+  const viewResult = await Story.updateOne(
+    { _id: story._id, "views.userId": { $ne: viewer._id } },
+    {
+      $push: {
+        views: {
+          ...person,
+          viewedAt: new Date(),
+        },
+      },
+    }
+  );
+
+  return Number(viewResult.modifiedCount || 0) > 0;
+};
+
+const buildStoryActivityPayload = async (story = {}) => {
+  const ownerId = getStoryOwnerId(story);
+  const viewSnapshots = new Map();
+  (Array.isArray(story?.views) ? story.views : []).forEach((entry) => {
+    const userId = toIdString(entry?.userId);
+    if (!userId || userId === ownerId || viewSnapshots.has(userId)) return;
+    viewSnapshots.set(userId, {
+      name: String(entry?.name || "").trim(),
+      username: String(entry?.username || "").trim(),
+      avatar: String(entry?.avatar || "").trim(),
+      viewedAt: entry?.viewedAt || null,
+    });
+  });
+
+  getStoryViewerIds(story).forEach((userId) => {
+    if (!viewSnapshots.has(userId)) {
+      viewSnapshots.set(userId, {
+        name: "",
+        username: "",
+        avatar: "",
+        viewedAt: null,
+      });
+    }
+  });
+
+  const reactionSnapshots = new Map();
+  (Array.isArray(story?.reactions) ? story.reactions : []).forEach((entry) => {
+    const userId = toIdString(entry?.userId);
+    if (!userId || userId === ownerId) return;
+    reactionSnapshots.set(userId, {
+      name: String(entry?.name || "").trim(),
+      username: String(entry?.username || "").trim(),
+      avatar: String(entry?.avatar || "").trim(),
+      emoji: String(entry?.emoji || "").trim().slice(0, 8),
+      createdAt: entry?.createdAt || null,
+    });
+    if (!viewSnapshots.has(userId)) {
+      viewSnapshots.set(userId, {
+        name: String(entry?.name || "").trim(),
+        username: String(entry?.username || "").trim(),
+        avatar: String(entry?.avatar || "").trim(),
+        viewedAt: entry?.createdAt || null,
+      });
+    }
+  });
+
+  const viewerIds = [...viewSnapshots.keys()];
+  const objectIds = toObjectIds(viewerIds);
+  const users = objectIds.length > 0
+    ? await User.find({ _id: { $in: objectIds } }).select("_id name username avatar").lean()
+    : [];
+  const userMap = new Map(users.map((entry) => [toIdString(entry._id), entry]));
+
+  const viewers = viewerIds
+    .map((userId) => {
+      const view = viewSnapshots.get(userId) || {};
+      const reaction = reactionSnapshots.get(userId) || {};
+      const currentUser = userMap.get(userId) || {};
+      const name = String(currentUser?.name || view.name || reaction.name || "Tengacion user").trim();
+      const username = String(currentUser?.username || view.username || reaction.username || "").trim();
+      const avatar =
+        avatarToUrl(currentUser?.avatar)
+        || String(view.avatar || reaction.avatar || "").trim();
+      const emoji = String(reaction.emoji || "").trim();
+
+      return {
+        userId,
+        name,
+        username,
+        avatar,
+        viewedAt: view.viewedAt || reaction.createdAt || null,
+        reaction: emoji
+          ? {
+              emoji,
+              createdAt: reaction.createdAt || null,
+            }
+          : null,
+      };
+    })
+    .sort((a, b) => {
+      const bTime = new Date(b.viewedAt || 0).getTime() || 0;
+      const aTime = new Date(a.viewedAt || 0).getTime() || 0;
+      return bTime - aTime;
+    });
+
+  return {
+    storyId: toIdString(story?._id),
+    viewerCount: viewers.length,
+    reactionsCount: viewers.filter((entry) => Boolean(entry.reaction)).length,
+    viewers,
+  };
+};
+
 const resolveStoryMediaPayload = (story = {}, { moderationStatus = "", blurPreviewUrl = "" } = {}) => {
   const storyMedia = story?.media || {};
   const baseMediaUrl = String(
@@ -137,7 +302,14 @@ const buildStoryPayload = async (story = {}, { authorAvatarMap = new Map(), req 
   const seenBy = Array.isArray(story?.seenBy)
     ? story.seenBy.map((id) => toIdString(id))
     : [];
-  const ownerId = toIdString(story?.authorId || story?.userId);
+  const viewIds = Array.isArray(story?.views)
+    ? story.views.map((entry) => toIdString(entry?.userId))
+    : [];
+  const ownerId = getStoryOwnerId(story);
+  const reactionEntries = Array.isArray(story?.reactions) ? story.reactions : [];
+  const viewerReaction = reactionEntries.find(
+    (entry) => toIdString(entry?.userId) === viewerIdString
+  );
   const publicSensitivity = resolvePublicSensitivity({
     moderationStatus: story?.moderationStatus,
     sensitiveContent: story?.sensitiveContent,
@@ -160,7 +332,7 @@ const buildStoryPayload = async (story = {}, { authorAvatarMap = new Map(), req 
     blurPreviewUrl: story?.blurPreviewUrl,
   });
 
-  return {
+  const payload = {
     ...story,
     id: toIdString(story?._id),
     userId: toIdString(story?.userId || story?.authorId),
@@ -181,10 +353,20 @@ const buildStoryPayload = async (story = {}, { authorAvatarMap = new Map(), req 
       viewerId: viewerIdString,
     }),
     createdAt: story?.time || story?.createdAt,
-    seenBy,
-    viewerSeen: seenBy.includes(viewerIdString),
+    viewerCount: getStoryViewerIds(story).length,
+    reactionsCount: reactionEntries.filter(
+      (entry) => toIdString(entry?.userId) && toIdString(entry?.userId) !== ownerId
+    ).length,
+    viewerSeen: seenBy.includes(viewerIdString) || viewIds.includes(viewerIdString),
+    viewerReaction: String(viewerReaction?.emoji || "").trim(),
     isOwner: Boolean(ownerId && ownerId === viewerIdString),
   };
+
+  delete payload.seenBy;
+  delete payload.views;
+  delete payload.reactions;
+  delete payload.replies;
+  return payload;
 };
 
 const loadVisibleStories = async (viewerId, req = null) => {
@@ -327,6 +509,7 @@ router.post(
         musicAttachment,
         time: new Date(),
         seenBy: [],
+        views: [],
       });
 
       const payload = await buildStoryPayload(story.toObject(), {
@@ -353,6 +536,30 @@ router.get("/", auth, async (req, res) => {
   } catch (err) {
     console.error("Story fetch error:", err);
     res.status(500).json({ error: "Failed to load stories" });
+  }
+});
+
+/* ================= OWNER-ONLY STORY ACTIVITY ================= */
+
+router.get("/:id/activity", auth, async (req, res) => {
+  try {
+    const storyId = String(req.params.id || "").trim();
+    if (!mongoose.Types.ObjectId.isValid(storyId)) {
+      return res.status(400).json({ error: "Invalid story id" });
+    }
+
+    const story = await Story.findById(storyId).lean();
+    if (!story) {
+      return res.status(404).json({ error: "Story not found" });
+    }
+    if (getStoryOwnerId(story) !== toIdString(req.userId)) {
+      return res.status(403).json({ error: "Only the story owner can view story activity" });
+    }
+
+    return res.json(await buildStoryActivityPayload(story));
+  } catch (err) {
+    console.error("Story activity error:", err);
+    return res.status(500).json({ error: "Failed to load story activity" });
   }
 });
 
@@ -396,20 +603,24 @@ router.delete("/:id", auth, async (req, res) => {
 
 router.post("/:id/seen", auth, async (req, res) => {
   try {
-    const story = await Story.findById(req.params.id);
-    if (!story) return res.status(404).json({ error: "Story not found" });
-
-    const viewerId = toIdString(req.userId);
-    const seenBy = Array.isArray(story.seenBy)
-      ? story.seenBy.map((id) => toIdString(id))
-      : [];
-
-    if (!seenBy.includes(viewerId)) {
-      story.seenBy.push(viewerId);
-      await story.save();
+    const storyId = String(req.params.id || "").trim();
+    if (!mongoose.Types.ObjectId.isValid(storyId)) {
+      return res.status(400).json({ error: "Invalid story id" });
     }
 
-    res.json({ seen: true });
+    const [story, viewer] = await Promise.all([
+      Story.findById(storyId),
+      User.findById(req.userId).select("_id name username avatar friends closeFriends"),
+    ]);
+    if (!story) return res.status(404).json({ error: "Story not found" });
+    if (!viewer) return res.status(404).json({ error: "User not found" });
+    if (!canViewerAccessStory(story, viewer)) {
+      return res.status(403).json({ error: "You cannot view this story" });
+    }
+
+    const recorded = await recordStoryView(story, viewer);
+
+    res.json({ seen: true, recorded });
   } catch (err) {
     console.error("Story seen error:", err);
     res.status(500).json({ error: "Failed to mark as seen" });
@@ -431,9 +642,23 @@ router.get("/feed", auth, async (req, res) => {
 /* ================= STORY REACTIONS ================= */
 router.post("/:id/react", auth, async (req, res) => {
   try {
-    const story = await Story.findById(req.params.id);
+    const storyId = String(req.params.id || "").trim();
+    if (!mongoose.Types.ObjectId.isValid(storyId)) {
+      return res.status(400).json({ error: "Invalid story id" });
+    }
+
+    const [story, viewer] = await Promise.all([
+      Story.findById(storyId),
+      User.findById(req.userId).select("_id name username avatar friends closeFriends"),
+    ]);
     if (!story) {
       return res.status(404).json({ error: "Story not found" });
+    }
+    if (!viewer) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    if (!canViewerAccessStory(story, viewer)) {
+      return res.status(403).json({ error: "You cannot view this story" });
     }
 
     const emoji = String(req.body?.emoji || "").trim().slice(0, 8);
@@ -442,15 +667,24 @@ router.post("/:id/react", auth, async (req, res) => {
     }
 
     const userId = toIdString(req.userId);
+    if (userId === getStoryOwnerId(story)) {
+      return res.status(400).json({ error: "You cannot react to your own story" });
+    }
+    await recordStoryView(story, viewer);
+
+    const person = buildStoryPersonSnapshot(viewer);
     const reactions = Array.isArray(story.reactions) ? story.reactions : [];
     const existingIndex = reactions.findIndex((entry) => toIdString(entry.userId) === userId);
 
     if (existingIndex >= 0) {
+      story.reactions[existingIndex].name = person.name;
+      story.reactions[existingIndex].username = person.username;
+      story.reactions[existingIndex].avatar = person.avatar;
       story.reactions[existingIndex].emoji = emoji;
       story.reactions[existingIndex].createdAt = new Date();
     } else {
       story.reactions.push({
-        userId,
+        ...person,
         emoji,
         createdAt: new Date(),
       });

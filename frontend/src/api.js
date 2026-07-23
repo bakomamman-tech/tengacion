@@ -2000,6 +2000,12 @@ export const markStorySeen = (storyId) =>
     headers: getAuthHeaders(),
   });
 
+export const getStoryActivity = (storyId) =>
+  request(`${API_BASE}/stories/${encodeURIComponent(storyId || "")}/activity`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+
 export const deleteStory = (storyId) =>
   request(`${API_BASE}/stories/${encodeURIComponent(storyId || "")}`, {
     method: "DELETE",

@@ -578,6 +578,70 @@ describe("Posts feed", () => {
     });
   });
 
+  test("GET /api/posts/:id/reactions returns named people grouped by emoji", async () => {
+    const reactor = await User.create({
+      name: "Amina Bello",
+      username: "amina_bello",
+      email: "amina_bello@test.com",
+      password: "Password123!",
+    });
+    const reactorToken = await issueSessionToken(reactor._id);
+    const post = await Post.create({
+      author: artist._id,
+      text: "Named reaction details",
+      privacy: "public",
+      visibility: "public",
+      moderationStatus: "approved",
+    });
+
+    await request(app)
+      .post(`/api/posts/${post._id}/like`)
+      .set("Authorization", `Bearer ${reactorToken}`)
+      .send({ reactionKey: "love" })
+      .expect(200);
+
+    const response = await request(app)
+      .get(`/api/posts/${post._id}/reactions`)
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      postId: post._id.toString(),
+      total: 1,
+      summary: [
+        {
+          key: "love",
+          name: "Love",
+          count: 1,
+        },
+      ],
+      reactions: [
+        {
+          userId: reactor._id.toString(),
+          name: "Amina Bello",
+          username: "amina_bello",
+          reactionKey: "love",
+          reactionName: "Love",
+        },
+      ],
+    });
+  });
+
+  test("GET /api/posts/:id/reactions does not expose private post activity", async () => {
+    const post = await Post.create({
+      author: artist._id,
+      text: "Private reaction activity",
+      privacy: "private",
+      visibility: "private",
+      moderationStatus: "approved",
+      likes: [artist._id],
+      reactions: [{ userId: artist._id, emoji: "\u{1F44D}" }],
+    });
+
+    await request(app)
+      .get(`/api/posts/${post._id}/reactions`)
+      .expect(404);
+  });
+
   test("POST /api/posts uploads a video to Cloudinary and stores metadata", async () => {
     const response = await request(app)
       .post("/api/posts")

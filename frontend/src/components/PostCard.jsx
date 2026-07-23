@@ -70,6 +70,117 @@ const getReactionByValue = (value = "") => {
   return key ? REACTION_LOOKUP.get(key) || null : null;
 };
 
+function PostReactionsDialog({
+  open,
+  loading,
+  error,
+  details,
+  activeFilter,
+  onFilterChange,
+  onClose,
+}) {
+  if (!open) {
+    return null;
+  }
+
+  const reactions = Array.isArray(details?.reactions) ? details.reactions : [];
+  const summary = Array.isArray(details?.summary) ? details.summary : [];
+  const visibleReactions = activeFilter === "all"
+    ? reactions
+    : reactions.filter((entry) => entry?.reactionKey === activeFilter);
+
+  return createPortal(
+    <div className="post-reactions-dialog-backdrop" onClick={onClose}>
+      <section
+        className="post-reactions-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="post-reactions-dialog-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="post-reactions-dialog__header">
+          <h2 id="post-reactions-dialog-title">People who reacted</h2>
+          <button type="button" onClick={onClose} aria-label="Close reactions">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m6 6 12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </header>
+
+        {!loading && !error ? (
+          <div className="post-reactions-dialog__tabs" role="tablist" aria-label="Reaction types">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeFilter === "all"}
+              className={activeFilter === "all" ? "is-active" : ""}
+              onClick={() => onFilterChange("all")}
+            >
+              All <span>{Number(details?.total || 0)}</span>
+            </button>
+            {summary.map((entry) => (
+              <button
+                key={entry.key}
+                type="button"
+                role="tab"
+                aria-label={`${entry.name} ${entry.count}`}
+                aria-selected={activeFilter === entry.key}
+                className={activeFilter === entry.key ? "is-active" : ""}
+                onClick={() => onFilterChange(entry.key)}
+              >
+                <span aria-hidden="true">{entry.emoji}</span>
+                <span>{entry.count}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="post-reactions-dialog__body">
+          {loading ? <p className="post-reactions-dialog__status">Loading reactions...</p> : null}
+          {error ? (
+            <p className="post-reactions-dialog__status post-reactions-dialog__status--error" role="alert">
+              {error}
+            </p>
+          ) : null}
+          {!loading && !error && visibleReactions.length === 0 ? (
+            <p className="post-reactions-dialog__status">No reactions to show.</p>
+          ) : null}
+          {!loading && !error && visibleReactions.length > 0 ? (
+            <ul className="post-reactions-dialog__people">
+              {visibleReactions.map((entry) => {
+                const entryAvatar =
+                  resolveImage(entry?.avatar)
+                  || `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    entry?.name || entry?.username || "User"
+                  )}`;
+                return (
+                  <li key={entry?.userId || entry?.username}>
+                    <img src={entryAvatar} alt="" />
+                    <ProfileNameLink
+                      name={entry?.name}
+                      username={entry?.username}
+                      className="post-reactions-dialog__person"
+                      showHandle
+                    />
+                    <span
+                      className={`post-reactions-dialog__badge reaction-${entry?.reactionKey || "like"}`}
+                      title={entry?.reactionName || "Reaction"}
+                      aria-label={entry?.reactionName || "Reaction"}
+                    >
+                      {entry?.emoji || DEFAULT_REACTION.label}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+        </div>
+      </section>
+    </div>,
+    document.body
+  );
+}
+
 const inferVideoMimeType = (url = "", fallback = "") => {
   const normalizedFallback = String(fallback || "").toLowerCase();
   if (normalizedFallback.startsWith("video/")) {
@@ -445,6 +556,11 @@ export default function PostCard({
   );
   const [showReactions, setShowReactions] = useState(false);
   const [hoveredReactionKey, setHoveredReactionKey] = useState("");
+  const [reactionDetailsOpen, setReactionDetailsOpen] = useState(false);
+  const [reactionDetails, setReactionDetails] = useState(null);
+  const [reactionDetailsLoading, setReactionDetailsLoading] = useState(false);
+  const [reactionDetailsError, setReactionDetailsError] = useState("");
+  const [reactionDetailsFilter, setReactionDetailsFilter] = useState("all");
   const [showComments, setShowComments] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
@@ -709,6 +825,33 @@ export default function PostCard({
   useEffect(() => {
     setShareCount(Number(post?.shareCount) || 0);
   }, [post?._id, post?.shareCount]);
+
+  useEffect(() => {
+    setReactionDetailsOpen(false);
+    setReactionDetails(null);
+    setReactionDetailsError("");
+    setReactionDetailsFilter("all");
+  }, [post?._id]);
+
+  useEffect(() => {
+    if (!reactionDetailsOpen) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setReactionDetailsOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [reactionDetailsOpen]);
 
   useEffect(() => {
     if (!showComments) {
@@ -1000,6 +1143,28 @@ export default function PostCard({
       toast.error(err.message || "Failed to update like");
     } finally {
       setLiking(false);
+    }
+  };
+
+  const openReactionDetails = async () => {
+    if (!post?._id || reactionsCount <= 0 || reactionDetailsLoading) {
+      return;
+    }
+
+    setReactionDetailsOpen(true);
+    setReactionDetailsError("");
+    setReactionDetailsFilter("all");
+    try {
+      setReactionDetailsLoading(true);
+      const payload = await apiRequest(
+        `/api/posts/${encodeURIComponent(post._id)}/reactions`,
+        { cache: "no-store" }
+      );
+      setReactionDetails(payload);
+    } catch (error) {
+      setReactionDetailsError(error?.message || "Could not load the people who reacted.");
+    } finally {
+      setReactionDetailsLoading(false);
     }
   };
 
@@ -1464,7 +1629,19 @@ export default function PostCard({
               <span className="post-reaction-dot wow">{"\u{1F62E}"}</span>
               <span className="post-reaction-dot love">{"\u{2764}\u{FE0F}"}</span>
             </div>
-            <span className="post-engagement-count">{reactionsCount}</span>
+            <button
+              type="button"
+              className="post-engagement-count"
+              onClick={openReactionDetails}
+              disabled={reactionsCount <= 0}
+              aria-label={
+                reactionsCount > 0
+                  ? `See ${reactionsCount} ${reactionsCount === 1 ? "reaction" : "reactions"}`
+                  : "No reactions"
+              }
+            >
+              {reactionsCount}
+            </button>
           </div>
 
           <div className="post-engagement-right">
@@ -1588,6 +1765,16 @@ export default function PostCard({
         onClose={() => setShareOpen(false)}
         onShareCountChange={setShareCount}
         onShareCreated={onShareCreated}
+      />
+
+      <PostReactionsDialog
+        open={reactionDetailsOpen}
+        loading={reactionDetailsLoading}
+        error={reactionDetailsError}
+        details={reactionDetails}
+        activeFilter={reactionDetailsFilter}
+        onFilterChange={setReactionDetailsFilter}
+        onClose={() => setReactionDetailsOpen(false)}
       />
 
       {commentsLayer}

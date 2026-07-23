@@ -124,6 +124,69 @@ describe("PostCard reactions", () => {
     );
   });
 
+  it("opens a Facebook-style list of named people grouped by reaction", async () => {
+    apiRequestMock.mockResolvedValueOnce({
+      postId: "post-1",
+      total: 2,
+      summary: [
+        { key: "like", emoji: "\u{1F44D}", name: "Like", count: 1 },
+        { key: "love", emoji: "\u2764\uFE0F", name: "Love", count: 1 },
+      ],
+      reactions: [
+        {
+          userId: "user-1",
+          name: "Amina Bello",
+          username: "amina",
+          avatar: "https://cdn.test/amina.jpg",
+          reactionKey: "love",
+          emoji: "\u2764\uFE0F",
+          reactionName: "Love",
+        },
+        {
+          userId: "user-2",
+          name: "John Okafor",
+          username: "john",
+          avatar: "",
+          reactionKey: "like",
+          emoji: "\u{1F44D}",
+          reactionName: "Like",
+        },
+      ],
+    });
+    const user = userEvent.setup();
+
+    renderPostCard({
+      _id: "post-1",
+      text: "People reacted here.",
+      createdAt: "2026-03-30T10:00:00.000Z",
+      user: {
+        name: "Admin User",
+        username: "admin",
+        profilePic: "",
+      },
+      comments: [],
+      likesCount: 2,
+      shareCount: 0,
+      likedByViewer: false,
+    });
+
+    await user.click(screen.getByRole("button", { name: /see 2 reactions/i }));
+
+    await waitFor(() => {
+      expect(apiRequestMock).toHaveBeenCalledWith(
+        "/api/posts/post-1/reactions",
+        { cache: "no-store" }
+      );
+    });
+    expect(screen.getByRole("dialog", { name: "People who reacted" })).toBeInTheDocument();
+    expect(screen.getByText("Amina Bello")).toBeInTheDocument();
+    expect(screen.getByText("John Okafor")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /love 1/i }));
+    expect(screen.getByText("Amina Bello")).toBeInTheDocument();
+    expect(screen.queryByText("John Okafor")).not.toBeInTheDocument();
+  });
+
   it("submits replacement pictures from the edit post modal", async () => {
     const user = userEvent.setup();
     const onEdit = vi.fn();

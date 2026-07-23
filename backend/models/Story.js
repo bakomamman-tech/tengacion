@@ -73,8 +73,20 @@ const StorySchema = new mongoose.Schema({
   reactions: [
     {
       userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
+      name: { type: String, default: "", trim: true, maxlength: 120 },
+      username: { type: String, default: "", trim: true, maxlength: 30 },
+      avatar: { type: String, default: "", trim: true },
       emoji: { type: String, default: "", maxlength: 8, trim: true },
       createdAt: { type: Date, default: Date.now },
+    },
+  ],
+  views: [
+    {
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
+      name: { type: String, default: "", trim: true, maxlength: 120 },
+      username: { type: String, default: "", trim: true, maxlength: 30 },
+      avatar: { type: String, default: "", trim: true },
+      viewedAt: { type: Date, default: Date.now },
     },
   ],
   replies: [

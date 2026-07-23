@@ -230,6 +230,68 @@ describe("story music attachment", () => {
     expect(await Story.findById(story._id)).toBeNull();
   });
 
+  test("records named story viewers and reactions while keeping activity owner-only", async () => {
+    const creator = await createCreator();
+    const viewer = await createViewer();
+    const story = await Story.create({
+      userId: creator.user._id.toString(),
+      authorId: creator.user._id,
+      name: creator.user.name,
+      username: creator.user.username,
+      text: "Owner-only activity",
+      visibility: "public",
+      moderationStatus: "approved",
+      time: new Date(),
+    });
+
+    await request(app)
+      .post(`/api/stories/${story._id.toString()}/seen`)
+      .set("Authorization", `Bearer ${viewer.token}`)
+      .expect(200);
+    await request(app)
+      .post(`/api/stories/${story._id.toString()}/seen`)
+      .set("Authorization", `Bearer ${viewer.token}`)
+      .expect(200);
+    await request(app)
+      .post(`/api/stories/${story._id.toString()}/react`)
+      .set("Authorization", `Bearer ${viewer.token}`)
+      .send({ emoji: "\u2764\uFE0F" })
+      .expect(200);
+
+    const denied = await request(app)
+      .get(`/api/stories/${story._id.toString()}/activity`)
+      .set("Authorization", `Bearer ${viewer.token}`)
+      .expect(403);
+    expect(denied.body.error).toMatch(/only the story owner/i);
+
+    const activity = await request(app)
+      .get(`/api/stories/${story._id.toString()}/activity`)
+      .set("Authorization", `Bearer ${creator.token}`)
+      .expect(200);
+
+    expect(activity.body).toMatchObject({
+      storyId: story._id.toString(),
+      viewerCount: 1,
+      reactionsCount: 1,
+      viewers: [
+        {
+          userId: viewer.user._id.toString(),
+          name: "Story Viewer",
+          username: "story_viewer",
+          reaction: { emoji: "\u2764\uFE0F" },
+        },
+      ],
+    });
+
+    const stored = await Story.findById(story._id).lean();
+    expect(stored.seenBy).toEqual([viewer.user._id.toString()]);
+    expect(stored.views).toHaveLength(1);
+    expect(stored.views[0]).toMatchObject({
+      name: "Story Viewer",
+      username: "story_viewer",
+    });
+  });
+
   test("lists only published songs from fully registered active music creators", async () => {
     const creator = await createCreator();
     const incompleteUser = await User.create({

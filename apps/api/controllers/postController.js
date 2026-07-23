@@ -36,6 +36,14 @@ exports.getPostById = catchAsync(async (req, res) => {
   res.json(payload);
 });
 
+exports.getReactions = catchAsync(async (req, res) => {
+  const payload = await PostService.getReactions({
+    viewerId: req.user?.id,
+    postId: req.params.id,
+  });
+  res.json(payload);
+});
+
 exports.getUserPosts = catchAsync(async (req, res) => {
   const result = await PostService.getUserPosts({
     viewerId: req.user.id,

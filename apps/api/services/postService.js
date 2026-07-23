@@ -110,6 +110,70 @@ const getPostLikeCount = (post) => {
   return Math.max(likes.length, reactions.length);
 };
 
+const canViewerAccessPost = async (post = {}, viewerId = "") => {
+  const authorId = toIdString(post?.author);
+  const normalizedViewerId = toIdString(viewerId);
+  if (!authorId) return false;
+  if (normalizedViewerId && normalizedViewerId === authorId) return true;
+
+  const visibility = String(post?.visibility || "public").trim().toLowerCase();
+  const privacy = String(post?.privacy || "public").trim().toLowerCase();
+  if (["private", "blocked"].includes(visibility) || privacy === "private") {
+    return false;
+  }
+  const isPublic = visibility === "public" && privacy === "public";
+  if (!normalizedViewerId) {
+    return isPublic;
+  }
+
+  const [viewer, author] = await Promise.all([
+    User.findById(normalizedViewerId)
+      .select("_id friends closeFriends blocks blockedUsers")
+      .lean(),
+    User.findById(authorId)
+      .select("_id friends closeFriends blocks blockedUsers")
+      .lean(),
+  ]);
+  if (!viewer || !author) return false;
+
+  const viewerBlockedIds = uniqueIds([
+    ...(viewer.blocks || []).map((id) => toIdString(id)),
+    ...(viewer.blockedUsers || []).map((id) => toIdString(id)),
+  ]);
+  const authorBlockedIds = uniqueIds([
+    ...(author.blocks || []).map((id) => toIdString(id)),
+    ...(author.blockedUsers || []).map((id) => toIdString(id)),
+  ]);
+  if (
+    viewerBlockedIds.includes(authorId)
+    || authorBlockedIds.includes(normalizedViewerId)
+  ) {
+    return false;
+  }
+  if (isPublic) {
+    return true;
+  }
+
+  const viewerFriendIds = (viewer.friends || []).map((id) => toIdString(id));
+  const authorFriendIds = (author.friends || []).map((id) => toIdString(id));
+  const areFriends =
+    viewerFriendIds.includes(authorId)
+    || authorFriendIds.includes(normalizedViewerId);
+  if (visibility === "friends" || privacy === "friends") {
+    return areFriends;
+  }
+
+  const viewerCloseFriendIds = (viewer.closeFriends || []).map((id) => toIdString(id));
+  const authorCloseFriendIds = (author.closeFriends || []).map((id) => toIdString(id));
+  return (
+    visibility === "close_friends"
+    && (
+      viewerCloseFriendIds.includes(authorId)
+      || authorCloseFriendIds.includes(normalizedViewerId)
+    )
+  );
+};
+
 const getCommentLikeCount = (comment) => {
   const likes = Array.isArray(comment?.likes) ? comment.likes : [];
   return likes.length;
@@ -1973,6 +2037,92 @@ class PostService {
     return payload;
   }
 
+  static async getReactions({ viewerId = "", postId }) {
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      throw ApiError.badRequest("Invalid post id");
+    }
+
+    const post = await Post.findById(postId).lean();
+    if (!post) {
+      throw ApiError.notFound("Post not found");
+    }
+    if (!(await canViewerAccessPost(post, viewerId))) {
+      throw ApiError.notFound("Post not found");
+    }
+
+    // Reuse the detail guard so hidden or moderated posts never expose their activity.
+    await PostService.getPostById({ viewerId, postId });
+
+    const reactionMap = new Map();
+    (Array.isArray(post.reactions) ? post.reactions : []).forEach((entry) => {
+      const userId = toIdString(entry?.userId || entry?.user || entry?.author);
+      if (!userId) return;
+      const reactionKey =
+        postReactionEmojiToKey(entry?.emoji)
+        || DEFAULT_POST_REACTION_KEY;
+      const definition = POST_REACTION_BY_KEY.get(reactionKey) || POST_REACTIONS[0];
+      reactionMap.set(userId, {
+        reactionKey: definition.key,
+        emoji: definition.emoji,
+        reactionName: definition.name,
+        reactedAt: entry?.createdAt || null,
+      });
+    });
+
+    (Array.isArray(post.likes) ? post.likes : []).forEach((entry) => {
+      const userId = toIdString(entry);
+      if (!userId || reactionMap.has(userId)) return;
+      const definition = POST_REACTIONS[0];
+      reactionMap.set(userId, {
+        reactionKey: definition.key,
+        emoji: definition.emoji,
+        reactionName: definition.name,
+        reactedAt: null,
+      });
+    });
+
+    const reactorIds = [...reactionMap.keys()];
+    const validReactorIds = reactorIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const users = validReactorIds.length > 0
+      ? await User.find({ _id: { $in: validReactorIds } })
+        .select("_id name username avatar")
+        .lean()
+      : [];
+    const userMap = new Map(users.map((entry) => [toIdString(entry._id), entry]));
+
+    const reactions = reactorIds
+      .map((userId) => {
+        const person = userMap.get(userId) || {};
+        const reaction = reactionMap.get(userId);
+        return {
+          userId,
+          name: String(person?.name || "Tengacion user").trim(),
+          username: String(person?.username || "").trim(),
+          avatar: avatarToUrl(person?.avatar),
+          ...reaction,
+        };
+      })
+      .sort((a, b) => {
+        const bTime = new Date(b.reactedAt || 0).getTime() || 0;
+        const aTime = new Date(a.reactedAt || 0).getTime() || 0;
+        return bTime - aTime;
+      });
+
+    const summary = POST_REACTIONS.map((definition) => ({
+      key: definition.key,
+      emoji: definition.emoji,
+      name: definition.name,
+      count: reactions.filter((entry) => entry.reactionKey === definition.key).length,
+    })).filter((entry) => entry.count > 0);
+
+    return {
+      postId: toIdString(post._id),
+      total: reactions.length,
+      summary,
+      reactions,
+    };
+  }
+
   static async getComments({ viewerId, postId, threaded = false }) {
     const payload = await PostService.getPostById({ viewerId, postId });
     const comments = Array.isArray(payload?.comments) ? payload.comments : [];
@@ -2305,6 +2455,9 @@ class PostService {
 
     const post = await postRepository.findById(postId);
     if (!post) throw ApiError.notFound("Post not found");
+    if (!(await canViewerAccessPost(post, userId))) {
+      throw ApiError.notFound("Post not found");
+    }
 
     const viewerId = userId.toString();
     const liked = post.likes.some((id) => id.toString() === viewerId);

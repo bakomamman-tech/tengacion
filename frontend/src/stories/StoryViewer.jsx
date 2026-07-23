@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { deleteStory, markStorySeen, reactToStory, replyToStory, resolveImage } from "../api";
+import {
+  deleteStory,
+  getStoryActivity,
+  markStorySeen,
+  reactToStory,
+  replyToStory,
+  resolveImage,
+} from "../api";
 import Button from "../components/ui/Button";
 import ProfileNameLink from "../components/ui/ProfileNameLink";
 import { getStoryMedia } from "./storyMedia";
@@ -138,6 +145,10 @@ export default function StoryViewer({
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [storyActivity, setStoryActivity] = useState(null);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState("");
 
   const activeStory = orderedStories[index] || story;
   const activeStoryKey = activeStory
@@ -159,7 +170,13 @@ export default function StoryViewer({
     ? getSoundtrackPreviewSeconds(soundtrack) * 1000
     : IMAGE_DURATION_MS;
   const holdStoryAdvance =
-    replyFocused || Boolean(replyText.trim()) || replyBusy || ownerMenuOpen || deleteBusy;
+    replyFocused
+    || Boolean(replyText.trim())
+    || replyBusy
+    || ownerMenuOpen
+    || deleteBusy
+    || activityOpen
+    || activityLoading;
   const avatarSrc = activeStory?.avatar
     ? resolveImage(activeStory.avatar)
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -257,6 +274,9 @@ export default function StoryViewer({
     pendingVideoAdvanceRef.current = false;
     setOwnerMenuOpen(false);
     setDeleteError("");
+    setActivityOpen(false);
+    setStoryActivity(null);
+    setActivityError("");
   }, [activeStoryKey, mediaType]);
 
   useEffect(() => {
@@ -400,7 +420,10 @@ export default function StoryViewer({
       }
 
       if (event.key === "Escape") {
-        if (ownerMenuOpen) {
+        if (activityOpen) {
+          setActivityOpen(false);
+          setActivityError("");
+        } else if (ownerMenuOpen) {
           setOwnerMenuOpen(false);
           setDeleteError("");
         } else {
@@ -415,7 +438,7 @@ export default function StoryViewer({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [goToNext, goToPrev, onClose, ownerMenuOpen]);
+  }, [activityOpen, goToNext, goToPrev, onClose, ownerMenuOpen]);
 
   if (!activeStory) {
     return null;
@@ -477,6 +500,34 @@ export default function StoryViewer({
       setDeleteError(error?.message || "Could not delete this story. Please try again.");
     } finally {
       setDeleteBusy(false);
+    }
+  };
+
+  const handleToggleStoryActivity = async () => {
+    const storyId = String(activeStory?._id || activeStory?.id || "");
+    if (!activeStoryIsOwner || !storyId || activityLoading) {
+      return;
+    }
+    if (activityOpen) {
+      setActivityOpen(false);
+      setActivityError("");
+      return;
+    }
+
+    setActivityOpen(true);
+    setActivityError("");
+    if (String(storyActivity?.storyId || "") === storyId) {
+      return;
+    }
+
+    try {
+      setActivityLoading(true);
+      const payload = await getStoryActivity(storyId);
+      setStoryActivity(payload);
+    } catch (error) {
+      setActivityError(error?.message || "Could not load story viewers.");
+    } finally {
+      setActivityLoading(false);
     }
   };
 
@@ -720,40 +771,123 @@ export default function StoryViewer({
           )}
 
           <div className="story-viewer-actions">
-            <div className="story-viewer-quick-reactions">
-              {QUICK_REACTIONS.map((emoji) => (
+            {activeStoryIsOwner ? (
+              <div className="story-viewer-owner-activity">
                 <button
-                  key={emoji}
                   type="button"
-                  className={reactionBusy === emoji ? "is-reacting" : ""}
-                  onClick={(event) => handleReact(emoji, event)}
-                  disabled={Boolean(reactionBusy)}
-                  aria-label={`React with ${emoji}`}
+                  className="story-viewer-owner-activity__toggle"
+                  onClick={handleToggleStoryActivity}
+                  disabled={activityLoading}
+                  aria-expanded={activityOpen}
+                  aria-controls={`story-activity-${activeStoryKey}`}
                 >
-                  {emoji}
+                  <span className="story-viewer-owner-activity__eye" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+                      <circle cx="12" cy="12" r="2.8" />
+                    </svg>
+                  </span>
+                  <span>
+                    {activityLoading
+                      ? "Loading viewers..."
+                      : Number(storyActivity?.viewerCount ?? activeStory?.viewerCount ?? 0) > 0
+                        ? `${Number(storyActivity?.viewerCount ?? activeStory?.viewerCount ?? 0)} ${
+                            Number(storyActivity?.viewerCount ?? activeStory?.viewerCount ?? 0) === 1
+                              ? "viewer"
+                              : "viewers"
+                          }`
+                        : "No viewers yet"}
+                  </span>
                 </button>
-              ))}
-            </div>
-            <div className="story-viewer-reply-row">
-              <input
-                ref={replyInputRef}
-                value={replyText}
-                onChange={(event) => setReplyText(event.target.value)}
-                onBlur={() => setReplyFocused(false)}
-                onFocus={() => setReplyFocused(true)}
-                placeholder="Reply to story..."
-                maxLength={220}
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={replyBusy}
-                onClick={handleReply}
-                disabled={!replyText.trim()}
-              >
-                Reply
-              </Button>
-            </div>
+                {activityOpen ? (
+                  <section
+                    id={`story-activity-${activeStoryKey}`}
+                    className="story-viewer-owner-activity__panel"
+                    aria-label="Story viewers"
+                  >
+                    <div className="story-viewer-owner-activity__heading">
+                      <strong>Story viewers</strong>
+                      {storyActivity?.reactionsCount ? (
+                        <span>{storyActivity.reactionsCount} reacted</span>
+                      ) : null}
+                    </div>
+                    {activityError ? <p role="alert">{activityError}</p> : null}
+                    {!activityLoading && !activityError && storyActivity?.viewers?.length === 0 ? (
+                      <p>No one has viewed this story yet.</p>
+                    ) : null}
+                    {Array.isArray(storyActivity?.viewers) && storyActivity.viewers.length > 0 ? (
+                      <ul className="story-viewer-owner-activity__list">
+                        {storyActivity.viewers.map((viewer) => {
+                          const viewerAvatar =
+                            resolveImage(viewer?.avatar)
+                            || `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                              viewer?.name || viewer?.username || "User"
+                            )}`;
+                          return (
+                            <li key={viewer?.userId || viewer?.username}>
+                              <img src={viewerAvatar} alt="" />
+                              <ProfileNameLink
+                                name={viewer?.name}
+                                username={viewer?.username}
+                                className="story-viewer-owner-activity__person"
+                                showHandle
+                              />
+                              {viewer?.reaction?.emoji ? (
+                                <span
+                                  className="story-viewer-owner-activity__reaction"
+                                  title={`${viewer?.name || viewer?.username || "Viewer"} reacted`}
+                                >
+                                  {viewer.reaction.emoji}
+                                </span>
+                              ) : (
+                                <span className="story-viewer-owner-activity__viewed">Viewed</span>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : null}
+                  </section>
+                ) : null}
+              </div>
+            ) : (
+              <>
+                <div className="story-viewer-quick-reactions">
+                  {QUICK_REACTIONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className={reactionBusy === emoji ? "is-reacting" : ""}
+                      onClick={(event) => handleReact(emoji, event)}
+                      disabled={Boolean(reactionBusy)}
+                      aria-label={`React with ${emoji}`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+                <div className="story-viewer-reply-row">
+                  <input
+                    ref={replyInputRef}
+                    value={replyText}
+                    onChange={(event) => setReplyText(event.target.value)}
+                    onBlur={() => setReplyFocused(false)}
+                    onFocus={() => setReplyFocused(true)}
+                    placeholder="Reply to story..."
+                    maxLength={220}
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={replyBusy}
+                    onClick={handleReply}
+                    disabled={!replyText.trim()}
+                  >
+                    Reply
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
 
           {hasMultipleStories && (

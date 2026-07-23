@@ -62,6 +62,29 @@ describe("themed Messenger CSS", () => {
     expect(messengerSource).not.toContain('theme === "light"');
   });
 
+  it("keeps message chronology visible without forcing readers back to the bottom", () => {
+    const daySeparatorRule = getRule(".messenger-day-separator");
+    const latestButtonRule = getRule(".messenger-jump-latest");
+
+    expect(messengerSource).toContain('role="log"');
+    expect(messengerSource).toContain("formatMessageDayLabel(m.time)");
+    expect(messengerSource).toContain('className="messenger-day-separator"');
+    expect(messengerSource).toContain("isNearLatestRef.current");
+    expect(messengerSource).toContain('className="messenger-jump-latest"');
+    expect(daySeparatorRule).toContain("position: sticky;");
+    expect(latestButtonRule).toContain("position: absolute;");
+  });
+
+  it("provides labelled conversation controls and status feedback", () => {
+    expect(messengerSource).toContain(
+      'className="mh-actions" role="toolbar" aria-label="Conversation actions"'
+    );
+    expect(messengerSource).toContain(
+      'className="messenger-header-notice" role="status" aria-live="polite"'
+    );
+    expect(messengerSource).toContain('aria-label="Jump to the latest messages"');
+  });
+
   it.each([
     "nature-green",
     "peaceful",

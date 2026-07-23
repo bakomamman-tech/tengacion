@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -93,6 +93,44 @@ const formatDuration = (inputSeconds) => {
   const minutes = Math.floor(total / 60);
   const seconds = total % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+};
+
+const getLocalDayStamp = (input) => {
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+};
+
+const formatMessageDayLabel = (input, now = new Date()) => {
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const messageStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayDifference = Math.round(
+    (todayStart.getTime() - messageStart.getTime()) / (24 * 60 * 60 * 1000)
+  );
+
+  if (dayDifference === 0) {
+    return "Today";
+  }
+  if (dayDifference === 1) {
+    return "Yesterday";
+  }
+  if (dayDifference > 1 && dayDifference < 7) {
+    return date.toLocaleDateString([], { weekday: "long" });
+  }
+
+  return date.toLocaleDateString([], {
+    day: "numeric",
+    month: "short",
+    year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
+  });
 };
 
 function VoiceWaveform({ progressPct = 0, isPlaying = false, className = "" }) {
@@ -752,6 +790,7 @@ export default function Messenger({
   const [chatMenuOpen, setChatMenuOpen] = useState(false);
   const [isBlockingUser, setIsBlockingUser] = useState(false);
   const [shareDraftPayload, setShareDraftPayload] = useState(null);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const [pinnedMessagesByChat, setPinnedMessagesByChat] = useState(() =>
     readPinnedMessages()
   );
@@ -789,6 +828,9 @@ export default function Messenger({
   const socketRef = useRef(null);
   const selectedIdRef = useRef("");
   const endRef = useRef(null);
+  const messagesViewportRef = useRef(null);
+  const isNearLatestRef = useRef(true);
+  const latestMessageKeyRef = useRef("");
   const sheetHeightRef = useRef(sheetHeight);
   const initialAutoSelectRef = useRef(
     typeof window === "undefined" ? true : !window.matchMedia(MOBILE_SHEET_QUERY).matches
@@ -833,6 +875,9 @@ export default function Messenger({
     setOpenMessageReactionId("");
     setOpenMessageMenuId("");
     setToolsTrayOpen(false);
+    isNearLatestRef.current = true;
+    latestMessageKeyRef.current = "";
+    setShowJumpToLatest(false);
   }, [selectedId]);
 
   const resizeComposerInput = useCallback(() => {
@@ -846,6 +891,22 @@ export default function Messenger({
     const nextHeight = Math.min(node.scrollHeight, maxHeight);
     node.style.height = `${nextHeight}px`;
     node.style.overflowY = node.scrollHeight > maxHeight ? "auto" : "hidden";
+  }, []);
+
+  const scrollToLatest = useCallback((behavior = "smooth") => {
+    endRef.current?.scrollIntoView({ behavior, block: "end" });
+    isNearLatestRef.current = true;
+    setShowJumpToLatest(false);
+  }, []);
+
+  const handleMessagesScroll = useCallback((event) => {
+    const viewport = event.currentTarget;
+    const distanceFromLatest =
+      viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+    const isNearLatest = distanceFromLatest < 112;
+
+    isNearLatestRef.current = isNearLatest;
+    setShowJumpToLatest(!isNearLatest);
   }, []);
 
   useEffect(() => {
@@ -1448,8 +1509,24 @@ export default function Messenger({
   }, [messages, pinnedMessagesByChat, selectedId]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages]);
+    if (messages.length === 0) {
+      setShowJumpToLatest(false);
+      return;
+    }
+
+    const newestMessage = messages[messages.length - 1];
+    const newestMessageKey = toIdString(newestMessage?._id || newestMessage?.clientId);
+    const isNewLatestMessage =
+      Boolean(newestMessageKey) && newestMessageKey !== latestMessageKeyRef.current;
+    const newestMessageIsMine = toIdString(newestMessage?.senderId) === meId;
+    latestMessageKeyRef.current = newestMessageKey;
+
+    if (isNearLatestRef.current || (isNewLatestMessage && newestMessageIsMine)) {
+      scrollToLatest("smooth");
+    } else {
+      setShowJumpToLatest(true);
+    }
+  }, [meId, messages, scrollToLatest]);
 
   useEffect(() => {
     if (!meId) {return undefined;}
@@ -2644,7 +2721,7 @@ export default function Messenger({
               <strong>Messenger</strong>
             )}
           </div>
-          <div className="mh-actions">
+          <div className="mh-actions" role="toolbar" aria-label="Conversation actions">
             {selectedContact ? (
               <>
             <button
@@ -2769,7 +2846,9 @@ export default function Messenger({
                 })
               }
             >
-              —
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 12h12" />
+              </svg>
             </button>
             <button
               className="mh-close mh-window-btn"
@@ -2778,14 +2857,21 @@ export default function Messenger({
               title="Close"
               type="button"
             >
-              ×
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m7 7 10 10" />
+                <path d="M17 7 7 17" />
+              </svg>
             </button>
           </div>
         </div>
         {selectedContact && (
           <div className="messenger-network-status">{selectedHeaderStatusLabel}</div>
         )}
-        {headerNotice && <div className="messenger-header-notice">{headerNotice}</div>}
+        {headerNotice && (
+          <div className="messenger-header-notice" role="status" aria-live="polite">
+            {headerNotice}
+          </div>
+        )}
       </div>
 
       <div
@@ -3166,11 +3252,44 @@ export default function Messenger({
                 </div>
               )}
 
-              <div className="messenger-messages">
-                {loadingMessages && <div className="ms-empty">Loading messages...</div>}
+              <div
+                ref={messagesViewportRef}
+                className="messenger-messages"
+                role="log"
+                aria-label={`Messages with ${selectedHeaderName}`}
+                aria-live="polite"
+                aria-relevant="additions text"
+                aria-busy={loadingMessages}
+                tabIndex={0}
+                onScroll={handleMessagesScroll}
+              >
+                {loadingMessages && (
+                  <div className="ms-empty ms-empty--loading" role="status">
+                    <span className="ms-empty__spinner" aria-hidden="true" />
+                    <strong>Loading messages</strong>
+                    <span>Getting this conversation ready...</span>
+                  </div>
+                )}
 
                 {!loadingMessages && messages.length === 0 && (
-                  <div className="ms-empty">No messages yet. Say hello.</div>
+                  <div className="ms-empty ms-empty--conversation">
+                    <img
+                      src={getAvatar(selectedContact)}
+                      alt=""
+                      className="ms-empty__avatar"
+                    />
+                    <strong>Start a conversation with {selectedHeaderName}</strong>
+                    <span>Messages, reactions, and shared media will appear here.</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setText("Hello \u{1F44B}");
+                        window.requestAnimationFrame(() => composerInputRef.current?.focus());
+                      }}
+                    >
+                      Say hello
+                    </button>
+                  </div>
                 )}
 
                 {!loadingMessages &&
@@ -3182,13 +3301,19 @@ export default function Messenger({
                     const messageTimeValue = Number(m.time) || 0;
                     const previousTimeValue = Number(previousMessage?.time) || 0;
                     const nextTimeValue = Number(nextMessage?.time) || 0;
+                    const messageDayLabel = formatMessageDayLabel(m.time);
+                    const showDaySeparator =
+                      !previousMessage
+                      || getLocalDayStamp(previousMessage?.time) !== getLocalDayStamp(m.time);
                     const previousSameSender =
                       Boolean(previousMessage)
                       && toIdString(previousMessage?.senderId) === toIdString(m.senderId)
+                      && getLocalDayStamp(previousMessage?.time) === getLocalDayStamp(m.time)
                       && Math.abs(messageTimeValue - previousTimeValue) <= 5 * 60 * 1000;
                     const nextSameSender =
                       Boolean(nextMessage)
                       && toIdString(nextMessage?.senderId) === toIdString(m.senderId)
+                      && getLocalDayStamp(nextMessage?.time) === getLocalDayStamp(m.time)
                       && Math.abs(nextTimeValue - messageTimeValue) <= 5 * 60 * 1000;
                     let groupClass = "is-group-single";
                     if (previousSameSender && nextSameSender) {
@@ -3241,12 +3366,13 @@ export default function Messenger({
                       }
                       : undefined;
                     const showSenderAvatar = !isMe && !nextSameSender;
+                    const messageTimeLabel = new Date(m.time).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
                     const renderMessageTime = (placement) => (
                       <div className={`msg-time msg-time--${placement}`}>
-                        {new Date(m.time).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {messageTimeLabel}
                         {m.pending ? " - Sending" : ""}
                         {m.failed ? " - Failed" : ""}
                         {isMe && !m.failed ? (
@@ -3383,17 +3509,28 @@ export default function Messenger({
                       </div>
                     );
                     return (
-                      <div
-                        key={m._id || m.clientId}
-                        data-message-id={messageKey}
-                        className={`message-row ${bubbleClass}${toolsVisible ? " is-tools-open" : ""}`}
-                        onMouseEnter={() => setHoveredMessageId(messageKey)}
-                        onMouseLeave={() => {
-                          setHoveredMessageId((current) =>
-                            current === messageKey ? "" : current
-                          );
-                        }}
-                      >
+                      <Fragment key={messageKey || `message-${index}`}>
+                        {showDaySeparator && messageDayLabel ? (
+                          <div
+                            className="messenger-day-separator"
+                            role="separator"
+                            aria-label={messageDayLabel}
+                          >
+                            <span>{messageDayLabel}</span>
+                          </div>
+                        ) : null}
+                        <div
+                          data-message-id={messageKey}
+                          className={`message-row ${bubbleClass}${toolsVisible ? " is-tools-open" : ""}`}
+                          role="article"
+                          aria-label={`${isMe ? "You" : selectedHeaderName}, ${messageTimeLabel}`}
+                          onMouseEnter={() => setHoveredMessageId(messageKey)}
+                          onMouseLeave={() => {
+                            setHoveredMessageId((current) =>
+                              current === messageKey ? "" : current
+                            );
+                          }}
+                        >
                         {!isMe && showSenderAvatar ? (
                           <img
                             src={m.senderAvatar || getAvatar(selectedContact)}
@@ -3699,12 +3836,27 @@ export default function Messenger({
                             </div>
                           )}
                         </div>
-                      </div>
+                        </div>
+                      </Fragment>
                     );
                   })}
 
                 <div ref={endRef} />
               </div>
+
+              {showJumpToLatest ? (
+                <button
+                  type="button"
+                  className="messenger-jump-latest"
+                  onClick={() => scrollToLatest("smooth")}
+                  aria-label="Jump to the latest messages"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m7 10 5 5 5-5" />
+                  </svg>
+                  <span>Latest messages</span>
+                </button>
+              ) : null}
 
               <div className="messenger-input">
                 {replyTarget ? (
@@ -4212,7 +4364,11 @@ export default function Messenger({
         </section>
       </div>
 
-      {error && <div className="messenger-error">{error}</div>}
+      {error && (
+        <div className="messenger-error" role="alert">
+          {error}
+        </div>
+      )}
 
       <input
         ref={mediaInputRef}

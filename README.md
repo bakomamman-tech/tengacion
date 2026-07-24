@@ -36,6 +36,8 @@ Current backend behavior:
 - policy and prompt-injection checks run before any model call
 - app guidance is grounded in the real Tengacion feature registry
 - creator writing uses bounded server-side prompts and model routing
+- mathematics, physics, engineering, chemistry, biology, history, geography, economics, computer science, and English questions use subject-aware reasoning guidance
+- current-affairs and other time-sensitive questions can use server-controlled web search with visible citations
 - sensitive account, payout, payment, and private-data requests are refused or require secure in-app flows
 - OpenAI is optional outside production; safe local fallbacks remain available
 - aggregate Akuso metrics are available through a protected internal backend endpoint for ops visibility
@@ -55,6 +57,7 @@ Akuso-specific configuration:
 - `AKUSO_RATE_LIMIT_MAX`
 - `AKUSO_ENABLE_AUDIT_LOGS`
 - `AKUSO_ENABLE_STREAMING`
+- `AKUSO_ENABLE_WEB_SEARCH`
 
 Backend architecture, safety boundaries, and extension guidance live here:
 - [`docs/akuso-backend-engine.md`](docs/akuso-backend-engine.md)

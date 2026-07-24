@@ -2928,6 +2928,52 @@ html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock .tg-assistant-message__
   background: rgba(255, 240, 189, 0.1);
 }
 
+.tg-assistant-message__sources {
+  display: grid;
+  gap: 0.38rem;
+  margin-top: 0.55rem;
+}
+
+.tg-assistant-message__sources-label {
+  color: var(--akuso-muted, var(--muted));
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tg-assistant-message__sources ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tg-assistant-message__sources a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.9rem;
+  padding: 0.28rem 0.62rem;
+  border: 1px solid rgba(159, 216, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(159, 216, 255, 0.08);
+  color: #b9e3ff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
+.tg-assistant-message__sources a:hover,
+.tg-assistant-message__sources a:focus-visible {
+  border-color: rgba(159, 216, 255, 0.48);
+  background: rgba(159, 216, 255, 0.14);
+  text-decoration: underline;
+  outline: none;
+}
+
 html:is(:not(.dark-mode), .dark-mode) .tg-assistant-dock .tg-assistant-message__formatted ol li::before {
   border-color: rgba(255, 217, 121, 0.42);
   background: rgba(255, 217, 121, 0.12);

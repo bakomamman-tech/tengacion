@@ -211,6 +211,60 @@ describe("TengacionAssistantDock", () => {
     expect(screen.getByRole("button", { name: /send/i })).toBeVisible();
   });
 
+  it("renders safe inline citations and a visible source list", async () => {
+    const user = userEvent.setup();
+    streamAssistantMessageMock.mockResolvedValue({
+      message:
+        "The verified update is in [Example News](https://news.example.com/story) and is marked as `current`.",
+      actions: [],
+      cards: [],
+      followUps: [],
+      sources: [
+        {
+          id: "web-search:1",
+          type: "web_search",
+          label: "Source report",
+          summary: "Current source retrieved for this answer.",
+          url: "https://news.example.com/story",
+        },
+      ],
+      details: [],
+      requiresConfirmation: false,
+      pendingAction: null,
+      conversationId: "conversation-current-1",
+      responseId: "trace-current-1",
+      feedbackToken: "token-current-1",
+      category: "SAFE_ANSWER",
+      mode: "knowledge",
+      safety: { level: "safe", notice: "", escalation: "" },
+      trust: {
+        provider: "openai",
+        mode: "knowledge",
+        grounded: true,
+        usedModel: true,
+        confidenceLabel: "high",
+        note: "",
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <TengacionAssistantDock />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole("button", { name: /open akuso assistant/i }));
+    await user.type(screen.getByRole("textbox", { name: /message akuso/i }), "Latest update");
+    await user.click(screen.getByRole("button", { name: /send/i }));
+
+    const inlineCitation = await screen.findByRole("link", { name: "Example News" });
+    const sourceCitation = screen.getByRole("link", { name: "Source report" });
+    expect(inlineCitation).toHaveAttribute("href", "https://news.example.com/story");
+    expect(sourceCitation).toHaveAttribute("href", "https://news.example.com/story");
+    expect(screen.getByRole("navigation", { name: /sources cited by akuso/i })).toBeVisible();
+    expect(screen.getByText("current", { selector: "code" })).toBeVisible();
+  });
+
   it("uploads an image attachment to Akuso without requiring typed text", async () => {
     const user = userEvent.setup();
     const file = new File(["fake image"], "poster.png", { type: "image/png" });

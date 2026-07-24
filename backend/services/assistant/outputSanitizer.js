@@ -47,6 +47,15 @@ const sanitizeRoute = (value = "") => {
   return route.slice(0, 160);
 };
 
+const sanitizeExternalUrl = (value = "") => {
+  try {
+    const parsed = new URL(String(value || "").trim());
+    return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString().slice(0, 1000) : "";
+  } catch {
+    return "";
+  }
+};
+
 const sanitizeAssistantDetail = (detail = {}) => ({
   title: sanitizePlainText(detail?.title || "", 120),
   body: sanitizeMultilineText(detail?.body || "", 1200),
@@ -72,6 +81,7 @@ const sanitizeAssistantSource = (source = {}) => ({
   type: sanitizePlainText(source?.type || "", 40),
   label: sanitizePlainText(source?.label || "", 120),
   summary: sanitizePlainText(source?.summary || "", 240),
+  url: sanitizeExternalUrl(source?.url || ""),
 });
 
 const sanitizeAssistantTrust = (trust = {}) => ({
@@ -102,6 +112,7 @@ module.exports = {
   sanitizeAssistantSafety,
   sanitizeAssistantSource,
   sanitizeAssistantTrust,
+  sanitizeExternalUrl,
   sanitizeMultilineText,
   sanitizePlainText,
   sanitizeRoute,

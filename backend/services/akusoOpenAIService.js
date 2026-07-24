@@ -49,6 +49,53 @@ const normalizeResponseText = (payload = {}) => {
   return "";
 };
 
+const sanitizeWebUrl = (value = "") => {
+  try {
+    const parsed = new URL(String(value || "").trim());
+    return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString().slice(0, 1000) : "";
+  } catch {
+    return "";
+  }
+};
+
+const extractWebSearchSources = (payload = {}) => {
+  const sources = [];
+  const seen = new Set();
+  const addSource = ({ url = "", title = "" } = {}) => {
+    const safeUrl = sanitizeWebUrl(url);
+    if (!safeUrl || seen.has(safeUrl)) {
+      return;
+    }
+    seen.add(safeUrl);
+    sources.push({
+      url: safeUrl,
+      title: sanitizeMultilineText(title, 160) || new URL(safeUrl).hostname,
+    });
+  };
+
+  for (const item of Array.isArray(payload?.output) ? payload.output : []) {
+    for (const source of Array.isArray(item?.action?.sources) ? item.action.sources : []) {
+      addSource(source);
+    }
+    if (item?.action?.url) {
+      addSource({ url: item.action.url });
+    }
+
+    for (const part of Array.isArray(item?.content) ? item.content : []) {
+      for (const annotation of Array.isArray(part?.annotations) ? part.annotations : []) {
+        if (annotation?.type === "url_citation" || annotation?.url) {
+          addSource({
+            url: annotation.url,
+            title: annotation.title,
+          });
+        }
+      }
+    }
+  }
+
+  return sources.slice(0, 8);
+};
+
 const parseStructuredPayload = (text = "") => {
   const cleaned = String(text || "")
     .trim()
@@ -175,6 +222,9 @@ const performRequest = async ({
   userPrompt,
   imageInputs = [],
   responseSchema,
+  tools = [],
+  toolChoice = "",
+  include = [],
   timeoutMs = config.akuso?.requestTimeoutMs || 12000,
   maxOutputTokens = config.akuso?.maxOutputTokens || 600,
   requestName = "akuso_response",
@@ -219,10 +269,16 @@ const performRequest = async ({
     max_output_tokens: maxOutputTokens,
     reasoning: reasoningEffort
       ? {
-          effort: reasoningEffort,
+          effort:
+            /^gpt-5\.6(?:-|$)/i.test(String(model || "")) && reasoningEffort === "minimal"
+              ? "none"
+              : reasoningEffort,
         }
       : undefined,
     text: Object.keys(textConfig).length > 0 ? textConfig : undefined,
+    tools: Array.isArray(tools) && tools.length > 0 ? tools : undefined,
+    tool_choice: toolChoice || undefined,
+    include: Array.isArray(include) && include.length > 0 ? include : undefined,
   };
 
   let lastError = null;
@@ -235,6 +291,7 @@ const performRequest = async ({
         raw: response,
         text,
         parsed: parseStructuredPayload(text),
+        sources: extractWebSearchSources(response),
       };
     } catch (error) {
       const handled = handleOpenAIError(error);
@@ -283,6 +340,7 @@ const sendCodingRequest = (options = {}) =>
 
 module.exports = {
   createClient,
+  extractWebSearchSources,
   handleOpenAIError,
   normalizeResponseText,
   sendCodingRequest,

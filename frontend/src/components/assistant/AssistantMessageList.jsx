@@ -123,6 +123,8 @@ const CODE_FENCE_PATTERN = /^```([a-zA-Z0-9_-]+)?\s*$/;
 const HEADING_PATTERN = /^(#{1,4})\s+(.+)$/;
 const NUMBERED_LIST_PATTERN = /^\s*\d+[.)]\s+(.+)$/;
 const BULLET_LIST_PATTERN = /^\s*[-*]\s+(.+)$/;
+const INLINE_FORMATTING_PATTERN =
+  /(\*\*[^*\n]+\*\*|`[^`\n]+`|\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))/gi;
 const SUPERSCRIPT_DIGITS = {
   0: "⁰",
   1: "¹",
@@ -202,17 +204,73 @@ const parseClassroomMathLines = (value = "") =>
     })
     .filter((line) => line.text);
 
+const normalizeAssistantLink = (value = "") => {
+  try {
+    const parsed = new URL(String(value || "").trim());
+    return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString() : "";
+  } catch {
+    return "";
+  }
+};
+
 const renderInlineFormatting = (value = "") =>
   String(value || "")
-    .split(/(\*\*[^*]+\*\*)/g)
+    .split(INLINE_FORMATTING_PATTERN)
     .filter(Boolean)
-    .map((part, index) =>
-      part.startsWith("**") && part.endsWith("**") ? (
-        <strong key={`${part}-${index}`}>{part.slice(2, -2)}</strong>
-      ) : (
-        part
-      )
-    );
+    .map((part, index) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={`${part}-${index}`}>{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith("`") && part.endsWith("`")) {
+        return <code key={`${part}-${index}`}>{part.slice(1, -1)}</code>;
+      }
+
+      const link = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/i);
+      const href = normalizeAssistantLink(link?.[2]);
+      if (link && href) {
+        return (
+          <a
+            key={`${href}-${index}`}
+            href={href}
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            {link[1]}
+          </a>
+        );
+      }
+
+      return part;
+    });
+
+function AssistantSourceLinks({ sources = [] }) {
+  const linkedSources = (Array.isArray(sources) ? sources : [])
+    .map((source) => ({
+      ...source,
+      url: normalizeAssistantLink(source?.url),
+    }))
+    .filter((source) => source.url && source.label)
+    .slice(0, 6);
+
+  if (linkedSources.length === 0) {
+    return null;
+  }
+
+  return (
+    <nav className="tg-assistant-message__sources" aria-label="Sources cited by Akuso">
+      <span className="tg-assistant-message__sources-label">Sources</span>
+      <ul>
+        {linkedSources.map((source) => (
+          <li key={source.id || source.url}>
+            <a href={source.url} target="_blank" rel="noreferrer noopener">
+              {source.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
 
 const flushParagraph = (blocks, paragraph) => {
   if (paragraph.length === 0) {
@@ -577,6 +635,7 @@ export default function AssistantMessageList({
                 <div className="tg-assistant-message__bubble tg-assistant-message__bubble--assistant">
                   <AssistantFormattedContent content={message?.content} />
                 </div>
+                <AssistantSourceLinks sources={message?.sources} />
               </div>
             )}
 

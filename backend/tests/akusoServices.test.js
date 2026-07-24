@@ -8,6 +8,7 @@ const { config } = require("../config/env");
 const CreatorProfile = require("../models/CreatorProfile");
 const User = require("../models/User");
 const {
+  AKUSO_SUBJECTS,
   classifyAkusoRequest,
   detectPromptInjectionAttempt,
 } = require("../services/akusoClassifierService");
@@ -41,7 +42,10 @@ const {
   resetAkusoMetrics,
 } = require("../services/akusoMetricsService");
 const { selectAkusoModel } = require("../services/akusoModelRouter");
-const { handleOpenAIError } = require("../services/akusoOpenAIService");
+const {
+  extractWebSearchSources,
+  handleOpenAIError,
+} = require("../services/akusoOpenAIService");
 const { evaluateAkusoPolicy, POLICY_BUCKETS } = require("../services/akusoPolicyService");
 const { formatAkusoChatResponse } = require("../services/akusoResponseFormatter");
 
@@ -129,6 +133,54 @@ describe("Akuso services", () => {
     ).toEqual(
       expect.objectContaining({
         matched: true,
+      })
+    );
+  });
+
+  it.each([
+    ["Explain Newton's second law in physics with an example.", AKUSO_SUBJECTS.PHYSICS],
+    ["Balance this chemistry equation: Fe + O2 = Fe2O3.", AKUSO_SUBJECTS.CHEMISTRY],
+    ["Explain bending moment in civil engineering.", AKUSO_SUBJECTS.ENGINEERING],
+    ["Discuss the history of Nigeria's independence.", AKUSO_SUBJECTS.HISTORY],
+    ["Correct this English grammar sentence and explain the tense.", AKUSO_SUBJECTS.ENGLISH],
+    ["Answer this general knowledge quiz and explain each choice.", AKUSO_SUBJECTS.GENERAL_KNOWLEDGE],
+  ])("classifies %s as %s academic reasoning", (message, subject) => {
+    const classification = classifyAkusoRequest({
+      message,
+      mode: "knowledge_learning",
+    });
+
+    expect(classification).toEqual(
+      expect.objectContaining({
+        subject,
+        academicReasoningRequested: true,
+        needsReasoning: true,
+        appHelpRequested: false,
+      })
+    );
+  });
+
+  it("marks current affairs for live retrieval without treating academic tokens as secrets", () => {
+    const current = classifyAkusoRequest({
+      message: "Who is the president of Ghana?",
+      mode: "knowledge_learning",
+    });
+    const computerScience = classifyAkusoRequest({
+      message: "In computer science, explain how an NLP token is produced.",
+      mode: "knowledge_learning",
+    });
+
+    expect(current).toEqual(
+      expect.objectContaining({
+        subject: AKUSO_SUBJECTS.CURRENT_AFFAIRS,
+        requiresCurrentInformation: true,
+        needsReasoning: true,
+      })
+    );
+    expect(computerScience).toEqual(
+      expect.objectContaining({
+        subject: AKUSO_SUBJECTS.COMPUTER_SCIENCE,
+        sensitive: false,
       })
     );
   });
@@ -436,6 +488,67 @@ describe("Akuso services", () => {
     expect(appPrompt.userPrompt).toMatch(/without inventing Tengacion facts/i);
   });
 
+  it("builds subject-aware academic and live-current-affairs prompt contracts", () => {
+    const chemistryPolicy = evaluateAkusoPolicy({
+      input: {
+        message: "In chemistry, calculate the molarity of 0.5 mol in 2 litres.",
+        mode: "knowledge_learning",
+      },
+      user: { id: userId },
+    });
+    const chemistryPrompt = buildAkusoPromptBundle({
+      input: {
+        message: "In chemistry, calculate the molarity of 0.5 mol in 2 litres.",
+      },
+      context: {
+        page: {},
+        auth: { isAuthenticated: true, role: "user" },
+        relevantFeatures: [],
+      },
+      policyResult: chemistryPolicy,
+      fallback: {
+        answer: "The model layer will solve the supplied chemistry problem.",
+        warnings: [],
+        suggestions: [],
+      },
+    });
+    const currentPolicy = evaluateAkusoPolicy({
+      input: {
+        message: "What are today's latest Nigerian current-affairs headlines?",
+        mode: "knowledge_learning",
+      },
+      user: { id: userId },
+    });
+    const currentPrompt = buildAkusoPromptBundle({
+      input: {
+        message: "What are today's latest Nigerian current-affairs headlines?",
+      },
+      context: {
+        page: {},
+        auth: { isAuthenticated: true, role: "user" },
+        relevantFeatures: [],
+      },
+      policyResult: currentPolicy,
+      fallback: {
+        answer: "Current verification is required.",
+        warnings: [],
+        suggestions: [],
+      },
+      capabilities: {
+        webSearch: true,
+      },
+    });
+
+    expect(chemistryPolicy.taskType).toBe("reasoning");
+    expect(chemistryPrompt.systemPrompt).toMatch(/Academic problem-solving mode/i);
+    expect(chemistryPrompt.systemPrompt).toMatch(/For chemistry, balance equations/i);
+    expect(chemistryPrompt.userPrompt).toMatch(/Subject:\s*chemistry/i);
+    expect(currentPolicy.taskType).toBe("reasoning");
+    expect(currentPrompt.systemPrompt).toMatch(/Current-affairs and time-sensitive knowledge mode/i);
+    expect(currentPrompt.systemPrompt).toMatch(/live_retrieval: web search is available/i);
+    expect(currentPrompt.userPrompt).toMatch(/Web search available: true/i);
+  });
+
   it("solves percent math questions for Akuso reasoning fallbacks", () => {
     const response = buildMathResponse({
       message: "Solve 15% of 240 step by step",
@@ -447,7 +560,9 @@ describe("Akuso services", () => {
         expression: "15% of 240",
       })
     );
-    expect(response.steps.join("\n")).toMatch(/240 \* 0.15 = 36|15 \/ 100 = 0.15/i);
+    expect(response.steps.join("\n")).toMatch(
+      /240 \* (?:0.15|3\/20) = 36|15 \/ 100 = (?:0.15|3\/20)/i
+    );
     expect(response.solutionText).toMatch(/## Problem/);
     expect(response.solutionText).toMatch(/## Given/);
     expect(response.solutionText).toMatch(/## Step 1/);
@@ -746,6 +861,53 @@ describe("Akuso services", () => {
       })
     );
     expect(error.message).not.toMatch(/sk-1234567890/);
+  });
+
+  it("extracts and deduplicates cited web sources from Responses API output", () => {
+    const sources = extractWebSearchSources({
+      output: [
+        {
+          type: "web_search_call",
+          action: {
+            sources: [
+              { type: "url", url: "https://example.com/report" },
+              { type: "url", url: "javascript:alert(1)" },
+            ],
+          },
+        },
+        {
+          type: "message",
+          content: [
+            {
+              type: "output_text",
+              annotations: [
+                {
+                  type: "url_citation",
+                  url: "https://example.com/report",
+                  title: "Example report",
+                },
+                {
+                  type: "url_citation",
+                  url: "https://news.example.org/update",
+                  title: "Latest update",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(sources).toEqual([
+      {
+        url: "https://example.com/report",
+        title: "example.com",
+      },
+      {
+        url: "https://news.example.org/update",
+        title: "Latest update",
+      },
+    ]);
   });
 
   it("runs the seeded Akuso eval harness successfully", () => {

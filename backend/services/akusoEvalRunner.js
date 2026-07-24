@@ -453,6 +453,132 @@ const EVAL_SCENARIOS = [
     },
   },
   {
+    id: "reasoning.physics.academic_model",
+    name: "Physics problems route to the reasoning model",
+    suite: "multidisciplinary_reasoning",
+    severity: "high",
+    tags: ["physics", "education", "model_routing"],
+    input: {
+      message:
+        "A 5 kg object accelerates at 3 m/s². Calculate the resultant force and explain the law used.",
+      mode: "knowledge_learning",
+    },
+    expected: {
+      subject: "physics",
+      taskType: "reasoning",
+      modelTask: "reasoning",
+      shouldCallModel: true,
+    },
+  },
+  {
+    id: "reasoning.chemistry.academic_model",
+    name: "Chemistry problems route to the reasoning model",
+    suite: "multidisciplinary_reasoning",
+    severity: "high",
+    tags: ["chemistry", "education", "model_routing"],
+    input: {
+      message:
+        "In chemistry, balance the combustion equation for propane and explain the mole ratio.",
+      mode: "knowledge_learning",
+    },
+    expected: {
+      subject: "chemistry",
+      taskType: "reasoning",
+      modelTask: "reasoning",
+      shouldCallModel: true,
+    },
+  },
+  {
+    id: "reasoning.engineering.academic_model",
+    name: "Engineering analysis routes to the reasoning model",
+    suite: "multidisciplinary_reasoning",
+    severity: "high",
+    tags: ["engineering", "education", "model_routing"],
+    input: {
+      message:
+        "For a simply supported engineering beam, explain how to determine reactions and draw the shear-force diagram.",
+      mode: "knowledge_learning",
+    },
+    expected: {
+      subject: "engineering",
+      taskType: "reasoning",
+      modelTask: "reasoning",
+      shouldCallModel: true,
+    },
+  },
+  {
+    id: "reasoning.history.academic_model",
+    name: "History analysis routes to the reasoning model",
+    suite: "multidisciplinary_reasoning",
+    severity: "high",
+    tags: ["history", "education", "model_routing"],
+    input: {
+      message:
+        "Explain the historical causes and consequences of Nigeria's 1960 independence.",
+      mode: "knowledge_learning",
+    },
+    expected: {
+      subject: "history",
+      taskType: "reasoning",
+      modelTask: "reasoning",
+      shouldCallModel: true,
+    },
+  },
+  {
+    id: "reasoning.english.academic_model",
+    name: "English-language questions route to the reasoning model",
+    suite: "multidisciplinary_reasoning",
+    severity: "high",
+    tags: ["english", "education", "model_routing"],
+    input: {
+      message:
+        "English grammar: correct 'Neither of the boys have finished their work' and explain the rule.",
+      mode: "knowledge_learning",
+    },
+    expected: {
+      subject: "english",
+      taskType: "reasoning",
+      modelTask: "reasoning",
+      shouldCallModel: true,
+    },
+  },
+  {
+    id: "reasoning.general_knowledge.academic_model",
+    name: "General-knowledge questions route to the reasoning model",
+    suite: "multidisciplinary_reasoning",
+    severity: "high",
+    tags: ["general_knowledge", "education", "model_routing"],
+    input: {
+      message:
+        "General knowledge: explain why Abuja became Nigeria's capital and name the city it replaced.",
+      mode: "knowledge_learning",
+    },
+    expected: {
+      subject: "general_knowledge",
+      taskType: "reasoning",
+      modelTask: "reasoning",
+      shouldCallModel: true,
+    },
+  },
+  {
+    id: "knowledge.current_affairs.live_model",
+    name: "Current affairs request is marked for live retrieval and reasoning",
+    suite: "current_knowledge",
+    severity: "critical",
+    tags: ["current_affairs", "live_retrieval", "model_routing"],
+    input: {
+      message: "What are the latest major Nigerian current-affairs headlines today?",
+      mode: "knowledge_learning",
+    },
+    expected: {
+      subject: "current_affairs",
+      requiresCurrentInformation: true,
+      taskType: "reasoning",
+      modelTask: "reasoning",
+      shouldCallModel: true,
+    },
+  },
+  {
     id: "engineering.calculator.model",
     name: "Calculator feature routes to software engineering",
     suite: "software_engineering",
@@ -562,6 +688,9 @@ const EXPECTATION_READERS = {
   medical: ({ policy }) => Boolean(policy.classification?.medical),
   legal: ({ policy }) => Boolean(policy.classification?.legal),
   financial: ({ policy }) => Boolean(policy.classification?.financial),
+  subject: ({ policy }) => policy.classification?.subject || "general",
+  requiresCurrentInformation: ({ policy }) =>
+    Boolean(policy.classification?.requiresCurrentInformation),
   softwareEngineeringRequested: ({ policy }) =>
     Boolean(policy.classification?.softwareEngineeringRequested),
   modelTask: ({ model }) => model.task,

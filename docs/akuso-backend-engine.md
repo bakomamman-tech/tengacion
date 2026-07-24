@@ -260,11 +260,14 @@ Added or hardened variables:
 - `AKUSO_RATE_LIMIT_MAX`
 - `AKUSO_ENABLE_AUDIT_LOGS`
 - `AKUSO_ENABLE_STREAMING`
+- `AKUSO_ENABLE_WEB_SEARCH`
 
 Behavior notes:
 
 - production fails fast if `ASSISTANT_ENABLED=true` and `OPENAI_API_KEY` is missing
 - Akuso readiness is exposed through `config.akuso`
+- the fast, primary/writing, and reasoning roles remain separately configurable; current defaults map those roles to GPT-5.6 Luna, Terra, and Sol
+- web search is only exposed to the model for requests classified as time-sensitive, and can be disabled with `AKUSO_ENABLE_WEB_SEARCH=false`
 - startup logs mask the OpenAI key
 - preflight checks preserve the existing Render-oriented env validation flow
 

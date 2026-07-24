@@ -80,7 +80,22 @@ const normalizeConcreteRoute = (value = "") => {
   return route;
 };
 
-const buildAkusoSource = ({ id = "", type = "", label = "", summary = "" } = {}) => {
+const normalizeExternalUrl = (value = "") => {
+  try {
+    const parsed = new URL(String(value || "").trim());
+    return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString().slice(0, 1000) : "";
+  } catch {
+    return "";
+  }
+};
+
+const buildAkusoSource = ({
+  id = "",
+  type = "",
+  label = "",
+  summary = "",
+  url = "",
+} = {}) => {
   const safeLabel = safeText(label, 120);
   if (!safeLabel) {
     return null;
@@ -91,6 +106,7 @@ const buildAkusoSource = ({ id = "", type = "", label = "", summary = "" } = {})
     type: safeText(type || "akuso_source", 40) || "akuso_source",
     label: safeLabel,
     summary: safeText(summary, 240),
+    url: normalizeExternalUrl(url),
   };
 };
 
@@ -134,6 +150,30 @@ const summarizeSourceLabels = (sources = []) =>
   (Array.isArray(sources) ? sources : [])
     .map((entry) => (typeof entry === "string" ? entry : entry?.label || ""))
     .map((entry) => safeText(entry, 140))
+    .filter(Boolean)
+    .slice(0, 8);
+
+const buildWebSearchSources = (sources = []) =>
+  (Array.isArray(sources) ? sources : [])
+    .map((source, index) => {
+      const url = normalizeExternalUrl(source?.url);
+      if (!url) {
+        return null;
+      }
+      let hostname = "Web source";
+      try {
+        hostname = new URL(url).hostname.replace(/^www\./i, "") || hostname;
+      } catch {
+        // normalizeExternalUrl already rejected invalid URLs.
+      }
+      return buildAkusoSource({
+        id: `web-search:${index + 1}`,
+        type: "web_search",
+        label: source?.title || hostname,
+        summary: `Current source retrieved for this answer from ${hostname}.`,
+        url,
+      });
+    })
     .filter(Boolean)
     .slice(0, 8);
 
@@ -961,9 +1001,17 @@ const maybeEnhanceFallback = async ({
     policyResult,
     fallback,
     routePurpose,
+    capabilities: {
+      webSearch:
+        Boolean(config.akuso?.enableWebSearch) &&
+        Boolean(policyResult.classification?.requiresCurrentInformation),
+    },
   });
 
   try {
+    const webSearchEnabled =
+      Boolean(config.akuso?.enableWebSearch) &&
+      Boolean(policyResult.classification?.requiresCurrentInformation);
     const requestOptions = {
       model: routeDecision.model,
       systemPrompt: promptBundle.systemPrompt,
@@ -971,10 +1019,34 @@ const maybeEnhanceFallback = async ({
       imageInputs,
       responseSchema: promptBundle.responseSchema,
     };
-    if (routeDecision.task === "reasoning" && policyResult.classification?.mathRequested) {
-      requestOptions.reasoningEffort = "high";
+    if (routeDecision.task === "reasoning") {
+      const quantitativeSubject = [
+        "chemistry",
+        "engineering",
+        "mathematics",
+        "physics",
+      ].includes(policyResult.classification?.subject);
+      requestOptions.reasoningEffort =
+        policyResult.classification?.mathRequested || quantitativeSubject ? "high" : "medium";
       requestOptions.verbosity = "medium";
-      requestOptions.maxOutputTokens = Math.max(Number(config.akuso?.maxOutputTokens || 0), 1800);
+      requestOptions.maxOutputTokens = Math.max(
+        Number(config.akuso?.maxOutputTokens || 0),
+        quantitativeSubject ? 2400 : 2000
+      );
+    }
+    if (webSearchEnabled) {
+      requestOptions.tools = [
+        {
+          type: "web_search",
+          search_context_size: "medium",
+        },
+      ];
+      requestOptions.toolChoice = "required";
+      requestOptions.include = ["web_search_call.action.sources"];
+      requestOptions.maxOutputTokens = Math.max(
+        Number(requestOptions.maxOutputTokens || 0),
+        2200
+      );
     }
     const response =
       routeDecision.task === "creator_writing"
@@ -1006,8 +1078,14 @@ const maybeEnhanceFallback = async ({
       };
     }
 
+    const modelSources = buildWebSearchSources(response?.sources);
+    const combinedSources = [
+      ...modelSources,
+      ...(fallback.sources || []),
+    ].slice(0, 8);
+
     return {
-      answer: sanitizeCodeCapableText(parsed.answer || fallback.answer, 6000),
+      answer: sanitizeCodeCapableText(parsed.answer || fallback.answer, 10000),
       warnings: mergeWarnings(fallback.warnings, mediaWarnings, parsed.warnings || []),
       suggestions: mergeSuggestions(fallback.suggestions, parsed.suggestions || []),
       actions: fallback.actions || [],
@@ -1017,7 +1095,7 @@ const maybeEnhanceFallback = async ({
             ? parsed.drafts
             : fallback.drafts || []
           : fallback.drafts || [],
-      sources: fallback.sources || [],
+      sources: combinedSources,
       details: fallback.details || [],
       cards: fallback.cards || [],
       observability: {
@@ -1031,7 +1109,7 @@ const maybeEnhanceFallback = async ({
         usedModel: true,
         grounded: true,
         safetyLevel: policyResult.safetyLevel,
-        sources: summarizeSourceLabels(fallback.sources),
+        sources: summarizeSourceLabels(combinedSources),
       },
     };
   } catch (error) {

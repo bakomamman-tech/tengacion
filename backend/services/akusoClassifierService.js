@@ -9,6 +9,22 @@ const AKUSO_MODES = {
   MATH: "math",
 };
 
+const AKUSO_SUBJECTS = {
+  BIOLOGY: "biology",
+  CHEMISTRY: "chemistry",
+  COMPUTER_SCIENCE: "computer_science",
+  CURRENT_AFFAIRS: "current_affairs",
+  ECONOMICS: "economics",
+  ENGINEERING: "engineering",
+  ENGLISH: "english",
+  GENERAL_KNOWLEDGE: "general_knowledge",
+  GEOGRAPHY: "geography",
+  HISTORY: "history",
+  MATHEMATICS: "mathematics",
+  PHYSICS: "physics",
+  GENERAL: "general",
+};
+
 const PROMPT_INJECTION_PATTERNS = [
   /ignore (?:all|previous|earlier) instructions/i,
   /reveal (?:your|the) (?:system|developer|hidden|internal) prompt/i,
@@ -56,7 +72,15 @@ const MEDICAL_PATTERNS = [
   /\bprescription\b/i,
 ];
 
-const LEGAL_PATTERNS = [/\blegal\b/i, /\blaw\b/i, /\bcontract\b/i, /\bcourt\b/i, /\blawyer\b/i];
+const LEGAL_PATTERNS = [
+  /\blegal\b/i,
+  /\b(?:criminal|civil|family|employment|immigration|property|tax|contract|constitutional|corporate)\s+law\b/i,
+  /\b(?:the )?laws?\s+(?:says?|allows?|requires?|prohibits?)\b/i,
+  /\b(?:against|under)\s+(?:the )?law\b/i,
+  /\bcontract\b/i,
+  /\bcourt\b/i,
+  /\blawyer\b/i,
+];
 const FINANCIAL_PATTERNS = [
   /\bfinance\b/i,
   /\binvest(?:ment)?\b/i,
@@ -152,11 +176,82 @@ const SOFTWARE_ENGINEERING_PATTERNS = [
   /\btsx\b/i,
   /\bcalculator\b/i,
 ];
+const SUBJECT_PATTERNS = {
+  [AKUSO_SUBJECTS.PHYSICS]: [
+    /\bphysics\b/i,
+    /\b(?:kinematics|dynamics|mechanics|thermodynamics|electromagnetism|optics)\b/i,
+    /\b(?:velocity|accelerat(?:e|es|ed|ing|ion)|momentum|projectile|free[-\s]?body diagram)\b/i,
+    /\b(?:newton'?s laws?|ohm'?s law|electric circuit|potential difference)\b/i,
+  ],
+  [AKUSO_SUBJECTS.ENGINEERING]: [
+    /\bengineering\b/i,
+    /\b(?:civil|mechanical|electrical|electronic|chemical|structural|petroleum|aerospace)\s+engineer(?:ing)?\b/i,
+    /\b(?:stress|strain|shear force|bending moment|factor of safety|fluid mechanics)\b/i,
+    /\b(?:beam|truss|circuit|load-bearing|control system)\b/i,
+  ],
+  [AKUSO_SUBJECTS.CHEMISTRY]: [
+    /\bchemistry\b/i,
+    /\b(?:stoichiometry|molarity|molality|electrolysis|redox|oxidation|reduction)\b/i,
+    /\b(?:periodic table|chemical equation|chemical reaction|limiting reagent)\b/i,
+    /\b(?:acid|base|alkali|isotope|electron configuration|organic chemistry|inorganic chemistry)\b/i,
+    /\b(?:moles?|molar mass|empirical formula|molecular formula)\b/i,
+  ],
+  [AKUSO_SUBJECTS.BIOLOGY]: [
+    /\bbiology\b/i,
+    /\b(?:cell biology|genetics|ecology|evolution|photosynthesis|respiration|mitosis|meiosis)\b/i,
+    /\b(?:anatomy|physiology|organism|ecosystem|chromosome|dna|rna)\b/i,
+  ],
+  [AKUSO_SUBJECTS.HISTORY]: [
+    /\bhistory\b/i,
+    /\bhistorical\b/i,
+    /\b(?:ancient|medieval|colonial|pre-colonial|post-colonial)\b/i,
+    /\b(?:empire|dynasty|revolution|independence movement|world war)\b/i,
+  ],
+  [AKUSO_SUBJECTS.GEOGRAPHY]: [
+    /\bgeography\b/i,
+    /\b(?:climate|weathering|erosion|plate tectonics|population distribution|urbanisation|urbanization)\b/i,
+    /\b(?:latitude|longitude|topograph|landform|river basin)\b/i,
+  ],
+  [AKUSO_SUBJECTS.ENGLISH]: [
+    /\benglish(?: language)?\b/i,
+    /\b(?:grammar|vocabulary|punctuation|comprehension|parts? of speech)\b/i,
+    /\b(?:noun|pronoun|adjective|adverb|preposition|conjunction|verb tense)\b/i,
+    /\b(?:figure of speech|metaphor|simile|personification|alliteration)\b/i,
+    /\b(?:essay|letter writing|summary writing|literature)\b/i,
+  ],
+  [AKUSO_SUBJECTS.ECONOMICS]: [
+    /\beconomics?\b/i,
+    /\b(?:demand and supply|opportunity cost|inflation|gross domestic product|gdp|market structure)\b/i,
+    /\b(?:microeconomics|macroeconomics|fiscal policy|monetary policy)\b/i,
+  ],
+  [AKUSO_SUBJECTS.COMPUTER_SCIENCE]: [
+    /\bcomputer science\b/i,
+    /\b(?:algorithm|data structure|computational complexity|binary search|database normalization)\b/i,
+    /\b(?:operating system|computer network|machine learning|artificial intelligence)\b/i,
+  ],
+  [AKUSO_SUBJECTS.GENERAL_KNOWLEDGE]: [
+    /\bgeneral knowledge\b/i,
+    /\btrivia\b/i,
+    /\bquiz\b/i,
+  ],
+};
+const CURRENT_INFORMATION_PATTERNS = [
+  /\bcurrent[-\s]+affairs?\b/i,
+  /\b(?:latest|breaking|today'?s|recent)\s+(?:news|headlines?|events?|developments?|updates?)\b/i,
+  /\b(?:news|headlines?)\s+(?:today|this week|this month|this year)\b/i,
+  /\bwhat (?:is happening|happened)\s+(?:today|this week|this month|recently)\b/i,
+  /\bwho is (?:the )?(?:current|present)\b/i,
+  /\bwho (?:is|are) (?:the )?(?:president|prime minister|governor|minister|ceo) (?:of|for)\b/i,
+  /\bas of (?:today|now|this week|this month|this year)\b/i,
+  /\b(?:current|latest)\s+(?:president|prime minister|governor|minister|ceo|price|rate|law|rule|schedule|score|result)\b/i,
+  /\b(?:what|how much) (?:is|are) (?:the )?(?:price|exchange rate|interest rate|inflation rate|unemployment rate|score|schedule)\b/i,
+];
 const SENSITIVE_PATTERNS = [
   /\bpassword\b/i,
   /\botp\b/i,
   /\bjwt\b/i,
-  /\btoken\b/i,
+  /\b(?:access|auth|authentication|bearer|session|secret|refresh)\s+tokens?\b/i,
+  /\btokens?\s+(?:for|from)\s+(?:an?\s+)?(?:account|login|api|session)\b/i,
   /\bapi key\b/i,
   /\bprivate messages?\b/i,
   /\bbank details?\b/i,
@@ -173,6 +268,16 @@ const normalize = (value = "") =>
 
 const hasPattern = (message = "", patterns = []) =>
   patterns.some((pattern) => pattern.test(message));
+
+const detectAcademicSubject = ({ message = "", mathRequested = false } = {}) => {
+  for (const [subject, patterns] of Object.entries(SUBJECT_PATTERNS)) {
+    if (hasPattern(message, patterns)) {
+      return subject;
+    }
+  }
+
+  return mathRequested ? AKUSO_SUBJECTS.MATHEMATICS : AKUSO_SUBJECTS.GENERAL;
+};
 
 const normalizeMode = (value = "") => {
   const input = normalize(value);
@@ -276,10 +381,35 @@ const classifyAkusoRequest = ({
     normalizedMessage,
     SOFTWARE_ENGINEERING_PATTERNS
   );
+  const namedAcademicSubject = detectAcademicSubject({
+    message: normalizedMessage,
+    mathRequested: false,
+  });
   const mathRequested =
-    normalizedMode === AKUSO_MODES.MATH || hasPattern(normalizedMessage, MATH_PATTERNS);
+    normalizedMode === AKUSO_MODES.MATH ||
+    (namedAcademicSubject === AKUSO_SUBJECTS.GENERAL &&
+      hasPattern(normalizedMessage, MATH_PATTERNS));
+  const requiresCurrentInformation = hasPattern(
+    normalizedMessage,
+    CURRENT_INFORMATION_PATTERNS
+  );
+  const detectedSubject = requiresCurrentInformation
+    ? AKUSO_SUBJECTS.CURRENT_AFFAIRS
+    : namedAcademicSubject !== AKUSO_SUBJECTS.GENERAL
+      ? namedAcademicSubject
+      : mathRequested
+        ? AKUSO_SUBJECTS.MATHEMATICS
+        : AKUSO_SUBJECTS.GENERAL;
+  const academicReasoningRequested = ![
+    AKUSO_SUBJECTS.CURRENT_AFFAIRS,
+    AKUSO_SUBJECTS.GENERAL,
+  ].includes(detectedSubject);
   const needsReasoning =
-    mathRequested || softwareEngineeringRequested || hasPattern(normalizedMessage, REASONING_PATTERNS);
+    mathRequested ||
+    softwareEngineeringRequested ||
+    academicReasoningRequested ||
+    requiresCurrentInformation ||
+    hasPattern(normalizedMessage, REASONING_PATTERNS);
   const appHelpRequested =
     !softwareEngineeringRequested &&
     !needsReasoning &&
@@ -301,6 +431,11 @@ const classifyAkusoRequest = ({
   const resolvedMode =
     mathRequested && !creatorWritingRequested && !softwareEngineeringRequested
       ? AKUSO_MODES.MATH
+      : (academicReasoningRequested || requiresCurrentInformation) &&
+          !creatorWritingRequested &&
+          !softwareEngineeringRequested &&
+          normalizedMode === AKUSO_MODES.APP_HELP
+        ? AKUSO_MODES.KNOWLEDGE_LEARNING
       : normalizedMode === AKUSO_MODES.AUTO
         ? inferredMode
         : normalizedMode;
@@ -321,7 +456,10 @@ const classifyAkusoRequest = ({
     legal,
     financial,
     sensitive,
+    subject: detectedSubject,
     needsReasoning,
+    academicReasoningRequested,
+    requiresCurrentInformation,
     mathRequested,
     softwareEngineeringRequested,
     creatorWritingRequested,
@@ -331,7 +469,9 @@ const classifyAkusoRequest = ({
 
 module.exports = {
   AKUSO_MODES,
+  AKUSO_SUBJECTS,
   classifyAkusoRequest,
+  detectAcademicSubject,
   detectPromptInjectionAttempt,
   normalizeMode,
 };

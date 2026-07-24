@@ -325,6 +325,7 @@ const normalizeSource = (source) => {
     type: normalizeString(source.type),
     label: normalizeString(source.label),
     summary: normalizeString(source.summary),
+    url: normalizeString(source.url),
   };
 };
 

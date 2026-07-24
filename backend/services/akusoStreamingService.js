@@ -30,7 +30,7 @@ const writeAkusoStreamEvent = (res, eventName = "message", data = {}) => {
 };
 
 const splitAkusoStreamText = (value = "", target = STREAM_CHUNK_TARGET) => {
-  const safeText = sanitizeCodeCapableText(value, 6000);
+  const safeText = sanitizeCodeCapableText(value, 10000);
   if (!safeText) {
     return [];
   }

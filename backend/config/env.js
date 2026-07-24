@@ -409,11 +409,16 @@ const emailConfigured = Boolean(smtpHost && smtpPort && smtpUser && smtpPass);
 const requireEmailOtp = toText(process.env.REQUIRE_EMAIL_OTP) || "false";
 const assistantEnabledInput = toText(process.env.ASSISTANT_ENABLED);
 const openAiApiKey = toText(process.env.OPENAI_API_KEY);
-const openAiModel = toText(process.env.OPENAI_MODEL) || "gpt-5.4-mini";
-const openAiModelPrimary = toText(process.env.OPENAI_MODEL_PRIMARY) || openAiModel || "gpt-5.4-mini";
-const openAiModelFast = toText(process.env.OPENAI_MODEL_FAST) || openAiModelPrimary;
-const openAiModelWriting = toText(process.env.OPENAI_MODEL_WRITING) || openAiModelPrimary;
-const openAiModelReasoning = toText(process.env.OPENAI_MODEL_REASONING) || openAiModelPrimary;
+const configuredOpenAiModel = toText(process.env.OPENAI_MODEL);
+const openAiModel = configuredOpenAiModel || "gpt-5.6-terra";
+const openAiModelPrimary = toText(process.env.OPENAI_MODEL_PRIMARY) || openAiModel;
+const openAiModelFast =
+  toText(process.env.OPENAI_MODEL_FAST) ||
+  (configuredOpenAiModel ? openAiModel : "gpt-5.6-luna");
+const openAiModelWriting = toText(process.env.OPENAI_MODEL_WRITING) || openAiModel;
+const openAiModelReasoning =
+  toText(process.env.OPENAI_MODEL_REASONING) ||
+  (configuredOpenAiModel ? openAiModel : "gpt-5.6-sol");
 const openAiModelTranscription =
   toText(process.env.OPENAI_MODEL_TRANSCRIPTION) || "gpt-4o-mini-transcribe";
 const hasOpenAI = Boolean(openAiApiKey);
@@ -426,13 +431,13 @@ const assistantFeedbackRetentionDays = parsePort(process.env.ASSISTANT_FEEDBACK_
 const assistantModelTimeoutMs = parsePort(process.env.ASSISTANT_MODEL_TIMEOUT_MS, 9000);
 const akusoRequestTimeoutMs = parseInteger(
   process.env.AKUSO_REQUEST_TIMEOUT_MS,
-  assistantModelTimeoutMs || 12000,
+  Math.max(assistantModelTimeoutMs || 0, 18000),
   { min: 1000 }
 );
 const akusoMaxInputChars = parseInteger(process.env.AKUSO_MAX_INPUT_CHARS, 4000, {
   min: 200,
 });
-const akusoMaxOutputTokens = parseInteger(process.env.AKUSO_MAX_OUTPUT_TOKENS, 1800, {
+const akusoMaxOutputTokens = parseInteger(process.env.AKUSO_MAX_OUTPUT_TOKENS, 2400, {
   min: 64,
 });
 const akusoRateLimitWindowMs = parseInteger(
@@ -443,6 +448,7 @@ const akusoRateLimitWindowMs = parseInteger(
 const akusoRateLimitMax = parseInteger(process.env.AKUSO_RATE_LIMIT_MAX, 40, { min: 1 });
 const akusoEnableAuditLogs = toBool(process.env.AKUSO_ENABLE_AUDIT_LOGS || "true");
 const akusoEnableStreaming = toBool(process.env.AKUSO_ENABLE_STREAMING || "false");
+const akusoEnableWebSearch = toBool(process.env.AKUSO_ENABLE_WEB_SEARCH || "true");
 const akusoReady = assistantEnabled ? hasOpenAI : false;
 
 const missing = [];
@@ -501,6 +507,7 @@ const akuso = {
   rateLimitMax: akusoRateLimitMax,
   enableAuditLogs: akusoEnableAuditLogs,
   enableStreaming: akusoEnableStreaming,
+  enableWebSearch: akusoEnableWebSearch,
   models: {
     primary: openAiModelPrimary,
     fast: openAiModelFast,

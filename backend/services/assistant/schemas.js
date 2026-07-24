@@ -159,6 +159,7 @@ const assistantSourceSchema = z
     type: z.string().trim().min(1).max(40),
     label: z.string().trim().min(1).max(120),
     summary: z.string().trim().max(240).optional().default(""),
+    url: z.union([z.literal(""), z.string().url().max(1000)]).optional().default(""),
   })
   .strict();
 

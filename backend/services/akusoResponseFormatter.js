@@ -130,7 +130,7 @@ const buildBaseResponse = ({
   mode: sanitizePlainText(mode, 40) || "knowledge_learning",
   category: sanitizePlainText(category, 60) || "SAFE_ANSWER",
   answer:
-    sanitizeCodeCapableText(answer, 6000) ||
+    sanitizeCodeCapableText(answer, 10000) ||
     "Akuso can help with Tengacion app guidance, creator writing, and knowledge questions.",
   warnings: normalizeList(warnings, 4, 200),
   suggestions: normalizeList(suggestions, 6, 140),

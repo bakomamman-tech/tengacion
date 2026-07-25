@@ -2616,6 +2616,24 @@ export const adminGetMillionaireParticipants = (params = {}) => {
   });
 };
 
+export const adminGetMillionaireLaunchCampaign = () =>
+  request(`${API_BASE}/admin/millionaire/launch-campaign`, {
+    headers: getAuthHeaders(),
+  });
+
+export const adminSendMillionaireLaunchCampaign = () =>
+  request(`${API_BASE}/admin/millionaire/launch-campaign`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({
+      confirmCampaignKey: "millionaire-launch-2026-07-26",
+    }),
+    timeoutMs: 45000,
+  });
+
 export const adminUpdateMillionairePayout = (attemptId, payload = {}) =>
   request(
     `${API_BASE}/admin/millionaire/attempts/${encodeURIComponent(attemptId || "")}/payout`,

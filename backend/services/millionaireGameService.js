@@ -78,7 +78,6 @@ const buildProfileEligibility = (user = {}, participant = null) => {
     email: Boolean(String(user?.email || "").trim()),
     phone: Boolean(sanitizePhoneValue(user?.phone)),
     country: Boolean(sanitizeCountryValue(user?.country)),
-    stateOfOrigin: Boolean(sanitizeStateValue(user?.stateOfOrigin)),
     dateOfBirth: Boolean(toDate(user?.dob)),
     gender: Boolean(String(user?.gender || "").trim()),
   };

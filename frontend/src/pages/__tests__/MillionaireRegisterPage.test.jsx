@@ -48,7 +48,10 @@ describe("MillionaireRegisterPage", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("img", { name: "Tengacion Millionaire quiz challenge flyer" })
-    ).toHaveAttribute("src", "/assets/campaigns/tengacion-millionaire-2026.png");
+    ).toHaveAttribute(
+      "src",
+      "/assets/campaigns/tengacion-millionaire-2026.png?v=20260725-prizes"
+    );
     expect(screen.getByText(/3 stages/i)).toBeInTheDocument();
     expect(screen.getByText(/5 questions each/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Tengacion username/i)).toBeInTheDocument();
@@ -72,7 +75,13 @@ describe("MillionaireRegisterPage", () => {
     });
     vi.mocked(getMillionaireStatus).mockResolvedValue({
       registration: { registered: false },
-      eligibility: { eligible: false, requirements: [] },
+      eligibility: {
+        eligible: false,
+        profileDetailsComplete: true,
+        profilePhotoComplete: true,
+        coverPhotoComplete: true,
+        requirements: [],
+      },
     });
 
     render(
@@ -85,6 +94,10 @@ describe("MillionaireRegisterPage", () => {
     expect(
       screen.getByRole("heading", { name: /already registered on tengacion/i })
     ).toBeInTheDocument();
+    expect(screen.getByText(/will not ask/i)).toBeInTheDocument();
+    expect(screen.getByText(/accept only the game rules and prize terms/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/Tengacion username/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Profile picture/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Cover photo/i)).not.toBeInTheDocument();
   });
 });

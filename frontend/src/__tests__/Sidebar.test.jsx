@@ -96,7 +96,7 @@ describe("Sidebar", () => {
     expect(navigateMock).toHaveBeenCalledWith("/millionaire/register?source=sidebar");
   });
 
-  it("renders the raffle card first on mobile instead of the desktop nav", async () => {
+  it("renders Millionaire first with the raffle beneath it on mobile", async () => {
     setMatchMedia(true);
 
     const { container } = render(
@@ -105,13 +105,35 @@ describe("Sidebar", () => {
 
     expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
     expect(container.querySelector(".sidebar-mobile-feature")).toBeInTheDocument();
+    expect(screen.getByText("Tengacion Millionaire")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /enter millionaire/i })).toBeInTheDocument();
     expect(screen.getByText(/recharge raffle/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /play/i })).toBeInTheDocument();
 
     const feature = container.querySelector(".sidebar-mobile-feature");
+    const millionaireCard = feature.querySelector(".sidebar-millionaire-card");
     const raffleCard = feature.querySelector(".sidebar-raffle-card");
-    expect(feature.firstElementChild).toBe(raffleCard);
-    expect(feature.childElementCount).toBe(1);
+    expect(feature.firstElementChild).toBe(millionaireCard);
+    expect(feature.lastElementChild).toBe(raffleCard);
+    expect(feature.childElementCount).toBe(2);
+
+    fireEvent.click(screen.getByRole("button", { name: /enter millionaire/i }));
+    expect(navigateMock).toHaveBeenCalledWith("/millionaire/register?source=sidebar");
+  });
+
+  it("keeps Millionaire visible on mobile when the raffle is unavailable", async () => {
+    setMatchMedia(true);
+    getRechargeRaffleStatus.mockResolvedValueOnce({
+      visibility: { visible: false, reason: "inactive_account" },
+    });
+
+    render(<Sidebar user={{ _id: "user-1", name: "Ada", username: "ada" }} />);
+
+    expect(screen.getByText("Tengacion Millionaire")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText(/recharge raffle/i)).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: /enter millionaire/i })).toBeInTheDocument();
   });
 
   it("instructs users without both photos instead of opening the game", async () => {

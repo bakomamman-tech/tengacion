@@ -421,15 +421,23 @@ export default function Sidebar({
   };
 
   if (isMobileSidebar) {
-    return raffleVisible ? (
-      <div className="sidebar-mobile-feature">
-        <RaffleGameCard
-          isExpanded={isRaffleExpanded}
-          onToggle={toggleRaffleCard}
-          onPlay={openRaffleGame}
+    return (
+      <div className="sidebar-mobile-feature" aria-label="Featured Tengacion games">
+        <MillionaireGameCard
+          isExpanded={isMillionaireExpanded}
+          onToggle={toggleMillionaireCard}
+          onEnter={openMillionaireGame}
         />
+
+        {raffleVisible ? (
+          <RaffleGameCard
+            isExpanded={isRaffleExpanded}
+            onToggle={toggleRaffleCard}
+            onPlay={openRaffleGame}
+          />
+        ) : null}
       </div>
-    ) : null;
+    );
   }
 
   return (

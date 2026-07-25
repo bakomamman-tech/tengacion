@@ -521,7 +521,7 @@ export default function PublicHomePage() {
             ₦5,000 <small>app prize cap</small>
           </b>
           <img
-            src="/assets/campaigns/tengacion-millionaire-2026.png"
+            src="/assets/campaigns/tengacion-millionaire-2026.png?v=20260725-prizes"
             width="1024"
             height="1536"
             alt="Tengacion Millionaire quiz challenge flyer"

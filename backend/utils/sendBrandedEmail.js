@@ -83,7 +83,7 @@ const buildBrandedEmailHtml = ({ html = "", previewText = "", settings }) => {
 </html>`;
 };
 
-const sendBrandedEmail = async ({ to, subject, html, text, previewText }) => {
+const sendBrandedEmail = async ({ to, subject, html, text, previewText, attachments = [] }) => {
   const settings = getEmailSettings();
   if (!settings.configured) {
     throw new Error("Email service is not configured");
@@ -96,6 +96,7 @@ const sendBrandedEmail = async ({ to, subject, html, text, previewText }) => {
     subject,
     text,
     html: buildBrandedEmailHtml({ html, previewText: previewText || subject, settings }),
+    attachments: Array.isArray(attachments) ? attachments : [],
   });
 };
 

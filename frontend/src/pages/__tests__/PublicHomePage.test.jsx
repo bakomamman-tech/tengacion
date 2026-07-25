@@ -140,7 +140,10 @@ describe("PublicHomePage", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("img", { name: "Tengacion Millionaire quiz challenge flyer" })
-    ).toHaveAttribute("src", "/assets/campaigns/tengacion-millionaire-2026.png");
+    ).toHaveAttribute(
+      "src",
+      "/assets/campaigns/tengacion-millionaire-2026.png?v=20260725-prizes"
+    );
     expect(screen.getByRole("link", { name: /register to play/i })).toHaveAttribute(
       "href",
       "/millionaire/register"

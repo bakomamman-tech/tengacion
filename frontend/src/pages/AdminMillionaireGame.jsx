@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 
 import AdminShell from "../components/AdminShell";
 import {
+  adminGetMillionaireLaunchCampaign,
   adminGetMillionaireParticipants,
+  adminSendMillionaireLaunchCampaign,
   adminUpdateMillionaireParticipantStatus,
   adminUpdateMillionairePayout,
 } from "../api";
@@ -15,6 +17,16 @@ const emptyPayload = {
   total: 0,
   page: 1,
   pages: 1,
+};
+
+const emptyLaunchCampaign = {
+  status: "not_started",
+  audienceCount: 0,
+  sentCount: 0,
+  failedCount: 0,
+  pendingCount: 0,
+  emailConfigured: true,
+  flyerUrl: "/assets/campaigns/tengacion-millionaire-2026.png?v=20260725-prizes",
 };
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
@@ -56,6 +68,9 @@ export default function AdminMillionaireGame({ user }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [launchCampaign, setLaunchCampaign] = useState(emptyLaunchCampaign);
+  const [launchLoading, setLaunchLoading] = useState(true);
+  const [launchSending, setLaunchSending] = useState(false);
   const [payoutTarget, setPayoutTarget] = useState(null);
   const [payoutForm, setPayoutForm] = useState({
     status: "approved",
@@ -83,6 +98,65 @@ export default function AdminMillionaireGame({ user }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  const loadLaunchCampaign = useCallback(async ({ quiet = false } = {}) => {
+    if (!quiet) {
+      setLaunchLoading(true);
+    }
+    try {
+      const response = await adminGetMillionaireLaunchCampaign();
+      setLaunchCampaign(response?.campaign || emptyLaunchCampaign);
+    } catch (requestError) {
+      if (!quiet) {
+        setError(requestError?.message || "Failed to load the launch email campaign.");
+      }
+    } finally {
+      if (!quiet) {
+        setLaunchLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    loadLaunchCampaign();
+  }, [loadLaunchCampaign]);
+
+  useEffect(() => {
+    if (!["queued", "sending"].includes(launchCampaign.status)) {
+      return undefined;
+    }
+    const interval = window.setInterval(() => {
+      loadLaunchCampaign({ quiet: true });
+    }, 4000);
+    return () => window.clearInterval(interval);
+  }, [launchCampaign.status, loadLaunchCampaign]);
+
+  const sendLaunchCampaign = async () => {
+    const retrying = ["partial", "failed"].includes(launchCampaign.status);
+    const message = retrying
+      ? `Retry the ${formatNumber(launchCampaign.failedCount)} failed Millionaire launch emails? Successful recipients will not receive a duplicate.`
+      : `Send the July 26 Tengacion Millionaire launch email and flyer to ${formatNumber(launchCampaign.audienceCount)} active users now?`;
+    if (!window.confirm(message)) {
+      return;
+    }
+
+    setLaunchSending(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await adminSendMillionaireLaunchCampaign();
+      setLaunchCampaign(response?.campaign || launchCampaign);
+      setNotice(
+        response?.alreadyRunningOrSent
+          ? "The Millionaire launch campaign is already running or completed."
+          : "The Millionaire launch email campaign has started. Delivery counts will update here."
+      );
+    } catch (requestError) {
+      setError(requestError?.message || "The Millionaire launch email could not be started.");
+    } finally {
+      setLaunchSending(false);
+    }
+  };
 
   const applyFilters = (event) => {
     event.preventDefault();
@@ -157,6 +231,75 @@ export default function AdminMillionaireGame({ user }) {
         <article className="adminx-stat-card"><div className="adminx-kpi-label">Prize liability</div><div className="adminx-kpi-value">{formatNaira(stats.pendingAmount)}</div></article>
         <article className="adminx-stat-card"><div className="adminx-kpi-label">Paid to winners</div><div className="adminx-kpi-value">{formatNaira(stats.paidAmount)}</div></article>
       </div>
+
+      <section className="adminx-panel millionaire-launch-campaign">
+        <div className="adminx-panel-head">
+          <div>
+            <h2 className="adminx-panel-title">July 26 launch email</h2>
+            <span className="adminx-section-meta">
+              Official announcement, guiding rules, prizes and flyer for all active users
+            </span>
+          </div>
+          <span className={`adminx-badge millionaire-campaign-status is-${launchCampaign.status}`}>
+            {String(launchCampaign.status || "not_started").replace("_", " ")}
+          </span>
+        </div>
+
+        <div className="millionaire-launch-campaign__grid">
+          <img
+            src={launchCampaign.flyerUrl || emptyLaunchCampaign.flyerUrl}
+            alt="Tengacion Millionaire launch flyer"
+          />
+          <div className="millionaire-launch-campaign__copy">
+            <p>
+              <strong>Sunday, 26 July 2026 · 10:00 AM WAT</strong><br />
+              Lobby opens at 9:00 AM · Virtual game · Free participation
+            </p>
+            <ul>
+              <li>15 questions across three stages, with one Ask AI hint.</li>
+              <li>One wrong answer or timeout ends the attempt and banks earned cash.</li>
+              <li>Cash prizes rise from ₦100 to a verified maximum of ₦5,000.</li>
+              <li>Existing complete profiles and photos are reused without re-entry.</li>
+            </ul>
+            <div className="millionaire-launch-campaign__counts" aria-label="Email delivery counts">
+              <span><strong>{formatNumber(launchCampaign.audienceCount)}</strong> audience</span>
+              <span><strong>{formatNumber(launchCampaign.sentCount)}</strong> sent</span>
+              <span><strong>{formatNumber(launchCampaign.failedCount)}</strong> failed</span>
+              <span><strong>{formatNumber(launchCampaign.pendingCount)}</strong> pending</span>
+            </div>
+            {!launchCampaign.emailConfigured ? (
+              <div className="adminx-error" role="alert">
+                Configure Tengacion SMTP before sending this campaign.
+              </div>
+            ) : null}
+            {launchCampaign.lastError ? (
+              <p className="millionaire-launch-campaign__error">{launchCampaign.lastError}</p>
+            ) : null}
+            <button
+              type="button"
+              className="adminx-btn adminx-btn--primary"
+              onClick={sendLaunchCampaign}
+              disabled={
+                launchLoading ||
+                launchSending ||
+                !launchCampaign.emailConfigured ||
+                ["queued", "sending", "completed"].includes(launchCampaign.status)
+              }
+            >
+              {launchSending || ["queued", "sending"].includes(launchCampaign.status)
+                ? "Sending launch emails…"
+                : launchCampaign.status === "completed"
+                  ? "Launch email sent"
+                  : ["partial", "failed"].includes(launchCampaign.status)
+                    ? "Retry failed emails"
+                    : "Send launch email now"}
+            </button>
+            {launchCampaign.completedAt ? (
+              <small>Last completed {formatDate(launchCampaign.completedAt)}</small>
+            ) : null}
+          </div>
+        </div>
+      </section>
 
       <section className="adminx-panel millionaire-admin-panel">
         <div className="adminx-panel-head">

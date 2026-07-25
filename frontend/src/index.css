@@ -24334,6 +24334,7 @@ html.dark-mode .password-toggle-btn:hover {
     gap: 12px;
   }
 
+  .sidebar-mobile-feature .sidebar-millionaire-card,
   .sidebar-mobile-feature .sidebar-raffle-card {
     margin-top: 0;
     position: static;

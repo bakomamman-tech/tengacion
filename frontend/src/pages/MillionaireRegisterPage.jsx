@@ -21,7 +21,8 @@ import {
 
 import "./millionaire-register.css";
 
-const FLYER_PATH = "/assets/campaigns/tengacion-millionaire-2026.png";
+const FLYER_PATH =
+  "/assets/campaigns/tengacion-millionaire-2026.png?v=20260725-prizes";
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 const formatDate = (value) => {
@@ -95,6 +96,11 @@ function RegisteredAccountPanel({ game, user, loading, onRegister, registering }
   const [prizeTermsAccepted, setPrizeTermsAccepted] = useState(false);
   const registered = Boolean(game?.registration?.registered);
   const eligible = Boolean(game?.eligibility?.eligible);
+  const existingProfileReady = Boolean(
+    game?.eligibility?.profileDetailsComplete &&
+      game?.eligibility?.profilePhotoComplete &&
+      game?.eligibility?.coverPhotoComplete
+  );
 
   if (loading) {
     return <div className="millionaire-reg-status">Checking your game registration…</div>;
@@ -107,8 +113,19 @@ function RegisteredAccountPanel({ game, user, loading, onRegister, registering }
         <p className="millionaire-kicker">Existing Tengacion member</p>
         <h2>You are already registered on Tengacion.</h2>
         <p>
-          Do not create another account. Register <strong>@{user?.username}</strong> for the
-          Millionaire Game, then complete any missing profile details before play.
+          {existingProfileReady ? (
+            <>
+              Your existing profile information, profile picture and cover photo will be
+              reused. We will not ask <strong>@{user?.username}</strong> to enter them again.
+              Accept only the game rules and prize terms below.
+            </>
+          ) : (
+            <>
+              Do not create another account. Register <strong>@{user?.username}</strong> for
+              the Millionaire Game, then complete only the profile items that are still
+              missing before play.
+            </>
+          )}
         </p>
         <label className="millionaire-check">
           <input

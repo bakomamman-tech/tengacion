@@ -175,6 +175,37 @@ describe("Tengacion Millionaire game", () => {
     expect(secondAdvice.body.code).toBe("lifeline_used");
   });
 
+  test("reuses a complete existing Tengacion profile without requiring state of origin", async () => {
+    const user = await createUser({
+      completeProfile: true,
+      email: "existing-profile@example.com",
+      username: "existingprofile",
+    });
+    user.stateOfOrigin = "";
+    await user.save();
+
+    const token = await issueSessionToken(user._id);
+    const registration = await registerPlayer(token).expect(201);
+
+    expect(registration.body.game.eligibility).toMatchObject({
+      profileDetailsComplete: true,
+      profilePhotoComplete: true,
+      coverPhotoComplete: true,
+      eligible: true,
+    });
+    expect(
+      registration.body.game.eligibility.requirements.find(
+        (requirement) => requirement.id === "profile"
+      )?.missingFields
+    ).not.toContain("stateOfOrigin");
+
+    await request(app)
+      .post("/api/millionaire/start")
+      .set("Authorization", `Bearer ${token}`)
+      .send({})
+      .expect(201);
+  });
+
   test("banks earned winnings after a wrong answer and enforces the six-month replay window", async () => {
     const user = await createUser({ completeProfile: true });
     const token = await issueSessionToken(user._id);

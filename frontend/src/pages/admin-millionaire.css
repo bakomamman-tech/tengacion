@@ -18,6 +18,101 @@
   overflow: hidden;
 }
 
+.millionaire-launch-campaign {
+  margin-top: 18px;
+}
+
+.millionaire-launch-campaign__grid {
+  display: grid;
+  grid-template-columns: minmax(190px, 300px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  margin-top: 18px;
+}
+
+.millionaire-launch-campaign__grid > img {
+  width: 100%;
+  max-height: 390px;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid #d8d4e8;
+  border-radius: 18px;
+  background: #080a28;
+  box-shadow: 0 18px 38px rgba(30, 20, 70, 0.16);
+}
+
+.millionaire-launch-campaign__copy {
+  display: grid;
+  gap: 14px;
+  color: #4f5b54;
+}
+
+.millionaire-launch-campaign__copy p,
+.millionaire-launch-campaign__copy ul {
+  margin: 0;
+}
+
+.millionaire-launch-campaign__copy ul {
+  display: grid;
+  gap: 7px;
+  padding-left: 20px;
+}
+
+.millionaire-launch-campaign__counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+.millionaire-launch-campaign__counts span {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid #e1e4ea;
+  border-radius: 12px;
+  background: #f8faf9;
+  font-size: 0.72rem;
+}
+
+.millionaire-launch-campaign__counts strong {
+  color: #25143d;
+  font-size: 1rem;
+}
+
+.millionaire-launch-campaign__copy .adminx-btn {
+  justify-self: start;
+}
+
+.millionaire-launch-campaign__copy small {
+  color: #768075;
+}
+
+.millionaire-launch-campaign__error {
+  color: #9b2540;
+  font-weight: 700;
+}
+
+.millionaire-campaign-status {
+  text-transform: capitalize;
+}
+
+.millionaire-campaign-status.is-completed {
+  background: #dcf7e7;
+  color: #17663a;
+}
+
+.millionaire-campaign-status.is-sending,
+.millionaire-campaign-status.is-queued {
+  background: #fff3c4;
+  color: #795900;
+}
+
+.millionaire-campaign-status.is-partial,
+.millionaire-campaign-status.is-failed {
+  background: #ffe1e7;
+  color: #9b2540;
+}
+
 .millionaire-admin-filters {
   display: grid;
   grid-template-columns: minmax(240px, 1.7fr) repeat(3, minmax(150px, 1fr)) auto;
@@ -193,6 +288,18 @@
 }
 
 @media (max-width: 680px) {
+  .millionaire-launch-campaign__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .millionaire-launch-campaign__grid > img {
+    max-height: 480px;
+  }
+
+  .millionaire-launch-campaign__counts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .millionaire-admin-filters {
     grid-template-columns: 1fr;
   }

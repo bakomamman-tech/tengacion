@@ -123,6 +123,43 @@ function RaffleGameCard({ isExpanded, onToggle, onPlay }) {
   );
 }
 
+function MillionaireGameCard({ isExpanded, onToggle, onEnter }) {
+  return (
+    <section
+      className={`sidebar-millionaire-card${isExpanded ? " expanded" : " compact"}`}
+      aria-label="Tengacion Millionaire quiz game"
+    >
+      <div className="sidebar-millionaire-topline">
+        <div>
+          <span>New challenge</span>
+          <strong>Tengacion Millionaire</strong>
+        </div>
+        <button type="button" onClick={onToggle} aria-expanded={isExpanded}>
+          {isExpanded ? "Less" : "Preview"}
+        </button>
+      </div>
+
+      {isExpanded ? (
+        <div className="sidebar-millionaire-expanded">
+          <span className="sidebar-millionaire-orbit" aria-hidden="true">15</span>
+          <p>
+            Climb three stages of knowledge. Winnings start at ₦100 and stop at ₦5,000.
+          </p>
+        </div>
+      ) : (
+        <div className="sidebar-millionaire-compact">
+          <span aria-hidden="true">₦5K</span>
+          <p>15 questions · 3 stages · one Ask AI lifeline.</p>
+        </div>
+      )}
+
+      <button type="button" className="sidebar-millionaire-enter" onClick={onEnter}>
+        Enter Millionaire
+      </button>
+    </section>
+  );
+}
+
 function FriendSuggestionsCard({ suggestions, pendingIds, onAdd, onProfile, onSeeAll }) {
   if (!suggestions.length) {
     return null;
@@ -210,6 +247,7 @@ export default function Sidebar({
   const navigate = useNavigate();
   const location = useLocation();
   const [isRaffleExpanded, setIsRaffleExpanded] = useState(false);
+  const [isMillionaireExpanded, setIsMillionaireExpanded] = useState(false);
   const [isMobileSidebar, setIsMobileSidebar] = useState(getIsMobileSidebar);
   const [raffleVisible, setRaffleVisible] = useState(() => Boolean(user?._id));
   const [raffleCanPlay, setRaffleCanPlay] = useState(() => hasRequiredRafflePhotos(user));
@@ -332,6 +370,10 @@ export default function Sidebar({
   const isProfileRoute = location.pathname.startsWith("/profile/");
   const sidebarBtnClass = (isActive) => `sidebar-btn${isActive ? " active" : ""}`;
   const toggleRaffleCard = () => setIsRaffleExpanded((current) => !current);
+  const toggleMillionaireCard = () => setIsMillionaireExpanded((current) => !current);
+  const openMillionaireGame = () => {
+    navigate("/millionaire/register?source=sidebar");
+  };
   const openRaffleGame = () => {
     if (!raffleCanPlay) {
       toast.error(rafflePlayMessage || PROFILE_MEDIA_REQUIRED_MESSAGE);
@@ -402,6 +444,14 @@ export default function Sidebar({
 
       <div className="sb-divider" />
 
+      <MillionaireGameCard
+        isExpanded={isMillionaireExpanded}
+        onToggle={toggleMillionaireCard}
+        onEnter={openMillionaireGame}
+      />
+
+      <div className="sb-divider" />
+
       {raffleVisible ? (
         <RaffleGameCard
           isExpanded={isRaffleExpanded}
@@ -445,6 +495,13 @@ export default function Sidebar({
             Spin & Win
           </button>
         ) : null}
+
+        <button
+          className={sidebarBtnClass(location.pathname.startsWith("/millionaire"))}
+          onClick={() => navigate("/millionaire")}
+        >
+          Millionaire Game
+        </button>
 
         <button
           className={sidebarBtnClass(location.pathname === "/live")}

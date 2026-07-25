@@ -30,9 +30,11 @@ const SchoolProfilePage = lazy(() => import("./pages/SchoolProfilePage"));
 const Register = lazy(() => import("./pages/Register"));
 const KadunaGotTalentRegisterPage = lazy(() => import("./pages/KadunaGotTalentRegisterPage"));
 const SummerBootcampRegisterPage = lazy(() => import("./pages/SummerBootcampRegisterPage"));
+const MillionaireRegisterPage = lazy(() => import("./pages/MillionaireRegisterPage"));
 const Search = lazy(() => import("./pages/Search"));
 const Home = lazy(() => import("./pages/Home"));
 const RechargeRafflePage = lazy(() => import("./pages/RechargeRafflePage"));
+const MillionaireGamePage = lazy(() => import("./pages/MillionaireGamePage"));
 const MessagesPage = lazy(() => import("./pages/MessagesPage"));
 const FindCreatorsPage = lazy(() => import("./pages/FindCreatorsPage"));
 const FindFriendsPage = lazy(() => import("./pages/FindFriendsPage"));
@@ -70,6 +72,7 @@ const AdminCampaignsPage = lazy(() => import("./pages/AdminCampaigns"));
 const AdminTopUpPromoPage = lazy(() => import("./pages/AdminTopUpPromo"));
 const AdminTopUpPromoPreviewPage = lazy(() => import("./pages/AdminTopUpPromoPreview"));
 const AdminRaffleCardsPage = lazy(() => import("./pages/AdminRaffleCards"));
+const AdminMillionaireGamePage = lazy(() => import("./pages/AdminMillionaireGame"));
 const AdminSettingsPage = lazy(() => import("./pages/AdminSettings"));
 const AdminStoragePage = lazy(() => import("./pages/AdminStorage"));
 const CreatorSongs = lazy(() => import("./pages/CreatorSongs"));
@@ -206,6 +209,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/kaduna-got-talent/register" element={<KadunaGotTalentRegisterPage user={user} />} />
           <Route path="/summer-bootcamp/register" element={<SummerBootcampRegisterPage />} />
+          <Route path="/millionaire/register" element={<MillionaireRegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -411,6 +415,14 @@ export default function App() {
             element={
               <ProtectedRoute user={user}>
                 <RechargeRafflePage user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/millionaire"
+            element={
+              <ProtectedRoute user={user}>
+                <MillionaireGamePage user={user} />
               </ProtectedRoute>
             }
           />
@@ -942,6 +954,14 @@ export default function App() {
             element={
               <AdminRoute user={user}>
                 <AdminRaffleCardsPage user={user} />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/millionaire"
+            element={
+              <AdminRoute user={user}>
+                <AdminMillionaireGamePage user={user} />
               </AdminRoute>
             }
           />

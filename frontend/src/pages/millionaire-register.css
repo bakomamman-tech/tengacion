@@ -1,0 +1,654 @@
+.millionaire-reg-page {
+  --mr-night: #05061f;
+  --mr-ink: #10142e;
+  --mr-purple: #6d28d9;
+  --mr-pink: #e11d8d;
+  --mr-blue: #087edb;
+  --mr-green: #2f9e44;
+  --mr-gold: #ffc72c;
+  min-height: 100vh;
+  color: #f8f7ff;
+  background:
+    radial-gradient(circle at 9% 18%, rgba(225, 29, 141, 0.2), transparent 25%),
+    radial-gradient(circle at 88% 12%, rgba(8, 126, 219, 0.26), transparent 28%),
+    linear-gradient(150deg, #03051c 0%, #10013d 50%, #05061f 100%);
+  font-family: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
+  overflow-x: hidden;
+}
+
+.millionaire-reg-page,
+.millionaire-reg-page * {
+  box-sizing: border-box;
+}
+
+.millionaire-reg-header {
+  position: relative;
+  z-index: 20;
+}
+
+.millionaire-reg-page main {
+  width: min(1440px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: 34px 0 72px;
+}
+
+.millionaire-reg-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.62fr);
+  gap: clamp(28px, 5vw, 80px);
+  align-items: center;
+  min-height: 720px;
+  padding: clamp(28px, 5vw, 76px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 42px;
+  overflow: hidden;
+  background:
+    linear-gradient(110deg, rgba(255, 255, 255, 0.06), transparent 42%),
+    radial-gradient(circle at 78% 18%, rgba(255, 199, 44, 0.2), transparent 22%),
+    rgba(2, 3, 25, 0.72);
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.36);
+}
+
+.millionaire-reg-hero::before,
+.millionaire-reg-hero::after {
+  content: "";
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  border: 1px solid rgba(255, 199, 44, 0.22);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.millionaire-reg-hero::before {
+  left: -220px;
+  bottom: -220px;
+  box-shadow: 0 0 0 38px rgba(109, 40, 217, 0.08), 0 0 0 82px rgba(225, 29, 141, 0.05);
+}
+
+.millionaire-reg-hero::after {
+  right: -250px;
+  top: -250px;
+  box-shadow: 0 0 0 42px rgba(8, 126, 219, 0.08), 0 0 0 88px rgba(255, 199, 44, 0.04);
+}
+
+.millionaire-reg-hero__copy,
+.millionaire-reg-flyer {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+}
+
+.millionaire-kicker {
+  margin: 0;
+  color: #ffd95d;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.millionaire-reg-hero h1 {
+  max-width: 760px;
+  margin: 18px 0;
+  color: #fff;
+  font-size: clamp(3.2rem, 6.8vw, 6.8rem);
+  line-height: 0.92;
+  letter-spacing: -0.065em;
+}
+
+.millionaire-reg-hero h1 em {
+  color: #ffd84b;
+  font-style: normal;
+  text-shadow: 0 0 34px rgba(255, 199, 44, 0.4);
+}
+
+.millionaire-reg-hero__copy > p:not(.millionaire-kicker) {
+  max-width: 680px;
+  margin: 0;
+  color: rgba(245, 243, 255, 0.78);
+  font-size: 1.08rem;
+  line-height: 1.7;
+}
+
+.millionaire-reg-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 26px 0 30px;
+}
+
+.millionaire-reg-badges span {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.millionaire-reg-hero__copy > a,
+.millionaire-primary-action,
+.millionaire-submit {
+  min-height: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ffe173, #f6b800);
+  color: #211305;
+  font-weight: 900;
+  text-decoration: none;
+  box-shadow: 0 18px 34px rgba(242, 175, 0, 0.25);
+}
+
+.millionaire-reg-flyer {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 219, 91, 0.4);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.08);
+  transform: rotate(1.5deg);
+  box-shadow: 0 32px 65px rgba(0, 0, 0, 0.46);
+}
+
+.millionaire-reg-flyer > span {
+  position: absolute;
+  z-index: 2;
+  top: 22px;
+  left: -18px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: #ffd43b;
+  color: #251400;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.millionaire-reg-flyer__cap {
+  position: absolute;
+  z-index: 3;
+  top: 72px;
+  right: 17px;
+  width: 112px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border: 3px solid #ffd43b;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #401078, #16042f);
+  color: #ffd43b;
+  font-size: 1.15rem;
+  font-weight: 950;
+  text-align: center;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.48);
+}
+
+.millionaire-reg-flyer__cap small {
+  display: block;
+  margin-top: 2px;
+  color: #fff;
+  font-size: 0.55rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.millionaire-reg-flyer img {
+  width: 100%;
+  max-height: 660px;
+  display: block;
+  border-radius: 20px;
+  object-fit: cover;
+  object-position: top;
+}
+
+.millionaire-stage-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 22px 0 46px;
+}
+
+.millionaire-stage-strip article {
+  min-height: 116px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-content: center;
+  gap: 4px 14px;
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.millionaire-stage-strip article:nth-child(1) { border-top: 4px solid #22c7e8; }
+.millionaire-stage-strip article:nth-child(2) { border-top: 4px solid #e23ab7; }
+.millionaire-stage-strip article:nth-child(3) { border-top: 4px solid #ffd43b; }
+
+.millionaire-stage-strip span {
+  grid-row: 1 / 3;
+  color: rgba(255, 255, 255, 0.22);
+  font-size: 2.2rem;
+  font-weight: 900;
+}
+
+.millionaire-stage-strip strong {
+  color: #fff;
+  font-size: 1.08rem;
+}
+
+.millionaire-stage-strip small {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.millionaire-reg-workspace {
+  padding: clamp(22px, 4vw, 58px);
+  border-radius: 38px;
+  background: #f9f8ff;
+  color: var(--mr-ink);
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.3);
+}
+
+.millionaire-reg-intro {
+  max-width: 760px;
+  margin-bottom: 30px;
+}
+
+.millionaire-reg-intro .millionaire-kicker,
+.millionaire-account-card .millionaire-kicker {
+  color: #7a2bd1;
+}
+
+.millionaire-reg-intro h2,
+.millionaire-account-card h2 {
+  margin: 10px 0;
+  color: #11152d;
+  font-size: clamp(2rem, 4vw, 3.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+}
+
+.millionaire-reg-intro > p:not(.millionaire-kicker),
+.millionaire-account-card > p:not(.millionaire-kicker) {
+  color: #626881;
+  line-height: 1.65;
+}
+
+.millionaire-reg-form {
+  display: grid;
+  gap: 20px;
+}
+
+.millionaire-form-section {
+  min-width: 0;
+  margin: 0;
+  padding: clamp(20px, 3vw, 34px);
+  border: 1px solid #e2e2ef;
+  border-left: 7px solid var(--section-color, #7c3aed);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 16px 36px rgba(28, 24, 62, 0.06);
+}
+
+.millionaire-form-section.is-coral { --section-color: #f25f5c; }
+.millionaire-form-section.is-blue { --section-color: #1687e8; }
+.millionaire-form-section.is-violet { --section-color: #8b3fd1; }
+.millionaire-form-section.is-gold { --section-color: #e3a800; }
+
+.millionaire-form-section legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  color: #171a34;
+  font-size: 1.08rem;
+  font-weight: 900;
+}
+
+.millionaire-form-section legend span {
+  color: var(--section-color);
+}
+
+.millionaire-form-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.millionaire-form-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.millionaire-form-grid label {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  color: #343951;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.millionaire-form-grid input,
+.millionaire-form-grid select,
+.millionaire-form-grid .auth-password-field {
+  width: 100%;
+  min-width: 0;
+  min-height: 54px;
+  box-sizing: border-box;
+  padding: 0 15px;
+  border: 1px solid #d9dae8;
+  border-radius: 14px;
+  background: #fbfbff;
+  color: #14172c;
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.millionaire-form-grid input:focus,
+.millionaire-form-grid select:focus {
+  outline: 3px solid color-mix(in srgb, var(--section-color) 16%, transparent);
+  border-color: var(--section-color);
+}
+
+.millionaire-section-note,
+.millionaire-legal,
+.millionaire-login-note {
+  color: #676d83;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.millionaire-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.millionaire-photo-field {
+  min-height: 190px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  padding: 20px;
+  border: 2px dashed #c7b5df;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #fbf8ff, #f1e9ff);
+  color: #34224d;
+  text-align: center;
+  cursor: pointer;
+}
+
+.millionaire-photo-field.is-cover {
+  border-color: #9ec8e9;
+  background: linear-gradient(145deg, #f6fbff, #e8f5ff);
+}
+
+.millionaire-photo-field input {
+  width: min(100%, 240px);
+  margin-top: 8px;
+  color: #596077;
+  font-size: 0.78rem;
+}
+
+.millionaire-photo-icon {
+  font-size: 2.3rem;
+  color: #7c3aed;
+}
+
+.millionaire-photo-field small {
+  color: #777a90;
+}
+
+.millionaire-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 12px 0;
+  color: #444960;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.millionaire-check input {
+  width: 19px;
+  height: 19px;
+  margin-top: 2px;
+  accent-color: #7429cc;
+  flex: 0 0 auto;
+}
+
+.millionaire-submit {
+  width: min(100%, 680px);
+  min-height: 64px;
+  margin: 8px auto 0;
+  border-radius: 18px;
+  font-size: 1rem;
+}
+
+.millionaire-submit:disabled,
+.millionaire-primary-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.millionaire-login-note {
+  margin: 0;
+  text-align: center;
+}
+
+.millionaire-reg-page a:not(.millionaire-reg-hero__copy > a):not(.millionaire-primary-action) {
+  color: #6520bd;
+  font-weight: 800;
+}
+
+.millionaire-existing-account {
+  padding: 20px;
+  border: 1px solid #f0c55c;
+  border-radius: 18px;
+  background: #fff9df;
+  color: #503d0c;
+}
+
+.millionaire-existing-account p {
+  margin: 7px 0 12px;
+}
+
+.millionaire-account-card {
+  padding: clamp(24px, 4vw, 46px);
+  border: 1px solid #e0d9ed;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 90% 12%, rgba(56, 189, 248, 0.16), transparent 25%),
+    radial-gradient(circle at 8% 90%, rgba(236, 72, 153, 0.12), transparent 28%),
+    #fff;
+  box-shadow: 0 22px 50px rgba(35, 24, 75, 0.08);
+}
+
+.millionaire-account-card__icon {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 20px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #7928ca, #e11d8d);
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 900;
+  box-shadow: 0 14px 25px rgba(109, 40, 217, 0.24);
+}
+
+.millionaire-reg-status {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #e1dcec;
+  border-radius: 24px;
+  background: #fff;
+  color: #6d6380;
+  font-weight: 800;
+}
+
+.millionaire-reg-requirements {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.millionaire-reg-requirements > div {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid #e2e3ec;
+  border-radius: 16px;
+  background: #fafaff;
+}
+
+.millionaire-reg-requirements > div > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #f4d8e7;
+  color: #a31558;
+  font-weight: 900;
+}
+
+.millionaire-reg-requirements > div.is-complete > span {
+  background: #d9f5e3;
+  color: #16743c;
+}
+
+.millionaire-reg-requirements strong,
+.millionaire-reg-requirements small {
+  display: block;
+}
+
+.millionaire-reg-requirements small {
+  margin-top: 3px;
+  color: #7a7f91;
+}
+
+.millionaire-account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.millionaire-cooldown-note {
+  margin-top: 20px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #fff4c9;
+  color: #6b4e00 !important;
+  font-weight: 800;
+}
+
+.millionaire-reg-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 28px max(24px, calc((100vw - 1380px) / 2));
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.22);
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.millionaire-reg-footer strong {
+  color: #ffd43b;
+}
+
+@media (max-width: 960px) {
+  .millionaire-reg-hero {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .millionaire-reg-flyer {
+    width: min(100%, 520px);
+    max-width: 100%;
+    justify-self: center;
+  }
+
+  .millionaire-stage-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .millionaire-reg-page main {
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+    margin-inline: auto;
+    overflow: hidden;
+    padding-top: 12px;
+  }
+
+  .millionaire-reg-hero {
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .millionaire-reg-hero__copy,
+  .millionaire-reg-hero__copy > p,
+  .millionaire-reg-badges,
+  .millionaire-reg-flyer {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .millionaire-reg-hero__copy {
+    overflow-wrap: anywhere;
+  }
+
+  .millionaire-reg-flyer {
+    transform: none;
+  }
+
+  .millionaire-reg-hero,
+  .millionaire-reg-workspace {
+    padding: 22px;
+    border-radius: 24px;
+  }
+
+  .millionaire-reg-hero h1 {
+    font-size: clamp(3rem, 15vw, 4.6rem);
+  }
+
+  .millionaire-form-grid.two,
+  .millionaire-photo-grid,
+  .millionaire-reg-requirements {
+    grid-template-columns: 1fr;
+  }
+
+  .millionaire-reg-requirements > div {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .millionaire-reg-requirements > div > a {
+    grid-column: 2;
+  }
+
+  .millionaire-reg-footer {
+    flex-direction: column;
+  }
+}

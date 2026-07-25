@@ -512,6 +512,56 @@ export default function PublicHomePage() {
       </section>
 
       <section
+        className="public-home__bootcamp public-home__millionaire"
+        aria-labelledby="public-home-millionaire-title"
+      >
+        <div className="public-home__bootcamp-media public-home__millionaire-media">
+          <span>New · Free virtual quiz</span>
+          <b className="public-home__millionaire-cap">
+            ₦5,000 <small>app prize cap</small>
+          </b>
+          <img
+            src="/assets/campaigns/tengacion-millionaire-2026.png"
+            width="1024"
+            height="1536"
+            alt="Tengacion Millionaire quiz challenge flyer"
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
+          />
+        </div>
+        <div className="public-home__bootcamp-copy public-home__millionaire-copy">
+          <p className="public-home__eyebrow">Sunday, 26 July 2026 · 10:00 AM</p>
+          <h2 id="public-home-millionaire-title">
+            Think. Answer. Win. Become a Tengacion Millionaire.
+          </h2>
+          <p>
+            Enter a 15-question knowledge challenge across three increasingly
+            difficult stages. Questions span science, arts, technology, history,
+            language, society and more, with cash winnings from ₦100 to ₦5,000.
+          </p>
+          <div className="public-home__bootcamp-tracks" aria-label="Millionaire game highlights">
+            <span>3 stages</span>
+            <span>5 questions each</span>
+            <span>One Ask AI lifeline</span>
+            <span>Participation is free</span>
+          </div>
+          <div className="public-home__bootcamp-actions">
+            <Link to="/millionaire/register">
+              Register to play <span aria-hidden="true">&rarr;</span>
+            </Link>
+            <Link to="/login?returnTo=/millionaire">
+              Existing users log in
+            </Link>
+          </div>
+          <small>
+            Complete profile information, a profile picture and a cover photo are
+            required · One play every six months · Maximum prize ₦5,000
+          </small>
+        </div>
+      </section>
+
+      <section
         className="public-home__bootcamp"
         aria-labelledby="public-home-bootcamp-title"
       >

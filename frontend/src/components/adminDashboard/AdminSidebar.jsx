@@ -29,6 +29,7 @@ const NAV_GROUPS = [
       { key: "creator-earnings", label: "Creator Earnings", icon: "finance", path: "/admin/creator-earnings" },
       { key: "tuition-payments", label: "Tuition Payments", icon: "finance", path: "/admin/tuition-payments" },
       { key: "raffle", label: "Raffle Cards", icon: "spark", path: "/admin/recharge-raffle" },
+      { key: "millionaire", label: "Millionaire Game", icon: "spark", path: "/admin/millionaire" },
     ],
   },
   {

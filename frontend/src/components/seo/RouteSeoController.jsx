@@ -56,7 +56,7 @@ const NOINDEX_RULES = [
     canonicalPath: "/login",
   },
   {
-    patterns: ["/register", "/signup", "/kaduna-got-talent/register", "/summer-bootcamp/register"],
+    patterns: ["/register", "/signup", "/kaduna-got-talent/register", "/summer-bootcamp/register", "/millionaire/register"],
     title: "Create Account | Tengacion",
     description: "Create your Tengacion account to connect with creators, friends, and communities.",
   },
@@ -76,7 +76,7 @@ const NOINDEX_RULES = [
     description: "Private Tengacion page.",
   },
   {
-    patterns: ["/home", "/trending", "/news", "/news/*", "/live", "/live/*", "/gaming", "/reels"],
+    patterns: ["/home", "/trending", "/news", "/news/*", "/live", "/live/*", "/gaming", "/reels", "/millionaire"],
     title: "Tengacion App | Tengacion",
     description: "Private Tengacion app experience.",
   },

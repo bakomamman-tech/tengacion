@@ -12186,6 +12186,141 @@ html.dark-mode .create-menu-empty {
   gap: 10px;
 }
 
+.sidebar-millionaire-card {
+  position: relative;
+  flex-shrink: 0;
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(255, 211, 75, 0.38);
+  border-radius: 10px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 82% 10%, rgba(0, 173, 255, 0.3), transparent 28%),
+    radial-gradient(circle at 8% 95%, rgba(223, 30, 145, 0.26), transparent 34%),
+    linear-gradient(145deg, #08072e, #2b075f 62%, #090522);
+  color: #fff;
+  box-shadow: 0 18px 34px rgba(20, 4, 55, 0.3);
+}
+
+.sidebar-millionaire-card::after {
+  content: "";
+  position: absolute;
+  right: -44px;
+  top: -48px;
+  width: 110px;
+  height: 110px;
+  border: 1px solid rgba(255, 211, 75, 0.25);
+  border-radius: 50%;
+  box-shadow: 0 0 0 13px rgba(255, 255, 255, 0.035);
+  pointer-events: none;
+}
+
+.sidebar-millionaire-topline,
+.sidebar-millionaire-compact,
+.sidebar-millionaire-expanded {
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar-millionaire-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sidebar-millionaire-topline > div {
+  display: grid;
+  gap: 5px;
+}
+
+.sidebar-millionaire-topline span {
+  color: #ffd84b;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sidebar-millionaire-topline strong {
+  font-size: 0.92rem;
+}
+
+.sidebar-millionaire-topline button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.sidebar-millionaire-compact {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.sidebar-millionaire-compact > span,
+.sidebar-millionaire-orbit {
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(255, 220, 93, 0.8);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.14), transparent 62%),
+    #35107b;
+  color: #ffdc5d;
+  font-weight: 900;
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.035);
+}
+
+.sidebar-millionaire-compact > span {
+  width: 60px;
+  height: 60px;
+  font-size: 0.85rem;
+}
+
+.sidebar-millionaire-compact p,
+.sidebar-millionaire-expanded p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.sidebar-millionaire-expanded {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.sidebar-millionaire-orbit {
+  width: 96px;
+  height: 96px;
+  font-size: 2rem;
+}
+
+.sidebar-millionaire-enter {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffe375, #f0b300);
+  color: #241400;
+  font-size: 0.82rem;
+  font-weight: 900;
+  box-shadow: 0 12px 20px rgba(244, 179, 0, 0.2);
+}
+
 .friend-requests-card {
   padding: 14px;
   border-radius: 14px;

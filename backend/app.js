@@ -213,6 +213,7 @@ app.use("/api/support", require("./routes/support"));
 app.use("/api/talent-show", require("./routes/talentShow"));
 app.use("/api/summer-bootcamp", require("./routes/summerBootcamp"));
 app.use("/api/recharge-raffle", require("./routes/rechargeRaffle"));
+app.use("/api/millionaire", require("./routes/millionaireGame"));
 app.use("/api/top-up-promo", require("./routes/topUpPromo"));
 app.use("/api/search", require("./routes/search"));
 app.use("/api/assistant", require("./routes/assistant"));

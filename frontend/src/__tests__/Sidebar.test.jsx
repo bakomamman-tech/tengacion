@@ -81,6 +81,19 @@ describe("Sidebar", () => {
 
     const raffleCard = container.querySelector(".sidebar-raffle-card");
     expect(raffleCard).toBeInTheDocument();
+    expect(screen.getByText("Tengacion Millionaire")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /enter millionaire/i })).toBeInTheDocument();
+  });
+
+  it("opens the Millionaire registration from the right sidebar", () => {
+    setMatchMedia(false);
+
+    render(
+      <Sidebar user={{ _id: "user-1", name: "Ada", username: "ada" }} />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /enter millionaire/i }));
+    expect(navigateMock).toHaveBeenCalledWith("/millionaire/register?source=sidebar");
   });
 
   it("renders the raffle card first on mobile instead of the desktop nav", async () => {

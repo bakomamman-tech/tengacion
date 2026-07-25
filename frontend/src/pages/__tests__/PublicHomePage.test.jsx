@@ -133,6 +133,17 @@ describe("PublicHomePage", () => {
       "/leadership"
     );
     expect(
+      screen.getByRole("heading", { name: /become a tengacion millionaire/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "Tengacion Millionaire quiz challenge flyer" })
+    ).toHaveAttribute("src", "/assets/campaigns/tengacion-millionaire-2026.png");
+    expect(screen.getByRole("link", { name: /register to play/i })).toHaveAttribute(
+      "href",
+      "/millionaire/register"
+    );
+    expect(screen.getByText(/maximum prize ₦5,000/i)).toBeInTheDocument();
+    expect(
       screen.getByRole("heading", {
         name: /a virtual bootcamp for curious kids who love to learn/i,
       })

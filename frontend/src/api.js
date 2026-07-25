@@ -809,6 +809,56 @@ export const spinRechargeRaffle = (payload = {}) =>
     body: JSON.stringify(payload || {}),
   });
 
+export const getMillionaireStatus = () =>
+  request(`${API_BASE}/millionaire/status`, {
+    headers: getAuthHeaders(),
+  });
+
+export const registerMillionaireParticipant = (payload = {}) =>
+  request(`${API_BASE}/millionaire/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({
+      rulesAccepted: true,
+      prizeTermsAccepted: true,
+      source: "landing_page",
+      ...(payload || {}),
+    }),
+  });
+
+export const startMillionaireGame = () =>
+  request(`${API_BASE}/millionaire/start`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({}),
+  });
+
+export const answerMillionaireQuestion = (payload = {}) =>
+  request(`${API_BASE}/millionaire/answer`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+export const askMillionaireAi = (payload = {}) =>
+  request(`${API_BASE}/millionaire/ask-ai`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
 export const getTopUpPromoStatus = () =>
   request(`${API_BASE}/top-up-promo/me`, {
     headers: getAuthHeaders(),
@@ -2553,6 +2603,44 @@ export const adminLoadRaffleCards = (payload = {}) =>
     },
     body: JSON.stringify(payload || {}),
   });
+
+export const adminGetMillionaireParticipants = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  });
+  return request(`${API_BASE}/admin/millionaire/participants?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+};
+
+export const adminUpdateMillionairePayout = (attemptId, payload = {}) =>
+  request(
+    `${API_BASE}/admin/millionaire/attempts/${encodeURIComponent(attemptId || "")}/payout`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(payload || {}),
+    }
+  );
+
+export const adminUpdateMillionaireParticipantStatus = (participantId, status) =>
+  request(
+    `${API_BASE}/admin/millionaire/participants/${encodeURIComponent(participantId || "")}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ status }),
+    }
+  );
 
 export const adminGetTopUpPromoPlays = (params = {}) => {
   const query = new URLSearchParams();

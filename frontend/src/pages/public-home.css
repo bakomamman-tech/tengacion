@@ -2055,6 +2055,83 @@
   font-weight: 700;
 }
 
+.public-home.public-home--nature-green .public-home__millionaire {
+  border-color: rgba(255, 211, 75, 0.3);
+  background:
+    radial-gradient(circle at 10% 12%, rgba(0, 153, 255, 0.3), transparent 28%),
+    radial-gradient(circle at 92% 82%, rgba(228, 26, 145, 0.24), transparent 30%),
+    linear-gradient(145deg, #040520 0%, #21045d 54%, #080425 100%);
+}
+
+.public-home.public-home--nature-green .public-home__millionaire::after {
+  content: "MILLIONAIRE";
+  color: rgba(255, 255, 255, 0.025);
+  font-size: clamp(4rem, 10vw, 10rem);
+}
+
+.public-home.public-home--nature-green .public-home__millionaire-media {
+  border-color: rgba(255, 215, 70, 0.38);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.public-home.public-home--nature-green .public-home__millionaire-media > span {
+  background: #ffd43b;
+  color: #281500;
+}
+
+.public-home.public-home--nature-green .public-home__millionaire-cap {
+  position: absolute;
+  z-index: 3;
+  top: 64px;
+  right: 17px;
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border: 3px solid #ffd43b;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #401078, #16042f);
+  color: #ffd43b;
+  font-size: 0.92rem;
+  font-weight: 950;
+  text-align: center;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.48);
+}
+
+.public-home.public-home--nature-green .public-home__millionaire-cap small {
+  display: block;
+  color: #fff;
+  font-size: 0.48rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.public-home.public-home--nature-green .public-home__millionaire-copy .public-home__eyebrow {
+  color: #ffd84f;
+}
+
+.public-home.public-home--nature-green .public-home__millionaire-copy .public-home__eyebrow::before {
+  background: linear-gradient(90deg, #e02b9a, rgba(224, 43, 154, 0.1));
+}
+
+.public-home.public-home--nature-green .public-home__millionaire-copy .public-home__bootcamp-actions a:first-child {
+  border-color: #ffd43b;
+  background: linear-gradient(135deg, #ffe477, #efb100);
+  color: #251400;
+  box-shadow: 0 15px 28px rgba(239, 177, 0, 0.22);
+}
+
+.public-home.public-home--nature-green .public-home__millionaire-copy .public-home__bootcamp-actions a:last-child {
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.public-home.public-home--nature-green .public-home__millionaire-copy > small {
+  color: rgba(247, 244, 255, 0.64);
+}
+
 @media (max-width: 880px) {
   .public-home.public-home--nature-green .public-home__bootcamp {
     grid-template-columns: 1fr;

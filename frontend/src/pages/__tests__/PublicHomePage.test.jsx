@@ -105,10 +105,13 @@ describe("PublicHomePage", () => {
 
     expect(document.querySelector("main.public-home")).toHaveClass("public-home--nature-green");
     expect(screen.getByRole("heading", { name: /africa's social commerce/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Log in / Create account" })).toHaveAttribute(
-      "href",
-      "/login"
-    );
+    const accountAction = screen.getByRole("link", { name: "Log in / Create account" });
+    expect(accountAction).toHaveAttribute("href", "/login");
+    expect(accountAction.parentElement?.firstElementChild).toBe(accountAction);
+    expect(
+      screen.getByRole("button", { name: "Show previous navigation items" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show more navigation items" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /join as creator/i })[0]).toHaveAttribute(
       "href",
       "/creator/register"

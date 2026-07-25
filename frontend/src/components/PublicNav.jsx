@@ -184,6 +184,11 @@ export default function PublicNav({ theme = "dark", className = "" }) {
         </button>
 
         <div className="public-nav__button-rail" ref={navRailRef}>
+          <Link className="public-nav__account" to="/login" aria-label="Log in / Create account">
+            <span>Log in</span>
+            <strong>Create account</strong>
+          </Link>
+
           <div className="public-nav__links">
             {PUBLIC_NAV_LINKS.map((link) => (
               <Link
@@ -195,11 +200,6 @@ export default function PublicNav({ theme = "dark", className = "" }) {
               </Link>
             ))}
           </div>
-
-          <Link className="public-nav__account" to="/login" aria-label="Log in / Create account">
-            <span>Log in</span>
-            <strong>Create account</strong>
-          </Link>
         </div>
 
         <button

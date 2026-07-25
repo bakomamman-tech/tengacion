@@ -236,6 +236,18 @@
   --public-nav-cta-bg: linear-gradient(135deg, #287b55, #155f40);
 }
 
+@media (min-width: 1021px) {
+  .public-nav__links {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .public-nav__account {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
 @media (max-width: 1020px) {
   .public-nav {
     width: min(100% - 36px, 1340px);
@@ -415,61 +427,71 @@
     min-height: 46px;
   }
 
-  .public-nav--landing .public-nav__menu {
-    max-height: 0;
-    grid-column: 1 / -1;
-    grid-template-columns: 1fr;
-    gap: 12px;
-    padding-top: 0;
-    border-top: 0;
-    overflow: hidden;
-    visibility: hidden;
-    opacity: 0;
-    transform: translateY(-8px);
-    transition:
-      max-height 240ms ease,
-      padding-top 240ms ease,
-      opacity 180ms ease,
-      transform 180ms ease,
-      visibility 180ms ease;
-  }
-
   .public-nav--landing {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding-bottom: 10px;
   }
 
   .public-nav--landing .public-nav__toggle {
-    display: grid;
+    display: none;
   }
 
+  .public-nav--landing .public-nav__menu,
   .public-nav--landing .public-nav__menu--open {
-    max-height: 520px;
-    padding-top: 12px;
+    max-height: none;
+    grid-column: 1 / -1;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 6px;
+    padding-top: 9px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: visible;
     visibility: visible;
     opacity: 1;
     transform: translateY(0);
+    transition: none;
   }
 
   .public-nav--landing .public-nav__button-rail {
-    display: contents;
+    min-width: 0;
+    grid-column: 2;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: 2px 1px 4px;
+    scroll-behavior: smooth;
+    scroll-padding-inline: 1px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .public-nav--landing .public-nav__button-rail::-webkit-scrollbar {
+    display: none;
   }
 
   .public-nav--landing .public-nav__links {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 5px;
+    display: contents;
+  }
+
+  .public-nav--landing .public-nav__links a,
+  .public-nav--landing .public-nav__account {
+    min-height: 42px;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
   }
 
   .public-nav--landing .public-nav__links a {
-    min-height: 42px;
-    padding: 0 8px;
+    order: 1;
+    padding: 0 13px;
     font-size: 0.81rem;
   }
 
   .public-nav--landing .public-nav__account {
-    width: 100%;
-    min-height: 46px;
+    width: auto;
+    order: 0;
     padding: 0 13px;
     font-size: 0.81rem;
   }
@@ -480,6 +502,21 @@
 
   .public-nav--landing .public-nav__rail-control {
     display: none !important;
+  }
+
+  .public-nav--landing .public-nav__rail-control.is-visible {
+    width: 36px;
+    height: 36px;
+    display: grid !important;
+    align-self: center;
+  }
+
+  .public-nav--landing .public-nav__rail-control--previous {
+    grid-column: 1;
+  }
+
+  .public-nav--landing .public-nav__rail-control--next {
+    grid-column: 3;
   }
 }
 

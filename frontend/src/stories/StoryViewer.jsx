@@ -354,14 +354,29 @@ export default function StoryViewer({
   }, [activeStoryKey, goToNext, mediaType, storyDurationMs]);
 
   useEffect(() => {
-    if (mediaType !== "video") {
-      return;
+    const video = videoRef.current;
+    if (mediaType !== "video" || !video) {
+      return undefined;
     }
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-    }
-  }, [mediaType, index]);
+
+    video.currentTime = 0;
+    video.muted = true;
+
+    const startVideo = () => {
+      const playback = video.play();
+      playback?.catch(() => {
+        // Keep native controls available if the browser still declines autoplay.
+      });
+    };
+
+    startVideo();
+    video.addEventListener("canplay", startVideo, { once: true });
+
+    return () => {
+      video.removeEventListener("canplay", startVideo);
+      video.pause();
+    };
+  }, [activeStoryKey, mediaType, mediaUrl]);
 
   useEffect(() => {
     const audio = soundtrackRef.current;
@@ -690,8 +705,11 @@ export default function StoryViewer({
                 <video
                   ref={videoRef}
                   src={mediaUrl}
+                  autoPlay
+                  muted
                   controls
                   playsInline
+                  preload="auto"
                   onTimeUpdate={(event) => {
                     const duration = event.currentTarget.duration || 0;
                     const now = event.currentTarget.currentTime || 0;

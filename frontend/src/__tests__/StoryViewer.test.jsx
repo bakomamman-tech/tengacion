@@ -144,6 +144,32 @@ describe("StoryViewer", () => {
     expect(screen.getByText(/Tengacion Artist - 30s preview/i)).toBeInTheDocument();
   });
 
+  it("automatically plays video stories muted and inline", async () => {
+    renderInRouter(
+      <StoryViewer
+        story={{
+          ...story,
+          image: "",
+          mediaUrl: "https://cdn.test/story-video.mp4",
+          mediaType: "video",
+        }}
+        onClose={vi.fn()}
+      />
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const video = document.querySelector(".story-viewer-media video");
+    expect(video).toBeInTheDocument();
+    expect(video).toHaveAttribute("autoplay");
+    expect(video).toHaveAttribute("playsinline");
+    expect(video).toHaveAttribute("preload", "auto");
+    expect(video.muted).toBe(true);
+    expect(playMock).toHaveBeenCalled();
+  });
+
   it("keeps the close control outside the scrollable story content", () => {
     const onClose = vi.fn();
     renderInRouter(<StoryViewer story={story} onClose={onClose} />);
